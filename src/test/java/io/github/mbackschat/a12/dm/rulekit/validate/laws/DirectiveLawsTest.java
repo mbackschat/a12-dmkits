@@ -14,7 +14,8 @@ import org.junit.jupiter.api.Test;
  *       focused witness; NumberLawsTest locks the complete unsuppressed rule.
  *       Any other name draws {@code MVK_INVALID_SUPPRESSED_WARNING}.</li>
  *   <li>{@code RuleGroup} (DE {@code RegelKontext}) references the rule's containing group as an
- *       entity; a star on it is rejected (the grammar permits the token only for a nicer error).</li>
+ *       entity; it admits the ordinary semantic-index suffix when that group has an index field, while a star
+ *       remains rejected (the grammar permits the star only for a nicer error).</li>
  * </ul>
  */
 class DirectiveLawsTest {
@@ -41,6 +42,15 @@ class DirectiveLawsTest {
         // the enclosing group counts as referencing the error field
         KernelLaws.accepts("/Subscription/Billing", "../InvoiceEmail",
                 "GroupFilled(RuleGroup)");
+    }
+
+    /** The accept/refuse pair proves {@code For} selects the RuleGroup entity rather than being ignored syntax. */
+    @Test
+    void aSemanticIndexSuffixSelectsTheRulesContainingGroup() {
+        KernelLaws.acceptsOrder("/Order/Items", "../Count",
+                "GroupFilled(RuleGroup For \"SKU-1\")");
+        KernelLaws.rejectsOrder("/Order", "../CustomerName",
+                "GroupFilled(RuleGroup For \"SKU-1\")", "MVK_NO_INDEX_FIELD");
     }
 
     @Test

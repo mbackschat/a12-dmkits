@@ -38,6 +38,14 @@ import org.junit.jupiter.api.Test;
  */
 class PerformanceRecordShapeGuardTest {
 
+    private static final Checkout CHECKOUT = Checkout.locate();
+
+    /** The grain a warm outcome and the median it qualifies share: one engine instance at one scale in one lane. */
+    private static String joinKey(JsonNode row) {
+        return "%s|%s|n=%d|%s".formatted(row.path("lane").asText(), row.path("scenario").asText(),
+                row.path("n").asInt(), row.path("engine").asText());
+    }
+
     private static final ObjectMapper MAPPER = new ObjectMapper();
 
     /**
@@ -124,23 +132,8 @@ class PerformanceRecordShapeGuardTest {
      */
     private static final int MAX_RUNS_PER_ENVIRONMENT = 30;
 
-    /** The grain a warm outcome and the median it qualifies share: one engine instance at one scale in one lane. */
-    private static String joinKey(JsonNode row) {
-        return "%s|%s|n=%d|%s".formatted(row.path("lane").asText(), row.path("scenario").asText(),
-                row.path("n").asInt(), row.path("engine").asText());
-    }
-
-    private static Path repoRoot() {
-        for (Path candidate = Path.of("").toAbsolutePath(); candidate != null; candidate = candidate.getParent()) {
-            if (Files.exists(candidate.resolve("settings.gradle"))) {
-                return candidate;
-            }
-        }
-        throw new IllegalStateException("cannot locate the repository root from " + Path.of("").toAbsolutePath());
-    }
-
     private static List<Path> records() throws IOException {
-        try (Stream<Path> walk = Files.walk(repoRoot().resolve("perf-results"))) {
+        try (Stream<Path> walk = Files.walk(CHECKOUT.resolve("perf-results"))) {
             return walk.filter(p -> p.getFileName().toString().endsWith(".jsonl")).sorted().toList();
         }
     }
@@ -157,7 +150,7 @@ class PerformanceRecordShapeGuardTest {
         int observations = 0;
         int warms = 0;
         for (Path record : records) {
-            String relative = repoRoot().relativize(record).toString();
+            String relative = CHECKOUT.relative(record);
             List<String> lines = Files.readAllLines(record).stream().map(String::strip)
                     .filter(line -> !line.isEmpty()).toList();
             if (lines.isEmpty()) {
@@ -333,7 +326,7 @@ class PerformanceRecordShapeGuardTest {
      */
     @Test
     void theFoldedStatusVocabularyMatchesTheScriptThatConsumesIt() throws IOException {
-        String script = Files.readString(repoRoot().resolve("scripts/perf-anchor.sh"));
+        String script = Files.readString(CHECKOUT.resolve("scripts/perf-anchor.sh"));
         var folded = new java.util.LinkedHashSet<String>();
         java.util.regex.Matcher filter = java.util.regex.Pattern
                 .compile("status\", \"accepted\"\\) not in \\(([^)]*)\\)").matcher(script);
@@ -382,7 +375,7 @@ class PerformanceRecordShapeGuardTest {
      */
     @Test
     void noQualityFieldIsReadOutsideTheRecorder() throws IOException {
-        Path perf = repoRoot().resolve("adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/perf");
+        Path perf = CHECKOUT.resolve("adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/perf");
         assertTrue(Files.isDirectory(perf), () -> "the perf source tree moved: " + perf
                 + " — this guard would otherwise sweep nothing and pass vacuously");
 

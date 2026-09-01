@@ -161,6 +161,7 @@ public record ConditionReferences(Set<String> fieldPaths, Set<String> groupPaths
                 switch (operand) {
                     case FieldRef field -> refs.field(field.path().value());
                     case GroupListRef scope -> refs.group(scope.path());
+                    case IndexedGroupValue indexed -> collectIndexedGroup(indexed, refs);
                 }
             });
             case PatternCondition p -> refs.field(p.field().path().value());
@@ -199,6 +200,7 @@ public record ConditionReferences(Set<String> fieldPaths, Set<String> groupPaths
             case StringLiteral s -> { }
             case DateLiteral d -> { }
             case TimeLiteral t -> { }
+            case DateTimeLiteral dt -> { }
             case EnumValueLiteral e -> { }
             case BoolLiteral b -> { }
             case EnumCategoryAccess c -> refs.projectedField(c.field().path().value());
@@ -282,15 +284,50 @@ public record ConditionReferences(Set<String> fieldPaths, Set<String> groupPaths
         switch (op) {
             case FieldOperand field -> collectOperand(field, refs);
             case GroupListRef group -> refs.group(group.path());
+            case IndexedGroupValue indexed -> collectIndexedGroup(indexed, refs);
+        }
+    }
+
+    /**
+     * An index-selected group still references the GROUP for this bookkeeping — the index only picks
+     * which repetition, not what it references — plus, for the field-keyed form, the KEY field itself:
+     * that field's value is what the condition depends on to pick the repetition, so it must count
+     * toward {@code fieldPaths()}/{@code covers()} the same way {@code IndexedFieldValue}'s own key
+     * already does for the direct-value path (KF182's principle, applied to the shape it does not by
+     * itself reach — {@code IndexedGroupValue} is never a {@link Calculation}, so it never flows through
+     * this class's OTHER exhaustive switch, the one with the dedicated {@code SemanticIndexValue}/
+     * {@code SemanticIndexFieldValue} arms). Shared by both call sites (this one and {@code
+     * GroupListPredicate}'s own entity-list collection) rather than repeating the key-field check twice.
+     *
+     * <p>Registered PLAIN, not projected: {@code ReadMode.PROJECTED} exists to feed self-reference
+     * detection for a COMPUTED FIELD's own formula, which a group — never itself a {@link Calculation} —
+     * can never participate in.
+     */
+    private static void collectIndexedGroup(IndexedGroupValue indexed, Refs refs) {
+        refs.group(indexed.group().path());
+        if (indexed instanceof GroupSemanticIndexFieldValue keyed) {
+            refs.field(keyed.indexField().path().value());
         }
     }
 
     /** A list operand contributes its field path (a category projection → its underlying enum field) plus —
      *  for a filtered list — its Having filter's refs. Accepts the wider {@link ValueListOperand} so an enum
-     *  category projection in a value-list quantifier is collected too. */
+     *  category projection in a value-list quantifier is collected too.
+     *
+     *  <p>An operand reached through a list slot is the same read as one reached directly, so the projected
+     *  forms are enumerated here as well as in the value-expression switch. This chain is {@code instanceof}
+     *  rather than a switch over the sealed type, so widening {@link FieldOperand} does not fail the build —
+     *  a new arm has to be added by hand or it silently lands in the plain-field {@code else}. */
     private static void collectOperand(ValueListOperand op, Refs refs) {
         if (op instanceof EnumCategoryAccess) {
             refs.projectedField(op.fieldPath());
+        } else if (op instanceof SemanticIndexValue indexed) {
+            refs.projectedField(indexed.field().path().value());
+        } else if (op instanceof SemanticIndexFieldValue indexed) {
+            // Both halves projected, exactly as the value-expression switch above reads them: the kernel
+            // matches a calculated field against the KEY as well as against the read (KF182).
+            refs.projectedField(indexed.field().path().value());
+            refs.projectedField(indexed.indexField().path().value());
         } else if (op instanceof GroupListRef group) {
             // A GROUP scope registers as a GROUP, not as a field. Registering its path in `fieldPaths` would
             // typecheck and read plausibly, and it would make `covers` blind to every field the kernel expands

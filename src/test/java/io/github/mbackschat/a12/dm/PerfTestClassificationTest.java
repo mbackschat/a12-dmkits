@@ -12,7 +12,6 @@ import java.util.TreeMap;
 import java.util.TreeSet;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-import java.util.stream.Stream;
 
 import org.junit.jupiter.api.Test;
 
@@ -57,6 +56,8 @@ import org.junit.jupiter.api.Test;
 class PerfTestClassificationTest {
 
     /** The lane tags. {@code perf} runs in the routine gate; {@code perf-bench} is the checkpoint tier. */
+    private static final Checkout CHECKOUT = Checkout.locate();
+
     private static final Set<String> PERF_TAGS = Set.of("perf", "perf-bench");
 
     /**
@@ -190,7 +191,8 @@ class PerfTestClassificationTest {
     void theRoutinePerformanceGateSelectsByTag() throws IOException {
         // Comment-stripped: `contains` cannot tell live configuration from a line that quotes it, and this task's
         // block is heavily commented — commenting out the selection while leaving the text would otherwise pass.
-        String gate = uncommented(gradleTask(Files.readString(locate("adapter/build.gradle")), "perfGateTest"));
+        String buildScript = Files.readString(CHECKOUT.resolve("adapter/build.gradle"));
+        String gate = SourceText.uncommentedFragment(gradleTask(buildScript, "perfGateTest"), false);
 
         assertTrue(gate.contains("useJUnitPlatform { includeTags 'perf' }"),
                 "perfGateTest must select the routine tier by tag; an includeTestsMatching list is how a "
@@ -199,7 +201,7 @@ class PerfTestClassificationTest {
                 "perfGateTest must not name classes: a list and a tag disagree the moment someone adds a test, "
                         + "and Gradle ANDs the two so the list always wins");
 
-        String launcher = Files.readString(locate("scripts/perf.sh"));
+        String launcher = Files.readString(CHECKOUT.resolve("scripts/perf.sh"));
         assertTrue(launcher.contains("run_gradle :adapter:perfGateTest\n"),
                 "the launcher's default gate invocation must pass no --tests filter, or the task's tag selection "
                         + "is intersected back down to whatever the launcher happens to name");
@@ -218,10 +220,10 @@ class PerfTestClassificationTest {
      */
     @Test
     void theBroadAdapterSuiteExcludesBothPerformanceTiers() throws IOException {
-        String build = Files.readString(locate("adapter/build.gradle"));
+        String build = Files.readString(CHECKOUT.resolve("adapter/build.gradle"));
         int test = build.indexOf("tasks.named('test')");
         assertTrue(test >= 0, "adapter/build.gradle must configure its broad test task");
-        String broad = uncommented(build.substring(test, build.indexOf("\ntasks.register(", test)));
+        String broad = SourceText.uncommentedFragment(build.substring(test, build.indexOf("\ntasks.register(", test)), false);
 
         for (String tag : new TreeSet<>(PERF_TAGS)) {
             assertTrue(broad.contains("excludeTags '" + tag + "'"),
@@ -230,23 +232,17 @@ class PerfTestClassificationTest {
         }
     }
 
-    /** Every committed Java/Kotlin test source, excluding generated output and linked worktrees. */
-    private static List<Path> testSources() throws IOException {
-        Path root = locate("settings.gradle").getParent();
-        try (Stream<Path> tree = Files.walk(root)) {
-            return tree.filter(Files::isRegularFile)
-                    .filter(path -> {
-                        String name = path.getFileName().toString();
-                        return name.endsWith("Test.java") || name.endsWith("Test.kt");
-                    })
-                    .filter(path -> {
-                        String text = root.relativize(path).toString();
-                        return text.contains("src" + java.io.File.separator)
-                                && !text.contains("build" + java.io.File.separator)
-                                && !text.startsWith(".claude");
-                    })
-                    .toList();
-        }
+    /**
+     * The test CLASSES, narrower than the checkout's test sources on purpose: this census classifies a test by
+     * its lane, and a helper or fixture carrying no test methods has no lane to be in.
+     */
+    private static List<Path> testSources() {
+        return CHECKOUT.testSources().stream()
+                .filter(path -> {
+                    String name = path.getFileName().toString();
+                    return name.endsWith("Test.java") || name.endsWith("Test.kt");
+                })
+                .toList();
     }
 
     /**
@@ -289,19 +285,6 @@ class PerfTestClassificationTest {
         return tag.find() ? tag.group(1) : null;
     }
 
-    /**
-     * Source with comments dropped, so a check matches LIVE configuration and never a line quoting it.
-     *
-     * <p><b>Both comment forms.</b> Line comments alone left a bypass a review constructed: wrapping the live
-     * selection in {@code /* … *}{@code /} keeps the text present, so a {@code contains} check on it passes while
-     * the configuration is dead. Block comments are stripped first, since a block may open and close mid-line.
-     */
-    private static String uncommented(String source) {
-        String withoutBlocks = Pattern.compile("/\\*.*?\\*/", Pattern.DOTALL).matcher(source).replaceAll("");
-        return withoutBlocks.lines()
-                .filter(line -> !line.strip().startsWith("//"))
-                .collect(java.util.stream.Collectors.joining("\n"));
-    }
 
     private static String gradleTask(String build, String name) {
         String marker = "tasks.register('" + name + "', Test)";
@@ -309,17 +292,5 @@ class PerfTestClassificationTest {
         assertTrue(start >= 0, () -> "could not find task " + name);
         int next = build.indexOf("\ntasks.register('", start + marker.length());
         return build.substring(start, next < 0 ? build.length() : next);
-    }
-
-    private static Path locate(String relativePath) {
-        Path directory = Path.of("").toAbsolutePath();
-        while (directory != null) {
-            Path candidate = directory.resolve(relativePath);
-            if (Files.isRegularFile(candidate)) {
-                return candidate;
-            }
-            directory = directory.getParent();
-        }
-        throw new IllegalStateException("could not locate " + relativePath);
     }
 }

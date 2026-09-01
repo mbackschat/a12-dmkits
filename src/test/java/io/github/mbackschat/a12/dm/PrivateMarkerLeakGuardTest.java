@@ -15,6 +15,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.Function;
 import java.util.regex.Pattern;
 
 import org.junit.jupiter.api.Test;
@@ -44,6 +45,8 @@ import org.junit.jupiter.api.io.TempDir;
  * nothing".
  */
 class PrivateMarkerLeakGuardTest {
+
+    private static final Checkout CHECKOUT = Checkout.locate();
 
     private record Marker(String name, Pattern pattern, List<String> mustCatch) {}
 
@@ -154,10 +157,9 @@ class PrivateMarkerLeakGuardTest {
 
     @Test
     void noTrackedFilePublishesAPrivateMarker() throws Exception {
-        Path root = repositoryRoot();
-        List<String> tracked = trackedFiles(root);
+        List<String> tracked = CHECKOUT.tracked().stream().map(CHECKOUT::relative).toList();
 
-        var scan = scan(root, tracked);
+        var scan = scan(CHECKOUT::resolve, tracked);
 
         assertTrue(scan.violations().isEmpty(),
                 "tracked files would publish private markers — scrub them before this can be pushed:\n"
@@ -176,7 +178,7 @@ class PrivateMarkerLeakGuardTest {
         Files.writeString(sandbox.resolve("leaky.md"), "url = https://artifacts.example-corp.com/repo\n");
         Files.writeString(sandbox.resolve("clean.md"), "Nothing private lives in this file.\n");
 
-        var scan = scan(sandbox, List.of("leaky.md", "clean.md"));
+        var scan = scan(sandbox::resolve, List.of("leaky.md", "clean.md"));
 
         assertEquals(List.of("leaky.md: private registry hostname"), scan.violations());
         assertEquals(2, scan.filesRead());
@@ -210,11 +212,10 @@ class PrivateMarkerLeakGuardTest {
 
     @Test
     void everyExemptionStillCarriesTheMarkerItClaims() throws IOException {
-        Path root = repositoryRoot();
         var stale = new ArrayList<String>();
 
         for (var entry : EXEMPT.entrySet()) {
-            Path file = root.resolve(entry.getKey());
+            Path file = CHECKOUT.resolve(entry.getKey());
             if (!Files.isRegularFile(file)) {
                 stale.add(entry.getKey() + ": the file is gone, so this exemption covers nothing");
                 continue;
@@ -235,12 +236,13 @@ class PrivateMarkerLeakGuardTest {
 
     private record Scan(List<String> violations, int filesRead) {}
 
-    private static Scan scan(Path root, List<String> relativePaths) throws IOException {
+    private static Scan scan(Function<String, Path> resolve, List<String> relativePaths)
+            throws IOException {
         var violations = new ArrayList<String>();
         int filesRead = 0;
 
         for (String relative : relativePaths) {
-            String text = readTextOrNull(root.resolve(relative));
+            String text = readTextOrNull(resolve.apply(relative));
             if (text == null) {
                 continue;
             }
@@ -275,22 +277,6 @@ class PrivateMarkerLeakGuardTest {
     }
 
     /** {@code git ls-files} is the published set. Failing loudly beats scanning nothing and passing. */
-    private static List<String> trackedFiles(Path root) throws IOException, InterruptedException {
-        var builder = new ProcessBuilder("git", "ls-files").directory(root.toFile());
-        builder.redirectErrorStream(true);
-        Process process = builder.start();
-
-        List<String> lines;
-        try (var reader = new BufferedReader(new InputStreamReader(process.getInputStream(), StandardCharsets.UTF_8))) {
-            lines = reader.lines().toList();
-        }
-
-        assertEquals(0, process.waitFor(),
-                "git ls-files failed, so the scanned set is unknown rather than clean: " + lines);
-        assertFalse(lines.isEmpty(),
-                "git ls-files returned nothing, so this guard would scan an empty set and pass vacuously");
-        return lines;
-    }
 
     /** Null for a binary blob or a tracked path with no working-tree file (a submodule, a pending delete). */
     private static String readTextOrNull(Path file) throws IOException {
@@ -308,15 +294,4 @@ class PrivateMarkerLeakGuardTest {
     }
 
     /** The repository root is the one directory carrying both the settings script and the build wrapper. */
-    private static Path repositoryRoot() {
-        Path directory = Path.of("").toAbsolutePath();
-        while (directory != null) {
-            if (Files.isRegularFile(directory.resolve("settings.gradle"))
-                    && Files.isRegularFile(directory.resolve("build.sh"))) {
-                return directory;
-            }
-            directory = directory.getParent();
-        }
-        throw new IllegalStateException("could not locate the repository root from " + Path.of("").toAbsolutePath());
-    }
 }

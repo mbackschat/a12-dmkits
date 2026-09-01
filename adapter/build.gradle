@@ -113,6 +113,11 @@ dependencies {
     implementation project(':interpreter')
     testFixturesImplementation project(':interpreter')
 
+    // The kernel-free ConditionReadBack provider — TEST-ONLY, and the ONLY place both providers of that port
+    // are on one classpath, which is what makes the parity differential (ConditionReadBackParityTest)
+    // expressible. Test scope keeps :interpreter-bridge off :adapter's own consumers.
+    testImplementation project(':interpreter-bridge')
+
     // Custom-field-type SPI (predefined types) — TEST-ONLY: lets the differential register a project type
     // (e.g. a pattern-based "EMail") in the kernel oracle, so `Valid(field, "EMail")` does a REAL check (the
     // bare kernel ships none → degenerate no-op). The impl 30.8.1 depends on this api 28.2.0 (ABI-consistent).

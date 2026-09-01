@@ -4018,7 +4018,7 @@
       "returns": "number",
       "meaning": "Counts the distinct values among the listed fields (the count/number of different values), typically over a repetition list.",
       "constraints": [
-        "operands must be type-homogeneous, in one of three classes: string/enum together, all numbers, or all date-like — DATE/TIME/DATETIME. The FIRST operand fixes the expected class and the reported code names THAT class, not the offender's: (Weight, Label) reports MVK_NUMBER_AND_NON_NUMBER while (Label, Weight) over the same two fields reports MVK_STRING_ENUM_AND_NON_STRING_ENUM (MVK_STRING_ENUM_AND_NON_STRING_ENUM / MVK_NUMBER_AND_NON_NUMBER / MVK_DATE_AND_NONDATE)",
+        "operands must be type-homogeneous, in one of three classes: string/enum/custom together, all numbers, or all date-like — DATE/DATEFRAGMENT/TIME/DATETIME. The FIRST operand fixes the expected class and the reported code names THAT class, not the offender's: (Weight, Label) reports MVK_NUMBER_AND_NON_NUMBER while (Label, Weight) over the same two fields reports MVK_STRING_ENUM_AND_NON_STRING_ENUM (MVK_STRING_ENUM_AND_NON_STRING_ENUM / MVK_NUMBER_AND_NON_NUMBER / MVK_DATE_AND_NONDATE)",
         "date-like operands must additionally share one declared COMPONENT SET — two date-like fields are not enough (MVK_DATEFORMATS_NOT_COMPATIBLE)",
         "no booleans/confirms — but this code is reachable only from the LEADING slot: a boolean behind a string is reported as a homogeneity mismatch instead (MVK_ONLY_STRING_ENUM_NUMBER_CMP_DATE_ALLOWED)",
         "more than one field or a repetition list; no repeated direct field, but a wildcarded (starred) operand may repeat (MVK_DUPLICATE_PARAM1)"

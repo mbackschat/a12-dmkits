@@ -29,8 +29,15 @@ package io.github.mbackschat.a12.dm.rulekit.dsl;
  * that here would mean re-implementing the expansion's extent — the recursion into nested subgroups — and an
  * over-strict copy would refuse a legal model, so it is delegated, exactly as {@link GroupListOperand}
  * already delegates the same family's gates.
+ *
+ * <p>The third arm, {@link IndexedGroupValue} — a group scope reached through a semantic index
+ * ({@code [Group For key]}) — behaves like a single group entity here: it never
+ * satisfies arity alone (unlike a starred {@link GroupListRef}), and it participates in exact-duplicate
+ * detection keyed on group path AND index. Added directly rather than nested under {@link GroupListRef}
+ * because that record is {@code final} — unlike {@link FieldOperand}'s own indexed-field arm, which
+ * nested inside an existing sealed member.
  */
-public sealed interface AggregateOperand permits FieldOperand, GroupListRef {
+public sealed interface AggregateOperand permits FieldOperand, GroupListRef, IndexedGroupValue {
 
     /** The rendered path, with a {@code *} on every starred segment. */
     String renderedPath();

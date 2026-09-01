@@ -474,7 +474,11 @@ public final class BoundModel {
         return fields().filter(field -> field.path().startsWith(prefix)).map(FieldInfo::ref).toList();
     }
 
-    private static void requireExactSemanticIndexGroup(GroupListRef scope) {
+    /** Package-visible so {@link IndexedGroupValue}'s leaf records share this guard rather than each
+     *  re-stating it — an index and a wildcard can never address the same group, regardless of which
+     *  construct (this class's own {@code firstFilledGroupFor}, or the general entity-list arm) builds
+     *  the indexed group. */
+    static void requireExactSemanticIndexGroup(GroupListRef scope) {
         if (!scope.flattened().isEmpty()) {
             throw new IllegalArgumentException("a semantic index and wildcard may not address the same group"
                     + " (MVK_SEMANTIC_INDEX_AND_WILDCARD): " + scope.renderedPath());

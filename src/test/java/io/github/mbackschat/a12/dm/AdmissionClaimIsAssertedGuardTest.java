@@ -36,6 +36,8 @@ import org.junit.jupiter.api.Test;
  */
 class AdmissionClaimIsAssertedGuardTest {
 
+    private static final Checkout CHECKOUT = Checkout.locate();
+
     /** The raw-JSON splice helpers: everything they insert lands downstream of any gate that already ran. */
     private static final Pattern SPLICE =
             Pattern.compile("with(Rule|RuleMessages|Computation|TieredComputation)\\s*\\(");
@@ -63,7 +65,7 @@ class AdmissionClaimIsAssertedGuardTest {
             }
             scanned++;
             if (claimsTheGateWithoutAssertingIt(text)) {
-                offenders.add(repoRoot().relativize(source).toString());
+                offenders.add(CHECKOUT.relative(source));
             }
         }
         assertTrue(scanned > 200, "the scan found only " + scanned + " splice-using test sources — it is not "
@@ -124,7 +126,7 @@ class AdmissionClaimIsAssertedGuardTest {
      * module out of the denominator, where it would be noise rather than coverage.
      */
     private static List<Path> testSources() throws IOException {
-        try (Stream<Path> walk = Files.walk(repoRoot().resolve("adapter/src/test"))) {
+        try (Stream<Path> walk = Files.walk(CHECKOUT.resolve("adapter/src/test"))) {
             return walk.filter(Files::isRegularFile)
                     .filter(p -> {
                         String s = p.toString();
@@ -136,12 +138,4 @@ class AdmissionClaimIsAssertedGuardTest {
         }
     }
 
-    private static Path repoRoot() {
-        for (Path candidate = Path.of("").toAbsolutePath(); candidate != null; candidate = candidate.getParent()) {
-            if (Files.exists(candidate.resolve("settings.gradle"))) {
-                return candidate;
-            }
-        }
-        throw new IllegalStateException("cannot locate the repository root from " + Path.of("").toAbsolutePath());
-    }
 }

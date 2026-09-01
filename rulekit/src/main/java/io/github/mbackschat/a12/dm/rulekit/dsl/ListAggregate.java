@@ -47,8 +47,10 @@ public record ListAggregate(AggOp op, List<AggregateOperand> operands) implement
                 case FieldOperand f -> requireNumber(op, f);
                 // A group carries no kind of its own: the rule applies to the fields the kernel EXPANDS it
                 // to, whose extent recurses into nested subgroups. Delegated rather than re-implemented —
-                // see AggregateOperand.
+                // see AggregateOperand. An index-selected group is the same shape (still no kind of its
+                // own — the index only picks WHICH repetition, not what it expands to).
                 case GroupListRef ignored -> { }
+                case IndexedGroupValue ignored -> { }
             }
         }
         checkNoDuplicates(op.operatorId(), operands);
@@ -80,10 +82,22 @@ public record ListAggregate(AggOp op, List<AggregateOperand> operands) implement
             // the same starred group listed twice is ACCEPTED, while a group beside its own descendant is
             // MVK_DUPLICATE_PARAM2 — an INDIRECT overlap this direct check never saw, and which stays
             // kernel-arbitrated because deciding it here would mean owning the expansion's extent.
+            // The `$` outer-iteration correlation is part of the identity, exactly as it is in
+            // FirstFilledValue's richer EntityIdentity: `$path` reads the outer row and `path` the current
+            // one, so the two are different operands and may share a slot list.
+            //
+            // An indexed field (IndexedFieldValue) behaves like a single field entity here too: the same
+            // field under two different index keys is NOT a duplicate, so identity folds
+            // in the key (and every $ correlation in the shape) via the shared IndexedFieldValue#duplicateIdentity,
+            // rather than repeating that compound computation here (see Dsl.referenceIdentity's identical arm).
+            // An indexed GROUP (IndexedGroupValue) is the same shape one level up, sharing the identical
+            // duplicateIdentity contract.
             String identity = switch (o) {
                 case FieldListRef ignored -> null;
                 case GroupListRef ignored -> null;
-                case FieldRef f -> f.renderedPath();
+                case FieldRef f -> (f.correlated() ? "$" : "") + f.renderedPath();
+                case IndexedFieldValue indexed -> indexed.duplicateIdentity();
+                case IndexedGroupValue indexed -> indexed.duplicateIdentity();
             };
             if (identity == null) {
                 continue;

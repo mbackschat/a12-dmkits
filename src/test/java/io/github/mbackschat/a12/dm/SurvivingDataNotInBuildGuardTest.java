@@ -65,6 +65,8 @@ class SurvivingDataNotInBuildGuardTest {
     }
 
     /** Every path literal under {@code build/} the scan may see, with its use and the reason that use is safe. */
+    private static final Checkout CHECKOUT = Checkout.locate();
+
     private static final Map<String, Declaration> DECLARED = new LinkedHashMap<>(Map.of(
             "build/perf-progress.log",
             new Declaration(BuildPathUse.WRITES_TRANSIENT_OUTPUT,
@@ -86,7 +88,11 @@ class SurvivingDataNotInBuildGuardTest {
             "build/classes/java/main",
             new Declaration(BuildPathUse.READS_DERIVED_OUTPUT,
                     "the compiled main classes the public-API dump READS; the golden it compares against lives "
-                            + "in the committed api/ tree, which is the thing that must survive")));
+                            + "in the committed api/ tree, which is the thing that must survive"),
+            "build/classes/kotlin/main",
+            new Declaration(BuildPathUse.READS_DERIVED_OUTPUT,
+                    "the same dump, for the one published module the Kotlin compiler builds; its golden lives "
+                            + "beside the others in the committed api/ tree")));
 
     /**
      * A string literal naming a path under {@code build/}. Bare {@code "build/"} is excluded by the trailing
@@ -116,14 +122,6 @@ class SurvivingDataNotInBuildGuardTest {
      */
     private static final int API_WINDOW = 200;
 
-    private static Path repoRoot() {
-        for (Path candidate = Path.of("").toAbsolutePath(); candidate != null; candidate = candidate.getParent()) {
-            if (Files.exists(candidate.resolve("settings.gradle"))) {
-                return candidate;
-            }
-        }
-        throw new IllegalStateException("cannot locate the repository root from " + Path.of("").toAbsolutePath());
-    }
 
     /**
      * Excluded directory names, matched as whole path SEGMENTS of the repo-relative path — never as a substring of
@@ -134,27 +132,8 @@ class SurvivingDataNotInBuildGuardTest {
      * assertion passes over zero files, and only the declarations-used half fails — which reads as a stale
      * permission and invites deleting a live entry.
      */
-    private static final List<String> EXCLUDED_SEGMENTS = List.of("build", ".git", ".gradle", ".claude");
-
-    private static boolean excluded(Path relative) {
-        for (Path segment : relative) {
-            if (EXCLUDED_SEGMENTS.contains(segment.toString())) {
-                return true;
-            }
-        }
-        return false;
-    }
-
-    private static List<Path> sources() throws IOException {
-        Path root = repoRoot();
-        try (Stream<Path> walk = Files.walk(root)) {
-            return walk.filter(Files::isRegularFile)
-                    .filter(p -> {
-                        String name = p.getFileName().toString();
-                        return (name.endsWith(".kt") || name.endsWith(".java")) && !excluded(root.relativize(p));
-                    })
-                    .toList();
-        }
+    private static List<Path> sources() {
+        return CHECKOUT.sources();
     }
 
     @Test
@@ -170,18 +149,17 @@ class SurvivingDataNotInBuildGuardTest {
 
         var undeclared = new ArrayList<String>();
         var seen = new ArrayList<String>();
-        Path root = repoRoot();
         for (Path source : sources) {
             // Kotlin nests block comments; Java does NOT. Applying Kotlin's rule to Java is not a harmless
             // over-approximation: one `/*` inside a Javadoc — `{@code build/*-red.log}` is a real occurrence in
             // this very repository — drives the depth to 2, so the closing `*/` only returns it to 1 and the
             // REST OF THE FILE is treated as comment. Measured before the fix: 10 Java files ended in a
             // non-neutral state and 1,179 lines of real code were blanked, any write site among them invisible.
-            String code = withoutComments(Files.readString(source), source.getFileName().toString().endsWith(".kt"));
+            String code = SourceText.uncommented(source);
             Matcher found = BUILD_PATH_LITERAL.matcher(code);
             while (found.find()) {
                 if (looksLikeAPath(found.group(1)) && constructedAsPath(code, found.start())) {
-                    classify(found.group(1), source, root, seen, undeclared);
+                    classify(found.group(1), source, seen, undeclared);
                 }
             }
             Matcher segments = BUILD_PATH_SEGMENTS.matcher(code);
@@ -191,7 +169,7 @@ class SurvivingDataNotInBuildGuardTest {
                 while (segment.find()) {
                     joined.append('/').append(segment.group(1));
                 }
-                classify(joined.toString(), source, root, seen, undeclared);
+                classify(joined.toString(), source, seen, undeclared);
             }
         }
 
@@ -224,10 +202,10 @@ class SurvivingDataNotInBuildGuardTest {
         return literal.chars().noneMatch(Character::isWhitespace);
     }
 
-    private static void classify(String literal, Path source, Path root, List<String> seen, List<String> undeclared) {
+    private static void classify(String literal, Path source, List<String> seen, List<String> undeclared) {
         seen.add(literal);
         if (!DECLARED.containsKey(literal)) {
-            undeclared.add(root.relativize(source) + " -> \"" + literal + "\"");
+            undeclared.add(CHECKOUT.relative(source) + " -> \"" + literal + "\"");
         }
     }
 
@@ -237,90 +215,6 @@ class SurvivingDataNotInBuildGuardTest {
         return PATH_APIS.stream().anyMatch(window::contains);
     }
 
-    /**
-     * Blank out comments, keeping string literals and every character position intact.
-     *
-     * <p>Stripping is what lets the rule apply to CODE only: without it, a doc comment illustrating the pattern is
-     * indistinguishable from a write, and the previous guard had to delete its own illustration to stay green.
-     * Kotlin block comments nest, so the depth is counted rather than closed on the first {@code *}{@code /}.
-     */
-    static String withoutComments(String source, boolean nestsBlockComments) {
-        var out = new StringBuilder(source.length());
-        int blockDepth = 0;
-        boolean lineComment = false;
-        boolean inString = false;
-        boolean inRawString = false;
-        boolean inChar = false;
-        for (int i = 0; i < source.length(); i++) {
-            char c = source.charAt(i);
-            String rest2 = i + 2 <= source.length() ? source.substring(i, i + 2) : "";
-            boolean rest3IsTripleQuote = i + 3 <= source.length() && source.startsWith("\"\"\"", i);
-            if (lineComment) {
-                if (c == '\n') {
-                    lineComment = false;
-                    out.append(c);
-                } else {
-                    out.append(' ');
-                }
-            } else if (blockDepth > 0) {
-                if (nestsBlockComments && "/*".equals(rest2)) {
-                    blockDepth++;
-                    out.append("  ");
-                    i++;
-                } else if ("*/".equals(rest2)) {
-                    blockDepth--;
-                    out.append("  ");
-                    i++;
-                } else {
-                    out.append(c == '\n' ? c : ' ');
-                }
-            } else if (inRawString) {
-                out.append(c);
-                if (rest3IsTripleQuote) {
-                    out.append("\"\"");
-                    i += 2;
-                    inRawString = false;
-                }
-            } else if (inString) {
-                out.append(c);
-                if (c == '\\' && i + 1 < source.length()) {
-                    out.append(source.charAt(i + 1));
-                    i++;
-                } else if (c == '"') {
-                    inString = false;
-                }
-            } else if (inChar) {
-                out.append(c);
-                if (c == '\\' && i + 1 < source.length()) {
-                    out.append(source.charAt(i + 1));
-                    i++;
-                } else if (c == '\'') {
-                    inChar = false;
-                }
-            } else if ("//".equals(rest2)) {
-                lineComment = true;
-                out.append("  ");
-                i++;
-            } else if ("/*".equals(rest2)) {
-                blockDepth = 1;
-                out.append("  ");
-                i++;
-            } else if (rest3IsTripleQuote) {
-                inRawString = true;
-                out.append("\"\"\"");
-                i += 2;
-            } else if (c == '"') {
-                inString = true;
-                out.append(c);
-            } else if (c == '\'') {
-                inChar = true;
-                out.append(c);
-            } else {
-                out.append(c);
-            }
-        }
-        return out.toString();
-    }
 
     /**
      * The discriminator for the language rule, because getting it wrong is silent in the dangerous direction.
@@ -338,9 +232,9 @@ class SurvivingDataNotInBuildGuardTest {
         String planted = "\"build" + "/planted.txt\"";
         String source = "/** {@code build" + "/*-red.log} */\nclass X { void m() { Path.of(" + planted + "); } }";
 
-        assertTrue(withoutComments(source, false).contains(planted),
+        assertTrue(SourceText.uncommentedFragment(source, false).contains(planted),
                 "under Java's rule the code after the Javadoc must survive, or a write site there is invisible");
-        assertTrue(!withoutComments(source, true).contains(planted),
+        assertTrue(!SourceText.uncommentedFragment(source, true).contains(planted),
                 "…and Kotlin's rule is what hid it: this half pins the discriminator, so the fix cannot be "
                         + "undone without the test noticing");
     }
@@ -351,13 +245,18 @@ class SurvivingDataNotInBuildGuardTest {
      */
     @Test
     void thePerformanceRecordHasACommittedHome() throws IOException, InterruptedException {
-        Path results = repoRoot().resolve("perf-results");
+        Path results = CHECKOUT.resolve("perf-results");
         assertTrue(Files.isDirectory(results), "perf-results/ must exist as the committed home of the performance "
                 + "record; the gate's observations are read back across runs, so they cannot be derived output");
 
         // Asked of a real record FILE, not of the directory. `git check-ignore perf-results` exits 1 ("not
         // ignored") even when a rule such as `perf-results/**/*.jsonl` ignores everything inside it, so the
         // directory-level question passes in precisely the state this assertion exists to catch.
+        // The FILESYSTEM is the right denominator here, uniquely among this file's scans: both assertions below
+        // are ABOUT untracked records. The un-ignorable check must reach the record a rule would swallow NEXT,
+        // and the tracked-at-least-once check is deliberately satisfied by a minority, since most gate runs leave
+        // their record untracked. Taking the set from git would make the second trivially true and hide from the
+        // first exactly the file it exists to protect.
         List<Path> records;
         try (Stream<Path> walk = Files.walk(results)) {
             records = walk.filter(p -> p.getFileName().toString().endsWith(".jsonl")).toList();
@@ -370,7 +269,7 @@ class SurvivingDataNotInBuildGuardTest {
         // matches it, so without this flag the assertion cannot see a rule that would swallow the NEXT record.
         // Found by planting `perf-results/**/*.jsonl` and watching the guard stay green.
         for (Path record : records) {
-            Path relative = repoRoot().relativize(record);
+            String relative = CHECKOUT.relative(record);
             assertEquals(1, git("check-ignore", "-q", "--no-index", relative.toString()),
                     "git must NOT ignore " + relative + " (exit 1 means 'not ignored'); an ignored record is the "
                             + "same defect as one under a cleaned directory, just harder to notice");
@@ -383,8 +282,8 @@ class SurvivingDataNotInBuildGuardTest {
         // that the record has a COMMITTED home, so a reader who did not run the measurement can still find one.
         var tracked = new ArrayList<String>();
         for (Path record : records) {
-            Path relative = repoRoot().relativize(record);
-            if (git("ls-files", "--error-unmatch", relative.toString()) == 0) {
+            String relative = CHECKOUT.relative(record);
+            if (CHECKOUT.isTracked(record)) {
                 tracked.add(relative.toString());
             }
         }
@@ -397,7 +296,7 @@ class SurvivingDataNotInBuildGuardTest {
     private static int git(String... arguments) throws IOException, InterruptedException {
         var command = new ArrayList<String>(List.of("git"));
         command.addAll(List.of(arguments));
-        Process process = new ProcessBuilder(command).directory(repoRoot().toFile())
+        Process process = CHECKOUT.command(command)
                 .redirectErrorStream(true).redirectOutput(ProcessBuilder.Redirect.DISCARD).start();
         return process.waitFor();
     }

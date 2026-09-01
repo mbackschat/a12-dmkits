@@ -87,6 +87,7 @@ import io.github.mbackschat.a12.dm.rulekit.dsl.DateLiteral;
 import io.github.mbackschat.a12.dm.rulekit.dsl.DateOperand;
 import io.github.mbackschat.a12.dm.rulekit.dsl.DateTimeConstruction;
 import io.github.mbackschat.a12.dm.rulekit.dsl.DateTimeExpr;
+import io.github.mbackschat.a12.dm.rulekit.dsl.DateTimeLiteral;
 import io.github.mbackschat.a12.dm.rulekit.dsl.DateTimeOperand;
 import io.github.mbackschat.a12.dm.rulekit.dsl.TimeConstruction;
 import io.github.mbackschat.a12.dm.rulekit.dsl.DateRangeIndexedValue;
@@ -2063,6 +2064,9 @@ final class ConditionConverter {
 
     /** A date-time-valued operand: a date-time field, a {@code DateTime(date, time)} construction, or a sub-day shift. */
     private DateTimeOperand convertDateTimeOperand(IOperation op, Object origin) {
+        if (op instanceof IConstantOperation constant) {
+            return new DateTimeExpr(new DateTimeLiteral(constant.getValue()));
+        }
         if (op instanceof IFieldIdOperation field && field.getOperatorName() == FieldIdOperationName.FieldValue
                 && model.fieldAt(field.getField().getFullName())
                         .map(i -> i.kind() == ValueKind.DATE_TIME).orElse(false)) {

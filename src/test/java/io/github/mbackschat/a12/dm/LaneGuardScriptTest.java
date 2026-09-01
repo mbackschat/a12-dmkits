@@ -3,6 +3,7 @@ package io.github.mbackschat.a12.dm;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.util.List;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -29,14 +30,14 @@ import org.junit.jupiter.api.Test;
  */
 class LaneGuardScriptTest {
 
+    private static final Checkout CHECKOUT = Checkout.locate();
+
     /** Vacuity floor: the script carried 15 checks on 2026-08-24, split across refuse and do-not-refuse. */
     private static final int MIN_CHECKS = 10;
 
     @Test
     void everyLaneGuardSelftestCheckPasses() throws Exception {
-        Path root = repositoryRoot();
-        var builder = new ProcessBuilder("/bin/bash", root.resolve("scripts/selftest-lane-guard.sh").toString());
-        builder.directory(root.toFile());
+        var builder = CHECKOUT.command(List.of("/bin/bash", CHECKOUT.resolve("scripts/selftest-lane-guard.sh").toString()));
         builder.redirectErrorStream(true);
 
         Process process = builder.start();
@@ -53,15 +54,4 @@ class LaneGuardScriptTest {
                 + "back the run that cost an hour and 23 load average:\n" + output);
     }
 
-    private static Path repositoryRoot() {
-        Path directory = Path.of("").toAbsolutePath();
-        while (directory != null) {
-            if (Files.isRegularFile(directory.resolve("settings.gradle"))
-                    && Files.isRegularFile(directory.resolve("build.sh"))) {
-                return directory;
-            }
-            directory = directory.getParent();
-        }
-        throw new IllegalStateException("could not locate the repository root from " + Path.of("").toAbsolutePath());
-    }
 }

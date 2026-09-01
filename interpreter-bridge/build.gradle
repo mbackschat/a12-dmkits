@@ -1,0 +1,92 @@
+// :interpreter-bridge — the kernel-free ConditionReadBack provider foreseen as ruling 6 in
+// KERNEL-DECOUPLING-PROPOSAL §2a: the interpreter parses the full grammar into its own AST, and this module
+// maps that AST onto rulekit's typed Condition. Building through the rulekit DSL is what runs rulekit's
+// checks, so the mapping IS the validation — no check is re-implemented here.
+//
+// Its own module, beside :adapter rather than inside either kit: it is the one place that depends on BOTH
+// :rulekit and :interpreter, and the `dm.modelkit ⊥ dm.rulekit` sibling layering keeps a kit from taking on
+// a sibling. Kernel-free, like the kits — the kernel-backed provider stays in :adapter.
+plugins {
+    id 'java-library'
+    // Kotlin JVM — this module's own sources. The source AST it maps FROM is the interpreter's Kotlin AST, and
+    // Kotlin's `internal` marks the mapping's helpers as module-scoped, which the Kotlin compiler enforces and
+    // Java has no equivalent for. It is a source-level boundary only: `internal` is JVM-public, so the compiled
+    // surface holds more than the port, and api/dmkits-interpreter-bridge.api is what keeps that under review.
+    id 'org.jetbrains.kotlin.jvm'
+    id 'maven-publish'
+}
+
+base { archivesName = 'dmkits-interpreter-bridge' }
+
+repositories {
+    mavenLocal()
+    mavenCentral()
+}
+
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(21)
+    }
+}
+
+dependencies {
+    // The target AST and the port this module implements.
+    api project(':rulekit')
+    // The source AST + its parser. The JVM variant of the multiplatform publication.
+    implementation project(':interpreter')
+    // Walking a model's rules out of DM-JSON.
+    implementation 'com.fasterxml.jackson.core:jackson-databind:2.18.2'
+
+    testImplementation project(':modelkit')
+    testImplementation platform('org.junit:junit-bom:5.11.4')
+    testImplementation 'org.junit.jupiter:junit-jupiter'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+}
+
+tasks.named('test') {
+    useJUnitPlatform()
+}
+
+// The module's kernel-freedom, enforced over COMPILED dependencies. The mapping exists so rulekit's checks can
+// run with NO kernel on the classpath, and it holds in TEST scope too. A source-regex predecessor could blank
+// real Kotlin code after a comment delimiter inside a string; the compiled-reference guard cannot.
+def verifyInterpreterBridgePurity = tasks.register('verifyInterpreterBridgePurity') {
+    group = 'verification'
+    description = 'Fail if any interpreter-bridge main or test class depends on com.mgmtp.*/groovy.*.'
+    dependsOn tasks.named('classes'), tasks.named('testClasses')
+    def classRoots = providers.provider {
+        sourceSets.main.output.classesDirs.files + sourceSets.test.output.classesDirs.files
+    }
+    inputs.files(classRoots)
+    doLast {
+        rootProject.verifyCompiledPurity(
+            'interpreter-bridge purity — main and test',
+            classRoots.get(),
+            ['com.mgmtp.', 'groovy.'],
+            'java.util.UUID')
+    }
+}
+tasks.named('check') { dependsOn verifyInterpreterBridgePurity }
+
+// Publishing: io.github.mbackschat.a12.dm:dmkits-interpreter-bridge — MIT, and kernel-free by the lint above,
+// so its POM carries no kernel dependency. Deliberately NOT a member of the `dmkits` aggregator: that umbrella
+// is the kits, and this is a provider of one of their SPI ports — the same category as :adapter — which a
+// consumer opts into rather than receives transitively.
+publishing {
+    publications {
+        maven(MavenPublication) {
+            from components.java
+            artifactId = 'dmkits-interpreter-bridge'
+            pom {
+                name = 'dmkits-interpreter-bridge'
+                description = 'a12-dmkits — the kernel-free dm.rulekit.spi.ConditionReadBack provider: the '\
+                        + 'interpreter\'s condition AST mapped onto rulekit\'s typed Condition. Covers a subset '\
+                        + 'of the grammar and answers ReadResult.Opaque outside it; the kernel-backed provider '\
+                        + 'in :adapter remains the authoritative, total one. Put exactly one provider on the '\
+                        + 'classpath: with both, read-back throws AmbiguousBackendException rather than '\
+                        + 'choosing, and ReadBackends.prefer(<provider>.class) settles it. MIT.'
+                rootProject.dmkitsPom(delegate)
+            }
+        }
+    }
+}

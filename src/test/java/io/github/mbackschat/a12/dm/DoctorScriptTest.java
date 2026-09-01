@@ -8,6 +8,7 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.List;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -30,6 +31,8 @@ import org.junit.jupiter.api.io.TempDir;
  * CI, which is what it did — a green {@code :docGuardTest} could not have caught it.
  */
 class DoctorScriptTest {
+
+    private static final Checkout CHECKOUT = Checkout.locate();
 
     /** The state CLAUDE.md tells a developer to put their clone in. */
     private static final String WIRED = ".githooks";
@@ -177,9 +180,7 @@ class DoctorScriptTest {
 
     private static Run runDoctor(Path home, String actionlint, String hooksPath, String node)
             throws IOException, InterruptedException {
-        Path root = repositoryRoot();
-        var builder = new ProcessBuilder("/bin/dash", root.resolve("scripts/doctor.sh").toString());
-        builder.directory(root.toFile());
+        var builder = CHECKOUT.command(List.of("/bin/dash", CHECKOUT.resolve("scripts/doctor.sh").toString()));
         builder.redirectErrorStream(true);
         builder.environment().put("HOME", home.toString());
         builder.environment().remove("GRADLE_USER_HOME");
@@ -213,15 +214,4 @@ class DoctorScriptTest {
         return path;
     }
 
-    private static Path repositoryRoot() {
-        Path directory = Path.of("").toAbsolutePath();
-        while (directory != null) {
-            if (Files.isRegularFile(directory.resolve("settings.gradle"))
-                    && Files.isRegularFile(directory.resolve("build.sh"))) {
-                return directory;
-            }
-            directory = directory.getParent();
-        }
-        throw new IllegalStateException("could not locate the repository root from " + Path.of("").toAbsolutePath());
-    }
 }

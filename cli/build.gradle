@@ -577,8 +577,11 @@ tasks.register('staleGapGuardTest', Test) {
 // The referent-drift guard (ReferentDriftGuardTest) reads EVERY prose and source file in the repository at
 // runtime — a rename reassigns what prose asserts wherever that prose lives, which is markdown outside docs/ and
 // javadoc/Kotlin comments as much as docs/ itself. Its own task for the staleGapGuardTest reason (a repo-wide
-// input set must not bloat docGuardTest's markdown-scoped one). The declared tree mirrors the walk's own filter,
-// so the inputs cannot drift away from what the guard actually reads.
+// input set must not bloat docGuardTest's markdown-scoped one). These three guards take their denominator from
+// `git ls-files`, which no Gradle input can express, so the declared tree is a deliberate SUPERSET of it rather
+// than a mirror: every suffix they read (.md, .java, .kt) is inside the include list, and nothing git tracks sits
+// under an excluded path. Over-declaring costs a spurious re-run; under-declaring would leave the task UP-TO-DATE
+// with the scan unrun, so widen this tree before widening a guard's suffix filter.
 tasks.register('referentGuardTest', Test) {
     description = 'Rejects prose pointing dated evidence at the pre-split home of a moved performance checkpoint (referent drift: the link still resolves, the sentence is false).'
     group = 'verification'

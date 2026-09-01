@@ -1,5 +1,6 @@
 package io.github.mbackschat.a12.dm.api;
 
+import io.github.mbackschat.a12.dm.Checkout;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -50,15 +51,22 @@ import org.junit.jupiter.api.condition.EnabledIfSystemProperty;
  */
 class PublicApiGuardTest {
 
-    /** A published kit: its Maven artifact id (= golden file stem) and its Gradle module directory. */
-    private record Kit(String artifact, String moduleDir) {}
+    private static final Checkout CHECKOUT = Checkout.locate();
+
+    /** A published artifact: its Maven artifact id (= golden file stem) and its Gradle module directory. */
+    private record Kit(String artifact, String moduleDir) { }
 
     private static final List<Kit> KITS = List.of(
             new Kit("dmkits-core", "core"),
             new Kit("dmkits-rulekit", "rulekit"),
             new Kit("dmkits-modelkit", "modelkit"),
             new Kit("dmkits-edit", "edit"),
-            new Kit("dmkits-schemakit", "schemakit"));
+            new Kit("dmkits-schemakit", "schemakit"),
+            // The read-back provider is published but is NOT on this suite's runtime classpath, and that is
+            // deliberate: read-back REFUSES a classpath carrying two providers, so registering one beside
+            // :adapter's would fail every kernel-oracle test here on resolution rather than on its subject.
+            // It is loaded for the dump alone, by classLoader below.
+            new Kit("dmkits-interpreter-bridge", "interpreter-bridge"));
 
     @Test
     @DisabledIfSystemProperty(named = "api.fix", matches = "true")
@@ -66,13 +74,13 @@ class PublicApiGuardTest {
         for (Kit k : KITS) {
             Path golden = goldenFile(k);
             assertTrue(Files.exists(golden), () ->
-                    "missing API golden " + repoRoot().relativize(golden) + " — generate it once with "
+                    "missing API golden " + CHECKOUT.relative(golden) + " — generate it once with "
                     + "`./gradlew dumpKitApi`, then commit it.");
-            String live = PublicApiDumper.dump(mainClasses(k), classLoader());
+            String live = PublicApiDumper.dump(mainClasses(k), classLoader(k));
             String committed = Files.readString(golden);
             assertEquals(committed, live, () ->
                     "The public API of " + k.artifact() + " has DRIFTED from its golden "
-                    + repoRoot().relativize(golden) + ".\n"
+                    + CHECKOUT.relative(golden) + ".\n"
                     + "At 0.x a public-surface change is allowed, but it must be DELIBERATE and REVIEWED: "
                     + "regenerate the goldens with `./gradlew dumpKitApi` and review the resulting diff in the "
                     + "same change (this is a visibility guard, not a no-break promise — docs/RELEASE-SPEC.md §11).");
@@ -87,8 +95,8 @@ class PublicApiGuardTest {
     @DisabledIfSystemProperty(named = "api.fix", matches = "true")
     void theDumperIsDeterministic() {
         for (Kit k : KITS) {
-            String first = PublicApiDumper.dump(mainClasses(k), classLoader());
-            String second = PublicApiDumper.dump(mainClasses(k), classLoader());
+            String first = PublicApiDumper.dump(mainClasses(k), classLoader(k));
+            String second = PublicApiDumper.dump(mainClasses(k), classLoader(k));
             assertEquals(first, second, () ->
                     "PublicApiDumper is non-deterministic for " + k.artifact()
                     + " — two dumps of the same classes differ, so the golden guard would be flaky.");
@@ -115,7 +123,7 @@ class PublicApiGuardTest {
     void noThirdPartyTypeOnAnyPublishedSignature() {
         List<String> violations = new ArrayList<>();
         for (Kit k : KITS) {
-            for (Class<?> type : PublicApiDumper.apiTypes(mainClasses(k), classLoader())) {
+            for (Class<?> type : PublicApiDumper.apiTypes(mainClasses(k), classLoader(k))) {
                 collectForeignReferences(k, type, violations);
             }
         }
@@ -224,34 +232,56 @@ class PublicApiGuardTest {
     @Test
     @EnabledIfSystemProperty(named = "api.fix", matches = "true")
     void regenerateGoldens() throws IOException {
-        Path dir = repoRoot().resolve("api");
+        Path dir = CHECKOUT.resolve("api");
         Files.createDirectories(dir);
         for (Kit k : KITS) {
-            Files.writeString(goldenFile(k), PublicApiDumper.dump(mainClasses(k), classLoader()));
+            Files.writeString(goldenFile(k), PublicApiDumper.dump(mainClasses(k), classLoader(k)));
         }
     }
 
     private static Path goldenFile(Kit k) {
-        return repoRoot().resolve("api").resolve(k.artifact() + ".api");
+        return CHECKOUT.resolve("api").resolve(k.artifact() + ".api");
     }
 
-    private static Path mainClasses(Kit k) {
-        return repoRoot().resolve(k.moduleDir()).resolve("build/classes/java/main");
-    }
-
-    private static ClassLoader classLoader() {
-        return PublicApiGuardTest.class.getClassLoader();
-    }
-
-    /** The repo root — the nearest ancestor holding {@code settings.gradle} (robust to the module working dir). */
-    private static Path repoRoot() {
-        Path p = Path.of("").toAbsolutePath();
-        while (p != null && !Files.exists(p.resolve("settings.gradle"))) {
-            p = p.getParent();
+    /**
+     * Every compiler output of the module. Both are offered rather than one chosen by language: a Kotlin module
+     * that gains a single {@code .java} file would otherwise ship it in the jar while the golden never saw it,
+     * which is the one way "a surface change turns this red" can quietly stop being true.
+     */
+    private static List<Path> mainClasses(Kit k) {
+        Path module = CHECKOUT.resolve(k.moduleDir());
+        List<Path> dirs = new ArrayList<>();
+        for (Path candidate : List.of(
+                module.resolve("build/classes/java/main"),
+                module.resolve("build/classes/kotlin/main"))) {
+            if (Files.isDirectory(candidate)) {
+                dirs.add(candidate);
+            }
         }
-        if (p == null) {
-            throw new IllegalStateException("repo root (settings.gradle) not found from " + Path.of("").toAbsolutePath());
+        if (dirs.isEmpty()) {
+            throw new IllegalStateException("no compiled classes for " + k.artifact() + " under " + module
+                    + " — the module must be compiled before the API dump, or this guard passes vacuously");
         }
-        return p;
+        return dirs;
     }
+
+    /**
+     * A loader that can see {@code k}'s classes. Parent-first over this suite's own loader, so a kit already on
+     * the test classpath resolves to exactly the same classes as before; a module that is deliberately absent
+     * from it (see the bridge, above) is read straight from its compiler output, with its dependencies still
+     * resolving through the parent.
+     */
+    private static ClassLoader classLoader(Kit k) {
+        List<Path> classes = mainClasses(k);
+        try {
+            java.net.URL[] urls = new java.net.URL[classes.size()];
+            for (int i = 0; i < classes.size(); i++) {
+                urls[i] = classes.get(i).toUri().toURL();
+            }
+            return new java.net.URLClassLoader(urls, PublicApiGuardTest.class.getClassLoader());
+        } catch (java.net.MalformedURLException e) {
+            throw new IllegalStateException("not a loadable classes directory: " + classes, e);
+        }
+    }
+
 }

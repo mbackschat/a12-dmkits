@@ -5,11 +5,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.IOException;
 import java.io.UncheckedIOException;
-import java.nio.file.FileVisitResult;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.SimpleFileVisitor;
-import java.nio.file.attribute.BasicFileAttributes;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -59,8 +56,6 @@ class QuotedTitleCitationRatchetTest {
     /** The anchor form these citations should take instead, counted only to prove the convention is alive. */
     private static final Pattern ANCHOR_CITATION =
             Pattern.compile("\\]\\((?:KERNEL|INTERPRETER)-FINDINGS\\.md#(?:kf|if)\\d+\\)");
-
-    static final Set<String> SKIPPED_DIRECTORIES = RepoWalk.SKIPPED_DIRECTORIES;
 
     private static final Set<String> SCANNED_SUFFIXES =
             Set.of(".md", ".java", ".kt", ".gradle", ".gradle.kts", ".sh");
@@ -141,31 +136,15 @@ class QuotedTitleCitationRatchetTest {
             return scanned;
         }
         Set<Path> members = new LinkedHashSet<>();
-        Files.walkFileTree(ROOT, new SimpleFileVisitor<>() {
-            @Override
-            public FileVisitResult preVisitDirectory(Path dir, BasicFileAttributes attrs) {
-                if (SKIPPED_DIRECTORIES.contains(dir.getFileName().toString())
-                        || dir.endsWith(Path.of("docs", "archived"))) {
-                    return FileVisitResult.SKIP_SUBTREE;
-                }
-                return FileVisitResult.CONTINUE;
+        for (Path file : RepoWalk.trackedFiles(ROOT)) {
+            String name = file.getFileName().toString();
+            if (SCANNED_SUFFIXES.stream().anyMatch(name::endsWith)
+                    && !file.getParent().endsWith(Path.of("docs", "archived"))) {
+                // canonicalize: AGENTS.md is a symlink to CLAUDE.md at three levels, and counting
+                // both would inflate every figure here by the whole content of those files.
+                members.add(file.toRealPath());
             }
-
-            @Override
-            public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) {
-                String name = file.getFileName().toString();
-                if (SCANNED_SUFFIXES.stream().anyMatch(name::endsWith)) {
-                    try {
-                        // canonicalize: AGENTS.md is a symlink to CLAUDE.md at three levels, and counting
-                        // both would inflate every figure here by the whole content of those files.
-                        members.add(file.toRealPath());
-                    } catch (IOException e) {
-                        throw new UncheckedIOException(e);
-                    }
-                }
-                return FileVisitResult.CONTINUE;
-            }
-        });
+        }
         scanned = new ArrayList<>(members);
         return scanned;
     }

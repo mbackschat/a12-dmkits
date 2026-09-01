@@ -1,0 +1,83 @@
+public final class io.github.mbackschat.a12.dm.bridge.ConditionBridge implements io.github.mbackschat.a12.dm.bridge.Mapping
+  public ConditionBridge(io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel, io.github.mbackschat.a12.dm.core.ModelIndex)
+  public ConditionBridge(io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel, io.github.mbackschat.a12.dm.core.ModelIndex, boolean)
+  public io.github.mbackschat.a12.dm.rulekit.dsl.AggregateOperand aggregateOperand(io.github.mbackschat.a12.dm.interpreter.ast.Expr)
+  public java.lang.String basePath()
+  public io.github.mbackschat.a12.dm.rulekit.dsl.Calculation calculation(io.github.mbackschat.a12.dm.interpreter.ast.Expr)
+  public io.github.mbackschat.a12.dm.rulekit.dsl.Condition condition(io.github.mbackschat.a12.dm.interpreter.ast.Cond)
+  public io.github.mbackschat.a12.dm.rulekit.dsl.FieldOperand fieldOperand(io.github.mbackschat.a12.dm.interpreter.ast.Expr)
+  public io.github.mbackschat.a12.dm.rulekit.dsl.FieldRef fieldRef(io.github.mbackschat.a12.dm.interpreter.ast.Expr)
+  public io.github.mbackschat.a12.dm.rulekit.dsl.GroupRef groupRef(io.github.mbackschat.a12.dm.interpreter.ast.Expr)
+  public io.github.mbackschat.a12.dm.rulekit.dsl.GroupRef groupReference(java.lang.String)
+  public io.github.mbackschat.a12.dm.core.ModelIndex index()
+  public io.github.mbackschat.a12.dm.rulekit.dsl.IndexedGroupValue indexedGroup(io.github.mbackschat.a12.dm.interpreter.ast.Expr)
+  public io.github.mbackschat.a12.dm.rulekit.dsl.IndexedFieldValue indexedValue(io.github.mbackschat.a12.dm.interpreter.ast.Expr)
+  public boolean isGroup(java.lang.String)
+  public io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel model()
+  public io.github.mbackschat.a12.dm.rulekit.dsl.SemanticIndex semanticIndex(io.github.mbackschat.a12.dm.interpreter.ast.Expr)
+  public final io.github.mbackschat.a12.dm.rulekit.dsl.Condition translate(java.lang.String, java.lang.String, io.github.mbackschat.a12.dm.interpreter.model.ConditionLanguage)
+  public java.lang.Object typedRef(io.github.mbackschat.a12.dm.interpreter.ast.Expr)
+
+public final class io.github.mbackschat.a12.dm.bridge.ConditionParseException extends java.lang.IllegalArgumentException
+  public ConditionParseException(java.lang.String, java.lang.Throwable)
+
+public final class io.github.mbackschat.a12.dm.bridge.Conditions
+  public Conditions(io.github.mbackschat.a12.dm.bridge.Mapping)
+  public final io.github.mbackschat.a12.dm.rulekit.dsl.Condition map(io.github.mbackschat.a12.dm.interpreter.ast.Cond)
+
+public final class io.github.mbackschat.a12.dm.bridge.Expressions
+  public Expressions(io.github.mbackschat.a12.dm.bridge.Mapping)
+  public final io.github.mbackschat.a12.dm.rulekit.dsl.Calculation map(io.github.mbackschat.a12.dm.interpreter.ast.Expr)
+
+public final class io.github.mbackschat.a12.dm.bridge.Functions
+  public Functions(io.github.mbackschat.a12.dm.bridge.Mapping)
+  public final io.github.mbackschat.a12.dm.rulekit.dsl.Calculation map(io.github.mbackschat.a12.dm.interpreter.ast.Expr.Func)
+
+public final class io.github.mbackschat.a12.dm.bridge.InterpreterConditionReadBack implements io.github.mbackschat.a12.dm.rulekit.spi.ConditionReadBack
+  public InterpreterConditionReadBack()
+  public java.util.Map<java.lang.String, io.github.mbackschat.a12.dm.rulekit.read.ReadResult> readAll(java.lang.String, io.github.mbackschat.a12.dm.core.ModelResolver)
+
+public interface io.github.mbackschat.a12.dm.bridge.Mapping
+  public abstract io.github.mbackschat.a12.dm.rulekit.dsl.AggregateOperand aggregateOperand(io.github.mbackschat.a12.dm.interpreter.ast.Expr)
+  public abstract java.lang.String basePath()
+  public abstract io.github.mbackschat.a12.dm.rulekit.dsl.Calculation calculation(io.github.mbackschat.a12.dm.interpreter.ast.Expr)
+  public abstract io.github.mbackschat.a12.dm.rulekit.dsl.Condition condition(io.github.mbackschat.a12.dm.interpreter.ast.Cond)
+  public abstract io.github.mbackschat.a12.dm.rulekit.dsl.FieldOperand fieldOperand(io.github.mbackschat.a12.dm.interpreter.ast.Expr)
+  public abstract io.github.mbackschat.a12.dm.rulekit.dsl.FieldRef fieldRef(io.github.mbackschat.a12.dm.interpreter.ast.Expr)
+  public abstract io.github.mbackschat.a12.dm.rulekit.dsl.GroupRef groupRef(io.github.mbackschat.a12.dm.interpreter.ast.Expr)
+  public abstract io.github.mbackschat.a12.dm.rulekit.dsl.GroupRef groupReference(java.lang.String)
+  public abstract io.github.mbackschat.a12.dm.core.ModelIndex index()
+  public abstract io.github.mbackschat.a12.dm.rulekit.dsl.IndexedGroupValue indexedGroup(io.github.mbackschat.a12.dm.interpreter.ast.Expr)
+  public abstract io.github.mbackschat.a12.dm.rulekit.dsl.IndexedFieldValue indexedValue(io.github.mbackschat.a12.dm.interpreter.ast.Expr)
+  public default boolean isGroup(java.lang.String)
+  public abstract io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel model()
+  public abstract io.github.mbackschat.a12.dm.rulekit.dsl.SemanticIndex semanticIndex(io.github.mbackschat.a12.dm.interpreter.ast.Expr)
+  public abstract java.lang.Object typedRef(io.github.mbackschat.a12.dm.interpreter.ast.Expr)
+
+public static final class io.github.mbackschat.a12.dm.bridge.Mapping.DefaultImpls
+  public static boolean isGroup(io.github.mbackschat.a12.dm.bridge.Mapping, java.lang.String)
+
+public class io.github.mbackschat.a12.dm.bridge.NoTypedOperationException extends io.github.mbackschat.a12.dm.bridge.UnmappedConstructException
+  public NoTypedOperationException(java.lang.String)
+
+public final class io.github.mbackschat.a12.dm.bridge.OperandResolutionException extends java.lang.IllegalArgumentException
+  public OperandResolutionException(java.lang.String, java.lang.Throwable)
+
+public final class io.github.mbackschat.a12.dm.bridge.Operands
+  public Operands(io.github.mbackschat.a12.dm.bridge.Mapping)
+  public final io.github.mbackschat.a12.dm.rulekit.dsl.AggregateOperand aggregateOperand(io.github.mbackschat.a12.dm.interpreter.ast.Expr)
+  public final io.github.mbackschat.a12.dm.rulekit.dsl.FieldOperand fieldOperand(io.github.mbackschat.a12.dm.interpreter.ast.Expr)
+  public final io.github.mbackschat.a12.dm.rulekit.dsl.FieldRef fieldRef(io.github.mbackschat.a12.dm.interpreter.ast.Expr)
+  public final io.github.mbackschat.a12.dm.rulekit.dsl.GroupRef groupRef(io.github.mbackschat.a12.dm.interpreter.ast.Expr)
+  public final io.github.mbackschat.a12.dm.rulekit.dsl.GroupRef groupReference(java.lang.String)
+  public final io.github.mbackschat.a12.dm.rulekit.dsl.IndexedGroupValue indexedGroup(io.github.mbackschat.a12.dm.interpreter.ast.Expr)
+  public final io.github.mbackschat.a12.dm.rulekit.dsl.IndexedFieldValue indexedValue(io.github.mbackschat.a12.dm.interpreter.ast.Expr)
+  public final io.github.mbackschat.a12.dm.rulekit.dsl.SemanticIndex semanticIndex(io.github.mbackschat.a12.dm.interpreter.ast.Expr)
+  public final java.lang.Object typedRef(io.github.mbackschat.a12.dm.interpreter.ast.Expr)
+
+public final class io.github.mbackschat.a12.dm.bridge.Predicates
+  public Predicates(io.github.mbackschat.a12.dm.bridge.Mapping)
+  public final io.github.mbackschat.a12.dm.rulekit.dsl.Condition map(io.github.mbackschat.a12.dm.interpreter.ast.Cond.Pred)
+
+public class io.github.mbackschat.a12.dm.bridge.UnmappedConstructException extends java.lang.RuntimeException
+  public UnmappedConstructException(java.lang.String)

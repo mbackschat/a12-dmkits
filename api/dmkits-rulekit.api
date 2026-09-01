@@ -1134,6 +1134,14 @@ public record io.github.mbackschat.a12.dm.rulekit.dsl.DateTimeExpr implements io
   public final int hashCode()
   public final java.lang.String toString()
 
+public record io.github.mbackschat.a12.dm.rulekit.dsl.DateTimeLiteral implements io.github.mbackschat.a12.dm.rulekit.dsl.Calculation
+  public DateTimeLiteral(java.lang.String)
+  public final boolean equals(java.lang.Object)
+  public final int hashCode()
+  public io.github.mbackschat.a12.dm.core.ValueKind kind()
+  public final java.lang.String toString()
+  public java.lang.String value()
+
 public sealed interface io.github.mbackschat.a12.dm.rulekit.dsl.DateTimeOperand extends io.github.mbackschat.a12.dm.rulekit.dsl.TemporalOperand
   public default io.github.mbackschat.a12.dm.rulekit.dsl.Condition after(io.github.mbackschat.a12.dm.rulekit.dsl.DateOperand)
   public default io.github.mbackschat.a12.dm.rulekit.dsl.Condition after(io.github.mbackschat.a12.dm.rulekit.dsl.DateTimeOperand)
@@ -1247,6 +1255,7 @@ public final class io.github.mbackschat.a12.dm.rulekit.dsl.Dsl
   public static io.github.mbackschat.a12.dm.rulekit.dsl.DateRangeConstruction dateRange(io.github.mbackschat.a12.dm.rulekit.dsl.DateOperand, io.github.mbackschat.a12.dm.rulekit.dsl.DateOperand)
   public static io.github.mbackschat.a12.dm.rulekit.dsl.Condition dateRangesOverlap(io.github.mbackschat.a12.dm.rulekit.dsl.FieldOperand, io.github.mbackschat.a12.dm.rulekit.dsl.FieldOperand[])
   public static io.github.mbackschat.a12.dm.rulekit.dsl.DateTimeExpr dateTime(io.github.mbackschat.a12.dm.rulekit.dsl.DateOperand, io.github.mbackschat.a12.dm.rulekit.dsl.TimeOperand)
+  public static io.github.mbackschat.a12.dm.rulekit.dsl.DateTimeExpr dateTimeValue(java.lang.String)
   public static io.github.mbackschat.a12.dm.rulekit.dsl.DateExpr dateValue(java.lang.String)
   public static io.github.mbackschat.a12.dm.rulekit.dsl.DateExpr dateValue(java.time.LocalDate)
   public static io.github.mbackschat.a12.dm.rulekit.dsl.NumberExpr dayFromDate(io.github.mbackschat.a12.dm.rulekit.dsl.DateOperand)
@@ -1269,8 +1278,10 @@ public final class io.github.mbackschat.a12.dm.rulekit.dsl.Dsl
   public static io.github.mbackschat.a12.dm.rulekit.dsl.DateExpr endOfDateRange(io.github.mbackschat.a12.dm.rulekit.dsl.DateRangeIndexedValue)
   public static io.github.mbackschat.a12.dm.rulekit.dsl.DateExpr endOfDateRange(io.github.mbackschat.a12.dm.rulekit.dsl.DateRangeRef)
   public static io.github.mbackschat.a12.dm.rulekit.dsl.Condition entityListPredicate(io.github.mbackschat.a12.dm.rulekit.dsl.Quantifier, java.util.List<? extends io.github.mbackschat.a12.dm.rulekit.dsl.AggregateOperand>)
+  public static io.github.mbackschat.a12.dm.rulekit.dsl.Condition fieldFilled(io.github.mbackschat.a12.dm.rulekit.dsl.FieldOperand)
   public static io.github.mbackschat.a12.dm.rulekit.dsl.Condition fieldFilled(io.github.mbackschat.a12.dm.rulekit.dsl.FieldRef)
   public static java.lang.String fieldLabel(io.github.mbackschat.a12.dm.rulekit.dsl.FieldRef)
+  public static io.github.mbackschat.a12.dm.rulekit.dsl.Condition fieldNotFilled(io.github.mbackschat.a12.dm.rulekit.dsl.FieldOperand)
   public static io.github.mbackschat.a12.dm.rulekit.dsl.Condition fieldNotFilled(io.github.mbackschat.a12.dm.rulekit.dsl.FieldRef)
   public static java.lang.String fieldValue(io.github.mbackschat.a12.dm.rulekit.dsl.FieldRef)
   public static io.github.mbackschat.a12.dm.rulekit.dsl.NumberExpr fieldValueAsNumber(io.github.mbackschat.a12.dm.rulekit.dsl.CategoryRef)
@@ -1859,10 +1870,29 @@ public record io.github.mbackschat.a12.dm.rulekit.dsl.GroupRef implements io.git
 public interface io.github.mbackschat.a12.dm.rulekit.dsl.GroupReference
   public abstract io.github.mbackschat.a12.dm.rulekit.dsl.GroupRef ref()
 
-public sealed interface io.github.mbackschat.a12.dm.rulekit.dsl.IndexedFieldValue extends io.github.mbackschat.a12.dm.rulekit.dsl.Calculation
+public record io.github.mbackschat.a12.dm.rulekit.dsl.GroupSemanticIndexFieldValue implements io.github.mbackschat.a12.dm.rulekit.dsl.IndexedGroupValue
+  public GroupSemanticIndexFieldValue(io.github.mbackschat.a12.dm.rulekit.dsl.GroupListRef, io.github.mbackschat.a12.dm.rulekit.dsl.FieldRef)
+  public final boolean equals(java.lang.Object)
+  public io.github.mbackschat.a12.dm.rulekit.dsl.GroupListRef group()
+  public final int hashCode()
+  public io.github.mbackschat.a12.dm.rulekit.dsl.FieldRef indexField()
+  public final java.lang.String toString()
+
+public record io.github.mbackschat.a12.dm.rulekit.dsl.GroupSemanticIndexValue implements io.github.mbackschat.a12.dm.rulekit.dsl.IndexedGroupValue
+  public GroupSemanticIndexValue(io.github.mbackschat.a12.dm.rulekit.dsl.GroupListRef, java.lang.String)
+  public final boolean equals(java.lang.Object)
+  public io.github.mbackschat.a12.dm.rulekit.dsl.GroupListRef group()
+  public final int hashCode()
+  public java.lang.String indexValue()
+  public final java.lang.String toString()
+
+public sealed interface io.github.mbackschat.a12.dm.rulekit.dsl.IndexedFieldValue extends io.github.mbackschat.a12.dm.rulekit.dsl.Calculation, io.github.mbackschat.a12.dm.rulekit.dsl.FieldOperand
+  public default java.lang.String duplicateIdentity()
   public abstract io.github.mbackschat.a12.dm.rulekit.dsl.FieldRef field()
+  public default java.lang.String fieldPath()
   public default io.github.mbackschat.a12.dm.rulekit.dsl.FirstFilledOperand firstFilledOperand()
   public abstract java.lang.String operatorId()
+  public default java.lang.String renderedPath()
 
 public record io.github.mbackschat.a12.dm.rulekit.dsl.IndexedFieldValueAsString implements io.github.mbackschat.a12.dm.rulekit.dsl.Calculation
   public IndexedFieldValueAsString(io.github.mbackschat.a12.dm.rulekit.dsl.IndexedFieldValue)
@@ -1872,6 +1902,11 @@ public record io.github.mbackschat.a12.dm.rulekit.dsl.IndexedFieldValueAsString 
   public io.github.mbackschat.a12.dm.core.ValueKind kind()
   public java.lang.String operatorId()
   public final java.lang.String toString()
+
+public sealed interface io.github.mbackschat.a12.dm.rulekit.dsl.IndexedGroupValue extends io.github.mbackschat.a12.dm.rulekit.dsl.AggregateOperand, io.github.mbackschat.a12.dm.rulekit.dsl.GroupListOperand
+  public default java.lang.String duplicateIdentity()
+  public abstract io.github.mbackschat.a12.dm.rulekit.dsl.GroupListRef group()
+  public default java.lang.String renderedPath()
 
 public record io.github.mbackschat.a12.dm.rulekit.dsl.IndexedPresenceCondition implements io.github.mbackschat.a12.dm.rulekit.dsl.Condition
   public IndexedPresenceCondition(io.github.mbackschat.a12.dm.rulekit.dsl.IndexedFieldValue, boolean)
@@ -2543,15 +2578,41 @@ public static record io.github.mbackschat.a12.dm.rulekit.read.ReadResult.Opaque 
   public java.lang.String reason()
   public final java.lang.String toString()
 
+public class io.github.mbackschat.a12.dm.rulekit.spi.AmbiguousBackendException extends io.github.mbackschat.a12.dm.rulekit.spi.BackendRequiredException
+  public AmbiguousBackendException(java.util.List<? extends io.github.mbackschat.a12.dm.rulekit.spi.ConditionReadBack>)
+
 public class io.github.mbackschat.a12.dm.rulekit.spi.BackendRequiredException extends java.lang.RuntimeException
   public BackendRequiredException(java.lang.String)
 
 public interface io.github.mbackschat.a12.dm.rulekit.spi.ConditionReadBack
   public abstract java.util.Map<java.lang.String, io.github.mbackschat.a12.dm.rulekit.read.ReadResult> readAll(java.lang.String, io.github.mbackschat.a12.dm.core.ModelResolver)
 
+public sealed interface io.github.mbackschat.a12.dm.rulekit.spi.ReadBackendResolution
+
+public static record io.github.mbackschat.a12.dm.rulekit.spi.ReadBackendResolution.None implements io.github.mbackschat.a12.dm.rulekit.spi.ReadBackendResolution
+  public None()
+  public final boolean equals(java.lang.Object)
+  public final int hashCode()
+  public final java.lang.String toString()
+
+public static record io.github.mbackschat.a12.dm.rulekit.spi.ReadBackendResolution.Several implements io.github.mbackschat.a12.dm.rulekit.spi.ReadBackendResolution
+  public Several(java.util.List<io.github.mbackschat.a12.dm.rulekit.spi.ConditionReadBack>)
+  public final boolean equals(java.lang.Object)
+  public final int hashCode()
+  public java.util.List<io.github.mbackschat.a12.dm.rulekit.spi.ConditionReadBack> providers()
+  public final java.lang.String toString()
+
+public static record io.github.mbackschat.a12.dm.rulekit.spi.ReadBackendResolution.Sole implements io.github.mbackschat.a12.dm.rulekit.spi.ReadBackendResolution
+  public Sole(io.github.mbackschat.a12.dm.rulekit.spi.ConditionReadBack)
+  public final boolean equals(java.lang.Object)
+  public final int hashCode()
+  public io.github.mbackschat.a12.dm.rulekit.spi.ConditionReadBack provider()
+  public final java.lang.String toString()
+
 public final class io.github.mbackschat.a12.dm.rulekit.spi.ReadBackends
-  public static java.util.Optional<io.github.mbackschat.a12.dm.rulekit.spi.ConditionReadBack> current()
+  public static io.github.mbackschat.a12.dm.rulekit.spi.ReadBackendResolution current()
   public static void override(io.github.mbackschat.a12.dm.rulekit.spi.ConditionReadBack)
+  public static void prefer(java.lang.Class<? extends io.github.mbackschat.a12.dm.rulekit.spi.ConditionReadBack>)
   public static io.github.mbackschat.a12.dm.rulekit.spi.ConditionReadBack require()
   public static void reset()
 

@@ -1,9 +1,18 @@
 package io.github.mbackschat.a12.dm.rulekit.validate.laws;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
+
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
+
 import org.junit.jupiter.api.Test;
 
 import io.github.mbackschat.a12.dm.modelkit.DatePrecision;
 import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft;
+import io.github.mbackschat.a12.dm.modelkit.FieldKind;
+import io.github.mbackschat.a12.dm.rulekit.validate.ValidationResult;
 
 /**
  * KERNEL-FINDINGS §6 — the date-extraction / shift families accept a <b>DateTime</b> source, not only a
@@ -26,6 +35,19 @@ class DateExtractionLawsTest {
             .rootGroup("Record", r -> r
                     .dateField("ApproxMonth", d -> d.format("dd.MM.yyyy").datePrecision(DatePrecision.MONTH_OPTIONAL))
                     .dateField("ApproxYear", d -> d.format("dd.MM.yyyy").datePrecision(DatePrecision.YEAR_OPTIONAL)))
+            .build().toJson();
+
+    /** One owner-backed field for every representable kind that the temporal extraction family refuses. */
+    private static final String NON_POINT_KINDS = DocumentModelDraft.named("temporal-operand-kinds").locale("en_US")
+            .rootGroup("Probe", p -> p
+                    .field("Error", FieldKind.STRING)
+                    .field("NumberValue", FieldKind.NUMBER)
+                    .field("StringValue", FieldKind.STRING)
+                    .enumField("EnumerationValue", e -> e.value("A").value("B"))
+                    .field("BooleanValue", FieldKind.BOOLEAN)
+                    .field("ConfirmValue", FieldKind.CONFIRM)
+                    .dateRangeField("DateRangeValue", r -> r.format("dd.MM.yyyy").separator("-"))
+                    .customField("CustomValue", c -> c.type("SelectionCode")))
             .build().toJson();
 
     @Test
@@ -78,5 +100,82 @@ class DateExtractionLawsTest {
             KernelLaws.rejectsModel(DATES, "/Record", "../ApproxYear",
                     "FieldFilled(ApproxYear) And " + c, "MVK_INVALID_DATE_TYPE");
         }
+    }
+
+    // ── the operand-kind gate, and the two codes that place a wrong operand ────────────────────────
+
+    /**
+     * Both public carriers refuse the same complete, owner-backed denominator under {@code MVK_NO_DATE}:
+     * number, string, enumeration, boolean, confirm, date range and custom. {@code UNKNOWN} is deliberately
+     * absent because it has no authorable A12 counterpart to put through this oracle; the typed peer therefore
+     * leaves it kernel-arbitrated rather than borrowing the measured kinds' authority.
+     */
+    @Test
+    void everyRepresentableNonPointKindIsNotADateOnBothCarriers() {
+        List<String> fields = List.of("NumberValue", "StringValue", "EnumerationValue", "BooleanValue",
+                "ConfirmValue", "DateRangeValue", "CustomValue");
+        Map<String, String> actual = new LinkedHashMap<>();
+        for (String field : fields) {
+            actual.put("YearFromDate/" + field, verdict("YearFromDate(" + field + ") > 0"));
+            actual.put("DateFromDateTime/" + field,
+                    verdict("DateFromDateTime(" + field + ") == Today"));
+        }
+
+        Map<String, String> expected = new LinkedHashMap<>();
+        for (String field : fields) {
+            expected.put("YearFromDate/" + field, "MVK_NO_DATE");
+            expected.put("DateFromDateTime/" + field, "MVK_NO_DATE");
+        }
+        assertEquals(expected, actual);
+
+        KernelLaws.acceptsOrder("/Order", "../CustomerName",
+                "FieldFilled(CustomerName) And YearFromDate(OrderDate) > 0");
+    }
+
+    private static String verdict(String expression) {
+        ValidationResult result = KernelLaws.checkModel(NON_POINT_KINDS, "/Probe", "../Error",
+                "FieldFilled(Error) And " + expression);
+        return result.ok() ? KernelLaws.ADMITTED : result.diagnostics().stream()
+                .map(d -> d.code().orElse("(no code: " + d.summary() + ")"))
+                .sorted().collect(Collectors.joining(","));
+    }
+
+    /**
+     * A date where a TIME is required is a format refusal, not a "not a date" one — <b>and the variable it
+     * moves is the DECLARED FORMAT, not the kind</b>. {@code OrderDate} is a DATE field declared with a date
+     * format, so this row holds both fixed and cannot license a kind-keyed rule: a TIME-kind field declared
+     * {@code yyyy-MM-dd} answers the date extractions and is refused {@code HoursFromTime}, measured in
+     * KERNEL-FINDINGS KF211 and locked in {@code adapter.laws.TemporalDeclaredFormatGateDiffTest}. What the
+     * kit can state from an operand alone is therefore only
+     * {@link #everyRepresentableNonPointKindIsNotADateOnBothCarriers}.
+     */
+    @Test
+    void aWrongTemporalKindIsAFormatRefusal() {
+        KernelLaws.rejectsOrder("/Order", "../CustomerName",
+                "FieldFilled(CustomerName) And HoursFromTime(OrderDate) > 0",
+                "MVK_WRONG_DATE_FORMAT_FOR_OP");
+        KernelLaws.acceptsOrder("/Order", "../CustomerName",
+                "FieldFilled(CustomerName) And HoursFromTime(PickupTime) > 0");
+    }
+
+    /** The date/time SPLIT operators need a complete date-time; a plain date is the same format refusal. */
+    @Test
+    void splittingAPlainDateIntoItsDatePartIsAFormatRefusal() {
+        KernelLaws.rejectsOrder("/Order", "../CustomerName",
+                "FieldFilled(CustomerName) And DateFromDateTime(OrderDate) == Today",
+                "MVK_WRONG_DATE_FORMAT_FOR_OP");
+        KernelLaws.acceptsOrder("/Order", "../CustomerName",
+                "FieldFilled(CustomerName) And DateFromDateTime(ScheduledAt) == Today");
+    }
+
+    /** {@code FieldFilled} takes one field: a repetition list is MVK_NO_WILDCARDS_ALLOWED, plain is fine. */
+    @Test
+    void fieldPresenceTakesASingleFieldNotARepetitionList() {
+        KernelLaws.rejectsOrder("/Order", "../CustomerName",
+                "FieldFilled(CustomerName) And FieldFilled(Items*/Count)", "MVK_NO_WILDCARDS_ALLOWED");
+        KernelLaws.rejectsOrder("/Order", "../CustomerName",
+                "FieldFilled(CustomerName) And FieldNotFilled(Items*/Count)", "MVK_NO_WILDCARDS_ALLOWED");
+        KernelLaws.acceptsOrder("/Order", "../CustomerName",
+                "FieldFilled(CustomerName) And FieldFilled(ProductCode)");
     }
 }

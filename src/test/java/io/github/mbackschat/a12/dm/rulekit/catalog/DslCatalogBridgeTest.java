@@ -1,5 +1,6 @@
 package io.github.mbackschat.a12.dm.rulekit.catalog;
 
+import io.github.mbackschat.a12.dm.Checkout;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
 
@@ -42,6 +43,8 @@ import org.junit.jupiter.api.Test;
  */
 class DslCatalogBridgeTest {
 
+    private static final Checkout CHECKOUT = Checkout.locate();
+
     /**
      * A {@code catalog:<Id[,Id2,…]>} marker, paired to the next authoring method it documents. Group 1
      * is the comma-separated operator id(s) (one method can render several — {@code differsWithTolerance}
@@ -65,14 +68,16 @@ class DslCatalogBridgeTest {
 
     @Test
     void markersAndDslEntryAreInBidirectionalParity() throws IOException {
-        Path root = repoRoot();
+        assertTrue(Files.isRegularFile(CHECKOUT.resolve("rulekit/src/main/java/io/github/mbackschat/a12/dm/rulekit/dsl/Dsl.java")),
+                "rulekit's Dsl.java, whose markers this parity reads, is missing — a rename must update this guard, which used to report the "
+                        + "absence as a repository it could not locate");
         OperatorCatalog catalog = OperatorCatalog.load();
 
         // LEFT — the marker-derived id → {method} reverse map (the single source of truth).
         Map<String, TreeSet<String>> derived = new TreeMap<>();
         int matches = 0;
         int markerTokens = 0;
-        List<Path> sources = dslSources(root);
+        List<Path> sources = dslSources();
         assertTrue(sources.size() > 20, () -> "expected to scan the dsl source tree, found " + sources.size());
         for (Path f : sources) {
             String text = Files.readString(f);
@@ -191,19 +196,9 @@ class DslCatalogBridgeTest {
         return names;
     }
 
-    private static Path repoRoot() {
-        Path p = Path.of("").toAbsolutePath();
-        for (; p != null; p = p.getParent()) {
-            if (Files.exists(p.resolve(
-                    "rulekit/src/main/java/io/github/mbackschat/a12/dm/rulekit/dsl/Dsl.java"))) {
-                return p;
-            }
-        }
-        return fail("could not locate the repo root (dsl/Dsl.java) from " + Path.of("").toAbsolutePath());
-    }
 
-    private static List<Path> dslSources(Path root) throws IOException {
-        Path dir = root.resolve("rulekit/src/main/java/io/github/mbackschat/a12/dm/rulekit/dsl");
+    private static List<Path> dslSources() throws IOException {
+        Path dir = CHECKOUT.resolve("rulekit/src/main/java/io/github/mbackschat/a12/dm/rulekit/dsl");
         try (Stream<Path> walk = Files.walk(dir)) {
             return walk.filter(f -> f.toString().endsWith(".java")).toList();
         }

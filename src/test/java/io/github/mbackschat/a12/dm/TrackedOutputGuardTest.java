@@ -33,10 +33,11 @@ class TrackedOutputGuardTest {
     /** A {@code build/} directory at any depth, or any {@code .log} file. */
     private static final Pattern FORBIDDEN = Pattern.compile("(^|/)build/|\\.log$");
 
+    private static final Checkout CHECKOUT = Checkout.locate();
+
     @Test
-    void noBuildOutputOrLogFileIsTracked() throws Exception {
-        Path root = repositoryRoot();
-        List<String> tracked = trackedFiles(root);
+    void noBuildOutputOrLogFileIsTracked() {
+        List<String> tracked = CHECKOUT.tracked().stream().map(CHECKOUT::relative).toList();
 
         List<String> offenders = tracked.stream().filter(path -> FORBIDDEN.matcher(path).find()).toList();
 
@@ -47,7 +48,7 @@ class TrackedOutputGuardTest {
 
     @Test
     void gitignoreStillCoversBuildOutput() throws IOException {
-        String ignored = Files.readString(repositoryRoot().resolve(".gitignore"));
+        String ignored = Files.readString(CHECKOUT.resolve(".gitignore"));
 
         assertTrue(ignored.lines().anyMatch(line -> line.strip().equals("build/")),
                 ".gitignore must keep ignoring build/, so an unforced `git add` cannot pick it up in the "
@@ -56,7 +57,7 @@ class TrackedOutputGuardTest {
 
     @Test
     void theStagingHookIsCommittedAndExecutable() throws IOException {
-        Path hook = repositoryRoot().resolve(".githooks/pre-commit");
+        Path hook = CHECKOUT.resolve(".githooks/pre-commit");
 
         assertTrue(Files.isRegularFile(hook), ".githooks/pre-commit is the early half of this defence");
         assertTrue(Files.isExecutable(hook), "a non-executable hook is silently skipped by git");
@@ -80,30 +81,4 @@ class TrackedOutputGuardTest {
         }
     }
 
-    private static List<String> trackedFiles(Path root) throws IOException, InterruptedException {
-        var builder = new ProcessBuilder("git", "ls-files").directory(root.toFile());
-        builder.redirectErrorStream(true);
-        Process process = builder.start();
-
-        List<String> lines;
-        try (var reader = new BufferedReader(new InputStreamReader(process.getInputStream(), StandardCharsets.UTF_8))) {
-            lines = reader.lines().toList();
-        }
-
-        assertEquals(0, process.waitFor(), "git ls-files failed, so the tracked set is unknown: " + lines);
-        assertFalse(lines.isEmpty(), "git ls-files returned nothing, so this guard would pass vacuously");
-        return lines;
-    }
-
-    private static Path repositoryRoot() {
-        Path directory = Path.of("").toAbsolutePath();
-        while (directory != null) {
-            if (Files.isRegularFile(directory.resolve("settings.gradle"))
-                    && Files.isRegularFile(directory.resolve("build.sh"))) {
-                return directory;
-            }
-            directory = directory.getParent();
-        }
-        throw new IllegalStateException("could not locate the repository root from " + Path.of("").toAbsolutePath());
-    }
 }

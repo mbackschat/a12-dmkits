@@ -44,6 +44,11 @@ include 'cli'
 // Kotlin Multiplatform (jvm + js), the publishable standalone artifact + the native image's runtime engine.
 include 'interpreter'
 
+// The :interpreter-bridge module (KERNEL-DECOUPLING-PROPOSAL ruling 6): the kernel-free ConditionReadBack
+// provider. The one module depending on both :rulekit and :interpreter — it maps the interpreter's AST onto
+// rulekit's typed Condition, which is what lets rulekit's own checks run with no kernel present.
+include 'interpreter-bridge'
+
 // The :schemakit module (docs/SCHEMAKIT-SPEC.md): JSON Schema ⇄ Document Model import/export. JVM/Java,
 // native-safe. Depends on root `:` (public-kernel-only) + later :interpreter — and MUST NOT touch the
 // kernel beyond kernel-md-facade (owner constraint; held by verifySchemakitPurity). Spike under `.spike`.

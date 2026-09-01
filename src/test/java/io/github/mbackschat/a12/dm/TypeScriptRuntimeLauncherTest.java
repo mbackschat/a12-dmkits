@@ -16,9 +16,10 @@ import org.junit.jupiter.api.io.TempDir;
 /** Locks the selected-Node contract shared by TypeScript tools and the literal-node custom-JS worker. */
 class TypeScriptRuntimeLauncherTest {
 
+    private static final Checkout CHECKOUT = Checkout.locate();
+
     @Test
     void sharedLauncherAndStableWrappersDeclareThePosixBoundary() throws Exception {
-        Path root = repositoryRoot();
         for (String relative : List.of(
                 "scripts/run-typescript.sh",
                 "scripts/check-infographic-freshness.sh",
@@ -27,7 +28,7 @@ class TypeScriptRuntimeLauncherTest {
                 "scripts/sync-plugin-assets.sh",
                 "scripts/test-evidence.sh",
                 "scripts/verify-demos.sh")) {
-            String source = Files.readString(root.resolve(relative));
+            String source = Files.readString(CHECKOUT.resolve(relative));
             assertTrue(source.startsWith("#!/bin/sh\n"), relative + " must use the portable runtime interface");
             assertFalse(source.contains("/bin/bash"), relative + " must not escape its POSIX contract");
         }
@@ -48,9 +49,10 @@ class TypeScriptRuntimeLauncherTest {
         Path testSource = temporary.resolve("tool.test.ts");
         Files.writeString(testSource, "// planted TypeScript test\n");
         Path fakeNode = recordingNode(temporary.resolve("node"), "24.20.0");
-        Path launcher = repositoryRoot().resolve("scripts/run-typescript.sh");
+        Path launcher = CHECKOUT.resolve("scripts/run-typescript.sh");
 
-        var builder = new ProcessBuilder("/bin/dash", launcher.toString(), "--test", testSource.toString());
+        var builder = CHECKOUT.command(List.of(
+                "/bin/dash", launcher.toString(), "--test", testSource.toString()));
         builder.redirectErrorStream(true);
         builder.environment().put("A12_NODE", fakeNode.toString());
         Process process = builder.start();
@@ -65,11 +67,9 @@ class TypeScriptRuntimeLauncherTest {
         Path validOverride = fakeNode(temporary.resolve("valid-override"), "24.20.0");
         Path systemDirectory = temporary.resolve("system");
         fakeNode(systemDirectory.resolve("node"), "20.20.2");
-
-        Path root = repositoryRoot();
-        var builder = new ProcessBuilder(
+        var builder = CHECKOUT.command(List.of(
                 "/bin/dash", "-c", "A12_NODE=node \"$1\" --check", "runtime-check",
-                root.resolve("scripts/run-typescript.sh").toString());
+                CHECKOUT.resolve("scripts/run-typescript.sh").toString()));
         builder.redirectErrorStream(true);
         builder.environment().put("A12_NODE", validOverride.toString());
         builder.environment().put("PATH", systemDirectory + System.getProperty("path.separator")
@@ -81,18 +81,18 @@ class TypeScriptRuntimeLauncherTest {
 
         String expectedCall = "A12_NODE=node \"$ROOT/scripts/run-typescript.sh\" --check";
         for (String consumer : new String[] {"scripts/verify-demos.sh", "scripts/native-gate.sh"}) {
-            assertTrue(Files.readString(root.resolve(consumer)).contains(expectedCall),
+            assertTrue(Files.readString(CHECKOUT.resolve(consumer)).contains(expectedCall),
                     consumer + " must check literal PATH node because CustomJsWorker launches literal node");
         }
-        String worker = Files.readString(root.resolve(
+        String worker = Files.readString(CHECKOUT.resolve(
                 "cli/src/main/java/io/github/mbackschat/a12/dm/cli/interp/CustomJsWorker.java"));
         assertTrue(worker.contains("new ProcessBuilder(\"node\""),
                 "the consumer-runtime control must move with CustomJsWorker if its executable becomes configurable");
     }
 
     private static Run runSelected(Path node) throws IOException, InterruptedException {
-        Path launcher = repositoryRoot().resolve("scripts/run-typescript.sh");
-        var builder = new ProcessBuilder("/bin/dash", launcher.toString(), "--check");
+        Path launcher = CHECKOUT.resolve("scripts/run-typescript.sh");
+        var builder = CHECKOUT.command(List.of("/bin/dash", launcher.toString(), "--check"));
         builder.redirectErrorStream(true);
         builder.environment().put("A12_NODE", node.toString());
         Process process = builder.start();
@@ -119,18 +119,5 @@ class TypeScriptRuntimeLauncherTest {
         assertTrue(path.toFile().setExecutable(true), "could not make fake Node executable: " + path);
         return path;
     }
-
-    private static Path repositoryRoot() {
-        Path directory = Path.of("").toAbsolutePath();
-        while (directory != null) {
-            if (Files.isRegularFile(directory.resolve("settings.gradle"))
-                    && Files.isRegularFile(directory.resolve("build.sh"))) {
-                return directory;
-            }
-            directory = directory.getParent();
-        }
-        throw new IllegalStateException("could not locate the repository root from " + Path.of("").toAbsolutePath());
-    }
-
     private record Run(int exitCode, String output) {}
 }

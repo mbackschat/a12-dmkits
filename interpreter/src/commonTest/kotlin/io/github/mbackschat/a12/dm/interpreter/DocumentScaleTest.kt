@@ -8,7 +8,6 @@ import io.github.mbackschat.a12.dm.interpreter.model.ModelDef
 import io.github.mbackschat.a12.dm.interpreter.model.RuleDef
 import kotlin.test.Test
 import kotlin.test.assertEquals
-import kotlin.time.measureTime
 
 /**
  * Correctness at scale over the REAL general [Document] (the production path), NOT the spike's map-backed
@@ -23,7 +22,8 @@ import kotlin.time.measureTime
  * properly — as a paired N/4N growth ratio under isolation — by `:adapter`'s routine tier, which carries 19
  * sub-quadratic scenarios including the general per-row one. A wall-clock assertion here would have added a
  * clock-dependent verdict to a lane that forks tests in parallel, without covering anything those two do not.
- * The elapsed time is still printed, because a number a human reads costs nothing and decides nothing.
+ * No clock is read here at all. A census exemption is keyed by FILE, so an exempted file hides every clock use
+ * in it — including a reintroduced bound, which is exactly what this one used to carry.
  */
 class DocumentScaleTest {
 
@@ -53,10 +53,8 @@ class DocumentScaleTest {
         )
         val interp = DmInterpreter(model)
         val d = doc(n)
-        var fired = 0
-        val elapsed = measureTime { fired = interp.validateFull(d).count { it.code == "HQ" } }
+        val fired = interp.validateFull(d).count { it.code == "HQ" }
         assertEquals(n / 100 * 49, fired, "rows with Qty in 51..99 fire (49 per 100)")
-        println("[interpreter] per-row rule over $n real-Document rows in $elapsed")
     }
 
     @Test
@@ -70,9 +68,7 @@ class DocumentScaleTest {
         )
         val interp = DmInterpreter(model)
         val d = doc(n)
-        var fired = 0
-        val elapsed = measureTime { fired = interp.validateFull(d).count { it.code == "TP" } }
+        val fired = interp.validateFull(d).count { it.code == "TP" }
         assertEquals(1, fired, "Sum(1 × $n) > 0 fires once at /Perf")
-        println("[interpreter] Sum aggregate over $n real-Document rows in $elapsed")
     }
 }

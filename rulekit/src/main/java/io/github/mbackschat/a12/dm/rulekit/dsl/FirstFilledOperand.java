@@ -60,14 +60,21 @@ public final class FirstFilledOperand {
         this.outer = outer;
     }
 
-    /** A field or flattened field-list owner entity. */
+    /**
+     * A field, flattened field-list, or index-selected field owner entity. The index-selected arm
+     * ({@link IndexedFieldValue}) routes to the dedicated {@link #of(IndexedFieldValue)} factory, which
+     * already builds the plain field entity and layers the semantic-index modifier on — no new logic
+     * here, just a route to code that already exists.
+     */
     public static FirstFilledOperand of(FieldOperand field) {
         Objects.requireNonNull(field, "field");
-        boolean outer = switch (field) {
-            case FieldRef ref -> ref.correlated();
-            case FieldListRef list -> list.correlated();
+        return switch (field) {
+            case IndexedFieldValue indexed -> of(indexed);
+            case FieldRef ref ->
+                    new FirstFilledOperand(withoutOuter(ref), null, List.of(), null, null, ref.correlated());
+            case FieldListRef list ->
+                    new FirstFilledOperand(withoutOuter(list), null, List.of(), null, null, list.correlated());
         };
-        return new FirstFilledOperand(withoutOuter(field), null, List.of(), null, null, outer);
     }
 
     static FirstFilledOperand group(GroupListRef group, List<FieldRef> expandedFields) {
@@ -214,6 +221,12 @@ public final class FirstFilledOperand {
             case FieldListRef list -> new FieldListRef(
                     new FieldRef(list.field().path(), list.field().kind(), list.field().styleHint(), false),
                     list.flattened(), list.filter(), false);
+            // Provably unreachable: of(FieldOperand)'s switch routes an IndexedFieldValue to
+            // of(IndexedFieldValue) before this method is ever called, and withoutOuter has no other
+            // caller. Exhaustive anyway because the parameter type is the whole sealed FieldOperand.
+            case IndexedFieldValue ignored -> throw new IllegalStateException(
+                    "withoutOuter is never called with an IndexedFieldValue — of(FieldOperand) routes"
+                            + " that arm to of(IndexedFieldValue) first");
         };
     }
 

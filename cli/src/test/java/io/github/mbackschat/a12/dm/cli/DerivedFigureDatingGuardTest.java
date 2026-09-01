@@ -4,11 +4,8 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.IOException;
-import java.nio.file.FileVisitResult;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.SimpleFileVisitor;
-import java.nio.file.attribute.BasicFileAttributes;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -370,36 +367,24 @@ class DerivedFigureDatingGuardTest {
      * {@code DocRelativeLinkGuardTest} had already been bitten by worktrees; that lesson was not applied here
      * until a cold review re-found it from a worktree it was itself running in.
      */
-    static final Set<String> SKIPPED = RepoWalk.SKIPPED_DIRECTORIES;
-
     /** Files the walk could not resolve (dangling symlinks). Reported, never silently dropped. */
     private static final Set<String> unreadableSources = new TreeSet<>();
 
     private static List<Path> sources() throws IOException {
         Set<Path> found = new LinkedHashSet<>();
-        Files.walkFileTree(ROOT, new SimpleFileVisitor<>() {
-            @Override
-            public FileVisitResult preVisitDirectory(Path dir, BasicFileAttributes attrs) {
-                return SKIPPED.contains(dir.getFileName().toString())
-                        ? FileVisitResult.SKIP_SUBTREE : FileVisitResult.CONTINUE;
-            }
-
-            @Override
-            public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) {
-                String name = file.getFileName().toString();
-                if (name.endsWith(".java") || name.endsWith(".kt")) {
-                    try {
-                        found.add(file.toRealPath());
-                    } catch (IOException unreadable) {
-                        // A dangling symlink is not content this guard can judge, and crashing the walk on one
-                        // reports a broken link as a figure defect. Sibling guards still throw here; that is a
-                        // separate fix.
-                        unreadableSources.add(file.toString());
-                    }
+        for (Path file : RepoWalk.trackedFiles(ROOT)) {
+            String name = file.getFileName().toString();
+            if (name.endsWith(".java") || name.endsWith(".kt")) {
+                try {
+                    found.add(file.toRealPath());
+                } catch (IOException unreadable) {
+                    // A dangling symlink is not content this guard can judge, and crashing the walk on one
+                    // reports a broken link as a figure defect. Sibling guards still throw here; that is a
+                    // separate fix.
+                    unreadableSources.add(file.toString());
                 }
-                return FileVisitResult.CONTINUE;
             }
-        });
+        }
         return List.copyOf(found);
     }
 }

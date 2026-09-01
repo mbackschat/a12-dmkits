@@ -20,6 +20,8 @@ enum class ConditionLanguage(val code: String) {
             this == DE && authored in DE_AND -> "And"
             this == EN && authored in EN_OR -> "Or"
             this == DE && authored in DE_OR -> "Or"
+            this == EN && authored in EN_TO -> "To"
+            this == DE && authored in DE_TO -> "To"
             this == EN -> authored.takeIf { it in ENGLISH_KEYWORDS }
             else -> GERMAN_TO_CANONICAL[authored]
         }
@@ -32,6 +34,8 @@ enum class ConditionLanguage(val code: String) {
             this == DE && canonical == "And" -> DE_AND
             this == EN && canonical == "Or" -> EN_OR
             this == DE && canonical == "Or" -> DE_OR
+            this == EN && canonical == "To" -> EN_TO
+            this == DE && canonical == "To" -> DE_TO
             this == EN && canonical in ENGLISH_KEYWORDS -> setOf(canonical)
             this == DE -> GERMAN_TO_CANONICAL.entries
                 .asSequence()
@@ -52,6 +56,8 @@ enum class ConditionLanguage(val code: String) {
         private val DE_AND = setOf("Und", "und", "UND")
         private val EN_OR = setOf("Or", "or", "OR")
         private val DE_OR = setOf("Oder", "oder", "ODER")
+        private val EN_TO = setOf("To", "to", "TO")
+        private val DE_TO = setOf("Zu", "zu", "ZU")
         private val IN = setOf("In", "in", "IN")
 
         internal fun fromCode(code: String?): ConditionLanguage =
@@ -160,7 +166,7 @@ enum class ConditionLanguage(val code: String) {
             "RegelKontext" to "RuleGroup",
         )
 
-        private val ENGLISH_KEYWORDS = GERMAN_TO_CANONICAL.values.toSet() + "In"
+        private val ENGLISH_KEYWORDS = GERMAN_TO_CANONICAL.values.toSet() + setOf("In", "To")
         private val ALL_AUTHORED_KEYWORDS =
             ENGLISH_KEYWORDS +
                 GERMAN_TO_CANONICAL.keys +
@@ -168,6 +174,8 @@ enum class ConditionLanguage(val code: String) {
                 DE_AND +
                 EN_OR +
                 DE_OR +
+                EN_TO +
+                DE_TO +
                 IN
     }
 }

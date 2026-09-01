@@ -214,4 +214,44 @@ class AggregateSlotLawsTest {
         KernelLaws.rejectsOrder("/Order", "../Quantity",
                 "FieldFilled(Quantity) And Sum(/Order/Items*, /Order/Items*/Count) > 0", "MVK_DUPLICATE_PARAM2");
     }
+
+    /** A guarded rule whose FILTER BODY carries the shape under test — {@code $} is legal only inside a
+     *  filter ({@code MVK_INVALID_OUTER_ITERATION} outside one), so that is where this gate can see it. */
+    private static String inFilter(String aggregate) {
+        return "FieldFilled(Quantity) And Sum(Items*/Count Having ([Items/Sku] == \"X\" And " + aggregate
+                + ")) > 0";
+    }
+
+    /**
+     * The {@code $} outer-iteration correlation is part of an operand's IDENTITY: {@code $path} reads the outer
+     * row and {@code path} the current one, so the pair is two operands and is admitted. Its control below is
+     * the same filter, the same operator and the same path with the marker removed — the marker is the only
+     * variable between them, which is what makes this an identity claim rather than an admission observation.
+     *
+     * <p>All three carriers are listed because they read one shared gate through two admission roots
+     * ({@code ListAggregate} and {@code CountAggregate}); the typed peer is
+     * {@code dsl.operators.AggregateCorrelatedOperandTest}.
+     */
+    @Test
+    void theOuterCorrelationSplitsAnOperandsIdentityInsideAFilter() {
+        KernelLaws.acceptsOrder("/Order", "../Quantity",
+                inFilter("Sum($/Order/UnitPrice, /Order/UnitPrice) > 0"));
+        KernelLaws.acceptsOrder("/Order", "../Quantity",
+                inFilter("NumberOfFilledFields($/Order/UnitPrice, /Order/UnitPrice) == 2"));
+        KernelLaws.acceptsOrder("/Order", "../Quantity",
+                inFilter("NumberOfDifferentValues($/Order/ProductCode, /Order/ProductCode) == 2"));
+    }
+
+    /** The control: with the marker removed the same pairs are the duplicate the gate exists to refuse. */
+    @Test
+    void theUnmarkedPairInTheSameFilterIsStillADuplicate() {
+        KernelLaws.rejectsOrder("/Order", "../Quantity",
+                inFilter("Sum(/Order/UnitPrice, /Order/UnitPrice) > 0"), "MVK_DUPLICATE_PARAM1");
+        KernelLaws.rejectsOrder("/Order", "../Quantity",
+                inFilter("NumberOfFilledFields(/Order/UnitPrice, /Order/UnitPrice) == 2"),
+                "MVK_DUPLICATE_PARAM1");
+        KernelLaws.rejectsOrder("/Order", "../Quantity",
+                inFilter("NumberOfDifferentValues(/Order/ProductCode, /Order/ProductCode) == 2"),
+                "MVK_DUPLICATE_PARAM1");
+    }
 }

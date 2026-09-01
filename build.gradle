@@ -654,11 +654,11 @@ tasks.register('docGuardTest', Test) {
                 include '**/src/test/**/*.java', '**/src/test/**/*.kt'
                 exclude '.claude/**', '**/build/**'
             },
-            // SurvivingDataNotInBuildGuardTest walks EVERY .kt/.java in the repo, not just the src/test tree the
+            // SurvivingDataNotInBuildGuardTest scans EVERY tracked .kt/.java, not just the src/test tree the
             // entry above covers: main sources, the KMP source sets (commonMain, jsTest, …), the dedicated
             // src/<lane>Test trees and loose script sources all scan. Undeclared, any of those could introduce a
-            // build/ write site while this lane stayed UP-TO-DATE and the guard unrun. The include/exclude pair
-            // mirrors that guard's own file filter + EXCLUDED_SEGMENTS, so the two cannot drift apart silently.
+            // build/ write site while this lane stayed UP-TO-DATE and the guard unrun. Its denominator is
+            // Checkout.sources(), which no Gradle input can express, so this tree is a deliberate superset of it.
             'build-path scan sources': fileTree('.') {
                 include '**/*.java', '**/*.kt'
                 exclude '.claude/**', '**/build/**', '.git/**', '**/.gradle/**'
@@ -756,15 +756,23 @@ tasks.register('docGuardTest', Test) {
 // `test` dependsOn this (below), so CI + a plain `:test` always drive it. `guardInputs` (root ext, kernel-decoupling §3b #17)
 // also fails LOUDLY if `api/` goes empty/missing — a moved golden dir can't silence the guard.
 tasks.register('apiGuardTest', Test) {
-    description = 'Golden-diff visibility lock for the five published kits\' public API (split out so a golden edit re-runs only this).'
+    description = 'Golden-diff visibility lock for the published artifacts\' public API (split out so a golden edit re-runs only this).'
     group = 'verification'
     useJUnitPlatform()
     testClassesDirs = sourceSets.test.output.classesDirs
     classpath = sourceSets.test.runtimeClasspath
+    // :interpreter-bridge is dumped but is NOT a dependency of this source set — a second ConditionReadBack
+    // provider beside :adapter's makes the port ambiguous, and read-back REFUSES an ambiguous classpath, so
+    // every kernel-oracle test here would fail on resolution. Its classes are built for the dump to read and
+    // loaded by the guard itself.
+    dependsOn ':interpreter-bridge:classes'
     filter {
         includeTestsMatching 'io.github.mbackschat.a12.dm.api.PublicApiGuardTest'
     }
-    guardInputs(it, ['api goldens': fileTree('api') { include '**/*.api' }])
+    guardInputs(it, [
+            'api goldens'              : fileTree('api') { include '**/*.api' },
+            'bridge main sources'      : fileTree('interpreter-bridge/src/main') { include '**/*.kt', '**/*.java' },
+    ])
 }
 
 // Its own source set, following the `noBackendTest` precedent above, because these two classes were the
@@ -864,10 +872,11 @@ tasks.register('dumpTemporalVocabulary', Test) {
 
 tasks.register('dumpKitApi', Test) {
     group = 'documentation'
-    description = 'Regenerate the five kit public-API goldens under api/ from the live reflection dump (autonomous, in place).'
+    description = 'Regenerate the published public-API goldens under api/ from the live reflection dump (autonomous, in place).'
     useJUnitPlatform()
     testClassesDirs = sourceSets.test.output.classesDirs
     classpath = sourceSets.test.runtimeClasspath
+    dependsOn ':interpreter-bridge:classes'
     systemProperty 'api.fix', 'true'
     filter {
         includeTestsMatching 'io.github.mbackschat.a12.dm.api.PublicApiGuardTest'
@@ -891,47 +900,74 @@ tasks.register('syncDocSnippets', Test) {
     outputs.upToDateWhen { false }
 }
 
+// A compiled dependency edge is the purity boundary. Source regexes cannot model Java text blocks, Kotlin raw
+// strings/templates, or Kotlin's nested comments; a delimiter inside a literal once hid later code from a guard.
+// jdeps reads class dependencies instead, so comments and string constants are irrelevant by construction.
+ext.verifyCompiledPurity = { String guardName, Collection<File> classRoots, Collection<String> forbidden,
+        String positiveControl ->
+    def existingRoots = classRoots.findAll { it.exists() }
+    def classCount = existingRoots.sum(0) { root ->
+        fileTree(root).matching { include '**/*.class' }.files.size()
+    }
+    if (classCount == 0) {
+        throw new GradleException("${guardName} scanned ZERO class files — the compiled source roots moved or emptied")
+    }
+
+    def launcher = javaToolchains.launcherFor {
+        languageVersion = JavaLanguageVersion.of(21)
+    }.get()
+    def executableName = System.getProperty('os.name').toLowerCase(Locale.ROOT).contains('win') ? 'jdeps.exe' : 'jdeps'
+    def jdeps = new File(launcher.executablePath.asFile.parentFile, executableName)
+    if (!jdeps.isFile()) {
+        throw new GradleException("${guardName} cannot find jdeps beside ${launcher.executablePath.asFile}")
+    }
+
+    def execution = providers.exec {
+        commandLine([jdeps.absolutePath, '-verbose:class', '--ignore-missing-deps'] + existingRoots*.absolutePath)
+        ignoreExitValue = true
+    }
+    def result = execution.result.get()
+    def output = execution.standardOutput.asText.get()
+    if (result.exitValue != 0) {
+        throw new GradleException("${guardName} could not inspect compiled dependencies:\n${output}")
+    }
+
+    def dependencies = output.readLines().collect { line ->
+        def edge = line =~ /^\s*\S+\s+->\s+(\S+)/
+        edge.find() ? edge.group(1) : null
+    }.findAll()
+    if (!dependencies.any { it.startsWith(positiveControl) }) {
+        throw new GradleException("${guardName} did not see its compiled-reference positive control ${positiveControl}")
+    }
+    def violations = dependencies.findAll { dependency -> forbidden.any { dependency.startsWith(it) } }.unique().sort()
+    if (violations) {
+        throw new GradleException("${guardName} violated; forbidden compiled dependencies:\n  " + violations.join('\n  '))
+    }
+}
+
 // --- Kit purity, locked (kernel-decoupling stage 3; mirrors :interpreter's verifyInterpreterPurity) ------
 // The kits (dm.core / dm.rulekit.* / dm.modelkit / dm.edit) import ZERO kernel types — the kernel lives
 // behind the SPI ports (dm.core.spi.* / dm.rulekit.spi.*) that :adapter implements. This guard is the
-// decoupling's regression net: it fails the build if any kit `src/main` file names a `com.mgmtp.*` type in
-// CODE (imports OR fully-qualified references — the FQ form is what an import-only sweep missed for
-// BoundModel before). Javadoc/line comments are stripped first, so the prose that legitimately mentions
-// `com.mgmtp.a12.kernel.*` (to explain the boundary) is not a violation. Test scope is out of scope on
-// purpose — the kernel stays the oracle in tests. Stage 4: the kits are now their own modules, so this
-// single root guard scans all four kit `src/main/java` trees (one place, covers the whole class).
+// decoupling's regression net: jdeps fails the build if any compiled kit main class links a `com.mgmtp.*`
+// type. Comments and string constants are irrelevant by construction, and the compiled positive control plus
+// non-empty class denominator keep an empty scan from passing. Test scope is out of scope on purpose — the
+// kernel stays the oracle in tests. Stage 4: the kits are now their own modules, so this single root guard
+// inspects all four modules' main-class outputs (one place, covers the whole class).
 def verifyKitPurity = tasks.register('verifyKitPurity') {
     group = 'verification'
-    description = 'Fail if any kit src/main file imports or references com.mgmtp.* (the decoupling regression net).'
-    def kitMainDirs = ['core', 'rulekit', 'modelkit', 'edit'].collect { file("${it}/src/main/java") }
-    inputs.files(kitMainDirs)
+    description = 'Fail if any kit main class has a compiled com.mgmtp.* dependency.'
+    def kitProjects = ['core', 'rulekit', 'modelkit', 'edit']
+    dependsOn kitProjects.collect { ":${it}:classes" }
+    def classRoots = providers.provider {
+        kitProjects.collectMany { project(":${it}").sourceSets.main.output.classesDirs.files }
+    }
+    inputs.files(classRoots)
     doLast {
-        def violations = []
-        def scanned = 0
-        kitMainDirs.each { mainSrc ->
-            if (!mainSrc.exists()) return
-            mainSrc.eachFileRecurse { f ->
-                if (!f.name.endsWith('.java')) return
-                scanned++
-                // Strip block comments (incl. Javadoc) then line comments; any surviving com.mgmtp is real code.
-                def code = f.text.replaceAll(/(?s)\/\*.*?\*\//, '').replaceAll(/(?m)\/\/.*$/, '')
-                (code =~ /com\.mgmtp\.[\w.]+/).each { hit ->
-                    violations << "${mainSrc.parentFile.parentFile.parentFile.name}/…/${f.name}: ${hit}".toString()
-                }
-            }
-        }
-        if (violations) {
-            throw new GradleException(
-                "kit purity violated — the kits (core/rulekit/modelkit/edit) MAIN source must name no kernel\n" +
-                "type; the kernel lives behind the SPI ports :adapter implements (kernel-decoupling).\n" +
-                "Offending com.mgmtp references:\n  " + violations.join('\n  '))
-        }
-        // The #17 silent-empty-scan defense: if every kit main tree is missing/empty the lint must fail LOUDLY —
-        // a vacuous pass after a source move is a false green (the same class the guardInputs assertion closes).
-        if (scanned == 0) {
-            throw new GradleException("verifyKitPurity scanned ZERO .java files across the kit main trees — " +
-                    "the source roots moved or emptied; refusing the vacuous pass.")
-        }
+        verifyCompiledPurity(
+            'kit purity — core/rulekit/modelkit/edit main',
+            classRoots.get(),
+            ['com.mgmtp.'],
+            'java.lang.Object')
     }
 }
 tasks.named('check') { dependsOn verifyKitPurity }
@@ -967,6 +1003,7 @@ tasks.named('check') { dependsOn 'noBackendTest' }
 
 // --- Publishing (kernel-decoupling Stage 4, Package B; RELEASE-SPEC §8/§11) ------------------------------
 // The five Java kits publish to Maven under io.github.mbackschat.a12.dm:dmkits-<name> on the shared 0.x
+// version, as does the :interpreter-bridge provider (its own module declares that publication).
 // train (single-sourced above); each kit's own build file declares its MavenPublication + coordinates.
 // Here at root we (1) share the common POM metadata (MIT — the kits are kernel-free since Stage 3, so no
 // EUPL rider and no kernel dep to block Central), and (2) publish the AGGREGATOR POM `dmkits` (POM-only,

@@ -53,6 +53,36 @@ public final class Dsl {
         return new FieldPresenceCondition(field, false);
     }
 
+    /**
+     * The {@link FieldOperand} overload of {@link #fieldFilled(FieldRef)} — additive, for a caller that
+     * cannot type its operand as {@link FieldRef} up front (an AST-driven bridge, never a human author, who
+     * keeps the narrower, compiler-checked signature above). {@code FieldFilled} takes exactly one field,
+     * unlike {@code AllFieldsFilled}/{@code NoFieldFilled}, which legitimately admit a starred member — a
+     * {@link FieldListRef} here is the kernel's {@code MVK_NO_WILDCARDS_ALLOWED} (KERNEL-FINDINGS §9), stated
+     * here instead of erased by the type split {@link FieldOperand}'s own doc describes. An
+     * {@link IndexedFieldValue} remains one selected field and therefore uses indexed presence.
+     */
+    public static Condition fieldFilled(FieldOperand field) {
+        return switch (field) {
+            case FieldRef ref -> fieldFilled(ref);
+            case IndexedFieldValue indexed -> new SemanticIndex(indexed).filled();
+            case FieldListRef list -> throw new IllegalArgumentException(
+                    "FieldFilled needs a single field, not the repetition list "
+                            + list.renderedPath() + " (MVK_NO_WILDCARDS_ALLOWED)");
+        };
+    }
+
+    /** The {@link FieldOperand} overload of {@link #fieldNotFilled(FieldRef)} — see {@link #fieldFilled(FieldOperand)}. */
+    public static Condition fieldNotFilled(FieldOperand field) {
+        return switch (field) {
+            case FieldRef ref -> fieldNotFilled(ref);
+            case IndexedFieldValue indexed -> new SemanticIndex(indexed).notFilled();
+            case FieldListRef list -> throw new IllegalArgumentException(
+                    "FieldNotFilled needs a single field, not the repetition list "
+                            + list.renderedPath() + " (MVK_NO_WILDCARDS_ALLOWED)");
+        };
+    }
+
     /** {@code Length(field)} as a comparable numeric expression. catalog:Length */
     public static NumberExpr length(StringRef field) {
         return field.length();
@@ -779,6 +809,15 @@ public final class Dsl {
      */
     public static TimeExpr timeValue(LocalTime time) {
         return timeValue(time.format(TIME_LITERAL_FORMAT));
+    }
+
+    /**
+     * A date-time constant for comparison — {@code [ScheduledAt] > dateTimeValue("01.01.2022T17:00:00")}
+     * ({@code dd.MM.yyyy'T'HH:mm:ss}), the temporal-literal family's date-time twin of {@link #dateValue}/
+     * {@link #timeValue}.
+     */
+    public static DateTimeExpr dateTimeValue(String ddMMyyyyThhmmss) {
+        return new DateTimeExpr(new DateTimeLiteral(ddMMyyyyThhmmss));
     }
 
     /** {@code DifferenceInDays(a, b)} over dates — signed complete model-zone legacy-calendar day steps. catalog:DifferenceInDays */
@@ -1690,6 +1729,11 @@ public final class Dsl {
         return switch (op) {
             case FieldListRef ignored -> null;   // wildcard/flattened list — kernel skips dedup here
             case FieldRef f -> (f.correlated() ? "$" : "") + f.path();
+            // An indexed field behaves like a single field entity here too: the same field under two
+            // different index keys is NOT a duplicate. Identity folds in the key (and
+            // every $ correlation in the shape) via the shared IndexedFieldValue#duplicateIdentity,
+            // rather than repeating that compound computation here (see ListAggregate's identical arm).
+            case IndexedFieldValue indexed -> indexed.duplicateIdentity();
             case EnumCategoryAccess c -> (c.outer() ? "$" : "") + c.field().path() + " -> " + c.category();
             // A GROUP scope is DELEGATED, not deduped here. A starred one is measured-skipped by the kernel
             // (`checkDuplicatesInDirectRefs` skips wildcarded refs — AggregateGroupOperandLawsTest lists the same

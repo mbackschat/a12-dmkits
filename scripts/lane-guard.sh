@@ -70,9 +70,12 @@ a12_lane_justified() {
   if [[ "$lane" == :*:* ]]; then
     module="${lane#:}"; module="${module%%:*}"
     grep -qE "^${module}/" <<<"$paths" && return 0
-    # The adapter compiles against the interpreter, and the cli ships both.
-    [[ "$module" == adapter ]] && grep -qE '^interpreter/' <<<"$paths" && return 0
+    # The adapter compiles against the interpreter, and the cli ships both. The anchored `/` matters:
+    # `^interpreter/` must not also match interpreter-bridge, which is a separate module with its own lane.
+    [[ "$module" == adapter ]] && grep -qE '^(interpreter|interpreter-bridge)/' <<<"$paths" && return 0
     [[ "$module" == cli ]] && grep -qE '^(interpreter|adapter)/' <<<"$paths" && return 0
+    # The bridge maps the interpreter's AST, so an interpreter change reaches its lane too.
+    [[ "$module" == interpreter-bridge ]] && grep -qE '^interpreter/' <<<"$paths" && return 0
     return 1
   fi
   grep -qE '^(src/|scripts/|docs/|perf-results/|.*\.md$)' <<<"$paths" && return 0

@@ -74,8 +74,10 @@ public record DateListAggregate(Mode mode, List<AggregateOperand> operands, Valu
                 // A GROUP carries no kind of its own — a group's kind lives in its EXPANSION, which
                 // `AggregateOperand` delegates to the kernel rather than re-implementing the extent — so its
                 // arm takes the factory's declared kind and lets the kernel's own gate judge the expansion
-                // (`MVK_NOT_SORTABLE`), exactly as the numeric aggregates already do.
+                // (`MVK_NOT_SORTABLE`), exactly as the numeric aggregates already do. An index-selected
+                // group is the same shape — the index picks WHICH repetition, not what it expands to.
                 case GroupListRef ignored -> { }
+                case IndexedGroupValue ignored -> { }
             }
         }
         ListAggregate.checkNoDuplicates(mode.operatorId(), operands);

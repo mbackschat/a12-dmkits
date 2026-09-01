@@ -1,5 +1,6 @@
 package io.github.mbackschat.a12.dm.rulekit.validate;
 
+import io.github.mbackschat.a12.dm.Checkout;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
 
@@ -33,12 +34,16 @@ import org.junit.jupiter.api.Test;
  */
 class RkCodeParityTest {
 
+    private static final Checkout CHECKOUT = Checkout.locate();
+
     private static final Pattern RK_LITERAL = Pattern.compile("\"(RK_[A-Z_]+)\"");
 
     @Test
     void everyEmittedCodeIsCataloguedAndEveryCatalogueCodeIsEmitted() throws IOException {
-        Path root = repoRoot();
-        List<Path> sources = mainSources(root);
+        assertTrue(Files.isRegularFile(CHECKOUT.resolve("rulekit/src/main/java/io/github/mbackschat/a12/dm/rulekit/validate/RkCode.java")),
+                "rulekit's RkCode.java, the code catalogue this parity reads, is missing — a rename must update this guard, which used to report the "
+                        + "absence as a repository it could not locate");
+        List<Path> sources = mainSources();
         assertTrue(sources.size() > 20, () -> "expected to scan the main source trees, found " + sources.size());
 
         Set<String> emitted = new TreeSet<>();   // RK_* literals found in the source
@@ -71,23 +76,12 @@ class RkCodeParityTest {
                 () -> "RkCode constants nothing emits/references (dead rows — remove or wire them): " + dead);
     }
 
-    /** The repo root — walk up from the working dir to the dir that holds {@code RkCode.java} under rulekit. */
-    private static Path repoRoot() {
-        Path p = Path.of("").toAbsolutePath();
-        for (; p != null; p = p.getParent()) {
-            if (Files.exists(p.resolve(
-                    "rulekit/src/main/java/io/github/mbackschat/a12/dm/rulekit/validate/RkCode.java"))) {
-                return p;
-            }
-        }
-        return fail("could not locate the repo root (RkCode.java) from " + Path.of("").toAbsolutePath());
-    }
 
-    private static List<Path> mainSources(Path root) throws IOException {
+    private static List<Path> mainSources() throws IOException {
         List<Path> out = new ArrayList<>();
         for (String tree : List.of("core/src/main/java", "rulekit/src/main/java",
                 "modelkit/src/main/java", "edit/src/main/java", "cli/src/main/java")) {
-            Path dir = root.resolve(tree);
+            Path dir = CHECKOUT.resolve(tree);
             if (!Files.isDirectory(dir)) {
                 continue;
             }

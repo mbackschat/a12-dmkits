@@ -71,6 +71,7 @@ public final class OperatorUsage {
             case StringLiteral ignored -> { }
             case DateLiteral ignored -> { }
             case TimeLiteral ignored -> { }
+            case DateTimeLiteral ignored -> { }
             case EnumValueLiteral ignored -> { }
             case BoolLiteral b -> ops.add(b.operatorId());
             case LengthOf l -> ops.add(l.operatorId());

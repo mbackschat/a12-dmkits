@@ -35,6 +35,8 @@ import org.junit.jupiter.api.Test;
  */
 class JdkPinSingleSourceGuardTest {
 
+    private static final Checkout CHECKOUT = Checkout.locate();
+
     /**
      * An unescaped {@code VAR=$(…java_home…)} capture on a non-comment line. Identical to
      * {@code BuildPerformancePolicyTest.RE_ENCODED_PIN} on purpose: the two halves of one claim must agree on
@@ -59,14 +61,13 @@ class JdkPinSingleSourceGuardTest {
 
     @Test
     void noTrackedFileOutsideTheSharedHelperCapturesTheJdkPin() throws Exception {
-        Path root = repositoryRoot();
         List<String> offenders = new ArrayList<>();
         int scanned = 0;
-        for (String tracked : trackedFiles(root)) {
+        for (String tracked : CHECKOUT.tracked().stream().map(CHECKOUT::relative).toList()) {
             if (tracked.equals(OWNER) || isProse(tracked)) {
                 continue;
             }
-            Path file = root.resolve(tracked);
+            Path file = CHECKOUT.resolve(tracked);
             if (!Files.isRegularFile(file)) {
                 continue;
             }
@@ -104,36 +105,12 @@ class JdkPinSingleSourceGuardTest {
      */
     @Test
     void theSharedHelperStillCarriesThePin() throws Exception {
-        String helper = Files.readString(repositoryRoot().resolve(OWNER), StandardCharsets.UTF_8);
+        String helper = Files.readString(CHECKOUT.resolve(OWNER), StandardCharsets.UTF_8);
         assertTrue(helper.contains("a12_pinned_jdk21_home()"), OWNER + " must declare the pin function");
         assertTrue(helper.contains("/usr/libexec/java_home"),
                 OWNER + " must be the file that resolves the pin; if the resolution moved, this guard is "
                         + "watching the wrong owner and every other file would pass by default");
     }
 
-    private static Path repositoryRoot() {
-        Path candidate = Path.of("").toAbsolutePath();
-        while (candidate != null && !Files.isRegularFile(candidate.resolve("settings.gradle"))) {
-            candidate = candidate.getParent();
-        }
-        assertTrue(candidate != null, "could not locate the repository root from " + Path.of("").toAbsolutePath());
-        return candidate;
-    }
-
     /** {@code git ls-files} is the published set. Failing loudly beats scanning nothing and passing. */
-    private static List<String> trackedFiles(Path root) throws IOException, InterruptedException {
-        var builder = new ProcessBuilder("git", "ls-files").directory(root.toFile());
-        builder.redirectErrorStream(true);
-        Process process = builder.start();
-        List<String> lines;
-        try (var reader = new BufferedReader(
-                new InputStreamReader(process.getInputStream(), StandardCharsets.UTF_8))) {
-            lines = reader.lines().toList();
-        }
-        assertEquals(0, process.waitFor(),
-                "git ls-files failed, so the scanned set is unknown rather than clean: " + lines);
-        assertFalse(lines.isEmpty(),
-                "git ls-files returned nothing, so this guard would scan an empty set and pass vacuously");
-        return lines;
-    }
 }

@@ -4,9 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import java.io.BufferedReader;
 import java.io.IOException;
-import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -61,6 +59,8 @@ import org.junit.jupiter.api.Test;
  * "no findings" cannot mean "no files".
  */
 class ShellPortabilityGuardTest {
+
+    private static final Checkout CHECKOUT = Checkout.locate();
 
     private static final int TRACKED_SHELL_SCRIPT_FLOOR = 70;
     private static final Set<String> LEGACY_BASH_SCRIPTS = Set.of(
@@ -198,15 +198,14 @@ class ShellPortabilityGuardTest {
 
     @Test
     void noTrackedShellScriptReadsATimestampInOneDialectOnly() throws Exception {
-        Path root = repositoryRoot();
-        List<String> scripts = trackedShellScripts(root);
+        List<String> scripts = trackedShellScripts();
         assertTrue(scripts.size() >= TRACKED_SHELL_SCRIPT_FLOOR,
                 "only " + scripts.size() + " shell scripts found — the scanner lost its denominator, so a "
                         + "green here would mean nothing");
 
         var findings = new ArrayList<Finding>();
         for (String relative : scripts) {
-            findings.addAll(scan(relative, Files.readString(root.resolve(relative), StandardCharsets.UTF_8)));
+            findings.addAll(scan(relative, Files.readString(CHECKOUT.resolve(relative), StandardCharsets.UTF_8)));
         }
 
         assertEquals(List.of(), findings, () -> """
@@ -224,12 +223,11 @@ class ShellPortabilityGuardTest {
 
     @Test
     void noTrackedShellScriptRequiresBash4() throws Exception {
-        Path root = repositoryRoot();
-        List<String> scripts = trackedBashScripts(root);
+        List<String> scripts = trackedBashScripts();
 
         var findings = new ArrayList<Bash4Finding>();
         for (String relative : scripts) {
-            findings.addAll(scanBash4(relative, Files.readString(root.resolve(relative), StandardCharsets.UTF_8)));
+            findings.addAll(scanBash4(relative, Files.readString(CHECKOUT.resolve(relative), StandardCharsets.UTF_8)));
         }
 
         assertEquals(List.of(), findings, () -> """
@@ -248,11 +246,10 @@ class ShellPortabilityGuardTest {
 
     @Test
     void everyTrackedBashScriptParsesWithTheStockInterpreterPath() throws Exception {
-        Path root = repositoryRoot();
         var findings = new ArrayList<String>();
-        for (String relative : trackedBashScripts(root)) {
-            var builder = new ProcessBuilder("/bin/bash", "-n", root.resolve(relative).toString());
-            builder.directory(root.toFile());
+        for (String relative : trackedBashScripts()) {
+            var builder = CHECKOUT.command(
+                    List.of("/bin/bash", "-n", CHECKOUT.resolve(relative).toString()));
             builder.redirectErrorStream(true);
             Process process = builder.start();
             String output = new String(process.getInputStream().readAllBytes(), StandardCharsets.UTF_8);
@@ -270,12 +267,11 @@ class ShellPortabilityGuardTest {
 
     @Test
     void shellEntrypointsArePosixUnlessTheyBelongToTheShrinkingMigrationSet() throws Exception {
-        Path root = repositoryRoot();
-        var actualBash = new TreeSet<>(trackedBashScripts(root));
+        var actualBash = new TreeSet<>(trackedBashScripts());
         var unexpected = new TreeSet<String>();
-        for (String relative : trackedShellScripts(root)) {
+        for (String relative : trackedShellScripts()) {
             if (!LEGACY_BASH_SCRIPTS.contains(relative)
-                    && !firstLine(root.resolve(relative)).equals("#!/bin/sh")) {
+                    && !firstLine(CHECKOUT.resolve(relative)).equals("#!/bin/sh")) {
                 unexpected.add(relative);
             }
         }
@@ -301,14 +297,12 @@ class ShellPortabilityGuardTest {
 
     @Test
     void everyTrackedPosixScriptParsesWithDash() throws Exception {
-        Path root = repositoryRoot();
         var findings = new ArrayList<String>();
-        for (String relative : trackedShellScripts(root)) {
-            if (!firstLine(root.resolve(relative)).equals("#!/bin/sh")) {
+        for (String relative : trackedShellScripts()) {
+            if (!firstLine(CHECKOUT.resolve(relative)).equals("#!/bin/sh")) {
                 continue;
             }
-            var builder = new ProcessBuilder("/bin/dash", "-n", root.resolve(relative).toString());
-            builder.directory(root.toFile());
+            var builder = CHECKOUT.command(List.of("/bin/dash", "-n", CHECKOUT.resolve(relative).toString()));
             builder.redirectErrorStream(true);
             Process process = builder.start();
             String output = new String(process.getInputStream().readAllBytes(), StandardCharsets.UTF_8);
@@ -420,14 +414,13 @@ class ShellPortabilityGuardTest {
 
     @Test
     void shellBehaviorTestsDoNotSelectBashThroughPath() throws Exception {
-        Path root = repositoryRoot();
         var findings = new ArrayList<String>();
-        for (String relative : trackedFiles(root)) {
+        for (String relative : CHECKOUT.tracked().stream().map(CHECKOUT::relative).toList()) {
             if (!isTestSource(relative)) {
                 continue;
             }
             findings.addAll(pathSelectedBashFindings(
-                    relative, Files.readString(root.resolve(relative), StandardCharsets.UTF_8)));
+                    relative, Files.readString(CHECKOUT.resolve(relative), StandardCharsets.UTF_8)));
         }
         assertEquals(List.of(), findings, () -> """
                 A shell behavior test selects `bash` through PATH. On macOS that silently switches from stock
@@ -809,10 +802,10 @@ class ShellPortabilityGuardTest {
     }
 
     /** Extension, location, or shebang — a script is a script whether or not it is named {@code *.sh}. */
-    private static List<String> trackedShellScripts(Path root) throws IOException, InterruptedException {
+    private static List<String> trackedShellScripts() throws IOException {
         var scripts = new ArrayList<String>();
-        for (String relative : trackedFiles(root)) {
-            Path file = root.resolve(relative);
+        for (String relative : CHECKOUT.tracked().stream().map(CHECKOUT::relative).toList()) {
+            Path file = CHECKOUT.resolve(relative);
             if (!Files.isRegularFile(file)) {
                 continue;
             }
@@ -823,10 +816,10 @@ class ShellPortabilityGuardTest {
         return scripts;
     }
 
-    private static List<String> trackedBashScripts(Path root) throws IOException, InterruptedException {
+    private static List<String> trackedBashScripts() throws IOException {
         var scripts = new ArrayList<String>();
-        for (String relative : trackedShellScripts(root)) {
-            if (isBashScript(relative, firstLine(root.resolve(relative)))) {
+        for (String relative : trackedShellScripts()) {
+            if (isBashScript(relative, firstLine(CHECKOUT.resolve(relative)))) {
                 scripts.add(relative);
             }
         }
@@ -858,32 +851,4 @@ class ShellPortabilityGuardTest {
         }
     }
 
-    /** {@code git ls-files} is the committed set. Failing loudly beats scanning nothing and passing. */
-    private static List<String> trackedFiles(Path root) throws IOException, InterruptedException {
-        var builder = new ProcessBuilder("git", "ls-files").directory(root.toFile());
-        builder.redirectErrorStream(true);
-        Process process = builder.start();
-        List<String> lines;
-        try (var reader = new BufferedReader(new InputStreamReader(process.getInputStream(), StandardCharsets.UTF_8))) {
-            lines = reader.lines().toList();
-        }
-        assertEquals(0, process.waitFor(),
-                "git ls-files failed, so the scanned set is unknown rather than clean: " + lines);
-        assertFalse(lines.isEmpty(),
-                "git ls-files returned nothing, so this guard would scan an empty set and pass vacuously");
-        return lines;
-    }
-
-    /** The repository root is the one directory carrying both the settings script and the build wrapper. */
-    private static Path repositoryRoot() {
-        Path directory = Path.of("").toAbsolutePath();
-        while (directory != null) {
-            if (Files.isRegularFile(directory.resolve("settings.gradle"))
-                    && Files.isRegularFile(directory.resolve("build.sh"))) {
-                return directory;
-            }
-            directory = directory.getParent();
-        }
-        throw new IllegalStateException("could not locate the repository root from " + Path.of("").toAbsolutePath());
-    }
 }

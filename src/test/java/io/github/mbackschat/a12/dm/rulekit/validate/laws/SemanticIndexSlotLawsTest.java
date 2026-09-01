@@ -62,4 +62,25 @@ class SemanticIndexSlotLawsTest {
                 prefix + "FirstFilledValue($Indexed For $Fallback, Fallback) > 0) > 0",
                 "MVK_SEMANTIC_INDEX_NOT_ALLOWED");
     }
+
+    /**
+     * An index-selected GROUP is admitted in the common entity list, and the discriminator is the index
+     * itself: the same group operand unindexed is {@code MVK_NO_WILDCARD}, because an unstarred repeatable
+     * group needs either a star or a key to name a row. So the semantic index is what makes the operand
+     * legal here, not merely tolerated beside it.
+     */
+    @Test
+    void anIndexSelectedGroupIsAdmittedInTheCommonEntityList() {
+        KernelLaws.acceptsOrder("/Order", "../CustomerName",
+                "FieldFilled(CustomerName) And AllFieldsFilled(Items For \"SKU-1\", CustomerName)");
+        KernelLaws.acceptsOrder("/Order", "../CustomerName",
+                "FieldFilled(CustomerName) And NoFieldFilled(Items For \"SKU-1\", CustomerName)");
+    }
+
+    /** The control: without the index the same group operand is refused, so the index carries the row. */
+    @Test
+    void theSameGroupOperandUnindexedIsRefused() {
+        KernelLaws.rejectsOrder("/Order", "../CustomerName",
+                "FieldFilled(CustomerName) And AllFieldsFilled(Items, CustomerName)", "MVK_NO_WILDCARD");
+    }
 }

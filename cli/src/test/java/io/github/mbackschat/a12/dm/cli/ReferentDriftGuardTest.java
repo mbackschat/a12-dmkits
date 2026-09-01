@@ -5,11 +5,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.IOException;
 import java.io.UncheckedIOException;
-import java.nio.file.FileVisitResult;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.SimpleFileVisitor;
-import java.nio.file.attribute.BasicFileAttributes;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.LinkedHashSet;
@@ -90,8 +87,6 @@ public class ReferentDriftGuardTest {
     private static final int WINDOW = 150;
 
     private static final Path RESULTS_DOC = ROOT.resolve("docs/" + MOVED_HOME + "-RESULTS.md");
-
-    static final Set<String> SKIPPED_DIRECTORIES = RepoWalk.SKIPPED_DIRECTORIES;
 
     private static final Set<String> SCANNED_SUFFIXES =
             Set.of(".md", ".java", ".kt", ".gradle", ".gradle.kts", ".sh");
@@ -314,22 +309,11 @@ public class ReferentDriftGuardTest {
     private static List<Path> walkOnce() throws IOException {
         Set<Path> canonical = new LinkedHashSet<>();
         List<Path> found = new ArrayList<>();
-        Files.walkFileTree(ROOT, new SimpleFileVisitor<>() {
-            @Override
-            public FileVisitResult preVisitDirectory(Path dir, BasicFileAttributes attrs) {
-                return SKIPPED_DIRECTORIES.contains(dir.getFileName().toString())
-                        ? FileVisitResult.SKIP_SUBTREE
-                        : FileVisitResult.CONTINUE;
+        for (Path file : RepoWalk.trackedFiles(ROOT)) {
+            if (isScannable(file)) {
+                found.add(file);
             }
-
-            @Override
-            public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) {
-                if (isScannable(file)) {
-                    found.add(file);
-                }
-                return FileVisitResult.CONTINUE;
-            }
-        });
+        }
         found.sort(Comparator.naturalOrder());
         for (Path file : found) {
             canonical.add(realPath(file));

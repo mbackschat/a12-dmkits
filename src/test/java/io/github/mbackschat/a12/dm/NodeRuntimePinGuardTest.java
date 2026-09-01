@@ -25,6 +25,8 @@ import org.junit.jupiter.api.Test;
 /** Guards every owned Node workflow consumer against a moving or divergent runtime version. */
 class NodeRuntimePinGuardTest {
 
+    private static final Checkout CHECKOUT = Checkout.locate();
+
     private static final ObjectMapper YAML = new ObjectMapper(new YAMLFactory());
     private static final Pattern EXACT_PATCH = Pattern.compile("\\d+\\.\\d+\\.\\d+");
     private static final String EXPECTED_NODE_VERSION = "24.20.0";
@@ -37,11 +39,10 @@ class NodeRuntimePinGuardTest {
 
     @Test
     void everyOwnedNodeConsumerUsesOneExactPatchVersion() throws Exception {
-        Path root = repositoryRoot();
-        List<String> workflows = trackedWorkflows(root);
+        List<String> workflows = trackedWorkflows();
         var setups = new ArrayList<Setup>();
         for (String relative : workflows) {
-            setups.addAll(setupsIn(relative, Files.readString(root.resolve(relative), StandardCharsets.UTF_8)));
+            setups.addAll(setupsIn(relative, Files.readString(CHECKOUT.resolve(relative), StandardCharsets.UTF_8)));
         }
 
         Set<String> consumers = setups.stream().map(Setup::consumer)
@@ -101,27 +102,12 @@ class NodeRuntimePinGuardTest {
         return setups;
     }
 
-    private static List<String> trackedWorkflows(Path root) throws IOException, InterruptedException {
-        var process = new ProcessBuilder("git", "ls-files", ".github")
-                .directory(root.toFile()).redirectErrorStream(true).start();
-        List<String> tracked;
-        try (var reader = new BufferedReader(new InputStreamReader(process.getInputStream(), StandardCharsets.UTF_8))) {
-            tracked = reader.lines().toList();
-        }
-        assertEquals(0, process.waitFor(), "git ls-files .github failed, so the workflow denominator is unknown");
-        assertFalse(tracked.isEmpty(), "git ls-files .github returned nothing, so the guard would pass vacuously");
-        return tracked.stream().filter(path -> path.endsWith(".yml") || path.endsWith(".yaml")).toList();
+    /** The tracked workflow files — the denominator a workflow guard must not narrow by hand. */
+    private static List<String> trackedWorkflows() {
+        return CHECKOUT.tracked(".github").stream()
+                .map(CHECKOUT::relative)
+                .filter(path -> path.endsWith(".yml") || path.endsWith(".yaml"))
+                .toList();
     }
 
-    private static Path repositoryRoot() {
-        Path directory = Path.of("").toAbsolutePath();
-        while (directory != null) {
-            if (Files.isRegularFile(directory.resolve("settings.gradle"))
-                    && Files.isRegularFile(directory.resolve("build.sh"))) {
-                return directory;
-            }
-            directory = directory.getParent();
-        }
-        throw new IllegalStateException("could not locate the repository root from " + Path.of("").toAbsolutePath());
-    }
 }

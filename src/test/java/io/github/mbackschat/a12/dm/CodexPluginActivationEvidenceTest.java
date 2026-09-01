@@ -14,9 +14,11 @@ import org.junit.jupiter.api.Test;
 /** Proves the release-only Codex activation smoke rejects synthesized evidence around a failed command. */
 class CodexPluginActivationEvidenceTest {
 
+    private static final Checkout CHECKOUT = Checkout.locate();
+
     @Test
     void publicInstallerRunsWithNetworkAccessEnabled() throws IOException {
-        String script = Files.readString(repoFile("scripts/codex-plugin-activation-smoke.sh"));
+        String script = Files.readString(CHECKOUT.requireFile("scripts/codex-plugin-activation-smoke.sh"));
         assertTrue(
                 script.contains("sandbox_workspace_write.network_access=true"),
                 "the clean-session smoke cannot exercise the public installer while command networking is disabled");
@@ -26,21 +28,11 @@ class CodexPluginActivationEvidenceTest {
     void activationEvidenceComesFromOneSuccessfulDmtoolEnvelope() throws IOException, InterruptedException {
         assumeTrue(!System.getProperty("os.name", "").toLowerCase().contains("win"),
                 "POSIX-only shell evidence discriminator");
-        Path script = repoFile("scripts/codex-plugin-activation-smoke.sh");
+        Path script = CHECKOUT.requireFile("scripts/codex-plugin-activation-smoke.sh");
         Process process = new ProcessBuilder("/bin/bash", script.toString(), "--self-test")
                 .redirectErrorStream(true).start();
         String output = new String(process.getInputStream().readAllBytes());
         int code = process.waitFor();
         assertEquals(0, code, () -> "Codex activation evidence discriminator failed:\n" + output);
-    }
-
-    private static Path repoFile(String relative) {
-        for (String base : List.of(".", "..", "../..")) {
-            Path candidate = Path.of(base, relative);
-            if (Files.exists(candidate)) {
-                return candidate;
-            }
-        }
-        throw new IllegalStateException(relative + " not found from " + Path.of("").toAbsolutePath());
     }
 }

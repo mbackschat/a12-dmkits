@@ -21,11 +21,13 @@ import org.junit.jupiter.api.Test;
  */
 class EnsureDmtoolCacheTest {
 
+    private static final Checkout CHECKOUT = Checkout.locate();
+
     @Test
     void theInstallerBinaryCacheIsVersionAware() throws IOException, InterruptedException {
         assumeTrue(!System.getProperty("os.name", "").toLowerCase().contains("win"),
                 "POSIX-only self-test (bash release-server stubs)");
-        Path script = repoFile("scripts/selftest-ensure-dmtool.sh");
+        Path script = CHECKOUT.requireFile("scripts/selftest-ensure-dmtool.sh");
         Process process = new ProcessBuilder("/bin/bash", script.toString())
                 .redirectErrorStream(true).start();
         String output = new String(process.getInputStream().readAllBytes());
@@ -34,14 +36,4 @@ class EnsureDmtoolCacheTest {
                 + "not version-aware (a VERSION bump must re-download, not reuse the stale binary). Output:\n" + output);
     }
 
-    /** Locate a repo-root file regardless of the module working dir (mirrors {@link PluginInstallerVersionTest}). */
-    private static Path repoFile(String relative) {
-        for (String base : List.of(".", "..", "../..")) {
-            Path candidate = Path.of(base, relative);
-            if (Files.exists(candidate)) {
-                return candidate;
-            }
-        }
-        throw new IllegalStateException(relative + " not found from " + Path.of("").toAbsolutePath());
-    }
-}
+    /** Locate a repo-root file regardless of the module working dir (mirrors {@link PluginInstallerVersionTest}). */}
