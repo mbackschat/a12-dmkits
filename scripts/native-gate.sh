@@ -29,6 +29,11 @@ export PATH="$ROOT/bin:$PATH"
 
 [[ -x "$NATIVE" ]] || { echo "native binary not found/executable: $NATIVE  (build with :cli:nativeCompile)" >&2; exit 2; }
 [[ -n "$VERSION" ]] || { echo "native gate: repository version is missing from build.gradle" >&2; exit 2; }
+if ! node_version="$(A12_NODE=node /bin/bash "$ROOT/scripts/run-typescript.sh" --check 2>&1)"; then
+    echo "native gate: $node_version" >&2
+    echo "  cli-custom-types.md needs Node; without it the worker degrades to unsupported and looks like drift" >&2
+    exit 2
+fi
 
 # Never certify a binary older than the source it claims to be. `probe/prep-probe.sh` has enforced this on the
 # PROBE path since it was written; the SHIP path — this gate — did not, so a stale binary could pass every

@@ -12,31 +12,33 @@ import java.util.Map;
 import java.util.Optional;
 
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 
 /**
  * The infographic freshness guard must reach the same verdict whatever locale the developer runs in.
  *
  * <p><b>Measured, not hypothetical.</b> On 2026-08-31 this guard refused a clean push on a
- * {@code LANG=de_DE.UTF-8} machine: it derives the production Java size from the README's Tokei block and
- * requires {@code docs/INFOGRAPHICS.md} to carry that exact string, and {@code awk}'s {@code printf "%.1f"}
- * honours {@code LC_NUMERIC} — so it computed {@code 47,7 kLOC} and compared it against the committed
- * {@code 47.7 kLOC}. CI runners are C/UTF-8, so the failure was invisible there and there was no drift to fix;
- * the guard was simply wrong on that machine.
+ * {@code LANG=de_DE.UTF-8} machine: its former shell implementation derived the production Java size through
+ * {@code awk}'s locale-sensitive {@code printf "%.1f"}, so it computed {@code 47,7 kLOC} and compared it against
+ * the committed {@code 47.7 kLOC}. CI runners were C/UTF-8, so the failure was invisible there and there was no
+ * drift to fix. The typed implementation now uses locale-independent {@code Number.toFixed} and Unicode-string
+ * splitting rather than asking shell tools to parse stateful text.
  *
- * <p><b>Why a property test rather than a pinned number.</b> Asserting the guard passes would couple this test
- * to the docs actually being fresh, which is the guard's own job and would make an honest drift fail here too.
- * Asserting the two runs AGREE tests only what is claimed — locale-invariance — and holds whether the docs are
- * fresh or stale, which is exactly the property that was missing.
+ * <p><b>Why the public command and runtime refusal are part of the property.</b> Comparing two direct
+ * implementation runs let a no-op shell launcher pass while CI executed that launcher. An always-on arm now
+ * drives the public command through stock Bash in both directions: the exact success line with real Node, and
+ * the shared runtime-gate refusal with an absent executable. The optional locale arm uses the same public path.
+ * That makes the test sensitive to live-document drift, so {@code deliveryGuardTest} declares the complete
+ * current document/asset denominator instead of caching the positive verdict across such a change.
  *
  * <p><b>The behavioural arm needs a comma-decimal locale to be INSTALLED, and it is not portable.</b> This class
  * first hard-coded {@code de_DE.UTF-8} and went red on CI, where that locale is not generated: bash emits
  * {@code setlocale: cannot change locale} on stderr and then runs in C anyway. Both halves of that matter —
  * the run fails, and it would be VACUOUS if the warning were merely filtered out, because then both arms would
  * be the same C run agreeing with itself. So the premise is established by measurement rather than assumed
- * ({@link #firstCommaDecimalLocale} asks {@code awk} to format a number and keeps the first locale that
- * actually answers with a comma), the arm is skipped where no such locale exists, and
- * {@link #theGuardPinsTheNumericLocaleItselfRatherThanInheritingIt} keeps a deletion of the fix failing
- * everywhere — including on the runners that cannot exercise the behaviour.
+ * ({@link #firstCommaDecimalLocale} asks Node's default formatter for a number and keeps the first locale that
+ * actually answers with a comma), the arm is skipped where no such locale exists, and the runtime-refusal plus
+ * source-wiring arms keep the command path visible everywhere — including runners that cannot express the hazard.
  */
 class InfographicFreshnessLocaleTest {
 
@@ -49,18 +51,34 @@ class InfographicFreshnessLocaleTest {
             "de_DE.UTF-8", "de_DE.utf8", "fr_FR.UTF-8", "fr_FR.utf8", "nl_NL.UTF-8", "pt_BR.UTF-8");
 
     private static final String GUARD = "scripts/check-infographic-freshness.sh";
+    private static final String IMPLEMENTATION = "scripts/typescript/check-infographic-freshness.ts";
+
+    @Test
+    void thePublicLauncherAlwaysCrossesTheRuntimeGateAndRunsTheTypedGuard(@TempDir Path temporary) throws Exception {
+        Path root = repositoryRoot();
+        Run underC = runGuard(root, "C", nodeExecutable());
+        Run missingNode = runGuard(root, "C", temporary.resolve("missing-node").toString());
+
+        assertEquals(0, underC.exitCode, underC.output);
+        assertEquals("infographic freshness: OK\n", underC.output,
+                "a no-op public launcher must not satisfy the behavioral guard");
+        assertEquals(2, missingNode.exitCode, missingNode.output);
+        assertTrue(missingNode.output.contains("Node.js >= 24.12.0 is required"), missingNode.output);
+    }
 
     @Test
     void theFreshnessGuardReachesTheSameVerdictUnderACommaDecimalLocale() throws Exception {
         Path root = repositoryRoot();
         String comma = firstCommaDecimalLocale().orElse(null);
-        assumeTrue(comma != null, "no comma-decimal locale is installed here, so this machine cannot reproduce "
-                + "the hazard at all; " + COMMA_DECIMAL_LOCALES + " were probed through awk and none formatted "
+        assumeTrue(comma != null, "no comma-decimal locale is available to Node, so this machine cannot reproduce "
+                + "the hazard at all; " + COMMA_DECIMAL_LOCALES + " were probed and none formatted "
                 + "1.5 with a comma");
 
-        Run underC = run(root, "C");
-        Run underComma = run(root, comma);
+        Run underC = runGuard(root, "C");
+        Run underComma = runGuard(root, comma);
 
+        assertEquals(0, underC.exitCode, underC.output);
+        assertEquals(0, underComma.exitCode, underComma.output);
         assertEquals(underC.exitCode, underComma.exitCode,
                 () -> "the guard's verdict changed with the developer's locale — C exited " + underC.exitCode
                         + ", " + comma + " exited " + underComma.exitCode
@@ -71,17 +89,21 @@ class InfographicFreshnessLocaleTest {
     }
 
     /**
-     * The always-on half. A machine without a comma-decimal locale cannot run the arm above, so on CI nothing
-     * would notice the fix being deleted — and the fix is one line in a shell script. This is a source-text
-     * check and is weak on purpose: it does not claim the guard is locale-invariant, only that it still pins
-     * the one variable that made it locale-dependent.
+     * The always-on structural half. A machine without a comma-decimal locale cannot run the arm above, so CI
+     * would notice a return to default-locale formatting. This source-text arm is deliberately narrow: the
+     * behavioural property above owns the verdict, while this one keeps the public shell path connected to the
+     * typed source and preserves the locale-independent numeric primitive.
      */
     @Test
-    void theGuardPinsTheNumericLocaleItselfRatherThanInheritingIt() throws Exception {
-        String script = Files.readString(repositoryRoot().resolve(GUARD), StandardCharsets.UTF_8);
-        assertTrue(script.contains("LC_NUMERIC=C"),
-                "the freshness guard must pin LC_NUMERIC itself — awk's printf honours it, so inheriting the "
-                        + "developer's makes the guard compute 47,7 where the committed doc says 47.7");
+    void theGuardUsesLocaleIndependentTypeScriptFormattingBehindItsStableLauncher() throws Exception {
+        Path root = repositoryRoot();
+        String launcher = Files.readString(root.resolve(GUARD), StandardCharsets.UTF_8);
+        String implementation = Files.readString(root.resolve(IMPLEMENTATION), StandardCharsets.UTF_8);
+        assertTrue(launcher.contains("run-typescript.sh") && launcher.contains("check-infographic-freshness.ts"),
+                "the public script path must delegate to the TypeScript implementation through the shared "
+                        + "Node-version gate");
+        assertTrue(implementation.contains(".toFixed(1)"),
+                "kLOC formatting must use JavaScript's locale-independent fixed decimal form");
     }
 
     private record Run(int exitCode, String output) {
@@ -90,12 +112,12 @@ class InfographicFreshnessLocaleTest {
     /**
      * The first candidate this machine can actually format a comma with — the premise the behavioural arm
      * needs, established rather than inferred. {@code locale -a} is deliberately not the oracle: it lists what
-     * is generated, while what matters is whether {@code awk}'s {@code printf} really switches separator, which
-     * is the exact mechanism the guard tripped over.
+     * is generated, while what matters is whether Node's default locale really differs — the ambient input a
+     * future {@code Intl.NumberFormat} regression would consume.
      */
     private static Optional<String> firstCommaDecimalLocale() throws Exception {
         for (String locale : COMMA_DECIMAL_LOCALES) {
-            var builder = new ProcessBuilder("awk", "BEGIN{printf \"%.1f\", 1.5}");
+            var builder = new ProcessBuilder("node", "-e", "process.stdout.write(new Intl.NumberFormat().format(1.5))");
             builder.environment().put("LANG", locale);
             builder.environment().put("LC_ALL", locale);
             Process process = builder.start();
@@ -108,18 +130,30 @@ class InfographicFreshnessLocaleTest {
         return Optional.empty();
     }
 
-    private static Run run(Path root, String locale) throws Exception {
-        var builder = new ProcessBuilder("bash", root.resolve(GUARD).toString());
+    private static Run runGuard(Path root, String locale) throws Exception {
+        return runGuard(root, locale, nodeExecutable());
+    }
+
+    private static Run runGuard(Path root, String locale, String node) throws Exception {
+        var builder = new ProcessBuilder("/bin/bash", root.resolve(GUARD).toString());
         builder.directory(root.toFile());
         builder.redirectErrorStream(true);
         Map<String, String> env = builder.environment();
-        // Both are set, and LC_ALL last: the script may legitimately export its own, and what is under test is
-        // that it does so rather than inheriting whatever the developer has.
+        // Both are set, and LC_ALL last: Node reads its default locale at process start, which is the ambient
+        // input this property must vary while the typed implementation keeps its output fixed.
         env.put("LANG", locale);
         env.put("LC_ALL", locale);
+        env.put("A12_NODE", node);
         Process process = builder.start();
         String output = new String(process.getInputStream().readAllBytes(), StandardCharsets.UTF_8);
         return new Run(process.waitFor(), output);
+    }
+
+    private static String nodeExecutable() throws Exception {
+        Process process = new ProcessBuilder("node", "-p", "process.execPath").start();
+        String executable = new String(process.getInputStream().readAllBytes(), StandardCharsets.UTF_8).trim();
+        assertEquals(0, process.waitFor(), "could not resolve the Node executable used by this test");
+        return executable;
     }
 
     private static Path repositoryRoot() {

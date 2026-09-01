@@ -28,6 +28,15 @@ else
     fail "Bash $BASH_VERSION is older than the repository's >= 3.2 script baseline ($BASH)"
 fi
 
+# Node 24.12 made direct TypeScript type stripping stable. The evidence and infographic tools execute their
+# checked-in .ts sources directly, so absence or an older runtime is a hard build-tool failure, not optional.
+if node_version="$(/bin/bash "$ROOT/scripts/run-typescript.sh" --check 2>&1)"; then
+    pass "Node.js runtime meets the >= 24.12.0 baseline — $node_version (${A12_NODE:-node})"
+else
+    fail "$node_version"
+    note "install the Node 24 LTS line on macOS with: brew install node@24"
+fi
+
 # JDK 21. build.sh pins it through java_home on macOS; elsewhere the caller owns JAVA_HOME.
 if [[ -x /usr/libexec/java_home ]]; then
     if jdk21="$(a12_pinned_jdk21_home 2>/dev/null)" && [[ -n "$jdk21" ]]; then
@@ -135,13 +144,6 @@ if command -v direnv >/dev/null 2>&1; then
 else
     note "direnv not installed; optional — ./build.sh sets the same two variables explicitly"
 fi
-if command -v node >/dev/null 2>&1; then
-    pass "node on PATH — $(node --version)"
-else
-    warn "node not on PATH; the JS lanes and verify-demos.sh need it"
-    note "a missing node reads as demo DRIFT rather than a missing tool, so check here first"
-fi
-
 printf '\n'
 if ((failures > 0)); then
     printf '%d check(s) failed. See docs/BUILD-ENVIRONMENT.md.\n\n' "$failures"

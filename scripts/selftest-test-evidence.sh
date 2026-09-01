@@ -8,11 +8,14 @@
 # `>` does not reset, which on 2026-08-31 credited a 6-second run with 13 directories and 2016 tests from
 # earlier runs. Both were invisible in the output. Hence the does-count / does-NOT-count pairing below, and the
 # cutoff cases that drive the arithmetic directly through `--print-cutoff`. A third regression made the
-# reporter abort under stock macOS Bash, so every reporter invocation below deliberately uses `/bin/bash`.
+# reporter abort under stock macOS Bash. The command is now a Bash-3.2 launcher over typed logic, so every
+# invocation below still deliberately uses `/bin/bash` and copies the complete launcher/runtime source set.
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 SCRIPT="$ROOT/scripts/test-evidence.sh"
+TYPESCRIPT_LAUNCHER="$ROOT/scripts/run-typescript.sh"
+IMPLEMENTATION="$ROOT/scripts/typescript/test-evidence.ts"
 
 failures=0
 check() {
@@ -31,8 +34,10 @@ trap cleanup EXIT
 mk_tree() {
   local tmp
   tmp="$(mktemp -d)"
-  mkdir -p "$tmp/scripts" "$tmp/build"
+  mkdir -p "$tmp/scripts/typescript" "$tmp/build"
   cp "$SCRIPT" "$tmp/scripts/test-evidence.sh"
+  cp "$TYPESCRIPT_LAUNCHER" "$tmp/scripts/run-typescript.sh"
+  cp "$IMPLEMENTATION" "$tmp/scripts/typescript/test-evidence.ts"
   trees+=("$tmp")
   printf '%s\n' "$tmp"
 }
@@ -94,6 +99,16 @@ check "both executed tasks are credited" \
   "13 70" "$(grep -oE '[0-9]+ tests' <<<"$out" | grep -oE '[0-9]+' | tr '\n' ' ' | sed 's/ $//')"
 check "nothing is withheld when every directory has an executing task" \
   "clean" "$(grep -q 'withheld' <<<"$out" && echo withheld || echo clean)"
+
+tmp="$(mk_tree)"
+mkdir -p "$tmp/cli/build/test-results/docGuardTest"
+printf '> Task :cli:docGuardTest\nBUILD SUCCESSFUL in 2s\n' > "$tmp/build/run.log"
+sleep 1
+printf "<testsuite name='Quoted' tests = '7' failures = '0' errors = '0'/>\n" \
+  > "$tmp/cli/build/test-results/docGuardTest/TEST-Quoted.xml"
+out="$(run "$tmp")"
+check "valid single-quoted XML attributes retain their counts" \
+  "7" "$(grep -oE '[0-9]+ tests' <<<"$out" | head -1 | grep -oE '[0-9]+')"
 
 # ---- the cutoff arithmetic, driven directly --------------------------------------------------------------------
 echo 'the cutoff — derived from the log verdict, not from metadata that `>` does not reset'

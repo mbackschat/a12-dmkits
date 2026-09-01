@@ -158,6 +158,14 @@ jobs:
         with:
           enable-cache: false
 
+      # cli-custom-types.md invokes the bundled custom-JS worker through system Node. Pin it explicitly so the
+      # native gate cannot inherit a different worker runtime from a hosted-image refresh.
+      - name: Set up Node.js for the native custom-JS demo
+        if: startsWith(matrix.target, 'linux-')
+        uses: actions/setup-node@v6
+        with:
+          node-version: '24.20.0'
+
       - name: Native verification gate (Linux)
         if: startsWith(matrix.target, 'linux-')
         working-directory: a12-dmkits

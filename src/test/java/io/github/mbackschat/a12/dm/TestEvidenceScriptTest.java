@@ -19,8 +19,9 @@ import org.junit.jupiter.api.Test;
  * first version whose cutoff marked every file stale, and a cutoff read from the log's birth time, which
  * {@code >} does not reset when it truncates an existing path. The second credited a six-second run with 13
  * result directories and 2016 tests from earlier runs on 2026-08-31. A third regression made the reporter
- * abort under stock macOS Bash, so this wiring test deliberately selects {@code /bin/bash} rather than the
- * newer Bash that may appear first on {@code PATH}.
+ * abort under stock macOS Bash. The public command is now a Bash-3.2-compatible launcher over a TypeScript
+ * implementation, so this wiring test still selects {@code /bin/bash}: the migration must preserve the command
+ * boundary as well as the evidence semantics.
  *
  * <p><b>What is asserted, and what deliberately is not.</b> This is a <i>wiring</i> test: it executes the
  * selftest and requires every case to pass. The cases live in the script, next to the behaviour they check,
@@ -29,7 +30,7 @@ import org.junit.jupiter.api.Test;
  */
 class TestEvidenceScriptTest {
 
-    /** Vacuity floor: the script carried 10 cases on 2026-08-31, over the does-count and does-NOT-count halves. */
+    /** Vacuity floor: the script carries 11 cases over the does-count and does-NOT-count halves. */
     private static final int MIN_CASES = 8;
 
     @Test
@@ -50,6 +51,20 @@ class TestEvidenceScriptTest {
 
         assertEquals(0, exitCode, () -> "scripts/selftest-test-evidence.sh failed. That script is what stops a "
                 + "build verdict being believed on the strength of result files an earlier run wrote:\n" + output);
+    }
+
+    @Test
+    void theStableCommandDelegatesToTheTypedImplementation() throws Exception {
+        Path root = repositoryRoot();
+        String launcher = Files.readString(root.resolve("scripts/test-evidence.sh"), StandardCharsets.UTF_8);
+        String implementation = Files.readString(
+                root.resolve("scripts/typescript/test-evidence.ts"), StandardCharsets.UTF_8);
+
+        assertTrue(launcher.contains("run-typescript.sh") && launcher.contains("test-evidence.ts"),
+                "the public evidence command must remain stable while its stateful logic lives in TypeScript");
+        assertTrue(implementation.contains("type TaskState") && implementation.contains("Map<"),
+                "the migration must actually model task state in the typed implementation, not hide shell logic "
+                        + "behind a TypeScript trampoline");
     }
 
     private static Path repositoryRoot() {

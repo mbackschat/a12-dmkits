@@ -44,8 +44,9 @@ class GateTierWiringTest {
     }
 
     @Test
-    void infographicFreshnessBlocksPaidSetupWithoutStartingASecondJob() throws IOException {
+    void infographicFreshnessSetsUpPinnedNodeThenBlocksHeavySetupWithoutASecondJob() throws IOException {
         String ci = Files.readString(locate(".github/workflows/ci.yml"));
+        String specification = Files.readString(locate("docs/INFOGRAPHICS.md"));
         int buildStart = ci.indexOf("  build:");
         assertTrue(buildStart >= 0, "missing CI build job");
         assertFalse(ci.contains("  infographic-preflight:"),
@@ -53,19 +54,41 @@ class GateTierWiringTest {
 
         String build = ci.substring(buildStart);
         int checkout = build.indexOf("- name: Checkout rulekit");
+        int nodeSetup = build.indexOf("- name: Set up Node for repository TypeScript tools");
         int preflight = build.indexOf("- name: Verify infographic claims, placements, and public copies");
         int kernelCheckout = build.indexOf("- name: Checkout the kernel bootstrap kit");
         int javaSetup = build.indexOf("- name: Set up JDK 21 + 25");
         int gradleSetup = build.indexOf("- name: Set up Gradle cache");
         int kernelBootstrap = build.indexOf("- name: Bootstrap the A12 kernel from public sources");
-        assertTrue(checkout >= 0 && checkout < preflight,
-                "the preflight needs only the already-required rulekit checkout");
+        assertTrue(checkout >= 0 && checkout < nodeSetup && nodeSetup < preflight,
+                "the TypeScript preflight needs only the checkout and the repository's pinned Node runtime");
         assertTrue(preflight < kernelCheckout && preflight < javaSetup && preflight < gradleSetup
                         && preflight < kernelBootstrap,
-                "the preflight must fail before Kernel checkout, toolchain setup, cache restore, or bootstrap");
+                "the preflight must fail before Kernel checkout, JDK/Gradle setup, cache restore, or bootstrap");
         assertTrue(build.substring(preflight, kernelCheckout)
                         .contains("run: ./scripts/check-infographic-freshness.sh"),
-                "the first post-checkout step must execute the shell-only infographic freshness guard");
+                "the first post-Node step must execute the stable infographic launcher");
+        assertTrue(specification.contains("checks out rulekit, sets up the repository-pinned Node runtime, and "
+                        + "then runs that stable shell command"),
+                "the infographic synchronization contract must publish the guarded CI ordering");
+    }
+
+    @Test
+    void infographicBehavioralGuardDeclaresItsCompleteLiveInputSet() throws IOException {
+        String delivery = gradleTask(Files.readString(locate("build.gradle")), "deliveryGuardTest");
+        for (String input : List.of(
+                "README.md",
+                "docs/INFOGRAPHICS.md",
+                "interpreter/public-release/PERFORMANCE.md",
+                "plugin/README.md",
+                "interpreter/public-release/README.md",
+                ".github/workflows/ci.yml",
+                "assets/infographics/*.png",
+                "plugin/assets/infographics/*.png",
+                "interpreter/public-release/assets/infographics/*.png")) {
+            assertTrue(delivery.contains(input),
+                    "deliveryGuardTest executes the live infographic command, so it must invalidate on " + input);
+        }
     }
 
     @Test

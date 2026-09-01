@@ -39,9 +39,15 @@ jobs:
         with:
           path: a12-dmkits
 
-      # Shell-only and first after the checkout already required by every green run. A failure stops before the
-      # Kernel checkout, JDK and Gradle setup, cache restore, or bootstrap, without paying for a second job and
-      # duplicate checkout on every successful run.
+      # Repository TypeScript tools execute directly through Node's stable type stripping. Pin the exact LTS
+      # patch here once; the same runtime is reused by interpreter JS tests and the custom-JS demo later.
+      - name: Set up Node for repository TypeScript tools
+        uses: actions/setup-node@v6
+        with:
+          node-version: '24.20.0'
+
+      # First repository check after its one required runtime setup. A failure still stops before Kernel checkout,
+      # JDK and Gradle setup, cache restore, or bootstrap, without paying for a second job and duplicate checkout.
       - name: Verify infographic claims, placements, and public copies
         working-directory: a12-dmkits
         run: ./scripts/check-infographic-freshness.sh
@@ -126,11 +132,6 @@ jobs:
       # and verifies them IN PARALLEL. Needs Node (the --custom-*-js worker demo) + uv (`uvx showboat`);
       # jq is on the runner. verify-demos.sh puts the repo bin/ shim on PATH so the demos' bare `dmtool`
       # resolves to the freshly-built JVM launcher.
-      - name: Set up Node (for the --custom-conditions-js / --custom-field-types-js worker + its demo)
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-
       - name: Set up uv (for uvx showboat)
         uses: astral-sh/setup-uv@v6
         with:

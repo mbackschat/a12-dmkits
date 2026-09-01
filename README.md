@@ -1009,7 +1009,7 @@ The A12 Kernel is resolved from your **local Maven repository** (`~/.m2`) — no
 ./bootstrap.sh
 ```
 
-This publishes kernel `30.8.1` (Java only) to `mavenLocal`. You also need **JDK 21** — the build toolchain is pinned to 21 (a newer JDK isn't used even if installed; [why](docs/BUILD-ENVIRONMENT.md) — Groovy 3.0.25 + the validated baseline). GraalVM 25 is used only for the native build.
+This publishes kernel `30.8.1` (Java only) to `mavenLocal`. You also need **JDK 21** — the build toolchain is pinned to 21 (a newer JDK isn't used even if installed; [why](docs/BUILD-ENVIRONMENT.md) — Groovy 3.0.25 + the validated baseline) — and **Node >=24.12.0** for the repository's checked-in TypeScript tools and Node-backed demos. GraalVM 25 is used only for the native build. Run [`scripts/doctor.sh`](scripts/doctor.sh) to check the selected Bash, Node, Java, Gradle-home, hook, and local-Kernel state together.
 
 ### Maintainer agent setup (optional)
 
@@ -1059,7 +1059,7 @@ brew install actionlint
 git config core.hooksPath .githooks
 ```
 
-The `commit-msg` hook hard-rejects mechanical convention violations and reminds on the judgment rule. The `pre-commit` hook refuses to stage build output or log files, and refuses a commit whose staged files can drift a CI-gated doc unless the doc guards have run since — the latter because `-Pfast` skips those guards by design, so the inner loop cannot otherwise see that class of drift. The `pre-push` hook runs the shell-only infographic freshness and CI-cost-ordering check, then validates every GitHub Actions workflow with `actionlint`; it refuses when `actionlint` is missing instead of claiming a check it could not perform. Native Git hooks make this neutral to the caller: terminal Git, an IDE, Claude Code, and Codex CLI all trigger the same gate.
+The `commit-msg` hook hard-rejects mechanical convention violations and reminds on the judgment rule. The `pre-commit` hook refuses to stage build output or log files, and refuses a commit whose staged files can drift a CI-gated doc unless the doc guards have run since — the latter because `-Pfast` skips those guards by design, so the inner loop cannot otherwise see that class of drift. The `pre-push` hook runs the typed infographic freshness and CI-cost-ordering check through its stable shell launcher, then validates every GitHub Actions workflow with `actionlint`; it refuses when Node or `actionlint` is missing instead of claiming a check it could not perform. Native Git hooks make this neutral to the caller: terminal Git, an IDE, Claude Code, and Codex CLI all trigger the same gate.
 
 **The local hooks are the early half of a defence, never the whole of one.** They are unwired in a fresh clone until you run the command above, and `--no-verify` bypasses them on purpose. That is deliberate: a local hook must not be the only thing standing between a mistake and the repository, so each has an authoritative counterpart in the test and CI estate. `scripts/doctor.sh` reports both hook wiring and `actionlint` availability. Source statistics are intentionally not a push or CI concern: the maintainer-only Tokei updater is run locally, and each release assembler checks the README it publishes. To apply the commit-message check across all your repos, point your global Git template at it — copy that hook into `~/.git-template/hooks` and set `git config --global init.templateDir ~/.git-template`.
 

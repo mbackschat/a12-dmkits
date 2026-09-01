@@ -225,6 +225,7 @@ tasks.register('leakGuardTest', Test) {
         // A copied mirror workflow is as executable as a live workflow once published. Derive this denominator
         // from Git as well, so neither tree can silently reintroduce a moving hosted-runner label.
         includeTestsMatching 'io.github.mbackschat.a12.dm.RunnerImagePinGuardTest'
+        includeTestsMatching 'io.github.mbackschat.a12.dm.NodeRuntimePinGuardTest'
     }
 }
 
@@ -504,6 +505,7 @@ tasks.register('deliveryGuardTest', Test) {
         includeTestsMatching 'io.github.mbackschat.a12.dm.LaneGuardScriptTest'
         includeTestsMatching 'io.github.mbackschat.a12.dm.TestEvidenceScriptTest'
         includeTestsMatching 'io.github.mbackschat.a12.dm.InfographicFreshnessLocaleTest'
+        includeTestsMatching 'io.github.mbackschat.a12.dm.TypeScriptRuntimeLauncherTest'
     }
     guardInputs(it, [
             'release perf gate'       : file('scripts/release-perf-gate.sh'),
@@ -523,6 +525,24 @@ tasks.register('deliveryGuardTest', Test) {
             'pre-push hook'           : file('.githooks/pre-push'),
             'pre-push hook self-test' : file('scripts/selftest-prepush-ci.sh'),
             'infographic preflight'   : file('scripts/check-infographic-freshness.sh'),
+            'infographic implementation': file('scripts/typescript/check-infographic-freshness.ts'),
+            'TypeScript launcher'     : file('scripts/run-typescript.sh'),
+            'TypeScript runtime consumers': files(
+                    'scripts/verify-demos.sh',
+                    'scripts/native-gate.sh',
+                    'cli/src/main/java/io/github/mbackschat/a12/dm/cli/interp/CustomJsWorker.java'),
+            'infographic live documents': files(
+                    'README.md',
+                    'docs/INFOGRAPHICS.md',
+                    'interpreter/public-release/PERFORMANCE.md',
+                    'plugin/README.md',
+                    'interpreter/public-release/README.md',
+                    '.github/workflows/ci.yml'),
+            'infographic live assets': fileTree('.') {
+                include 'assets/infographics/*.png'
+                include 'plugin/assets/infographics/*.png'
+                include 'interpreter/public-release/assets/infographics/*.png'
+            },
             'Gradle environment'      : file('scripts/gradle-environment.sh'),
             // JdkPinScriptTest executes this selftest, which sources gradle-environment.sh — so BOTH are
             // runtime inputs, the same pairing as the doc-guard hook above.
@@ -532,10 +552,11 @@ tasks.register('deliveryGuardTest', Test) {
             // every invocation, so a break here breaks every build, not just this lane.
             'lane guard'              : file('scripts/lane-guard.sh'),
             'lane guard self-test'    : file('scripts/selftest-lane-guard.sh'),
-            // TestEvidenceScriptTest executes this selftest, which copies test-evidence.sh into fabricated
-            // repos — BOTH are runtime inputs, the same pairing as the lane guard above. This tool's output is
-            // read AS evidence, so a silent break in it is believed rather than noticed.
+            // TestEvidenceScriptTest executes this selftest, which copies the shell command, shared Node gate,
+            // and TypeScript implementation into fabricated repos — all are runtime inputs. This tool's output
+            // is read AS evidence, so a silent break in it is believed rather than noticed.
             'evidence reporter'       : file('scripts/test-evidence.sh'),
+            'evidence implementation': file('scripts/typescript/test-evidence.ts'),
             'evidence self-test'      : file('scripts/selftest-test-evidence.sh'),
             'native build contract'   : file('cli/build.gradle'),
             'native no-Java smoke'    : file('scripts/native-no-java-smoke.sh'),
@@ -691,6 +712,7 @@ tasks.register('docGuardTest', Test) {
             'cache smoke'      : file('scripts/verify-build-cache.sh'),
             'demo verifier'    : file('scripts/verify-demos.sh'),
             'CI workflow'      : file('.github/workflows/ci.yml'),
+            'infographic specification': file('docs/INFOGRAPHICS.md'),
             'nightly workflow' : file('.github/workflows/nightly-performance.yml'),
             'perf launcher'    : file('scripts/perf.sh'),
             // Both joined the JDK-pin denominator when they stopped re-encoding `java_home -v 21`. The JS one
@@ -707,6 +729,7 @@ tasks.register('docGuardTest', Test) {
             // script would leave the lane UP-TO-DATE with its verdicts unchecked — which is how its first
             // version shipped with two wrong ones.
             'doctor'           : file('scripts/doctor.sh'),
+            'TypeScript runtime gate': file('scripts/run-typescript.sh'),
             // ObligationsScriptTest executes the selftest, which copies obligations.sh into fabricated repos —
             // so BOTH are runtime inputs. Declared together: with only the selftest declared, editing the rule
             // it checks would leave this lane UP-TO-DATE and the new behaviour unverified.

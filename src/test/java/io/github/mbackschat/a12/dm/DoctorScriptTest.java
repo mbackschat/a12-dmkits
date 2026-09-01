@@ -42,6 +42,7 @@ class DoctorScriptTest {
         var run = runDoctorWith(home);
 
         assertTrue(run.output().contains("Bash interpreter meets the >= 3.2 baseline — "), run.output());
+        assertTrue(run.output().contains("Node.js runtime meets the >= 24.12.0 baseline — "), run.output());
         assertTrue(run.output().contains("the machine-default home injects nothing into this build"),
                 run.output());
         assertEquals(0, run.exitCode(), "a clean machine must not fail the doctor:\n" + run.output());
@@ -94,6 +95,25 @@ class DoctorScriptTest {
     }
 
     @Test
+    void aMissingRequiredNodeRuntimeFails(@TempDir Path home) throws Exception {
+        var run = runDoctorWith(home, null, WIRED, home.resolve("missing-node").toString());
+
+        assertTrue(run.output().contains("Node.js >= 24.12.0 is required"), run.output());
+        assertEquals(1, run.exitCode(), "the repository's TypeScript tools cannot run without Node:\n" + run.output());
+    }
+
+    @Test
+    void anOldNodeRuntimeFailsWithTheRequiredBoundary(@TempDir Path home) throws Exception {
+        Path node = executable(home.resolve("node-20"), "#!/bin/sh\nprintf '20.20.2\\n'\n");
+
+        var run = runDoctorWith(home, null, WIRED, node.toString());
+
+        assertTrue(run.output().contains("Node.js 20.20.2 is older than the required >= 24.12.0"), run.output());
+        assertEquals(1, run.exitCode(), "an EOL Node without stable direct TypeScript support must fail:\n"
+                + run.output());
+    }
+
+    @Test
     void theAgentNeutralPushPrerequisitesAreReported(@TempDir Path home) throws Exception {
         var run = runDoctorWith(home, home.resolve("missing-actionlint").toString(), WIRED);
 
@@ -129,14 +149,20 @@ class DoctorScriptTest {
     private static Run runDoctorWith(Path home, String actionlint, String hooksPath)
             throws IOException, InterruptedException {
         Files.createDirectories(home.resolve(".m2/repository/com/mgmtp"));
-        return runDoctor(home, actionlint, hooksPath);
+        return runDoctor(home, actionlint, hooksPath, null);
+    }
+
+    private static Run runDoctorWith(Path home, String actionlint, String hooksPath, String node)
+            throws IOException, InterruptedException {
+        Files.createDirectories(home.resolve(".m2/repository/com/mgmtp"));
+        return runDoctor(home, actionlint, hooksPath, node);
     }
 
     private static Run runDoctor(Path home) throws IOException, InterruptedException {
-        return runDoctor(home, null, WIRED);
+        return runDoctor(home, null, WIRED, null);
     }
 
-    private static Run runDoctor(Path home, String actionlint, String hooksPath)
+    private static Run runDoctor(Path home, String actionlint, String hooksPath, String node)
             throws IOException, InterruptedException {
         Path root = repositoryRoot();
         var builder = new ProcessBuilder("/bin/bash", root.resolve("scripts/doctor.sh").toString());
@@ -152,6 +178,9 @@ class DoctorScriptTest {
         if (actionlint != null) {
             builder.environment().put("ACTIONLINT", actionlint);
         }
+        if (node != null) {
+            builder.environment().put("A12_NODE", node);
+        }
 
         Process process = builder.start();
         String output = new String(process.getInputStream().readAllBytes(), StandardCharsets.UTF_8)
@@ -163,6 +192,12 @@ class DoctorScriptTest {
         Path initDirectory = home.resolve(".gradle/init.d");
         Files.createDirectories(initDirectory);
         Files.writeString(initDirectory.resolve(name), body + "\n");
+    }
+
+    private static Path executable(Path path, String body) throws IOException {
+        Files.writeString(path, body);
+        assertTrue(path.toFile().setExecutable(true), "could not make fake Node executable: " + path);
+        return path;
     }
 
     private static Path repositoryRoot() {

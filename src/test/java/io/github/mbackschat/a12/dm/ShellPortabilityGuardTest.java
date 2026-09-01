@@ -38,8 +38,8 @@ import org.junit.jupiter.api.Test;
  * <p><strong>The rule.</strong> A script containing BOTH spellings is handling the split deliberately (the
  * repaired hook probes one, validates the reading, and refuses when neither answers) and passes. A script
  * containing only one is flagged: use that probe shape, or take the timestamp somewhere dialect-free —
- * {@code find -newer} for a comparison, {@code python3}'s {@code os.stat} for a number (what
- * {@code scripts/test-evidence.sh} does).
+ * {@code find -newer} for a comparison, or a cross-platform runtime filesystem API once the stateful logic has
+ * moved out of shell (what the typed {@code scripts/test-evidence.sh} implementation does).
  *
  * <p>The other contract is the stock-macOS Bash 3.2 baseline. A script using {@code mapfile},
  * {@code readarray}, or an associative-array declaration only works in Bash 4+, while an
