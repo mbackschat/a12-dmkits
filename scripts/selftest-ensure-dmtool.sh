@@ -11,10 +11,11 @@
 set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 INSTALLER="$ROOT/scripts/ensure-dmtool.sh"
-# shellcheck source=release-assets.sh
+# shellcheck source=./scripts/release-assets.sh
 . "$ROOT/scripts/release-assets.sh"
 WORK="$(mktemp -d)"; trap 'rm -rf "$WORK"' EXIT
-export RK_SELFTEST_BINARY_ASSETS="${RK_BINARY_ASSETS[*]}"
+RK_SELFTEST_BINARY_ASSETS="$(rk_binary_assets)"
+export RK_SELFTEST_BINARY_ASSETS
 
 # --- a fake `curl` release server -------------------------------------------------------------------
 # Serves, for any /releases/download/vX.Y.Z/ URL: the asset = a shell script printing "a12-dmkits X.Y.Z",
@@ -73,7 +74,7 @@ run_at() {
   local ver="$1"; local copy="$WORK/installer-$ver.sh" envf="$WORK/env-$ver"; : > "$envf"
   sed -E "s/^VERSION=\"v[0-9.]+\"/VERSION=\"$ver\"/" "$INSTALLER" > "$copy"
   cp "$ROOT/scripts/release-assets.sh" "$WORK/release-assets.sh"
-  CLAUDE_ENV_FILE="$envf" bash "$copy" || fail "installer exited non-zero at $ver"
+  CLAUDE_ENV_FILE="$envf" /bin/dash "$copy" || fail "installer exited non-zero at $ver"
   resolved_dir="$(sed -nE 's#^export PATH="([^:]+):.*#\1#p' "$envf" | tail -1)"
   [[ -n "$resolved_dir" ]] || fail "installer put nothing on PATH at $ver"
 }
@@ -110,15 +111,15 @@ grep -q "v9.9.3 $RK_LINUX_ARM64_ASSET" "$FETCH_LOG" \
 CODEX_TMP="$WORK/codex-tmp"; mkdir -p "$CODEX_TMP"
 DEV_BINARY="$WORK/dev-dmtool"; printf '#!/bin/sh\necho "a12-dmkits 9.9.3"\n' > "$DEV_BINARY"; chmod +x "$DEV_BINARY"
 unset PLUGIN_DATA CLAUDE_PLUGIN_DATA
-fallback_out="$(HOME=/dev/null TMPDIR="$CODEX_TMP" RK_DMTOOL_LOCAL="$DEV_BINARY" bash "$INSTALLER" 2>&1)"
-fallback_path="$CODEX_TMP/dmtool-plugin-${UID:-user}/bin/dmtool"
+fallback_out="$(HOME=/dev/null TMPDIR="$CODEX_TMP" RK_DMTOOL_LOCAL="$DEV_BINARY" /bin/dash "$INSTALLER" 2>&1)"
+fallback_path="$CODEX_TMP/dmtool-plugin-$(id -u)/bin/dmtool"
 [[ "$fallback_out" == *"dmtool ready: $fallback_path"* ]] \
   || fail "missing plugin-data variables did not select the writable temporary cache: $fallback_out"
 [[ -x "$fallback_path" ]] || fail "temporary-cache fallback did not produce an executable stable path"
 
 # 6. The installer deliberately leaves a session alive on delivery failure, but it must never print a false
 #    ready path. /dev/null is a deterministic non-directory on every supported POSIX release host.
-unwritable_out="$(PLUGIN_DATA=/dev/null/dmtool CLAUDE_PLUGIN_DATA= RK_DMTOOL_LOCAL="$DEV_BINARY" bash "$INSTALLER" 2>&1)"
+unwritable_out="$(PLUGIN_DATA=/dev/null/dmtool CLAUDE_PLUGIN_DATA='' RK_DMTOOL_LOCAL="$DEV_BINARY" /bin/dash "$INSTALLER" 2>&1)"
 [[ "$unwritable_out" != *"dmtool ready:"* ]] \
   || fail "an unusable cache printed a false ready path: $unwritable_out"
 [[ "$unwritable_out" == *"dmtool plugin:"* ]] \
@@ -127,7 +128,7 @@ unwritable_out="$(PLUGIN_DATA=/dev/null/dmtool CLAUDE_PLUGIN_DATA= RK_DMTOOL_LOC
 # 7. Integrity refusal is a delivery failure, not a reason to terminate the agent's session. It must remove
 #    the rejected binary, warn, return success, and never claim readiness.
 set +e
-checksum_out="$(PLUGIN_DATA="$WORK/bad-checksum" CLAUDE_PLUGIN_DATA= FAKE_BAD_CHECKSUM=1 bash "$INSTALLER" 2>&1)"
+checksum_out="$(PLUGIN_DATA="$WORK/bad-checksum" CLAUDE_PLUGIN_DATA='' FAKE_BAD_CHECKSUM=1 /bin/dash "$INSTALLER" 2>&1)"
 checksum_status=$?
 set -e
 [[ $checksum_status -eq 0 ]] \
@@ -140,7 +141,7 @@ set -e
 for checksum_mode in download-fails missing-entry; do
   checksum_data="$WORK/checksum-$checksum_mode"
   set +e
-  checksum_out="$(PLUGIN_DATA="$checksum_data" CLAUDE_PLUGIN_DATA= FAKE_CHECKSUM_MODE="$checksum_mode" bash "$INSTALLER" 2>&1)"
+  checksum_out="$(PLUGIN_DATA="$checksum_data" CLAUDE_PLUGIN_DATA='' FAKE_CHECKSUM_MODE="$checksum_mode" /bin/dash "$INSTALLER" 2>&1)"
   checksum_status=$?
   set -e
   [[ $checksum_status -eq 0 ]] \
@@ -161,7 +162,7 @@ mkdir -p "$(dirname "$legacy_dest")"
 printf '#!/bin/sh\necho "a12-dmkits 9.9.4"\n' > "$legacy_dest"
 chmod +x "$legacy_dest"
 set +e
-legacy_out="$(PLUGIN_DATA="$legacy_data" CLAUDE_PLUGIN_DATA= FAKE_CHECKSUM_MODE=download-fails bash "$WORK/installer-v9.9.4.sh" 2>&1)"
+legacy_out="$(PLUGIN_DATA="$legacy_data" CLAUDE_PLUGIN_DATA='' FAKE_CHECKSUM_MODE=download-fails /bin/dash "$WORK/installer-v9.9.4.sh" 2>&1)"
 legacy_status=$?
 set -e
 [[ $legacy_status -eq 0 ]] || fail "legacy cache verification hard-failed the session: $legacy_out"
@@ -174,7 +175,7 @@ mkdir -p "$(dirname "$legacy_dest")"
 printf '#!/bin/sh\necho "a12-dmkits 9.9.4"\n' > "$legacy_dest"
 chmod +x "$legacy_dest"
 : > "$FETCH_LOG"
-legacy_out="$(PLUGIN_DATA="$legacy_data" CLAUDE_PLUGIN_DATA= bash "$WORK/installer-v9.9.4.sh" 2>&1)"
+legacy_out="$(PLUGIN_DATA="$legacy_data" CLAUDE_PLUGIN_DATA='' /bin/dash "$WORK/installer-v9.9.4.sh" 2>&1)"
 [[ "$legacy_out" == *"dmtool ready:"* ]] || fail "a checksum-valid legacy cache was not recovered: $legacy_out"
 [[ "$(grep -c v9.9.4 "$FETCH_LOG")" -eq 0 ]] \
   || fail "a checksum-valid legacy cache unnecessarily re-downloaded the binary"

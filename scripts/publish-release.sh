@@ -32,9 +32,9 @@
 set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT"
-# shellcheck source=release-assets.sh
+# shellcheck source=./scripts/release-assets.sh
 . "$ROOT/scripts/release-assets.sh"
-# shellcheck source=release-git-identity.sh
+# shellcheck source=./scripts/release-git-identity.sh
 . "$ROOT/scripts/release-git-identity.sh"
 
 MIRROR="mbackschat/a12-dmtool-releases"
@@ -97,9 +97,9 @@ if [[ "$GO_LIVE" == 1 ]]; then
   say "Verify all assets present before going live"
   assets="$(gh release view "$TAG" --repo "$MIRROR" --json assets -q '.assets[].name' | sort)"
   echo "$assets"
-  for a in "${RK_RELEASE_ASSETS[@]}"; do
+  while IFS= read -r a; do
     grep -qx "$a" <<<"$assets" || { echo "MISSING asset: $a — is the CI run finished?" >&2; exit 1; }
-  done
+  done <<<"$(rk_release_assets)"
   say "Verify SHA256SUMS covers every binary"
   tmp="$(mktemp -d)"; ( cd "$tmp"
     gh release download "$TAG" --repo "$MIRROR" --pattern 'dmtool-*'

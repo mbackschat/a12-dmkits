@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+#!/bin/sh
 # On-demand installer — fetch the `dmtool` native CLI when the agent needs it. The bundled skill runs THIS
 # script (it is NOT a session hook): when `dmtool` is `command not found`, the skill instructs the agent to
 # run it, so the binary is delivered the moment it's first needed — including the very session the plugin was
@@ -29,20 +29,21 @@
 # session continues; `dmtool` just won't be on PATH). The runtime-eval verbs (model eval / rule eval /
 # model compute / model seed / model expand) run on the native binary via the kernel-free interpreter — the sole runtime
 # eval engine, so no JVM is needed (see the project docs).
-set -uo pipefail
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+set -u
+SCRIPT_DIR="$(CDPATH='' cd "$(dirname "$0")" && pwd)"
 
 VERSION="v0.13.0"
 REPO="mbackschat/a12-dmtool-releases"
 # Hook hosts provide plugin-specific data dirs, but a skill-launched shell is not a hook: current Codex does
 # not inject PLUGIN_DATA there. Its workspace sandbox also need not admit HOME. Fall back to the host's
 # writable temporary directory so on-demand delivery works in the clean session that selected the skill.
-if [[ -n "${CLAUDE_PLUGIN_DATA:-}" ]]; then
+if [ -n "${CLAUDE_PLUGIN_DATA:-}" ]; then
   DATA="$CLAUDE_PLUGIN_DATA"
-elif [[ -n "${PLUGIN_DATA:-}" ]]; then
+elif [ -n "${PLUGIN_DATA:-}" ]; then
   DATA="$PLUGIN_DATA"
 else
-  DATA="${TMPDIR:-/tmp}/dmtool-plugin-${UID:-user}"
+  user_id="$(id -u 2>/dev/null || printf user)"
+  DATA="${TMPDIR:-/tmp}/dmtool-plugin-$user_id"
 fi
 PLUGIN_ROOT_DIR="${CLAUDE_PLUGIN_ROOT:-${PLUGIN_ROOT:-.}}"
 ENV_FILE="${CLAUDE_ENV_FILE:-${CODEX_ENV_FILE:-}}"
@@ -58,15 +59,19 @@ mkdir -p "$BIN_DIR" 2>/dev/null || { warn "cache directory is not writable: $BIN
 # Best-effort PATH via the host env-file if one is offered (honored only by some hosts / some events). The
 # binary is always at the deterministic $STABLE path, so the agent can invoke `dmtool` there directly — the
 # skill instructs exactly that, because a script the agent runs mid-session can't reliably inject PATH.
-put_on_path() { [[ -n "$ENV_FILE" ]] && echo "export PATH=\"$BIN_DIR:\$PATH\"" >> "$ENV_FILE"; }
+put_on_path() {
+  if [ -n "$ENV_FILE" ]; then
+    printf 'export PATH="%s:$%s"\n' "$BIN_DIR" 'PATH' >> "$ENV_FILE"
+  fi
+}
 # Repoint the stable path at the resolved binary (tracks the pinned VERSION, never stale across a bump — it
 # also replaces any legacy fixed-path binary left by an older install), export PATH best-effort, and PRINT
 # the absolute path so the agent can run dmtool there even when PATH injection didn't take.
 finalize() {
-  [[ -x "$DEST" ]] || { warn "resolved binary is not executable: $DEST"; return 1; }
+  [ -x "$DEST" ] || { warn "resolved binary is not executable: $DEST"; return 1; }
   ln -sf "$DEST" "$STABLE" 2>/dev/null \
     || { warn "cannot update the stable binary path: $STABLE"; return 1; }
-  [[ -x "$STABLE" ]] || { warn "stable binary path is not executable: $STABLE"; return 1; }
+  [ -x "$STABLE" ] || { warn "stable binary path is not executable: $STABLE"; return 1; }
   put_on_path
   echo "dmtool ready: $STABLE"
 }
@@ -75,20 +80,26 @@ finalize() {
 prune_stale_cache() {
   rm -f "$DATA/SHA256SUMS" 2>/dev/null || true
   for d in "$BIN_ROOT"/*/; do
-    [[ -d "$d" && "$d" != "$BIN_DIR/" ]] && rm -rf "$d"
+    if [ -d "$d" ] && [ "$d" != "$BIN_DIR/" ]; then
+      rm -rf "$d"
+    fi
   done
 }
 
 # --- DEV fallback: explicit override, then a sibling source-repo native build -------------------------
-dev_binary() {
-  if [[ -n "${RK_DMTOOL_LOCAL:-}" && -x "${RK_DMTOOL_LOCAL}" ]]; then echo "${RK_DMTOOL_LOCAL}"; return 0; fi
-  local guess="${PLUGIN_ROOT_DIR}/../cli/build/native/nativeCompile/dmtool"
-  if [[ -x "$guess" ]]; then
-    local dir; dir="$(cd "$(dirname "$guess")" && pwd)"   # absolute path
-    echo "$dir/dmtool"; return 0
+dev_binary() (
+  if [ -n "${RK_DMTOOL_LOCAL:-}" ] && [ -x "${RK_DMTOOL_LOCAL}" ]; then
+    printf '%s\n' "${RK_DMTOOL_LOCAL}"
+    return 0
+  fi
+  guess="${PLUGIN_ROOT_DIR}/../cli/build/native/nativeCompile/dmtool"
+  if [ -x "$guess" ]; then
+    dir="$(CDPATH='' cd "$(dirname "$guess")" && pwd)"   # absolute path
+    printf '%s\n' "$dir/dmtool"
+    return 0
   fi
   return 1
-}
+)
 if dev="$(dev_binary)"; then
   ln -sf "$dev" "$DEST" 2>/dev/null \
     || { warn "cannot install the local binary at: $DEST"; exit 0; }
@@ -98,8 +109,8 @@ fi
 
 # --- PRODUCTION: download from the public mirror release ----------------------------------------------
 ASSETS_FILE="$SCRIPT_DIR/release-assets.sh"
-[[ -f "$ASSETS_FILE" ]] || { warn "release asset manifest missing: $ASSETS_FILE"; exit 0; }
-# shellcheck source=release-assets.sh
+[ -f "$ASSETS_FILE" ] || { warn "release asset manifest missing: $ASSETS_FILE"; exit 0; }
+# shellcheck source=./scripts/release-assets.sh
 . "$ASSETS_FILE"
 asset="$(rk_release_asset_for_platform)" \
   || { warn "no prebuilt binary for $(uname -s)/$(uname -m) yet — install dmtool manually"; exit 0; }
@@ -111,7 +122,7 @@ refuse_unverified() {
   rm -f "$DEST" "$STABLE" "$checksum_file" "$checksum_tmp" 2>/dev/null || true
 }
 
-if [[ ! -x "$DEST" ]]; then
+if [ ! -x "$DEST" ]; then
   curl -fsSL "$base/$asset" -o "$DEST" || { warn "download failed: $base/$asset"; rm -f "$DEST"; exit 0; }
   chmod +x "$DEST"
 fi
@@ -124,11 +135,16 @@ curl -fsSL "$base/SHA256SUMS" -o "$checksum_tmp" 2>/dev/null \
   || { warn "checksum download failed — refusing the unverified binary"; refuse_unverified; exit 0; }
 mv "$checksum_tmp" "$checksum_file"
 expected="$(awk -v a="$asset" '$2==a || $2=="*"a {print $1}' "$checksum_file")"
-[[ "$expected" =~ ^[0-9a-fA-F]{64}$ ]] \
+case "$expected" in
+  ''|*[!0-9a-fA-F]*) checksum_valid=0 ;;
+  *) checksum_valid=1 ;;
+esac
+[ "${#expected}" -eq 64 ] || checksum_valid=0
+[ "$checksum_valid" -eq 1 ] \
   || { warn "checksum entry missing or malformed for $asset — refusing the unverified binary"; refuse_unverified; exit 0; }
 actual="$(shasum -a 256 "$DEST" | awk '{print $1}')" \
   || { warn "checksum calculation failed for $asset — refusing the unverified binary"; refuse_unverified; exit 0; }
-if [[ "$expected" != "$actual" ]]; then
+if [ "$expected" != "$actual" ]; then
   warn "checksum mismatch for $asset — refusing the binary"; refuse_unverified; exit 0
 fi
 prune_stale_cache
@@ -137,7 +153,8 @@ prune_stale_cache
 # means the release tag's asset disagrees with the pin (a mispublished release) — surface it, never run a
 # skewed binary silently. This is the check that would have caught the v0.1.0-pin bug when the agent installs it.
 have="$("$DEST" --version 2>/dev/null | awk 'NR==1{print $2}')"
-[[ -n "$have" && "$have" != "${VERSION#v}" ]] \
-  && warn "binary self-reports $have but the plugin pinned ${VERSION#v} — possible mispublished release tag"
+if [ -n "$have" ] && [ "$have" != "${VERSION#v}" ]; then
+  warn "binary self-reports $have but the plugin pinned ${VERSION#v} — possible mispublished release tag"
+fi
 
 finalize || exit 0

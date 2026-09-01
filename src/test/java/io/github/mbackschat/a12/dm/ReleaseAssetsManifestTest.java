@@ -13,7 +13,8 @@ import org.junit.jupiter.api.Test;
 /**
  * Guard the public-release asset manifest against the static mirror workflow matrix. Most release scripts
  * source {@code scripts/release-assets.sh} directly; GitHub Actions matrix YAML cannot, so the companion
- * shell guard makes drift loud in the normal test suite.
+ * POSIX-shell guard makes drift loud in the normal test suite and executes it through Dash rather than the
+ * host's potentially Bash-backed {@code /bin/sh}.
  */
 class ReleaseAssetsManifestTest {
 
@@ -22,7 +23,7 @@ class ReleaseAssetsManifestTest {
         assumeTrue(!System.getProperty("os.name", "").toLowerCase().contains("win"),
                 "POSIX-only shell guard");
         Path script = repoFile("scripts/check-release-assets.sh");
-        Process process = new ProcessBuilder("/bin/bash", script.toString())
+        Process process = new ProcessBuilder("/bin/dash", script.toString())
                 .redirectErrorStream(true).start();
         String output = new String(process.getInputStream().readAllBytes());
         int code = process.waitFor();

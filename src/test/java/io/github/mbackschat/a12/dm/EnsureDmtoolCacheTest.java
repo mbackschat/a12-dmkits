@@ -15,9 +15,9 @@ import org.junit.jupiter.api.Test;
  * bumping the pinned {@code VERSION} must re-download the matching binary, never keep serving a stale cached
  * one. A version-less fixed-path cache ("download only if absent") shipped a fixed binary that never reached
  * upgraders — the finding this locks. The assertions live in {@code scripts/selftest-ensure-dmtool.sh}
- * (it stubs the release server and runs the real installer at two versions); this wrapper runs it under the
- * test suite so the guard rides the inner loop + CI, not only a manual invocation. POSIX-only (bash + shell
- * stubs); skipped on Windows, where the JVM {@code :test} task does not run anyway.
+ * (it stubs the release server and runs the real installer through Dash at two versions); this wrapper runs it
+ * under the test suite so the guard rides the inner loop + CI, not only a manual invocation. The harness retains
+ * Bash while the shipped installer is POSIX; skipped on Windows, where the JVM {@code :test} task does not run.
  */
 class EnsureDmtoolCacheTest {
 
