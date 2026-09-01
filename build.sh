@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+#!/bin/sh
 # Gradle wrapper that pins the public-repos-only Gradle home + JDK 21 — so a *bare* `./gradlew` can't be
 # silently contaminated by the machine's global `~/.gradle/init.d/repositories.gradle`, which force-injects
 # a private, credentialed registry into EVERY project (incl. this one) at the plugin, dependency, AND
@@ -11,8 +11,8 @@
 #
 #   ./build.sh test            # == ./gradlew test, but with the isolated home + JDK 21 guaranteed
 #   ./build.sh :cli:installDist
-set -euo pipefail
-ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+set -eu
+ROOT="$(CDPATH='' cd "$(dirname "$0")" && pwd)"
 # shellcheck source=scripts/gradle-environment.sh
 . "$ROOT/scripts/gradle-environment.sh"
 
@@ -20,7 +20,8 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # + the scripts). A linked worktree may live anywhere (often /private/tmp), so anchor the default at Git's
 # common directory / primary checkout rather than at this worktree's filesystem parent. Respect an explicit
 # GRADLE_USER_HOME (CI sets its own).
-export GRADLE_USER_HOME="$(a12_gradle_user_home "$ROOT")"
+GRADLE_USER_HOME="$(a12_gradle_user_home "$ROOT")"
+export GRADLE_USER_HOME
 
 # JDK 21 is the build toolchain. On macOS, pin it via java_home (the footgun's second half: the shell's
 # JAVA_HOME may point at a newer JDK). Elsewhere (Linux/CI) leave JAVA_HOME to the caller. The pin lives in
@@ -33,6 +34,8 @@ pinned_jdk21_home="$(a12_pinned_jdk21_home)" \
   || { echo "build.sh: no OpenJDK 21 registered; install one (brew install openjdk@21). A GraalVM 21 alone is" >&2
        echo "          deliberately NOT accepted as the build JDK - GraalVM is for native image (GRAALVM_HOME)." >&2
        exit 1; }
-[[ -z "$pinned_jdk21_home" ]] || export JAVA_HOME="$pinned_jdk21_home"
+if [ -n "$pinned_jdk21_home" ]; then
+  export JAVA_HOME="$pinned_jdk21_home"
+fi
 
 exec "$ROOT/gradlew" "$@"

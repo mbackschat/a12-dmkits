@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+#!/bin/sh
 # dmtool — stable launcher shim for the dmtool CLI.
 #
 # Docs, showboat demos, and any script call `dmtool <target> <op> …`; this shim
@@ -18,18 +18,8 @@
 # would otherwise silently shadow freshly-built code. The JVM launcher, rebuilt
 # by `:cli:installDist`, is the safe default; opt into native only when you've
 # rebuilt it and want the startup win.
-set -euo pipefail
-ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-
-candidates=("${DMTOOL_CLI:-}")
-if [[ "${RK_NATIVE:-}" == "1" ]]; then
-  candidates+=(
-    "$ROOT/cli/build/native/nativeCompile/dmtool" # GraalVM Gradle plugin output
-    "$ROOT/cli/build/native/nativeCompile/dmtool.exe" # Windows GraalVM output under Git Bash
-    "$ROOT/build/native-spike/dmtool-cli-res"   # the CLI-SPEC §11 phase B2 spike's resource-bundled binary
-  )
-fi
-candidates+=("$ROOT/cli/build/install/dmtool/bin/dmtool")  # installDist launcher — the default
+set -eu
+ROOT="$(CDPATH='' cd "$(dirname "$0")/.." && pwd)"
 
 # Validate the Java the installDist launcher will pick BEFORE delegating, and fail with a recovery hint.
 # The generated Gradle start script trusts $JAVA_HOME blindly, so a stale versioned Homebrew Cellar path
@@ -42,7 +32,7 @@ candidates+=("$ROOT/cli/build/install/dmtool/bin/dmtool")  # installDist launche
 # script both need. REQUIRED, not best-effort: a missing helper would otherwise turn the gate off silently,
 # and a gate that disappears when its dependency does is worse than no gate, because the shim keeps claiming
 # to have checked. It ships in the same tree as this shim, so absence is a broken checkout — say so.
-if [[ ! -r "$ROOT/scripts/gradle-environment.sh" ]]; then
+if [ ! -r "$ROOT/scripts/gradle-environment.sh" ]; then
   printf 'dmtool: cannot read %s — this checkout is incomplete.\n' "$ROOT/scripts/gradle-environment.sh" >&2
   exit 2
 fi
@@ -50,7 +40,7 @@ fi
 . "$ROOT/scripts/gradle-environment.sh"
 
 require_supported_java() {
-  local hint="set JAVA_HOME to a JDK 21 installation, or unset it to use the system default.
+  hint="set JAVA_HOME to a JDK 21 installation, or unset it to use the system default.
   On macOS:  export JAVA_HOME=\$(/usr/libexec/java_home -v 21)"
   a12_classify_java "${JAVA_HOME:-}"
   # Every branch REFUSES rather than guessing. Two of them were once silent successes: a FAILING
@@ -61,17 +51,17 @@ require_supported_java() {
     no-home-binary)
       printf 'dmtool: JAVA_HOME points at a directory with no java executable:\n  %s\n%s\n' \
         "$JAVA_HOME" "$hint" >&2
-      printf '  (a versioned Homebrew Cellar path breaks on every `brew upgrade openjdk`)\n' >&2
+      printf '  (a versioned Homebrew Cellar path breaks on every brew upgrade openjdk)\n' >&2
       return 2 ;;
     no-java)
       printf 'dmtool: no java found on PATH and JAVA_HOME is unset.\n%s\n' "$hint" >&2
       return 2 ;;
     failed)
-      printf 'dmtool: `%s -version` failed (exit %s) — this Java is not usable:\n%s\n%s\n' \
+      printf 'dmtool: %s -version failed (exit %s) — this Java is not usable:\n%s\n%s\n' \
         "$a12_java_bin" "$a12_java_status" "$a12_java_banner" "$hint" >&2
       return 2 ;;
     unreadable)
-      printf 'dmtool: cannot read a Java version from `%s -version` — refusing rather than guessing:\n%s\n%s\n' \
+      printf 'dmtool: cannot read a Java version from %s -version — refusing rather than guessing:\n%s\n%s\n' \
         "$a12_java_bin" "$a12_java_banner" "$hint" >&2
       return 2 ;;
     too-old)
@@ -82,7 +72,7 @@ require_supported_java() {
     # A gate with no default arm FAILS OPEN: an unrecognised kind would fall through to success and the shim
     # would keep claiming it had checked. Name the kind instead of guessing what it means.
     *)
-      printf 'dmtool: the JDK classifier returned an unrecognised verdict %q — refusing rather than '\
+      printf 'dmtool: the JDK classifier returned an unrecognised verdict %s — refusing rather than '\
 'guessing.\n%s\n' "$a12_java_kind" "$hint" >&2
       return 2 ;;
   esac
@@ -94,20 +84,30 @@ require_supported_java() {
 # $DMTOOL_CLI pointing at any other JVM launcher (a distTar unpack, a jlink image) skipped it entirely — while
 # the comment beside it claimed only the JVM launcher depends on a JDK, which was the intent, not the behaviour.
 needs_jdk() {
-  head -c 2 -- "$1" 2>/dev/null | grep -q '#!' || return 1
-  grep -qE 'JAVA_HOME|JAVACMD' -- "$1" 2>/dev/null
+  head -c 2 "$1" 2>/dev/null | grep -q '#!' || return 1
+  grep -qE 'JAVA_HOME|JAVACMD' "$1" 2>/dev/null
 }
 
-for c in "${candidates[@]}"; do
-  if [[ -n "$c" && -x "$c" ]]; then
+run_candidate() {
+  candidate="$1"
+  if [ -n "$candidate" ] && [ -x "$candidate" ]; then
     # Only a JVM launcher depends on a JDK; a native binary is self-contained. Detected by content (needs_jdk),
     # so an explicit $DMTOOL_CLI pointing at a JVM launcher is gated too.
-    if needs_jdk "$c"; then
+    if needs_jdk "$candidate"; then
       require_supported_java || exit 2
     fi
-    exec "$c" "$@"
+    shift
+    exec "$candidate" "$@"
   fi
-done
+}
+
+run_candidate "${DMTOOL_CLI:-}" "$@"
+if [ "${RK_NATIVE:-}" = "1" ]; then
+  run_candidate "$ROOT/cli/build/native/nativeCompile/dmtool" "$@" # GraalVM Gradle plugin output
+  run_candidate "$ROOT/cli/build/native/nativeCompile/dmtool.exe" "$@" # Windows output under Git Bash
+  run_candidate "$ROOT/build/native-spike/dmtool-cli-res" "$@" # CLI-SPEC §11 phase B2 spike output
+fi
+run_candidate "$ROOT/cli/build/install/dmtool/bin/dmtool" "$@" # installDist launcher — the default
 
 cat >&2 <<'EOF'
 dmtool: no dmtool CLI found.

@@ -14,6 +14,7 @@
 set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 DMTOOL="$ROOT/bin/dmtool"
+DMTOOL_COMMAND=(/bin/dash "$DMTOOL")
 EXPECTED_NATIVE_RELATIVE="${1:-}"
 [[ "$EXPECTED_NATIVE_RELATIVE" == cli/build/native/* && "$EXPECTED_NATIVE_RELATIVE" != *..* ]] || {
   echo "usage: $0 <Gradle-native-output-relative-to-repo>" >&2
@@ -85,18 +86,18 @@ echo "bin/dmtool JDK gate — every unusable Java must be REFUSED (exit 2):"
 
 # (1) JAVA_HOME with no java executable — the original reported case (a stale Homebrew Cellar path).
 check "JAVA_HOME without bin/java" 2 \
-  env DMTOOL_CLI="$LAUNCHER" JAVA_HOME="$WORK/not-a-jdk" "$DMTOOL" --version
+  env DMTOOL_CLI="$LAUNCHER" JAVA_HOME="$WORK/not-a-jdk" "${DMTOOL_COMMAND[@]}" --version
 
 # (2) `java -version` FAILS. Previously the gate returned success and the child's status leaked out with no
 #     dmtool diagnostic at all.
 JDK_FAILS="$(fake_jdk jdk-fails 'echo "boom" >&2; exit 42')"
 check "java -version exits nonzero" 2 \
-  env DMTOOL_CLI="$LAUNCHER" JAVA_HOME="$JDK_FAILS" "$DMTOOL" --version
+  env DMTOOL_CLI="$LAUNCHER" JAVA_HOME="$JDK_FAILS" "${DMTOOL_COMMAND[@]}" --version
 
 # (3) An UNPARSEABLE banner, exit 0. Previously the gate passed and dmtool exited 0 with empty stdout.
 JDK_MUTE="$(fake_jdk jdk-mute 'echo "some vendor tool, no version here"; exit 0')"
 check "java -version prints no version" 2 \
-  env DMTOOL_CLI="$LAUNCHER" JAVA_HOME="$JDK_MUTE" "$DMTOOL" --version
+  env DMTOOL_CLI="$LAUNCHER" JAVA_HOME="$JDK_MUTE" "${DMTOOL_COMMAND[@]}" --version
 
 # (4) An OLD JDK whose banner is preceded by the "Picked up JAVA_TOOL_OPTIONS" line every JVM prepends when
 #     that variable is set. This is the sharpest case: the old gate anchored its match to line 1, so the
@@ -105,12 +106,12 @@ check "java -version prints no version" 2 \
 JDK_OLD_NOISY="$(fake_jdk jdk-old-noisy \
   'echo "Picked up JAVA_TOOL_OPTIONS: -Xmx512m" >&2; echo "openjdk version \"17.0.9\" 2023-10-17" >&2; exit 0')"
 check "old JDK behind a JAVA_TOOL_OPTIONS notice" 2 \
-  env DMTOOL_CLI="$LAUNCHER" JAVA_HOME="$JDK_OLD_NOISY" "$DMTOOL" --version
+  env DMTOOL_CLI="$LAUNCHER" JAVA_HOME="$JDK_OLD_NOISY" "${DMTOOL_COMMAND[@]}" --version
 
 # (5) The same old JDK without the notice — the case that always worked, kept so a fix to (4) cannot regress it.
 JDK_OLD="$(fake_jdk jdk-old 'echo "openjdk version \"17.0.9\" 2023-10-17" >&2; exit 0')"
 check "old JDK, plain banner" 2 \
-  env DMTOOL_CLI="$LAUNCHER" JAVA_HOME="$JDK_OLD" "$DMTOOL" --version
+  env DMTOOL_CLI="$LAUNCHER" JAVA_HOME="$JDK_OLD" "${DMTOOL_COMMAND[@]}" --version
 
 echo
 echo "…and a usable Java must be ACCEPTED (the gate must not over-refuse):"
@@ -119,12 +120,12 @@ echo "…and a usable Java must be ACCEPTED (the gate must not over-refuse):"
 JDK_OK="$(fake_jdk jdk-ok \
   'echo "Picked up JAVA_TOOL_OPTIONS: -Xmx512m" >&2; echo "openjdk version \"21.0.12\" 2024-07-16" >&2; exit 0')"
 check "supported JDK behind a JAVA_TOOL_OPTIONS notice" 0 \
-  env DMTOOL_CLI="$LAUNCHER" JAVA_HOME="$JDK_OK" "$DMTOOL" --version
+  env DMTOOL_CLI="$LAUNCHER" JAVA_HOME="$JDK_OK" "${DMTOOL_COMMAND[@]}" --version
 
 # (7) A NEWER JDK still runs — the documented tolerance posture, not an error.
 JDK_NEW="$(fake_jdk jdk-new 'echo "openjdk version \"26.0.1\" 2026-09-15" >&2; exit 0')"
 check "newer JDK is accepted" 0 \
-  env DMTOOL_CLI="$LAUNCHER" JAVA_HOME="$JDK_NEW" "$DMTOOL" --version
+  env DMTOOL_CLI="$LAUNCHER" JAVA_HOME="$JDK_NEW" "${DMTOOL_COMMAND[@]}" --version
 
 echo
 echo "…and the gate must apply to a JVM launcher reached by any route, but not to a native binary:"
@@ -133,7 +134,7 @@ echo "…and the gate must apply to a JVM launcher reached by any route, but not
 #     because the stand-in is not a real executable image; the point is that the gate did not refuse it — a
 #     gate refusal is exit 2 with a dmtool diagnostic, which this is not.)
 set +e
-out="$(env DMTOOL_CLI="$NATIVE" JAVA_HOME="$WORK/not-a-jdk" "$DMTOOL" --version 2>&1)"
+out="$(env DMTOOL_CLI="$NATIVE" JAVA_HOME="$WORK/not-a-jdk" "${DMTOOL_COMMAND[@]}" --version 2>&1)"
 set -e
 if [[ "$out" == *"dmtool: JAVA_HOME"* ]]; then
   printf '  FAIL  native binary must not be JDK-gated — but it was refused: %s\n' "$out"
@@ -170,7 +171,7 @@ chmod +x "$TEST_ROOT/bin/dmtool" \
   "$TEST_ROOT/$EXPECTED_NATIVE_RELATIVE" \
   "$TEST_ROOT/cli/build/install/dmtool/bin/dmtool"
 check_output "RK_NATIVE selects nativeCompile output" NATIVE \
-  env DMTOOL_CLI= RK_NATIVE=1 JAVA_HOME="$JDK_OK" "$TEST_ROOT/bin/dmtool" --version
+  env DMTOOL_CLI= RK_NATIVE=1 JAVA_HOME="$JDK_OK" /bin/dash "$TEST_ROOT/bin/dmtool" --version
 
 # Windows appends .exe to imageName. Reproduce the Git-Bash-visible layout on this host so a missing Windows
 # candidate cannot hide behind this test's POSIX-only JUnit wrapper.
@@ -192,7 +193,7 @@ chmod +x "$WINDOWS_ROOT/bin/dmtool" \
   "$WINDOWS_ROOT/cli/build/native/nativeCompile/dmtool.exe" \
   "$WINDOWS_ROOT/cli/build/install/dmtool/bin/dmtool"
 check_output "RK_NATIVE selects Windows nativeCompile output" NATIVE_EXE \
-  env DMTOOL_CLI= RK_NATIVE=1 JAVA_HOME="$JDK_OK" "$WINDOWS_ROOT/bin/dmtool" --version
+  env DMTOOL_CLI= RK_NATIVE=1 JAVA_HOME="$JDK_OK" /bin/dash "$WINDOWS_ROOT/bin/dmtool" --version
 
 echo
 echo "…and the gate must model Gradle's OWN probe, plus refuse a checkout it cannot read:"
@@ -205,7 +206,7 @@ printf '#!/usr/bin/env bash\n%s\n' 'echo "openjdk version \"21.0.12\" 2024-07-16
   > "$JDK_JRE_SH/jre/sh/java"
 chmod +x "$JDK_JRE_SH/jre/sh/java"
 check "JAVA_HOME with only jre/sh/java is accepted" 0 \
-  env DMTOOL_CLI="$LAUNCHER" JAVA_HOME="$JDK_JRE_SH" "$DMTOOL" --version
+  env DMTOOL_CLI="$LAUNCHER" JAVA_HOME="$JDK_JRE_SH" "${DMTOOL_COMMAND[@]}" --version
 
 # (12) The shim REQUIRES the shared helper its JDK probe lives in. Without it the gate would silently do
 #      nothing while the shim still claimed to have checked, so absence is a refusal with its own message.
@@ -214,7 +215,7 @@ mkdir -p "$BROKEN_ROOT/bin"
 cp "$DMTOOL" "$BROKEN_ROOT/bin/dmtool"
 chmod +x "$BROKEN_ROOT/bin/dmtool"
 check "a checkout without the shared helper is refused" 2 \
-  env DMTOOL_CLI="$LAUNCHER" JAVA_HOME="$JDK_OK" "$BROKEN_ROOT/bin/dmtool" --version
+  env DMTOOL_CLI="$LAUNCHER" JAVA_HOME="$JDK_OK" /bin/dash "$BROKEN_ROOT/bin/dmtool" --version
 
 # (13) The one classifier kind no JAVA_HOME can stage: no java anywhere. Exercised directly against the
 #      shared function, because emptying PATH for a whole script would take git, sed and mktemp with it —
@@ -233,11 +234,11 @@ mkdir -p "$NO_JAVA_BIN"
 # helper actually shell out to before the classifier answers `no-java`. Deliberately NOT java.
 for tool in bash dirname head grep sed; do ln -sf "$(command -v "$tool")" "$NO_JAVA_BIN/$tool"; done
 check "no java anywhere is REFUSED by the shim" 2 \
-  env -u JAVA_HOME PATH="$NO_JAVA_BIN" DMTOOL_CLI="$LAUNCHER" "$DMTOOL" --version
+  env -u JAVA_HOME PATH="$NO_JAVA_BIN" DMTOOL_CLI="$LAUNCHER" "${DMTOOL_COMMAND[@]}" --version
 # …and with its OWN message. The exit code alone is satisfied by the catch-all arm, so deleting the specific
 # one would leave a wrong diagnostic behind a right exit status — a mutant that survived until this line.
 set +e
-no_java_out="$(env -u JAVA_HOME PATH="$NO_JAVA_BIN" DMTOOL_CLI="$LAUNCHER" "$DMTOOL" --version 2>&1)"
+no_java_out="$(env -u JAVA_HOME PATH="$NO_JAVA_BIN" DMTOOL_CLI="$LAUNCHER" "${DMTOOL_COMMAND[@]}" --version 2>&1)"
 set -e
 if [[ "$no_java_out" == *"no java found on PATH and JAVA_HOME is unset"* ]]; then
   printf '  ok    the no-java refusal names its own cause\n'; pass=$((pass + 1))
@@ -249,7 +250,7 @@ fi
 # (15) The 8th message — a checkout without the shared helper — asserted on its TEXT, not only its exit code.
 #      Case 12 checks exit 2, which a differently-caused refusal would also satisfy.
 set +e
-broken_out="$(env DMTOOL_CLI="$LAUNCHER" JAVA_HOME="$JDK_OK" "$BROKEN_ROOT/bin/dmtool" --version 2>&1)"
+broken_out="$(env DMTOOL_CLI="$LAUNCHER" JAVA_HOME="$JDK_OK" /bin/dash "$BROKEN_ROOT/bin/dmtool" --version 2>&1)"
 set -e
 if [[ "$broken_out" == *"this checkout is incomplete"* ]]; then
   printf '  ok    the incomplete-checkout refusal names itself\n'; pass=$((pass + 1))

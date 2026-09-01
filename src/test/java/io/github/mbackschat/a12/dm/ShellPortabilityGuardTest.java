@@ -67,8 +67,6 @@ class ShellPortabilityGuardTest {
             ".claude/hooks/guard-long-run-antipatterns.sh",
             ".githooks/pre-commit",
             ".githooks/pre-push",
-            "bin/dmtool",
-            "build.sh",
             "eval/prep-sandbox.sh",
             "probe/audit-probe.sh",
             "probe/digest-probe.sh",
