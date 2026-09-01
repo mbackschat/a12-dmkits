@@ -1,6 +1,7 @@
 package io.github.mbackschat.a12.dm.cli;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.nio.charset.StandardCharsets;
@@ -14,6 +15,17 @@ import org.junit.jupiter.api.io.TempDir;
 
 /** Black-box checks for the exact source-provenance program invoked by the Gradle build. */
 class SourceProvenanceBuildTest {
+
+    @Test
+    void packagedVersionSnapshotBelongsToTheInstallCopySpecification() throws Exception {
+        String build = Files.readString(Path.of("build.gradle"));
+
+        assertTrue(build.contains("from(generateVersionProperties.map { it.destinationFile })"),
+                "installDist must copy the packaged-version oracle as part of its ordinary Sync inputs");
+        assertFalse(build.contains("outputs.file(installDistVersionSnapshot)"),
+                "a nested output is prepared before installDist's overwrite guard and makes a clean destination "
+                        + "look like an unrelated partial installation");
+    }
 
     @Test
     void identifiesOnlyItsOwnRepositoryAndCannotHideUntrackedSources(@TempDir Path dir) throws Exception {

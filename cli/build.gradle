@@ -126,8 +126,6 @@ tasks.named('processResources') { dependsOn generateVersionProperties }
 // with a later working tree. Keep the exact generated properties beside each launcher so the same black-box
 // suite can oracle both installDist and native artifacts without reopening Git at test time (measured 2026-09-01:
 // an untracked file created after packaging changed only the old test-time expectation and produced a false red).
-def installDistVersionSnapshot = layout.buildDirectory.file(
-        "install/dmtool/bin/${packagedVersionSnapshotName}")
 def nativeVersionSnapshot = layout.buildDirectory.file(
         "native/nativeCompile/${packagedVersionSnapshotName}")
 def copyVersionSnapshot = { targetProvider ->
@@ -136,10 +134,12 @@ def copyVersionSnapshot = { targetProvider ->
     java.nio.file.Files.createDirectories(target.parent)
     java.nio.file.Files.copy(source, target, java.nio.file.StandardCopyOption.REPLACE_EXISTING)
 }
-tasks.named('installDist') {
+tasks.named('installDist', Sync) {
     inputs.file(generateVersionProperties.map { it.destinationFile })
-    outputs.file(installDistVersionSnapshot)
-    doLast { copyVersionSnapshot(installDistVersionSnapshot) }
+    from(generateVersionProperties.map { it.destinationFile }) {
+        into 'bin'
+        rename { packagedVersionSnapshotName }
+    }
 }
 
 // …but keep that deliberate per-commit invalidation OFF the test runtime classpath. The resource above is a
