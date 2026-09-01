@@ -14,7 +14,6 @@ import java.util.Set;
 import java.util.TreeSet;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-import java.util.stream.Stream;
 
 /**
  * Every test class a findings document cites must exist — the mechanism that points a published claim at the
@@ -50,6 +49,8 @@ import java.util.stream.Stream;
 class LockCitationResolvesTest {
 
     /** Docs whose prose names the locks. Kept explicit: a doc lands here when it starts citing tests. */
+    private static final Checkout CHECKOUT = Checkout.locate();
+
     private static final List<String> CITING_DOCS = List.of(
             "docs/KERNEL-FINDINGS.md",
             "docs/INTERPRETER-FINDINGS.md",
@@ -95,7 +96,7 @@ class LockCitationResolvesTest {
         Set<String> seen = new TreeSet<>();
 
         for (String doc : CITING_DOCS) {
-            Path path = repoRoot().resolve(doc);
+            Path path = CHECKOUT.resolve(doc);
             if (!Files.isRegularFile(path)) {
                 continue;
             }
@@ -153,35 +154,14 @@ class LockCitationResolvesTest {
                 "the enumeration cannot see this very class, so it is not reading the test trees it claims to");
     }
 
-    /** Every test source set, including the interpreter's KMP {@code commonTest}/{@code jvmTest}/{@code jsTest}. */
-    private static Set<String> liveTestClasses() throws IOException {
-        Pattern testSourceRoot = Pattern.compile("/src/[A-Za-z]*[Tt]est[A-Za-z]*(/|$)");
-        try (Stream<Path> files = Files.walk(repoRoot())) {
-            return files
-                    .filter(Files::isRegularFile)
-                    .filter(p -> {
-                        String s = p.toString().replace('\\', '/');
-                        return !s.contains("/build/") && !s.contains("/.git/")
-                                && (s.endsWith(".java") || s.endsWith(".kt"))
-                                && testSourceRoot.matcher(s).find();
-                    })
-                    .map(p -> {
-                        String name = p.getFileName().toString();
-                        return name.substring(0, name.lastIndexOf('.'));
-                    })
-                    .collect(java.util.stream.Collectors.toCollection(TreeSet::new));
-        }
+    /** Every test source set, including the interpreter's KMP commonTest, jvmTest and jsTest trees. */
+    private static Set<String> liveTestClasses() {
+        return CHECKOUT.testSources().stream()
+                .map(path -> {
+                    String name = path.getFileName().toString();
+                    return name.substring(0, name.lastIndexOf('.'));
+                })
+                .collect(java.util.stream.Collectors.toCollection(TreeSet::new));
     }
 
-    private static Path repoRoot() {
-        Path directory = Path.of("").toAbsolutePath().normalize();
-        while (directory != null) {
-            if (Files.isRegularFile(directory.resolve("settings.gradle"))
-                    && Files.isRegularFile(directory.resolve("CLAUDE.md"))) {
-                return directory;
-            }
-            directory = directory.getParent();
-        }
-        throw new IllegalStateException("repository root not found from " + Path.of("").toAbsolutePath());
-    }
 }

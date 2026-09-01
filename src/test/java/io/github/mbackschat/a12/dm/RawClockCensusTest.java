@@ -10,7 +10,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
 import java.util.regex.Pattern;
-import java.util.stream.Stream;
 
 import org.junit.jupiter.api.Test;
 
@@ -46,6 +45,8 @@ class RawClockCensusTest {
                     + "|kotlin\\.time\\.measureTime|measureTimeMillis|measureTime\\s*\\{|measureTimedValue"
                     + "|TimeSource\\.Monotonic|performance\\.now|Date\\.now");
 
+    private static final Checkout CHECKOUT = Checkout.locate();
+
     private static final Pattern LANE_TAG = Pattern.compile("^@Tag\\(\"(perf|perf-bench)\"\\)", Pattern.MULTILINE);
     private static final Pattern PROPERTY_GATED = Pattern.compile("^@EnabledIfSystemProperty", Pattern.MULTILINE);
 
@@ -53,27 +54,46 @@ class RawClockCensusTest {
      * Files that legitimately read a clock without a lane tag, each with the reason it is not a defect. Keyed by
      * file name because that is what the census reports; the list is short on purpose, and every entry that could
      * be replaced by a derived rule already has been.
+     *
+     * <p>A Kotlin-Multiplatform test source can only appear here. {@code @Tag} and
+     * {@code @EnabledIfSystemProperty} are JUnit annotations, and those source sets run on {@code kotlin.test},
+     * so the two derived escape hatches below are unreachable for them and an entry is the sole disposition.
      */
-    private static final Map<String, String> ALLOWED = Map.of(
-            "PerfHarness.kt", "the measurement harness itself",
-            "KernelAdvantage.kt", "the cross-engine reading helper",
-            "NativePerformanceRunner.java", "drives an out-of-process native binary and times it",
-            "NativePerformanceRunnerTest.java", "asserts that runner's protocol, not a duration",
-            "ModelReportSinglePassTest.java",
-            "its single timed method is @EnabledIfSystemProperty-gated at the METHOD level and self-describes as "
+    private static final Map<String, String> ALLOWED = Map.ofEntries(
+            Map.entry("PerfHarness.kt",
+                    "the measurement harness itself"),
+            Map.entry("KernelAdvantage.kt",
+                    "the cross-engine reading helper"),
+            Map.entry("NativePerformanceRunner.java",
+                    "drives an out-of-process native binary and times it"),
+            Map.entry("NativePerformanceRunnerTest.java",
+                    "asserts that runner's protocol, not a duration"),
+            Map.entry("ModelReportSinglePassTest.java",
+                    "its single timed method is @EnabledIfSystemProperty-gated at the METHOD level and self-describes as "
                     + "not a gate; the class-level rule below deliberately does not match a method annotation, "
-                    + "because a class mixing a gated timing method with an ungated one must stay visible",
-            "PerfGrowthEstimatorTest.kt",
-            "protects the CPU-clock contract every growth floor rests on, and is contention-SAFE: load only adds "
-                    + "wall time, so both of its assertions move further into passing",
-            "RawClockCensusTest.java",
-            "this census matches its own pattern literal — the same self-match that made every helper-name "
-                    + "detector report KernelParityCoverageGuardTest, which scans the perf sources as text");
+                    + "because a class mixing a gated timing method with an ungated one must stay visible"),
+            Map.entry("PerfGrowthEstimatorTest.kt",
+                    "protects the CPU-clock contract every growth floor rests on, and is contention-SAFE: load only adds "
+                    + "wall time, so both of its assertions move further into passing"),
+            Map.entry("RawClockCensusTest.java",
+                    "this census matches its own pattern literal — the same self-match that made every helper-name "
+                    + "detector report KernelParityCoverageGuardTest, which scans the perf sources as text"),
+            Map.entry("DocumentScaleTest.kt",
+                    "measures and PRINTS; every assertion is on a fired-rule count, so no verdict depends on the duration "
+                    + "and contention cannot move it"),
+            Map.entry("InterpreterMultiplatformTest.kt",
+                    "measures and PRINTS; asserts firing counts only, so the timing is a reporting aid rather than a bar"),
+            Map.entry("FootprintJvmWorkerTest.kt",
+                    "reads the allocation bean, not a clock, and asserts the footprint worker's protocol"),
+            Map.entry("PerformanceJvmWorkerTest.kt",
+                    "implements the clock the worker under test consumes, asserting that protocol rather than a duration"),
+            Map.entry("PerformanceNodeWorkerTest.kt",
+                    "the same clock implementation on the JS side, asserting the worker protocol"));
 
     @Test
     void everyClockReadingTestSitsInALaneThatCanMeasure() throws IOException {
         var offenders = new TreeMap<String, String>();
-        for (Path source : testSources()) {
+        for (Path source : CHECKOUT.testSources()) {
             String text = uncommented(Files.readString(source));
             if (!CLOCK.matcher(text).find()) {
                 continue;
@@ -104,7 +124,7 @@ class RawClockCensusTest {
     void everyAllowlistEntryStillReadsAClock() throws IOException {
         var stale = new TreeMap<String, String>();
         var seen = new TreeMap<String, Boolean>();
-        for (Path source : testSources()) {
+        for (Path source : CHECKOUT.testSources()) {
             String name = source.getFileName().toString();
             if (ALLOWED.containsKey(name)) {
                 seen.merge(name, CLOCK.matcher(uncommented(Files.readString(source))).find(), Boolean::logicalOr);
@@ -140,36 +160,6 @@ class RawClockCensusTest {
                 .findFirst().orElse("?").strip();
     }
 
-    /** Every committed Java/Kotlin test source, excluding generated output. */
-    private static List<Path> testSources() throws IOException {
-        Path root = locate().getParent();
-        try (Stream<Path> tree = Files.walk(root)) {
-            return tree.filter(Files::isRegularFile)
-                    .filter(path -> {
-                        String name = path.getFileName().toString();
-                        return name.endsWith(".java") || name.endsWith(".kt");
-                    })
-                    .filter(path -> {
-                        String text = root.relativize(path).toString();
-                        return text.contains("src" + java.io.File.separator + "test")
-                                && !text.contains("build" + java.io.File.separator)
-                                && !text.startsWith(".claude");
-                    })
-                    .toList();
-        }
-    }
-
-    private static Path locate() {
-        Path directory = Path.of("").toAbsolutePath();
-        while (directory != null) {
-            Path candidate = directory.resolve("settings.gradle");
-            if (Files.isRegularFile(candidate)) {
-                return candidate;
-            }
-            directory = directory.getParent();
-        }
-        throw new IllegalStateException("could not locate settings.gradle");
-    }
 
     @Test
     void theCensusActuallyMatchesTheClockApisItClaimsTo() {

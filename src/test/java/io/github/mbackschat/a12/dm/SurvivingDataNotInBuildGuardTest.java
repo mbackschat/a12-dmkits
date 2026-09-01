@@ -65,6 +65,8 @@ class SurvivingDataNotInBuildGuardTest {
     }
 
     /** Every path literal under {@code build/} the scan may see, with its use and the reason that use is safe. */
+    private static final Checkout CHECKOUT = Checkout.locate();
+
     private static final Map<String, Declaration> DECLARED = new LinkedHashMap<>(Map.of(
             "build/perf-progress.log",
             new Declaration(BuildPathUse.WRITES_TRANSIENT_OUTPUT,
@@ -120,14 +122,6 @@ class SurvivingDataNotInBuildGuardTest {
      */
     private static final int API_WINDOW = 200;
 
-    private static Path repoRoot() {
-        for (Path candidate = Path.of("").toAbsolutePath(); candidate != null; candidate = candidate.getParent()) {
-            if (Files.exists(candidate.resolve("settings.gradle"))) {
-                return candidate;
-            }
-        }
-        throw new IllegalStateException("cannot locate the repository root from " + Path.of("").toAbsolutePath());
-    }
 
     /**
      * Excluded directory names, matched as whole path SEGMENTS of the repo-relative path — never as a substring of
@@ -138,27 +132,8 @@ class SurvivingDataNotInBuildGuardTest {
      * assertion passes over zero files, and only the declarations-used half fails — which reads as a stale
      * permission and invites deleting a live entry.
      */
-    private static final List<String> EXCLUDED_SEGMENTS = List.of("build", ".git", ".gradle", ".claude");
-
-    private static boolean excluded(Path relative) {
-        for (Path segment : relative) {
-            if (EXCLUDED_SEGMENTS.contains(segment.toString())) {
-                return true;
-            }
-        }
-        return false;
-    }
-
-    private static List<Path> sources() throws IOException {
-        Path root = repoRoot();
-        try (Stream<Path> walk = Files.walk(root)) {
-            return walk.filter(Files::isRegularFile)
-                    .filter(p -> {
-                        String name = p.getFileName().toString();
-                        return (name.endsWith(".kt") || name.endsWith(".java")) && !excluded(root.relativize(p));
-                    })
-                    .toList();
-        }
+    private static List<Path> sources() {
+        return CHECKOUT.sources();
     }
 
     @Test
@@ -174,7 +149,6 @@ class SurvivingDataNotInBuildGuardTest {
 
         var undeclared = new ArrayList<String>();
         var seen = new ArrayList<String>();
-        Path root = repoRoot();
         for (Path source : sources) {
             // Kotlin nests block comments; Java does NOT. Applying Kotlin's rule to Java is not a harmless
             // over-approximation: one `/*` inside a Javadoc — `{@code build/*-red.log}` is a real occurrence in
@@ -185,7 +159,7 @@ class SurvivingDataNotInBuildGuardTest {
             Matcher found = BUILD_PATH_LITERAL.matcher(code);
             while (found.find()) {
                 if (looksLikeAPath(found.group(1)) && constructedAsPath(code, found.start())) {
-                    classify(found.group(1), source, root, seen, undeclared);
+                    classify(found.group(1), source, seen, undeclared);
                 }
             }
             Matcher segments = BUILD_PATH_SEGMENTS.matcher(code);
@@ -195,7 +169,7 @@ class SurvivingDataNotInBuildGuardTest {
                 while (segment.find()) {
                     joined.append('/').append(segment.group(1));
                 }
-                classify(joined.toString(), source, root, seen, undeclared);
+                classify(joined.toString(), source, seen, undeclared);
             }
         }
 
@@ -228,10 +202,10 @@ class SurvivingDataNotInBuildGuardTest {
         return literal.chars().noneMatch(Character::isWhitespace);
     }
 
-    private static void classify(String literal, Path source, Path root, List<String> seen, List<String> undeclared) {
+    private static void classify(String literal, Path source, List<String> seen, List<String> undeclared) {
         seen.add(literal);
         if (!DECLARED.containsKey(literal)) {
-            undeclared.add(root.relativize(source) + " -> \"" + literal + "\"");
+            undeclared.add(CHECKOUT.relative(source) + " -> \"" + literal + "\"");
         }
     }
 
@@ -355,13 +329,15 @@ class SurvivingDataNotInBuildGuardTest {
      */
     @Test
     void thePerformanceRecordHasACommittedHome() throws IOException, InterruptedException {
-        Path results = repoRoot().resolve("perf-results");
+        Path results = CHECKOUT.resolve("perf-results");
         assertTrue(Files.isDirectory(results), "perf-results/ must exist as the committed home of the performance "
                 + "record; the gate's observations are read back across runs, so they cannot be derived output");
 
         // Asked of a real record FILE, not of the directory. `git check-ignore perf-results` exits 1 ("not
         // ignored") even when a rule such as `perf-results/**/*.jsonl` ignores everything inside it, so the
         // directory-level question passes in precisely the state this assertion exists to catch.
+        // The FILESYSTEM is the right denominator here, uniquely: this assertion is about whether records are
+        // ignorable, so taking the set from git would answer the question with itself.
         List<Path> records;
         try (Stream<Path> walk = Files.walk(results)) {
             records = walk.filter(p -> p.getFileName().toString().endsWith(".jsonl")).toList();
@@ -374,7 +350,7 @@ class SurvivingDataNotInBuildGuardTest {
         // matches it, so without this flag the assertion cannot see a rule that would swallow the NEXT record.
         // Found by planting `perf-results/**/*.jsonl` and watching the guard stay green.
         for (Path record : records) {
-            Path relative = repoRoot().relativize(record);
+            String relative = CHECKOUT.relative(record);
             assertEquals(1, git("check-ignore", "-q", "--no-index", relative.toString()),
                     "git must NOT ignore " + relative + " (exit 1 means 'not ignored'); an ignored record is the "
                             + "same defect as one under a cleaned directory, just harder to notice");
@@ -387,7 +363,7 @@ class SurvivingDataNotInBuildGuardTest {
         // that the record has a COMMITTED home, so a reader who did not run the measurement can still find one.
         var tracked = new ArrayList<String>();
         for (Path record : records) {
-            Path relative = repoRoot().relativize(record);
+            String relative = CHECKOUT.relative(record);
             if (git("ls-files", "--error-unmatch", relative.toString()) == 0) {
                 tracked.add(relative.toString());
             }
@@ -401,7 +377,7 @@ class SurvivingDataNotInBuildGuardTest {
     private static int git(String... arguments) throws IOException, InterruptedException {
         var command = new ArrayList<String>(List.of("git"));
         command.addAll(List.of(arguments));
-        Process process = new ProcessBuilder(command).directory(repoRoot().toFile())
+        Process process = CHECKOUT.command(command)
                 .redirectErrorStream(true).redirectOutput(ProcessBuilder.Redirect.DISCARD).start();
         return process.waitFor();
     }

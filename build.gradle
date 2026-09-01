@@ -650,11 +650,11 @@ tasks.register('docGuardTest', Test) {
                 include '**/src/test/**/*.java', '**/src/test/**/*.kt'
                 exclude '.claude/**', '**/build/**'
             },
-            // SurvivingDataNotInBuildGuardTest walks EVERY .kt/.java in the repo, not just the src/test tree the
+            // SurvivingDataNotInBuildGuardTest scans EVERY tracked .kt/.java, not just the src/test tree the
             // entry above covers: main sources, the KMP source sets (commonMain, jsTest, …), the dedicated
             // src/<lane>Test trees and loose script sources all scan. Undeclared, any of those could introduce a
-            // build/ write site while this lane stayed UP-TO-DATE and the guard unrun. The include/exclude pair
-            // mirrors that guard's own file filter + EXCLUDED_SEGMENTS, so the two cannot drift apart silently.
+            // build/ write site while this lane stayed UP-TO-DATE and the guard unrun. Its denominator is
+            // Checkout.sources(), which no Gradle input can express, so this tree is a deliberate superset of it.
             'build-path scan sources': fileTree('.') {
                 include '**/*.java', '**/*.kt'
                 exclude '.claude/**', '**/build/**', '.git/**', '**/.gradle/**'
