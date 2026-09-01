@@ -19,7 +19,7 @@ import java.util.ArrayDeque;
  * <p>Character positions are preserved, because a caller that reports an offset into the stripped text must be
  * able to point at the original.
  */
-final class SourceText {
+public final class SourceText {
 
     private static final int PLAIN = 0;
     private static final int RAW = 1;
@@ -28,7 +28,7 @@ final class SourceText {
     }
 
     /** Comments blanked, with the nesting rule taken from the file's language. */
-    static String uncommented(Path source) throws IOException {
+    public static String uncommented(Path source) throws IOException {
         try {
             return uncommented(Files.readString(source), nestsBlockComments(source));
         } catch (IllegalStateException unmodelled) {
@@ -37,7 +37,7 @@ final class SourceText {
     }
 
     /** Kotlin nests block comments; Java, Groovy and JavaScript close on the first delimiter. */
-    static boolean nestsBlockComments(Path source) {
+    public static boolean nestsBlockComments(Path source) {
         return source.getFileName().toString().endsWith(".kt");
     }
 
@@ -58,7 +58,7 @@ final class SourceText {
      * expected here (a cut can fall inside a comment or literal), so the scan is best-effort and never refuses.
      * Use {@link #uncommented(Path)} for a whole source, where an unterminated scan is a lexer defect.
      */
-    static String uncommentedFragment(String fragment, boolean nestsBlockComments) {
+    public static String uncommentedFragment(String fragment, boolean nestsBlockComments) {
         return scan(fragment, nestsBlockComments).text();
     }
 
@@ -70,7 +70,7 @@ final class SourceText {
      *     over it would find nothing in what it never saw. Refusing is the only safe answer: it is loud, and it
      *     names the construct so the lexer can be taught it.
      */
-    static String uncommented(String source, boolean nestsBlockComments) {
+    public static String uncommented(String source, boolean nestsBlockComments) {
         Scan scan = scan(source, nestsBlockComments);
         if (!scan.endedNeutral()) {
             throw new IllegalStateException("the scan ended in " + scan.endedIn() + " opened at offset "

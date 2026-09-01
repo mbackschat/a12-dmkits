@@ -10,6 +10,7 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 
+import java.util.function.Function;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
@@ -27,6 +28,8 @@ import org.junit.jupiter.api.io.TempDir;
  * protects.
  */
 class AttributionDisclaimerLockTest {
+
+    private static final Checkout CHECKOUT = Checkout.locate();
 
     private record Disclaimer(String path, List<String> requiredPhrases) {}
 
@@ -57,7 +60,7 @@ class AttributionDisclaimerLockTest {
 
     @Test
     void everyPublishedSurfaceStillCarriesItsAttributionDisclaimer() throws IOException {
-        var violations = violations(repositoryRoot(), REQUIRED);
+        var violations = violations(CHECKOUT::resolve, REQUIRED);
 
         assertTrue(violations.isEmpty(),
                 "attribution disclaimers were removed or reworded — restore the exact wording:\n"
@@ -79,13 +82,14 @@ class AttributionDisclaimerLockTest {
                 new Disclaimer("deleted.md", List.of(phrase)));
 
         assertEquals(List.of("reworded.md: missing \"" + phrase + "\"", "deleted.md: the file itself is gone"),
-                violations(sandbox, required));
+                violations(sandbox::resolve, required));
     }
 
-    private static List<String> violations(Path root, List<Disclaimer> required) throws IOException {
+    private static List<String> violations(Function<String, Path> resolve, List<Disclaimer> required)
+            throws IOException {
         var violations = new ArrayList<String>();
         for (Disclaimer disclaimer : required) {
-            Path file = root.resolve(disclaimer.path());
+            Path file = resolve.apply(disclaimer.path());
             if (!Files.isRegularFile(file)) {
                 violations.add(disclaimer.path() + ": the file itself is gone");
                 continue;
@@ -111,16 +115,4 @@ class AttributionDisclaimerLockTest {
         return disclaimer.requiredPhrases().stream().filter(phrase -> !text.contains(phrase)).toList();
     }
 
-    /** The repository root is the one directory carrying both the settings script and the build wrapper. */
-    private static Path repositoryRoot() {
-        Path directory = Path.of("").toAbsolutePath();
-        while (directory != null) {
-            if (Files.isRegularFile(directory.resolve("settings.gradle"))
-                    && Files.isRegularFile(directory.resolve("build.sh"))) {
-                return directory;
-            }
-            directory = directory.getParent();
-        }
-        throw new IllegalStateException("could not locate the repository root from " + Path.of("").toAbsolutePath());
-    }
 }

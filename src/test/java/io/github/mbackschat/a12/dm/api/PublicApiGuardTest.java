@@ -1,5 +1,6 @@
 package io.github.mbackschat.a12.dm.api;
 
+import io.github.mbackschat.a12.dm.Checkout;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -50,6 +51,8 @@ import org.junit.jupiter.api.condition.EnabledIfSystemProperty;
  */
 class PublicApiGuardTest {
 
+    private static final Checkout CHECKOUT = Checkout.locate();
+
     /** A published artifact: its Maven artifact id (= golden file stem) and its Gradle module directory. */
     private record Kit(String artifact, String moduleDir) { }
 
@@ -71,13 +74,13 @@ class PublicApiGuardTest {
         for (Kit k : KITS) {
             Path golden = goldenFile(k);
             assertTrue(Files.exists(golden), () ->
-                    "missing API golden " + repoRoot().relativize(golden) + " — generate it once with "
+                    "missing API golden " + CHECKOUT.relative(golden) + " — generate it once with "
                     + "`./gradlew dumpKitApi`, then commit it.");
             String live = PublicApiDumper.dump(mainClasses(k), classLoader(k));
             String committed = Files.readString(golden);
             assertEquals(committed, live, () ->
                     "The public API of " + k.artifact() + " has DRIFTED from its golden "
-                    + repoRoot().relativize(golden) + ".\n"
+                    + CHECKOUT.relative(golden) + ".\n"
                     + "At 0.x a public-surface change is allowed, but it must be DELIBERATE and REVIEWED: "
                     + "regenerate the goldens with `./gradlew dumpKitApi` and review the resulting diff in the "
                     + "same change (this is a visibility guard, not a no-break promise — docs/RELEASE-SPEC.md §11).");
@@ -229,7 +232,7 @@ class PublicApiGuardTest {
     @Test
     @EnabledIfSystemProperty(named = "api.fix", matches = "true")
     void regenerateGoldens() throws IOException {
-        Path dir = repoRoot().resolve("api");
+        Path dir = CHECKOUT.resolve("api");
         Files.createDirectories(dir);
         for (Kit k : KITS) {
             Files.writeString(goldenFile(k), PublicApiDumper.dump(mainClasses(k), classLoader(k)));
@@ -237,7 +240,7 @@ class PublicApiGuardTest {
     }
 
     private static Path goldenFile(Kit k) {
-        return repoRoot().resolve("api").resolve(k.artifact() + ".api");
+        return CHECKOUT.resolve("api").resolve(k.artifact() + ".api");
     }
 
     /**
@@ -246,7 +249,7 @@ class PublicApiGuardTest {
      * which is the one way "a surface change turns this red" can quietly stop being true.
      */
     private static List<Path> mainClasses(Kit k) {
-        Path module = repoRoot().resolve(k.moduleDir());
+        Path module = CHECKOUT.resolve(k.moduleDir());
         List<Path> dirs = new ArrayList<>();
         for (Path candidate : List.of(
                 module.resolve("build/classes/java/main"),
@@ -281,15 +284,4 @@ class PublicApiGuardTest {
         }
     }
 
-    /** The repo root — the nearest ancestor holding {@code settings.gradle} (robust to the module working dir). */
-    private static Path repoRoot() {
-        Path p = Path.of("").toAbsolutePath();
-        while (p != null && !Files.exists(p.resolve("settings.gradle"))) {
-            p = p.getParent();
-        }
-        if (p == null) {
-            throw new IllegalStateException("repo root (settings.gradle) not found from " + Path.of("").toAbsolutePath());
-        }
-        return p;
-    }
 }

@@ -31,7 +31,7 @@ import java.util.regex.Pattern;
  * narrowest matched none of the 273 tracked sources in the interpreter's Kotlin-Multiplatform test source sets.
  * A guard that wants something narrower than a named set filters it visibly at its own call site.
  */
-final class Checkout {
+public final class Checkout {
 
     /** Any test source set: {@code src/test}, and the KMP and dedicated-lane trees beside it. */
     private static final Pattern TEST_SOURCE_SET = Pattern.compile("(^|/)src/[A-Za-z]*[Tt]est[A-Za-z]*/");
@@ -44,25 +44,32 @@ final class Checkout {
         this.root = root;
     }
 
-    /** The checkout containing the working directory, found by the build's settings file. */
-    static Checkout locate() {
+    /**
+     * The checkout containing the working directory. TWO markers decide it, not one: `settings.gradle` alone also
+     * names a nested or sibling Gradle build, and a walk that stopped at the first one would hand a guard a
+     * different tree than its neighbour got. `build.sh` is this repository's own entry point and is not something
+     * a nested build carries.
+     */
+    public static Checkout locate() {
         Path directory = Path.of("").toAbsolutePath();
         while (directory != null) {
-            if (Files.isRegularFile(directory.resolve("settings.gradle"))) {
+            if (Files.isRegularFile(directory.resolve("settings.gradle"))
+                    && Files.isRegularFile(directory.resolve("build.sh"))) {
                 return new Checkout(directory);
             }
             directory = directory.getParent();
         }
-        throw new IllegalStateException("no settings.gradle above " + Path.of("").toAbsolutePath());
+        throw new IllegalStateException(
+                "no directory with both settings.gradle and build.sh above " + Path.of("").toAbsolutePath());
     }
 
     /** Every tracked Java and Kotlin source, in every module and source set. */
-    List<Path> sources() {
+    public List<Path> sources() {
         return named("sources", trackedFiles().stream().filter(Checkout::isJvmSource).toList());
     }
 
     /** Every tracked Java and Kotlin source in a test source set — the one definition of that set. */
-    List<Path> testSources() {
+    public List<Path> testSources() {
         return named("test sources", trackedFiles().stream()
                 .filter(Checkout::isJvmSource)
                 .filter(path -> TEST_SOURCE_SET.matcher(relative(path)).find())
@@ -70,7 +77,7 @@ final class Checkout {
     }
 
     /** Every tracked Markdown file. */
-    List<Path> markdown() {
+    public List<Path> markdown() {
         return named("markdown", trackedFiles().stream()
                 .filter(path -> path.getFileName().toString().endsWith(".md"))
                 .toList());
@@ -80,7 +87,7 @@ final class Checkout {
      * Every tracked file, whatever its type. For a guard whose subject is the published set itself — scripts,
      * workflows, resources — rather than the JVM sources {@link #sources()} narrows to.
      */
-    List<Path> tracked() {
+    public List<Path> tracked() {
         return named("files", trackedFiles());
     }
 
@@ -88,12 +95,12 @@ final class Checkout {
      * Whether git tracks {@code path}. Answered from the same set every enumeration uses, read once per JVM, so a
      * file created after the first enumeration reads as untracked — which it is, until it is added.
      */
-    boolean isTracked(Path path) {
+    public boolean isTracked(Path path) {
         return trackedFiles().contains(path.toAbsolutePath().normalize());
     }
 
     /** Every tracked file under {@code subdirectory} — the scoped shape, for a guard that means one subtree. */
-    List<Path> tracked(String subdirectory) {
+    public List<Path> tracked(String subdirectory) {
         Path directory = resolve(subdirectory);
         return named("files under " + subdirectory,
                 trackedFiles().stream().filter(path -> path.startsWith(directory)).toList());
@@ -105,7 +112,7 @@ final class Checkout {
      * @throws IllegalArgumentException if {@code relative} names the checkout root or climbs out of it, which
      *     would hand back the very path this type exists to withhold.
      */
-    Path resolve(String relative) {
+    public Path resolve(String relative) {
         if (relative == null || relative.isBlank() || relative.equals(".")) {
             throw new IllegalArgumentException(
                     "resolve needs a path inside the checkout; the root itself is deliberately not reachable");
@@ -121,12 +128,12 @@ final class Checkout {
      * A process to run with the checkout as its working directory — the reason the root itself need not be handed
      * out. Callers configure redirection and start it; the directory is already set.
      */
-    ProcessBuilder command(List<String> command) {
+    public ProcessBuilder command(List<String> command) {
         return new ProcessBuilder(command).directory(root.toFile());
     }
 
     /** {@code absolute} as a checkout-relative path, with forward slashes on every platform. */
-    String relative(Path absolute) {
+    public String relative(Path absolute) {
         return root.relativize(absolute).toString().replace('\\', '/');
     }
 

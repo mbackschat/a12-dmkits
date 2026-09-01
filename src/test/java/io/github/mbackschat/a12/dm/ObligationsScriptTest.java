@@ -3,6 +3,7 @@ package io.github.mbackschat.a12.dm;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.util.List;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -27,6 +28,8 @@ import org.junit.jupiter.api.Test;
  */
 class ObligationsScriptTest {
 
+    private static final Checkout CHECKOUT = Checkout.locate();
+
     /**
      * Vacuity floor: the script carried 11 cases on 2026-08-16. Asserted rather than pinned exactly, so adding a
      * case does not fail this class, but a script that stops emitting results does.
@@ -35,9 +38,7 @@ class ObligationsScriptTest {
 
     @Test
     void everyObligationSelftestCasePasses() throws Exception {
-        Path root = repositoryRoot();
-        var builder = new ProcessBuilder("bash", root.resolve("scripts/selftest-obligations.sh").toString());
-        builder.directory(root.toFile());
+        var builder = CHECKOUT.command(List.of("bash", CHECKOUT.resolve("scripts/selftest-obligations.sh").toString()));
         builder.redirectErrorStream(true);
 
         Process process = builder.start();
@@ -54,15 +55,4 @@ class ObligationsScriptTest {
                 + "tree and reads as 'nothing to do':\n" + output);
     }
 
-    private static Path repositoryRoot() {
-        Path directory = Path.of("").toAbsolutePath();
-        while (directory != null) {
-            if (Files.isRegularFile(directory.resolve("settings.gradle"))
-                    && Files.isRegularFile(directory.resolve("build.sh"))) {
-                return directory;
-            }
-            directory = directory.getParent();
-        }
-        throw new IllegalStateException("could not locate the repository root from " + Path.of("").toAbsolutePath());
-    }
 }

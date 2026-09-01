@@ -43,6 +43,8 @@ import org.junit.jupiter.api.io.TempDir;
  */
 class InfographicFreshnessLocaleTest {
 
+    private static final Checkout CHECKOUT = Checkout.locate();
+
     /**
      * Locales whose decimal separator is a comma, which is what made the difference observable. Several
      * spellings and languages, because which are generated is a property of the machine: macOS carries the
@@ -56,9 +58,8 @@ class InfographicFreshnessLocaleTest {
 
     @Test
     void thePublicLauncherAlwaysCrossesTheRuntimeGateAndRunsTheTypedGuard(@TempDir Path temporary) throws Exception {
-        Path root = repositoryRoot();
-        Run underC = runGuard(root, "C", nodeExecutable());
-        Run missingNode = runGuard(root, "C", temporary.resolve("missing-node").toString());
+        Run underC = runGuard("C", nodeExecutable());
+        Run missingNode = runGuard("C", temporary.resolve("missing-node").toString());
 
         assertEquals(0, underC.exitCode, underC.output);
         assertEquals("infographic freshness: OK\n", underC.output,
@@ -69,14 +70,13 @@ class InfographicFreshnessLocaleTest {
 
     @Test
     void theFreshnessGuardReachesTheSameVerdictUnderACommaDecimalLocale() throws Exception {
-        Path root = repositoryRoot();
         String comma = firstCommaDecimalLocale().orElse(null);
         assumeTrue(comma != null, "no comma-decimal locale is available to Node, so this machine cannot reproduce "
                 + "the hazard at all; " + COMMA_DECIMAL_LOCALES + " were probed and none formatted "
                 + "1.5 with a comma");
 
-        Run underC = runGuard(root, "C");
-        Run underComma = runGuard(root, comma);
+        Run underC = runGuard("C");
+        Run underComma = runGuard(comma);
 
         assertEquals(0, underC.exitCode, underC.output);
         assertEquals(0, underComma.exitCode, underComma.output);
@@ -104,9 +104,8 @@ class InfographicFreshnessLocaleTest {
      */
     @Test
     void theGuardUsesLocaleIndependentTypeScriptFormattingBehindItsStableLauncher() throws Exception {
-        Path root = repositoryRoot();
-        String launcher = Files.readString(root.resolve(GUARD), StandardCharsets.UTF_8);
-        String implementation = Files.readString(root.resolve(IMPLEMENTATION), StandardCharsets.UTF_8);
+        String launcher = Files.readString(CHECKOUT.resolve(GUARD), StandardCharsets.UTF_8);
+        String implementation = Files.readString(CHECKOUT.resolve(IMPLEMENTATION), StandardCharsets.UTF_8);
         assertTrue(launcher.contains("run-typescript.sh") && launcher.contains("check-infographic-freshness.ts"),
                 "the public script path must delegate to the TypeScript implementation through the shared "
                         + "Node-version gate");
@@ -141,7 +140,8 @@ class InfographicFreshnessLocaleTest {
             if (!installedLocales.contains(locale)) {
                 continue;
             }
-            var builder = new ProcessBuilder("node", "-e", "process.stdout.write(new Intl.NumberFormat().format(1.5))");
+            var builder = CHECKOUT.command(
+                    List.of("node", "-e", "process.stdout.write(new Intl.NumberFormat().format(1.5))"));
             builder.environment().put("LANG", locale);
             builder.environment().put("LC_ALL", locale);
             Process process = builder.start();
@@ -154,13 +154,12 @@ class InfographicFreshnessLocaleTest {
         return Optional.empty();
     }
 
-    private static Run runGuard(Path root, String locale) throws Exception {
-        return runGuard(root, locale, nodeExecutable());
+    private static Run runGuard(String locale) throws Exception {
+        return runGuard(locale, nodeExecutable());
     }
 
-    private static Run runGuard(Path root, String locale, String node) throws Exception {
-        var builder = new ProcessBuilder("/bin/bash", root.resolve(GUARD).toString());
-        builder.directory(root.toFile());
+    private static Run runGuard(String locale, String node) throws Exception {
+        var builder = CHECKOUT.command(List.of("/bin/bash", CHECKOUT.resolve(GUARD).toString()));
         builder.redirectErrorStream(true);
         Map<String, String> env = builder.environment();
         // Both are set, and LC_ALL last: Node reads its default locale at process start, which is the ambient
@@ -180,15 +179,4 @@ class InfographicFreshnessLocaleTest {
         return executable;
     }
 
-    private static Path repositoryRoot() {
-        Path directory = Path.of("").toAbsolutePath();
-        while (directory != null) {
-            if (Files.isRegularFile(directory.resolve("settings.gradle"))
-                    && Files.isRegularFile(directory.resolve("build.sh"))) {
-                return directory;
-            }
-            directory = directory.getParent();
-        }
-        throw new IllegalStateException("repository root not found from " + Path.of("").toAbsolutePath());
-    }
 }

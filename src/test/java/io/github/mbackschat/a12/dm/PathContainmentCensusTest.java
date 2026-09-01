@@ -42,6 +42,8 @@ import org.junit.jupiter.api.Test;
  */
 class PathContainmentCensusTest {
 
+    private static final Checkout CHECKOUT = Checkout.locate();
+
     private static final List<String> SOURCE_ROOTS = List.of(
             "core/src/main",
             "modelkit/src/main",
@@ -108,10 +110,9 @@ class PathContainmentCensusTest {
     }
 
     private static Map<String, Path> scan() throws IOException {
-        Path root = repoRoot();
         Map<String, Path> sites = new LinkedHashMap<>();
         for (String sourceRoot : SOURCE_ROOTS) {
-            try (Stream<Path> files = Files.walk(root.resolve(sourceRoot))) {
+            try (Stream<Path> files = Files.walk(CHECKOUT.resolve(sourceRoot))) {
                 for (Path file : files.filter(Files::isRegularFile)
                         .filter(PathContainmentCensusTest::isJavaOrKotlin)
                         .sorted()
@@ -121,7 +122,7 @@ class PathContainmentCensusTest {
                     int ordinal = 0;
                     while (matcher.find()) {
                         ordinal++;
-                        String relative = root.relativize(file).toString().replace('\\', '/');
+                        String relative = CHECKOUT.relative(file);
                         sites.put(relative + "::separator-prefix#" + ordinal, file);
                     }
                 }
@@ -202,15 +203,4 @@ class PathContainmentCensusTest {
         return out.toString();
     }
 
-    private static Path repoRoot() {
-        Path directory = Path.of("").toAbsolutePath().normalize();
-        while (directory != null) {
-            if (Files.isRegularFile(directory.resolve("settings.gradle"))
-                    && Files.isRegularFile(directory.resolve("CLAUDE.md"))) {
-                return directory;
-            }
-            directory = directory.getParent();
-        }
-        throw new IllegalStateException("repository root not found from " + Path.of("").toAbsolutePath());
-    }
 }

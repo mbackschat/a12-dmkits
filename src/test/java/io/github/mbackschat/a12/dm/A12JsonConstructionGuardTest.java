@@ -31,6 +31,8 @@ import org.junit.jupiter.api.Test;
  */
 class A12JsonConstructionGuardTest {
 
+    private static final Checkout CHECKOUT = Checkout.locate();
+
     private static final List<String> SOURCE_ROOTS = List.of(
             "core/src/main",
             "modelkit/src/main",
@@ -373,32 +375,31 @@ class A12JsonConstructionGuardTest {
     }
 
     private static Map<String, Path> scan() throws IOException {
-        Path root = repoRoot();
         Map<String, Path> sites = new LinkedHashMap<>();
         for (String sourceRoot : SOURCE_ROOTS) {
-            Path directory = root.resolve(sourceRoot);
+            Path directory = CHECKOUT.resolve(sourceRoot);
             try (Stream<Path> files = Files.walk(directory)) {
                 for (Path file : files.filter(Files::isRegularFile)
                         .filter(A12JsonConstructionGuardTest::isJavaOrKotlin)
                         .sorted()
                         .toList()) {
                     String source = maskNonCode(Files.readString(file));
-                    addSites(sites, root, file, source, "jackson-object-mapper", JACKSON_OBJECT_MAPPER);
-                    addSites(sites, root, file, source, "jackson-json-mapper-builder", JACKSON_JSON_MAPPER_BUILDER);
-                    addSites(sites, root, file, source, "kotlinx-default-json", KOTLINX_DEFAULT_JSON);
+                    addSites(sites, file, source, "jackson-object-mapper", JACKSON_OBJECT_MAPPER);
+                    addSites(sites, file, source, "jackson-json-mapper-builder", JACKSON_JSON_MAPPER_BUILDER);
+                    addSites(sites, file, source, "kotlinx-default-json", KOTLINX_DEFAULT_JSON);
                 }
             }
         }
         return sites;
     }
 
-    private static void addSites(Map<String, Path> sites, Path root, Path file, String source,
+    private static void addSites(Map<String, Path> sites, Path file, String source,
             String kind, Pattern pattern) {
         Matcher matcher = pattern.matcher(source);
         int ordinal = 0;
         while (matcher.find()) {
             ordinal++;
-            String relative = root.relativize(file).toString().replace('\\', '/');
+            String relative = CHECKOUT.relative(file);
             sites.put(relative + "::" + kind + "#" + ordinal, file);
         }
     }
@@ -510,15 +511,4 @@ class A12JsonConstructionGuardTest {
         return out.toString();
     }
 
-    private static Path repoRoot() {
-        Path directory = Path.of("").toAbsolutePath().normalize();
-        while (directory != null) {
-            if (Files.isRegularFile(directory.resolve("settings.gradle"))
-                    && Files.isRegularFile(directory.resolve("CLAUDE.md"))) {
-                return directory;
-            }
-            directory = directory.getParent();
-        }
-        throw new IllegalStateException("repository root not found from " + Path.of("").toAbsolutePath());
-    }
 }

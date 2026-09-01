@@ -1,5 +1,6 @@
 package io.github.mbackschat.a12.dm.rulekit.catalog;
 
+import io.github.mbackschat.a12.dm.Checkout;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -35,6 +36,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
  * change detector.
  */
 class CatalogProseReviewGuardTest {
+
+    private static final Checkout CHECKOUT = Checkout.locate();
 
     private static final String REVIEW_RESOURCE = "catalog/operator-prose-review.json";
     private static final Pattern MVK = Pattern.compile("MVK_[A-Z0-9_]+");
@@ -653,10 +656,9 @@ class CatalogProseReviewGuardTest {
 
     private static List<Path> testSources() {
         List<Path> result = new ArrayList<>();
-        Path root = repoRoot();
         for (String tree : List.of("src/test", "adapter/src/test", "interpreter/src/commonTest",
                 "interpreter/src/jvmTest", "interpreter/src/jsTest", "cli/src/test")) {
-            Path directory = root.resolve(tree);
+            Path directory = CHECKOUT.resolve(tree);
             if (!Files.isDirectory(directory)) {
                 continue;
             }
@@ -670,15 +672,6 @@ class CatalogProseReviewGuardTest {
         return List.copyOf(result);
     }
 
-    private static Path repoRoot() {
-        Path path = Path.of("").toAbsolutePath();
-        for (; path != null; path = path.getParent()) {
-            if (Files.exists(path.resolve("rulekit/src/main/resources/catalog/operators.json"))) {
-                return path;
-            }
-        }
-        throw new IllegalStateException("cannot locate repository root from " + Path.of("").toAbsolutePath());
-    }
 
     private static void auditLiteralCodes(
             Locator locator, String text, List<Claim> claims, List<String> violations) {

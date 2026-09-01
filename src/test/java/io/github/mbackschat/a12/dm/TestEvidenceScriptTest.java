@@ -3,6 +3,7 @@ package io.github.mbackschat.a12.dm;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.util.List;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -30,14 +31,14 @@ import org.junit.jupiter.api.Test;
  */
 class TestEvidenceScriptTest {
 
+    private static final Checkout CHECKOUT = Checkout.locate();
+
     /** Vacuity floor: the script carries 11 cases over the does-count and does-NOT-count halves. */
     private static final int MIN_CASES = 8;
 
     @Test
     void everyEvidenceReporterSelftestCasePasses() throws Exception {
-        Path root = repositoryRoot();
-        var builder = new ProcessBuilder("/bin/bash", root.resolve("scripts/selftest-test-evidence.sh").toString());
-        builder.directory(root.toFile());
+        var builder = CHECKOUT.command(List.of("/bin/bash", CHECKOUT.resolve("scripts/selftest-test-evidence.sh").toString()));
         builder.redirectErrorStream(true);
 
         Process process = builder.start();
@@ -55,10 +56,9 @@ class TestEvidenceScriptTest {
 
     @Test
     void theStableCommandDelegatesToTheTypedImplementation() throws Exception {
-        Path root = repositoryRoot();
-        String launcher = Files.readString(root.resolve("scripts/test-evidence.sh"), StandardCharsets.UTF_8);
+        String launcher = Files.readString(CHECKOUT.resolve("scripts/test-evidence.sh"), StandardCharsets.UTF_8);
         String implementation = Files.readString(
-                root.resolve("scripts/typescript/test-evidence.ts"), StandardCharsets.UTF_8);
+                CHECKOUT.resolve("scripts/typescript/test-evidence.ts"), StandardCharsets.UTF_8);
 
         assertTrue(launcher.contains("run-typescript.sh") && launcher.contains("test-evidence.ts"),
                 "the public evidence command must remain stable while its stateful logic lives in TypeScript");
@@ -67,15 +67,4 @@ class TestEvidenceScriptTest {
                         + "behind a TypeScript trampoline");
     }
 
-    private static Path repositoryRoot() {
-        Path directory = Path.of("").toAbsolutePath();
-        while (directory != null) {
-            if (Files.isRegularFile(directory.resolve("settings.gradle"))
-                    && Files.isRegularFile(directory.resolve("build.sh"))) {
-                return directory;
-            }
-            directory = directory.getParent();
-        }
-        throw new IllegalStateException("could not locate the repository root from " + Path.of("").toAbsolutePath());
-    }
 }
