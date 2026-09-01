@@ -54,6 +54,8 @@ import org.junit.jupiter.api.Test;
  */
 class ShellPortabilityGuardTest {
 
+    private static final Checkout CHECKOUT = Checkout.locate();
+
     private enum StatDialect {
         GNU(Pattern.compile("\\bstat\\s+-c\\b"), "stat -c (GNU only — BSD: illegal option)"),
         BSD(Pattern.compile("\\bstat\\s+-f\\b"), "stat -f (BSD only — GNU reads the format as a file)");
@@ -98,15 +100,14 @@ class ShellPortabilityGuardTest {
 
     @Test
     void noTrackedShellScriptReadsATimestampInOneDialectOnly() throws Exception {
-        Path root = repositoryRoot();
-        List<String> scripts = trackedShellScripts(root);
+        List<String> scripts = trackedShellScripts();
         assertTrue(scripts.size() >= 40,
                 "only " + scripts.size() + " shell scripts found — the scanner lost its denominator, so a "
                         + "green here would mean nothing");
 
         var findings = new ArrayList<Finding>();
         for (String relative : scripts) {
-            findings.addAll(scan(relative, Files.readString(root.resolve(relative), StandardCharsets.UTF_8)));
+            findings.addAll(scan(relative, Files.readString(CHECKOUT.resolve(relative), StandardCharsets.UTF_8)));
         }
 
         assertEquals(List.of(), findings, () -> """
@@ -124,15 +125,14 @@ class ShellPortabilityGuardTest {
 
     @Test
     void noTrackedShellScriptRequiresBash4() throws Exception {
-        Path root = repositoryRoot();
-        List<String> scripts = trackedShellScripts(root);
+        List<String> scripts = trackedShellScripts();
         assertTrue(scripts.size() >= 40,
                 "only " + scripts.size() + " shell scripts found — the scanner lost its denominator, so a "
                         + "green here would mean nothing");
 
         var findings = new ArrayList<Bash4Finding>();
         for (String relative : scripts) {
-            findings.addAll(scanBash4(relative, Files.readString(root.resolve(relative), StandardCharsets.UTF_8)));
+            findings.addAll(scanBash4(relative, Files.readString(CHECKOUT.resolve(relative), StandardCharsets.UTF_8)));
         }
 
         assertEquals(List.of(), findings, () -> """
@@ -253,10 +253,10 @@ class ShellPortabilityGuardTest {
     }
 
     /** Extension, location, or shebang — a script is a script whether or not it is named {@code *.sh}. */
-    private static List<String> trackedShellScripts(Path root) throws IOException, InterruptedException {
+    private static List<String> trackedShellScripts() throws IOException {
         var scripts = new ArrayList<String>();
-        for (String relative : trackedFiles(root)) {
-            Path file = root.resolve(relative);
+        for (String relative : CHECKOUT.tracked().stream().map(CHECKOUT::relative).toList()) {
+            Path file = CHECKOUT.resolve(relative);
             if (!Files.isRegularFile(file)) {
                 continue;
             }
@@ -279,31 +279,6 @@ class ShellPortabilityGuardTest {
     }
 
     /** {@code git ls-files} is the committed set. Failing loudly beats scanning nothing and passing. */
-    private static List<String> trackedFiles(Path root) throws IOException, InterruptedException {
-        var builder = new ProcessBuilder("git", "ls-files").directory(root.toFile());
-        builder.redirectErrorStream(true);
-        Process process = builder.start();
-        List<String> lines;
-        try (var reader = new BufferedReader(new InputStreamReader(process.getInputStream(), StandardCharsets.UTF_8))) {
-            lines = reader.lines().toList();
-        }
-        assertEquals(0, process.waitFor(),
-                "git ls-files failed, so the scanned set is unknown rather than clean: " + lines);
-        assertFalse(lines.isEmpty(),
-                "git ls-files returned nothing, so this guard would scan an empty set and pass vacuously");
-        return lines;
-    }
 
     /** The repository root is the one directory carrying both the settings script and the build wrapper. */
-    private static Path repositoryRoot() {
-        Path directory = Path.of("").toAbsolutePath();
-        while (directory != null) {
-            if (Files.isRegularFile(directory.resolve("settings.gradle"))
-                    && Files.isRegularFile(directory.resolve("build.sh"))) {
-                return directory;
-            }
-            directory = directory.getParent();
-        }
-        throw new IllegalStateException("could not locate the repository root from " + Path.of("").toAbsolutePath());
-    }
 }

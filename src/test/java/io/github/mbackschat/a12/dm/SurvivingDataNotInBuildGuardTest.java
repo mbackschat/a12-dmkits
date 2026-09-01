@@ -283,7 +283,7 @@ class SurvivingDataNotInBuildGuardTest {
         var tracked = new ArrayList<String>();
         for (Path record : records) {
             String relative = CHECKOUT.relative(record);
-            if (git("ls-files", "--error-unmatch", relative.toString()) == 0) {
+            if (CHECKOUT.isTracked(record)) {
                 tracked.add(relative.toString());
             }
         }

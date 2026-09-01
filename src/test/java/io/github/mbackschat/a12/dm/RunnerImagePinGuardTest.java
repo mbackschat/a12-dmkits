@@ -23,6 +23,8 @@ import org.junit.jupiter.api.Test;
 /** Guards owned GitHub Actions workflows against the moving {@code ubuntu-latest} runner label. */
 class RunnerImagePinGuardTest {
 
+    private static final Checkout CHECKOUT = Checkout.locate();
+
     private static final Pattern MOVING_UBUNTU_LABEL =
             Pattern.compile("(?<![A-Za-z0-9_.-])ubuntu-latest(?![A-Za-z0-9_.-])");
     private static final String REVIEWABLE_MATRIX_EXPRESSION = "${{ matrix.os }}";
@@ -37,15 +39,14 @@ class RunnerImagePinGuardTest {
 
     @Test
     void everyOwnedLinuxRunnerPinsItsUbuntuRelease() throws Exception {
-        Path root = repositoryRoot();
-        List<String> workflows = trackedWorkflows(root);
+        List<String> workflows = trackedWorkflows();
         assertTrue(workflows.size() >= 6,
                 "only " + workflows.size() + " tracked workflow files found — the live or mirror workflow "
                         + "tree moved, so a green scan would not establish the claimed denominator");
 
         var findings = new ArrayList<Finding>();
         for (String relative : workflows) {
-            String yaml = Files.readString(root.resolve(relative), StandardCharsets.UTF_8);
+            String yaml = Files.readString(CHECKOUT.resolve(relative), StandardCharsets.UTF_8);
             findings.addAll(scan(relative, yaml));
             findings.addAll(auditRunnerSelections(relative, yaml));
         }
@@ -277,30 +278,12 @@ class RunnerImagePinGuardTest {
         return backslashes % 2 == 1;
     }
 
-    private static List<String> trackedWorkflows(Path root) throws IOException, InterruptedException {
-        var builder = new ProcessBuilder("git", "ls-files", ".github").directory(root.toFile());
-        builder.redirectErrorStream(true);
-        Process process = builder.start();
-        List<String> tracked;
-        try (var reader = new BufferedReader(new InputStreamReader(process.getInputStream(), StandardCharsets.UTF_8))) {
-            tracked = reader.lines().toList();
-        }
-        assertEquals(0, process.waitFor(), "git ls-files .github failed, so the workflow denominator is unknown");
-        assertFalse(tracked.isEmpty(), "git ls-files .github returned nothing, so the guard would pass vacuously");
-        return tracked.stream()
+    /** The tracked workflow files — the denominator a workflow guard must not narrow by hand. */
+    private static List<String> trackedWorkflows() {
+        return CHECKOUT.tracked(".github").stream()
+                .map(CHECKOUT::relative)
                 .filter(path -> path.endsWith(".yml") || path.endsWith(".yaml"))
                 .toList();
     }
 
-    private static Path repositoryRoot() {
-        Path directory = Path.of("").toAbsolutePath();
-        while (directory != null) {
-            if (Files.isRegularFile(directory.resolve("settings.gradle"))
-                    && Files.isRegularFile(directory.resolve("build.sh"))) {
-                return directory;
-            }
-            directory = directory.getParent();
-        }
-        throw new IllegalStateException("could not locate the repository root from " + Path.of("").toAbsolutePath());
-    }
 }

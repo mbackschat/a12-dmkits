@@ -76,6 +76,22 @@ final class Checkout {
                 .toList());
     }
 
+    /**
+     * Every tracked file, whatever its type. For a guard whose subject is the published set itself — scripts,
+     * workflows, resources — rather than the JVM sources {@link #sources()} narrows to.
+     */
+    List<Path> tracked() {
+        return named("files", trackedFiles());
+    }
+
+    /**
+     * Whether git tracks {@code path}. Answered from the same set every enumeration uses, read once per JVM, so a
+     * file created after the first enumeration reads as untracked — which it is, until it is added.
+     */
+    boolean isTracked(Path path) {
+        return trackedFiles().contains(path.toAbsolutePath().normalize());
+    }
+
     /** Every tracked file under {@code subdirectory} — the scoped shape, for a guard that means one subtree. */
     List<Path> tracked(String subdirectory) {
         Path directory = resolve(subdirectory);
