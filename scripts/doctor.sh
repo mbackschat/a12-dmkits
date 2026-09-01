@@ -30,7 +30,7 @@ fi
 
 # Node 24.12 made direct TypeScript type stripping stable. The evidence and infographic tools execute their
 # checked-in .ts sources directly, so absence or an older runtime is a hard build-tool failure, not optional.
-if node_version="$(/bin/bash "$ROOT/scripts/run-typescript.sh" --check 2>&1)"; then
+if node_version="$("$ROOT/scripts/run-typescript.sh" --check 2>&1)"; then
     pass "Node.js runtime meets the >= 24.12.0 baseline — $node_version (${A12_NODE:-node})"
 else
     fail "$node_version"

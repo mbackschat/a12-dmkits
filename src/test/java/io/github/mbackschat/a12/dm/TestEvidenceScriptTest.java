@@ -19,9 +19,9 @@ import org.junit.jupiter.api.Test;
  * first version whose cutoff marked every file stale, and a cutoff read from the log's birth time, which
  * {@code >} does not reset when it truncates an existing path. The second credited a six-second run with 13
  * result directories and 2016 tests from earlier runs on 2026-08-31. A third regression made the reporter
- * abort under stock macOS Bash. The public command is now a Bash-3.2-compatible launcher over a TypeScript
- * implementation, so this wiring test still selects {@code /bin/bash}: the migration must preserve the command
- * boundary as well as the evidence semantics.
+ * abort under stock macOS Bash. The public command is now a POSIX launcher over a TypeScript implementation;
+ * its selftest invokes that launcher through Dash while this wiring test keeps Bash only for the still-Bash
+ * selftest harness. The migration must preserve the command boundary as well as the evidence semantics.
  *
  * <p><b>What is asserted, and what deliberately is not.</b> This is a <i>wiring</i> test: it executes the
  * selftest and requires every case to pass. The cases live in the script, next to the behaviour they check,

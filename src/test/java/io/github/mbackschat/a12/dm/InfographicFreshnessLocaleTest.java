@@ -26,7 +26,7 @@ import org.junit.jupiter.api.io.TempDir;
  *
  * <p><b>Why the public command and runtime refusal are part of the property.</b> Comparing two direct
  * implementation runs let a no-op shell launcher pass while CI executed that launcher. An always-on arm now
- * drives the public command through stock Bash in both directions: the exact success line with real Node, and
+ * drives the public command through Dash as the POSIX oracle in both directions: the exact success line with real Node, and
  * the shared runtime-gate refusal with an absent executable. The optional locale arm uses the same public path.
  * That makes the test sensitive to live-document drift, so {@code deliveryGuardTest} declares the complete
  * current document/asset denominator instead of caching the positive verdict across such a change.
@@ -159,7 +159,7 @@ class InfographicFreshnessLocaleTest {
     }
 
     private static Run runGuard(Path root, String locale, String node) throws Exception {
-        var builder = new ProcessBuilder("/bin/bash", root.resolve(GUARD).toString());
+        var builder = new ProcessBuilder("/bin/dash", root.resolve(GUARD).toString());
         builder.directory(root.toFile());
         builder.redirectErrorStream(true);
         Map<String, String> env = builder.environment();

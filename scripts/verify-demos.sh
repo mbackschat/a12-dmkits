@@ -29,7 +29,7 @@ cd "$ROOT"
 # fired stays empty), so the verifier would diff a well-formed-but-different output and report a false
 # "DRIFT" — the mechanism is then invisible in the failure (it cost a stash-bisect to find, 2026-07-18;
 # node was nvm-only and off the non-interactive PATH). Fail fast and name the fix instead.
-if ! node_version="$(A12_NODE=node /bin/bash "$ROOT/scripts/run-typescript.sh" --check 2>&1)"; then
+if ! node_version="$(A12_NODE=node "$ROOT/scripts/run-typescript.sh" --check 2>&1)"; then
   echo "verify-demos: $node_version" >&2
   echo "the cli-custom-types demo's JS-worker blocks would" >&2
   echo "degrade to 'unsupported' and read as a false DRIFT. Put a Node.js on PATH first" >&2

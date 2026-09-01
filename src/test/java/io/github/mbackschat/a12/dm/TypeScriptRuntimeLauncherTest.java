@@ -1,18 +1,33 @@
 package io.github.mbackschat.a12.dm;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.List;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
 /** Locks the selected-Node contract shared by TypeScript tools and the literal-node custom-JS worker. */
 class TypeScriptRuntimeLauncherTest {
+
+    @Test
+    void sharedLauncherAndStableWrappersDeclareThePosixBoundary() throws Exception {
+        Path root = repositoryRoot();
+        for (String relative : List.of(
+                "scripts/run-typescript.sh",
+                "scripts/check-infographic-freshness.sh",
+                "scripts/test-evidence.sh")) {
+            String source = Files.readString(root.resolve(relative));
+            assertTrue(source.startsWith("#!/bin/sh\n"), relative + " must use the portable runtime interface");
+            assertFalse(source.contains("/bin/bash"), relative + " must not escape its POSIX contract");
+        }
+    }
 
     @Test
     void stableBoundaryAndNewerReleasePassButItsPrereleaseDoesNot(@TempDir Path temporary) throws Exception {
@@ -32,7 +47,7 @@ class TypeScriptRuntimeLauncherTest {
 
         Path root = repositoryRoot();
         var builder = new ProcessBuilder(
-                "/bin/bash", "-c", "A12_NODE=node /bin/bash \"$1\" --check", "runtime-check",
+                "/bin/dash", "-c", "A12_NODE=node \"$1\" --check", "runtime-check",
                 root.resolve("scripts/run-typescript.sh").toString());
         builder.redirectErrorStream(true);
         builder.environment().put("A12_NODE", validOverride.toString());
@@ -43,7 +58,7 @@ class TypeScriptRuntimeLauncherTest {
         assertEquals(2, process.waitFor(), output);
         assertTrue(output.contains("Node.js 20.20.2 is older"), output);
 
-        String expectedCall = "A12_NODE=node /bin/bash \"$ROOT/scripts/run-typescript.sh\" --check";
+        String expectedCall = "A12_NODE=node \"$ROOT/scripts/run-typescript.sh\" --check";
         for (String consumer : new String[] {"scripts/verify-demos.sh", "scripts/native-gate.sh"}) {
             assertTrue(Files.readString(root.resolve(consumer)).contains(expectedCall),
                     consumer + " must check literal PATH node because CustomJsWorker launches literal node");
@@ -56,7 +71,7 @@ class TypeScriptRuntimeLauncherTest {
 
     private static Run runSelected(Path node) throws IOException, InterruptedException {
         Path launcher = repositoryRoot().resolve("scripts/run-typescript.sh");
-        var builder = new ProcessBuilder("/bin/bash", launcher.toString(), "--check");
+        var builder = new ProcessBuilder("/bin/dash", launcher.toString(), "--check");
         builder.redirectErrorStream(true);
         builder.environment().put("A12_NODE", node.toString());
         Process process = builder.start();
