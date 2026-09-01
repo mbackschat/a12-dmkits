@@ -714,6 +714,7 @@ tasks.register('docGuardTest', Test) {
             'gradle.properties': file('gradle.properties'),
             'cache smoke'      : file('scripts/verify-build-cache.sh'),
             'demo verifier'    : file('scripts/verify-demos.sh'),
+            'demo verifier implementation': file('scripts/typescript/verify-demos.ts'),
             'CI workflow'      : file('.github/workflows/ci.yml'),
             'infographic specification': file('docs/INFOGRAPHICS.md'),
             'nightly workflow' : file('.github/workflows/nightly-performance.yml'),

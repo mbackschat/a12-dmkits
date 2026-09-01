@@ -146,14 +146,17 @@ class BuildPerformancePolicyTest {
 
     @Test
     void demoVerifierDelegatesItsBuildToTheWorktreeSafeWrapper() throws IOException {
-        String script = Files.readString(locate("scripts/verify-demos.sh"));
+        String launcher = Files.readString(locate("scripts/verify-demos.sh"));
+        String implementation = Files.readString(locate("scripts/typescript/verify-demos.ts"));
 
-        assertTrue(script.contains("./build.sh --no-daemon :cli:installDist"),
+        assertTrue(implementation.contains("spawnSync(\"./build.sh\", [\"--no-daemon\", \":cli:installDist\"]"),
                 "build-driving scripts must reuse build.sh's common-directory-aware Gradle home");
-        assertTrue(script.contains("export DMTOOL_CLI=\"$ROOT/cli/build/install/dmtool/bin/dmtool\""),
+        assertTrue(implementation.contains("DMTOOL_CLI: path.join(root, \"cli/build/install/dmtool/bin/dmtool\")"),
                 "the packaged demo gate must pin the installDist launcher it just built; an inherited "
                         + "DMTOOL_CLI must not redirect the repo shim to a stale binary");
-        assertFalse(script.contains("export GRADLE_USER_HOME"),
+        assertTrue(launcher.contains("a12_pinned_jdk21_home"),
+                "the stable launcher must apply the same shared JDK pin to the post-build CLI process");
+        assertFalse((launcher + implementation).contains("export GRADLE_USER_HOME"),
                 "the demo verifier must not derive a second Gradle home from a linked worktree's parent");
     }
 

@@ -24,7 +24,8 @@ class TypeScriptRuntimeLauncherTest {
                 "scripts/check-infographic-freshness.sh",
                 "scripts/gen-scenarios.sh",
                 "scripts/sync-plugin-assets.sh",
-                "scripts/test-evidence.sh")) {
+                "scripts/test-evidence.sh",
+                "scripts/verify-demos.sh")) {
             String source = Files.readString(root.resolve(relative));
             assertTrue(source.startsWith("#!/bin/sh\n"), relative + " must use the portable runtime interface");
             assertFalse(source.contains("/bin/bash"), relative + " must not escape its POSIX contract");

@@ -25,7 +25,7 @@ while IFS= read -r relative; do
   [ -f "$file" ] || continue
   IFS= read -r first_line < "$file" || first_line=''
   [ "$first_line" = '#!/bin/sh' ] || continue
-  "$SHELLCHECK" -s sh "$file"
+  "$SHELLCHECK" -x -s sh "$file"
   "$DASH" -n "$file"
   checked=$((checked + 1))
 done < "$paths"
