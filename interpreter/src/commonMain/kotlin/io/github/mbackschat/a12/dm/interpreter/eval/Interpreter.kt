@@ -417,6 +417,12 @@ class Interpreter(
             PredicateOp.GROUP_FILLED -> groupPresence(ctxOf(p.args.single()), pathOf(p.args.single())).let {
                 if (it.relevance == GroupRelevance.NONE) Tri.UNKNOWN else Tri.of(it.filled)
             }
+            // The error bit is tested BEFORE positive presence, so a relevant group holding admitted content
+            // beside an independent error answers UNKNOWN here. a12-kernel-lean's SPEC-2026-09-02-03 answers
+            // FALSE on that one cell. Neither is refutable: the kernel exposes no channel that sees this leaf —
+            // not rule firing (no negation, monotone Kleene) and not message polarity (KERNEL-FINDINGS KF233,
+            // measured) — so the order below is a free choice, kept because a change no oracle can verify is a
+            // change no guard can protect. Reopen if a leaf-observable channel is ever found.
             PredicateOp.GROUP_NOT_FILLED -> groupPresence(ctxOf(p.args.single()), pathOf(p.args.single())).let {
                 when {
                     it.erroneous || it.relevance == GroupRelevance.NONE -> Tri.UNKNOWN

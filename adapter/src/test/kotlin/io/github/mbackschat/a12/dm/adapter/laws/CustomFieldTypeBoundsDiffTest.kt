@@ -25,7 +25,9 @@ import java.util.function.Consumer
 /**
  * Differential — a field DECLARED with a **custom field type** is auto-validated per cell, the implicit per-cell
  * form of `Valid(field, type)` (KERNEL-FINDINGS "Custom-extensibility surface"). The kernel delegates the whole
- * check to a registered `ICustomFieldValidator` (no validator → it THROWS; bounds are only hints). So, exactly
+ * check to a registered `ICustomFieldValidator`; bounds are only hints, and a MISSING validator raises rather
+ * than degrading — measured, with its full-check qualifier and the raise's own text, in
+ * [CustomFieldTypeSpiInvocationLawsTest] (this docstring carried that claim unmeasured until 2026-09-03). So, exactly
  * like [PredefinedTypeValidityDiffTest], this runs the SAME length predicate in all three engines — the kernel
  * strategies via their per-call custom-field-type factory, the interpreter via its [CustomFieldType] SPI — and verifies the OBSERVABLE
  * behaviour: a **rejected** cell becomes "unknown" and SUPPRESSES a value-reading rule that references it,
