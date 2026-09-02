@@ -53,6 +53,9 @@ class DateTimeConstantZoneSplitDiffTest {
         const val ORDINARY_LABEL = "05.03.2024T12:30:00"
 
         const val ADMITTED = "ADMITTED"
+
+        /** Pinned by the first run of this file; see the note at its assertion. */
+        const val REFUSAL_CODE = "MVK_INVALID_COMPARE_TO_DATE"
         val UTC: TimeZone = TimeZone.getTimeZone("UTC")
         val BERLIN: TimeZone = TimeZone.getTimeZone("Europe/Berlin")
     }
@@ -107,9 +110,11 @@ class DateTimeConstantZoneSplitDiffTest {
             "the control label must be admitted under the declared zone too")
         assertEquals(ADMITTED, actual["gap label · UTC default"],
             "under a UTC default the gap label names an ordinary instant and is admitted")
-        assertTrue(actual.getValue("gap label · Berlin default") != ADMITTED,
-            "the whole claim: with the model bytes fixed, a Berlin JVM default refuses the label a UTC one " +
-                "admits — got ${actual["gap label · Berlin default"]}")
+        // Pinned rather than asserted as "not ADMITTED": a bare inequality would also pass if the model became
+        // unloadable for an unrelated reason, which is the one way this row could report the claim while
+        // measuring something else.
+        assertEquals(REFUSAL_CODE, actual["gap label · Berlin default"],
+            "the whole claim: with the model bytes fixed, a Berlin JVM default refuses the label a UTC one admits")
     }
 
     /**

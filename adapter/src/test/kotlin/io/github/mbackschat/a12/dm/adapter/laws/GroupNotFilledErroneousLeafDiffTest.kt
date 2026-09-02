@@ -56,6 +56,9 @@ class GroupNotFilledErroneousLeafDiffTest {
         const val ERRORED_AMOUNT = "/Case/ContentFreeError/Amount"
 
         const val MALFORMED = "not-a-number"
+
+        /** Pinned by the first run of this file; see the note at its assertion. */
+        const val LEAF_TYPE = "OMISSION_ERROR"
     }
 
     private val base = DocumentModelDraft.named("claim-adjudication-leaf").locale("en_US")
@@ -116,9 +119,12 @@ class GroupNotFilledErroneousLeafDiffTest {
             setOf("CLEANLEAF", "ERRORLEAF", "MIXEDLEAF"), types.keys,
             "all three rules must fire, or the polarity reading has nothing to read",
         )
+        // Pinned per code rather than as "they are all equal": an all-equal assertion would also hold if the
+        // typing channel collapsed everything for an unrelated reason, and the VALUE the three agree on is what
+        // a reader needs to see the leaf contributing nothing.
         assertEquals(
-            1, types.values.toSet().size,
-            "the control pair must differ for this channel to discriminate — it does not: $types",
+            mapOf("CLEANLEAF" to LEAF_TYPE, "ERRORLEAF" to LEAF_TYPE, "MIXEDLEAF" to LEAF_TYPE), types,
+            "the control pair must differ for this channel to discriminate — it does not",
         )
     }
 
