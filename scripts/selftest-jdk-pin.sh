@@ -1,5 +1,5 @@
 #!/bin/sh
-# Lock both directions of the OpenJDK-21 selection policy in gradle-environment.sh at the POSIX boundary.
+# Lock the OpenJDK-21 selection policy and exact GraalVM native-builder pin at the POSIX boundary.
 # The fixture overrides are called indirectly by the sourced policy; ShellCheck neither follows nor sees that call.
 # shellcheck disable=SC1091,SC2329
 set -eu
@@ -64,6 +64,41 @@ case "$graal_err" in *GraalVM*) names_graal=yes ;; *) names_graal=no ;; esac
 case "$graal_err" in *"brew install openjdk@21"*) names_fix=yes ;; *) names_fix=no ;; esac
 check "names GraalVM as the reason it refused" "yes" "$names_graal"
 check "tells the reader how to fix it" "yes" "$names_fix"
+
+echo "verify-graalvm-native.sh — the exact native-builder pin"
+native_home="$TMP/native-image"
+mkdir -p "$native_home/bin"
+cat > "$native_home/bin/native-image" <<'NATIVE_IMAGE'
+#!/bin/sh
+[ -z "${FAKE_NATIVE_IMAGE_FAILURE:-}" ] || exit 23
+printf '%s\n' "${FAKE_NATIVE_IMAGE_BANNER:?}"
+printf '%s\n' "${FAKE_GRAALVM_RUNTIME_BANNER:?}"
+NATIVE_IMAGE
+chmod +x "$native_home/bin/native-image"
+graalvm_identity="$ROOT/gradle/graalvm-native.properties"
+expected_graalvm_version="$(sed -n 's/^graalvmVersion=//p' "$graalvm_identity")"
+expected_java_version="$(sed -n 's/^javaVersion=//p' "$graalvm_identity")"
+verify_graalvm="$ROOT/scripts/verify-graalvm-native.sh"
+
+check "accepts the exact pinned builder" "accepted" "$(
+  FAKE_NATIVE_IMAGE_BANNER="native-image $expected_java_version fixture" \
+    FAKE_GRAALVM_RUNTIME_BANNER="GraalVM Runtime Environment Oracle GraalVM $expected_graalvm_version+fixture" \
+    /bin/dash "$verify_graalvm" "$native_home" >/dev/null 2>&1 && echo accepted || echo refused
+)"
+check "REFUSES the 25.0 LTS train" "refused" "$(
+  FAKE_NATIVE_IMAGE_BANNER="native-image $expected_java_version fixture" \
+    FAKE_GRAALVM_RUNTIME_BANNER='GraalVM Runtime Environment Oracle GraalVM 25.0.4.1+fixture' \
+    /bin/dash "$verify_graalvm" "$native_home" >/dev/null 2>&1 && echo accepted || echo refused
+)"
+check "REFUSES the previous 25.3 patch" "refused" "$(
+  FAKE_NATIVE_IMAGE_BANNER='native-image 25.0.4 fixture' \
+    FAKE_GRAALVM_RUNTIME_BANNER='GraalVM Runtime Environment Oracle GraalVM 25.3.4+fixture' \
+    /bin/dash "$verify_graalvm" "$native_home" >/dev/null 2>&1 && echo accepted || echo refused
+)"
+check "REFUSES a broken native-image executable" "refused" "$(
+  FAKE_NATIVE_IMAGE_BANNER='unused' FAKE_GRAALVM_RUNTIME_BANNER='unused' FAKE_NATIVE_IMAGE_FAILURE=1 \
+    /bin/dash "$verify_graalvm" "$native_home" >/dev/null 2>&1 && echo accepted || echo refused
+)"
 
 echo
 if [ "$failures" -ne 0 ]; then

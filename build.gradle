@@ -548,9 +548,11 @@ tasks.register('deliveryGuardTest', Test) {
                 include 'interpreter/public-release/assets/infographics/*.png'
             },
             'Gradle environment'      : file('scripts/gradle-environment.sh'),
-            // JdkPinScriptTest executes this selftest, which sources gradle-environment.sh — so BOTH are
-            // runtime inputs, the same pairing as the doc-guard hook above.
+            // JdkPinScriptTest executes this selftest, which sources gradle-environment.sh and invokes the
+            // GraalVM verifier — so all three are runtime inputs, the same pairing as the doc-guard hook above.
             'JDK pin self-test'       : file('scripts/selftest-jdk-pin.sh'),
+            'GraalVM native verifier': file('scripts/verify-graalvm-native.sh'),
+            'GraalVM native identity': file('gradle/graalvm-native.properties'),
             // LaneGuardScriptTest executes this selftest, which sources lane-guard.sh — BOTH are runtime inputs,
             // the same pairing as the JDK pin and doc-guard hook entries above. build.sh sources the guard on
             // every invocation, so a break here breaks every build, not just this lane.

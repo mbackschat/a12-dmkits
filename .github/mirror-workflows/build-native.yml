@@ -59,8 +59,8 @@ jobs:
         with:
           distribution: temurin
           java-version: |
-            21
-            25
+            21.0.12
+            25.0.4
 
       - name: Cache bootstrapped kernel (mavenLocal)
         id: kernel-cache
@@ -125,21 +125,28 @@ jobs:
           name: kernel-m2
           path: ~/.m2/repository/com/mgmtp
 
-      # The Gradle toolchain is JDK 21 (compileJava); native-image needs GraalVM 25 (toolchainDetection=false
-      # → resolved via GRAALVM_HOME). Provide BOTH: setup-java 21 first (exports the arch-specific JAVA_HOME_21_*),
-      # then setup-graalvm 25 (becomes JAVA_HOME + GRAALVM_HOME). Gradle finds the 21 toolchain via fromEnv below.
+      # The Gradle toolchain is JDK 21 (compileJava); native-image needs the pinned GraalVM 25.3 builder
+      # (toolchainDetection=false → resolved via GRAALVM_HOME). Provide BOTH: setup-java 21 first
+      # (exports the arch-specific JAVA_HOME_21_*), then setup-graalvm 25.3 (becomes JAVA_HOME + GRAALVM_HOME).
+      # The exact-builder verifier rejects train
+      # drift before compilation. Gradle finds the 21 toolchain via fromEnv below.
       - name: Set up JDK 21 (Gradle toolchain)
         uses: actions/setup-java@v5
         with:
           distribution: temurin
-          java-version: 21
+          java-version: 21.0.12
 
-      - name: Set up GraalVM 25 (native-image)
+      - name: Set up GraalVM 25.3 Innovation (native-image)
         uses: graalvm/setup-graalvm@v1
         with:
-          java-version: '25'
+          version: '25.3'
           distribution: 'graalvm'
           github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Verify the exact GraalVM native builder
+        working-directory: a12-dmkits
+        shell: bash
+        run: ./scripts/verify-graalvm-native.sh
 
       - name: Build the native binary
         working-directory: a12-dmkits

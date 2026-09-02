@@ -23,6 +23,7 @@ set -euo pipefail
 : "${GRAALVM_HOME:?set GRAALVM_HOME to a GraalVM 25 home}"
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT"
+./scripts/verify-graalvm-native.sh "$GRAALVM_HOME"
 
 DEST="cli/src/main/resources/META-INF/native-image/rulekit-agent"
 CFG="${RK_NATIVE_CFG:-/tmp/rk-native-capture}"

@@ -8,6 +8,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Properties;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Stream;
@@ -32,15 +33,20 @@ import org.junit.jupiter.api.Test;
  * under {@code perf-results/} was measured on, so pinning it makes the two estates comparable instead of merely
  * adjacent.
  *
- * <p><b>Scope.</b> The workflow files only — this cannot see a JDK a runner image provides by default, nor a
- * toolchain Gradle resolves locally, so it bounds the problem from one side. What it does close is the one
- * mechanism observed to drift.
+ * <p><b>Scope.</b> Every workflow source shipped by this repository — the private CI files and both inert public
+ * mirror workflow trees. This cannot see a JDK a runner image provides by default, nor a toolchain Gradle resolves
+ * locally, so it bounds the problem from one side. What it does close is the one mechanism observed to drift.
  *
  * <p>Rides {@code docGuardTest}, whose input set declares the workflow tree.
  */
 class JdkPinGuardTest {
 
-    private static final Path WORKFLOWS = Path.of("../.github/workflows");
+    private static final Path PROJECT = Files.isDirectory(Path.of("../.github")) ? Path.of("..") : Path.of(".");
+
+    private static final List<Path> WORKFLOW_DIRECTORIES = List.of(
+            ".github/workflows",
+            ".github/mirror-workflows",
+            ".github/interpreter-mirror-workflows").stream().map(PROJECT::resolve).toList();
 
     /** A version entry under a {@code java-version:} block list. */
     private static final Pattern JAVA_VERSION_BLOCK =
@@ -53,7 +59,7 @@ class JdkPinGuardTest {
     /** A pinned version names at least major.minor.patch. A bare major, or major.minor, is a moving target. */
     private static final Pattern PINNED = Pattern.compile("^\\d+\\.\\d+\\.\\d+$");
 
-    private static final int MIN_DECLARATIONS = 2;
+    private static final int MIN_DECLARATIONS = 8;
 
     @Test
     void everyWorkflowJdkNamesAnExactPatchVersion() throws IOException {
@@ -66,8 +72,8 @@ class JdkPinGuardTest {
 
         int found = declarations.size();
         assertTrue(found >= MIN_DECLARATIONS,
-                () -> "parsed only " + found + " `java-version` declarations across " + WORKFLOWS + " (floor "
-                        + MIN_DECLARATIONS + ") — the workflow tree moved or the block shape changed, and this "
+                () -> "parsed only " + found + " `java-version` declarations across " + WORKFLOW_DIRECTORIES + " (floor "
+                        + MIN_DECLARATIONS + ") — a workflow tree moved or the block shape changed, and this "
                         + "guard is checking nothing");
 
         assertTrue(unpinned.isEmpty(), () -> "CI JDK version(s) that are not pinned to an exact patch. "
@@ -75,6 +81,38 @@ class JdkPinGuardTest {
                 + "follows the provider rather than this project — which already split the hosted performance "
                 + "series across two JDKs and cost it the run count a step claim needs. Name the full version "
                 + "(e.g. `21.0.12`) and bump it in a reviewable edit:\n  " + String.join("\n  ", unpinned));
+    }
+
+    @Test
+    void nativeWorkflowSelectsTheInnovationTrainAndVerifiesTheExactBuilder() throws IOException {
+        Properties identity = new Properties();
+        try (var reader = Files.newBufferedReader(PROJECT.resolve("gradle/graalvm-native.properties"))) {
+            identity.load(reader);
+        }
+        assertEquals("25.3.4.1", identity.getProperty("graalvmVersion"),
+                "this slice upgrades the native builder to GraalVM 25.3.4.1");
+        assertEquals("25.0.4.1", identity.getProperty("javaVersion"),
+                "the GraalVM 25.3.4.1 release is built on LabsJDK/native-image 25.0.4.1");
+
+        String workflow = Files.readString(PROJECT.resolve(".github/mirror-workflows/build-native.yml"));
+        int setupStart = workflow.indexOf("uses: graalvm/setup-graalvm@v1");
+        int nextStep = workflow.indexOf("\n      - name:", setupStart);
+        assertTrue(setupStart >= 0 && nextStep > setupStart,
+                "build-native.yml must still contain a bounded setup-graalvm step");
+        String setup = workflow.substring(setupStart, nextStep);
+        assertTrue(setup.contains("version: '25.3'"),
+                "setup-graalvm must select the requested GraalVM 25.3 innovation train");
+        assertTrue(!setup.contains("java-version:"),
+                "setup-graalvm's bare java-version selects a moving release; use its GraalVM train selector");
+        assertTrue(workflow.contains("./scripts/verify-graalvm-native.sh"),
+                "the moving 25.3 train must be checked against the exact committed builder before compilation");
+
+        String cliBuild = Files.readString(PROJECT.resolve("cli/build.gradle"));
+        assertTrue(cliBuild.contains("tasks.named('nativeCompile') { dependsOn verifyGraalvmNativeToolchain }"),
+                "nativeCompile must refuse an unpinned builder even outside the release workflow");
+        assertTrue(cliBuild.contains("if (project.hasProperty('rkNativeAgent')) {\n"
+                + "        dependsOn verifyGraalvmNativeToolchain\n"),
+                "the test-suite tracing-agent capture must refuse an unpinned builder too");
     }
 
     /** Does-fire proof for the rule, over fabricated workflow text rather than the live tree. */
@@ -107,15 +145,10 @@ class JdkPinGuardTest {
     /** Collect every declared version and those that are not an exact patch. */
     private static void audit(String name, String yaml, List<String> declarations, List<String> unpinned) {
         Matcher block = JAVA_VERSION_BLOCK.matcher(yaml);
-        boolean sawBlock = false;
         while (block.find()) {
-            sawBlock = true;
             for (String line : block.group(1).split("\n")) {
                 record(name, line.trim(), declarations, unpinned);
             }
-        }
-        if (sawBlock) {
-            return;
         }
         Matcher inline = JAVA_VERSION_INLINE.matcher(yaml);
         while (inline.find()) {
@@ -134,10 +167,13 @@ class JdkPinGuardTest {
     }
 
     private static List<Path> workflows() throws IOException {
-        Path dir = Files.isDirectory(WORKFLOWS) ? WORKFLOWS : Path.of(".github/workflows");
-        try (Stream<Path> files = Files.list(dir)) {
-            return files.filter(p -> p.getFileName().toString().endsWith(".yml")
-                    || p.getFileName().toString().endsWith(".yaml")).sorted().toList();
+        List<Path> result = new ArrayList<>();
+        for (Path directory : WORKFLOW_DIRECTORIES) {
+            try (Stream<Path> files = Files.list(directory)) {
+                result.addAll(files.filter(p -> p.getFileName().toString().endsWith(".yml")
+                        || p.getFileName().toString().endsWith(".yaml")).toList());
+            }
         }
+        return result.stream().sorted().toList();
     }
 }

@@ -208,10 +208,13 @@ def nativeCaptureStampDigest = {
     // Capture ROUTING is an input too. A build-script edit can exclude a test class, omit a required runtime
     // property, or change the traced classpath without touching one source file. The old source-only digest
     // therefore certified a narrower capture as fresh. Derive every project build file rather than naming the
-    // current modules, and include the two scripts that decide how loss is accepted and what artifact is copied.
+    // current modules, and include the controls that decide builder identity, how loss is accepted, and what
+    // artifact is copied.
     def captureControlFiles = rootProject.fileTree(rootProject.projectDir) {
         include 'build.gradle', '*/build.gradle', 'settings.gradle', 'gradle.properties', 'gradle/*.toml'
+        include 'gradle/graalvm-native.properties'
         include 'scripts/capture-native-config.sh', 'scripts/check-native-metadata-removals.sh'
+        include 'scripts/verify-graalvm-native.sh'
     }
     captureControlFiles.files.toSorted { a, b -> a.absolutePath <=> b.absolutePath }.each { f ->
         add(rootProject.relativePath(f), f.bytes)
@@ -224,16 +227,10 @@ def nativeCaptureStampDigest = {
             .collect { it.name }.toSorted()
             .each { add('jar', it.getBytes('UTF-8')) }
     add('callerFilter', rootProject.file('scripts/native-agent-caller-filter.json').bytes)
-    // GRAALVM_HOME is deliberately NOT hashed. It used to be, and that made the stamp unverifiable anywhere
-    // but the machine that minted it: the value is an absolute path (`/Library/Java/…` here,
-    // `/opt/hostedtoolcache/…` on a runner), and the runner's GraalVM is a different patch release besides.
-    // The gate fails closed, so every CI native build failed the moment the stamp was first committed and the
-    // check stopped being a no-op — measured 2026-08-07, and reproduced locally by changing only this variable.
-    //
-    // Dropping it loses nothing the digest is for. The question a stamp answers is "were the SOURCES the same",
-    // and the verifier's own toolchain is not a source input. A capture taken with a different GraalVM that
-    // recorded a different surface still moves the digest, because the metadata file itself lives under
-    // `cli/src/main` and is hashed above.
+    // GRAALVM_HOME is deliberately NOT hashed: it is an absolute installation path, so hashing it made the stamp
+    // unverifiable anywhere but the machine that minted it (measured 2026-08-07). Builder identity is portable
+    // and fail-closed instead: the exact version file and its executable verifier are hashed above, and the
+    // verifier runs before both the tracing-agent test and nativeCompile.
     return md.digest().encodeHex().toString()
 }
 
@@ -353,6 +350,24 @@ def dmtoolContractExecutable = project.findProperty('dmtoolContractExecutable')
         ?: layout.buildDirectory.file('install/dmtool/bin/dmtool').get().asFile.absolutePath
 def dmtoolContractVersionProperties = project.findProperty('dmtoolContractVersionProperties')
         ?: new File(file(dmtoolContractExecutable).parentFile, packagedVersionSnapshotName).absolutePath
+def graalvmHome = providers.environmentVariable('GRAALVM_HOME')
+def graalvmNativeVerifier = rootProject.file('scripts/verify-graalvm-native.sh')
+def graalvmNativeIdentity = rootProject.file('gradle/graalvm-native.properties')
+def verifyGraalvmNativeToolchain = tasks.register('verifyGraalvmNativeToolchain', Exec) {
+    group = 'verification'
+    description = 'Refuse native metadata capture or compilation unless it uses the exact pinned GraalVM builder.'
+    inputs.file(graalvmNativeVerifier)
+    inputs.file(graalvmNativeIdentity)
+    inputs.property('GRAALVM_HOME', graalvmHome.orElse(''))
+    outputs.upToDateWhen { false }
+    doFirst {
+        if (!graalvmHome.present) {
+            throw new GradleException('native metadata capture and compilation require GRAALVM_HOME; '
+                    + 'docs/NATIVE-IMAGE-GRAALVM.md §2')
+        }
+        commandLine 'sh', graalvmNativeVerifier, graalvmHome.get()
+    }
+}
 
 tasks.named('test', Test) {
     // Native-image reflection capture (docs/NATIVE-IMAGE-GRAALVM.md §5) — TEST-SUITE driven, opt-in.
@@ -363,8 +378,9 @@ tasks.named('test', Test) {
     // `executable` at $GRAALVM_HOME and serialize forks (config-merge-dir is not fork-safe). Driven by
     // scripts/capture-native-config.sh; never on in the normal test run.
     if (project.hasProperty('rkNativeAgent')) {
-        def graalHome = System.getenv('GRAALVM_HOME')
-        if (!graalHome) throw new GradleException('rkNativeAgent capture needs GRAALVM_HOME (a GraalVM 25 home)')
+        dependsOn verifyGraalvmNativeToolchain
+        def graalHome = graalvmHome.orNull
+        if (!graalHome) throw new GradleException('rkNativeAgent capture needs GRAALVM_HOME (the pinned GraalVM home)')
         def cfgDir = project.findProperty('rkNativeAgentDir') ?: "${rootProject.projectDir}/build/rk-native-capture"
         // caller-filter drops reflective lookups MADE BY the test harness (JUnit/Gradle), so the metadata
         // does not record JUnit's instantiation of the *Test classes (which share the …cli package with
@@ -458,8 +474,15 @@ tasks.register('docGuardTest', Test) {
             'eval workflow'      : rootProject.file('eval/benchmark.workflow.js'),
             'probe task 14'      : rootProject.file('probe/tasks/14-repeated-computation-outcomes.md'),
             'operator catalog'   : rootProject.fileTree('rulekit/src/main/resources/catalog'),
-            // JdkPinGuardTest reads the workflow files, so an edit there must re-run it rather than cache green.
-            'CI workflows'       : rootProject.fileTree('.github/workflows') { include '**/*.yml', '**/*.yaml' },
+            // JdkPinGuardTest reads every private and shipped-mirror workflow, so an edit in any source tree must
+            // re-run it rather than restore a green result produced against a smaller denominator.
+            'CI workflows'       : files(
+                    rootProject.fileTree('.github/workflows') { include '**/*.yml', '**/*.yaml' },
+                    rootProject.fileTree('.github/mirror-workflows') { include '**/*.yml', '**/*.yaml' },
+                    rootProject.fileTree('.github/interpreter-mirror-workflows') {
+                        include '**/*.yml', '**/*.yaml'
+                    }),
+            'GraalVM native identity': rootProject.file('gradle/graalvm-native.properties'),
             // ModelLoaderParityTest reads every fixture model in both roots.
             'cli test models'    : rootProject.fileTree('cli/src/test/resources/models') { include '**/*.json' },
             'examples/models'    : rootProject.fileTree('examples/models') { include '**/*.json' },
@@ -754,17 +777,6 @@ graalvmNative {
     toolchainDetection = false
     binaries {
         named('main') {
-            // Auto-discover the installed GraalVM 25 so `:cli:nativeCompile` needs no GRAALVM_HOME locally.
-            // CI still sets GRAALVM_HOME (RELEASE-SPEC) and that path is preserved untouched — this launcher
-            // only kicks in when the env var is absent. languageVersion 25 + the Oracle vendor uniquely select
-            // the Oracle GraalVM 25 (Gradle classifies it as "Oracle JDK 25"); the JDK-21 compile toolchain
-            // (wrong version) and any Homebrew OpenJDK 25 (vendor "Homebrew", no native-image) are excluded.
-            if (System.getenv('GRAALVM_HOME') == null) {
-                javaLauncher = javaToolchains.launcherFor {
-                    languageVersion = JavaLanguageVersion.of(25)
-                    vendor = JvmVendorSpec.ORACLE
-                }
-            }
             imageName = 'dmtool'
             buildArgs.add('--no-fallback')
             buildArgs.add('-Os')   // size optimization (GraalVM 25 supports it; 21 didn't)
@@ -790,3 +802,4 @@ graalvmNative {
         }
     }
 }
+tasks.named('nativeCompile') { dependsOn verifyGraalvmNativeToolchain }
