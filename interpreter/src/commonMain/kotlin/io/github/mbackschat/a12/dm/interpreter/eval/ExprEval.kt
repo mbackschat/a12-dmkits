@@ -396,6 +396,32 @@ internal fun Interpreter.evalCmpOperand(self: Expr, other: Expr): Val = when {
     else -> evalExpr(self)
 }
 
+/**
+ * Evaluate an expression being ASSIGNED to a typed target. An assignment adds exactly one resolution over
+ * [evalExpr]: a bare quoted temporal LITERAL is typed by the target's declared kind, the way a comparison types
+ * one by its counterpart operand ([evalCmpOperand]). Without it the German literal text reaches the store
+ * uncanonicalized, so a target declaring any other format cannot render it and the cell is flagged errored
+ * instead of stored — measured against both kernel strategies, which store `31.12.1899` into a `yyyy-MM-dd`
+ * DATE target as `1899-12-31` and `05.03.2024T12:30:00` into an ISO DATE_TIME target as
+ * `2024-03-05T12:30:00` (`adapter.laws.DateConstantTargetPolicyDiffTest`,
+ * `adapter.laws.DateTimeConstantZoneSplitDiffTest`; the store rule itself is KERNEL-FINDINGS `KF222`/`KF223`).
+ *
+ * Two kinds are resolved because two kinds were measured. [Kind.TIME] needs none — its literal is already the
+ * ISO `HH:mm:ss` shape — and [Kind.DATE_RANGE] has no witnessed literal at all (`KF223`), so neither is
+ * guessed at here.
+ */
+internal fun Interpreter.evalAssignedExpr(expr: Expr, targetKind: Kind?): Val {
+    if (expr !is Expr.StrLit) return evalExpr(expr)
+    return when (targetKind) {
+        Kind.DATE -> coerceDate(Val.Txt(expr.v))
+        Kind.DATE_TIME -> Val.Txt(parseDateTimeToIso(expr.v, DATE_TIME_LITERAL_FORMAT) ?: expr.v)
+        else -> evalExpr(expr)
+    }
+}
+
+/** The kernel's date-time constant spelling: the German date, a literal `T`, and the clock (`KF223`). */
+private const val DATE_TIME_LITERAL_FORMAT = "dd.MM.yyyy'T'HH:mm:ss"
+
 /** Whether [e] statically yields a DATE value — the signal that a counterpart string LITERAL is a date
  *  literal (German `dd.MM.yyyy`), not a plain string. A DATE field, the date constants (`Today`/`BaseYear`),
  *  a date-producing function, or a min/max whose operands are dates ([dateAggregate] — the kernel types

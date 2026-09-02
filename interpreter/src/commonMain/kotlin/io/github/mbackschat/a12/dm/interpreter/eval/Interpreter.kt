@@ -256,6 +256,13 @@ class Interpreter(
      */
     fun evalExpression(expr: Expr): Val = evalExpr(expr)
 
+    /**
+     * As [evalExpression], but told the DECLARED KIND of the target the value is being assigned to. A bare
+     * quoted date literal is typed by that kind — see [evalAssignedExpr]; every other expression evaluates
+     * identically, so a caller with no target kind may keep the single-argument form.
+     */
+    fun evalExpression(expr: Expr, targetKind: Kind?): Val = evalAssignedExpr(expr, targetKind)
+
     fun eval(cond: Cond): Tri {
         if (!gated(cond)) return Tri.UNKNOWN
         return evalCond(cond)

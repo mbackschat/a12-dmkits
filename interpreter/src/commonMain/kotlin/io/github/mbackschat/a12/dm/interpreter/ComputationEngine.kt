@@ -249,7 +249,7 @@ internal class ComputationEngine(
                     // dependent that never actually reads the poisoned target (a short-circuit skipped it) computes
                     // normally — there is no static dependency pre-skip.
                     val computed = try {
-                        val selection = evalComputation(parsed, interp)
+                        val selection = evalComputation(parsed, interp, comp.targetPath)
                         val v = selection.value
                         // ERRORED: poison the target + do NOT overlay — a dependent's READ of it must poison, not read
                         // the bad value. A resolved VALUE overlays (dependents read the computed result). Either way
@@ -448,11 +448,13 @@ internal class ComputationEngine(
         }
     }
 
-    private fun evalComputation(parsed: ParsedComputation, interp: Interpreter): Selection {
+    private fun evalComputation(parsed: ParsedComputation, interp: Interpreter, targetPath: String): Selection {
         if (parsed.commonPrecondition != null && interp.eval(parsed.commonPrecondition) != Tri.TRUE) return Selection.NONE
         for (alt in parsed.alternatives) {
             if (alt.precondition == null || interp.eval(alt.precondition) == Tri.TRUE) {
-                return Selection(true, interp.evalExpression(alt.operation))
+                // The target's declared kind types a bare literal operand: a date CONSTANT is written German and
+                // has to reach the store canonicalized, or the target's own format cannot render it.
+                return Selection(true, interp.evalExpression(alt.operation, model.kinds[targetPath]))
             }
         }
         return Selection.NONE
