@@ -11,6 +11,7 @@ import io.github.mbackschat.a12.dm.rulekit.dsl.Dsl
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.TestInstance
 import java.util.TimeZone
 
 /**
@@ -36,6 +37,11 @@ import java.util.TimeZone
  *
  * Own domain (long-distance rail reservations).
  */
+// One instance per CLASS: these files hold their model JSON, the loaded definition and a kernel Java
+// engine as fields, and this Gradle task also carries a clock-reading assertion. Per-method lifecycle
+// would redo codegen and model loading on every case for no gain (CLAUDE.md: a new test must not
+// perturb a timing floor sharing its task).
+@TestInstance(TestInstance.Lifecycle.PER_CLASS)
 class DateTimeConstantZoneSplitDiffTest {
 
     private companion object {

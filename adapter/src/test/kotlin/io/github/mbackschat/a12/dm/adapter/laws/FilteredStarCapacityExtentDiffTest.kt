@@ -18,6 +18,7 @@ import io.github.mbackschat.a12.dm.rulekit.dsl.Severity
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.TestInstance
 
 /**
  * Tri-engine differential — does the declared-capacity projection survive a `Having` FILTER on the star?
@@ -47,6 +48,11 @@ import org.junit.jupiter.api.Test
  *
  * Own domain (marketplace payout settlement).
  */
+// One instance per CLASS: these files hold their model JSON, the loaded definition and a kernel Java
+// engine as fields, and this Gradle task also carries a clock-reading assertion. Per-method lifecycle
+// would redo codegen and model loading on every case for no gain (CLAUDE.md: a new test must not
+// perturb a timing floor sharing its task).
+@TestInstance(TestInstance.Lifecycle.PER_CLASS)
 class FilteredStarCapacityExtentDiffTest {
 
     private companion object {
@@ -79,6 +85,18 @@ class FilteredStarCapacityExtentDiffTest {
         val OVER_REPETITION_CODES = setOf("zuGrosseZeile", "zuGrosseKontextnummer")
 
         fun typeName(kernelType: String) = if (kernelType == "OMISSION_ERROR") OMISSION else VALUE
+
+        /**
+         * **Every filtered carrier types OMISSION on every document here, and that is a measurement, not a
+         * convenience.** The plain analogue types the same counts `VALUE` on the corresponding documents
+         * ([StarredFieldValueCountCarrierCapacityDiffTest]), so the `Having` is what moves the polarity — the
+         * "a filtered operand is growable unconditionally, because a filter is present" rule this project
+         * already holds for the value count ([NumberOfValueInFieldsPolarityDiffTest]), now observed to reach
+         * `Sum`, the extrema and the distinct count as well, and to hold on the in-capacity controls rather
+         * than only where the projection excluded something.
+         */
+        val ALL_OMISSION =
+            listOf("SUM", "MIN", "MAX", "NDV", "NVF", "STR", "BOOL", "CONF").associateWith { OMISSION }
     }
 
     private val base = DocumentModelDraft.named("payout-filtered-star-capacity").locale("en_US")
@@ -228,6 +246,7 @@ class FilteredStarCapacityExtentDiffTest {
                 "SUM" to "5", "MIN" to "5", "MAX" to "5", "NDV" to "1", "NVF" to "1",
                 "STR" to "0", "BOOL" to "0", "CONF" to "0",
             ),
+            ALL_OMISSION,
             "Number in-capacity 5 / over-limit 7; each token match above capacity",
         )
 
@@ -239,6 +258,7 @@ class FilteredStarCapacityExtentDiffTest {
                 "SUM" to "7", "MIN" to "7", "MAX" to "7", "NDV" to "1", "NVF" to "0",
                 "STR" to "0", "BOOL" to "0", "CONF" to "0",
             ),
+            ALL_OMISSION,
             "Number in-capacity 7 / over-limit 5 — the counted value is the one above capacity",
         )
 
@@ -250,6 +270,7 @@ class FilteredStarCapacityExtentDiffTest {
                 "SUM" to "12", "MIN" to "5", "MAX" to "7", "NDV" to "2", "NVF" to "1",
                 "STR" to "1", "BOOL" to "1", "CONF" to "1",
             ),
+            ALL_OMISSION,
             "everything inside capacity",
         )
 
@@ -261,6 +282,7 @@ class FilteredStarCapacityExtentDiffTest {
                 "SUM" to "12", "MIN" to "5", "MAX" to "7", "NDV" to "2", "NVF" to "1",
                 "STR" to "2", "BOOL" to "2", "CONF" to "2",
             ),
+            ALL_OMISSION,
             "both in-capacity rows match on every token carrier",
         )
 
@@ -302,7 +324,12 @@ class FilteredStarCapacityExtentDiffTest {
      * The type is carried beside the value because a12-kernel-lean's entries report the omission-vs-value
      * polarity of these rules; it is pinned as measured rather than predicted.
      */
-    private fun assertReadings(rows: Rows, expected: Map<String, String>, label: String) {
+    private fun assertReadings(
+        rows: Rows,
+        expected: Map<String, String>,
+        expectedTypes: Map<String, String>,
+        label: String,
+    ) {
         val kernelDocument = kernelDocument(rows)
         val dynamic = RuntimeLaws.messages(modelJson, kernelDocument)
             .filter { it.code() in ladderCodes }
@@ -320,6 +347,19 @@ class FilteredStarCapacityExtentDiffTest {
         val fired = dynamic.map { it.substringBefore(':') }.toSet()
         val actual = expected.keys.associateWith { prefix -> reading(prefix, fired) }
         assertEquals(expected, actual, "$label — the value each filtered carrier answered")
+
+        // The TYPE is pinned per carrier, not merely cross-compared. Comparing it across engines only proves
+        // they agree; a12-kernel-lean's SPEC-2026-09-02-02 makes a claim ABOUT the polarity of these three token
+        // counts, so a reproduction that could not see the type would over-claim on the one axis their separator
+        // names. (Found by a cold review, 2026-09-03: the first version stripped the type before reading.)
+        val types = dynamic.associate { it.substringBefore(':') to it.substringAfter(':') }
+        assertEquals(
+            expectedTypes,
+            expectedTypes.keys.associateWith { prefix ->
+                carriers.getValue(prefix).ladder.firstNotNullOfOrNull { types["$prefix$it"] } ?: UNAVAILABLE
+            },
+            "$label — the omission-vs-value typing of each fired carrier rule",
+        )
     }
 
     /** Which ladder member of [prefix] fired: exactly one is the answer, none is [UNAVAILABLE], several a bug. */
@@ -356,13 +396,16 @@ class FilteredStarCapacityExtentDiffTest {
      * Walks the rows one document declares.
      *
      * **Every operand group declares two fields and the star names one of them, and the unnamed sibling is
-     * filled — that is the fixture control, not decoration.** Each token carrier's sibling holds the very value
-     * its operand hunts for, so an evaluator reading the star as the group's whole subtree lands on a different
-     * ladder member: the account a one-field-per-group fixture cannot separate from the correct one, which is
-     * how a12-kernel-lean's `LF114` shipped. The Number sibling is filled once, in in-capacity row 1, for the
-     * same reason; on two of the four documents that misread pushes the total off the ladder, so it fails as an
-     * unevaluable carrier rather than as a wrong number — a failure either way, but the reader should know which
-     * shape to expect.
+     * filled — that is the fixture control, not decoration.** An evaluator reading the star as the group's whole
+     * subtree lands on a different ladder member or off the ladder entirely: the account a one-field-per-group
+     * fixture cannot separate from the correct one, which is how a12-kernel-lean's `LF114` shipped.
+     *
+     * <p><b>Which carriers catch it, stated because it is not all of them</b> (a cold review found the first
+     * version claiming otherwise, 2026-09-03). `Tags/Alt` and `Terms/Read` hold the value their operand hunts
+     * for, so `STR` and `CONF` separate the accounts. `Checks/Waived` is `false` while `BOOL` counts `true`, so
+     * that carrier has NO such control on any document here. The Number sibling is filled once, in in-capacity
+     * row 1, and pushes a subtree misread off the ladder on three of the four documents — reported as an
+     * unevaluable carrier rather than as a wrong number, which is a failure either way but a different shape.
      */
     private fun forEachRow(
         rows: Rows,

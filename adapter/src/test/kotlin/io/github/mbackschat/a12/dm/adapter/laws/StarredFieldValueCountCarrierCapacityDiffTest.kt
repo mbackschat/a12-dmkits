@@ -15,6 +15,7 @@ import io.github.mbackschat.a12.dm.rulekit.dsl.Severity
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.TestInstance
 
 /**
  * Tri-engine differential — does the declared-capacity projection reach `NumberOfValueInFields` over a **plain
@@ -34,10 +35,16 @@ import org.junit.jupiter.api.Test
  * with the observed set printed rather than passing as an evaluable carrier.
  *
  * **The sibling field in every group is the fixture control, not decoration.** Each operand group declares two
- * fields and the star names exactly one of them; the unnamed sibling is filled in every row with the value the
- * operand is hunting for. So an evaluator that read the star as the group's whole subtree — the account a
- * one-field-per-group fixture cannot separate from the correct one, which is precisely how a12-kernel-lean's
- * `LF114` shipped — answers a different ladder member on every carrier here.
+ * fields and the star names exactly one of them; the unnamed sibling is filled in every row. So an evaluator
+ * that read the star as the group's whole subtree — the account a one-field-per-group fixture cannot separate
+ * from the correct one, which is precisely how a12-kernel-lean's `LF114` shipped — answers a different ladder
+ * member and the exact-set assertion fails.
+ *
+ * <p><b>Which carrier catches it, stated because it is not all of them.</b> `Reviews` holds one sibling value
+ * (`Escalated = false`) and serves two carriers with opposite constants, so `BFALSE` is the one that separates
+ * the accounts there (4 / 3 / 2 against 2 / 1 / 0) while `BTRUE` reads the same either way. `STR` and `CONF`
+ * separate them on their own groups. A cold review found the first version of this paragraph claiming every
+ * carrier discriminates (2026-09-03).
  *
  * **What the rows predicted and what they merely record.** The COUNT per carrier per document is the account
  * under test and was fixed before the first run. The message TYPE beside it (the kernel's omission-vs-value
@@ -47,6 +54,11 @@ import org.junit.jupiter.api.Test
  *
  * Own domain (insurance claim handling).
  */
+// One instance per CLASS: these files hold their model JSON, the loaded definition and a kernel Java
+// engine as fields, and this Gradle task also carries a clock-reading assertion. Per-method lifecycle
+// would redo codegen and model loading on every case for no gain (CLAUDE.md: a new test must not
+// perturb a timing floor sharing its task).
+@TestInstance(TestInstance.Lifecycle.PER_CLASS)
 class StarredFieldValueCountCarrierCapacityDiffTest {
 
     private companion object {
@@ -212,10 +224,19 @@ class StarredFieldValueCountCarrierCapacityDiffTest {
      */
     @Test
     fun theOverLimitRowsStructuralFindingStaysVisibleBesideTheUnaffectedCounts() {
-        val codes = RuntimeLaws.messages(modelJson, kernelDocument(matchOnlyOverLimit)).map { it.code() }
-        assertTrue(codes.any { it in OVER_REPETITION_CODES },
-            "no over-repetition finding in $codes — then row 3 is not above capacity and the counts above " +
-                "measure nothing about the projection")
+        // Checked PER GROUP, not once for the document: a single `any` would be satisfied by one group's
+        // finding while another group's row 3 sat quietly inside capacity, which is exactly the fixture mistake
+        // this control exists to catch (tightened after a cold review, 2026-09-03).
+        for (rows in listOf(matchOnlyOverLimit, bothInCapacityOppositeOverLimit)) {
+            val lit = RuntimeLaws.messages(modelJson, kernelDocument(rows))
+                .filter { it.code() in OVER_REPETITION_CODES }.map { it.field() }
+            for (group in listOf(CATEGORIES, REVIEWS, CONSENTS)) {
+                val name = group.substringAfterLast('/')
+                assertTrue(lit.any { it.contains(name) },
+                    "no over-repetition finding for $name in $lit — then its row 3 is not above capacity and " +
+                        "that carrier's counts measure nothing about the projection")
+            }
+        }
     }
 
     // ---- the instrument ----

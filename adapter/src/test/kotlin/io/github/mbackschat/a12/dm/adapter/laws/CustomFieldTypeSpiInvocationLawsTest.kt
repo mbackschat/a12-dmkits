@@ -8,11 +8,13 @@ import com.mgmtp.a12.kernel.core.customfieldtype.ICustomFieldValidator
 import io.github.mbackschat.a12.dm.modelkit.CustomFieldBuilder
 import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft
 import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel
-import io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer
+import io.github.mbackschat.a12.dm.rulekit.dsl.Dsl
+import io.github.mbackschat.a12.dm.rulekit.dsl.Severity
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertThrows
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.TestInstance
 import java.util.Optional
 import java.util.function.Consumer
 
@@ -29,13 +31,21 @@ import java.util.function.Consumer
  * answer to `-05`, and it is now an explicit exclusion in the module's customization-parity paragraph rather than
  * a silent omission.
  *
- * **The instrument records calls, so an absence is a reading.** A test that merely asserted "validation still
- * works" would pass whether or not a conversion ran. Every arm of the validator appends to one ordered log, and
- * the assertions read that log — so "no conversion was invoked" is the observed content of a list that
- * demonstrably received the `validate` entry beside it.
+ * **The instrument records calls, so an absence is a reading — but only because BOTH overloads of each arm are
+ * recorded.** A test that merely asserted "validation still works" would pass whether or not a conversion ran.
+ * Every arm of the validator appends to one ordered log, and the assertions read that log, so "no conversion was
+ * invoked" is the observed content of a list that demonstrably received the `validate` entry beside it. The
+ * two-argument overloads are the load-bearing half: the engine calls those, and the SPI's own default for them
+ * does NOT delegate to the one-argument form, so recording only the outer pair would have made the absence
+ * unfalsifiable rather than measured.
  *
  * Own domain (retail bank account maintenance).
  */
+// One instance per CLASS: these files hold their model JSON, the loaded definition and a kernel Java
+// engine as fields, and this Gradle task also carries a clock-reading assertion. Per-method lifecycle
+// would redo codegen and model loading on every case for no gain (CLAUDE.md: a new test must not
+// perturb a timing floor sharing its task).
+@TestInstance(TestInstance.Lifecycle.PER_CLASS)
 class CustomFieldTypeSpiInvocationLawsTest {
 
     private companion object {
@@ -78,6 +88,29 @@ class CustomFieldTypeSpiInvocationLawsTest {
             log += "convertInternal2Display($internalValue)"
             return conversion(internalValue)
         }
+
+        // BOTH overloads are recorded, and the two-argument pair is the one that matters: the engine calls
+        // `convertDisplay2Internal(wert, configData)`, and the SPI's default for THAT form returns a
+        // no-conversion result without delegating to the one-argument form — so an instrument overriding only
+        // the outer pair would leave the engine's real path unrecorded and report an empty log whatever the
+        // engine did. The `validate` arm has no such trap and that asymmetry is what hid it: the engine calls
+        // the deprecated four-argument overload, whose default DOES delegate down to the three-argument form
+        // overridden above, so acceptance is genuinely observed. (Found by a cold review, 2026-09-03.)
+        override fun convertDisplay2Internal(
+            displayValue: String,
+            configData: MutableMap<String, Any>,
+        ): ICustomFieldTypeConversionResult {
+            log += "convertDisplay2Internal($displayValue, configData=${configData.keys})"
+            return conversion(displayValue)
+        }
+
+        override fun convertInternal2Display(
+            internalValue: String,
+            configData: MutableMap<String, Any>,
+        ): ICustomFieldTypeConversionResult {
+            log += "convertInternal2Display($internalValue, configData=${configData.keys})"
+            return conversion(internalValue)
+        }
     }
 
     // Every method of `ICustomFieldTypeFactory` is `default`, so it is not a functional interface and there is
@@ -99,9 +132,18 @@ class CustomFieldTypeSpiInvocationLawsTest {
         })
         .build().toJson()
 
-    /** A rule that READS the custom cell, so the validation of that cell is on the path a rule depends on. */
-    private val condition = DslRenderer().render(BoundModel.ofJson(base).custom(KEY).eq(GOOD))
-    private val model = RuntimeLaws.withRule(base, ACCOUNT, "KeyMatches", "../Key", "KEY_MATCH", condition)
+    /**
+     * A rule that READS the custom cell, so the validation of that cell is on the path a rule depends on. Built
+     * through the typed surface — the error field is the custom ref itself and its kernel-relative path is
+     * derived, never hand-written (a cold review caught the raw `"../Key"` splice this replaced, 2026-09-03).
+     */
+    private val bound = BoundModel.ofJson(base)
+    private val model = TypedRules.inject(
+        base,
+        bound.rule(bound.group(ACCOUNT)).name("KeyMatches").errorField(bound.custom(KEY).field())
+            .`when`(bound.custom(KEY).eq(GOOD)).code("KEY_MATCH").severity(Severity.ERROR)
+            .message(Dsl.en("The account key must match the registered one.")).build(),
+    )
 
     private fun document() = RuntimeLaws.doc().group(ACCOUNT, 1)
         .field(HOLDER, "L. Weber", 1, 1).field(KEY, GOOD, 1, 1)
