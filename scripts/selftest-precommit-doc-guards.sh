@@ -39,14 +39,28 @@ out="$(git -C "$REPO" commit -qm "schema edit" 2>&1)"
 status=$?
 set -e
 [[ $status -ne 0 ]] || fail "a schema edit committed with no doc-guard evidence"
-[[ "$out" == *":docGuardTest"* && "$out" == *":cli:docGuardTest"* ]] \
-  || fail "the refusal did not name both guard tasks: $out"
+# All four lanes, not just the two the hook started with: the refusal is the only place a session learns
+# which commands to run, so a lane silently dropped from the hook would leave a doc-driven guard unrun with
+# nothing to notice it — which is how a red landed on 033fe3ef6 before referentGuardTest was required here.
+for task in ":docGuardTest" ":cli:docGuardTest" ":cli:referentGuardTest" ":cli:staleGapGuardTest"; do
+  [[ "$out" == *"$task"* ]] || fail "the refusal did not name $task: $out"
+done
 [[ "$out" == *"-Pfast"* ]] || fail "the refusal did not warn that -Pfast skips them: $out"
 
+# Every doc-driven lane the hook demands evidence from, in ONE place: the hook's list grew from two to four
+# on 2026-09-03 and both fabrication sites below have to move with it, so a second literal copy would let the
+# positive controls pass against a stale idea of the contract.
+fabricate_guard_evidence() {
+  local d
+  for d in build/test-results/docGuardTest cli/build/test-results/docGuardTest \
+           cli/build/test-results/referentGuardTest cli/build/test-results/staleGapGuardTest; do
+    mkdir -p "$REPO/$d"
+    touch "$REPO/$d/TEST-x.xml"
+  done
+}
+
 # 3. FRESH evidence lets the same commit through — the check keys on staleness, not on the path alone.
-mkdir -p "$REPO/build/test-results/docGuardTest" "$REPO/cli/build/test-results/docGuardTest"
-touch "$REPO/build/test-results/docGuardTest/TEST-x.xml" \
-      "$REPO/cli/build/test-results/docGuardTest/TEST-y.xml"
+fabricate_guard_evidence
 git -C "$REPO" commit -qm "schema edit, guards run" \
   || fail "fresh doc-guard evidence did not satisfy the check"
 
@@ -133,9 +147,7 @@ for dialect in gnu bsd; do
     || fail "with a ${dialect}-only stat, a schema edit with NO evidence was accepted — the mtime read degraded silently"
   # Positive control: the same commit must pass once the guards have run, so the refusal above is the check
   # measuring rather than the check refusing everything.
-  mkdir -p "$REPO/build/test-results/docGuardTest" "$REPO/cli/build/test-results/docGuardTest"
-  touch "$REPO/build/test-results/docGuardTest/TEST-x.xml" \
-        "$REPO/cli/build/test-results/docGuardTest/TEST-y.xml"
+  fabricate_guard_evidence
   PATH="$shim:$PATH" git -C "$REPO" commit -qm "schema edit, $dialect stat, guards run" \
     || fail "with a ${dialect}-only stat, fresh doc-guard evidence was rejected"
 done
