@@ -48,14 +48,21 @@ class Interpreter(
      *  sub-eval), where `CustomCondition` cannot appear. */
     private val customErrorField: CustomConditionFieldPointer? = null,
     /**
-     * Whether a referenced field is **formally invalid** in this context — a present malformed value (a
-     * format error) OR a required-but-empty field (a `mandatoryField` error). Such a field resolves to
-     * [Val.Unknown], so the kernel's three-valued logic propagates it: a comparison goes UNKNOWN (does not
-     * fire), but `… Or <true>` still fires and `… And <true>` stays UNKNOWN — the kernel's operand-level
-     * "not check-relevant" behavior, NOT a whole-rule skip. Defaults to "always valid" (the `compute` path,
-     * which has no formal-error increment yet). [DmInterpreter] supplies it from the model + context.
+     * Whether a referenced field is **formally invalid** — a present malformed value (a format error) OR a
+     * required-but-empty field (a `mandatoryField` error). Such a field resolves to [Val.Unknown], so the
+     * kernel's three-valued logic propagates it: a comparison goes UNKNOWN (does not fire), but `… Or <true>`
+     * still fires and `… And <true>` stays UNKNOWN — the kernel's operand-level "not check-relevant" behavior,
+     * NOT a whole-rule skip. Defaults to "always valid" (a bare low-level [Interpreter] with no formal pass);
+     * [DmInterpreter] supplies it from the model.
+     *
+     * **The [EvalContext] argument is load-bearing and must be the one the neighbouring VALUE read uses.** The
+     * gate is a per-CELL question, and a cell is a path plus the reps the reading context resolves for it — so
+     * a `Having` filter row must judge ITS row's cell. The gate used to close over the enclosing rule row and
+     * ignore the reading context, which made one malformed cell in the FIRST repetition suppress the filter
+     * leaf of every other row and silently empty the aggregate (IF319; `HavingNonTrueRowDiffTest`). Its
+     * neighbours in [filledTri] were already context-relative, which is what the shape now matches.
      */
-    internal val invalid: (String) -> Boolean = { false },
+    internal val invalid: (EvalContext, String) -> Boolean = { _, _ -> false },
     /** The complete ENCLOSING repetition context for `$` refs: set only while evaluating a `Having`
      *  filter. A marked ref resolves its own named path's coordinate from this environment, not one
      *  scalar index and not the inner filtered row. Null at top level. */
@@ -84,7 +91,7 @@ class Interpreter(
         ctx: EvalContext,
         config: EvalConfig,
         customErrorField: CustomConditionFieldPointer,
-        invalid: (String) -> Boolean,
+        invalid: (EvalContext, String) -> Boolean,
         rnuOutcome: ((EvalContext) -> MsgType?)?,
         customFormallyIncorrect: () -> Set<CustomConditionFieldPointer>,
     ) : this(ctx, config, customErrorField, invalid, rnuOutcome = rnuOutcome) {
@@ -257,11 +264,13 @@ class Interpreter(
     fun evalExpression(expr: Expr): Val = evalExpr(expr)
 
     /**
-     * As [evalExpression], but told the DECLARED KIND of the target the value is being assigned to. A bare
-     * quoted date literal is typed by that kind — see [evalAssignedExpr]; every other expression evaluates
-     * identically, so a caller with no target kind may keep the single-argument form.
+     * As [evalExpression], but told the DECLARED KIND — and, for a DATE, the declared FORMAT — of the target the
+     * value is being assigned to. A bare quoted date literal is typed by that kind, and a year-omitting one needs
+     * the format to decide whether a reference year is observable at all — see [evalAssignedExpr]. Every other
+     * expression evaluates identically, so a caller with no target may keep the single-argument form.
      */
-    fun evalExpression(expr: Expr, targetKind: Kind?): Val = evalAssignedExpr(expr, targetKind)
+    fun evalExpression(expr: Expr, targetKind: Kind?, targetDateFormat: String? = null): Val =
+        evalAssignedExpr(expr, targetKind, targetDateFormat)
 
     fun eval(cond: Cond): Tri {
         if (!gated(cond)) return Tri.UNKNOWN
@@ -394,7 +403,7 @@ class Interpreter(
         // The model-aware DmInterpreter path supplies the exact call-level formal set. Retain the former
         // best-effort behavior for direct low-level Interpreter users, whose context has no ModelDef/formal pass.
         val formallyIncorrect = customFormallyIncorrect?.invoke()
-            ?: data.fields().filter { invalid(it.path) }.toSet()
+            ?: data.fields().filter { invalid(ctx, it.path) }.toSet()
         return Tri.of(condition.check(data, relevant = customRelevant, formallyIncorrect = formallyIncorrect, errorField = errorField))
     }
 
@@ -417,20 +426,8 @@ class Interpreter(
             PredicateOp.GROUP_FILLED -> groupPresence(ctxOf(p.args.single()), pathOf(p.args.single())).let {
                 if (it.relevance == GroupRelevance.NONE) Tri.UNKNOWN else Tri.of(it.filled)
             }
-            // The error bit is tested BEFORE positive presence, so a relevant group holding admitted content
-            // beside an independent error answers UNKNOWN here. a12-kernel-lean's SPEC-2026-09-02-03 answers
-            // FALSE on that one cell. Neither is refutable: the kernel exposes no channel that sees this leaf —
-            // not rule firing (no negation, monotone Kleene) and not message polarity (KERNEL-FINDINGS KF233,
-            // measured) — so the order below is a free choice, kept because a change no oracle can verify is a
-            // change no guard can protect. Reopen if a leaf-observable channel is ever found.
-            PredicateOp.GROUP_NOT_FILLED -> groupPresence(ctxOf(p.args.single()), pathOf(p.args.single())).let {
-                when {
-                    it.erroneous || it.relevance == GroupRelevance.NONE -> Tri.UNKNOWN
-                    it.filled -> Tri.FALSE
-                    it.relevance == GroupRelevance.FULL -> Tri.TRUE
-                    else -> Tri.UNKNOWN
-                }
-            }
+            PredicateOp.GROUP_NOT_FILLED ->
+                groupPresence(ctxOf(p.args.single()), pathOf(p.args.single())).negativeLeaf
             PredicateOp.FIELD_VALUE_IN_LIST -> valueInList(p.args)
             PredicateOp.FIELD_VALUE_NOT_IN_LIST -> Kleene.not(valueInList(p.args))
             PredicateOp.DATE_RANGES_OVERLAP -> overlapAny(p.args).truth
@@ -728,7 +725,7 @@ class Interpreter(
         // BEFORE the fill read; row-correct via the context's own reps. Null outside partial.
         cellRelevant?.invoke(path, c.repsOf(path)) == false -> Tri.UNKNOWN
         !c.filled(path) -> Tri.FALSE
-        invalid(path) -> Tri.UNKNOWN
+        invalid(c, path) -> Tri.UNKNOWN
         else -> Tri.TRUE
     }
 
@@ -758,9 +755,9 @@ class Interpreter(
      * short-circuiting boolean fold in compute ([computeGroupFillQuantifier], IF219). Per operand:
      *  - a checked FIELD (a declared kind) contributes its three-way presence [presenceTri] — in COMPUTE mode a
      *    malformed read POISONS ([PoisonedReadException]); the mode-dependence lives entirely in [filledTri];
-     *  - a bare GROUP contributes the IF193 product state (`definitelyFilled` → TRUE, `definitelyEmpty` → FALSE,
-     *    else UNKNOWN) — structural in compute (`erroneous`=false, so a malformed-only group is FILLED, never
-     *    poison);
+     *  - a bare GROUP contributes the IF193 presence product [GroupPresenceState.fillProduct], the same
+     *    projection the scalar `GroupNotFilled` leaf complements — structural in compute (`erroneous`=false, so
+     *    a malformed-only group is FILLED, never poison);
      *  - a STARRED GROUP scope (`NoGroupFilled`/`AtLeastOneGroupFilled`, the only forms the kernel lets carry a
      *    `*`) yields one state per selected environment: a repeatable terminal row is FILLED structurally
      *    (IF46/IF68), while a non-repeatable terminal below starred ancestors retains its ordinary group-product
@@ -773,23 +770,11 @@ class Interpreter(
             arg is Expr.Star -> {
                 for (rc in ctxOf(arg).groupListEnvironments(arg.path, arg.bindDepth)) {
                     if (arg.having != null && !havingInterp(rc).fires(arg.having)) continue
-                    val state = groupPresence(rc, arg.path)
-                    yield(when {
-                        state.definitelyFilled -> Tri.TRUE
-                        state.definitelyEmpty -> Tri.FALSE
-                        else -> Tri.UNKNOWN
-                    })
+                    yield(groupPresence(rc, arg.path).fillProduct)
                 }
             }
             ctxOf(arg).declaredKind(pathOf(arg)) != null -> yield(presenceTri(arg))
-            else -> {
-                val state = groupPresence(ctxOf(arg), pathOf(arg))
-                yield(when {
-                    state.definitelyFilled -> Tri.TRUE
-                    state.definitelyEmpty -> Tri.FALSE
-                    else -> Tri.UNKNOWN
-                })
-            }
+            else -> yield(groupPresence(ctxOf(arg), pathOf(arg)).fillProduct)
         }
     }
 
@@ -983,12 +968,12 @@ class Interpreter(
      */
     private fun hashJoinTally(star: Expr.Star, group: String, join: KeyedCorrelationPlan): Triple<Int, Int, Int> {
         val buckets = ctx.correlationBuckets(group, join.innerFields, star.path, star.bindDepth)
-        val outerKey = join.outerFields.map { p -> if (invalid(p)) Val.Unknown else ctx.field(p) }
+        val outerKey = join.outerFields.map { p -> if (invalid(ctx, p)) Val.Unknown else ctx.field(p) }
         if (outerKey.any { it is Val.Unknown }) return Triple(0, 0, 0)   // an Unknown outer value never matches
         val tfn = buckets[outerKey] ?: return Triple(0, 0, 0)
         var tally = Triple(tfn[0], tfn[1], tfn[2])
         if (join.selfExcluded && ctx.evaluated) {
-            val outerInnerKey = join.innerFields.map { p -> if (invalid(p)) Val.Unknown else ctx.field(p) }
+            val outerInnerKey = join.innerFields.map { p -> if (invalid(ctx, p)) Val.Unknown else ctx.field(p) }
             if (outerInnerKey == outerKey) {           // the outer row is in its own bucket → drop it
                 tally = subtractOwnContribution(star, tally)
             }
@@ -1002,11 +987,11 @@ class Interpreter(
         group: String,
         plan: OrderedCorrelationPlan,
     ): Triple<Int, Int, Int> {
-        val outer = if (invalid(plan.outerField)) Val.Unknown else ctx.field(plan.outerField)
+        val outer = if (invalid(ctx, plan.outerField)) Val.Unknown else ctx.field(plan.outerField)
         if (outer is Val.Unknown) return Triple(0, 0, 0)
         var tally = ctx.orderedCorrelation(group, plan.innerField, star.path, star.bindDepth).tally(plan.op, outer)
         if (plan.selfExcluded && ctx.evaluated) {
-            val inner = if (invalid(plan.innerField)) Val.Unknown else ctx.field(plan.innerField)
+            val inner = if (invalid(ctx, plan.innerField)) Val.Unknown else ctx.field(plan.innerField)
             if (inner !is Val.Unknown && orderedComparisonMatches(plan.op, inner, outer)) {
                 tally = subtractOwnContribution(star, tally)
             }

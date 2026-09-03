@@ -50,7 +50,7 @@ class KleeneMonotonicityPropertyTest {
                     val base = Interpreter(ctx, EvalConfig(indexFields = indexFields)).eval(cond)
                     for (p in fields) {
                         checks++
-                        val routed = Interpreter(ctx, EvalConfig(indexFields = indexFields), invalid = { it == p }).eval(cond)
+                        val routed = Interpreter(ctx, EvalConfig(indexFields = indexFields), invalid = { _, path -> path == p }).eval(cond)
                         if (routed != base && routed != Tri.UNKNOWN) {
                             failures += "${a.scenario.name} '${a.text}' route=$p seed=$seed base=$base routed=$routed"
                         }

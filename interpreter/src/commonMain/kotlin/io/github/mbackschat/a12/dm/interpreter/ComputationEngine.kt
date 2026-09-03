@@ -237,8 +237,10 @@ internal class ComputationEngine(
                     val interp = Interpreter(ectx, computeConfig,
                         // The compute gate THROWS (IF85): consulting it on a filled formally-invalid operand IS the
                         // kernel's poisoning read (validation's gate stays Boolean → the 3VL exclusion).
-                        invalid = { path ->
-                            if (operandNotCheckRelevant(path, ectx, formalResults, emptyIndexCells)) throw PoisonedReadException(path)
+                        // Judged in the READING context, so a `Having` filter row poisons on ITS cell rather than
+                        // on the computation instance's first repetition (IF319, the compute arm of the same gate).
+                        invalid = { c, path ->
+                            if (operandNotCheckRelevant(path, c, formalResults, emptyIndexCells)) throw PoisonedReadException(path)
                             else false
                         }).sharingIndexColumns(views)
                     // A read of a formally-invalid cell — an input field, or a POISONED computed dependency — aborts
@@ -453,8 +455,10 @@ internal class ComputationEngine(
         for (alt in parsed.alternatives) {
             if (alt.precondition == null || interp.eval(alt.precondition) == Tri.TRUE) {
                 // The target's declared kind types a bare literal operand: a date CONSTANT is written German and
-                // has to reach the store canonicalized, or the target's own format cannot render it.
-                return Selection(true, interp.evalExpression(alt.operation, model.kinds[targetPath]))
+                // has to reach the store canonicalized, or the target's own format cannot render it. The format
+                // rides along because a YEARLESS literal needs a reference year only when the target renders one.
+                return Selection(true, interp.evalExpression(
+                    alt.operation, model.kinds[targetPath], model.dateFormats[targetPath]))
             }
         }
         return Selection.NONE

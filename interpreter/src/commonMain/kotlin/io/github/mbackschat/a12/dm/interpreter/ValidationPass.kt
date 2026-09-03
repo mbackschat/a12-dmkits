@@ -104,9 +104,11 @@ internal class ValidationPass(
     fun interpreterFor(ctx: EvalContext, errorPath: String,
             rnuOutcome: ((EvalContext) -> MsgType?)? = null): Interpreter =
         Interpreter(ctx, config, CustomConditionFieldPointer(errorPath, ctx.repsOf(errorPath)),
-            invalid = { path ->
-                val reps = ctx.repsOf(path)   // computed once, reused for the formal check AND relevance
-                !isRelevant(path, reps) || formalErrorAt(path, reps, ctx) != null
+            // Resolved in the READING context rather than in this rule row's: a `Having` filter rebinds the row,
+            // and a gate closed over `ctx` judged every filter row by the FIRST repetition's cell (IF319).
+            invalid = { c, path ->
+                val reps = c.repsOf(path)   // computed once, reused for the formal check AND relevance
+                !isRelevant(path, reps) || formalErrorAt(path, reps, c) != null
             },
             rnuOutcome = rnuOutcome,
             customFormallyIncorrect = formallyIncorrect)

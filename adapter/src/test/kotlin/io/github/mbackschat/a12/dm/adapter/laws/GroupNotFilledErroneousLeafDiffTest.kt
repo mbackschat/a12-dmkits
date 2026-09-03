@@ -143,10 +143,14 @@ class GroupNotFilledErroneousLeafDiffTest {
      *
      * <p>What this settles for `SPEC-2026-09-02-03`, stated at exactly its measured width: **the polarity of a
      * rule fired by another disjunct does not see the leaf**, on both omission- and value-typed disjuncts. It
-     * does not establish that no channel anywhere can; a `Having` predicate carrying the leaf, where an unknown
-     * filter could make an aggregate unavailable while a false one merely excludes a row, is a live candidate
-     * this file does not probe. Pending such a witness the two accounts are indistinguishable here and the
-     * choice is free on both sides, the disposition `IF316` records for a different operator.
+     * does not by itself establish that no channel anywhere can — but the one live candidate it named, a
+     * `Having` predicate carrying the leaf, is now closed rather than open: a filter conjunct that is not true
+     * drops its own row and leaves the aggregate available at its ordinary value (`KF234`,
+     * `HavingNonTrueRowDiffTest`), so the filter position collapses false and unknown exactly as this file's
+     * channel does. With no channel left, the owner took the alignment on 2026-09-03 and this project's leaf now
+     * answers FALSE where it answered UNKNOWN; that branch is locked as a projection unit test
+     * (`interpreter … GroupPresenceLeafProjectionTest`) because no kernel oracle can see it. This file is
+     * unaffected by the change and must stay so — which is exactly what it asserts.
      *
      * <p>Asserted as an exact per-code map rather than described, so a kernel upgrade that made the polarity
      * leaf-sensitive fails here and reopens the question.

@@ -124,7 +124,7 @@ class ValueListQuantifierOrderEvalTest {
 
     /** [cond] over one row of [values]; fields in [invalid] are formally invalid (present-but-UNKNOWN). */
     private fun tri(cond: String, values: Map<String, String>, invalid: Set<String> = emptySet()): Tri =
-        Interpreter(SingleRowDoc("/Order", values, kinds), invalid = { it in invalid })
+        Interpreter(SingleRowDoc("/Order", values, kinds), invalid = { _, path -> path in invalid })
             .eval(parseCondition(cond, "/Order"))
 
     @Test

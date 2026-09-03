@@ -103,7 +103,7 @@ class DivisionDomainFailureComputationTest {
         val interpreter = Interpreter(
             SingleRowDoc(ROOT, values, kinds),
             EvalConfig(computeMode = true),
-            invalid = { path ->
+            invalid = { _, path ->
                 observed += path
                 throw PoisonedReadException(path)
             },

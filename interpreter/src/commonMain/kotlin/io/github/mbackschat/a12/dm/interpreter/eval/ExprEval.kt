@@ -211,7 +211,7 @@ private fun Interpreter.filledFieldsValue(args: List<Expr>): Val {
             } else {                                           // plain field
                 // `ctxOf`, not the ambient `ctx`: a `$`-marked operand resolves in the OUTER context, and asking
                 // the wrong one counts a different row's cell ([IF287]'s fourteenth/twenty-third instances).
-                if (ctxOf(arg).filled(path) && invalid(path)) return Val.Unknown   // malformed → non-evaluable
+                if (ctxOf(arg).filled(path) && invalid(ctxOf(arg), path)) return Val.Unknown   // malformed → non-evaluable
                 if (ctxOf(arg).filled(path)) count++
             }
         }
@@ -229,7 +229,7 @@ internal fun Interpreter.evalExpr(e: Expr): Val = when (e) {
     is Expr.Field -> when {
         outerUnknown(e) -> Val.Unknown
         computeMode && ctxOf(e).cellState(e.path) == CellState.INVALID -> throw PoisonedReadException(e.path)
-        invalid(e.path) -> Val.Unknown
+        invalid(ctxOf(e), e.path) -> Val.Unknown
         else -> ctxOf(e).field(e.path)
     }
     is Expr.Star -> throw UnsupportedConstructException("a starred path must sit inside an aggregate (Sum/MaxValue/…)")
@@ -392,9 +392,17 @@ private fun Interpreter.evalConst(name: String): Val = when (ConstantOp.byName(n
 internal fun Interpreter.evalCmpOperand(self: Expr, other: Expr): Val = when {
     self is Expr.Const && ConstantOp.byName(self.name) == ConstantOp.BASE_YEAR ->
         if (evalExpr(other) is Val.Num) baseYearNumber() else baseYearDate()
-    self is Expr.StrLit && producesDate(other) -> coerceDate(Val.Txt(self.v))
+    // The counterpart's own declared format types the literal, exactly as an assignment target's does — see
+    // [coerceDate]. Without it a year-omitting literal compared against a year-FREE date field reached the
+    // comparison as raw German text, and the kernel admits that pair whenever neither side carries a year
+    // (IF321; `adapter.laws.YearlessConstantComparisonDiffTest`).
+    self is Expr.StrLit && producesDate(other) -> coerceDate(Val.Txt(self.v), declaredDateFormat(other))
     else -> evalExpr(self)
 }
+
+/** The declared date format of a plain field operand, for typing a literal against it; null for anything else. */
+private fun Interpreter.declaredDateFormat(e: Expr): String? =
+    if (e is Expr.Field) ctxOf(e).dateFormatOf(e.path) else null
 
 /**
  * Evaluate an expression being ASSIGNED to a typed target. An assignment adds exactly one resolution over
@@ -409,11 +417,14 @@ internal fun Interpreter.evalCmpOperand(self: Expr, other: Expr): Val = when {
  * Two kinds are resolved because two kinds were measured. [Kind.TIME] needs none — its literal is already the
  * ISO `HH:mm:ss` shape — and [Kind.DATE_RANGE] has no witnessed literal at all (`KF223`), so neither is
  * guessed at here.
+ *
+ * [targetDateFormat] is the DATE target's declared format, needed for the year-omitting literal alone; see
+ * [coerceDate].
  */
-internal fun Interpreter.evalAssignedExpr(expr: Expr, targetKind: Kind?): Val {
+internal fun Interpreter.evalAssignedExpr(expr: Expr, targetKind: Kind?, targetDateFormat: String? = null): Val {
     if (expr !is Expr.StrLit) return evalExpr(expr)
     return when (targetKind) {
-        Kind.DATE -> coerceDate(Val.Txt(expr.v))
+        Kind.DATE -> coerceDate(Val.Txt(expr.v), targetDateFormat)
         Kind.DATE_TIME -> Val.Txt(parseDateTimeToIso(expr.v, DATE_TIME_LITERAL_FORMAT) ?: expr.v)
         else -> evalExpr(expr)
     }
@@ -436,19 +447,61 @@ private fun Interpreter.producesDate(e: Expr): Boolean = when (e) {
     else -> false
 }
 
-/** Canonicalize a German date literal to ISO `yyyy-MM-dd`; any other value (already-ISO, a non-date string)
- *  is unchanged — so it only ever rewrites a literal that genuinely parses as a date. Two literal shapes: the
- *  full `dd.MM.yyyy`, and the **omitted-year** `dd.MM.` (a reference-year feature — the kernel injects the
- *  model's `baseYear`, so `"13.07."` means `13.07.<baseYear>`; a model with NO base year rejects it at
- *  validation, `MVK_INVALID_COMPARE_TO_DATE`, so we only ever see it when `baseYear` is set — IF52). */
-private fun Interpreter.coerceDate(v: Val): Val {
+/**
+ * Canonicalize a German date literal to ISO `yyyy-MM-dd`; any other value (already-ISO, a non-date string) is
+ * unchanged — so it only ever rewrites a literal that genuinely parses as a date. Two literal shapes: the full
+ * `dd.MM.yyyy`, and the **omitted-year** `dd.MM.`, which needs a year from somewhere.
+ *
+ * There are two sources, and the second was missing until 2026-09-03. The first is the model's `baseYear`, which
+ * the kernel injects, so `"13.07."` means `13.07.<baseYear>` (IF52). The second is that the year is simply not
+ * needed: when the literal is being ASSIGNED to a DATE target whose own declared format names no year, the store
+ * renders only the components that format carries, so no reference year reaches the document. The kernel admits
+ * exactly that pair — a yearless literal into a yearless target with no Base Year declared — and stores the month
+ * alone.
+ *
+ * **[YEARLESS_ANCHOR_YEAR] is reached only when NO base year is declared, and on one carrier it IS observable.**
+ * The first half of the qualification stands: the kernel's year-agreement gate returns true unconditionally once
+ * a Base Year is declared, so "a year-rendering target disagrees with a yearless literal" is the rule for a
+ * base-year-FREE model only, and in a base-year model the `baseYear ?:` above takes the declared year. The
+ * second half was wrong until 2026-09-03, and it was wrong because reachability was reasoned rather than run.
+ * On the ASSIGNMENT and COMPARISON carriers the anchor is indeed unobservable — the shapes that would expose it
+ * are refused at admission under `MVK_INVALID_COMPARE_TO_DATE` (KF239, measured): the year disagreement, and a
+ * day that needs a real year to exist (`29.02.`; `31.04.` is refused on the same ground and `30.04.` admitted,
+ * so the gate validates the day rather than special-casing February). But a temporal OPERATION admits a
+ * year-free literal with no year-free field in sight, and `DifferenceInDays("28.02.", "01.03.")` then answers 1
+ * or 2 according to the anchor's leap-ness. **Measured: both kernel strategies answer 2, so the anchor must be
+ * a LEAP year** — which is a constraint on the constant below, not a free choice
+ * (`adapter.laws.YearlessConstantOperationDiffTest`).
+ *
+ * **[declaredFormat] is deliberately NOT defaulted.** Its absence means "nothing in scope declares a year", which
+ * is a reason to anchor rather than a reason to abstain — the opposite of what a defaulted `null` produced. Two
+ * defects came from this parameter being easy to omit: the assignment carrier was missing the branch entirely
+ * (IF320), and the fix for that added the parameter WITH a default, so the comparison and operation carriers
+ * silently kept the old behaviour (IF321, IF322). Forcing every caller to name its format is what makes a fourth
+ * carrier a compile error instead of a silent divergence.
+ *
+ * This branch used to be absent, and its old comment asserted that a model with no base year rejects the literal
+ * at validation. That is true for a year-carrying target and false for a yearless one, so a legal computation
+ * reached the store as raw German text and the cell was flagged errored where both kernel strategies store the
+ * month alone (IF320; `adapter.laws.YearlessConstantMonthStoreDiffTest`,
+ * `rulekit.validate.laws.TemporalConstantAdmissionGateLawsTest`).
+ */
+private fun Interpreter.coerceDate(v: Val, declaredFormat: String?): Val {
     if (v !is Val.Txt) return v
     parseDateToIso(v.v, "dd.MM.yyyy")?.let { return Val.Txt(it) }
-    if (baseYear != null && OMITTED_YEAR.matches(v.v)) {
-        parseDateToIso(v.v + baseYear.toString().padStart(4, '0'), "dd.MM.yyyy")?.let { return Val.Txt(it) }
-    }
-    return v
+    if (!OMITTED_YEAR.matches(v.v)) return v
+    val year = baseYear ?: YEARLESS_ANCHOR_YEAR.takeIf { declaredFormat?.contains('y') != true } ?: return v
+    return parseDateToIso(v.v + year.toString().padStart(4, '0'), "dd.MM.yyyy")?.let { Val.Txt(it) } ?: v
 }
+
+/**
+ * The year a yearless literal borrows when no base year is declared; see [coerceDate].
+ *
+ * **It must be a leap year.** On the temporal-operation carrier the choice is kernel-observable, and both kernel
+ * strategies count 2 days from `28.02.` to `01.03.` (`adapter.laws.YearlessConstantOperationDiffTest`). A common
+ * year here would answer 1 and diverge.
+ */
+private const val YEARLESS_ANCHOR_YEAR = 2000
 
 /** `BaseYear` as the base-year-START date (ISO `yyyy-01-01`). */
 private fun Interpreter.baseYearDate(): Val = Val.Txt("${baseYearOrThrow().toString().padStart(4, '0')}-01-01")
@@ -527,7 +580,7 @@ private fun concatText(v: Val): String = when (v) {
  *  mode, IF108), and a `FieldValueAsString` over either. A constant/other-function operand is never an
  *  np site here. */
 private fun Interpreter.concatOperandInvalid(e: Expr): Boolean = when (e) {
-    is Expr.Field -> ctxOf(e).filled(e.path) && invalid(e.path)
+    is Expr.Field -> ctxOf(e).filled(e.path) && invalid(ctxOf(e), e.path)
     is Expr.SemanticIndex -> computeGuardedIndexCell(e) is Val.Unknown
     is Expr.Func -> FunctionOp.byName(e.name) == FunctionOp.FIELD_VALUE_AS_STRING && concatOperandInvalid(e.args[0])
     is Expr.Arith -> e.op == ArithOp.ADD && (concatOperandInvalid(e.left) || concatOperandInvalid(e.right))
@@ -902,8 +955,10 @@ private fun Interpreter.fieldValueAsString(arg: Expr): Val = when (arg) {
         val path = pathOf(arg)
         when {
             computeMode && ctxOf(arg).cellState(path) == CellState.INVALID -> throw PoisonedReadException(path)
-            invalid(path) -> Val.Unknown
-            else -> ctx.displayValue(path)?.let { Val.Txt(it) } ?: Val.Unknown
+            invalid(ctxOf(arg), path) -> Val.Unknown
+            // `ctxOf`, not the ambient `ctx`: a `$`-marked operand resolves in the OUTER context, and the
+            // gate on the line above already does — the sibling [fieldValueAsNumber] pairs them correctly.
+            else -> ctxOf(arg).displayValue(path)?.let { Val.Txt(it) } ?: Val.Unknown
         }
     }
 }
@@ -920,7 +975,7 @@ private fun Interpreter.fieldValueAsNumber(source: Expr): Val {
         )
     }
     if (computeMode && ctxOf(source).cellState(path) == CellState.INVALID) throw PoisonedReadException(path)
-    if (invalid(path)) return Val.Unknown
+    if (invalid(ctxOf(source), path)) return Val.Unknown
     if (!ctxOf(source).filled(path)) return Val.Num(DEC_ZERO)
     val selected = when (source) {
         is Expr.Field -> ctxOf(source).displayValue(path)
@@ -968,8 +1023,8 @@ private fun fieldValueDecimalOrNull(raw: String): Dec? {
  */
 private fun Interpreter.rangeSubstring(args: List<Expr>): String? {
     val path = pathOf(args[0])
-    if (invalid(path)) return null
-    val value = ctx.displayValue(path) ?: ""
+    if (invalid(ctxOf(args[0]), path)) return null
+    val value = ctxOf(args[0]).displayValue(path) ?: ""
     val s = (evalExpr(args[1]) as Val.Num).v.display().toInt()
     val e = (evalExpr(args[2]) as Val.Num).v.display().toInt()
     return if (value.isEmpty() || e > value.length) "" else value.substring(s - 1, e)
@@ -983,12 +1038,12 @@ private fun Interpreter.rangeSubstring(args: List<Expr>): String? {
  * non-field operands (constants, constructions) are never empty here. KERNEL-FINDINGS §6, IF73.
  */
 private fun Interpreter.emptyCheckRelevant(e: Expr): Boolean =
-    e is Expr.Field && !ctxOf(e).filled(e.path) && !invalid(e.path)
+    e is Expr.Field && !ctxOf(e).filled(e.path) && !invalid(ctxOf(e), e.path)
 
 /** A field operand that is formally invalid (a malformed value, or a required-but-empty field): the empty-as-0
  *  value functions stay NON-evaluable on it (`nichtPruefungsrelevant` → `NICHT_PRUEF_REL_ZAHL`, the comparison
  *  is suppressed) — malformed BEATS empty (checked first in `getDatumsDiff`). */
-private fun Interpreter.malformedField(e: Expr): Boolean = e is Expr.Field && invalid(e.path)
+private fun Interpreter.malformedField(e: Expr): Boolean = e is Expr.Field && invalid(ctxOf(e), e.path)
 
 /** `DifferenceIn{Months,Years}(a, b)` → a signed whole-period count; an empty operand reads as the fillable 0
  *  (either empty → 0, kernel `getDatumsDiff`); a malformed operand → Unknown (suppressed). */
@@ -1260,7 +1315,8 @@ private fun Interpreter.temporalLeaf(e: Expr): Evaluated<TemporalValue> {
             else -> Unit
         }
     }
-    val evaluated = coerceDate(evalExpr(e))
+    // No target or counterpart constrains a literal here, so nothing declares a year and the anchor applies.
+    val evaluated = coerceDate(evalExpr(e), declaredFormat = null)
     if (evaluated is Val.Txt) {
         val basis = DateCalendarBasis.PROLEPTIC_GREGORIAN
         // A pure time-of-day has no date and therefore no model-zone instant; it carries only its decoded
@@ -1517,8 +1573,8 @@ internal fun Interpreter.dateInstant(e: Expr): Long? =
  *  when the field is empty/formally-invalid, its year is unknown, or the value doesn't parse. */
 private fun Interpreter.valueAsDate(args: List<Expr>): Val {
     val path = pathOf(args[0])
-    if (invalid(path)) return Val.Unknown
-    val raw = ctx.displayValue(path) ?: return Val.Unknown
+    if (invalid(ctxOf(args[0]), path)) return Val.Unknown
+    val raw = ctxOf(args[0]).displayValue(path) ?: return Val.Unknown
     val lastDay = (args[1] as? Expr.Const)?.name == "LastDay"
     return resolvePartialDate(
         raw,

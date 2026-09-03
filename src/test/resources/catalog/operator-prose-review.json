@@ -5112,7 +5112,7 @@
       "operator": "Having",
       "lane": "GOTCHA",
       "ordinal": 2,
-      "digest": "sha256:e1ac8c78ff95f14f38e6171248c1f882c34f07086a66be816f62e59bc1a4927b",
+      "digest": "sha256:51059f52fba4d913ad81b5379dcb006c6eff2563f095784e069c534a0fb23512",
       "classifications": [
         "RUNTIME"
       ],
@@ -5121,6 +5121,11 @@
           "classification": "RUNTIME",
           "type": "TEST",
           "id": "CapturedOuterEnvironmentDiffTest"
+        },
+        {
+          "classification": "RUNTIME",
+          "type": "TEST",
+          "id": "CorrelatedComputationCaptureDiffTest"
         }
       ]
     },

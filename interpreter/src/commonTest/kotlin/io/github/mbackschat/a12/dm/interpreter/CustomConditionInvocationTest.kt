@@ -109,7 +109,7 @@ class CustomConditionInvocationTest {
             document.onceContextFor(CLAIM).single(),
             EvalConfig(customConditions = mapOf("Exact" to callback)),
             error,
-            invalid = { it == ROOT_ERROR },
+            invalid = { _, path -> path == ROOT_ERROR },
         ).fires(Cond.Custom("Exact"))
 
         assertEquals(true, fires)

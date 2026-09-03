@@ -4262,6 +4262,124 @@ Answers a12-kernel-lean's `SPEC-2026-09-02-03`, which moved their scalar `GroupN
 
 **Two controls on two axes, and both are needed.** Across groups: `Clean` (content, no error → the leaf is false under both accounts), `ContentFreeError` (rejected content only → unknown under both), and `Mixed` (content **and** an independent error → the disputed cell). Across families: the same three leaves fired once from an omission-typed disjunct and once from a VALUE-typed one. Measured on both code-generation strategies and the interpreter: the type varies with the OTHER disjunct — `OMISSION_ERROR` for the whole first family, `VALUE_ERROR` for the whole second — and never with the leaf. The second family is what makes this a reading rather than a fixture property: without it every row fired from one predicate and a uniform polarity would have been constant by construction, which is the confound a cold review caught here on 2026-09-03.
 
-**Disposition: a free choice on both sides, and the estates differ.** Our `Interpreter` answers unknown there — it tests the raw error bit before positive presence — while theirs now answers false. Stated at its measured width, what this establishes is that **the polarity of a rule fired by another disjunct does not see the leaf**, on both disjunct polarities; it does not prove no channel anywhere can. One live candidate is unprobed: a `Having` predicate carrying the leaf, where an unknown filter could make an aggregate unavailable while a false one merely excludes a row. Pending such a witness the readings are indistinguishable, which is the shape of our own `IF316` uniqueness row: a route left unlocked because no document separates them. We do **not** align, because a change no oracle can verify is a change no guard can protect; the locus carries a comment pointing here so a future observable channel reopens the question rather than rediscovering it.
+**Disposition, corrected 2026-09-03: the last candidate channel is CLOSED, and the estates now agree by decision.** Stated at its measured width, this entry establishes that **the polarity of a rule fired by another disjunct does not see the leaf**, on both disjunct polarities. It left one candidate unprobed — a `Having` predicate carrying the leaf, where an unknown filter could make an aggregate unavailable while a false one merely excludes a row. That premise is now refuted: a filter conjunct that is not true drops its own row and leaves the aggregate available at its ordinary value ([KF234](#kf234)), so the filter position collapses false and unknown exactly as firing and message typing already do. No channel either estate has named can arbitrate.
+
+On that footing the owner accepted a12-kernel-lean's alignment offer (2026-09-03) and this project's scalar `GroupNotFilled` now answers FALSE for a relevant group holding admitted content beside an independent error, where it answered UNKNOWN before. It is a COHERENCE decision, not a correctness one: the leaf is the Kleene complement of the presence product the GROUP-fill quantifiers already read, so one presence notion now serves both instead of two. `GroupFilled` is unchanged and a content-free erroneous group remains unknown. Because no kernel oracle can see the change, the lock is a projection unit test ([`GroupPresenceLeafProjectionTest`](../interpreter/src/commonTest/kotlin/io/github/mbackschat/a12/dm/interpreter/GroupPresenceLeafProjectionTest.kt)) over the complete `filled × erroneous × relevance` space, and the type-equality lock below stays exactly as it is so a kernel upgrade that made polarity leaf-sensitive reopens the question here.
 
 *(Locked: `adapter.laws.GroupNotFilledErroneousLeafDiffTest` — the three-way type equality asserted rather than described, so a kernel upgrade that made the polarity leaf-sensitive fails here; plus a fixture control proving the formal findings really land on exactly the mixed and content-free groups.)*
+
+## §9 supplement — a non-true `Having` conjunct drops its OWN ROW and leaves the aggregate available, and the empty-as-zero rule does not reach a malformed operand (differential, both strategies, 2026-09-03) <a id="kf234"></a>
+
+> Fold: pending — extends §9's filter account beside the aggregation-ordering rule; folds into §9 on the next canonical KERNEL-SEMANTICS pass.
+
+Confirms a12-kernel-lean's `SPEC-2026-09-03-01` on an independently authored carrier. Two facts sit beside an existing keep rule. The clause already said a false or unknown filter result drops that row before the consumer cell is read; it did not say what becomes of the aggregate, and the neighbouring TARGET rule says the first formally unavailable selected cell makes the whole aggregate unavailable. The two positions are opposite, and one document carries both.
+
+**A dropped row leaves the aggregate AVAILABLE, answering over the survivors.** With every row's filter cell malformed, `Sum == 0` and `NumberOfFilledFields == 0` both fire — an ordinary zero over an empty selection, not an unavailable result. A count ladder (`== 0`, `== 1`, `== 2`) brackets the survivor count exactly, so a mixed document reports one survivor against the well-formed control's two: per-row exclusion, not aggregate collapse.
+
+**The empty-operand-as-zero rule reaches an ABSENT operand and not a formally invalid one.** An absent Number filter cell participates as `0` and the comparison decides, so `[Amt] < 5` keeps its row and the document answers exactly as the well-formed control; a malformed cell makes the conjunct non-true in BOTH comparison directions and keeps no row under either. The `> 5` / `< 5` pair is what separates the two: under `> 5` a substituted zero and a dropped row agree, so a single direction shows nothing.
+
+**The target position obeys the opposite rule, measured on the same document.** One malformed SELECTED `Paid` cell takes the whole `< 5` ladder silent, while the `> 5` ladder on that same document selects no row at all, never reads the malformed cell, and answers an ordinary `0`.
+
+**Consumer consequence.** An estate that routes a non-true conjunct to an unavailable aggregate diverges on every filtered aggregate over a document with one malformed filter cell; one that reduces the three-valued drop to a substituted value comparing false diverges on the absent-operand row.
+
+*(Locked: `adapter.laws.HavingNonTrueRowDiffTest` — seven documents × a nine-rule ladder on two carriers, both code-generation strategies and the interpreter. Two of the seven are the ROW-POSITION control that a defect of this project's own required: see [IF319](INTERPRETER-FINDINGS.md#if319).)*
+
+## §9 supplement — a `Having` filter's connectives are COMMUTATIVE on validation and ORDER-SENSITIVE on computation, and both connectives short-circuit (differential, both strategies, 2026-09-03) <a id="kf235"></a>
+
+> Fold: pending — extends §9's filter account with the arm asymmetry; folds into §9 on the next canonical KERNEL-SEMANTICS pass.
+
+Confirms a12-kernel-lean's `SPEC-2026-09-03-03`. Validation evaluates a filter as a strong-Kleene tree, where the dominating operand wins from either side, so authored operand order is unobservable. Computation reads it left to right and aborts on the first poison it actually reaches, so authored order decides the result. Every row below is one document whose cells never change; only the spelling differs.
+
+**Both connectives short-circuit, each on its own dominating polarity.** With a malformed `Weight` beside a present `Carrier`, `Having (FieldFilled(Carrier) Or FieldFilled(Weight))` computes and the reverse spelling clears. With the same malformed cell beside an ABSENT `Carrier`, `Having (FieldFilled(Carrier) And FieldFilled(Weight))` computes and its reverse clears. So the rule is about the ARM, not about `Or`.
+
+**The control that separates a short-circuit from a conjunction that ignores its poison.** Filling `Carrier` leaves the conjunction nothing to dominate on, and BOTH spellings then clear.
+
+**The validation arm on the identical models and documents is commutative at both connectives** — the malformed operand is unknown, and `T ∨ U = T` / `F ∧ U = F` hold from either side.
+
+**Consumer consequence, and it is the load-bearing half.** Reordering a filter's operands is verdict-preserving on validation and NOT result-preserving on computation, so a normalizing or rule-refactoring transformation proved sound against validation alone is unsound for computations.
+
+**And the obvious substitute does not work**, measured on the two spellings whose outcomes differ: the eager `formalErrorsInOperands` inventory names the malformed cell under BOTH — the one that computes `5` and the one that clears — so it records that an operand was formally invalid, never that a computation aborted, and cannot stand in as an abort predicate.
+
+*(Locked: `adapter.laws.HavingConnectiveArmDiffTest` — four spellings × two documents × both arms, from one model per spelling carrying a rule and a computation over the same authored filter; plus the operand-inventory reading above, and the two-row compute case that guards [IF319](INTERPRETER-FINDINGS.md#if319)'s compute arm.)*
+
+## §9 supplement — a `Having` condition is the ORDINARY grammar, and its binding gate is a syntactic occurrence check over any reopened level (kernel `checkConsistency`, 2026-09-03) <a id="kf236"></a>
+
+> Fold: pending — extends §9's filter account, which said the filter must reference a *field* in a starred level; folds into §9 on the next canonical KERNEL-SEMANTICS pass.
+
+Confirms a12-kernel-lean's `SPEC-2026-09-03-02`, `-04`, `-05` and the static half of `-07`. The condition inside a filter is the ordinary production, and the only refusal it draws is the general binding gate — which is about SCOPE rather than about the leaf's shape.
+
+**Admitted inside a filter**, each measured in the position claimed for it: String equality against a literal and against another String field, `FieldFilled` and `FieldNotFilled`, Number `!=`, `And`, `Or`, a bracketed `And`/`Or` mix, and a bare outer scalar reference beside an in-scope conjunct. The group-presence leaf was measured separately ([`HavingFilterConditionLeafLawsTest`](../src/test/java/io/github/mbackschat/a12/dm/rulekit/validate/laws/HavingFilterConditionLeafLawsTest.java)).
+
+**The gate, stated once: a filter must carry an UNMARKED reference into a level its operand's star reopens.** Four properties follow, each with a row that kills a rival reading. It accepts ANY reopened level, so a two-star operand's filter may bind only the outer starred one. It is CONNECTIVE-BLIND: an in-scope reference under `Or` satisfies it even though the filter can be satisfied without consulting that disjunct — an occurrence check, not a satisfiability analysis. It counts REFERENCES rather than field pointers: `CurrentRepetition(G) != CurrentRepetition($G)` is admitted although a `CurrentRepetition` operand contributes no field pointer, so a gate built over the reference expansion refuses a model the kernel admits. And a `$`-marked reference does not satisfy it, because the marker moves the reference out of the filtered level.
+
+**The marker's own rule is about the LEVEL, and the two refusals have different codes.** A marked reference to a level the enclosing iteration BINDS is admitted; one to a level the operand's own star REOPENS draws `MVK_NO_WILDCARD`, while a filter with no unmarked in-scope reference at all draws `MVK_NO_ITERATION_FOR_WILDCARD`. The pointer-free rows need the SELF-EXCLUSION topology — rule and operand at the same repeatable level — because only there is one level both reopened and enclosing-bound, which is what lets a marked and an unmarked reference to it both be legal in one condition.
+
+**Two refused shapes are unrepresentable in this project rather than refused by it, and both erasures now rest on our OWN measurement.** `DslRenderer` parenthesizes a nested logic node whose operator differs from its parent, so the `MVK_BRACKET_MISSING` mix has no rendering; and the comparison verbs are typed per value kind, so a cross-kind leaf has no method. Put to the kernel as raw condition strings, the two shapes draw `MVK_BRACKET_MISSING` and `MVK_INVALID_TYPE_FOR_COMPARISON`, with the bracketed spelling admitted as the control — so the client-side erasures have a measured basis of ours rather than a peer's report.
+
+*(Locked: `rulekit.validate.laws.HavingFilterGrammarAndScopeLawsTest` — five row sets over one two-level model, every condition rendered from the typed builder so each row measures authorability and kernel admission at once.)*
+
+## §9/§11 supplement — a bare outer reference on a NON-REOPENED level reads the bound coordinate, so the `$` marker is redundant there (differential, both strategies, 2026-09-03) <a id="kf237"></a>
+
+> Fold: pending — corrects §9's reading that `$` is the sole way a filter reaches an outer field; folds into §9 on the next canonical KERNEL-SEMANTICS pass.
+
+Confirms a12-kernel-lean's `SPEC-2026-09-03-07`. The rule splits by LEVEL, not by scope. For a level the star REOPENS, the marker is the only way to read the captured coordinate and the unmarked reference reads the candidate's — that difference is the whole of correlation. For a level the enclosing iteration BINDS and the star does not reopen, the candidate environment inherits the coordinate from the captured prefix, so both spellings are admitted and read the same row.
+
+**Measured on varying answers rather than on agreement alone.** A rule iterating `Lines` with an operand starring only `Items`, `Cap = 5, 0, 5`: the `== 2` and `== 0` ladders select `Lines[1]`+`Lines[3]` and `Lines[2]` respectively, and each spelling selects exactly the rows its twin does. Asserted on the message POINTERS, since a code-set assertion would pass even if the marked spelling fired on the wrong rows.
+
+**Consumer consequence.** A normalizing consumer needs the level split: under the old reading it would either reject a legal bare outer reference or believe adding `$` is always safe — the second is wrong on a reopened level, where it silently changes which rows the filter keeps.
+
+*(Locked: `adapter.laws.RedundantOuterMarkerDiffTest`; the static admission of both spellings is `rulekit.validate.laws.HavingFilterGrammarAndScopeLawsTest`.)*
+
+## §9/§11 supplement — the `$` capture source is the ITERATING INSTANCE, which may be a repeatable COMPUTATION rather than a rule (differential, both strategies, 2026-09-03) <a id="kf238"></a>
+
+> Fold: pending — widens §9's `$` account from "the iterating rule" to the enclosing evaluation; folds into §9 on the next canonical KERNEL-SEMANTICS pass.
+
+Confirms a12-kernel-lean's `SPEC-2026-09-03-06`. A computation whose target is a repeatable field is evaluated once per target row, and `$` binds THAT row. Read as rule-only, a reimplementation either refuses a legal per-row computed target or leaves the capture unbound — two different wrong behaviours from one narrow word.
+
+**Exact per-row vectors, so each document refutes the reversed reading alone.** `Higher = Sum(Amount Having [Lines/Rank] > [$Lines/Rank])` answers `50, 30, 0` over ascending ranks `1, 2, 3` with amounts `10, 20, 30`, where the reversed marker predicts `0, 10, 30`; and `0, 40, 10` over the rotated ranks `3, 1, 2` with the same amounts, against `50, 0, 20`. The rotated document is the control that the answer follows the RANK rather than the row position. An unbound capture predicts no outcome on any row.
+
+**The static half is separate and was measured first**: the per-row computed target carrying a `$`-correlated filter is admitted by `checkConsistency`, so the shape is legal rather than merely tolerated at runtime.
+
+*(Locked: `adapter.laws.CorrelatedComputationCaptureDiffTest` — both vectors on both code-generation strategies and the interpreter, compared on indexed pointers so the three rows cannot collapse.)*
+
+## §6/§11 supplement — the temporal CONSTANT gate reads family, year agreement and day validity — never component sets — and all three grounds share ONE code (kernel `checkConsistency` + `compute`, 2026-09-03) <a id="kf239"></a>
+
+> Fold: pending — extends [KF222](#kf222)'s constant-assignment account; folds into §6 on the next canonical KERNEL-SEMANTICS pass.
+
+Confirms a12-kernel-lean's `SPEC-2026-09-03-08` and extends it with a third refusal ground they had not separated.
+
+**Not component sets.** `MM` is the one target whose components are a proper subset of a yearless date literal's, so it is the row that separates the accounts: `05.03.` and `13.07.` are both ADMITTED into it with no Base Year declared, and the store writes `03` and `07`. A component-set gate predicts both refused. Controls on the same targets: `05.03.` into `MM-dd` and `12:30:00` into `HH:mm:ss` are admitted, while `12:30:00` into `MM` (wrong family) and `05.03.2024` into `MM` (year disagreement) are refused.
+
+**A third ground: the literal must BE a date.** Same target, same family, same year agreement, only the day-in-month varying — `29.02.` and `31.04.` into `MM-dd` are refused, `30.04.` is admitted. So the yearless leap day is refused because without a year it is not a date, and the gate is validating the day rather than special-casing February. a12-kernel-lean's entry does not carry this ground.
+
+**All three report `MVK_INVALID_COMPARE_TO_DATE`**, so a consumer must re-derive which rule fired from the constant/target pair; a corrective telling the author to supply a Base Year is wrong on the family and day-validity rows.
+
+**The gate reads the same two operands on the COMPARISON carrier too.** A yearless literal against a year-free DATE field with no Base Year is admitted; a year-carrying one against the same field is refused with the same code. That matters beyond symmetry: it is the shape that exposed [IF321](INTERPRETER-FINDINGS.md#if321), since a consumer must resolve the literal there as well as at an assignment.
+
+**A temporal OPERATION is the third carrier, and it is governed by a DIFFERENT gate.** A year-free *field* is refused as an operation operand outright — `MVK_WRONG_DATE_FORMAT_FOR_OP`, which refuses a year-carrying literal in the same position identically, so it is reading the field's format and not the constant's. A year-free *literal* is admitted once no year-free field is in the operation: `DifferenceInDays("05.03.", "07.04.")` over two constants, and a literal reaching the operation through `AddDays`. An aggregate over two constants is refused for constant count instead (`MVK_TOO_MANY_CONST_FOR_CALC_OP`), which is a third gate and not a format one. So "the constant gate" is one of **four** that can refuse a temporal constant — this one, `MVK_WRONG_DATE_FORMAT_FOR_OP`, `MVK_TOO_MANY_CONST_FOR_CALC_OP` and the `MVK_NO_CONST` below — and only this one reads year agreement.
+
+**The reference year a yearless literal borrows is a LEAP year, and this carrier is what makes it observable.** `DifferenceInDays("28.02.", "01.03.")` is 1 day in a common year and 2 in a leap year; both kernel strategies answer **2**. The assignment and comparison carriers cannot see this — the assignment stores only the components its target's format names, and the comparison's admitted shapes are year-free on both sides — which is why a reimplementation can carry a wrong anchor indefinitely and pass on both. It exposed [IF322](INTERPRETER-FINDINGS.md#if322).
+
+**The PARITY is measured; the year is not, and the direct route is closed rather than untried.** Reading the borrowed year back with `YearFromDate("05.03.")` is refused `MVK_NO_CONST` — that extractor admits no constant operand at all, a fourth gate distinct from the three above. Any leap year satisfies what is measured. Separating one leap year from another needs another observable (a century boundary, a Julian/Gregorian-era literal); untried, and the kernel source for the anchor is unread.
+
+**One qualification the admitted/refused rows do not show, because none of them declares a Base Year.** The kernel's year-agreement gate returns true unconditionally once a Base Year exists, so the year-disagreement ground above is the rule for a base-year-FREE model; every row here sits on that side of the axis, and nothing measured here speaks for the other.
+
+**The time-side mirror is unreachable rather than unrun**: an hour-only `HH` format is refused, so no time target has components that are a proper subset of a time literal's. Measured here the refusal lands on the kernel-backed model check rather than on this project's draft builder, which writes the declaration without consulting the kernel; the derived [`TEMPORAL-FORMAT-VOCABULARY.md`](TEMPORAL-FORMAT-VOCABULARY.md) lists `HH` under *Refused* and `MM`/`MM-dd` under *Admitted*, which is the same fact from the generated side.
+
+*(Locked: `rulekit.validate.laws.TemporalConstantAdmissionGateLawsTest` — the gate rows, the comparison carrier, the two shapes our typed builder cannot author measured against the kernel directly, and a builder column covering every kernel-admitted row so an over-strict client-side refusal cannot hide; `adapter.laws.YearlessConstantMonthStoreDiffTest` — the store on both admitted year-free formats, tri-engine; `adapter.laws.YearlessConstantComparisonDiffTest` — the comparison at runtime; `adapter.laws.YearlessConstantOperationDiffTest` — the operation carrier and the leap-year anchor, tri-engine. The interpreter defects these rows exposed are [IF320](INTERPRETER-FINDINGS.md#if320), [IF321](INTERPRETER-FINDINGS.md#if321) and [IF322](INTERPRETER-FINDINGS.md#if322).)*
+
+## §11 supplement — the two CLEAR-KINDS part ways at a PLAIN OPERAND read, poison crosses a join, and the producer's own reported state is blind to the difference (differential, both strategies, 2026-09-03) <a id="kf240"></a>
+
+> Fold: pending — extends §11's cascade read-rules from filter/precondition reads to an ordinary operand; folds into §11 on the next canonical KERNEL-SEMANTICS pass.
+
+Confirms a12-kernel-lean's `SPEC-2026-09-03-09`. This repository had measured both cascade read-rules only for reads reaching INSIDE a downstream `Having` filter or a precondition's quantifiers (§11's cascade supplement, IF98). They govern a plain operand read as well, and that is the whole observable difference between the two kinds of clear.
+
+**One four-deep diamond held fixed across producer states** — `Posted = [Base]`, `Left = [Posted]`, `Right = [Alt]`, `Total = [Left] + [Right]` — with `Right` as the liveness control on every row. Clean gives `7, 7, 5, 12`. A producer cleared by an unmet PRECONDITION, with no malformed cell anywhere, gives `Left = 0` and `Total = 5`: empty substitution. A producer cleared by a MALFORMED SOURCE clears `Left` and `Total` while `Right` still answers `5`: **poison crosses the join** rather than being substituted away, and one failing branch does not abort the plan. The absent-source leg answers `0, 0, 5, 5`, and it is what makes the first two distinguishable without appealing to the join's shape.
+
+**The clear is visible to a dependent inside the same call.** With a stale value stored in the cleared producer, `Left` still answers `0` — on two different stale seeds, so it is the cleared state rather than a coincidence of one number. A consumer that clears at application time and lets dependents read pre-call storage passes every fresh-value row and fails exactly here.
+
+**A bare CONSTANT operation honours a precondition**, writing when met and clearing when not, its clear read as empty by the same rule.
+
+**The producer cannot be asked which kind it is.** Both clearing rows report `cleared=true, errored=false` on the producer's own instance, so a consumer predicting propagation from that flag is wrong on the malformed row. The channel that does separate them for a producer with NO dependents is the eager `formalErrorsInOperands` inventory: the source-invalid producer's own operand appears there and the precondition-cleared one's does not. It is an INVENTORY rather than a causal attribution — it also names operands of computations that succeeded, measured in [KF235](#kf235) on a spelling that computes a value — so the consumer's discriminator is whether the producer's own operand set intersects it, not the inventory's mere non-emptiness. The residue is a producer cleared because a COMPUTED field it read was poisoned: a computed field is outside that inventory's scope by definition, so that case stays indistinguishable.
+
+*(Locked: `adapter.laws.DependencyClearKindDiffTest` — five documents over one diamond, tri-engine, plus the producer-state and operand-inventory channels asserted directly.)*
