@@ -50,9 +50,16 @@ import io.github.mbackschat.a12.dm.rulekit.validate.ValidationResult;
  * the iterated level" has been locked in this repository since 2026-07-25 as
  * {@link AggregateSlotLawsTest#aFilterThatReferencesNoIteratedLevelIsRejected} (a filter body consisting only of
  * a {@code CustomCondition}), and it is recorded in {@code docs/MVK-LEDGER.md} as this code's second measured
- * trigger and in KERNEL-FINDINGS §9 as "the filter must reference a field in a starred level". Checking our own
- * findings for the code before building a probe would have supplied that; it did not happen, and the rows below
- * are scoped to what they actually add.
+ * trigger, and in KERNEL-FINDINGS §9 as the rule that a filter must reference a <em>field</em> in a starred
+ * level. The rows below are scoped to what they add on top of it.
+ *
+ * <p><b>But a grep of those findings would NOT have answered the question, and this is the more useful half of
+ * the lesson</b> (a12-kernel-lean's reading, 2026-09-03, and it corrects an over-correction that stood in this
+ * comment for one commit). §9 said <em>field</em>. So searching our own record first would have returned a
+ * confident, narrower answer and stopped the search — the leaf's admission would have read as covered when it
+ * was not, and the word "field" would still be wrong. A record that answers is not the same as a record that
+ * answers the question asked, and a narrow prior-art hit is more dangerous than no hit precisely because it
+ * terminates the enquiry. Same shape as an empty log read as a measured absence.
  *
  * <p><b>What is new: the leaf clears that gate, so the discriminator is authorable.</b> A group-presence leaf is
  * admitted inside a field-list filter whenever the condition also carries an in-scope reference — as the SOLE
