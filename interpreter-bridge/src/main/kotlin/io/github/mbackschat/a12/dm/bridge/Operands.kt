@@ -333,6 +333,10 @@ internal class Operands(private val mapping: Mapping) {
          * than a vague one. `GroupFilled`/`GroupNotFilled` now reconstruct it in `Predicates`; what still has
          * nowhere to put it is `CurrentRepetition`'s group argument, the aggregate group scopes and the group
          * lists, whose refs are bare `GroupRef`/`GroupListRef` values.
+         *
+         * <p>That residual is over-strict rather than protective — the kernel admits `AllGroupsFilled($A, $B)`
+         * inside a `Having` filter (measured 2026-09-04) — so this refusal makes a legal model unreadable and
+         * is tracked as DEV-API-GAPS `DG49`, not left as a settled boundary.
          */
         private fun requireNotCorrelated(source: Expr.EntitySource, what: String) {
             if (source.outer) {

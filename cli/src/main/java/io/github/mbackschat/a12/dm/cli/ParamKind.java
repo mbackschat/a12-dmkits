@@ -23,7 +23,15 @@ public @interface ParamKind {
 
     Kind value();
 
-    /** The semantic kinds. {@code entityRef} kinds must reference an existing model element. */
+    /**
+     * The semantic kinds. An {@code entityRef} kind is one whose {@link Kind#bogusValue()} must come back as a
+     * structured not-found — which is what the conformance fuzzer uses it for. It does <em>not</em> say that
+     * every admitted value names an existing element: {@link Kind#GROUP_PATH} also admits the ROOT-LEVEL
+     * spellings ({@code /} and the empty string, normalized by {@code ModelPaths.rootLevelParent}), and the
+     * root level is a position rather than a model element — see
+     * {@code cli.group.RootLevelParentSpellingTest}, which asserts both that the spelling applies and that a
+     * genuinely absent parent still refuses.
+     */
     public enum Kind {
         // --- references to existing model elements (a bogus value must yield a structured not-found) ----
         FIELD_PATH(true, "/__rk_absent__/__field__", null),
