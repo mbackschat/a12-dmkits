@@ -4259,7 +4259,7 @@
       "meaning": "The current iteration index of the given group, as a number expression.",
       "constraints": [
         "the argument is a group, not a field (MVK_NO_FIELDS_ALLOWED)",
-        "the ENCLOSING ITERATION must iterate over that group — the rule's row, or the target row of a computation whose target is repeatable — otherwise MVK_NO_WILDCARD (position-dependent — kernel-checked)"
+        "an UNMARKED operand binds to EITHER the enclosing iteration — the rule's row, or the target row of a computation whose target is repeatable — OR an operand's own star that reopens the group inside a Having filter; the $-marked form reads the captured environment and binds only to the enclosing iteration. Unbound either way: MVK_NO_WILDCARD (position-dependent — kernel-checked)"
       ],
       "gotchas": [
         {
@@ -4267,7 +4267,7 @@
           "kind": "AUTHORING"
         },
         {
-          "text": "the ENCLOSING ITERATION must iterate over the group — a rule whose error field lies under it, or a computation whose target is repeatable there; from a non-iterating host the kernel rejects it (MVK_NO_WILDCARD)",
+          "text": "from a non-iterating host the kernel rejects a bare CurrentRepetition (MVK_NO_WILDCARD) — unless it sits in a Having filter on an operand whose own star reopens that group, which binds it there; adding $ inside such a filter reverses the verdict, so the marker is never erasable here",
           "kind": "SURPRISE"
         },
         {
@@ -4290,7 +4290,7 @@
       "invalidExample": {
         "dsl": "FieldFilled(CustomerName) And CurrentRepetition(Items) > 1",
         "error": "MVK_NO_WILDCARD",
-        "fix": "CurrentRepetition needs the rule to iterate over the group — put the error field inside Items"
+        "fix": "CurrentRepetition needs a binding — put the error field inside Items so the rule iterates it, or move the operand into a Having filter on a starred Items* aggregate, whose own star binds it without the rule iterating"
       },
       "seeAlso": [
         "Having"

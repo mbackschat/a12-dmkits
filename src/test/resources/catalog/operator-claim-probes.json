@@ -452,6 +452,12 @@
       "control": { "group": "/Order/Items", "field": "../Count", "dsl": "FieldFilled(/Order/Items/Count) And CurrentRepetition(/Order/Items) > 1", "verdict": "ACCEPTED" }
     },
     {
+      "id": "CurrentRepetition.operand-star-binds-unmarked",
+      "operator": "CurrentRepetition", "kind": "CONDITION", "fixture": "ORDER",
+      "trigger": { "group": "/Order", "field": "../CustomerName", "dsl": "FieldFilled(CustomerName) And Sum(Items*/Count Having CurrentRepetition($Items) > 1) > 0", "verdict": "REJECTED", "code": "MVK_NO_WILDCARD" },
+      "control": { "group": "/Order", "field": "../CustomerName", "dsl": "FieldFilled(CustomerName) And Sum(Items*/Count Having CurrentRepetition(Items) > 1) > 0", "verdict": "ACCEPTED" }
+    },
+    {
       "id": "CustomCondition.inside-having",
       "operator": "CustomCondition", "kind": "CONDITION", "fixture": "ORDER",
       "trigger": { "group": "/Order", "field": "../Quantity", "dsl": "FieldFilled(Quantity) And Sum(Items*/Count Having ([Items/Sku] == \"X\" And CustomCondition SomeCheck)) > 0", "verdict": "REJECTED", "code": "MVK_DISALLOWED_CONSTRUCT_IN_FILTER_CONDITION" },

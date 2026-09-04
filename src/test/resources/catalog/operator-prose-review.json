@@ -5214,11 +5214,22 @@
       "operator": "CurrentRepetition",
       "lane": "CONSTRAINT",
       "ordinal": 1,
-      "digest": "sha256:aa6184dcf28a44061799382ba1acfac676b1509f2158b6e3809edd1af4b4794f",
+      "digest": "sha256:f9d637b5c8cdfa4ae9fa5d362615d24b9535ebdb36f4599e578264f66a8e87ce",
       "classifications": [
+        "ADMISSION",
         "REJECTION"
       ],
-      "evidence": []
+      "evidence": [
+        {
+          "classification": "ADMISSION",
+          "type": "CLAIM_PROBE",
+          "id": "CurrentRepetition.operand-star-binds-unmarked",
+          "side": "CONTROL",
+          "expected": {
+            "verdict": "ACCEPTED"
+          }
+        }
+      ]
     },
     {
       "operator": "CurrentRepetition",
@@ -5246,11 +5257,22 @@
       "operator": "CurrentRepetition",
       "lane": "GOTCHA",
       "ordinal": 1,
-      "digest": "sha256:0af92a67e47b3c37003ba354c73fcefeec47812cacb6c70b669783385017fa34",
+      "digest": "sha256:33c76a64d9ef6f113a032f53a5d998cab22ca1d45b3bc569a867f409deb82b2e",
       "classifications": [
+        "ADMISSION",
         "REJECTION"
       ],
-      "evidence": []
+      "evidence": [
+        {
+          "classification": "ADMISSION",
+          "type": "CLAIM_PROBE",
+          "id": "CurrentRepetition.operand-star-binds-unmarked",
+          "side": "CONTROL",
+          "expected": {
+            "verdict": "ACCEPTED"
+          }
+        }
+      ]
     },
     {
       "operator": "CurrentRepetition",
@@ -10037,6 +10059,11 @@
       "evidence": [
         {
           "type": "INVALID_EXAMPLE"
+        },
+        {
+          "type": "CLAIM_PROBE",
+          "id": "CurrentRepetition.operand-star-binds-unmarked",
+          "side": "TRIGGER"
         }
       ]
     },
@@ -10057,6 +10084,11 @@
       "evidence": [
         {
           "type": "INVALID_EXAMPLE"
+        },
+        {
+          "type": "CLAIM_PROBE",
+          "id": "CurrentRepetition.operand-star-binds-unmarked",
+          "side": "TRIGGER"
         }
       ]
     },
