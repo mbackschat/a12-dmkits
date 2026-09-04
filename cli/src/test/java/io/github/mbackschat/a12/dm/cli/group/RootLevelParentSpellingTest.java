@@ -100,6 +100,32 @@ class RootLevelParentSpellingTest {
         args[args.length - 1] = "/";
         var res = CliTestSupport.run(args);
         assertEquals(0, res.code(), () -> String.join(" ", args) + " -> " + res.err() + res.out());
-        return M.readTree(res.out()).path("outcome").asText();
+
+        // The envelope's outcome alone does not say a SECOND ROOT was created, which is the whole point —
+        // the normalization feeds the reported path, so an un-normalized `/` would still apply and report
+        // `//Name`. Both the reported path and the persisted model are checked.
+        JsonNode envelope = M.readTree(res.out());
+        String reported = envelope.path("changed").path(reportedPathKey(verbAndArgs[0])).asText();
+        String expected = "/" + newName(verbAndArgs);
+        assertEquals(expected, reported,
+                () -> "the root-level target must be reported as " + expected + ": " + envelope.path("changed"));
+        assertTrue(Files.readString(model).contains("\"" + newName(verbAndArgs) + "\""),
+                "the new root element must be persisted in the model");
+        return envelope.path("outcome").asText();
+    }
+
+    /** Which `changed` key carries the created element's path — `include add` reports its mount separately. */
+    private static String reportedPathKey(String target) {
+        return "include".equals(target) ? "mountedAt" : "added";
+    }
+
+    /** The `--name` value the verb was given, which is the root-level element's own name. */
+    private static String newName(String... verbAndArgs) {
+        for (int i = 0; i < verbAndArgs.length - 1; i++) {
+            if ("--name".equals(verbAndArgs[i])) {
+                return verbAndArgs[i + 1];
+            }
+        }
+        throw new IllegalArgumentException("every add-verb under test takes --name: " + String.join(" ", verbAndArgs));
     }
 }

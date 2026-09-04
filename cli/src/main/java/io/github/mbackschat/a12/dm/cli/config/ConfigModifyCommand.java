@@ -97,7 +97,7 @@ final class ConfigModifyCommand extends BaseCommand {
             description = "allow a bare field name to resolve MODEL-WIDE where unique "
                     + "(modelConfig.fieldRefByShortNameAllowed) — this gates that tier only: a bare name the "
                     + "rule's OWN group declares resolves regardless of the flag, even one that is ambiguous "
-                    + "model-wide, because the local match settles it before any model-wide index is consulted; "
+                    + "model-wide, so turning the flag off does not make a locally declared name unresolvable; "
                     + "`config read` echoes the current value")
     Boolean fieldRefByShortName;
 

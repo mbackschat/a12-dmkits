@@ -2,6 +2,7 @@ package io.github.mbackschat.a12.dm.adapter.laws
 
 import com.fasterxml.jackson.databind.JsonNode
 import com.fasterxml.jackson.databind.ObjectMapper
+import com.fasterxml.jackson.databind.node.ObjectNode
 import com.networknt.schema.JsonSchemaFactory
 import com.networknt.schema.SpecVersion
 import io.github.mbackschat.a12.dm.modelkit.CustomFieldBuilder
@@ -84,6 +85,33 @@ class KernelProbeFaultCaptureTest {
             },
             "the cause chain must reach the kernel's own reason, or the fault is not the observation — got " +
                 engines.map { it.path("fault").path("chain").toString() },
+        )
+    }
+
+    /**
+     * **`documentInstance` has no reproducer on kernel 30.8.1, and this row is what says so.** A cold review
+     * asked for the locus to be exercised, since a published enum value nothing can emit is dead vocabulary in
+     * a self-describing schema (2026-09-04). Two malformations were attempted — an object where a String
+     * field's value belongs, and the ROOT GROUP as a bare scalar — and the kernel's deserializer TOLERATES
+     * both: the row is observed normally, with the rule that reads the untouched field still firing.
+     *
+     * <p>That is consistent with A12's documented ingress posture (keep the raw content on conversion failure
+     * rather than refusing the document), so the capture stays — it is the safe direction if a future kernel
+     * does raise there — and the schema records the locus as unobserved on this version instead of implying a
+     * reachable state. **If this row ever goes red, the locus became reachable and the schema note is stale.**
+     */
+    @Test
+    fun theDeserializerToleratesAMalformedDocumentSoNoDocumentInstanceFaultIsReachable() {
+        val malformed = artifact.rowNamed(MALFORMED)
+
+        assertTrue(
+            malformed.path("engines").all { it.path("fault").isMissingNode },
+            "no fault — a document A12 cannot read is kept rather than refused, so the locus stays unobserved",
+        )
+        assertEquals(
+            listOf(emptyList<String>(), emptyList<String>()),
+            malformed.path("engines").map { engine -> engine.path("messages").map { it.path("code").asText() } },
+            "…and the row is observed normally: the scalar root carries no Holder, so nothing fires",
         )
     }
 
@@ -183,14 +211,39 @@ class KernelProbeFaultCaptureTest {
     /** The published shape stays the published shape: the fault-carrying artifact validates against it. */
     @Test
     fun theFaultCarryingArtifactConformsToTheArtifactSchema() {
-        val schema = JsonSchemaFactory.getInstance(SpecVersion.VersionFlag.V202012).getSchema(
-            KernelProbeFaultCaptureTest::class.java.classLoader
-                .getResource("kernel-probe/artifact.schema.json")!!.toURI(),
-        )
-        val problems = schema.validate(artifact).map { it.message }
+        val problems = schema().validate(artifact).map { it.message }
         assertEquals(emptyList<String>(), problems, "a fault-carrying artifact must satisfy the published schema")
         assertFalse(artifact.path("rows").isEmpty, "…over a non-empty artifact, or the check is vacuous")
     }
+
+    /**
+     * **The schema's fault-side arm has to REFUSE something, or it is decoration.** The record makes a fault
+     * beside a channel unrepresentable, so no artifact this producer can write exercises the `then` arm — which
+     * means the clause could be deleted and every conformance test would still pass (a cold review's mutant,
+     * 2026-09-04). The illegal pair is therefore hand-built as JSON, bypassing the record, and the schema must
+     * reject it; the same JSON with `messages` removed is the positive control that nothing ELSE in the object
+     * is what failed.
+     */
+    @Test
+    fun theSchemaItselfRefusesAFaultBesideAChannel() {
+        val illegal = MAPPER.readTree(Files.readString(dir.resolve("shared-fault-artifact.json"))) as ObjectNode
+        val engine = illegal.path("rows")[0].path("engines")[0] as ObjectNode
+        engine.putArray("messages")
+
+        val refused = schema().validate(illegal).map { it.message }
+        assertFalse(refused.isEmpty(), "the schema must refuse `messages` beside a `fault` — got no violation")
+
+        engine.remove("messages")
+        assertEquals(
+            emptyList<String>(), schema().validate(illegal).map { it.message },
+            "…and accept the same object once the channel is gone, so the refusal is about that pair",
+        )
+    }
+
+    private fun schema() = JsonSchemaFactory.getInstance(SpecVersion.VersionFlag.V202012).getSchema(
+        KernelProbeFaultCaptureTest::class.java.classLoader
+            .getResource("kernel-probe/artifact.schema.json")!!.toURI(),
+    )
 
     private fun JsonNode.rowNamed(name: String): JsonNode =
         path("rows").single { it.path("name").asText() == name }
@@ -201,6 +254,7 @@ class KernelProbeFaultCaptureTest {
 
         private const val FILLED = "broker-key-filled"
         private const val EMPTY = "broker-key-empty"
+        private const val MALFORMED = "document-unreadable"
 
         private const val TYPE = "BrokerKey"
         private const val ROOT = "/Policy"
@@ -236,7 +290,8 @@ class KernelProbeFaultCaptureTest {
         private val ROWS = """
             { "name": "$FILLED", "documentInline": { "Policy": {
                 "Holder": "L. Weber", "BrokerKey": "BRK-0042" } } },
-            { "name": "$EMPTY", "documentInline": { "Policy": { "Holder": "L. Weber" } } }
+            { "name": "$EMPTY", "documentInline": { "Policy": { "Holder": "L. Weber" } } },
+            { "name": "$MALFORMED", "documentInline": { "Policy": "not an object at all" } }
         """
 
         private fun write(name: String, content: String): Path = Files.writeString(dir.resolve(name), content)

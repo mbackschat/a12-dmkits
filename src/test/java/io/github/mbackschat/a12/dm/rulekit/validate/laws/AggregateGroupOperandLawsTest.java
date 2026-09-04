@@ -244,4 +244,17 @@ class AggregateGroupOperandLawsTest {
                 guardedInvoice(Dsl.sum(lines(), INVOICE.flattenGroup("/Invoice/Lines*/Fees*"))),
                 "MVK_DUPLICATE_PARAM2");
     }
+
+    /**
+     * The same pair with the operands REVERSED — descendant first. `ListAggregate`'s public javadoc says the
+     * containment arm refuses the pair "whichever side carries it", and until this row that symmetry was
+     * asserted on parent-first measurements only (a cold review, 2026-09-04). A relation-based gate is the
+     * likelier implementation, but likelier is not measured, and the sentence is a public contract.
+     */
+    @Test
+    void theContainmentRefusalDoesNotDependOnWhichOperandComesFirst() {
+        KernelLaws.rejectsModel(INVOICE_JSON, "/Invoice", "../Reference",
+                guardedInvoice(Dsl.sum(INVOICE.flattenGroup("/Invoice/Lines*/Fees*"), lines())),
+                "MVK_DUPLICATE_PARAM2");
+    }
 }

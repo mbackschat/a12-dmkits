@@ -130,10 +130,23 @@ class EmptyCandidateSetOutcomeDiffTest {
             noValueRowsOf(triOutcomes(ASCENDING, seedNext = true, seedFlag = true)),
             "both grounds report CLEARED when the target carries a stale value",
         )
+        // Asserted UNFILTERED, not through noValueRowsOf: filtering to `|CLEARED` would let a row reported
+        // `VALUE|""` satisfy an "reports nothing" expectation, and "nothing at all" is exactly the claim. The
+        // empty-candidate ground is separately pinned by the complete value-bearing list below; this is the
+        // only place the PRECONDITION ground's absence is stated, so it needs the whole list.
         assertEquals(
-            emptyList<String>(),
-            noValueRowsOf(triOutcomes(ASCENDING, seedNext = false, seedFlag = false)),
-            "both grounds report NOTHING when the target is absent — so the shape is the seed's, not the ground's",
+            listOf(
+                at(1, "NextHigherLen") + "|VALUE|1",
+                at(1, "NextHigherSku") + "|VALUE|B",
+                at(2, "NextHigherLen") + "|VALUE|0",
+                at(3, "NextHigherLen") + "|VALUE|1",
+                at(3, "NextHigherSku") + "|VALUE|B",
+            ),
+            triOutcomes(ASCENDING, seedNext = false, seedFlag = false),
+            "both grounds report NOTHING when the target is absent — so the shape is the seed's, not the " +
+                "ground's. The COMPLETE list is what makes that an absence: no `Flag` instance appears at " +
+                "all (the precondition ground) and row 2 carries no `NextHigherSku` (the empty-candidate " +
+                "ground), while every row that HAS a value reports it",
         )
         assertEquals(
             listOf(at(1, "Flag") + "|CLEARED", at(2, "Flag") + "|CLEARED", at(3, "Flag") + "|CLEARED"),

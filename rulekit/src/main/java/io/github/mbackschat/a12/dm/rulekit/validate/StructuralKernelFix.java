@@ -177,9 +177,10 @@ public final class StructuralKernelFix {
             Map.entry("MVK_INVALID_ENTITY", new Hint(
                     "The group or field name in the condition could not be resolved in the rule's scope. Use its "
                             + "ABSOLUTE path (a leading `/`, e.g. `/Order/Items/Sku`) rather than a bare or relative "
-                            + "name — a bare name binds against the rule's OWN group first, and reaches a SIBLING "
-                            + "group only through the model-wide fallback, which needs `fieldRefByShortNameAllowed` "
-                            + "AND a unique match. If the name is already correct, check "
+                            + "name — a bare name binds against the rule's OWN group first, and reaches ANY other "
+                            + "group (an ancestor's field included: there is no upward search) only through the "
+                            + "model-wide fallback, which needs `fieldRefByShortNameAllowed` AND a unique match. "
+                            + "If the name is already correct, check "
                             + "the rule's iteration scope contains it: a per-row field needs the rule to iterate over "
                             + "its repeatable group (set the rule group to that group's PARENT, error field inside).",
                     "MVK_INVALID_ENTITY (\"the group or field 'X' is not valid\") means the kernel could not resolve "

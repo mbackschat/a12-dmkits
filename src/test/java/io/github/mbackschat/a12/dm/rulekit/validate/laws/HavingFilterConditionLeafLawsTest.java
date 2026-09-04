@@ -207,6 +207,14 @@ class HavingFilterConditionLeafLawsTest {
         // The polarity sibling, so the answer is about the group-presence CARRIER and not about GroupFilled.
         actual.put("MARKED GroupNotFilled as the WHOLE filter condition",
                 verdict(Dsl.groupNotFilled(M.group("/Order/Billing"), true)));
+        // …and in the ADMITTED position too. KF242 says the polarity sibling "behaves identically", which was
+        // measured in one of the two positions until a cold review pointed it out (2026-09-04): admitting a
+        // shape as a sole condition says nothing about beside a conjunct, and this file's whole point is that
+        // the two positions differ.
+        actual.put("MARKED GroupNotFilled beside the in-scope conjunct",
+                verdict(fieldLocal().and(Dsl.groupNotFilled(M.group("/Order/Billing"), true))));
+        actual.put("UNMARKED GroupNotFilled beside the in-scope conjunct",
+                verdict(fieldLocal().and(Dsl.groupNotFilled(M.group("/Order/Billing")))));
 
         Map<String, String> expected = new LinkedHashMap<>();
         expected.put("MARKED GroupFilled as the WHOLE filter condition", NO_ITERATION);
@@ -215,6 +223,8 @@ class HavingFilterConditionLeafLawsTest {
         expected.put("UNMARKED GroupFilled beside the in-scope conjunct", ADMITTED);
         expected.put("the in-scope conjunct alone — live control", ADMITTED);
         expected.put("MARKED GroupNotFilled as the WHOLE filter condition", NO_ITERATION);
+        expected.put("MARKED GroupNotFilled beside the in-scope conjunct", ADMITTED);
+        expected.put("UNMARKED GroupNotFilled beside the in-scope conjunct", ADMITTED);
         assertEquals(expected, actual,
                 "the marker is admitted on a group presence leaf and moves no verdict — the missing in-scope "
                         + "reference is what the sole-condition rows are refused for");

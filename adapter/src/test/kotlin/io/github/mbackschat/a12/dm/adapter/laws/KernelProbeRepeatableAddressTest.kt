@@ -62,10 +62,19 @@ class KernelProbeRepeatableAddressTest {
     @Test
     fun aFormLevelOutcomeAndTheFirstRepetitionAreBothBracketFree() {
         val addresses = outcomeAddresses()
+        // Both must be PRESENT and both bracket-free. The first form of this read `it in addresses &&
+        // it.contains('[')` over the two literals, which is a tautology — a literal without a bracket makes
+        // the right conjunct false whatever the artifact says, so it passed on an empty artifact too.
         assertEquals(
-            listOf(false, false),
-            listOf("Basket/Subtotal", "Basket/Lines/Total").map { it in addresses && it.contains('[') },
-            "neither carries a bracket — the level's repeatability is a model fact, not an address fact",
+            listOf(true, true),
+            listOf("Basket/Subtotal", "Basket/Lines/Total").map { it in addresses },
+            "the collision needs both members actually present in the artifact",
+        )
+        assertEquals(
+            emptyList<String>(),
+            addresses.filter { it.startsWith("Basket/Subtotal") || it.startsWith("Basket/Lines/Total") }
+                .filter { it.contains('[') },
+            "…and neither carries a bracket — the level's repeatability is a model fact, not an address fact",
         )
     }
 
