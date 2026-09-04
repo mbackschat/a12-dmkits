@@ -65,6 +65,38 @@ public final class ModelPaths {
         return key + " must be an absolute path with no empty segment (e.g. /Group/Field), got: " + value;
     }
 
+    /** The {@code --parent} spelling that names the root LEVEL rather than a group in the model. */
+    public static final String ROOT_LEVEL_PARENT = "/";
+
+    /**
+     * The {@code --parent} value to work with, accepting {@code /} as a synonym for the root LEVEL.
+     *
+     * <p><b>Why a synonym rather than a new path form.</b> Every add-verb that can create something at the top
+     * of a model — {@code group add}, {@code include add}, {@code group multiselect}, {@code group attachment} —
+     * expresses "no parent" as the EMPTY string, which is what {@code ModelDocument} itself keys on. That was
+     * the only route and it was undocumented, so the spelling an author reaches for first ({@code /}) failed with
+     * {@code no group at '/'} — a message that reads as "your model has no root" and led a12-kernel-lean's agent
+     * to conclude multi-root models are unauthorable through the CLI (their instrument note, 2026-09-04). This is
+     * an affordance at the flag, NOT an invented pointer syntax: {@code /} is not a legal A12 absolute path at all
+     * ({@link #isAbsoluteEntityPath} refuses it, on {@code ElementPathUtils.splitAbsPath}'s own contract), so no
+     * A12 shape is being redefined and nothing downstream ever sees the synonym.
+     *
+     * <p>Normalizing in one place is the point: four verbs share the meaning, and four hand-written checks would
+     * be four chances to accept it in three of them.
+     */
+    public static String rootLevelParent(String parent) {
+        return ROOT_LEVEL_PARENT.equals(parent) ? "" : parent;
+    }
+
+    /**
+     * The refusal for a {@code --parent} that names no group, sharpened to name the root-level spelling —
+     * because the value an author most often gets wrong here is one that MEANT the root level.
+     */
+    public static String missingParentHint(String kind) {
+        return "pass an existing " + kind + "'s full name-path (see `model describe` or `" + kind + " read`), "
+                + "or `/` (equivalently the empty string) to add at the ROOT level";
+    }
+
     public static String fieldProblem(BoundModel model, String path) {
         return model.fieldAt(path).isPresent() ? null : problem(path, "field", "/Group/Field");
     }

@@ -2,6 +2,7 @@ package io.github.mbackschat.a12.dm.cli.group;
 
 import io.github.mbackschat.a12.dm.cli.BaseCommand;
 import io.github.mbackschat.a12.dm.cli.ConsistencyEvidence;
+import io.github.mbackschat.a12.dm.cli.ModelPaths;
 import io.github.mbackschat.a12.dm.cli.ModelWrite;
 import io.github.mbackschat.a12.dm.cli.ParamKind;
 import io.github.mbackschat.a12.dm.cli.Refusal;
@@ -38,7 +39,8 @@ final class GroupMultiSelectCommand extends BaseCommand {
 
     @ParamKind(ParamKind.Kind.GROUP_PATH)
     @Option(names = "--parent", required = true, paramLabel = "<path>",
-            description = "the parent group, by full name-path, e.g. /Product")
+            description = "the parent group, by full name-path, e.g. /Product; `/` (equivalently the "
+                    + "empty string) adds it at the ROOT level")
     String parent;
 
     @ParamKind(ParamKind.Kind.NEW_NAME)
@@ -81,11 +83,12 @@ final class GroupMultiSelectCommand extends BaseCommand {
             return 2;
         }
         ModelResolver resolver = workspace.resolverFor(model);
+        String parent = ModelPaths.rootLevelParent(this.parent);
         String target = parent + "/" + name;
         ModelDocument doc = ModelDocument.read(modelJson);
         SafetyGate gate = new SafetyGate().require(SafetyChecks.multiSelectMinRows(maxRows));
         if (!parent.isEmpty()) {
-            gate = gate.require(SafetyChecks.exists(doc, parent, true));
+            gate = gate.require(SafetyChecks.parentExists(doc, parent));
         }
         Optional<Refusal> refusal = gate.firstFailure();
         if (refusal.isPresent()) {
