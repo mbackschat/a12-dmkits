@@ -2630,7 +2630,8 @@
       "constraints": [
         "more than one field, OR a single flattened repetition list (Group*/field), OR at least one group (MVK_PARAMSIZE_INVALIDN)",
         "field kinds may be mixed (it counts presence, not values)",
-        "root groups are not allowed (MVK_ROOT_GROUP_REFERENCED); no enum-category arguments"
+        "root groups are not allowed (MVK_ROOT_GROUP_REFERENCED); no enum-category arguments",
+        "no repeated DIRECT operand (MVK_DUPLICATE_PARAM1), but a wildcarded (starred) operand may repeat. The star exempts that ONE gate and no more: two operands where one strictly CONTAINS the other — a group scope beside its own descendant — are refused MVK_DUPLICATE_PARAM2 whichever side carries it, even with both starred"
       ],
       "gotchas": [
         {
@@ -2985,7 +2986,7 @@
       "meaning": "The sum of the listed number fields' values, typically over a repetition list.",
       "constraints": [
         "number fields only (MVK_NO_NUMBER)",
-        "more than one field or a repetition list (MVK_PARAMSIZE_INVALIDN); no repeated DIRECT field (MVK_DUPLICATE_PARAM1), but a wildcarded (starred) operand may repeat and is consumed again at each slot"
+        "more than one field or a repetition list (MVK_PARAMSIZE_INVALIDN); no repeated DIRECT field (MVK_DUPLICATE_PARAM1), but a wildcarded (starred) operand may repeat and is consumed again at each slot. The star exempts that ONE gate and no more: two operands where one strictly CONTAINS the other — a group scope beside its own descendant — are refused MVK_DUPLICATE_PARAM2 whichever side carries it, even with both starred"
       ],
       "gotchas": [
         {
@@ -3078,7 +3079,7 @@
       "meaning": "The largest of the listed values; unspecified fields are ignored. Over number fields it returns a number; over a date repetition list it returns the latest date.",
       "constraints": [
         "sortable fields only — NUMBER, or temporal fields (DATE, DATEFRAGMENT, TIME, DATE_TIME) whose declared COMPONENT SETS match after optional Base-Year supplementation (MVK_NOT_SORTABLE / MVK_DATEFORMATS_NOT_COMPATIBLE)",
-        "more than one field or a repetition list; no repeated direct field, but a wildcarded (starred) operand may repeat (MVK_DUPLICATE_PARAM1)"
+        "more than one field or a repetition list; no repeated direct field, but a wildcarded (starred) operand may repeat (MVK_DUPLICATE_PARAM1). The star exempts that ONE gate and no more: two operands where one strictly CONTAINS the other — a group scope beside its own descendant — are refused MVK_DUPLICATE_PARAM2 whichever side carries it, even with both starred"
       ],
       "gotchas": [
         {
@@ -3219,7 +3220,8 @@
       "returns": "the operands' common NUMBER, DATE, TIME, or DATETIME kind",
       "meaning": "The smallest of the listed values; unspecified fields are ignored. Over number fields it returns a number; over a date repetition list it returns the earliest date.",
       "constraints": [
-        "same slot rules as MaxValue: NUMBER, or temporal fields whose declared COMPONENT SETS match after optional Base-Year supplementation"
+        "same slot rules as MaxValue: NUMBER, or temporal fields whose declared COMPONENT SETS match after optional Base-Year supplementation",
+        "more than one field or a repetition list; no repeated direct field, but a wildcarded (starred) operand may repeat (MVK_DUPLICATE_PARAM1). The star exempts that ONE gate and no more: two operands where one strictly CONTAINS the other — a group scope beside its own descendant — are refused MVK_DUPLICATE_PARAM2 whichever side carries it, even with both starred"
       ],
       "gotchas": [
         {
@@ -4025,7 +4027,7 @@
         "operands must be type-homogeneous, in one of three classes: string/enum/custom together, all numbers, or all date-like — DATE/DATEFRAGMENT/TIME/DATETIME. The FIRST operand fixes the expected class and the reported code names THAT class, not the offender's: (Weight, Label) reports MVK_NUMBER_AND_NON_NUMBER while (Label, Weight) over the same two fields reports MVK_STRING_ENUM_AND_NON_STRING_ENUM (MVK_STRING_ENUM_AND_NON_STRING_ENUM / MVK_NUMBER_AND_NON_NUMBER / MVK_DATE_AND_NONDATE)",
         "date-like operands must additionally share one declared COMPONENT SET — two date-like fields are not enough (MVK_DATEFORMATS_NOT_COMPATIBLE)",
         "no booleans/confirms — but this code is reachable only from the LEADING slot: a boolean behind a string is reported as a homogeneity mismatch instead (MVK_ONLY_STRING_ENUM_NUMBER_CMP_DATE_ALLOWED)",
-        "more than one field or a repetition list; no repeated direct field, but a wildcarded (starred) operand may repeat (MVK_DUPLICATE_PARAM1)"
+        "more than one field or a repetition list; no repeated direct field, but a wildcarded (starred) operand may repeat (MVK_DUPLICATE_PARAM1). The star exempts that ONE gate and no more: two operands where one strictly CONTAINS the other — a group scope beside its own descendant — are refused MVK_DUPLICATE_PARAM2 whichever side carries it, even with both starred"
       ],
       "gotchas": [
         {

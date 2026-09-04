@@ -3304,6 +3304,16 @@
     },
     {
       "operator": "NumberOfFilledFields",
+      "lane": "CONSTRAINT",
+      "ordinal": 3,
+      "digest": "sha256:5152581eeeef5318727c781f80293551b39cd04d5a29700836a1e5edfcc2e7bb",
+      "classifications": [
+        "REJECTION"
+      ],
+      "evidence": []
+    },
+    {
+      "operator": "NumberOfFilledFields",
       "lane": "GOTCHA",
       "ordinal": 0,
       "digest": "sha256:4a372138cb8ff84d59e396bd1e48b43bae5c58fe25d2889753ca8068f76f3edb",
@@ -3994,7 +4004,7 @@
       "operator": "Sum",
       "lane": "CONSTRAINT",
       "ordinal": 1,
-      "digest": "sha256:7788bd671806aa5140678d11cc60c2c1b14ee5394d798290446c900eba7613e1",
+      "digest": "sha256:86f93bc6aa3c2c2cce4722685fa04ead3f1b83e4fc8bc4d7b30325e4d7ffe6ab",
       "classifications": [
         "REJECTION"
       ],
@@ -4101,7 +4111,7 @@
       "operator": "MaxValue",
       "lane": "CONSTRAINT",
       "ordinal": 1,
-      "digest": "sha256:2e2d0c24993b3def982d0cc55a10ac270f06fe156f7aa8244a51acca2e62b6fd",
+      "digest": "sha256:f760ac5b5e8cc5dd17ed8dfbef68137ca93e4125db5445afc7352625819e36d6",
       "classifications": [
         "REJECTION"
       ],
@@ -4178,6 +4188,16 @@
       "lane": "CONSTRAINT",
       "ordinal": 0,
       "digest": "sha256:1137eb5679d7ad93196f9742ae74030d4344c56427b77374ec2dc5cdd0ba66e4",
+      "classifications": [
+        "REJECTION"
+      ],
+      "evidence": []
+    },
+    {
+      "operator": "MinValue",
+      "lane": "CONSTRAINT",
+      "ordinal": 1,
+      "digest": "sha256:f760ac5b5e8cc5dd17ed8dfbef68137ca93e4125db5445afc7352625819e36d6",
       "classifications": [
         "REJECTION"
       ],
@@ -4915,7 +4935,7 @@
       "operator": "NumberOfDifferentValues",
       "lane": "CONSTRAINT",
       "ordinal": 3,
-      "digest": "sha256:2e2d0c24993b3def982d0cc55a10ac270f06fe156f7aa8244a51acca2e62b6fd",
+      "digest": "sha256:f760ac5b5e8cc5dd17ed8dfbef68137ca93e4125db5445afc7352625819e36d6",
       "classifications": [
         "REJECTION"
       ],
@@ -9427,6 +9447,153 @@
         {
           "type": "CLAIM_PROBE",
           "id": "Sum.duplicate"
+        }
+      ]
+    },
+    {
+      "id": "literal.NumberOfFilledFields.constraint3.MVK_DUPLICATE_PARAM1",
+      "operator": "NumberOfFilledFields",
+      "kind": "CONDITION",
+      "units": [
+        {
+          "lane": "CONSTRAINT",
+          "ordinal": 3
+        }
+      ],
+      "expected": {
+        "verdict": "REJECTED",
+        "code": "MVK_DUPLICATE_PARAM1"
+      },
+      "evidence": [
+        {
+          "type": "CLAIM_PROBE",
+          "id": "NumberOfFilledFields.duplicate"
+        }
+      ]
+    },
+    {
+      "id": "literal.NumberOfFilledFields.constraint3.MVK_DUPLICATE_PARAM2",
+      "operator": "NumberOfFilledFields",
+      "kind": "CONDITION",
+      "units": [
+        {
+          "lane": "CONSTRAINT",
+          "ordinal": 3
+        }
+      ],
+      "expected": {
+        "verdict": "REJECTED",
+        "code": "MVK_DUPLICATE_PARAM2"
+      },
+      "evidence": [
+        {
+          "type": "CLAIM_PROBE",
+          "id": "NumberOfFilledFields.group-containment"
+        }
+      ]
+    },
+    {
+      "id": "literal.Sum.constraint1.MVK_DUPLICATE_PARAM2",
+      "operator": "Sum",
+      "kind": "CONDITION",
+      "units": [
+        {
+          "lane": "CONSTRAINT",
+          "ordinal": 1
+        }
+      ],
+      "expected": {
+        "verdict": "REJECTED",
+        "code": "MVK_DUPLICATE_PARAM2"
+      },
+      "evidence": [
+        {
+          "type": "CLAIM_PROBE",
+          "id": "Sum.group-containment"
+        }
+      ]
+    },
+    {
+      "id": "literal.MinValue.constraint1.MVK_DUPLICATE_PARAM1",
+      "operator": "MinValue",
+      "kind": "CONDITION",
+      "units": [
+        {
+          "lane": "CONSTRAINT",
+          "ordinal": 1
+        }
+      ],
+      "expected": {
+        "verdict": "REJECTED",
+        "code": "MVK_DUPLICATE_PARAM1"
+      },
+      "evidence": [
+        {
+          "type": "CLAIM_PROBE",
+          "id": "MinValue.duplicate"
+        }
+      ]
+    },
+    {
+      "id": "literal.MinValue.constraint1.MVK_DUPLICATE_PARAM2",
+      "operator": "MinValue",
+      "kind": "CONDITION",
+      "units": [
+        {
+          "lane": "CONSTRAINT",
+          "ordinal": 1
+        }
+      ],
+      "expected": {
+        "verdict": "REJECTED",
+        "code": "MVK_DUPLICATE_PARAM2"
+      },
+      "evidence": [
+        {
+          "type": "CLAIM_PROBE",
+          "id": "MinValue.group-containment"
+        }
+      ]
+    },
+    {
+      "id": "literal.MaxValue.constraint1.MVK_DUPLICATE_PARAM2",
+      "operator": "MaxValue",
+      "kind": "CONDITION",
+      "units": [
+        {
+          "lane": "CONSTRAINT",
+          "ordinal": 1
+        }
+      ],
+      "expected": {
+        "verdict": "REJECTED",
+        "code": "MVK_DUPLICATE_PARAM2"
+      },
+      "evidence": [
+        {
+          "type": "CLAIM_PROBE",
+          "id": "MaxValue.group-containment"
+        }
+      ]
+    },
+    {
+      "id": "literal.NumberOfDifferentValues.constraint3.MVK_DUPLICATE_PARAM2",
+      "operator": "NumberOfDifferentValues",
+      "kind": "CONDITION",
+      "units": [
+        {
+          "lane": "CONSTRAINT",
+          "ordinal": 3
+        }
+      ],
+      "expected": {
+        "verdict": "REJECTED",
+        "code": "MVK_DUPLICATE_PARAM2"
+      },
+      "evidence": [
+        {
+          "type": "CLAIM_PROBE",
+          "id": "NumberOfDifferentValues.group-containment"
         }
       ]
     },
