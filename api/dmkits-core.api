@@ -91,6 +91,7 @@ public record io.github.mbackschat.a12.dm.core.EntityPath
   public boolean isStrictlyInside(io.github.mbackschat.a12.dm.core.EntityPath)
   public static io.github.mbackschat.a12.dm.core.EntityPath of(java.lang.String)
   public java.lang.String relativize(io.github.mbackschat.a12.dm.core.EntityPath)
+  public io.github.mbackschat.a12.dm.core.EntityPath resolve(java.lang.String)
   public java.util.List<java.lang.String> segments()
   public java.lang.String toString()
   public java.lang.String value()

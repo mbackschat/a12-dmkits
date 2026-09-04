@@ -128,6 +128,55 @@ public record EntityPath(List<String> segments) {
         return String.join("/", steps);
     }
 
+    /**
+     * The absolute path a stored {@code reference} names, resolved against this base — the <b>inverse</b> of
+     * {@link #relativize}. A reference starting with {@code /} is already absolute and passes through; each
+     * {@code ..} pops one segment off the base; {@code .} and empty segments are skipped; anything else
+     * descends.
+     *
+     * <p><b>The base is an ELEMENT, not a directory</b> — the mirror of {@link #relativize}'s own note. A rule's
+     * or computation's reference is stored relative to that ELEMENT, which sits inside its group, so the first
+     * {@code ..} climbs off the element and lands on the group: {@code ../Field} against {@code /Order/SomeRule}
+     * is {@code /Order/Field}. The element's NAME never survives, which is why a caller holding only the group
+     * can supply any name for the hop.
+     *
+     * <p><b>Why this is here rather than only in {@link ModelIndex#resolvePath}.</b> This direction already
+     * existed, as a {@code static} on the model READER that never consults a model — pure path algebra filed
+     * under the index. That filing is why the operation kept being rewritten by callers who went looking for it
+     * in the path type: the interpreter carries its own {@code Paths.resolveErrorPath}, and the CLI's
+     * {@code --field} corrective added another on 2026-09-04 which got the convention BACKWARDS — it read the
+     * first {@code ..} as climbing ABOVE the group, so {@code ../CustomerName} under {@code /Order} named a
+     * sibling of {@code /Order} instead of {@code /Order/CustomerName}. Nothing failed, because no test related
+     * the two directions to each other. That is the defect class this record exists for (see the class doc): a
+     * path relation spelled out at a call site instead of named on the value. {@code ModelReader.resolveRelPath}
+     * now delegates here, so there is one implementation rather than an agreement to maintain.
+     *
+     * <p><b>Totality.</b> Deliberately total, matching the behaviour callers already depend on: a reference with
+     * more {@code ..} than the base has segments clamps at the root level rather than failing, so
+     * {@code /A/B} with {@code ../../../X} is {@code /X}. A caller that needs the difference — a corrective
+     * proposing a value the author can use — tests the RESULT for the shape it needs
+     * ({@code ModelPaths.isAbsoluteEntityPath}) rather than relying on this to refuse.
+     * {@code EntityPathTest} pins the round trip against {@link #relativize} over a path cross-product.
+     */
+    public EntityPath resolve(String reference) {
+        if (Objects.requireNonNull(reference, "reference").startsWith("/")) {
+            return of(reference);
+        }
+        // Held without the leading empty segment so a climb to the root level is an empty list rather than a
+        // special case, then re-anchored on the way out.
+        List<String> resolved = new ArrayList<>(segments.subList(Math.min(1, segments.size()), segments.size()));
+        for (String step : reference.split("/")) {
+            if ("..".equals(step)) {
+                if (!resolved.isEmpty()) {
+                    resolved.remove(resolved.size() - 1);
+                }
+            } else if (!step.isEmpty() && !".".equals(step)) {
+                resolved.add(step);
+            }
+        }
+        return of("/" + String.join("/", resolved));
+    }
+
     @Override
     public String toString() {
         return value();

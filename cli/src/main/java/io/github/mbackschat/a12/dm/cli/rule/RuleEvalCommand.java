@@ -106,7 +106,7 @@ final class RuleEvalCommand extends BaseCommand {
             if (!ModelPaths.isAbsoluteEntityPath(field)) {
                 return refuseOptionValue(RkCode.INVALID_VALUE,
                     "--field must be an absolute path (e.g. /Group/Field), got: " + field,
-                    "--field", null, RkCode.INVALID_VALUE.fix());
+                    "--field", null, ModelPaths.absoluteEntityPathFix("--field", field, null));
             }
             candidateGroup = field.substring(0, slash);
             candidateErrorEntityRelPath = "../" + field.substring(slash + 1);

@@ -4,6 +4,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Set;
 
+import io.github.mbackschat.a12.dm.core.EntityPath;
 import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel;
 
 /**
@@ -51,7 +52,7 @@ public final class ModelPaths {
             return false;
         }
         // segment 0 is the empty string ahead of the leading '/'; an entity below the root has at least two more.
-        var segments = io.github.mbackschat.a12.dm.core.EntityPath.of(path).segments();
+        var segments = EntityPath.of(path).segments();
         return segments.size() >= 3 && segments.subList(1, segments.size()).stream().noneMatch(String::isEmpty);
     }
 
@@ -64,6 +65,56 @@ public final class ModelPaths {
     public static String notAnAbsoluteEntityPath(String key, String value) {
         return key + " must be an absolute path with no empty segment (e.g. /Group/Field), got: " + value;
     }
+
+    /**
+     * The CORRECTIVE for a value this predicate rejected — the absolute form, computed when we can, rather
+     * than a restatement of the rule the summary already gave.
+     *
+     * <p><b>Why it computes rather than advises.</b> These refusals previously carried
+     * {@code RkCode.INVALID_VALUE.fix()}, a generic "give the value the type the schema declares" that is true
+     * of every rejected value and therefore tells an author nothing about this one. The value that lands here
+     * is almost always a RELATIVE path, because the typed Java rule API spells the same slot relatively
+     * ({@code DraftRule.errorEntityRelPath} takes {@code ../Field}) while every CLI path option is absolute —
+     * two live conventions for one concept, which is the actual source of the mistake. So the fix names the
+     * path the author meant and says which convention they reached for. Measured 2026-09-04: one session hit
+     * this four times in a row without the summary ever registering, because its probe filter had discarded
+     * the summary and kept only the code.
+     *
+     * @param key the option or spec key, e.g. {@code --field}
+     * @param value what the caller passed
+     * @param groupPath the rule/computation group when the caller supplied one, else {@code null}; a relative
+     *     value resolves against it, and without it no absolute form can be computed
+     */
+    public static String absoluteEntityPathFix(String key, String value, String groupPath) {
+        String relativeConvention = " (the relative `../Field` spelling belongs to the typed Java rule API's"
+                + " errorEntityRelPath, not to any CLI path option — every one of those is absolute)";
+        String trimmed = value == null ? "" : value.trim();
+        boolean looksRelative = !trimmed.isEmpty() && !trimmed.startsWith("/");
+        if (!looksRelative) {
+            return "give " + key + " an absolute name-path starting at a root group, e.g. /Order/CustomerName."
+                    + relativeConvention;
+        }
+        if (groupPath == null) {
+            return "give " + key + " an absolute name-path, e.g. /Order/" + trimmed
+                    + "; there is no --group here to resolve a relative one against." + relativeConvention;
+        }
+        // Resolved through the SAME algebra that produced the reference, rather than re-derived here: the
+        // hand-written version read the first `..` as climbing above the group and named a sibling of it.
+        String resolved = EntityPath.of(groupPath + "/" + ELEMENT_HOP).resolve(trimmed).value();
+        if (!isAbsoluteEntityPath(resolved)) {
+            return "resolved against " + groupPath + " the value names " + resolved
+                    + ", which is not a field path; give " + key + " an absolute one." + relativeConvention;
+        }
+        return "did you mean " + resolved + "?" + relativeConvention;
+    }
+
+    /**
+     * The stand-in for the rule/computation element a relative reference is stored against. A reference resolves
+     * from the ELEMENT inside the group, and the element's name is popped by the first {@code ..} without ever
+     * appearing in the answer ({@link EntityPath#resolve}), so a corrective that has only the group — the rule
+     * does not exist yet — can supply any name here.
+     */
+    private static final String ELEMENT_HOP = "TheRuleBeingAuthored";
 
     /** The {@code --parent} spelling that names the root LEVEL rather than a group in the model. */
     public static final String ROOT_LEVEL_PARENT = "/";

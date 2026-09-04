@@ -736,25 +736,16 @@ public final class ModelReader {
     }
 
     /**
-     * Resolve {@code relPath} against the element at {@code basePath}: a leading {@code /} is absolute,
-     * each {@code ..} pops one segment off the base, a plain segment descends — so a computation's sibling
-     * field {@code "../Field"} resolves to {@code <groupPath>/Field}. Package-private for a focused test.
+     * Resolve {@code relPath} against the element at {@code basePath} — so a computation's sibling field
+     * {@code "../Field"} resolves to {@code <groupPath>/Field}. Package-private for a focused test.
+     *
+     * <p>The algebra lives on {@link EntityPath#resolve}, beside its inverse {@code relativize}, because that
+     * is where a call site looking for it goes: while this direction was reachable only as a static on the
+     * model reader, callers who did not find it wrote their own — and one of them inverted the convention
+     * (see {@code EntityPath#resolve}). This method stays as the string-boundary spelling its callers use.
      */
     static String resolveRelPath(String basePath, String relPath) {
-        if (relPath.startsWith("/")) {
-            return relPath;
-        }
-        List<String> segments = new ArrayList<>(List.of(basePath.substring(1).split("/")));
-        for (String step : relPath.split("/")) {
-            if ("..".equals(step)) {
-                if (!segments.isEmpty()) {
-                    segments.remove(segments.size() - 1);
-                }
-            } else if (!step.isEmpty() && !".".equals(step)) {
-                segments.add(step);
-            }
-        }
-        return "/" + String.join("/", segments);
+        return EntityPath.of(basePath).resolve(relPath).value();
     }
 
     // ── helpers ───────────────────────────────────────────────────────────────────────────────────────────

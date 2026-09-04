@@ -199,17 +199,81 @@ class EntityPathTest {
      */
     @Test
     void everyPairRoundTripsThroughTheResolverThatReadsItBack() {
-        List<String> inputs = Arrays.asList(
-                "/Order", "/Order/Total", "/Order/TotalComp", "/Order/Billing/Fee", "/Order/Shipping/Street",
-                "/Rules/StockComp", "/Store/StockLevel", "/Probe/Rules/StockComp", "/Probe/Store/StockLevel",
-                "/A/B/C/D", "/Items*/Amount");
-
-        for (String base : inputs) {
-            for (String target : inputs) {
+        for (String base : ROUND_TRIP_INPUTS) {
+            for (String target : ROUND_TRIP_INPUTS) {
                 String relative = EntityPath.of(base).relativize(EntityPath.of(target));
                 assertEquals(target, ModelReader.resolveRelPath(base, relative),
                         () -> "relativize(\"" + base + "\", \"" + target + "\") = \"" + relative + "\"");
             }
         }
+    }
+
+    private static final List<String> ROUND_TRIP_INPUTS = Arrays.asList(
+            "/Order", "/Order/Total", "/Order/TotalComp", "/Order/Billing/Fee", "/Order/Shipping/Street",
+            "/Rules/StockComp", "/Store/StockLevel", "/Probe/Rules/StockComp", "/Probe/Store/StockLevel",
+            "/A/B/C/D", "/Items*/Amount");
+
+    // ── resolve: the reading direction, which existed only as a static on the model reader ─────────────
+
+    /**
+     * The property that makes the 2026-09-04 defect unspellable: over every ordered pair, {@code resolve} must
+     * invert {@code relativize} exactly. Non-vacuous because the two are independent algorithms — one counts a
+     * common prefix and emits climbs, the other walks them — so an inverted convention on either side lands
+     * somewhere else and this fails.
+     *
+     * <p>It is asserted here and not through {@code ModelReader.resolveRelPath}, which now DELEGATES to
+     * {@code resolve} and so could only agree with it tautologically. The test above keeps the reader's own
+     * spelling exercised at the boundary its callers use.
+     */
+    @Test
+    void resolveInvertsRelativizeOverEveryPair() {
+        for (String base : ROUND_TRIP_INPUTS) {
+            for (String target : ROUND_TRIP_INPUTS) {
+                String relative = EntityPath.of(base).relativize(EntityPath.of(target));
+                assertEquals(EntityPath.of(target), EntityPath.of(base).resolve(relative),
+                        () -> "resolve(\"" + base + "\", \"" + relative + "\") must land back on " + target);
+            }
+        }
+    }
+
+    /**
+     * The convention the CLI corrective got backwards, pinned as a sentence a reader can check: the base is the
+     * rule ELEMENT, so one {@code ..} lands on its group and the element's own name never survives.
+     */
+    @Test
+    void oneDotDotLandsOnTheGroupBecauseTheBaseIsAnElementInsideIt() {
+        assertEquals(EntityPath.of("/Order/CustomerName"),
+                EntityPath.of("/Order/AnyRuleName").resolve("../CustomerName"));
+        assertEquals(EntityPath.of("/Order/CustomerName"),
+                EntityPath.of("/Order/AWhollyDifferentName").resolve("../CustomerName"),
+                "the element's name is popped, so it cannot influence the answer");
+        assertEquals(EntityPath.of("/Order/Items/Sku"),
+                EntityPath.of("/Order/SomeRule").resolve("../Items/Sku"),
+                "a reference may descend after the hop — the error field need not be the group's own child");
+    }
+
+    /**
+     * The rest of the reference vocabulary, at the boundaries {@code relativize} never emits — all of it
+     * reachable from author-typed text, which is what the CLI corrective is handed.
+     *
+     * <p>The over-climb is TOTAL rather than refusing: it clamps at the root level, which is the behaviour
+     * {@code ModelIndex.resolvePath}'s callers already had. A caller needing more than that tests the result
+     * for the shape it wants — {@code /X} is a root group, and a corrective proposing it for {@code --field}
+     * would be proposing a value the gate then refuses.
+     */
+    @Test
+    void theReferenceFormsOutsideRelativizesRangeArePinned() {
+        assertEquals(EntityPath.of("/A/B"), EntityPath.of("/A/B").resolve(""),
+                "an empty reference is the base itself, mirroring relativize returning \"\" for a pair");
+        assertEquals(EntityPath.of("/A/B/C"), EntityPath.of("/A/B").resolve("/A/B/C"),
+                "a reference that is already absolute passes through");
+        assertEquals(EntityPath.of("/A"), EntityPath.of("/A/B").resolve("../"),
+                "an empty tail segment is skipped");
+        assertEquals(EntityPath.of("/A/C"), EntityPath.of("/A/B").resolve(".././C"),
+                "a `.` step is skipped");
+        assertEquals(EntityPath.of("/X"), EntityPath.of("/A/B").resolve("../../../X"),
+                "more climbs than the base has segments clamp at the root level rather than failing");
+        assertEquals("/X", ModelReader.resolveRelPath("/A/B", "../../../X"),
+                "…which is exactly what the reader's callers already got");
     }
 }
