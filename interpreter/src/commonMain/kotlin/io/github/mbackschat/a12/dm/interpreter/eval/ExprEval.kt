@@ -468,10 +468,13 @@ private fun Interpreter.producesDate(e: Expr): Boolean = when (e) {
  * are refused at admission under `MVK_INVALID_COMPARE_TO_DATE` (KF239, measured): the year disagreement, and a
  * day that needs a real year to exist (`29.02.`; `31.04.` is refused on the same ground and `30.04.` admitted,
  * so the gate validates the day rather than special-casing February). But a temporal OPERATION admits a
- * year-free literal with no year-free field in sight, and `DifferenceInDays("28.02.", "01.03.")` then answers 1
- * or 2 according to the anchor's leap-ness. **Measured: both kernel strategies answer 2, so the anchor must be
- * a LEAP year** — which is a constraint on the constant below, not a free choice
- * (`adapter.laws.YearlessConstantOperationDiffTest`).
+ * year-free literal, and `DifferenceInDays("28.02.", "01.03.")` then answers 1 or 2 according to the anchor's
+ * leap-ness. **Measured on one model varying only its Base Year: 2024 answers 2, 2023 answers 1, an unconfigured
+ * model answers 2.** So the anchor is the declared Base Year — which the `baseYear ?:` below already prefers —
+ * and [YEARLESS_ANCHOR_YEAR] constrains the UNCONFIGURED fallback only
+ * (`adapter.laws.YearlessConstantOperationDiffTest`). A first version of this comment said "the anchor must be a
+ * leap year" without that qualifier; every row behind it declared no Base Year, so it could not tell the two
+ * accounts apart (a12-kernel-lean `SPEC-2026-09-04-01` supplied the axis).
  *
  * **[declaredFormat] is deliberately NOT defaulted.** Its absence means "nothing in scope declares a year", which
  * is a reason to anchor rather than a reason to abstain — the opposite of what a defaulted `null` produced. Two
@@ -497,9 +500,11 @@ private fun Interpreter.coerceDate(v: Val, declaredFormat: String?): Val {
 /**
  * The year a yearless literal borrows when no base year is declared; see [coerceDate].
  *
- * **It must be a leap year.** On the temporal-operation carrier the choice is kernel-observable, and both kernel
- * strategies count 2 days from `28.02.` to `01.03.` (`adapter.laws.YearlessConstantOperationDiffTest`). A common
- * year here would answer 1 and diverge.
+ * **It must be a leap year**, and it binds only this unconfigured case — a model that declares a Base Year
+ * anchors to that instead, and [coerceDate] prefers it. On the temporal-operation carrier the choice is
+ * kernel-observable: with no Base Year declared both kernel strategies count 2 days from `28.02.` to `01.03.`
+ * (`adapter.laws.YearlessConstantOperationDiffTest`). A common year here would answer 1 and diverge. Which leap
+ * year is not pinned — reading the borrowed year back is refused `MVK_NO_CONST`.
  */
 private const val YEARLESS_ANCHOR_YEAR = 2000
 

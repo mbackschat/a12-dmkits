@@ -15,6 +15,8 @@ import io.github.mbackschat.a12.dm.rulekit.dsl.Condition;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Dsl;
 import io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer;
 import io.github.mbackschat.a12.dm.rulekit.dsl.FieldListRef;
+import io.github.mbackschat.a12.dm.rulekit.validate.DraftComputation;
+import io.github.mbackschat.a12.dm.rulekit.validate.RuleValidator;
 import io.github.mbackschat.a12.dm.rulekit.validate.ValidationResult;
 
 /**
@@ -241,7 +243,41 @@ class HavingFilterGrammarAndScopeLawsTest {
                 "the nested Or carries its own parentheses, so the refused unbracketed mix is unrepresentable");
     }
 
+    /**
+     * Whether a repeatable COMPUTATION binds {@code CurrentRepetition} the way an iterating RULE does. This
+     * project's operator catalog says "the rule must iterate over that group", which is the same narrowness
+     * a12-kernel-lean's {@code SPEC-2026-09-03-06} corrected for the {@code $} marker — and they reported on
+     * 2026-09-04 that they do not hold this row either (their {@code SG17}). It is one probe, and the catalog
+     * line is a SHIPPED surface served by {@code dmtool operators CurrentRepetition}, so it is measured here
+     * rather than handed back.
+     *
+     * <p>Two computation targets, identical calc: one repeatable, one at the root. If iteration is what binds
+     * the operand, the repeatable target admits it and the root target does not.
+     */
+    @Test
+    void aRepeatableComputationBindsCurrentRepetitionAsAnIteratingRuleDoes() {
+        Map<String, String> actual = new LinkedHashMap<>();
+        actual.put("repeatable computation target", computationVerdict(LINES + "/Cap", LINES));
+        actual.put("root computation target — the control", computationVerdict(CATALOG + "/Total", CATALOG));
+
+        Map<String, String> expected = new LinkedHashMap<>();
+        expected.put("repeatable computation target", ADMITTED);
+        expected.put("root computation target — the control", NO_WILDCARD);
+        assertEquals(expected, actual,
+                "a repeatable computation instance binds CurrentRepetition, so the catalog's \"the rule must "
+                        + "iterate\" is narrow in the same way SPEC-2026-09-03-06 found for the $ marker");
+    }
+
     // ---- fixtures --------------------------------------------------------------------------------
+
+    /** {@code CurrentRepetition(Lines)} assigned to the given computed field, hosted in the given group. */
+    private static String computationVerdict(String target, String hostGroup) {
+        String relative = "../" + target.substring(target.lastIndexOf('/') + 1);
+        String operation = new DslRenderer().render(Dsl.currentRepetition(M.group(LINES)).expression());
+        return codes(new RuleValidator().check(MODEL, new DraftComputation(hostGroup, "RepComp", relative, null,
+                java.util.List.of(new DraftComputation.Alternative(null, operation)))));
+    }
+
 
     /** Rule at the repeatable {@code Lines} level, operand starring only {@code Items}. */
     private static String verdict(Condition filter) {

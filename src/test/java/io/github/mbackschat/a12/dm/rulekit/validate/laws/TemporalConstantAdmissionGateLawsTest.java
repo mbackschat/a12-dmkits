@@ -64,6 +64,7 @@ class TemporalConstantAdmissionGateLawsTest {
     private static final String MONTH_ONLY = "/Booking/MonthOnly";
     private static final String MONTH_DAY = "/Booking/MonthDay";
     private static final String CLOCK = "/Booking/Clock";
+    private static final String FULL_DATE = "/Booking/FullDate";
     private static final String ADMITTED = "admitted";
     private static final String INVALID_COMPARE = "MVK_INVALID_COMPARE_TO_DATE";
     private static final String WRONG_FORMAT_FOR_OP = "MVK_WRONG_DATE_FORMAT_FOR_OP";
@@ -74,6 +75,7 @@ class TemporalConstantAdmissionGateLawsTest {
                     .stringField("Reference", s -> { })
                     .dateField("MonthOnly", d -> d.format("MM"))
                     .dateField("MonthDay", d -> d.format("MM-dd"))
+                    .dateField("FullDate", d -> d.format("dd.MM.yyyy"))
                     .timeField("Clock", t -> t.format("HH:mm:ss")))
             .build().toJson();
 
@@ -197,6 +199,12 @@ class TemporalConstantAdmissionGateLawsTest {
         actual.put("yearless literal shifted by AddDays, vs a MM field", shiftedOperandVerdict());
         actual.put("yearless literal under Min, vs a MM field", aggregatedOperandVerdict());
         actual.put("the borrowed year read back with YearFromDate", extractedYearVerdict());
+        // The axis every row above holds constant: all of them use a YEAR-FREE field. a12-kernel-lean reported
+        // on 2026-09-04 that the operand rule is GRANULARITY rather than year-bearing-ness, and that a
+        // year-carrying field against a yearless literal refuses under a different code. Measured here.
+        actual.put("MM-dd field vs a yearless literal", operandVerdict(MONTH_DAY, "05.03."));
+        actual.put("dd.MM.yyyy field vs a yearless literal", operandVerdict(FULL_DATE, "05.03."));
+        actual.put("dd.MM.yyyy field vs a year-carrying literal", operandVerdict(FULL_DATE, "05.03.2024"));
 
         Map<String, String> expected = new LinkedHashMap<>();
         // the year-free FIELD is what this gate refuses — the year-carrying control is refused identically
@@ -209,6 +217,9 @@ class TemporalConstantAdmissionGateLawsTest {
         // Records why the anchor YEAR stays unpinned while its parity is measured: the direct read-back is
         // refused, so the leap-year result in the differential is the strongest statement available.
         expected.put("the borrowed year read back with YearFromDate", "MVK_NO_CONST");
+        expected.put("MM-dd field vs a yearless literal", ADMITTED);
+        expected.put("dd.MM.yyyy field vs a yearless literal", "MVK_DATE_WITH_AND_WITHOUT_YEAR");
+        expected.put("dd.MM.yyyy field vs a year-carrying literal", ADMITTED);
         assertEquals(expected, actual,
                 "a year-free FIELD never reaches a temporal operation, but a year-free LITERAL does — so this "
                         + "carrier is reachable and the literal must be resolved here too");
@@ -311,6 +322,13 @@ class TemporalConstantAdmissionGateLawsTest {
                 new DslRenderer().render(Dsl.fieldFilled(M.field("/Booking/Reference"))
                         .and(M.date(MONTH_ONLY).after(
                                 Dsl.min(Dsl.dateValue("05.03."), Dsl.dateValue("07.04.")))))));
+    }
+
+    /** A DATE field of the given declared format as a DifferenceInDays operand, against the literal. */
+    private static String operandVerdict(String field, String literal) {
+        return codes(KernelLaws.checkModel(MODEL, BOOKING, "../Reference",
+                new DslRenderer().render(Dsl.fieldFilled(M.field("/Booking/Reference"))
+                        .and(Dsl.differenceInDays(M.date(field), Dsl.dateValue(literal)).gt(0)))));
     }
 
     /** Reading the borrowed year back out of the anchored literal — the direct pin on the anchor year. */
