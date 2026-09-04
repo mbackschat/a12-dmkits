@@ -1,6 +1,6 @@
 # The `a12-kernel-lean` handback protocol
 
-How this project sends measured corrections to the sibling **a12-kernel-lean** project, and why the letter's shape is what it is. Extracted from [`CLAUDE.md`](../CLAUDE.md) on 2026-09-05, which keeps the trigger that sends you here — the same split DOC-DISCIPLINE got in 2026-07-09, and for the same reason: a protocol used episodically should not be loaded into every session.
+How this project sends measured corrections to the sibling **a12-kernel-lean** project, and why the letter's shape is what it is. Extracted from [`CLAUDE.md`](../CLAUDE.md) on 2026-09-05, which keeps the trigger that sends you here — the same split [DOC-DISCIPLINE](DOC-DISCIPLINE.md) got in 2026-07-09, and for the same reason: a protocol used episodically should not be loaded into every session.
 
 **Scope note, because it is easy to misread the extraction.** What moved is the *workflow*. The **letter itself still lives outside version control**, at `~/Downloads/`, and the rule against giving it an in-repo home is unchanged and restated below — it is the reason this doc describes the letter rather than containing one.
 

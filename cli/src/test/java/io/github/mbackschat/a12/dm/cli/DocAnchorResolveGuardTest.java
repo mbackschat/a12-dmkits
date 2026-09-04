@@ -75,8 +75,18 @@ class DocAnchorResolveGuardTest {
     private static final Pattern INSTRUCTION_CITATION = Pattern.compile(
             "(?:CLAUDE|AGENTS)\\.md[^\\n\"\u201c]{0,6}[\"\u201c]([^\"\u201d\\n]{4,120})[\"\u201d]");
 
-    /** Sanity floor: 15 live citations across docs/ (2026-09-05), archived excluded. */
-    private static final int MIN_INSTRUCTION_CITATIONS = 10;
+    /** A bold lead — how these instruction files actually mark a section, alongside real headings. */
+    private static final Pattern BOLD_LEAD = Pattern.compile(
+            "^(?:[-*]\\s+|\\d+\\.\\s+)?\\*\\*(.+?)\\*\\*", Pattern.MULTILINE);
+
+    /** The four instruction files an agent loads. All are named CLAUDE.md, which is why resolution is a union. */
+    private static final List<String> INSTRUCTION_FILES =
+            List.of("CLAUDE.md", "docs/CLAUDE.md", "interpreter/CLAUDE.md", "plugin/CLAUDE.md");
+
+    private static final Path REPO = Path.of("..");
+
+    /** Sanity floor: 19 live citations across the tracked markdown (2026-09-05), archived excluded. */
+    private static final int MIN_INSTRUCTION_CITATIONS = 14;
 
     /** Sanity floor: the live tree has 66 docs (2026-08-16). A scan finding almost none is checking nothing. */
     private static final int MIN_DOCS = 30;
@@ -318,7 +328,6 @@ class DocAnchorResolveGuardTest {
         return violations;
     }
 
-    /** Blank out fenced blocks and inline code spans, so prose *about* a link is not read as one. */
     /**
      * Fenced blocks only, keeping INLINE code spans. The citation arm needs this: two docs write the citation
      * as {@code `CLAUDE.md` "Title"}, and {@link #withoutCode}'s inline-span strip would delete the marker and
@@ -339,6 +348,7 @@ class DocAnchorResolveGuardTest {
         return out.toString();
     }
 
+    /** Blank out fenced blocks and inline code spans, so prose *about* a link is not read as one. */
     private static String withoutCode(String markdown) {
         StringBuilder out = new StringBuilder(markdown.length());
         boolean fenced = false;
@@ -373,75 +383,86 @@ class DocAnchorResolveGuardTest {
     }
 
     /**
-     * <b>Every prose citation of an instruction-file SECTION resolves.</b> The docs cite the project
-     * instructions by quoted section title — {@code CLAUDE.md "Self-explaining surface"} — rather than by
-     * link, because the instruction files carry no per-heading anchors. That address is therefore only as
-     * durable as the title, and unlike the fragment arms above nothing checked it: pruning a section left the
-     * citer pointing at nothing, silently. Two had already rotted when this arm was written (2026-09-05),
-     * which is one per major prune.
+     * <b>Every prose citation of an instruction-file SECTION resolves to a real section.</b> The docs address
+     * the project instructions by quoted title — {@code CLAUDE.md "Self-explaining surface"} — rather than by
+     * link, because those files carry no per-heading anchors. That address is only as durable as the title, and
+     * nothing checked it: two had already rotted when this arm was written (2026-09-05).
      *
-     * <p><b>Why a phrase match and not a heading match.</b> The citations quote a title's HEAD, elide its
-     * middle ({@code "Interpreter … #1 rule"}), and sometimes name a sentence rather than a heading — so the
-     * check is that the quoted text still occurs SOMEWHERE in some instruction file, which is exactly the
-     * property a reader needs and the weakest claim that catches a prune. {@link #instructionProbe} trims at
-     * the first elision or separator for the same reason.
+     * <p><b>Resolution is against SECTIONS, never against the file's text.</b> The first version of this arm
+     * accepted the quoted phrase anywhere in the concatenated instruction files, which is far weaker than it
+     * reads: deleting the {@code ## Build} heading still passed, because the word "build" occurs dozens of
+     * times in prose. A section here is a markdown heading <em>or</em> a <b>bold lead</b> — these files are
+     * written as bold-lead paragraphs, and {@code **Rationale is timeless; a disposition is status.**} is an
+     * addressable unit exactly as a heading is. Both are extracted; the citation must be contained in one.
      *
-     * <p>Deliberately NOT ratcheted against new bare citations: forcing {@code [link](../CLAUDE.md#anchor)}
-     * would mean anchoring every cited heading in four instruction files, which is a prose-style decision for
-     * the owner rather than a defect this guard found.
+     * <p><b>Scope: every tracked markdown file</b>, not just {@code docs/} — a live citation sits in
+     * {@code perf-results/README.md}, which the first version never scanned. {@code docs/archived/} is excluded
+     * as a frozen record, and the instruction files themselves are excluded because they quote their own
+     * headings.
+     *
+     * <p><b>The limit, stated rather than papered over.</b> All four instruction files are named
+     * {@code CLAUDE.md}, and a citation naming "CLAUDE.md" does not say which — so resolution is against their
+     * UNION and a citation of the root file that actually resolves in the interpreter's passes. Tightening that
+     * would need every citation to carry its path, which is a convention change and not a defect this guard
+     * found.
      */
     @Test
     void everyInstructionFileSectionCitationResolves() throws IOException {
-        Map<String, String> byName = new LinkedHashMap<>();
-        for (Path doc : docs()) {
-            byName.put(doc.getFileName().toString(), Files.readString(doc));
-        }
-        String instructions = instructionFiles();
+        List<String> sections = instructionSections();
+        assertTrue(sections.size() > 100,
+                () -> "only " + sections.size() + " instruction sections parsed — the heading/bold-lead patterns "
+                        + "have stopped matching and every citation would report as dangling.");
 
-        List<String> violations = unresolvedInstructionCitations(byName, instructions);
-        int seen = 0;
-        for (String markdown : byName.values()) {
-            Matcher cite = INSTRUCTION_CITATION.matcher(withoutFencedCode(markdown));
-            while (cite.find()) {
-                seen++;
-            }
-        }
-        int total = seen;
-        assertTrue(total >= MIN_INSTRUCTION_CITATIONS,
-                () -> "found only " + total + " instruction-file section citations (floor "
+        Map<String, String> scanned = citingMarkdown();
+        List<String> violations = unresolvedInstructionCitations(scanned, sections);
+        int seen = countCitations(scanned);
+        assertTrue(seen >= MIN_INSTRUCTION_CITATIONS,
+                () -> "found only " + seen + " instruction-file section citations (floor "
                         + MIN_INSTRUCTION_CITATIONS + ") — the pattern has stopped matching and this arm is "
                         + "vacuous until it does again.");
-        assertTrue(violations.isEmpty(), () -> "docs cite an instruction-file section that no longer exists, so "
-                + "the reader is sent to nothing. Either the section was retitled — update the citation — or it "
-                + "was pruned, in which case the citing doc must carry the rule itself or point at its new "
-                + "home:\n  " + String.join("\n  ", violations));
+        assertTrue(violations.isEmpty(), () -> "docs cite an instruction-file section that does not exist, so the "
+                + "reader is sent to nothing. Either the section was retitled — update the citation to quote the "
+                + "live heading or bold lead — or it was pruned, in which case the citing doc must carry the rule "
+                + "itself or point at its new home:\n  " + String.join("\n  ", violations));
     }
 
-    /** Does-fire proof: a pruned section must fire, a live one and an elided-title one must not. */
+    /**
+     * Does-fire proof. The two controls that matter are the ones the first version could not express: a section
+     * whose HEADING is gone while its words survive in prose must fire, and a bold lead must resolve.
+     */
     @Test
-    void theCitationArmFiresOnlyOnAPrunedSection() {
-        Map<String, String> docs = Map.of(
-                "A.md", """
-                        see CLAUDE.md "Build" and CLAUDE.md "Interpreter … the two #1 rules"
-                        and CLAUDE.md "a section nobody kept"
-                        """);
-        List<String> found = unresolvedInstructionCitations(docs, """
+    void theCitationArmFiresOnAPrunedSectionEvenWhenItsWordsSurviveInProse() {
+        List<String> sections = sectionsOf("""
                 ## Build
-                ## Interpreter — the two #1 rules (never scoped down)
+
+                **Rationale is timeless; a disposition is status.** A durable note records decisions.
+
+                We build the launcher and then build the docs, so the build is reproducible.
                 """);
+        Map<String, String> citing = Map.of("A.md", """
+                see CLAUDE.md "Build" and CLAUDE.md "Rationale is timeless; a disposition is status"
+                and CLAUDE.md "a section nobody kept"
+                """);
+        List<String> found = unresolvedInstructionCitations(citing, sections);
         assertTrue(found.size() == 1 && found.get(0).contains("a section nobody kept"),
-                () -> "expected only the pruned citation to fire, got " + found);
+                () -> "a heading and a bold lead must both resolve, and only the pruned one fire; got " + found);
+
+        List<String> pruned = sectionsOf("""
+                We build the launcher and then build the docs, so the build is reproducible.
+                """);
+        List<String> afterPrune = unresolvedInstructionCitations(Map.of("A.md", "CLAUDE.md \"Build\"\n"), pruned);
+        assertTrue(afterPrune.size() == 1,
+                () -> "deleting the heading must fire even though the word survives in prose; got " + afterPrune);
     }
 
-    /** One violation per quoted instruction-file section that no longer occurs in any instruction file. */
-    private static List<String> unresolvedInstructionCitations(Map<String, String> docsByName, String instructions) {
-        String haystack = normalizeForCitation(instructions);
+    /** One violation per quoted instruction-file section that no live heading or bold lead contains. */
+    private static List<String> unresolvedInstructionCitations(Map<String, String> byName, List<String> sections) {
         List<String> violations = new ArrayList<>();
-        docsByName.forEach((name, markdown) -> {
+        byName.forEach((name, markdown) -> {
             Matcher cite = INSTRUCTION_CITATION.matcher(withoutFencedCode(markdown));
             while (cite.find()) {
-                String probe = instructionProbe(cite.group(1));
-                if (probe.length() >= 4 && !haystack.contains(probe)) {
+                String probe = normalizeForCitation(cite.group(1));
+                if (sections.stream().noneMatch(section -> section.contains(probe))) {
                     violations.add(name + ": \"" + cite.group(1) + "\"");
                 }
             }
@@ -449,33 +470,70 @@ class DocAnchorResolveGuardTest {
         return violations;
     }
 
-    /** The citation's durable head — quotes elide a middle and append a qualifier, neither of which is an address. */
-    private static String instructionProbe(String quoted) {
-        String head = quoted;
-        for (String separator : List.of("…", "...", " / ", " — ")) {
-            head = head.split(Pattern.quote(separator))[0];
+    private static int countCitations(Map<String, String> byName) {
+        int seen = 0;
+        for (String markdown : byName.values()) {
+            Matcher cite = INSTRUCTION_CITATION.matcher(withoutFencedCode(markdown));
+            while (cite.find()) {
+                seen++;
+            }
         }
-        return normalizeForCitation(head);
+        return seen;
+    }
+
+    /** Every heading and bold lead of the four instruction files an agent actually loads. */
+    private static List<String> instructionSections() throws IOException {
+        StringBuilder all = new StringBuilder();
+        for (String relative : INSTRUCTION_FILES) {
+            Path path = REPO.resolve(relative);
+            if (Files.isRegularFile(path)) {
+                all.append(Files.readString(path)).append('\n');
+            }
+        }
+        return sectionsOf(all.toString());
+    }
+
+    private static List<String> sectionsOf(String markdown) {
+        List<String> sections = new ArrayList<>();
+        Matcher heading = HEADING.matcher(markdown);
+        while (heading.find()) {
+            sections.add(normalizeForCitation(heading.group(1)));
+        }
+        Matcher lead = BOLD_LEAD.matcher(markdown);
+        while (lead.find()) {
+            sections.add(normalizeForCitation(lead.group(1)));
+        }
+        return sections;
+    }
+
+    /** Every tracked markdown file that may cite the instructions — archived and the instructions excluded. */
+    private static Map<String, String> citingMarkdown() throws IOException {
+        Map<String, String> byName = new LinkedHashMap<>();
+        for (String relative : trackedMarkdown()) {
+            if (relative.endsWith("CLAUDE.md") || relative.endsWith("AGENTS.md") || relative.contains("/archived/")) {
+                continue;
+            }
+            Path path = REPO.resolve(relative);
+            if (Files.isRegularFile(path)) {
+                byName.put(relative, Files.readString(path));
+            }
+        }
+        assertTrue(byName.size() >= MIN_DOCS,
+                () -> "only " + byName.size() + " tracked markdown files read — wrong working dir?");
+        return byName;
+    }
+
+    private static List<String> trackedMarkdown() throws IOException {
+        Process git = new ProcessBuilder("git", "ls-files", "*.md").directory(REPO.toFile())
+                .redirectErrorStream(true).start();
+        try (var reader = new java.io.BufferedReader(new java.io.InputStreamReader(git.getInputStream()))) {
+            return reader.lines().filter(line -> !line.isBlank()).toList();
+        }
     }
 
     /** Emphasis and code marks are rendering, not address; whitespace differs across a wrap. */
     private static String normalizeForCitation(String text) {
         return text.replaceAll("[`*_]", "").replaceAll("\\s+", " ").trim().toLowerCase(java.util.Locale.ROOT);
-    }
-
-    /** The four instruction files an agent actually loads — root, docs, interpreter, plugin. */
-    private static String instructionFiles() throws IOException {
-        StringBuilder all = new StringBuilder();
-        for (String relative : List.of("CLAUDE.md", "docs/CLAUDE.md", "interpreter/CLAUDE.md", "plugin/CLAUDE.md")) {
-            Path path = DOCS.resolve("..").resolve(relative);
-            if (Files.isRegularFile(path)) {
-                all.append(Files.readString(path)).append('\n');
-            }
-        }
-        assertTrue(all.length() > 20_000,
-                () -> "the instruction files read as " + all.length() + " chars — wrong working dir? Every "
-                        + "citation would report as dangling.");
-        return all.toString();
     }
 
     private static List<Path> docs() throws IOException {

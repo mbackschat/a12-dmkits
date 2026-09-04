@@ -1,6 +1,6 @@
 # `perf-results/` — the committed performance record
 
-Every run of the routine performance gate writes one **text** file here. Nothing in this tree is generated output: it is read back *across* runs, which is why it is committed and not under `build/` (CLAUDE.md, "never store surviving data under `build/`"; `SurvivingDataNotInBuildGuardTest` enforces it).
+Every run of the routine performance gate writes one **text** file here. Nothing in this tree is generated output: it is read back *across* runs, which is why it is committed and not under `build/` (CLAUDE.md, "NEVER store data that must survive under `build/`"; `SurvivingDataNotInBuildGuardTest` enforces it).
 
 **Coverage starts where each environment's first file does** — `linux-amd64-ci/2026-08-11T183803Z`, `darwin-aarch64/2026-08-13T231207Z`. Seven `darwin-aarch64` runs cited in the docs, dated 2026-08-11 to 2026-08-13, are **gone**: they were measured while the gate still emitted to `adapter/build/perf-observations.jsonl`, so `clean` took them. Those citations keep the run id as a plain code span and carry no link, which is why `DocRelativeLinkGuardTest` is green rather than excusing them. This is the concrete loss the "never store surviving data under `build/`" rule was adopted to stop, and it is why a record here is committed the moment it is written.
 
