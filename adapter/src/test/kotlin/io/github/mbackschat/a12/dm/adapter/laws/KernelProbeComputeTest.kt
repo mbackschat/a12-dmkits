@@ -89,15 +89,21 @@ class KernelProbeComputeTest {
         )
     }
 
-    /** The addresses keep the artifact's one published form, so a computed field reads like a message field. */
+    /**
+     * The addresses keep the artifact's one published form, so a computed field reads like a message field.
+     *
+     * <p>This model is entirely non-repeatable, so what these rows lock is the no-leading-slash spelling and
+     * the sort — NOT the `[1]` omission, which no address here can exercise. That half is
+     * [KernelProbeRepeatableAddressTest], on a carrier with three repetitions.
+     */
     @Test
     fun anOutcomeAddressUsesThePublishedMessageAddressForm() {
         assertEquals(
             listOf("Order/LineTotal", "Order/LoyaltyPoints", "Order/OrderTotal", "Order/RushFee"),
             artifact.rowNamed(OPERAND_INVALID).anchor().path("computations").path("outcomes")
                 .map { it.path("field").asText() },
-            "canonical A12 — no leading slash, the implicit [1] omitted — and sorted by address, never by " +
-                "the kernel's channel emission order",
+            "canonical A12 — no leading slash — and sorted by address, never by the kernel's channel " +
+                "emission order",
         )
     }
 
