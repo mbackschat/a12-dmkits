@@ -1618,6 +1618,63 @@
       }
     },
     {
+      "id": "Having.iteration-gate-yields-to-no-conjunct",
+      "operator": "Having",
+      "kind": "CONDITION",
+      "fixture": "PROJECT",
+      "trigger": {
+        "group": "/Project",
+        "field": "../ProjectName",
+        "dsl": "FieldFilled(ProjectName) And Sum(Milestones*/Budget Having CurrentRepetition(/Project/Milestones/Tasks) > 0 And [/Project/Milestones/Budget] > 0) > 0",
+        "verdict": "REJECTED",
+        "code": "MVK_INVALID_ITERATION_IN_FILTER_CONDITION"
+      },
+      "control": {
+        "group": "/Project",
+        "field": "../ProjectName",
+        "dsl": "FieldFilled(ProjectName) And Sum(Milestones*/Budget Having [/Project/Milestones/Budget] > 0) > 0",
+        "verdict": "ACCEPTED"
+      }
+    },
+    {
+      "id": "Having.marker-needs-an-outer-coordinate",
+      "operator": "Having",
+      "kind": "CONDITION",
+      "fixture": "PROJECT",
+      "trigger": {
+        "group": "/Project",
+        "field": "../ProjectName",
+        "dsl": "FieldFilled(ProjectName) And Sum(Milestones*/Budget Having CurrentRepetition($/Project/Milestones) > 0 And [/Project/Milestones/Budget] > 0) > 0",
+        "verdict": "REJECTED",
+        "code": "MVK_NO_WILDCARD"
+      },
+      "control": {
+        "group": "/Project",
+        "field": "../ProjectName",
+        "dsl": "FieldFilled(ProjectName) And Sum(Milestones*/Budget Having CurrentRepetition(/Project/Milestones) > 0 And [/Project/Milestones/Budget] > 0) > 0",
+        "verdict": "ACCEPTED"
+      }
+    },
+    {
+      "id": "Having.scope-gate-yields-to-any-in-scope-conjunct",
+      "operator": "Having",
+      "kind": "CONDITION",
+      "fixture": "PROJECT",
+      "trigger": {
+        "group": "/Project/Milestones",
+        "field": "../Phase",
+        "dsl": "FieldFilled(Phase) And Sum(Tasks*/Effort Having CurrentRepetition(/Project/Milestones) > 0) > 0",
+        "verdict": "REJECTED",
+        "code": "MVK_NO_ITERATION_FOR_WILDCARD"
+      },
+      "control": {
+        "group": "/Project/Milestones",
+        "field": "../Phase",
+        "dsl": "FieldFilled(Phase) And Sum(Tasks*/Effort Having CurrentRepetition(/Project/Milestones) > 0 And [/Project/Milestones/Tasks/Effort] > 0) > 0",
+        "verdict": "ACCEPTED"
+      }
+    },
+    {
       "id": "CustomCondition.inside-having",
       "operator": "CustomCondition",
       "kind": "CONDITION",

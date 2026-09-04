@@ -4203,7 +4203,8 @@
       "meaning": "Filters a *-repetition list, keeping only candidates whose complete condition is known true, before an aggregate or quantifier consumes selected cells.",
       "constraints": [
         "the filtered field must carry an asterisk (MVK_WILDCARDS_REQUIRED) — only flattened lists can be filtered",
-        "the filter condition may not contain CustomCondition, RepetitionNotUnique, or a nested Having (MVK_DISALLOWED_CONSTRUCT_IN_FILTER_CONDITION); semantic indexing is rejected with MVK_SEMANTIC_INDEX_NOT_ALLOWED, and parallel iteration is also forbidden"
+        "the filter condition may not contain CustomCondition, RepetitionNotUnique, or a nested Having (MVK_DISALLOWED_CONSTRUCT_IN_FILTER_CONDITION); semantic indexing is rejected with MVK_SEMANTIC_INDEX_NOT_ALLOWED, and parallel iteration is also forbidden",
+        "the condition answers to TWO independent gates, and the code says which one refused. SCOPE (MVK_NO_ITERATION_FOR_WILDCARD): the condition carries no unmarked reference into a level the operand's star reopens — ANY in-scope conjunct clears it, and this is what a non-repeatable group or an unstarred ancestor on the operand's own path draws. ITERATION (MVK_INVALID_ITERATION_IN_FILTER_CONDITION): a reference names a repeatable level OFF the operand's path — no conjunct clears it, and neither does the rule iterating that very level; the $ marker is the remedy, and it needs an enclosing iteration to capture or the code becomes MVK_NO_WILDCARD. so 'add an in-scope reference' repairs the first gate and does nothing for the second (all kernel-checked)"
       ],
       "gotchas": [
         {
@@ -4266,7 +4267,7 @@
       "meaning": "The current iteration index of the given group, as a number expression.",
       "constraints": [
         "the argument is a group, not a field (MVK_NO_FIELDS_ALLOWED)",
-        "an UNMARKED operand binds to EITHER the enclosing iteration — the rule's row, or the target row of a computation whose target is repeatable — OR an operand's own star that reopens the group inside a Having filter; the $-marked form reads the captured environment and binds only to the enclosing iteration. the code for an unbound operand depends on WHY it is unbound, not only on where it sits: MVK_NO_WILDCARD outside any filter, and MVK_NO_WILDCARD for the $-marked form inside one, but MVK_INVALID_ITERATION_IN_FILTER_CONDITION for an unmarked operand inside a filter naming a repeatable level the operand's star does not reopen (all kernel-checked)"
+        "an UNMARKED operand binds to EITHER the enclosing iteration — the rule's row, or the target row of a computation whose target is repeatable — OR an operand's own star that reopens the group inside a Having filter; the $-marked form reads the captured environment and binds only to the enclosing iteration. unbound outside any filter it is MVK_NO_WILDCARD, and so is the $-marked form with no enclosing iteration to capture. INSIDE a Having filter the operand carries no code of its own: it answers to that filter's two gates exactly as a plain field reference does, which is why a refusal there is read off Having's constraint and not off the operand's spelling (all kernel-checked)"
       ],
       "gotchas": [
         {
@@ -4274,7 +4275,7 @@
           "kind": "AUTHORING"
         },
         {
-          "text": "from a non-iterating host the kernel rejects a bare CurrentRepetition (MVK_NO_WILDCARD) — unless it sits in a Having filter on an operand whose own star reopens THAT group, which binds it there; naming a different repeatable level in the same filter is MVK_INVALID_ITERATION_IN_FILTER_CONDITION, so it is the star over the named group that binds and not the filter position; adding $ inside such a filter reverses the verdict, so the marker is never erasable here",
+          "text": "from a non-iterating host the kernel rejects a bare CurrentRepetition (MVK_NO_WILDCARD) — unless it sits in a Having filter on an operand whose own star reopens THAT group, which binds it there; naming a repeatable level OFF the operand's path is MVK_INVALID_ITERATION_IN_FILTER_CONDITION even when the rule itself iterates that level, so inside a filter it is the star and never the enclosing iteration that binds; adding $ inside such a filter reverses the verdict, so the marker is never erasable here",
           "kind": "SURPRISE"
         },
         {

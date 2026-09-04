@@ -5124,6 +5124,27 @@
     },
     {
       "operator": "Having",
+      "lane": "CONSTRAINT",
+      "ordinal": 2,
+      "digest": "sha256:1b27e257db5ccfa03da23c1576f02915f4097459f8a517d1bd00730a6ce6e3da",
+      "classifications": [
+        "ADMISSION",
+        "REJECTION"
+      ],
+      "evidence": [
+        {
+          "classification": "ADMISSION",
+          "type": "CLAIM_PROBE",
+          "id": "Having.scope-gate-yields-to-any-in-scope-conjunct",
+          "side": "CONTROL",
+          "expected": {
+            "verdict": "ACCEPTED"
+          }
+        }
+      ]
+    },
+    {
+      "operator": "Having",
       "lane": "GOTCHA",
       "ordinal": 0,
       "digest": "sha256:57a6fbb4707dba4fee94e598a56f5651b2b6d54c39f32f5c81901db9f033d068",
@@ -5265,7 +5286,7 @@
       "operator": "CurrentRepetition",
       "lane": "CONSTRAINT",
       "ordinal": 1,
-      "digest": "sha256:bd565e58de79c7e60baaf239a82ab09b358bf52b7ed0479eeea37aa0bae6df95",
+      "digest": "sha256:5aa5ea5f30f3f54ecba4cf2dfa455321e094ecda78556ff6cd283eb2c7fe9725",
       "classifications": [
         "ADMISSION",
         "REJECTION"
@@ -5308,7 +5329,7 @@
       "operator": "CurrentRepetition",
       "lane": "GOTCHA",
       "ordinal": 1,
-      "digest": "sha256:27f92e37f12b381470eba1562ac781a6bebb3c4f42da69221a7c4d556308409b",
+      "digest": "sha256:c3f5975ea9b90bc67adcb008175f6e4d4f5a810b1c324668c20345d06dfaa9cd",
       "classifications": [
         "ADMISSION",
         "REJECTION"
@@ -26837,10 +26858,6 @@
       "kind": "CONDITION",
       "units": [
         {
-          "lane": "CONSTRAINT",
-          "ordinal": 1
-        },
-        {
           "lane": "GOTCHA",
           "ordinal": 1
         }
@@ -26853,6 +26870,135 @@
         {
           "type": "CLAIM_PROBE",
           "id": "CurrentRepetition.filter-names-an-unreopened-level"
+        }
+      ]
+    },
+    {
+      "id": "literal.Having.constraint2.MVK_INVALID_ITERATION_IN_FILTER_CONDITION",
+      "operator": "Having",
+      "kind": "CONDITION",
+      "units": [
+        {
+          "lane": "CONSTRAINT",
+          "ordinal": 2
+        }
+      ],
+      "expected": {
+        "verdict": "REJECTED",
+        "code": "MVK_INVALID_ITERATION_IN_FILTER_CONDITION"
+      },
+      "evidence": [
+        {
+          "type": "CLAIM_PROBE",
+          "id": "Having.iteration-gate-yields-to-no-conjunct",
+          "side": "TRIGGER"
+        }
+      ]
+    },
+    {
+      "id": "literal.Having.constraint2.MVK_NO_ITERATION_FOR_WILDCARD",
+      "operator": "Having",
+      "kind": "CONDITION",
+      "units": [
+        {
+          "lane": "CONSTRAINT",
+          "ordinal": 2
+        }
+      ],
+      "expected": {
+        "verdict": "REJECTED",
+        "code": "MVK_NO_ITERATION_FOR_WILDCARD"
+      },
+      "evidence": [
+        {
+          "type": "CLAIM_PROBE",
+          "id": "Having.scope-gate-yields-to-any-in-scope-conjunct",
+          "side": "TRIGGER"
+        }
+      ]
+    },
+    {
+      "id": "literal.Having.constraint2.MVK_NO_WILDCARD",
+      "operator": "Having",
+      "kind": "CONDITION",
+      "units": [
+        {
+          "lane": "CONSTRAINT",
+          "ordinal": 2
+        }
+      ],
+      "expected": {
+        "verdict": "REJECTED",
+        "code": "MVK_NO_WILDCARD"
+      },
+      "evidence": [
+        {
+          "type": "CLAIM_PROBE",
+          "id": "Having.marker-needs-an-outer-coordinate",
+          "side": "TRIGGER"
+        }
+      ]
+    },
+    {
+      "id": "review.Having.marker-needs-an-outer-coordinate.control",
+      "operator": "Having",
+      "kind": "CONDITION",
+      "units": [
+        {
+          "lane": "CONSTRAINT",
+          "ordinal": 2
+        }
+      ],
+      "expected": {
+        "verdict": "ACCEPTED"
+      },
+      "evidence": [
+        {
+          "type": "CLAIM_PROBE",
+          "id": "Having.marker-needs-an-outer-coordinate",
+          "side": "CONTROL"
+        }
+      ]
+    },
+    {
+      "id": "review.Having.scope-gate-yields-to-any-in-scope-conjunct.control",
+      "operator": "Having",
+      "kind": "CONDITION",
+      "units": [
+        {
+          "lane": "CONSTRAINT",
+          "ordinal": 2
+        }
+      ],
+      "expected": {
+        "verdict": "ACCEPTED"
+      },
+      "evidence": [
+        {
+          "type": "CLAIM_PROBE",
+          "id": "Having.scope-gate-yields-to-any-in-scope-conjunct",
+          "side": "CONTROL"
+        }
+      ]
+    },
+    {
+      "id": "review.Having.iteration-gate-yields-to-no-conjunct.control",
+      "operator": "Having",
+      "kind": "CONDITION",
+      "units": [
+        {
+          "lane": "CONSTRAINT",
+          "ordinal": 2
+        }
+      ],
+      "expected": {
+        "verdict": "ACCEPTED"
+      },
+      "evidence": [
+        {
+          "type": "CLAIM_PROBE",
+          "id": "Having.iteration-gate-yields-to-no-conjunct",
+          "side": "CONTROL"
         }
       ]
     }
