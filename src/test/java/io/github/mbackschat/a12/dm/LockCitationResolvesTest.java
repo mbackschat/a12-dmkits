@@ -55,6 +55,9 @@ class LockCitationResolvesTest {
             "docs/KERNEL-FINDINGS.md",
             "docs/INTERPRETER-FINDINGS.md",
             "docs/API-FINDINGS.md",
+            // Joined 2026-09-04: the gap ledger cites the lock each open row rests on, and a cold
+            // review found two of those citations standing outside every guard in the repo.
+            "docs/DEV-API-GAPS.md",
             "docs/MVK-LEDGER.md",
             "docs/KERNEL-SEMANTICS.md",
             "docs/INTERPRETER-PERFORMANCE.md",

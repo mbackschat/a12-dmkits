@@ -83,21 +83,34 @@ function verdictOfOp(entry: OpResult): Verdict {
   const diagnostics = child.diagnostics ?? [];
   const verdict: Verdict["verdict"] = child.valid === true ? "VALID" : child.valid === false ? "INVALID" : "-";
 
-  // A refusal is the CLI declining the REQUEST — it establishes nothing about the model, so it must not
-  // render like a verdict. This is exactly the distinction the hand-rolled filter could not express.
-  if (child.outcome === "refused" || diagnostics.some((d) => d.source === "PRECHECK")) {
+  // THE ENVELOPE'S OWN `outcome` DECIDES THE CHANNEL. A diagnostic's `source` may not override it: the first
+  // version tested `outcome === "refused" || diagnostics.some(source === "PRECHECK")`, and since a REJECTED
+  // subject also carries PRECHECK diagnostics, every spec-key rejection rendered as a refused request —
+  // collapsing the very distinction the module exists to draw, on the very input class it was written for
+  // (`rule check --field ../X` refuses the request, exit 2; `rule add`'s `field: ../X` rejects the subject,
+  // exit 1). Found by a cold review, 2026-09-04. `source` now only picks WHICH diagnostic to quote.
+  const refusalSummary = (): string => {
     const first = diagnostics.find((d) => d.source === "PRECHECK") ?? diagnostics[0];
     const arg = first?.where?.arg ? `${first.where.arg}: ` : "";
-    return {
-      id,
-      channel: "REFUSED",
-      verdict: "-",
-      detail: `${arg}${first?.summary ?? child.summary ?? "(no summary)"}`,
-    };
+    return `${arg}${first?.summary ?? child.summary ?? "(no summary)"}`;
+  };
+
+  if (child.outcome === "refused") {
+    // The CLI declined the REQUEST — it establishes nothing about the model, so it carries no verdict.
+    return { id, channel: "REFUSED", verdict: "-", detail: refusalSummary() };
   }
 
   if (child.outcome === "rejected" || child.ok === false) {
-    return { id, channel: "REJECTED", verdict, detail: codesOf(diagnostics) || (child.summary ?? "") };
+    // The subject was READ and rejected. A pre-check rejection names the offending key, which the codes alone
+    // do not, so it is quoted the same way a refusal is; a kernel rejection is best identified by its codes.
+    const precheck = diagnostics.some((d) => d.source === "PRECHECK") && !diagnostics.some(
+      (d) => d.source === "KERNEL");
+    return {
+      id,
+      channel: "REJECTED",
+      verdict,
+      detail: precheck ? refusalSummary() : codesOf(diagnostics) || (child.summary ?? ""),
+    };
   }
   return { id, channel: "RAN", verdict, detail: codesOf(diagnostics) };
 }
@@ -132,5 +145,10 @@ async function main(): Promise<void> {
 module.exports = { renderBatch, verdictOfOp };
 
 if (require.main === module) {
-  void main();
+  // A stdin read failure must surface as one line, not as an unhandled rejection — the sibling reporter
+  // (test-evidence.ts) does the same, and a probe instrument that dies noisily is read as "the probe failed".
+  main().catch((error: unknown) => {
+    console.error(`probe-verdicts: ${error instanceof Error ? error.message : String(error)}`);
+    process.exitCode = 1;
+  });
 }

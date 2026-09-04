@@ -1,4 +1,5 @@
 const assert = require("node:assert/strict");
+const path = require("node:path");
 const { test } = require("node:test");
 
 const { ranInThisRun, taskFor, lastVerdict, taskStates } = require("./test-evidence.ts");
@@ -21,9 +22,13 @@ test("evidence needs BOTH a fresh file and a task the log says executed", () => 
 });
 
 test("a result directory maps back to the Gradle task path that owns it", () => {
-  assert.equal(taskFor(`${process.cwd()}/build/test-results/apiGuardTest`), ":apiGuardTest",
+  // The input is built from the module's OWN root, not from process.cwd(): `taskFor` relativizes against
+  // `path.resolve(__dirname, "../..")`, so a cwd-derived input asserted a property of where the test was
+  // launched — it failed from any other directory, and passed in CI only because the glob runs at the root.
+  const root = path.resolve(__dirname, "../..");
+  assert.equal(taskFor(path.join(root, "build/test-results/apiGuardTest")), ":apiGuardTest",
     "a root-project task carries no module segment");
-  assert.equal(taskFor(`${process.cwd()}/cli/build/test-results/publicContractTest`),
+  assert.equal(taskFor(path.join(root, "cli/build/test-results/publicContractTest")),
     ":cli:publicContractTest", "a module task does — and conflating the two mislabels every row");
 });
 

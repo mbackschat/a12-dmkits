@@ -4,9 +4,14 @@ const { test } = require("node:test");
 const { renderBatch, verdictOfOp } = require("./probe-verdicts.ts");
 
 /**
- * The claim under test is narrow and is the whole reason the module exists: a CLI refusal and a kernel
- * verdict must never render as the same shape of line. Both fixtures below are verbatim envelopes the tool
- * emitted on 2026-09-04 — the refusal is the one a session misread four times.
+ * The claim under test is narrow and is the whole reason the module exists: the three ways an op can fail must
+ * never render as the same shape of line. A REFUSED request establishes nothing about the model, a REJECTED
+ * subject was read and judged, and an ERROR produced no envelope at all.
+ *
+ * <p>The fixtures are shaped after envelopes the tool emitted on 2026-09-04 — the refusal is the one a session
+ * misread four times — but they are NOT byte-verbatim: `REFUSED_CHILD.fix` still carries the generic corrective
+ * that the next commit replaced, which is why this note says "shaped after" rather than "verbatim". A cold
+ * review caught the original wording claiming otherwise. Nothing here asserts on `fix`.
  */
 
 const REFUSED_CHILD = {
@@ -62,9 +67,61 @@ test("the two failing channels differ in their FIRST column, which is the whole 
   const invalid = verdictOfOp({ id: "b", result: KERNEL_INVALID_CHILD }).channel;
 
   assert.notEqual(refused, invalid);
-  // And the code column alone cannot tell them apart, which is what the projection bug relied on.
-  assert.ok(REFUSED_CHILD.diagnostics[0].code.startsWith("RK_"));
-  assert.ok(KERNEL_INVALID_CHILD.diagnostics[0].code.startsWith("MVK_"));
+  // And the CODE COLUMN alone cannot tell them apart — the projection this module replaces kept only that
+  // column, so it is asserted through the renderer's own output rather than by inspecting the fixtures.
+  const refusedLine = renderBatch(batchOf({ op: 0, id: "r", result: REFUSED_CHILD }));
+  const invalidLine = renderBatch(batchOf({ op: 0, id: "i", result: KERNEL_INVALID_CHILD }));
+  assert.notEqual(refusedLine.split("\t")[1], invalidLine.split("\t")[1]);
+});
+
+/**
+ * The REJECTED channel, which had no fixture at all and so was wholly uncovered — the branch a cold review
+ * found collapsed into REFUSED, because a spec-key rejection also carries PRECHECK diagnostics.
+ *
+ * These two are the same author mistake reported on two channels, and telling them apart is the point: a bad
+ * `--field` OPTION refuses the request (exit 2), while a bad `field` SPEC KEY rejects the subject (exit 1).
+ */
+const SPEC_REJECTED_CHILD = {
+  target: "rule",
+  op: "add",
+  outcome: "rejected",
+  ok: false,
+  summary: "field must be an absolute path with no empty segment (e.g. /Group/Field), got: ../CustomerName",
+  diagnostics: [
+    {
+      severity: "ERROR",
+      source: "PRECHECK",
+      code: "RK_INVALID_VALUE",
+      summary: "field must be an absolute path with no empty segment (e.g. /Group/Field), got: ../CustomerName",
+      where: { arg: "field" },
+    },
+  ],
+  written: false,
+};
+
+const KERNEL_REJECTED_CHILD = {
+  target: "computation",
+  op: "add",
+  outcome: "rejected",
+  ok: false,
+  diagnostics: [{ severity: "ERROR", source: "KERNEL", code: "MVK_PARAMSIZE_INVALIDN", summary: "bad arity" }],
+};
+
+test("a REJECTED subject is not a REFUSED request, even though both carry PRECHECK diagnostics", () => {
+  const rejected = verdictOfOp({ op: 0, id: "spec", exit: 1, result: SPEC_REJECTED_CHILD });
+  const refused = verdictOfOp({ op: 1, id: "opt", exit: 2, result: REFUSED_CHILD });
+
+  assert.equal(rejected.channel, "REJECTED", "the envelope's own outcome decides the channel");
+  assert.equal(refused.channel, "REFUSED");
+  assert.notEqual(rejected.channel, refused.channel,
+    "collapsing these was the defect: a source override made every spec rejection read as a refusal");
+  // A pre-check rejection still names the offending KEY, which the codes alone do not.
+  assert.match(rejected.detail, /^field: field must be an absolute path/);
+});
+
+test("a KERNEL rejection is identified by its codes, not by a quoted summary", () => {
+  const line = renderBatch(batchOf({ op: 0, id: "kernel", exit: 1, result: KERNEL_REJECTED_CHILD }));
+  assert.deepEqual(line.split("\t"), ["kernel", "REJECTED", "-", "MVK_PARAMSIZE_INVALIDN"]);
 });
 
 test("a PRECHECK code is tagged with its source when it appears beside kernel ones", () => {

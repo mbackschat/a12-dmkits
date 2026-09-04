@@ -2631,6 +2631,7 @@ public record io.github.mbackschat.a12.dm.rulekit.validate.Diagnostic
   public final int hashCode()
   public static io.github.mbackschat.a12.dm.rulekit.validate.Diagnostic internal(java.util.Optional<java.lang.String>, java.lang.String, io.github.mbackschat.a12.dm.rulekit.validate.Diagnostic.Where, java.util.Optional<java.lang.String>)
   public static io.github.mbackschat.a12.dm.rulekit.validate.Diagnostic precheck(io.github.mbackschat.a12.dm.rulekit.validate.RkCode, java.lang.String, io.github.mbackschat.a12.dm.rulekit.validate.Diagnostic.Where)
+  public static io.github.mbackschat.a12.dm.rulekit.validate.Diagnostic precheck(io.github.mbackschat.a12.dm.rulekit.validate.RkCode, java.lang.String, io.github.mbackschat.a12.dm.rulekit.validate.Diagnostic.Where, java.lang.String)
   public static io.github.mbackschat.a12.dm.rulekit.validate.Diagnostic precheck(java.util.Optional<java.lang.String>, java.lang.String, io.github.mbackschat.a12.dm.rulekit.validate.Diagnostic.Where, java.util.Optional<java.lang.String>, java.util.Optional<java.lang.String>)
   public static io.github.mbackschat.a12.dm.rulekit.validate.Diagnostic precheckWarning(java.util.Optional<java.lang.String>, java.lang.String, io.github.mbackschat.a12.dm.rulekit.validate.Diagnostic.Where, java.util.Optional<java.lang.String>, java.util.Optional<java.lang.String>)
   public io.github.mbackschat.a12.dm.core.Severity severity()

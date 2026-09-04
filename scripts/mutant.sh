@@ -46,7 +46,14 @@ FILE=$1; OLD=$2; NEW=$3; FILTER=$4
 if [ $# -ge 5 ]; then
   LANE=$5
 else
-  case $FILE in
+  # Repo-relative, so an absolute or ./-prefixed path (the form a review packet quotes) still matches.
+  REL=${FILE#"$PWD/"}; REL=${REL#./}
+  case $REL in
+    interpreter/src/jsMain/*|interpreter/src/jsTest/*)
+      echo "mutant: REFUSING to guess a lane for a JS-only source set. :interpreter:jvmTest never compiles" >&2
+      echo "        $REL, so the mutant applies and every test passes — a false SURVIVED, which is the one" >&2
+      echo "        outcome this script exists to prevent. Name the JS lane explicitly as the 5th argument." >&2
+      exit 2 ;;
     adapter/*) LANE=:adapter:test ;;
     cli/*) LANE=:cli:test ;;
     interpreter/*) LANE=:interpreter:jvmTest ;;
@@ -104,8 +111,22 @@ else
 fi
 # A filter that matched NO test also "fails" — distinguish it, or a typo reads as a kill.
 if grep -q 'No tests found for given includes' "$LOG"; then
-  echo "mutant: the filter '$FILTER' matched no test — that is a typo, not a verdict" >&2
-  /bin/rm -f "$LOG"; exit 2
+  echo "mutant: the filter '$FILTER' matched no test in $LANE — that is a typo or the wrong lane, not a verdict" >&2
+  exit_and_clean=2
+fi
+# The control may be hosted by a DEDICATED task, which the broad lane excludes by construction
+# (`routeExclusivelyHostedTests` derives each exclude list from the dedicated tasks' includes). The build
+# already names the task to run; surface that instead of leaving the operator to guess, because a wrong lane
+# is the one outcome that looks like a finding. Measured 2026-09-04: the lane inference cannot know which
+# classes a dedicated task hosts, so the routing message is the only reliable signal.
+if grep -q 'deliberately excludes' "$LOG"; then
+  echo "mutant: $LANE does not host that control — the build names the task that does:" >&2
+  sed -n '/deliberately excludes/,/^$/p' "$LOG" | sed 's/^/        /' >&2
+  echo "        Re-run with that task as the 5th argument." >&2
+  exit_and_clean=2
+fi
+if [ "${exit_and_clean:-0}" -ne 0 ]; then
+  /bin/rm -f "$LOG"; exit "$exit_and_clean"
 fi
 
 if [ "$VERDICT" -eq 1 ]; then

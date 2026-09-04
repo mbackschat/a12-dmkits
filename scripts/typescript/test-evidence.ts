@@ -180,6 +180,12 @@ function main(): void {
     classPattern = args.shift();
     if (!classPattern) usage();
   }
+  // The two modes answer different questions and neither subsumes the other, so asking for both is a mistake
+  // rather than a preference. It used to honour whichever came first and drop the other silently.
+  if (printCutoff && classPattern) {
+    console.error("test-evidence: --print-cutoff and --class are separate modes; pass one.");
+    process.exit(2);
+  }
   const logPath = args[0];
   if (!logPath || !fs.existsSync(logPath) || !fs.statSync(logPath).isFile()) usage();
 

@@ -303,7 +303,7 @@ dmtool -m /tmp/apply-typo.dm.json apply /tmp/apply-typo-ops.json 2>&1; echo "(ex
 (exit 1)
 ```
 
-→ `failedAt: 0`, `outcome: "rejected"`, `written: false`. `RK_UNKNOWN_ARG` points `where.arg` at the offending key (`grop`) and the `fix` is the correction (`did you mean 'group'?`). A **bad op** is the sibling case — `RK_UNKNOWN_OP` lists the supported ops:
+→ `failedAt: 0`, `outcome: "rejected"`, `written: false`. `RK_UNKNOWN_ARG` points `where.arg` at the offending key (`grop`) and the `fix` is the correction (`did you mean 'group'?`). A **bad op** is the sibling case — `RK_UNKNOWN_OP` lists the supported `(target op)` pairs:
 
 ```bash
 printf "%s" '[ {"target":"field","op":"bogus","group":"/Order","name":"X","kind":"NUMBER"} ]' > /tmp/apply-badop-ops.json
