@@ -217,6 +217,33 @@ class PredicatesTest {
         assertTrue(e.message!!.contains("not a group")) { "expected a group-slot rejection in: ${e.message}" }
     }
 
+    /**
+     * The `$`-marked group-presence leaf reads back WITH its marker rather than being refused.
+     *
+     * <p>It used to raise `UnmappedConstructException` whose message said rulekit "correlates a field or a
+     * repetition list, not a group" — true when written, false from the moment `GroupPresenceCondition` gained
+     * the marker (API-FINDINGS 135), which also left the two read-back providers disagreeing on a
+     * kernel-legal shape: the kernel-backed converter produced it while this one refused it. A cold review
+     * caught both halves, 2026-09-04.
+     */
+    @Test
+    fun aMarkedGroupPresenceLeafReadsBackWithItsMarker() {
+        val marked = assertInstanceOf(GroupPresenceCondition::class.java, translate("GroupFilled(\$ShippingAddress)"))
+        assertEquals(true, marked.outer(), "the \$ must survive the read, not be normalized away")
+        assertEquals("/Order/ShippingAddress", marked.group().path().value())
+
+        val plain = assertInstanceOf(GroupPresenceCondition::class.java, translate("GroupFilled(ShippingAddress)"))
+        assertEquals(false, plain.outer(), "…and the unmarked spelling stays unmarked — the control")
+    }
+
+    /** The polarity sibling carries it too, so the marker belongs to the CARRIER and not to one operator. */
+    @Test
+    fun theMarkerSurvivesOnGroupNotFilledAsWell() {
+        val c = assertInstanceOf(GroupPresenceCondition::class.java, translate("GroupNotFilled(\$ShippingAddress)"))
+        assertEquals(true, c.outer())
+        assertEquals(false, c.filled())
+    }
+
     // --- AtLeastOneGroupFilled / NoGroupFilled --------------------------------------------------
 
     @Test

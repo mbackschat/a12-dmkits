@@ -36,8 +36,12 @@ internal class Predicates(private val mapping: Mapping) {
             // presence handle instead.
             "FieldFilled" -> filled(soleFilledOperand(args, name), true)
             "FieldNotFilled" -> filled(soleFilledOperand(args, name), false)
-            "GroupFilled" -> Dsl.groupFilled(mapping.groupRef(single(args, name)))
-            "GroupNotFilled" -> Dsl.groupNotFilled(mapping.groupRef(single(args, name)))
+            // The `$` marker is part of the group-presence SHAPE, not a field-only spelling: the kernel admits
+            // `GroupFilled($G)` in a Having filter and `GroupPresenceCondition` can carry it since 2026-09-04
+            // (API-FINDINGS 135), so this reconstructs it rather than refusing a legal model. Every other group
+            // slot still refuses a marker — see Operands.requireNotCorrelated for which and why.
+            "GroupFilled" -> groupPresence(single(args, name), name, filled = true)
+            "GroupNotFilled" -> groupPresence(single(args, name), name, filled = false)
             // The same node Dsl.fieldList builds, reached directly: the Dsl overloads for these three are
             // field-only OR group-only, while the catalog gives all of them a field-list-or-groups operand,
             // so no overload expresses the mixed list the kernel accepts.
@@ -305,6 +309,23 @@ internal class Predicates(private val mapping: Mapping) {
         // bridge shrugging with no typed operation to call.
         val field = mapping.fieldOperand(node)
         return if (expectFilled) Dsl.fieldFilled(field) else Dsl.fieldNotFilled(field)
+    }
+
+    /**
+     * A group-presence leaf, carrying the `$` marker when the source has it.
+     *
+     * <p>The marker is read off the AST rather than routed through `Mapping.groupRef`, which refuses a
+     * correlated source on purpose: the other group slots (`CurrentRepetition`, the aggregate group scopes,
+     * the group lists) have no representation for it, so refusing there is the honest answer while
+     * reconstructing here is.
+     */
+    private fun groupPresence(node: Expr, operator: String, filled: Boolean): Condition {
+        // Only the plain reference form carries a marker we can reconstruct. Anything else — a starred
+        // source, a semantic index — goes through `groupRef` unchanged and is refused there if marked,
+        // which is the honest answer for a slot with no representation for it.
+        val marked = node is Expr.Field && node.outer
+        val group = mapping.groupRef(if (marked) Expr.Field((node as Expr.Field).path) else node)
+        return if (filled) Dsl.groupFilled(group, marked) else Dsl.groupNotFilled(group, marked)
     }
 
     private companion object {

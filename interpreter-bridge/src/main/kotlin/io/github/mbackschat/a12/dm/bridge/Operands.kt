@@ -206,7 +206,8 @@ internal class Operands(private val mapping: Mapping) {
     /**
      * The group analog of [semanticIndex] — an index-selected GROUP, resolved the same way as the plain
      * (unindexed) group arm above: `flattenGroup` reads the model's own repeatability, and its result is never
-     * re-guessed here. A group can never itself carry `$`, so an outer-marked target is refused the same way.
+     * re-guessed here. A group's own semantic INDEX has no marker slot, so an outer-marked target is refused
+     * the same way — unlike a group-presence leaf, which carries one (see `Predicates.groupPresence`).
      * The wildcard/index conflict (`MVK_SEMANTIC_INDEX_AND_WILDCARD`) is rulekit's own guard, in
      * [IndexedGroupValue]'s leaf records — not pre-checked here.
      */
@@ -323,11 +324,22 @@ internal class Operands(private val mapping: Mapping) {
 
         private fun correlate(ref: FieldRef, outer: Boolean): FieldRef = if (outer) ref.outer() else ref
 
+        /**
+         * Refuse a `$`-marked source in a slot that has no representation for the marker.
+         *
+         * <p><b>The message names the SLOT, not the API.</b> It used to say "rulekit correlates a field or a
+         * repetition list, not a group", which stopped being true when `GroupPresenceCondition` gained the
+         * marker (API-FINDINGS 135): a diagnostic asserting something false about our own surface is worse
+         * than a vague one. `GroupFilled`/`GroupNotFilled` now reconstruct it in `Predicates`; what still has
+         * nowhere to put it is `CurrentRepetition`'s group argument, the aggregate group scopes and the group
+         * lists, whose refs are bare `GroupRef`/`GroupListRef` values.
+         */
         private fun requireNotCorrelated(source: Expr.EntitySource, what: String) {
             if (source.outer) {
                 throw UnmappedConstructException(
                     "the \$-correlation on " + what + ", " + source.path +
-                        " — rulekit correlates a field or a repetition list, not a group"
+                        " — this slot takes a bare group reference, which carries no marker (a group-presence " +
+                        "leaf does: GroupFilled(\$G) reads back with its marker)"
                 )
             }
         }
