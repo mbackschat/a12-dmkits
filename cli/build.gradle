@@ -457,7 +457,13 @@ tasks.register('docGuardTest', Test) {
             'scripts tree'       : rootProject.fileTree('scripts'),
             'README.md'          : rootProject.file('README.md'),
             // CommandReferencesResolveTest scans the project instructions too (root AGENTS.md is a symlink to it).
+            // DocAnchorResolveGuardTest additionally resolves every `CLAUDE.md "quoted section"` citation in the
+            // docs against ALL FOUR instruction files, so pruning a section in any of them must re-run this lane
+            // rather than restore a green produced while that section still existed. (docs/CLAUDE.md rides the
+            // docs tree above.)
             'CLAUDE.md'          : rootProject.file('CLAUDE.md'),
+            'interpreter/CLAUDE.md': rootProject.file('interpreter/CLAUDE.md'),
+            'plugin/CLAUDE.md'   : rootProject.file('plugin/CLAUDE.md'),
             'plugin/README.md'   : rootProject.file('plugin/README.md'),
             'infographic assets': rootProject.fileTree('.') {
                 include 'assets/infographics/*.png'
