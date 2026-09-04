@@ -615,6 +615,21 @@ public final class RuntimeLaws {
                 .findFirst();
     }
 
+    /**
+     * Every rendered text one code produced, <b>in the kernel's own message order</b>.
+     *
+     * <p>{@link #errorTextOf} takes the first, which is right for a rule that fires once and silently wrong for
+     * a PER-ROW rule: the rendered text is exactly where the rows differ, so collapsing them to the first hides
+     * the quantity under test. A parameter whose value is the firing row's own coordinate cannot be measured
+     * any other way.
+     */
+    static List<String> errorTextsOf(String modelJson, String errorCode, Doc doc, Locale locale) {
+        return validate(modelJson, doc, locale).getMessages().stream()
+                .filter(m -> m.getErrorCode().equals(errorCode))
+                .map(IMessage::getErrorText)
+                .toList();
+    }
+
     static Set<String> firedCodes(String modelJson, Doc doc) {
         return messages(modelJson, doc).stream().map(Msg::code).collect(Collectors.toCollection(HashSet::new));
     }
@@ -1423,6 +1438,14 @@ public final class RuntimeLaws {
                     .filter(message -> message.getErrorCode().equals(errorCode))
                     .map(IMessage::getErrorText)
                     .findFirst();
+        }
+
+        /** The generated-Java twin of {@link RuntimeLaws#errorTextsOf} — every text, in message order. */
+        List<String> errorTextsOf(DocumentV2 instance, String errorCode, Locale locale) {
+            return rt.validateFull(instance, config(null, locale)).getMessages().stream()
+                    .filter(message -> message.getErrorCode().equals(errorCode))
+                    .map(IMessage::getErrorText)
+                    .toList();
         }
 
         /** Generated-Java validation with the same per-call custom-condition callbacks as the dynamic path. */

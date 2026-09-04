@@ -4488,3 +4488,17 @@ Confirms a12-kernel-lean's `SPEC-2026-09-05-01` on our own carrier, and corrects
 **What is NOT established, stated so it is not read as measured.** Every refused row names a level that is at once off the operand's path and unbound by its star; every admitted out-of-scope row names one that is at once on that path and bound by the enclosing iteration. The cell separating those readings — an unstarred repeatable ancestor on the operand's path that nothing binds — cannot be authored: the OPERAND alone is already `MVK_NO_WILDCARD` there, with the unfiltered control confirming the refusal is the operand's and not the filter's. So "outside the operand's path" and "bound by no enclosing iteration" are extensionally equal over every legal model, and neither is claimed as the mechanism.
 
 *(Locked: [`rulekit.validate.laws.HavingFilterIterationGateLawsTest`](../src/test/java/io/github/mbackschat/a12/dm/rulekit/validate/laws/HavingFilterIterationGateLawsTest.java) — four row sets, 23 rows, one model with two sibling repeatable groups. CI-executed catalog claim probes `Having.iteration-gate-yields-to-no-conjunct`, `Having.scope-gate-yields-to-any-in-scope-conjunct` and `Having.marker-needs-an-outer-coordinate` pin the three codes against the kernel from the prose that states them.)*
+
+## §13 supplement — the rule-message `$#…$` GROUP parameter renders the firing row's own repetition INDEX (kernel, both strategies, 2026-09-05) <a id="kf245"></a>
+
+> Fold: pending — the runtime half of [KF214](#kf214), which measured only which arguments the position ADMITS; folds into §13 on the next canonical KERNEL-SEMANTICS pass.
+
+Confirms a12-kernel-lean's `SPEC-2026-09-05-02` on our own carrier. An admitted group parameter renders the **1-based repetition index of the named group in the firing row**, and the constant `1` for a non-repeatable group. Both keyword shorthands render exactly as the paths they abbreviate.
+
+**The discriminating document, because the obvious one cannot separate the accounts.** A per-row rule over three `/Claim/Lines` rows, gated to fire on rows **2 and 3** and stay silent on row 1: the messages read `own=[2]` and `own=[3]`. A *firing-ordinal* account predicts `1` and `2`; a *row-count* account predicts `3` and `3`. On any document whose rule fires from row 1, or fires once, all three accounts agree — so the gap in the fixture carries the finding, not the number of rows.
+
+`root=[1]` is the non-repeatable arm in the same message, and `rule=`/`top=` are `$#RuleGroup$`/`$#RootGroup$` rendering identically to the absolute paths they abbreviate. A `$Marker$` parameter rides in the same message as a within-message control, rendering the FIELD's name — so the two positions are separated by their output rather than by their grammar, and a silent fallback to name-rendering in the group position would be visible.
+
+**The interpreter does not implement this construct at all** and passes `$#…$` through verbatim — discovered by this measurement, tracked as `IG148`, and asserted as a characterized divergence in the lock below rather than skipped.
+
+*(Locked: [`adapter.laws.RuleMessageGroupParameterDiffTest`](../adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/RuleMessageGroupParameterDiffTest.kt) — Groovy-dynamic and generated Java agree exactly; `RuntimeLaws.errorTextsOf` was added because `errorTextOf` takes the FIRST message, which silently collapses the rows this finding is about.)*
