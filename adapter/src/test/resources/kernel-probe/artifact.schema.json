@@ -109,7 +109,7 @@
           "name": { "type": "string", "description": "the request row's name" },
           "enginesAgree": {
             "type": "boolean",
-            "description": "whether every strategy in `engines` produced the identical observation — EVERY channel its block reports — `messages`, `computations` and `partialMessages` alike — not the messages alone. DERIVED from `engines`, never asserted independently — the per-strategy blocks are always both present, so a disagreement is visible in full rather than merged away. A strategy observed for compute never agrees with one that was not. `false` is a KERNEL FACT to record: the production-normative strategy is `kernel-groovy-dynamic` and a `kernel-java-static` split is characterized, never adopted (docs/CONFORMANCE-CORPUS-SPEC.md §11)."
+            "description": "whether every strategy in `engines` produced the identical observation — EVERY channel its block reports — `messages`, `computations`, `partialMessages` and `fault` alike — not the messages alone. Two strategies that raised the SAME fault agree; one that raised beside one that did not disagrees. DERIVED from `engines`, never asserted independently — the per-strategy blocks are always both present, so a disagreement is visible in full rather than merged away. A strategy observed for compute never agrees with one that was not. `false` is a KERNEL FACT to record: the production-normative strategy is `kernel-groovy-dynamic` and a `kernel-java-static` split is characterized, never adopted (docs/CONFORMANCE-CORPUS-SPEC.md §11)."
           },
           "engines": {
             "type": "array",
@@ -117,8 +117,17 @@
             "description": "one complete observation per kernel strategy",
             "items": {
               "type": "object",
-              "required": ["engine", "messages"],
+              "required": ["engine"],
               "additionalProperties": false,
+              "if": { "required": ["fault"] },
+              "then": {
+                "not": { "anyOf": [
+                  { "required": ["messages"] },
+                  { "required": ["computations"] },
+                  { "required": ["partialMessages"] }
+                ] }
+              },
+              "else": { "required": ["messages"] },
               "properties": {
                 "engine": {
                   "enum": ["kernel-groovy-dynamic", "kernel-java-static"],
@@ -128,6 +137,32 @@
                   "type": "array",
                   "description": "every message this strategy's `validateFull` raised, in a total order over the published channels. Ordering is by `code`, then `field`, `type`, `severity`, `referenced`, `fillToFix`, `message` — never kernel emission order, which nothing guarantees to be stable. Duplicates are retained, so a per-row rule firing on K rows appears K times.",
                   "items": { "$ref": "#/$defs/message" }
+                },
+                "fault": {
+                  "type": "object",
+                  "required": ["observation", "chain"],
+                  "additionalProperties": false,
+                  "description": "this strategy RAISED instead of observing this row, and the raise is published where the channels it prevented would have gone. PRESENT exactly when the kernel threw; a block that carries it carries NO channel key at all \u2014 `messages` absent rather than `[]`, because an empty message list beside a raise reads as `the kernel found no problem`, which is the misreading this artifact exists to prevent. The run keeps going: sibling rows and the other strategy are still observed, the artifact is still written and pinnable, and the process exits non-zero at the end. `enginesAgree` covers a fault like any other channel, so two strategies raising identically is a stated AGREEMENT rather than an unstated one.",
+                  "properties": {
+                    "observation": {
+                      "enum": ["validateFull", "compute", "validatePart", "documentInstance", "engineBuild"],
+                      "description": "where the raise happened. The first three are the request's own `observe` names \u2014 the channel that threw, and the block ends there, because a strategy that cannot validate a document is not one whose compute answer means anything. `documentInstance` is a raise deserializing the row's document, before any channel could be read. `engineBuild` is a raise building this strategy's engine, which is per REQUEST rather than per row, so it appears on every row of that strategy \u2014 that is the blast radius of one failed build, not a repeated measurement."
+                    },
+                    "chain": {
+                      "type": "array",
+                      "minItems": 1,
+                      "description": "the cause chain, THROWN EXCEPTION FIRST, then each `getCause()` in turn (bounded at 16 links and cycle-safe). `type` is the exception's fully qualified class name and is stable across machines; `message` is whatever the kernel wrote and is deliberately NOT normalized \u2014 a message we rewrote would not be the observation. So if a particular raise embeds environment-specific detail (a temp path from the static-Java codegen, say), a fault-carrying artifact is byte-stable only as far as that text is; compare `type` when you need a machine-independent key.",
+                      "items": {
+                        "type": "object",
+                        "required": ["type"],
+                        "additionalProperties": false,
+                        "properties": {
+                          "type": { "type": "string", "description": "the throwable's fully qualified class name" },
+                          "message": { "type": "string", "description": "the throwable's message, ABSENT when it carried none \u2014 never rendered as an empty string" }
+                        }
+                      }
+                    }
+                  }
                 },
                 "partialMessages": {
                   "type": "array",

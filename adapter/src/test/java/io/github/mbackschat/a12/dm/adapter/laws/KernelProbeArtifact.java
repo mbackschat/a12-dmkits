@@ -46,6 +46,12 @@ public record KernelProbeArtifact(Header header, List<Row> rows,
      * shape, and no existing key changes meaning. Bumping would instead have broken the harder guarantee: a
      * request that does not ask for them must produce <em>byte-identical</em> output, because consumers pin
      * these bytes by SHA-256, and the version rides in the first line of every artifact.
+     *
+     * <p><b>Nor did {@link Fault}, and its argument is the same one a step stronger.</b> {@code fault} appears
+     * only where a run used to produce <em>no artifact at all</em> — the probe died with the output path
+     * unwritten — so no artifact any consumer holds or can obtain carries the key, and none changes meaning. It
+     * does make {@code messages} conditional, which is a presence change on paper; on every artifact that could
+     * exist before this, {@code messages} is still there, because a block omits it exactly when it faulted.
      */
     public static final int SCHEMA_VERSION = 1;
 
@@ -96,7 +102,7 @@ public record KernelProbeArtifact(Header header, List<Row> rows,
 
     /** What a strategy reported, minus which strategy reported it — the value {@link Row#enginesAgree} compares. */
     private record Observation(List<Message> messages, Optional<Computations> computations,
-            Optional<List<Message>> partialMessages) {
+            Optional<List<Message>> partialMessages, Optional<Fault> fault) {
     }
 
     /**
@@ -114,28 +120,80 @@ public record KernelProbeArtifact(Header header, List<Row> rows,
      * produces an EMPTY list — which is a measurement, not an absence.
      */
     public record Engine(String engine, List<Message> messages, Optional<Computations> computations,
-            Optional<List<Message>> partialMessages) {
+            Optional<List<Message>> partialMessages, Optional<Fault> fault) {
 
         public Engine {
             messages = messages.stream().sorted().toList();
             partialMessages = partialMessages.map(list -> list.stream().sorted().toList());
+            // A faulted strategy answered NOTHING, so it may not also carry a channel. Checked rather than
+            // merely left unwritten: an empty message list beside a raise reads as "the kernel found no
+            // problem", which is the one misreading this whole artifact is built to prevent.
+            if (fault.isPresent()
+                    && !(messages.isEmpty() && computations.isEmpty() && partialMessages.isEmpty())) {
+                throw new IllegalArgumentException("a faulted engine block carries no channel: " + engine
+                        + " raised at " + fault.get().observation() + " yet reports " + messages.size()
+                        + " message(s), computations=" + computations.isPresent()
+                        + ", partialMessages=" + partialMessages.isPresent());
+            }
         }
 
         /** The strategy observed for validation only — the shape every request produced before compute existed. */
         public Engine(String engine, List<Message> messages) {
-            this(engine, messages, Optional.empty(), Optional.empty());
+            this(engine, messages, Optional.empty(), Optional.empty(), Optional.empty());
         }
 
         /** The pre-{@code validatePart} three-arg shape, kept so existing callers do not all have to change. */
         public Engine(String engine, List<Message> messages, Optional<Computations> computations) {
-            this(engine, messages, computations, Optional.empty());
+            this(engine, messages, computations, Optional.empty(), Optional.empty());
+        }
+
+        /** The pre-{@code fault} four-arg shape, for every caller that observes rather than catches. */
+        public Engine(String engine, List<Message> messages, Optional<Computations> computations,
+                Optional<List<Message>> partialMessages) {
+            this(engine, messages, computations, partialMessages, Optional.empty());
+        }
+
+        /** The strategy raised instead of observing — the whole block IS the fault. */
+        public static Engine faulted(String engine, Fault fault) {
+            return new Engine(engine, List.of(), Optional.empty(), Optional.empty(), Optional.of(fault));
         }
 
         // partialMessages joins the agreement comparison deliberately: whether the static-JAVA codegen path
         // gates a relevant set identically to dynamic-Groovy is exactly the kind of split this probe exists to
-        // surface, and leaving it out would report enginesAgree=true over an unread channel.
+        // surface, and leaving it out would report enginesAgree=true over an unread channel. The fault joins it
+        // for the same reason and one more: two strategies raising the same fault IS an agreement, and a run
+        // that could not state it left the reader with "one of them faults" (a12-kernel-lean, 2026-09-04).
         private Observation observation() {
-            return new Observation(messages, computations, partialMessages);
+            return new Observation(messages, computations, partialMessages, fault);
+        }
+    }
+
+    /**
+     * A kernel raise, published where the channels it prevented would have gone. The run keeps going and fails
+     * at the end, so one bad row costs a request neither its clean rows nor its second strategy.
+     *
+     * <p><b>{@code observation} names the locus, not just the row.</b> It is the request's own {@code observe}
+     * vocabulary for a channel that raised ({@code validateFull}, {@code compute}, {@code validatePart}), plus
+     * two loci a request cannot ask for: {@code documentInstance} when the row's document could not be
+     * deserialized at all, and {@code engineBuild} when the strategy's engine could not be built — the latter
+     * appears on every row of the request, because that is the blast radius of a build that failed once.
+     *
+     * <p><b>{@code chain} is the kernel's own text, thrown exception first.</b> Types are stable across
+     * machines; a MESSAGE is whatever the kernel wrote, and if a given raise embeds an environment-specific
+     * detail (a temp path from the static-Java codegen, say) then a fault-carrying artifact is byte-stable only
+     * as far as that text is. Stated rather than normalized: a message we rewrote would not be the observation.
+     */
+    public record Fault(String observation, List<Raise> chain) {
+
+        public Fault {
+            chain = List.copyOf(chain);
+            if (chain.isEmpty()) {
+                throw new IllegalArgumentException("a fault carries at least the raise itself: " + observation);
+            }
+        }
+
+        /** One link of a cause chain: the exception's class name and the message it carried, if any. */
+        public record Raise(String type, Optional<String> message) {
         }
     }
 
@@ -277,6 +335,12 @@ public record KernelProbeArtifact(Header header, List<Row> rows,
             for (Engine engine : row.engines()) {
                 ObjectNode engineNode = engineNodes.addObject();
                 engineNode.put("engine", engine.engine());
+                if (engine.fault().isPresent()) {
+                    // No channel key at all — the record already refuses a fault beside one, and rendering
+                    // `messages: []` here would publish "the kernel found no problem" for a run that raised.
+                    write(engineNode.putObject("fault"), engine.fault().get());
+                    continue;
+                }
                 ArrayNode messageNodes = engineNode.putArray("messages");
                 engine.messages().forEach(message -> write(messageNodes.addObject(), message));
                 engine.computations().ifPresent(computations -> write(
@@ -313,6 +377,17 @@ public record KernelProbeArtifact(Header header, List<Row> rows,
         message.referenced().forEach(referenced::add);
         ArrayNode fillToFix = messageNode.putArray("fillToFix");
         message.fillToFix().forEach(fillToFix::add);
+    }
+
+    private static void write(ObjectNode node, Fault fault) {
+        node.put("observation", fault.observation());
+        ArrayNode chain = node.putArray("chain");
+        for (Fault.Raise raise : fault.chain()) {
+            ObjectNode raiseNode = chain.addObject();
+            raiseNode.put("type", raise.type());
+            // A throwable legitimately carries no message; absent rather than "" for the same reason `value` is.
+            raise.message().ifPresent(message -> raiseNode.put("message", message));
+        }
     }
 
     private static void write(ObjectNode node, Computations computations) {
