@@ -1,8 +1,10 @@
 package io.github.mbackschat.a12.dm.adapter.laws
 
 import io.github.mbackschat.a12.dm.interpreter.DmInterpreter
+import io.github.mbackschat.a12.dm.interpreter.eval.Document
 import io.github.mbackschat.a12.dm.interpreter.eval.newDocument
 import io.github.mbackschat.a12.dm.interpreter.load.ModelLoader
+import io.github.mbackschat.a12.dm.interpreter.model.ModelDef
 import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft
 import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel
 import io.github.mbackschat.a12.dm.rulekit.dsl.Condition
@@ -68,12 +70,8 @@ class CurrentRepetitionOperandStarBindingDiffTest {
         Dsl.sum(m.flatten("/Policy/Endorsements*/Premium")).eq(total)
             .and(Dsl.fieldFilled(m.field(TOTAL)))
 
-    /** Fires on all three engines or on none; returns that shared verdict. */
-    private fun triFires(condition: Condition): Boolean {
-        val rendered = DslRenderer().render(condition)
-        val kModel = RuntimeLaws.withRule(base, "/Policy", CODE, "../SettlementTotal", CODE, rendered)
-        val def = ModelLoader.load(kModel)
-
+    /** The one document every row evaluates, built for the kernel and the interpreter from the same values. */
+    private fun documentsFor(def: ModelDef): Pair<RuntimeLaws.Doc, Document> {
         val kDoc = RuntimeLaws.doc().group("/Policy", 1).field(TOTAL, "999", 1, 1)
         val iDoc = def.newDocument().group("/Policy", 1).field(TOTAL, "999", 1, 1)
         PREMIUMS.forEachIndexed { index, premium ->
@@ -81,6 +79,18 @@ class CurrentRepetitionOperandStarBindingDiffTest {
             kDoc.group(ENDORSEMENTS, 1, row).field(PREMIUM, premium, 1, row, 1)
             iDoc.group(ENDORSEMENTS, 1, row).field(PREMIUM, premium, 1, row, 1)
         }
+        return kDoc to iDoc
+    }
+
+    private fun modelWith(condition: Condition): String =
+        RuntimeLaws.withRule(base, "/Policy", CODE, "../SettlementTotal", CODE, DslRenderer().render(condition))
+
+    /** Fires on all three engines or on none; returns that shared verdict. */
+    private fun triFires(condition: Condition): Boolean {
+        val rendered = DslRenderer().render(condition)
+        val kModel = modelWith(condition)
+        val def = ModelLoader.load(kModel)
+        val (kDoc, iDoc) = documentsFor(def)
 
         val groovyDynamic = RuntimeLaws.fires(kModel, CODE, kDoc)
         val engine = RuntimeLaws.kernelJavaEngine(kModel)
@@ -114,5 +124,52 @@ class CurrentRepetitionOperandStarBindingDiffTest {
     fun theUnfilteredAggregateIsTheLiveControlFromTheSameHost() {
         assertEquals(true, triFires(unfilteredSumIs(60)),
             "the star and the aggregate work from this non-iterating host independently of the filter")
+    }
+
+    /**
+     * **The operand's star binds the FILTER, not the RULE** — one message, at the non-iterating host's own
+     * field, over a three-row list.
+     *
+     * **Why the boolean rows above cannot answer this.** `triFires` reads *whether* the code appears, which is
+     * identical for a rule that fires once and a rule that fires per row; a12-kernel-lean's reply asked the
+     * seam question in exactly that gap ("what does a non-iterating rule DO with a `CurrentRepetition`
+     * operand"), and the honest answer was that the count had never been measured. Reading the fired-code list
+     * per engine settles it, and the same list carries the attachment for free — the pointer says which cell
+     * the message lands on, so "once" and "once per row collapsed by dedup" are distinguishable too, which a
+     * count alone would not be.
+     *
+     * **The three-row list is the discriminator.** With one row, once and per-row agree; the filter here admits
+     * TWO of three rows, so a rule that iterated its operand's star would produce two messages.
+     */
+    @Test
+    fun theStarredOperandDoesNotMakeTheRuleIterate() {
+        assertEquals(listOf("/Policy[1]/SettlementTotal"), triMessagePointers(filteredSumIs(50)),
+            "two of three rows survive the filter, and the rule still reports once at its own error field")
+    }
+
+    /**
+     * Every engine's message pointers for the rule's own code, asserted identical across the three.
+     *
+     * <p>The kernel's generated-Java arm is read through `validationSignaturesSorted` (`code|type|pointer`) and
+     * projected to the pointer, so both kernel arms and the interpreter are compared on the one axis this claim
+     * is about. Neither list is deduplicated: a set would erase the very repetition being measured.
+     */
+    private fun triMessagePointers(condition: Condition): List<String> {
+        val rendered = DslRenderer().render(condition)
+        val kModel = modelWith(condition)
+        val def = ModelLoader.load(kModel)
+        val (kDoc, iDoc) = documentsFor(def)
+
+        val groovyDynamic = RuntimeLaws.messages(kModel, kDoc)
+            .filter { it.code() == CODE }.map { it.field() }.sorted()
+        val engine = RuntimeLaws.kernelJavaEngine(kModel)
+        val javaStatic = engine.validationSignaturesSorted(engine.instance(kDoc))
+            .filter { it.startsWith("$CODE|") }.map { it.substringAfterLast('|') }.sorted()
+        val interpreter = DmInterpreter(def).validateFull(iDoc)
+            .filter { it.code == CODE }.map { it.errorPath }.sorted()
+
+        assertEquals(groovyDynamic, javaStatic, "$rendered — groovy-dynamic vs generated Java")
+        assertEquals(groovyDynamic, interpreter, "$rendered — kernel vs interpreter")
+        return groovyDynamic
     }
 }
