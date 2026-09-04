@@ -4419,3 +4419,28 @@ Confirms a12-kernel-lean's `SPEC-2026-09-04-05`, and closes a residue both estat
 **Our own answer to their "which do you do?" question.** This repository neither erases the marker before a scope check nor inspects it: admission is delegated whole to `checkConsistency`, and `ConditionReferences`/`Linter` treat a marked reference exactly as an unmarked one on every carrier — so both spellings already took the same path and the residue was a gap in the *account*, not in the code. What the round did change is that the marker is now **representable**: `GroupPresenceCondition` could not hold it, so the shape was unauthorable *and* — because the converter's `verifyOuterPreserved` counts source markers against rendered ones — a legal model carrying one was degraded to a verbatim read rather than converted ([API-FINDINGS 135](API-FINDINGS.md)).
 
 *(Locked: `rulekit.validate.laws.HavingFilterConditionLeafLawsTest.theDollarMarkerOnTheGroupLeafIsAdmittedAndChangesNoVerdict` — the six rows plus a render assertion proving the `$` actually reaches the kernel; `adapter.CorrelatedGroupPresenceReadTest` — the read path; and the catalog's CI-executed claim probe `GroupFilled.marked-leaf-in-filter`.)*
+
+## §11 supplement — a no-value computation's REPORTED shape follows the target cell's prior state, not the ground of the no-value (differential, both strategies + interpreter, 2026-09-04) <a id="kf243"></a>
+
+> Fold: pending — sharpens [KF240](#kf240)'s clear-kind account with the axis that decides the *reported* shape; folds into §11 on the next canonical KERNEL-SEMANTICS pass.
+
+**Corrects a12-kernel-lean's `SPEC-2026-09-04-04` rather than confirming it.** Their clause says a per-row target whose filtered candidate set is **empty** produces no computation outcome at all, "where a precondition-cleared or source-invalid producer is reported present and cleared". Both halves reproduce here — and they are not a contrast between the two GROUNDS. A no-value outcome is reported `CLEARED` when the target cell was **stale-filled** and not reported at all when it was **absent**, whichever ground produced it. Their comparison put an unseeded empty-candidate target beside a stale cleared one, so it moved two variables and the seed is the one that decides.
+
+**The 2×2 that separates them**, within one model and one document per cell, over a per-row String target on three rows:
+
+| target cell | empty candidate set | unmet precondition |
+|---|---|---|
+| seeded (stale) | `CLEARED` | `CLEARED` |
+| absent | no outcome | no outcome |
+
+Both diagonals are measured, which is what no account of the ground can produce: seeding only the empty-candidate target reverses which ground looks like the absent one.
+
+**Exact per-row values, so each document refutes the reversed marker reading alone.** `FirstFilledValue(the flatten of Lines* then Sku Having [Lines/Price] > [$Lines/Price])` over ascending prices `10, 30, 20` with skus `A, B, C` answers `B`, no value, `B` — the reversed reading predicts `nothing, A, A`. Descending prices `30, 20, 10` answer no value, `A`, `A` against a predicted `B, B, nothing`, and that document is also the control that the no-value row follows the ROW rather than a position, since this channel's first instance is easy to misread.
+
+**The dependent is the half a measurement from the reporting channel alone gets wrong**, and their entry records correcting exactly that before sending. A `Length` reader answers `0` over the no-value row and is present on **every** row — including the seeded one, so it reads the outcome rather than the stale cell. Both absence shapes are therefore indistinguishable downstream and neither is poison.
+
+**Why the first attempt at this looked like an interpreter defect, recorded because it is the trap and not the finding.** `DmInterpreter.compute` reports every computed instance by contract while the kernel's own result is its three-channel CHANGE projection, so a raw comparison shows the interpreter inventing a `CLEARED` for every unseeded no-value target — the exact shape under test. The comparison has to project first (`conformance.kernelComputeGranularity`, whose contract already stated the rule this entry measures: a cleared instance is reported only when the input had the cell filled). An altitude mismatch between two channels reads as a divergence, and it reads as one *in the direction you are already looking*.
+
+**Stated scope.** One carrier (String), one per-row target, two grounds. The source-invalid ground of [KF240](#kf240) is not on this axis here; its own rows were taken over a stale seed, which is consistent with the account above but is not a measurement of the absent-target cell.
+
+*(Locked: `adapter.laws.EmptyCandidateSetOutcomeDiffTest` — the full 2×2 plus both value vectors and the dependent, tri-checked across groovy-dynamic, generated Java and the interpreter at kernel granularity.)*
