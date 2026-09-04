@@ -104,7 +104,16 @@ fi
 echo "mutant applied: $(git diff --shortstat -- "$FILE" | sed 's/^ *//')"
 
 LOG=$(mktemp)
-if ./build.sh --console=plain -Pfast "$LANE" --tests "$FILTER" > "$LOG" 2>&1; then
+# `-Pfast` drops the guard prerequisites, which is the whole speed win — but it SKIPS docGuardTest,
+# evalGuardTest and mutationTailGuardTest outright, so naming one of them as the lane under -Pfast runs
+# nothing and reports the mutant SURVIVED. Whenever the lane IS a guard task, the flag comes off.
+FAST=-Pfast
+case $LANE in
+  *docGuardTest|*evalGuardTest|*mutationTailGuardTest|*GuardTest)
+    FAST=
+    echo "mutant: $LANE is skipped by -Pfast, so this run drops the flag (slower, and the only correct option)" ;;
+esac
+if ./build.sh --console=plain $FAST "$LANE" --tests "$FILTER" > "$LOG" 2>&1; then
   VERDICT=0
 else
   VERDICT=1

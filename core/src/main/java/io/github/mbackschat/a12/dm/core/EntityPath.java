@@ -134,11 +134,13 @@ public record EntityPath(List<String> segments) {
      * {@code ..} pops one segment off the base; {@code .} and empty segments are skipped; anything else
      * descends.
      *
-     * <p><b>The base is an ELEMENT, not a directory</b> — the mirror of {@link #relativize}'s own note. A rule's
-     * or computation's reference is stored relative to that ELEMENT, which sits inside its group, so the first
-     * {@code ..} climbs off the element and lands on the group: {@code ../Field} against {@code /Order/SomeRule}
-     * is {@code /Order/Field}. The element's NAME never survives, which is why a caller holding only the group
-     * can supply any name for the hop.
+     * <p><b>The base is whatever the reference is relative to, and A12 has TWO conventions</b> — so this is pure
+     * algebra and the CALLER owns the choice. A rule's or computation's stored error/computed-field reference is
+     * relative to the ELEMENT, which sits inside its group, so the first {@code ..} climbs off the element and
+     * lands on the group ({@code ../Field} against {@code /Order/SomeRule} is {@code /Order/Field}); a
+     * CONDITION-operand reference is relative to the GROUP itself, which is the base {@code RawLengthDiagnostic}
+     * and the interpreter bridge correctly pass. Picking the wrong one shifts the answer by exactly one level
+     * and is the mistake this method's own history is about, so name which convention a call site is in.
      *
      * <p><b>Why this is here rather than only in {@link ModelIndex#resolvePath}.</b> This direction already
      * existed, as a {@code static} on the model READER that never consults a model — pure path algebra filed
@@ -161,11 +163,13 @@ public record EntityPath(List<String> segments) {
      * element name whose text then survived into its answer. A call site's base choice needs its own test.
      *
      * <p><b>The base is expected to be ABSOLUTE.</b> Most producers here are — a group path or element path out
-     * of a model walk — but not all: {@code RawLengthDiagnostic} and the interpreter bridge pass a
-     * caller-supplied group, and {@code DraftRule} validates none, so an empty or relative base is reachable
-     * from the published API. Behaviour there is total but not meaningful (the first segment is taken for the
-     * leading empty one and dropped) and is pinned rather than left to discovery, because the spelling this
-     * replaced threw on an empty base and produced a doubled separator on a relative one.
+     * of a model walk — but not all: {@code RawLengthDiagnostic} passes a caller-supplied {@code DraftRule}
+     * group, and {@code DraftRule} validates none, so an empty or relative base is reachable from the published
+     * API. Behaviour there is total but not meaningful (the first segment is taken for the leading empty one
+     * and dropped) and is pinned rather than left to discovery, because the spelling this replaced threw on an
+     * empty base and produced a doubled separator on a relative one. Note the change of failure MODE at that
+     * one caller: it used to throw and have the throw swallowed, skipping enrichment, and now returns a path
+     * that resolves to nothing, skipping enrichment — same outcome, no exception.
      *
      * <p><b>Totality.</b> Deliberately total, matching the behaviour these callers already depend on: a
      * reference with more {@code ..} than the base has segments clamps at the root level rather than failing, so
