@@ -11,6 +11,7 @@ import io.github.mbackschat.a12.dm.rulekit.dsl.Dsl
 import io.github.mbackschat.a12.dm.rulekit.dsl.Severity
 import java.nio.file.Files
 import java.nio.file.Path
+import java.util.Optional
 import java.util.function.Consumer
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
@@ -119,6 +120,64 @@ class KernelProbeFaultCaptureTest {
             artifact.rowNamed(FILLED).path("enginesAgree").asBoolean(),
             "both strategies raised the same fault, which IS an agreement — their run could only say one faulted",
         )
+    }
+
+    /**
+     * **The discriminating half, and it has to be CONSTRUCTED.** The row above agrees whether or not the fault
+     * joins the comparison, because both strategies raise identically — so it cannot tell a fault-aware
+     * agreement from one that ignores the channel. Only an ASYMMETRIC row can, and the real kernel does not
+     * supply one on demand: a strategy that faults where the other does not would itself be a split finding.
+     * So it is built at the layer that would destroy it, exactly as [KernelProbeComputeShapeTest] builds the
+     * constructed compute split. The clean side deliberately carries NO messages, which is the strictest form:
+     * with the fault dropped from the comparison both blocks read as "no messages" and the row would claim
+     * agreement. *(Written after a mutant removing `fault` from the compared observation survived the row
+     * above, 2026-09-04.)*
+     */
+    @Test
+    fun aFaultOnOneStrategyOnlyIsADISAGREEMENT() {
+        val fault = KernelProbeArtifact.Fault(
+            "validateFull",
+            listOf(KernelProbeArtifact.Fault.Raise("java.lang.IllegalStateException", Optional.of("raised"))),
+        )
+        val asymmetric = KernelProbeArtifact.Row(
+            "one-faulted",
+            listOf(
+                KernelProbeArtifact.Engine.faulted(KernelRuntimeProbe.GROOVY_DYNAMIC, fault),
+                KernelProbeArtifact.Engine(KernelRuntimeProbe.JAVA_STATIC, emptyList()),
+            ),
+        )
+        val symmetric = KernelProbeArtifact.Row(
+            "both-faulted",
+            listOf(
+                KernelProbeArtifact.Engine.faulted(KernelRuntimeProbe.GROOVY_DYNAMIC, fault),
+                KernelProbeArtifact.Engine.faulted(KernelRuntimeProbe.JAVA_STATIC, fault),
+            ),
+        )
+
+        assertEquals(
+            listOf(false, true),
+            listOf(asymmetric.enginesAgree(), symmetric.enginesAgree()),
+            "a raise on one strategy only is a split; the same raise on both is an agreement",
+        )
+    }
+
+    /** A faulted block may not also carry a channel — the illegal pair is refused, not merely unwritten. */
+    @Test
+    fun aFaultBesideAChannelIsUnrepresentable() {
+        val fault = KernelProbeArtifact.Fault(
+            "compute",
+            listOf(KernelProbeArtifact.Fault.Raise("java.lang.IllegalStateException", Optional.empty())),
+        )
+        val message = KernelProbeArtifact.Message(
+            "CODE", "Policy/Holder", "ERROR", "VALUE_ERROR", "text", emptyList(), emptyList(),
+        )
+
+        assertThrows(IllegalArgumentException::class.java) {
+            KernelProbeArtifact.Engine(
+                KernelRuntimeProbe.GROOVY_DYNAMIC, listOf(message),
+                Optional.empty(), Optional.empty(), Optional.of(fault),
+            )
+        }
     }
 
     /** The published shape stays the published shape: the fault-carrying artifact validates against it. */
