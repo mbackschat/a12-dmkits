@@ -94,7 +94,10 @@ final class ConfigModifyCommand extends BaseCommand {
 
     @ParamKind(ParamKind.Kind.SCALAR)
     @Option(names = "--field-ref-by-short-name", paramLabel = "<true|false>", arity = "1",
-            description = "allow field references by SHORT name where unique (modelConfig.fieldRefByShortNameAllowed); "
+            description = "allow a bare field name to resolve MODEL-WIDE where unique "
+                    + "(modelConfig.fieldRefByShortNameAllowed) — this gates that tier only: a bare name the "
+                    + "rule's OWN group declares resolves regardless of the flag, even one that is ambiguous "
+                    + "model-wide, because the local match settles it before any model-wide index is consulted; "
                     + "`config read` echoes the current value")
     Boolean fieldRefByShortName;
 
