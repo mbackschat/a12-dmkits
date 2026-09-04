@@ -276,4 +276,21 @@ class EntityPathTest {
         assertEquals("/X", ModelReader.resolveRelPath("/A/B", "../../../X"),
                 "…which is exactly what the reader's callers already got");
     }
+
+    /**
+     * The base outside the contract, pinned so the delegation has no unstated divergence.
+     *
+     * <p>Every producer in this repo passes an absolute path — a group or element path from a model walk — and
+     * the string spelling this replaced was undefined here in two different ways: it threw
+     * {@code StringIndexOutOfBoundsException} on an empty base and produced a doubled separator
+     * ({@code //B}) on a relative one. Neither is reachable from a model, and neither is a behaviour worth
+     * preserving, so the values below are recorded as the new definition rather than as a compatibility claim.
+     */
+    @Test
+    void aBaseThatIsNotAbsoluteIsTotalButNotMeaningful() {
+        assertEquals(EntityPath.of("/B"), EntityPath.of("A/B").resolve(""),
+                "the first segment is taken for the leading empty one and dropped");
+        assertEquals(EntityPath.of("/X"), EntityPath.of("").resolve("X"),
+                "and an empty base resolves rather than throwing, as the string spelling did");
+    }
 }

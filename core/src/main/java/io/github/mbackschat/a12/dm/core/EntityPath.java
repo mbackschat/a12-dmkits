@@ -151,6 +151,11 @@ public record EntityPath(List<String> segments) {
      * path relation spelled out at a call site instead of named on the value. {@code ModelReader.resolveRelPath}
      * now delegates here, so there is one implementation rather than an agreement to maintain.
      *
+     * <p><b>The base is expected to be ABSOLUTE</b>, which every producer here is: a group path or element path
+     * out of a model walk. On a relative base the result is still total but not meaningful — the first segment
+     * is treated as the leading empty one and dropped — and it is pinned rather than left to discovery, because
+     * this replaced a spelling that threw on one such input and produced a doubled separator on another.
+     *
      * <p><b>Totality.</b> Deliberately total, matching the behaviour callers already depend on: a reference with
      * more {@code ..} than the base has segments clamps at the root level rather than failing, so
      * {@code /A/B} with {@code ../../../X} is {@code /X}. A caller that needs the difference — a corrective
