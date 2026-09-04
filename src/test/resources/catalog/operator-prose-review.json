@@ -5235,7 +5235,7 @@
       "operator": "CurrentRepetition",
       "lane": "CONSTRAINT",
       "ordinal": 1,
-      "digest": "sha256:f9d637b5c8cdfa4ae9fa5d362615d24b9535ebdb36f4599e578264f66a8e87ce",
+      "digest": "sha256:bd565e58de79c7e60baaf239a82ab09b358bf52b7ed0479eeea37aa0bae6df95",
       "classifications": [
         "ADMISSION",
         "REJECTION"
@@ -5278,7 +5278,7 @@
       "operator": "CurrentRepetition",
       "lane": "GOTCHA",
       "ordinal": 1,
-      "digest": "sha256:33c76a64d9ef6f113a032f53a5d998cab22ca1d45b3bc569a867f409deb82b2e",
+      "digest": "sha256:27f92e37f12b381470eba1562ac781a6bebb3c4f42da69221a7c4d556308409b",
       "classifications": [
         "ADMISSION",
         "REJECTION"
@@ -26589,6 +26589,31 @@
         {
           "type": "CLAIM_PROBE",
           "id": "False.confirm-computation-target"
+        }
+      ]
+    },
+    {
+      "id": "literal.CurrentRepetition.constraint1.MVK_INVALID_ITERATION_IN_FILTER_CONDITION",
+      "operator": "CurrentRepetition",
+      "kind": "CONDITION",
+      "units": [
+        {
+          "lane": "CONSTRAINT",
+          "ordinal": 1
+        },
+        {
+          "lane": "GOTCHA",
+          "ordinal": 1
+        }
+      ],
+      "expected": {
+        "verdict": "REJECTED",
+        "code": "MVK_INVALID_ITERATION_IN_FILTER_CONDITION"
+      },
+      "evidence": [
+        {
+          "type": "CLAIM_PROBE",
+          "id": "CurrentRepetition.filter-names-an-unreopened-level"
         }
       ]
     }

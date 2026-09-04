@@ -4263,7 +4263,7 @@
       "meaning": "The current iteration index of the given group, as a number expression.",
       "constraints": [
         "the argument is a group, not a field (MVK_NO_FIELDS_ALLOWED)",
-        "an UNMARKED operand binds to EITHER the enclosing iteration — the rule's row, or the target row of a computation whose target is repeatable — OR an operand's own star that reopens the group inside a Having filter; the $-marked form reads the captured environment and binds only to the enclosing iteration. Unbound either way: MVK_NO_WILDCARD (position-dependent — kernel-checked)"
+        "an UNMARKED operand binds to EITHER the enclosing iteration — the rule's row, or the target row of a computation whose target is repeatable — OR an operand's own star that reopens the group inside a Having filter; the $-marked form reads the captured environment and binds only to the enclosing iteration. the code for an unbound operand depends on WHY it is unbound, not only on where it sits: MVK_NO_WILDCARD outside any filter, and MVK_NO_WILDCARD for the $-marked form inside one, but MVK_INVALID_ITERATION_IN_FILTER_CONDITION for an unmarked operand inside a filter naming a repeatable level the operand's star does not reopen (all kernel-checked)"
       ],
       "gotchas": [
         {
@@ -4271,7 +4271,7 @@
           "kind": "AUTHORING"
         },
         {
-          "text": "from a non-iterating host the kernel rejects a bare CurrentRepetition (MVK_NO_WILDCARD) — unless it sits in a Having filter on an operand whose own star reopens that group, which binds it there; adding $ inside such a filter reverses the verdict, so the marker is never erasable here",
+          "text": "from a non-iterating host the kernel rejects a bare CurrentRepetition (MVK_NO_WILDCARD) — unless it sits in a Having filter on an operand whose own star reopens THAT group, which binds it there; naming a different repeatable level in the same filter is MVK_INVALID_ITERATION_IN_FILTER_CONDITION, so it is the star over the named group that binds and not the filter position; adding $ inside such a filter reverses the verdict, so the marker is never erasable here",
           "kind": "SURPRISE"
         },
         {

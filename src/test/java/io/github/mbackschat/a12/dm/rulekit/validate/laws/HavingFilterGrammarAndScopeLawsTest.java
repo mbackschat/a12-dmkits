@@ -57,6 +57,7 @@ class HavingFilterGrammarAndScopeLawsTest {
     private static final String ADMITTED = "admitted";
     private static final String NO_ITERATION = "MVK_NO_ITERATION_FOR_WILDCARD";
     private static final String NO_WILDCARD = "MVK_NO_WILDCARD";
+    private static final String INVALID_ITERATION_IN_FILTER = "MVK_INVALID_ITERATION_IN_FILTER_CONDITION";
 
     private static final String CATALOG = "/Catalog";
     private static final String LINES = "/Catalog/Lines";
@@ -268,7 +269,64 @@ class HavingFilterGrammarAndScopeLawsTest {
                         + "iterate\" is narrow in the same way SPEC-2026-09-03-06 found for the $ marker");
     }
 
+    /**
+     * <b>Which star binds an unmarked {@code CurrentRepetition} — the discriminating row the shipped catalog
+     * line needs.</b> `KF241` and the catalog say "an operand's own star <em>that reopens the group</em>", but
+     * every row that established it sat on a carrier with exactly ONE starrable level relative to the operand,
+     * so "the star that reopens G binds it" and "any position inside a filter binds an unmarked operand" fit
+     * all of them equally — the confound that is constant across a whole row set, here in the fixture.
+     *
+     * <p>This carrier separates them because it has two nested repeatable levels. The host is the ROOT, so no
+     * enclosing iteration binds anything, and the operand stars {@code Lines} only:
+     *
+     * <ul>
+     *   <li>naming {@code Lines} — the level the operand reopens — must be ADMITTED (which also transfers
+     *       `KF241`'s claim to a second carrier, since it was measured on {@code /Policy});</li>
+     *   <li>naming {@code Items} — a repeatable level neither starred nor iterated — is where the accounts
+     *       part: the narrow one predicts a refusal, the broad one admission;</li>
+     *   <li>the two-star operand naming {@code Items} is the positive control: the same leaf, now reopened,
+     *       tells a refusal about the BINDING apart from a refusal about the leaf.</li>
+     * </ul>
+     *
+     * <p><b>The narrow account holds, and the refusal is a THIRD code neither account predicted.</b> This row
+     * draws {@code MVK_INVALID_ITERATION_IN_FILTER_CONDITION} — the filter-scope gate, whose meaning our record
+     * already held for a FIELD reference (`KF §9`, "why `$` exists") and which turns out to receive a group
+     * operand too — not the {@code MVK_NO_WILDCARD} the two other unbound positions draw (the marked form in a
+     * filter, and an unmarked operand outside any filter, both in
+     * {@link CurrentRepetitionBindingSourceLawsTest}). So the unbound code depends on WHY it is unbound, not
+     * only on where it sits, and `KF241` plus the shipped catalog line are corrected accordingly.
+     *
+     * <p>Measured 2026-09-04, after a cold review pointed out the catalog was shipping the narrow mechanism on
+     * rows that could not distinguish it — and the measurement then found the catalog's code wrong for this
+     * position as well.
+     */
+    @Test
+    void onlyTheStarThatReopensTheNamedGroupBindsAnUnmarkedOperand() {
+        Map<String, String> actual = new LinkedHashMap<>();
+        actual.put("names the level the operand's star reopens",
+                rootHostSingleStarVerdict(Dsl.currentRepetition(M.group(LINES)).gt(0)));
+        actual.put("names a repeatable level neither starred nor iterated",
+                rootHostSingleStarVerdict(Dsl.currentRepetition(M.group(ITEMS)).gt(0)));
+        actual.put("that same leaf under a TWO-star operand — the positive control",
+                twoStarVerdict(Dsl.currentRepetition(M.group(ITEMS)).gt(0)));
+
+        Map<String, String> expected = new LinkedHashMap<>();
+        expected.put("names the level the operand's star reopens", ADMITTED);
+        expected.put("names a repeatable level neither starred nor iterated", INVALID_ITERATION_IN_FILTER);
+        expected.put("that same leaf under a TWO-star operand — the positive control", ADMITTED);
+        assertEquals(expected, actual,
+                "the binding source is the star that reopens the NAMED group, not the filter position");
+    }
+
     // ---- fixtures --------------------------------------------------------------------------------
+
+    /** Rule at the ROOT — no enclosing iteration — with an operand starring only {@code Lines}. */
+    private static String rootHostSingleStarVerdict(Condition filter) {
+        FieldListRef caps = M.flatten(LINES + "*/Cap");
+        String condition = new DslRenderer().render(Dsl.fieldFilled(M.field(CATALOG + "/Marker"))
+                .and(Dsl.numberOfFilledFields(caps.having(filter)).gt(0)));
+        return codes(KernelLaws.checkModel(MODEL, CATALOG, "../Marker", condition));
+    }
 
     /** {@code CurrentRepetition(Lines)} assigned to the given computed field, hosted in the given group. */
     private static String computationVerdict(String target, String hostGroup) {
