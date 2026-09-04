@@ -15,8 +15,10 @@ import org.junit.jupiter.api.Test;
 /**
  * KERNEL-FINDINGS §10 — {@code fieldRefByShortNameAllowed} gates the MODEL-WIDE tier of bare-name resolution
  * and nothing else (KF121's bare-name bullet, extended 2026-09-04). A bare name the rule's own group declares
- * resolves whatever the flag says, even one that is AMBIGUOUS model-wide, because the local candidate settles
- * it before any model-wide index is consulted.
+ * resolves whatever the flag says, even one that is AMBIGUOUS model-wide: a local candidate settles it and a
+ * model-wide ambiguity does not veto that. Whether the index is consulted at all is not stated here — nothing
+ * externally observable separates "not consulted" from "consulted, local wins", so the rows below claim the
+ * outcome and not the order.
  *
  * <p><b>Why this exists.</b> Our {@code config modify --field-ref-by-short-name} help read "allow field
  * references by SHORT name where unique", which an author reads as the flag governing every bare name — so
