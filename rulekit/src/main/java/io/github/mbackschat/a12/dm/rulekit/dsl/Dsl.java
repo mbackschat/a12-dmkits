@@ -1572,8 +1572,11 @@ public final class Dsl {
 
     private static Condition flattenedListQuantifier(
             ValueListQuantifier q, java.util.List<String> values, FieldListRef first, FieldListRef... rest) {
-        // Starred (flattened) lists are wildcard scopes — the kernel skips duplicate-reference checking
-        // for wildcarded refs (CheckEntityListenUtils.checkDuplicatesInDirectRefs), so no dedup here.
+        // Starred (flattened) lists are wildcard scopes, and the kernel's DIRECT gate
+        // (CheckEntityListenUtils.checkDuplicatesInDirectRefs) skips a wildcarded ref, so an identical one may
+        // occupy two slots and there is no dedup here. That is one gate, not an exemption from duplicate
+        // checking: the indirect-overlap arm (MVK_DUPLICATE_PARAM2) is unaffected by the star and stays
+        // kernel-arbitrated, as it is for every operand list.
         var fields = new java.util.ArrayList<ValueListOperand>();
         fields.add(checkedStringList(first));
         for (FieldListRef r : rest) {
@@ -1707,8 +1710,11 @@ public final class Dsl {
      * Reject an exact repeated reference in a value-list operand list — the kernel's
      * {@code CheckEntityListenUtils.checkParamsReferencedOnlyOnce}. Identity is the reference itself
      * (field path, plus {@code -> category} for a projection, plus {@code $} for a correlation); a
-     * <b>wildcard</b> (flattened {@link FieldListRef}) scope is skipped, exactly as the kernel skips
-     * wildcarded refs in {@code checkDuplicatesInDirectRefs}.
+     * <b>wildcard</b> (flattened {@link FieldListRef}) scope is skipped by THIS gate, exactly as the kernel
+     * skips wildcarded refs in {@code checkDuplicatesInDirectRefs} — so what the star tolerates is a repeat of
+     * the identical operand, not a wildcarded operand's exemption from duplicate checking. The indirect
+     * overlap between two different operands ({@code MVK_DUPLICATE_PARAM2}) is a relation this
+     * identity-based check never sees and the star does not escape it.
      */
     private static void rejectDuplicateReferences(String opName, java.util.List<ValueListOperand> operands) {
         var seen = new java.util.HashSet<String>();
