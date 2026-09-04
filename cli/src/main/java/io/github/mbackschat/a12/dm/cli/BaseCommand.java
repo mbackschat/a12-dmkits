@@ -498,15 +498,6 @@ public abstract class BaseCommand implements Callable<Integer> {
     }
 
     /**
-     * …and with a corrective COMPUTED from the offending value, where the code's generic {@code fix} would say
-     * nothing about it. The mirror of {@link #refuseOptionValue}'s fix parameter, for the spec-key side.
-     */
-    protected int rejectSpecParse(RkCode code, String summary, String arg, String path, String fix) {
-        return rejectSpecParse(Diagnostic.precheck(Optional.of(code.code()), summary,
-                Diagnostic.Where.arg(path, arg), Optional.of(fix), Optional.empty()));
-    }
-
-    /**
      * Summarize a spec-validation rejection by the KIND of problem, so the {@code summary} tracks the actual
      * diagnostics — an unrecognized key vs a wrong-typed/shaped value — instead of always claiming "unrecognized
      * key" (probe 07: a JSON array handed to a single-object spec verb is an {@code RK_INVALID_VALUE}, not an

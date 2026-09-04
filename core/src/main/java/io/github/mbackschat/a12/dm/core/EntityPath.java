@@ -142,26 +142,37 @@ public record EntityPath(List<String> segments) {
      *
      * <p><b>Why this is here rather than only in {@link ModelIndex#resolvePath}.</b> This direction already
      * existed, as a {@code static} on the model READER that never consults a model — pure path algebra filed
-     * under the index. That filing is why the operation kept being rewritten by callers who went looking for it
-     * in the path type: the interpreter carries its own {@code Paths.resolveErrorPath}, and the CLI's
-     * {@code --field} corrective added another on 2026-09-04 which got the convention BACKWARDS — it read the
-     * first {@code ..} as climbing ABOVE the group, so {@code ../CustomerName} under {@code /Order} named a
-     * sibling of {@code /Order} instead of {@code /Order/CustomerName}. Nothing failed, because no test related
-     * the two directions to each other. That is the defect class this record exists for (see the class doc): a
-     * path relation spelled out at a call site instead of named on the value. {@code ModelReader.resolveRelPath}
-     * now delegates here, so there is one implementation rather than an agreement to maintain.
+     * under the index. Filing an operation by its first consumer rather than by its type is why callers looking
+     * for it on the path type did not find it and wrote their own: the interpreter carries two of its own
+     * ({@code Paths.resolveErrorPath} clamps like this one, {@code load.ModelLoader.resolveRel} throws on an
+     * over-climb instead), and on 2026-09-04 a draft of the CLI's {@code --field} corrective got the convention
+     * BACKWARDS in the working tree — it read the first {@code ..} as climbing ABOVE the group, so
+     * {@code ../CustomerName} under {@code /Order} named a sibling of {@code /Order}. It was caught by its own
+     * new test before it was committed, so the repository's history does not contain it; what the history does
+     * show is that nothing existing would have caught it, because no test related the two directions. That is
+     * the defect class this record exists for (see the class doc): a path relation spelled out at a call site
+     * instead of named on the value. {@code ModelReader.resolveRelPath} now delegates here, so there is one
+     * implementation rather than an agreement to maintain.
      *
-     * <p><b>The base is expected to be ABSOLUTE</b>, which every producer here is: a group path or element path
-     * out of a model walk. On a relative base the result is still total but not meaningful — the first segment
-     * is treated as the leading empty one and dropped — and it is pinned rather than left to discovery, because
-     * this replaced a spelling that threw on one such input and produced a doubled separator on another.
+     * <p><b>What the round trip does and does not buy.</b> {@code EntityPathTest} pins
+     * {@code resolve(relativize(t)) == t} over a path cross-product, which constrains this ALGEBRA — an
+     * inverted convention here lands somewhere else and fails. It cannot constrain which base a CALLER picks,
+     * and that is where the same mistake recurs: the corrective above shipped resolving against a placeholder
+     * element name whose text then survived into its answer. A call site's base choice needs its own test.
      *
-     * <p><b>Totality.</b> Deliberately total, matching the behaviour callers already depend on: a reference with
-     * more {@code ..} than the base has segments clamps at the root level rather than failing, so
+     * <p><b>The base is expected to be ABSOLUTE.</b> Most producers here are — a group path or element path out
+     * of a model walk — but not all: {@code RawLengthDiagnostic} and the interpreter bridge pass a
+     * caller-supplied group, and {@code DraftRule} validates none, so an empty or relative base is reachable
+     * from the published API. Behaviour there is total but not meaningful (the first segment is taken for the
+     * leading empty one and dropped) and is pinned rather than left to discovery, because the spelling this
+     * replaced threw on an empty base and produced a doubled separator on a relative one.
+     *
+     * <p><b>Totality.</b> Deliberately total, matching the behaviour these callers already depend on: a
+     * reference with more {@code ..} than the base has segments clamps at the root level rather than failing, so
      * {@code /A/B} with {@code ../../../X} is {@code /X}. A caller that needs the difference — a corrective
      * proposing a value the author can use — tests the RESULT for the shape it needs
-     * ({@code ModelPaths.isAbsoluteEntityPath}) rather than relying on this to refuse.
-     * {@code EntityPathTest} pins the round trip against {@link #relativize} over a path cross-product.
+     * ({@code ModelPaths.isAbsoluteEntityPath}) rather than relying on this to refuse. (The interpreter's
+     * {@code ModelLoader.resolveRel} deliberately does NOT clamp; it is a load-time gate, not this contract.)
      */
     public EntityPath resolve(String reference) {
         if (Objects.requireNonNull(reference, "reference").startsWith("/")) {
@@ -170,6 +181,13 @@ public record EntityPath(List<String> segments) {
         // Held without the leading empty segment so a climb to the root level is an empty list rather than a
         // special case, then re-anchored on the way out.
         List<String> resolved = new ArrayList<>(segments.subList(Math.min(1, segments.size()), segments.size()));
+        // A TRAILING empty segment is dropped, which the string spelling this replaced did for free (Java's
+        // default `split` discards trailing empties). Deliberate rather than incidental: kept, the empty
+        // segment absorbs one `..`, so `/A/B/` with `../X` would name /A/B/X where the base names /A/B — a
+        // different element, on a base that is absolute and therefore inside this method's contract.
+        while (!resolved.isEmpty() && resolved.get(resolved.size() - 1).isEmpty()) {
+            resolved.remove(resolved.size() - 1);
+        }
         for (String step : reference.split("/")) {
             if ("..".equals(step)) {
                 if (!resolved.isEmpty()) {

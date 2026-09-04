@@ -208,10 +208,31 @@ class EntityPathTest {
         }
     }
 
+    /**
+     * The WELL-FORMED path forms, used in both roles. A target may not carry an empty segment, because that is
+     * information no reference form can express — {@link #anEmptySegmentIsWhereTheRoundTripStops} pins the
+     * boundary — so the ill-formed shapes go on the base axis only, in {@link #EXTRA_BASES}.
+     */
     private static final List<String> ROUND_TRIP_INPUTS = Arrays.asList(
             "/Order", "/Order/Total", "/Order/TotalComp", "/Order/Billing/Fee", "/Order/Shipping/Street",
             "/Rules/StockComp", "/Store/StockLevel", "/Probe/Rules/StockComp", "/Probe/Store/StockLevel",
             "/A/B/C/D", "/Items*/Amount");
+
+    /**
+     * Base forms the list above excludes, added 2026-09-04 after a cold review asked what every entry had in
+     * common: all were 2-to-5-segment absolute paths with no empty segment, so the entire trailing-separator
+     * class — the one place the new algebra genuinely diverged from the string spelling it replaced — sat
+     * outside the denominator. {@code "/"} is here because {@code ModelPaths.ROOT_LEVEL_PARENT} makes it a
+     * spelling authors actually reach for.
+     *
+     * <p>These are pinned by {@link #aTrailingSeparatorOnTheBaseDoesNotShiftTheAnswer}, NOT by the round trip,
+     * and the reason is a real asymmetry rather than a convenience: {@code relativize} COUNTS a trailing empty
+     * segment (so {@code /Order/} relativizes {@code /Order} to {@code ".."}) while {@code resolve} drops it,
+     * following the implementation it replaced. The two are therefore not mutually inverse on such a base, and
+     * they never were — making them so would change {@code relativize}, whose own boundary
+     * {@link #anEmptySegmentIsWhereTheRoundTripStops} already pins.
+     */
+    private static final List<String> EXTRA_BASES = Arrays.asList("/", "/Order/", "/Order//Total", "/Order//");
 
     // ── resolve: the reading direction, which existed only as a static on the model reader ─────────────
 
@@ -224,6 +245,10 @@ class EntityPathTest {
      * <p>It is asserted here and not through {@code ModelReader.resolveRelPath}, which now DELEGATES to
      * {@code resolve} and so could only agree with it tautologically. The test above keeps the reader's own
      * spelling exercised at the boundary its callers use.
+     *
+     * <p><b>What it does not buy.</b> It constrains the algebra, not a caller's choice of base — the same
+     * convention error recurred one commit later in a CALL SITE that resolved against a placeholder element
+     * name. A base choice needs its own test where it is made.
      */
     @Test
     void resolveInvertsRelativizeOverEveryPair() {
@@ -274,7 +299,38 @@ class EntityPathTest {
         assertEquals(EntityPath.of("/X"), EntityPath.of("/A/B").resolve("../../../X"),
                 "more climbs than the base has segments clamp at the root level rather than failing");
         assertEquals("/X", ModelReader.resolveRelPath("/A/B", "../../../X"),
-                "…which is exactly what the reader's callers already got");
+                "…and the reader's own spelling reaches it, which is the boundary its callers use");
+    }
+
+    /**
+     * A TRAILING separator on the base must not shift the answer — the one divergence from the string spelling
+     * this replaced, found by a cold review because it is absolute and therefore inside the contract, while
+     * every other pinned exception is not.
+     *
+     * <p>Kept, the empty last segment absorbs one {@code ..}: {@code /A/B/} with {@code ../X} would name
+     * {@code /A/B/X} where the base itself names {@code /A/B}. That is a different element, silently. Reachable
+     * from a hand-authored model whose computation element carries no name, since {@code ModelReader} builds
+     * the base as {@code groupPath + "/" + name}.
+     */
+    @Test
+    void aTrailingSeparatorOnTheBaseDoesNotShiftTheAnswer() {
+        assertEquals(EntityPath.of("/A/X"), EntityPath.of("/A/B/").resolve("../X"));
+        assertEquals(EntityPath.of("/A/B"), EntityPath.of("/A/B/").resolve(""));
+        assertEquals(EntityPath.of("/A/B/X"), EntityPath.of("/A/B/").resolve("X"));
+        assertEquals(EntityPath.of("/X"), EntityPath.of("/A/B/").resolve("../../X"));
+        assertEquals(EntityPath.of("/A/B"), EntityPath.of("/A/B//").resolve(""),
+                "…and more than one of them, since the segments are dropped rather than counted");
+
+        // Every base in EXTRA_BASES, so the class the round trip cannot carry is still measured somewhere.
+        assertEquals(EntityPath.of("/X"), EntityPath.of("/").resolve("X"),
+                "the root LEVEL is a base with nothing but the leading empty segment");
+        assertEquals(EntityPath.of("/"), EntityPath.of("/").resolve(".."),
+                "…and climbing off it clamps there rather than underflowing");
+        assertEquals(EntityPath.of("/Order//X"), EntityPath.of("/Order//Total").resolve("../X"),
+                "an INTERIOR empty segment is counted and SURVIVES, unlike a trailing one — as it did in the "
+                        + "string spelling, whose split kept interior empties and discarded trailing ones");
+        assertEquals(EntityPath.of("/Order/X"), EntityPath.of("/Order//").resolve("X"),
+                "two trailing empties drop together, leaving the named group as the base");
     }
 
     /**

@@ -74,25 +74,28 @@ class AbsolutePathCorrectiveTest {
     }
 
     /**
-     * With no {@code --group} to resolve against, the corrective says so rather than inventing a base.
+     * A resolvable value with no group to resolve it against: the corrective says so rather than inventing a
+     * base. {@code rule eval} is the verb with no {@code --group} option.
      *
-     * <p>{@code rule eval} is the verb without a {@code --group} option, and its {@code --instance} is
-     * {@code required}: omitting it fails in picocli before {@code call()} runs, so the envelope never appears.
-     * That is how the first version of this test failed — it was measuring argument parsing, not the refusal.
+     * <p>Two things this test got wrong before, both worth keeping written down. Its {@code --instance} is
+     * {@code required}, so omitting it fails in picocli before {@code call()} runs and no envelope appears at
+     * all — the first version was measuring argument parsing, not the refusal. And it passed a BARE name,
+     * which is ambiguous with or without a group, so it never reached this branch once the corrective stopped
+     * guessing; only a {@code ../}-prefixed value does.
      */
     @Test
-    void aBareNameWithNoGroupIsToldWhyNoPathCanBeComputed(@TempDir Path dir) throws Exception {
+    void aResolvableValueWithNoGroupIsToldWhyNoPathCanBeComputed(@TempDir Path dir) throws Exception {
         Path model = CliTestSupport.orderRuled(dir);
         Path instance = dir.resolve("order.json");
         Files.writeString(instance, "{\"Order\":{\"Quantity\":\"150\"}}");
 
         var res = CliTestSupport.run("-m", model.toString(), "rule", "eval",
-                "--field", "CustomerName", "--code", "C1", "--condition", "FieldFilled(CustomerName)",
+                "--field", "../CustomerName", "--code", "C1", "--condition", "FieldFilled(CustomerName)",
                 "--instance", instance.toString());
 
         assertEquals(2, res.code(), res.out());
         String fix = M.readTree(res.out()).path("diagnostics").get(0).path("fix").asText();
-        assertTrue(fix.contains("no --group here"),
+        assertTrue(fix.contains("there is no group here"),
                 () -> "the corrective must say why it cannot compute the path: " + fix);
     }
 
@@ -152,13 +155,48 @@ class AbsolutePathCorrectiveTest {
 
         var res = CliTestSupport.run("-m", model.toString(), "apply", ops.toString(), "--dry-run");
 
-        JsonNode diagnostic = M.readTree(res.out()).path("data").path("results").get(0)
-                .path("diagnostics").get(0);
+        JsonNode diagnostic = unknownOp(res);
         assertEquals("RK_UNKNOWN_OP", diagnostic.path("code").asText(), diagnostic.toString());
         assertFalse(diagnostic.path("summary").asText().contains("' rule add'"),
                 () -> "the summary must quote what the author wrote, not target+\" \"+op: " + diagnostic);
         assertTrue(diagnostic.path("fix").asText().contains("\"target\": \"rule\", \"op\": \"add\""),
                 () -> "and the corrective must split the label into the two keys: " + diagnostic);
+    }
+
+    /**
+     * The same invariant in every other direction, because fixing it in ONE was itself the defect: a cold
+     * review found `{"target":"rule"}` still reported {@code op 'rule '} — a trailing-space value the author
+     * never wrote — and that `{"target":"rule","op":"rule add"}` reported the synthesized
+     * {@code op 'rule rule add'} while WITHHOLDING the split hint, precisely where the author had demonstrably
+     * confused the two spellings.
+     */
+    @Test
+    void theSummaryQuotesWhatWasWrittenInEveryDirection(@TempDir Path dir) throws Exception {
+        Path model = CliTestSupport.orderRuled(dir);
+
+        JsonNode noOp = unknownOp(applyOne(dir, model, "{\"target\": \"rule\"}"));
+        assertFalse(noOp.path("summary").asText().contains("'rule '"),
+                () -> "a trailing space is the same fabrication as a leading one: " + noOp);
+        assertTrue(noOp.path("summary").asText().contains("target 'rule' with no op"), noOp::toString);
+
+        JsonNode both = unknownOp(applyOne(dir, model, "{\"target\": \"rule\", \"op\": \"rule add\"}"));
+        assertFalse(both.path("summary").asText().contains("rule rule add"),
+                () -> "never quote a value assembled from two keys: " + both);
+        assertTrue(both.path("fix").asText().contains("\"target\": \"rule\", \"op\": \"add\""),
+                () -> "…and the split hint is MOST needed here, not withheld: " + both);
+
+        JsonNode empty = unknownOp(applyOne(dir, model, "{}"));
+        assertTrue(empty.path("summary").asText().contains("names no target/op pair"), empty::toString);
+    }
+
+    private static CliTestSupport.Result applyOne(Path dir, Path model, String opRecord) throws Exception {
+        Path ops = Files.createTempFile(dir, "ops", ".json");
+        Files.writeString(ops, "[" + opRecord + "]");
+        return CliTestSupport.run("-m", model.toString(), "apply", ops.toString(), "--dry-run");
+    }
+
+    private static JsonNode unknownOp(CliTestSupport.Result res) throws Exception {
+        return M.readTree(res.out()).path("data").path("results").get(0).path("diagnostics").get(0);
     }
 
     /**
@@ -180,6 +218,70 @@ class AbsolutePathCorrectiveTest {
 
         assertTrue(res.out().contains("did you mean /Order/CustomerName?"),
                 () -> "the batch path must not be the one place the corrective is lost: " + res.out());
+    }
+
+    /**
+     * The corrective proposes a path for ONE value shape and refuses to guess for the rest — the correction of
+     * a defect the first version of this class did not cover.
+     *
+     * <p>That version resolved every relative value against a placeholder element name, and for anything not
+     * starting with {@code ../} the placeholder SURVIVED into the answer: {@code --field CustomerName} under
+     * {@code /Order} was told <em>"did you mean /Order/TheRuleBeingAuthored/CustomerName?"</em>, at all six
+     * call sites. No test caught it because none exercised a relative value without the {@code ../} prefix —
+     * the round-trip lock in {@code EntityPathTest} constrains the algebra, not a caller's choice of base.
+     *
+     * <p>A corrective is copied without being checked, so a confident wrong path is strictly worse than the
+     * generic text it replaced. Every shape below is genuinely ambiguous without consulting the model.
+     */
+    @Test
+    void anAmbiguousRelativeValueGetsNoGuessAndNoPlaceholder(@TempDir Path dir) throws Exception {
+        Path model = CliTestSupport.orderRuled(dir);
+
+        for (String ambiguous : java.util.List.of(
+                "CustomerName", "./CustomerName", "Order/CustomerName", "Items*/Amount",
+                "examples/models/order-ruled.dm.json")) {
+            var res = CliTestSupport.run("-m", model.toString(), "rule", "check",
+                    "--group", "/Order", "--field", ambiguous, "--code", "C1",
+                    "--condition", "FieldFilled(CustomerName)");
+            String fix = fixOf(res);
+
+            assertFalse(fix.contains("TheRuleBeingAuthored"),
+                    () -> ambiguous + ": a placeholder element name must never reach the author: " + fix);
+            assertFalse(fix.contains("did you mean"),
+                    () -> ambiguous + ": the value does not say what it meant, so no path may be proposed: " + fix);
+            assertTrue(fix.contains("model describe"),
+                    () -> ambiguous + ": point at where the model's own paths can be read: " + fix);
+        }
+    }
+
+    /** …and no branch synthesizes an example from the rejected value, which produced an unusable path. */
+    @Test
+    void noCorrectiveProposesAPathTheGateWouldRefuseAgain(@TempDir Path dir) throws Exception {
+        Path model = CliTestSupport.orderRuled(dir);
+        Path instance = dir.resolve("order.json");
+        Files.writeString(instance, "{\"Order\":{\"Quantity\":\"150\"}}");
+
+        // `rule eval` has no --group, so this is the branch that used to concatenate: e.g. /Order/../CustomerName
+        var noGroup = CliTestSupport.run("-m", model.toString(), "rule", "eval",
+                "--field", "../CustomerName", "--code", "C1", "--condition", "FieldFilled(CustomerName)",
+                "--instance", instance.toString());
+        // `/../` and not `..`: the convention sentence legitimately names the `../Field` spelling. What must not
+        // appear is a PATH with a climb inside it, which isAbsoluteEntityPath admits and the model rejects.
+        assertFalse(fixOf(noGroup).contains("/../"),
+                () -> "an example path containing a climb passes the shape gate and fails at the model: "
+                        + fixOf(noGroup));
+
+        // `/` and the empty string name the root LEVEL, which holds groups — no base for a field path.
+        for (String rootish : java.util.List.of("/", "")) {
+            var res = CliTestSupport.run("-m", model.toString(), "rule", "check",
+                    "--group", rootish, "--field", "../CustomerName", "--code", "C1",
+                    "--condition", "FieldFilled(CustomerName)");
+            String fix = fixOf(res);
+            assertFalse(fix.contains("//"),
+                    () -> "'" + rootish + "': a doubled separator is not a path anyone can use: " + fix);
+            assertTrue(fix.contains("root LEVEL"),
+                    () -> "'" + rootish + "': say why there is no base, rather than printing a hole: " + fix);
+        }
     }
 
     private static String fixOf(CliTestSupport.Result res) {

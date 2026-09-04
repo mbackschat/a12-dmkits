@@ -199,8 +199,7 @@ public final class ComputationSpec {
 
     /** …and with a corrective computed from the value, where the code's generic one would not describe it. */
     private static Parsed refusal(RkCode code, String summary, String arg, String fix) {
-        return new Parsed(null, null, Diagnostic.precheck(java.util.Optional.of(code.code()), summary,
-                Diagnostic.Where.arg(null, arg), java.util.Optional.of(fix), java.util.Optional.empty()));
+        return new Parsed(null, null, Diagnostic.precheck(code, summary, Diagnostic.Where.arg(null, arg), fix));
     }
 
     private static List<LocalizedText> messages(JsonNode spec) {

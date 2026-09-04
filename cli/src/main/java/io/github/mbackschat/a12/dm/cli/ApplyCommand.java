@@ -494,7 +494,7 @@ final class ApplyCommand extends BaseCommand {
                     // to ride in it — the standalone verb carries the same text in the diagnostic's `fix`.
                     throw new IllegalArgumentException(
                             ModelPaths.notAnAbsoluteEntityPath("rule add 'field'", field) + " — "
-                            + ModelPaths.absoluteEntityPathFix("'field'", field,
+                            + ModelPaths.absoluteEntityPathFix("field", field,
                                     op.hasNonNull("group") ? op.get("group").asText() : null));
                 }
                 // the rule group defaults to the error field's parent; `group` overrides it (mirrors the standalone
@@ -947,10 +947,25 @@ final class ApplyCommand extends BaseCommand {
     private static String unknownOpSummary(JsonNode op) {
         String target = op.path("target").asText("");
         String verb = op.path("op").asText("");
+        boolean hasTarget = op.hasNonNull("target");
+        if (target.isEmpty() && verb.isEmpty()) {
+            return hasTarget || op.hasNonNull("op")
+                    ? "this op-record's target/op pair is empty"
+                    : "this op-record names no target/op pair";
+        }
         if (target.isEmpty()) {
-            return verb.isEmpty()
-                    ? "this op-record names no target/op pair"
-                    : "apply does not support op '" + verb + "' with no target";
+            return "apply does not support op '" + verb + "' with " + (hasTarget ? "an empty" : "no") + " target";
+        }
+        if (verb.isEmpty()) {
+            // Never `target + " " + verb` here: that printed `op 'rule '`, a trailing-space value the author
+            // did not write — the same defect as the leading-space case below, found by a cold review one
+            // commit after it was fixed in only one direction.
+            return "apply does not support target '" + target + "' with no op";
+        }
+        if (labelOf(verb) != null) {
+            // `op` already holds a whole label. Concatenating produced `op 'rule rule add'`, a value assembled
+            // from two keys and quoted as if written — so each key is quoted as itself and the fix splits it.
+            return "apply does not support target '" + target + "' with op '" + verb + "'";
         }
         return "apply does not support op '" + target + " " + verb + "'";
     }
@@ -967,7 +982,11 @@ final class ApplyCommand extends BaseCommand {
      */
     private static String unknownOpFix(JsonNode op) {
         String verb = op.path("op").asText("");
-        if (op.path("target").asText("").isEmpty() && labelOf(verb) != null) {
+        // The split hint fires whenever `op` HOLDS a label, whether or not a target came with it: an author who
+        // wrote both {"target":"rule","op":"rule add"} has demonstrably confused the two spellings, and that is
+        // exactly when withholding the correction is worst. (It was withheld there until a cold review, because
+        // the branch was gated on the target being absent.)
+        if (labelOf(verb) != null) {
             String[] halves = verb.split(" ", 2);
             return "an op-record spells that as TWO keys: {\"target\": \"" + halves[0] + "\", \"op\": \""
                     + halves[1] + "\", …} — the space-joined form is the label, not the `op` value";
