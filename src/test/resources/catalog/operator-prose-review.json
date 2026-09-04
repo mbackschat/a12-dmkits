@@ -1293,6 +1293,16 @@
     },
     {
       "operator": "GroupFilled",
+      "lane": "CONSTRAINT",
+      "ordinal": 1,
+      "digest": "sha256:15c00b5fb9edcc2c4ffd746d79d7529c7168afb27282c670a85e0c635bdcbe91",
+      "classifications": [
+        "REJECTION"
+      ],
+      "evidence": []
+    },
+    {
+      "operator": "GroupFilled",
       "lane": "GOTCHA",
       "ordinal": 0,
       "digest": "sha256:ba3643309d446bff111da7eab981d408d73e9b38b05fdeb61ca966dcede8aa37",
@@ -9451,6 +9461,48 @@
       ]
     },
     {
+      "id": "literal.GroupFilled.constraint1.MVK_NO_WILDCARD",
+      "operator": "GroupFilled",
+      "kind": "CONDITION",
+      "units": [
+        {
+          "lane": "CONSTRAINT",
+          "ordinal": 1
+        }
+      ],
+      "expected": {
+        "verdict": "REJECTED",
+        "code": "MVK_NO_WILDCARD"
+      },
+      "evidence": [
+        {
+          "type": "CLAIM_PROBE",
+          "id": "GroupFilled.repeatable-operand-needs-the-error-field-inside"
+        }
+      ]
+    },
+    {
+      "id": "literal.GroupFilled.constraint1.MVK_NO_WILDCARDS_ALLOWED",
+      "operator": "GroupFilled",
+      "kind": "CONDITION",
+      "units": [
+        {
+          "lane": "CONSTRAINT",
+          "ordinal": 1
+        }
+      ],
+      "expected": {
+        "verdict": "REJECTED",
+        "code": "MVK_NO_WILDCARDS_ALLOWED"
+      },
+      "evidence": [
+        {
+          "type": "CLAIM_PROBE",
+          "id": "GroupFilled.non-repeatable-operand-is-admitted-at-either-locus"
+        }
+      ]
+    },
+    {
       "id": "literal.NumberOfFilledFields.constraint3.MVK_DUPLICATE_PARAM1",
       "operator": "NumberOfFilledFields",
       "kind": "CONDITION",
@@ -9489,6 +9541,10 @@
         {
           "type": "CLAIM_PROBE",
           "id": "NumberOfFilledFields.group-containment"
+        },
+        {
+          "type": "CLAIM_PROBE",
+          "id": "NumberOfFilledFields.group-containment-reversed"
         }
       ]
     },
@@ -9510,6 +9566,10 @@
         {
           "type": "CLAIM_PROBE",
           "id": "Sum.group-containment"
+        },
+        {
+          "type": "CLAIM_PROBE",
+          "id": "Sum.group-containment-reversed"
         }
       ]
     },
@@ -9552,6 +9612,10 @@
         {
           "type": "CLAIM_PROBE",
           "id": "MinValue.group-containment"
+        },
+        {
+          "type": "CLAIM_PROBE",
+          "id": "MinValue.group-containment-parent-first"
         }
       ]
     },
@@ -9573,6 +9637,10 @@
         {
           "type": "CLAIM_PROBE",
           "id": "MaxValue.group-containment"
+        },
+        {
+          "type": "CLAIM_PROBE",
+          "id": "MaxValue.group-containment-parent-first"
         }
       ]
     },
@@ -9594,6 +9662,10 @@
         {
           "type": "CLAIM_PROBE",
           "id": "NumberOfDifferentValues.group-containment"
+        },
+        {
+          "type": "CLAIM_PROBE",
+          "id": "NumberOfDifferentValues.group-containment-parent-first"
         }
       ]
     },

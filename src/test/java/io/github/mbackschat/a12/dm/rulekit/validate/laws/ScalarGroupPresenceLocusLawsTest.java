@@ -7,38 +7,52 @@ import java.util.Map;
 import java.util.stream.Collectors;
 
 import io.github.mbackschat.a12.dm.Fixtures;
+import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft;
+import io.github.mbackschat.a12.dm.modelkit.FieldKind;
 import io.github.mbackschat.a12.dm.rulekit.validate.ValidationResult;
 import org.junit.jupiter.api.Test;
 
 /**
- * KERNEL-FINDINGS §9 — <b>what scalar {@code GroupFilled} admits is decided by the OPERAND's repeatability,
- * not by where the rule sits</b> (measured 2026-09-04). A repeatable operand needs the rule anchored inside it
- * ({@code MVK_NO_WILDCARD} from outside — the same class the unstarred count draws, [KF185]); a non-repeatable
- * operand, a root group included, carries no repetition to bind and is admitted from either locus.
+ * KERNEL-FINDINGS §1 — <b>scalar {@code GroupFilled} admission turns on the OPERAND's repeatability and the
+ * ERROR FIELD's locus. The rule's own group decides neither</b> (measured 2026-09-04). A repeatable operand is
+ * admitted only when the error field sits inside a repetition; a non-repeatable operand — a root group
+ * included — carries no repetition to bind and is admitted either way.
  *
  * <p><b>Why this exists.</b> {@code skill/SKILL.md} told agents that plain {@code GroupFilled(Group)} is
- * "valid only from <em>inside</em> the iterating group, never as a model-level reference" — true of a
- * repeatable operand and false of every other one, so the two admitted model-level rows below were being
- * authored around. The findings record already carried both halves separately ([KF185]'s locus table for the
- * repeatable arm, §9's root-group bullet for root groups), which is precisely why the skill's over-general
- * sentence survived: each half was documented and no surface held them side by side.
+ * "valid only from <em>inside</em> the iterating group, never as a model-level reference", which is false for
+ * every non-repeatable operand.
  *
- * <p><b>The spelling axis is varied on purpose.</b> [KF185] closes by noting that a shape's class can differ
- * between the relative and the absolute spelling, so a table written only in absolute paths would leave the
- * claim scoped to a spelling nobody stated. Both spellings agree on the repeatability split here; the one
- * place they part is unrelated to it — a relative group name resolves from the HOST group only, so
- * {@code ShippingAddress} seen from {@code /Order/Items} is {@code MVK_INVALID_ENTITY}. There is no upward
- * search for a group either, exactly as there is none for a field (§10).
+ * <p><b>The first version of this file got the AXIS wrong, and that is the lesson worth keeping.</b> It paired
+ * "outside" as {@code (rule group /Order, error field ../CustomerName, conjunct FieldFilled(CustomerName))}
+ * against "inside" as {@code (rule group /Order/Items, error field ../Sku, conjunct FieldFilled(Sku))} — three
+ * variables moving together — and attributed the split to the rule's group. {@link #theRulesGroupIsNotTheAxis}
+ * is the row that refutes it: hold the condition and the ABSOLUTE error field fixed, move only
+ * {@code --group}, and nothing changes. [KF185]'s own heading had said "the error field's LOCUS selects the
+ * class" all along, and its lock
+ * {@code GroupListDiagnosticIdentityLawsTest.theErrorFieldLocusSelectsTheClassForAnUnstarredRepeatableOperand}
+ * already held the rule group fixed across every row. A cold review caught it; the corrected table below moves
+ * one variable per test.
  *
- * <p><b>Every row carries the error-field conjunct, and that is load-bearing.</b> {@code GroupFilled} alone
- * satisfies the error-field reference only when it ENCLOSES the error field (the catalog's own
- * {@code GroupFilled} gotcha), so an operand naming any other group draws
- * {@code MVK_ERROR_FIELD_NOT_REFERENCED} — measured, on the first attempt. Without the conjunct the admitted
- * rows would report that unrelated class and the table would read as a locus law.
+ * <p><b>What this file adds over that lock</b> is the second axis: it holds the error field fixed and moves the
+ * OPERAND across the repeatability boundary, which is the half the skill sentence got wrong. The error-field
+ * pair reappears here as the control that separates the two axes, not as a second statement of it — that fact
+ * is owned by the class named above.
  *
- * <p><b>Not here:</b> the negative half of the pair. {@code GroupNotFilled} carries its own
- * {@code MVK_NEG_CONDITION_IN_ITERATION} gate inside an iterating rule (§9), which would move a second
- * variable in every row; its arms are locked with that gate rather than beside this one.
+ * <p><b>The absolute conjunct is deliberate.</b> A relative one (`FieldFilled(Items/Sku)`) resolves from the
+ * rule's group, so moving {@code --group} would silently move what the conjunct names too and the rule-group
+ * control would measure resolution instead of admission. Absolute references resolve identically from every
+ * host, which is what leaves exactly one variable in play.
+ *
+ * <p><b>Why the conjunct is there at all, stated narrowly.</b> A {@code GroupFilled} operand that ENCLOSES the
+ * error field satisfies the error-field reference on its own (the catalog's own {@code GroupFilled} gotcha), so
+ * only the non-enclosing rows actually need it — {@code GroupFilled(/Order)} and
+ * {@code GroupFilled(/Order/Items)} with the error field inside {@code Items} are admitted bare. It is held
+ * constant in every row regardless, because varying it would be a second variable.
+ *
+ * <p><b>The negative sibling is included rather than excluded.</b> An earlier draft left
+ * {@code GroupNotFilled} out on the grounds that {@code MVK_NEG_CONDITION_IN_ITERATION} would move a second
+ * variable; measured, that gate fires in NONE of these rows, because the positive conjunct already guards the
+ * row. So the negative arm doubles the table's reach at no cost — see {@link #theNegativeSiblingSplitsTheSame}.
  */
 class ScalarGroupPresenceLocusLawsTest {
 
@@ -47,75 +61,154 @@ class ScalarGroupPresenceLocusLawsTest {
     private static final String NO_WILDCARDS_ALLOWED = "MVK_NO_WILDCARDS_ALLOWED";
     private static final String INVALID_ENTITY = "MVK_INVALID_ENTITY";
 
-    /** The model-level host: the rule sits at the root group with its error field outside every repetition. */
-    private static final String OUTSIDE_GROUP = "/Order";
-    private static final String OUTSIDE_FIELD = "../CustomerName";
+    /** Every row hosts the rule here; only {@link #theRulesGroupIsNotTheAxis} moves it. */
+    private static final String HOST = "/Order";
 
-    /** The inside host: the rule sits at the repeatable group, so it iterates its rows. */
-    private static final String INSIDE_GROUP = "/Order/Items";
-    private static final String INSIDE_FIELD = "../Sku";
+    /** The error field OUTSIDE every repetition, and its absolute conjunct. */
+    private static final String OUT = "../CustomerName";
+    private static final String OUT_REF = "FieldFilled(/Order/CustomerName)";
 
+    /** The error field INSIDE the repeatable {@code Items}, and its absolute conjunct. */
+    private static final String IN = "../Items/Sku";
+    private static final String IN_REF = "FieldFilled(/Order/Items/Sku)";
+
+    /**
+     * Axis 1 — the operand crosses the repeatability boundary while the rule group, the error field and the
+     * conjunct all stay fixed. This is the axis the skill sentence got wrong.
+     */
     @Test
-    void repeatabilityOfTheOperandDecidesAdmission() {
+    void operandRepeatabilityDecidesAdmission() {
         Map<String, String> actual = new LinkedHashMap<>();
-        actual.put("non-repeatable operand, from outside", outside("/Order/ShippingAddress"));
-        actual.put("non-repeatable operand, from inside the repeatable group", inside("/Order/ShippingAddress"));
-        actual.put("root group, from outside", outside("/Order"));
-        actual.put("root group, from inside the repeatable group", inside("/Order"));
-        actual.put("repeatable operand, from outside", outside("/Order/Items"));
-        actual.put("repeatable operand, from inside itself", inside("/Order/Items"));
+        actual.put("non-repeatable operand", verdict(HOST, OUT, OUT_REF + " And GroupFilled(/Order/ShippingAddress)"));
+        actual.put("the root group", verdict(HOST, OUT, OUT_REF + " And GroupFilled(/Order)"));
+        actual.put("repeatable operand", verdict(HOST, OUT, OUT_REF + " And GroupFilled(/Order/Items)"));
+        actual.put("repeatable operand, STARRED", verdict(HOST, OUT, OUT_REF + " And GroupFilled(/Order/Items*)"));
 
         Map<String, String> expected = new LinkedHashMap<>();
-        expected.put("non-repeatable operand, from outside", ADMITTED);
-        expected.put("non-repeatable operand, from inside the repeatable group", ADMITTED);
-        expected.put("root group, from outside", ADMITTED);
-        expected.put("root group, from inside the repeatable group", ADMITTED);
-        // The only pair the locus moves, and it moves because the operand has rows to bind — not because a
-        // model-level reference is barred.
-        expected.put("repeatable operand, from outside", NO_WILDCARD);
-        expected.put("repeatable operand, from inside itself", ADMITTED);
-        assertEquals(expected, actual, "the operand's repeatability selects the class, not the rule's locus");
+        expected.put("non-repeatable operand", ADMITTED);
+        expected.put("the root group", ADMITTED);
+        // The only operand with rows to bind, and the only one refused from this error-field locus.
+        expected.put("repeatable operand", NO_WILDCARD);
+        expected.put("repeatable operand, STARRED", NO_WILDCARDS_ALLOWED);
+        assertEquals(expected, actual, "a non-repeatable operand carries no repetition to bind, so it is admitted");
     }
 
+    /**
+     * Axis 2 — the error field crosses INTO a repetition while the operand stays the repeatable group. The
+     * conjunct follows the error field because the reference gate demands it; both spellings are absolute, so
+     * nothing about resolution moves with it.
+     */
     @Test
-    void theSplitIsTheSameInTheRelativeSpelling() {
+    void theErrorFieldsLocusDecidesItForARepeatableOperand() {
         Map<String, String> actual = new LinkedHashMap<>();
-        actual.put("relative non-repeatable child, from its parent", outside("ShippingAddress"));
-        actual.put("relative repeatable child, from its parent", outside("Items"));
-        actual.put("relative name of a group the host does not contain", inside("ShippingAddress"));
+        actual.put("error field outside every repetition",
+                verdict(HOST, OUT, OUT_REF + " And GroupFilled(/Order/Items)"));
+        actual.put("error field inside the operand's own repetition",
+                verdict(HOST, IN, IN_REF + " And GroupFilled(/Order/Items)"));
 
         Map<String, String> expected = new LinkedHashMap<>();
-        expected.put("relative non-repeatable child, from its parent", ADMITTED);
-        expected.put("relative repeatable child, from its parent", NO_WILDCARD);
-        // Not part of the repeatability split: a relative group name resolves from the host group and there is
-        // no upward search, so the operand names nothing at all from this locus.
-        expected.put("relative name of a group the host does not contain", INVALID_ENTITY);
-        assertEquals(expected, actual, "both spellings agree on the split that this file is about");
+        expected.put("error field outside every repetition", NO_WILDCARD);
+        expected.put("error field inside the operand's own repetition", ADMITTED);
+        assertEquals(expected, actual, "primarily locked by GroupListDiagnosticIdentityLawsTest; here it is the "
+                + "control that separates the error-field axis from the operand axis above");
     }
 
+    /**
+     * The row that refutes this file's own first framing: the rule's group is inert. The condition and the
+     * ABSOLUTE error field are byte-identical across the pair, so {@code --group} is the only thing that moves.
+     */
     @Test
-    void aStarIsRefusedFromEitherLocus() {
+    void theRulesGroupIsNotTheAxis() {
+        String condition = IN_REF + " And GroupFilled(/Order/Items)";
         Map<String, String> actual = new LinkedHashMap<>();
-        actual.put("starred operand, from outside", outside("/Order/Items*"));
-        actual.put("starred operand, from inside itself", inside("/Order/Items*"));
+        actual.put("rule hosted at the root", verdict("/Order", IN, condition));
+        actual.put("rule hosted at the repeatable group itself", verdict("/Order/Items", "../Sku", condition));
 
         Map<String, String> expected = new LinkedHashMap<>();
-        expected.put("starred operand, from outside", NO_WILDCARDS_ALLOWED);
-        expected.put("starred operand, from inside itself", NO_WILDCARDS_ALLOWED);
-        assertEquals(expected, actual, "the scalar slot bars the star from both loci — it is not a locus gate");
+        expected.put("rule hosted at the root", ADMITTED);
+        expected.put("rule hosted at the repeatable group itself", ADMITTED);
+        assertEquals(expected, actual, "same condition, same absolute error field, different host — no change");
     }
 
-    private static String outside(String operand) {
-        return verdict(OUTSIDE_GROUP, OUTSIDE_FIELD, "FieldFilled(CustomerName) And GroupFilled(" + operand + ")");
+    /** The negative sibling splits identically, and the iteration gate fires in none of these rows. */
+    @Test
+    void theNegativeSiblingSplitsTheSame() {
+        Map<String, String> actual = new LinkedHashMap<>();
+        actual.put("non-repeatable operand", verdict(HOST, OUT, OUT_REF + " And GroupNotFilled(/Order/ShippingAddress)"));
+        actual.put("repeatable operand, error field outside",
+                verdict(HOST, OUT, OUT_REF + " And GroupNotFilled(/Order/Items)"));
+        actual.put("repeatable operand, error field inside",
+                verdict(HOST, IN, IN_REF + " And GroupNotFilled(/Order/Items)"));
+
+        Map<String, String> expected = new LinkedHashMap<>();
+        expected.put("non-repeatable operand", ADMITTED);
+        expected.put("repeatable operand, error field outside", NO_WILDCARD);
+        expected.put("repeatable operand, error field inside", ADMITTED);
+        assertEquals(expected, actual, "no MVK_NEG_CONDITION_IN_ITERATION anywhere — the conjunct guards the row");
     }
 
-    private static String inside(String operand) {
-        return verdict(INSIDE_GROUP, INSIDE_FIELD, "FieldFilled(Sku) And GroupFilled(" + operand + ")");
+    /**
+     * The RELATIVE spelling is where the rule's group does matter — for RESOLUTION, never for admission. This
+     * is the distinction whose absence made the wrong axis so easy to write: both effects are reached by
+     * changing {@code --group}, and only one of them is about whether the operand binds.
+     */
+    @Test
+    void aRelativeSpellingResolvesFromTheRulesGroup() {
+        Map<String, String> actual = new LinkedHashMap<>();
+        actual.put("child name, from its parent", verdict(HOST, OUT, OUT_REF + " And GroupFilled(ShippingAddress)"));
+        actual.put("the same name, from a host that does not contain it",
+                verdict("/Order/Items", "../Sku", IN_REF + " And GroupFilled(ShippingAddress)"));
+        actual.put("the ROOT's own bare name, from the root", verdict(HOST, OUT, OUT_REF + " And GroupFilled(Order)"));
+        actual.put("parent navigation, from inside", verdict("/Order/Items", "../Sku", IN_REF + " And GroupFilled(..)"));
+
+        Map<String, String> expected = new LinkedHashMap<>();
+        expected.put("child name, from its parent", ADMITTED);
+        expected.put("the same name, from a host that does not contain it", INVALID_ENTITY);
+        // Not an admission verdict: a bare root name is not a child of itself. `..` is how an author reaches out.
+        expected.put("the ROOT's own bare name, from the root", INVALID_ENTITY);
+        expected.put("parent navigation, from inside", ADMITTED);
+        assertEquals(expected, actual, "relative resolution is from the rule's group — a separate axis from admission");
+    }
+
+    /**
+     * The confound the single-root rows cannot see: in the order fixture every root reference IS the error
+     * field's enclosing group, so "a root group is admitted" and "the enclosing group is admitted" fit every
+     * row equally. A second, disjoint root separates them.
+     */
+    @Test
+    void aNonEnclosingNonRepeatableRootIsAdmittedFromInsideARepetition() {
+        Map<String, String> actual = new LinkedHashMap<>();
+        actual.put("non-enclosing non-repeatable root, error field inside the other root",
+                verdictOn(TWO_ROOT, "/Persons", "../Name",
+                        "FieldFilled(/Persons/Name) And GroupFilled(/Header)"));
+        actual.put("the ENCLOSING repeatable root — control",
+                verdictOn(TWO_ROOT, "/Persons", "../Name",
+                        "FieldFilled(/Persons/Name) And GroupFilled(/Persons)"));
+        actual.put("that repeatable root seen from outside every repetition",
+                verdictOn(TWO_ROOT, "/Header", "../Title",
+                        "FieldFilled(/Header/Title) And GroupFilled(/Persons)"));
+
+        Map<String, String> expected = new LinkedHashMap<>();
+        expected.put("non-enclosing non-repeatable root, error field inside the other root", ADMITTED);
+        expected.put("the ENCLOSING repeatable root — control", ADMITTED);
+        // The repeatability rule holds for a ROOT operand too, which the single-root fixture cannot show.
+        expected.put("that repeatable root seen from outside every repetition", NO_WILDCARD);
+        assertEquals(expected, actual, "non-repeatable is the reason a root is admitted — not that it is a root");
+    }
+
+    /** A repeatable root beside a plain one — the only shape that separates "root" from "enclosing". */
+    private static final String TWO_ROOT = DocumentModelDraft.named("multiform").locale("en_US")
+            .rootGroup("Header", h -> h.field("Title", FieldKind.STRING))
+            .rootGroup("Persons", p -> p.repeatable(50).field("Name", FieldKind.STRING))
+            .build().toJson();
+
+    private static String verdict(String group, String errorField, String condition) {
+        return verdictOn(Fixtures.orderJson(), group, errorField, condition);
     }
 
     /** The kernel's verdict — {@link KernelLaws#ADMITTED} or the comma-joined classes it reported. */
-    private static String verdict(String group, String errorField, String condition) {
-        ValidationResult r = KernelLaws.checkModel(Fixtures.orderJson(), group, errorField, condition);
+    private static String verdictOn(String json, String group, String errorField, String condition) {
+        ValidationResult r = KernelLaws.checkModel(json, group, errorField, condition);
         return r.ok() ? ADMITTED : r.diagnostics().stream()
                 .map(d -> d.code().orElse("(no code: " + d.summary() + ")")).collect(Collectors.joining(","));
     }

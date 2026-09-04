@@ -1319,7 +1319,8 @@
       "returns": "boolean",
       "meaning": "True iff the referenced group has admitted content. For a repeatable group the row itself is content, so an empty, freshly created row counts as filled. For a non-repeatable group, content means a formally admitted descendant value or an instantiated repeatable descendant row.",
       "constraints": [
-        "the operand is a group (or root group) reference, never a field"
+        "the operand is a group (or root group) reference, never a field",
+        "a REPEATABLE operand needs the error field inside a repetition: with the error field outside every repetition it is refused MVK_NO_WILDCARD, and with the error field inside the operand's own repetition it is admitted. A NON-repeatable operand — a root group included — carries no repetition to bind and is admitted at either locus. The rule's own group is not the axis: the same condition with the same absolute error field is admitted from either host. A star is always refused MVK_NO_WILDCARDS_ALLOWED"
       ],
       "gotchas": [
         {

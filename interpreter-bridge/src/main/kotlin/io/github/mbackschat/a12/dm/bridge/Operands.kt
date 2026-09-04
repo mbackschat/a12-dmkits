@@ -334,9 +334,12 @@ internal class Operands(private val mapping: Mapping) {
          * nowhere to put it is `CurrentRepetition`'s group argument, the aggregate group scopes and the group
          * lists, whose refs are bare `GroupRef`/`GroupListRef` values.
          *
-         * <p>That residual is over-strict rather than protective — the kernel admits `AllGroupsFilled($A, $B)`
-         * inside a `Having` filter (measured 2026-09-04) — so this refusal makes a legal model unreadable and
-         * is tracked as DEV-API-GAPS `DG49`, not left as a settled boundary.
+         * <p>That residual is over-strict rather than protective where it has been measured: the kernel admits
+         * `AllGroupsFilled($A, $B)` and the marked group COUNT aggregates inside a `Having` filter beside an
+         * in-scope conjunct (`validate.laws.HavingFilterConditionLeafLawsTest`, 2026-09-04), so this refusal
+         * makes a legal model unreadable. Tracked as DEV-API-GAPS `DG49`, which enumerates all three refusal
+         * sites — this one, `aggregateOperand` and `indexedGroup` — and says which families' admission is
+         * still unmeasured, rather than leaving any of it as a settled boundary.
          */
         private fun requireNotCorrelated(source: Expr.EntitySource, what: String) {
             if (source.outer) {

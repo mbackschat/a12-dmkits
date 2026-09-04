@@ -99,6 +99,24 @@ class RootLevelParentSpellingTest {
                 () -> "the corrective must name the real situation rather than a missing group: " + fix);
     }
 
+    /**
+     * The EMPTY STRING is the other root-level spelling, and it is asserted here because two surfaces now cite
+     * this class for it — every add-verb's `--parent` help and {@code ParamKind}'s {@code entityRef} note. It
+     * was the undocumented original route; `/` was added beside it, so a regression that dropped the empty form
+     * would break the spelling those texts still name (a cold review, 2026-09-04).
+     */
+    @Test
+    void theEmptyStringNamesTheRootLevelToo(@TempDir Path dir) throws Exception {
+        Path model = CliTestSupport.orderRuled(dir);
+
+        var res = CliTestSupport.run("-m", model.toString(), "group", "add", "--parent", "", "--name", "SecondRoot");
+
+        assertEquals(0, res.code(), res.err() + res.out());
+        assertEquals("/SecondRoot", M.readTree(res.out()).path("changed").path("added").asText(),
+                "the empty parent must key the root level exactly as `/` does");
+        assertTrue(Files.readString(model).contains("SecondRoot"), "and persist the second root");
+    }
+
     @Test
     void aParentThatGenuinelyDoesNotExistIsStillRefusedAndIsToldTheRootSpelling(@TempDir Path dir)
             throws Exception {

@@ -256,7 +256,61 @@ class HavingFilterConditionLeafLawsTest {
         assertEquals(expected, actual, "the computation arm agrees with validation on all three");
     }
 
+    /**
+     * The same two positions for a group-operand LIST, which is the carrier {@code DG49} is about.
+     *
+     * <p><b>Why it is spelled by hand.</b> rulekit's {@code GroupQuantifierCondition} holds a bare
+     * {@code List<GroupRef>} with no per-operand marker, so {@code AllGroupsFilled($A, $B)} is not authorable
+     * through the typed surface at all — the same type-level erasure API-FINDINGS 135 closed for the scalar
+     * pair, one carrier over. Until that record grows the component, a raw condition is the only way to ask the
+     * kernel, exactly as {@code ShortNameTierLawsTest} does for a path form the renderer never emits.
+     *
+     * <p><b>Why it needs to exist.</b> This admission is the measured basis on which {@code DG49} calls our
+     * bridge's refusal over-strict rather than protective, and it was asserted on three prose surfaces — the
+     * gap row, API-FINDINGS 135, and {@code Operands.requireNotCorrelated}'s javadoc — with no test anywhere,
+     * which a cold review found by grepping for it (2026-09-04). A client-side refusal needs a measured kernel
+     * basis, and the measurement has to live somewhere a build can re-run.
+     */
+    @Test
+    void aMarkedGroupOperandLISTObeysTheSameTwoPositions() {
+        Map<String, String> actual = new LinkedHashMap<>();
+        actual.put("MARKED list beside the in-scope conjunct", rawFilterVerdict(
+                "[/Order/Lines/Qty] > 1 And AllGroupsFilled($/Order/Billing, $/Order/Shipping)"));
+        actual.put("UNMARKED list beside the in-scope conjunct", rawFilterVerdict(
+                "[/Order/Lines/Qty] > 1 And AllGroupsFilled(/Order/Billing, /Order/Shipping)"));
+        actual.put("MARKED list as the SOLE filter condition",
+                rawFilterVerdict("AllGroupsFilled($/Order/Billing, $/Order/Shipping)"));
+        actual.put("UNMARKED list as the SOLE filter condition",
+                rawFilterVerdict("AllGroupsFilled(/Order/Billing, /Order/Shipping)"));
+        // The negative quantifier, so the answer is about the group-LIST carrier rather than about one operator.
+        actual.put("MARKED negative list beside the in-scope conjunct", rawFilterVerdict(
+                "[/Order/Lines/Qty] > 1 And NoGroupFilled($/Order/Billing, $/Order/Shipping)"));
+        actual.put("the in-scope conjunct alone, hand-spelled — live control",
+                rawFilterVerdict("[/Order/Lines/Qty] > 1"));
+
+        Map<String, String> expected = new LinkedHashMap<>();
+        expected.put("MARKED list beside the in-scope conjunct", ADMITTED);
+        expected.put("UNMARKED list beside the in-scope conjunct", ADMITTED);
+        expected.put("MARKED list as the SOLE filter condition", NO_ITERATION);
+        expected.put("UNMARKED list as the SOLE filter condition", NO_ITERATION);
+        expected.put("MARKED negative list beside the in-scope conjunct", ADMITTED);
+        expected.put("the in-scope conjunct alone, hand-spelled — live control", ADMITTED);
+        assertEquals(expected, actual, "the group-LIST carrier obeys the scalar pair's gate, marked or not — so "
+                + "the bridge's refusal of a marked list operand is over-strict, not protective (DG49)");
+    }
+
     // ---- fixtures --------------------------------------------------------------------------------
+
+    /**
+     * The same carrier as {@link #filteredCount}, with the filter spelled by hand for a shape the typed surface
+     * cannot express. The surrounding text is the ABSOLUTE form the renderer emits, so a raw row and a typed row
+     * differ only in the filter.
+     */
+    private static String rawFilterVerdict(String rawFilter) {
+        return codes(KernelLaws.checkModel(MODEL, GROUP, "../Marker",
+                "FieldFilled(/Order/Marker) And NumberOfFilledFields(/Order/Lines*/Sku Having ("
+                        + rawFilter + ")) > 0"));
+    }
 
     /** The carrier: a filtered FIELD list on the fill count, guarded by the error field's own presence. */
     private static String filteredCount(Condition filter) {

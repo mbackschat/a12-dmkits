@@ -36,6 +36,12 @@ import org.junit.jupiter.api.Test
  * interpreter, because a divergence between the two kernel arms would make "the kernel" an ambiguous oracle for
  * the rest.
  *
+ * **The generated-Java engine comes from the shared cache**, not a fresh build per case. This task carries
+ * timing-sensitive growth floors (`CharsetPerfTest`), and the project rule is that a new case must not add
+ * in-memory compilation to it; two of the cases below evaluate the SAME condition — the value row and the
+ * message-count row — so keying on the model json collapses their two compiles into one and leaves the class
+ * at four rather than five (a cold review, 2026-09-04).
+ *
  * Own domain: an insurance policy carrying endorsements, each with a premium.
  */
 class CurrentRepetitionOperandStarBindingDiffTest {
@@ -93,7 +99,7 @@ class CurrentRepetitionOperandStarBindingDiffTest {
         val (kDoc, iDoc) = documentsFor(def)
 
         val groovyDynamic = RuntimeLaws.fires(kModel, CODE, kDoc)
-        val engine = RuntimeLaws.kernelJavaEngine(kModel)
+        val engine = RuntimeLaws.sharedKernelJavaEngine(kModel)
         val javaStatic = engine.firedCodesSorted(engine.instance(kDoc)).contains(CODE)
         val interpreter = DmInterpreter(def).validateFull(iDoc).any { it.code == CODE }
 
@@ -133,10 +139,15 @@ class CurrentRepetitionOperandStarBindingDiffTest {
      * **Why the boolean rows above cannot answer this.** `triFires` reads *whether* the code appears, which is
      * identical for a rule that fires once and a rule that fires per row; a12-kernel-lean's reply asked the
      * seam question in exactly that gap ("what does a non-iterating rule DO with a `CurrentRepetition`
-     * operand"), and the honest answer was that the count had never been measured. Reading the fired-code list
-     * per engine settles it, and the same list carries the attachment for free — the pointer says which cell
-     * the message lands on, so "once" and "once per row collapsed by dedup" are distinguishable too, which a
-     * count alone would not be.
+     * operand"), and the honest answer was that the count had never been measured.
+     *
+     * **What discriminates is the LIST LENGTH, and the pointer is only the attachment.** A per-row firing
+     * would attach every message to the identical `/Policy[1]/SettlementTotal`, because the error field sits
+     * outside every repetition — so the pointer cannot separate "once" from "twice", and an engine that
+     * deduplicated two identical messages would look the same either way. The length is what carries the
+     * claim, which is why neither arm of `triMessagePointers` deduplicates. *(An earlier version of this note
+     * had the two instruments the other way round and named dedup as the rival the pointer separates; it is
+     * the rival the pointer CANNOT separate, and the guard against it is the un-deduplicated list.)*
      *
      * **The three-row list is the discriminator.** With one row, once and per-row agree; the filter here admits
      * TWO of three rows, so a rule that iterated its operand's star would produce two messages.
@@ -162,7 +173,7 @@ class CurrentRepetitionOperandStarBindingDiffTest {
 
         val groovyDynamic = RuntimeLaws.messages(kModel, kDoc)
             .filter { it.code() == CODE }.map { it.field() }.sorted()
-        val engine = RuntimeLaws.kernelJavaEngine(kModel)
+        val engine = RuntimeLaws.sharedKernelJavaEngine(kModel)
         val javaStatic = engine.validationSignaturesSorted(engine.instance(kDoc))
             .filter { it.startsWith("$CODE|") }.map { it.substringAfterLast('|') }.sorted()
         val interpreter = DmInterpreter(def).validateFull(iDoc)

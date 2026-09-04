@@ -1124,6 +1124,139 @@
       }
     },
     {
+      "id": "GroupFilled.repeatable-operand-needs-the-error-field-inside",
+      "operator": "GroupFilled",
+      "kind": "CONDITION",
+      "fixture": "ORDER",
+      "trigger": {
+        "group": "/Order",
+        "field": "../CustomerName",
+        "dsl": "FieldFilled(/Order/CustomerName) And GroupFilled(/Order/Items)",
+        "verdict": "REJECTED",
+        "code": "MVK_NO_WILDCARD"
+      },
+      "control": {
+        "group": "/Order",
+        "field": "../Items/Sku",
+        "dsl": "FieldFilled(/Order/Items/Sku) And GroupFilled(/Order/Items)",
+        "verdict": "ACCEPTED"
+      }
+    },
+    {
+      "id": "GroupFilled.non-repeatable-operand-is-admitted-at-either-locus",
+      "operator": "GroupFilled",
+      "kind": "CONDITION",
+      "fixture": "ORDER",
+      "trigger": {
+        "group": "/Order",
+        "field": "../CustomerName",
+        "dsl": "FieldFilled(/Order/CustomerName) And GroupFilled(/Order/Items*)",
+        "verdict": "REJECTED",
+        "code": "MVK_NO_WILDCARDS_ALLOWED"
+      },
+      "control": {
+        "group": "/Order",
+        "field": "../CustomerName",
+        "dsl": "FieldFilled(/Order/CustomerName) And GroupFilled(/Order/ShippingAddress)",
+        "verdict": "ACCEPTED"
+      }
+    },
+    {
+      "id": "Sum.group-containment-reversed",
+      "operator": "Sum",
+      "kind": "CONDITION",
+      "fixture": "BASKET",
+      "trigger": {
+        "group": "/Basket",
+        "field": "../Total",
+        "dsl": "FieldFilled(Total) And Sum(/Basket/Lines*/Packaging, /Basket/Lines*) > 0",
+        "verdict": "REJECTED",
+        "code": "MVK_DUPLICATE_PARAM2"
+      },
+      "control": {
+        "group": "/Basket",
+        "field": "../Total",
+        "dsl": "FieldFilled(Total) And Sum(/Basket/Vouchers*, /Basket/Lines*) > 0",
+        "verdict": "ACCEPTED"
+      }
+    },
+    {
+      "id": "MaxValue.group-containment-parent-first",
+      "operator": "MaxValue",
+      "kind": "CONDITION",
+      "fixture": "BASKET",
+      "trigger": {
+        "group": "/Basket",
+        "field": "../Total",
+        "dsl": "FieldFilled(Total) And MaxValue(/Basket/Lines*, /Basket/Lines*/Packaging) > 0",
+        "verdict": "REJECTED",
+        "code": "MVK_DUPLICATE_PARAM2"
+      },
+      "control": {
+        "group": "/Basket",
+        "field": "../Total",
+        "dsl": "FieldFilled(Total) And MaxValue(/Basket/Vouchers*, /Basket/Lines*) > 0",
+        "verdict": "ACCEPTED"
+      }
+    },
+    {
+      "id": "MinValue.group-containment-parent-first",
+      "operator": "MinValue",
+      "kind": "CONDITION",
+      "fixture": "BASKET",
+      "trigger": {
+        "group": "/Basket",
+        "field": "../Total",
+        "dsl": "FieldFilled(Total) And MinValue(/Basket/Lines*, /Basket/Lines*/Packaging) > 0",
+        "verdict": "REJECTED",
+        "code": "MVK_DUPLICATE_PARAM2"
+      },
+      "control": {
+        "group": "/Basket",
+        "field": "../Total",
+        "dsl": "FieldFilled(Total) And MinValue(/Basket/Vouchers*, /Basket/Lines*) > 0",
+        "verdict": "ACCEPTED"
+      }
+    },
+    {
+      "id": "NumberOfDifferentValues.group-containment-parent-first",
+      "operator": "NumberOfDifferentValues",
+      "kind": "CONDITION",
+      "fixture": "BASKET",
+      "trigger": {
+        "group": "/Basket",
+        "field": "../Total",
+        "dsl": "FieldFilled(Total) And NumberOfDifferentValues(/Basket/Lines*, /Basket/Lines*/Packaging) > 0",
+        "verdict": "REJECTED",
+        "code": "MVK_DUPLICATE_PARAM2"
+      },
+      "control": {
+        "group": "/Basket",
+        "field": "../Total",
+        "dsl": "FieldFilled(Total) And NumberOfDifferentValues(/Basket/Vouchers*, /Basket/Lines*) > 0",
+        "verdict": "ACCEPTED"
+      }
+    },
+    {
+      "id": "NumberOfFilledFields.group-containment-reversed",
+      "operator": "NumberOfFilledFields",
+      "kind": "CONDITION",
+      "fixture": "BASKET",
+      "trigger": {
+        "group": "/Basket",
+        "field": "../Total",
+        "dsl": "FieldFilled(Total) And NumberOfFilledFields(/Basket/Lines*/Packaging, /Basket/Lines*) > 0",
+        "verdict": "REJECTED",
+        "code": "MVK_DUPLICATE_PARAM2"
+      },
+      "control": {
+        "group": "/Basket",
+        "field": "../Total",
+        "dsl": "FieldFilled(Total) And NumberOfFilledFields(/Basket/Vouchers*, /Basket/Lines*) > 0",
+        "verdict": "ACCEPTED"
+      }
+    },
+    {
       "id": "NumberOfFilledFields.duplicate",
       "operator": "NumberOfFilledFields",
       "kind": "CONDITION",
