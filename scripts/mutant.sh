@@ -18,9 +18,9 @@
 # USAGE
 #   scripts/mutant.sh <file> <old-text> <new-text> <test-filter> [gradle-lane]
 #
-# The lane defaults to :adapter:test. Name the ONE lane that owns the control — passing several defeats the
-# point: the first version of this script ran `:adapter:test :cli:test` and timed out at 2 minutes, which is
-# the very cost it exists to remove.
+# The lane is INFERRED from the mutated file's module and printed; pass a 5th argument to override. Name the
+# ONE lane that owns the control — passing several defeats the point: the first version of this script ran
+# `:adapter:test :cli:test` and timed out at 2 minutes, which is the very cost it exists to remove.
 #
 #   scripts/mutant.sh adapter/src/test/kotlin/.../PerfHarness.kt \
 #       'if (seen.single().growth < ceiling) return seen.single()' \
@@ -36,7 +36,26 @@ set -euo pipefail
 cd "$(dirname "${BASH_SOURCE[0]}")/.."
 
 [ $# -ge 4 ] || { sed -n '3,34p' "$0" | sed 's/^# \{0,1\}//'; exit 2; }
-FILE=$1; OLD=$2; NEW=$3; FILTER=$4; LANE=${5:-:adapter:test}
+FILE=$1; OLD=$2; NEW=$3; FILTER=$4
+
+# The lane, INFERRED from where the mutated file lives, because getting it wrong costs a whole run and reads
+# like a finding: `:adapter:test` was the unconditional default, so a mutant planted in core/ or cli/ reported
+# "matched no test" and had to be re-launched with the lane appended (measured twice on 2026-09-04). An explicit
+# 5th argument still wins — the inference is a default, not a policy. Root `:test` owns every module without its
+# own test source set (core, rulekit, modelkit, edit), which is why it is the fallback rather than an error.
+if [ $# -ge 5 ]; then
+  LANE=$5
+else
+  case $FILE in
+    adapter/*) LANE=:adapter:test ;;
+    cli/*) LANE=:cli:test ;;
+    interpreter/*) LANE=:interpreter:jvmTest ;;
+    interpreter-bridge/*) LANE=:interpreter-bridge:test ;;
+    schemakit/*) LANE=:schemakit:test ;;
+    *) LANE=:test ;;
+  esac
+  echo "mutant: lane inferred from the file's module: $LANE (pass a 5th argument to override)"
+fi
 
 [ -f "$FILE" ] || { echo "mutant: no such file: $FILE" >&2; exit 2; }
 if ! git diff --quiet -- "$FILE" || ! git diff --cached --quiet -- "$FILE"; then

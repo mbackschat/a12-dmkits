@@ -97,6 +97,100 @@ class AbsolutePathCorrectiveTest {
     }
 
     /**
+     * The same corrective on the SPEC side, where the key is {@code field} rather than {@code --field} and the
+     * only base available is a declared {@code group} — the field is malformed, so no base can be derived from
+     * it. Three verbs refused this shape with the code's generic "give the value the type the schema declares"
+     * until 2026-09-04; a corrective that fits every rejected value describes none of them.
+     */
+    @Test
+    void theSpecKeysCarryTheComputedCorrectiveToo(@TempDir Path dir) throws Exception {
+        Path model = CliTestSupport.orderRuled(dir);
+        Path ruleSpec = dir.resolve("rule.json");
+        Files.writeString(ruleSpec, """
+                {"field": "../CustomerName", "group": "/Order", "code": "C1",
+                 "condition": "FieldFilled(CustomerName)",
+                 "messages": [{"locale": "en_US", "text": "name it"}]}
+                """);
+        Path compSpec = dir.resolve("comp.json");
+        // `messages` is required and is checked BEFORE the path shape, so omitting it hides the case under test.
+        Files.writeString(compSpec, """
+                {"computedField": "../Total", "group": "/Order", "name": "TotalComp",
+                 "alternatives": [{"operation": "Sum(/Order/Quantity)"}],
+                 "messages": [{"locale": "en_US", "text": "the order total"}]}
+                """);
+
+        var rule = CliTestSupport.run("-m", model.toString(), "rule", "add", ruleSpec.toString(), "--dry-run");
+        var comp = CliTestSupport.run("-m", model.toString(), "computation", "add", compSpec.toString(),
+                "--dry-run");
+
+        // Exit 1, not 2: a spec-key path-shape problem is a REJECTED subject, where an option-value one is a
+        // REFUSED request. Both are the same class of author mistake and both now carry the same corrective.
+        assertEquals(1, rule.code(), rule.out());
+        assertTrue(fixOf(rule).contains("did you mean /Order/CustomerName?"),
+                () -> "rule add's `field` must name the path it meant: " + fixOf(rule));
+        assertEquals(1, comp.code(), comp.out());
+        assertTrue(fixOf(comp).contains("did you mean /Order/Total?"),
+                () -> "computation add's `computedField` must too: " + fixOf(comp));
+    }
+
+    /**
+     * The corrective must not hand back a spelling the tool refuses. An {@code apply} op-record names its op as
+     * two keys, while the supported-op list is space-joined labels, so answering a bad {@code op} value with
+     * the bare list confirms the mistake — measured here on 2026-09-04, when {@code {"op": "rule add"}} was
+     * refused and then told {@code supported ops: …, rule add, …}. The summary also quoted
+     * {@code ' rule add'}, a leading-space value the author never wrote.
+     */
+    @Test
+    void anOpRecordsRefusalNeverEchoesBackAValueTheToolRejects(@TempDir Path dir) throws Exception {
+        Path model = CliTestSupport.orderRuled(dir);
+        Path ops = dir.resolve("mislabelled.json");
+        Files.writeString(ops, """
+                [{"op": "rule add", "field": "/Order/CustomerName", "code": "C1",
+                  "condition": "FieldFilled(CustomerName)",
+                  "messages": [{"locale": "en_US", "text": "name it"}]}]
+                """);
+
+        var res = CliTestSupport.run("-m", model.toString(), "apply", ops.toString(), "--dry-run");
+
+        JsonNode diagnostic = M.readTree(res.out()).path("data").path("results").get(0)
+                .path("diagnostics").get(0);
+        assertEquals("RK_UNKNOWN_OP", diagnostic.path("code").asText(), diagnostic.toString());
+        assertFalse(diagnostic.path("summary").asText().contains("' rule add'"),
+                () -> "the summary must quote what the author wrote, not target+\" \"+op: " + diagnostic);
+        assertTrue(diagnostic.path("fix").asText().contains("\"target\": \"rule\", \"op\": \"add\""),
+                () -> "and the corrective must split the label into the two keys: " + diagnostic);
+    }
+
+    /**
+     * {@code apply}'s rule-add op reaches the author as a message and nothing else — its refusal is a thrown
+     * {@code IllegalArgumentException}, not a diagnostic with a {@code fix} slot — so the corrective has to be
+     * inside the message or it is simply absent on the batch path.
+     */
+    @Test
+    void theApplyOpCarriesItInTheMessageBecauseItHasNoFixSlot(@TempDir Path dir) throws Exception {
+        Path model = CliTestSupport.orderRuled(dir);
+        Path ops = dir.resolve("ops.json");
+        Files.writeString(ops, """
+                [{"target": "rule", "op": "add", "field": "../CustomerName", "group": "/Order", "code": "C1",
+                  "condition": "FieldFilled(CustomerName)",
+                  "messages": [{"locale": "en_US", "text": "name it"}]}]
+                """);
+
+        var res = CliTestSupport.run("-m", model.toString(), "apply", ops.toString(), "--dry-run");
+
+        assertTrue(res.out().contains("did you mean /Order/CustomerName?"),
+                () -> "the batch path must not be the one place the corrective is lost: " + res.out());
+    }
+
+    private static String fixOf(CliTestSupport.Result res) {
+        try {
+            return M.readTree(res.out()).path("diagnostics").get(0).path("fix").asText();
+        } catch (Exception e) {
+            throw new AssertionError("no diagnostic in: " + res.out(), e);
+        }
+    }
+
+    /**
      * A value that climbs past every group resolves to something no {@code --field} can be, and the corrective
      * must say what it resolved to rather than propose it. The old hand-written resolver reported this for
      * {@code ../Field} as well, because it read the first {@code ..} as leaving the group.

@@ -86,8 +86,9 @@ public final class ModelPaths {
      *     value resolves against it, and without it no absolute form can be computed
      */
     public static String absoluteEntityPathFix(String key, String value, String groupPath) {
-        String relativeConvention = " (the relative `../Field` spelling belongs to the typed Java rule API's"
-                + " errorEntityRelPath, not to any CLI path option — every one of those is absolute)";
+        String relativeConvention = " (the relative `../Field` spelling belongs to the typed Java API's stored"
+                + " reference — errorEntityRelPath, computedFieldRelPath — not to any CLI path key, every one"
+                + " of which is absolute)";
         String trimmed = value == null ? "" : value.trim();
         boolean looksRelative = !trimmed.isEmpty() && !trimmed.startsWith("/");
         if (!looksRelative) {

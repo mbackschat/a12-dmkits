@@ -16,7 +16,8 @@ const STATE_RANK: Readonly<Record<TaskState, number>> = {
 };
 
 function usage(): never {
-  console.error("usage: scripts/test-evidence.sh [--print-cutoff] <path-to-gradle-console-plain-log>");
+  console.error("usage: scripts/test-evidence.sh [--print-cutoff | --class <substring>] "
+    + "<path-to-gradle-console-plain-log>");
   process.exit(2);
 }
 
@@ -120,10 +121,65 @@ function pad(value: string, width: number): string {
   return value.padEnd(width, " ");
 }
 
+/**
+ * Whether a result file is evidence of THE RUN THIS LOG DESCRIBES — the load-bearing decision of the class
+ * report, and the one worth locking on its own.
+ *
+ * <p>Both conditions are necessary and each alone is a trap. A fresh file under a task the log does not report
+ * as executed is someone else's run (a parallel build, an editor); a stale file under a task that DID execute
+ * is a class the filter excluded, and its green counts read exactly like a fresh pass. Only the conjunction is
+ * evidence.
+ */
+function ranInThisRun(fresh: boolean, task: TaskState): boolean {
+  return fresh && (task === "EXECUTED" || task === "FAILED");
+}
+
+/**
+ * Per-CLASS evidence: for one named class, did the run this log describes actually execute it?
+ *
+ * The whole-estate report answers "which tasks ran"; a filtered run (`--tests '*Foo*'`) leaves every other
+ * class's XML in place, so "is THIS class green" cannot be read off a task total. Measured 2026-09-04: a
+ * corrective test was judged from a `tests completed` line four times, and twice the judgement was about a
+ * class the run had not touched. This prints the discriminator directly — the file's own freshness, beside the
+ * state of the task that owns it.
+ */
+function reportClass(pattern: string, states: Map<string, TaskState>, cutoff: Cutoff): void {
+  console.log(`class evidence for a name containing "${pattern}":`);
+  console.log();
+  console.log(`${pad("class", 52)} ${pad("task", 26)} ${pad("state", 12)} ${pad("this run", 10)} result`);
+  let matched = false;
+  for (const directory of resultDirectories(ROOT)) {
+    const task = states.get(taskFor(directory)) ?? "ABSENT";
+    for (const file of walkResultFiles(directory)) {
+      const name = path.basename(file).replace(/^TEST-/, "").replace(/\.xml$/, "");
+      if (!name.includes(pattern)) continue;
+      matched = true;
+      const fresh = fs.statSync(file).mtimeMs / 1000 > cutoff.epochSeconds;
+      const counts = xmlCounts(file);
+      const ran = ranInThisRun(fresh, task);
+      const outcome = counts.failures + counts.errors > 0
+        ? `FAILURES=${counts.failures} ERRORS=${counts.errors}`
+        : `${counts.tests} tests, 0 failures`;
+      console.log(`${pad(name.slice(name.lastIndexOf(".") + 1), 52)} ${pad(taskFor(directory), 26)} `
+        + `${pad(task, 12)} ${pad(ran ? "YES" : "no — STALE", 10)} ${outcome}`);
+    }
+  }
+  if (!matched) {
+    console.log("  (no result file matches that name — the class has never run here, so there is no evidence"
+      + " either way; that is not the same as passing)");
+  }
+}
+
 function main(): void {
   const args = process.argv.slice(2);
   const printCutoff = args[0] === "--print-cutoff";
   if (printCutoff) args.shift();
+  let classPattern: string | undefined;
+  if (args[0] === "--class") {
+    args.shift();
+    classPattern = args.shift();
+    if (!classPattern) usage();
+  }
   const logPath = args[0];
   if (!logPath || !fs.existsSync(logPath) || !fs.statSync(logPath).isFile()) usage();
 
@@ -131,6 +187,10 @@ function main(): void {
   const cutoff = freshnessCutoff(logPath, log);
   if (printCutoff) {
     console.log(cutoff.epochSeconds.toFixed(6));
+    return;
+  }
+  if (classPattern) {
+    reportClass(classPattern, taskStates(log), cutoff);
     return;
   }
 
@@ -187,9 +247,14 @@ function main(): void {
   }
 }
 
-try {
-  main();
-} catch (error) {
-  console.error(`test-evidence: ${error instanceof Error ? error.message : String(error)}`);
-  process.exitCode = 1;
+// Only run as a command; a `require` from the test gets the pure helpers without printing a report.
+if (require.main === module) {
+  try {
+    main();
+  } catch (error) {
+    console.error(`test-evidence: ${error instanceof Error ? error.message : String(error)}`);
+    process.exitCode = 1;
+  }
 }
+
+module.exports = { ranInThisRun, taskFor, lastVerdict, taskStates };

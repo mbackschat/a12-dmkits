@@ -490,7 +490,12 @@ final class ApplyCommand extends BaseCommand {
                 String field = req(op, "field");
                 int s = field.lastIndexOf('/');
                 if (!ModelPaths.isAbsoluteEntityPath(field)) {
-                    throw new IllegalArgumentException("rule add 'field' must be an absolute path (e.g. /Group/Field)");
+                    // This op's refusal reaches the author as a message and nothing else, so the corrective has
+                    // to ride in it — the standalone verb carries the same text in the diagnostic's `fix`.
+                    throw new IllegalArgumentException(
+                            ModelPaths.notAnAbsoluteEntityPath("rule add 'field'", field) + " — "
+                            + ModelPaths.absoluteEntityPathFix("'field'", field,
+                                    op.hasNonNull("group") ? op.get("group").asText() : null));
                 }
                 // the rule group defaults to the error field's parent; `group` overrides it (mirrors the standalone
                 // verb + `rule check --group`) for RepetitionNotUnique-style rules that sit at the repeated group's parent.
@@ -871,10 +876,9 @@ final class ApplyCommand extends BaseCommand {
         }
         Op which = Op.of(op);
         if (which == null) {
-            out.add(Diagnostic.precheck(Optional.of("RK_UNKNOWN_OP"),
-                    "apply does not support op '" + op.path("target").asText() + " " + op.path("op").asText() + "'",
+            out.add(Diagnostic.precheck(Optional.of("RK_UNKNOWN_OP"), unknownOpSummary(op),
                     new Diagnostic.Where((String) null, Optional.empty()),
-                    Optional.of("supported ops: " + supportedOps()),
+                    Optional.of(unknownOpFix(op)),
                     Optional.empty()));
             return out;
         }
@@ -920,6 +924,58 @@ final class ApplyCommand extends BaseCommand {
             labels.add(o.label());
         }
         return String.join(", ", labels);
+    }
+
+    /** The op whose {@link Op#label} is exactly {@code text}, or {@code null} — asked of the enum, not of JSON. */
+    private static Op labelOf(String text) {
+        for (Op o : Op.values()) {
+            if (o.label().equals(text)) {
+                return o;
+            }
+        }
+        return null;
+    }
+
+    /**
+     * The unknown-op summary, which must quote what the author WROTE.
+     *
+     * <p>It used to concatenate {@code target + " " + op} unconditionally, so a record carrying only
+     * {@code {"op": "rule add"}} was reported as {@code op ' rule add'} — a value with a leading space that
+     * appears nowhere in the input. Measured 2026-09-04: reading that, one agent could not tell whether the
+     * space was its own typo, the tool's formatting, or a real parse of its file.
+     */
+    private static String unknownOpSummary(JsonNode op) {
+        String target = op.path("target").asText("");
+        String verb = op.path("op").asText("");
+        if (target.isEmpty()) {
+            return verb.isEmpty()
+                    ? "this op-record names no target/op pair"
+                    : "apply does not support op '" + verb + "' with no target";
+        }
+        return "apply does not support op '" + target + " " + verb + "'";
+    }
+
+    /**
+     * …and the corrective, which must not hand back a spelling the tool then refuses.
+     *
+     * <p>{@link #supportedOps} lists SPACE-JOINED labels ({@code rule add}), while an op-record spells the same
+     * op as two keys ({@code {"target":"rule","op":"add"}}). Offering the label alone as the answer to a bad
+     * {@code op} value therefore CONFIRMS the mistake it is correcting — the exact loop that cost this session
+     * a run on 2026-09-04, where {@code {"op":"rule add"}} was refused and then told "supported ops: …, rule
+     * add, …". When the value the author put in {@code op} is itself a valid label, the corrective splits it
+     * for them; otherwise it names the shape before listing the labels.
+     */
+    private static String unknownOpFix(JsonNode op) {
+        String verb = op.path("op").asText("");
+        if (op.path("target").asText("").isEmpty() && labelOf(verb) != null) {
+            String[] halves = verb.split(" ", 2);
+            return "an op-record spells that as TWO keys: {\"target\": \"" + halves[0] + "\", \"op\": \""
+                    + halves[1] + "\", …} — the space-joined form is the label, not the `op` value";
+        }
+        // The list leads because a reader truncating this string is looking for the valid set; calling them
+        // "(target op) pairs" is what stops the space-joined label from reading as an `op` value.
+        return "supported (target op) pairs: " + supportedOps()
+                + " — an op-record spells one as {\"target\": …, \"op\": …, …args}";
     }
 
     /** A failing op-arg envelope (the offending op rolled the sequence back). */

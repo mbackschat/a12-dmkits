@@ -316,12 +316,12 @@ echo "(exit ${PIPESTATUS[0]})"
 {
   "code": "RK_UNKNOWN_OP",
   "summary": "apply does not support op 'field bogus'",
-  "fix": "supported ops: computation add, computat…"
+  "fix": "supported (target op) pairs: computation…"
 }
 (exit 1)
 ```
 
-→ `RK_UNKNOWN_OP` rejects `field bogus` and the `fix` enumerates the supported `target op` pairs — so the agent discovers the valid set from the diagnostic itself. (We truncate the long `fix` for the demo.)
+→ `RK_UNKNOWN_OP` rejects `field bogus` and the `fix` enumerates the supported **`(target op)` pairs** — so the agent discovers the valid set from the diagnostic itself. (We truncate the long `fix` for the demo.) The wording earns its parenthesis: an op-record spells its op as **two keys**, while the list is space-joined, so a `fix` that just said "supported ops: … rule add …" read as a value for `op` — and an agent that had written `{"op": "rule add"}` was handed back the very spelling it was refused for (measured 2026-09-04). Pass only `op` and the corrective now splits the label for you.
 
 ## Cross-type corrective — a batch op fed to apply
 

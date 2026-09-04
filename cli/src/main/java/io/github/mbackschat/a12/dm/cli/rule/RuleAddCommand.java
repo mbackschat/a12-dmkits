@@ -123,8 +123,12 @@ final class RuleAddCommand extends BaseCommand {
         String name = spec.hasNonNull("name") ? spec.get("name").asText() : code;
         int slash = field.lastIndexOf('/');
         if (!ModelPaths.isAbsoluteEntityPath(field)) {
+            // The group cannot be derived from a malformed field, so only a DECLARED one can resolve a relative
+            // value — and saying which is missing is the corrective.
             return rejectSpecParse(RkCode.INVALID_VALUE,
-                    ModelPaths.notAnAbsoluteEntityPath("field", field), "field", null);
+                    ModelPaths.notAnAbsoluteEntityPath("field", field), "field", null,
+                    ModelPaths.absoluteEntityPathFix("field", field,
+                            spec.hasNonNull("group") ? spec.get("group").asText() : null));
         }
         // the rule group (iteration scope) defaults to the error field's parent; `group` overrides it (mirrors
         // `rule check --group`) for an operator that must sit at the PARENT of a repeated group — RepetitionNotUnique.
