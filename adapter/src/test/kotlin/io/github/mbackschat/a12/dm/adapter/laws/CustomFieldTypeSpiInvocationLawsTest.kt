@@ -138,11 +138,23 @@ class CustomFieldTypeSpiInvocationLawsTest {
      * derived, never hand-written (a cold review caught the raw `"../Key"` splice this replaced, 2026-09-03).
      */
     private val bound = BoundModel.ofJson(base)
+
+    /**
+     * A second rule that does NOT read the custom cell, so this document produces a message of its own
+     * whatever the custom validator does. It is what makes the whole-call loss measurable rather than merely
+     * asserted: with the custom cell empty the call answers this message, and with it filled the call raises
+     * and answers nothing at all — a per-field formal rejection would have left this message in place.
+     */
     private val model = TypedRules.inject(
-        base,
-        bound.rule(bound.group(ACCOUNT)).name("KeyMatches").errorField(bound.custom(KEY).field())
-            .`when`(bound.custom(KEY).eq(GOOD)).code("KEY_MATCH").severity(Severity.ERROR)
-            .message(Dsl.en("The account key must match the registered one.")).build(),
+        TypedRules.inject(
+            base,
+            bound.rule(bound.group(ACCOUNT)).name("KeyMatches").errorField(bound.custom(KEY).field())
+                .`when`(bound.custom(KEY).eq(GOOD)).code("KEY_MATCH").severity(Severity.ERROR)
+                .message(Dsl.en("The account key must match the registered one.")).build(),
+        ),
+        bound.rule(bound.group(ACCOUNT)).name("HolderRecorded").errorField(bound.field(HOLDER))
+            .`when`(bound.field(HOLDER).filled()).code("HOLDER_SET").severity(Severity.ERROR)
+            .message(Dsl.en("The account holder is recorded.")).build(),
     )
 
     private fun document() = RuntimeLaws.doc().group(ACCOUNT, 1)
@@ -226,13 +238,31 @@ class CustomFieldTypeSpiInvocationLawsTest {
         )
     }
 
-    /** An EMPTY cell is never handed to the validator, so the raise above needs a filled one to be reachable. */
+    /**
+     * An EMPTY cell is never handed to the validator, so the raise above needs a filled one to be reachable.
+     *
+     * <p><b>And this is the separator `SPEC-2026-09-04-06` adds, which is what makes the loss visible.</b> The
+     * raise does not replace the offending field's finding with a formal message beside the others — it escapes
+     * the whole call, so the document receives NO validation result at all. That can only be shown against what
+     * the clean control PRODUCES: the two documents differ solely by the custom cell's value, and with it empty
+     * the unregistered factory answers exactly what the registered one does, `HOLDER_SET` included. Those
+     * messages are lost with the call when the cell is filled, which a field-level rejection would not do.
+     */
     @Test
     fun anEmptyCellNeitherCallsTheValidatorNorReachesTheMissingRegistration() {
         log.clear()
         val emptyDocument = RuntimeLaws.doc().group(ACCOUNT, 1).field(HOLDER, "L. Weber", 1, 1)
-        RuntimeLaws.messages(model, emptyDocument, registered)
+        val withRegistered = RuntimeLaws.messages(model, emptyDocument, registered).map { it.code() }.sorted()
         assertEquals(emptyList<String>(), log, "no cell, no acceptance call")
-        RuntimeLaws.messages(model, emptyDocument, unregistered)
+
+        log.clear()
+        val withUnregistered = RuntimeLaws.messages(model, emptyDocument, unregistered).map { it.code() }.sorted()
+
+        assertTrue(withRegistered.contains("HOLDER_SET"),
+            "the control must PRODUCE something the filled document can then be shown to lose — got $withRegistered")
+        assertEquals(withRegistered, withUnregistered,
+            "with the custom cell empty the missing registration is unreachable, so the document validates " +
+                "exactly as it does with the validator present")
+        assertEquals(emptyList<String>(), log, "an empty cell reaches no validator on either factory")
     }
 }
