@@ -10,6 +10,14 @@
       "control": { "group": "/Order", "field": "../ShippingAddress/Street", "dsl": "GroupFilled(BillingAddress)", "verdict": "REJECTED", "code": "MVK_ERROR_FIELD_NOT_REFERENCED" }
     },
     {
+      "id": "GroupFilled.marked-leaf-in-filter",
+      "operator": "GroupFilled",
+      "kind": "CONDITION",
+      "fixture": "ORDER",
+      "trigger": { "group": "/Order", "field": "../CustomerName", "dsl": "FieldFilled(CustomerName) And NumberOfFilledFields(Items*/Sku Having GroupFilled($/Order/ShippingAddress)) > 0", "verdict": "REJECTED", "code": "MVK_NO_ITERATION_FOR_WILDCARD" },
+      "control": { "group": "/Order", "field": "../CustomerName", "dsl": "FieldFilled(CustomerName) And NumberOfFilledFields(Items*/Sku Having ([Items/Count] > 0 And GroupFilled($/Order/ShippingAddress))) > 0", "verdict": "ACCEPTED" }
+    },
+    {
       "id": "GroupNotFilled.repeatable-negative",
       "operator": "GroupNotFilled",
       "kind": "CONDITION",

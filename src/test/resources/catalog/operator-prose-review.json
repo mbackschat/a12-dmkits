@@ -1339,6 +1339,27 @@
       "evidence": []
     },
     {
+      "operator": "GroupFilled",
+      "lane": "GOTCHA",
+      "ordinal": 3,
+      "digest": "sha256:79c64ac42922c18e6ce6c5caf4eb66f19b1f3d8fc935e3a04eb3c5072b597628",
+      "classifications": [
+        "ADMISSION",
+        "REJECTION"
+      ],
+      "evidence": [
+        {
+          "classification": "ADMISSION",
+          "type": "CLAIM_PROBE",
+          "id": "GroupFilled.marked-leaf-in-filter",
+          "side": "CONTROL",
+          "expected": {
+            "verdict": "ACCEPTED"
+          }
+        }
+      ]
+    },
+    {
       "operator": "GroupNotFilled",
       "lane": "MEANING",
       "ordinal": 0,
@@ -8173,6 +8194,28 @@
         {
           "type": "CLAIM_PROBE",
           "id": "GroupFilled.references-descendant"
+        }
+      ]
+    },
+    {
+      "id": "literal.GroupFilled.gotcha3.MVK_NO_ITERATION_FOR_WILDCARD",
+      "operator": "GroupFilled",
+      "kind": "CONDITION",
+      "units": [
+        {
+          "lane": "GOTCHA",
+          "ordinal": 3
+        }
+      ],
+      "expected": {
+        "verdict": "REJECTED",
+        "code": "MVK_NO_ITERATION_FOR_WILDCARD"
+      },
+      "evidence": [
+        {
+          "type": "CLAIM_PROBE",
+          "id": "GroupFilled.marked-leaf-in-filter",
+          "side": "TRIGGER"
         }
       ]
     },

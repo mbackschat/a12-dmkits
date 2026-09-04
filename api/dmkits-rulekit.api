@@ -1346,7 +1346,9 @@ public final class io.github.mbackschat.a12.dm.rulekit.dsl.Dsl
   public static io.github.mbackschat.a12.dm.rulekit.dsl.TimeExpr firstFilledTime(io.github.mbackschat.a12.dm.rulekit.dsl.FirstFilledOperand)
   public static io.github.mbackschat.a12.dm.rulekit.dsl.TimeExpr firstFilledTime(io.github.mbackschat.a12.dm.rulekit.dsl.FirstFilledOperand, io.github.mbackschat.a12.dm.rulekit.dsl.FirstFilledOperand, io.github.mbackschat.a12.dm.rulekit.dsl.FirstFilledOperand[])
   public static io.github.mbackschat.a12.dm.rulekit.dsl.Condition groupFilled(io.github.mbackschat.a12.dm.rulekit.dsl.GroupRef)
+  public static io.github.mbackschat.a12.dm.rulekit.dsl.Condition groupFilled(io.github.mbackschat.a12.dm.rulekit.dsl.GroupRef, boolean)
   public static io.github.mbackschat.a12.dm.rulekit.dsl.Condition groupNotFilled(io.github.mbackschat.a12.dm.rulekit.dsl.GroupRef)
+  public static io.github.mbackschat.a12.dm.rulekit.dsl.Condition groupNotFilled(io.github.mbackschat.a12.dm.rulekit.dsl.GroupRef, boolean)
   public static io.github.mbackschat.a12.dm.rulekit.dsl.Condition groupsNotCollectivelyFilled(io.github.mbackschat.a12.dm.rulekit.dsl.GroupListOperand, io.github.mbackschat.a12.dm.rulekit.dsl.GroupListOperand[])
   public static io.github.mbackschat.a12.dm.rulekit.dsl.Condition groupsNotCollectivelyFilled(io.github.mbackschat.a12.dm.rulekit.dsl.GroupRef, io.github.mbackschat.a12.dm.rulekit.dsl.GroupRef[])
   public static io.github.mbackschat.a12.dm.rulekit.dsl.Condition groupsNotCollectivelyFilled(java.util.List<? extends io.github.mbackschat.a12.dm.rulekit.dsl.GroupRef>)
@@ -1838,11 +1840,13 @@ public record io.github.mbackschat.a12.dm.rulekit.dsl.GroupListRef implements io
 
 public record io.github.mbackschat.a12.dm.rulekit.dsl.GroupPresenceCondition implements io.github.mbackschat.a12.dm.rulekit.dsl.Condition
   public GroupPresenceCondition(io.github.mbackschat.a12.dm.rulekit.dsl.GroupRef, boolean)
+  public GroupPresenceCondition(io.github.mbackschat.a12.dm.rulekit.dsl.GroupRef, boolean, boolean)
   public final boolean equals(java.lang.Object)
   public boolean filled()
   public io.github.mbackschat.a12.dm.rulekit.dsl.GroupRef group()
   public final int hashCode()
   public java.lang.String operatorId()
+  public boolean outer()
   public final java.lang.String toString()
 
 public enum io.github.mbackschat.a12.dm.rulekit.dsl.GroupQuantifier

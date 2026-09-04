@@ -521,10 +521,17 @@ final class ConditionConverter {
                     .toArray(GroupListRef[]::new);
             return groupFillQuantifier(name, scopes, entityList);
         }
+        // A $-correlated single-group presence leaf inside a Having filter (D13). Threaded rather than
+        // dropped: the kernel admits `GroupFilled($G)` beside an in-scope conjunct (KERNEL-FINDINGS §9), so
+        // erasing the marker here would either corrupt the read or — since verifyOuterPreserved counts the
+        // markers the render carries — refuse a legal model as Opaque.
+        boolean outerGroup = single && entities.get(0).isOuter();
         return switch (name) {
             // single-group GroupFilled/GroupNotFilled canonicalize to AllGroupsFilled/NoGroupFilled[g]
-            case AllGroupsFilled -> single ? model.group(p[0]).filled() : groups(paths, Dsl::allGroupsFilled);
-            case NoGroupFilled -> single ? model.group(p[0]).notFilled() : groups(paths, Dsl::noGroupFilled);
+            case AllGroupsFilled -> single
+                    ? Dsl.groupFilled(model.group(p[0]), outerGroup) : groups(paths, Dsl::allGroupsFilled);
+            case NoGroupFilled -> single
+                    ? Dsl.groupNotFilled(model.group(p[0]), outerGroup) : groups(paths, Dsl::noGroupFilled);
             case AtLeastOneGroupFilled -> groups(paths, Dsl::atLeastOneGroupFilled);
             case NotAllGroupsFilled -> groups(paths, Dsl::notAllGroupsFilled);
             case GroupsNotCollectivelyFilled -> groups(paths, Dsl::groupsNotCollectivelyFilled);

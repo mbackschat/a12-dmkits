@@ -1,6 +1,7 @@
 package io.github.mbackschat.a12.dm;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.IOException;
@@ -16,6 +17,8 @@ import java.util.regex.Pattern;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.DisabledIfSystemProperty;
 import org.junit.jupiter.api.condition.EnabledIfSystemProperty;
+import org.junit.jupiter.api.io.TempDir;
+import org.opentest4j.AssertionFailedError;
 
 /**
  * Doc-snippet freshness lock — "approach A" (see {@code docs/TESTING.md} "Locked doc snippets").
@@ -122,6 +125,9 @@ class DocSnippetFreshnessTest {
                     "adapter/src/test/java/io/github/mbackschat/a12/dm/adapter/WildcardGroupFillQuantifierReadTest.java"),
             new Lock("group-list-entity-operands", "docs/API-GUIDE.md",
                     "adapter/src/test/java/io/github/mbackschat/a12/dm/adapter/GroupListEntityOperandReadTest.java"),
+            new Lock("correlated-group-presence", "docs/API-GUIDE.md",
+                    "src/test/java/io/github/mbackschat/a12/dm/rulekit/validate/laws/"
+                            + "HavingFilterConditionLeafLawsTest.java"),
             new Lock("computation-suppress", "docs/API-GUIDE.md", NEW_SHAPES),
             new Lock("model-diff", "docs/API-GUIDE.md",
                     "adapter/src/test/java/io/github/mbackschat/a12/dm/adapter/review/ModelDiffComputationTest.java"),
@@ -182,6 +188,32 @@ class DocSnippetFreshnessTest {
         assertEquals(registered.size(), locked.size(), "duplicate lock id in DocSnippetFreshnessTest");
         assertEquals(marked, locked,
                 "every `<!-- snippet: id -->` marker must have exactly one Lock row, and no Lock may be stale");
+    }
+
+    /**
+     * Does-fire for the refusal {@link #locateFence} carries: an empty placeholder must fail loudly rather
+     * than let the fixer rewrite the following block. The positive control in the same temp document proves
+     * the refusal is about the empty fence and not about the fixture.
+     */
+    @Test
+    void anEmptyPlaceholderFenceIsRefusedInsteadOfSwallowingTheNextBlock(@TempDir Path dir) throws IOException {
+        Path doc = Files.writeString(dir.resolve("guide.md"), """
+                <!-- snippet: empty-one -->
+                ```java
+                ```
+
+                Prose a later fence must not lose.
+
+                <!-- snippet: filled-one -->
+                ```java
+                int kept = 1;
+                ```
+                """);
+
+        assertEquals("int kept = 1;", docFence(doc, "filled-one"), "the control fence must read normally");
+        AssertionFailedError refused =
+                assertThrows(AssertionFailedError.class, () -> docFence(doc, "empty-one"));
+        assertTrue(refused.getMessage().contains("EMPTY placeholder"), refused::getMessage);
     }
 
     @Test
@@ -250,7 +282,16 @@ class DocSnippetFreshnessTest {
         }
     }
 
-    /** Locate the first {@code ```java} fence after {@code <!-- snippet: id -->} in {@code doc}. */
+    /**
+     * Locate the first {@code ```java} fence after {@code <!-- snippet: id -->} in {@code doc}.
+     *
+     * <p>{@link #JAVA_FENCE}'s body is non-greedy but unconstrained, so an <b>empty</b> placeholder fence
+     * ({@code ```java} immediately followed by {@code ```}) has no closing delimiter of its own left to match:
+     * the body then runs on and consumes every following line up to the NEXT closing fence, and the fixer
+     * rewrites all of it. That silently deleted a paragraph and a whole snippet marker from
+     * {@code docs/API-GUIDE.md} on 2026-09-04. The refusal below makes it loud instead — a placeholder must
+     * carry at least one line, which is what the author writes anyway.
+     */
     private static Fence locateFence(Path doc, String id) throws IOException {
         String text = Files.readString(doc);
         String marker = "<!-- snippet: " + id + " -->";
@@ -258,7 +299,12 @@ class DocSnippetFreshnessTest {
         assertTrue(at >= 0, () -> "no marker `" + marker + "` in " + doc);
         Matcher m = JAVA_FENCE.matcher(text);
         assertTrue(m.find(at + marker.length()), () -> "no ```java fence after `" + marker + "` in " + doc);
-        return new Fence(text, m.start(1), m.end(1));
+        Fence fence = new Fence(text, m.start(1), m.end(1));
+        assertTrue(fence.body().lines().noneMatch(line -> line.strip().equals("```")), () ->
+                "the `" + marker + "` fence in " + doc + " spans a closing fence, so it is an EMPTY placeholder "
+                + "whose body has run on into the next block — writing to it would delete everything between. "
+                + "Put at least one placeholder line inside the ```java fence, then re-run syncDocSnippets.");
+        return fence;
     }
 
     /** Replace the body of the first {@code ```java} fence after {@code <!-- snippet: id -->} with {@code body}. */

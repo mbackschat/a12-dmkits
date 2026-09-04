@@ -2054,9 +2054,24 @@ public final class Dsl {
         return new GroupPresenceCondition(group, true);
     }
 
+    /**
+     * {@code GroupFilled($group)} — the group's presence read in the outer repetition environment a
+     * {@code Having} captured (the {@code $} correlation, D13). Admitted inside a filter; on a level the
+     * enclosing iteration binds and the star does not reopen, the marker is redundant and both spellings
+     * behave alike (KERNEL-FINDINGS §9). catalog:GroupFilled
+     */
+    public static Condition groupFilled(GroupRef group, boolean outer) {
+        return new GroupPresenceCondition(group, true, outer);
+    }
+
     /** {@code GroupNotFilled(group)} — the group is absent; negative conditions on a repeatable group need guarding (§5). catalog:GroupNotFilled */
     public static Condition groupNotFilled(GroupRef group) {
         return new GroupPresenceCondition(group, false);
+    }
+
+    /** {@code GroupNotFilled($group)} — the {@code $}-correlated peer of {@link #groupFilled(GroupRef, boolean)}. catalog:GroupNotFilled */
+    public static Condition groupNotFilled(GroupRef group, boolean outer) {
+        return new GroupPresenceCondition(group, false, outer);
     }
 
     /** {@code AllGroupsFilled(g1, g2, …)} — every listed group is present. catalog:AllGroupsFilled */

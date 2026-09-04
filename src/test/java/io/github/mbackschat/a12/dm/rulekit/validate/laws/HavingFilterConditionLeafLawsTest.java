@@ -79,6 +79,22 @@ import io.github.mbackschat.a12.dm.rulekit.validate.ValidationResult;
  * condition</em> — which is what shows a group operand binds the iteration as readily as a field one, so the
  * out-of-scope rows above are refused for their scope and not for being groups.
  *
+ * <p><b>And the {@code $} marker changes nothing on this carrier, which is the second question and closes a
+ * residue both estates carried as open</b> (a12-kernel-lean's {@code SPEC-2026-09-04-05}; their disposition on
+ * {@code SPEC-2026-09-03-04} records it as "unmeasured on both sides"). A marked out-of-scope group leaf is
+ * refused as the sole condition with the <em>same</em> code as the unmarked one, and admitted beside the same
+ * in-scope conjunct. Measuring <b>both spellings at each position</b> is what isolates the marker: the refusal
+ * alone would not have distinguished "the marker is rejected here" from "the missing in-scope reference is the
+ * cause", and reading it the first way would wrongly refuse the admitted conjunct forms. So a group presence
+ * leaf reads the captured environment as a field reference does, and on a bound-but-not-reopened level the
+ * marker is redundant there too.
+ *
+ * <p><b>Our own answer to their "which do you do?" question.</b> This repository neither erases the marker
+ * before a scope check nor inspects it: admission is delegated whole to the kernel's {@code checkConsistency},
+ * and {@code ConditionReferences}/{@code Linter} treat a marked reference exactly as an unmarked one for every
+ * carrier. The marker is preserved through render and through read-back
+ * ({@code adapter.CorrelatedGroupPresenceReadTest}) rather than normalized away.
+ *
  * <p><b>What stays a hypothesis.</b> "Binds the wildcard" is the code's own naming plus this pattern; the
  * observable claim is at least one reference into the filtered list's own iterated group. A filter referencing a
  * second, unrelated repeatable group would separate "binds THIS wildcard" from "iterates something", and is not
@@ -167,6 +183,51 @@ class HavingFilterConditionLeafLawsTest {
         assertEquals(expected, actual,
                 "a group-presence leaf is admitted inside a field-list filter; what the filter must carry is a "
                         + "reference that binds the iterated wildcard");
+    }
+
+    @Test
+    void theDollarMarkerOnTheGroupLeafIsAdmittedAndChangesNoVerdict() {
+        Map<String, String> actual = new LinkedHashMap<>();
+        // tag::correlated-group-presence[]
+        // A $-marked group-presence leaf reads the group in the outer environment the Having captured.
+        // It is admitted as long as the filter ALSO carries a reference into the filtered list's own
+        // iterated group — here fieldLocal(), the predicate on /Order/Lines/Qty — which binds the wildcard.
+        Condition markedPresence = Dsl.groupFilled(M.group("/Order/Billing"), true);
+        Condition boundFilter = fieldLocal().and(markedPresence);
+        // end::correlated-group-presence[]
+
+        // Both spellings at BOTH positions: one spelling alone cannot separate the marker from the scope.
+        actual.put("MARKED GroupFilled as the WHOLE filter condition", verdict(markedPresence));
+        actual.put("UNMARKED GroupFilled as the WHOLE filter condition",
+                verdict(Dsl.groupFilled(M.group("/Order/Billing"))));
+        actual.put("MARKED GroupFilled beside the in-scope conjunct", verdict(boundFilter));
+        actual.put("UNMARKED GroupFilled beside the in-scope conjunct",
+                verdict(fieldLocal().and(Dsl.groupFilled(M.group("/Order/Billing")))));
+        actual.put("the in-scope conjunct alone — live control", verdict(fieldLocal()));
+        // The polarity sibling, so the answer is about the group-presence CARRIER and not about GroupFilled.
+        actual.put("MARKED GroupNotFilled as the WHOLE filter condition",
+                verdict(Dsl.groupNotFilled(M.group("/Order/Billing"), true)));
+
+        Map<String, String> expected = new LinkedHashMap<>();
+        expected.put("MARKED GroupFilled as the WHOLE filter condition", NO_ITERATION);
+        expected.put("UNMARKED GroupFilled as the WHOLE filter condition", NO_ITERATION);
+        expected.put("MARKED GroupFilled beside the in-scope conjunct", ADMITTED);
+        expected.put("UNMARKED GroupFilled beside the in-scope conjunct", ADMITTED);
+        expected.put("the in-scope conjunct alone — live control", ADMITTED);
+        expected.put("MARKED GroupNotFilled as the WHOLE filter condition", NO_ITERATION);
+        assertEquals(expected, actual,
+                "the marker is admitted on a group presence leaf and moves no verdict — the missing in-scope "
+                        + "reference is what the sole-condition rows are refused for");
+    }
+
+    /** The marker must reach the kernel, so the rows above are about {@code $} rather than about a dropped one. */
+    @Test
+    void theRenderedFilterActuallyCarriesTheMarker() {
+        assertEquals("NumberOfFilledFields(/Order/Lines*/Sku Having GroupFilled($/Order/Billing)) > 0",
+                new DslRenderer().render(Dsl.numberOfFilledFields(M.flatten("/Order/Lines*/Sku")
+                        .having(Dsl.groupFilled(M.group("/Order/Billing"), true))).gt(0)),
+                "a marked group operand renders its $ — without this the rows above would measure the "
+                        + "unmarked spelling twice and agree vacuously");
     }
 
     @Test

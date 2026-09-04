@@ -462,6 +462,19 @@ Condition someRows = Dsl.atLeastOneGroupFilled(samples);
 
 Typed read-back retains the star and the collection-scan meaning; `WildcardGroupFillQuantifierReadTest` locks the render → parse → typed-read → render identity for both polarity siblings.
 
+Inside a `Having` filter a group-presence leaf takes the `$` outer-correlation marker, exactly as a field reference does — `Dsl.groupFilled(group, true)` and `Dsl.groupNotFilled(group, true)`, the group twin of `Dsl.currentRepetition(group, true)`. The marker moves no verdict on a level the enclosing iteration binds: as a filter's **sole** condition either spelling draws `MVK_NO_ITERATION_FOR_WILDCARD`, and beside a reference into the filtered list's own iterated group both are admitted ([KF242](KERNEL-FINDINGS.md#kf242)). So a refusal of the marked form alone is about the missing in-scope reference, never about the `$`.
+
+<!-- snippet: correlated-group-presence -->
+```java
+// A $-marked group-presence leaf reads the group in the outer environment the Having captured.
+// It is admitted as long as the filter ALSO carries a reference into the filtered list's own
+// iterated group — here fieldLocal(), the predicate on /Order/Lines/Qty — which binds the wildcard.
+Condition markedPresence = Dsl.groupFilled(M.group("/Order/Billing"), true);
+Condition boundFilter = fieldLocal().and(markedPresence);
+```
+
+The marker survives typed read-back rather than being normalized away (`CorrelatedGroupPresenceReadTest`), which is the direction that matters most: a client type unable to hold it would make a kernel-legal model come back as a verbatim `ReadResult.Opaque` instead of a typed condition.
+
 Despite their names, the five fixed group-list predicates consume one common **field-or-group entity list** (`GroupListOperand`): a checked field enters as the `FieldRef` from `m.field(...)`, a group scope as the `GroupListRef` from `m.flattenGroup(...)` (an unstarred path yields the bare scope). A field operand contributes filled / empty / unavailable directly — a malformed or (in partial validation) non-relevant field joins neither bucket, exactly like an erroneous group — and a decisive witness fires beside an unavailable sibling. Mixing kinds is kernel-legal:
 
 <!-- snippet: group-list-entity-operands -->

@@ -204,7 +204,8 @@ public final class DslRenderer {
                     render(c.left()) + " " + keyword(c.operatorId()) + " " + render(c.right());
             case LogicCondition l ->
                     child(l, l.left()) + " " + keyword(l.operatorId()) + " " + child(l, l.right());
-            case GroupPresenceCondition g -> keyword(g.operatorId()) + "(" + path(g.group().path().value()) + ")";
+            case GroupPresenceCondition g ->
+                    keyword(g.operatorId()) + "(" + (g.outer() ? "$" : "") + path(g.group().path().value()) + ")";
             case RuleGroupPresenceCondition r -> keyword(r.operatorId()) + "(" + ruleGroupKeyword() + ")";
             case IndexedPresenceCondition p -> keyword(p.operatorId()) + "(" + indexBody(p.index()) + ")";
             case GroupListPredicate p -> keyword(p.operatorId()) + "("

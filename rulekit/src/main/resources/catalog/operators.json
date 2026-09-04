@@ -1333,6 +1333,10 @@
         {
           "text": "an enclosing GroupFilled(Group) counts as referencing the rule's error field (no MVK_ERROR_FIELD_NOT_REFERENCED)",
           "kind": "AUTHORING"
+        },
+        {
+          "text": "inside a Having filter a group leaf obeys the same scope gate as a field one, marked or not: alone it draws MVK_NO_ITERATION_FOR_WILDCARD in BOTH spellings, and beside an in-scope conjunct both are admitted — so a refusal of GroupFilled($G) alone is about the missing in-scope reference, not about the $",
+          "kind": "AUTHORING"
         }
       ],
       "validExample": {
