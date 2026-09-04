@@ -425,7 +425,10 @@ final class ApplyCommand extends BaseCommand {
                 yield staged(which, changed, session);
             }
             case GROUP_ADD -> {
-                String parent = req(op, "parent");
+                // `/` is the root level here too. The standalone verbs normalize through the same helper, and
+                // an op-record surface that did not would leave the undocumented empty string as the only
+                // route to a second root on the very path documented as being at parity with them.
+                String parent = ModelPaths.rootLevelParent(req(op, "parent"));
                 String groupName = req(op, "name");
                 if (op.hasNonNull("repeatable")) {
                     session.addRepeatableGroup(parent, groupName, op.get("repeatable").asInt());
@@ -618,7 +621,7 @@ final class ApplyCommand extends BaseCommand {
             }
             case INCLUDE_ADD -> {
                 String alias = req(op, "alias");
-                String parent = req(op, "parent");
+                String parent = ModelPaths.rootLevelParent(req(op, "parent"));
                 String name = req(op, "name");
                 // mirror the standalone verb's mount options — repeatability + rule/computation exclusions —
                 // so an apply session can do what `include add` can (was: option-less 4-arg addInclude dropped

@@ -58,6 +58,47 @@ class RootLevelParentSpellingTest {
         assertEquals(expected, actual, "the root-level synonym must reach every verb that keys on an empty parent");
     }
 
+    /**
+     * The {@code apply} op-record route keys the root level the same way.
+     *
+     * <p>It was missed by the first pass, which enumerated the standalone VERBS: {@code apply} reads
+     * {@code parent} raw from the record, so `/` stayed a dead end on the one surface documented as being at
+     * parity with those verbs, and the undocumented empty string remained its only route to a second root (a
+     * cold review, 2026-09-04). {@code batch} needs nothing — it re-enters picocli with argv, so it inherits
+     * the verbs' own normalization.
+     */
+    @Test
+    void theApplyRouteKeysTheRootLevelOnTheSameSpelling(@TempDir Path dir) throws Exception {
+        Path model = CliTestSupport.orderRuled(dir);
+        Path ops = Files.writeString(dir.resolve("ops.json"), """
+                [ {"target":"group","op":"add","parent":"/","name":"SecondRoot"} ]""");
+
+        var res = CliTestSupport.run("-m", model.toString(), "apply", ops.toString());
+
+        assertEquals(0, res.code(), res.err() + res.out());
+        JsonNode record = M.readTree(res.out()).path("data").path("results").get(0);
+        assertEquals("/SecondRoot", record.path("changed").path("added").asText(),
+                () -> "the op-record route must report the root-level target, not `//SecondRoot`: " + record);
+        assertTrue(Files.readString(model).contains("SecondRoot"), "and persist the second root");
+    }
+
+    /**
+     * `field add --parent /` is still refused — a field cannot be a root element — but with the corrective that
+     * says so, not the generic "no group at '/'". This verb's help calls its `--parent` the alias matching every
+     * sibling add-verb, and those now accept `/`, so the generic message would read as an inconsistent tool.
+     */
+    @Test
+    void fieldAddRefusesTheRootLevelWithACorrectiveThatExplainsWhy(@TempDir Path dir) throws Exception {
+        Path model = CliTestSupport.orderRuled(dir);
+        var res = CliTestSupport.run("-m", model.toString(),
+                "field", "add", "--parent", "/", "--name", "Stray", "--kind", "STRING");
+
+        assertEquals(2, res.code(), res.out());
+        String fix = M.readTree(res.out()).path("diagnostics").get(0).path("fix").asText();
+        assertTrue(fix.contains("a field always lives inside a group"),
+                () -> "the corrective must name the real situation rather than a missing group: " + fix);
+    }
+
     @Test
     void aParentThatGenuinelyDoesNotExistIsStillRefusedAndIsToldTheRootSpelling(@TempDir Path dir)
             throws Exception {

@@ -15,7 +15,8 @@ import io.github.mbackschat.a12.dm.core.ValueKind;
  * skipping wildcarded refs in {@code checkDuplicatesInDirectRefs} — all pre-checked here. What the star
  * exempts is that one gate and no more: a star does not make an operand exempt from duplicate checking as
  * such, and the indirect-overlap arm ({@code MVK_DUPLICATE_PARAM2}) still refuses two operands where one
- * strictly contains the other, whichever side carries it ({@link AggregateOperand}).
+ * strictly contains the other, whichever side carries it — measured in both argument orders by
+ * {@code rulekit.validate.laws.AggregateGroupOperandLawsTest} ({@link AggregateOperand}).
  *
  * <p>An operand may also be a <b>group scope</b> ({@link GroupListRef}), which the kernel expands to the
  * group's contained fields; the two gates that behave differently for it, and why they are delegated rather

@@ -5,6 +5,7 @@ import io.github.mbackschat.a12.dm.cli.ConsistencyEvidence;
 import io.github.mbackschat.a12.dm.cli.ModelWrite;
 import io.github.mbackschat.a12.dm.cli.JsonInput;
 import io.github.mbackschat.a12.dm.cli.ParamKind;
+import io.github.mbackschat.a12.dm.cli.ModelPaths;
 import io.github.mbackschat.a12.dm.cli.Refusal;
 import io.github.mbackschat.a12.dm.cli.SafetyChecks;
 import io.github.mbackschat.a12.dm.cli.SafetyGate;
@@ -174,10 +175,18 @@ final class FieldAddCommand extends BaseCommand {
                 .destination(outputPath, model));
     }
 
-    /** Emit the safety-gate refusal (group must exist) and report whether it fired. */
+    /**
+     * Emit the safety-gate refusal (group must exist) and report whether it fired.
+     *
+     * <p>The root-level spelling gets its own corrective. A field cannot be a root element, so `/` is genuinely
+     * refused here — but this verb's own {@code --parent} help calls itself "the alias matching every sibling
+     * add-verb", and those verbs now accept `/`, so an author who learns the spelling there and tries it here
+     * would otherwise get the generic "no group at '/'" and read it as the tool being inconsistent rather than
+     * as the model having no fields at the root (a cold review, 2026-09-04).
+     */
     private boolean refused(ModelDocument doc, String groupPath) {
         Optional<Refusal> refusal = new SafetyGate()
-                .require(SafetyChecks.exists(doc, groupPath, true))
+                .require(SafetyChecks.exists(doc, groupPath, true, ModelPaths.fieldParentHint(groupPath)))
                 .require(SafetyChecks.notAnIncludeMount(doc, groupPath))
                 .firstFailure();
         if (refusal.isPresent()) {

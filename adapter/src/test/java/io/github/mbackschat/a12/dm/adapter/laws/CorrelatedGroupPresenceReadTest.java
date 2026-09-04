@@ -1,4 +1,4 @@
-package io.github.mbackschat.a12.dm.adapter;
+package io.github.mbackschat.a12.dm.adapter.laws;
 
 import static io.github.mbackschat.a12.dm.rulekit.dsl.Dsl.en;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -6,6 +6,7 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import io.github.mbackschat.a12.dm.adapter.KernelAdapter;
 import org.junit.jupiter.api.Test;
 
 import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft;

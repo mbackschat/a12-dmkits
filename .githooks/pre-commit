@@ -87,14 +87,21 @@ if [ -n "$doc_triggers" ]; then
     if [ "$t" -gt "$newest_trigger" ]; then newest_trigger=$t; fi
   done
   oldest_evidence=""
-  # All four doc-driven lanes. referentGuardTest and staleGapGuardTest were added 2026-09-03 after a
+  # Every doc-driven lane. referentGuardTest and staleGapGuardTest were added 2026-09-03 after a
   # quoted-title ratchet in the first went red on commit 033fe3ef6, which this check had passed. Root
-  # :docGuardTest already dependsOn all three cli lanes, so the gap is not the task graph: `--rerun` does
-  # NOT propagate to dependencies, so a session that reruns the two named tasks leaves the other two
-  # UP-TO-DATE — genuinely unrun against the change — and the freshness check inspected only the two
+  # :docGuardTest already dependsOn all the cli lanes, so the gap is not the task graph: `--rerun` does
+  # NOT propagate to dependencies, so a session that reruns some of the named tasks leaves the others
+  # UP-TO-DATE — genuinely unrun against the change — and the freshness check inspected only the
   # directories it knew about, so nothing noticed until a LATER edit finally tripped the ratchet.
+  #
+  # semanticsMapGuardTest was added 2026-09-04, and its absence is why that comment used to read "all four
+  # doc-driven lanes" while being short by one. It declares SEMANTICS-MAP, KERNEL-FINDINGS, KERNEL-SEMANTICS
+  # and INTERPRETER-GAPS as inputs, and a SEMANTICS-MAP edit citing a lock class outside the configured lock
+  # trees left :cli:test red for three commits without this check noticing. Derive the list when you touch
+  # it: the doc-driven lanes are the test tasks whose declared inputs include a docs/*.md file.
   for d in build/test-results/docGuardTest cli/build/test-results/docGuardTest \
-           cli/build/test-results/referentGuardTest cli/build/test-results/staleGapGuardTest; do
+           cli/build/test-results/referentGuardTest cli/build/test-results/staleGapGuardTest \
+           cli/build/test-results/semanticsMapGuardTest; do
     newest_xml=0
     if [ -d "$d" ]; then
       for x in "$d"/TEST-*.xml; do
@@ -117,14 +124,15 @@ if [ -n "$doc_triggers" ]; then
 
 Run them — WITHOUT -Pfast, which skips them by design:
 
-  ./build.sh --console=plain :docGuardTest :cli:docGuardTest :cli:referentGuardTest :cli:staleGapGuardTest
+  ./build.sh --console=plain :docGuardTest :cli:docGuardTest :cli:referentGuardTest \
+    :cli:staleGapGuardTest :cli:semanticsMapGuardTest
 
 If a task reports UP-TO-DATE, its result files are NOT refreshed and this check still refuses — that
 happens for a markdown file no guard declares as an input (CLAUDE.md and docs/CLAUDE.md among them).
 Append `--rerun` to the task that stayed up-to-date:
 
   ./build.sh --console=plain :docGuardTest --rerun :cli:docGuardTest --rerun \
-    :cli:referentGuardTest --rerun :cli:staleGapGuardTest --rerun
+    :cli:referentGuardTest --rerun :cli:staleGapGuardTest --rerun :cli:semanticsMapGuardTest --rerun
 
 Then commit again. If a demo drifted, the failing guard prints the exact regeneration command.
 
