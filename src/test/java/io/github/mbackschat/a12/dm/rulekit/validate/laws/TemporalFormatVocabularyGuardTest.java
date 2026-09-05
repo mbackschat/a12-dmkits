@@ -418,7 +418,12 @@ class TemporalFormatVocabularyGuardTest {
                     + "missing one silently narrows a published kernel claim",
             "interpreter/src/commonTest/kotlin/io/github/mbackschat/a12/dm/interpreter/"
                     + "TemporalDeclaredFormatFormalTest.kt",
-            "the multiplatform half of the same grid, whose KDoc states the cell count as a denominator");
+            "the multiplatform half of the same grid, whose KDoc states the cell count as a denominator",
+            "src/test/java/io/github/mbackschat/a12/dm/rulekit/validate/laws/"
+                    + "TemporalDeclarationConfigAdmissionLawsTest.java",
+            "its DateType-config grids are the measured BASIS a client-side refusal may key on, and both "
+                    + "gates read the format's components — so a short axis would narrow that basis silently, "
+                    + "in the one direction where over-rejection makes a legal model unauthorable");
 
     private static final String REGION_START = "VOCABULARY-GRID-START";
     private static final String REGION_END = "VOCABULARY-GRID-END";

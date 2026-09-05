@@ -852,7 +852,8 @@ tasks.register('vocabularyGuardTest', Test) {
             // this lane UP-TO-DATE and the containment check unrun — the exact staleness the guard exists for.
             'vocabulary consumers'  : files(
                     'adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/TemporalDeclaredFormatGateDiffTest.kt',
-                    'interpreter/src/commonTest/kotlin/io/github/mbackschat/a12/dm/interpreter/TemporalDeclaredFormatFormalTest.kt'),
+                    'interpreter/src/commonTest/kotlin/io/github/mbackschat/a12/dm/interpreter/TemporalDeclaredFormatFormalTest.kt',
+                    'src/test/java/io/github/mbackschat/a12/dm/rulekit/validate/laws/TemporalDeclarationConfigAdmissionLawsTest.java'),
     ])
 }
 

@@ -19,7 +19,11 @@ import java.util.Optional;
  *       <b>entity-resolution</b> code ({@code MVK_INVALID_ENTITY} — a bare/relative name that doesn't bind;
  *       the fix is the absolute path), and the <b>enum locale-coverage</b> code
  *       ({@code MVK_INTERNAL_VALUES_AND_DISPLAY_VALUES} — an enum value labeled in some declared locales but
- *       not all, whose opaque "display value and XML value not specified together" message hides the gap).</li>
+ *       not all, whose opaque "display value and XML value not specified together" message hides the gap),
+ *       and the <b>field-declaration</b> pair, where a DateType's config disagrees with its declared format
+ *       ({@code MVK_ADDITIONAL_CHECK_INVALID}, {@code MVK_OPTIONAL_DATE_TYPE_INVALID} — the two gates read the
+ *       format differently, so neither message says which formats would work, and the second echoes the
+ *       offending one back in German pattern letters).</li>
  *   <li><b>CROSS-CONTEXT codes</b> — documented by operator(s), but ALSO fired by a construct the catalog
  *       cannot describe, so the documenter's fix is <em>wrong</em> there (probe findings F06-2 / dec-places):
  *       {@code MVK_NO_WILDCARD} (CurrentRepetition documents it, but a non-iterating aggregate / computation
@@ -68,6 +72,33 @@ public final class StructuralKernelFix {
                             + "the typed/full-model oracle additionally rejects uppercase `\\P`. "
                             + "MVK_INVALID_PATTERN can therefore mean invalid Java syntax or a Java-valid "
                             + "kernel-rejected form; it is not a general cross-runtime portability check.")),
+            Map.entry("MVK_ADDITIONAL_CHECK_INVALID", new Hint(
+                    "A date field's opt-in pre-1900 check (`youngerThan1900Check`, our "
+                            + "`dateField(…).rejectBefore1900()`) requires the declared FORMAT to carry a YEAR. "
+                            + "Over the kernel's admitted format vocabulary it is accepted on `yyyy`, `yyyy-MM`, "
+                            + "`yyyyMM`, `yyyy-MM-dd`, `dd.MM.yyyy`, `yyyyMMdd` and `yyyy-MM-dd'T'HH:mm:ss`, and "
+                            + "refused on the year-free `MM`, `MM-dd`, `MMdd`, `ddMM` and `HH:mm:ss`. So either "
+                            + "declare a year-bearing format or drop the check — it is not admitted-and-inert on a "
+                            + "year-free declaration, so there is no way to keep both. An INCOMPLETE format is not "
+                            + "the trigger: `yyyy` and `yyyy-MM` carry no day and are accepted.",
+                    "The kernel gates the additional date check on the declared format's YEAR component rather "
+                            + "than on the field's kind, so the code means the format and the check disagree — "
+                            + "never that the check is unsupported for this field type.")),
+            Map.entry("MVK_OPTIONAL_DATE_TYPE_INVALID", new Hint(
+                    "A partially known date (`datePrecision` DAY_OPTIONAL / MONTH_OPTIONAL / YEAR_OPTIONAL) "
+                            + "requires the declared FORMAT to be a COMPLETE date and nothing further. Over the "
+                            + "kernel's admitted format vocabulary that is exactly `yyyy-MM-dd`, `dd.MM.yyyy` and "
+                            + "`yyyyMMdd`; every component-omitting format is refused, and so is the instant "
+                            + "`yyyy-MM-dd'T'HH:mm:ss` despite carrying all three date components. Declare one of "
+                            + "those three, or leave the precision at its FULL default — the precision is what "
+                            + "lets the stored VALUE omit parts (`00.02.2024`), so the format must still be able "
+                            + "to spell all of them. Do NOT copy the format out of this rejection: it echoes the "
+                            + "spelling in GERMAN pattern letters (`JJJJ-MM` for `yyyy-MM`, `MM-TT` for `MM-dd`) "
+                            + "in every locale, and those are not declarable.",
+                    "The kernel requires a complete date format before it will accept a partial-precision marker, "
+                            + "and reports the conflict against the format rather than against the precision — the "
+                            + "verdict is the same for all three partial values, so the code identifies the "
+                            + "mismatch and not which side to edit.")),
             Map.entry("MVK_NO_WILDCARD", new Hint(
                     "A repeatable group is referenced from a rule that does not iterate over it — the fix is "
                             + "operator-dependent. For an AGGREGATE, flatten the repetitions with the `*` wildcard: "

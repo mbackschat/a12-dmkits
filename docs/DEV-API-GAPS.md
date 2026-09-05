@@ -36,9 +36,7 @@ The gaps below were the **ergonomic and consistency remainder** — what added f
 
 ## 2. Open
 
-- **DG51 — the DATE builder accepts an additional check the kernel refuses on a year-free format** (measured 2026-09-05). `dateField(…).format("HH:mm:ss").rejectBefore1900()` builds DM-JSON the kernel rejects at codegen with `MVK_ADDITIONAL_CHECK_INVALID` — *"For date fields without a year, no 'additional check' may be specified"* ([KF250](KERNEL-FINDINGS.md#kf250)). `DateFieldBuilder` carries `format` and `rejectBefore1900` independently, so the illegal pair is representable.
-
-  **Why this is a row and not a fix.** The author does get a correct diagnostic, from `checkConsistency`, so this is delegation UNDER-reporting rather than a wrong answer — safe by the standing rule, and the reason nothing here is urgent. What it costs is the typed surface's own claim to make illegal states unrepresentable, one build step earlier than the kernel does. The measured basis a client-side refusal would need now exists, which is the part that was missing; whether to spend a refusal on it is an owner call, because the same shape argument applies to every other field-config pair whose legality depends on the declared format and none of those are measured. **What would settle the scope:** enumerate the DateType/DateFragmentType config pairs whose admission depends on declared components, then decide the class rather than this instance.
+_None open._
 
 ---
 

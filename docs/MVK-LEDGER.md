@@ -268,7 +268,7 @@ Caveats that hold across all four paths:
 
 | Code | Bucket | rulekit treatment / lock |
 |---|---|---|
-| `MVK_ADDITIONAL_CHECK_INVALID` | n/a-structural | date-type law: the extra date check requires a year-bearing format |
+| `MVK_ADDITIONAL_CHECK_INVALID` | n/a-structural | date-type law: the opt-in pre-1900 check requires the declared format to carry a YEAR — completeness is not the gate ([KF251](KERNEL-FINDINGS.md#kf251)); carries a curated `StructuralKernelFix` corrective, locked by `validate.laws.TemporalDeclarationConfigAdmissionLawsTest` |
 | `MVK_AMOUNT_INT_PART_MISSING` | n/a-structural | number-type law: amount types must declare the integer-part places |
 | `MVK_ARITY_TOO_BIG` | n/a-structural | number-type law: integer + fractional places must fit the header’s digit budget |
 | `MVK_CATEGORY_NAME_DUPLICATE` | n/a-structural | enum-category law: category names unique |
@@ -341,7 +341,7 @@ Caveats that hold across all four paths:
 | `MVK_NAME_STARTS_WITH_XML_A12_DV` | n/a-structural | field law: new-world names must not begin with "xml" |
 | `MVK_NO_VALUE_MISSING` | n/a-structural | yes/no-type law: the "no" representation must be declared |
 | `MVK_NO_VAL_AND_HINT_LISTS` | n/a-structural | string-type law: no-value-validation excludes hint lists |
-| `MVK_OPTIONAL_DATE_TYPE_INVALID` | n/a-structural | date-type law: the partially-known-date marker is only valid with compatible formats |
+| `MVK_OPTIONAL_DATE_TYPE_INVALID` | n/a-structural | date-type law: a partial `datePrecision` requires a COMPLETE date format and nothing further — the instant spelling carries all three components and is still refused ([KF251](KERNEL-FINDINGS.md#kf251)); carries a curated `StructuralKernelFix` corrective, locked by `validate.laws.TemporalDeclarationConfigAdmissionLawsTest` |
 | `MVK_PATTERN_INVALID` | n/a-structural | string-type law: a declared pattern must be valid (custom check) |
 | `MVK_PROGRAMMING_LANGUAGE_MISSING` | n/a-structural | header law: the codegen target language must be named |
 | `MVK_ROOT_GROUP_NAME_INVALID` | n/a-structural | root-group law: must not be named "id" (case-insensitive) |
