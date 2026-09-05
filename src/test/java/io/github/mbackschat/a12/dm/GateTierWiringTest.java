@@ -43,6 +43,25 @@ class GateTierWiringTest {
                 "the Gradle cache action and build must share the isolated user home");
     }
 
+    /**
+     * <b>A guard that hangs off {@code check} reaches CI only by being NAMED, and this workflow names tasks
+     * one by one.</b> Every gate below holds part of the published kits' kernel-free claim, and each is a
+     * {@code check} dependency rather than a {@code test} one, so dropping its name from the run line silently
+     * retires it. That is not hypothetical: {@code :schemakit:check} appeared in NO lane here until 2026-09-05,
+     * so the fifth published kit's 27 test classes and {@code verifySchemakitPurity} — the guard
+     * SCHEMAKIT-SPEC §1 cites for the module's kernel-free claim — had never once run in CI.
+     */
+    @Test
+    void pushCiNamesEveryCheckOnlyGuardHoldingTheKernelFreeClaim() throws IOException {
+        String ci = Files.readString(locate(".github/workflows/ci.yml"));
+
+        for (String gate : List.of(":verifyKitPurity", ":verifyPublishedClasspathsAreKernelFree",
+                ":schemakit:check", ":interpreter-bridge:check", ":noBackendTest")) {
+            assertTrue(ci.contains(gate), () -> gate + " must be named in ci.yml — it hangs off a `check` this "
+                    + "workflow never invokes, so an unnamed gate does not run at all");
+        }
+    }
+
     @Test
     void infographicFreshnessSetsUpPinnedNodeThenBlocksHeavySetupWithoutASecondJob() throws IOException {
         String ci = Files.readString(locate(".github/workflows/ci.yml"));
