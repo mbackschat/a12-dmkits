@@ -27,7 +27,7 @@
 - `yyyyMM`
 - `yyyyMMdd`
 
-## Refused — 123
+## Refused — 363
 
 Refused on all three kinds. Listed because without them, "the gate reads the string" and
 "there is no gate" are the same observation.
@@ -155,6 +155,246 @@ Refused on all three kinds. Listed because without them, "the gate reads the str
 - `dd.MM.yyyy'T'HH:mm:ss`
 - `dd.MM.yyyy'T'HH:mm`
 - `dd.MM.yyyy HH:mm`
+- `YYYY`
+- `yyyy-mm`
+- `YYYY-MM`
+- `yyyymm`
+- `YYYYMM`
+- `mm-dd`
+- `MM-DD`
+- `yyyy-mm-dd`
+- `YYYY-MM-DD`
+- `dd.mm.yyyy`
+- `DD.MM.YYYY`
+- `mm.yyyy`
+- `MM.YYYY`
+- `mm-yyyy`
+- `MM-YYYY`
+- `yyyy/mm`
+- `YYYY/MM`
+- `dd.mm`
+- `DD.MM`
+- `hh:mm:ss`
+- `HH:MM:SS`
+- `yyyy-mm-dd't'hh:mm:ss`
+- `YYYY-MM-DD'T'HH:MM:SS`
+- `hh:mm`
+- `HH:MM`
+- `h:mm:ss`
+- `H:MM:SS`
+- `hh:mm:ss.sss`
+- `HH:MM:SS.SSS`
+- `HH:MM:SS A`
+- `hhmmss`
+- `HHMMSS`
+- `hh-mm-ss`
+- `HH-MM-SS`
+- `yyyy-mm-dd hh:mm:ss`
+- `YYYY-MM-DD HH:MM:SS`
+- `dd.mm.yyyy hh:mm:ss`
+- `DD.MM.YYYY HH:MM:SS`
+- `yyyy-mm-dd hh:mm`
+- `YYYY-MM-DD HH:MM`
+- `yyyymm-dd`
+- `YYYYMM-DD`
+- `yyyy-mmdd`
+- `YYYY-MMDD`
+- `yyyymm.dd`
+- `YYYYMM.DD`
+- `YY`
+- `yymm`
+- `YYMM`
+- `mmyy`
+- `MMYY`
+- `ddmmyy`
+- `DDMMYY`
+- `dd.mm.yy`
+- `DD.MM.YY`
+- `m`
+- `D`
+- `mmm`
+- `mmmm`
+- `yyyymmddhhmmss`
+- `YYYYMMDDHHMMSS`
+- `yyyy-mm-ddhh:mm:ss`
+- `YYYY-MM-DDHH:MM:SS`
+- `yyyymmdd hh:mm:ss`
+- `YYYYMMDD HH:MM:SS`
+- `yyyy-mm-dd't'hh:mm:ss.sss`
+- `YYYY-MM-DD'T'HH:MM:SS.SSS`
+- `yyyymmdd't'hhmmss`
+- `YYYYMMDD'T'HHMMSS`
+- `yyyymmdd't'hh:mm:ss`
+- `YYYYMMDD'T'HH:MM:SS`
+- `yyyy-mm-dd't'hh:mm:ssz`
+- `YYYY-MM-DD'T'HH:MM:SSZ`
+- `yyyy-mm-dd't'hh:mm:ss'z'`
+- `YYYY-MM-DD'T'HH:MM:SS'Z'`
+- `yyyy/mm/dd hh:mm:ss`
+- `YYYY/MM/DD HH:MM:SS`
+- `mm/dd/yyyy hh:mm:ss`
+- `MM/DD/YYYY HH:MM:SS`
+- `yyyy.mm`
+- `YYYY.MM`
+- `yyyymmdd`
+- `YYYYMMDD`
+- `yyyy.mm.dd`
+- `YYYY.MM.DD`
+- `yyyy/mm/dd`
+- `YYYY/MM/DD`
+- `YYYYDD`
+- `YYYY-DD`
+- `YYYY.DD`
+- `YYYY/DD`
+- `yyyyddmm`
+- `YYYYDDMM`
+- `yyyy-dd-mm`
+- `YYYY-DD-MM`
+- `yyyy.dd.mm`
+- `YYYY.DD.MM`
+- `yyyy/dd/mm`
+- `YYYY/DD/MM`
+- `mmyyyy`
+- `MMYYYY`
+- `mm/yyyy`
+- `MM/YYYY`
+- `mmyyyydd`
+- `MMYYYYDD`
+- `mm-yyyy-dd`
+- `MM-YYYY-DD`
+- `mm.yyyy.dd`
+- `MM.YYYY.DD`
+- `mm/yyyy/dd`
+- `MM/YYYY/DD`
+- `mmdd`
+- `MMDD`
+- `mm.dd`
+- `MM.DD`
+- `mm/dd`
+- `MM/DD`
+- `mmddyyyy`
+- `MMDDYYYY`
+- `mm-dd-yyyy`
+- `MM-DD-YYYY`
+- `mm.dd.yyyy`
+- `MM.DD.YYYY`
+- `mm/dd/yyyy`
+- `MM/DD/YYYY`
+- `DD`
+- `DDYYYY`
+- `DD-YYYY`
+- `DD.YYYY`
+- `DD/YYYY`
+- `ddyyyymm`
+- `DDYYYYMM`
+- `dd-yyyy-mm`
+- `DD-YYYY-MM`
+- `dd.yyyy.mm`
+- `DD.YYYY.MM`
+- `dd/yyyy/mm`
+- `DD/YYYY/MM`
+- `ddmm`
+- `DDMM`
+- `dd-mm`
+- `DD-MM`
+- `dd/mm`
+- `DD/MM`
+- `ddmmyyyy`
+- `DDMMYYYY`
+- `dd-mm-yyyy`
+- `DD-MM-YYYY`
+- `dd/mm/yyyy`
+- `DD/MM/YYYY`
+- `hh`
+- `hhmm`
+- `HHMM`
+- `hh-mm`
+- `HH-MM`
+- `hh.mm`
+- `HH.MM`
+- `hh.mm.ss`
+- `HH.MM.SS`
+- `hhss`
+- `HHSS`
+- `hh:ss`
+- `HH:SS`
+- `hh-ss`
+- `HH-SS`
+- `hh.ss`
+- `HH.SS`
+- `hhssmm`
+- `HHSSMM`
+- `hh:ss:mm`
+- `HH:SS:MM`
+- `hh-ss-mm`
+- `HH-SS-MM`
+- `hh.ss.mm`
+- `HH.SS.MM`
+- `mmhh`
+- `MMHH`
+- `mm:hh`
+- `MM:HH`
+- `mm-hh`
+- `MM-HH`
+- `mm.hh`
+- `MM.HH`
+- `mmhhss`
+- `MMHHSS`
+- `mm:hh:ss`
+- `MM:HH:SS`
+- `mm-hh-ss`
+- `MM-HH-SS`
+- `mm.hh.ss`
+- `MM.HH.SS`
+- `MMSS`
+- `MM:SS`
+- `MM-SS`
+- `MM.SS`
+- `mmsshh`
+- `MMSSHH`
+- `mm:ss:hh`
+- `MM:SS:HH`
+- `mm-ss-hh`
+- `MM-SS-HH`
+- `mm.ss.hh`
+- `MM.SS.HH`
+- `SS`
+- `sshh`
+- `SSHH`
+- `ss:hh`
+- `SS:HH`
+- `ss-hh`
+- `SS-HH`
+- `ss.hh`
+- `SS.HH`
+- `sshhmm`
+- `SSHHMM`
+- `ss:hh:mm`
+- `SS:HH:MM`
+- `ss-hh-mm`
+- `SS-HH-MM`
+- `ss.hh.mm`
+- `SS.HH.MM`
+- `SSMM`
+- `SS:MM`
+- `SS-MM`
+- `SS.MM`
+- `ssmmhh`
+- `SSMMHH`
+- `ss:mm:hh`
+- `SS:MM:HH`
+- `ss-mm-hh`
+- `SS-MM-HH`
+- `ss.mm.hh`
+- `SS.MM.HH`
+- `yyyy-mm-dd't'hh:mm`
+- `YYYY-MM-DD'T'HH:MM`
+- `dd.mm.yyyy't'hh:mm:ss`
+- `DD.MM.YYYY'T'HH:MM:SS`
+- `dd.mm.yyyy't'hh:mm`
+- `DD.MM.YYYY'T'HH:MM`
+- `dd.mm.yyyy hh:mm`
+- `DD.MM.YYYY HH:MM`
 
 ## Kind-split — 0
 
@@ -198,7 +438,7 @@ makes it the kind where a narrower set is plausible. Probed over the same candid
 - `yyyyMM`
 - `yyyyMMdd`
 
-## Candidate universe — 135
+## Candidate universe — 375
 
 Every format string put to the kernel, and **the denominator of every count above.** It is the
 union of the estate's existing probes with a generated set: each ordered selection of the date
@@ -346,3 +586,243 @@ width this list does not name (`yy`, `M`, `MMM`), and any literal beyond `'T'`.
 - `dd.MM.yyyy'T'HH:mm:ss`
 - `dd.MM.yyyy'T'HH:mm`
 - `dd.MM.yyyy HH:mm`
+- `YYYY`
+- `yyyy-mm`
+- `YYYY-MM`
+- `yyyymm`
+- `YYYYMM`
+- `mm-dd`
+- `MM-DD`
+- `yyyy-mm-dd`
+- `YYYY-MM-DD`
+- `dd.mm.yyyy`
+- `DD.MM.YYYY`
+- `mm.yyyy`
+- `MM.YYYY`
+- `mm-yyyy`
+- `MM-YYYY`
+- `yyyy/mm`
+- `YYYY/MM`
+- `dd.mm`
+- `DD.MM`
+- `hh:mm:ss`
+- `HH:MM:SS`
+- `yyyy-mm-dd't'hh:mm:ss`
+- `YYYY-MM-DD'T'HH:MM:SS`
+- `hh:mm`
+- `HH:MM`
+- `h:mm:ss`
+- `H:MM:SS`
+- `hh:mm:ss.sss`
+- `HH:MM:SS.SSS`
+- `HH:MM:SS A`
+- `hhmmss`
+- `HHMMSS`
+- `hh-mm-ss`
+- `HH-MM-SS`
+- `yyyy-mm-dd hh:mm:ss`
+- `YYYY-MM-DD HH:MM:SS`
+- `dd.mm.yyyy hh:mm:ss`
+- `DD.MM.YYYY HH:MM:SS`
+- `yyyy-mm-dd hh:mm`
+- `YYYY-MM-DD HH:MM`
+- `yyyymm-dd`
+- `YYYYMM-DD`
+- `yyyy-mmdd`
+- `YYYY-MMDD`
+- `yyyymm.dd`
+- `YYYYMM.DD`
+- `YY`
+- `yymm`
+- `YYMM`
+- `mmyy`
+- `MMYY`
+- `ddmmyy`
+- `DDMMYY`
+- `dd.mm.yy`
+- `DD.MM.YY`
+- `m`
+- `D`
+- `mmm`
+- `mmmm`
+- `yyyymmddhhmmss`
+- `YYYYMMDDHHMMSS`
+- `yyyy-mm-ddhh:mm:ss`
+- `YYYY-MM-DDHH:MM:SS`
+- `yyyymmdd hh:mm:ss`
+- `YYYYMMDD HH:MM:SS`
+- `yyyy-mm-dd't'hh:mm:ss.sss`
+- `YYYY-MM-DD'T'HH:MM:SS.SSS`
+- `yyyymmdd't'hhmmss`
+- `YYYYMMDD'T'HHMMSS`
+- `yyyymmdd't'hh:mm:ss`
+- `YYYYMMDD'T'HH:MM:SS`
+- `yyyy-mm-dd't'hh:mm:ssz`
+- `YYYY-MM-DD'T'HH:MM:SSZ`
+- `yyyy-mm-dd't'hh:mm:ss'z'`
+- `YYYY-MM-DD'T'HH:MM:SS'Z'`
+- `yyyy/mm/dd hh:mm:ss`
+- `YYYY/MM/DD HH:MM:SS`
+- `mm/dd/yyyy hh:mm:ss`
+- `MM/DD/YYYY HH:MM:SS`
+- `yyyy.mm`
+- `YYYY.MM`
+- `yyyymmdd`
+- `YYYYMMDD`
+- `yyyy.mm.dd`
+- `YYYY.MM.DD`
+- `yyyy/mm/dd`
+- `YYYY/MM/DD`
+- `YYYYDD`
+- `YYYY-DD`
+- `YYYY.DD`
+- `YYYY/DD`
+- `yyyyddmm`
+- `YYYYDDMM`
+- `yyyy-dd-mm`
+- `YYYY-DD-MM`
+- `yyyy.dd.mm`
+- `YYYY.DD.MM`
+- `yyyy/dd/mm`
+- `YYYY/DD/MM`
+- `mmyyyy`
+- `MMYYYY`
+- `mm/yyyy`
+- `MM/YYYY`
+- `mmyyyydd`
+- `MMYYYYDD`
+- `mm-yyyy-dd`
+- `MM-YYYY-DD`
+- `mm.yyyy.dd`
+- `MM.YYYY.DD`
+- `mm/yyyy/dd`
+- `MM/YYYY/DD`
+- `mmdd`
+- `MMDD`
+- `mm.dd`
+- `MM.DD`
+- `mm/dd`
+- `MM/DD`
+- `mmddyyyy`
+- `MMDDYYYY`
+- `mm-dd-yyyy`
+- `MM-DD-YYYY`
+- `mm.dd.yyyy`
+- `MM.DD.YYYY`
+- `mm/dd/yyyy`
+- `MM/DD/YYYY`
+- `DD`
+- `DDYYYY`
+- `DD-YYYY`
+- `DD.YYYY`
+- `DD/YYYY`
+- `ddyyyymm`
+- `DDYYYYMM`
+- `dd-yyyy-mm`
+- `DD-YYYY-MM`
+- `dd.yyyy.mm`
+- `DD.YYYY.MM`
+- `dd/yyyy/mm`
+- `DD/YYYY/MM`
+- `ddmm`
+- `DDMM`
+- `dd-mm`
+- `DD-MM`
+- `dd/mm`
+- `DD/MM`
+- `ddmmyyyy`
+- `DDMMYYYY`
+- `dd-mm-yyyy`
+- `DD-MM-YYYY`
+- `dd/mm/yyyy`
+- `DD/MM/YYYY`
+- `hh`
+- `hhmm`
+- `HHMM`
+- `hh-mm`
+- `HH-MM`
+- `hh.mm`
+- `HH.MM`
+- `hh.mm.ss`
+- `HH.MM.SS`
+- `hhss`
+- `HHSS`
+- `hh:ss`
+- `HH:SS`
+- `hh-ss`
+- `HH-SS`
+- `hh.ss`
+- `HH.SS`
+- `hhssmm`
+- `HHSSMM`
+- `hh:ss:mm`
+- `HH:SS:MM`
+- `hh-ss-mm`
+- `HH-SS-MM`
+- `hh.ss.mm`
+- `HH.SS.MM`
+- `mmhh`
+- `MMHH`
+- `mm:hh`
+- `MM:HH`
+- `mm-hh`
+- `MM-HH`
+- `mm.hh`
+- `MM.HH`
+- `mmhhss`
+- `MMHHSS`
+- `mm:hh:ss`
+- `MM:HH:SS`
+- `mm-hh-ss`
+- `MM-HH-SS`
+- `mm.hh.ss`
+- `MM.HH.SS`
+- `MMSS`
+- `MM:SS`
+- `MM-SS`
+- `MM.SS`
+- `mmsshh`
+- `MMSSHH`
+- `mm:ss:hh`
+- `MM:SS:HH`
+- `mm-ss-hh`
+- `MM-SS-HH`
+- `mm.ss.hh`
+- `MM.SS.HH`
+- `SS`
+- `sshh`
+- `SSHH`
+- `ss:hh`
+- `SS:HH`
+- `ss-hh`
+- `SS-HH`
+- `ss.hh`
+- `SS.HH`
+- `sshhmm`
+- `SSHHMM`
+- `ss:hh:mm`
+- `SS:HH:MM`
+- `ss-hh-mm`
+- `SS-HH-MM`
+- `ss.hh.mm`
+- `SS.HH.MM`
+- `SSMM`
+- `SS:MM`
+- `SS-MM`
+- `SS.MM`
+- `ssmmhh`
+- `SSMMHH`
+- `ss:mm:hh`
+- `SS:MM:HH`
+- `ss-mm-hh`
+- `SS-MM-HH`
+- `ss.mm.hh`
+- `SS.MM.HH`
+- `yyyy-mm-dd't'hh:mm`
+- `YYYY-MM-DD'T'HH:MM`
+- `dd.mm.yyyy't'hh:mm:ss`
+- `DD.MM.YYYY'T'HH:MM:SS`
+- `dd.mm.yyyy't'hh:mm`
+- `DD.MM.YYYY'T'HH:MM`
+- `dd.mm.yyyy hh:mm`
+- `DD.MM.YYYY HH:MM`

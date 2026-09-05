@@ -4638,3 +4638,23 @@ Takes the row a12-kernel-lean handed over from their `SPEC-2026-09-05-14` — so
 **Asked by a12-kernel-lean's `SG22`**, whose `route-state` recorded the question as having no constructible witness — "under a mandatory single format the decoded and stored accounts agree on every currently constructible input". The premise is what fails: the format is not mandatory-single for *this* operator, which is exactly the fact their proposed format-equality gate would have erased. They have withdrawn the recommendation.
 
 *(Locked: `adapter.laws.DistinctCountTemporalIdentityDiffTest` — every cell asserts kernel and interpreter equal before its value is pinned, so an engine divergence fails ahead of the pin; the cross-spelling pair's admission is asserted rather than assumed, since a refused pair would make the counts measurements of a model that does not exist.)*
+
+## §6 supplement — the temporal format gate is CASE-SENSITIVE, and "lowercase" was never the rule (kernel `checkConsistency` over a new case axis, 2026-09-05) <a id="kf254"></a>
+
+> Fold: pending — closes the case axis [KF206](#kf206)'s string-gate result left unprobed; folds into §6 with it.
+
+Eleven published schema descriptions and the diagnostic enricher all said a date/time format must be **"a LOWERCASE Java pattern"**. Read literally that licenses `yyyy-mm-dd`, which the kernel refuses. Measured over a new case axis — both the all-lowercase and all-uppercase spelling of every candidate, universe 135 → 375: **no case variant of any admitted format is accepted**, and the admitted set stays exactly twelve.
+
+| spelling | verdict |
+|---|---|
+| `yyyy-mm-dd`, `yyyymmdd`, `dd.mm.yyyy`, `hh:mm:ss` | REFUSED |
+| `YYYY-MM-DD`, `YYYYMMDD` | REFUSED |
+| the twelve as published | ADMITTED |
+
+**"Lowercase" was reaching for a real fact and named the wrong one.** The surfaces carry a true adjacent claim — the A12 editor's UPPERCASE labels (`YYYY-MM-DD`) are display labels, not format values — and "lowercase" was shorthand for *not those*. But the actual rule is that Java pattern letters are case-**significant**: `MM` is months where `mm` is minutes, so `yyyy-mm-dd` is a **different pattern**, not a miscased one. A reader who applied the description's own rule produced a string the description's own list does not contain.
+
+**The mechanism is the one this file keeps recording: a description asserted a rule no candidate exercised.** The generator varies components and separators — the axis [KF196](#kf196) proved discriminating — at fixed case throughout, so both case claims were unfalsifiable by construction. That is the same defect as the short allowlists [KF252](#kf252) corrected, one layer up: there the *set* was wrong, here the *rule for forming a member* was, and neither was reachable by the probe that was supposed to cover the surface. Adding the axis was the fix; rewording alone would have left the next case claim equally unchecked.
+
+**Found by a12-kernel-lean, 2026-09-05**, who read the schema before the diagnostic, wrote the lowercase spelling and lost a round to it — the failure mode the description uniquely causes, since `field add`'s own rejection text was correct and lists all twelve. Their report is what prompted the axis; the verdicts above are measured here.
+
+*(Locked: `validate.laws.TemporalFormatVocabularyGuardTest` — the case axis is generated from every candidate rather than from named members, so a future admitted format is case-probed without anyone remembering to add it.)*

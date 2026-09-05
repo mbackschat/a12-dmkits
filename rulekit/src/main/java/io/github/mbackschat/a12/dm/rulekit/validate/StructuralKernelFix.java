@@ -315,8 +315,10 @@ public final class StructuralKernelFix {
         String m = message.toLowerCase(java.util.Locale.ROOT);
         if (m.contains("date range format is invalid") || m.contains("date format is invalid")) {
             return Optional.of(new Hint(
-                    "A date/time field FORMAT must be a LOWERCASE Java pattern from the kernel's fixed allowed set "
-                            + "(the editor's UPPERCASE labels like YYYY-MM-DD are display labels, NOT format values). "
+                    "A date/time field FORMAT must be a CASE-SENSITIVE Java pattern from the kernel's fixed allowed "
+                            + "set — case is not merely lowercase, since `MM` means months where `mm` means minutes, "
+                            + "so `yyyy-mm-dd` is a different pattern rather than a miscased one, and neither it nor "
+                            + "the editor's UPPERCASE display label `YYYY-MM-DD` is accepted. "
                             + "Derived from the kernel, TWELVE are admitted and each on any of DATE/TIME/DATETIME: "
                             + "the complete dates `yyyy-MM-dd`, `dd.MM.yyyy`, `yyyyMMdd`; the component-omitting "
                             + "`yyyy`, `yyyy-MM`, `yyyyMM`, `MM`, `MM-dd`, `MMdd`, `ddMM`; the clock `HH:mm:ss`; "

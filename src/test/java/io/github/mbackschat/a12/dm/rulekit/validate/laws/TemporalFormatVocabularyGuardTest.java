@@ -110,7 +110,32 @@ class TemporalFormatVocabularyGuardTest {
                 all.add(date + " " + time);
             }
         }
+        all.addAll(caseVariants(all));
         return all;
+    }
+
+    /**
+     * The CASE axis, which every generator above holds fixed: components and separators vary, letter case never
+     * does. That is why eleven published schema descriptions and the diagnostic enricher could all say a format
+     * is "a LOWERCASE Java pattern" and that the editor's UPPERCASE labels are invalid, with neither claim
+     * probed — a description asserting a rule no candidate exercises is the same defect as a short allowlist,
+     * one layer up. Reported by a12-kernel-lean 2026-09-05, who read the description literally, wrote
+     * {@code yyyy-mm-dd} and lost a round to it.
+     *
+     * <p><b>Both spellings of every candidate, not a hand-picked pair.</b> The lowercase reading is not merely
+     * miscased — in a Java pattern {@code mm} is minutes where {@code MM} is months, so {@code yyyy-mm-dd} is a
+     * different pattern rather than a sloppy one, and only the kernel can say which of the two the gate rejects
+     * it for. Generating the axis rather than naming two members follows this file's own rule: a hand-written
+     * list cannot miss what it does not think of.
+     */
+    private static Set<String> caseVariants(Set<String> base) {
+        Set<String> variants = new LinkedHashSet<>();
+        for (String format : base) {
+            variants.add(format.toLowerCase(java.util.Locale.ROOT));
+            variants.add(format.toUpperCase(java.util.Locale.ROOT));
+        }
+        variants.removeAll(base);
+        return variants;
     }
 
     /** Every ordered non-empty selection of [components], joined by each separator (singles joined by none). */
@@ -382,8 +407,9 @@ class TemporalFormatVocabularyGuardTest {
      * it produced, and every consumer would then be checked against that. These floors are the only thing
      * standing between a degraded probe and a codified one.
      *
-     * <p>The numbers are deliberate floors well under the live counts (113 candidates, 12 admitted, 101 refused
-     * at 2026-08-29): they answer "did the probe happen and does it discriminate", not "how big is the set", and
+     * <p>The numbers are deliberate floors well under the live counts (375 candidates, 12 admitted, 363 refused
+     * at 2026-09-05, after the case axis landed): they answer "did the probe happen and does it discriminate",
+     * not "how big is the set", and
      * a floor that tracked the live count would need editing whenever the kernel moved. Both verdicts must occur,
      * because a probe that admitted everything — a degraded backend, say — would satisfy the containment arm too.
      */
