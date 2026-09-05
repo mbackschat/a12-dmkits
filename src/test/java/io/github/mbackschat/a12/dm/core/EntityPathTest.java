@@ -262,6 +262,33 @@ class EntityPathTest {
     }
 
     /**
+     * <b>The FORWARD direction, and its inverse over every element name.</b> {@code elementReference} is what a
+     * rule or computation of {@code group} stores to name {@code target}, and the property that makes it the
+     * right forward half is that resolving it against ANY element of that group lands back on the target — the
+     * element's own name is popped by the leading {@code ..} and cannot influence the answer.
+     *
+     * <p>The self-named element is the row that matters: {@code /Order/CustomerName} as both the element and
+     * the target still round-trips, because the base here is the GROUP. Deriving the reference from the
+     * element instead would give the empty string, which the kernel refuses outright
+     * ({@code adapter.laws.SelfNamedRuleErrorReferenceLawsTest}) — so this is not a stylistic choice between
+     * two equivalent spellings (DEV-API-GAPS {@code DG50}).
+     */
+    @Test
+    void elementReferenceResolvesBackFromAnyElementOfItsGroup() {
+        for (String group : ROUND_TRIP_INPUTS) {
+            for (String target : ROUND_TRIP_INPUTS) {
+                String reference = EntityPath.of(group).elementReference(EntityPath.of(target));
+                for (String elementName : java.util.List.of("SomeRule", "CustomerName", "X")) {
+                    EntityPath element = EntityPath.of(group + "/" + elementName);
+                    assertEquals(EntityPath.of(target), element.resolve(reference),
+                            () -> "elementReference(\"" + group + "\", \"" + target + "\") = \"" + reference
+                                    + "\" must resolve back to " + target + " from " + element);
+                }
+            }
+        }
+    }
+
+    /**
      * The convention the CLI corrective got backwards, pinned as a sentence a reader can check: the base is the
      * rule ELEMENT, so one {@code ..} lands on its group and the element's own name never survives.
      */

@@ -1,5 +1,6 @@
 package io.github.mbackschat.a12.dm.cli;
 
+import io.github.mbackschat.a12.dm.core.EntityPath;
 import io.github.mbackschat.a12.dm.cli.computation.ComputationSpec;
 import io.github.mbackschat.a12.dm.cli.config.ConfigModification;
 import io.github.mbackschat.a12.dm.cli.field.FieldSpec;
@@ -503,7 +504,7 @@ final class ApplyCommand extends BaseCommand {
                 if (!EntityPaths.isStrictlyInside(field, group)) {
                     throw new IllegalArgumentException("rule add 'field' " + field + " must be inside the rule group " + group);
                 }
-                String errorEntityRelPath = "../" + field.substring(group.length() + 1);
+                String errorEntityRelPath = EntityPath.of(group).elementReference(EntityPath.of(field));
                 String code = req(op, "code");
                 String ruleName = op.hasNonNull("name") ? op.get("name").asText() : code;
                 String severity = op.hasNonNull("severity") ? op.get("severity").asText() : "ERROR";

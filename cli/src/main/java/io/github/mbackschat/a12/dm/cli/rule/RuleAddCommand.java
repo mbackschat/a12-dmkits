@@ -1,5 +1,6 @@
 package io.github.mbackschat.a12.dm.cli.rule;
 
+import io.github.mbackschat.a12.dm.core.EntityPath;
 import io.github.mbackschat.a12.dm.cli.BaseCommand;
 import io.github.mbackschat.a12.dm.cli.ConsistencyEvidence;
 import io.github.mbackschat.a12.dm.cli.LintBackstop;
@@ -140,7 +141,7 @@ final class RuleAddCommand extends BaseCommand {
             return rejectSpecParse(RkCode.ERROR_FIELD_OUTSIDE_GROUP,
                     "field " + field + " must be inside the rule group " + group, "field", field);
         }
-        String errorEntityRelPath = "../" + field.substring(group.length() + 1);
+        String errorEntityRelPath = EntityPath.of(group).elementReference(EntityPath.of(field));
         ModelResolver resolver = workspace.resolverFor(model);
 
         ValidationResult check = new RuleValidator().check(modelJson,

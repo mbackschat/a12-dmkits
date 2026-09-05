@@ -129,6 +129,31 @@ public record EntityPath(List<String> segments) {
     }
 
     /**
+     * The stored reference an ELEMENT of this group uses to name {@code target} — the forward direction of the
+     * rule/computation convention, whose inverse is {@link #resolve} against that element.
+     *
+     * <p><b>Why the base here is the GROUP while the reference is relative to the ELEMENT.</b> The element
+     * sits one level inside its group, so the reference always opens with the {@code ..} that climbs off it,
+     * and the remainder is this group's own {@link #relativize} of the target. Deriving it from the element
+     * instead would be the same string on every reachable input and the EMPTY reference on one: a rule or
+     * computation whose name equals its target's last segment in the same group, where the element path and
+     * the target path coincide.
+     *
+     * <p><b>That input is unreachable, and the empty reference it would produce is REFUSED</b> — measured
+     * through a route that skips every client-side check ({@code adapter.laws.SelfNamedRuleErrorReferenceLawsTest},
+     * kernel 30.8.1, 2026-09-05). The kernel will not convert a model whose rule shares a name with a field of
+     * its group at all ({@code Group.addChildEntity}: "Cannot have two child elements with the same name"),
+     * and an empty {@code errorEntityRelPath} on a legally named rule draws {@code MVK_ERROR_FIELD_MISSING} /
+     * {@code MVK_MISSING_ERROR_FIELD}. So this convention is not merely the incumbent one: it is the one that
+     * stays legal where the two could differ.
+     *
+     * @param target the absolute path of the field the element names
+     */
+    public String elementReference(EntityPath target) {
+        return "../" + relativize(target);
+    }
+
+    /**
      * The absolute path a stored {@code reference} names, resolved against this base — the <b>inverse</b> of
      * {@link #relativize}. A reference starting with {@code /} is already absolute and passes through; each
      * {@code ..} pops one segment off the base; {@code .} and empty segments are skipped; anything else

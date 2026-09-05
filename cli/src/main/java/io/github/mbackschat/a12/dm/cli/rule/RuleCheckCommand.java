@@ -1,5 +1,6 @@
 package io.github.mbackschat.a12.dm.cli.rule;
 
+import io.github.mbackschat.a12.dm.core.EntityPath;
 import io.github.mbackschat.a12.dm.cli.BaseCommand;
 import io.github.mbackschat.a12.dm.cli.ConsistencyEvidence;
 import io.github.mbackschat.a12.dm.cli.LintBackstop;
@@ -106,7 +107,8 @@ final class RuleCheckCommand extends BaseCommand {
                     "--field " + field + " must be inside --group " + effectiveGroup,
                     "--field", field, RkCode.ERROR_FIELD_OUTSIDE_GROUP.fix());
         }
-        String errorEntityRelPath = "../" + field.substring(effectiveGroup.length() + 1);
+        String errorEntityRelPath =
+                EntityPath.of(effectiveGroup).elementReference(EntityPath.of(field));
 
         String json = readModelJson(model);
         if (json == null) {

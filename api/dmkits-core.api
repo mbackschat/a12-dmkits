@@ -85,6 +85,7 @@ public enum io.github.mbackschat.a12.dm.core.ElementType
 
 public record io.github.mbackschat.a12.dm.core.EntityPath
   public EntityPath(java.util.List<java.lang.String>)
+  public java.lang.String elementReference(io.github.mbackschat.a12.dm.core.EntityPath)
   public final boolean equals(java.lang.Object)
   public final int hashCode()
   public boolean isInside(io.github.mbackschat.a12.dm.core.EntityPath)

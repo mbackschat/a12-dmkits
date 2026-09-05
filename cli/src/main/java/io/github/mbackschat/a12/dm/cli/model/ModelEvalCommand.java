@@ -1,5 +1,6 @@
 package io.github.mbackschat.a12.dm.cli.model;
 
+import io.github.mbackschat.a12.dm.core.EntityPath;
 import io.github.mbackschat.a12.dm.cli.BaseCommand;
 import io.github.mbackschat.a12.dm.cli.CustomSupportOptions;
 import io.github.mbackschat.a12.dm.cli.ModelPaths;
@@ -143,7 +144,7 @@ final class ModelEvalCommand extends BaseCommand {
                     "--field " + field + " must be inside --group " + effectiveGroup,
                     "--field", field, RkCode.ERROR_FIELD_OUTSIDE_GROUP.fix());
             }
-            errorEntityRelPath = "../" + field.substring(effectiveGroup.length() + 1);
+            errorEntityRelPath = EntityPath.of(effectiveGroup).elementReference(EntityPath.of(field));
         }
 
         // Use the public portable workspace so an includes-bearing model evaluates over its mounted content.
