@@ -40,6 +40,7 @@ class RuleMessageParameterLanguageLawsTest {
     private static final String NOT_AN_ENTITY = "INVALID_ENTITY";
     private static final String RECOGNISED_BUT_REFUSED_HERE = "INVALID_PARAMETER";
     private static final String NOT_A_GROUP = "INVALID_GROUP";
+    private static final String RETIRED_ON_THE_MODERN_ROUTE = "PARAM_INVALID_IN_NEW_WORLD";
     private static final String DOES_NOT_PARSE = "MVK_UNEXPECTED_TOKEN";
 
     // ---- the English model, condition language en_US -------------------------------------------
@@ -204,6 +205,28 @@ class RuleMessageParameterLanguageLawsTest {
                 "en model, $#LfdNr$", NOT_A_GROUP,
                 "de model, $#LfdNr$", ADMITTED,
                 "de model, $#RootGroup$", NOT_A_GROUP), verdicts);
+    }
+
+    /**
+     * …and a RETIRED terminal in that same position is language-INDEPENDENT, which is what separates "the
+     * bundle selects a spelling" from "the bundle simply lacks the other language's words". {@code $#Zeile$}
+     * is spelled identically in both languages and draws {@code PARAM_INVALID_IN_NEW_WORLD} under each — the
+     * kernel parses it and refuses it on the modern route. A bundle that merely omitted the other language's
+     * words would have to refuse it as an unknown group, and it does not.
+     *
+     * <p>Reported as a12-kernel-lean's {@code SPEC-2026-09-05-03}; measured here on the same model pair the
+     * bilingual rows above use, so the two tables share their fixture and cannot disagree about it.
+     */
+    @Test
+    void aRetiredTerminalInTheGroupPositionIsRefusedIdenticallyInBothLanguages() {
+        Map<String, String> verdicts = new LinkedHashMap<>();
+        verdicts.put("en model, $#Zeile$", en(EN_READS_ROW, "see $#Zeile$", "/Policy/Claims", "../Payout"));
+        verdicts.put("de model, $#Zeile$",
+                de(DE_READS_ROW, "siehe $#Zeile$", "/Vertrag/Schaeden", "../Auszahlung"));
+
+        assertEquals(Map.of(
+                "en model, $#Zeile$", RETIRED_ON_THE_MODERN_ROUTE,
+                "de model, $#Zeile$", RETIRED_ON_THE_MODERN_ROUTE), verdicts);
     }
 
     // ---- the one keyword-position terminal -------------------------------------------------------

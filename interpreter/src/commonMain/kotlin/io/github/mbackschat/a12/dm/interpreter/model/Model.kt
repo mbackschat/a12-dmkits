@@ -420,6 +420,10 @@ data class ComputationDef(
     /** The computation's NAME — the error code of its implicit validation rule (the kernel auto-generates a
      *  `FieldFilled(F) And [F] != <term>` validation per computation; IF32). Null = no implicit validation. */
     val name: String? = null,
+    /** The computation's declared `errorMessage`, locale → template — the text its implicit validation rule
+     *  renders. Every computation must declare one (`MVK_ERROR_MESSAGE_MISSING`), so an empty map here means
+     *  a hand-built [ComputationDef], never a model read from DM-JSON (IF324). */
+    val messages: Map<String, String> = emptyMap(),
 ) {
     /** Sugar for the common single-unconditional-operation computation (no precondition, no common guard). */
     constructor(targetPath: String, group: String, expressionText: String) :

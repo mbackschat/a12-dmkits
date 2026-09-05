@@ -339,7 +339,10 @@ object ModelLoader {
                 }
                 if (acceptedByVariantFilter(body)) {
                     sink.comps.add(
-                        ComputationDef(target, parent(id), alternatives, common, structure.name),
+                        ComputationDef(
+                            target, parent(id), alternatives, common, structure.name,
+                            localizedTexts(body.path("errorMessage")),
+                        ),
                     )
                 }
             }

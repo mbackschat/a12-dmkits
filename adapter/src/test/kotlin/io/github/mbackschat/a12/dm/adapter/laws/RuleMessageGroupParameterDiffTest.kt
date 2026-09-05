@@ -5,7 +5,11 @@ import io.github.mbackschat.a12.dm.interpreter.DmInterpreter
 import io.github.mbackschat.a12.dm.interpreter.eval.newDocument
 import io.github.mbackschat.a12.dm.interpreter.load.ModelLoader
 import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft
+import io.github.mbackschat.a12.dm.modelkit.ModelDocument
+import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel
+import io.github.mbackschat.a12.dm.rulekit.dsl.ConditionLanguage
 import io.github.mbackschat.a12.dm.rulekit.dsl.Dsl
+import io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer
 import io.github.mbackschat.a12.dm.rulekit.dsl.Severity
 import java.util.Locale
 import org.junit.jupiter.api.Assertions.assertEquals
@@ -53,6 +57,13 @@ class RuleMessageGroupParameterDiffTest {
         const val SKU = "/Consignment/Boxes/Items/Sku"
         const val QTY = "/Consignment/Boxes/Items/Qty"
         const val OVERPACKED = "OVERPACKED"
+
+        const val LIEFERUNG = "/Lieferung"
+        const val KENNUNG = "/Lieferung/Kennung"
+        const val POSTEN = "/Lieferung/Posten"
+        const val MARKE = "/Lieferung/Posten/Marke"
+        const val MENGE = "/Lieferung/Posten/Menge"
+        const val UEBERLADEN = "UEBERLADEN"
     }
 
     private val model: String = run {
@@ -217,6 +228,87 @@ class RuleMessageGroupParameterDiffTest {
             "item=[1] box=[1] cons=[1] rule=[1] top=[1] quoted=[1]",
             "item=[2] box=[3] cons=[2] rule=[2] top=[2] quoted=[3]",
             "item=[4] box=[3] cons=[2] rule=[4] top=[2] quoted=[3]",
+        )
+        assertEquals(expected, dynamic, "normative Groovy-dynamic")
+        assertEquals(dynamic, generated, "generated Java  kernel=$dynamic java=$generated")
+        assertEquals(dynamic, interpreted, "interpreter  kernel=$dynamic interp=$interpreted")
+    }
+    /**
+     * A `de_DE` CONDITION-language model — the arm no kernel runtime fixture in this estate carried, and the
+     * one a12-kernel-lean could not run because its probe route needs a clean tree here. Its rule is injected
+     * as raw JSON because the condition language is a model-config declaration the typed builder does not
+     * vary; the condition itself is rendered by [DslRenderer] in [ConditionLanguage.DE] off a bound model, so
+     * the German keywords are the renderer's own rather than hand-spelled in a fixture.
+     */
+    private val german: String = run {
+        val base = ModelDocument.read(
+            DocumentModelDraft.named("lieferung").locale("de_DE").locale("en_US")
+                .rootGroup("Lieferung") { lieferung ->
+                    lieferung.repeatable(3).stringField("Kennung") { }
+                        .group("Posten") { posten ->
+                            posten.repeatable(10).stringField("Marke") { }.numberField("Menge") { }
+                        }
+                }
+                .build().toJson(),
+        ).setConditionLanguage("de_DE").toJson()
+        val bound = BoundModel.ofJson(base)
+        val condition = DslRenderer(ConditionLanguage.DE)
+            .render(Dsl.fieldFilled(bound.field(MARKE)).and(bound.num(MENGE).gt(100)))
+        val text = "eigen=[\$#$POSTEN\$] regel=[\$#RegelKontext\$] wurzel=[\$#LfdNr\$]"
+        RuntimeLaws.withRuleMessages(base, POSTEN, "Ueberladen", "../Marke", UEBERLADEN, condition, text, text)
+    }
+
+    private val germanDefinition = ModelLoader.load(german)
+
+    /** The German mirror; the root is repeatable so `$#LfdNr$` reads a real index rather than the constant 1. */
+    private inner class GermanBuild {
+        val kDoc = RuntimeLaws.doc()
+        val iDoc = germanDefinition.newDocument()
+
+        fun lieferung(nr: Int, kennung: String) {
+            kDoc.group(LIEFERUNG, nr)
+            iDoc.group(LIEFERUNG, nr)
+            kDoc.field(KENNUNG, kennung, nr, 1)
+            iDoc.field(KENNUNG, kennung, nr, 1)
+        }
+
+        fun posten(nr: Int, row: Int, menge: String) {
+            kDoc.group(POSTEN, nr, row)
+            iDoc.group(POSTEN, nr, row)
+            kDoc.field(MARKE, "P$row", nr, row, 1)
+            iDoc.field(MARKE, "P$row", nr, row, 1)
+            kDoc.field(MENGE, menge, nr, row, 1)
+            iDoc.field(MENGE, menge, nr, row, 1)
+        }
+    }
+
+    /**
+     * The two shorthands are BILINGUAL and follow the model's condition language, so on a German model
+     * `$#RegelKontext$` and `$#LfdNr$` are the terminals — admitted (`validate.laws`
+     * `RuleMessageParameterLanguageLawsTest`) and, measured here, rendering the same two coordinates their
+     * English twins do. The root repeats and the firing rows sit in the SECOND delivery, so `wurzel=` reads a
+     * real index; on a non-repeatable root it would be the constant `1` and the row would say nothing.
+     */
+    @Test
+    fun theGermanShorthandsRenderTheSameCoordinatesAsTheirEnglishTwins() {
+        val build = GermanBuild().apply {
+            lieferung(1, "L-1")
+            posten(1, 1, "500")
+            lieferung(2, "L-2")
+            posten(2, 1, "50")
+            posten(2, 2, "200")
+            posten(2, 3, "300")
+        }
+        val dynamic = RuntimeLaws.errorTextsOf(german, UEBERLADEN, build.kDoc, Locale.GERMANY)
+        val java = RuntimeLaws.kernelJavaEngine(german)
+        val generated = java.errorTextsOf(java.instance(build.kDoc), UEBERLADEN, Locale.GERMANY)
+        val interpreted = DmInterpreter(germanDefinition).validateFull(build.iDoc, "de_DE")
+            .filter { it.code == UEBERLADEN }.map { it.text }
+
+        val expected = listOf(
+            "eigen=[1] regel=[1] wurzel=[1]",
+            "eigen=[2] regel=[2] wurzel=[2]",
+            "eigen=[3] regel=[3] wurzel=[2]",
         )
         assertEquals(expected, dynamic, "normative Groovy-dynamic")
         assertEquals(dynamic, generated, "generated Java  kernel=$dynamic java=$generated")
