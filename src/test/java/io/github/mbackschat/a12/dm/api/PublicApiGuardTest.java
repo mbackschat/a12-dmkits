@@ -2,6 +2,7 @@ package io.github.mbackschat.a12.dm.api;
 
 import io.github.mbackschat.a12.dm.Checkout;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.IOException;
@@ -20,6 +21,7 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 import org.junit.jupiter.api.Test;
@@ -108,7 +110,29 @@ class PublicApiGuardTest {
      * kits. Everything else on a public signature forces a third-party compile dependency the POM does not
      * advertise (the kits keep Jackson {@code implementation}-scoped).
      */
-    private static final List<String> ALLOWED_TYPE_PREFIXES = List.of("java.", "javax.", "io.github.mbackschat.");
+    private static final List<String> ALLOWED_TYPE_PREFIXES = List.of("java.", "javax.",
+            "io.github.mbackschat.a12.dm.core.",
+            "io.github.mbackschat.a12.dm.rulekit.",
+            "io.github.mbackschat.a12.dm.modelkit.",
+            "io.github.mbackschat.a12.dm.edit.",
+            "io.github.mbackschat.a12.dm.schemakit.",
+            "io.github.mbackschat.a12.dm.bridge.");
+
+    /**
+     * <b>Signatures that reference one of OUR OTHER publications rather than a kit, kept as a named ratchet.</b>
+     * The blanket {@code io.github.mbackschat.} prefix this list replaced passed the letter of the rule while
+     * missing its purpose: {@code dmkits-interpreter-bridge} declares {@code dmkits-interpreter}
+     * {@code runtime}-scoped, so a consumer compiling against a bridge signature that mentions
+     * {@code dm.interpreter.ast.Expr} does NOT have that type on their compile classpath — exactly the leak the
+     * rule exists to stop, one prefix short of being caught (DEV-API-GAPS {@code DG45}).
+     *
+     * <p>It is an exemption rather than a fix because the classes are Kotlin {@code internal} and public only
+     * by JVM accident, so nothing is advertised to a consumer that a Kotlin one can even see. It is a RATCHET:
+     * {@link #everyForeignSignatureExemptionIsStillNeeded()} fails when an entry stops matching, so a leak
+     * that gets fixed cannot leave its licence behind, and a NEW leak in another package is not covered by it.
+     */
+    private static final Map<String, String> FOREIGN_SIGNATURE_EXEMPTIONS = Map.of(
+            "dmkits-interpreter-bridge", "io.github.mbackschat.a12.dm.interpreter.");
 
     /**
      * The <b>class</b> guard behind the Set W cleanup (root-cause generalization of "Jackson leaks on public
@@ -180,10 +204,52 @@ class PublicApiGuardTest {
 
     private static void check(Kit kit, Class<?> type, String where, List<String> violations, Set<Class<?>> referenced) {
         for (Class<?> c : referenced) {
-            if (ALLOWED_TYPE_PREFIXES.stream().noneMatch(c.getName()::startsWith)) {
+            if (!isAllowed(kit, c)) {
                 violations.add(kit.artifact() + ": " + type.getName() + " — " + where + " references " + c.getName());
             }
         }
+    }
+
+    /** A type a consumer of {@code kit} resolves with no extra compile dependency, or its named exemption. */
+    private static boolean isAllowed(Kit kit, Class<?> c) {
+        if (ALLOWED_TYPE_PREFIXES.stream().anyMatch(c.getName()::startsWith)) {
+            return true;
+        }
+        String exempt = FOREIGN_SIGNATURE_EXEMPTIONS.get(kit.artifact());
+        return exempt != null && c.getName().startsWith(exempt);
+    }
+
+    /**
+     * The ratchet's own control: every exemption above must still be MATCHED by a live signature. Without it
+     * an exemption outlives the leak it excuses and silently re-opens the hole for the next type in that
+     * package — the failure mode the blanket prefix already demonstrated once.
+     */
+    @Test
+    @DisabledIfSystemProperty(named = "api.fix", matches = "true")
+    void everyForeignSignatureExemptionIsStillNeeded() {
+        for (Map.Entry<String, String> exemption : FOREIGN_SIGNATURE_EXEMPTIONS.entrySet()) {
+            Kit kit = KITS.stream().filter(k -> k.artifact().equals(exemption.getKey())).findFirst()
+                    .orElseThrow(() -> new AssertionError(
+                            "exemption names an artifact that is not a published kit: " + exemption.getKey()));
+            List<String> matched = new ArrayList<>();
+            for (Class<?> type : PublicApiDumper.apiTypes(mainClasses(kit), classLoader(kit))) {
+                List<String> referenced = new ArrayList<>();
+                collectForeignReferencesIgnoringExemptions(kit, type, referenced);
+                referenced.stream().filter(v -> v.contains(exemption.getValue())).forEach(matched::add);
+            }
+            assertFalse(matched.isEmpty(), () ->
+                    "the '" + exemption.getKey() + "' exemption for " + exemption.getValue() + " matches no live"
+                    + " signature — the leak it excused is gone, so DELETE the exemption rather than leaving a"
+                    + " licence for the next type in that package");
+        }
+    }
+
+    /** As {@link #collectForeignReferences}, with the exemptions off — the ratchet's measuring instrument. */
+    private static void collectForeignReferencesIgnoringExemptions(
+            Kit kit, Class<?> type, List<String> violations) {
+        List<String> all = new ArrayList<>();
+        collectForeignReferences(new Kit(kit.artifact() + " (unexempted)", kit.moduleDir()), type, all);
+        violations.addAll(all);
     }
 
     private static Set<Class<?>> flatten(Type... types) {
