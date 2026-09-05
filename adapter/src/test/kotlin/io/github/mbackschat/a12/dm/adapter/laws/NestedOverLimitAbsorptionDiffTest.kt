@@ -2,6 +2,7 @@ package io.github.mbackschat.a12.dm.adapter.laws
 
 import io.github.mbackschat.a12.dm.interpreter.DmInterpreter
 import io.github.mbackschat.a12.dm.interpreter.eval.Document
+import io.github.mbackschat.a12.dm.interpreter.eval.formatPointer
 import io.github.mbackschat.a12.dm.interpreter.eval.newDocument
 import io.github.mbackschat.a12.dm.interpreter.load.ModelLoader
 import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft
@@ -87,14 +88,47 @@ class NestedOverLimitAbsorptionDiffTest {
     private fun agreedMessages(label: String, build: (Both) -> Unit): List<String> {
         val def = ModelLoader.load(base)
         val both = Both(base).also(build)
-        val dynamic = RuntimeLaws.messages(base, both.kDoc).map { "${it.code()}@${it.field()}" }.sorted()
+        val dynamic = RuntimeLaws.messages(base, both.kDoc).map { "${it.code()}@${it.key()}" }.sorted()
         val static = RuntimeLaws.kernelJavaEngine(base)
             .messagesModern(Both(base).also(build).kDoc, null, Locale.US)
-            .map { "${it.code()}@${it.field()}" }.sorted()
-        val interp = DmInterpreter(def).validateFull(both.iDoc).map { "${it.code}@${it.errorPath}" }.sorted()
+            .map { "${it.code()}@${it.key()}" }.sorted()
+        val interp = DmInterpreter(def).validateFull(both.iDoc).map { "${it.code}@${it.errorKey}" }.sorted()
         assertEquals(dynamic, static, "$label — static-Java vs dynamic-Groovy")
         assertEquals(dynamic, interp, "$label — INTERPRETER vs dynamic-Groovy")
         return dynamic
+    }
+
+    /**
+     * The same three engines compared on the LOSSLESS key instead of the house form — the fix
+     * INTERPRETER-GAPS `IG145` calls for, and the measurement that says whether it was ever hiding anything.
+     *
+     * The three `zuGrosseKontextnummer` findings differ only in the terminal coordinate, so this is the one
+     * assertion in the class that can see a row misattribution at all: on the house form all three read
+     * `/Billing[1]/Invoices[3]/Periods` and any permutation of rows compares equal. The field row carries the
+     * trailing `[1]` a field pointer always has, which is why the key is for comparison and not for reading.
+     */
+    @Test
+    fun theLosslessKeyDistinguishesTheThreeDescendantRowsAndAllThreeEnginesAgreeOnThem() {
+        val def = ModelLoader.load(base)
+        val both = Both(base).also(::doublyOverLimit)
+        val dynamic = RuntimeLaws.messages(base, both.kDoc).map { "${it.code()}@${it.key()}" }.sorted()
+        val static = RuntimeLaws.kernelJavaEngine(base)
+            .messagesModern(Both(base).also(::doublyOverLimit).kDoc, null, Locale.US)
+            .map { "${it.code()}@${it.key()}" }.sorted()
+        val interp = DmInterpreter(def).validateFull(both.iDoc).map { "${it.code}@${it.errorKey}" }.sorted()
+
+        val expected = listOf(
+            "$NODE_CODE@/Billing[1]/Invoices[3]/Periods[1]",
+            "$NODE_CODE@/Billing[1]/Invoices[3]/Periods[2]",
+            "$NODE_CODE@/Billing[1]/Invoices[3]/Periods[3]",
+            "$NODE_CODE@/Billing[1]/Invoices[3]/Periods[3]/Label[1]",
+            "$ROW_CODE@/Billing[1]/Invoices[3]",
+        )
+        assertEquals(expected, dynamic, "the key writes the terminal coordinate the house form drops")
+        assertEquals(dynamic, static, "static-Java addresses the rows identically")
+        assertEquals(dynamic, interp, "INTERPRETER vs dynamic-Groovy, on the key that can see the row")
+        assertEquals(3, dynamic.distinct().count { it.contains("/Periods[") && !it.contains("Label") },
+            "three distinct rows where the house form had one string")
     }
 
     // ---- the documents ----
@@ -146,20 +180,20 @@ class NestedOverLimitAbsorptionDiffTest {
 
         assertEquals(
             listOf(
-                "$NODE_CODE@/Billing[1]/Invoices[3]/Periods",
-                "$NODE_CODE@/Billing[1]/Invoices[3]/Periods",
-                "$NODE_CODE@/Billing[1]/Invoices[3]/Periods",
-                "$NODE_CODE@/Billing[1]/Invoices[3]/Periods[3]/Label",
-                "$ROW_CODE@/Billing[1]/Invoices",
+                "$NODE_CODE@/Billing[1]/Invoices[3]/Periods[1]",
+                "$NODE_CODE@/Billing[1]/Invoices[3]/Periods[2]",
+                "$NODE_CODE@/Billing[1]/Invoices[3]/Periods[3]",
+                "$NODE_CODE@/Billing[1]/Invoices[3]/Periods[3]/Label[1]",
+                "$ROW_CODE@/Billing[1]/Invoices[3]",
             ),
             doubly,
             "one row code at the OUTER group; the inner violation contributes nodes but no row code of its own",
         )
         assertEquals(
             listOf(
-                "$NODE_CODE@/Billing[1]/Invoices[3]/Periods",
-                "$NODE_CODE@/Billing[1]/Invoices[3]/Periods[1]/Label",
-                "$ROW_CODE@/Billing[1]/Invoices",
+                "$NODE_CODE@/Billing[1]/Invoices[3]/Periods[1]",
+                "$NODE_CODE@/Billing[1]/Invoices[3]/Periods[1]/Label[1]",
+                "$ROW_CODE@/Billing[1]/Invoices[3]",
             ),
             outerOnly,
             "the same single row code with the inner row in capacity — so nesting, not the fixture, absorbs",
@@ -177,16 +211,16 @@ class NestedOverLimitAbsorptionDiffTest {
     fun theFindingSetCoversWhatTheDocumentWROTEAndNotWhatTheModelDECLARES() {
         assertEquals(
             listOf(
-                "$NODE_CODE@/Billing[1]/Invoices[3]/Periods",
-                "$NODE_CODE@/Billing[1]/Invoices[3]/Periods[1]/Label",
-                "$NODE_CODE@/Billing[1]/Invoices[3]/Ref",
-                "$ROW_CODE@/Billing[1]/Invoices",
+                "$NODE_CODE@/Billing[1]/Invoices[3]/Periods[1]",
+                "$NODE_CODE@/Billing[1]/Invoices[3]/Periods[1]/Label[1]",
+                "$NODE_CODE@/Billing[1]/Invoices[3]/Ref[1]",
+                "$ROW_CODE@/Billing[1]/Invoices[3]",
             ),
             agreedMessages("two written cells", ::twoCellsUnderOneOverLimitRow),
             "two cells at different depths give a node finding each, beside the descendant row's own",
         )
         assertEquals(
-            listOf("$ROW_CODE@/Billing[1]/Invoices"),
+            listOf("$ROW_CODE@/Billing[1]/Invoices[3]"),
             agreedMessages("over-limit row written empty", ::overLimitRowWrittenEmpty),
             "an over-limit row carrying nothing draws the row code alone — declarations contribute no findings",
         )
@@ -201,16 +235,16 @@ class NestedOverLimitAbsorptionDiffTest {
         val beneath = agreedMessages("malformed beneath the over-limit row", ::malformedBeneathOverLimit)
         assertEquals(
             listOf(
-                "$NODE_CODE@/Billing[1]/Invoices[3]/Periods",
-                "$NODE_CODE@/Billing[1]/Invoices[3]/Periods[1]/Charges",
-                "$NODE_CODE@/Billing[1]/Invoices[3]/Periods[1]/Charges[1]/Amount",
-                "$ROW_CODE@/Billing[1]/Invoices",
+                "$NODE_CODE@/Billing[1]/Invoices[3]/Periods[1]",
+                "$NODE_CODE@/Billing[1]/Invoices[3]/Periods[1]/Charges[1]",
+                "$NODE_CODE@/Billing[1]/Invoices[3]/Periods[1]/Charges[1]/Amount[1]",
+                "$ROW_CODE@/Billing[1]/Invoices[3]",
             ),
             beneath,
             "the malformed cell exposes over-repetition instead of its format cause",
         )
         assertEquals(
-            listOf("$BAD_NUMBER@/Billing[1]/Invoices[1]/Periods[1]/Charges[1]/Amount"),
+            listOf("$BAD_NUMBER@/Billing[1]/Invoices[1]/Periods[1]/Charges[1]/Amount[1]"),
             agreedMessages("the same cell in capacity", ::malformedInCapacitySibling),
             "the identical value one index lower reports its format cause, so the silence above is suppression",
         )
@@ -222,13 +256,17 @@ class NestedOverLimitAbsorptionDiffTest {
      * one path — while `formatPointer` indexes every segment but the last, correct for a field (whose terminal
      * coordinate is not a repetition axis) and lossy for a repeatable group, so the three collapse to one string.
      *
-     * <p>The consequence is a differential blind spot, not merely an ugly address: an engine attributing a
-     * group-node finding to the wrong descendant row would compare equal. This test pins the kernel's own
-     * addresses across both codegen strategies so the class is covered while the rendering question is decided
-     * separately: the projection is tool-owned ([MessagePointerProjection] says so) but 23 committed corpus case
-     * files store its spelling, so changing it is a regeneration sweep rather than a line in a measurement
-     * commit. It reaches no published address — `A12Pointers` and `KernelRuntimeProbe` both prefer A12's
-     * canonical exact form, which distinguishes these three rows.
+     * <p>The consequence was a differential blind spot, not merely an ugly address: an engine attributing a
+     * group-node finding to the wrong descendant row would compare equal. **Closed by the lossless
+     * `Msg.key()`/`Message.errorKey` (IG145)** — the house form itself is unchanged, because it is tool-owned
+     * ([MessagePointerProjection] says so) and 23 committed corpus case files store its spelling. It reaches
+     * no published address either: `A12Pointers` and `KernelRuntimeProbe` both prefer A12's canonical exact
+     * form, which distinguishes these three rows.
+     *
+     * <p><b>This test is the key's own oracle, which is why it survives the fix and reads the RAW pointer.</b>
+     * `pointerComparisonKey` is derived from these coordinates, so an assertion phrased in the key could not
+     * catch the key inventing or dropping one. `errorField` is the kernel's own `toString`, parsed here — an
+     * independent channel that the poisoning in `toMsgs` deliberately leaves intact.
      */
     @Test
     fun theKernelAddressesEachDescendantRowDistinctlyWhereOurFormattedAddressCollapsesThem() {
@@ -247,9 +285,17 @@ class NestedOverLimitAbsorptionDiffTest {
         assertEquals(dynamic, static, "both codegen strategies address the nodes identically")
         assertEquals(3, dynamic.count { it.startsWith("/Billing/Invoices/Periods|") },
             "three instantiated descendant rows, three distinct kernel addresses")
-        assertEquals(1, agreedMessages("collapse", ::doublyOverLimit)
-            .filter { it == "$NODE_CODE@/Billing[1]/Invoices[3]/Periods" }.distinct().size,
-            "and one formatted string for all three — the loss this test exists to record")
+        assertEquals(
+            listOf("/Billing[1]/Invoices[3]/Periods"),
+            dynamic.filter { it.startsWith("/Billing/Invoices/Periods|") }.map { houseForm(it) }.distinct(),
+            "and ONE house-form string for all three — the loss, still recorded, now with a key beside it",
+        )
+    }
+
+    /** `/a/b|1, 3, 2` rendered the house way, so the loss is shown from the kernel's own coordinates. */
+    private fun houseForm(rawAddress: String): String {
+        val (path, coords) = rawAddress.split('|', limit = 2)
+        return formatPointer(path, coords.split(',').map { it.trim().toInt() })
     }
 
     /** Fails loudly rather than skipping if the kernel's pointer `toString` ever changes shape. */

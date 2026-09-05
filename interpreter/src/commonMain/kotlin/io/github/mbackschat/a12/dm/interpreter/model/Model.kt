@@ -2,6 +2,7 @@ package io.github.mbackschat.a12.dm.interpreter.model
 
 import io.github.mbackschat.a12.dm.interpreter.A12PartiallyKnownMultiPointer
 import io.github.mbackschat.a12.dm.interpreter.messagePointerHouseForm
+import io.github.mbackschat.a12.dm.interpreter.eval.pointerComparisonKey
 
 import io.github.mbackschat.a12.dm.interpreter.regex.PatternRegistry
 import io.github.mbackschat.a12.dm.interpreter.regex.compilePattern
@@ -782,6 +783,15 @@ data class Message(
 
     /** Derived comparison projection — never stored. */
     val fillToFix: List<String> get() = fillToFixPointers.map(::messagePointerHouseForm)
+
+    /**
+     * The LOSSLESS comparison key of the same pointer — every coordinate, terminal included
+     * ([io.github.mbackschat.a12.dm.interpreter.eval.pointerComparisonKey]). [errorPath] is the house form and
+     * stays exactly as it is: the conformance corpus records it, `AutoChecks` puts it in error text, and
+     * dmtool's addresses derive from it. This one is for the `adapter/laws` differentials, which need to see a
+     * terminal row index that the house form drops (INTERPRETER-GAPS `IG145`).
+     */
+    val errorKey: String get() = pointerComparisonKey(errorPointer.fullName, errorPointer.repetitionIndexes)
 }
 
 /**

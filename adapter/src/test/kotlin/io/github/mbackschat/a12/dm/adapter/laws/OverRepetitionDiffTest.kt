@@ -51,8 +51,8 @@ class OverRepetitionDiffTest {
         val b = Build().apply(build)
         val codes = setOf("zuGrosseZeile", "zuGrosseKontextnummer", "zuGrosseLaufendeNr")
         fun sigs(cs: List<Pair<String, String>>) = cs.map { "${it.first}@${it.second}" }.sorted()
-        val kernel = sigs(RuntimeLaws.messages(json, b.kDoc).filter { it.code() in codes }.map { it.code() to it.field() })
-        val interp = sigs(DmInterpreter(def).validate(b.iDoc).messages.filter { it.code in codes }.map { it.code to it.errorPath })
+        val kernel = sigs(RuntimeLaws.messages(json, b.kDoc).filter { it.code() in codes }.map { it.code() to it.key() })
+        val interp = sigs(DmInterpreter(def).validate(b.iDoc).messages.filter { it.code in codes }.map { it.code to it.errorKey })
         assertEquals(kernel, interp, "$label  kernel=$kernel interp=$interp")
     }
 
@@ -75,8 +75,8 @@ class OverRepetitionDiffTest {
         val rdef = def.copy(rules = listOf(TypedRules.def(rule)))
         val b = Build().apply { line(1); line(2); line(3); line(4); line(5) }   // rows 4,5 over max 3
         fun sigs(cs: List<Pair<String, String>>) = cs.map { "${it.first}@${it.second}" }.sorted()
-        val kernel = sigs(RuntimeLaws.messages(ruleModel, b.kDoc).map { it.code() to it.field() })
-        val interp = sigs(DmInterpreter(rdef).validate(b.iDoc).messages.map { it.code to it.errorPath })
+        val kernel = sigs(RuntimeLaws.messages(ruleModel, b.kDoc).map { it.code() to it.key() })
+        val interp = sigs(DmInterpreter(rdef).validate(b.iDoc).messages.map { it.code to it.errorKey })
         assertEquals(kernel, interp, "rule fires within cap, suppressed on over-limit rows  kernel=$kernel interp=$interp")
     }
 
@@ -102,8 +102,8 @@ class OverRepetitionDiffTest {
         row(4, null)                            // over cap, empty → would be mandatoryField, suppressed
         row(5, "A")                             // over cap, dup of row 1 → would be uniqueIndex, suppressed
         fun sigs(cs: List<Pair<String, String>>) = cs.map { "${it.first}@${it.second}" }.sorted()
-        val kernel = sigs(RuntimeLaws.messages(idxJson, kDoc).map { it.code() to it.field() })
-        val interp = sigs(DmInterpreter(idxDef).validate(iDoc).messages.map { it.code to it.errorPath })
+        val kernel = sigs(RuntimeLaws.messages(idxJson, kDoc).map { it.code() to it.key() })
+        val interp = sigs(DmInterpreter(idxDef).validate(iDoc).messages.map { it.code to it.errorKey })
         assertEquals(kernel, interp, "over-limit rows suppress mandatory+unique  kernel=$kernel interp=$interp")
     }
 
