@@ -4658,3 +4658,30 @@ Eleven published schema descriptions and the diagnostic enricher all said a date
 **Found by a12-kernel-lean, 2026-09-05**, who read the schema before the diagnostic, wrote the lowercase spelling and lost a round to it — the failure mode the description uniquely causes, since `field add`'s own rejection text was correct and lists all twelve. Their report is what prompted the axis; the verdicts above are measured here.
 
 *(Locked: `validate.laws.TemporalFormatVocabularyGuardTest` — the case axis is generated from every candidate rather than from named members, so a future admitted format is case-probed without anyone remembering to add it.)*
+
+## §11 supplement — the operand-scope law transfers to the RULE carrier unchanged, sibling index rows included (kernel `checkConsistency`, 2026-09-06) <a id="kf255"></a>
+
+> Fold: pending — completes [KF226](#kf226)-era carrier discipline on the §11 scope law; folds into §11 beside the computation rows.
+
+`ComputationOperandScopeLawsTest` established on the **computation** carrier that an operand is admitted by whether the target's repetition scope **binds** every repeatable level it crosses — not by scope equality, and not by cross-group-ness. Whether a **rule** decides the same way was an explicitly unmeasured transfer. Measured now: **it does, on every row, including the three that make the law interesting.**
+
+| operand, relative to the error field | rule carrier | computation carrier |
+|---|---|---|
+| form-level into a one-level / two-level target | ADMITTED | ADMITTED |
+| one level up into a two-level target | ADMITTED | ADMITTED |
+| own level — control | ADMITTED | ADMITTED |
+| one level BELOW the target | `MVK_NO_WILDCARD` | `MVK_NO_WILDCARD` |
+| repeatable into a form-level target | `MVK_NO_WILDCARD` | `MVK_NO_WILDCARD` |
+| sibling repeatable, index field SAME name | ADMITTED | ADMITTED |
+| sibling repeatable, index field ANOTHER name | `MVK_ERROR_FIELD_INVALID_INDEX` | `MVK_ERROR_FIELD_INVALID_INDEX` |
+| sibling repeatable, NO index field | `MVK_NO_WILDCARD` | `MVK_NO_WILDCARD` |
+
+**A clean transfer is a result, not a non-result, and it had to be run rather than assumed.** This estate has measured the opposite outcome three times in a week on one operator family ([KF120](#kf120), [KF218](#kf218), [KF242](#kf242)) — the reuse needs no new branch, so nothing prompts the question and a silent assumption that happens to hold produces no signal at all. The row that would have been most expensive to get wrong is the sibling triple, where siblinghood alone predicts one verdict and the kernel gives three.
+
+**The two carriers are NOT symmetric, which is what made the transfer non-obvious.** A rule's condition must reference its error field (`MVK_ERROR_FIELD_NOT_REFERENCED`), so every rule row carries **two** operands where the computation rows carried one, and the error-field read is itself a scope participant. A computation can pair a bare constant with a repeating target; a rule cannot. The scope verdict is nevertheless identical, so the binding relation is decided by the operand and the target locus alone and does not count operands.
+
+**Vacuity is excluded by the sibling table rather than by a separate control**: one helper returns three distinct outcomes over three groups differing only in their index declaration, so it is demonstrably reading the kernel and not defaulting.
+
+**Prompted by a12-kernel-lean's `SG5`**, which reframed its own row around this boundary rather than assuming it after their cross-group probe turned out to be the no-index-field case. The result closes the transfer for both estates; the carrier boundary is now measured rather than flagged.
+
+*(Locked: `validate.laws.RuleOperandScopeLawsTest` — the computation law's fixture verbatim, so the carrier is the only variable; each table pinned as measured.)*
