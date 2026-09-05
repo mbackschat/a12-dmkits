@@ -3103,6 +3103,12 @@
           "whenOperands": [],
           "fix": "use DATE, TIME, or DATE_TIME fields with mutually compatible declared formats",
           "probe": { "dsl": "FieldFilled(OrderDate) And MaxValue(OrderDate, ScheduledAt) > \"01.01.2020\"" }
+        },
+        {
+          "code": "MVK_DATE_AND_NONDATE",
+          "whenOperands": [],
+          "fix": "the FIRST operand fixes the expected class and the reported code names THAT class, not the offender's — a temporal leader beside a non-temporal operand is MVK_DATE_AND_NONDATE, while the same two operands in the other order are MVK_NOT_SORTABLE. Make the list family-homogeneous rather than reordering it",
+          "probe": { "dsl": "FieldFilled(CustomerName) And MaxValue(OrderDate, Quantity) > [DeliveryDate]" }
         }
       ],
       "semantics": {
@@ -3240,6 +3246,12 @@
           "whenOperands": [],
           "fix": "use DATE, TIME, or DATE_TIME fields with mutually compatible declared formats",
           "probe": { "dsl": "FieldFilled(OrderDate) And MinValue(OrderDate, ScheduledAt) > \"01.01.2020\"" }
+        },
+        {
+          "code": "MVK_DATE_AND_NONDATE",
+          "whenOperands": [],
+          "fix": "the FIRST operand fixes the expected class and the reported code names THAT class, not the offender's — a temporal leader beside a non-temporal operand is MVK_DATE_AND_NONDATE, while the same two operands in the other order are MVK_NOT_SORTABLE. Make the list family-homogeneous rather than reordering it",
+          "probe": { "dsl": "FieldFilled(CustomerName) And MinValue(OrderDate, Quantity) > [DeliveryDate]" }
         }
       ],
       "semantics": {
@@ -3635,6 +3647,14 @@
         "error": "MVK_TOO_MANY_CONST_FOR_CALC_OP",
         "fix": "each Min/Max call admits ONE literal — nest the calls instead: Min(Min([Quantity], 1), 2) > 0"
       },
+      "correctives": [
+        {
+          "code": "MVK_DATE_AND_NONDATE",
+          "whenOperands": [],
+          "fix": "the FIRST operand fixes the expected class and the reported code names THAT class, not the offender's — a temporal leader beside a non-temporal operand is MVK_DATE_AND_NONDATE, while the same two operands in the other order are MVK_NOT_SORTABLE. Make the operand list family-homogeneous rather than reordering it",
+          "probe": { "dsl": "FieldFilled(CustomerName) And Min([OrderDate], [Quantity]) > [DeliveryDate]" }
+        }
+      ],
       "semantics": {
         "aggregateIdentity": {
           "perKind": {
@@ -3786,6 +3806,14 @@
         "error": "MVK_TOO_MANY_CONST_FOR_CALC_OP",
         "fix": "each Min/Max call admits ONE literal — nest the calls instead: Max(Max([Quantity], 1), 2) > 100"
       },
+      "correctives": [
+        {
+          "code": "MVK_DATE_AND_NONDATE",
+          "whenOperands": [],
+          "fix": "the FIRST operand fixes the expected class and the reported code names THAT class, not the offender's — a temporal leader beside a non-temporal operand is MVK_DATE_AND_NONDATE, while the same two operands in the other order are MVK_NOT_SORTABLE. Make the operand list family-homogeneous rather than reordering it",
+          "probe": { "dsl": "FieldFilled(CustomerName) And Max([OrderDate], [Quantity]) > [DeliveryDate]" }
+        }
+      ],
       "semantics": {
         "aggregateIdentity": {
           "perKind": {

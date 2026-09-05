@@ -519,6 +519,18 @@
     },
     {
       "locator": {
+        "operator": "MaxValue",
+        "source": "CORRECTIVE",
+        "ordinal": 1
+      },
+      "digest": "sha256:9640ffe30af487622615f4109dd98a60230f6debd528b14a04b9fd1ba07eeaa0",
+      "fixture": "ORDER",
+      "group": "/Order",
+      "field": "../CustomerName",
+      "dsl": "FieldFilled(CustomerName) And MaxValue(OrderDate, DeliveryDate) > \"01.01.2020\""
+    },
+    {
+      "locator": {
         "operator": "MinValue",
         "source": "CORRECTIVE",
         "ordinal": 0
@@ -528,6 +540,18 @@
       "group": "/Order",
       "field": "../OrderDate",
       "dsl": "FieldFilled(OrderDate) And MinValue(OrderDate, DeliveryDate) > \"01.01.2020\""
+    },
+    {
+      "locator": {
+        "operator": "MinValue",
+        "source": "CORRECTIVE",
+        "ordinal": 1
+      },
+      "digest": "sha256:9640ffe30af487622615f4109dd98a60230f6debd528b14a04b9fd1ba07eeaa0",
+      "fixture": "ORDER",
+      "group": "/Order",
+      "field": "../CustomerName",
+      "dsl": "FieldFilled(CustomerName) And MinValue(OrderDate, DeliveryDate) > \"01.01.2020\""
     },
     {
       "locator": {
@@ -567,6 +591,18 @@
     },
     {
       "locator": {
+        "operator": "Min",
+        "source": "CORRECTIVE",
+        "ordinal": 0
+      },
+      "digest": "sha256:613caad69760f0e29052648b0599ce128c4038a0a6e36aa628251db34837c7ea",
+      "fixture": "ORDER",
+      "group": "/Order",
+      "field": "../CustomerName",
+      "dsl": "FieldFilled(CustomerName) And Min([OrderDate], [DeliveryDate]) > \"01.01.2020\""
+    },
+    {
+      "locator": {
         "operator": "Max",
         "source": "INVALID_EXAMPLE",
         "ordinal": 0
@@ -576,6 +612,18 @@
       "group": "/Order",
       "field": "../Quantity",
       "dsl": "Max(Max([Quantity], 1), 2) > 100"
+    },
+    {
+      "locator": {
+        "operator": "Max",
+        "source": "CORRECTIVE",
+        "ordinal": 0
+      },
+      "digest": "sha256:613caad69760f0e29052648b0599ce128c4038a0a6e36aa628251db34837c7ea",
+      "fixture": "ORDER",
+      "group": "/Order",
+      "field": "../CustomerName",
+      "dsl": "FieldFilled(CustomerName) And Max([OrderDate], [DeliveryDate]) > \"01.01.2020\""
     },
     {
       "locator": {
