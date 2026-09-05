@@ -124,18 +124,25 @@ class RuleOperandScopeLawsTest {
 
     /**
      * The refusing direction, transferred: a level the error field's coordinates cannot address. The
-     * form-level control is what stops the two refusals reading as "this rule shape is simply illegal".
+     * form-level control is what stops the refusals reading as "this rule shape is simply illegal".
+     *
+     * <p>The TWO-levels-below row is a12-kernel-lean's addition (2026-09-06), from their independent
+     * re-derivation of this table on their own fixture. It rules out a rival nobody here had named: that the
+     * refusal is depth-1-specific rather than a property of addressability. Adopted as our own measurement
+     * because it runs on our fixture, not carried on their report.
      */
     @Test
     void aRepeatableLevelBelowTheErrorFieldIsRefused() {
         Map<String, String> actual = new LinkedHashMap<>();
         actual.put("one level BELOW the error field", verdict(CLAIM_NET, ITEM_NET));
+        actual.put("TWO levels below the error field", verdict(POLICY_TOTAL, ITEM_NET));
         actual.put("repeatable operand into a form-level error field", verdict(POLICY_TOTAL, CLAIM_NET));
         actual.put("form-level operand into a form-level error field — control",
                 verdict(POLICY_TOTAL, "/Policy/PolicyExcess"));
 
         Map<String, String> expected = new LinkedHashMap<>();
         expected.put("one level BELOW the error field", NO_WILDCARD);
+        expected.put("TWO levels below the error field", NO_WILDCARD);
         expected.put("repeatable operand into a form-level error field", NO_WILDCARD);
         expected.put("form-level operand into a form-level error field — control", KernelLaws.ADMITTED);
         assertEquals(expected, actual, "a level the error field cannot address is refused");

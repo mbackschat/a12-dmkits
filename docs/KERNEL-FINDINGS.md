@@ -4685,3 +4685,29 @@ Eleven published schema descriptions and the diagnostic enricher all said a date
 **Prompted by a12-kernel-lean's `SG5`**, which reframed its own row around this boundary rather than assuming it after their cross-group probe turned out to be the no-index-field case. The result closes the transfer for both estates; the carrier boundary is now measured rather than flagged.
 
 *(Locked: `validate.laws.RuleOperandScopeLawsTest` — the computation law's fixture verbatim, so the carrier is the only variable; each table pinned as measured.)*
+
+## §9 supplement — a FILTERED star is an admitted operand at every entity-list carrier, and the temporal gate reads through the filter (kernel `checkConsistency`, 2026-09-06) <a id="kf256"></a>
+
+> Fold: pending — extends [KF193](#kf193)'s temporal gate and [KF125](#kf125)'s slot laws onto the filtered operand shape; folds into §9.
+
+Nothing in this estate had crossed `Having` with the extremum operators — six law files use `.having(…)` and none reached `MaxValue`/`MinValue` or `latestOf`/`earliestOf`. Measured now, on our own fixture: **a filtered star is admitted wherever a plain star is**, and the temporal component-set gate still runs on it.
+
+| operand shape | verdict |
+|---|---|
+| temporal extremum, plain star — control | ADMITTED |
+| temporal extremum, FILTERED star | ADMITTED |
+| numeric extremum, plain star — control | ADMITTED |
+| numeric extremum, FILTERED star | ADMITTED |
+| `NumberOfDifferentValues` / `FieldValuesNotUnique`, filtered star (each with its plain-star control) | ADMITTED |
+| filtered star **beside a differing component set**, both in the operand list | `MVK_DATEFORMATS_NOT_COMPATIBLE` |
+| filtered star beside the same set spelled differently | ADMITTED |
+
+**Our pre-checks were silent here, not deliberate.** `ListAggregate` and `DateListAggregate` inspect an operand's KIND and never its filter, so a filtered star built through `FieldListRef.having(…)` passed straight through. That is the correct behaviour — but "delegated on purpose" and "nobody looked" are indistinguishable from inside the code, and only a run separates them. This is the read-path half of the client-refusal rule arriving as its mirror image: the risk was never a wrong refusal, it was an untested absence of one.
+
+**The refusal row is what stops the admissions being worthless.** Six ADMITTED cells are equally well explained by "a filtered operand is not gate-checked at all" — a worse outcome than a refusal, since it would mean the filter smuggles an operand past the temporal gate. The differing-set row shows the gate still fires through the filter.
+
+**A first draft measured the wrong gate, and its own control caught it.** Putting the second date on the **comparison** rather than in the operand list made every row ADMITTED — correctly, because an aggregate compared to a date is a *direct* comparison and takes §6's coarse gate (year presence, date/no-date class), while the exact component-set gate reads the aggregate's own operand list. Published as-is it would have claimed "the filter exempts the operand from the gate". The plain-star control failed by being ADMITTED where it had no business being: a control earns its place by failing when the row's **design** is wrong, not only when the kernel surprises you.
+
+**Prompted by a12-kernel-lean**, whose own decline of this shape rested on a *real* neighbouring divergence — the DATERANGE-endpoint carrier genuinely refuses starred operands under `MVK_NO_WILDCARDS_ALLOWED`. A known-real boundary predicted the wrong side of itself, which is a stronger argument for measuring than an unsupported guess would have been.
+
+*(Locked: `validate.laws.FilteredStarExtremumOperandLawsTest` — every filtered row carries its plain-star control, and the numeric extremum sits beside the temporal one so a refusal would separate a filtered-star ban from a temporal-carrier one.)*
