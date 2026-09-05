@@ -45,6 +45,7 @@ class CrossKindTemporalComparisonGateDiffTest {
     private companion object {
         const val CLOCK_FORMAT = "HH:mm:ss"
         const val DATE_FORMAT = "yyyy-MM-dd"
+        const val STAMP_FORMAT = "yyyy-MM-dd'T'HH:mm:ss"
 
         /** The two CARRIERS — a temporal field whose declared format contradicts its kind. */
         const val DEPARTS_AS_CLOCK = "/Trip/DepartsAsClock"   // kind DATE, declared HH:mm:ss
@@ -53,6 +54,11 @@ class CrossKindTemporalComparisonGateDiffTest {
         /** The two ORDINARY counterparts, each declared in its own kind's natural format. */
         const val BOARDING_CLOCK = "/Trip/BoardingClock"      // kind TIME, declared HH:mm:ss
         const val SERVICE_DATE = "/Trip/ServiceDate"          // kind DATE, declared yyyy-MM-dd
+
+        /** The DATE_TIME family's two carriers and its ordinary counterpart — see [theDateTimeFamilyObeysTheSameRule]. */
+        const val ARRIVES_AS_STAMP = "/Trip/ArrivesAsStamp"   // kind DATE, declared yyyy-MM-dd'T'HH:mm:ss
+        const val LOG_AS_DATE = "/Trip/LogAsDate"             // kind DATE_TIME, declared yyyy-MM-dd
+        const val SERVICE_STAMP = "/Trip/ServiceStamp"        // kind DATE_TIME, declared yyyy-MM-dd'T'HH:mm:ss
 
         const val FAMILY_MISMATCH = "MVK_INVALID_COMPARE_TO_DATE"
         const val ADMITTED = "ADMITTED"
@@ -63,6 +69,9 @@ class CrossKindTemporalComparisonGateDiffTest {
                     .timeField("WindowAsDate") { it.format(DATE_FORMAT) }
                     .timeField("BoardingClock") { it.format(CLOCK_FORMAT) }
                     .dateField("ServiceDate") { it.format(DATE_FORMAT) }
+                    .dateField("ArrivesAsStamp") { it.format(STAMP_FORMAT) }
+                    .dateTimeField("LogAsDate") { it.format(DATE_FORMAT) }
+                    .dateTimeField("ServiceStamp") { it.format(STAMP_FORMAT) }
             }.build().toJson()
 
         /** The typed authoring surface over the same model — `ofJson` runs the kernel's own consistency check. */
@@ -85,6 +94,10 @@ class CrossKindTemporalComparisonGateDiffTest {
             "the DATE-kind carrier must declare the clock format, or its rows measure an ordinary date")
         assertTrue(Regex("\"WindowAsDate\"[\\s\\S]{0,400}?\"$DATE_FORMAT\"").containsMatchIn(MODEL),
             "the TIME-kind carrier must declare the date format, or its rows measure an ordinary clock")
+        assertTrue(Regex("\"ArrivesAsStamp\"[\\s\\S]{0,400}?\"DateType\"").containsMatchIn(MODEL),
+            "the stamp-declared carrier must be DATE-kind, or the DateTime rows are not cross-kind")
+        assertTrue(Regex("\"LogAsDate\"[\\s\\S]{0,400}?\"DateTimeType\"").containsMatchIn(MODEL),
+            "and the date-declared carrier must be DATE_TIME-kind")
     }
 
     /**
@@ -113,6 +126,64 @@ class CrossKindTemporalComparisonGateDiffTest {
             ),
             "the declared format decides the operand family at the comparison gate, on both kinds",
         )
+    }
+
+    /**
+     * **The DATE_TIME family, which both estates had left explicitly open.** a12-kernel-lean's
+     * `SPEC-2026-09-05-13` limited itself to the DATE/TIME pair under equality and recorded the DateTime
+     * family's cross-kind comparison as an untested gap; so did we, four times across that exchange. Neither
+     * side's grid reached it: [KF211](../../../../../../../../../docs/KERNEL-FINDINGS.md#kf211)'s 12 × 3
+     * vocabulary grid covers a DATE_TIME *declaration* for the CLASSIFIER, which is a different gate.
+     *
+     * The same 2×2, one family over: a stamp-declared DATE compares with a stamp and not with a date, and a
+     * date-declared DATE_TIME does the reverse. Both kinds again sit on both sides of both outcomes.
+     */
+    @Test
+    fun theDateTimeFamilyObeysTheSameRule() {
+        assertEquals(
+            mapOf(
+                "stamp-declared DATE vs stamp" to ADMITTED,
+                "stamp-declared DATE vs date" to FAMILY_MISMATCH,
+                "date-declared DATE_TIME vs date" to ADMITTED,
+                "date-declared DATE_TIME vs stamp" to FAMILY_MISMATCH,
+                "ordinary stamp vs ordinary date" to FAMILY_MISMATCH,
+            ),
+            mapOf(
+                "stamp-declared DATE vs stamp" to
+                    verdictOf(render(M.dateTime(ARRIVES_AS_STAMP).eq(M.dateTime(SERVICE_STAMP))),
+                        "../ArrivesAsStamp"),
+                "stamp-declared DATE vs date" to
+                    verdictOf("[$ARRIVES_AS_STAMP] == [$SERVICE_DATE]", "../ArrivesAsStamp"),
+                "date-declared DATE_TIME vs date" to
+                    verdictOf(render(M.date(LOG_AS_DATE).eq(M.date(SERVICE_DATE))), "../LogAsDate"),
+                "date-declared DATE_TIME vs stamp" to
+                    verdictOf("[$LOG_AS_DATE] == [$SERVICE_STAMP]", "../LogAsDate"),
+                "ordinary stamp vs ordinary date" to
+                    verdictOf("[$SERVICE_STAMP] == [$SERVICE_DATE]", "../ServiceStamp"),
+            ),
+            "the declared format decides the operand family for the DateTime family too",
+        )
+    }
+
+    /** And both admitted DateTime arms are RUN, for the reason the DATE/TIME arms are. */
+    @Test
+    fun bothAdmittedDateTimeArmsAgreeOnAllThreeEnginesWhenTheyFire() {
+        val stampArm = ruleModel(render(M.dateTime(ARRIVES_AS_STAMP).eq(M.dateTime(SERVICE_STAMP))),
+            "../ArrivesAsStamp")
+        assertEquals(listOf("RR"), triCodes(stampArm,
+            ARRIVES_AS_STAMP to "2024-06-15T10:30:00", SERVICE_STAMP to "2024-06-15T10:30:00"),
+            "equal stamps fire across the kind boundary")
+        assertEquals(emptyList<String>(), triCodes(stampArm,
+            ARRIVES_AS_STAMP to "2024-06-15T10:30:00", SERVICE_STAMP to "2024-06-15T11:45:00"),
+            "and unequal ones do not")
+
+        val dateArm = ruleModel(render(M.date(LOG_AS_DATE).eq(M.date(SERVICE_DATE))), "../LogAsDate")
+        assertEquals(listOf("RR"), triCodes(dateArm,
+            LOG_AS_DATE to "2024-06-15", SERVICE_DATE to "2024-06-15"),
+            "a date-declared DATE_TIME compares as the date its declaration carries")
+        assertEquals(emptyList<String>(), triCodes(dateArm,
+            LOG_AS_DATE to "2024-06-15", SERVICE_DATE to "2024-07-01"),
+            "and unequal ones do not")
     }
 
     /**
