@@ -3275,7 +3275,9 @@ That exemption also settles the disambiguation §13 left open: `value` is not am
 | `$BaseYear$` with no Base Year declared | `NO_BASE_YEAR` |
 | `$BaseYear+$` / `$BaseYear+x$` / `$BaseYear 3$` | `MVK_EXPECTED_TOKEN_NOT_FOUND` / `MVK_UNEXPECTED_TOKEN` / `MVK_UNEXPECTED_TOKEN` |
 
-**The semantic-index key is gated on the INDEX, not on the field — the load-bearing pair.** Against a condition reading only `Claims/Payout For "C-1"`, a keyed parameter naming a *different* field of that group is admitted while the unkeyed spelling of that same field is refused. Every refusing row quotes a field and a key together, so only the admitted row separates the two accounts.
+**The semantic-index key is gated on the INDEX, not on the field — the load-bearing pair.** Against a condition reading only `Claims/Payout For "C-1"`, a keyed parameter naming the group's **index field** is admitted while the unkeyed spelling of that same field is refused. Every refusing row quotes a field and a key together, so only the admitted row separates the two accounts.
+
+**Corrected 2026-09-05 — that clause read "a *different* field of that group", which is wider than its only witness.** `ClaimNo` is the group's declared `indexField`, so across every row of the original table "any field of the group, once keyed" and "the keyed field, or the index" moved together and could not be told apart. The discriminator is a **third** field — neither named by the condition nor the index — and it is REFUSED `MVK_INDEX_FOR_ERROR_TEXT_INVALID`, measured on the same fixture, which happens to carry `Claims/Severity`. So the admitted set at a keyed parameter is *the field the condition keys, or the group's index field*, not the group's fields at large. Found by authoring the construct through `dmtool` for a12-kernel-lean, who could not reach it at all and asked how; the row that answers their question is the row that falsified ours.
 
 | condition | parameter | verdict |
 |---|---|---|
