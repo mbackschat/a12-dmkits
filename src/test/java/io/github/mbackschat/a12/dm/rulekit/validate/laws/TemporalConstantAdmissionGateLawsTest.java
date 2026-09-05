@@ -144,11 +144,13 @@ class TemporalConstantAdmissionGateLawsTest {
         expected.put("time literal -> HH:mm:ss (family control)", ADMITTED);
         expected.put("time literal -> MM (wrong family)",
                 "refused: the operation '\"12:30:00\"' yields TIME but the computed field "
-                        + "/Booking/MonthOnly is DATE — kinds must match");
+                        + "/Booking/MonthOnly declares format 'MM', which takes DATE values — the kernel's"
+                        + " assignment gate reads the declared FORMAT, never the field's kind");
         assertEquals(expected, actual,
                 "the builder admits everything the kernel admits — including the two controls this column "
                         + "previously skipped — and the one shape it refuses is refused with a message that "
-                        + "names the kind mismatch, so an unrelated throw cannot pass as the refusal");
+                        + "names the DECLARED FORMAT, so an unrelated throw cannot pass as the refusal and an "
+                        + "author is not sent to change the field's kind, which the kernel never reads here");
     }
 
     /**
