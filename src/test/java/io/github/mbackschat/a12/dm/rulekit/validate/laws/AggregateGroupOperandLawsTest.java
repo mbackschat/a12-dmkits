@@ -71,6 +71,12 @@ class AggregateGroupOperandLawsTest {
                     l.repeatable(10).numberField("Amount", f -> f.fractionDigits(0, 2));
                     l.group("Fees", e -> e.repeatable(10).numberField("Fee", f -> f.fractionDigits(0, 2)));
                 });
+                // A NON-repeatable all-number shell, so the unstarred group operand has a legal carrier: a
+                // repeatable one must star (MVK_NO_WILDCARD) and cannot answer the unstarred question at all.
+                g.group("Totals", s -> {
+                    s.numberField("Net", f -> f.fractionDigits(0, 2));
+                    s.numberField("Gross", f -> f.fractionDigits(0, 2));
+                });
             }).build().toJson();
 
     private static final BoundModel INVOICE = BoundModel.ofJson(INVOICE_JSON);
@@ -208,6 +214,37 @@ class AggregateGroupOperandLawsTest {
                 guardedInvoice(Dsl.sum(INVOICE.flattenGroup("/Invoice/Lines"))), "MVK_NO_WILDCARD");
         KernelLaws.rejectsOrder("/Order", "../Quantity",
                 guardedOrder(Dsl.numberOfFilledFields(ORDER.flattenGroup("/Order/Items"))), "MVK_NO_WILDCARD");
+    }
+
+    /**
+     * <b>An UNSTARRED group operand is authorable through the typed surface on every entity-list carrier</b>,
+     * and the kernel admits it. {@code DEV-API-GAPS} {@code DG42} claimed the opposite — that
+     * {@code AggregateOperand}'s group arm is the STARRED {@code GroupListRef} and four carriers therefore had
+     * to be authored as raw strings. That reading is wrong: {@code GroupListRef}'s star lives in its
+     * {@code flattened} list, which a bare path leaves EMPTY, so {@code flattenGroup("/Invoice/Totals")} is the
+     * unstarred operand and every carrier already takes it.
+     *
+     * <p>The gap survived because the two readings agree on every fixture in the file above: each of those uses
+     * a REPEATABLE group, where the unstarred spelling is refused by the kernel anyway
+     * ({@link #anUnstarredRepeatableGroupScopeIsRejected}), so "the surface cannot author it" and "the kernel
+     * refuses it" produce the same red. Only a non-repeatable shell separates them, which is why this fixture
+     * grew one rather than reusing {@code Lines}.
+     */
+    @Test
+    void anUnstarredGroupOperandIsAuthorableOnEveryEntityListCarrier() {
+        var totals = INVOICE.flattenGroup("/Invoice/Totals");
+        KernelLaws.acceptsModel(INVOICE_JSON, "/Invoice", "../Reference",
+                guardedInvoice(Dsl.sum(totals)));
+        KernelLaws.acceptsModel(INVOICE_JSON, "/Invoice", "../Reference",
+                guardedInvoice(Dsl.maxValue(totals)));
+        KernelLaws.acceptsModel(INVOICE_JSON, "/Invoice", "../Reference",
+                guardedInvoice(Dsl.minValue(totals)));
+        KernelLaws.acceptsModel(INVOICE_JSON, "/Invoice", "../Reference",
+                guardedInvoice(Dsl.numberOfDifferentValues(totals)));
+        KernelLaws.acceptsModel(INVOICE_JSON, "/Invoice", "../Reference",
+                guardedInvoice(Dsl.numberOfValueInFields(7L, totals)));
+        KernelLaws.acceptsModel(INVOICE_JSON, "/Invoice", "../Reference",
+                guardedInvoice(Dsl.numberOfFilledFields(totals)));
     }
 
     /** …and the starred form of that same operand is accepted, so the law is not vacuous. */
