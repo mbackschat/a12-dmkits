@@ -50,15 +50,27 @@ class GateTierWiringTest {
      * retires it. That is not hypothetical: {@code :schemakit:check} appeared in NO lane here until 2026-09-05,
      * so the fifth published kit's 27 test classes and {@code verifySchemakitPurity} — the guard
      * SCHEMAKIT-SPEC §1 cites for the module's kernel-free claim — had never once run in CI.
+     *
+     * <p><b>The assertion is on the {@code run:} LINE, not on the file.</b> A file-wide {@code contains} is
+     * satisfied by the comment above that line explaining why each gate is named there — measured: deleting
+     * {@code :schemakit:check} from the invocation left this test green, because the prose still mentioned it.
      */
     @Test
     void pushCiNamesEveryCheckOnlyGuardHoldingTheKernelFreeClaim() throws IOException {
-        String ci = Files.readString(locate(".github/workflows/ci.yml"));
+        String invocation = Files.readString(locate(".github/workflows/ci.yml")).lines()
+                .map(String::strip)
+                .filter(line -> line.startsWith("run: ./gradlew"))
+                .reduce((a, b) -> {
+                    throw new AssertionError("more than one gradlew invocation in ci.yml — say which one holds "
+                            + "the kernel-free gates before asserting on it");
+                })
+                .orElseThrow(() -> new AssertionError("ci.yml runs no gradlew invocation at all"));
 
         for (String gate : List.of(":verifyKitPurity", ":verifyPublishedClasspathsAreKernelFree",
                 ":schemakit:check", ":interpreter-bridge:check", ":noBackendTest")) {
-            assertTrue(ci.contains(gate), () -> gate + " must be named in ci.yml — it hangs off a `check` this "
-                    + "workflow never invokes, so an unnamed gate does not run at all");
+            assertTrue(invocation.contains(gate), () -> gate + " must be INVOKED by ci.yml — it hangs off a "
+                    + "`check` this workflow never runs, so a gate missing from the command does not run at "
+                    + "all, however thoroughly the comments describe it. Invocation was: " + invocation);
         }
     }
 
