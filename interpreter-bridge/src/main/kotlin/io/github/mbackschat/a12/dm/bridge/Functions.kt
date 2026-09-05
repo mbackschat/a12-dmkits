@@ -386,11 +386,8 @@ internal class Functions(private val mapping: Mapping) {
             throw UnmappedConstructException(mode.operatorId() + " with " + args.size + " operands")
         }
         val operand = mapping.calculation(args[0])
-        return if (args.size == 1) {
-            Rounding(mode, operand)
-        } else {
-            Rounding(mode, operand, intLiteral(args[1], mode.operatorId()))
-        }
+        val places = if (args.size == 2) intLiteral(args[1], mode.operatorId()) else 0
+        return if (places > 0) Rounding(mode, operand, places) else Rounding(mode, operand)
     }
 
     /**
@@ -402,15 +399,15 @@ internal class Functions(private val mapping: Mapping) {
             throw UnmappedConstructException(mode.operatorId() + " with " + args.size + " operands")
         }
         val field = numberRef(args[0], mode.operatorId())
-        val hasPlaces = args.size == 2
-        val places = if (hasPlaces) intLiteral(args[1], mode.operatorId()) else 0
+        val places = if (args.size == 2) intLiteral(args[1], mode.operatorId()) else 0
+        val explicit = places > 0
         return when (mode) {
             FieldRounding.Mode.ROUND_DOWN ->
-                (if (hasPlaces) Dsl.roundDownValue(field, places) else Dsl.roundDownValue(field)).expression()
+                (if (explicit) Dsl.roundDownValue(field, places) else Dsl.roundDownValue(field)).expression()
             FieldRounding.Mode.ROUND_UP ->
-                (if (hasPlaces) Dsl.roundUpValue(field, places) else Dsl.roundUpValue(field)).expression()
+                (if (explicit) Dsl.roundUpValue(field, places) else Dsl.roundUpValue(field)).expression()
             FieldRounding.Mode.ROUND_ACCOUNTING ->
-                (if (hasPlaces) {
+                (if (explicit) {
                     Dsl.roundAccountingValue(field, places)
                 } else {
                     Dsl.roundAccountingValue(field)

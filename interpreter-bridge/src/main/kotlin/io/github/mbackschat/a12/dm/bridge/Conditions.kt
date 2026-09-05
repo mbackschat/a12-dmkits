@@ -187,7 +187,7 @@ internal class Conditions(private val mapping: Mapping) {
      */
     private fun enumComparison(op: CmpOp, left: Calculation, right: Calculation): Condition {
         if (right is StringLiteral && left is FieldValue) {
-            val ref = mapping.model().enumOf(left.field().path().value())
+            val ref = mapping.model().enumOf(left.field().path().value()).keeping(left) { outer() }
             return when (op) {
                 CmpOp.EQ -> ref.`is`(right.value())
                 CmpOp.NE -> ref.isNot(right.value())
@@ -264,7 +264,7 @@ internal class Conditions(private val mapping: Mapping) {
             return Dsl.baseYearNumber()
         }
         if (value is FieldValue) {
-            return mapping.model().num(value.field().path().value()).asNumber()
+            return mapping.model().num(value.field().path().value()).keeping(value) { outer() }.asNumber()
         }
         if (value.kind() != ValueKind.NUMBER) {
             throw UnmappedConstructException("a " + value.kind() + " expression in a numeric slot")
@@ -279,7 +279,7 @@ internal class Conditions(private val mapping: Mapping) {
      */
     private fun dateRangeOperand(op: CmpOp, value: Calculation, other: Calculation): DateRangeOperand {
         if (value is FieldValue) {
-            return mapping.model().dateRange(value.field().path().value())
+            return mapping.model().dateRange(value.field().path().value()).keeping(value) { outer() }
         }
         if (value is IndexedFieldValue) {
             return DateRangeIndexedValue(value)
@@ -428,6 +428,20 @@ internal class Conditions(private val mapping: Mapping) {
     }
 
     private companion object {
+
+        /**
+         * Carry the `$` correlation across a REBUILD. Typing a comparison operand means going from the
+         * untyped [FieldValue] back to the model's own handle for the field's DECLARED kind — and that
+         * rebuild starts from the path alone, so the marker is gone unless it is re-applied here.
+         *
+         * <b>Why it needs a named helper rather than an `if` per site.</b> A dropped marker renders exactly
+         * like an uncorrelated reference and only changes which ROW the operand reads, so nothing looks
+         * wrong: five sites carried it, one sibling had it right, and no unit test could see the difference
+         * because the module's own tests compare against hand-authored rulekit types. The catalog parity net
+         * caught it by comparing a `Having` filter against the kernel (DEV-API-GAPS `DG44`).
+         */
+        private fun <T> T.keeping(value: FieldValue, outer: T.() -> T): T =
+            if (value.outer()) outer() else this
 
         private fun band(tolerance: Dec): Tolerance {
             val value = tolerance.v

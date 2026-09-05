@@ -36,22 +36,9 @@ The gaps below were the **ergonomic and consistency remainder** — what added f
 
 ## 2. Open
 
-- **DG44 — the interpreter-bridge's operator mapping is measured against the kernel for a fifth of its surface.**
-  The bridge maps ~84 operator names; `adapter.ConditionReadBackParityTest` — the ONLY place a mapping is checked
-  against the kernel rather than against our own expectation — covers 18 constructs, ~17 distinct ids. Seven names
-  have no mention in any test: `AtLeastOneFieldFilled`, `DifferenceInMinutes`, `MoreThanOneFieldFilled`,
-  `NotAllFieldsFilled`, `NotExactlyOneFieldFilled`, `RoundAccounting`, `RoundUpValue`. The shape matters more than
-  the ratio, and it is why unit coverage does not close this: the module's own tests assert the mapping against
-  **hand-authored rulekit types**, so a mapping that is self-consistently wrong — the bridge and its test agreeing,
-  the kernel disagreeing — is invisible to them by construction. Measured, not argued: a cold review mutated
-  `NotAllFieldsFilled` to `MoreThanOneFieldFilled` and `DifferenceInMinutes` to `SECONDS`, and both survived the
-  module's own suite *and* the parity net. Families the differential never reaches: semantic index (`For`), the
-  indexed field/group operands, date extraction, `FirstFilledValue`, `CountAggregate`, the `$` correlation,
-  group-list quantifiers, `Valid`/`Invalid`, value lists, the rounding family, `CurrentRepetition`. **Growth goes
-  into the parity corpus, not the module's unit tests** — only the corpus has the kernel as its oracle, and adding
-  a case is one entry naming its rule group and error field. The open design question is whether the corpus should
-  be generated from the operator catalog, so the denominator moves with the catalog instead of by hand. Recall
-  limit on the 84: a regex over `when`-branch literals, so it misses any dispatch not written as a quoted branch.
+_None open._
+
+---
 
 ## 3. Adjacent but out of scope
 
