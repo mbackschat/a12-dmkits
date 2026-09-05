@@ -1147,8 +1147,10 @@ final class ConditionConverter {
             case DATE_FRAGMENT -> dateComparison(leftOuter ? model.dateFragment(path).outer() : model.dateFragment(path), op, other, origin);
             case TIME -> timeComparison(leftOuter ? model.time(path).outer() : model.time(path), op, other, origin);
             case DATE_TIME -> dateTimeComparison(leftOuter ? model.dateTime(path).outer() : model.dateTime(path), op, other, origin);
-            case BOOLEAN -> booleanComparison(model.bool(path), op, other, origin);
-            case CONFIRM -> confirmComparison(model.confirm(path), op, other, origin);
+            case BOOLEAN -> booleanComparison(leftOuter ? model.bool(path).outer() : model.bool(path),
+                    op, other, origin);
+            case CONFIRM -> confirmComparison(leftOuter ? model.confirm(path).outer() : model.confirm(path),
+                    op, other, origin);
             // a custom-typed field's value is text — the kernel compares it as a string (m.custom → StringRef)
             case CUSTOM -> stringComparison(leftOuter ? model.custom(path).outer() : model.custom(path), op, other, origin);
             case DATE_RANGE -> dateRangeComparison(leftOuter ? model.dateRange(path).outer() : model.dateRange(path),
