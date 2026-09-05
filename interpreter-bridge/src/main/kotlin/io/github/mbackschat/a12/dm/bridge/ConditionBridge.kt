@@ -95,6 +95,8 @@ internal class ConditionBridge @JvmOverloads constructor(
 
     override fun groupRef(node: Expr): GroupRef = operands.groupRef(node)
 
+    override fun groupRef(node: Expr, allowOuter: Boolean): GroupRef = operands.groupRef(node, allowOuter)
+
     override fun groupReference(rawReference: String): GroupRef = operands.groupReference(rawReference)
 
     override fun fieldOperand(node: Expr): FieldOperand = operands.fieldOperand(node)

@@ -74,14 +74,25 @@ internal class Operands(private val mapping: Mapping) {
     }
 
     /** Resolve an operand that must name a group. */
-    fun groupRef(node: Expr): GroupRef {
+    fun groupRef(node: Expr): GroupRef = groupRef(node, allowOuter = false)
+
+    /**
+     * As [groupRef], with the `$` correlation left to the CALLER when its slot has somewhere to put one.
+     * `GroupRef` itself carries no marker — the decision API-FINDINGS finding 135 made, and the reason the
+     * default arm still refuses — so only a caller holding a node with its own `outer` component (today:
+     * `CurrentRepetition`) may pass `allowOuter`. A slot without one must keep refusing rather than drop the
+     * marker silently, which `verifyOuterPreserved` would catch as a corrupted read anyway.
+     */
+    fun groupRef(node: Expr, allowOuter: Boolean): GroupRef {
         if (node is Expr.Star && node.having != null) {
             throw UnmappedConstructException(
                 "a Having filter on the group operand " + node.path + " — a GroupRef carries no filter"
             )
         }
         if (node is Expr.EntitySource) {
-            requireNotCorrelated(node, "a group")
+            if (!allowOuter) {
+                requireNotCorrelated(node, "a group")
+            }
             return mapping.model().group(declared(node.path))
         }
         throw if (node is Expr.SemanticIndex) {
@@ -177,8 +188,7 @@ internal class Operands(private val mapping: Mapping) {
             return if (mapping.isGroup(node.path)) indexedGroup(node) else indexedValue(node)
         }
         if (node is Expr.Field && mapping.isGroup(node.path)) {
-            requireNotCorrelated(node, "a group scope")
-            return mapping.model().flattenGroup(declared(node.path))
+            return correlate(mapping.model().flattenGroup(declared(node.path)), node.outer)
         }
         return fieldRef(node)
     }
@@ -249,10 +259,13 @@ internal class Operands(private val mapping: Mapping) {
                 "a Having filter on the group scope " + star.path + " — only a repetition list carries one"
             )
         }
-        requireNotCorrelated(star, "a group scope")
         declared(star.path)
-        return mapping.model().flattenGroup(starPath(star))
+        return correlate(mapping.model().flattenGroup(starPath(star)), star.outer)
     }
+
+    /** A group scope carries the `$` marker on its own operand position, like its field-list sibling (DG49). */
+    private fun correlate(scope: GroupListRef, outer: Boolean): GroupListRef =
+        if (outer) scope.outer() else scope
 
     /**
      * The starred path rulekit's `flatten`/`flattenGroup` read, rebuilt from the AST.
@@ -327,19 +340,16 @@ internal class Operands(private val mapping: Mapping) {
         /**
          * Refuse a `$`-marked source in a slot that has no representation for the marker.
          *
-         * <p><b>The message names the SLOT, not the API.</b> It used to say "rulekit correlates a field or a
-         * repetition list, not a group", which stopped being true when `GroupPresenceCondition` gained the
-         * marker (API-FINDINGS 135): a diagnostic asserting something false about our own surface is worse
-         * than a vague one. `GroupFilled`/`GroupNotFilled` now reconstruct it in `Predicates`; what still has
-         * nowhere to put it is `CurrentRepetition`'s group argument, the aggregate group scopes and the group
-         * lists, whose refs are bare `GroupRef`/`GroupListRef` values.
+         * <p><b>The message names the SLOT, not the API</b>, because what the API can hold has changed twice.
+         * `GroupPresenceCondition` gained the marker (API-FINDINGS 135), then `GroupListRef` did and
+         * `CurrentRepetition`'s own `outer` component was threaded (API-FINDINGS 138) — so the group scopes,
+         * the group lists and the repetition index all reconstruct their marker now, and this refusal is down
+         * to the ONE slot with genuinely nowhere to put one: a bare `GroupRef` in `CountAggregate.groups`,
+         * which `NumberOfFilledGroups` uses.
          *
-         * <p>That residual is over-strict rather than protective where it has been measured: the kernel admits
-         * `AllGroupsFilled($A, $B)` and the marked group COUNT aggregates inside a `Having` filter beside an
-         * in-scope conjunct (`validate.laws.HavingFilterConditionLeafLawsTest`, 2026-09-04), so this refusal
-         * makes a legal model unreadable. Tracked as DEV-API-GAPS `DG49`, which enumerates all three refusal
-         * sites — this one, `aggregateOperand` and `indexedGroup` — and says which families' admission is
-         * still unmeasured, rather than leaving any of it as a settled boundary.
+         * <p>Refusing there is the honest answer rather than a residual to close: dropping the marker would
+         * corrupt the read into a non-correlated rule, and `verifyOuterPreserved` would degrade the rule to a
+         * verbatim `Opaque` anyway — the same outcome, reached without a diagnostic naming the cause.
          */
         private fun requireNotCorrelated(source: Expr.EntitySource, what: String) {
             if (source.outer) {

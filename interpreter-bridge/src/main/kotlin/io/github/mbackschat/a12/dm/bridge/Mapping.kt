@@ -77,6 +77,12 @@ internal interface Mapping {
     fun groupRef(node: Expr): GroupRef
 
     /**
+     * As [groupRef], but with the `$` correlation left to a caller whose own node can hold one — `GroupRef`
+     * carries no marker, so every other slot must keep refusing rather than drop it (DEV-API-GAPS `DG49`).
+     */
+    fun groupRef(node: Expr, allowOuter: Boolean): GroupRef
+
+    /**
      * Resolve a raw group-reference TOKEN — the form a scope keyword captures, rather than an operand the
      * parser has already resolved. Absolute, relative to [basePath], or the rule-group keyword.
      *

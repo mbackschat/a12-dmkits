@@ -110,7 +110,10 @@ internal class Functions(private val mapping: Mapping) {
     }
 
     private fun countOfFilledFields(args: List<Expr>): Calculation {
-        if (args.isNotEmpty() && args.all { it is Expr.Field && mapping.isGroup(it.path) }) {
+        // A MARKED group cannot ride the bare-GroupRef arm — `CountAggregate.groups` is a `List<GroupRef>`
+        // and a group reference carries no marker; the aggregate-operand arm below maps it to a
+        // `GroupListRef`, which does. Same rendered text either way (DG49).
+        if (args.isNotEmpty() && args.all { it is Expr.Field && mapping.isGroup(it.path) && !it.outer }) {
             val groups = args.map { mapping.groupRef(it) }
             return Dsl.numberOfFilledFields(groups[0], *groups.drop(1).toTypedArray()).expression()
         }
@@ -417,9 +420,10 @@ internal class Functions(private val mapping: Mapping) {
     }
 
     /**
-     * `CurrentRepetition(group)` — the non-correlated form only. The `$`-marked form needs a group operand
-     * that STILL resolves when `$`-marked, but [Mapping.groupRef] refuses any `$`-correlated source outright,
-     * so that form is unreachable from here.
+     * `CurrentRepetition(group)`, in both correlation forms. The `$`-marked spelling is a real admitted shape
+     * — it is what the whole `Having` scope/iteration account is about (KERNEL-FINDINGS `KF244`) — and
+     * `CurrentRepetition` is the one group slot whose rulekit node has carried an `outer` component all along,
+     * so the marker is threaded here rather than refused (DEV-API-GAPS `DG49`).
      */
     private fun currentRepetition(args: List<Expr>): Calculation {
         if (args.size != 1) {
@@ -431,7 +435,9 @@ internal class Functions(private val mapping: Mapping) {
                     " with no multi-group form"
             )
         }
-        return Dsl.currentRepetition(mapping.groupRef(args[0])).expression()
+        val group = args[0]
+        val outer = group is Expr.EntitySource && group.outer
+        return Dsl.currentRepetition(mapping.groupRef(group, allowOuter = true), outer).expression()
     }
 
     /**

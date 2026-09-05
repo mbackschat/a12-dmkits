@@ -1829,11 +1829,14 @@ public final class io.github.mbackschat.a12.dm.rulekit.dsl.GroupListPredicate im
 
 public record io.github.mbackschat.a12.dm.rulekit.dsl.GroupListRef implements io.github.mbackschat.a12.dm.rulekit.dsl.AggregateOperand, io.github.mbackschat.a12.dm.rulekit.dsl.GroupListOperand, io.github.mbackschat.a12.dm.rulekit.dsl.ValueListOperand
   public GroupListRef(io.github.mbackschat.a12.dm.rulekit.dsl.GroupRef, java.util.List<io.github.mbackschat.a12.dm.rulekit.dsl.GroupRef>)
+  public GroupListRef(io.github.mbackschat.a12.dm.rulekit.dsl.GroupRef, java.util.List<io.github.mbackschat.a12.dm.rulekit.dsl.GroupRef>, boolean)
+  public boolean correlated()
   public final boolean equals(java.lang.Object)
   public java.lang.String fieldPath()
   public java.util.List<io.github.mbackschat.a12.dm.rulekit.dsl.GroupRef> flattened()
   public io.github.mbackschat.a12.dm.rulekit.dsl.GroupRef group()
   public final int hashCode()
+  public io.github.mbackschat.a12.dm.rulekit.dsl.GroupListRef outer()
   public java.lang.String path()
   public java.lang.String renderedPath()
   public final java.lang.String toString()

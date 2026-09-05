@@ -406,7 +406,7 @@ final class ConditionConverter {
                     .map(e -> e.isField()
                             ? (AggregateOperand) (isWildcard(e) ? model.flatten(reconstructStarPath(e))
                                     : model.field(e.getFullName()))
-                            : model.flattenGroup(reconstructStarPath(e)))
+                            : groupScopeOf(e, reconstructStarPath(e)))
                     .toList();
             return Dsl.entityListPredicate(entityListQuantifier(name).orElseThrow(), operands);
         }
@@ -425,7 +425,7 @@ final class ConditionConverter {
                     }
                     return (GroupListOperand) model.field(e.getFullName());
                 }
-                return (GroupListOperand) model.flattenGroup(
+                return (GroupListOperand) groupScopeOf(e,
                         isWildcard(e) ? reconstructStarPath(e) : e.getFullName());
             }).toArray(GroupListOperand[]::new);
             // the fixed singleton NoGroupFilled(F) has the scalar presence semantics — canonicalize
@@ -517,7 +517,7 @@ final class ConditionConverter {
                         || name == EntityListConditionName.AtLeastOneGroupFilled)
                 && entities.stream().anyMatch(ConditionConverter::isWildcard)) {
             GroupListRef[] scopes = entities.stream()
-                    .map(e -> model.flattenGroup(reconstructStarPath(e)))
+                    .map(e -> groupScopeOf(e, reconstructStarPath(e)))
                     .toArray(GroupListRef[]::new);
             return groupFillQuantifier(name, scopes, entityList);
         }
@@ -529,12 +529,14 @@ final class ConditionConverter {
         return switch (name) {
             // single-group GroupFilled/GroupNotFilled canonicalize to AllGroupsFilled/NoGroupFilled[g]
             case AllGroupsFilled -> single
-                    ? Dsl.groupFilled(model.group(p[0]), outerGroup) : groups(paths, Dsl::allGroupsFilled);
+                    ? Dsl.groupFilled(model.group(p[0]), outerGroup)
+                    : markedGroups(entities, Dsl::allGroupsFilled);
             case NoGroupFilled -> single
-                    ? Dsl.groupNotFilled(model.group(p[0]), outerGroup) : groups(paths, Dsl::noGroupFilled);
-            case AtLeastOneGroupFilled -> groups(paths, Dsl::atLeastOneGroupFilled);
-            case NotAllGroupsFilled -> groups(paths, Dsl::notAllGroupsFilled);
-            case GroupsNotCollectivelyFilled -> groups(paths, Dsl::groupsNotCollectivelyFilled);
+                    ? Dsl.groupNotFilled(model.group(p[0]), outerGroup)
+                    : markedGroups(entities, Dsl::noGroupFilled);
+            case AtLeastOneGroupFilled -> markedGroups(entities, Dsl::atLeastOneGroupFilled);
+            case NotAllGroupsFilled -> markedGroups(entities, Dsl::notAllGroupsFilled);
+            case GroupsNotCollectivelyFilled -> markedGroups(entities, Dsl::groupsNotCollectivelyFilled);
             // field-fill quantifiers over a GROUP scope (the fields inside the group, all reps if starred)
             case AllFieldsFilled -> groupScopedFieldFill(entities, Dsl::allFieldsFilled);
             case AtLeastOneFieldFilled -> groupScopedFieldFill(entities, Dsl::atLeastOneFieldFilled);
@@ -634,7 +636,7 @@ final class ConditionConverter {
     private Condition groupScopedFieldFill(List<IEntityId> entities,
             BiFunction<GroupListRef, GroupListRef[], Condition> factory) {
         GroupListRef[] scopes = entities.stream()
-                .map(e -> model.flattenGroup(reconstructStarPath(e))).toArray(GroupListRef[]::new);
+                .map(e -> groupScopeOf(e, reconstructStarPath(e))).toArray(GroupListRef[]::new);
         return factory.apply(scopes[0], Arrays.copyOfRange(scopes, 1, scopes.length));
     }
 
@@ -656,6 +658,21 @@ final class ConditionConverter {
     private Condition groups(List<String> paths, BiFunction<GroupRef, GroupRef[], Condition> factory) {
         List<GroupRef> refs = paths.stream().map(model::group).toList();
         return factory.apply(refs.get(0), refs.subList(1, refs.size()).toArray(GroupRef[]::new));
+    }
+
+    /**
+     * The same quantifier over group ENTITIES rather than paths, so each operand keeps its {@code $}
+     * outer-iteration marker (D13). The representation is unchanged for an unmarked list:
+     * {@code GroupListPredicate}'s group constructor already wraps every {@code GroupRef} in a bare
+     * {@code GroupListRef}, so this builds the identical node and renders the identical text — it only stops
+     * throwing the marker away on the path from entity to operand (DEV-API-GAPS {@code DG49}).
+     */
+    private Condition markedGroups(List<IEntityId> entities,
+            BiFunction<GroupListOperand, GroupListOperand[], Condition> factory) {
+        GroupListOperand[] operands = entities.stream()
+                .map(e -> (GroupListOperand) groupScopeOf(e, e.getFullName()))
+                .toArray(GroupListOperand[]::new);
+        return factory.apply(operands[0], Arrays.copyOfRange(operands, 1, operands.length));
     }
 
     private FieldRef[] fieldRefs(List<String> paths) {
@@ -1387,7 +1404,23 @@ final class ConditionConverter {
         if (groupEntity.getFilterCondition() != null) {
             throw unsupported("group-scope aggregate with a Having filter", origin);
         }
-        return model.flattenGroup(reconstructStarPath(groupEntity));
+        return groupScopeOf(groupEntity, reconstructStarPath(groupEntity));
+    }
+
+    /**
+     * A group scope with its {@code $} outer-iteration correlation threaded (D13) — the ONE place a group
+     * entity becomes a {@link GroupListRef}, so a marker cannot be dropped at one of five call sites and
+     * preserved at the other four.
+     *
+     * <p>Dropping it is not a cosmetic loss: {@code verifyOuterPreserved} counts source markers against
+     * rendered ones and degrades the whole rule to a verbatim {@link ReadResult.Opaque} when they disagree,
+     * so a legal model — the kernel admits {@code AllGroupsFilled($A, $B)} beside an in-scope conjunct — was
+     * UNREADABLE rather than merely unauthorable (DEV-API-GAPS {@code DG49};
+     * {@code adapter.laws.CorrelatedGroupListReadTest}).
+     */
+    private GroupListRef groupScopeOf(IEntityId entity, String starPath) {
+        GroupListRef scope = model.flattenGroup(starPath);
+        return entity.isOuter() ? scope.outer() : scope;
     }
 
     /** {@code getFullName()} drops the wildcard; re-insert {@code *} after each segment marked WILDCARD in indices. */

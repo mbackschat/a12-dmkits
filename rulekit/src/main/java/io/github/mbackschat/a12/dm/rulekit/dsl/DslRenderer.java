@@ -325,22 +325,31 @@ public final class DslRenderer {
     private String entityOperand(GroupListOperand op) {
         return switch (op) {
             case FieldRef field -> path(field.path().value());
-            case GroupListRef scope -> path(scope.renderedPath());
+            case GroupListRef scope -> groupScope(scope);
             case IndexedGroupValue indexed -> groupIndexBody(indexed);
         };
     }
 
     /**
-     * An entity-list aggregate operand. A group scope renders as its starred path and nothing else — it
-     * carries no correlation marker and no {@code Having} filter, the latter because the kernel rejects a
-     * filter on a group operand outright ({@code MVK_NO_GROUPS_ALLOWED}, locked by
+     * A group scope with its {@code $} outer-iteration marker, when it carries one. The marker is a property
+     * of the operand's POSITION, so it is emitted here rather than baked into
+     * {@link GroupListRef#renderedPath()} — the same split {@link FieldRef} already uses.
+     */
+    private String groupScope(GroupListRef scope) {
+        return (scope.correlated() ? "$" : "") + path(scope.renderedPath());
+    }
+
+    /**
+     * An entity-list aggregate operand. A group scope renders as its starred path, plus its {@code $}
+     * outer-iteration marker when it carries one, and no {@code Having} filter — the kernel rejects a filter
+     * on a group operand outright ({@code MVK_NO_GROUPS_ALLOWED}, locked by
      * {@code adapter.laws.GroupStarValueAggregateDiffTest}). An index-selected group is never starred (an
      * index and a wildcard can't address the same group), so it renders its localized index body instead.
      */
     private String aggregateOperand(AggregateOperand op) {
         return switch (op) {
             case FieldOperand field -> operand(field);
-            case GroupListRef group -> path(group.renderedPath());
+            case GroupListRef group -> groupScope(group);
             case IndexedGroupValue indexed -> groupIndexBody(indexed);
         };
     }
