@@ -4073,6 +4073,13 @@
           "seeAlso": [
             "FieldValuesNotUnique"
           ]
+        },
+        {
+          "text": "temporal operands are counted by DECODED DATE, not by stored text — so the differently-spelled pair the temporal gate admits does NOT count twice for being spelled differently. Two fields declared 'yyyy-MM-dd' and 'dd.MM.yyyy' holding '2024-03-05' and '05.03.2024' are ONE distinct value; holding '2024-03-05' and '06.03.2024' they are two. This is what you want from a distinct count, but it means the operator cannot detect that one date was entered in two different formats — nothing here reads the spelling",
+          "kind": "SURPRISE",
+          "seeAlso": [
+            "FieldValuesNotUnique"
+          ]
         }
       ],
       "seeAlso": [

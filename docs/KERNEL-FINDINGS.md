@@ -4617,3 +4617,24 @@ Takes the row a12-kernel-lean handed over from their `SPEC-2026-09-05-14` — so
 **The limit, stated because a reader will otherwise carry the result further than the measurement.** This is an **admission** result only. The fragment RUNTIME completion recorded in §6 ("date-fragment runtime completion" — missing month/day to `01`, missing year from the Base Year) was measured on the four conventional formats; what a fragment declared `yyyyMMdd` — a *complete* date wearing the fragment kind — does at runtime is unmeasured on either engine, and the interpreter's `DatePrecision.FRAGMENT` path has never seen that combination. *Settled 2026-09-05, same day: measured across all three routes — comparison against a full date, paired comparison between two fragments of one declaration, and the formal check that runs with no rule reading the value — the two engines agree everywhere, because a clock-declared fragment is handled as a clock value rather than through the fragment completion ([IF327](INTERPRETER-FINDINGS.md#if327)).*
 
 *(Locked: `validate.laws.TemporalFormatVocabularyGuardTest` — the fragment probe is a third derived domain with its own discrimination floor, and the artifact comparison fails the build if the kernel and the committed set disagree.)*
+
+## §9 supplement — `NumberOfDifferentValues` counts temporal operands by DECODED date, so two spellings of one date count once (adapter differential, 2026-09-05) <a id="kf253"></a>
+
+> Fold: pending — the runtime half of [KF193](#kf193)'s temporal aggregate gate; folds into §9 beside [KF226](#kf226) on the next canonical pass.
+
+[KF193](#kf193) measured `NumberOfDifferentValues`'s *admission* gate: date-like operands must share a declared component SET, not a format string, so `yyyy-MM-dd` beside `dd.MM.yyyy` is admitted. That admission is what makes this question askable at all — the two operands can hold **different stored texts denoting one date**, and there a textual identity and a chronological one give different counts. Measured on both engines: the count is **chronological**.
+
+| operands | stored values | distinct count |
+|---|---|---|
+| `yyyy-MM-dd`, `dd.MM.yyyy` | `2024-03-05`, `05.03.2024` — one date, two spellings | **1** |
+| `yyyy-MM-dd`, `dd.MM.yyyy` | `2024-03-05`, `06.03.2024` — different dates | 2 |
+| `yyyy-MM-dd`, `yyyy-MM-dd` | `2024-03-05`, `2024-03-05` | 1 |
+| `yyyy-MM-dd`, `yyyy-MM-dd` | `2024-03-05`, `2024-03-06` | 2 |
+
+**The first row alone does not establish it, and that is the whole design of the table.** A count of 1 is equally consistent with a decoded comparison and with an engine that cannot evaluate a cross-spelling pair and folds it to one value — the two are indistinguishable from a single cell. The second row holds the spelling difference fixed and varies only whether the dates agree; the collapse reading cannot produce its 2. The same-spelling pair is the third leg, showing a count of 1 is reachable through the path nobody disputes, so neither arm is a constant.
+
+**Read against its neighbour or the result inverts.** `FieldValuesNotUnique` refuses this pair outright at authoring under its own code, so it never reaches a runtime identity question — do not carry either operator's answer to the other ([KF226](#kf226) records the same warning on the classification gate). No Base Year is declared in the measured model: every declaration carries its own year, so supplementation is not a second variable here.
+
+**Asked by a12-kernel-lean's `SG22`**, whose `route-state` recorded the question as having no constructible witness — "under a mandatory single format the decoded and stored accounts agree on every currently constructible input". The premise is what fails: the format is not mandatory-single for *this* operator, which is exactly the fact their proposed format-equality gate would have erased. They have withdrawn the recommendation.
+
+*(Locked: `adapter.laws.DistinctCountTemporalIdentityDiffTest` — every cell asserts kernel and interpreter equal before its value is pinned, so an engine divergence fails ahead of the pin; the cross-spelling pair's admission is asserted rather than assumed, since a refused pair would make the counts measurements of a model that does not exist.)*

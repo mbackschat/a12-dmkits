@@ -4972,6 +4972,27 @@
       "evidence": []
     },
     {
+      "operator": "NumberOfDifferentValues",
+      "lane": "GOTCHA",
+      "ordinal": 2,
+      "digest": "sha256:d41ab1e3adc0b1af68b45d2a19a45f91aa89c8e147c6a33f0341aeccedbc2460",
+      "classifications": [
+        "RUNTIME"
+      ],
+      "evidence": [
+        {
+          "classification": "RUNTIME",
+          "type": "TEST",
+          "id": "DistinctCountTemporalIdentityDiffTest#oneDateInTwoSpellingsCountsOnce"
+        },
+        {
+          "classification": "RUNTIME",
+          "type": "TEST",
+          "id": "DistinctCountTemporalIdentityDiffTest#differingDatesInDifferentSpellingsStillCountTwice"
+        }
+      ]
+    },
+    {
       "operator": "NumberOfValueInFields",
       "lane": "MEANING",
       "ordinal": 0,
