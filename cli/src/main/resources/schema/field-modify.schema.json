@@ -88,7 +88,7 @@
     "date": {
       "type": "object", "description": "(kind DATE) complete replacement config", "additionalProperties": false,
       "properties": {
-        "format": { "type": "string", "description": "a LOWERCASE Java pattern from a fixed allowed WHITELIST, not a compositional rule. The gate reads the STRING and never the field's KIND, so the vocabulary is shared across DATE/TIME/DATETIME. Seven DATE-SHAPED patterns are admitted: the two complete forms yyyy-MM-dd and dd.MM.yyyy, and the component-omitting yyyy, yyyy-MM, yyyyMM, MM, MM-dd. Refused: MM.yyyy, MM-yyyy, yyyy/MM and dd.MM — the SEPARATOR discriminates between formats with the same components. Note dd.MM is refused here yet is a legal DATERANGE format with -." },
+        "format": { "type": "string", "description": "a LOWERCASE Java pattern from a fixed allowed WHITELIST, not a compositional rule. The gate reads the STRING and never the field's KIND, so the vocabulary is shared across DATE/TIME/DATETIME. TWELVE patterns are admitted in total, derived from the kernel in docs/TEMPORAL-FORMAT-VOCABULARY.md (cite that file rather than re-listing): the complete dates yyyy-MM-dd, dd.MM.yyyy and yyyyMMdd; the component-omitting yyyy, yyyy-MM, yyyyMM, MM, MM-dd, MMdd and ddMM; the clock HH:mm:ss; and the instant yyyy-MM-dd'T'HH:mm:ss. Refused: MM.yyyy, MM-yyyy, yyyy/MM and dd.MM — the SEPARATOR discriminates between formats with the same components (MMdd and ddMM are admitted while dd.MM is not). Note dd.MM is refused here yet is a legal DATERANGE format with -." },
         "precision": { "type": "string", "description": "FULL | DAY_OPTIONAL | MONTH_OPTIONAL | YEAR_OPTIONAL" },
         "rejectBefore1900": { "type": "boolean" }
       }
@@ -99,7 +99,8 @@
     },
     "dateTime": {
       "type": "object", "description": "(kind DATETIME) complete replacement config", "additionalProperties": false,
-      "properties": { "format": { "type": "string" } }
+      "properties": { "format": { "type": "string",
+        "description": "a LOWERCASE Java date+time pattern. The conventional DATETIME declaration is the ISO instant yyyy-MM-dd'T'HH:mm:ss, but the gate reads the STRING and never the kind, so any of the twelve admitted temporal patterns is accepted here (docs/TEMPORAL-FORMAT-VOCABULARY.md)." } }
     },
     "dateRange": {
       "type": "object", "description": "(kind DATERANGE) complete replacement config", "additionalProperties": false,
@@ -113,7 +114,7 @@
     "dateFragment": {
       "type": "object", "description": "(kind DATEFRAGMENT) complete replacement config", "additionalProperties": false,
       "required": ["format"],
-      "properties": { "format": { "type": "string", "description": "verified: MM, yyyy, yyyy-MM, MM-dd" } }
+      "properties": { "format": { "type": "string", "description": "measured: the fragment kind admits the same twelve patterns as DATE/TIME/DATETIME (see docs/TEMPORAL-FORMAT-VOCABULARY.md); MM, yyyy, yyyy-MM and MM-dd are the conventional declarations, not the limit" } }
     }
   },
   "examples": [

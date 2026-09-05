@@ -33,6 +33,15 @@ import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel;
  * 2026-08-29 and reached an outbound handback to a peer project, who caught it. Neither needed new measurement
  * — both sets were already wrong when written.
  *
+ * <p><b>The third and fourth, both found by widening this artifact rather than by any consumer noticing
+ * (2026-09-05).</b> Deriving the field vocabulary turned up {@code MMdd}, {@code ddMM} and {@code yyyyMMdd},
+ * which no file in the estate had ever named — so the three shipped schema descriptions and the diagnostic
+ * enricher were all quantifying the set ("Seven DATE-SHAPED patterns are admitted") three members short. Then
+ * probing DATEFRAGMENT as its own domain found the opposite register: every surface named FOUR fragment
+ * formats where the kernel admits all twelve, {@link #PROSE_CLAIMANTS} included, and {@link
+ * #COMPLETENESS_CLAIMANTS} could not have caught either, because the guidance a consumer reads is prose and
+ * has no delimitable enumeration to check.
+ *
  * <p><b>Why derivation rather than a shared constant.</b> Sharing one list propagates a short list faithfully;
  * it cannot catch the case where the list was short at its origin, which is both incidents. The kernel is the
  * only thing that knows, so the set is recomputed from it and committed as a derived artifact, the same shape
@@ -223,6 +232,41 @@ class TemporalFormatVocabularyGuardTest {
         return out;
     }
 
+    // ── the third derived domain: the DATEFRAGMENT format ───────────────────────────────────────────────────
+
+    /**
+     * A DATEFRAGMENT declares its format under its own key ({@code formatOfFragment}) and is the one
+     * date-bearing kind {@link Kind} does not cover, so its vocabulary is a separate domain rather than a
+     * projection of the shared one — exactly like the DATERANGE pair above.
+     *
+     * <p><b>Why it is measured rather than reasoned from KF206.</b> Kind-independence was established over
+     * DATE / TIME / DATE_TIME; a fragment is by definition a date that is NOT a full calendar date, so it is
+     * the one kind where a narrower set is plausible. Extending it by analogy would be a scope transfer onto
+     * an unmeasured carrier, and the estate's shipped guidance already carried a four-member fragment list
+     * whose denominator nobody had measured.
+     */
+    private static boolean admitsFragment(String format) {
+        String json = DocumentModelDraft.named("vocabulary").locale("en_US")
+                .rootGroup("Doc", d -> d.dateFragmentField("F", f -> f.fragmentFormat(format)))
+                .build().toJson();
+        try {
+            BoundModel.ofJson(json);
+            return true;
+        } catch (ModelConsistencyException e) {
+            return false;
+        }
+    }
+
+    static Set<String> admittedFragmentFormats() {
+        Set<String> out = new TreeSet<>();
+        for (String format : candidates()) {
+            if (admitsFragment(format)) {
+                out.add(format);
+            }
+        }
+        return out;
+    }
+
     static Set<String> admittedFormats(Map<String, Verdict> partition) {
         Set<String> out = new TreeSet<>();
         partition.forEach((format, verdict) -> {
@@ -299,6 +343,16 @@ class TemporalFormatVocabularyGuardTest {
                     .append(halves[1].isEmpty() ? "*(empty)*" : "`" + halves[1] + "`").append(" |\n");
         }
 
+        Set<String> fragments = admittedFragmentFormats();
+        out.append("\n## DATEFRAGMENT formats admitted — ").append(fragments.size()).append("\n\n");
+        out.append("A DATEFRAGMENT declares `formatOfFragment` and is the one date-bearing kind the table at the\n");
+        out.append("top does not cover, so it is measured separately rather than inherited from KF206's\n");
+        out.append("kind-independence — a fragment is by definition a date that is not a full calendar date, which\n");
+        out.append("makes it the kind where a narrower set is plausible. Probed over the same candidate formats.\n\n");
+        for (String format : fragments) {
+            out.append("- `").append(format).append("`\n");
+        }
+
         out.append("\n## Candidate universe — ").append(partition.size()).append("\n\n");
         out.append("Every format string put to the kernel, and **the denominator of every count above.** It is the\n");
         out.append("union of the estate's existing probes with a generated set: each ordered selection of the date\n");
@@ -347,6 +401,12 @@ class TemporalFormatVocabularyGuardTest {
         Set<String> pairs = admittedRangePairs();
         assertTrue(pairs.size() >= 5 && pairs.size() < RANGE_SEPARATORS.size() * partition.size(),
                 () -> "the range-pair probe did not discriminate: " + pairs.size() + " pairs");
+
+        // Third backend call, same failure mode: an all-false `admitsFragment` would render an empty section
+        // and the regenerator would codify it. Both verdicts must occur for the section to mean anything.
+        Set<String> fragments = admittedFragmentFormats();
+        assertTrue(!fragments.isEmpty() && fragments.size() < partition.size(),
+                () -> "the fragment probe did not discriminate: " + fragments.size() + " admitted");
     }
 
     @Test
@@ -486,6 +546,69 @@ class TemporalFormatVocabularyGuardTest {
     }
 
     /**
+     * PROSE surfaces that enumerate the admitted vocabulary for a human or an agent, and what each is for.
+     *
+     * <p>Separate from {@link #COMPLETENESS_CLAIMANTS} because these carry no delimitable enumeration — the set
+     * is written into an English sentence inside a JSON string or a Java text block — so the marked-region
+     * mechanism cannot apply. They are guarded all the same, and for the sharper reason: a test's short list
+     * costs coverage, while these four are the guidance a consumer READS, so a short list here is advice that
+     * a legal declaration is illegal. Both recorded incidents landed in exactly this family.
+     */
+    private static final Map<String, String> PROSE_CLAIMANTS = Map.of(
+            "cli/src/main/resources/schema/field-add.schema.json",
+            "the published `schema field add` description quantifies the admitted set for the agent authoring a "
+                    + "field, so a short list reads as a closed allowlist",
+            "cli/src/main/resources/schema/field-modify.schema.json",
+            "the same claim on the post-creation surface",
+            "cli/src/main/resources/schema/typedef-add.schema.json",
+            "the same claim on the type-definition surface",
+            "rulekit/src/main/java/io/github/mbackschat/a12/dm/rulekit/validate/StructuralKernelFix.java",
+            "the curated corrective for the kernel's code-free format rejection — the one place a consumer who "
+                    + "already got the format wrong is told which ones are right");
+
+    /** The characters that can occur INSIDE a format token, so a match at either edge is a different token. */
+    private static final String FORMAT_CHAR = "[A-Za-z0-9'.:\\-]";
+
+    /**
+     * Every prose claimant names every admitted format, matched at token boundaries.
+     *
+     * <p><b>Plain containment is not enough here, measured against this guard's own two incidents.</b> Seven of
+     * the twelve admitted formats are substrings of another — {@code MM-dd} sits inside {@code yyyy-MM-dd},
+     * {@code MMdd} inside {@code yyyyMMdd}, {@code MM} and {@code yyyy} inside almost everything — so a
+     * substring check is satisfied by a list that never mentions them. That is not hypothetical: {@code MM-dd}
+     * is precisely the member missing from three published schema descriptions until 2026-08-19, and a
+     * substring check would have passed the whole time. Requiring a non-format character on both sides makes
+     * the match about the token rather than the letters.
+     */
+    @Test
+    void everyProseSurfaceNamesEveryAdmittedFormat() throws IOException {
+        Set<String> admitted = admittedFormats(partition());
+        Map<String, List<String>> missing = new LinkedHashMap<>();
+        for (Map.Entry<String, String> claimant : PROSE_CLAIMANTS.entrySet()) {
+            Path source = Path.of(claimant.getKey());
+            assertTrue(Files.exists(source),
+                    () -> "a registered prose claimant no longer exists: " + source + " — delete the row or "
+                            + "repoint it. Reason on file: " + claimant.getValue());
+            String text = Files.readString(source);
+            List<String> absent = admitted.stream().filter(format -> !namesAsToken(text, format)).toList();
+            if (!absent.isEmpty()) {
+                missing.put(claimant.getKey(), absent);
+            }
+        }
+        assertEquals(Map.of(), missing,
+                "these surfaces tell a consumer which formats are admitted and omit one the kernel accepts, so "
+                        + "they advertise a legal declaration as illegal. Add the formats, or remove the file "
+                        + "from PROSE_CLAIMANTS with its reason. The admitted set is in " + ARTIFACT);
+    }
+
+    private static boolean namesAsToken(String text, String format) {
+        return java.util.regex.Pattern
+                .compile("(?<!" + FORMAT_CHAR + ")" + java.util.regex.Pattern.quote(format)
+                        + "(?!" + FORMAT_CHAR + ")")
+                .matcher(text).find();
+    }
+
+    /**
      * Every claimant is a declared Gradle input of the task that hosts this guard.
      *
      * <p>The registry above and {@code build.gradle}'s {@code vocabulary consumers} list are two copies of one
@@ -496,7 +619,9 @@ class TemporalFormatVocabularyGuardTest {
     @Test
     void everyClaimantIsADeclaredInputOfItsOwnGuardTask() throws IOException {
         String build = Files.readString(Path.of("build.gradle"));
-        List<String> undeclared = COMPLETENESS_CLAIMANTS.keySet().stream()
+        Set<String> registered = new LinkedHashSet<>(COMPLETENESS_CLAIMANTS.keySet());
+        registered.addAll(PROSE_CLAIMANTS.keySet());
+        List<String> undeclared = registered.stream()
                 .filter(path -> !build.contains("'" + path + "'"))
                 .toList();
         assertEquals(List.of(), undeclared,

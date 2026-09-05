@@ -853,7 +853,11 @@ tasks.register('vocabularyGuardTest', Test) {
             'vocabulary consumers'  : files(
                     'adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/TemporalDeclaredFormatGateDiffTest.kt',
                     'interpreter/src/commonTest/kotlin/io/github/mbackschat/a12/dm/interpreter/TemporalDeclaredFormatFormalTest.kt',
-                    'src/test/java/io/github/mbackschat/a12/dm/rulekit/validate/laws/TemporalDeclarationConfigAdmissionLawsTest.java'),
+                    'src/test/java/io/github/mbackschat/a12/dm/rulekit/validate/laws/TemporalDeclarationConfigAdmissionLawsTest.java',
+                    'cli/src/main/resources/schema/field-add.schema.json',
+                    'cli/src/main/resources/schema/field-modify.schema.json',
+                    'cli/src/main/resources/schema/typedef-add.schema.json',
+                    'rulekit/src/main/java/io/github/mbackschat/a12/dm/rulekit/validate/StructuralKernelFix.java'),
     ])
 }
 

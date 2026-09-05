@@ -178,6 +178,26 @@ projection of it — the two differ in both directions. Probed over the same can
 | `yyyy-MM` | `/` |
 | `yyyy` | `/` |
 
+## DATEFRAGMENT formats admitted — 12
+
+A DATEFRAGMENT declares `formatOfFragment` and is the one date-bearing kind the table at the
+top does not cover, so it is measured separately rather than inherited from KF206's
+kind-independence — a fragment is by definition a date that is not a full calendar date, which
+makes it the kind where a narrower set is plausible. Probed over the same candidate formats.
+
+- `HH:mm:ss`
+- `MM`
+- `MM-dd`
+- `MMdd`
+- `dd.MM.yyyy`
+- `ddMM`
+- `yyyy`
+- `yyyy-MM`
+- `yyyy-MM-dd`
+- `yyyy-MM-dd'T'HH:mm:ss`
+- `yyyyMM`
+- `yyyyMMdd`
+
 ## Candidate universe — 135
 
 Every format string put to the kernel, and **the denominator of every count above.** It is the
