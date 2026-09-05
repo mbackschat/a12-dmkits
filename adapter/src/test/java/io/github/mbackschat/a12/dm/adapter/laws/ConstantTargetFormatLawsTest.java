@@ -227,6 +227,37 @@ class ConstantTargetFormatLawsTest {
         assertEquals(expected, actual, "the declared format renders the store too, on both kinds");
     }
 
+    /**
+     * <b>The DATETIME carrier, because the two rows above are the DATE and TIME ones and reuse is a claim</b>
+     * (added 2026-09-05). The sweep's admission half already offers every one of the twelve formats to a
+     * DATE-declared target, so {@code yyyy-MM-dd'T'HH:mm:ss} is admitted there — but every STORE row was a
+     * date or a clock format, so "the store is decided by the format" had never been run on the carrier whose
+     * format carries both component sets. Asked by a12-kernel-lean, who declined to inherit the DATE/TIME
+     * result onto DATETIME and narrowed their own certificate instead; they were right that it did not follow.
+     *
+     * <p>The first two rows cross kind and format in both directions; the last two are the aligned controls,
+     * so a store that silently fell back to the declared kind would show as the cross rows matching their
+     * kind's default rather than their format.
+     */
+    @Test
+    void theDATETIMECarrierStoresByItsFormatToo() {
+        Map<String, String> actual = new LinkedHashMap<>();
+        actual.put("DATE · datetime format ← datetime",
+                stored(Kind.DATE, "yyyy-MM-dd'T'HH:mm:ss", DATE_TIME_LITERAL));
+        actual.put("DATE_TIME · yyyy-MM-dd ← date", stored(Kind.DATE_TIME, "yyyy-MM-dd", DATE_LITERAL));
+        actual.put("DATE_TIME · datetime format ← datetime — control",
+                stored(Kind.DATE_TIME, "yyyy-MM-dd'T'HH:mm:ss", DATE_TIME_LITERAL));
+        actual.put("DATE_TIME · HH:mm:ss ← clock", stored(Kind.DATE_TIME, "HH:mm:ss", CLOCK_LITERAL));
+
+        Map<String, String> expected = new LinkedHashMap<>();
+        expected.put("DATE · datetime format ← datetime", "2024-03-05T12:30:00");
+        expected.put("DATE_TIME · yyyy-MM-dd ← date", "2024-03-05");
+        expected.put("DATE_TIME · datetime format ← datetime — control", "2024-03-05T12:30:00");
+        expected.put("DATE_TIME · HH:mm:ss ← clock", CLOCK_LITERAL);
+
+        assertEquals(expected, actual, "the datetime carrier is governed by its format like the other two");
+    }
+
     // ---- the store: the format's own components, dropped silently (SPEC-2026-08-31-02) ----
 
     /**
