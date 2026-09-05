@@ -218,7 +218,7 @@ internal class Conditions(private val mapping: Mapping) {
         if (left !is FieldValue || right !is BoolLiteral) {
             throw noTypedComparison(op, left, right)
         }
-        val ref: BoolRef = mapping.model().bool(left.field().path().value())
+        val ref: BoolRef = mapping.model().bool(left.field().path().value()).keeping(left) { outer() }
         return when (op) {
             CmpOp.EQ -> if (right.value()) ref.isTrue else ref.isFalse
             CmpOp.NE -> if (right.value()) ref.isNotTrue else ref.isNotFalse
@@ -234,7 +234,7 @@ internal class Conditions(private val mapping: Mapping) {
         if (left !is FieldValue || right !is BoolLiteral || !right.value()) {
             throw noTypedComparison(op, left, right)
         }
-        val ref: ConfirmRef = mapping.model().confirm(left.field().path().value())
+        val ref: ConfirmRef = mapping.model().confirm(left.field().path().value()).keeping(left) { outer() }
         return when (op) {
             CmpOp.EQ -> ref.confirmed()
             CmpOp.NE -> ref.notConfirmed()

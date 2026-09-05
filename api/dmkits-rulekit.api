@@ -574,6 +574,7 @@ public record io.github.mbackschat.a12.dm.rulekit.dsl.BoolRef
   public io.github.mbackschat.a12.dm.rulekit.dsl.Condition isNotTrue()
   public io.github.mbackschat.a12.dm.rulekit.dsl.Condition isTrue()
   public io.github.mbackschat.a12.dm.rulekit.dsl.Condition notFilled()
+  public io.github.mbackschat.a12.dm.rulekit.dsl.BoolRef outer()
   public final java.lang.String toString()
 
 public final class io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel
@@ -845,6 +846,7 @@ public record io.github.mbackschat.a12.dm.rulekit.dsl.ConfirmRef
   public final int hashCode()
   public io.github.mbackschat.a12.dm.rulekit.dsl.Condition notConfirmed()
   public io.github.mbackschat.a12.dm.rulekit.dsl.Condition notFilled()
+  public io.github.mbackschat.a12.dm.rulekit.dsl.ConfirmRef outer()
   public final java.lang.String toString()
 
 public record io.github.mbackschat.a12.dm.rulekit.dsl.CountAggregate implements io.github.mbackschat.a12.dm.rulekit.dsl.Calculation

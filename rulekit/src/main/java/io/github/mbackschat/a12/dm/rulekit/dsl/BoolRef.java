@@ -8,6 +8,25 @@ package io.github.mbackschat.a12.dm.rulekit.dsl;
  */
 public record BoolRef(FieldRef field) {
 
+    /**
+     * Marks this reference as the {@code $} outer-iteration correlation ({@code [$path] == True}) — it binds
+     * to the enclosing rule iteration, and is legal only inside a {@code Having} filter (D13).
+     *
+     * <p>The marker rides the underlying {@link FieldRef}, because every comparison here is built from
+     * {@code field.value()} and {@link FieldValue} already carries it — so this needs no state of its own,
+     * unlike {@link NumberRef#outer()} where the handle also carries a scale.
+     *
+     * <p><b>It was absent until 2026-09-05, and the absence was a defect rather than a decision.</b> The
+     * kernel admits a correlated boolean comparison in a filter — measured in
+     * {@code validate.laws.CorrelatedBooleanComparisonLawsTest} against the catalog's own admitted carrier —
+     * so a legal model had no typed shape here, and the read path dropped the marker SILENTLY instead of
+     * refusing, which is the sharper half: an uncorrelated comparison reads a different row and renders
+     * identically.
+     */
+    public BoolRef outer() {
+        return new BoolRef(field.outer());
+    }
+
     public Condition filled() {
         return field.filled();
     }
