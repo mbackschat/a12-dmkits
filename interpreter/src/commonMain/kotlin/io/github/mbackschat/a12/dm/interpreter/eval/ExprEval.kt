@@ -425,9 +425,29 @@ internal fun Interpreter.evalAssignedExpr(expr: Expr, targetKind: Kind?, targetD
     if (expr !is Expr.StrLit) return evalExpr(expr)
     return when (targetKind) {
         Kind.DATE -> coerceDate(Val.Txt(expr.v), targetDateFormat)
-        Kind.DATE_TIME -> Val.Txt(parseDateTimeToIso(expr.v, DATE_TIME_LITERAL_FORMAT) ?: expr.v)
+        Kind.DATE_TIME -> dateTimeLiteral(expr.v)
         else -> evalExpr(expr)
     }
+}
+
+/**
+ * A DATE_TIME literal canonicalized against its target — and [Val.DomainFailure] when the label it names has
+ * **no instant** in the model's declared zone.
+ *
+ * A wall time inside a spring-forward gap is not a time, so there is nothing for the kernel's conversion to
+ * produce: it yields no computed outcome and reports `berechnungsWertFehler` per in-capacity target row on the
+ * operand channel (KF231), which is structurally the numeric domain failure and is why the same carrier serves
+ * both. Before this the label was canonicalized, stored, and then flagged by the target's own format check —
+ * agreeing that the cell has no valid value but saying so on the wrong channel (IF326, graduated from IG147).
+ *
+ * **Deliberately narrow to the unresolvable-instant condition.** A temporal constant that fails its target's
+ * *value policy* keeps store-and-flag: the same KF231 measurement has a pre-1900 Date constant ERRORED
+ * retaining its rendered `1899-12-31`, so "a temporal constant whose target check fails has no value" is
+ * false. Only a label with no instant loses its value here.
+ */
+private fun Interpreter.dateTimeLiteral(text: String): Val {
+    val iso = parseDateTimeToIso(text, DATE_TIME_LITERAL_FORMAT) ?: return Val.Txt(text)
+    return if (isGapLocal(iso, timeZone)) Val.DomainFailure else Val.Txt(iso)
 }
 
 /** The kernel's date-time constant spelling: the German date, a literal `T`, and the clock (`KF223`). */

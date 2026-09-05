@@ -1,6 +1,7 @@
 package io.github.mbackschat.a12.dm.adapter.laws
 
 import io.github.mbackschat.a12.dm.interpreter.DmInterpreter
+import io.github.mbackschat.a12.dm.interpreter.PreparedModel
 import io.github.mbackschat.a12.dm.interpreter.eval.formatPointer
 import io.github.mbackschat.a12.dm.interpreter.eval.newDocument
 import io.github.mbackschat.a12.dm.interpreter.load.ModelLoader
@@ -62,6 +63,21 @@ class DateTimeConstantZoneSplitDiffTest {
 
         /** Pinned by the first run of this file; see the note at its assertion. */
         const val REFUSAL_CODE = "MVK_INVALID_COMPARE_TO_DATE"
+
+        /** The kernel's own code for a computed target that resolved to no value, spelled rather than imported
+         *  from our own constant: the claim is that our string equals the kernel's. */
+        const val COMPUTED_VALUE_ERROR = "berechnungsWertFehler"
+
+        /** The same document the [document] builder describes, as canonical A12 Document JSON — the public
+         *  `readDocument` ingress, which is where a consumer meets the report IG147 was about. */
+        const val FRESH_DOC = """{"Booking":{"Locator":"7KQ4ZB","Segments":[{},{}]}}"""
+
+        /** A value the target already HOLDS, so the kernel's change projection has a clear to report and the
+         *  outcome channel can be compared with nothing projected away. */
+        const val SEEDED_VALUE = "2024-01-05T08:00:00"
+
+        const val SEEDED_DOC =
+            """{"Booking":{"Locator":"7KQ4ZB","Segments":[{"BoardsAt":"$SEEDED_VALUE"},{"BoardsAt":"$SEEDED_VALUE"}]}}"""
         val UTC: TimeZone = TimeZone.getTimeZone("UTC")
         val BERLIN: TimeZone = TimeZone.getTimeZone("Europe/Berlin")
     }
@@ -169,26 +185,72 @@ class DateTimeConstantZoneSplitDiffTest {
     }
 
     /**
-     * **A characterized divergence, asserted rather than excluded.** For the UNRESOLVABLE label the two estates
-     * classify the same fact differently: the kernel produces NO computed outcome and routes the finding to the
-     * operand channel, while the interpreter reports the target as ERRORED carrying the canonicalized attempt.
-     * Both agree the cell has no valid value; they disagree about which channel says so, and that is visible to
-     * a consumer reading `compute()`.
+     * **The parity that closed IG147: an unresolvable label is a NO-VALUE operand error on both estates.**
+     * The kernel cannot resolve the label to an instant at all, so there is no value to store — structurally the
+     * numeric domain failure ([DivisionDomainFailureComputationDiffTest]), and this evaluator now says the same
+     * thing on the same channel: one `berechnungsWertFehler` at the target per in-capacity row, and no value.
      *
-     * It is pinned here — including the exact interpreter shape — so the divergence cannot widen unnoticed and
-     * so the row is not silently dropped from the tri-engine comparison above. Closing it is a decision about
-     * our public compute contract (whether `compute()` grows an operand-error channel or reclassifies this
-     * case), which is why it is filed rather than patched: `INTERPRETER-GAPS` owns it.
+     * **The discriminator that keeps this narrow, and it is measured in this very file's sibling.** A pre-1900
+     * Date constant is ERRORED *retaining* its rendered attempt (`DateConstantTargetPolicyDiffTest`, KF231), so
+     * "a temporal constant that fails its target check has no value" is FALSE. Only a label with no instant is
+     * a no-value failure; the target-policy refusal keeps store-and-flag.
+     *
+     * **What the outcome channel does and does not compare here.** The kernel reports no outcome for a target it
+     * never valued; report-all gives one no-value outcome per instance, which is the standing compute-granularity
+     * ruling rather than a divergence — the same pair the divide-by-zero law records. The next test removes that
+     * projection entirely by seeding the target.
      */
     @Test
-    fun theUnresolvableLabelIsClassifiedDifferentlyByTheTwoEstates() = underDefault(UTC) {
-        assertEquals(emptyMap<String, String>(), outcomes(gapModel),
-            "the kernel reports no computed outcome at all for an unresolvable wall label")
+    fun theUnresolvableLabelIsANoValueOperandErrorOnBothEstates() = underDefault(UTC) {
+        val kernel = RuntimeLaws.computeWithFormalErrors(gapModel, document(gapModel))
+        assertEquals(emptyMap<String, String>(), kernel.outcomes().associate { it.pointer() to signature(it) },
+            "the kernel gives an unresolvable wall label no computed outcome at all")
+
+        val expected = (1..ROWS).map { row -> "$COMPUTED_VALUE_ERROR@${pointer(row)}" }
+        assertEquals(expected, kernel.formalErrorsInOperands().map { "${it.code()}@${it.field()}" }.sorted(),
+            "the kernel's own operand channel, addressed per in-capacity row")
+        assertEquals(expected, interpreterOperandSignatures(gapModel, FRESH_DOC),
+            "the whole of IG147: our PUBLIC report must name the same code at the same cells")
+
         assertEquals(
-            (1..ROWS).associate { row -> "$BOARDS_AT@${pointer(row)}" to "ERRORED|2024-03-31T02:30:00" },
-            interpreterOutcomes(gapModel),
-            "the interpreter's classification, pinned so the divergence cannot widen unnoticed",
+            (1..ROWS).associate { row -> pointer(row) to "CLEARED|<none>" },
+            interpreterResults(gapModel, FRESH_DOC),
+            "report-all keeps one no-value outcome per instance — never a stored attempt",
         )
+    }
+
+    /**
+     * **The same fact with the granularity projection removed.** A target that already HOLDS a value and now
+     * computes none is a change the kernel's own projection reports, so both estates speak about the outcome
+     * channel on this document and it is compared directly. The divide-by-zero law uses this arm for the
+     * identical reason — it is what makes the parity claim a measurement rather than a projection.
+     */
+    @Test
+    fun aSeededTargetIsClearedByBothEstatesForAnUnresolvableLabel() = underDefault(UTC) {
+        val kernel = RuntimeLaws.computeWithFormalErrors(gapModel, seededDocument())
+        assertEquals(
+            (1..ROWS).associate { row -> pointer(row) to "CLEARED|<none>" },
+            kernel.outcomes().associate { it.pointer() to signature(it) },
+            "the kernel clears a seeded target whose computation resolves to no value",
+        )
+        assertEquals(
+            (1..ROWS).associate { row -> pointer(row) to "CLEARED|<none>" },
+            interpreterResults(gapModel, SEEDED_DOC),
+            "interpreter vs dynamic-Groovy on the outcome channel, unprojected",
+        )
+    }
+
+    /** The RESOLVABLE label on the same seeded document — the control proving the clear above is the gap label's
+     *  doing and not something the seed causes on its own. */
+    @Test
+    fun aSeededTargetKeepsItsComputedValueForTheResolvableLabel() = underDefault(UTC) {
+        assertEquals(
+            (1..ROWS).associate { row -> pointer(row) to "VALUE|2024-03-05T12:30:00" },
+            interpreterResults(ordinaryModel, SEEDED_DOC),
+            "the control label still computes its instant over a seeded target",
+        )
+        assertEquals(emptyList<String>(), interpreterOperandSignatures(ordinaryModel, FRESH_DOC),
+            "and carries no operand finding, or the gap row's finding says nothing")
     }
 
     // ---- the instruments ----
@@ -202,6 +264,28 @@ class DateTimeConstantZoneSplitDiffTest {
         return DmInterpreter(definition).compute(interpreterDocument(definition))
             .associate { "${it.path}@${formatPointer(it.path, it.indices)}" to signature(it) }
     }
+
+    /**
+     * The operand channel on our own PUBLIC report, at `code@pointer`. It goes through `readDocument` rather
+     * than the hand-built route on purpose: IG147 was a claim about what a consumer sees on `compute()`, and
+     * the hand-built document is a route hybrid (IG143).
+     */
+    private fun interpreterOperandSignatures(model: String, documentJson: String): List<String> =
+        publicReport(model, documentJson).formalErrorsInOperands
+            .map { "${it.code}@${formatPointer(it.errorPath.fullName, it.errorPath.repetitionIndexes)}" }
+            .sorted()
+
+    /** The report-all outcome channel on the same public report, keyed by the kernel's own pointer spelling. */
+    private fun interpreterResults(model: String, documentJson: String): Map<String, String> =
+        publicReport(model, documentJson).results.associate {
+            formatPointer(it.pointer.path, it.pointer.coordinates) to
+                "${it.outcome.name}|${it.value ?: "<none>"}"
+        }
+
+    private fun publicReport(model: String, documentJson: String) =
+        PreparedModel.loadExpandedJson(model).let { prepared ->
+            prepared.createInterpreter().compute(prepared.documents.readDocument(documentJson))
+        }
 
     /** `ADMITTED`, or the distinct MVK codes the consistency oracle reported, with [zone] as the JVM default. */
     private fun verdictUnder(zone: TimeZone, model: String): String = underDefault(zone) {
@@ -241,6 +325,17 @@ class DateTimeConstantZoneSplitDiffTest {
     private fun document(model: String): RuntimeLaws.Doc {
         val d = RuntimeLaws.doc().group(BOOKING, 1).field(LOCATOR, "7KQ4ZB", 1, 1)
         for (row in 1..ROWS) d.group(SEGMENTS, 1, row)
+        return d
+    }
+
+    /** [document] with the computed target already holding [SEEDED_VALUE] at every row — the kernel's change
+     *  projection reports a clear only for a cell that HELD something. */
+    private fun seededDocument(): RuntimeLaws.Doc {
+        val d = RuntimeLaws.doc().group(BOOKING, 1).field(LOCATOR, "7KQ4ZB", 1, 1)
+        for (row in 1..ROWS) {
+            d.group(SEGMENTS, 1, row)
+            d.field(BOARDS_AT, SEEDED_VALUE, 1, row, 1)
+        }
         return d
     }
 

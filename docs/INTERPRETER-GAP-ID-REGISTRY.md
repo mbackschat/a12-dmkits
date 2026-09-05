@@ -23,7 +23,7 @@ This is the append-only registry for every `IAG<n>` and `IRG<n>` identifier issu
 | IAG15 <a id="iag15"></a> | shipped | cross-check the two published message-address projections without adding interpreter API |
 | IG148 <a id="ig148"></a> | shipped → [IF323](INTERPRETER-FINDINGS.md#if323) | the rule-message `$#…$` group parameter is not implemented and renders verbatim |
 | IG146 <a id="ig146"></a> | shipped → [IF315](INTERPRETER-FINDINGS.md#if315) | the compute path's over-repetition relevance tested group paths against a set of field paths, so the over-limit ROW code never reached the operand channel |
-| IG147 <a id="ig147"></a> | open | an unresolvable temporal constant is an operand error with no outcome for the Kernel and an ERRORED outcome for the interpreter |
+| IG147 <a id="ig147"></a> | shipped → [IF326](INTERPRETER-FINDINGS.md#if326) | an unresolvable temporal constant is an operand error with no outcome for the Kernel and an ERRORED outcome for the interpreter |
 | IG145 <a id="ig145"></a> | shipped → [IF325](INTERPRETER-FINDINGS.md#if325) | `formatPointer` drops a repeatable GROUP node's own row index, collapsing addresses the Kernel distinguishes |
 | IG144 <a id="ig144"></a> | shipped → [IF314](INTERPRETER-FINDINGS.md#if314) | a TIME field declared with a DATE format is live in the Kernel and rejected by the interpreter on every value |
 | IG143 <a id="ig143"></a> | deferred | a hand-built interpreter document is a route hybrid, so two cross-route laws are ungated |
