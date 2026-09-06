@@ -4762,3 +4762,185 @@ Which class the kernel reports for a wrong-kind constant assignment is **not** a
 **Reported by a12-kernel-lean on four carriers** (value list, `NumberOfDifferentValues`, `FieldValuesNotUnique`, `Sum`). Measured here on the two whose *wording* was wrong, since our published text is what carried the defect — the other two already said the right thing. Their same-day corroboration from the other direction is **their report and not re-derived here**: at the DateRange overlap operators a keyed reference repeated under the *same* key refuses and under a *different* key is admitted, which would make the exact identity the (field, key) pair.
 
 *(Locked: `validate.laws.StarredOperandRepeatExemptionLawsTest` — both carriers, each with its direct-duplicate row and its distinct-reference liveness control.)*
+
+## §6 supplement — a temporal field may declare NO format, and the kernel resolves its KIND's default; a BLANK format string is refused (kernel `checkConsistency`, 2026-09-06) <a id="kf259"></a>
+
+> Fold: pending — extends §6's declaration tier beside [KF206](#kf206); folds on the next canonical pass.
+
+**Absent and empty are two different declarations.** An empty type payload — `"DateType": {}`, `"TimeType": {}`, `"DateTimeType": {}` — is kernel-valid, and the field then behaves as if it had declared its kind's default spelling. A present-but-blank `"format": ""` is refused, not by a consistency rule but by the kernel's own type converter (`DateTypeImpl`'s `notBlank` precondition), which throws inside `checkConsistency` before any structured problem exists.
+
+**Three gates pin the resolved default, and no one of them alone would.** Each answers a different question about what "the default" is:
+
+| gate | row | reading |
+|---|---|---|
+| format STRING (`FieldValuesNotUnique`) | format-less DATE beside `yyyy-MM-dd` ADMITTED; beside `dd.MM.yyyy` refused, exactly like the declared ISO/German control | the resolved value is a *string* equal to the default spelling, not an exemption from a gate it has no string for |
+| component SET (`NumberOfDifferentValues`) | format-less DATE beside format-less TIME and beside format-less DATETIME both `MVK_DATEFORMATS_NOT_COMPATIBLE`; beside `dd.MM.yyyy` ADMITTED | the three kinds resolve three *different* defaults, which a shared one could not produce |
+| extractor | `YearFromDate` admitted on the format-less DATE and DATETIME, refused on the format-less TIME; `HoursFromTime` the mirror | which components the resolved default carries |
+
+**Our own writer cannot emit either shape, and that is the reason the caveat existed.** `DocumentModelDraft` substitutes the kind default for a null format, so both variants above are built by editing the emitted DM-JSON. The blank-string variant additionally exposed a **reporting** defect on our side: the kernel's throw escaped `ModelLoader.loadAndCheck` and reached the caller as `RK_INTERNAL_ERROR` — "this is a dmtool defect, not an invalid input" — which asserts the opposite of the truth. It is the whole-model sibling of the leak `RuleValidator.checkDraft` already closes for an injected draft, and it is fixed at the tier that owns it: the wrapper sits on `checkConsistency` alone and never on the deserialize/resolve/expand step above it. **That narrowness is load-bearing** — a malformed DM-JSON and a reference our own resolver could not resolve belong to earlier tiers that report themselves, and folding either into this channel would publish a KERNEL gate receipt for a gate that never ran. A first, broader attempt did exactly that and eight CLI contract tests said so.
+
+**The class has a second member, and it is what confirms the mechanism rather than the symptom.** A DUPLICATE rule name in one group is caught by the same deserialize/convert tier and threw the same bare `IllegalArgumentException` out of `BoundModel.ofJson` — a case nobody reported, predicted from the locus and found already pinned by `validate.laws.RuleSlotLawsTest`, which asserted the leak. Both now arrive as a `ModelConsistencyException` carrying the kernel's own reason, so the fix sits at the shared root rather than on the reported path.
+
+**Reported by a12-kernel-lean as `SPEC-2026-09-06-02`**, whose rows could bound the default's equality class but not exhibit it; the extractor column is added here, and their side's note that this project "refuses an empty format string outright" is true of *their* flat model, not of this one.
+
+*(Locked: `validate.laws.TemporalDeclarationWithoutFormatLawsTest` — the three gates, plus the blank-string row asserting the rejection arrives as a `ModelConsistencyException` carrying the kernel's own reason.)*
+
+## §6 supplement — a partially known Date splits the four field-list operators along the identity they COMPARE (kernel `checkConsistency`, 2026-09-06) <a id="kf260"></a>
+
+> Fold: pending — new precision axis on §6's operand gates; folds beside [KF193](#kf193).
+
+A `DateType` may declare `datePrecision` `DAY_OPTIONAL` / `MONTH_OPTIONAL` / `YEAR_OPTIONAL`, and **precision is independent of the declared component set** — a `yyyy-MM-dd` declaration exposing all three components may still be partially known, so an operand gate reading components alone cannot see it.
+
+| operator | verdict on all three precisions | why |
+|---|---|---|
+| `MinValue` / `MaxValue` / `NumberOfDifferentValues` | `MVK_PARTIAL_DATE_NOT_ALLOWED` | they compare a **decoded date**, which a partial has not |
+| `FieldValuesNotUnique` | ADMITTED | it compares the **exact stored text**, which a partial has |
+| `ValueAsDate` | the inverse gate — REQUIRES a partial, refuses a fully known source `MVK_INVALID_DATE_TYPE_FOR_OP` | so the distinction is enforced in both directions |
+
+This is static corroboration of the identity split that [KF173](#kf173)/[KF253](#kf253) establish at runtime, arriving from an independent direction. The full-precision control is admitted at all four carriers on the same fixture, and the only variable across the refused rows is `datePrecision`.
+
+**A group operand's expansion is NOT leader-keyed here**, which is the row a12-kernel-lean asked for and the one a "the leader fixes the class" reading gets wrong: a group declaring a FULL-precision date first and a month-optional one second is still refused at all three decoding carriers, with the all-full sibling group admitted as the control. So this gate reads the whole expansion — unlike the kind gate, where the leading declaration does decide ([KF263](#kf263)).
+
+**Reported by a12-kernel-lean as `SPEC-2026-09-06-05`.** Their entry records that a partial precision is "not authorable through `field add`"; it is, on this tool — the spec key is `date.precision` and the DM-JSON key it writes is `datePrecision`.
+
+*(Locked: `validate.laws.PartialDatePrecisionOperandLawsTest`.)*
+
+## §6 supplement — a declared Base Year reaches the temporal EXTRACTOR gate, and the admitted extractor then decides nothing (kernel `checkConsistency` + differential, 2026-09-06) <a id="kf261"></a>
+
+> Fold: pending — extends the Base-Year supplementation rule to a third gate; folds beside [KF193](#kf193).
+
+Our record had the Base Year supplementing the year at the **comparison** gate and the **aggregate** gate. It reaches the **extractor** gate too: `YearFromDate` on a pure `HH:mm:ss` field is refused `MVK_WRONG_DATE_FORMAT_FOR_OP` with no Base Year and **ADMITTED** with one. So the year part's gate is *component present OR a Base Year supplies one*, not *component present*. The control is within-model — the same draft built twice, differing in one builder call — and the ordinary-DATE extractor row is admitted on both, so the gate is visibly armed either way.
+
+**Admission is not a value.** At runtime that admitted extractor decides nothing: neither `== 2024` (the declared base year) nor `== 2023` fires on a filled clock cell, on both kernel strategies and in the interpreter, while the same rule shape over an ordinary DATE field fires on the same document. Asking one comparand could not separate "the Base Year supplies the year" from "the operand yields nothing"; asking two does.
+
+**The declared FORMAT decides the operand family, and the KIND is not read** — [KF211](#kf211)'s rule reaching the completed-period difference: `DifferenceInYears` takes a TIME-declared `yyyy-MM-dd` field beside an ordinary DATE and refuses a pure clock field, `HoursFromTime` the mirror on the same declaration.
+
+**Reported by a12-kernel-lean as `SPEC-2026-09-05-14`** (narrowed by them to these two rows after finding the wider claim already in [KF211](#kf211)); their limit is static admission, and the runtime row is added here.
+
+*(Locked: `validate.laws.TemporalExtractorBaseYearGateLawsTest` + `adapter.laws.BaseYearExtractorAdmissionDiffTest`.)*
+
+## §6 supplement — the distinct count and the extrema fold a COMPONENT-OMITTING temporal operand at its declared precision (differential, 2026-09-06) <a id="kf262"></a>
+
+> Fold: pending — the runtime half of the component-set gate; folds beside [KF253](#kf253).
+
+[KF253](#kf253) measured the fold on complete-date spellings; the admission side already proved a `yyyy-MM` or a yearless `MM` list legal, so these rows were constructible and simply never run. **The comparison is the decoded value at the list's SHARED declared component set**, not at full calendar precision: a `yyyy-MM` pair folds `2024-03` with `2024-03` as one value and separates it from `2024-04`, and a yearless `MM` pair does the same — and *orders* — with **no Base Year declared**.
+
+**The reversed document is the separator.** Every pair is swapped and no ordering rule fires at all, which no constant-true reading can produce; the ascending row alone would be consistent with an extremum that ignores its operands.
+
+**Supplementation is by the DECLARED Base Year, not by the sibling operand's year.** Under `baseYear 2024`, a yearless `03` beside `2023-03` counts as **two** values and the extremum puts the 2023 operand first. A sibling-supplied year would make the two equal and count one, so that row is what separates the accounts; `03` beside `2024-03` counting one is consistent with both.
+
+**Reported by a12-kernel-lean as `SPEC-2026-09-06-08`** (the distinct count) **and `SPEC-2026-09-06-10`** (the extrema); measured here on our own fixture, kernel and interpreter agreeing on every row.
+
+*(Locked: `adapter.laws.ComponentOmittingTemporalFoldDiffTest`.)*
+
+## §9 supplement — the extrema's sortable LEADER set is exactly {NUMBER, DATE}, and a group expansion supplies the leading kind (kernel `checkConsistency`, complete over the declared-kind axis, 2026-09-06) <a id="kf263"></a>
+
+> Fold: pending — completes the declared-kind axis [KF249](#kf249) opened; folds beside [KF226](#kf226).
+
+[KF249](#kf249) measured the position law on the NUMBER/DATE pair. The declared-kind axis is now complete for static admission: **ENUM, BOOLEAN, CONFIRM, DATE_RANGE, CUSTOM and STRING each draw `MVK_NOT_SORTABLE` LEADING an extremum's operand list**, so none of them leads a gate of its own, and each draws that same code after a Number leader. In a later slot only NUMBER survives — DATE included. **A starred single-field operand takes the same verdict and the same code as the plain field of that kind**, in both positions, so the gate reads the declaration and not the operand form.
+
+**CUSTOM is the cell that separates the extrema's kind domain from the distinct count's, and the only kind that does.** It is refused `MVK_NOT_SORTABLE` at both extrema in both positions yet admitted by `NumberOfDifferentValues` and `FieldValuesNotUnique`, where DATE_RANGE is refused by all four — and under two different codes, `MVK_ONLY_STRING_ENUM_NUMBER_CMP_DATE_ALLOWED` at the distinct count against the `CMP`-less `MVK_ONLY_STRING_ENUM_NUMBER_DATE_ALLOWED` at the uniqueness neighbour. So the two gates hold genuinely different sets, and a consumer deriving either from the other is wrong in exactly that cell.
+
+**A GROUP operand's expansion supplies the leading kind at both families, and the discriminator is a REORDER.** Three groups carry the same three kinds in three declaration orders; the reported class tracks the first declared member, which a "a group expansion is simply not a sortable/homogeneous list" reading cannot produce:
+
+| expansion, first declared member | `MinValue` | `NumberOfDifferentValues` |
+|---|---|---|
+| ENUM, then NUMBER, then DATE | `MVK_NOT_SORTABLE` | `MVK_STRING_ENUM_AND_NON_STRING_ENUM` |
+| NUMBER, then ENUM, then DATE | `MVK_NOT_SORTABLE` | `MVK_NUMBER_AND_NON_NUMBER` |
+| DATE, then NUMBER | `MVK_DATE_AND_NONDATE` | `MVK_DATE_AND_NONDATE` |
+| all NUMBER — liveness control | ACCEPT | ACCEPT |
+
+**Reported by a12-kernel-lean as `SPEC-2026-09-06-06`**, whose acceptance condition left the group question open on their side; the reorder rows answer it.
+
+*(Locked: `validate.laws.ExtremumOperandKindGridLawsTest`.)*
+
+## §9 supplement — `AtLeastOneDateRangeOverlaps` refuses every non-scalar form in its SCALAR slot with one class (kernel `checkConsistency`, 2026-09-06) <a id="kf264"></a>
+
+> Fold: pending — the column [KF187](#kf187) does not carry; folds beside it.
+
+A plain star, a `Having`-filtered star, a fixed homogeneous group, a homogeneous starred group and a star above a nonrepeatable terminal are each refused `MVK_INVALID_PARAMETER_FOR_DATE_RANGE_COMPARISON` in the scalar position. **The refusal belongs to the SLOT, not to the operand form, and the `In`-slot pair is what proves it**: each of the five is measured again in the list slot on the same fixture and admitted there. That pairing is load-bearing rather than decorative — [KF187](#kf187) records this operator ACCEPTING a starred group in the `In` slot, so a scalar-slot refusal read alone would contradict a measured row.
+
+**[KF187](#kf187) has no scalar-slot column.** Its two columns are the unstarred and starred GROUP shapes and its `AtLeastOneDateRangeOverlaps` row is explicitly scoped "group in the `In` slot", so this is the missing column rather than a filled-in cell. (a12-kernel-lean's `SPEC-2026-09-06-01` describes that `—` as a scalar-slot cell; it is not one.)
+
+**A kind gate reports ahead of the slot gate, in EITHER slot.** A group whose expansion mixes kinds draws `MVK_VARYING_TYPES_NOT_ALLOWED` in the scalar slot *and* in the list slot, so that gate is not slot-specific; a homogeneous group reaches the slot gate in one and is admitted in the other. Measuring with a mixed group alone cannot distinguish "this slot refuses a group" from "this operand offends the kind gate first".
+
+*(Locked: `validate.laws.DateRangeOverlapScalarSlotLawsTest`, which also keeps the plural sibling's contrast adjacent — `DateRangesOverlap` refuses a group outright, `MVK_NO_GROUPS_ALLOWED`, in both repetition shapes.)*
+
+## §11 supplement — a wrong-kind comparison's class is INVARIANT under carrier, wrapping operator, operand order, and comparand form (kernel `checkConsistency`, 2026-09-06) <a id="kf265"></a>
+
+> Fold: pending — the invariance half of [KF257](#kf257)'s ladder; folds beside it.
+
+[KF257](#kf257) measures *which* class a wrong-kind comparison reports. This measures that the class does not move, and adds the three declared kinds that ladder's fixture does not carry:
+
+| field kind | vs a numeric literal | vs a String literal |
+|---|---|---|
+| STRING | `MVK_INVALID_COMPARE_TO_ENUM_OR_STRING` | ADMITTED |
+| ENUM | `MVK_INVALID_COMPARE_TO_ENUM_OR_STRING` | `MVK_INVALID_STRING_CONSTANT_FOR_ENUM_COMPARISON` |
+| BOOLEAN | `MVK_INVALID_COMPARE_TO_YESNO` | `MVK_INVALID_COMPARE_TO_YESNO` |
+| CONFIRM | `MVK_INVALID_COMPARE_TO_YES` | `MVK_INVALID_COMPARE_TO_YES` |
+| DATE_RANGE | `MVK_INVALID_COMPARE_TO_DATE_RANGE` | `MVK_INVALID_COMPARE_TO_DATE_RANGE` |
+| DATE / TIME / DATETIME | `MVK_INVALID_COMPARE_TO_DATE` | `MVK_INVALID_COMPARE_TO_DATE` |
+| CUSTOM | `MVK_INVALID_COMPARE_TO_ENUM_OR_STRING` | ADMITTED |
+| NUMBER | ADMITTED | `MVK_INVALID_COMPARE_TO_ENUM_OR_STRING` |
+
+**The carrier column is the one that settles "whose class is it".** A `Having` filter leaf and a plain per-row rule condition over the **same field** report the identical class in every cell, so the refusal belongs to the comparison and a filter is not a site with classes of its own. The wrapping operator (`Sum`, `MinValue`, `NumberOfDifferentValues`, `AtLeastOneFieldFilled`), the literal's side, and whether the comparand is a literal or a cross-kind FIELD leave it alone too.
+
+**This contradicts an inbound row and the contradiction is not resolved here.** a12-kernel-lean's `SPEC-2026-09-06-04` reports String, Boolean, Confirm, Enumeration and DATE_RANGE all collapsing to `MVK_INVALID_TYPE_FOR_COMPARISON` against a numeric literal, with only the temporal families separating out. Six distinct classes are measured here and that code appears in no cell. Three variables were moved looking for the difference and the grid is invariant under all three, so the divergence is not explained from this side — their fixture is not ours to run, and the question goes back rather than a mechanism being invented for it. The unbracketed leaf spelling was checked and is not the difference: it is a uniform `MVK_UNEXPECTED_TOKEN` grammar refusal on every kind.
+
+*(Locked: `validate.laws.WrongKindComparisonClassInvarianceLawsTest`.)*
+
+## §9 supplement — a `Having` filter reference the star does not reopen is a CONSTANT, so the filter is all-or-nothing (differential, 2026-09-06) <a id="kf266"></a>
+
+> Fold: pending — the selection half of the filter rules in §9; folds beside [KF237](#kf237).
+
+A reference naming a repeatable level the star does **not** reopen resolves to the same row in the candidate and captured environments, so it cannot vary across candidates: the filter keeps every candidate or none. What differs between the two carriers is only how far that constancy reaches — **per host row** for an unstarred ancestor on the operand's path, **per document** for a nonrepeatable leaf.
+
+Three host rows gating `1, 0, 1` compute `30, 0, 50` under the above-level filter and `30, 70, 50` under the nonrepeatable-leaf one. **The middle host row carries the argument**: the same candidates answer `0` to one filter and `70` to the other in one run, which refutes a per-candidate re-read and an ignored reference at the same time — neither row alone does.
+
+**An emptied domain is the aggregate's zero, not a clear.** Falsifying the single root cell moves every leaf-filtered target to `0` with nothing cleared, which is [KF234](#kf234)'s empty-as-zero rule reaching a filter that selects nothing at all rather than one whose rows are individually dropped.
+
+**Both arms, both spellings.** The `[$…]`-marked filter computes the identical per-host-row values, and a validation rule over the same filter fires on exactly the gated-off host row — so all-or-nothing selection is not a computation-only effect, and the marker does not change selection at a level the star did not reopen. That marked row is what a12-kernel-lean's `SPEC-2026-09-06-07` records as unmeasured on either side.
+
+Both filters carry an in-scope conjunct deliberately: without one the scope gate refuses the filter outright ([KF244](#kf244)), so the conjunct is what makes the two carriers comparable rather than one legal and one unwritable, and it is true of every instantiated row.
+
+*(Locked: `adapter.laws.ConstantFilterReferenceSelectionDiffTest`.)*
+
+## §11 supplement — the semantic-index key literal is gated by the index field's declared KIND, and the gate is the CONDITION's (kernel `checkConsistency`, 2026-09-06) <a id="kf267"></a>
+
+> Fold: pending — names the locus [KF205](#kf205) leaves open; folds beside it.
+
+[KF205](#kf205) records the key's classes and [KF1](#kf1) the decimal-format by-product; neither states which construct owns the gate. **The parameterless row is the whole argument**: with a NUMBER index field designated and the key spelled `"k1"`, the condition is refused `MVK_INDEX_VALUE_INVALID` with **no message parameter at all**, and designating a STRING index field admits the identical condition text. A refusal that survives deleting every parameter cannot be the parameter's.
+
+The two models are the same draft built twice, differing only in which direct child is designated the index field, and a numeric key is admitted under the NUMBER designation so the gate is visibly armed rather than absent. `MVK_INDEX_VALUE_INVALID` and `MVK_INDEX_FOR_ERROR_TEXT_INVALID` are therefore two gates at two layers, and only the second is about the parameter: reporting the parameter class here sends an author to rewrite a message that is already correct.
+
+**Reported by a12-kernel-lean as `SPEC-2026-09-05-09`**, whose entry cites [KF1](#kf1) for the value half; the sentence it means is [KF205](#kf205)'s, since KF1's mention is a decimal-*format* by-product rather than a kind gate.
+
+*(Locked: `validate.laws.SemanticIndexKeyValueGateLawsTest`.)*
+
+## §13 supplement — the group-declaration alphabet answers to TWO gates, and the kernel's own sentence states only the first (kernel `checkConsistency`, 2026-09-06) <a id="kf268"></a>
+
+> Fold: pending — new declaration-tier rule; folds beside [KF214](#kf214).
+
+The path validator's message reads *"A group name may only contain letters, numbers or underscores. Group names must begin with a letter or an underscore"* — and a leading underscore is then refused by a **second** gate, `NAME_STARTS_WITH_UNDERSCORE_AND_WRONG_PATTERN`, which reserves that prefix: *"The name of a group may only begin with an underscore if it is '__meta' or starts with '__attachment_meta'."* `__meta`, `__attachment_meta` and `__attachment_meta_photo` are admitted; `_Slots`, `__other` and `_1` are not. **A consumer implementing the quoted sentence admits names the kernel refuses, and the sentence is the kernel's own** — the narrow-prior-art trap in its purest form.
+
+Two further edges, both measured: **"letters" is Unicode** (`Slöts` is admitted, so an `[A-Za-z]` validator refuses legal models from the other direction), and a 61-character name is refused (the message's 60-character limit is real). A digit-initial, hyphenated, spaced or colon-bearing name draws `MVK_PATH_INVALID`.
+
+**In the message `$#…$` group position, quoting moves the refusal a layer earlier — for three characters out of four.** A hyphen, a space and a digit-initial spelling inside a QUOTED segment draw `MVK_LEXER_STANDARD_ERROR` where the identical characters BARE reach the group lookup and draw `INVALID_GROUP`. **A colon does not**: quoted, it also reaches the lookup. So the rule is not "an illegal character inside a quoted segment is a lexer error" — the lexer's alphabet and the declaration's alphabet are different sets. The control is an undeclared but well-formed name, which draws `INVALID_GROUP` in both spellings, so the two codes are two layers rather than two messages for one refusal.
+
+**Reported by a12-kernel-lean as `SPEC-2026-09-05-05`**, whose delta states the underscore-initial form as legal (quoting the kernel's own prose) and the lexer rule without the colon exception; both are corrected here.
+
+*(Locked: `validate.laws.GroupNameAlphabetLawsTest`.)*
+
+## §5 supplement — the power's derived scale needs a scale-0 BASE, and one waiver admits every unknown-scale operation into a known-scale target (kernel `checkConsistency`, 2026-09-06) <a id="kf269"></a>
+
+> Fold: pending — the discriminator behind [KF43](#kf43)'s power clause; folds beside it.
+
+[KF43](#kf43) states the derivation and [KF45](#kf45) the exponent gate. **The discriminating case is a scale-2 base against a scale-2 literal**, because "power derives the BASE's scale for a literal exponent" and "power derives scale 0 only from a scale-0 base, else unknown" agree everywhere else. `[Rate](scale 2) ^ 2 == 100.00` is **refused** `MVK_INVALID_COMPARE_DEC_PLACES`, so the base's-scale reading is wrong; the multiplication row beside it is the armed control, deriving a known scale 4 and admitting the same scale-2 literal. A negative literal exponent is refused too, so "nonnegative" in KF43's clause is load-bearing.
+
+**The exponent gate and the derived scale are two different gates.** An exponent of KNOWN scale greater than 0 — a fractional literal, a decimal-scale field — is refused `MVK_INVALID_NUMBER_FOR_EXP`, and so is an UNKNOWN-scale expression such as a bare division. A known scale-0 non-literal exponent (a field, or a scale-0 aggregate) passes that gate and then makes the derived scale unknown, which ordering admits and equality refuses. So an aggregate exponent being legal is a statement about its *known* scale, not evidence that the operator restricts no operand shape.
+
+**One waiver serves every unknown-scale operator.** `errorCodesToSuppress: ["MVK_INVALID_COMPARE_DEC_PLACES"]` admits a non-literal exponent, a scale-0 aggregate exponent and a bare division alike into the same scale-0 target that refuses all three without it — one property apart. That widens [KF181](#kf181), where the same key re-exposed `MVK_ERROR_REFERENCE_TO_CALCULATED_FIELD` underneath: with no self-reference there is nothing underneath and the suppression simply admits.
+
+**Reported by a12-kernel-lean as `SPEC-2026-09-05-10`**, whose clause states the derived scale as the base's and the operand shapes as unrestricted; both halves are refuted above, while its 2×2 (ordering admits a field exponent, equality refuses it) and its waiver row are confirmed. Their note that our operator catalog carries no `Power` entry is correct — `^` lives inside the `Arithmetic` entry.
+
+*(Locked: `validate.laws.PowerDerivedScaleWaiverLawsTest`.)*
