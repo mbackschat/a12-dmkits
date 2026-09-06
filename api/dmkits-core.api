@@ -24,6 +24,9 @@ public record io.github.mbackschat.a12.dm.core.ComputationInfo
   public java.lang.String targetFieldPath()
   public final java.lang.String toString()
 
+public class io.github.mbackschat.a12.dm.core.ConsistencyCheckFailedException extends java.lang.RuntimeException
+  public ConsistencyCheckFailedException(java.lang.String, java.lang.Throwable)
+
 public final class io.github.mbackschat.a12.dm.core.DmKeys
   public static final java.lang.String ALIAS
   public static final java.lang.String ANNOTATIONS
