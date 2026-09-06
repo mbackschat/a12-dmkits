@@ -4739,4 +4739,4 @@ Which class the kernel reports for a wrong-kind constant assignment is **not** a
 
 **Reported by a12-kernel-lean (`LF153` / `SPEC-2026-09-06-03`)**, whose own account rests on 80 kernel-gated children in one batch; re-derived here on our fixture rather than cited, because our diagnostic surface is what carries the corrective. Their method note is the transferable part: *name the key you think the answer is a function of, and vary it* — if the honest answer is "left, right, or the pair", cross them.
 
-*(Locked: `validate.laws.ConstantAssignmentDiagnosticLadderLawsTest` — each rung with its same-target controls, plus the bare-dotted-literal fixture control. Open here as there: a CUSTOM target, the one rung the ladder does not claim.)*
+*(Locked: `validate.laws.LiteralComparisonDiagnosticLadderLawsTest` — each rung with its same-target controls, plus the bare-dotted-literal fixture control. Open here as there: a CUSTOM target, the one rung the ladder does not claim.)*

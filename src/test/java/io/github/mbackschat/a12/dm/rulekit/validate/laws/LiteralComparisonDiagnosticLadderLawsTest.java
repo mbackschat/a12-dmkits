@@ -15,10 +15,18 @@ import io.github.mbackschat.a12.dm.rulekit.validate.RuleValidator;
 import io.github.mbackschat.a12.dm.rulekit.validate.ValidationResult;
 
 /**
- * KERNEL-FINDINGS §11 — <b>which class a wrong-kind CONSTANT assignment reports is an ordered ladder over the
- * (constant family, target kind) PAIR</b>, not a function of either side alone.
+ * KERNEL-FINDINGS §11 — <b>which class a wrong-kind LITERAL draws is an ordered ladder over the
+ * (literal family, field kind) PAIR</b>, not a function of either side alone.
  *
- * <p>Our typed builder refuses every cell below before the kernel sees it ({@code Computation.Builder}'s
+ * <p><b>The name of this class is deliberately carrier-neutral, and its first name was not.</b> It was
+ * {@code ConstantAssignmentDiagnosticLadderLawsTest}, after the carrier the ladder was first measured at —
+ * and then two of its rows landed on a plain rule condition and a {@code Having} filter, where nothing is
+ * assigned and nothing is a target. A carrier-named identifier keeps reading as correct at a call site in
+ * another carrier, because compiling is not endorsement; a12-kernel-lean hit the identical defect in a Lean
+ * function name the same day, and our own {@code MVK_INVALID_COMPARE_TO_DATE} corrective hit it in prose.
+ * Three carriers, none of which the name may privilege.
+ *
+ * <p>Our typed builder refuses every ASSIGNMENT cell below before the kernel sees it ({@code Computation.Builder}'s
  * kind/format gate), so none of this is authorable through the public surface and none of it was measured
  * here. That is the same blind spot {@link ConfirmComputationSourceKindLawsTest} was written for, and it uses
  * the same escape: raw operation strings through {@link DraftComputation}, which reach the kernel without
@@ -42,7 +50,7 @@ import io.github.mbackschat.a12.dm.rulekit.validate.ValidationResult;
  *
  * <p>Own domain (an insurance claim intake).
  */
-class ConstantAssignmentDiagnosticLadderLawsTest {
+class LiteralComparisonDiagnosticLadderLawsTest {
 
     private static final RuleValidator VALIDATOR = new RuleValidator();
 
