@@ -7,6 +7,7 @@ import io.github.mbackschat.a12.dm.interpreter.load.ModelLoader
 import io.github.mbackschat.a12.dm.interpreter.model.ModelDef
 import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 
 /**
@@ -167,10 +168,27 @@ class ConstantFilterReferenceSelectionDiffTest {
             "an emptied filtered domain is the aggregate's zero")
     }
 
-    /** The marked spelling at a level the star does not reopen selects identically. */
+    /**
+     * The marked spelling at a level the star does not reopen selects identically.
+     *
+     * **The spelling is asserted STRUCTURALLY, because no behavioural assertion can carry this claim.** The
+     * finding is that the two spellings agree, so any comparison of their outputs — against each other or
+     * against the same pinned literal — passes just as well when the `$` is not there at all. A 2026-09-06
+     * review planted exactly that mutant and it survived. What makes the row a measurement is that the arm
+     * under test provably contains the marker and provably reached the kernel: the condition text is checked
+     * here, and both engines accepted it in [bothSpellingsAreAdmitted].
+     */
     @Test
     fun theMarkedSpellingSelectsIdenticallyAtANonReopenedLevel() {
-        assertEquals(bothValues("TotalAbove", aboveLevel, "1"), bothValues("TotalMarked", markedAboveLevel, "1"),
+        assertTrue(markedAboveLevel.contains("[\$/Order/Lines/Cap]"),
+            "the arm under test must carry the \$ marker, or this row measures the bare spelling twice")
+        assertTrue(aboveLevel.contains("[/Order/Lines/Cap]") && !aboveLevel.contains("\$"),
+            "the control arm must be the unmarked spelling")
+
+        val selected = listOf("30", "0", "50")
+        assertEquals(selected, bothValues("TotalAbove", aboveLevel, "1"),
+            "the bare spelling reads the coordinate the candidate environment inherits")
+        assertEquals(selected, bothValues("TotalMarked", markedAboveLevel, "1"),
             "the marker does not change selection at a level the star did not reopen")
     }
 

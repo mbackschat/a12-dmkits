@@ -60,9 +60,14 @@ final class KernelModelPreparation {
          * gate keeps publishing no receipt.
          */
         List<Notification> notifications() {
-            List<Notification> notifications = new ArrayList<>();
+            List<com.mgmtp.a12.model.notification.RankedNotification> raw = new ArrayList<>();
             try {
-                service.checkConsistency(model, problem -> notifications.add(KernelNotifications.toCore(problem)));
+                // The callback only COLLECTS. Converting inside the guard would put our own code under a catch
+                // that reports "the kernel could not build this model" — so a defect of ours (KernelNotifications
+                // has an exhaustive switch over the kernel's Severity, which yields a MatchException if the
+                // kernel ever adds a constant) would be published as a model rejection with a KERNEL_CONFIRMED
+                // receipt. That is the inverse of the defect this guard exists to fix.
+                service.checkConsistency(model, raw::add);
             } catch (RuntimeException kernelCouldNotBuildTheModel) {
                 String why = kernelCouldNotBuildTheModel.getMessage() != null
                         ? kernelCouldNotBuildTheModel.getMessage()
@@ -70,7 +75,7 @@ final class KernelModelPreparation {
                 throw new ConsistencyCheckFailedException(
                         "the kernel could not build this model: " + why, kernelCouldNotBuildTheModel);
             }
-            return List.copyOf(notifications);
+            return raw.stream().map(KernelNotifications::toCore).toList();
         }
 
         IDocumentModel requireConsistent() {

@@ -40,7 +40,8 @@ import io.github.mbackschat.a12.dm.rulekit.validate.ValidationResult;
  * kind</b>, in both positions — so the gate reads the declaration and not the operand form.
  *
  * <p><b>CUSTOM is the cell that separates the extrema's kind domain from the distinct count's</b>, and it is
- * the only kind that does: refused {@code MVK_NOT_SORTABLE} at both extrema in both positions, yet admitted by
+ * the only kind that does: refused at both extrema in either position — {@code MVK_NOT_SORTABLE} when it leads
+ * or follows a NUMBER, {@code MVK_DATE_AND_NONDATE} after a temporal leader — yet admitted by
  * {@code NumberOfDifferentValues} and {@code FieldValuesNotUnique}, where DATE_RANGE is refused by all four
  * under two DIFFERENT codes. A consumer deriving either domain from the other is wrong in exactly that cell.
  *

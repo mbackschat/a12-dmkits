@@ -47,13 +47,23 @@ class BaseYearExtractorAdmissionDiffTest {
     private fun withRule(code: String, condition: String): String =
         RuntimeLaws.withRule(term, GROUP, "R$code", "../Holder", code, "FieldFilled(Holder) And $condition")
 
+    /**
+     * Fires on all THREE engines, or on none — dynamic-Groovy (normative), static-Java, and the interpreter.
+     *
+     * The static-Java arm is not decoration: an earlier version measured dynamic-Groovy alone while the finding
+     * claimed "on both kernel strategies", which is a scope transfer to a carrier nobody had run. It costs one
+     * codegen per model here because each condition is its own model.
+     */
     private fun bothFire(code: String, condition: String): Boolean {
         val model = withRule(code, condition)
         val doc = RuntimeLaws.doc().group(GROUP, 1)
         doc.field(HOLDER, "Acme Logistics", 1, 1)
         doc.field(CLOCK, "12:30:00", 1, 1)
         doc.field(START, "2024-05-05", 1, 1)
-        val kernel = code in RuntimeLaws.firedCodes(model, doc)
+        val dynamic = code in RuntimeLaws.firedCodes(model, doc)
+
+        val staticEngine = RuntimeLaws.kernelJavaEngine(model)
+        val static = code in staticEngine.messages(staticEngine.instance(doc)).map { it.code() }.toSet()
 
         val def = ModelLoader.load(model)
         val iDoc = def.newDocument().group(GROUP, 1)
@@ -62,8 +72,9 @@ class BaseYearExtractorAdmissionDiffTest {
         iDoc.field(START, "2024-05-05", 1, 1)
         val interpreter = code in DmInterpreter(def).validate(iDoc).messages.map { it.code }.toSet()
 
-        assertEquals(kernel, interpreter, "engines disagree on '$condition'")
-        return kernel
+        assertEquals(dynamic, static, "generated Java vs normative dynamic-Groovy on '$condition'")
+        assertEquals(dynamic, interpreter, "interpreter vs normative dynamic-Groovy on '$condition'")
+        return dynamic
     }
 
     @Test

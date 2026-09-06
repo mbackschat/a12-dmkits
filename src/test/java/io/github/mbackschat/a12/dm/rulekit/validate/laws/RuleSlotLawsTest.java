@@ -79,9 +79,14 @@ class RuleSlotLawsTest {
     }
 
     /**
-     * The same-group name collision is caught by the kernel's deserialize/convert tier, not by the
-     * {@code MVK_NAME_RULES_DUPLICATE} metamodel rule — the earlier tier shadows it (instrument-4 territory,
-     * KERNEL-FINDINGS pre-tier note).
+     * The same-group name collision is caught by a kernel THROW, not by the {@code MVK_NAME_RULES_DUPLICATE}
+     * metamodel rule — the kernel refuses to build the model at all and the metamodel rule never gets to
+     * report (instrument-4 territory, KERNEL-FINDINGS pre-tier note).
+     *
+     * <p><b>The throw happens INSIDE {@code checkConsistency}, not before it</b>, which is what makes it this
+     * gate's business: the adapter's guard wraps that call alone and never {@code expand}, and a mutant on that
+     * catch clause kills this test. An earlier name and wording here said "before checkConsistency" and
+     * "deserialize/convert tier" — pointing a future reader at the one tier the guard deliberately excludes.
      *
      * <p><b>It arrives as a REJECTION, and used not to.</b> The kernel throws a bare
      * {@code IllegalArgumentException} there, which escaped {@code ModelLoader.loadAndCheck} and reached a
@@ -91,7 +96,7 @@ class RuleSlotLawsTest {
      * than a second symptom.
      */
     @Test
-    void aDuplicateRuleNameIsRejectedBeforeCheckConsistency() {
+    void aDuplicateRuleNameIsRejectedByAThrowInsideCheckConsistency() {
         String once = withProbeRule("DupNameProbe", List.of(en("x"), de("x")));
         String twice = ModelWriter.addRule(once, "/Subscription", "DupNameProbe", "../Tier",
                 "PROBE", "FieldNotFilled(Tier)", "ERROR", List.of(en("x"), de("x")));
