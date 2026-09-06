@@ -30,7 +30,15 @@ fi
 #     Anchored to a command position (line start, or after `;` `|` `&` `(` `!`) so a mere *mention* of the string
 #     in a quoted argument — a commit message, an echo, a doc edit — does not trip it, while `! pgrep -f` (the
 #     loop-gate anti-pattern) and a bare `pgrep -f` still do.
-if printf '%s' "$cmd" | grep -qE '(^|[;|&(!])[[:space:]]*pgrep[[:space:]]+(-[a-zA-Z]*f|--full)'; then
+#
+#     The SECOND pattern closes G80: `while pgrep -f x; do … done` is the canonical spelling of the very
+#     anti-pattern this check names, and the anchor list above matches none of `while`/`until`, so it slipped
+#     through from the check's first day until 2026-09-07. Only those two keywords are added, deliberately:
+#     `do`, `then` and `else` would also anchor a command position, but they occur in ordinary prose right
+#     before this string ("…and then pgrep -f is unreliable"), and a guard that trips on a commit message
+#     explaining the guard is how the mention-safety in the paragraph above gets thrown away.
+if printf '%s' "$cmd" | grep -qE '(^|[;|&(!])[[:space:]]*pgrep[[:space:]]+(-[a-zA-Z]*f|--full)' \
+   || printf '%s' "$cmd" | grep -qE '(^|[[:space:]])(while|until)[[:space:]]+pgrep[[:space:]]+(-[a-zA-Z]*f|--full)'; then
     printf '%s\n' 'Blocked: pgrep -f matches its OWN command line (self-match), so it is unreliable as a liveness or completion gate. Drop pgrep -f; wait on the command terminal log marker (a wrapper script emits its sub-build BUILD SUCCESSFUL before the real work — key on the final line), or use the harness completion signal.' >&2
     exit 2
 fi

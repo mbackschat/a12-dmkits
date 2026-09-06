@@ -172,12 +172,21 @@ expect_block "a repeat of the OTHER already-run lane" c1 './build.sh :adapter:te
 printf '\nregression — the stdin restructure must not have broken checks (1) and (2)\n'
 
 expect_block "check (1): a job-control & is still refused" r1 'nohup ./build.sh :test &'
-# The two spellings check (2) documents as its anchors — a bare command, and the `!` loop-gate form. A third
-# spelling, `while pgrep -f gradle; do`, is NOT caught and never was: verified 2026-09-07 against the
-# pre-change hook at HEAD, which returns 0 for it exactly as this one does. That is a gap in check (2),
-# recorded in FEATURE-GAPS rather than silently widened here, since this change owns check (3).
-expect_block "check (2): the bare form is still refused" r1 'pgrep -f gradle'
-expect_block "check (2): the ! loop-gate form is still refused" r1 '! pgrep -f gradle'
+# The spellings check (2) anchors on. The first two are its original contract; the `while`/`until` pair is
+# G80, closed 2026-09-07 — `while pgrep -f x; do … done` is the canonical loop gate this check is named
+# for, and it slipped through from the check's first day because the anchor list had no keyword in it.
+expect_block "check (2): the bare form is refused" r1 'pgrep -f gradle'
+expect_block "check (2): the ! loop-gate form is refused" r1 '! pgrep -f gradle'
+expect_block "check (2): the while loop gate is refused (G80)" r1 'while pgrep -f gradle; do sleep 5; done'
+expect_block "check (2): the until loop gate is refused (G80)" r1 'until ! pgrep -f gradle; do sleep 5; done'
+# The keyword list stops at while/until ON PURPOSE. `do`, `then` and `else` also introduce a command position,
+# but they precede this string in ordinary English, and a guard that refuses a commit message ABOUT the guard
+# throws away the mention-safety the anchor exists for. Both directions asserted, so a later widening has to
+# come here and argue with this case rather than quietly break it.
+expect_allow "check (2): prose after 'then' is NOT refused" r1 \
+  "git commit -m 'docs: explain that pgrep -f x is unreliable'"
+expect_allow "check (2): a bare mention mid-sentence is NOT refused" r1 \
+  "echo 'the poll used pgrep -f gradle and self-matched'"
 expect_allow "and a plain command is still allowed" r1 'ls -la'
 
 printf '\ndual-runtime — Codex CLI sends the same fields, so the same script must serve it\n'
