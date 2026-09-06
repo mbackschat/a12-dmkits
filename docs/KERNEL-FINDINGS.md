@@ -1182,7 +1182,7 @@ Two more edges of the §2 empty-value table (all three now canonical in §2's ov
 
 Two raw-DSL forms the grammar carries outside the operator surface (productions `preamble` / `regelKontextEntity`), both probe-verified; rulekit authors neither but the read path may meet them:
 
-- **`@SuppressWarning(NAME)`** (DE `@UnterdrueckeWarnung`) prefixes a condition and suppresses exactly **one** supported warning: `MVK_INVALID_COMPARE_DEC_PLACES` — the numeric equality derived signed-scale/capability gate (§5 finding 18). `@SuppressWarning(MVK_INVALID_COMPARE_DEC_PLACES) [Quantity] == [UnitPrice]` validates across scales 0 vs 2, and the same directive covers any otherwise-incompatible numeric `==`/`!=` summary. Any other name is rejected — with the quirk that the diagnostic's *code* is the attempted name itself (`MVK_INVALID_SUPPRESSED_WARNING` supplies only the message text). Treatment: the typed `NumberExpr` builder rejects a known incompatibility early and defers only when model-derived metadata is unavailable; raw rules and dmtool's `allowDifferingDecimals:true` reach this explicit kernel escape hatch.
+- **`@SuppressWarning(NAME)`** (DE `@UnterdrueckeWarnung`) prefixes a condition and suppresses exactly **one** supported warning: `MVK_INVALID_COMPARE_DEC_PLACES` — the numeric equality derived signed-scale/capability gate (§5 finding 18). `@SuppressWarning(MVK_INVALID_COMPARE_DEC_PLACES) [Quantity] == [UnitPrice]` validates across scales 0 vs 2, and the same directive covers any otherwise-incompatible numeric `==`/`!=` summary. Any other name is rejected. **Corrected 2026-09-06:** this entry used to say the diagnostic's *code* is the attempted name itself, with `MVK_INVALID_SUPPRESSED_WARNING` supplying only the message text. Measured today at both our layers — `RuleValidator` and `dmtool rule check` — the reported code is `MVK_INVALID_SUPPRESSED_WARNING`, for a fabricated name and for a genuine-but-unsupported one alike; a12-kernel-lean saw the same and asked which layer they were looking at, which is what prompted the re-measurement. The deeper error is that the sentence named a LAYER it never had: our `Notification` carries only a severity and a message, so the kernel supplies **no code field at all** and every `code` we report is derived by us from the message's terminal bracketed key (`Diagnostic.kernelClass`). "The diagnostic's code" was therefore always a statement about our own derivation rather than about the kernel. Whether an older extraction rule ever yielded the attempted name is **not established** — the pre-2026-08-23 rule was a last-match `MVK_*` scan, which on this message also lands on the bracketed key. Treatment: the typed `NumberExpr` builder rejects a known incompatibility early and defers only when model-derived metadata is unavailable; raw rules and dmtool's `allowDifferingDecimals:true` reach this explicit kernel escape hatch.
 - **`RuleGroup`** (DE `RegelKontext`) references the rule's **containing group** as an entity — `GroupFilled(RuleGroup)` validates, and the enclosing group counts as referencing the error field. A star on it draws `MVK_INVALID_WILDCARD_FOR_RULEGROUP` (the grammar admits the token solely for the nicer error). rulekit renders qualified group paths instead.
 
 *(Locked: `validate.laws.DirectiveLawsTest`.)*
@@ -4740,3 +4740,25 @@ Which class the kernel reports for a wrong-kind constant assignment is **not** a
 **Reported by a12-kernel-lean (`LF153` / `SPEC-2026-09-06-03`)**, whose own account rests on 80 kernel-gated children in one batch; re-derived here on our fixture rather than cited, because our diagnostic surface is what carries the corrective. Their method note is the transferable part: *name the key you think the answer is a function of, and vary it* — if the honest answer is "left, right, or the pair", cross them.
 
 *(Locked: `validate.laws.LiteralComparisonDiagnosticLadderLawsTest` — each rung with its same-target controls, plus the bare-dotted-literal fixture control. Open here as there: a CUSTOM target, the one rung the ladder does not claim.)*
+
+## §9 supplement — the exact-duplicate gate reads a reference's FORM, so a starred operand may repeat where a direct one may not (kernel `checkConsistency`, 2026-09-06) <a id="kf258"></a>
+
+> Fold: pending — sharpens the duplicate-slot rows in §9; folds beside [KF125](#kf125).
+
+`MVK_DUPLICATE_PARAM1` rejects an *exact* reference repeated in one operand list — and "exact" is load-bearing. A **wildcarded (starred) occurrence is a repetition-wide scan rather than an exact reference**, so two of them are two independent reads and repeat legally:
+
+| operand list | verdict |
+|---|---|
+| `AtLeastOneFieldValueIncludedInValueList(Code, Code In …)` | `MVK_DUPLICATE_PARAM1` |
+| `AtLeastOneFieldValueIncludedInValueList(Items*/Sku, Items*/Sku In …)` | ADMITTED |
+| `NumberOfValueInFields(0 In Total, Total)` | `MVK_DUPLICATE_PARAM1` |
+| `NumberOfValueInFields(0 In Items*/Count, Items*/Count)` | ADMITTED |
+| two *distinct* direct references, either carrier — liveness control | ADMITTED |
+
+**Our catalog said this on seven operators and contradicted it on two.** `Sum`, `MaxValue`, `MinValue`, `NumberOfDifferentValues`, `NumberOfFilledFields`, `NumberOfFilledGroups` and `FirstFilledValue` all spell out the star exemption. The value-list family said only "no exact reference may repeat" and `NumberOfValueInFields` said "a field may not be listed more than once" — both of which, read as written, forbid a form the kernel admits. That is an **internal contradiction in one shipped artifact**, which is what makes it a defect rather than a difference of emphasis: an author reading one entry gets a rule the neighbouring entry denies. Both corrected.
+
+**The liveness control is what makes the admissions mean anything.** Without a distinct-reference row on each carrier, "the starred repeat is admitted" and "this operator never reaches the duplicate gate at all" are the same observation; the direct-duplicate row then shows the gate is armed in the same model.
+
+**Reported by a12-kernel-lean on four carriers** (value list, `NumberOfDifferentValues`, `FieldValuesNotUnique`, `Sum`). Measured here on the two whose *wording* was wrong, since our published text is what carried the defect — the other two already said the right thing. Their same-day corroboration from the other direction is **their report and not re-derived here**: at the DateRange overlap operators a keyed reference repeated under the *same* key refuses and under a *different* key is admitted, which would make the exact identity the (field, key) pair.
+
+*(Locked: `validate.laws.StarredOperandRepeatExemptionLawsTest` — both carriers, each with its direct-duplicate row and its distinct-reference liveness control.)*

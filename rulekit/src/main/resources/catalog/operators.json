@@ -2322,7 +2322,7 @@
       "meaning": "True iff at least one of the listed fields holds one of the listed values.",
       "constraints": [
         "syntax: Name(f1, f2 In v1, v2) — the In separator is language-independent",
-        "all listed fields must share one base type (MVK_VARYING_TYPES_NOT_ALLOWED); no exact reference may repeat (MVK_DUPLICATE_PARAM1)",
+        "all listed fields must share one base type (MVK_VARYING_TYPES_NOT_ALLOWED); no exact reference may repeat (MVK_DUPLICATE_PARAM1) — and 'exact' is doing real work: the gate reads the reference FORM, not the field, so a wildcarded (starred) occurrence is a repetition-wide scan rather than an exact reference and MAY repeat. (Code, Code In ...) is refused while (Items*/Sku, Items*/Sku In ...) is ADMITTED",
         "for enums each literal must be in the UNION of the selected members' domains (a direct reference's stored values plus a category projection's category values), NOT in every one (MVK_INVALID_STRING_CONSTANT_FOR_ENUMERATION_OR_CATEGORY)",
         "a value-side field list makes it entity-valued: both sides share one base type, no reference repeats across the combined lists, and enum-domain containment is NOT required",
         "values may also be string literals or field references"
@@ -4171,7 +4171,7 @@
       "constraints": [
         "at least two fields (or at least one group), else MVK_PARAMSIZE_INVALIDN",
         "the constant follows the 'In' grammar literal; the fields are bare entity refs",
-        "a field may not be listed more than once (MVK_DUPLICATE_PARAM1; MVK_DUPLICATE_PARAM2 via a group)"
+        "a DIRECT field may not be listed more than once (MVK_DUPLICATE_PARAM1; MVK_DUPLICATE_PARAM2 via a group), but a wildcarded (starred) operand MAY repeat — the gate reads the reference form, not the field, so (0 In Total, Total) is refused while (0 In Items*/Count, Items*/Count) is ADMITTED"
       ],
       "gotchas": [
         {
