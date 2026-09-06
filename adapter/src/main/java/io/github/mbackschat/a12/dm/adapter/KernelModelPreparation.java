@@ -78,8 +78,27 @@ final class KernelModelPreparation {
             return raw.stream().map(KernelNotifications::toCore).toList();
         }
 
+        /**
+         * The adapter's WHOLE-MODEL gate, and the third caller of the port's throw contract.
+         *
+         * <p><b>It folds a build failure exactly as {@code ModelLoader.loadAndCheck} does, and for the same
+         * reason:</b> a whole model has nothing injected, so a backend that refuses to construct it is
+         * delivering its verdict on the caller's bytes. Left to escape, the typed exception reaches a CLI
+         * reader's {@code catch (RuntimeException)} and — being neither of the two types
+         * {@code failOrRethrowDomainRejection} rethrows — degrades into an unstructured text failure at exit 2,
+         * where the same model's ordinary kernel rejection gets a JSON envelope at exit 1. Measured 2026-09-07
+         * on {@code model read} with a blank temporal format; the sibling {@code model check}, which goes
+         * through {@code ModelLoader}, was already correct. Two whole-model gates, one folded and one did not.
+         */
         IDocumentModel requireConsistent() {
-            List<Notification> errors = notifications().stream()
+            List<Notification> reported;
+            try {
+                reported = notifications();
+            } catch (ConsistencyCheckFailedException couldNotBuild) {
+                throw new ModelConsistencyException(
+                        List.of(new Notification(Severity.ERROR, couldNotBuild.getMessage())));
+            }
+            List<Notification> errors = reported.stream()
                     .filter(notification -> notification.severity() == Severity.ERROR)
                     .toList();
             if (!errors.isEmpty()) {

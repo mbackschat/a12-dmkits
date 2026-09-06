@@ -150,7 +150,7 @@ class WrongKindComparisonClassInvarianceLawsTest {
                     + NUMBER_LITERAL + ")" + wrapper[1]));
             expected.put(dateRow, DATE);
         }
-        for (Kind kind : KINDS.subList(0, 8)) {
+        for (Kind kind : KINDS) {
             String leftRow = kind.label() + " with the literal on the LEFT";
             String fieldRow = kind.label() + " against a cross-kind FIELD instead of a literal";
             actual.put(leftRow, verdict("NumberOfFilledFields(Lines*/LineQty Having " + NUMBER_LITERAL

@@ -189,5 +189,12 @@ class TemporalDeclarationWithoutFormatLawsTest {
         assertTrue(rejected.notifications().stream()
                         .anyMatch(n -> n.message().contains("the kernel could not build this model")),
                 () -> "the rejection must carry the kernel's own reason: " + rejected.notifications());
+        // The MECHANISM, not just the envelope. KERNEL-FINDINGS KF259 and two source comments say a blank
+        // format dies on a `notBlank` precondition inside the kernel's converter; until 2026-09-07 that was
+        // stated in three places and asserted in none. The kernel's own words are Commons Lang's
+        // `Validate.notBlank` failure, which is what makes the claim checkable rather than a source reading.
+        assertTrue(rejected.getMessage().contains("The validated character sequence is blank"),
+                () -> "the kernel's own notBlank reason must survive into the rejection: "
+                        + rejected.getMessage());
     }
 }

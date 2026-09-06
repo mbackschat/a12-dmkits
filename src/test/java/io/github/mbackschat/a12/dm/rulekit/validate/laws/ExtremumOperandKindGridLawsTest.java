@@ -67,7 +67,15 @@ class ExtremumOperandKindGridLawsTest {
     private static final String UNIQUENESS_DOMAIN = "MVK_ONLY_STRING_ENUM_NUMBER_DATE_ALLOWED";
 
     private static final String CATALOG = DocumentModelDraft.named("product-line").locale("en_US")
+            // The twelfth FieldTypeSpec. A typedef is not a kind of its own — it names one — so the question
+            // the extrema pose is whether the gate resolves through it to the base kind or refuses the
+            // indirection. One sortable base and one non-sortable base are what make that answerable.
+            .typeDef("WarehouseCount", t -> t.number(n -> n.fractionDigits(0)))
+            .typeDef("WarehouseLabel", t -> t.string(str -> str.maxLength(20)))
             .rootGroup("Catalog", c -> c
+                    .typedefField("CountRef", "WarehouseCount")
+                    .typedefField("CountRef2", "WarehouseCount")
+                    .typedefField("LabelRef", "WarehouseLabel")
                     .stringField("Sku", s -> { })
                     .stringField("Label", s -> { })
                     .numberField("Weight", n -> n.fractionDigits(0))
@@ -175,6 +183,34 @@ class ExtremumOperandKindGridLawsTest {
         }
         assertEquals(expected, actual,
                 "NUMBER and each temporal component set are the sortable classes; the leader fixes the class");
+    }
+
+    /**
+     * The twelfth spec: a TYPEDEF field. It closes the declared-kind axis, which the 2026-09-06 version of
+     * this class called complete while spanning eleven of {@code FieldTypeSpec}'s twelve — the one absence a
+     * cold review found in a completeness claim that had already been wrong once.
+     */
+    @Test
+    void aTypedefOperandTakesItsBASE_KindsVerdict() {
+        Map<String, String> actual = new LinkedHashMap<>();
+        actual.put("a NUMBER-based typedef leads", verdict("MinValue(CountRef, Weight) == 0"));
+        actual.put("a NUMBER-based typedef follows a NUMBER", verdict("MinValue(Weight, CountRef) == 0"));
+        // Two DISTINCT typedef fields: naming one field twice draws MVK_DUPLICATE_PARAM1, which is a
+        // duplicate-parameter gate and says nothing about typedefs. Measured on the way here.
+        actual.put("two typedef fields of the same base pair", verdict("MinValue(CountRef, CountRef2) == 0"));
+        actual.put("a STRING-based typedef leads", verdict("MinValue(LabelRef, Weight) == 0"));
+        actual.put("a STRING-based typedef follows a NUMBER", verdict("MinValue(Weight, LabelRef) == 0"));
+        actual.put("a NUMBER-based typedef at the distinct count",
+                verdict("NumberOfDifferentValues(CountRef, Weight) == 1"));
+
+        Map<String, String> expected = new LinkedHashMap<>();
+        expected.put("a NUMBER-based typedef leads", KernelLaws.ADMITTED);
+        expected.put("a NUMBER-based typedef follows a NUMBER", KernelLaws.ADMITTED);
+        expected.put("two typedef fields of the same base pair", KernelLaws.ADMITTED);
+        expected.put("a STRING-based typedef leads", NOT_SORTABLE);
+        expected.put("a STRING-based typedef follows a NUMBER", NOT_SORTABLE);
+        expected.put("a NUMBER-based typedef at the distinct count", KernelLaws.ADMITTED);
+        assertEquals(expected, actual, "the gate resolves through the typedef to the base kind");
     }
 
     /** A NUMBER leader reports a class mismatch flatly; a temporal leader names the non-temporal follower. */
