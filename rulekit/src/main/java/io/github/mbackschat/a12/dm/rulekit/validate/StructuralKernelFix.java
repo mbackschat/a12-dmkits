@@ -100,18 +100,21 @@ public final class StructuralKernelFix {
                             + "verdict is the same for all three partial values, so the code identifies the "
                             + "mismatch and not which side to edit.")),
             Map.entry("MVK_INVALID_COMPARE_TO_DATE", new Hint(
-                    "Check the CONSTANT before the target. A double-quoted literal whose CONTENT parses as a "
-                            + "date is a TEMPORAL constant — `\"05.03.2024\"` is one — and it reports this date "
-                            + "class wherever it lands, including at a String, Enumeration or Number target that "
-                            + "has nothing temporal about it. So this code does NOT imply the target is a date "
-                            + "field. If the target really is textual, the fix is to stop the literal looking "
-                            + "like a date, not to change the field.",
-                    "Which class a wrong-kind constant assignment reports is an ordered ladder over the "
-                            + "(constant, target) PAIR, not a function of the target: a BOOLEAN target reports "
-                            + "MVK_INVALID_COMPARE_TO_YESNO and a CONFIRM target MVK_INVALID_COMPARE_TO_YES for "
-                            + "any constant at all; failing those, a temporal constant reports THIS code at every "
-                            + "remaining target; only then does the target's own kind decide. Measured in "
-                            + "KERNEL-FINDINGS entry KF257, which carries the ladder and its controls.")),
+                    "Check the LITERAL before the field. A double-quoted literal whose CONTENT parses as a date "
+                            + "is a TEMPORAL constant — `\"05.03.2024\"` is one — and it reports this date class "
+                            + "against whatever it meets, including a String, Enumeration or Number field with "
+                            + "nothing temporal about it. So the code does NOT imply either side is a date. If "
+                            + "the field really is textual, stop the literal looking like a date rather than "
+                            + "changing the field.",
+                    "This is the kernel's COMPARISON vocabulary, not an assignment-specific class: it fires the "
+                            + "same way on a plain rule condition, inside a Having filter, and on a computation's "
+                            + "constant assignment. Which class a wrong-kind constant draws is an ordered ladder "
+                            + "over the (constant, field) PAIR rather than a function of the field: a BOOLEAN "
+                            + "field reports MVK_INVALID_COMPARE_TO_YESNO and a CONFIRM one "
+                            + "MVK_INVALID_COMPARE_TO_YES for any constant at all; failing those, a temporal "
+                            + "constant reports THIS code against every remaining kind; only then does the "
+                            + "field's own kind decide. Measured in KERNEL-FINDINGS entry KF257, which carries "
+                            + "the ladder and its controls.")),
             Map.entry("MVK_NO_WILDCARD", new Hint(
                     "A repeatable group is referenced from a rule that does not iterate over it — the fix is "
                             + "operator-dependent. For an AGGREGATE, flatten the repetitions with the `*` wildcard: "

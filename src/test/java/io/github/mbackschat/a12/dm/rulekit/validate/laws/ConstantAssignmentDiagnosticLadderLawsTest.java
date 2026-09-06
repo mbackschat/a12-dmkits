@@ -163,6 +163,25 @@ class ConstantAssignmentDiagnosticLadderLawsTest {
     }
 
     /**
+     * <b>The ladder is the COMPARISON vocabulary, not an assignment table.</b> The same class fires on an
+     * ordinary rule condition with no computation and no assignment anywhere — a String field compared to a
+     * date-shaped literal — with a non-date literal at the identical site admitted as the control.
+     *
+     * <p>This is why the {@code MVK_INVALID_COMPARE_TO_DATE} corrective must not speak of a "target": there is
+     * no target here. The first version of that hint did, having been written from the assignment carrier
+     * alone, which is the same comparison-versus-assignment split that had left three MVK-ledger rows
+     * incomplete one level in. a12-kernel-lean reported the filter carrier (2026-09-06); this row measures the
+     * plainest case of it here rather than citing theirs.
+     */
+    @Test
+    void theSameClassFiresOnAPlainComparisonWithNoAssignmentInvolved() {
+        KernelLaws.rejectsModel(MODEL, "/Claim", "../Handler",
+                "FieldFilled(Handler) And [Handler] == " + TEMPORAL, TO_DATE);
+        KernelLaws.acceptsModel(MODEL, "/Claim", "../Handler",
+                "FieldFilled(Handler) And [Handler] == " + STRING);
+    }
+
+    /**
      * The fixture control. A bare dotted literal is NOT a temporal constant — it lexes as a number — so a row
      * written without the quotes silently measures the number column. Pinned so a later edit that drops the
      * quotes fails here rather than quietly moving rung 2.
