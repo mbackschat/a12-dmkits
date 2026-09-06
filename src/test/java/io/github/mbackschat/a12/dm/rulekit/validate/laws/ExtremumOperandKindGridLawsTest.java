@@ -14,13 +14,27 @@ import io.github.mbackschat.a12.dm.modelkit.FieldKind;
 import io.github.mbackschat.a12.dm.rulekit.validate.ValidationResult;
 
 /**
- * KERNEL-FINDINGS §9 — <b>the extrema's sortable LEADER set is exactly {@code {NUMBER, DATE}}, and every
- * later slot admits {@code NUMBER} alone</b>. [KF249] measured the position law on the NUMBER/DATE pair; this
- * completes the declared-kind axis for static admission and adds the two carriers the axis was thin on.
+ * KERNEL-FINDINGS §9 — <b>the extrema admit two sortable classes, NUMBER and the temporal COMPONENT SET, and
+ * require every operand to share the leader's class</b>. [KF249] measured the position law on the NUMBER/DATE
+ * pair; this completes the declared-kind axis for static admission and identifies what the temporal half is
+ * actually keyed on.
  *
- * <p><b>The leader slot selects which GATE runs, which is why the leader set is narrower than the admitted
- * set.</b> DATE leads successfully and is refused in every later slot; ENUM, BOOLEAN, CONFIRM, DATE_RANGE,
- * CUSTOM and STRING lead nothing, so for them the two positions coincide.
+ * <p><b>The declared KIND is not the axis — the component set is.</b> DATE and DATE_FRAGMENT mix freely when
+ * both carry year+month+day, and two DATE_FRAGMENT fields are refused when one carries year+month and the
+ * other year alone. Two DATE fields with different format STRINGS over the same components are admitted, so
+ * {@code MVK_DATEFORMATS_NOT_COMPATIBLE} is misnamed: it reports an incompatible component set, not an unequal
+ * format string. Same mechanism as the format-not-kind law at the runtime parser ([KF211], [KF250]); this is
+ * one more carrier for it.
+ *
+ * <p><b>The leader slot selects which GATE runs, which is why the two refusal codes differ.</b> A NUMBER
+ * leader refuses every other class flatly as {@code MVK_NOT_SORTABLE}; a temporal leader distinguishes, giving
+ * {@code MVK_DATE_AND_NONDATE} for a non-temporal follower and {@code MVK_DATEFORMATS_NOT_COMPATIBLE} for a
+ * temporal one whose components differ. ENUM, BOOLEAN, CONFIRM, DATE_RANGE, CUSTOM and STRING never lead.
+ *
+ * <p><b>Each row's comparand is matched to its leader's class</b>, because the extremum's result feeds a
+ * comparison whose own gate would otherwise fire first: under a bare {@code == 0} every temporal diagonal
+ * reports {@code MVK_INVALID_COMPARE_TO_DATE} and the operand gate is never reached. That confound is what
+ * produced an earlier reading of this grid, which recorded the leader set as NUMBER and DATE alone.
  *
  * <p><b>A starred single-field operand takes the same verdict and the same code as the plain field of that
  * kind</b>, in both positions — so the gate reads the declaration and not the operand form.
@@ -45,6 +59,7 @@ class ExtremumOperandKindGridLawsTest {
 
     private static final String NOT_SORTABLE = "MVK_NOT_SORTABLE";
     private static final String DATE_LEADER = "MVK_DATE_AND_NONDATE";
+    private static final String COMPONENTS = "MVK_DATEFORMATS_NOT_COMPATIBLE";
     private static final String STRING_ENUM_LEADER = "MVK_STRING_ENUM_AND_NON_STRING_ENUM";
     private static final String NUMBER_LEADER = "MVK_NUMBER_AND_NON_NUMBER";
     private static final String DISTINCT_COUNT_DOMAIN = "MVK_ONLY_STRING_ENUM_NUMBER_CMP_DATE_ALLOWED";
@@ -58,6 +73,19 @@ class ExtremumOperandKindGridLawsTest {
                     .numberField("Weight2", n -> n.fractionDigits(0))
                     .dateField("ReleasedOn", d -> d.format("yyyy-MM-dd"))
                     .dateField("RetiredOn", d -> d.format("yyyy-MM-dd"))
+                    // same KIND and same components as ReleasedOn, different format STRING
+                    .dateField("AltDate", d -> d.format("dd.MM.yyyy"))
+                    .timeField("ShiftStart", t -> t.format("HH:mm:ss"))
+                    .timeField("ShiftEnd", t -> t.format("HH:mm:ss"))
+                    .dateTimeField("SealedAt", t -> t.format("yyyy-MM-dd'T'HH:mm:ss"))
+                    .dateTimeField("OpenedAt", t -> t.format("yyyy-MM-dd'T'HH:mm:ss"))
+                    .dateFragmentField("SeasonA", f -> f.fragmentFormat("yyyy-MM"))
+                    .dateFragmentField("SeasonB", f -> f.fragmentFormat("yyyy-MM"))
+                    // same KIND as SeasonA, one component fewer
+                    .dateFragmentField("SeasonYear", f -> f.fragmentFormat("yyyy"))
+                    // a different KIND carrying exactly DATE's components, and exactly TIME's
+                    .dateFragmentField("FragFull", f -> f.fragmentFormat("yyyy-MM-dd"))
+                    .dateFragmentField("FragClock", f -> f.fragmentFormat("HH:mm:ss"))
                     .enumField("Grade", e -> e.value("A").value("B"))
                     .field("Discontinued", FieldKind.BOOLEAN)
                     .field("Approved", FieldKind.CONFIRM)
@@ -89,38 +117,124 @@ class ExtremumOperandKindGridLawsTest {
                 .collect(Collectors.joining(","));
     }
 
-    private record Kind(String label, String field) { }
+    /** A declared kind, two fields of that exact class, and a comparand the class accepts. */
+    private record Kind(String label, String first, String second, String comparand) { }
 
-    private static final List<Kind> NON_SORTABLE_KINDS = List.of(
-            new Kind("ENUM", "Grade"),
-            new Kind("BOOLEAN", "Discontinued"),
-            new Kind("CONFIRM", "Approved"),
-            new Kind("DATE_RANGE", "SaleWindow"),
-            new Kind("CUSTOM", "Serial"),
-            new Kind("STRING", "Label"));
+    private static Kind kind(String label, String first, String second) {
+        return new Kind(label, first, second, "[" + first + "]");
+    }
 
-    /** The declared-kind axis, complete for static admission, at both extrema and in both positions. */
+    private static final Kind NUMBER = new Kind("NUMBER", "Weight", "Weight2", "0");
+    private static final Kind DATE = kind("DATE", "ReleasedOn", "RetiredOn");
+    private static final Kind TIME = kind("TIME", "ShiftStart", "ShiftEnd");
+    private static final Kind DATETIME = kind("DATETIME", "SealedAt", "OpenedAt");
+    private static final Kind FRAGMENT = kind("DATE_FRAGMENT", "SeasonA", "SeasonB");
+
+    private static final List<Kind> LEADERS = List.of(NUMBER, DATE, TIME, DATETIME, FRAGMENT);
+
+    private static final List<Kind> NON_SORTABLE = List.of(
+            kind("ENUM", "Grade", "Grade"),
+            kind("BOOLEAN", "Discontinued", "Discontinued"),
+            kind("CONFIRM", "Approved", "Approved"),
+            kind("DATE_RANGE", "SaleWindow", "SaleWindow2"),
+            kind("CUSTOM", "Serial", "Serial2"),
+            kind("STRING", "Label", "Label"));
+
+    /**
+     * The declared-kind axis, complete for static admission, at both extrema. Every operand must share the
+     * leader's class, and the four temporal classes are distinct from one another, so the diagonal is the only
+     * admitted cell in the temporal block.
+     */
     @Test
-    void theSortableLeaderSetIsNumberAndDateAndEveryLaterSlotIsNumberOnly() {
+    void theSortableClassesAreNumberAndTheTemporalComponentSetAndTheLeaderFixesTheClass() {
         Map<String, String> actual = new LinkedHashMap<>();
         Map<String, String> expected = new LinkedHashMap<>();
         for (String op : List.of("MinValue", "MaxValue")) {
-            for (Kind kind : NON_SORTABLE_KINDS) {
-                String lead = op + " leading " + kind.label();
-                String later = op + " after NUMBER, " + kind.label();
-                actual.put(lead, verdict(op + "(" + kind.field() + ", Weight) == 0"));
-                actual.put(later, verdict(op + "(Weight, " + kind.field() + ") == 0"));
-                expected.put(lead, NOT_SORTABLE);
-                expected.put(later, NOT_SORTABLE);
+            for (Kind leader : LEADERS) {
+                for (Kind follower : LEADERS) {
+                    String cell = op + ": " + leader.label() + " then " + follower.label();
+                    String second = leader == follower ? leader.second() : follower.first();
+                    actual.put(cell,
+                            verdict(op + "(" + leader.first() + ", " + second + ") == " + leader.comparand()));
+                    expected.put(cell, leader == follower ? KernelLaws.ADMITTED
+                            : leader == NUMBER || follower == NUMBER ? mismatch(leader) : COMPONENTS);
+                }
+                for (Kind follower : NON_SORTABLE) {
+                    String cell = op + ": " + leader.label() + " then " + follower.label();
+                    actual.put(cell, verdict(
+                            op + "(" + leader.first() + ", " + follower.first() + ") == " + leader.comparand()));
+                    expected.put(cell, mismatch(leader));
+                }
             }
-            actual.put(op + " leading DATE", verdict(op + "(ReleasedOn, RetiredOn) == [ReleasedOn]"));
-            actual.put(op + " after NUMBER, DATE", verdict(op + "(Weight, ReleasedOn) == 0"));
-            actual.put(op + " leading NUMBER", verdict(op + "(Weight, Weight2) == 0"));
-            expected.put(op + " leading DATE", KernelLaws.ADMITTED);
-            expected.put(op + " after NUMBER, DATE", NOT_SORTABLE);
-            expected.put(op + " leading NUMBER", KernelLaws.ADMITTED);
+            for (Kind leader : NON_SORTABLE) {
+                String cell = op + ": " + leader.label() + " leads";
+                actual.put(cell, verdict(op + "(" + leader.first() + ", Weight) == " + leader.comparand()));
+                expected.put(cell, NOT_SORTABLE);
+            }
         }
-        assertEquals(expected, actual, "only NUMBER and DATE lead; only NUMBER follows");
+        assertEquals(expected, actual,
+                "NUMBER and each temporal component set are the sortable classes; the leader fixes the class");
+    }
+
+    /** A NUMBER leader reports a class mismatch flatly; a temporal leader names the non-temporal follower. */
+    private static String mismatch(Kind leader) {
+        return leader == NUMBER ? NOT_SORTABLE : DATE_LEADER;
+    }
+
+    /**
+     * The within-model 2×2 that identifies the temporal axis: declared KIND against COMPONENT SET, one model,
+     * one operator family, one comparand shape. Only the component set moves the verdict — the same components
+     * under two different kinds are admitted, and the same kind under two different component sets is refused.
+     *
+     * <p>The "same components, different kind" cell is what makes this a control rather than a pair of
+     * observations: without it, every refused cell is equally well explained by the declared kind, which is the
+     * reading a consumer reaches for first.
+     */
+    @Test
+    void theTemporalGateReadsTheComponentSetAndNotTheDeclaredKind() {
+        Map<String, String> actual = new LinkedHashMap<>();
+        actual.put("same kind, same components, DIFFERENT format string",
+                verdict("MinValue(ReleasedOn, AltDate) == [ReleasedOn]"));
+        actual.put("same kind, DIFFERENT components", verdict("MinValue(SeasonA, SeasonYear) == [SeasonA]"));
+        actual.put("DIFFERENT kind, same components (date)",
+                verdict("MinValue(ReleasedOn, FragFull) == [ReleasedOn]"));
+        actual.put("DIFFERENT kind, same components (clock)",
+                verdict("MinValue(ShiftStart, FragClock) == [ShiftStart]"));
+        actual.put("DIFFERENT kind, DIFFERENT components",
+                verdict("MinValue(ReleasedOn, ShiftStart) == [ReleasedOn]"));
+        actual.put("MaxValue: DIFFERENT kind, same components",
+                verdict("MaxValue(ReleasedOn, FragFull) == [ReleasedOn]"));
+        actual.put("MaxValue: same kind, DIFFERENT components",
+                verdict("MaxValue(SeasonA, SeasonYear) == [SeasonA]"));
+
+        Map<String, String> expected = new LinkedHashMap<>();
+        expected.put("same kind, same components, DIFFERENT format string", KernelLaws.ADMITTED);
+        expected.put("same kind, DIFFERENT components", COMPONENTS);
+        expected.put("DIFFERENT kind, same components (date)", KernelLaws.ADMITTED);
+        expected.put("DIFFERENT kind, same components (clock)", KernelLaws.ADMITTED);
+        expected.put("DIFFERENT kind, DIFFERENT components", COMPONENTS);
+        expected.put("MaxValue: DIFFERENT kind, same components", KernelLaws.ADMITTED);
+        expected.put("MaxValue: same kind, DIFFERENT components", COMPONENTS);
+        assertEquals(expected, actual, "only the component set moves the verdict; the declared kind never does");
+    }
+
+    /**
+     * The comparand cannot be what refuses a non-sortable leader — the same pair takes
+     * {@code MVK_NOT_SORTABLE} under a NUMBER comparand and under a self-referencing one. This is the control
+     * for the confound that produced the earlier reading of this grid.
+     */
+    @Test
+    void aNonSortableLeaderIsRefusedIndependentlyOfTheComparand() {
+        Map<String, String> actual = new LinkedHashMap<>();
+        Map<String, String> expected = new LinkedHashMap<>();
+        for (Kind leader : NON_SORTABLE) {
+            String pair = "MinValue(" + leader.first() + ", Weight)";
+            actual.put(leader.label() + " with a NUMBER comparand", verdict(pair + " == 0"));
+            actual.put(leader.label() + " with a self comparand", verdict(pair + " == " + leader.comparand()));
+            expected.put(leader.label() + " with a NUMBER comparand", NOT_SORTABLE);
+            expected.put(leader.label() + " with a self comparand", NOT_SORTABLE);
+        }
+        assertEquals(expected, actual, "the operand gate decides, whatever the extremum is compared against");
     }
 
     /** A star is not a distinct gate — the declaration is what is read. */

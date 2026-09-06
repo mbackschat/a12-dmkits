@@ -4833,11 +4833,32 @@ Our record had the Base Year supplementing the year at the **comparison** gate a
 
 *(Locked: `adapter.laws.ComponentOmittingTemporalFoldDiffTest`.)*
 
-## §9 supplement — the extrema's sortable LEADER set is exactly {NUMBER, DATE}, and a group expansion supplies the leading kind (kernel `checkConsistency`, complete over the declared-kind axis, 2026-09-06) <a id="kf263"></a>
+## §9 supplement — the extrema admit two sortable classes, NUMBER and the temporal COMPONENT SET, and a group expansion supplies the leading kind (kernel `checkConsistency`, complete over the declared-kind axis, 2026-09-06; corrected 2026-09-07) <a id="kf263"></a>
 
 > Fold: pending — completes the declared-kind axis [KF249](#kf249) opened; folds beside [KF226](#kf226).
 
-[KF249](#kf249) measured the position law on the NUMBER/DATE pair. The declared-kind axis is now complete for static admission: **ENUM, BOOLEAN, CONFIRM, DATE_RANGE, CUSTOM and STRING each draw `MVK_NOT_SORTABLE` LEADING an extremum's operand list**, so none of them leads a gate of its own, and each draws that same code after a Number leader. In a later slot only NUMBER survives — DATE included. **A starred single-field operand takes the same verdict and the same code as the plain field of that kind**, in both positions, so the gate reads the declaration and not the operand form.
+**Corrected 2026-09-07: the first version of this entry recorded the leader set as {NUMBER, DATE} and every later slot as NUMBER-only. Both clauses were wrong, and the confound was the COMPARAND.** Each refusal cell was measured against a bare `== 0`, which is a NUMBER literal: a temporal extremum compared against it is refused `MVK_INVALID_COMPARE_TO_DATE` by the comparison gate before the operand gate is ever reached, so TIME, DATETIME and DATE_FRAGMENT read as unable to lead when they had simply not been asked. The three kinds were also never measured — the "complete over the declared-kind axis" claim was inherited from a12-kernel-lean's report rather than derived here. Re-measured with the comparand matched to each leader's class.
+
+[KF249](#kf249) measured the position law on the NUMBER/DATE pair. The complete axis, at both extrema, is two sortable classes: **NUMBER, and each temporal COMPONENT SET**. Every operand must share the leader's class, so the leader and follower positions are the same gate seen twice rather than two different ones:
+
+| leader | NUMBER | same temporal components | other temporal components | ENUM / BOOLEAN / CONFIRM / DATE_RANGE / CUSTOM / STRING |
+|---|---|---|---|---|
+| NUMBER | ACCEPT | `MVK_NOT_SORTABLE` | `MVK_NOT_SORTABLE` | `MVK_NOT_SORTABLE` |
+| DATE / TIME / DATETIME / DATE_FRAGMENT | `MVK_DATE_AND_NONDATE` | ACCEPT | `MVK_DATEFORMATS_NOT_COMPATIBLE` | `MVK_DATE_AND_NONDATE` |
+| ENUM / BOOLEAN / CONFIRM / DATE_RANGE / CUSTOM / STRING | `MVK_NOT_SORTABLE` | `MVK_NOT_SORTABLE` | `MVK_NOT_SORTABLE` | `MVK_NOT_SORTABLE` |
+
+**The declared KIND is not the axis; the component set is — and `MVK_DATEFORMATS_NOT_COMPATIBLE` is misnamed.** The within-model 2×2 separates them, and the cell that settles it is the one a kind-based reading cannot explain:
+
+| | same component set | different component set |
+|---|---|---|
+| **same declared kind** | ACCEPT — DATE `yyyy-MM-dd` with DATE `dd.MM.yyyy`, two different format STRINGS | `MVK_DATEFORMATS_NOT_COMPATIBLE` — DATE_FRAGMENT `yyyy-MM` with DATE_FRAGMENT `yyyy` |
+| **different declared kind** | **ACCEPT** — DATE `yyyy-MM-dd` with DATE_FRAGMENT `yyyy-MM-dd`, and TIME `HH:mm:ss` with DATE_FRAGMENT `HH:mm:ss` | `MVK_DATEFORMATS_NOT_COMPATIBLE` — DATE with TIME |
+
+So the code reports an incompatible component set, never an unequal format string: two format strings over the same components are accepted, and one kind under two component sets is refused. This is the same mechanism as the format-not-kind law at the runtime parser ([KF211](#kf211), [KF250](#kf250)) — one more carrier for it, on the static side.
+
+**The four temporal classes are mutually exclusive because their component sets are.** TIME and DATETIME are declarable only at full second precision (`HH:mm` and `yyyy-MM-dd HH:mm` are both refused at `field add`), so DATE_FRAGMENT is the only kind that can be pointed at another kind's component set — which is what makes the "different kind, same components" cell authorable at all.
+
+**A NUMBER leader does not distinguish; a temporal leader does.** A NUMBER leader reports `MVK_NOT_SORTABLE` flatly against every other class, while a temporal leader splits its refusals in two, naming a non-temporal follower `MVK_DATE_AND_NONDATE` and a temporal one of different components `MVK_DATEFORMATS_NOT_COMPATIBLE`. The refusal of a non-sortable leader is comparand-independent, measured under both a NUMBER comparand and a self-referencing one — the control for the confound above. **A starred single-field operand takes the same verdict and the same code as the plain field of that kind**, in both positions, so the gate reads the declaration and not the operand form.
 
 **CUSTOM is the cell that separates the extrema's kind domain from the distinct count's, and the only kind that does.** It is refused `MVK_NOT_SORTABLE` at both extrema in both positions yet admitted by `NumberOfDifferentValues` and `FieldValuesNotUnique`, where DATE_RANGE is refused by all four — and under two different codes, `MVK_ONLY_STRING_ENUM_NUMBER_CMP_DATE_ALLOWED` at the distinct count against the `CMP`-less `MVK_ONLY_STRING_ENUM_NUMBER_DATE_ALLOWED` at the uniqueness neighbour. So the two gates hold genuinely different sets, and a consumer deriving either from the other is wrong in exactly that cell.
 
