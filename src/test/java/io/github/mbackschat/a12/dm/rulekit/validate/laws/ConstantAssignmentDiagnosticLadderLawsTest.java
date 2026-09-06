@@ -59,7 +59,11 @@ class ConstantAssignmentDiagnosticLadderLawsTest {
                     .field("Acknowledged", FieldKind.CONFIRM)
                     .stringField("Handler", s -> { })
                     .numberField("Assessed", n -> n.fractionDigits(0))
-                    .dateField("SettledOn", d -> d.format("yyyy-MM-dd")))
+                    .dateField("SettledOn", d -> d.format("yyyy-MM-dd"))
+                    // Additive, for the filter carrier only: a repeatable group with a STRING leaf, so a
+                    // Having filter can compare a field against a literal. No direct-field row reads it.
+                    .group("Notes", n -> n.repeatable(20)
+                            .stringField("NoteText", t -> { })))
             .build().toJson();
 
     /**
@@ -179,6 +183,22 @@ class ConstantAssignmentDiagnosticLadderLawsTest {
                 "FieldFilled(Handler) And [Handler] == " + TEMPORAL, TO_DATE);
         KernelLaws.acceptsModel(MODEL, "/Claim", "../Handler",
                 "FieldFilled(Handler) And [Handler] == " + STRING);
+    }
+
+    /**
+     * The THIRD carrier, and the one our shipped corrective names: a comparison inside a {@code Having}
+     * filter. Measured here because that corrective tells users the code fires in a filter, and a peer's run
+     * is their report rather than something our own artifact may rest on.
+     *
+     * <p>The non-date literal at the identical site is the control — without it, a refusal is equally well
+     * explained by the filter rejecting a literal comparison outright.
+     */
+    @Test
+    void theSameClassFiresInsideAHavingFilter() {
+        String filtered = "FieldFilled(Handler) And NumberOfFilledFields(Notes*/NoteText Having "
+                + "[Notes/NoteText] == %s) > 0";
+        KernelLaws.rejectsModel(MODEL, "/Claim", "../Handler", String.format(filtered, TEMPORAL), TO_DATE);
+        KernelLaws.acceptsModel(MODEL, "/Claim", "../Handler", String.format(filtered, STRING));
     }
 
     /**
