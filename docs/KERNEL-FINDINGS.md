@@ -3001,7 +3001,7 @@ A group operand is not a shape the kernel admits or refuses globally. Swept acro
 | **`Min`** (the operand-LIST form) | `MVK_NO_GROUPS_ALLOWED` | `MVK_NO_GROUPS_ALLOWED` |
 | **`Max`** (the operand-LIST form) | `MVK_NO_GROUPS_ALLOWED` | `MVK_NO_GROUPS_ALLOWED` |
 | **`DateRangesOverlap`** | `MVK_NO_GROUPS_ALLOWED` | `MVK_NO_GROUPS_ALLOWED` |
-| **`AtLeastOneDateRangeOverlaps`**, group in the `In` slot | — | ACCEPT |
+| **`AtLeastOneDateRangeOverlaps`**, group in the `In` slot | ACCEPT (measured 2026-09-07, [KF264](#kf264)) | ACCEPT |
 | **`MinValue`/`MaxValue`** over a homogeneous **STRING** group | `MVK_NOT_SORTABLE` | `MVK_NOT_SORTABLE` |
 | **`Valid`/`Invalid`** (the `ValidType` custom-field-type overload) | `MVK_NO_GROUPS_ALLOWED` | — |
 | **`FieldValueAsString`** | `MVK_NO_GROUPS_ALLOWED` | — |
@@ -4883,7 +4883,7 @@ So the code reports an incompatible component set, never an unequal format strin
 
 A plain star, a `Having`-filtered star, a fixed homogeneous group, a homogeneous starred group and a star above a nonrepeatable terminal are each refused `MVK_INVALID_PARAMETER_FOR_DATE_RANGE_COMPARISON` in the scalar position. **The refusal belongs to the SLOT, not to the operand form, and the `In`-slot pair is what proves it**: each of the five is measured again in the list slot on the same fixture and admitted there. That pairing is load-bearing rather than decorative — [KF187](#kf187) records this operator ACCEPTING a starred group in the `In` slot, so a scalar-slot refusal read alone would contradict a measured row.
 
-**[KF187](#kf187) has no scalar-slot column.** Its two columns are the unstarred and starred GROUP shapes and its `AtLeastOneDateRangeOverlaps` row is explicitly scoped "group in the `In` slot", so this is the missing column rather than a filled-in cell. (a12-kernel-lean's `SPEC-2026-09-06-01` describes that `—` as a scalar-slot cell; it is not one.)
+**[KF187](#kf187) has no scalar-slot column.** Its two columns are the unstarred and starred GROUP shapes and its `AtLeastOneDateRangeOverlaps` row is explicitly scoped "group in the `In` slot", so this is the missing column rather than a filled-in cell. (a12-kernel-lean's `SPEC-2026-09-06-01` describes that `—` as a scalar-slot cell; it is not one.) **That `—` is itself now filled**, 2026-09-07: this entry's own fixture puts a NON-repeatable homogeneous group in the `In` slot and the kernel admits it, so the cell was measured here while being cited as unmeasured there — the back-fill closes it.
 
 **A kind gate reports ahead of the slot gate, in EITHER slot.** A group whose expansion mixes kinds draws `MVK_VARYING_TYPES_NOT_ALLOWED` in the scalar slot *and* in the list slot, so that gate is not slot-specific; a homogeneous group reaches the slot gate in one and is admitted in the other. Measuring with a mixed group alone cannot distinguish "this slot refuses a group" from "this operand offends the kind gate first".
 
