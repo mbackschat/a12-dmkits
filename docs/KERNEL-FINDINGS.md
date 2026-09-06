@@ -4711,3 +4711,30 @@ Nothing in this estate had crossed `Having` with the extremum operators — six 
 **Prompted by a12-kernel-lean**, whose own decline of this shape rested on a *real* neighbouring divergence — the DATERANGE-endpoint carrier genuinely refuses starred operands under `MVK_NO_WILDCARDS_ALLOWED`. A known-real boundary predicted the wrong side of itself, which is a stronger argument for measuring than an unsupported guess would have been.
 
 *(Locked: `validate.laws.FilteredStarExtremumOperandLawsTest` — every filtered row carries its plain-star control, and the numeric extremum sits beside the temporal one so a refusal would separate a filtered-star ban from a temporal-carrier one.)*
+
+## §11 supplement — a wrong-kind CONSTANT assignment reports an ordered ladder over the (constant, target) PAIR (kernel `checkConsistency` via raw `DraftComputation`, 2026-09-06) <a id="kf257"></a>
+
+> Fold: pending — a §11 authoring-tier diagnostic law; folds into §11 beside the computation kind rows.
+
+Which class the kernel reports for a wrong-kind constant assignment is **not** a function of the target kind, and not of the constant either. It is an ordered ladder over the pair, measured here on one model carrying a target of every kind:
+
+| rung | condition | class |
+|---|---|---|
+| 1 | target is BOOLEAN | `MVK_INVALID_COMPARE_TO_YESNO`, for **any** constant |
+| 1 | target is CONFIRM | `MVK_INVALID_COMPARE_TO_YES`, for **any** constant |
+| 2 | constant is TEMPORAL, any remaining target | `MVK_INVALID_COMPARE_TO_DATE` — String and Number included |
+| 3 | otherwise the target decides | temporal → `..._TO_DATE`; String/Enum → `..._TO_ENUM_OR_STRING`; NUMBER → `..._TO_ENUM_OR_STRING` for a string constant but **`MVK_INCONSISTENT_TYPES_COMPARED`** for a Boolean one |
+
+**Two cells are pair-dependent and the rest are target-keyed, which is exactly what makes a careless sample dangerous.** A batch that holds the constant fixed and varies the target produces a clean target-keyed table *whether or not the target is the key* — the assumption is not merely unverified there, it is unfalsifiable by that batch. Both exceptions are locked against same-target controls carrying a different constant, so the pair-dependence is visible rather than inferred: rung 2's temporal column, and the Boolean-into-NUMBER cell where one target yields two classes.
+
+**BOOLEAN and CONFIRM do not share a class.** They sit at the same rung and report different codes, so a checker collapsing the two flag kinds is wrong on one of them.
+
+**A "temporal literal" is not a separate syntax — it is a string literal whose CONTENT parses as a date.** The kernel lexer admits one spelling (`StringLiteral : '"' ( '""' | ~["] )* '"'`, cited in our own `DslRenderer`), so `"05.03.2024"` is temporal and `"pending"` is not, by content alone. Single quotes are not a literal and draw `MVK_UNEXPECTED_TOKEN` — which is how a mis-spelled probe row silently leaves the grid instead of failing: a first draft here spelled the string constant `'pending'` and four cells reported a parse error that looked like data. A bare `05.03.2024` lexes as a Number, pinned by its own row.
+
+**None of this is authorable through our typed surface** — `Computation.Builder`'s kind/format gate refuses every cell first, with a kind-mismatch message that names no code. That is correct behaviour and not a defect: the kernel refuses all of them too, so the pre-check is delegation-equivalent, merely earlier. It does mean the kernel's own class was unmeasured here, reachable only through the raw `DraftComputation` seam that `ConfirmComputationSourceKindLawsTest` established for the same reason.
+
+**Consequence taken:** `MVK_INVALID_COMPARE_TO_DATE` now carries a `StructuralKernelFix` corrective telling the author to check the CONSTANT before the target, since the code fires at targets with nothing temporal about them. Three MVK-ledger rows classified `erased` were extended in place — they described the *comparison* surface, and this is a second, live firing site on the *assignment* one.
+
+**Reported by a12-kernel-lean (`LF153` / `SPEC-2026-09-06-03`)**, whose own account rests on 80 kernel-gated children in one batch; re-derived here on our fixture rather than cited, because our diagnostic surface is what carries the corrective. Their method note is the transferable part: *name the key you think the answer is a function of, and vary it* — if the honest answer is "left, right, or the pair", cross them.
+
+*(Locked: `validate.laws.ConstantAssignmentDiagnosticLadderLawsTest` — each rung with its same-target controls, plus the bare-dotted-literal fixture control. Open here as there: a CUSTOM target, the one rung the ladder does not claim.)*
