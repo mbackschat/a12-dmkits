@@ -2,9 +2,12 @@
 # PreToolUse(Bash) guard — blocks two mechanical anti-patterns that silently break long-running commands.
 # Reads the hook JSON on stdin, inspects .tool_input.command, and exits 2 (block, message fed back to the
 # agent) when the command hand-detaches with a job-control `&` or gates liveness on `pgrep -f`.
-# Runtime-agnostic: the command string is read from stdin JSON, so any harness that can run a PreToolUse
-# command hook (Claude Code settings.json) points at this same script. Rationale: CLAUDE.md / AGENTS.md
-# "Detecting a long run's COMPLETION".
+# Runtime-agnostic: the command string is read from stdin JSON, so every harness that can run a PreToolUse
+# command hook points at this same file — Claude Code via `.claude/settings.json`, Codex CLI via
+# `.codex/hooks.json`. Codex sends the same `tool_input.command` and `tool_name` fields and blocks on the same
+# exit-2-plus-stderr contract, so the script is shared verbatim and only the two configs differ; it therefore
+# reads no harness-specific environment variable. Rationale: CLAUDE.md / AGENTS.md "Detecting a long run's
+# COMPLETION".
 set -euo pipefail
 
 # Extract the Bash command; degrade to "allow" if jq or the field is absent (never block on a parse failure).
