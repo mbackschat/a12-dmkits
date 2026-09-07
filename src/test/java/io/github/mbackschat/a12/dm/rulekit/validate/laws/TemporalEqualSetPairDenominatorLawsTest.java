@@ -49,38 +49,52 @@ class TemporalEqualSetPairDenominatorLawsTest {
     private static final String UNIQUENESS = "MVK_ONLY_STRING_ENUM_NUMBER_DATE_ALLOWED";
     private static final String FIRST_FILLED = "MVK_VARYING_TYPES_NOT_ALLOWED";
 
-    /** One field per admitted spelling, plus a same-set anchor per family for the comparison carriers. */
-    private record Spelling(String field, String format) { }
+    /**
+     * One admitted spelling, declared TWICE — {@code field} and {@code twin} carry the identical format string.
+     * The twin is what makes the same-format control a control for THIS spelling: an anchor per family controls
+     * only the family's first spelling, so {@code MMdd + ddMM} and {@code dd.MM.yyyy + yyyyMMdd} had no control
+     * at all (corrected 2026-09-07, cold review).
+     */
+    private record Spelling(String field, String twin, String format) { }
 
     /** A component-set family: its spellings, and the anchor an extremum or first-filled is compared against. */
     private record Family(String label, String anchor, List<Spelling> spellings) { }
 
     private static final List<Family> FAMILIES = List.of(
             new Family("{MONTH, DAY}", "MdAnchor", List.of(
-                    new Spelling("Anniversary", "MM-dd"),
-                    new Spelling("RenewalCompact", "MMdd"),
-                    new Spelling("RenewalReversed", "ddMM"))),
+                    new Spelling("Anniversary", "AnniversaryAlt", "MM-dd"),
+                    new Spelling("RenewalCompact", "RenewalCompactAlt", "MMdd"),
+                    new Spelling("RenewalReversed", "RenewalReversedAlt", "ddMM"))),
             new Family("{YEAR, MONTH, DAY}", "FullAnchor", List.of(
-                    new Spelling("FiledOn", "yyyy-MM-dd"),
-                    new Spelling("ClosedOn", "dd.MM.yyyy"),
-                    new Spelling("SealedOn", "yyyyMMdd"))),
+                    new Spelling("FiledOn", "FiledOnAlt", "yyyy-MM-dd"),
+                    new Spelling("ClosedOn", "ClosedOnAlt", "dd.MM.yyyy"),
+                    new Spelling("SealedOn", "SealedOnAlt", "yyyyMMdd"))),
             new Family("{YEAR, MONTH}", "MonthAnchor", List.of(
-                    new Spelling("CoverFrom", "yyyy-MM"),
-                    new Spelling("CoverTo", "yyyyMM"))));
+                    new Spelling("CoverFrom", "CoverFromAlt", "yyyy-MM"),
+                    new Spelling("CoverTo", "CoverToAlt", "yyyyMM"))));
+
+    /** One equal-set pair: the family it belongs to and its two differently-spelled members. */
+    private record Pair(Family family, Spelling left, Spelling right) { }
 
     /**
-     * Every unordered pair of two DIFFERENT spellings of one component set, derived from {@link #FAMILIES}
-     * rather than listed. Exposed for {@link TemporalFormatVocabularyGuardTest}, which checks this derivation
-     * against the vocabulary the kernel actually admits.
+     * <b>The single derivation of the denominator</b> — every unordered pair of two DIFFERENT spellings of one
+     * component set, from {@link #FAMILIES}. The grid below iterates THIS list and
+     * {@link TemporalFormatVocabularyGuardTest} checks {@link #EQUAL_SET_PAIRS}, its format-only view, against
+     * the vocabulary the kernel admits; a second nested loop in the grid would have left the guard constraining
+     * only one of two derivations (corrected 2026-09-07, cold review).
      */
-    static final List<List<String>> EQUAL_SET_PAIRS = FAMILIES.stream()
+    private static final List<Pair> PAIRS = FAMILIES.stream()
             .flatMap(family -> {
                 List<Spelling> s = family.spellings();
                 return java.util.stream.IntStream.range(0, s.size()).boxed()
                         .flatMap(i -> java.util.stream.IntStream.range(i + 1, s.size())
-                                .mapToObj(j -> List.of(s.get(i).format(), s.get(j).format())));
+                                .mapToObj(j -> new Pair(family, s.get(i), s.get(j))));
             })
             .toList();
+
+    /** The format-only projection of {@link #PAIRS}, for {@link TemporalFormatVocabularyGuardTest}. */
+    static final List<List<String>> EQUAL_SET_PAIRS =
+            PAIRS.stream().map(p -> List.of(p.left().format(), p.right().format())).toList();
 
     private static final String CLAIMS = model();
 
@@ -95,6 +109,7 @@ class TemporalEqualSetPairDenominatorLawsTest {
                 c.dateField(family.anchor(), d -> d.format(family.spellings().getFirst().format()));
                 for (Spelling spelling : family.spellings()) {
                     c.dateField(spelling.field(), d -> d.format(spelling.format()));
+                    c.dateField(spelling.twin(), d -> d.format(spelling.format()));
                 }
             }
         }).build().toJson();
@@ -139,34 +154,32 @@ class TemporalEqualSetPairDenominatorLawsTest {
     }
 
     /**
-     * The whole grid: every equal-set pair against every carrier, each family carrying its same-format control
-     * at the same carrier. Without the controls a refusal cannot be attributed to the pair rather than to the
-     * carrier refusing the family outright.
+     * The whole grid: every equal-set pair against every carrier, and <b>every SPELLING against its own
+     * same-format twin</b> at the same carrier. Without a control per spelling a refusal cannot be attributed
+     * to the pair rather than to the carrier refusing that spelling outright — and a per-family control leaves
+     * exactly the spellings that are not the family's first uncontrolled.
      */
     @Test
     void everyEqualSetPairSplitsTheFiveCarriersTheSameWay() {
         Map<String, String> actual = new LinkedHashMap<>();
         Map<String, String> expected = new LinkedHashMap<>();
 
-        for (Family family : FAMILIES) {
-            List<Spelling> spellings = family.spellings();
-            for (Carrier carrier : Carrier.values()) {
-                String control = carrier.condition(spellings.getFirst().field(), family.anchor(), family.anchor());
-                String controlKey = family.label() + " · " + carrier.label + " · same-format control";
-                actual.put(controlKey, verdict(control));
-                expected.put(controlKey, ADMITTED);
-
-                for (int i = 0; i < spellings.size(); i++) {
-                    for (int j = i + 1; j < spellings.size(); j++) {
-                        Spelling left = spellings.get(i);
-                        Spelling right = spellings.get(j);
-                        String key = family.label() + " · " + carrier.label + " · "
-                                + left.format() + " + " + right.format();
-                        actual.put(key, verdict(
-                                carrier.condition(left.field(), right.field(), family.anchor())));
-                        expected.put(key, expected(carrier));
-                    }
+        for (Carrier carrier : Carrier.values()) {
+            for (Family family : FAMILIES) {
+                for (Spelling spelling : family.spellings()) {
+                    String key = family.label() + " · " + carrier.label + " · " + spelling.format()
+                            + " twice — same-format control";
+                    actual.put(key, verdict(
+                            carrier.condition(spelling.field(), spelling.twin(), family.anchor())));
+                    expected.put(key, ADMITTED);
                 }
+            }
+            for (Pair pair : PAIRS) {
+                String key = pair.family().label() + " · " + carrier.label + " · "
+                        + pair.left().format() + " + " + pair.right().format();
+                actual.put(key, verdict(carrier.condition(
+                        pair.left().field(), pair.right().field(), pair.family().anchor())));
+                expected.put(key, expected(carrier));
             }
         }
 
@@ -218,8 +231,10 @@ class TemporalEqualSetPairDenominatorLawsTest {
     /** The derivation itself, so an edit that drops a spelling fails here rather than silently narrowing. */
     @Test
     void theDenominatorIsSevenPairsAcrossThreeFamilies() {
-        assertEquals(PAIR_COUNT, EQUAL_SET_PAIRS.size(), () -> "derived pairs: " + EQUAL_SET_PAIRS);
+        assertEquals(PAIR_COUNT, PAIRS.size(), () -> "derived pairs: " + EQUAL_SET_PAIRS);
         assertEquals(3, FAMILIES.size(), "three component-set families yield pairs at all");
         assertEquals(PAIR_COUNT, EQUAL_SET_PAIRS.stream().distinct().count(), "every pair is distinct");
+        assertEquals(PAIR_COUNT, EQUAL_SET_PAIRS.size(),
+                "the format-only view the vocabulary guard reads is the SAME derivation the grid iterates");
     }
 }

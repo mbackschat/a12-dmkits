@@ -238,8 +238,12 @@ class FilteredStarExtremumOperandLawsTest {
      * reaches the kind gate and reports that instead.
      *
      * <p><b>The control is what makes the claim group-ness rather than the filter.</b> A filtered starred FIELD
-     * inside that same subgroup, carrying the identical filter, is admitted — which rules out the filter's
-     * spelling, the operand's depth, and the filter's scope, and leaves group-ness as the only difference.
+     * inside that same subgroup, carrying the identical filter <em>and the identical second operand</em>, is
+     * admitted — which rules out the filter's spelling, the operand's depth, the filter's scope and the
+     * operand COUNT, and leaves group-ness as the only difference. The count matters: the first version of this
+     * control was arity 1, so it differed from the rows it controlled in two ways at once, and a starred
+     * operand satisfies the arity law alone (corrected 2026-09-07, cold review). The arity-1 row stays as a
+     * second control, which is what shows the count is not the variable either.
      * These rows use raw DSL because a filtered group operand is <b>unrepresentable</b> in the typed surface:
      * {@link io.github.mbackschat.a12.dm.rulekit.dsl.GroupListRef} carries no filter at all, which is a claim
      * about our own types discharged by reading the record rather than by the kernel happening to agree.
@@ -256,13 +260,18 @@ class FilteredStarExtremumOperandLawsTest {
         actual.put("group operand, FILTERED", verdictRaw(
                 "MinValue(/Policy/Visits*/Parts Having (FieldFilled(/Policy/Visits/Outcome)),"
                         + " /Policy/Visits*/Cost) < 100"));
-        actual.put("a filtered starred FIELD in that same subgroup — the control", verdictRaw(
+        actual.put("a filtered starred FIELD in that same subgroup, SAME arity — the control", verdictRaw(
+                "MinValue(/Policy/Visits*/Parts/PartCost Having (FieldFilled(/Policy/Visits/Outcome)),"
+                        + " /Policy/Visits*/Cost) < 100"));
+        actual.put("the same control at arity 1 — so the count is not the variable", verdictRaw(
                 "MinValue(/Policy/Visits*/Parts/PartCost Having (FieldFilled(/Policy/Visits/Outcome))) < 100"));
 
         Map<String, String> expected = new LinkedHashMap<>();
         expected.put("group operand, PLAIN", NOT_SORTABLE);
         expected.put("group operand, FILTERED", "MVK_NO_GROUPS_ALLOWED");
-        expected.put("a filtered starred FIELD in that same subgroup — the control", KernelLaws.ADMITTED);
+        expected.put("a filtered starred FIELD in that same subgroup, SAME arity — the control",
+                KernelLaws.ADMITTED);
+        expected.put("the same control at arity 1 — so the count is not the variable", KernelLaws.ADMITTED);
         assertEquals(expected, actual, "one rule cannot serve both filtered forms");
     }
 

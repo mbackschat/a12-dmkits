@@ -141,8 +141,11 @@ class TemporalConstructorDeclaredFormatGateLawsTest {
     }
 
     /**
-     * The Year position's two necessity sets. The format rows hold the position fixed and move the
-     * declaration; the position rows hold the declaration fixed and move the slot.
+     * The Year position's two necessity sets, and the LIVENESS row without which both are unreadable. The
+     * format rows hold the position fixed and move the declaration; the position rows hold the declaration
+     * fixed and move the slot. The all-literal construction is what shows the shape itself is admitted — six
+     * refusals with no admission are equally consistent with "this construction is never legal here"
+     * (added 2026-09-07, cold review).
      */
     @Test
     void theYearPositionRefusesEveryOtherDeclarationAndTheYearFieldEveryOtherPosition() {
@@ -155,6 +158,8 @@ class TemporalConstructorDeclaredFormatGateLawsTest {
                 "[/Cover/StartsOn] != Date(/Cover/SeasonYear, \"6\", \"2024\")"));
         actual.put("a yyyy field at the MONTH position", verdict("../StartsOn",
                 "[/Cover/StartsOn] != Date(\"15\", /Cover/SeasonYear, \"2024\")"));
+        actual.put("all three positions as literals — the liveness control", verdict("../StartsOn",
+                "[/Cover/StartsOn] != Date(\"15\", \"6\", \"2024\")"));
 
         Map<String, String> expected = new LinkedHashMap<>();
         expected.put("DATE declared yyyy-MM-dd at Year", WRONG_FORMAT);
@@ -163,6 +168,7 @@ class TemporalConstructorDeclaredFormatGateLawsTest {
         expected.put("DATE declared HH:mm:ss at Year", WRONG_FORMAT);
         expected.put("a yyyy field at the DAY position", WRONG_FORMAT);
         expected.put("a yyyy field at the MONTH position", WRONG_FORMAT);
+        expected.put("all three positions as literals — the liveness control", KernelLaws.ADMITTED);
         assertEquals(expected, actual, "both conjuncts are necessary: the format AND the position");
     }
 

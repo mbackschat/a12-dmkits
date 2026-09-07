@@ -40,8 +40,10 @@ class TypedefBaseKindGateLawsTest {
     private static final String GROUP = "/Stock";
 
     /**
-     * Two inline typedefs — one over NUMBER, one over STRING — beside a plain field of each base kind, so
-     * every row below has a control differing in exactly whether the field is typedef-typed.
+     * Two inline typedefs — one over NUMBER, one over STRING — beside TWO plain fields of each base kind, so
+     * every row below has a control differing in exactly whether the field is typedef-typed. The second plain
+     * field of each kind is what makes the all-plain controls controls at all: a field paired with itself is
+     * refused by the arity gate before any kind gate runs (corrected 2026-09-07, cold review).
      */
     private static final String STOCK = DocumentModelDraft.named("warehouse-stock").locale("en_US")
             .typeDef("Quantity", t -> t.number(n -> n.fractionDigits(0)))
@@ -51,7 +53,12 @@ class TypedefBaseKindGateLawsTest {
                     .typedefField("OnHand", "Quantity")
                     .typedefField("Sku", "SkuCode")
                     .numberField("Reserved", n -> n.fractionDigits(0))
-                    .stringField("Bin", s -> { }))
+                    .stringField("Bin", s -> { })
+                    // A SECOND plain field of each base kind, so an all-plain control can be a pair of
+                    // DISTINCT operands. Pairing a plain field with itself draws MVK_DUPLICATE_PARAM1 from
+                    // the arity gate, which fires before any kind gate — so such a row controls nothing.
+                    .numberField("Allocated", n -> n.fractionDigits(0))
+                    .stringField("Aisle", s -> { }))
             .build().toJson();
 
     private static String verdict(String condition) {
@@ -68,14 +75,15 @@ class TypedefBaseKindGateLawsTest {
 
         // Gate 1 — Sum's numeric operand gate.
         actual.put("Sum over the NUMBER-based typedef", verdict("Sum(OnHand, Reserved) > 0"));
-        actual.put("Sum over two plain numbers — control", verdict("Sum(Reserved, Reserved) > 0"));
+        actual.put("Sum over two plain numbers — control", verdict("Sum(Reserved, Allocated) > 0"));
         actual.put("Sum over the STRING-based typedef", verdict("Sum(Sku, Reserved) > 0"));
         actual.put("Sum over a plain string — control", verdict("Sum(Bin, Reserved) > 0"));
 
         // Gate 2 — NumberOfDifferentValues' homogeneity gate, whose code names the LEADING operand's class.
         actual.put("count over the STRING-based typedef beside a string",
                 verdict("NumberOfDifferentValues(Sku, Bin) > 1"));
-        actual.put("count over two plain strings — control", verdict("NumberOfDifferentValues(Bin, Bin) > 1"));
+        actual.put("count over two plain strings — control",
+                verdict("NumberOfDifferentValues(Bin, Aisle) > 1"));
         actual.put("count over the STRING-based typedef beside a number",
                 verdict("NumberOfDifferentValues(Sku, Reserved) > 1"));
         actual.put("count over a plain string beside a number — control",
@@ -89,11 +97,11 @@ class TypedefBaseKindGateLawsTest {
 
         Map<String, String> expected = new LinkedHashMap<>();
         expected.put("Sum over the NUMBER-based typedef", KernelLaws.ADMITTED);
-        expected.put("Sum over two plain numbers — control", "MVK_DUPLICATE_PARAM1");
+        expected.put("Sum over two plain numbers — control", KernelLaws.ADMITTED);
         expected.put("Sum over the STRING-based typedef", "MVK_NO_NUMBER");
         expected.put("Sum over a plain string — control", "MVK_NO_NUMBER");
         expected.put("count over the STRING-based typedef beside a string", KernelLaws.ADMITTED);
-        expected.put("count over two plain strings — control", "MVK_DUPLICATE_PARAM1");
+        expected.put("count over two plain strings — control", KernelLaws.ADMITTED);
         expected.put("count over the STRING-based typedef beside a number",
                 "MVK_STRING_ENUM_AND_NON_STRING_ENUM");
         expected.put("count over a plain string beside a number — control",

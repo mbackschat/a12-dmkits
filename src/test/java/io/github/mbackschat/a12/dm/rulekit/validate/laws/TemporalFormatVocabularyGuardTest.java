@@ -645,14 +645,18 @@ class TemporalFormatVocabularyGuardTest {
      * cannot be, because the pairs are computed from {@link #admittedFormats(Map)} — add a thirteenth admitted
      * spelling to any family and this fails until the sweep covers it.
      *
-     * <p>The component set is read off the format's letters, which is sound for the admitted twelve: each names
-     * every component it carries exactly once, so the letter set and the component set coincide.
+     * <p>The component set is read off the format's letters, which is sound only because each admitted format
+     * names every component it carries in exactly ONE run — so the letter set and the component set coincide.
+     * That premise is <em>asserted</em> below rather than left in this paragraph, and the classifier's own
+     * output is pinned for the two time-bearing formats: nothing in the admitted vocabulary pairs two formats
+     * that agree on their date letters and differ on a single time letter, so the corpus alone leaves
+     * {@code H}, {@code m} and {@code s} individually unconstrained (mutants measured surviving 2026-09-07).
      */
     @Test
     void theEqualSetPairDenominatorMatchesTheAdmittedVocabulary() {
         Map<String, Set<String>> byComponents = new LinkedHashMap<>();
         for (String format : admittedFormats(partition())) {
-            byComponents.computeIfAbsent(dateComponentsOf(format), key -> new TreeSet<>()).add(format);
+            byComponents.computeIfAbsent(componentLettersOf(format), key -> new TreeSet<>()).add(format);
         }
 
         Set<List<String>> derived = new java.util.LinkedHashSet<>();
@@ -676,8 +680,51 @@ class TemporalFormatVocabularyGuardTest {
                         + "so an unswept pair is a hole in that separation, not a missing example.");
     }
 
+    /**
+     * The classifier's soundness premise, and its own output where the corpus cannot discriminate.
+     *
+     * <p>Grouping formats by their component LETTERS is only the same thing as grouping them by component SET
+     * while every admitted format names each component in one run — {@code MMdd} is {MONTH, DAY}, but a
+     * hypothetical {@code MM-dd-MM} would collapse to the same letters while carrying MONTH twice. The first
+     * assertion holds that premise. The second pins the two time-bearing formats' classifications, because the
+     * twelve admitted formats contain no pair that agrees on date letters and differs on one time letter, so
+     * dropping {@code H}, {@code m} or {@code s} from the letter set changes no grouping and no derived pair.
+     */
+    @Test
+    void theComponentLetterClassifierIsSoundAndItsTimeLettersAreLoadBearing() {
+        for (String format : admittedFormats(partition())) {
+            assertEquals(componentLettersOf(format).length() / 3, componentRunsOf(format),
+                    () -> "grouping by letters equals grouping by components only while each component "
+                            + "appears in ONE run; " + format + " breaks that premise");
+        }
+        assertEquals("[H, m, s]", componentLettersOf("HH:mm:ss"),
+                "the clock format's three time components, each individually load-bearing here");
+        assertEquals("[H, M, d, m, s, y]", componentLettersOf("yyyy-MM-dd'T'HH:mm:ss"),
+                "and the stamp's six — the quoted 'T' is erased, not read as a component");
+    }
+
+    /** How many maximal runs of a component letter {@code format} contains. */
+    private static int componentRunsOf(String format) {
+        int runs = 0;
+        char previous = 0;
+        boolean quoted = false;
+        for (char c : format.toCharArray()) {
+            if (c == '\'') {
+                quoted = !quoted;
+                previous = 0;
+                continue;
+            }
+            boolean component = !quoted && "yMdHms".indexOf(c) >= 0;
+            if (component && c != previous) {
+                runs++;
+            }
+            previous = component ? c : 0;
+        }
+        return runs;
+    }
+
     /** The format's component letters as a canonical key — {@code dd.MM.yyyy} and {@code yyyyMMdd} agree. */
-    private static String dateComponentsOf(String format) {
+    private static String componentLettersOf(String format) {
         Set<Character> letters = new TreeSet<>();
         boolean quoted = false;
         for (char c : format.toCharArray()) {
