@@ -62,6 +62,11 @@ class CrossKindTemporalOperandReadTest {
                         .dateTimeField("FiledOn", d -> d.format("yyyy-MM-dd"))
                         .dateField("ShiftAt", d -> d.format("HH:mm:ss"))
                         .timeField("ShiftFrom", t -> t.format("HH:mm:ss"))
+                        // The DATE_TIME class reached from a kind that is not DATE_TIME, and an ordinary
+                        // stamp to compare it with — the pair that separates the class from the kind at the
+                        // date-time operand site, which no other row here reaches.
+                        .dateField("StampAsDate", d -> d.format("yyyy-MM-dd'T'HH:mm:ss"))
+                        .dateTimeField("ServiceStamp", d -> d.format("yyyy-MM-dd'T'HH:mm:ss"))
                         .dateRangeField("CoverWindow", r -> r.format("yyyy-MM-dd").separator("/")))
                 .build().toJson();
     }
@@ -126,12 +131,25 @@ class CrossKindTemporalOperandReadTest {
                 "[/Cover/FiledOn] == [/Cover/StartsOn]"));
         actual.put("DATE-declared HH:mm:ss == TIME — the diagonal", verdict("DateAsTimeCmp", "../ShiftFrom",
                 "[/Cover/ShiftAt] == [/Cover/ShiftFrom]"));
+        // The same two diagonals with the cross-kind field on the RIGHT. The right operand is resolved by a
+        // different function from the left (`convertTimeOperand` / `convertDateTimeOperand` rather than the
+        // dispatch itself), so a left-only row leaves those two sites unconstrained — measured, by planting
+        // `kind()` back at each and watching the mutant survive (2026-09-07).
+        actual.put("TIME == a DATE declared HH:mm:ss — the diagonal, RIGHT operand",
+                verdict("TimeAsDateRightCmp", "../ShiftFrom", "[/Cover/ShiftFrom] == [/Cover/ShiftAt]"));
+        actual.put("DATE_TIME == a DATE declared as a stamp — the date-time site, RIGHT operand",
+                verdict("StampRightCmp", "../ServiceStamp", "[/Cover/ServiceStamp] == [/Cover/StampAsDate]"));
+        actual.put("a DATE declared as a stamp == DATE_TIME — the same pair, LEFT operand",
+                verdict("StampLeftCmp", "../ServiceStamp", "[/Cover/StampAsDate] == [/Cover/ServiceStamp]"));
 
         Map<String, String> expected = new LinkedHashMap<>();
         expected.put("DATE == DATE — control", "CONVERTED");
         expected.put("TIME-declared yyyy-MM-dd == DATE", "CONVERTED");
         expected.put("DATE_TIME-declared yyyy-MM-dd == DATE", "CONVERTED");
         expected.put("DATE-declared HH:mm:ss == TIME — the diagonal", "CONVERTED");
+        expected.put("TIME == a DATE declared HH:mm:ss — the diagonal, RIGHT operand", "CONVERTED");
+        expected.put("DATE_TIME == a DATE declared as a stamp — the date-time site, RIGHT operand", "CONVERTED");
+        expected.put("a DATE declared as a stamp == DATE_TIME — the same pair, LEFT operand", "CONVERTED");
         assertEquals(expected, actual, "the comparison read must key on the declaration, as the authoring side does");
     }
 

@@ -1223,13 +1223,25 @@ final class ConditionConverter {
             if (declared == ValueKind.DATE || declared == ValueKind.DATE_FRAGMENT) {
                 return new DateExpr(indexed);
             }
-            throw unsupported("DateRange on a " + info.kind() + " semantic-index field " + path, origin);
+            throw unsupported("DateRange on a " + describe(info) + " semantic-index field " + path, origin);
         }
         return switch (declared) {
             case DATE -> field.isOuter() ? model.date(path).outer() : model.date(path);
             case DATE_FRAGMENT -> field.isOuter() ? model.dateFragment(path).outer() : model.dateFragment(path);
-            default -> throw unsupported("DateRange on a " + info.kind() + " field " + path, origin);
+            default -> throw unsupported("DateRange on a " + describe(info) + " field " + path, origin);
         };
+    }
+
+    /**
+     * A field for a diagnostic, naming the property the decision was actually made on. A refusal here is
+     * decided by the DECLARED FORMAT, so printing the kind alone tells the reader to go and check the wrong
+     * thing — and on a cross-declared field it prints a kind that is admitted at this gate under a different
+     * declaration, which reads as a contradiction (cold review 2026-09-07).
+     */
+    private static String describe(FieldInfo info) {
+        return info.format().filter(format -> info.temporalClass() != info.kind())
+                .map(format -> info.kind() + " declared " + format)
+                .orElseGet(() -> String.valueOf(info.kind()));
     }
 
     private Condition dateRangeComparison(DateRangeOperand left, ComparisonOperation operation,
@@ -2214,8 +2226,9 @@ final class ConditionConverter {
     /** Operation-shape discriminator for values whose kernel family is date-time rather than date. */
     private boolean isDateTimeValue(IOperation op) {
         if (op instanceof IFieldIdOperation field && field.getOperatorName() == FieldIdOperationName.FieldValue) {
+            // The DECLARATION's class, like every other temporal decision here ([KF271]).
             return model.fieldAt(field.getField().getFullName())
-                    .map(i -> i.kind() == ValueKind.DATE_TIME).orElse(false);
+                    .map(i -> i.temporalClass() == ValueKind.DATE_TIME).orElse(false);
         }
         if (op instanceof IDateTimeConstructionOperation) {
             return true;
@@ -2403,8 +2416,12 @@ final class ConditionConverter {
     /** Exact DATE/TIME/DATETIME family of one kernel operation, or {@code null} when it carries no such clue. */
     private TemporalKind temporalOperandKind(IOperation op) {
         if (op instanceof IFieldIdOperation field && field.getOperatorName() == FieldIdOperationName.FieldValue) {
+            // The DECLARATION's class, like every other temporal decision here ([KF271]). This one decides
+            // which FAMILY the right operand of a temporal comparison belongs to, so reading the kind made
+            // `[<DATE_TIME stamp>] == [<DATE declared as a stamp>]` — kernel-admitted — take the cross-family
+            // ordering arm and come back Opaque on the equality verbs.
             return model.fieldAt(field.getField().getFullName())
-                    .map(FieldInfo::kind)
+                    .map(FieldInfo::temporalClass)
                     .map(ConditionConverter::temporalKind)
                     .orElse(null);
         }

@@ -25,6 +25,31 @@ class ValueListLawsTest {
                 "FieldValueIncludedInValueList(AutoRenew, \"x\")", "MVK_ONLY_STRING_ENUM_NUMBER_ALLOWED");
     }
 
+    /**
+     * <b>And so is every TEMPORAL kind</b> — the row that puts this whole carrier outside the declared-format
+     * rule. Every temporal gate in the estate reads a field's declared FORMAT rather than its kind
+     * ([KF271]), and two classifiers in {@code ConditionConverter} deliberately still read the kind at this
+     * carrier ({@code homogeneousKind}, {@code convertValueList}). That is only correct while no temporal
+     * field can be a value-list operand at all — which the BOOLEAN row above does not establish, since it
+     * measures one kind and this is a claim about a family (added 2026-09-07: the sites were reasoned
+     * unaffected, and a reasoned exclusion is the one that needs the row).
+     */
+    @Test
+    void everyTemporalKindIsExcludedToo() {
+        KernelLaws.rejectsOrder("/Order", "../OrderDate",
+                "FieldValueIncludedInValueList(OrderDate, \"15.06.2024\")",
+                "MVK_ONLY_STRING_ENUM_NUMBER_ALLOWED");
+        KernelLaws.rejectsOrder("/Order", "../PickupTime",
+                "FieldValueIncludedInValueList(PickupTime, \"17:00:00\")",
+                "MVK_ONLY_STRING_ENUM_NUMBER_ALLOWED");
+        KernelLaws.rejectsOrder("/Order", "../ScheduledAt",
+                "FieldValueIncludedInValueList(ScheduledAt, \"15.06.2024\")",
+                "MVK_ONLY_STRING_ENUM_NUMBER_ALLOWED");
+        KernelLaws.rejectsOrder("/Order", "../CoverageWindow",
+                "FieldValueIncludedInValueList(CoverageWindow, \"15.06.2024/16.06.2024\")",
+                "MVK_ONLY_STRING_ENUM_NUMBER_ALLOWED");
+    }
+
     /** The same operator and field with an INTEGER entry — so only the decimal is what the first law refuses. */
     @Test
     void anIntegerEntryIsAdmitted() {
