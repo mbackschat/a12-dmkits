@@ -92,18 +92,22 @@ class FunctionsTest {
         assertInstanceOf(DateRangeConstruction::class.java, left("DateRange(OrderDate, DeliveryDate) == [CoverageWindow]"))
     }
 
-    /** The endpoint gate: each operand must be a DATE or DATE_FRAGMENT entity reference. */
+    /**
+     * The endpoint gate. What it reads is the operand's DECLARED FORMAT — a TIME- or DATE_TIME-declared field
+     * carrying `yyyy-MM-dd` is an admitted endpoint (`KF271`) — so the client-side check stops at the kinds
+     * whose declaration cannot carry date components at all. A NUMBER is one of the three measured refusals.
+     */
     @Test
     fun aNumberEndpointIsRejected() {
-        assertRejectedWith("expected DATE or DATE_FRAGMENT") {
+        assertRejectedWith("expected a date-bearing or date-fragment field") {
             translate("DateRange(OrderDate, Quantity) == [CoverageWindow]")
         }
     }
 
-    /** A stored range is not an endpoint either — the gate reads the field's kind, not its date-ness. */
+    /** A stored range is not an endpoint either — the second of the three measured kind refusals. */
     @Test
     fun aDateRangeEndpointIsRejected() {
-        assertRejectedWith("expected DATE or DATE_FRAGMENT") {
+        assertRejectedWith("expected a date-bearing or date-fragment field") {
             translate("DateRange(CoverageWindow, DeliveryDate) == [CoverageWindow]")
         }
     }

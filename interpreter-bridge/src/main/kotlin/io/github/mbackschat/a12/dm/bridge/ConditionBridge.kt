@@ -1,6 +1,7 @@
 package io.github.mbackschat.a12.dm.bridge
 
 import io.github.mbackschat.a12.dm.core.ModelIndex
+import io.github.mbackschat.a12.dm.core.ValueKind
 import io.github.mbackschat.a12.dm.interpreter.ast.Cond
 import io.github.mbackschat.a12.dm.interpreter.ast.Expr
 import io.github.mbackschat.a12.dm.interpreter.model.ConditionLanguage
@@ -84,6 +85,11 @@ internal class ConditionBridge @JvmOverloads constructor(
     override fun model(): BoundModel = boundModel
 
     override fun index(): ModelIndex = modelIndex
+
+    override fun temporalClass(value: Calculation): ValueKind = operands.temporalClass(value)
+
+    override fun operandTemporalClass(operand: FieldOperand): ValueKind =
+        operands.operandTemporalClass(operand)
 
     override fun condition(node: Cond): Condition =
         if (node is Cond.Pred) predicates.map(node) else conditions.map(node)

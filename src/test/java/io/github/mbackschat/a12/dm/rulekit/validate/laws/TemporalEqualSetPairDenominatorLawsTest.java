@@ -73,7 +73,7 @@ class TemporalEqualSetPairDenominatorLawsTest {
      * rather than listed. Exposed for {@link TemporalFormatVocabularyGuardTest}, which checks this derivation
      * against the vocabulary the kernel actually admits.
      */
-    static List<List<String>> EQUAL_SET_PAIRS = FAMILIES.stream()
+    static final List<List<String>> EQUAL_SET_PAIRS = FAMILIES.stream()
             .flatMap(family -> {
                 List<Spelling> s = family.spellings();
                 return java.util.stream.IntStream.range(0, s.size()).boxed()

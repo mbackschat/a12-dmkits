@@ -128,8 +128,12 @@ internal class Conditions(private val mapping: Mapping) {
             ValueKind.ENUMERATION -> enumComparison(cmp.op, left, right)
             ValueKind.BOOLEAN -> booleanComparison(cmp.op, left, right)
             ValueKind.CONFIRM -> confirmComparison(cmp.op, left, right)
+            // The temporal arm is entered on the KIND — every date-like kind routes here — but the operand
+            // FAMILY inside it is picked by the declaration, which is the class the kernel's gate reads.
             ValueKind.DATE, ValueKind.DATE_FRAGMENT, ValueKind.TIME, ValueKind.DATE_TIME ->
-                temporalComparison(cmp.op, left, right)
+                temporalComparison(
+                    cmp.op, left, right, mapping.temporalClass(left), mapping.temporalClass(right),
+                )
             ValueKind.DATE_RANGE -> dateRangeComparison(cmp.op, left, right)
             else -> throw noTypedComparison(cmp.op, left, right)
         }
@@ -464,10 +468,20 @@ internal class Conditions(private val mapping: Mapping) {
         /**
          * Dates, times and date-times. Each family compares within itself; date and date-time also compare
          * across, but for ORDERING only — the equality verbs take their own family.
+         *
+         * [leftClass]/[rightClass] are each side's DECLARED temporal class ([Mapping.temporalClass]), not its
+         * kind: a TIME field declared `yyyy-MM-dd` belongs to the DATE family here, which is what makes
+         * `[TimeAsDate] == [Date]` — kernel-admitted (KF271) — translatable at all.
          */
-        private fun temporalComparison(op: CmpOp, left: Calculation, right: Calculation): Condition {
-            val l = temporalOperand(op, left, right)
-            val r = temporalOperand(op, right, left)
+        private fun temporalComparison(
+            op: CmpOp,
+            left: Calculation,
+            right: Calculation,
+            leftClass: ValueKind,
+            rightClass: ValueKind,
+        ): Condition {
+            val l = temporalOperand(op, left, right, leftClass, rightClass)
+            val r = temporalOperand(op, right, left, rightClass, leftClass)
             if (l is DateOperand) {
                 if (r is DateOperand) {
                     return when (op) {
@@ -555,15 +569,21 @@ internal class Conditions(private val mapping: Mapping) {
          * or DATE_TIME constant this gate has to type from `other` itself, via rulekit's existing public entry
          * points ([Dsl.timeValue]/[Dsl.dateTimeValue]) rather than the generic kind switch.
          */
-        private fun temporalOperand(op: CmpOp, value: Calculation, other: Calculation): TemporalOperand {
+        private fun temporalOperand(
+            op: CmpOp,
+            value: Calculation,
+            other: Calculation,
+            valueClass: ValueKind,
+            otherClass: ValueKind,
+        ): TemporalOperand {
             if (value is StringLiteral) {
-                return when (other.kind()) {
+                return when (otherClass) {
                     ValueKind.TIME -> Dsl.timeValue(value.value())
                     ValueKind.DATE_TIME -> Dsl.dateTimeValue(value.value())
                     else -> throw noTypedComparison(op, value, other)
                 }
             }
-            return when (value.kind()) {
+            return when (valueClass) {
                 ValueKind.DATE, ValueKind.DATE_FRAGMENT -> DateExpr(value)
                 ValueKind.TIME -> TimeExpr(value)
                 ValueKind.DATE_TIME -> DateTimeExpr(value)

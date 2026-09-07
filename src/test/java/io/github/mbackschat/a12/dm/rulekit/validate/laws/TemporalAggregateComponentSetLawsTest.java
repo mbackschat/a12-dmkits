@@ -1,5 +1,12 @@
 package io.github.mbackschat.a12.dm.rulekit.validate.laws;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+
+import java.util.LinkedHashMap;
+import java.util.Map;
+import java.util.stream.Collectors;
+
 import org.junit.jupiter.api.Test;
 
 import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft;
@@ -7,6 +14,7 @@ import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Condition;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Dsl;
 import io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer;
+import io.github.mbackschat.a12.dm.rulekit.validate.ValidationResult;
 
 /**
  * KERNEL-FINDINGS §6/§9 — <b>two temporal gates on two carriers, under two codes</b>
@@ -43,11 +51,15 @@ import io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer;
  * <em>not</em> lift {@code FieldValuesNotUnique}'s refusal, which is what places the supplementation inside the
  * component-set gate rather than in a shared pre-pass.
  *
- * <p><b>A third reading is excluded by the class rows.</b> "Equal component set" is not "equal declared kind"
- * either: a DATE {@code yyyy} beside a DATE_FRAGMENT {@code yyyy} is admitted, while a DATE beside a TIME or a
- * DATETIME is refused. So the gate separates date-presence and time-presence and then compares sets — which is
- * why {@code DateListAggregate}'s own pre-check reads the temporal CLASS, and refusing on kind equality (as it
- * used to) would reject the admitted cross-kind pair.
+ * <p><b>A third reading is excluded by the class rows, and excluding it took two passes.</b> "Equal component
+ * set" is not "equal declared kind": a DATE {@code yyyy} beside a DATE_FRAGMENT {@code yyyy} is admitted, while
+ * a clock-declared TIME or a stamp-declared DATETIME beside a DATE is refused. The first pass read that as "the
+ * gate separates the KINDS' classes and then compares sets" and moved the pre-check to a kind-keyed class
+ * comparison — but every row it rested on carried its own kind's DEFAULT format, so kind class and declared
+ * class agreed across the whole set and nothing could tell them apart (the constant-across-every-row confound).
+ * A date-declared TIME field beside a DATE is <em>admitted</em>, so what the gate reads is date-presence and
+ * time-presence <b>of the declaration</b> ([KF271]) — model data neither pre-check can see, which is why
+ * {@code DateListAggregate} now pre-checks only whether an operand is date-like at all.
  *
  * <p>Scope: {@code Sum} takes no part — it refuses a temporal operand outright ({@code MVK_NO_NUMBER}), locked
  * below as the family boundary. {@code FirstFilledValue} routes through a different checker arm
@@ -85,6 +97,10 @@ class TemporalAggregateComponentSetLawsTest {
                         .dateField("UnderwritingYear", d -> d.format("yyyy"))
                         .dateField("UwYearAlt", d -> d.format("yyyy"))
                         .dateFragmentField("ReportingYear", f -> f.fragmentFormat("yyyy"))
+                        // Kind and declaration DISAGREE on these two: the pair that separates "the gate reads
+                        // the temporal class of the KIND" from "…of the DECLARATION" (KF271's rule at this gate).
+                        .timeField("AuditedOn", t -> t.format("yyyy-MM-dd"))
+                        .dateTimeField("FiledAt", dt -> dt.format("yyyy-MM-dd"))
                         .dateTimeField("SealedAt", dt -> { })
                         .timeField("ShiftStart", t -> { })
                         .timeField("ShiftEnd", t -> { })
@@ -127,6 +143,18 @@ class TemporalAggregateComponentSetLawsTest {
         KernelLaws.rejectsModel(json, GROUP, "../Reference", "FieldFilled(Reference) And " + aggregate, code);
     }
 
+    /**
+     * One raw aggregate's verdict word, for a claim that is a TABLE — a row-by-row assertion aborts at the
+     * first divergence and hides the rest of the grid, which is the part a kernel upgrade would move.
+     */
+    private static String rawVerdict(String aggregate) {
+        ValidationResult r = KernelLaws.checkModel(NO_BASE_YEAR, GROUP, "../Reference",
+                "FieldFilled(Reference) And " + aggregate);
+        return r.ok() ? KernelLaws.ADMITTED : r.diagnostics().stream()
+                .map(d -> d.code().orElse("(no code: " + d.summary() + ")"))
+                .collect(Collectors.joining(","));
+    }
+
     // ── the separator: EQUAL component set, DIFFERENT format spelling ─────────────────────────────────
 
     /** {@code yyyy-MM-dd} beside {@code dd.MM.yyyy} — same {YEAR, MONTH, DAY}, different spelling. */
@@ -160,6 +188,70 @@ class TemporalAggregateComponentSetLawsTest {
         admits(NO_BASE_YEAR, UNCONFIGURED,
                 Dsl.numberOfDifferentValues(UNCONFIGURED.field(GROUP + "/FiledOn"),
                         UNCONFIGURED.field(GROUP + "/ClosedOn")).gt(1));
+    }
+
+    /**
+     * <b>The temporal class the gate reads is the DECLARATION's, not the kind's — and that half was a second
+     * live over-rejection here</b> (2026-09-07, found by a cold review of the constructor-gate slice).
+     *
+     * <p>§3 of the finding this file locks measured DATE beside DATE_FRAGMENT, which separates *kind equality*
+     * from *class equality* and stops there: both members' kinds already sit in the DATE class. The row below
+     * moves the remaining variable — a TIME-declared and a DATE_TIME-declared field each carrying
+     * {@code yyyy-MM-dd}, whose KIND classes are TIME and DATE_TIME while their declarations are all DATE. The
+     * kernel admits the list. Our own comment at {@code DateListAggregate.temporalClassOf} said "a DATE beside
+     * a TIME or a DATETIME is refused … (measured)" — measured on differing *formats* and asserted about
+     * *kinds*, the exact confound {@code KF211} corrects at every other gate.
+     *
+     * <p>Written from raw DSL because the typed surface refused these lists until this row existed; the client
+     * mirror is {@link #theTypedSurfaceBuildsEveryCrossKindListTheKernelAdmits()}.
+     */
+    @Test
+    void theAggregateGateReadsTheDECLARATIONsTemporalClassAndNotTheKinds() {
+        Map<String, String> actual = new LinkedHashMap<>();
+        actual.put("MaxValue over a date-declared TIME beside a DATE", rawVerdict(
+                "MaxValue(AuditedOn, FiledOn) == [ReopenedOn]"));
+        actual.put("MaxValue over a date-declared DATE_TIME beside a DATE", rawVerdict(
+                "MaxValue(FiledAt, FiledOn) == [ReopenedOn]"));
+        actual.put("MinValue over the two cross-kind declarations together", rawVerdict(
+                "MinValue(AuditedOn, FiledAt) == [ReopenedOn]"));
+        actual.put("NumberOfDifferentValues over the same pair", rawVerdict(
+                "NumberOfDifferentValues(AuditedOn, FiledOn) > 1"));
+        // The necessity row: the SAME two kinds carrying their own kinds' default formats are refused, so the
+        // admissions above are the declaration's doing and not "any temporal kind mixes freely".
+        actual.put("MaxValue over a clock-declared TIME beside a DATE — the control", rawVerdict(
+                "MaxValue(ShiftStart, FiledOn) == [ReopenedOn]"));
+        actual.put("MaxValue over a stamp-declared DATE_TIME beside a DATE — the control", rawVerdict(
+                "MaxValue(SealedAt, FiledOn) == [ReopenedOn]"));
+
+        Map<String, String> expected = new LinkedHashMap<>();
+        expected.put("MaxValue over a date-declared TIME beside a DATE", KernelLaws.ADMITTED);
+        expected.put("MaxValue over a date-declared DATE_TIME beside a DATE", KernelLaws.ADMITTED);
+        expected.put("MinValue over the two cross-kind declarations together", KernelLaws.ADMITTED);
+        expected.put("NumberOfDifferentValues over the same pair", KernelLaws.ADMITTED);
+        expected.put("MaxValue over a clock-declared TIME beside a DATE — the control",
+                "MVK_DATEFORMATS_NOT_COMPATIBLE");
+        expected.put("MaxValue over a stamp-declared DATE_TIME beside a DATE — the control",
+                "MVK_DATEFORMATS_NOT_COMPATIBLE");
+        assertEquals(expected, actual, "the aggregate gate reads each operand's DECLARED component set");
+    }
+
+    /**
+     * The client mirror of the rows above: the typed surface must build every list the kernel admits.
+     * {@code DateListAggregate}'s field arm compared {@code temporalClassOf(kind)} across operands, so each of
+     * the three admitted lists threw before the kernel saw it — and the read path fell to the numeric arm and
+     * returned the rule {@code Opaque}. The arm now checks only that a field operand is temporal-or-fragment at
+     * all, which is what keeps a NUMBER or STRING operand handed to a date factory failing fast, and delegates
+     * the exact class agreement to the kernel.
+     */
+    @Test
+    void theTypedSurfaceBuildsEveryCrossKindListTheKernelAdmits() {
+        DslRenderer renderer = new DslRenderer();
+        assertEquals("MaxValue(/Claim/AuditedOn, /Claim/FiledOn)", renderer.render(Dsl.latestOf(
+                UNCONFIGURED.field(GROUP + "/AuditedOn"), UNCONFIGURED.field(GROUP + "/FiledOn")).expression()));
+        assertEquals("MaxValue(/Claim/FiledAt, /Claim/FiledOn)", renderer.render(Dsl.latestOf(
+                UNCONFIGURED.field(GROUP + "/FiledAt"), UNCONFIGURED.field(GROUP + "/FiledOn")).expression()));
+        assertEquals("MinValue(/Claim/AuditedOn, /Claim/FiledAt)", renderer.render(Dsl.earliestOf(
+                UNCONFIGURED.field(GROUP + "/AuditedOn"), UNCONFIGURED.field(GROUP + "/FiledAt")).expression()));
     }
 
     /** A differing component SET is refused, which is what the gate actually reads. */
@@ -282,13 +374,14 @@ class TemporalAggregateComponentSetLawsTest {
                         .eq(UNCONFIGURED.date(GROUP + "/ReopenedOn")));
     }
 
-    // ── the class boundary: DATE and DATE_FRAGMENT are ONE class, TIME and DATETIME their own ───────
+    // ── the class boundary, which is the DECLARATION's: date-presence and time-presence ─────────────
 
     /**
      * A DATE {@code yyyy} beside a DATE_FRAGMENT {@code yyyy} is admitted — two <em>kinds</em>, one component
-     * set. So the gate is not kind equality either, which is the second reading this file has to exclude, and
-     * it is why {@link io.github.mbackschat.a12.dm.rulekit.dsl.DateListAggregate}'s own pre-check reads the
-     * temporal CLASS rather than the declared kind.
+     * set. So the gate is not kind equality either, which is the second reading this file has to exclude. The
+     * rows below it cross the boundary and are refused; the rows at the top of the file show that they cross it
+     * by DECLARATION, not by kind, which is why
+     * {@link io.github.mbackschat.a12.dm.rulekit.dsl.DateListAggregate} pre-checks neither.
      */
     @Test
     void aLatestOverADateAndADateFragmentOfOneSetIsAdmitted() {
@@ -297,7 +390,9 @@ class TemporalAggregateComponentSetLawsTest {
                         UNCONFIGURED.field(GROUP + "/ReportingYear")).eq(UNCONFIGURED.date(GROUP + "/UwYearAlt")));
     }
 
-    /** A DATE beside a TIME crosses the date-presence boundary and is refused. */
+    /** A DATE beside a TIME crosses the date-presence boundary and is refused. The declaration-axis table
+     *  above rows the same two pairs with the operands SWAPPED, and the kernel's checker types the list from
+     *  its leader — so the two are one fact measured from both ends, not a duplicate. */
     @Test
     void aLatestOverADateAndATimeIsRefused() {
         refusesRaw(NO_BASE_YEAR, "MaxValue(FiledOn, ShiftStart) == [ReopenedOn]",
@@ -320,18 +415,24 @@ class TemporalAggregateComponentSetLawsTest {
     }
 
     /**
-     * The typed surface refuses the two class-crossing shapes above <em>before</em> the kernel sees them, and
-     * that is the pre-check's whole justification — so it is asserted beside the kernel rows that ground it.
-     * Refusing without such a row is the defect this file's own widening removed.
+     * The typed surface <b>builds</b> the two class-crossing shapes above and lets the kernel refuse them —
+     * which is the only defensible split, because the classes above are separated by the operands'
+     * DECLARATIONS and a {@code ValueKind} cannot see one. A pre-check keyed on kind would have to refuse the
+     * date-declared TIME and DATE_TIME fields too, and those are admitted (the rows at the top of this file).
+     * So the client keeps only the routing refusal — a non-date-like operand handed to a date-like factory —
+     * and that is asserted here as the remaining basis.
      */
     @Test
-    void theTypedFactoryRefusesAClassCrossingOperand() {
-        org.junit.jupiter.api.Assertions.assertThrows(IllegalArgumentException.class,
-                () -> Dsl.latestOf(UNCONFIGURED.field(GROUP + "/FiledOn"),
-                        UNCONFIGURED.field(GROUP + "/ShiftStart")));
-        org.junit.jupiter.api.Assertions.assertThrows(IllegalArgumentException.class,
-                () -> Dsl.latestOf(UNCONFIGURED.field(GROUP + "/FiledOn"),
-                        UNCONFIGURED.field(GROUP + "/SealedAt")));
+    void theTypedFactoryDelegatesTheClassBoundaryAndKeepsOnlyTheRoutingRefusal() {
+        DslRenderer renderer = new DslRenderer();
+        assertEquals("MaxValue(/Claim/FiledOn, /Claim/ShiftStart)",
+                renderer.render(Dsl.latestOf(UNCONFIGURED.field(GROUP + "/FiledOn"),
+                        UNCONFIGURED.field(GROUP + "/ShiftStart")).expression()));
+        assertEquals("MaxValue(/Claim/FiledOn, /Claim/SealedAt)",
+                renderer.render(Dsl.latestOf(UNCONFIGURED.field(GROUP + "/FiledOn"),
+                        UNCONFIGURED.field(GROUP + "/SealedAt")).expression()));
+        assertThrows(IllegalArgumentException.class, () -> Dsl.latestOf(
+                UNCONFIGURED.field(GROUP + "/Reference"), UNCONFIGURED.field(GROUP + "/FiledOn")));
     }
 
     // ── family boundary: Sum takes no part in this gate ──────────────────────────────────────────────

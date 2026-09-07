@@ -246,6 +246,11 @@ class NewShapesSnippetsTest {
         Condition windowFollowsPromise = fulfilment.dateRange("/Fulfilment/DeliveryWindow")
                 .ne(Dsl.dateRange(fulfilment.date("/Fulfilment/PromisedDay"),
                         fulfilment.date("/Fulfilment/ShippedOn")));
+        // …and the entity-list EXTREMA: MaxValue/MinValue compare their operands' declared component sets,
+        // so this cell is a legal member of a plain DATE list. No factory refuses the mixture; the kernel
+        // arbitrates whether the sets agree.
+        Condition latestIsPromise = Dsl.latestOf(fulfilment.field("/Fulfilment/PromisedDay"),
+                fulfilment.field("/Fulfilment/ShippedOn")).eq(fulfilment.date("/Fulfilment/PromisedDay"));
         // Read the declaration that decided it; `HoursFromTime` on the same cell is refused by the kernel.
         String declared = fulfilment.fieldAt("/Fulfilment/PromisedDay").orElseThrow().format().orElseThrow();
         // …and `temporalClass()` is that declaration's verdict: which classifier the field actually has,
@@ -258,11 +263,14 @@ class NewShapesSnippetsTest {
                 new DslRenderer().render(promisedYear.eq(2024)));
         assertEquals("[/Fulfilment/DeliveryWindow] != DateRange(/Fulfilment/PromisedDay,"
                 + " /Fulfilment/ShippedOn)", new DslRenderer().render(windowFollowsPromise));
+        assertEquals("MaxValue(/Fulfilment/PromisedDay, /Fulfilment/ShippedOn) == [/Fulfilment/PromisedDay]",
+                new DslRenderer().render(latestIsPromise));
         assertEquals("yyyy-MM-dd", declared);
         assertEquals(ValueKind.DATE, classifier, "the declaration decides, not the TIME kind");
         assertKernelAccepts(FULFILMENT_JSON, "/Fulfilment", promisedAfterShipping, "../PromisedDay");
         assertKernelAccepts(FULFILMENT_JSON, "/Fulfilment", promisedYear.eq(2024), "../PromisedDay");
         assertKernelAccepts(FULFILMENT_JSON, "/Fulfilment", windowFollowsPromise, "../DeliveryWindow");
+        assertKernelAccepts(FULFILMENT_JSON, "/Fulfilment", latestIsPromise, "../PromisedDay");
     }
 
     private static void assertKernelAccepts(Condition condition, String errorField) {

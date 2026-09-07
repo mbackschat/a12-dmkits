@@ -4,9 +4,12 @@ import io.github.mbackschat.a12.dm.core.ModelIndex
 import io.github.mbackschat.a12.dm.core.ValueKind
 import io.github.mbackschat.a12.dm.interpreter.ast.Expr
 import io.github.mbackschat.a12.dm.rulekit.dsl.AggregateOperand
+import io.github.mbackschat.a12.dm.rulekit.dsl.Calculation
+import io.github.mbackschat.a12.dm.rulekit.dsl.DateListAggregate
 import io.github.mbackschat.a12.dm.rulekit.dsl.FieldListRef
 import io.github.mbackschat.a12.dm.rulekit.dsl.FieldOperand
 import io.github.mbackschat.a12.dm.rulekit.dsl.FieldRef
+import io.github.mbackschat.a12.dm.rulekit.dsl.FieldValue
 import io.github.mbackschat.a12.dm.rulekit.dsl.GroupListRef
 import io.github.mbackschat.a12.dm.rulekit.dsl.GroupRef
 import io.github.mbackschat.a12.dm.rulekit.dsl.GroupSemanticIndexFieldValue
@@ -169,6 +172,27 @@ internal class Operands(private val mapping: Mapping) {
             )
         }
     }
+
+    /**
+     * The declared temporal class of a mapped value — [Mapping.temporalClass]'s implementation, and the one
+     * place in this bridge that knows a temporal dispatch reads the DECLARATION rather than the kind.
+     *
+     * Only a field read can carry a declaration, so everything else answers its own kind; the collapse of
+     * DATE_FRAGMENT into the DATE class is rulekit's, reused rather than restated.
+     */
+    fun temporalClass(value: Calculation): ValueKind = when (value) {
+        is FieldValue -> declaredTemporalClass(value.field().fieldPath(), value.kind())
+        is FieldOperand -> declaredTemporalClass(value.fieldPath(), value.kind())
+        else -> value.kind()
+    }
+
+    fun operandTemporalClass(operand: FieldOperand): ValueKind =
+        declaredTemporalClass(operand.fieldPath(), operand.kind())
+
+    private fun declaredTemporalClass(path: String, declaredKind: ValueKind): ValueKind =
+        mapping.model().fieldAt(path)
+            .map { DateListAggregate.temporalClassOf(it.temporalClass()) }
+            .orElse(declaredKind)
 
     /**
      * Resolve an operand in an entity-list slot, which accepts a field, a repetition list, a group scope, an

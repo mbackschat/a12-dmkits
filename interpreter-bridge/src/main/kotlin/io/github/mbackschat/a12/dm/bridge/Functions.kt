@@ -710,18 +710,23 @@ internal class Functions(private val mapping: Mapping) {
     private fun aggregateOperands(args: List<Expr>): List<AggregateOperand> =
         args.map { mapping.aggregateOperand(it) }
 
-    private companion object {
+    /**
+     * The class that picks the factory — the first operand that has one, read as its DECLARED temporal class
+     * rather than its kind. A group scope has none: a group's kind lives in the expansion the kernel resolves,
+     * so a list of nothing but group scopes leaves the choice unmade rather than guessed.
+     *
+     * Reading the kind here typed `MaxValue(<TIME yyyy-MM-dd>, <DATE yyyy-MM-dd>)` as a TIME extremum, whose
+     * comparison against a DATE then had no signature — a kernel-admitted condition (KF271) that came out
+     * untranslatable, measured in [CrossKindTemporalTranslationTest]. Not a companion member, because
+     * resolving a declaration needs the model.
+     */
+    private fun routingKind(operands: List<AggregateOperand>, operator: String): ValueKind =
+        operands.filterIsInstance<FieldOperand>().firstOrNull()?.let { mapping.operandTemporalClass(it) }
+            ?: throw UnmappedConstructException(
+                "$operator over group scopes only — the result kind is the expansion's"
+            )
 
-        /**
-         * The kind that picks the factory — the first operand that has one. A group scope has none: a group's
-         * kind lives in the expansion the kernel resolves, so a list of nothing but group scopes leaves the
-         * choice unmade rather than guessed.
-         */
-        private fun routingKind(operands: List<AggregateOperand>, operator: String): ValueKind =
-            operands.filterIsInstance<FieldOperand>().firstOrNull()?.kind()
-                ?: throw UnmappedConstructException(
-                    "$operator over group scopes only — the result kind is the expansion's"
-                )
+    private companion object {
 
         /** A root group is a single path segment: `/Order` has no second slash. */
         private fun isRootGroup(group: GroupRef): Boolean = group.path().value().indexOf('/', 1) < 0

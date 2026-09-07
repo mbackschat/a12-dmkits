@@ -3087,7 +3087,7 @@
       "returns": "the operands' common NUMBER, DATE, TIME, or DATETIME kind",
       "meaning": "The largest of the listed values; unspecified fields are ignored. Over number fields it returns a number; over a date repetition list it returns the latest date.",
       "constraints": [
-        "sortable fields only — NUMBER, or temporal fields (DATE, DATEFRAGMENT, TIME, DATE_TIME) whose declared COMPONENT SETS match after optional Base-Year supplementation (MVK_NOT_SORTABLE / MVK_DATEFORMATS_NOT_COMPATIBLE)",
+        "sortable fields only — NUMBER, or temporal fields (DATE, DATEFRAGMENT, TIME, DATE_TIME) whose declared COMPONENT SETS match after optional Base-Year supplementation (MVK_NOT_SORTABLE / MVK_DATEFORMATS_NOT_COMPATIBLE). The set is the DECLARATION's and the declared KIND takes no part, so a TIME- or DATE_TIME-declared field carrying yyyy-MM-dd is a legal member of a plain DATE list, while the same TIME field carrying HH:mm:ss beside that DATE is refused MVK_DATEFORMATS_NOT_COMPATIBLE",
         "more than one field or a repetition list; no repeated direct field, but a wildcarded (starred) operand may repeat (MVK_DUPLICATE_PARAM1). The star exempts that ONE gate and no more: two operands where one strictly CONTAINS the other — a group scope beside its own descendant — are refused MVK_DUPLICATE_PARAM2 whichever side carries it, even with both starred"
       ],
       "gotchas": [
@@ -3247,7 +3247,7 @@
       "returns": "the operands' common NUMBER, DATE, TIME, or DATETIME kind",
       "meaning": "The smallest of the listed values; unspecified fields are ignored. Over number fields it returns a number; over a date repetition list it returns the earliest date.",
       "constraints": [
-        "same slot rules as MaxValue: NUMBER, or temporal fields whose declared COMPONENT SETS match after optional Base-Year supplementation",
+        "same slot rules as MaxValue: NUMBER, or temporal fields whose declared COMPONENT SETS match after optional Base-Year supplementation — the DECLARATION's set, with the declared kind taking no part",
         "more than one field or a repetition list; no repeated direct field, but a wildcarded (starred) operand may repeat (MVK_DUPLICATE_PARAM1). The star exempts that ONE gate and no more: two operands where one strictly CONTAINS the other — a group scope beside its own descendant — are refused MVK_DUPLICATE_PARAM2 whichever side carries it, even with both starred"
       ],
       "gotchas": [
@@ -4086,7 +4086,7 @@
       "meaning": "Counts the distinct values among the listed fields (the count/number of different values), typically over a repetition list.",
       "constraints": [
         "operands must be type-homogeneous, in one of three classes: string/enum/custom together, all numbers, or all date-like — DATE/DATEFRAGMENT/TIME/DATETIME. The FIRST operand fixes the expected class and the reported code names THAT class, not the offender's: (Weight, Label) reports MVK_NUMBER_AND_NON_NUMBER while (Label, Weight) over the same two fields reports MVK_STRING_ENUM_AND_NON_STRING_ENUM (MVK_STRING_ENUM_AND_NON_STRING_ENUM / MVK_NUMBER_AND_NON_NUMBER / MVK_DATE_AND_NONDATE)",
-        "date-like operands must additionally share one declared COMPONENT SET — two date-like fields are not enough (MVK_DATEFORMATS_NOT_COMPATIBLE)",
+        "date-like operands must additionally share one declared COMPONENT SET — two date-like fields are not enough (MVK_DATEFORMATS_NOT_COMPATIBLE). The set comes from the DECLARED FORMAT, not the kind, so a date-declared TIME field counts alongside a plain DATE",
         "no booleans/confirms — but this code is reachable only from the LEADING slot: a boolean behind a string is reported as a homogeneity mismatch instead (MVK_ONLY_STRING_ENUM_NUMBER_CMP_DATE_ALLOWED)",
         "more than one field or a repetition list; no repeated direct field, but a wildcarded (starred) operand may repeat (MVK_DUPLICATE_PARAM1). The star exempts that ONE gate and no more: two operands where one strictly CONTAINS the other — a group scope beside its own descendant — are refused MVK_DUPLICATE_PARAM2 whichever side carries it, even with both starred"
       ],

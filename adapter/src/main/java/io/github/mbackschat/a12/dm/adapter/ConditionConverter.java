@@ -2630,12 +2630,16 @@ final class ConditionConverter {
             if (!entity.isField()) {
                 continue;   // a group scope is typed by its expansion — the kernel's verdict, not ours
             }
-            ValueKind kind = model.fieldAt(entity.getFullName()).map(i -> i.kind()).orElse(null);
-            // The COMPARABILITY CLASS, not the kind: DATE and DATE_FRAGMENT share one, and the kernel admits a
-            // list mixing them (rulekit `DateListAggregate.temporalClassOf`, measured). Keying this on kind
-            // equality made an authorable, kernel-admitted `MaxValue(<DATE yyyy>, <DATE_FRAGMENT yyyy>)`
-            // unreadable — it fell to the NUMERIC arm and came back Opaque (cold review 2026-08-24).
-            ValueKind temporalClass = kind == null ? null : DateListAggregate.temporalClassOf(kind);
+            // The COMPARABILITY CLASS, not the kind — and the class each operand's DECLARATION selects, which
+            // is what the kernel's own gate reads ([KF271]). Two corrections landed here, both from the same
+            // root: keying on kind EQUALITY made a kernel-admitted `MaxValue(<DATE yyyy>, <DATE_FRAGMENT yyyy>)`
+            // unreadable (cold review 2026-08-24), and keying the class on the KIND left the same defect for a
+            // TIME field declared `yyyy-MM-dd`, whose list the kernel admits (cold review 2026-09-07 —
+            // `CrossKindTemporalOperandReadTest`). Either way the rule fell to the NUMERIC arm and came back
+            // Opaque. `temporalClass()` resolves the declaration; `temporalClassOf` collapses DATE_FRAGMENT.
+            ValueKind declared = model.fieldAt(entity.getFullName())
+                    .map(FieldInfo::temporalClass).orElse(null);
+            ValueKind temporalClass = declared == null ? null : DateListAggregate.temporalClassOf(declared);
             if (temporalClass != ValueKind.DATE && temporalClass != ValueKind.TIME
                     && temporalClass != ValueKind.DATE_TIME) {
                 return null;

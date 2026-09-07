@@ -24,10 +24,13 @@ import io.github.mbackschat.a12.dm.core.ValueKind;
  *
  * <p>The gates pre-checked here are the ones {@link ListAggregate} already pre-checks and this family shares
  * (all kernel-measured, {@code validate.laws.TemporalAggregateComponentSetLawsTest}): the param law, the
- * direct-duplicate arm, and each FIELD operand's temporal CLASS. The <b>format</b> gate is deliberately
- * <em>not</em> pre-checked: the kernel compares the operands' declared component SETS after optional Base-Year
- * supplementation ({@code DateFormat.hasSameComponents}), which is model data, and an over-strict copy would
- * refuse the legal equal-set-different-spelling pairs the kernel admits.
+ * direct-duplicate arm, and whether each FIELD operand is <em>date-like at all</em> — the routing question
+ * that separates this class from {@link ListAggregate}. Everything finer is deliberately left to the kernel,
+ * because it is decided by MODEL DATA this record cannot see: the operands' declared component SETS after
+ * optional Base-Year supplementation ({@code DateFormat.hasSameComponents}), and — the half that cost a live
+ * over-rejection — which temporal CLASS each declaration selects ([KF271]), so a TIME field declared
+ * {@code yyyy-MM-dd} is a legal member of a DATE list. An over-strict copy of either refuses lists the kernel
+ * admits.
  */
 public record DateListAggregate(Mode mode, List<AggregateOperand> operands, ValueKind kind) implements Calculation {
 
@@ -59,14 +62,16 @@ public record DateListAggregate(Mode mode, List<AggregateOperand> operands, Valu
         }
         for (AggregateOperand operand : operands) {
             switch (operand) {
-                // The FIELD arm keeps a kind check: a field or field list KNOWS its kind, so a DATE list handed
-                // to the TIME factory must fail fast rather than mis-type the aggregate's RESULT operand. It
-                // checks the temporal CLASS rather than kind equality, because kind equality is broader than
-                // the kernel: `MaxValue(<DATE yyyy>, <DATEFRAGMENT yyyy>)` is admitted (measured), while a DATE
-                // beside a TIME or a DATETIME is refused — date-presence and time-presence are what separate
-                // the classes, and the remaining component-set agreement is model data the kernel arbitrates.
+                // The FIELD arm asks only whether the operand is date-like AT ALL — the routing question, whose
+                // answer picks between this class and the numeric `ListAggregate`, and the only part of it a
+                // kind can settle. It deliberately does NOT compare temporal classes: the class the kernel's
+                // gate reads is the DECLARED FORMAT's, not the kind's ([KF271]), and a `ValueKind` cannot see a
+                // declaration — so a class comparison here refuses lists the kernel admits, measured on
+                // `MaxValue(<TIME yyyy-MM-dd>, <DATE yyyy-MM-dd>)` and its DATETIME twin
+                // (`validate.laws.TemporalAggregateComponentSetLawsTest`, 2026-09-07). Both the exact class
+                // agreement and the component-set agreement are model data the kernel arbitrates.
                 case FieldOperand f -> {
-                    if (temporalClassOf(f.kind()) != temporalClassOf(kind)) {
+                    if (!isDateLike(f.kind())) {
                         throw new IllegalArgumentException(mode.operatorId() + " was built for " + kind
                                 + " but " + f.renderedPath() + " is " + f.kind());
                     }
@@ -83,15 +88,23 @@ public record DateListAggregate(Mode mode, List<AggregateOperand> operands, Valu
         ListAggregate.checkNoDuplicates(mode.operatorId(), operands);
     }
 
+    /** Whether a kind can carry a date-like value at all — the routing question, and all a kind can answer. */
+    private static boolean isDateLike(ValueKind kind) {
+        return kind == ValueKind.DATE || kind == ValueKind.DATE_FRAGMENT
+                || kind == ValueKind.TIME || kind == ValueKind.DATE_TIME;
+    }
+
     /**
-     * The operand's temporal comparability class — what the kernel's gate separates before it compares
-     * component sets. DATE and DATE_FRAGMENT share one class (both carry a date and no clock); TIME and
-     * DATE_TIME are their own. Anything else has no class and can never match a date-like factory.
+     * Collapse DATE_FRAGMENT into the DATE class — the one class fact a bare {@link ValueKind} settles, since a
+     * date fragment carries a date and no clock and the kernel admits a list mixing the two kinds (measured,
+     * {@code validate.laws.TemporalAggregateComponentSetLawsTest}).
      *
-     * <p>Public because the READ path needs the identical notion: the adapter decides whether a kernel
-     * {@code MaxValue}/{@code MinValue} is temporal, and a classifier keyed on kind EQUALITY there refuses to
-     * read back the very cross-kind list this class admits (cold review 2026-08-24). One definition, both
-     * directions — the alternative was a second copy that could drift from this one.
+     * <p><b>This is NOT the operand's comparability class, and it must not be used as one.</b> The class the
+     * kernel's gate reads is selected by the DECLARED FORMAT ([KF271]) — a TIME field declared
+     * {@code yyyy-MM-dd} sits in the DATE class — which no function of a kind can see. The READ path composes
+     * this with {@link FieldInfo#temporalClass()}, which resolves the declaration first; this class's own
+     * authoring gate asks only {@link #isDateLike}. Public for that composition (2026-08-24), narrowed to it
+     * after a class comparison keyed on kind alone was measured refusing kernel-admitted lists (2026-09-07).
      */
     public static ValueKind temporalClassOf(ValueKind kind) {
         return kind == ValueKind.DATE_FRAGMENT ? ValueKind.DATE : kind;
