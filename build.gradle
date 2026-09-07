@@ -214,6 +214,11 @@ tasks.register('leakGuardTest', Test) {
     filter {
         includeTestsMatching 'io.github.mbackschat.a12.dm.PrivateMarkerLeakGuardTest'
         includeTestsMatching 'io.github.mbackschat.a12.dm.TrackedOutputGuardTest'
+        // The PreToolUse long-run hook, driven end to end through its selftest. It belongs in an always-run
+        // task rather than an input-declared one: its subject is a shell script plus a hook config in TWO
+        // harness directories (.claude and .codex), and an input list over that spread is exactly the "files
+        // someone remembered" denominator the comment below rejects for the JDK pin.
+        includeTestsMatching 'io.github.mbackschat.a12.dm.LongRunGuardScriptTest'
         // Derived denominator, so it belongs in the always-run task: an authored list of pin consumers can
         // only ever check the files someone remembered, which is how the committed .envrc re-encoded the pin
         // unnoticed while a six-entry list read as a complete guard.
