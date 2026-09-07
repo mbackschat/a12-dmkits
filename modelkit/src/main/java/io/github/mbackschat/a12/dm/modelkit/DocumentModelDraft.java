@@ -452,6 +452,9 @@ public final class DocumentModelDraft {
                 if (n.maxIntegerDigits() != null) {
                     inner.put("maxIntegerDigits", n.maxIntegerDigits());
                 }
+                if (n.positivesOnly()) {
+                    inner.put("positivesOnly", true);
+                }
             }
             case FieldTypeSpec.DateSpec d -> {
                 ObjectNode inner = fieldType.putObject("DateType");
@@ -476,9 +479,17 @@ public final class DocumentModelDraft {
                 // STANDARD has no DM-JSON spelling: the kernel's deserializer refuses the token and reads an
                 // ABSENT key as the default, so the key is written only for FROM/TO.
                 dr.interpretationOfYear().json().ifPresent(v -> inner.put("interpretationOfYear", v));
+                if (dr.rejectBefore1900()) {
+                    inner.put("youngerThan1900Check", true);
+                }
             }
-            case FieldTypeSpec.DateFragmentSpec df ->
-                    fieldType.putObject("DateFragmentType").put("formatOfFragment", df.fragmentFormat());
+            case FieldTypeSpec.DateFragmentSpec df -> {
+                ObjectNode inner = fieldType.putObject("DateFragmentType");
+                inner.put("formatOfFragment", df.fragmentFormat());
+                if (df.rejectBefore1900()) {
+                    inner.put("youngerThan1900Check", true);
+                }
+            }
             case FieldTypeSpec.TypeDefRef ref ->
                     fieldType.putObject("TypeDefType").put(DmKeys.TYPE_DEFINITION_ID, ref.typeDefinitionId());
             case FieldTypeSpec.BooleanSpec b -> { /* bare */ }
@@ -590,6 +601,7 @@ public final class DocumentModelDraft {
                 copyInt(c, "maxIntegerDigits", b, "maxIntegerDigits");
                 if (c.path("zeroNotAllowed").asBoolean(false)) b.put("zeroNotAllowed", true);
                 if (c.path("leadingZerosAllowed").asBoolean(false)) b.put("leadingZerosAllowed", true);
+                if (c.path("positivesOnly").asBoolean(false)) b.put("positivesOnly", true);
                 if (!b.isEmpty()) out.set("number", b);
             }
             case "EnumerationType" -> {
@@ -640,11 +652,13 @@ public final class DocumentModelDraft {
                 // Absent when the declaration omits it, which is how STANDARD is expressed — so the read block
                 // stays a legal `field add`/`field modify` input in both cases.
                 copyText(c, "interpretationOfYear", b, "interpretationOfYear");
+                if (c.path("youngerThan1900Check").asBoolean(false)) b.put("rejectBefore1900", true);
                 if (!b.isEmpty()) out.set("dateRange", b);
             }
             case "DateFragmentType" -> {
                 ObjectNode b = MAPPER.createObjectNode();
                 copyText(c, "formatOfFragment", b, "format");
+                if (c.path("youngerThan1900Check").asBoolean(false)) b.put("rejectBefore1900", true);
                 if (!b.isEmpty()) out.set("dateFragment", b);
             }
             case "CustomFieldType" -> {

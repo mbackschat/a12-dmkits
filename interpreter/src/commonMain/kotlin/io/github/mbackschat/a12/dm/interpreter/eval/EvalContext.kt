@@ -40,8 +40,9 @@ interface EvalContext {
      * Whether a NUMBER field is *signed* (the kernel's `hatVorzeichen` — it permits negative values). This
      * drives the **directional** value-vs-omission typing: an empty number can always be filled bigger
      * (`kannGroesserWerden`), but can be filled smaller only if signed (`kannKleinerWerden = hatVorzeichen`,
-     * kernel `RuntimeController.feldWertAlsZahl`). Defaults to signed — the common case (a number field with
-     * no non-negative `minValue`); the general [Document] answers it from the model's unsigned-field set.
+     * kernel `RuntimeController.feldWertAlsZahl`). Defaults to signed — the kernel's own default, since
+     * `NumberType.positivesOnly` defaults to false and is the only input to `hasSign`; the general [Document]
+     * answers it from the model's unsigned-field set.
      */
     fun signed(path: String): Boolean = true
 

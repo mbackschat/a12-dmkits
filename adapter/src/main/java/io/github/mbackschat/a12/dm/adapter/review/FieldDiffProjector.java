@@ -157,8 +157,12 @@ final class FieldDiffProjector {
                 // reports no change — the record component is new, and adding one does not break the sealed
                 // switch's exhaustiveness, so the compiler gave no signal.
                 aspects.put("interpretationOfYear", range.interpretationOfYear().name());
+                aspects.put("rejectBefore1900", Boolean.toString(range.rejectBefore1900()));
             }
-            case FieldTypeSpec.DateFragmentSpec fragment -> put(aspects, "format", fragment.fragmentFormat());
+            case FieldTypeSpec.DateFragmentSpec fragment -> {
+                put(aspects, "format", fragment.fragmentFormat());
+                aspects.put("rejectBefore1900", Boolean.toString(fragment.rejectBefore1900()));
+            }
             case FieldTypeSpec.TypeDefRef reference -> aspects.put("typeDefinition", reference.typeDefinitionId());
             case FieldTypeSpec.BooleanSpec ignored -> { }
             case FieldTypeSpec.ConfirmSpec ignored -> { }
@@ -193,6 +197,7 @@ final class FieldDiffProjector {
         putDecimal(aspects, "max", number.maxValue());
         aspects.put("zeroNotAllowed", Boolean.toString(number.zeroNotAllowed()));
         aspects.put("leadingZerosAllowed", Boolean.toString(number.leadingZerosAllowed()));
+        aspects.put("positivesOnly", Boolean.toString(number.positivesOnly()));
         if (number.trait() != null) {
             aspects.put("unit", number.trait().name());
         }

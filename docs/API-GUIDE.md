@@ -1264,6 +1264,28 @@ DocumentModelDraft draft = permit()
 
 This emits A12's `DateType.youngerThan1900Check`; the CLI peer is `"date":{"rejectBefore1900":true}`. It applies to stored values and any authorable computed target. Do not infer that a computation may target the partial precision shown above: kernel 30.8.1 rejects `DAY_OPTIONAL`, `MONTH_OPTIONAL`, and `YEAR_OPTIONAL` computation targets because the computation's generated implicit comparison reads the partial target as a value (`MVK_INVALID_DATE_TYPE`), and that code is not suppressible (finding 108 / IF237).
 
+**That check requires the declared format to carry a YEAR**, and the requirement is the format's rather than the kind's: over the kernel's admitted vocabulary it is accepted on `yyyy`, `yyyy-MM`, `yyyyMM`, `yyyy-MM-dd`, `dd.MM.yyyy`, `yyyyMMdd` and `yyyy-MM-dd'T'HH:mm:ss`, and refused `MVK_ADDITIONAL_CHECK_INVALID` on the year-free `MM`, `MM-dd`, `MMdd`, `ddMM` and `HH:mm:ss`. Incompleteness is not the trigger — `yyyy` carries no day and is accepted. The builder does not pre-check it: the kernel's own diagnostic carries a curated corrective naming the accepted formats (`StructuralKernelFix`), and a client-side refusal would also fire on the READ path, making an inconsistent-but-present model unreadable rather than merely unauthorable ([KF251](KERNEL-FINDINGS.md#kf251)).
+
+**The same check rides two further declarations, and a Number can be declared unsigned:**
+
+<!-- snippet: unsigned-and-pre-1900-carriers -->
+```java
+DocumentModelDraft draft = permit()
+        .rootGroup("Permit", group -> group
+                .numberField("Deposit", n -> n.fractionDigits(2).positivesOnly())
+                .numberField("Adjustment", n -> n.fractionDigits(2))
+                .dateFragmentField("BilledMonth", f -> f.fragmentFormat("yyyy-MM").rejectBefore1900())
+                .dateFragmentField("NotedMonth", f -> f.fragmentFormat("yyyy-MM"))
+                .dateRangeField("CoverWindow",
+                        r -> r.format("dd.MM.yyyy").separator("-").rejectBefore1900())
+                .dateRangeField("NotedWindow", r -> r.format("dd.MM.yyyy").separator("-")))
+        .build();
+```
+
+`positivesOnly()` emits A12's `NumberType.positivesOnly` (CLI: `"number":{"positivesOnly":true}`), which is the **only** input to the runtime's `hatVorzeichen` — a non-negative `min` bounds the value without changing the sign polarity. Two consequences, both measured: a minus is the formal error `zahlMitVorzeichen`, and an *empty* unsigned number can be filled bigger but never smaller, so a directional comparison over it types VALUE where a signed one types OMISSION. A minus on a **zero** magnitude reports the sign class rather than `zahlNullEnthaeltVorzeichen`, so the two are alternatives rather than a precedence pair.
+
+`DateFragmentFieldBuilder.rejectBefore1900()` and `DateRangeFieldBuilder.rejectBefore1900()` (CLI: `"dateFragment"`/`"dateRange"` `{"rejectBefore1900":true}`) carry the check on the other two declarations. **They do not share the year co-requirement.** The fragment kind reproduces the DATE gate exactly, while a DATERANGE takes the check on every admitted `(format, separator)` pair — the year-free ones included, where it then measures the model's base-year completion. So if you need a year-free period guarded against pre-1900 dates, declare it as a range; there is no year-free DATE or DATEFRAGMENT that will hold the flag ([KF276](KERNEL-FINDINGS.md#kf276)).
+
 A **date RANGE** adds one property beyond format and separator: `interpretationOfYear` decides which endpoint of a *wrapping* yearless range keeps the base year. Without it, an ordinary winter cover window (`01.11-31.01` on a `dd.MM` range) reads as start-after-end and is reported invalid. The direction is the reverse of what the names suggest — the value names the endpoint the base year **labels**, and the opposite endpoint moves:
 
 <!-- snippet: date-range-year-interpretation -->

@@ -509,7 +509,12 @@ class TemporalFormatVocabularyGuardTest {
                     + "TemporalDeclarationConfigAdmissionLawsTest.java",
             "its DateType-config grids are the measured BASIS a client-side refusal may key on, and both "
                     + "gates read the format's components — so a short axis would narrow that basis silently, "
-                    + "in the one direction where over-rejection makes a legal model unauthorable");
+                    + "in the one direction where over-rejection makes a legal model unauthorable",
+            "src/test/java/io/github/mbackschat/a12/dm/rulekit/validate/laws/"
+                    + "TemporalAdditionalCheckCarrierLawsTest.java",
+            "its FRAGMENT grid carries the same year gate on a second carrier, and the claim that the two "
+                    + "carriers AGREE is only as strong as its axis — a short one would make the agreement a "
+                    + "coincidence of the formats that happened to be listed");
 
     private static final String REGION_START = "VOCABULARY-GRID-START";
     private static final String REGION_END = "VOCABULARY-GRID-END";

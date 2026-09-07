@@ -482,7 +482,7 @@ Surfaced by the **differential fuzz net** (`adapter.perf.InterpreterKernelFuzzTe
 - **A leading plus is a formal error** — `+5`, `+0`, `+0.5` → **`zahlMitPlus`** (distinct from `zahlHatUngueltigeZeichen`; the explicit `+` is its own error, not "invalid characters").
 - **Ordering: signed-zero is checked BEFORE the decimal-separator/scale checks.** `-0.0` on a **scale-0** field is `zahlNullEnthaeltVorzeichen`, *not* `zahlHatDezimalTrenner` — so a malformed value can match several checks and the kernel's precedence matters. (Leading-plus likewise wins over signed-zero: `+0` → `zahlMitPlus`.)
 
-Both ride `formalePruefung` (the sentinel rule path) like the other formal errors, and suppress a referencing author rule (branch-scoped). *(Locked: `adapter.laws.NumberSignFormalDiffTest` — interp vs kernel over a scale-2 and a scale-0 field; the precedence is part of the lock.)*
+Both ride `formalePruefung` (the sentinel rule path) like the other formal errors, and suppress a referencing author rule (branch-scoped). *(Locked: `adapter.laws.NumberSignFormalDiffTest` — interp vs kernel over a scale-2 and a scale-0 field; the precedence is part of the lock. **Entry-point scope, stated 2026-09-07:** the fuzz net and that lock both build the instance from direct cell values (`IDocumentFactory.createFieldInstance(path, reps, value)`, where `ValidationData.getValue` returns the string unchanged), so these two classes are reachable on THAT route. A12's own Document-JSON ingress canonicalises the value first and neither is reachable through it — measured in [KF276](#kf276), which is where the route boundary lives.)*
 
 ## §3 supplement — BASELINE value checks run for EVERY kind before the type format: charset + leading/trailing blank (probe + source, 2026-06-26) <a id="kf32"></a>
 
@@ -580,7 +580,7 @@ The number format checks fire in ONE fixed sequence (the kernel returns on the f
 | 2 | invalid chars | `zahlHatUngueltigeZeichen` | not a number |
 | 3 | > 15 total digits | `stelligkeitZuLang` | int+frac digits > 15 (fires even pre-`fullCheck`) |
 | 4 | signed zero | `zahlNullEnthaeltVorzeichen` | `-0` on a signed, zero-allowed field |
-| 5 | minus on unsigned | `zahlEnthaeltVorzeichen` | a `-` on a `positivesOnly` field |
+| 5 | minus on unsigned | `zahlMitVorzeichen` | a `-` on a `positivesOnly` field |
 | 6 | separator in integer field | `zahlHatDezimalTrenner` | a `.` where scale = 0 |
 | 7 | missing separator | `zahlOhneDezimalTrenner` | `minFractionalDigits` > 0 but no `.` |
 | 8 | wrong # decimals | `zahlFalscheAnzahlNachkommastellen` | too few OR too many fractional digits |
@@ -591,6 +591,8 @@ The number format checks fire in ONE fixed sequence (the kernel returns on the f
 | 13 | value too long | `zahlZuLang` | string length > `maxLength` |
 | 14 | below min | `zahlZuKlein` | value < `minValue` |
 | 15 | above max | `zahlZuGross` | value > `maxValue` |
+
+**Corrected 2026-09-07 ([KF276](#kf276)): row 5's code was the Java CONSTANT name, and rows 4/5/10 are not a chain.** The surfaced code is `zahlMitVorzeichen` (`IFormaleFehlerConstants.FEHLER_ZAHL_ENTHAELT_VORZEICHEN`'s *value*); the earlier `zahlEnthaeltVorzeichen` occurs nowhere in the kernel, so a consumer matching it never matched anything. And the signed-zero check conjoins `nullErlaubt && hatVorzeichen`, so it is DISJOINT from row 5 (an unsigned field) and from row 10 (a zero-forbidding field) rather than preceding either — which also makes "4 beats 6" hold only on a zero-permitting declaration. KF276 carries the grid and the money-trait exception nested inside row 5.
 
 Two traps this order encodes (probe-verified, IF70): **zero-not-allowed (10) fires AFTER the decimal (7-8) and integer-cap (9) checks** — so a `0` on a `zeroNotAllowed`+`minFractionalDigits` field is `zahlOhneDezimalTrenner`, not `zahlIstNull`; and **leading-zeros (11) is the LAST format check** — every earlier check beats it (`07.5` on a scale-0 field is `zahlHatDezimalTrenner`, not `zahlHatFuehrendeNullen`; `0007` over an integer cap is `zahlZuvieleVorkommastellen`). Interpreter: INTERPRETER-FINDINGS IF70 (reordered `numberConstraintError` to this sequence, moved `leadingZeros` out of the parse-level `numberFormalError`), differential-locked by `adapter.laws.FieldConstraintFormalDiffTest` (the precedence matrix, each case pinning the kernel winner) + multiplatform `interpreter.NumberDigitFormalTest`.
 
@@ -5149,3 +5151,139 @@ It does, at all three gates measured, and **each reports a different class**:
 **Unmeasured:** what an admitted `index(…).value` **renders**, the German arm, the Enumeration index field that would admit the category form, a composed index (whose own `INVALID_INDEX_FIELD_COMPOSED_INDEX` class the peer's source read names and no row here reaches), and the computation carrier.
 
 *(Locked: `validate.laws.RuleMessageIndexTerminalLawsTest` — the admission and the suffix pair, the four-argument sweep, the three spelling rows, the category alternative, and the root-error-field row, each parameter-free control admitted alongside.)*
+
+## §3/§6 supplement — the unsigned-number sign class, and the pre-1900 check on its two other declaration carriers (kernel `validateFull` + `checkConsistency`, tri-engine, 2026-09-07) <a id="kf276"></a>
+
+> Fold: pending — the sign half corrects [KF37](#kf37)'s ladder in place and folds into §3; the temporal half extends [KF251](#kf251) onto the two carriers its grid never covered and folds into §6 with it.
+
+Three declaration knobs the kernel honours were unauthorable here until this change, so an external consumer was hand-patching them into raw DM JSON: `NumberType.positivesOnly`, `DateFragmentType.youngerThan1900Check` and `DateRangeType.youngerThan1900Check`. Making them authorable turned up four facts, each with a within-model control.
+
+**`positivesOnly` is the runtime's `hatVorzeichen`, and it is the ONLY input to it.** `TypeConverter` sets `hasSign(!positivesOnly)`; a non-negative `minValue` does not make a field unsigned at runtime (that pairing belongs to the kernel's static date-construction gate, `CheckBaseDateConstructionImpl`). A minus on an unsigned field is **`zahlMitVorzeichen`** — the code [KF37](#kf37) row 5 spelled `zahlEnthaeltVorzeichen`, which is the Java CONSTANT name and occurs nowhere in the 30.8.1 checkout. *(Corrected 2026-09-07 in KF37 itself; reported by a12-kernel-lean's `SPEC-2026-09-07-13` and re-derived from `IFormaleFehlerConstants` here before the row was changed.)*
+
+**KF37's ladder positions 4/5/10 are not a precedence chain — two of the three orderings are unobservable.** The kernel conjoins `nullErlaubt && hatVorzeichen` before the signed-zero class, so it is DISJOINT from both its listed neighbours. One model, four fields differing only in the two builder calls:
+
+| declaration | `-0` / `-0.00` |
+|---|---|
+| signed, zero allowed | `zahlNullEnthaeltVorzeichen` |
+| unsigned, zero allowed | `zahlMitVorzeichen` |
+| signed, zero **forbidden** | `zahlIstNull` |
+| unsigned, zero forbidden | `zahlMitVorzeichen` |
+| unsigned, zero forbidden, **`trait:"amount"`** | `zahlIstNull` |
+
+The money row is a nested exception the kernel spells out inside the unsigned arm, and `-5.00` on that same declaration reporting `zahlMitVorzeichen` is the control that keeps it about the zero magnitude rather than about the trait. The disjointness also moves a neighbouring ordering: `-0.0` on a scale-0 field is the signed-zero class where zero is allowed and **`zahlHatDezimalTrenner`** where it is not, so KF37's "signed-zero beats the separator check" holds only on a zero-permitting declaration. Observably ahead of the sign class: `zahlMitPlus`, `zahlHatUngueltigeZeichen`, `stelligkeitZuLang`. Observably behind it: the separator, leading-zero, zero-not-allowed, length and range classes. `positivesOnly` beside a NEGATIVE `minValue` is kernel-VALID at model check, and the value refusal still fires — measured, because refusing that pairing client-side would have looked obviously right.
+
+**The pre-1900 check's year co-requirement holds on DATEFRAGMENT and NOT on DATERANGE.** [KF251](#kf251) measured the gate on `DateType` over the complete admitted vocabulary: `MVK_ADDITIONAL_CHECK_INVALID` unless the declared format carries a year. Re-run on the other two carriers, same denominators:
+
+| carrier | axis | verdict |
+|---|---|---|
+| `DateFragmentType` | the twelve admitted formats | identical to `DateType` — the five year-free spellings refused, the seven year-bearing admitted |
+| `DateRangeType` | all eight admitted `(format, separator)` pairs | **every pair admitted**, the four year-free ones included |
+
+So a checker enforcing the year co-requirement uniformly across the temporal kinds refuses four legal range declarations. Fragment agreement is measured rather than inherited, though the kernel's `TypeConverter.convertDateFragment` explains it: a fragment declaration becomes a `DateTypeImpl` carrying the flag.
+
+**On a year-free range the check reads the base-year completion — except for the pure `MM` pair, which reaches neither date-position check.** Two models differing in exactly the `baseYear` builder call: `dd.MM|-` and `MM-dd|/` fire `datumBereichDatumFalsch` under base year 1899 and are silent under 1901, with the plain twin silent in all four cells. `MM|/` and `MM|''` fire under neither, and under a base year of **1500** the plain twin is silent too — so the always-on 1583-10-16 floor is skipped as well, while the reversed value `09/06` still reports `datumBereichNichtGueltig`. That last row is the liveness control: two dates ARE produced and ordered, so this is not "no date exists". *(Mechanism, source-read and not measured: `DateUtil.completeDateAndFormat` appends the base year only when `formatContainsOnlyDayMonth(format)` — day AND month present, year absent — so a pure `MM` endpoint gets no year and parses at a year-less pattern's default. No formal row can distinguish that default from an exemption, because any year above 1900 satisfies both thresholds.)* The interpreter carries the rule as `rangePositionCheckYear`, applied to both position checks; its `parseRangeToIso` still completes every missing year with the base year, because the interval and wrap rules it feeds are measured that way.
+
+**The two sign classes are unreachable through A12's own Document-JSON ingress**, which is why a12-kernel-lean's 278 `validateFull` observations found neither: `-0.0`, `-0`, `-0e5` and `"-0.00"` all canonicalise to a sign-free zero with no code, and `"+5"` to `5`. `"-5"` keeps its sign, so the predicate is (a leading plus) or (a minus on a zero magnitude), not "the sign is dropped". Our own oracles reach both classes because they set cell values directly through `IDocumentFactory.createFieldInstance(path, reps, value)`, where `ValidationData.getValue` returns the string unchanged — two entry points, both correct.
+
+*(Locked: `adapter.laws.NumberUnsignedFormalDiffTest` — the sign grid, the zero 2×2 with its money row and magnitude control, and the ladder neighbours, all tri-engine; `adapter.laws.TemporalAdditionalCheckCarrierDiffTest` — the fragment and range runtime rows with their plain twins, the base-year 2×2, and the pure-`MM` exemption with its liveness control; `validate.laws.TemporalAdditionalCheckCarrierLawsTest` — both admission grids over their complete denominators, a registered completeness claimant of `TemporalFormatVocabularyGuardTest`; `adapter.laws.A12JsonIngressKernelTest` — the ingress sign rows; `cli.field.SignAndPre1900AuthoringVerbTest` — the authoring round-trips and the delegated co-requirement refusal with its range control.)*
+
+## §8/§12 supplement — `checkConsistency` has no route to the dynamic-enumeration derivation's twelve `MVK_DYNENUM_*` classes, and the restriction pair sits behind a third facade method (kernel facade, measured, 2026-09-07) <a id="kf277"></a>
+
+> Fold: not-foldable — reachability of kernel DIAGNOSTIC classes through the facade's derivation methods, an authoring/observability fact outside KERNEL-SEMANTICS's runtime-evaluation scope.
+
+**Two kernel derivations over a rule collection report problems no other route of ours can reach, and they are behind DIFFERENT methods.** a12-kernel-lean reported this as one ~14-class gap behind `mandatoryInformation()`'s discarding reporter; measured, it is two gaps behind two other methods, and the reported one has nothing to give.
+
+| derivation | facade method | its classes | reachable from `checkConsistency`? |
+|---|---|---|---|
+| dynamic enumerations | `getDynamicEnumerationStringValues` | the twelve `DynEnumErrorType` classes | no — see the caller enumeration below |
+| rule-driven model changes | `getChangesAsSpecifiedByRules` | `MVK_MAX_GROUP_RESTRICTION_TO_ONE`, and its H-model-only sibling `MVK_MAX_LFDNR_RESTRICTION_TO_ONE` | no — `CheckerFuerKontextEinschraenkung` / `CheckerFuerLfdNrEinschraenkung` are called only there |
+| mandatory information | `getMandatoryInformationFromRules` | the rule PARSER's, via `MVKParserProblemManager.transferProblems` | n/a — **empty on all THIRTEEN consistency-clean models probed** (each carrying one or two spliced rules), because a condition that parsed for the gate parses here too |
+
+So flipping the reported call's reporter surfaces nothing: the restriction checkers are not on its path, and its own channel is the one the original comment correctly called impossible. *(Our `MVK-LEDGER` had a matching error in the opposite direction, corrected the same day.)*
+
+**The caller enumeration, run here rather than carried — and it corrects the report's count while confirming its point.** `git grep` over the 30.8.1 checkout's tracked `*.java`/`*.kt`, delombok excluded, finds `DynamicEnumerationService` CONSTRUCTED at **two** sites, not one: `RuleCollectionMetaInformation:214` inside the collection method, and `ServiceFactory:107` — `getDynamicEnumerationService(IServiceConfiguration)`, which has **no in-kernel caller at all** and returns the public `IDynamicEnumerationService`, whose single method is a PER-RULE `checkDynamicEnumerationRule(ICondition, IRule, IProblemReporter)`. `checkDynamicEnumerationRule` itself is called only from inside the service. **The load-bearing fact is therefore not the count but the placement:** neither construction site sits on a `DocumentModelConsistencyRule`, so `checkConsistency`'s registered rules cannot reach the checker. Our `dynamicEnumerationDiagnostics(rule)` stays on the collection call for one rule anyway, because `checkAndExtractDynEnumInfo` runs the form check AND the extraction and so reports a superset of the facade's per-rule check.
+
+**The dyn-enum diagnostics are NOT defects — the derivation reports one per rule that is not a dynamic enumeration IN FORM,** which is nearly every ordinary rule. Two ordinary rules draw two; the count is per rule, not per model. Each way of being malformed draws its own class, which is what makes the channel informative rather than a boolean:
+
+| condition, error field `/Order/ProductCode` unless noted | class |
+|---|---|
+| `FieldFilled(/Order/ProductCode) And [/Order/ProductCode] != "PREMIUM"` — the canonical form | none; `valuesByField` carries `[PREMIUM]` |
+| `FieldFilled(/Order/ProductCode)` — an ordinary presence rule | `MVK_DYNENUM_INVALID_GATE` |
+| `FieldFilled(…) And FieldFilled(…)` — an ordinary conjunction | `MVK_DYNENUM_INVALID_CALCOP` |
+| the canonical form with `==` | `MVK_DYNENUM_INVALID_CALCOP_OP` |
+| a gate naming a field other than the rule's error field | `MVK_ERROR_WRONG_DYNENUM_FIELD` |
+| error field `/Order/UnitPrice` (`maxFractionalDigits: 2`) | `MVK_DYNENUM_INVALID_TYPE` |
+| `… != [/Order/CustomerName]` — a field on the right, no safe guard | `MVK_DYNENUM_INVALID_FIELD_REFERENCE` |
+
+**The canonical row is the load-bearing control, not a courtesy.** "One problem per non-dyn-enum rule" and "the derivation errors on everything" predict the same output on any suite of ordinary rules — the instrument confound — so a grid of malformed rows alone cannot separate them. A rule the derivation ACCEPTS, with its constants extracted, is what does. The field-type check also runs before the form check: a rule whose error entity is a GROUP draws `MVK_DYNENUM_INVALID_TYPE`, not the `_GATE` its bare-comparison condition would suggest.
+
+**Attribution is the kernel's own and usually absent.** The collection-wide call leaves the rule unnamed, because the kernel's problem carries a rule only where its message does; `KernelAdapter.dynamicEnumerationDiagnostics(ruleFullName)` asks about one rule and stamps the answer, which is the only shape in which the answer is attributable.
+
+**Both spellings of "restrict to one" reach the restriction class, with a live negative control.** A rule whose condition is a BARE `NumberOfFilledGroups(/Order/Items*)` comparison against a number constant: `> 1` and `>= 2` both fire (the checker decrements the `>=` literal), and `> 2` — a legal narrowing to 2 — reports nothing. The error entity must be the GROUP, because the checker visits only a top-level comparison while the consistency gate separately requires the error entity to appear in the condition.
+
+*(Locked: `adapter.laws.RuleCollectionDerivationDiagnosticLawsTest` — the canonical control, the six-class discriminator grid, the per-rule scaling, the attribution split, both restriction spellings with their control, and the class-family disjointness; `adapter.laws.KernelProbeDynamicEnumerationsTest` — the same derivation through the probe's `dynamicEnumerations` observation, its schema conformance, absence when unobserved, and byte-determinism. Surfaced as `KernelAdapter.dynamicEnumerations()` / `dynamicEnumerationDiagnostics(rule)` / `ruleDrivenModelChangeProblems()`; the probe capability is [KERNEL-PROBE-SPEC](KERNEL-PROBE-SPEC.md) "The `dynamicEnumerations` block".)*
+
+## §9 supplement — the entity-list arity gate is a DISJUNCTION whose group arm ignores the group's field count, and the entity-valued value list does not share it (`checkConsistency`, measured, 2026-09-07) <a id="kf278"></a>
+
+> Fold: pending — sharpens §9's entity-list operand rule; folds with the operand-arity paragraph.
+
+**`MVK_PARAMSIZE_INVALIDN` reads "There must be more than one field or at least one group defined", and it means it.** One repetition-list selector or one group selector satisfies the gate alone; one plain field does not. Five of our catalog entries name this gate and **two stated it without the group arm** (`Sum`, `FieldValuesNotUnique`) — measured on each of the two rather than widened from a sibling, because reuse across a carrier boundary is a claim.
+
+| operand list | verdict |
+|---|---|
+| a sole plain field | `MVK_PARAMSIZE_INVALIDN` |
+| two plain fields — the arity control | admitted |
+| a sole repetition-list selector (`Items*/Sku`) | admitted |
+| a sole plain group owning **two** same-kind fields | admitted |
+| a sole plain group owning exactly **one** field | admitted |
+| a sole starred **heterogeneous** group | `MVK_VARYING_TYPES_NOT_ALLOWED`, **not** the arity class |
+
+**The last two rows are the ones that carry information.** The heterogeneous group reached the KIND gate, which is proof it had already passed arity — so an implementation reading that refusal as "one group is too few" mis-states both gates. And **a group's own field count is not part of the rule** — an axis neither estate's clause named. "A group counts" and "a group whose expansion yields several fields counts" predict the same verdict on any fixture whose groups all own the same number of fields, so the pair is the discriminator: `/Order/BillingAddress` (one String) beside `/Order/ShippingAddress` (two), both admitted.
+
+**The entity-valued value list is a different family with a different arity: ONE field on each side is admitted.** Its own two gates still fire on the same fixture, so those admissions are gates passed rather than gates never reached — the same reference on both sides draws `MVK_DUPLICATE_PARAM1`, a crossed base kind `MVK_VARYING_TYPES_NOT_ALLOWED`. Carrying the entity-list rule across refuses a legal `(A In B)`.
+
+Reported as a prose correction by a12-kernel-lean's `SPEC-2026-09-07-11`; every row above is re-derived on our own fixtures, since a peer's measurement is their report and not a pin. *(Locked: `rulekit.validate.laws.EntityListSoleOperandArityLawsTest` — the five-row arity table with its control, the attribution split as a "this code and not that one" refusal, the value-list trio, and the two-carrier sweep on an authored all-numeric group. Catalog: the group arm added to `Sum` and `FieldValuesNotUnique`, the field-count clause to `FirstFilledValue`, the single-slot admission to `AtLeastOneFieldValueIncludedInValueList`.)*
+
+## §13 supplement — three message-surface gates a uniform reading gets wrong, and the two form-line parameters fault at runtime (`checkConsistency` + `validateFull`, tri-engine, 2026-09-07) <a id="kf279"></a>
+
+> Fold: pending — the three admission gates sharpen §13's parameter paragraph; the runtime fault is a kernel defect and folds nowhere.
+
+Three gates, each measured against a within-model twin differing in one variable. Every row below is re-derived on our own fixtures after a12-kernel-lean reported them as `SPEC-2026-09-07-12`, since a peer's measurement is their report and not a pin.
+
+**The template's character repertoire is the BMP, not printable ASCII.** Greek, Cyrillic, CJK and `U+FFFD` are all admitted in message text; a supplementary-plane code point is refused. The refusal carries **no class at all** and is identified only by its text — `The field contains one or several unsupported signs.`, which is the RUNTIME formal charset class's wording (`ZeichenNichtImZeichensatz`) and not the checker's own `WRONG_ENCODING`. So a consumer keying on a code loses it entirely. The model declares no `supportedCharacters`, so this is the empty-list ⇒ BMP rule reaching the template rather than an authored restriction.
+
+**`<field>.Vordruckzeile` and `<field>.Vordruckname` SKIP the field-membership gate.** One condition, one unreferenced field, three suffixes: the plain form draws `INVALID_FIELD` while both form-line suffixes are ADMITTED. The kernel's own `checkVordruckzeile`/`checkVordruckname` call only `checkValidFieldName`, never the membership check the plain form goes through — so a checker enforcing membership uniformly across name-position forms refuses two admitted ones.
+
+**The `.value` suffix has a second gate on the referenced field's DECLARATION.** A STRING declared `noValueValidation` refuses the suffix with `INVALID_NO_VALUE_VALIDATION`, its ordinary twin admits it, and the plain form on the same field is admitted — so the gate reads the declaration, not the parameter's shape. (Independent of the suffix's known non-starred-reference gate.)
+
+**And the bypass makes a kernel RUNTIME FAULT reachable.** On the admitted model above, both kernel strategies return the rule's message text as `An error occurred while evaluation the data check: Index 1 out of bounds for length 1`; the plain `$Reference$` parameter in the same message renders on every engine, so the fault is attributable to the form-line positions. The interpreter leaves the token verbatim — a characterized divergence we deliberately do not close, because there is no kernel behaviour to match ([IG150](INTERPRETER-GAPS.md)). This is the runtime case a12-kernel-lean's source-derived prediction (nothing raises `NO_VORDRUCKZEILE`, so an unguarded form-line path throws) did not have: a different carrier from the static `$RuleGroup.Vordruckzeile$` internal error they already held, and it throws.
+
+Not measured here, and therefore still their report alone: the parameter BODY's printable-ASCII bound and its `ÄÜÖäüöß` admissions, the gate ORDER between the charset check and `$` parity, and the remaining four gates of their entry (the `$#RootGroup$` parallel-iteration refusal, the group position's semantic-index key, the index terminal's cross-declaration consistency family, and the `STR`-initial dotted-name-part rule).
+
+*(Locked: `rulekit.validate.laws.RuleMessageAdmissionGateLawsTest` — the six-row repertoire table, the three-suffix membership table, and the value-suffix declaration trio, each with its control; `adapter.laws.RuleMessageFormLineParameterDiffTest` — the runtime fault on both kernel strategies with the interpreter's divergence and a within-message control.)*
+
+## §13 supplement — the `index(…)` message terminal cross-checks the RULE'S OWN CONDITION, admits `->Category` on an Enumeration index field, and one of its ten classes is structurally unreachable (`checkConsistency`, measured, 2026-09-08) <a id="kf280"></a>
+
+> Fold: pending — extends [KF275](#kf275)'s terminal with three more axes; folds with it into §13.
+
+[KF275](#kf275) measured this terminal's admitting spelling, its argument axis, and its case sensitivity. a12-kernel-lean's `SPEC-2026-09-07-10` read the checker and reported ten refusal classes where our entry carried three. Three of their added axes are measured here, each with a parameter-free control on the same rule so no refusal belongs to the route.
+
+**`->Category` is ADMITTED once the index field is an Enumeration, and the category NAME is gated.** KF275 could only show the alternative was live (`FIELD_NO_ENUM` on a String index field). With an ENUM index field carrying a declared category: `$index(Tier)->Band$` admitted, `$index(Tier)->Nope$` refused `INVALID_CATEGORY`, `$index(Tier).value$` admitted. So an Explain consumer must resolve a category mapping at this terminal, not only a stored value.
+
+**The parameter is cross-checked against the rule's own CONDITION** — the axis a checker reading the model alone cannot see. One model, one parameter, three conditions:
+
+| the condition's reference to the index field | verdict |
+|---|---|
+| plain (`FieldFilled(Claims/Tier)`) | admitted |
+| STARRED (`AtLeastOneFieldFilled(Claims*/Tier)`) | `INVALID_INDEX_FIELD_REP_ITER` |
+| `For`-keyed (`[Claims/Tier For "BASIC"]` as a presence handle) | `INVALID_INDEX_FIELD_REP_ITER` |
+
+Each refused row's own parameter-free message is admitted, so the condition is legal and the refusal is the parameter's. From a ROOT error field the starred shape draws `INVALID_INDEX_FIELD` instead — the error-entity-path gate fires first, consistent with KF275's root row.
+
+**`INVALID_INDEX_FIELD_NONREP_ENUM` is reachable, and reaching it exposed an over-rejection of OURS.** The kernel **admits** a non-repeatable group that carries an index field, and then refuses the parameter with that class. Our own `DocumentModelDraft.GroupBuilder.toDraft()` throws on the declaration, so the shape is unauthorable through the typed surface and the class was out of reach — recorded as [DG52](DEV-API-GAPS.md#dg52). **The sort-field sibling three lines away in the same method is the control:** a sort field on a non-repeatable group draws `MVK_INVALID_SORTINFO`, so exactly one of the two adjacent client-side refusals is over-broad.
+
+**`INVALID_INDEX_FIELD_COMPOSED_INDEX` is UNREACHABLE from any A12 document model** — not, as their entry reads it, an authoring limitation of `dmtool group modify --index-field`. Its trigger is `getIndexFieldNames().size() > 1`, and every link was attacked in the 30.8.1 checkout (tracked sources, `/build/` and delombok excluded): `md-model`'s `Group` declares `indexFieldNames` **final** and writes it in one place — its constructor, from a single nullable `String`; the name occurs exactly three times in the whole `kernel-md` tree (the `final` declaration plus the two writes in that constructor), with no setter or adder; that constructor has one caller, `ValidationModelConverter.createGroupFromGroupType`, which derives the name from `IGroup.getIndexField()`, an `Optional` of ONE reference. So the DM-model surface has no plural spelling to serialize and taking exactly one name is correct. *Recall limit: a source enumeration over the A12 path — another `IEC` implementation may populate several (which is consistent with the class existing), and a reflective writer would escape the search.*
+
+Still unmeasured: what an admitted `index(…)` of either suffix RENDERS, the German suffix on a German-condition model, the computation carrier, and the three cross-field consistency classes.
+
+*(Locked: `rulekit.validate.laws.RuleMessageIndexTerminalLawsTest` — the Enumeration/category table, the condition cross-check table with its per-row controls, the non-repeatable pair, and the composed-index enumeration as a typed-surface assertion.)*

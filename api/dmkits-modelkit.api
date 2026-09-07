@@ -23,6 +23,7 @@ public final class io.github.mbackschat.a12.dm.modelkit.DateFieldBuilder extends
 public final class io.github.mbackschat.a12.dm.modelkit.DateFragmentFieldBuilder extends io.github.mbackschat.a12.dm.modelkit.FieldAttrs<io.github.mbackschat.a12.dm.modelkit.DateFragmentFieldBuilder>
   public DateFragmentFieldBuilder()
   public io.github.mbackschat.a12.dm.modelkit.DateFragmentFieldBuilder fragmentFormat(java.lang.String)
+  public io.github.mbackschat.a12.dm.modelkit.DateFragmentFieldBuilder rejectBefore1900()
   protected io.github.mbackschat.a12.dm.modelkit.FieldTypeSpec spec()
 
 public enum io.github.mbackschat.a12.dm.modelkit.DatePrecision
@@ -38,6 +39,7 @@ public final class io.github.mbackschat.a12.dm.modelkit.DateRangeFieldBuilder ex
   public DateRangeFieldBuilder()
   public io.github.mbackschat.a12.dm.modelkit.DateRangeFieldBuilder format(java.lang.String)
   public io.github.mbackschat.a12.dm.modelkit.DateRangeFieldBuilder interpretationOfYear(io.github.mbackschat.a12.dm.modelkit.RangeYearInterpretation)
+  public io.github.mbackschat.a12.dm.modelkit.DateRangeFieldBuilder rejectBefore1900()
   public io.github.mbackschat.a12.dm.modelkit.DateRangeFieldBuilder separator(java.lang.String)
   protected io.github.mbackschat.a12.dm.modelkit.FieldTypeSpec spec()
 
@@ -313,20 +315,24 @@ public static record io.github.mbackschat.a12.dm.modelkit.FieldTypeSpec.CustomSp
 
 public static record io.github.mbackschat.a12.dm.modelkit.FieldTypeSpec.DateFragmentSpec implements io.github.mbackschat.a12.dm.modelkit.FieldTypeSpec
   public DateFragmentSpec(java.lang.String)
+  public DateFragmentSpec(java.lang.String, boolean)
   public final boolean equals(java.lang.Object)
   public java.lang.String fragmentFormat()
   public final int hashCode()
   public java.lang.String jsonType()
+  public boolean rejectBefore1900()
   public final java.lang.String toString()
 
 public static record io.github.mbackschat.a12.dm.modelkit.FieldTypeSpec.DateRangeSpec implements io.github.mbackschat.a12.dm.modelkit.FieldTypeSpec
   public DateRangeSpec(java.lang.String, java.lang.String)
   public DateRangeSpec(java.lang.String, java.lang.String, io.github.mbackschat.a12.dm.modelkit.RangeYearInterpretation)
+  public DateRangeSpec(java.lang.String, java.lang.String, io.github.mbackschat.a12.dm.modelkit.RangeYearInterpretation, boolean)
   public final boolean equals(java.lang.Object)
   public java.lang.String format()
   public final int hashCode()
   public io.github.mbackschat.a12.dm.modelkit.RangeYearInterpretation interpretationOfYear()
   public java.lang.String jsonType()
+  public boolean rejectBefore1900()
   public java.lang.String separator()
   public final java.lang.String toString()
 
@@ -386,6 +392,7 @@ public static record io.github.mbackschat.a12.dm.modelkit.FieldTypeSpec.EnumValu
 public static record io.github.mbackschat.a12.dm.modelkit.FieldTypeSpec.NumberSpec implements io.github.mbackschat.a12.dm.modelkit.FieldTypeSpec
   public NumberSpec(java.lang.Integer, java.lang.Integer, java.math.BigDecimal, java.math.BigDecimal, boolean, boolean, io.github.mbackschat.a12.dm.modelkit.NumberTrait)
   public NumberSpec(java.lang.Integer, java.lang.Integer, java.math.BigDecimal, java.math.BigDecimal, boolean, boolean, io.github.mbackschat.a12.dm.modelkit.NumberTrait, java.lang.Integer, java.lang.Integer, java.lang.Integer)
+  public NumberSpec(java.lang.Integer, java.lang.Integer, java.math.BigDecimal, java.math.BigDecimal, boolean, boolean, io.github.mbackschat.a12.dm.modelkit.NumberTrait, java.lang.Integer, java.lang.Integer, java.lang.Integer, boolean)
   public NumberSpec(java.lang.Integer, java.math.BigDecimal, java.math.BigDecimal)
   public static io.github.mbackschat.a12.dm.modelkit.FieldTypeSpec.NumberSpec.Builder builder()
   public final boolean equals(java.lang.Object)
@@ -399,6 +406,7 @@ public static record io.github.mbackschat.a12.dm.modelkit.FieldTypeSpec.NumberSp
   public java.lang.Integer minFractionalDigits()
   public java.lang.Integer minLength()
   public java.math.BigDecimal minValue()
+  public boolean positivesOnly()
   public final java.lang.String toString()
   public io.github.mbackschat.a12.dm.modelkit.NumberTrait trait()
   public boolean zeroNotAllowed()
@@ -414,6 +422,7 @@ public static final class io.github.mbackschat.a12.dm.modelkit.FieldTypeSpec.Num
   public io.github.mbackschat.a12.dm.modelkit.FieldTypeSpec.NumberSpec.Builder minFractionalDigits(java.lang.Integer)
   public io.github.mbackschat.a12.dm.modelkit.FieldTypeSpec.NumberSpec.Builder minLength(java.lang.Integer)
   public io.github.mbackschat.a12.dm.modelkit.FieldTypeSpec.NumberSpec.Builder minValue(java.math.BigDecimal)
+  public io.github.mbackschat.a12.dm.modelkit.FieldTypeSpec.NumberSpec.Builder positivesOnly(boolean)
   public io.github.mbackschat.a12.dm.modelkit.FieldTypeSpec.NumberSpec.Builder trait(io.github.mbackschat.a12.dm.modelkit.NumberTrait)
   public io.github.mbackschat.a12.dm.modelkit.FieldTypeSpec.NumberSpec.Builder zeroNotAllowed(boolean)
 
@@ -763,6 +772,7 @@ public final class io.github.mbackschat.a12.dm.modelkit.NumberFieldBuilder exten
   public io.github.mbackschat.a12.dm.modelkit.NumberFieldBuilder maxLength(int)
   public io.github.mbackschat.a12.dm.modelkit.NumberFieldBuilder min(java.lang.String)
   public io.github.mbackschat.a12.dm.modelkit.NumberFieldBuilder minLength(int)
+  public io.github.mbackschat.a12.dm.modelkit.NumberFieldBuilder positivesOnly()
   protected io.github.mbackschat.a12.dm.modelkit.FieldTypeSpec spec()
   public io.github.mbackschat.a12.dm.modelkit.NumberFieldBuilder unit(io.github.mbackschat.a12.dm.modelkit.NumberTrait)
   public io.github.mbackschat.a12.dm.modelkit.NumberFieldBuilder zeroNotAllowed()

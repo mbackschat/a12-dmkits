@@ -23,6 +23,7 @@ This is the append-only registry for every `IAG<n>` and `IRG<n>` identifier issu
 | IAG15 <a id="iag15"></a> | shipped | cross-check the two published message-address projections without adding interpreter API |
 | IG148 <a id="ig148"></a> | shipped → [IF323](INTERPRETER-FINDINGS.md#if323) | the rule-message `$#…$` group parameter is not implemented and renders verbatim |
 | IG149 <a id="ig149"></a> | shipped → [IF327](INTERPRETER-FINDINGS.md#if327) | the fragment runtime completion is measured only on the four conventional formats, and the kind admits all twelve |
+| IG150 <a id="ig150"></a> | out-of-scope | the two form-line message parameters render verbatim, and both kernel strategies fault on them |
 | IG146 <a id="ig146"></a> | shipped → [IF315](INTERPRETER-FINDINGS.md#if315) | the compute path's over-repetition relevance tested group paths against a set of field paths, so the over-limit ROW code never reached the operand channel |
 | IG147 <a id="ig147"></a> | shipped → [IF326](INTERPRETER-FINDINGS.md#if326) | an unresolvable temporal constant is an operand error with no outcome for the Kernel and an ERRORED outcome for the interpreter |
 | IG145 <a id="ig145"></a> | shipped → [IF325](INTERPRETER-FINDINGS.md#if325) | `formatPointer` drops a repeatable GROUP node's own row index, collapsing addresses the Kernel distinguishes |

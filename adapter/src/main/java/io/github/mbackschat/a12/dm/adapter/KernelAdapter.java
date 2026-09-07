@@ -613,6 +613,109 @@ public final class KernelAdapter {
     }
 
     /**
+     * The kernel's <b>dynamic-enumeration derivation</b> over this model's rule collection, with its problems
+     * KEPT: the field→allowed-values map the kernel extracts, and every diagnostic it reported while doing so
+     * ({@code IRuleCollectionMetaInformation.getDynamicEnumerationStringValues}).
+     *
+     * <p><b>Why this exists as a separate method rather than a flag on {@link #mandatoryInformation()}.</b>
+     * {@code DynamicEnumerationService} — the kernel's dyn-enum checker, whose {@code DynEnumErrorType} declares
+     * twelve {@code MVK_DYNENUM_*}/{@code MVK_ERROR_*} classes — is CONSTRUCTED at two sites in the 30.8.1
+     * checkout: this facade method, and {@code ServiceFactory.getDynamicEnumerationService(…)}, which has no
+     * in-kernel caller at all and exists to hand a per-rule {@code checkDynamicEnumerationRule} to external
+     * consumers. Neither site sits on a {@code DocumentModelConsistencyRule}, so no consistency-gate route can
+     * report any of those twelve however the model is shaped. (Enumerated here, 2026-09-08, over the checkout's
+     * tracked sources with delombok trees excluded, after a12-kernel-lean reported it as one caller: their
+     * substantive point holds and the count does not.) The mandatory-information sibling reports
+     * PARSER problems through a different mechanism, and a rule may have a perfectly valid condition while
+     * still not being a well-formed dynamic enumeration — so the two derivations' diagnostics are neither the
+     * same set nor obtainable from one call. Reported to us by a12-kernel-lean, 2026-09-07.
+     *
+     * <p>The rule collection is the kernel's own and unfiltered, for the same reason
+     * {@link #mandatoryInformation()} gives: filtering would insert an editorial choice of ours into a kernel
+     * measurement. Diagnostics are attributed to the rule path only where the kernel's own message names one;
+     * it usually does not, so the attribution is the model.
+     */
+    public DynamicEnumerations dynamicEnumerations() {
+        List<Diagnostic> diagnostics = new ArrayList<>();
+        java.util.Map<String, List<String>> values =
+                new ServiceFactory().getRuleCollectionMetaInformation(mvk)
+                        .getDynamicEnumerationStringValues(new ArrayList<>(elements.getAllRules()),
+                                // null lets Diagnostic.fromKernel attribute from the kernel's OWN message,
+                                // which names the offending rule when it knows one. Passing a model-level
+                                // path would overwrite that with something less specific.
+                                problem -> diagnostics.add(KernelDiagnostics.enriched(
+                                        KernelNotifications.toCore(problem), null)));
+        java.util.Map<String, List<String>> sortedValues = new java.util.TreeMap<>();
+        values.forEach((field, allowed) -> sortedValues.put(field, List.copyOf(allowed)));
+        return new DynamicEnumerations(java.util.Collections.unmodifiableMap(sortedValues),
+                List.copyOf(diagnostics));
+    }
+
+    /**
+     * The dyn-enum derivation's verdict on <b>one</b> rule — "is this rule a well-formed dynamic
+     * enumeration?", which is the question a consumer actually has, and the only shape in which the answer is
+     * attributable.
+     *
+     * <p><b>Read {@link #dynamicEnumerations()}'s diagnostics with this in mind: the derivation checks EVERY
+     * rule and reports one problem for each that is not a dynamic enumeration in form.</b> An ordinary
+     * single-leaf rule draws {@code MVK_DYNENUM_INVALID_GATE} and an ordinary conjunction
+     * {@code MVK_DYNENUM_INVALID_CALCOP} (measured), so on a model of ordinary rules the collection-wide call
+     * returns roughly one diagnostic per rule and none of them is a defect. They mean "not a dynamic
+     * enumeration", not "malformed" — which is why this channel is a measurement surface and neither
+     * {@code model check} nor {@code rule check} reports it.
+     */
+    public ValidationResult dynamicEnumerationDiagnostics(String ruleFullName) {
+        List<Diagnostic> diagnostics = new ArrayList<>();
+        new ServiceFactory().getRuleCollectionMetaInformation(mvk)
+                .getDynamicEnumerationStringValues(new ArrayList<>(List.of(rule(ruleFullName))),
+                        problem -> diagnostics.add(KernelDiagnostics.enriched(
+                                KernelNotifications.toCore(problem), ruleFullName)));
+        return ValidationResult.of(diagnostics);
+    }
+
+    /**
+     * The <b>rule-driven model changes</b> a rule collection specifies — a repeatability a rule narrows below
+     * the declared one — reported as the problems that derivation raises rather than as the changes themselves,
+     * which nothing here consumes ({@code IRuleCollectionMetaInformation.getChangesAsSpecifiedByRules}).
+     *
+     * <p><b>This is the other half of the reachability gap, and it is NOT behind
+     * {@link #mandatoryInformation()}'s reporter.</b> That method's only problem source is the rule parser
+     * ({@code parseBedingungExpand} → {@code MVKParserProblemManager.transferProblems}); the two
+     * rule-collection restriction classes — {@code MVK_MAX_GROUP_RESTRICTION_TO_ONE} and its H-model sibling
+     * {@code MVK_MAX_LFDNR_RESTRICTION_TO_ONE} — are raised by {@code CheckerFuerKontextEinschraenkung} /
+     * {@code CheckerFuerLfdNrEinschraenkung}, which only THIS facade method calls. Measured 2026-09-07: a
+     * collecting reporter on {@code getMandatoryInformationFromRules} returns nothing on any of THIRTEEN probed
+     * consistency-clean models, each carrying one or two spliced rules, because a condition that parsed for the consistency gate parses here too —
+     * so the original "problems already known impossible" comment is right about that method and says nothing
+     * about this one. Reported to us as one ~14-class gap by a12-kernel-lean, 2026-09-07; it is two gaps
+     * behind two different methods, twelve classes in {@link #dynamicEnumerations()} and these here.
+     *
+     * <p>The A12 arm ({@code CheckerFuerKontextEinschraenkung}) fires when a rule's condition is a BARE
+     * comparison of {@code NumberOfFilledGroups} over a single starred group against a number constant and the
+     * implied maximum works out to exactly 1 — {@code > 1}, or {@code >= 2}. A restriction to 2 or more is a
+     * legal narrowing and reports nothing. The {@code LFDNR} arm is H-model-only and therefore out of reach
+     * from an A12 document model, which is a property of the kernel's own branch, not of this method.
+     */
+    public List<Diagnostic> ruleDrivenModelChangeProblems() {
+        List<Diagnostic> diagnostics = new ArrayList<>();
+        new ServiceFactory().getRuleCollectionMetaInformation(mvk)
+                .getChangesAsSpecifiedByRules(elements.getAllRules(),
+                        problem -> diagnostics.add(KernelDiagnostics.enriched(
+                                KernelNotifications.toCore(problem), null)));
+        return List.copyOf(diagnostics);
+    }
+
+    /**
+     * The dyn-enum derivation's two channels. {@code valuesByField} maps a dynamic-enumeration field's full
+     * name to the constant values the kernel extracted for it, sorted by field so a consumer pinning the shape
+     * is not pinning a hash-bucket layout; {@code diagnostics} is every problem the derivation reported,
+     * enriched through the same catalog-join {@code model check} uses.
+     */
+    public record DynamicEnumerations(java.util.Map<String, List<String>> valuesByField,
+            List<Diagnostic> diagnostics) {
+    }
+
+    /**
      * The error messages stored on a validation rule (locale → text), <b>raw and uninterpolated</b> — read
      * straight from the model, no runtime evaluation, so it is native-capable. Surfaced by {@code rule read}
      * (FEATURE-GAPS G10) so an agent/BA can audit a rule's wording, message length, and locale coverage

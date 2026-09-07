@@ -2332,7 +2332,7 @@
         "syntax: Name(f1, f2 In v1, v2) — the In separator is language-independent",
         "all listed fields must share one base type (MVK_VARYING_TYPES_NOT_ALLOWED); no exact reference may repeat (MVK_DUPLICATE_PARAM1) — and 'exact' is doing real work: the gate reads the reference FORM, not the field, so a wildcarded (starred) occurrence is a repetition-wide scan rather than an exact reference and MAY repeat. (Code, Code In ...) is refused while (Items*/Sku, Items*/Sku In ...) is ADMITTED",
         "for enums each literal must be in the UNION of the selected members' domains (a direct reference's stored values plus a category projection's category values), NOT in every one (MVK_INVALID_STRING_CONSTANT_FOR_ENUMERATION_OR_CATEGORY)",
-        "a value-side field list makes it entity-valued: both sides share one base type, no reference repeats across the combined lists, and enum-domain containment is NOT required",
+        "a value-side field list makes it entity-valued: both sides share one base type, no reference repeats across the combined lists, and enum-domain containment is NOT required. This family does NOT carry the entity-list arity rule — ONE field on each side is admitted, so (A In B) is a legal single-slot form and Sum/FirstFilledValue's 'at least two operands' does not transfer here (locked: rulekit.validate.laws.EntityListSoleOperandArityLawsTest)",
         "values may also be string literals or field references"
       ],
       "gotchas": [
@@ -2923,7 +2923,7 @@
       "meaning": "True when the listed fields' values are not all distinct.",
       "constraints": [
         "takes plain or flattened (starred) field operands",
-        "more than one operand, OR one flattened repetition list (Group*/field) which already expands to many rows — a single DIRECT field is rejected MVK_PARAMSIZE_INVALIDN",
+        "more than one operand, OR one flattened repetition list (Group*/field) which already expands to many rows, OR at least one GROUP — a single DIRECT field is rejected MVK_PARAMSIZE_INVALIDN (locked: rulekit.validate.laws.EntityListSoleOperandArityLawsTest)",
         "every operand must share ONE comparability category (MVK_VARYING_TYPES_NOT_ALLOWED) — {String, Custom}, {Enumeration}, {Number}, or the temporal family {Date, Time, DateTime, DateFragment}; differing Number scales are admitted, which is what makes cross-scale equality reachable",
         "Boolean, Confirm, and DateRange operands are refused outright (MVK_ONLY_STRING_ENUM_NUMBER_DATE_ALLOWED), and every temporal operand must carry one IDENTICAL declared format string, else the same code — each gate reads the WHOLE operand list, so reordering the operands never changes which code you get"
       ],
@@ -2995,7 +2995,7 @@
       "meaning": "The sum of the listed number fields' values, typically over a repetition list.",
       "constraints": [
         "number fields only (MVK_NO_NUMBER)",
-        "more than one field or a repetition list (MVK_PARAMSIZE_INVALIDN); no repeated DIRECT field (MVK_DUPLICATE_PARAM1), but a wildcarded (starred) operand may repeat and is consumed again at each slot. The star exempts that ONE gate and no more: two operands where one strictly CONTAINS the other — a group scope beside its own descendant — are refused MVK_DUPLICATE_PARAM2 whichever side carries it, even with both starred"
+        "more than one field, OR one repetition list, OR at least one GROUP — the gate's own text is a disjunction and one group satisfies it alone, whatever its field count (MVK_PARAMSIZE_INVALIDN; locked: rulekit.validate.laws.EntityListSoleOperandArityLawsTest); no repeated DIRECT field (MVK_DUPLICATE_PARAM1), but a wildcarded (starred) operand may repeat and is consumed again at each slot. The star exempts that ONE gate and no more: two operands where one strictly CONTAINS the other — a group scope beside its own descendant — are refused MVK_DUPLICATE_PARAM2 whichever side carries it, even with both starred"
       ],
       "gotchas": [
         {
@@ -6844,7 +6844,7 @@
         }
       ],
       "constraints": [
-        "at least two direct selectors, or one repetition-list/group selector; all expanded values must share one owner family — STRING/CUSTOM/ENUMERATION interchange freely, and within the TEMPORAL family the gate reads the DECLARED FORMAT STRING rather than the kind or the component set: a Date declared yyyy beside a DateFragment declared yyyy is admitted across kinds, while two temporal fields differing only in declared spelling are refused — including every equal-component-set pair the twelve-format vocabulary admits, all seven of them, under the SAME MVK_VARYING_TYPES_NOT_ALLOWED a cross-family list draws. That is FieldValuesNotUnique's rule and the opposite of MaxValue/MinValue/NumberOfDifferentValues', which admit those pairs. Confirm fields draw MVK_NO_BOOLY_ALLOWED (Locked: rulekit.validate.laws.FirstFilledValueFamilyLawsTest, rulekit.validate.laws.TemporalEqualSetPairDenominatorLawsTest)",
+        "at least two direct selectors, or one repetition-list/group selector — a GROUP's own field count is not part of the rule, so a group owning exactly one field satisfies it too (locked: rulekit.validate.laws.EntityListSoleOperandArityLawsTest); all expanded values must share one owner family — STRING/CUSTOM/ENUMERATION interchange freely, and within the TEMPORAL family the gate reads the DECLARED FORMAT STRING rather than the kind or the component set: a Date declared yyyy beside a DateFragment declared yyyy is admitted across kinds, while two temporal fields differing only in declared spelling are refused — including every equal-component-set pair the twelve-format vocabulary admits, all seven of them, under the SAME MVK_VARYING_TYPES_NOT_ALLOWED a cross-family list draws. That is FieldValuesNotUnique's rule and the opposite of MaxValue/MinValue/NumberOfDifferentValues', which admit those pairs. Confirm fields draw MVK_NO_BOOLY_ALLOWED (Locked: rulekit.validate.laws.FirstFilledValueFamilyLawsTest, rulekit.validate.laws.TemporalEqualSetPairDenominatorLawsTest)",
         "an exact non-wildcard entity duplicate draws MVK_DUPLICATE_PARAM1, repeating a wildcarded group preserves two legal authored slots, and a fixed group beside its strict descendant draws MVK_DUPLICATE_PARAM2. Exact duplicates are checked in authored encounter order, so whichever repeated entity completes first names the repair witness regardless of whether it is a field or group; every exact duplicate pre-empts strict overlap. This is static admission only (Locked: rulekit.validate.laws.FirstFilledValueDuplicatePrecedenceLawsTest)"
       ],
       "validExample": {

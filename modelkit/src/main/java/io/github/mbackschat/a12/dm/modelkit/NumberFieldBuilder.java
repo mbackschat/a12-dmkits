@@ -14,6 +14,7 @@ public final class NumberFieldBuilder extends FieldAttrs<NumberFieldBuilder> {
     private Integer minLength;
     private Integer maxLength;
     private Integer maxIntegerDigits;
+    private boolean positivesOnly;
 
     /** Fix the maximum scale (0..{@code n} decimal places); the minimum stays 0. */
     public NumberFieldBuilder fractionDigits(int n) {
@@ -74,6 +75,16 @@ public final class NumberFieldBuilder extends FieldAttrs<NumberFieldBuilder> {
         return this;
     }
 
+    /**
+     * Forbid a sign (A12's {@code NumberType.positivesOnly}): a minus makes the value the formal error
+     * {@code zahlMitVorzeichen}. The flag also makes the field <em>unsigned</em> for empty-operand fill
+     * polarity — an unsigned empty number can be filled bigger but never smaller.
+     */
+    public NumberFieldBuilder positivesOnly() {
+        this.positivesOnly = true;
+        return this;
+    }
+
     protected FieldTypeSpec spec() {
         return FieldTypeSpec.NumberSpec.builder()
                 .minFractionalDigits(minFractionalDigits)
@@ -86,6 +97,7 @@ public final class NumberFieldBuilder extends FieldAttrs<NumberFieldBuilder> {
                 .minLength(minLength)
                 .maxLength(maxLength)
                 .maxIntegerDigits(maxIntegerDigits)
+                .positivesOnly(positivesOnly)
                 .build();
     }
 }

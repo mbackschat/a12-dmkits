@@ -26,23 +26,32 @@ public sealed interface FieldTypeSpec {
      * base year — see {@link RangeYearInterpretation}. The interpretation is never {@code null}: an absent
      * declaration means {@link RangeYearInterpretation#STANDARD}, which is emitted by omitting the key.
      *
-     * <p>Author through {@code DateRangeFieldBuilder}. The 2-arg constructor is retained as a delegating
-     * overload, so existing <em>construction</em> sites keep compiling and its binary descriptor is unchanged.
-     * <b>Record DECONSTRUCTION is NOT compatible</b>: a record pattern's component list must have the record's
-     * arity, so {@code case DateRangeSpec(String f, String s)} no longer compiles and
-     * {@code getRecordComponents()} returns three — the same honest classification API-FINDINGS 96 recorded for
+     * <p>{@code rejectBefore1900} is the kernel's {@code DateRangeType.youngerThan1900Check} — the same opt-in
+     * additional check {@link DateSpec} carries, applied to the range's <b>start</b> date
+     * ({@code FormatDefinitionDatumBereich extends FormatDefinitionDatum}, which passes {@code zusatzPruefung}
+     * up; end ≥ start covers the end). Off by default.
+     *
+     * <p>Author through {@code DateRangeFieldBuilder}. The shorter constructors are retained as delegating
+     * overloads, so existing <em>construction</em> sites keep compiling and their binary descriptors are
+     * unchanged. <b>Record DECONSTRUCTION is NOT compatible</b>: a record pattern's component list must have the
+     * record's arity, so {@code case DateRangeSpec(String f, String s)} no longer compiles and
+     * {@code getRecordComponents()} returns four — the same honest classification API-FINDINGS 96 recorded for
      * {@code EnumSpec}'s identical change. A delegating constructor cannot help with either.
      */
-    record DateRangeSpec(String format, String separator, RangeYearInterpretation interpretationOfYear)
-            implements FieldTypeSpec {
+    record DateRangeSpec(String format, String separator, RangeYearInterpretation interpretationOfYear,
+            boolean rejectBefore1900) implements FieldTypeSpec {
 
         public DateRangeSpec {
             interpretationOfYear = interpretationOfYear == null
                     ? RangeYearInterpretation.STANDARD : interpretationOfYear;
         }
 
+        public DateRangeSpec(String format, String separator, RangeYearInterpretation interpretationOfYear) {
+            this(format, separator, interpretationOfYear, false);
+        }
+
         public DateRangeSpec(String format, String separator) {
-            this(format, separator, RangeYearInterpretation.STANDARD);
+            this(format, separator, RangeYearInterpretation.STANDARD, false);
         }
 
         @Override
@@ -51,8 +60,22 @@ public sealed interface FieldTypeSpec {
         }
     }
 
-    /** A date fragment (e.g. year-month) with its fragment format (§6). */
-    record DateFragmentSpec(String fragmentFormat) implements FieldTypeSpec {
+    /**
+     * A date fragment (e.g. year-month) with its fragment format (§6), plus the opt-in
+     * {@code rejectBefore1900} ({@code DateFragmentType.youngerThan1900Check}). The kernel converts a fragment
+     * declaration into an ordinary date type carrying that flag
+     * ({@code TypeConverter.convertDateFragment} → {@code new DateTypeImpl(format, isYoungerThan1900Check(),
+     * FULL)}), so the fragment's additional check is the date one. Off by default.
+     *
+     * <p>The 1-arg constructor is a delegating overload; record deconstruction sees two components, as for
+     * {@link DateRangeSpec}.
+     */
+    record DateFragmentSpec(String fragmentFormat, boolean rejectBefore1900) implements FieldTypeSpec {
+
+        public DateFragmentSpec(String fragmentFormat) {
+            this(fragmentFormat, false);
+        }
+
         @Override
         public String jsonType() {
             return "DateFragmentType";
@@ -141,7 +164,8 @@ public sealed interface FieldTypeSpec {
      */
     record NumberSpec(Integer minFractionalDigits, Integer maxFractionalDigits, BigDecimal minValue,
             BigDecimal maxValue, boolean zeroNotAllowed, boolean leadingZerosAllowed, NumberTrait trait,
-            Integer minLength, Integer maxLength, Integer maxIntegerDigits) implements FieldTypeSpec {
+            Integer minLength, Integer maxLength, Integer maxIntegerDigits,
+            boolean positivesOnly) implements FieldTypeSpec {
 
         /** The kernel's cap on a number field's declared scale (measured: 15 is refused at model check). */
         static final int MAX_SCALE = 14;
@@ -180,16 +204,24 @@ public sealed interface FieldTypeSpec {
             return new Builder();
         }
 
+        /** Backward-compatible pre-sign form; new internal callers use {@link #builder()}. */
+        public NumberSpec(Integer minFractionalDigits, Integer maxFractionalDigits, BigDecimal minValue,
+                BigDecimal maxValue, boolean zeroNotAllowed, boolean leadingZerosAllowed, NumberTrait trait,
+                Integer minLength, Integer maxLength, Integer maxIntegerDigits) {
+            this(minFractionalDigits, maxFractionalDigits, minValue, maxValue, zeroNotAllowed,
+                    leadingZerosAllowed, trait, minLength, maxLength, maxIntegerDigits, false);
+        }
+
         /** Backward-compatible pre-length form; new internal callers use {@link #builder()}. */
         public NumberSpec(Integer minFractionalDigits, Integer maxFractionalDigits, BigDecimal minValue,
                 BigDecimal maxValue, boolean zeroNotAllowed, boolean leadingZerosAllowed, NumberTrait trait) {
             this(minFractionalDigits, maxFractionalDigits, minValue, maxValue, zeroNotAllowed,
-                    leadingZerosAllowed, trait, null, null, null);
+                    leadingZerosAllowed, trait, null, null, null, false);
         }
 
         /** The earlier form: a max-scale (0..{@code fractionDigits}) number with an optional value range. */
         public NumberSpec(Integer fractionDigits, BigDecimal minValue, BigDecimal maxValue) {
-            this(null, fractionDigits, minValue, maxValue, false, false, null, null, null, null);
+            this(null, fractionDigits, minValue, maxValue, false, false, null, null, null, null, false);
         }
 
         @Override
@@ -208,6 +240,7 @@ public sealed interface FieldTypeSpec {
             private Integer minLength;
             private Integer maxLength;
             private Integer maxIntegerDigits;
+            private boolean positivesOnly;
 
             public Builder minFractionalDigits(Integer value) {
                 this.minFractionalDigits = value;
@@ -259,9 +292,22 @@ public sealed interface FieldTypeSpec {
                 return this;
             }
 
+            /**
+             * Forbid a sign — the kernel's {@code NumberType.positivesOnly}, which the model→runtime
+             * conversion inverts into {@code hasSign} ({@code TypeConverter}: {@code hasSign(!positivesOnly)})
+             * and the runtime reads as {@code hatVorzeichen}. A minus on such a field is the formal error
+             * {@code zahlMitVorzeichen}; the flag also flips the empty-operand fill polarity, since an unsigned
+             * number cannot be filled smaller.
+             */
+            public Builder positivesOnly(boolean value) {
+                this.positivesOnly = value;
+                return this;
+            }
+
             public NumberSpec build() {
                 return new NumberSpec(minFractionalDigits, maxFractionalDigits, minValue, maxValue,
-                        zeroNotAllowed, leadingZerosAllowed, trait, minLength, maxLength, maxIntegerDigits);
+                        zeroNotAllowed, leadingZerosAllowed, trait, minLength, maxLength, maxIntegerDigits,
+                        positivesOnly);
             }
         }
     }

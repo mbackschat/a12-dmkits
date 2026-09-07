@@ -40,6 +40,7 @@ Kernel runtime entry points over the supplied document, on **both** kernel codeg
 | `compute` | per row | `IDocumentRtService.compute` | each engine block's `computations` |
 | `validatePart` | per row | `IDocumentRtService.validatePart` | each engine block's `partialMessages` |
 | `mandatoryInformation` | **per model** | `IRuleCollectionMetaInformation.getMandatoryInformationFromRules` | the top-level `mandatoryInformation` |
+| `dynamicEnumerations` | **per model** | `IRuleCollectionMetaInformation.getDynamicEnumerationStringValues` | the top-level `dynamicEnumerations` |
 
 Not `validatePart` — a probe that guessed at more surface than it was asked for would be inventing contract (§7).
 
@@ -144,6 +145,28 @@ The kernel derives these from rule **conditions**, not from the fields a rule re
 **Two shape facts a consumer joining these names against model paths needs, both measured rather than assumed** ([KF225](KERNEL-FINDINGS.md#kf225), locked in `KernelProbeMandatoryInformationTest`): the field sets spell paths with a leading slash and `mandatoryRootGroups` does not; and `GroupNotFilled` on a nested group yields the enclosing ROOT group, not the group named. The rule collection passed in is the kernel's own and **unfiltered**, so it includes the generated self-validation of every computation — filtering would insert an editorial choice of ours into a kernel measurement.
 
 Each list is sorted. `IMandatoryInformation` exposes `Set<String>`, which carries no order contract, so an artifact pinned by SHA-256 cannot depend on one; nothing guaranteed is lost.
+
+### The `dynamicEnumerations` block
+
+The same terms as its sibling: top level, present exactly when asked for, absent otherwise, so no already-pinned artifact changes bytes. Two keys — `valuesByField`, each dynamic-enumeration field's full name mapped to the constant values the kernel extracted for it, and `diagnostics`, every problem the derivation reported, each with its `code`, `severity`, `rule` and the kernel's own `message`.
+
+**It exists because `checkConsistency` has no route to the derivation.** `DynamicEnumerationService`, whose `DynEnumErrorType` declares twelve classes, is CONSTRUCTED at two sites in the 30.8.1 checkout: that facade method, and `ServiceFactory.getDynamicEnumerationService(...)`, which has no in-kernel caller at all and exists to hand a per-rule `checkDynamicEnumerationRule` to external consumers. Neither site sits on a `DocumentModelConsistencyRule`, so no `model check` / `rule check` / `--dry-run` route can produce any of the twelve however the model is shaped. Reported to us by a12-kernel-lean, 2026-09-07, who suggested exactly this shape; measured and locked here as [KF277](KERNEL-FINDINGS.md#kf277).
+
+**`diagnostics` is NOT a defect list, and misreading it as one is the trap this block carries.** The derivation checks *every* rule and reports one problem for each that is not a dynamic enumeration **in form** — which is true of nearly every ordinary rule. Read the block as "which rules are dynamic enumerations, and why the rest are not". The measured discriminators, one per way of being malformed:
+
+| rule shape | class reported |
+|---|---|
+| `FieldFilled(/Order/ProductCode) And [/Order/ProductCode] != "PREMIUM"` (the canonical form) | none — the field appears in `valuesByField` with `[PREMIUM]` |
+| an ordinary single-leaf rule, e.g. `FieldFilled(/Order/ProductCode)` | `MVK_DYNENUM_INVALID_GATE` |
+| an ordinary conjunction of two presence checks | `MVK_DYNENUM_INVALID_CALCOP` |
+| the canonical form with `==` instead of `!=` | `MVK_DYNENUM_INVALID_CALCOP_OP` |
+| a gate naming a field other than the rule's error field | `MVK_ERROR_WRONG_DYNENUM_FIELD` |
+| a target field the shape forbids, e.g. a NUMBER with fractional digits | `MVK_DYNENUM_INVALID_TYPE` |
+| a field reference on the right of `!=` with no safe guard securing it | `MVK_DYNENUM_INVALID_FIELD_REFERENCE` |
+
+The count is **per rule, not per model**: two ordinary rules draw two diagnostics, and one canonical rule beside one malformed one draws exactly one while still extracting the canonical rule's values.
+
+**Attribution is the kernel's own, and it usually names no rule.** The collection-wide call leaves `rule` null, because the kernel's problem carries the rule only where its message names one. The attributable question — "is *this* rule a well-formed dynamic enumeration?" — is `KernelAdapter.dynamicEnumerationDiagnostics(ruleFullName)`, which asks about one rule and stamps the answer with that rule's path. Passing a model-level path into the collection-wide call would overwrite the kernel's own attribution with something less specific, so it does not.
 
 ### Determinism is structural
 

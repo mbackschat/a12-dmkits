@@ -27,8 +27,10 @@ final class FieldTypeSpecReader {
             case "DateTimeType" -> new FieldTypeSpec.DateTimeSpec(text(config, "format"));
             case "DateRangeType" -> new FieldTypeSpec.DateRangeSpec(
                     text(config, "format"), text(config, "rangeSeparator"),
-                    RangeYearInterpretation.fromJson(text(config, "interpretationOfYear")));
-            case "DateFragmentType" -> new FieldTypeSpec.DateFragmentSpec(text(config, "formatOfFragment"));
+                    RangeYearInterpretation.fromJson(text(config, "interpretationOfYear")),
+                    config.path("youngerThan1900Check").asBoolean(false));
+            case "DateFragmentType" -> new FieldTypeSpec.DateFragmentSpec(text(config, "formatOfFragment"),
+                    config.path("youngerThan1900Check").asBoolean(false));
             case "TypeDefType" -> new FieldTypeSpec.TypeDefRef(config.path(DmKeys.TYPE_DEFINITION_ID).asText());
             case "BooleanType" -> new FieldTypeSpec.BooleanSpec();
             case "ConfirmType" -> new FieldTypeSpec.ConfirmSpec();
@@ -61,6 +63,7 @@ final class FieldTypeSpecReader {
                 .minLength(integer(config, "minLength"))
                 .maxLength(integer(config, "maxLength"))
                 .maxIntegerDigits(integer(config, "maxIntegerDigits"))
+                .positivesOnly(config.path("positivesOnly").asBoolean(false))
                 .build();
     }
 

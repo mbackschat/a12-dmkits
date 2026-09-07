@@ -507,7 +507,7 @@ dmtool -m /tmp/struct2-td.json typedef remove Currency >/tmp/struct2-td-rej.json
   "diagnostics" : [ {
     "severity" : "ERROR",
     "source" : "KERNEL",
-    "summary" : "the edited model is not kernel-valid: Typedefinition with id 'Currency' could not be found.",
+    "summary" : "the kernel could not build this model: Typedefinition with id 'Currency' could not be found.",
     "where" : { }
   } ],
   "written" : false

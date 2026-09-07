@@ -7,6 +7,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import org.junit.jupiter.api.Test;
 
 import com.mgmtp.a12.kernel.md.model.api.fieldtypes.ICustomFieldType;
+import com.mgmtp.a12.kernel.md.model.api.fieldtypes.IDateFragmentType;
 import com.mgmtp.a12.kernel.md.model.api.fieldtypes.IDateRangeType;
 import com.mgmtp.a12.kernel.md.model.api.fieldtypes.IDateType;
 import com.mgmtp.a12.kernel.md.model.api.fieldtypes.IEnumerationType;
@@ -134,6 +135,42 @@ class FieldConfigExtrasTest {
         IDateType observedOn = (IDateType) fieldTypeAfterRoundTrip(draft, "/Permit/ObservedOn");
         assertTrue(issuedOn.isYoungerThan1900Check(), "opt-in youngerThan1900Check honored");
         assertFalse(observedOn.isYoungerThan1900Check(), "kernel default remains off");
+    }
+
+    /**
+     * The same opt-in check on its two OTHER carriers, and the unsigned-number flag — the three knobs an
+     * external consumer was hand-patching into raw DM JSON. Read-back matters exactly as the class KDoc says:
+     * a key on the wrong declaration object would be silently dropped and still "load valid".
+     */
+    @Test
+    void theSignFlagAndThePre1900CheckOnItsOtherCarriersRoundTripThroughTheKernel() {
+        // tag::unsigned-and-pre-1900-carriers[]
+        DocumentModelDraft draft = permit()
+                .rootGroup("Permit", group -> group
+                        .numberField("Deposit", n -> n.fractionDigits(2).positivesOnly())
+                        .numberField("Adjustment", n -> n.fractionDigits(2))
+                        .dateFragmentField("BilledMonth", f -> f.fragmentFormat("yyyy-MM").rejectBefore1900())
+                        .dateFragmentField("NotedMonth", f -> f.fragmentFormat("yyyy-MM"))
+                        .dateRangeField("CoverWindow",
+                                r -> r.format("dd.MM.yyyy").separator("-").rejectBefore1900())
+                        .dateRangeField("NotedWindow", r -> r.format("dd.MM.yyyy").separator("-")))
+                .build();
+        // end::unsigned-and-pre-1900-carriers[]
+
+        assertTrue(((INumberType) fieldTypeAfterRoundTrip(draft, "/Permit/Deposit")).isPositivesOnly(),
+                "positivesOnly honored");
+        assertFalse(((INumberType) fieldTypeAfterRoundTrip(draft, "/Permit/Adjustment")).isPositivesOnly(),
+                "the kernel default is SIGNED, so an unset flag must stay false");
+
+        assertTrue(((IDateFragmentType) fieldTypeAfterRoundTrip(draft, "/Permit/BilledMonth"))
+                .isYoungerThan1900Check(), "the fragment carrier's youngerThan1900Check honored");
+        assertFalse(((IDateFragmentType) fieldTypeAfterRoundTrip(draft, "/Permit/NotedMonth"))
+                .isYoungerThan1900Check(), "kernel default remains off");
+
+        assertTrue(((IDateRangeType) fieldTypeAfterRoundTrip(draft, "/Permit/CoverWindow"))
+                .isYoungerThan1900Check(), "the range carrier's youngerThan1900Check honored");
+        assertFalse(((IDateRangeType) fieldTypeAfterRoundTrip(draft, "/Permit/NotedWindow"))
+                .isYoungerThan1900Check(), "kernel default remains off");
     }
 
     @Test

@@ -1,6 +1,7 @@
 package io.github.mbackschat.a12.dm.rulekit.validate.laws;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -35,8 +36,15 @@ import io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer;
  * <p>Reported by a12-kernel-lean as {@code SPEC-2026-09-07-09}, correcting a no-witness clause of their own.
  * This estate carried no claim about the terminal in either direction, so these rows are new here too.
  *
- * <p>Unmeasured: what an admitted {@code index(…).value} RENDERS, the German arm, an Enumeration index field
- * (which is what would admit the category form), a composed index, and the computation carrier.
+ * <p><b>Extended 2026-09-07 from a12-kernel-lean's {@code SPEC-2026-09-07-10}</b>, which read the checker and
+ * found ten refusal classes where this file carried three. Three of their added axes are measured here — the
+ * Enumeration index field that admits the {@code ->Category} alternative, the cross-check against the RULE's
+ * OWN condition, and the non-repeatable-group class they could not author — each re-derived on our fixtures
+ * rather than carried on their report. Recorded as [KF280].
+ *
+ * <p>Still unmeasured: what an admitted {@code index(…).value} RENDERS, the German arm, the computation
+ * carrier, and the three cross-field consistency classes. A COMPOSED index is not unmeasured but
+ * <b>unreachable</b>: see {@link #aComposedIndexIsUnreachableFromAnA12ModelSoItsClassCannotFire()}.
  *
  * <p>Own domain (a claims policy).
  */
@@ -157,5 +165,147 @@ class RuleMessageIndexTerminalLawsTest {
         expected.put("$index(ClaimNo).value$ with a ROOT error field", WRONG_ARGUMENT);
         expected.put("no parameter at all — control", ADMITTED);
         assertEquals(expected, actual, "the index field must sit on the ERROR entity's path");
+    }
+    // ---- the axes a12-kernel-lean's SPEC-2026-09-07-10 added ------------------------------------
+
+    /** The same shape with an ENUMERATION index field carrying a declared category. */
+    private static final String ENUM_POLICY = DocumentModelDraft.named("enum-index").locale("en_US")
+            .rootGroup("Policy", policy -> policy
+                    .stringField("Reference", f -> { })
+                    .group("Claims", claims -> claims.repeatable(20).indexField("Tier")
+                            .enumField("Tier", e -> e.value("BASIC").value("PREMIUM")
+                                    .category("Band", "STANDARD", "PRIORITY"))
+                            .stringField("Payout", f -> { })))
+            .build().toJson();
+
+    private static final BoundModel E = BoundModel.ofJson(ENUM_POLICY);
+
+    /** A plain per-row read of the ENUM index field — no star, no key. */
+    private static final String READS_ENUM_ROW = render(Dsl.fieldFilled(E.field("/Policy/Claims/Tier"))
+            .and(Dsl.fieldNotFilled(E.field("/Policy/Claims/Payout"))));
+
+    private static String inEnumRow(String condition, String message) {
+        return KernelLaws.messageVerdict(ENUM_POLICY, CLAIMS, "../Payout", condition, "en_US", message);
+    }
+
+    /**
+     * The category alternative is not merely live, it is ADMITTED once the index field is an Enumeration —
+     * the row {@link #theCategoryAlternativeIsLiveAndGatedOnAnEnumerationIndexField()} could not reach. An
+     * undeclared category name is the discriminator: it separates "the arrow form is admitted here" from
+     * "the arrow form is ignored here".
+     */
+    @Test
+    void anEnumerationIndexFieldAdmitsTheCategoryAlternativeAndGatesTheCategoryName() {
+        Map<String, String> actual = new LinkedHashMap<>();
+        actual.put("$index(Tier).value$", inEnumRow(READS_ENUM_ROW, "row $index(Tier).value$"));
+        actual.put("$index(Tier)->Band$ — declared", inEnumRow(READS_ENUM_ROW, "row $index(Tier)->Band$"));
+        actual.put("$index(Tier)->Nope$ — undeclared", inEnumRow(READS_ENUM_ROW, "row $index(Tier)->Nope$"));
+        actual.put("no parameter at all — control", inEnumRow(READS_ENUM_ROW, "row"));
+
+        Map<String, String> expected = new LinkedHashMap<>();
+        expected.put("$index(Tier).value$", ADMITTED);
+        expected.put("$index(Tier)->Band$ — declared", ADMITTED);
+        expected.put("$index(Tier)->Nope$ — undeclared", "INVALID_CATEGORY");
+        expected.put("no parameter at all — control", ADMITTED);
+        assertEquals(expected, actual,
+                "an Explain consumer must resolve a category mapping at this terminal, not only a stored value");
+    }
+
+    /**
+     * <b>The parameter is cross-checked against the RULE'S OWN CONDITION</b>, which is the axis a checker
+     * validating the parameter against the model alone cannot see: the identical parameter is admitted beside
+     * a plain reference and refused beside a starred or a {@code For}-keyed one. Each refused row's own
+     * parameter-free control is admitted, so the condition is legal and the refusal is the parameter's.
+     */
+    @Test
+    void theParameterIsCrossCheckedAgainstTheRulesOwnConditionsReferenceToTheIndexField() {
+        // Both conditions are POSITIVE on the error field: a negative leaf beside an iterating read draws
+        // MVK_NEG_CONDITION_IN_ITERATION, which would refuse the CONDITION and measure nothing about the
+        // parameter (the harness's own control catches that, and did).
+        String starred = render(Dsl.fieldFilled(E.field("/Policy/Claims/Payout"))
+                .and(Dsl.atLeastOneFieldFilled(E.flatten("/Policy/Claims*/Tier"))));
+        String keyed = render(Dsl.fieldFilled(E.field("/Policy/Claims/Payout"))
+                .and(E.field("/Policy/Claims/Tier").semanticIndex("BASIC").filled()));
+
+        Map<String, String> actual = new LinkedHashMap<>();
+        actual.put("a plain reference — the admitted baseline",
+                inEnumRow(READS_ENUM_ROW, "row $index(Tier).value$"));
+        actual.put("a STARRED reference, control", inEnumRow(starred, "row"));
+        actual.put("a STARRED reference", inEnumRow(starred, "row $index(Tier).value$"));
+        actual.put("a For-KEYED reference, control", inEnumRow(keyed, "row"));
+        actual.put("a For-KEYED reference", inEnumRow(keyed, "row $index(Tier).value$"));
+
+        Map<String, String> expected = new LinkedHashMap<>();
+        expected.put("a plain reference — the admitted baseline", ADMITTED);
+        expected.put("a STARRED reference, control", ADMITTED);
+        expected.put("a STARRED reference", "INVALID_INDEX_FIELD_REP_ITER");
+        expected.put("a For-KEYED reference, control", ADMITTED);
+        expected.put("a For-KEYED reference", "INVALID_INDEX_FIELD_REP_ITER");
+        assertEquals(expected, actual,
+                "validating the parameter against the model alone admits a parameter the kernel refuses");
+    }
+
+    /**
+     * <b>{@code INVALID_INDEX_FIELD_NONREP_ENUM} is reachable, and reaching it needed a raw-JSON model</b> —
+     * the only such model in this file, and deliberately so. The kernel ADMITS a non-repeatable group that
+     * carries an index field (the control row); our own {@code DocumentModelDraft} refuses to author one, so
+     * the class is unreachable through the typed surface. That refusal is broader than its measured basis and
+     * is recorded as a gap (DEV-API-GAPS), which is why this row flips {@code repeatability} in the JSON
+     * instead: authoring the shape is the very thing under measurement.
+     *
+     * <p>The SORT-field sibling of that refusal is the control for reading this as "our builder is generally
+     * stricter": there the kernel refuses too, with {@code MVK_INVALID_SORTINFO}, so exactly one of the two
+     * adjacent client-side refusals is over-broad.
+     */
+    @Test
+    void aNonRepeatableIndexedGroupIsAdmittedByTheKernelAndRefusesTheParameter() {
+        String nonRepeatable = ENUM_POLICY.replaceAll("\"repeatability\"\\s*:\\s*20", "\"repeatability\":1");
+        assertNotEquals(ENUM_POLICY, nonRepeatable, "the repeatability flip must actually have applied");
+        String condition = "FieldFilled(/Policy/Claims/Tier) And FieldNotFilled(/Policy/Claims/Payout)";
+
+        Map<String, String> actual = new LinkedHashMap<>();
+        actual.put("the model itself — control", KernelLaws.messageVerdict(
+                nonRepeatable, CLAIMS, "../Payout", condition, "en_US", "row"));
+        actual.put("$index(Tier).value$", KernelLaws.messageVerdict(
+                nonRepeatable, CLAIMS, "../Payout", condition, "en_US", "row $index(Tier).value$"));
+
+        Map<String, String> expected = new LinkedHashMap<>();
+        expected.put("the model itself — control", ADMITTED);
+        expected.put("$index(Tier).value$", "INVALID_INDEX_FIELD_NONREP_ENUM");
+        assertEquals(expected, actual,
+                "the kernel admits the DECLARATION and refuses the PARAMETER, so the class is the "
+                        + "parameter's and our builder's earlier refusal has no kernel basis");
+    }
+
+    /**
+     * <b>{@code INVALID_INDEX_FIELD_COMPOSED_INDEX} is UNREACHABLE from any A12 document model</b>, so there
+     * is nothing to author and this row records the enumeration instead of a verdict. Its trigger is
+     * {@code indexedGroup.getIndexFieldNames().size() > 1}, and every link that could make that set larger
+     * than one was attacked in the 30.8.1 checkout (tracked sources, {@code /build/} and delombok excluded):
+     *
+     * <ul>
+     * <li>{@code md-model}'s {@code Group} declares {@code indexFieldNames} {@code final} and writes it in
+     *     ONE place, its constructor, from a single nullable {@code String} — exactly three occurrences of the
+     *     name in the whole {@code kernel-md} tree (the {@code final} declaration plus that constructor's two
+     *     writes), and no setter or adder.</li>
+     * <li>That constructor has one caller, {@code ValidationModelConverter.createGroupFromGroupType}, which
+     *     derives the name from {@code IGroup.getIndexField()} — an {@code Optional} of ONE reference.</li>
+     * <li>So the DM-model surface has no plural spelling to serialize: a composed index is an H-model
+     *     concept, which is consistent with the class existing at all.</li>
+     * </ul>
+     *
+     * <p>Consequence for the tool: {@code dmtool group modify --index-field <fieldName>} taking exactly one
+     * name is CORRECT, not the authoring limitation a12-kernel-lean's entry reads it as. Recall limit: this is
+     * a source enumeration over the A12 path; another {@code IEC} implementation may populate several, and
+     * a reflective writer would escape the search.
+     */
+    @Test
+    void aComposedIndexIsUnreachableFromAnA12ModelSoItsClassCannotFire() {
+        // The typed surface carries the same singleness, which is the half a test CAN assert: one name per
+        // group, set by one call, with no plural spelling to reach for.
+        assertEquals(1, java.util.Arrays.stream(
+                        io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft.GroupBuilder.class.getMethods())
+                .filter(m -> m.getName().equals("indexField")).count(),
+                "one indexField setter, taking one name — the A12 model has no plural form to expose");
     }
 }

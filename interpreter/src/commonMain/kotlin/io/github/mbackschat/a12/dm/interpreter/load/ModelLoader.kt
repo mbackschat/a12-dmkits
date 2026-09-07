@@ -378,7 +378,13 @@ object ModelLoader {
         rangeSeparator = rangeSeparatorOf(node),
         rangeYearInterpretation = rangeYearInterpretationOf(node),
         datePrecision = datePrecisionOf(node, id),
-        rejectBefore1900 = typedBool(node, "DateType", "youngerThan1900Check"),
+        // The opt-in additional check rides THREE declaration objects, not one: `DateType`,
+        // `DateFragmentType` and `DateRangeType` each declare `youngerThan1900Check` (kernel-md a12internal
+        // fieldtypes at 30.8.1). Reading only `DateType` left the flag inert on the other two, so a legal
+        // model carrying it there validated as if it were absent (KF253).
+        rejectBefore1900 = typedBool(node, "DateType", "youngerThan1900Check")
+            || typedBool(node, "DateFragmentType", "youngerThan1900Check")
+            || typedBool(node, "DateRangeType", "youngerThan1900Check"),
         enumValues = enumValuesOf(node),
         enumValueLabels = enumValueLabelsOf(node),
         enumCategories = enumCategoriesOf(node),

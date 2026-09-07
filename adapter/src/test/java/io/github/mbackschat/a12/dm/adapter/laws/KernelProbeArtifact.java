@@ -35,7 +35,8 @@ import io.github.mbackschat.a12.dm.adapter.KernelAdapter;
  * {@code adapter/src/test/resources/kernel-probe/artifact.schema.json}.
  */
 public record KernelProbeArtifact(Header header, List<Row> rows,
-        Optional<Map<KernelAdapter.MandatorySet, List<String>>> mandatoryInformation) {
+        Optional<Map<KernelAdapter.MandatorySet, List<String>>> mandatoryInformation,
+        Optional<KernelAdapter.DynamicEnumerations> dynamicEnumerations) {
 
     /**
      * The artifact shape's own version, bumped when a key's presence or meaning changes.
@@ -62,7 +63,13 @@ public record KernelProbeArtifact(Header header, List<Row> rows,
 
     /** The row-only artifact — every request that observes no model-level channel. */
     public KernelProbeArtifact(Header header, List<Row> rows) {
-        this(header, rows, Optional.empty());
+        this(header, rows, Optional.empty(), Optional.empty());
+    }
+
+    /** The pre-dyn-enum form, retained so existing construction sites keep compiling. */
+    public KernelProbeArtifact(Header header, List<Row> rows,
+            Optional<Map<KernelAdapter.MandatorySet, List<String>>> mandatoryInformation) {
+        this(header, rows, mandatoryInformation, Optional.empty());
     }
 
     /**
@@ -363,6 +370,25 @@ public record KernelProbeArtifact(Header header, List<Row> rows,
                 ArrayNode names = node.putArray(set.wireName());
                 sets.getOrDefault(set, List.of()).forEach(names::add);
             }
+        });
+        // The second model-level block, on the same terms: written only when observed, and its own key order
+        // fixed here rather than inherited from whatever Map arrived. `valuesByField` is already a TreeMap from
+        // the adapter, so the field order is the field NAMES' — deterministic without sorting again here.
+        dynamicEnumerations.ifPresent(derived -> {
+            ObjectNode node = root.putObject("dynamicEnumerations");
+            ObjectNode values = node.putObject("valuesByField");
+            derived.valuesByField().forEach((field, allowed) -> {
+                ArrayNode list = values.putArray(field);
+                allowed.forEach(list::add);
+            });
+            ArrayNode diagnostics = node.putArray("diagnostics");
+            derived.diagnostics().forEach(diagnostic -> {
+                ObjectNode entry = diagnostics.addObject();
+                entry.put("code", diagnostic.code().orElse(null));
+                entry.put("severity", diagnostic.severity().name());
+                entry.put("rule", diagnostic.where().rule());
+                entry.put("message", diagnostic.summary());
+            });
         });
         return render(mapper, root);
     }

@@ -111,7 +111,20 @@ fun fixedRepetitionText(locale: String): String =
     if (locale.startsWith("de")) "Der Wiederholungsindex einer nicht wiederholbaren Gruppe ist größer als 1."
     else "A non-repeatable group's repetition index is greater than 1."
 
-/** The formal-error checks the interpreter performs, each with the kernel's verbatim [id]. */
+/**
+ * The formal-error checks the interpreter performs, each with the kernel's verbatim [id].
+ *
+ * **One code per ABSTRACT ERROR, never one per message-bundle key** — the constant is our own check, the [id]
+ * is what a consumer reads, and the two are deliberately not one-to-one: several constants share an [id] where
+ * the kernel surfaces one code for several of its own texts (`datumFalsch` carries three of ours,
+ * `zahlFalscheAnzahlNachkommastellen` and `datumBereichDatumFalsch` two each). The kernel's emitter has the
+ * same two axes — `FehlerHandler.addFehler(errorKey, fehlerText, param)` takes the surfaced code and the
+ * resolved text separately, and its 44 Number bundle keys under `ZAHL_`/`GBMC_`/`GBOC_` sit behind 14 codes —
+ * so an implementation that mirrored the bundle keys would report codes no consumer can match. Nothing here
+ * reads a number's art or any other text-selection axis. Asked by a12-kernel-lean's `SPEC-2026-09-07-13`;
+ * every formal-error differential in `adapter/…/laws` is what holds it, by comparing this [id] against the
+ * kernel's own on each row.
+ */
 enum class FormalErrorCode(val id: String) {
     /** A DATE value that is not `YYYY-MM-DD`. */
     DATE_FORMAT("datumFormatFalsch"),
@@ -125,6 +138,14 @@ enum class FormalErrorCode(val id: String) {
      *  `datumFalsch` (FEHLER_DATUM) for every stored OR computed date, independent of the opt-in "< 1900"
      *  additional check — confirmed in both strategies (IF88). */
     DATE_TOO_EARLY("datumFalsch"),
+
+    /** A DATE / DATEFRAGMENT value before 1900-01-01 on a declaration carrying the **opt-in** additional check
+     *  (`youngerThan1900Check`). The kernel surfaces the same `datumFalsch` code as the always-on floor but
+     *  selects a different message key for it (`DATUM_ADDITIONAL_CHECK` beside `DATUM`), so this is a second
+     *  TEXT behind one code — the same shape as [PARTIAL_DATE_INVALID]. Its declaration is gated:
+     *  `MVK_ADDITIONAL_CHECK_INVALID` refuses the check unless the declared format carries a year (KF251), so a
+     *  year-free DATE or DATEFRAGMENT cannot reach this class at all. */
+    DATE_BEFORE_1900("datumFalsch"),
 
     /** ANY field value with a **leading** blank — a baseline value check the kernel runs before the type format
      *  (`checkFieldValueFormat`), for every kind (string/number/date/…). IF43. */
@@ -147,8 +168,16 @@ enum class FormalErrorCode(val id: String) {
     /** More fractional digits than the NUMBER field's scale allows. */
     TOO_MANY_DECIMALS("zahlFalscheAnzahlNachkommastellen"),
 
-    /** A NUMBER zero carrying a minus sign (`-0`, `-0.00`) — the kernel forbids a signed zero. */
+    /** A NUMBER zero carrying a minus sign (`-0`, `-0.00`) on a field that is **signed and permits zero** — the
+     *  kernel's signed-zero check conjoins `nullErlaubt && hatVorzeichen`, so this class is DISJOINT from
+     *  [SIGN_ON_UNSIGNED] and from [ZERO_NOT_ALLOWED] rather than preceding either (KF253). */
     SIGNED_ZERO("zahlNullEnthaeltVorzeichen"),
+
+    /** A minus sign on an **unsigned** NUMBER field (`NumberType.positivesOnly`, the kernel's
+     *  `hatVorzeichen == false`). Any minus fires it, zero magnitude included; the one exception is a
+     *  zero-magnitude value on an unsigned, zero-forbidding **money** field, which the kernel reports as
+     *  [ZERO_NOT_ALLOWED] instead (KF253). */
+    SIGN_ON_UNSIGNED("zahlMitVorzeichen"),
 
     /** A NUMBER with a leading plus sign (`+5`, `+0`) — the kernel forbids an explicit plus. */
     PLUS_SIGN("zahlMitPlus"),
@@ -168,6 +197,12 @@ enum class FormalErrorCode(val id: String) {
      *  of [DATE_TOO_EARLY] (`FormatDefinitionDatumBereich extends FormatDefinitionDatum`; the kernel floors the
      *  start, and end >= start covers the end). Kernel code `datumBereichDatumFalsch` (FEHLER_DATUM_BEREICH_DATUM). */
     DATE_RANGE_TOO_EARLY("datumBereichDatumFalsch"),
+
+    /** A DATE_RANGE whose START is before 1900-01-01 on a declaration carrying the **opt-in** additional check
+     *  (`DateRangeType.youngerThan1900Check`) — the range sibling of [DATE_BEFORE_1900], sharing
+     *  `datumBereichDatumFalsch` with the always-on floor. Unlike the DATE and DATEFRAGMENT kinds, the kernel
+     *  admits the check on a **year-free** range format, where it then reads the base-year completion (KF253). */
+    DATE_RANGE_BEFORE_1900("datumBereichDatumFalsch"),
 
     // ── Declared field-type CONSTRAINT violations (IF20) — auto-fired against the field-type declaration,
     //    same `formalePruefung` mechanism as the format checks above (KERNEL-FINDINGS §3 "declared field-type
@@ -373,14 +408,14 @@ internal fun typeFormatErrorCached(
                 // The kernel's always-on Gregorian floor (IF88): a real date before 1583-10-16 is `datumFalsch`.
                 beforeGregorianStart(parts.first, parts.second, parts.third) -> FormalErrorCode.DATE_TOO_EARLY
                 // The field-owned additional check runs after partial-date completion and the ordinary floor.
-                constraints.rejectBefore1900 && parts.first < 1900 -> FormalErrorCode.DATE_TOO_EARLY
+                constraints.rejectBefore1900 && parts.first < 1900 -> FormalErrorCode.DATE_BEFORE_1900
                 else -> null
             }
         }
         // Format well-formedness FIRST (blanks, invalid chars, signed-zero/plus, decimal-separator,
         // too-MANY decimals via scale); only a well-formed number reaches the declared-constraint checks
         // (min fractional digits, then range) — KERNEL-FINDINGS §3 precedence.
-        Kind.NUMBER -> numberFormalError(raw, scale) ?: numberConstraintError(raw, constraints)
+        Kind.NUMBER -> numberFormalError(raw, scale, constraints) ?: numberConstraintError(raw, constraints)
         // A malformed TIME / DATE_TIME value carries the kernel's `datumFormatFalsch` (probe-verified — the same
         // code as DATE), and resolving it to Val.Unknown suppresses a referencing rule. (TIME was previously
         // unchecked entirely, so a malformed time even *escaped* suppression — KERNEL-FINDINGS §6 / IF8.)
@@ -443,12 +478,27 @@ internal fun typeFormatErrorCached(
                             ?: parseDateToIso(parts[0], format) ?: completeFragmentToIso(parts[0], format, baseYear)
                         val b = shifted?.second
                             ?: parseDateToIso(parts[1], format) ?: completeFragmentToIso(parts[1], format, baseYear)
+                        // BOTH date-position checks read the year the KERNEL's completion gives the start,
+                        // which on a year-free format is not always the one the endpoint was built with —
+                        // rangePositionCheckYear carries that rule and its measured basis.
+                        val startParts = a?.let { dateParts(it) }
+                        val positionYear = startParts?.let {
+                            rangePositionCheckYear(format, baseYear) ?: it.first
+                        }
                         when {
-                            a == null || b == null -> FormalErrorCode.DATE_RANGE_FORMAT
+                            a == null || b == null || startParts == null || positionYear == null ->
+                                FormalErrorCode.DATE_RANGE_FORMAT
                             a > b -> FormalErrorCode.DATE_RANGE_INVALID   // ISO strings: lexicographic == chronological
                             // The kernel floors the range START at 1583-10-16 (IF88); end >= start covers the end.
-                            dateParts(a)?.let { (y, m, d) -> beforeGregorianStart(y, m, d) } == true ->
+                            beforeGregorianStart(positionYear, startParts.second, startParts.third) ->
                                 FormalErrorCode.DATE_RANGE_TOO_EARLY
+                            // The range's OWN opt-in additional check (`DateRangeType.youngerThan1900Check`),
+                            // on the START date. Unlike DATE/DATEFRAGMENT, the kernel does not statically
+                            // refuse the flag on a year-free range format, so this clause is reachable (KF253).
+                            // Same code as the floor, because the kernel's two arms share
+                            // FEHLER_DATUM_BEREICH_DATUM.
+                            constraints.rejectBefore1900 && positionYear < 1900 ->
+                                FormalErrorCode.DATE_RANGE_BEFORE_1900
                             else -> null
                         }
                     }
@@ -570,7 +620,7 @@ private fun numberConstraintError(raw: String, c: FieldConstraints): FormalError
  * missing/too-few decimals, the integer-digit cap, zero-not-allowed, and (fires LATE, kernel step 11) LEADING
  * ZEROS — all follow in [numberConstraintError], in the kernel's order.
  */
-private fun numberFormalError(raw: String, scale: Int?): FormalErrorCode? = when {
+private fun numberFormalError(raw: String, scale: Int?, c: FieldConstraints): FormalErrorCode? = when {
     // (leading/trailing blanks are handled by the cross-kind baselineValueError before this, IF43)
     // A leading `+` on an otherwise-valid number is its own error (the kernel reports it, not "invalid chars").
     raw.startsWith("+") && DECIMAL.matches(raw.drop(1)) -> FormalErrorCode.PLUS_SIGN
@@ -579,9 +629,19 @@ private fun numberFormalError(raw: String, scale: Int?): FormalErrorCode? = when
     // sanity check on EVERY number, right after the invalid-char check and BEFORE the sign/scale checks
     // (FormatDefinitionZahl order — probe-verified it beats signed-zero, leading-zeros, decimal-separator).
     raw.count { it in '0'..'9' } > 15 -> FormalErrorCode.TOTAL_DIGITS_TOO_LONG
-    // Signed-zero is checked BEFORE the scale/separator checks (verified: `-0.0` on a scale-0 field is the
-    // signed-zero error, NOT the decimal-separator one — kernel order, NumberSignFormalDiffTest).
-    isNegativeZero(raw) -> FormalErrorCode.SIGNED_ZERO
+    // The two sign classes are DISJOINT, not ordered: the kernel's signed-zero clause conjoins
+    // `nullErlaubt && hatVorzeichen`, and the unsigned clause is `!hatVorzeichen` (KF253, measured as a
+    // within-model grid). So a signed zero on a zero-FORBIDDING field is not this class — it falls through to
+    // `zahlIstNull` in numberConstraintError, and on a scale-0 field to the decimal-separator check first,
+    // which is why the "signed-zero beats the separator check" ordering holds only where zero is allowed.
+    !c.positivesOnly && !c.zeroNotAllowed && isNegativeZero(raw) -> FormalErrorCode.SIGNED_ZERO
+    // The unsigned arm carries one nested exception the kernel spells out: a zero-magnitude value on an
+    // unsigned, zero-forbidding MONEY field (`trait:"amount"` → ZahlArt.GELDBETRAG) reports zahlIstNull, while
+    // the same declaration without the money trait reports the sign class. A NON-zero negative reports the sign
+    // class on both, which is the control that keeps this about the magnitude and not about the trait.
+    c.positivesOnly && raw.contains('-') ->
+        if (c.amountTrait && c.zeroNotAllowed && isNegativeZero(raw)) FormalErrorCode.ZERO_NOT_ALLOWED
+        else FormalErrorCode.SIGN_ON_UNSIGNED
     scale == 0 && raw.contains('.') -> FormalErrorCode.DECIMAL_SEPARATOR
     scale != null && fractionalDigits(raw) > scale -> FormalErrorCode.TOO_MANY_DECIMALS
     else -> null
@@ -631,10 +691,14 @@ fun formalErrorText(code: FormalErrorCode, locale: String, scale: Int? = null): 
             if (de) "Wert ist kein gültiges Datum (erwartet JJJJ-MM-TT)." else "Value is not a valid date (expected YYYY-MM-DD)."
         FormalErrorCode.DATE_TOO_EARLY ->
             if (de) "Datum liegt vor dem Beginn des gregorianischen Kalenders (16.10.1583)." else "Date is before the start of the Gregorian calendar (1583-10-16)."
+        FormalErrorCode.DATE_BEFORE_1900 ->
+            if (de) "Datum liegt vor dem 01.01.1900." else "Date is before 1900-01-01."
         FormalErrorCode.PARTIAL_DATE_INVALID ->
             if (de) "Unbekannte Datumsbestandteile müssen Tag, Monat und Jahr als Suffix bilden." else "Unknown date components must form a day, month, year suffix."
         FormalErrorCode.DATE_RANGE_TOO_EARLY ->
             if (de) "Datumsbereich: Startdatum liegt vor dem 16.10.1583." else "Date range: the start date is before 1583-10-16."
+        FormalErrorCode.DATE_RANGE_BEFORE_1900 ->
+            if (de) "Datumsbereich: Startdatum liegt vor dem 01.01.1900." else "Date range: the start date is before 1900-01-01."
         FormalErrorCode.LEADING_BLANK ->
             if (de) "Wert hat ein führendes Leerzeichen." else "Value has a leading blank."
         FormalErrorCode.TRAILING_BLANK ->
@@ -649,6 +713,8 @@ fun formalErrorText(code: FormalErrorCode, locale: String, scale: Int? = null): 
             if (de) "Wert hat zu viele Nachkommastellen (max. $scale)." else "Value has too many decimal places (max $scale)."
         FormalErrorCode.SIGNED_ZERO ->
             if (de) "Null darf kein Vorzeichen haben." else "Zero must not carry a sign."
+        FormalErrorCode.SIGN_ON_UNSIGNED ->
+            if (de) "Wert darf kein Vorzeichen haben." else "Value must be given without a sign."
         FormalErrorCode.PLUS_SIGN ->
             if (de) "Zahl darf kein führendes Pluszeichen haben." else "Number must not have a leading plus sign."
         FormalErrorCode.DATE_RANGE_SEPARATOR ->

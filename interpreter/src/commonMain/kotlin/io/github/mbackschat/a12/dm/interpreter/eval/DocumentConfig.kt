@@ -19,8 +19,11 @@ import io.github.mbackschat.a12.dm.interpreter.model.RangeYearInterpretation
 data class DocumentConfig(
     val kinds: Map<String, Kind>,
     val declaredReps: Map<String, Int> = emptyMap(),
-    /** NUMBER fields that are *unsigned* (the kernel's `hatVorzeichen == false` — a non-negative `minValue`);
-     *  drives the directional empty-operand polarity ([EvalContext.signed]). Default: all fields signed. */
+    /** NUMBER fields that are *unsigned* (the kernel's `hatVorzeichen == false`, which the model->runtime
+     *  conversion derives from `NumberType.positivesOnly` alone: `TypeConverter` sets `hasSign(!positivesOnly)`).
+     *  A non-negative `minValue` does NOT make a field unsigned here — that pairing appears in the kernel's
+     *  STATIC date-construction gate, not in the runtime polarity. Drives the directional empty-operand polarity
+     *  ([EvalContext.signed]) and the `zahlMitVorzeichen` formal check. Default: all fields signed. */
     val unsignedFields: Set<String> = emptySet(),
     /** Each [Kind.DATE_RANGE] field's `(format, rangeSeparator)` — lets `resolveValue` canonicalize a rendered
      *  range value (`01.06.2021-30.06.2021`) to a [io.github.mbackschat.a12.dm.interpreter.ast.Val.Range] of ISO dates, format-aware (locale variants). */

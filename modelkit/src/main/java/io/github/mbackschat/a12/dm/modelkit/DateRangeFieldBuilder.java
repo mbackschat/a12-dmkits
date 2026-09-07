@@ -5,6 +5,7 @@ public final class DateRangeFieldBuilder extends FieldAttrs<DateRangeFieldBuilde
     private String format;
     private String separator;
     private RangeYearInterpretation interpretationOfYear = RangeYearInterpretation.STANDARD;
+    private boolean rejectBefore1900;
 
     public DateRangeFieldBuilder format(String format) {
         this.format = format;
@@ -28,10 +29,19 @@ public final class DateRangeFieldBuilder extends FieldAttrs<DateRangeFieldBuilde
         return this;
     }
 
+    /**
+     * Reject values before 1900-01-01 through A12's {@code DateRangeType.youngerThan1900Check} — the range's
+     * own opt-in additional check, applied to the <b>start</b> date. Off by default.
+     */
+    public DateRangeFieldBuilder rejectBefore1900() {
+        this.rejectBefore1900 = true;
+        return this;
+    }
+
     protected FieldTypeSpec spec() {
         if (format == null || separator == null) {
             throw new IllegalStateException("a date range needs both a format and a range separator");
         }
-        return new FieldTypeSpec.DateRangeSpec(format, separator, interpretationOfYear);
+        return new FieldTypeSpec.DateRangeSpec(format, separator, interpretationOfYear, rejectBefore1900);
     }
 }
