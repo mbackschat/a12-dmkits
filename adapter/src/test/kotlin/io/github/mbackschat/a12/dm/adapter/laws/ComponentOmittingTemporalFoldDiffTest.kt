@@ -187,6 +187,44 @@ class ComponentOmittingTemporalFoldDiffTest {
     }
 
     /**
+     * The cell the 2×2 was missing: a UNIFORMLY yearless list on a model that DECLARES a Base Year. The rows
+     * above take the no-Base-Year arm and the supplementation rows below take a mixed-precision list, so
+     * "a declared Base Year does not disturb a list that needs no supplementation" was the one corner neither
+     * covered — and a12-kernel-lean's `SPEC-2026-09-07-02` names it unmeasured on both sides.
+     *
+     * The two models differ in exactly the `baseYear` builder call, so a verdict change here could only be
+     * that flag; the reversed document is the separator, as above.
+     */
+    @Test
+    fun aUniformlyYearlessListOrdersUnderADeclaredBaseYearToo() {
+        val yearlessMin = "MinValue(MonthA, MonthB) == [MonthA]"
+        val yearlessMax = "MaxValue(MonthA, MonthB) == [MonthB]"
+
+        val actual = linkedMapOf(
+            "yearless MM min, ascending, baseYear 2024" to
+                bothFire(withBaseYear, "MOMINA", yearlessMin, ascending()),
+            "yearless MM max, ascending, baseYear 2024" to
+                bothFire(withBaseYear, "MOMAXB", yearlessMax, ascending()),
+            "yearless MM min, REVERSED, baseYear 2024" to
+                bothFire(withBaseYear, "MOMINA", yearlessMin, reversed()),
+            "yearless MM max, REVERSED, baseYear 2024" to
+                bothFire(withBaseYear, "MOMAXB", yearlessMax, reversed()),
+            "yearless MM min, EQUAL values, baseYear 2024" to
+                bothFire(withBaseYear, "MOMINA", yearlessMin, equal()),
+        )
+        val expected = linkedMapOf(
+            "yearless MM min, ascending, baseYear 2024" to true,
+            "yearless MM max, ascending, baseYear 2024" to true,
+            "yearless MM min, REVERSED, baseYear 2024" to false,
+            "yearless MM max, REVERSED, baseYear 2024" to false,
+            // Both operands decode to one month, so the minimum equals either — the row says the Base Year
+            // does not silently shift one operand and not the other.
+            "yearless MM min, EQUAL values, baseYear 2024" to true,
+        )
+        assertEquals(expected, actual, "a declared Base Year neither enables nor disturbs a uniformly yearless fold")
+    }
+
+    /**
      * A yearless operand beside a year-bearing one, admitted only under a declared Base Year. The
      * other-year row separates "the Base Year supplements" from "the sibling's year is borrowed".
      */

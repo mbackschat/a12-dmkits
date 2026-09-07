@@ -75,6 +75,59 @@ class FirstFilledValueAdditionalKindDiffTest {
         ))
     }
 
+    /**
+     * **`filled` is PRESENCE, not truth** — the one question a Boolean source can ask that no other kind can.
+     * A `false` in the first row is selected in preference to a `true` in the second; an ABSENT first row falls
+     * through to it. Neither row establishes the claim alone: the false-first row by itself is equally
+     * consistent with "always take the first operand", and the absent-first row by itself says nothing about
+     * falsy values. Reported by a12-kernel-lean as `SPEC-2026-09-07-03`; measured here because none of this
+     * estate's `FirstFilledValue` findings had named a Boolean VALUE.
+     */
+    @Test
+    fun aFalseBooleanIsFilledAndAnAbsentOneFallsThrough() {
+        val actual = linkedMapOf(
+            "false then true → false" to outcomeOfApproved(first = "false", second = "true"),
+            "absent then true → true" to outcomeOfApproved(first = null, second = "true"),
+            "true then false → true (the trivial control)" to outcomeOfApproved(first = "true", second = "false"),
+        )
+        val expected = linkedMapOf(
+            "false then true → false" to "VALUE|false",
+            "absent then true → true" to "VALUE|true",
+            "true then false → true (the trivial control)" to "VALUE|true",
+        )
+        assertEquals(expected, actual, "the scan consults the cell's presence and never its value")
+    }
+
+    /** Two ordered Boolean rows into the Boolean target, agreed across all three engines. */
+    private fun outcomeOfApproved(first: String?, second: String): String {
+        val kernelDocument = RuntimeLaws.doc().group(ROOT, 1).group(ROWS, 1, 1).group(ROWS, 1, 2)
+            .field(FIRST_APPROVED, "false", 1, 1)
+        val interpreterDocument = definition.newDocument().group(ROOT, 1).group(ROWS, 1, 1).group(ROWS, 1, 2)
+            .field(FIRST_APPROVED, "false", 1, 1)
+        if (first != null) {
+            kernelDocument.field(ROWS_APPROVED, first, 1, 1, 1)
+            interpreterDocument.field(ROWS_APPROVED, first, 1, 1, 1)
+        }
+        // The reps vector carries one index per PATH SEGMENT, so the middle index is the row and the last is
+        // the field's own (always 1): row two is `1, 2, 1`, never `1, 1, 2`.
+        kernelDocument.field(ROWS_APPROVED, second, 1, 2, 1)
+        interpreterDocument.field(ROWS_APPROVED, second, 1, 2, 1)
+
+        val dynamic = signatures(RuntimeLaws.compute(modelJson, kernelDocument, kernelTypes))[FIRST_APPROVED]
+        val java = signatures(generated.compute(generated.instance(kernelDocument), kernelTypes))[FIRST_APPROVED]
+        val interpreted = DmInterpreter(definition, customFieldTypes = customTypes).compute(interpreterDocument)
+            .firstOrNull { it.path == FIRST_APPROVED }
+            ?.let { result -> when (result.outcome) {
+                ComputeOutcome.CLEARED -> "CLEARED"
+                ComputeOutcome.ERRORED -> "ERRORED"
+                ComputeOutcome.VALUE -> "VALUE|${result.value.orEmpty()}"
+            } }
+
+        assertEquals(dynamic, java, "generated Java")
+        assertEquals(dynamic, interpreted, "kernel-free interpreter")
+        return dynamic ?: "NONE"
+    }
+
     private fun agree(empty: Boolean, expected: Map<String, String>) {
         val kernelDocument = RuntimeLaws.doc().group(ROOT, 1).group(ROWS, 1, 1)
             .field(FIRST_APPROVED, "false", 1, 1)

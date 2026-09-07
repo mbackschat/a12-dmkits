@@ -4831,6 +4831,8 @@ Our record had the Base Year supplementing the year at the **comparison** gate a
 
 **Supplementation is by the DECLARED Base Year, not by the sibling operand's year.** Under `baseYear 2024`, a yearless `03` beside `2023-03` counts as **two** values and the extremum puts the 2023 operand first. A sibling-supplied year would make the two equal and count one, so that row is what separates the accounts; `03` beside `2024-03` counting one is consistent with both.
 
+**Extended 2026-09-07 — the 2×2's missing cell: a UNIFORMLY yearless list on a model that DECLARES a Base Year.** The rows above take the no-Base-Year arm and the supplementation rows take a mixed-precision list, so "a declared Base Year neither enables nor disturbs a list that needs no supplementation" was the one corner neither covered, and a12-kernel-lean's `SPEC-2026-09-07-02` lists it as unmeasured on both sides. It orders: `MM` `03` before `04` under `baseYear 2024`, the reversed document firing nothing, on both kernel strategies and the interpreter. The two models differ in exactly the `baseYear` builder call, so a verdict change could only be that flag.
+
 **Reported by a12-kernel-lean as `SPEC-2026-09-06-08`** (the distinct count) **and `SPEC-2026-09-06-10`** (the extrema); measured here on our own fixture, kernel and interpreter agreeing on every row.
 
 *(Locked: `adapter.laws.ComponentOmittingTemporalFoldDiffTest`.)*
@@ -5055,3 +5057,17 @@ The root is one notion the read path lacked: **which temporal classifier a DECLA
 *(Locked: `validate.laws.TemporalEqualSetPairDenominatorLawsTest` — the 7 × 5 grid with 15 same-format controls, three differing-set refusals, and the order-opposed pair called out on its own; `validate.laws.TemporalFormatVocabularyGuardTest.theEqualSetPairDenominatorMatchesTheAdmittedVocabulary` derives the denominator from the kernel.)*
 
 **Reported by a12-kernel-lean as `SPEC-2026-09-07-04`.** Their carrier split is one our operator catalog already carried correctly and in both directions (`FieldValuesNotUnique`'s third gotcha names the three operators it disagrees with; `NumberOfDifferentValues`' first says not to carry its gate the other way), so the split itself is confirmation. What is ours to fix is the denominator, and the seven above are derived here rather than taken from their count.
+
+---
+
+## §2/§9 supplement — `FirstFilledValue`'s filled predicate is PRESENCE, and an all-empty selection into a SEEDED target CLEARS it (tri-engine differential, 2026-09-07) <a id="kf273"></a>
+
+> Fold: pending — the filled predicate itself, which §2's empty-value account never states; folds beside [KF20](#kf20).
+
+Every row this estate held about `FirstFilledValue` was about which *operand* is scanned or what an *empty* selection yields. None asked what **filled** means for a kind whose value can be falsy — and only BOOLEAN can pose that question.
+
+**It is presence, never truth.** `FirstFilledValue(Rows*/Approved)` over two rows holding `false` then `true` computes **`false`**. Two rows separate the accounts: an **absent** first row falls through and yields `true`, so the scan is not "always take the first operand"; and the trivial `true`-then-`false` control yields `true`, so the grid is not constant. All three engines agree — dynamic Groovy, generated Java, and the interpreter, whose `firstFilledOperand` consults `EvalContext.filled` (a `value != null` test) and so agreed at the mechanism rather than by a coincidence of cases.
+
+**A CONTRARY measurement to a12-kernel-lean's `SPEC-2026-09-07-03`, on the axis their own limit line names.** That entry's delta says an all-empty selection "mints no outcome at all, leaving the target neither written nor cleared", while its `limit` row records "whether a *seeded* target is cleared rather than left untouched" as unmeasured — and an unseeded target cannot tell the two apart. Ours is seeded: `FirstFilledValueAdditionalKindDiffTest` seeds the BOOLEAN target with `false` and the kernel reports **CLEARED**, on both strategies, with CUSTOM and DATE_FRAGMENT beside it; `FirstFilledValueKindDiffTest` carries the same seeded row for DATE, STRING, ENUM, TIME, DATE_TIME and DATE_RANGE, against the NUMBER control that computes the fillable `0` ([KF20](#kf20)). So the kernel does mint an outcome, and an implementation that leaves a seeded target alone keeps a stale value the kernel would have removed.
+
+*(Locked: `adapter.laws.FirstFilledValueAdditionalKindDiffTest.aFalseBooleanIsFilledAndAnAbsentOneFallsThrough` for the predicate; `.allEmptySelectionsClearEveryAdditionalKind` and `adapter.laws.FirstFilledValueKindDiffTest` for the seeded clear.)*
