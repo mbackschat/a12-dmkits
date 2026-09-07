@@ -154,6 +154,28 @@ class CrossKindTemporalOperandReadTest {
     }
 
     /**
+     * The SHIFT family's own classifier, {@code isDateTimeValue} — reached by nothing above, because it types an
+     * {@code AddDays} rather than a field read. {@code AddDays} is temporal-output-polymorphic: over a date it
+     * yields a date, over an instant a time-preserving wall-day shift, and which one it is decides what the
+     * result may be compared against. Reading the kind made a stamp-declared DATE field's shift a DATE, so its
+     * kernel-admitted equality against an ordinary stamp came back {@code Opaque}. This row exists because a
+     * mutant planted at that site SURVIVED every other row in this file (2026-09-07).
+     */
+    @Test
+    void aCrossKindTemporalShiftReadsBack() {
+        Map<String, String> actual = new LinkedHashMap<>();
+        actual.put("AddDays over an ordinary stamp — control", verdict("PlainShift", "../ServiceStamp",
+                "AddDays(/Cover/ServiceStamp, 1) == [/Cover/ServiceStamp]"));
+        actual.put("AddDays over a DATE declared as a stamp", verdict("StampShift", "../ServiceStamp",
+                "AddDays(/Cover/StampAsDate, 1) == [/Cover/ServiceStamp]"));
+
+        Map<String, String> expected = new LinkedHashMap<>();
+        expected.put("AddDays over an ordinary stamp — control", "CONVERTED");
+        expected.put("AddDays over a DATE declared as a stamp", "CONVERTED");
+        assertEquals(expected, actual, "the shift's output family follows the operand's declaration");
+    }
+
+    /**
      * The THIRD site, and the one the 2026-08-24 sweep missed: an entity-list extremum's operand classifier.
      * {@code temporalExtremumKind} collapsed DATE_FRAGMENT into the DATE class but read that class off the
      * KIND, so a {@code MaxValue} mixing a date-declared TIME field with a DATE — which
