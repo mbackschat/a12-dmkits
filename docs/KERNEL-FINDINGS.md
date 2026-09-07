@@ -3124,7 +3124,7 @@ Note the precedence **reverses** between rows 3 and 4 — the comparison wins ov
 
 Reconciliation of a12-kernel-lean `SPEC-2026-08-23-16`, **accepted**. Their entry corrects a clause of *theirs* that had said the aggregate gate reads the declared format "exactly as `FieldValuesNotUnique`'s does". This repository already held the two gates apart and correctly — [KF96](#kf96) names `DateFormat.hasSameComponents` for the extremum and [KF173](#kf173) the identical declared **format string** for `FieldValuesNotUnique` — so nothing here was wrong. Three things were nevertheless missing, and each is now measured and locked.
 
-**1. The separating pair was never locked.** Every previously locked row is satisfied by *both* readings: a same-format pair is admitted under either, and the `yyyy-MM` + `yyyy-MM-dd` pair [KF96](#kf96) rejects differs in its component set *and* its spelling. Only an **equal-set, different-spelling** pair discriminates. Two exist, and both behave the same way on both carriers, in one model:
+**1. The separating pair was never locked.** Every previously locked row is satisfied by *both* readings: a same-format pair is admitted under either, and the `yyyy-MM` + `yyyy-MM-dd` pair [KF96](#kf96) rejects differs in its component set *and* its spelling. Only an **equal-set, different-spelling** pair discriminates. *(Corrected 2026-09-07: this said "Two exist", counting the pairs this work had used rather than deriving them from the vocabulary that owns them — the same undercount [KF211](#kf211)'s exhaustiveness claim carried twice. The twelve admitted formats yield **seven** pairs across **three** component-set families; the two below are the {YEAR, MONTH, DAY} and {YEAR, MONTH} representatives, and the complete denominator with its own derivation guard is [KF272](#kf272).)* Both behave the same way on both carriers, in one model:
 
 | operand pair | component set | `MaxValue` / `MinValue` / `NumberOfDifferentValues` | `FieldValuesNotUnique` |
 |---|---|---|---|
@@ -5027,3 +5027,31 @@ The root is one notion the read path lacked: **which temporal classifier a DECLA
 *(Locked: `validate.laws.TemporalConstructorDeclaredFormatGateLawsTest` — the six endpoint admissions with their three no-date-component refusals, the three Year admissions with their six necessity rows, and the typed-surface mirror that builds every admitted endpoint while still refusing the three measured kinds. `adapter.CrossKindTemporalOperandReadTest` locks the read half: nine rows, each authored from raw DSL through `EditSession.addRule` so the kernel gates it before the read is asserted. The new `Date.complete-date-at-year` catalog claim probe re-measures two of the Year rows on a second fixture.)*
 
 **Reported by a12-kernel-lean as `SPEC-2026-09-07-07` (the endpoint) and `SPEC-2026-09-07-06` (the Year position).** Neither entry proposes a mechanism beyond `KF211`'s, and neither asks us to re-derive it; what they add is the two gates, and what we add back is that our client refused both and our reader could not read either.
+
+---
+
+## §6/§9 supplement — the equal-set pair denominator is SEVEN across three families, the admitting gate ignores component ORDER, and `FirstFilledValue` is the fifth carrier (kernel `checkConsistency`, 2026-09-07) <a id="kf272"></a>
+
+> Fold: pending — completes [KF193](#kf193)'s denominator and adds the carrier that entry excluded; folds into §6 with it.
+
+[KF193](#kf193) said two equal-set, different-spelling pairs exist. That is the only kind of row separating the component-SET gate from the format-STRING one, so the number is a denominator — and it had been read off the pairs that work happened to use. Derived from the twelve admitted formats ([TEMPORAL-FORMAT-VOCABULARY.md](TEMPORAL-FORMAT-VOCABULARY.md)) there are **seven, across three families**: three spellings of {MONTH, DAY} (`MM-dd`, `MMdd`, `ddMM`), three of {YEAR, MONTH, DAY} (`yyyy-MM-dd`, `dd.MM.yyyy`, `yyyyMMdd`), and two of {YEAR, MONTH} (`yyyy-MM`, `yyyyMM`).
+
+**All seven split the five carriers identically**, each against a same-format control at the same carrier, in one model:
+
+| carrier | every equal-set pair |
+|---|---|
+| `MinValue`, `MaxValue`, `NumberOfDifferentValues` | **ADMITTED** |
+| `FieldValuesNotUnique` | `MVK_ONLY_STRING_ENUM_NUMBER_DATE_ALLOWED` |
+| `FirstFilledValue` | `MVK_VARYING_TYPES_NOT_ALLOWED` |
+
+**`FirstFilledValue` is the row [KF193](#kf193) explicitly left out** — it routes through `checkAllFieldsMatchingOperationType` and that entry declined to cover it. It reads the format string, with its own third code, so the five carriers are two-and-three rather than two-and-two.
+
+**The admitting gate ignores component ORDER, not merely spelling — the new family is what makes that measurable.** `MM-dd` reads month-first and `ddMM` day-first ([KF211](#kf211)'s separator-free grid measures that by validity), so the two decode the same four digits to different dates; `MinValue` and `MaxValue` take the pair anyway. So the admitting gate is the **unordered component set** and nothing else, which is a stronger statement than "reads the component set" and the one an importer needs: it decides whether two order-opposed spellings may share one operand list. `FirstFilledValue` refuses that same pair.
+
+**The differing-set rows are still refused** `MVK_DATEFORMATS_NOT_COMPATIBLE` at the admitting carriers, including across the new family boundary ({MONTH, DAY} beside a complete date) — without them every admission above is equally consistent with those carriers having no temporal gate at all.
+
+**What keeps the denominator from drifting back.** The pair list is computed from the families the sweep declares, and `TemporalFormatVocabularyGuardTest` re-derives the same list from the vocabulary the kernel actually admits and fails when the two disagree. The count lives beside the derivation rather than beside the sweep, which is precisely the arrangement whose absence produced "two exist".
+
+*(Locked: `validate.laws.TemporalEqualSetPairDenominatorLawsTest` — the 7 × 5 grid with 15 same-format controls, three differing-set refusals, and the order-opposed pair called out on its own; `validate.laws.TemporalFormatVocabularyGuardTest.theEqualSetPairDenominatorMatchesTheAdmittedVocabulary` derives the denominator from the kernel.)*
+
+**Reported by a12-kernel-lean as `SPEC-2026-09-07-04`.** Their carrier split is one our operator catalog already carried correctly and in both directions (`FieldValuesNotUnique`'s third gotcha names the three operators it disagrees with; `NumberOfDifferentValues`' first says not to carry its gate the other way), so the split itself is confirmation. What is ours to fix is the denominator, and the seven above are derived here rather than taken from their count.

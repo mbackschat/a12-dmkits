@@ -24,9 +24,12 @@ import io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer;
  * </ul>
  *
  * <p><b>Only one kind of row separates those two readings, and it carries this file:</b> a pair whose component
- * sets are EQUAL but whose format spellings DIFFER. Two exist — {@code yyyy-MM-dd} beside {@code dd.MM.yyyy},
- * and {@code yyyy-MM} beside {@code yyyyMM} — and each is admitted by the three aggregates and refused by
- * {@code FieldValuesNotUnique} <em>in the same model</em>. Every same-format row is satisfied by both readings
+ * sets are EQUAL but whose format spellings DIFFER. This file locks two — {@code yyyy-MM-dd} beside
+ * {@code dd.MM.yyyy}, and {@code yyyy-MM} beside {@code yyyyMM} — and each is admitted by the three aggregates
+ * and refused by {@code FieldValuesNotUnique} <em>in the same model</em>. <b>Two is not the denominator:</b>
+ * the twelve admitted formats yield seven such pairs across three families, and
+ * {@link TemporalEqualSetPairDenominatorLawsTest} sweeps all of them over all five carriers
+ * ({@code FirstFilledValue} included, which this file excludes below). Every same-format row is satisfied by both readings
  * and every different-SET row is refused by both, so without an equal-set pair the whole file would be
  * vacuous with respect to its own claim. The neighbouring
  * {@link FieldValuesNotUniqueAdmissionLawsTest} owns the format-string carrier's own matrix; this file owns

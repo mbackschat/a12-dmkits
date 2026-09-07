@@ -635,6 +635,62 @@ class TemporalFormatVocabularyGuardTest {
     }
 
     /**
+     * The equal-set, different-spelling pairs the admitted vocabulary yields, re-derived here and compared
+     * against the list {@link TemporalEqualSetPairDenominatorLawsTest} sweeps.
+     *
+     * <p><b>Why this belongs in this file rather than in that one.</b> An equal-set pair is the only kind of row
+     * that separates the component-SET gate from the format-STRING one, so its count is a denominator, and this
+     * is the only class that knows which formats the kernel actually admits. Stating the count where the sweep
+     * lives is exactly how it came to say "two exist": the number was read off the pairs work had used. Here it
+     * cannot be, because the pairs are computed from {@link #admittedFormats(Map)} — add a thirteenth admitted
+     * spelling to any family and this fails until the sweep covers it.
+     *
+     * <p>The component set is read off the format's letters, which is sound for the admitted twelve: each names
+     * every component it carries exactly once, so the letter set and the component set coincide.
+     */
+    @Test
+    void theEqualSetPairDenominatorMatchesTheAdmittedVocabulary() {
+        Map<String, Set<String>> byComponents = new LinkedHashMap<>();
+        for (String format : admittedFormats(partition())) {
+            byComponents.computeIfAbsent(dateComponentsOf(format), key -> new TreeSet<>()).add(format);
+        }
+
+        Set<List<String>> derived = new java.util.LinkedHashSet<>();
+        byComponents.forEach((components, spellings) -> {
+            List<String> ordered = List.copyOf(spellings);
+            for (int i = 0; i < ordered.size(); i++) {
+                for (int j = i + 1; j < ordered.size(); j++) {
+                    derived.add(List.of(ordered.get(i), ordered.get(j)));
+                }
+            }
+        });
+
+        Set<List<String>> swept = TemporalEqualSetPairDenominatorLawsTest.EQUAL_SET_PAIRS.stream()
+                .map(pair -> List.copyOf(new TreeSet<>(pair)))
+                .collect(java.util.stream.Collectors.toCollection(java.util.LinkedHashSet::new));
+
+        assertEquals(derived, swept,
+                "the equal-set pair denominator the kernel's admitted vocabulary yields is not the one "
+                        + TemporalEqualSetPairDenominatorLawsTest.class.getSimpleName() + " sweeps. That test "
+                        + "carries the only rows separating the component-set gate from the format-string one, "
+                        + "so an unswept pair is a hole in that separation, not a missing example.");
+    }
+
+    /** The format's component letters as a canonical key — {@code dd.MM.yyyy} and {@code yyyyMMdd} agree. */
+    private static String dateComponentsOf(String format) {
+        Set<Character> letters = new TreeSet<>();
+        boolean quoted = false;
+        for (char c : format.toCharArray()) {
+            if (c == '\'') {
+                quoted = !quoted;
+            } else if (!quoted && "yMdHms".indexOf(c) >= 0) {
+                letters.add(c);
+            }
+        }
+        return letters.toString();
+    }
+
+    /**
      * Every claimant is a declared Gradle input of the task that hosts this guard.
      *
      * <p>The registry above and {@code build.gradle}'s {@code vocabulary consumers} list are two copies of one
