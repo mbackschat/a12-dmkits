@@ -6467,7 +6467,8 @@
       "returns": "date",
       "meaning": "Constructs a comparable date from day, month, and year (optionally century + 2-digit decade) temporal components. A component may be a bounded number field/expression or a quoted digit string; field-backed components render as bare entity refs and literal components remain quoted.",
       "constraints": [
-        "each operand is a temporal component: a bounded-integer / digit-patterned number field or expression, or a quoted digit string; the kernel rejects a plain scale-0 number field (MVK_WRONG_DATE_FORMAT_FOR_OP)"
+        "each operand is a temporal component: a bounded-integer / digit-patterned number field or expression, or a quoted digit string; the kernel rejects a plain scale-0 number field (MVK_WRONG_DATE_FORMAT_FOR_OP)",
+        "the complete-Year position additionally admits a bare temporal field DECLARED yyyy, and reads that declaration rather than the kind — a DATE, a TIME and a DATE_TIME field each declared yyyy are all admitted there. Both conjuncts are necessary: the same three kinds declared yyyy-MM-dd are refused at Year, and a yyyy field is refused at the Day and Month positions, all MVK_WRONG_DATE_FORMAT_FOR_OP (Locked: rulekit.validate.laws.TemporalConstructorDeclaredFormatGateLawsTest)"
       ],
       "gotchas": [
         {
@@ -7033,7 +7034,7 @@
         }
       ],
       "constraints": [
-        "each operand is a bare full DATE or DATE_FRAGMENT entity reference, and both formats contain the same date components and no time component; DATE and DATE_FRAGMENT may be mixed, lexical spellings may differ, and a computation target must be a DATE_RANGE declaring those same components"
+        "each operand is a bare entity reference whose DECLARED FORMAT carries date components and no time component — the declared KIND takes no part, so a TIME-declared or DATE_TIME-declared field carrying yyyy-MM-dd is admitted in the start position, the finish position and both at once, while a stamp-formatted DATE_TIME and a clock-formatted DATE are refused MVK_WRONG_DATE_FORMAT_FOR_OP. A DATE_FRAGMENT is admitted and may be mixed in. Both formats must contain the SAME date components, lexical spellings may differ, and a computation target must be a DATE_RANGE declaring those same components (Locked: rulekit.validate.laws.TemporalConstructorDeclaredFormatGateLawsTest)"
       ],
       "validExample": {
         "dsl": "DateRange(OrderDate, DeliveryDate) == [CoverageWindow]",

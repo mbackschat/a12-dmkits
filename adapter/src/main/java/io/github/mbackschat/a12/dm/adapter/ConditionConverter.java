@@ -1103,13 +1103,22 @@ final class ConditionConverter {
         return null;
     }
 
-    /** Dispatch a {@code [field] <op> other} comparison by the field's kind (other = the constant/field operand). */
+    /**
+     * Dispatch a {@code [field] <op> other} comparison by the field's kind (other = the constant/field operand).
+     *
+     * <p><b>A temporal field dispatches on its DECLARATION, not its kind</b> ({@code FieldInfo.temporalClass}).
+     * The comparison-admission gate partitions temporal operands by declared format ({@code KF211},
+     * {@code KF248}), so a TIME field declared {@code yyyy-MM-dd} must become a {@code DateRef} here — keyed on
+     * the kind it became a {@code TimeRef} that could not be compared against the date it was authored against,
+     * and a clock-declared DATE reached {@code BoundModel.date} and threw, surfacing a legal model as a
+     * "converter error" rather than as a rule. Locked by {@code CrossKindTemporalOperandReadTest}.
+     */
     private Condition fieldValueComparison(IFieldIdOperation field, ComparisonOperation op, IOperation other,
             ICondition origin) {
         String path = field.getField().getFullName();
         ValueKind kind = model.fieldAt(path)
                 .orElseThrow(() -> unsupported("comparison on unknown field " + path, origin))
-                .kind();
+                .temporalClass();
         // a $ outer-iteration correlation on the left operand (D13) — threaded for the kinds whose
         // handles expose outer(); other kinds leave the marker unset and the N8 backstop (verifyOuterPreserved)
         // catches the silent drop and degrades the rule to Opaque.
@@ -1196,21 +1205,30 @@ final class ConditionConverter {
         return Dsl.firstFilledDateRange(operands.getFirst(), operands.get(1), rest);
     }
 
+    /**
+     * The endpoint gate reads the endpoint's DECLARED FORMAT, so the handle is chosen by the declaration's
+     * temporal class rather than by the field's kind: a TIME- or DATE_TIME-declared {@code yyyy-MM-dd} field is
+     * an admitted endpoint in either position and in both at once, and this had refused all three outright
+     * ({@code KF211}'s rule at this gate; the admissions are locked by
+     * {@code rulekit.validate.laws.TemporalConstructorDeclaredFormatGateLawsTest} and the reads by
+     * {@code CrossKindTemporalOperandReadTest}). A DATE_FRAGMENT keeps its own class and its own handle.
+     */
     private DateOperand dateRangeEndpoint(IEntityId field, Object origin) {
         String path = field.getFullName();
-        ValueKind kind = model.fieldAt(path)
-                .orElseThrow(() -> unsupported("DateRange on unknown field " + path, origin)).kind();
+        FieldInfo info = model.fieldAt(path)
+                .orElseThrow(() -> unsupported("DateRange on unknown field " + path, origin));
+        ValueKind declared = info.temporalClass();
         if (hasSemanticIndex(field)) {
             Calculation indexed = semanticIndex(field, origin).index();
-            if (kind == ValueKind.DATE || kind == ValueKind.DATE_FRAGMENT) {
+            if (declared == ValueKind.DATE || declared == ValueKind.DATE_FRAGMENT) {
                 return new DateExpr(indexed);
             }
-            throw unsupported("DateRange on a " + kind + " semantic-index field " + path, origin);
+            throw unsupported("DateRange on a " + info.kind() + " semantic-index field " + path, origin);
         }
-        return switch (kind) {
+        return switch (declared) {
             case DATE -> field.isOuter() ? model.date(path).outer() : model.date(path);
             case DATE_FRAGMENT -> field.isOuter() ? model.dateFragment(path).outer() : model.dateFragment(path);
-            default -> throw unsupported("DateRange on a " + kind + " field " + path, origin);
+            default -> throw unsupported("DateRange on a " + info.kind() + " field " + path, origin);
         };
     }
 
@@ -2111,7 +2129,7 @@ final class ConditionConverter {
         }
         if (op instanceof IFieldIdOperation field && field.getOperatorName() == FieldIdOperationName.FieldValue
                 && model.fieldAt(field.getField().getFullName())
-                        .map(i -> i.kind() == ValueKind.DATE_TIME).orElse(false)) {
+                        .map(i -> i.temporalClass() == ValueKind.DATE_TIME).orElse(false)) {
             DateTimeRef dt = model.dateTime(field.getField().getFullName());
             return field.getField().isOuter() ? dt.outer() : dt;   // $ correlation (D13)
         }
@@ -2303,7 +2321,8 @@ final class ConditionConverter {
     /** A time-valued operand: a time field ({@code FieldValue}), a time constant, or {@code TimeFromDateTime(dt)}. */
     private TimeOperand convertTimeOperand(IOperation op, Object origin) {
         if (op instanceof IFieldIdOperation field && field.getOperatorName() == FieldIdOperationName.FieldValue
-                && model.fieldAt(field.getField().getFullName()).map(i -> i.kind() == ValueKind.TIME).orElse(false)) {
+                && model.fieldAt(field.getField().getFullName())
+                        .map(i -> i.temporalClass() == ValueKind.TIME).orElse(false)) {
             TimeRef time = model.time(field.getField().getFullName());
             return field.getField().isOuter() ? time.outer() : time;   // $ correlation (D13)
         }

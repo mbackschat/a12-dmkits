@@ -118,6 +118,10 @@ class DateRangeConstructionOperandLawsTest {
         // Refused: the kind rows the typed surface pre-checks…
         verdicts.put("number field", verdict("DateRange(/Policy/Qty, /Policy/End) == [/Policy/Window]"));
         verdicts.put("string field", verdict("DateRange(/Policy/Note, /Policy/End) == [/Policy/Window]"));
+        // …and one that is NOT a kind row, though it sat among them until it was measured: what refuses here is
+        // the STAMP FORMAT, not the DATE_TIME kind. A DATE_TIME field declared `yyyy-MM-dd` is an admitted
+        // endpoint (TemporalConstructorDeclaredFormatGateLawsTest), so the typed surface no longer pre-checks
+        // this one and the row records a format refusal the kernel owns.
         verdicts.put("date-time field",
                 verdict("DateRange(/Policy/Stamp, /Policy/Stamp2) == [/Policy/Window]", "../Window"));
         verdicts.put("range field", verdict("DateRange(/Policy/Window, /Policy/End) == [/Policy/Window]"));

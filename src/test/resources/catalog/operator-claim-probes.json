@@ -1808,6 +1808,25 @@
       }
     },
     {
+      "id": "Date.complete-date-at-year",
+      "operator": "Date",
+      "kind": "CONDITION",
+      "fixture": "DATE_FRAGMENTS",
+      "trigger": {
+        "group": "/Doc",
+        "field": "../FullDate",
+        "dsl": "[FullDate] != Date(\"15\", \"6\", FullDate)",
+        "verdict": "REJECTED",
+        "code": "MVK_WRONG_DATE_FORMAT_FOR_OP"
+      },
+      "control": {
+        "group": "/Doc",
+        "field": "../FullDate",
+        "dsl": "[FullDate] != Date(\"15\", \"6\", YearAsDate)",
+        "verdict": "ACCEPTED"
+      }
+    },
+    {
       "id": "BaseYear.missing-model-value",
       "operator": "BaseYear",
       "kind": "CONDITION",

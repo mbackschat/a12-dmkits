@@ -7417,6 +7417,27 @@
     },
     {
       "operator": "Date",
+      "lane": "CONSTRAINT",
+      "ordinal": 1,
+      "digest": "sha256:fa27fbb0170565bb73dfe089923ac986f6fc4ca0fb3ba4efb224333b671dfe9f",
+      "classifications": [
+        "ADMISSION",
+        "REJECTION"
+      ],
+      "evidence": [
+        {
+          "classification": "ADMISSION",
+          "type": "CLAIM_PROBE",
+          "id": "Date.complete-date-at-year",
+          "side": "CONTROL",
+          "expected": {
+            "verdict": "ACCEPTED"
+          }
+        }
+      ]
+    },
+    {
+      "operator": "Date",
       "lane": "GOTCHA",
       "ordinal": 0,
       "digest": "sha256:3391e44104b904d9c052d23d695fc68bb25e111cf0a2be9b0b5151d4ab364223",
@@ -8032,7 +8053,7 @@
       "operator": "DateRange",
       "lane": "CONSTRAINT",
       "ordinal": 0,
-      "digest": "sha256:8d7b4fd872619be437b056f1890846b64d512a67d6a8207f92ff4b64bf7f0e3f",
+      "digest": "sha256:f323c2182591c6a2e8a66f642f0903d0f400fa82b9b5fd7910b477eb789fc06b",
       "classifications": [
         "REJECTION",
         "ADMISSION"
@@ -10988,6 +11009,27 @@
         {
           "type": "CLAIM_PROBE",
           "id": "Date.plain-number-component"
+        }
+      ]
+    },
+    {
+      "id": "literal.Date.constraint1.MVK_WRONG_DATE_FORMAT_FOR_OP",
+      "operator": "Date",
+      "kind": "CONDITION",
+      "units": [
+        {
+          "lane": "CONSTRAINT",
+          "ordinal": 1
+        }
+      ],
+      "expected": {
+        "verdict": "REJECTED",
+        "code": "MVK_WRONG_DATE_FORMAT_FOR_OP"
+      },
+      "evidence": [
+        {
+          "type": "CLAIM_PROBE",
+          "id": "Date.complete-date-at-year"
         }
       ]
     },
@@ -24415,6 +24457,49 @@
           "type": "CLAIM_PROBE",
           "id": "Date.plain-number-component",
           "side": "TRIGGER"
+        }
+      ]
+    },
+    {
+      "id": "review.Date.Date.complete-date-at-year.trigger",
+      "operator": "Date",
+      "kind": "CONDITION",
+      "units": [
+        {
+          "lane": "CONSTRAINT",
+          "ordinal": 1
+        }
+      ],
+      "expected": {
+        "verdict": "REJECTED",
+        "code": "MVK_WRONG_DATE_FORMAT_FOR_OP"
+      },
+      "evidence": [
+        {
+          "type": "CLAIM_PROBE",
+          "id": "Date.complete-date-at-year",
+          "side": "TRIGGER"
+        }
+      ]
+    },
+    {
+      "id": "review.Date.Date.complete-date-at-year.control",
+      "operator": "Date",
+      "kind": "CONDITION",
+      "units": [
+        {
+          "lane": "CONSTRAINT",
+          "ordinal": 1
+        }
+      ],
+      "expected": {
+        "verdict": "ACCEPTED"
+      },
+      "evidence": [
+        {
+          "type": "CLAIM_PROBE",
+          "id": "Date.complete-date-at-year",
+          "side": "CONTROL"
         }
       ]
     },

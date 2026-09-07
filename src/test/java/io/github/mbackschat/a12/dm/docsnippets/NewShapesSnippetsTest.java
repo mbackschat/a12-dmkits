@@ -8,6 +8,7 @@ import java.util.List;
 import org.junit.jupiter.api.Test;
 
 import io.github.mbackschat.a12.dm.Fixtures;
+import io.github.mbackschat.a12.dm.core.ValueKind;
 import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft;
 import io.github.mbackschat.a12.dm.modelkit.FieldKind;
 import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel;
@@ -57,7 +58,8 @@ class NewShapesSnippetsTest {
                     // A TimeType field declaring a DATE format: model-legal, and the shape an imported or
                     // hand-edited model really does arrive in. It stores and compares as a date.
                     .timeField("PromisedDay", f -> f.format("yyyy-MM-dd"))
-                    .dateField("ShippedOn", f -> f.format("yyyy-MM-dd")))
+                    .dateField("ShippedOn", f -> f.format("yyyy-MM-dd"))
+                    .dateRangeField("DeliveryWindow", r -> r.format("yyyy-MM-dd").separator("/")))
             .build().toJson();
     private static final BoundModel fulfilment = BoundModel.ofJson(FULFILMENT_JSON);
     private static final String DEPOT_JSON = DocumentModelDraft.named("depot").locale("en_US")
@@ -239,16 +241,28 @@ class NewShapesSnippetsTest {
         Condition promisedAfterShipping = fulfilment.date("/Fulfilment/PromisedDay")
                 .after(fulfilment.date("/Fulfilment/ShippedOn"));
         NumberExpr promisedYear = Dsl.yearFromDate(fulfilment.date("/Fulfilment/PromisedDay"));
+        // The rule reaches the CONSTRUCTORS too: such a cell is an admitted DateRange endpoint, and a field
+        // declared `yyyy` is admitted at Date(...)'s complete-Year position, on any date-bearing kind.
+        Condition windowFollowsPromise = fulfilment.dateRange("/Fulfilment/DeliveryWindow")
+                .ne(Dsl.dateRange(fulfilment.date("/Fulfilment/PromisedDay"),
+                        fulfilment.date("/Fulfilment/ShippedOn")));
         // Read the declaration that decided it; `HoursFromTime` on the same cell is refused by the kernel.
         String declared = fulfilment.fieldAt("/Fulfilment/PromisedDay").orElseThrow().format().orElseThrow();
+        // …and `temporalClass()` is that declaration's verdict: which classifier the field actually has,
+        // whatever its kind says. Use it to DISPATCH on a model you did not author, never to refuse.
+        ValueKind classifier = fulfilment.fieldAt("/Fulfilment/PromisedDay").orElseThrow().temporalClass();
         // end::temporal-declared-format[]
         assertEquals("[/Fulfilment/PromisedDay] > [/Fulfilment/ShippedOn]",
                 new DslRenderer().render(promisedAfterShipping));
         assertEquals("YearFromDate(/Fulfilment/PromisedDay) == 2024",
                 new DslRenderer().render(promisedYear.eq(2024)));
+        assertEquals("[/Fulfilment/DeliveryWindow] != DateRange(/Fulfilment/PromisedDay,"
+                + " /Fulfilment/ShippedOn)", new DslRenderer().render(windowFollowsPromise));
         assertEquals("yyyy-MM-dd", declared);
+        assertEquals(ValueKind.DATE, classifier, "the declaration decides, not the TIME kind");
         assertKernelAccepts(FULFILMENT_JSON, "/Fulfilment", promisedAfterShipping, "../PromisedDay");
         assertKernelAccepts(FULFILMENT_JSON, "/Fulfilment", promisedYear.eq(2024), "../PromisedDay");
+        assertKernelAccepts(FULFILMENT_JSON, "/Fulfilment", windowFollowsPromise, "../DeliveryWindow");
     }
 
     private static void assertKernelAccepts(Condition condition, String errorField) {

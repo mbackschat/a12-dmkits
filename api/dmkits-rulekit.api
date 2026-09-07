@@ -1616,6 +1616,7 @@ public final class io.github.mbackschat.a12.dm.rulekit.dsl.FieldInfo
   public java.util.Optional<java.lang.String> pattern()
   public io.github.mbackschat.a12.dm.rulekit.dsl.FieldRef ref()
   public int scale()
+  public io.github.mbackschat.a12.dm.core.ValueKind temporalClass()
   public java.lang.String toString()
 
 public record io.github.mbackschat.a12.dm.rulekit.dsl.FieldListEntityListCondition implements io.github.mbackschat.a12.dm.rulekit.dsl.Condition

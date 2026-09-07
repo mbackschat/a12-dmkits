@@ -3681,7 +3681,7 @@ So the Gregorian floor, direct comparability, component extraction and the diffe
 
 This corrects [KF207](#kf207) above, whose "because a clock has no position in time" reasoned from the kind: the correct reading is that a *time-format declaration* exposes no position in time, and after [KF206](#kf206) a TIME field need not carry one.
 
-**What this does not say.** Storage and reading only. Rendering, computation targets, and aggregate extrema on such a declaration are untouched here. The typed rulekit surface could express none of the second table's conditions until these rows were measured — `m.date()` threw on a TIME field — and now keys its temporal handles on the declared format instead (API-FINDINGS finding 130).
+**What this does not say.** Storage and reading only. Rendering, computation targets, and aggregate extrema on such a declaration are untouched here. The typed rulekit surface could express none of the second table's conditions until these rows were measured — `m.date()` threw on a TIME field — and now keys its temporal handles on the declared format instead (API-FINDINGS finding 130). *(The predicted third instance arrived on 2026-09-07 and brought a fourth with it: the rule holds at the `DateRange` endpoint and at the `Date(...)` complete-Year position, and the same edit found four read sites where our own converter had stayed keyed on the kind — [KF271](#kf271).)*
 
 **And the READ-GATE table is thin in one specific corner, which is a property of its model rather than of the gates** *(named 2026-09-05, after two independent a12-kernel-lean entries hit it)*. Every row of the second table above is carried on `TimeAsDate` — a TIME field declared `yyyy-MM-dd` — and the model behind it declares **no clock-formatted DATE field at all**: its carriers are TIME-as-date, DATE-as-date, TIME-as-time and the two dotted ones. So the mirror direction is measured only in the *formal* channel (the 12 × 3 vocabulary grid, which does carry it) and in the refusal control; on every READ gate the mirror is **inherited from the classifier rule, not measured**. That inheritance crosses a gate boundary, so it is a scope transfer rather than a consequence. Twice an outside entry landed in that corner and was genuinely new to us: the cross-kind *comparison* mirror, since measured on its own carrier ([KF248](#kf248)), and `HoursFromTime` on a clock-declared DATE — **also measured now, in [KF250](#kf250)**, which takes the extractor pair, the opt-in pre-1900 policy and the declaration schema on that carrier. Expect a third if rendering or a computation target is probed on it; the carrier exists in this estate twice over now, so extending a gate to it no longer needs a new model.
 
@@ -4994,3 +4994,36 @@ Two further edges, both measured: **"letters" is Unicode** (`Slöts` is admitted
 **Reported by a12-kernel-lean as `SPEC-2026-09-05-10`**, whose clause states the derived scale as the base's and the operand shapes as unrestricted; both halves are refuted above, while its 2×2 (ordering admits a field exponent, equality refuses it) and its waiver row are confirmed. Their note that our operator catalog carries no `Power` entry is correct — `^` lives inside the `Arithmetic` entry.
 
 *(Locked: `validate.laws.PowerDerivedScaleWaiverLawsTest`.)*
+
+---
+
+## §6 supplement — `KF211`'s declared-format rule reaches BOTH temporal CONSTRUCTOR gates, and our read path was keyed on the kind at four sites (kernel `checkConsistency`, 2026-09-07) <a id="kf271"></a>
+
+> Fold: pending — the third and fourth instances of [KF211](#kf211)'s rule, at gates that entry's own scope note excludes; folds into §6 together with it.
+
+[KF211](#kf211) closed with a prediction: *"rendering, computation targets, and aggregate extrema on such a declaration are untouched here … expect a third if rendering or a computation target is probed on it."* a12-kernel-lean probed two constructor gates and reported both, and the prediction holds at each.
+
+**The `DateRange(start, finish)` endpoint reads the declared format; the kind takes no part.** A TIME-declared and a DATE_TIME-declared field each carrying `yyyy-MM-dd` are admitted in the start position, in the finish position, and in both at once. The DATE_TIME refusal our own catalog and laws file had recorded is its **stamp format** refusing, not its kind — a DATE declared `HH:mm:ss` is refused on the same code, which is the diagonal that separates the two readings.
+
+**The `Date(day, month, year)` complete-Year position is the same rule, and both of its conjuncts are measured necessary.** A DATE, a TIME and a DATE_TIME field each declared exactly `yyyy` are admitted at Year. The format is necessary — the same three kinds declared `yyyy-MM-dd`, and a DATE declared `HH:mm:ss`, are each refused `MVK_WRONG_DATE_FORMAT_FOR_OP` there. The position is necessary — a `yyyy` field is refused at Day and at Month. So neither "any temporal field is admitted at Year" nor "a `yyyy` field is admitted anywhere" survives.
+
+**Carrier note: their Year rows ran through `computation add --dry-run` and ours are rule conditions**, so this is a second carrier for that half rather than a re-run of theirs. The endpoint half sits on the carrier they used.
+
+**Our own defect was larger than the prose they flagged, and its worse half was the READ path.** They named the `constraints` string of our `DateRange` catalog entry, which was kind-keyed. One layer down, `DateRangeConstruction`'s constructor refused any endpoint whose `kind()` was not DATE or DATE_FRAGMENT — a client-side refusal broader than its measured basis, in a record whose javadoc called both of its refusals measured. Because it is a record constructor it also fires on the way **in**, so the sweep for siblings found four kind-keyed sites in `ConditionConverter`, and each turned a kernel-admitted condition into an `Opaque` rule:
+
+| read site | the kernel-admitted condition it could not read | what it reported |
+|---|---|---|
+| `dateRangeEndpoint` | `DateRange(<TIME yyyy-MM-dd>, <DATE>)`, and the DATE_TIME twin | `DateRange on a TIME field …` |
+| the direct-comparison dispatch | `[<TIME yyyy-MM-dd>] == [<DATE>]` — [KF211](#kf211)'s own read-gate row | `time operand FieldIdOperationImpl` |
+| the same, DATE_TIME arm | `[<DATE_TIME yyyy-MM-dd>] == [<DATE>]` | `date-time/date equality operator EQ` |
+| the same, the clock-declared DATE mirror | `[<DATE HH:mm:ss>] == [<TIME>]` | `converter error (IllegalArgumentException)` — reported as a bug in us, not as a degrade |
+
+The root is one notion the read path lacked: **which temporal classifier a DECLARATION selects**, as opposed to which kind it declares. It now exists once, as `FieldInfo.temporalClass()`, and every temporal read site dispatches on it. The last row is the sharpest: it did not degrade politely, it surfaced a legal model as a converter defect — and it was reachable only because the authoring side had already been widened, so the two directions had drifted apart inside one release.
+
+**`temporalClass()` is for DISPATCH, never for refusal**, and the distinction is load-bearing rather than stylistic. `BoundModel.date` still admits a kind-matching field whose declared format disagrees, because refusing one would be a client-side refusal with no measured basis; what the new notion decides is only *which typed handle* a declaration becomes. `DateRangeConstruction` keeps a kind check for exactly the kinds it measured refused (NUMBER, STRING, DATE_RANGE) and hands the format conjunct to the kernel, since a record holding only a `FieldRef` cannot see a declaration.
+
+**Unmeasured here.** The runtime *value* a cross-kind endpoint contributes to the constructed range, and whether a component-omitting cross-kind endpoint completes asymmetrically the way a same-kind one does (a12-kernel-lean's own limit line on the endpoint, and ours). The `FirstFilledValue` family's `requireKind` gates are a different checker arm and are not covered here.
+
+*(Locked: `validate.laws.TemporalConstructorDeclaredFormatGateLawsTest` — the six endpoint admissions with their three no-date-component refusals, the three Year admissions with their six necessity rows, and the typed-surface mirror that builds every admitted endpoint while still refusing the three measured kinds. `adapter.CrossKindTemporalOperandReadTest` locks the read half: nine rows, each authored from raw DSL through `EditSession.addRule` so the kernel gates it before the read is asserted. The new `Date.complete-date-at-year` catalog claim probe re-measures two of the Year rows on a second fixture.)*
+
+**Reported by a12-kernel-lean as `SPEC-2026-09-07-07` (the endpoint) and `SPEC-2026-09-07-06` (the Year position).** Neither entry proposes a mechanism beyond `KF211`'s, and neither asks us to re-derive it; what they add is the two gates, and what we add back is that our client refused both and our reader could not read either.
