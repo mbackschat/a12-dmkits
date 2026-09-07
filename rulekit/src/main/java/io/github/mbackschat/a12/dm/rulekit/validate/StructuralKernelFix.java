@@ -35,8 +35,11 @@ import java.util.Optional;
  *       {@code ==}/{@code !=} operands, but a computed field whose scale differs from its expression raises
  *       it too — the
  *       "round one with RoundDown" comparison fix mis-stamps the computation case, where the fix is to
- *       match the computed field's scale). The catalog can only see operators, never these other triggers,
- *       so the corrective must be authored here at the code level.</li>
+ *       match the computed field's scale; and since 2026-09-07 a third trigger, the POWER's derived scale,
+ *       which is unknown for every shape but a scale-0 base under a nonnegative literal exponent
+ *       (KERNEL-FINDINGS KF269) — that context is what makes an author's own operands read as "?"). The
+ *       catalog can only see operators, never these other triggers, so the corrective must be authored here
+ *       at the code level.</li>
  * </ol>
  *
  * <p>Hand-authored guidance, like the {@code RK_*} meanings in {@link RkCode} — but locked the same
@@ -293,7 +296,7 @@ public final class StructuralKernelFix {
                     "The kernel could not establish compatible DERIVED decimal scales here. Numeric == / != carries "
                             + "a known SIGNED scale or unknown plus an independent multiplicative-constant capability: "
                             + "when known scales differ, only a capable SMALLER-scale side may be padded; an unknown "
-                            + "scale rejects. ORDERING (< <= > >=) is exempt. TWO contexts trigger this code: "
+                            + "scale rejects. ORDERING (< <= > >=) is exempt. THREE contexts trigger this code: "
                             + "(1) a COMPUTED FIELD whose declared scale is incompatible with its expression "
                             + "(e.g. a field re-scaled to 2 places while the Sum-computed field stays scale 0) — "
                             + "re-scale the computed field or explicitly round the expression, doing both edits in ONE "
@@ -302,7 +305,12 @@ public final class StructuralKernelFix {
                             + "comparison is decided ahead of that refusal; (2) numeric == / != with "
                             + "incompatible derived scales — round one side to a known compatible scale, or accept it with "
                             + "allowDifferingDecimals:true on the rule spec (the kernel's one suppressible warning — it "
-                            + "prepends @SuppressWarning(MVK_INVALID_COMPARE_DEC_PLACES)).",
+                            + "prepends @SuppressWarning(MVK_INVALID_COMPARE_DEC_PLACES)); (3) a POWER, whose scale is "
+                            + "DERIVED and is reported as '?' more often than authors expect — it is known (and 0) only "
+                            + "for a scale-0 base under a nonnegative literal exponent, never the base's own scale, so a "
+                            + "decimal-scale base, a non-literal exponent such as a field or aggregate, and a negative "
+                            + "literal exponent all leave it unknown; ordering the power instead of comparing it for "
+                            + "equality is usually the smallest repair.",
                     "MVK_INVALID_COMPARE_DEC_PLACES (\"the fractional digits of lhs and rhs are different\") fires "
                             + "when numeric == / != cannot reconcile the operands' derived signed-scale/capability "
                             + "summaries, OR when a computed field is incompatible with its expression. It is not "

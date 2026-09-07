@@ -267,6 +267,18 @@
     },
     {
       "locator": {
+        "operator": "Arithmetic",
+        "source": "CORRECTIVE",
+        "ordinal": 0
+      },
+      "digest": "sha256:156f51ebfeb4fbc0731ab714263d124173cc00511eb5f7eee5c4b968ed35eb60",
+      "fixture": "ORDER",
+      "group": "/Order",
+      "field": "../UnitPrice",
+      "dsl": "[UnitPrice] ^ 2 > 100.00"
+    },
+    {
+      "locator": {
         "operator": "PatternMatched",
         "source": "INVALID_EXAMPLE",
         "ordinal": 0
@@ -531,6 +543,30 @@
     },
     {
       "locator": {
+        "operator": "MaxValue",
+        "source": "CORRECTIVE",
+        "ordinal": 2
+      },
+      "digest": "sha256:16efb3a1830cd4aea73ef7c344132f0e8ea2138bb0b0b8cdefc13fb21d77738b",
+      "fixture": "ORDER",
+      "group": "/Order",
+      "field": "../CustomerName",
+      "dsl": "FieldFilled(CustomerName) And MaxValue(Items*/Count) > 0"
+    },
+    {
+      "locator": {
+        "operator": "MaxValue",
+        "source": "CORRECTIVE",
+        "ordinal": 3
+      },
+      "digest": "sha256:f0c960ce218aa0d09d057b4dd0e368c363caaa94ddecf148758dcb4dc3713dc7",
+      "fixture": "ORDER",
+      "group": "/Order",
+      "field": "../OrderDate",
+      "dsl": "FieldFilled(OrderDate) And MaxValue(OrderDate, DeliveryDate) > \"01.01.2020\""
+    },
+    {
+      "locator": {
         "operator": "MinValue",
         "source": "CORRECTIVE",
         "ordinal": 0
@@ -552,6 +588,30 @@
       "group": "/Order",
       "field": "../CustomerName",
       "dsl": "FieldFilled(CustomerName) And MinValue(OrderDate, DeliveryDate) > \"01.01.2020\""
+    },
+    {
+      "locator": {
+        "operator": "MinValue",
+        "source": "CORRECTIVE",
+        "ordinal": 2
+      },
+      "digest": "sha256:16efb3a1830cd4aea73ef7c344132f0e8ea2138bb0b0b8cdefc13fb21d77738b",
+      "fixture": "ORDER",
+      "group": "/Order",
+      "field": "../CustomerName",
+      "dsl": "FieldFilled(CustomerName) And MinValue(Items*/Count) > 0"
+    },
+    {
+      "locator": {
+        "operator": "MinValue",
+        "source": "CORRECTIVE",
+        "ordinal": 3
+      },
+      "digest": "sha256:f0c960ce218aa0d09d057b4dd0e368c363caaa94ddecf148758dcb4dc3713dc7",
+      "fixture": "ORDER",
+      "group": "/Order",
+      "field": "../OrderDate",
+      "dsl": "FieldFilled(OrderDate) And MinValue(OrderDate, DeliveryDate) > \"01.01.2020\""
     },
     {
       "locator": {
@@ -675,6 +735,30 @@
     },
     {
       "locator": {
+        "operator": "NumberOfDifferentValues",
+        "source": "CORRECTIVE",
+        "ordinal": 1
+      },
+      "digest": "sha256:2d07a6a585256df6a76719fe51d26bc329e76c1803e9290409f0ebf34d05a7c6",
+      "fixture": "ORDER",
+      "group": "/Order",
+      "field": "../CoverageWindow",
+      "dsl": "AtLeastOneDateRangeOverlaps(CoverageWindow In Items*/ItemCoverage)"
+    },
+    {
+      "locator": {
+        "operator": "NumberOfDifferentValues",
+        "source": "CORRECTIVE",
+        "ordinal": 2
+      },
+      "digest": "sha256:29ecead394d54cbf082629e07d19bbf057b32f51173550cfa622585a77bdad80",
+      "fixture": "ORDER",
+      "group": "/Order",
+      "field": "../OrderDate",
+      "dsl": "FieldFilled(OrderDate) And NumberOfDifferentValues(OrderDate, DeliveryDate) > 0"
+    },
+    {
+      "locator": {
         "operator": "Having",
         "source": "INVALID_EXAMPLE",
         "ordinal": 0
@@ -756,6 +840,18 @@
       "group": "/Order",
       "field": "../OrderDate",
       "dsl": "FieldFilled(OrderDate) And DayFromDate(OrderDate) > 1"
+    },
+    {
+      "locator": {
+        "operator": "AtLeastOneDateRangeOverlaps",
+        "source": "CORRECTIVE",
+        "ordinal": 0
+      },
+      "digest": "sha256:77ba46edc5f009206c98aa1a9048ff0cd53dd93df660991f3c5f88ec5e1195c0",
+      "fixture": "ORDER",
+      "group": "/Order",
+      "field": "../OrderDate",
+      "dsl": "FieldFilled(OrderDate) And AtLeastOneDateRangeOverlaps(CoverageWindow In Items*/ItemCoverage)"
     },
     {
       "locator": {

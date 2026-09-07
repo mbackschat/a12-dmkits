@@ -1912,6 +1912,14 @@
         "error": "arithmetic needs numeric operands",
         "fix": "ProductCode is a string; arithmetic operands must be numeric"
       },
+      "correctives": [
+        {
+          "code": "MVK_INVALID_COMPARE_DEC_PLACES",
+          "whenOperands": [],
+          "fix": "the power derives a KNOWN scale only from a scale-0 BASE raised to a nonnegative literal exponent, and that derived scale is 0 — it is never the base's. Every other shape derives an UNKNOWN scale (reported as '?' on that side): a decimal-scale base, a non-literal exponent such as a field or an aggregate, a negative literal exponent, and a bare division anywhere in the expression. Equality (== / !=) refuses an unknown scale while ORDERING (< <= > >=) admits it, so the cheapest fix is often to order instead. Otherwise pin the scale with RoundAccounting(expr, n), or accept the mismatch on the rule itself with allowDifferingDecimals — the kernel's one suppressible warning, which prepends @SuppressWarning(MVK_INVALID_COMPARE_DEC_PLACES) and admits every unknown-scale operand shape alike",
+          "probe": { "dsl": "[UnitPrice] ^ 2 == 100.00" }
+        }
+      ],
       "sinceKernel": "30.8.x"
     },
     {
@@ -3109,6 +3117,18 @@
           "whenOperands": [],
           "fix": "the FIRST operand fixes the expected class and the reported code names THAT class, not the offender's — a temporal leader beside a non-temporal operand is MVK_DATE_AND_NONDATE, while the same two operands in the other order are MVK_NOT_SORTABLE. Make the list family-homogeneous rather than reordering it",
           "probe": { "dsl": "FieldFilled(CustomerName) And MaxValue(OrderDate, Quantity) > [DeliveryDate]" }
+        },
+        {
+          "code": "MVK_NOT_SORTABLE",
+          "whenOperands": [],
+          "fix": "exactly two operand classes sort here: NUMBER, and temporal fields sharing one declared COMPONENT SET. STRING, ENUM, BOOLEAN, CONFIRM, DATE_RANGE and CUSTOM are refused in EVERY position, leading or following, and a starred single-field operand takes the same verdict as the plain field — the gate reads the declaration, not the operand form. A GROUP operand is judged by its EXPANSION, whose first declared member fixes the expected class, so a group that also holds numbers still draws this code when a string is declared first; name the sortable fields instead of the group. To count or compare a non-sortable kind use NumberOfDifferentValues (which admits STRING, ENUM and CUSTOM) or FieldValuesNotUnique",
+          "probe": { "dsl": "FieldFilled(CustomerName) And MaxValue(Items*) == 0" }
+        },
+        {
+          "code": "MVK_PARTIAL_DATE_NOT_ALLOWED",
+          "whenOperands": [],
+          "fix": "this operator compares a DECODED date, which a partially known one does not have. A DateType declaring datePrecision DAY_OPTIONAL, MONTH_OPTIONAL or YEAR_OPTIONAL is therefore refused however its components are declared — precision is independent of the component set, so a full yyyy-MM-dd declaration is still refused when it is optional-day. A group operand is refused when ANY member of its expansion is partial, not just the first. Use fully known date fields; if you need to compare partial dates, FieldValuesNotUnique compares the stored TEXT and admits them, and ValueAsDate takes a partial as its source",
+          "probe": { "dsl": "FieldFilled(OrderDate) And MaxValue(ApproxDate, OrderDate) > \"01.01.2020\"" }
         }
       ],
       "semantics": {
@@ -3252,6 +3272,18 @@
           "whenOperands": [],
           "fix": "the FIRST operand fixes the expected class and the reported code names THAT class, not the offender's — a temporal leader beside a non-temporal operand is MVK_DATE_AND_NONDATE, while the same two operands in the other order are MVK_NOT_SORTABLE. Make the list family-homogeneous rather than reordering it",
           "probe": { "dsl": "FieldFilled(CustomerName) And MinValue(OrderDate, Quantity) > [DeliveryDate]" }
+        },
+        {
+          "code": "MVK_NOT_SORTABLE",
+          "whenOperands": [],
+          "fix": "exactly two operand classes sort here: NUMBER, and temporal fields sharing one declared COMPONENT SET. STRING, ENUM, BOOLEAN, CONFIRM, DATE_RANGE and CUSTOM are refused in EVERY position, leading or following, and a starred single-field operand takes the same verdict as the plain field — the gate reads the declaration, not the operand form. A GROUP operand is judged by its EXPANSION, whose first declared member fixes the expected class, so a group that also holds numbers still draws this code when a string is declared first; name the sortable fields instead of the group. To count or compare a non-sortable kind use NumberOfDifferentValues (which admits STRING, ENUM and CUSTOM) or FieldValuesNotUnique",
+          "probe": { "dsl": "FieldFilled(CustomerName) And MinValue(Items*) == 0" }
+        },
+        {
+          "code": "MVK_PARTIAL_DATE_NOT_ALLOWED",
+          "whenOperands": [],
+          "fix": "this operator compares a DECODED date, which a partially known one does not have. A DateType declaring datePrecision DAY_OPTIONAL, MONTH_OPTIONAL or YEAR_OPTIONAL is therefore refused however its components are declared — precision is independent of the component set, so a full yyyy-MM-dd declaration is still refused when it is optional-day. A group operand is refused when ANY member of its expansion is partial, not just the first. Use fully known date fields; if you need to compare partial dates, FieldValuesNotUnique compares the stored TEXT and admits them, and ValueAsDate takes a partial as its source",
+          "probe": { "dsl": "FieldFilled(OrderDate) And MinValue(ApproxDate, OrderDate) > \"01.01.2020\"" }
         }
       ],
       "semantics": {
@@ -4102,6 +4134,22 @@
           "fix": "NumberOfDifferentValues needs date-like fields with compatible declared formats",
           "probe": {
             "dsl": "FieldFilled(Quantity) And NumberOfDifferentValues(OrderDate, ScheduledAt) > 0"
+          }
+        },
+        {
+          "code": "MVK_ONLY_STRING_ENUM_NUMBER_CMP_DATE_ALLOWED",
+          "whenOperands": [],
+          "fix": "BOOLEAN, CONFIRM and DATE_RANGE have no admitted counting domain here — this code names the offending KIND itself, not a mix, and is reachable only from the LEADING slot (behind an admitted leader the same operand is reported as a homogeneity mismatch instead). CUSTOM, by contrast, IS admitted and counts as a string. For date ranges count a component field instead, or use AtLeastOneDateRangeOverlaps / DateRangesOverlap for the relation you actually need; for a boolean or confirm, count with NumberOfFilledFields or compare it directly",
+          "probe": {
+            "dsl": "FieldFilled(CustomerName) And NumberOfDifferentValues(CoverageWindow, Items*/ItemCoverage) > 0"
+          }
+        },
+        {
+          "code": "MVK_PARTIAL_DATE_NOT_ALLOWED",
+          "whenOperands": [],
+          "fix": "this operator counts DECODED dates, which a partially known one does not have. A DateType declaring datePrecision DAY_OPTIONAL, MONTH_OPTIONAL or YEAR_OPTIONAL is therefore refused however its components are declared — precision is independent of the component set, so a full yyyy-MM-dd declaration is still refused when it is optional-day. A group operand is refused when ANY member of its expansion is partial, not just the first. Use fully known date fields, or FieldValuesNotUnique, whose gate compares the stored TEXT and admits a partial",
+          "probe": {
+            "dsl": "FieldFilled(OrderDate) And NumberOfDifferentValues(ApproxDate, OrderDate) > 0"
           }
         }
       ],
@@ -5623,6 +5671,16 @@
         "dsl": "FieldFilled(OrderDate) And AtLeastOneDateRangeOverlaps(CoverageWindow IN Items*/ItemCoverage)",
         "note": "fires when the coverage window overlaps any line-item coverage"
       },
+      "correctives": [
+        {
+          "code": "MVK_INVALID_PARAMETER_FOR_DATE_RANGE_COMPARISON",
+          "whenOperands": [],
+          "fix": "the slot BEFORE In takes exactly ONE plain date-range field: no group, no star, no Having filter, and no star above a nonrepeatable terminal. The refusal belongs to that SLOT and not to the operand form — every one of those shapes is admitted AFTER In on the same model — so swap the operands rather than rewriting them: put the single range on the left and the flattened list on the right. If you meant 'no two rows overlap', neither slot is the answer: author a model-level rule with DateRangesOverlap over one flattened list. A group whose expansion mixes kinds reports MVK_VARYING_TYPES_NOT_ALLOWED instead, in either slot, because that gate runs ahead of this one",
+          "probe": {
+            "dsl": "FieldFilled(OrderDate) And AtLeastOneDateRangeOverlaps(Items*/ItemCoverage In CoverageWindow)"
+          }
+        }
+      ],
       "semantics": {
         "boundary": {
           "value": "INCLUSIVE",
