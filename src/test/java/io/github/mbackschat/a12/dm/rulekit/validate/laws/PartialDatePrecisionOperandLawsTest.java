@@ -87,10 +87,16 @@ class PartialDatePrecisionOperandLawsTest {
                     verdict("NumberOfDifferentValues(" + p + ", ReportedOn) == 1"));
             actual.put("FieldValuesNotUnique + " + precision.label(),
                     verdict("FieldValuesNotUnique(" + p + ", ReportedOn)"));
+            // The FIFTH field-list carrier. It was outside this file's denominator until KF272 measured it as
+            // its own case at the neighbouring component-set gate, which is exactly the reason to ask here:
+            // "the four field-list operators" was a count of the operators that had been run (2026-09-07).
+            actual.put("FirstFilledValue + " + precision.label(),
+                    verdict("FirstFilledValue(" + p + ", ReportedOn) == [ClosedOn]"));
             expected.put("MinValue + " + precision.label(), PARTIAL_REFUSED);
             expected.put("MaxValue + " + precision.label(), PARTIAL_REFUSED);
             expected.put("NumberOfDifferentValues + " + precision.label(), PARTIAL_REFUSED);
             expected.put("FieldValuesNotUnique + " + precision.label(), KernelLaws.ADMITTED);
+            expected.put("FirstFilledValue + " + precision.label(), KernelLaws.ADMITTED);
         }
         actual.put("MinValue — full-precision control", verdict("MinValue(ReportedOn, ClosedOn) == [ClosedOn]"));
         actual.put("MaxValue — full-precision control", verdict("MaxValue(ReportedOn, ClosedOn) == [ClosedOn]"));
@@ -98,10 +104,13 @@ class PartialDatePrecisionOperandLawsTest {
                 verdict("NumberOfDifferentValues(ReportedOn, ClosedOn) == 1"));
         actual.put("FieldValuesNotUnique — full-precision control",
                 verdict("FieldValuesNotUnique(ReportedOn, ClosedOn)"));
+        actual.put("FirstFilledValue — full-precision control",
+                verdict("FirstFilledValue(ReportedOn, ClosedOn) == [ClosedOn]"));
         expected.put("MinValue — full-precision control", KernelLaws.ADMITTED);
         expected.put("MaxValue — full-precision control", KernelLaws.ADMITTED);
         expected.put("NumberOfDifferentValues — full-precision control", KernelLaws.ADMITTED);
         expected.put("FieldValuesNotUnique — full-precision control", KernelLaws.ADMITTED);
+        expected.put("FirstFilledValue — full-precision control", KernelLaws.ADMITTED);
 
         assertEquals(expected, actual, "the split follows the compared identity: decoded date vs stored text");
     }

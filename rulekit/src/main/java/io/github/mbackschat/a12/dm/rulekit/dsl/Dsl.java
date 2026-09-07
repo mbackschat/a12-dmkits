@@ -956,8 +956,10 @@ public final class Dsl {
 
     /**
      * {@code Date(day, month, year)} with the kernel's complete component union: a bounded Number field, an
-     * exact digit-pattern String field, a matching extractor/constant, or an exact {@code yyyy} Date field at
-     * the Year position. The kernel validates each field declaration against its position. catalog:Date
+     * exact digit-pattern String field, a matching extractor/constant, or a field declared exactly
+     * {@code yyyy} at the Year position — on ANY date-bearing kind, since that gate reads the declaration
+     * and not the kind (KF271). The kernel validates each field declaration against its position.
+     * catalog:Date
      */
     public static DateExpr date(TemporalComponent day, TemporalComponent month, TemporalComponent year) {
         return new DateExpr(new DateConstruction(day.expression(), month.expression(), year.expression()));

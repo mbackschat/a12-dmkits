@@ -709,8 +709,9 @@ private fun Interpreter.evalFunc(f: Expr.Func): Val {
     // Time(hours, minutes, seconds): the constructed time as `HH:mm:ss`. Components are in range by model
     // validity (an out-of-range constant is MVK_WRONG_DATE_FORMAT_FOR_OP at codegen); empty/malformed → Unknown.
     FunctionOp.TIME -> evalTime(f).asTimeVal()
-    // DateRange(start, finish): a date range from two owner entity references — full DATE or DATE_FRAGMENT,
-    // optionally semantic-index selected. The value is equality-comparable with another range and renders to
+    // DateRange(start, finish): a date range from two owner entity references whose DECLARED FORMAT carries
+    // date components and no time component — the kind takes no part, so a TIME- or DATE_TIME-declared
+    // `yyyy-MM-dd` field is an admitted endpoint (KF271) — optionally semantic-index selected. The value is equality-comparable with another range and renders to
     // the target field's format at the compute() boundary. Empty/malformed → Unknown.
     //
     // The two endpoints complete ASYMMETRICALLY, exactly as a STORED fragment range's do: the kernel's

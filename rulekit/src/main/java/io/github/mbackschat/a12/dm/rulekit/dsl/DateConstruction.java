@@ -12,7 +12,8 @@ import io.github.mbackschat.a12.dm.core.ValueKind;
  * argument position — a field bare, a literal as its value, an extraction as its call.
  *
  * <p>The kernel requires each component declaration to be position-compatible (bounded Number, exact
- * digit-pattern String, or the complete year's exact {@code yyyy} Date exception; §6:
+ * digit-pattern String, or the complete year's exact {@code yyyy} declaration — on any date-bearing kind,
+ * because that gate reads the format rather than the kind ({@code KF271}); §6:
  * {@code MVK_WRONG_DATE_FORMAT_FOR_OP}/{@code MVK_NO_DIGIT_PATTERN}) — that model-dependent gate is the
  * kernel's call (F4/N7), not pre-checked here.
  */

@@ -20,7 +20,11 @@ interface EvalContext {
     /** Resolve a scalar field reference (empty handled by type). */
     fun field(path: String): Val
 
-    /** Whether a field has a value (for FieldFilled / AllFieldsFilled). */
+    /**
+     * Whether a field has a value — the presence primitive the whole `*Filled` family reduces to, plus the
+     * places presence is read without an operator naming it (auto-checks, ordered correlation, polarity walks,
+     * the value-list quantifiers). Naming two operators here read as a list and was one.
+     */
     fun filled(path: String): Boolean
 
     /**

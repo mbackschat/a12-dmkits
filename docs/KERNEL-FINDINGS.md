@@ -4797,7 +4797,7 @@ Which class the kernel reports for a wrong-kind constant assignment is **not** a
 
 *(Locked: `validate.laws.TemporalDeclarationWithoutFormatLawsTest` — the three gates, plus the blank-string row asserting the rejection arrives as a `ModelConsistencyException` carrying the kernel's own reason.)*
 
-## §6 supplement — a partially known Date splits the four field-list operators along the identity they COMPARE (kernel `checkConsistency`, 2026-09-06) <a id="kf260"></a>
+## §6 supplement — a partially known Date splits the FIVE field-list operators along the identity they COMPARE (kernel `checkConsistency`, 2026-09-06; fifth carrier added 2026-09-07) <a id="kf260"></a>
 
 > Fold: pending — new precision axis on §6's operand gates; folds beside [KF193](#kf193).
 
@@ -4807,9 +4807,12 @@ A `DateType` may declare `datePrecision` `DAY_OPTIONAL` / `MONTH_OPTIONAL` / `YE
 |---|---|---|
 | `MinValue` / `MaxValue` / `NumberOfDifferentValues` | `MVK_PARTIAL_DATE_NOT_ALLOWED` | they compare a **decoded date**, which a partial has not |
 | `FieldValuesNotUnique` | ADMITTED | it compares the **exact stored text**, which a partial has |
+| `FirstFilledValue` | ADMITTED | it **selects** a value rather than comparing one, so no decode is required |
 | `ValueAsDate` | the inverse gate — REQUIRES a partial, refuses a fully known source `MVK_INVALID_DATE_TYPE_FOR_OP` | so the distinction is enforced in both directions |
 
-This is static corroboration of the identity split that [KF173](#kf173)/[KF253](#kf253) establish at runtime, arriving from an independent direction. The full-precision control is admitted at all four carriers on the same fixture, and the only variable across the refused rows is `datePrecision`.
+This is static corroboration of the identity split that [KF173](#kf173)/[KF253](#kf253) establish at runtime, arriving from an independent direction. The full-precision control is admitted at all five carriers on the same fixture, and the only variable across the refused rows is `datePrecision`.
+
+**Corrected 2026-09-07: the denominator was four because four had been run.** `FirstFilledValue` is a field-list operator of the same family and was never asked; it admits all three precisions, so the split is three-against-two rather than three-against-one. The tell was structural rather than a doubt about the rows: [KF272](#kf272) had just had to add `FirstFilledValue` as a fifth carrier at the neighbouring component-set gate, where it turned out to read a *third* thing — so an adjacent entry naming it as a distinct case is the cue to ask whether this entry's set was a set or a sample.
 
 **A group operand's expansion is NOT leader-keyed here**, which is the row a12-kernel-lean asked for and the one a "the leader fixes the class" reading gets wrong: a group declaring a FULL-precision date first and a month-optional one second is still refused at all three decoding carriers, with the all-full sibling group admitted as the control. So this gate reads the whole expansion — unlike the kind gate, where the leading declaration does decide ([KF263](#kf263)).
 
@@ -5135,7 +5138,7 @@ It does, at all three gates measured, and **each reports a different class**:
 
 [KF198](#kf198) enumerated the rule-message parameter surface — a field, its value suffix, its category suffix, the `BaseYear` terminal, and the semantic-index key — and never reached `index(…)`, which pins a message to the **firing row's** declared index-field value. This estate held no claim about it in either direction; a12-kernel-lean's `SPEC-2026-09-07-09` corrects a no-witness clause of *theirs*, and the rows below are ours.
 
-**It is admitted, and one character decides it.** On a rule whose error field sits inside a repeatable group declaring `indexField ClaimNo`, `$index(ClaimNo).value$` is **admitted** while `$index(ClaimNo)$` is refused `INVALID_INDEX_FIELD_PARAMETER` — the checker enforcing a suffix the grammar accepts as optional so it can report better than a parse error. That pair is why the terminal reads as dead: the natural first attempt omits the suffix and draws a class that sounds like it is about the argument.
+**It is admitted, and one character decides it.** On a rule whose error field sits inside a repeatable group declaring `indexField ClaimNo`, `$index(ClaimNo).value$` is **admitted** while `$index(ClaimNo)$` is refused `INVALID_INDEX_FIELD_PARAMETER`. *(Hypothesis, not measured here: a12-kernel-lean's source read has the grammar accepting the suffix as optional and the checker enforcing it, so the class is reported instead of a parse error. That is their reading of the grammar, cited as theirs; nothing in our rows distinguishes it from a checker-only rule.)* That pair is why the terminal reads as dead: the natural first attempt omits the suffix and draws a class that sounds like it is about the argument.
 
 **The argument is the SHORT name of an index field on the error entity's path.** Four wrong arguments draw one class, `INVALID_INDEX_FIELD`: a non-index field of the same group, a field outside it, a name no field carries, and — the row that shows what the match is against — **the index field spelled as a path**. Moving the error field to the root refuses the identical parameter under the same class, with its own parameter-free control admitted, so the refusal is the parameter's and not the rule's.
 

@@ -2943,7 +2943,7 @@
           ]
         },
         {
-          "text": "the temporal gate reads the declared FORMAT STRING, not the field kind, so 'all operands the same kind' is neither necessary nor sufficient: a Date declared yyyy beside a DateFragment declared yyyy is ADMITTED across two kinds, while two Date fields differing only in declared format are rejected MVK_ONLY_STRING_ENUM_NUMBER_DATE_ALLOWED — including 'yyyy-MM-dd' beside 'dd.MM.yyyy', which denote the SAME components. That is the one place this operator disagrees with MaxValue/MinValue/NumberOfDifferentValues, whose gate is the component SET and admits that pair; no Base Year lifts this one",
+          "text": "the temporal gate reads the declared FORMAT STRING, not the field kind, so 'all operands the same kind' is neither necessary nor sufficient: a Date declared yyyy beside a DateFragment declared yyyy is ADMITTED across two kinds, while two Date fields differing only in declared format are rejected MVK_ONLY_STRING_ENUM_NUMBER_DATE_ALLOWED — including 'yyyy-MM-dd' beside 'dd.MM.yyyy', which denote the SAME components. That is ONE of two places this operator disagrees with MaxValue/MinValue/NumberOfDifferentValues, whose gate is the component SET and admits that pair; no Base Year lifts this one. The other is datePrecision: a partially known Date is ADMITTED here and refused there, under a code those operators carry rather than this one (see `operators MaxValue`), because this operator compares stored text and they compare a decoded date — same root, opposite outcome, so do not read either disagreement as the only one",
           "kind": "AUTHORING"
         }
       ],
@@ -3087,7 +3087,7 @@
       "returns": "the operands' common NUMBER, DATE, TIME, or DATETIME kind",
       "meaning": "The largest of the listed values; unspecified fields are ignored. Over number fields it returns a number; over a date repetition list it returns the latest date.",
       "constraints": [
-        "sortable fields only — NUMBER, or temporal fields (DATE, DATEFRAGMENT, TIME, DATE_TIME) whose declared COMPONENT SETS match after optional Base-Year supplementation (MVK_NOT_SORTABLE / MVK_DATEFORMATS_NOT_COMPATIBLE). The set is the DECLARATION's and the declared KIND takes no part, so a TIME- or DATE_TIME-declared field carrying yyyy-MM-dd is a legal member of a plain DATE list, while the same TIME field carrying HH:mm:ss beside that DATE is refused MVK_DATEFORMATS_NOT_COMPATIBLE",
+        "sortable fields only — NUMBER, or temporal fields (DATE, DATEFRAGMENT, TIME, DATE_TIME) whose declared COMPONENT SETS match after optional Base-Year supplementation (MVK_NOT_SORTABLE / MVK_DATEFORMATS_NOT_COMPATIBLE). The set is the DECLARATION's and the declared KIND takes no part, so a TIME- or DATE_TIME-declared field carrying yyyy-MM-dd is a legal member of a plain DATE list, while the same TIME field carrying HH:mm:ss beside that DATE is refused MVK_DATEFORMATS_NOT_COMPATIBLE. The set is also UNORDERED: 'MM-dd' beside 'ddMM' is admitted although the two decode the same four digits in opposite orders, which decides whether an importer may put two order-opposed spellings in one list",
         "more than one field or a repetition list; no repeated direct field, but a wildcarded (starred) operand may repeat (MVK_DUPLICATE_PARAM1). The star exempts that ONE gate and no more: two operands where one strictly CONTAINS the other — a group scope beside its own descendant — are refused MVK_DUPLICATE_PARAM2 whichever side carries it, even with both starred"
       ],
       "gotchas": [
@@ -3247,7 +3247,7 @@
       "returns": "the operands' common NUMBER, DATE, TIME, or DATETIME kind",
       "meaning": "The smallest of the listed values; unspecified fields are ignored. Over number fields it returns a number; over a date repetition list it returns the earliest date.",
       "constraints": [
-        "same slot rules as MaxValue: NUMBER, or temporal fields whose declared COMPONENT SETS match after optional Base-Year supplementation — the DECLARATION's set, with the declared kind taking no part",
+        "same slot rules as MaxValue: NUMBER, or temporal fields whose declared COMPONENT SETS match after optional Base-Year supplementation — the DECLARATION's set, read as an UNORDERED set, with the declared kind taking no part",
         "more than one field or a repetition list; no repeated direct field, but a wildcarded (starred) operand may repeat (MVK_DUPLICATE_PARAM1). The star exempts that ONE gate and no more: two operands where one strictly CONTAINS the other — a group scope beside its own descendant — are refused MVK_DUPLICATE_PARAM2 whichever side carries it, even with both starred"
       ],
       "gotchas": [
