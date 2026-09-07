@@ -4889,11 +4889,13 @@ Five non-scalar forms are refused `MVK_INVALID_PARAMETER_FOR_DATE_RANGE_COMPARIS
 
 *(Locked: `validate.laws.DateRangeOverlapScalarSlotLawsTest`, which also keeps the plural sibling's contrast adjacent — `DateRangesOverlap` refuses a group outright, `MVK_NO_GROUPS_ALLOWED`, in both repetition shapes.)*
 
-## §11 supplement — a wrong-kind comparison's class is INVARIANT under carrier, wrapping operator, operand order, and comparand form (kernel `checkConsistency`, 2026-09-06) <a id="kf265"></a>
+## §11 supplement — under EQUALITY a wrong-kind comparison's class is INVARIANT under carrier, wrapping operator, operand order, and comparand form (kernel `checkConsistency`, 2026-09-06; scope corrected 2026-09-07) <a id="kf265"></a>
 
 > Fold: pending — the invariance half of [KF257](#kf257)'s ladder; folds beside it.
 
-[KF257](#kf257) measures *which* class a wrong-kind comparison reports. This measures that the class does not move, and adds the three declared kinds that ladder's fixture does not carry:
+**Corrected 2026-09-07: every cell below writes `==`, and the heading did not say so.** The comparison OPERATOR is the axis this grid holds fixed, and it is the one that actually moves the class — ordering reports `MVK_INVALID_TYPE_FOR_COMPARISON` where equality reports these kind-specific classes ([KF270](#kf270)). Nothing measured here is wrong; the scope was unstated, which is the more expensive defect, because a12-kernel-lean read the table as the whole grid and our answer to them — that their code "appears in no cell of ours" — was true only of the column we had. The `==` sat inside two helper methods, so it was a constant across all twenty cells and appeared nowhere in the published table: a set cannot show you the variable none of its rows vary.
+
+[KF257](#kf257) measures *which* class a wrong-kind comparison reports. This measures that, **under equality**, the class does not move, and adds the three declared kinds that ladder's fixture does not carry:
 
 | field kind | vs a numeric literal | vs a String literal |
 |---|---|---|
@@ -4911,6 +4913,29 @@ Five non-scalar forms are refused `MVK_INVALID_PARAMETER_FOR_DATE_RANGE_COMPARIS
 **This contradicts an inbound row and the contradiction is not resolved here.** a12-kernel-lean's `SPEC-2026-09-06-04` reports String, Boolean, Confirm, Enumeration and DATE_RANGE all collapsing to `MVK_INVALID_TYPE_FOR_COMPARISON` against a numeric literal, with only the temporal families separating out. Six distinct classes are measured here and that code appears in no cell. Three variables were moved looking for the difference and the grid is invariant under all three, so the divergence is not explained from this side — their fixture is not ours to run, and the question goes back rather than a mechanism being invented for it. The unbracketed leaf spelling was checked and is not the difference: it is a uniform `MVK_UNEXPECTED_TOKEN` grammar refusal on every kind.
 
 *(Locked: `validate.laws.WrongKindComparisonClassInvarianceLawsTest`.)*
+
+## §11 supplement — a wrong-kind comparison meets TWO gates, and the COMPARISON OPERATOR selects which one answers (kernel `checkConsistency`, 2026-09-07) <a id="kf270"></a>
+
+> Fold: pending — the axis [KF265](#kf265) held fixed; folds beside it.
+
+**Ordering (`< <= > >=`) runs an ORDERABILITY gate over BOTH operands first.** Whichever side fails it, the refusal is `MVK_INVALID_TYPE_FOR_COMPARISON`, and neither the other side nor the literal's family changes that. Operands that survive it — and equality's operands, which never meet it — then reach the kind-match gate, whose refusals are the kind-specific `MVK_INVALID_COMPARE_TO_*` classes of [KF265](#kf265). Orderable: NUMBER, DATE, TIME, DATETIME. Not: STRING, ENUM, BOOLEAN, CONFIRM, DATE_RANGE, CUSTOM.
+
+| comparison | verdict |
+|---|---|
+| `[Confirm] > 0`, `[Boolean] > 0`, `[DateRange] > 0`, `[String] > 0`, `[Enum] > 0`, `[Custom] > 0` | `MVK_INVALID_TYPE_FOR_COMPARISON` |
+| the same six under `== 0` | the kind's own `MVK_INVALID_COMPARE_TO_*` ([KF265](#kf265)) |
+| `[Date] > 0`, `[Time] > 0`, `[DateTime] > 0` — orderable, kind mismatch | `MVK_INVALID_COMPARE_TO_DATE` |
+| `[Date] > "pending"` — orderable left, non-orderable right | `MVK_INVALID_TYPE_FOR_COMPARISON` |
+| `[Number] > [Confirm]`, `[Confirm] > [Number]`, `0 > [Confirm]` | `MVK_INVALID_TYPE_FOR_COMPARISON` |
+| `[Number] > 0` | ADMITTED |
+
+**The discriminator is a field compared with ITSELF**, which no rival account survives: `[Boolean] > [Boolean]` is refused and `[Boolean] == [Boolean]` is ADMITTED. Identical operands, identical kinds, identical carrier and order — the operator is the only variable and the verdict moves with it. Two rivals die on the rows above: *"ordering always reports the orderability class"* (a DATE ordered against a numeric literal does not), and *"the LEFT operand decides"* (an orderable NUMBER left of a CONFIRM still reports it, as does a bare literal on the left).
+
+**CONFIRM is the one kind whose self-equality is refused, for an unrelated reason: its comparand domain is the `True` constant ALONE.** It refuses every field on the right, including another CONFIRM — where BOOLEAN, which renders alike, admits one. So `MVK_INVALID_COMPARE_TO_YES` names a concept and not a token; `Yes` is not DSL text (`MVK_UNEXPECTED_TOKEN`). This was found by the self-comparison cell failing on one of six kinds, having been *predicted* rather than read — recorded because a mechanism-derived expectation is what the cell exists to catch.
+
+**This resolves the `SPEC-2026-09-06-04` divergence, and neither estate was wrong.** a12-kernel-lean measured ordering with a numeric literal against equality with a String literal — two variables moving together — and read the split as the literal's family; we measured both literal families under equality alone and reported their code unreachable. Their retained ops (`882148ce…`) showed bracketed leaves, refuting the leaf-spelling hypothesis, and their own quarantined hypothesis — that the operator is the axis — is the one confirmed here. **They queued the discharging cell; it was free on our fixture and is answered above**, so the run is theirs to skip.
+
+*(Locked: `validate.laws.WrongKindComparisonOperatorGateLawsTest`.)*
 
 ## §9 supplement — a `Having` filter reference the star does not reopen is a CONSTANT, so the filter is all-or-nothing (differential, 2026-09-06) <a id="kf266"></a>
 

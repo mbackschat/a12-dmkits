@@ -36,12 +36,16 @@ import io.github.mbackschat.a12.dm.rulekit.validate.ValidationResult;
  * <p><b>Both columns are needed, and they agree on six kinds of ten.</b> They part ways on STRING, ENUM,
  * CUSTOM and NUMBER, which is exactly where the admitted cell sits in one column and a refusal in the other.
  *
- * <p>a12-kernel-lean's {@code SPEC-2026-09-06-04} reports this grid with String, Boolean, Confirm,
- * Enumeration and DATE_RANGE all collapsing to {@code MVK_INVALID_TYPE_FOR_COMPARISON} against a numeric
- * literal. That is not reproducible here: six distinct classes, and that code appears in no cell. Three
- * variables were moved looking for the difference — the wrapping operator, the literal's side, and the
- * comparand's form — and the grid is invariant under all three, so the divergence is not explained from this
- * side and is asked back rather than diagnosed.
+ * <p><b>Every cell here writes {@code ==}, and that scope is load-bearing (stated 2026-09-07).</b> The
+ * comparison OPERATOR is the axis this grid holds fixed, and it is the one that moves the class: ordering
+ * reports {@code MVK_INVALID_TYPE_FOR_COMPARISON} where equality reports these kind classes, measured in
+ * {@link WrongKindComparisonOperatorGateLawsTest}. Because {@code ==} lives in the two helper methods below
+ * rather than in the table, it was a constant across all twenty cells and invisible from inside the set —
+ * so this grid was published as though it were the whole story. a12-kernel-lean's
+ * {@code SPEC-2026-09-06-04} reported the same kinds collapsing to
+ * {@code MVK_INVALID_TYPE_FOR_COMPARISON}, and our answer — that the code appears in no cell — was true of
+ * the column we had and false of the grid. Their column varied the operator and the literal family
+ * together; ours varied only the literal family. Neither estate measured a wrong cell.
  *
  * <p>Own domain (an e-commerce product catalog).
  */
