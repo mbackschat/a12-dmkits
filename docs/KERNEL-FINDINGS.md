@@ -3287,7 +3287,7 @@ That exemption also settles the disambiguation §13 left open: `value` is not am
 | plain per-row read | `$Payout For "C-1"$` (beside its admitted unkeyed control) | `MVK_INDEX_FOR_ERROR_TEXT_INVALID` |
 | field-keyed `For Adjuster` | `$… For Adjuster$` / `$… For "C-1"$` | **admitted** / `MVK_INDEX_FOR_ERROR_TEXT_INVALID` |
 
-The key comes **last**: `$Claims/Payout.value For "C-1"$` is admitted, `$… For "C-1".value$` is `MVK_UNEXPECTED_TOKEN`. It is a quoted literal or a field path, so an unquoted bare word is a field reference (`INVALID_ENTITY`), and a key that is itself keyed is `ILLEGAL_SEMANTIC_INDEX`.
+The key comes **last**: `$Claims/Payout.value For "C-1"$` is admitted, `$… For "C-1".value$` is `MVK_UNEXPECTED_TOKEN`. *(A fifth parameter form this enumeration did not reach — `$index(…).value$`, which pins a message to the firing row's declared index-field value — is [KF275](#kf275).)* It is a quoted literal or a field path, so an unquoted bare word is a field reference (`INVALID_ENTITY`), and a key that is itself keyed is `ILLEGAL_SEMANTIC_INDEX`.
 
 **The grammar is bilingual, five terminals differ, and the other language's spelling is a WRONG VALUE risk rather than a syntax error.** The terminals follow the model's declared **condition language**, not its display locale (a `de_DE`-locale model still parses English conditions until `modelConfig.conditionLanguage` says otherwise). Five differ — value/`Wert`, `For`/`Fuer`, `RuleGroup`/`RegelKontext`, `RootGroup`/`LfdNr`, `BaseYear`/`Referenzjahr` — while `index`, `Zeile`, `Usb`, `Vordruckzeile` and `Vordruckname` are spelled the same, and the bundle's own comments record that **`Zeile` and `Usb` are not permitted in an A12 model**. Measured in both directions:
 
@@ -4710,7 +4710,13 @@ Nothing in this estate had crossed `Having` with the extremum operators — six 
 
 **Prompted by a12-kernel-lean**, whose own decline of this shape rested on a *real* neighbouring divergence — the DATERANGE-endpoint carrier genuinely refuses starred operands under `MVK_NO_WILDCARDS_ALLOWED`. A known-real boundary predicted the wrong side of itself, which is a stronger argument for measuring than an unsupported guess would have been.
 
-*(Locked: `validate.laws.FilteredStarExtremumOperandLawsTest` — every filtered row carries its plain-star control, and the numeric extremum sits beside the temporal one so a refusal would separate a filtered-star ban from a temporal-carrier one.)*
+**Extended 2026-09-07 — the FAMILY gate reads through the filter too, and the two filtered forms DO NOT AGREE.** The rows above measure the component-set gate; the family gate is a different one, so it is measured rather than transferred. On a starred **field** the filter is transparent: a filtered STRING, BOOLEAN or CONFIRM leader draws `MVK_NOT_SORTABLE` and a filtered DATE leader `MVK_DATE_AND_NONDATE`, each **equal to its plain twin**, with a sortable NUMBER leader admitted filtered and plain alike. On a **group** the filtered operand is refused `MVK_NO_GROUPS_ALLOWED` outright, where its plain twin reaches the kind gate and reports `MVK_NOT_SORTABLE` instead. So no single rule serves both filtered forms: reading the field half onto the group admits what the kernel refuses, and the group half onto the field refuses what it admits, and both are silent on models that filter nothing.
+
+The group claim rests on its own control: a filtered starred **field** inside that same subgroup, carrying the identical filter, is **admitted** — which excludes the filter's spelling, the operand's depth and the filter's scope, and leaves group-ness as the only difference. **No mechanism is proposed for it.** `MVK_NO_GROUPS_ALLOWED` is the code the carriers that refuse groups outright report, which invites reading the filtered operand as routed somewhere a group is not a legal shape at all; nothing measured here isolates that, so it stays a hypothesis. Held fixed across the whole grid: the operator, the arity, the comparand, the locale, the filter condition, the operand order, the group and the error field.
+
+A filtered group operand is **unrepresentable in our typed surface** — `GroupListRef` carries no filter at all — which is a claim about our own types, discharged by reading the record rather than by the kernel's refusal happening to agree; the rows use raw DSL for that reason. Reported by a12-kernel-lean as `SPEC-2026-09-07-01`.
+
+*(Locked: `validate.laws.FilteredStarExtremumOperandLawsTest` — every filtered row carries its plain-star control, and the numeric extremum sits beside the temporal one so a refusal would separate a filtered-star ban from a temporal-carrier one; the family-gate grid twins four leader kinds filtered against plain, and the group rows carry the filtered-field control.)*
 
 ## §11 supplement — a wrong-kind CONSTANT assignment reports an ordered ladder over the (constant, target) PAIR (kernel `checkConsistency` via raw `DraftComputation`, 2026-09-06) <a id="kf257"></a>
 
@@ -5071,3 +5077,49 @@ Every row this estate held about `FirstFilledValue` was about which *operand* is
 **A CONTRARY measurement to a12-kernel-lean's `SPEC-2026-09-07-03`, on the axis their own limit line names.** That entry's delta says an all-empty selection "mints no outcome at all, leaving the target neither written nor cleared", while its `limit` row records "whether a *seeded* target is cleared rather than left untouched" as unmeasured — and an unseeded target cannot tell the two apart. Ours is seeded: `FirstFilledValueAdditionalKindDiffTest` seeds the BOOLEAN target with `false` and the kernel reports **CLEARED**, on both strategies, with CUSTOM and DATE_FRAGMENT beside it; `FirstFilledValueKindDiffTest` carries the same seeded row for DATE, STRING, ENUM, TIME, DATE_TIME and DATE_RANGE, against the NUMBER control that computes the fillable `0` ([KF20](#kf20)). So the kernel does mint an outcome, and an implementation that leaves a seeded target alone keeps a stale value the kernel would have removed.
 
 *(Locked: `adapter.laws.FirstFilledValueAdditionalKindDiffTest.aFalseBooleanIsFilledAndAnAbsentOneFallsThrough` for the predicate; `.allEmptySelectionsClearEveryAdditionalKind` and `adapter.laws.FirstFilledValueKindDiffTest` for the seeded clear.)*
+
+---
+
+## §1 supplement — a TYPEDEF-typed field is its base kind at every gate, which is what makes an expansion exclusion sound (kernel `checkConsistency`, 2026-09-07) <a id="kf274"></a>
+
+> Fold: pending — a declaration-layer rule the canonical prose assumes rather than states; folds into §1.
+
+Nothing here had put a typedef field to an admission gate. Our CLI reports a typedef field's **resolved underlying** kind, so the read surface behaves as if resolution had happened — but that is our classification, not the kernel's gates, and every consumer that works on an expanded model is resting on the kernel agreeing.
+
+It does, at all three gates measured, and **each reports a different class**:
+
+| gate | NUMBER-based typedef | STRING-based typedef | plain-base control |
+|---|---|---|---|
+| `Sum`'s numeric operand | **ADMITTED** | `MVK_NO_NUMBER` | same, both sides |
+| `NumberOfDifferentValues`' homogeneity | (beside a String) `MVK_STRING_ENUM_AND_NON_STRING_ENUM` beside a Number | **ADMITTED** beside a String | same, both sides |
+| an ordering comparison against a numeric literal | **ADMITTED** | `MVK_INVALID_TYPE_FOR_COMPARISON` | same, both sides |
+
+**The spread is the separator, not any single row.** A typedef treated as an opaque kind of its own would refuse uniformly; one silently admitted everywhere would pass no control. Three distinct codes, each keyed to the base kind and each matching its plain-field control, kill both.
+
+**The ordering row independently reproduces the orderability gate** [KF270](#kf270) measures: STRING is not orderable, so an ordering comparison reports `MVK_INVALID_TYPE_FOR_COMPARISON` before any kind match — recorded here as corroboration on a second carrier, with that entry keeping the claim.
+
+**Why it is worth stating rather than assuming.** The rule is what makes a scope exclusion sound: a surface that puts include/expansion out of scope — as any consumer of an already-expanded model implicitly does — is relying on expansion losing no observable distinction. Reported by a12-kernel-lean as `SPEC-2026-09-07-05`, whose point is exactly that consequence.
+
+**Unmeasured:** a typedef over a config-bearing base kind (DATE, ENUM), where a declared format or domain might not survive resolution; a typedef imported from a separate type-def model rather than declared inline; and the computation arm.
+
+*(Locked: `validate.laws.TypedefBaseKindGateLawsTest` — twelve rows, each gate with its plain-base control.)*
+
+---
+
+## §13 supplement — `$index(…).value$` is a live message-parameter terminal whose SUFFIX is mandatory (kernel `checkConsistency`, 2026-09-07) <a id="kf275"></a>
+
+> Fold: pending — a fifth parameter form [KF198](#kf198) did not reach; folds into §13 with it.
+
+[KF198](#kf198) enumerated the rule-message parameter surface — a field, its value suffix, its category suffix, the `BaseYear` terminal, and the semantic-index key — and never reached `index(…)`, which pins a message to the **firing row's** declared index-field value. This estate held no claim about it in either direction; a12-kernel-lean's `SPEC-2026-09-07-09` corrects a no-witness clause of *theirs*, and the rows below are ours.
+
+**It is admitted, and one character decides it.** On a rule whose error field sits inside a repeatable group declaring `indexField ClaimNo`, `$index(ClaimNo).value$` is **admitted** while `$index(ClaimNo)$` is refused `INVALID_INDEX_FIELD_PARAMETER` — the checker enforcing a suffix the grammar accepts as optional so it can report better than a parse error. That pair is why the terminal reads as dead: the natural first attempt omits the suffix and draws a class that sounds like it is about the argument.
+
+**The argument is the SHORT name of an index field on the error entity's path.** Four wrong arguments draw one class, `INVALID_INDEX_FIELD`: a non-index field of the same group, a field outside it, a name no field carries, and — the row that shows what the match is against — **the index field spelled as a path**. Moving the error field to the root refuses the identical parameter under the same class, with its own parameter-free control admitted, so the refusal is the parameter's and not the rule's.
+
+**Three spellings fail in the PARSER, not the checker**, all `MVK_UNEXPECTED_TOKEN`: a capitalised `Index(`, a capitalised `.Value`, and the German `.Wert` under `en_US`. **And the category alternative is live**, gated on the index field being an Enumeration: `$index(ClaimNo)->Band$` over a String index field draws `FIELD_NO_ENUM` rather than a parse error.
+
+**Consumer consequence.** An Explain or Translate consumer treating this terminal as having no admitting spelling silently drops a legal parameter, and one attributing the parameter class to the argument's shape rather than to the missing suffix gives advice that cannot repair it.
+
+**Unmeasured:** what an admitted `index(…).value` **renders**, the German arm, the Enumeration index field that would admit the category form, a composed index (whose own `INVALID_INDEX_FIELD_COMPOSED_INDEX` class the peer's source read names and no row here reaches), and the computation carrier.
+
+*(Locked: `validate.laws.RuleMessageIndexTerminalLawsTest` — the admission and the suffix pair, the four-argument sweep, the three spelling rows, the category alternative, and the root-error-field row, each parameter-free control admitted alongside.)*
