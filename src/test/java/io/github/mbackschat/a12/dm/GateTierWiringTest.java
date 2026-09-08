@@ -36,7 +36,7 @@ class GateTierWiringTest {
                 "CI must run :interpreter:allTests on every push — it is the only lane that executes the JS/Node "
                         + "target, and :interpreter:check would pull the release machinery in with it");
         assertFalse(ci.contains("schedule:"),
-                "push/PR correctness CI must not rerun on the nightly schedule");
+                "main-push correctness CI must not rerun on the nightly schedule");
         assertTrue(ci.contains("uses: gradle/actions/setup-gradle@v6"),
                 "CI must persist the configured Gradle user home instead of discarding its local build cache");
         assertTrue(ci.contains("GRADLE_USER_HOME: ${{ github.workspace }}/.gradle-isolated"),
