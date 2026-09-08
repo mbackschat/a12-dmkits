@@ -14,7 +14,9 @@
 
 ## 1. Open
 
-_None open._
+### CG21 — Audit unexpected exceptions inside local validation boundaries (2026-09-08) <a id="cg21"></a>
+
+**Source-assessed; discriminator not yet executed.** `EditSession.validate` and `ModelDocument.validate` wrap otherwise unclassified `RuntimeException`s as `ModelConsistencyException`; `BaseCommand.failOrRethrowDomainRejection` converts remaining local reader failures to its ordinary failure result. A valid included model with a resolver that throws an unrelated sentinel NPE should discriminate an internal defect from a model verdict through these outer boundaries. The malformed-input classification tests lock the adapter boundary, not this wider claim. **Acceptance:** inject the defect through each owning boundary, enumerate the intended domain exceptions, and preserve unexpected failures without inventing a consistency verdict. This is separate from malformed DM-JSON classification because it changes the treatment of failures after a successful load; do not widen the current input classifier to absorb it.
 
 ## 2. Deferred — with re-open triggers
 

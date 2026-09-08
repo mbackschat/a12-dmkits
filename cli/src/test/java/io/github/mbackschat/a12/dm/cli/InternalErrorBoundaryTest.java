@@ -71,10 +71,7 @@ class InternalErrorBoundaryTest {
     }
 
     @Test
-    void aThrowableEscapingAVerbBecomesAStructuredErrorEnvelope(@TempDir Path dir) throws IOException {
-        // `group extract` parses the model via ModelDocument.read OUTSIDE any catch — malformed JSON there
-        // throws an uncaught (non-ModelConsistencyException) RuntimeException that reaches the boundary.
-        // Before the seam this was a raw stack trace; now it is the structured `error` envelope.
+    void malformedInputToAStructureVerbIsAnInputRefusal(@TempDir Path dir) throws IOException {
         Path bad = dir.resolve("broken.json");
         Files.writeString(bad, "{ \"this is\": not valid json ");
         CliTestSupport.Result res = CliTestSupport.run(
@@ -82,16 +79,14 @@ class InternalErrorBoundaryTest {
 
         JsonNode env = assertDoesNotThrow(() -> M.readTree(res.out()),
                 () -> "stdout must be a structured envelope, not a raw trace:\n" + res.out());
-        assertEquals("error", env.get("outcome").asText(),
-                () -> "an unexpected throwable maps to outcome `error`, not a raw trace: " + res.out());
+        assertEquals("refused", env.get("outcome").asText(), res::out);
         assertEquals("group", env.get("target").asText(), res::out);
         assertEquals("extract", env.get("op").asText(), res::out);
-        assertEquals(70, res.code(), "outcome `error` exits 70");
+        assertEquals(2, res.code(), res::out);
         JsonNode diagnostic = env.get("diagnostics").get(0);
-        assertEquals("RK_INTERNAL_ERROR", diagnostic.get("code").asText());
-        assertTrue(diagnostic.get("summary").asText().contains("group extract"), diagnostic::toString);
-        assertTrue(res.err().contains("RuntimeException") || !res.err().isBlank(),
-                "the full trace is preserved on stderr");
+        assertEquals("RK_MODEL_INPUT_INVALID", diagnostic.get("code").asText());
+        assertEquals("PRECHECK", diagnostic.get("source").asText());
+        assertTrue(res.err().isBlank(), res::err);
     }
 
     @Test

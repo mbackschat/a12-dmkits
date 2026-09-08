@@ -6,6 +6,7 @@ import java.util.List;
 import java.util.function.BooleanSupplier;
 
 import io.github.mbackschat.a12.dm.core.ModelConsistencyException;
+import io.github.mbackschat.a12.dm.core.ModelInputException;
 import io.github.mbackschat.a12.dm.core.UnresolvedReferenceException;
 import io.github.mbackschat.a12.dm.interpreter.ModelPreparationError;
 import picocli.CommandLine;
@@ -80,17 +81,12 @@ public final class Cli {
                 .setOut(outW)
                 .setErr(errW)
                 .setExpandAtFiles(false) // model paths are plain args, never @argfiles
-                // No raw exception escapes a verb (CLI-CONFORMANCE). Three escape classes, ONE structured shape:
-                // (1) a verb that LOADS an invalid-on-disk model throws ModelConsistencyException → the same
-                //     `rejected` envelope a write-path kernel rejection produces (probe 01-de Finding 7);
-                // (2) an unresolvable include / type-def import (UnresolvedReferenceException) is an INPUT
-                //     problem → a corrective `rejected` (RK_UNRESOLVED_REFERENCE), exit 1 — not an internal error;
-                // (3) ANY other thrown Exception is the tool failing unexpectedly → a structured `error`
-                //     envelope (RK_INTERNAL_ERROR), never a raw stack trace. picocli routes only Exceptions
-                //     here; an Error (e.g. a native reflection gap) is caught around execute() below.
+                // Input refusals must not claim an internal defect or a consistency verdict the loader
+                // never reached (CLI-CONFORMANCE). Unexpected failures retain their stderr trace.
                 .setExecutionExceptionHandler((ex, commandLine, parseResult) -> {
                     ResultIdentity identity = ResultIdentity.from(parseResult);
                     boolean internal = !(ex instanceof ModelConsistencyException)
+                            && !(ex instanceof ModelInputException)
                             && !(ex instanceof UnresolvedReferenceException)
                             && !(ex instanceof ModelPreparationError);
                     ResultEnvelope env;
@@ -99,6 +95,9 @@ public final class Cli {
                                 "the model is rejected by the kernel — it is invalid as stored", mce);
                     } else if (ex instanceof UnresolvedReferenceException ure) {
                         env = BaseCommand.unresolvedReferenceEnvelope(identity, ure);
+                    } else if (ex instanceof ModelInputException malformed) {
+                        RootCommand root = (RootCommand) commandLine.getCommandSpec().root().userObject();
+                        env = BaseCommand.modelInputEnvelope(identity, malformed, root.model);
                     } else if (ex instanceof ModelPreparationError preparation) {
                         env = BaseCommand.modelPreparationEnvelope(identity, preparation);
                     } else {

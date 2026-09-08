@@ -26,6 +26,7 @@ import io.github.mbackschat.a12.dm.core.DmKeys;
 import io.github.mbackschat.a12.dm.core.ElementType;
 import io.github.mbackschat.a12.dm.core.EntityPaths;
 import io.github.mbackschat.a12.dm.core.ModelConsistencyException;
+import io.github.mbackschat.a12.dm.core.ModelInputException;
 import io.github.mbackschat.a12.dm.core.ModelLoader;
 import io.github.mbackschat.a12.dm.core.ModelResolver;
 import io.github.mbackschat.a12.dm.core.ReferenceResolvers;
@@ -82,11 +83,11 @@ public final class ModelDocument {
         try {
             JsonNode node = MAPPER.readTree(dmJson);
             if (!(node instanceof ObjectNode obj)) {
-                throw new IllegalArgumentException("not a DM-JSON object");
+                throw new ModelInputException("not a DM-JSON object");
             }
             return new ModelDocument(obj);
         } catch (JsonProcessingException e) {
-            throw new IllegalArgumentException("invalid DM-JSON", e);
+            throw new ModelInputException("invalid DM-JSON: " + e.getMessage(), e);
         }
     }
 
@@ -2044,10 +2045,8 @@ public final class ModelDocument {
             gate = ModelLoader.loadAndCheck(json, resolver);
         } catch (ModelConsistencyException e) {
             throw e; // checkConsistency tier — already the uniform "model invalid" type
-        } catch (UnresolvedReferenceException e) {
-            // OUR resolver refused, not the gate. It has its own documented contract at the CLI seam
-            // (RK_UNRESOLVED_REFERENCE, exit 1), so wrapping it published a kernel arbitration that never
-            // happened — verification: KERNEL_CONFIRMED over a refusal we made ourselves.
+        } catch (UnresolvedReferenceException | ModelInputException e) {
+            // Input loading failed before consistency checking; wrapping it would fabricate a gate receipt.
             throw e;
         } catch (RuntimeException e) {
             // deserialize/expand tier (e.g. a duplicate element id surfaces as IllegalArgumentException):

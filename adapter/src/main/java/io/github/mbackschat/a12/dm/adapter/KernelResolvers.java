@@ -1,13 +1,12 @@
 package io.github.mbackschat.a12.dm.adapter;
 
-import java.io.IOException;
-import java.io.StringReader;
 
 import com.mgmtp.a12.kernel.md.facade.DocumentModelServiceFactory;
 import com.mgmtp.a12.kernel.md.model.api.services.IDocumentModelReferenceResolver;
 import com.mgmtp.a12.kernel.md.model.api.services.IDocumentModelSerializer;
 
 import io.github.mbackschat.a12.dm.core.ModelResolver;
+import io.github.mbackschat.a12.dm.core.ModelInputException;
 import io.github.mbackschat.a12.dm.core.UnresolvedReferenceException;
 
 /**
@@ -38,9 +37,9 @@ final class KernelResolvers {
                 throw new UnresolvedReferenceException(reference, "no model resolved for reference \"" + reference + "\"");
             }
             try {
-                return serializer.deserialize(new StringReader(json));
-            } catch (IOException e) {
-                throw new UnresolvedReferenceException(reference, "failed to deserialize resolved model \"" + reference + "\"", e);
+                return KernelModelInput.deserialize(serializer, json);
+            } catch (ModelInputException e) {
+                throw new ModelInputException("invalid resolved model \"" + reference + "\": " + e.getMessage(), e);
             }
         };
     }

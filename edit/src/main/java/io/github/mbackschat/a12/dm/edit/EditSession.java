@@ -11,6 +11,7 @@ import java.util.Optional;
 import java.util.function.Function;
 
 import io.github.mbackschat.a12.dm.core.ModelConsistencyException;
+import io.github.mbackschat.a12.dm.core.ModelInputException;
 import io.github.mbackschat.a12.dm.core.ModelLoader;
 import io.github.mbackschat.a12.dm.core.ModelResolver;
 import io.github.mbackschat.a12.dm.core.ReferenceResolvers;
@@ -577,10 +578,8 @@ public final class EditSession {
             gate = ModelLoader.loadAndCheck(json, resolver);
         } catch (ModelConsistencyException e) {
             throw e;
-        } catch (UnresolvedReferenceException e) {
-            // OUR resolver refused, not the gate — it has its own contract at the CLI seam. Rethrown for the
-            // same reason as at the per-edit gate (ModelDocument.validate): wrapping it made an envelope claim
-            // the kernel arbitrated a refusal we made ourselves.
+        } catch (UnresolvedReferenceException | ModelInputException e) {
+            // Input loading failed before consistency checking; wrapping it would fabricate a gate receipt.
             throw e;
         } catch (RuntimeException e) {
             // deserialize/expand tier — surface the cause via the shared factory (probe 07: the terminal

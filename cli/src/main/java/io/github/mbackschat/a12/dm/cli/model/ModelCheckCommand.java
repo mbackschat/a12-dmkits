@@ -23,8 +23,9 @@ import picocli.CommandLine.Mixin;
  * {@code dmtool model check} — the STATIC validation verb: run the whole model's definitions through the real
  * kernel's consistency check (the F4 ground-truth step) and report the uniform result envelope. Covers BOTH
  * rule conditions AND computation expressions; takes no document instance (that is the runtime {@code model
- * eval}/{@code model compute}). The op always executes ({@code ok:true}); the model's consistency rides
- * {@code valid}, with the kernel's {@code MVK_*} notifications surfaced as enriched {@link Diagnostic}s.
+ * eval}/{@code model compute}). Once loading succeeds, the model's consistency rides {@code valid}, with
+ * the kernel's {@code MVK_*} notifications surfaced as enriched {@link Diagnostic}s. Malformed input refuses
+ * before a consistency verdict exists.
  *
  * <p>The model-scope static-check verb — peer of the candidate-rule {@code rule check}; the runtime peers are
  * {@code model eval} (conditions) and {@code model compute} (computations). See the check/eval/compute
@@ -32,7 +33,8 @@ import picocli.CommandLine.Mixin;
  */
 @Command(name = "check", mixinStandardHelpOptions = true,
         description = "Statically CHECK the whole model's definitions (rules + computations) through the real "
-                + "kernel; report {valid, diagnostics[]} (no document instance — exit 0 valid, 1 not).")
+                + "kernel; report {valid, diagnostics[]} (no document instance — exit 0 valid, 1 not; "
+                + "malformed model input is refused with a PRECHECK diagnostic and exit 2).")
 final class ModelCheckCommand extends BaseCommand {
 
     @Mixin

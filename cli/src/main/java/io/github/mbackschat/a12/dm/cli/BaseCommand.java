@@ -18,6 +18,7 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import io.github.mbackschat.a12.dm.core.Notification;
 
 import io.github.mbackschat.a12.dm.core.ModelConsistencyException;
+import io.github.mbackschat.a12.dm.core.ModelInputException;
 import io.github.mbackschat.a12.dm.core.UnresolvedReferenceException;
 import io.github.mbackschat.a12.dm.interpreter.DocumentInputDiagnostic;
 import io.github.mbackschat.a12.dm.interpreter.DocumentInputError;
@@ -566,12 +567,13 @@ public abstract class BaseCommand implements Callable<Integer> {
 
     /**
      * Preserve input-domain rejections caught by a broad command-local {@link RuntimeException} boundary.
-     * Strict model readers still use their local failure text for ordinary parse/render failures, but an invalid
-     * stored model or unresolved model reference must escape to {@link Cli}'s single structured-envelope mapper.
+     * Malformed input, an invalid stored model, or an unresolved model reference must escape to
+     * {@link Cli}'s single structured-envelope mapper; other local failures retain their command context.
      * Use this only around loading the caller-supplied model, never around validation of an edited candidate.
      */
     protected int failOrRethrowDomainRejection(String messagePrefix, RuntimeException failure) {
-        if (failure instanceof ModelConsistencyException || failure instanceof UnresolvedReferenceException) {
+        if (failure instanceof ModelConsistencyException || failure instanceof UnresolvedReferenceException
+                || failure instanceof ModelInputException) {
             throw failure;
         }
         return fail(messagePrefix + failure.getMessage());
@@ -592,7 +594,7 @@ public abstract class BaseCommand implements Callable<Integer> {
      * consistency failure — which is why the two fixes only make sense together.
      */
     protected int failEditGate(RuntimeException failure) {
-        if (failure instanceof UnresolvedReferenceException) {
+        if (failure instanceof UnresolvedReferenceException || failure instanceof ModelInputException) {
             throw failure;
         }
         return fail(failure.getMessage());
@@ -651,6 +653,12 @@ public abstract class BaseCommand implements Callable<Integer> {
         return ResultEnvelope.rejected(identity,
                 "a model reference could not be resolved: " + e.reference(), List.of(d),
                 RejectionBasis.preflight());
+    }
+
+    static ResultEnvelope modelInputEnvelope(ResultIdentity identity, ModelInputException failure, String source) {
+        Diagnostic diagnostic = Diagnostic.precheck(RkCode.MODEL_INPUT_INVALID, failure.getMessage(),
+                Diagnostic.Where.arg(null, source == null ? MODEL_LABEL : source));
+        return ResultEnvelope.refused(identity, "the model input is malformed", List.of(diagnostic));
     }
 
     /** Convert every portable workspace diagnostic into the CLI's corrective, self-describing refusal shape. */

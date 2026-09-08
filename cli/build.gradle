@@ -698,6 +698,7 @@ tasks.register('publicContractTest', Test) {
     // build and a later unrelated tree mutation cannot rewrite the test's oracle.
     filter {
         includeTestsMatching 'io.github.mbackschat.a12.dm.cli.DmtoolPublicContractTest'
+        includeTestsMatching 'io.github.mbackschat.a12.dm.cli.MalformedModelPublicContractTest'
         includeTestsMatching 'io.github.mbackschat.a12.dm.cli.DmtoolMutationSafetyTest'
         includeTestsMatching 'io.github.mbackschat.a12.dm.cli.PackagedDmtoolJourneyTest'
         includeTestsMatching 'io.github.mbackschat.a12.dm.cli.CommandRouteEquivalenceTest'

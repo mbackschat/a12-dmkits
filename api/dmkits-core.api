@@ -161,6 +161,10 @@ public final class io.github.mbackschat.a12.dm.core.ModelIndex
   public java.util.Optional<java.lang.String> typeReferenceOf(java.lang.String)
   public java.util.Optional<java.lang.String> usageTypeOfGroup(java.lang.String)
 
+public final class io.github.mbackschat.a12.dm.core.ModelInputException extends java.lang.IllegalArgumentException
+  public ModelInputException(java.lang.String)
+  public ModelInputException(java.lang.String, java.lang.Throwable)
+
 public final class io.github.mbackschat.a12.dm.core.ModelLoader
   public static io.github.mbackschat.a12.dm.core.Verification loadAndCheck(java.lang.String, io.github.mbackschat.a12.dm.core.ModelResolver)
   public static io.github.mbackschat.a12.dm.core.Verification loadSelfContained(java.lang.String)

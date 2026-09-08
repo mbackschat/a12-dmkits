@@ -98,6 +98,21 @@
   },
   "examples": [
     {
+      "target": "model",
+      "op": "check",
+      "outcome": "refused",
+      "ok": false,
+      "summary": "the model input is malformed",
+      "diagnostics": [{
+        "severity": "ERROR",
+        "source": "PRECHECK",
+        "code": "RK_MODEL_INPUT_INVALID",
+        "summary": "missing required errorEntityRelPath on element 'Order/Guard'",
+        "where": {"arg": "broken.dm.json"}
+      }],
+      "written": false
+    },
+    {
       "target": "field",
       "op": "add",
       "outcome": "applied",

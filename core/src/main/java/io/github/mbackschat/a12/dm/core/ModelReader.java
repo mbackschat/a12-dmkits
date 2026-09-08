@@ -766,9 +766,9 @@ public final class ModelReader {
             if (MAPPER.readTree(dmJson) instanceof ObjectNode root) {
                 return root;
             }
-            throw new IllegalArgumentException("DM-JSON root is not a JSON object");
+            throw new ModelInputException("DM-JSON root is not a JSON object");
         } catch (IOException e) {
-            throw new IllegalArgumentException("not valid DM-JSON", e);
+            throw new ModelInputException("not valid DM-JSON: " + e.getMessage(), e);
         }
     }
 

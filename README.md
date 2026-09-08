@@ -239,7 +239,7 @@ dmtool -m order.dm.json model info
 # the model card: fields, kinds, enum domains, groups
 dmtool -m order.dm.json model describe
 
-# run it through the real kernel → {valid, diagnostics[]}
+# run it through the real kernel → {valid, diagnostics[]}; malformed input is refused (exit 2)
 dmtool -m order.dm.json model check
 
 # one field in full: kind, required, AND its per-kind config (min/max/unit/pattern/format)

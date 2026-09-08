@@ -1,8 +1,5 @@
 package io.github.mbackschat.a12.dm.adapter;
 
-import java.io.IOException;
-import java.io.StringReader;
-import java.io.UncheckedIOException;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -28,13 +25,9 @@ final class KernelModelPreparation {
     static ExpandedModel expand(String modelJson, ModelResolver resolver) {
         IDocumentModelSerializer serializer = FACTORY.createDocumentModelSerializer();
         IDocumentModelService service = FACTORY.createDocumentModelService();
-        try {
-            IDocumentModel model = serializer.deserialize(new StringReader(modelJson));
-            service.expand(model, KernelResolvers.of(resolver));
-            return new ExpandedModel(model, service);
-        } catch (IOException exception) {
-            throw new UncheckedIOException("failed to deserialize the model DM-JSON", exception);
-        }
+        IDocumentModel model = KernelModelInput.deserialize(serializer, modelJson);
+        service.expand(model, KernelResolvers.of(resolver));
+        return new ExpandedModel(model, service);
     }
 
     record ExpandedModel(IDocumentModel model, IDocumentModelService service) {

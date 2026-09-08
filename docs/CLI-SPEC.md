@@ -208,6 +208,8 @@ Model-bound operations use `dmtool -m <model> <target> <op> [args]`. Family (mod
 
 `model diff` binds both states independently. In two-file mode, repeatable `--base-workspace` and `--head-workspace` roots distinguish snapshots that contain different versions of the same referenced model id; without them, shared `-w` applies, then each model's folder. In `--since` mode, the base model and its dependencies come from the Git ref while the head resolves from the working tree.
 
+`model check` refuses malformed DM-JSON before consistency checking: `outcome: refused`, exit 2, and a `PRECHECK` diagnostic coded `RK_MODEL_INPUT_INVALID`, without `valid` or `verification`. Truncated JSON, unknown properties, wrong value types, and absent required rule/computation references belong here. Unexpected failures reaching the CLI exception boundary retain exit 70. The shared model-load boundary also serves model readers and edit gates; `ModelInputFailureTest` and `MalformedModelPublicContractTest` exercise these distinctions.
+
 `group modify --index-field <fieldName>` accepts an existing direct-child field on both repeatable and non-repeatable groups. Row sort declarations still require repeatability. Enforcement: `ModelDocument.setIndexField` and `GroupBuilder.toDraft`; locks: `NonRepeatingIndexFieldCliTest`, `IndexFieldTest`, and `GroupSortFieldTest`.
 
 | target | ops | family |
