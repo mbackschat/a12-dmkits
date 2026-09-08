@@ -114,14 +114,23 @@ class IterationGuardAdmissionRoutesLawsTest {
             .build().toJson();
 
     /**
-     * One repeatable group carrying the negative, over the three axes that turned out to interact: its
-     * POSITION, its repeatability COUNT, and whether it declares an INDEX FIELD. An earlier sweep held the
-     * index declared in every cell and read the count as the whole rule.
+     * One repeatable group carrying the negative, over the axes that decide it: its POSITION, its
+     * repeatability COUNT, whether it declares an INDEX FIELD, and what it CONTAINS.
+     *
+     * <p>The contents axis is here because it was the last thing every cell of this grid held constant — two
+     * flat fields and no nested subgroup — while the lone-root row that admits carries a nested one, so
+     * "admitted iff index and a maximum of two" and "admitted iff index and a maximum of two, on a group with
+     * no subgroup" were indistinguishable. Varying it changes nothing, which is what makes the count/index
+     * conjunct a claim about the group's repeatability rather than about its shape.
      */
-    private static String repeatCountModel(boolean atRoot, int repeats, boolean indexed) {
-        var b = DocumentModelDraft.named("rc-" + atRoot + "-" + repeats + "-" + indexed).locale("en_US");
+    private static String repeatCountModel(boolean atRoot, int repeats, boolean indexed, boolean withSubgroup) {
+        var b = DocumentModelDraft.named("rc-" + atRoot + "-" + repeats + "-" + indexed + "-" + withSubgroup)
+                .locale("en_US");
         java.util.function.Consumer<DocumentModelDraft.GroupBuilder> body = q -> {
             q.repeatable(repeats).field("I", FieldKind.STRING).field("S", FieldKind.STRING);
+            if (withSubgroup) {
+                q.group("g", g -> g.field("f", FieldKind.STRING));
+            }
             if (indexed) {
                 q.indexField("I");
             }
@@ -220,11 +229,13 @@ class IterationGuardAdmissionRoutesLawsTest {
         for (boolean atRoot : new boolean[] {true, false}) {
             for (int n : new int[] {2, 3, 10}) {
                 for (boolean indexed : new boolean[] {true, false}) {
-                    String key = "grid " + (atRoot ? "root" : "nested") + " R(" + n + ")"
-                            + (indexed ? " idx" : " no-idx");
-                    String group = atRoot ? "/Q" : "/O/Q";
-                    actual.put(key, verdict(repeatCountModel(atRoot, n, indexed), group, "../S",
-                            "GroupNotFilled(" + group + ")"));
+                    for (boolean sub : new boolean[] {false, true}) {
+                        String key = "grid " + (atRoot ? "root" : "nested") + " R(" + n + ")"
+                                + (indexed ? " idx" : " no-idx") + (sub ? " +sub" : "");
+                        String group = atRoot ? "/Q" : "/O/Q";
+                        actual.put(key, verdict(repeatCountModel(atRoot, n, indexed, sub), group, "../S",
+                                "GroupNotFilled(" + group + ")"));
+                    }
                 }
             }
         }
@@ -249,10 +260,13 @@ class IterationGuardAdmissionRoutesLawsTest {
         for (boolean atRoot : new boolean[] {true, false}) {
             for (int n : new int[] {2, 3, 10}) {
                 for (boolean indexed : new boolean[] {true, false}) {
-                    // Admitted iff BOTH: the group declares an index AND its maximum is two.
-                    expected.put("grid " + (atRoot ? "root" : "nested") + " R(" + n + ")"
-                            + (indexed ? " idx" : " no-idx"),
-                            n == 2 && indexed ? KernelLaws.ADMITTED : NEG);
+                    for (boolean sub : new boolean[] {false, true}) {
+                        // Admitted iff BOTH: the group declares an index AND its maximum is two. What the
+                        // group contains is not an axis — every pair of `+sub` cells agrees with its twin.
+                        expected.put("grid " + (atRoot ? "root" : "nested") + " R(" + n + ")"
+                                + (indexed ? " idx" : " no-idx") + (sub ? " +sub" : ""),
+                                n == 2 && indexed ? KernelLaws.ADMITTED : NEG);
+                    }
                 }
             }
         }
