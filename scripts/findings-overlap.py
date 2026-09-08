@@ -104,7 +104,7 @@ def load():
     entries += _anchored(DOCS / "KERNEL-FINDINGS.md",
                          r'^#{2,4} (?P<t>.*?)<a id="(?P<i>kf\d+)"></a>\s*$', "i", "t")
     api_entries = _anchored(DOCS / "API-FINDINGS.md",
-                            r'^## (\d+)\. (.*?) <a id="af\d+"></a>\s*$', 1, 2)
+                            r'^## AF(\d+): (.*?) <a id="af\d+"></a>\s*$', 1, 2)
     for entry in api_entries:
         entry["id"] = "API" + entry["id"]
     entries += api_entries

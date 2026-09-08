@@ -15,7 +15,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
 /**
- * Keeps API-FINDINGS section numbers and explicit anchors aligned with existing "finding N" citations.
+ * Keeps API-FINDINGS visible AF identifiers and explicit anchors aligned with existing "finding N" citations.
  *
  * <p>The findings preamble promises stable numbering; headings must stay dense and unique in document
  * order, and each heading's {@code afN} anchor must agree with its visible number. The scan floor catches
@@ -26,10 +26,10 @@ class ApiFindingsNumberingGuardTest {
 
     private static final Checkout CHECKOUT = Checkout.locate();
 
-    private static final Pattern ITEM = Pattern.compile("^## (\\d+)\\. ", Pattern.MULTILINE);
+    private static final Pattern ITEM = Pattern.compile("^## AF(\\d+): ", Pattern.MULTILINE);
     private static final Pattern HEADING = Pattern.compile("^## .+$", Pattern.MULTILINE);
     private static final Pattern ANCHORED_ITEM =
-            Pattern.compile("## ([1-9]\\d*)\\. \\S.* <a id=\"af([1-9]\\d*)\"></a>");
+            Pattern.compile("## AF([1-9]\\d*): \\S.* <a id=\"af([1-9]\\d*)\"></a>");
 
     /** The live doc carries 125 findings (2026-08-16); the floor only catches a scan that found nothing. */
     private static final int MIN_FINDINGS = 90;
@@ -37,12 +37,12 @@ class ApiFindingsNumberingGuardTest {
     @Test
     void sectionHeadingsCarryTheFindingNumbers() {
         assertEquals(List.of(1, 2), ordinals("""
-                ## 1. First claim <a id="af1"></a>
+                ## AF1: First claim <a id="af1"></a>
 
                 Body with an unrelated list:
                 1. **Not a finding**
 
-                ## 2. Second claim <a id="af2"></a>
+                ## AF2: Second claim <a id="af2"></a>
                 """));
     }
 
@@ -64,11 +64,11 @@ class ApiFindingsNumberingGuardTest {
      */
     @Test
     void theGuardFiresOnAGapADuplicateAndAMisalignedMax(@TempDir Path dir) throws IOException {
-        String first = "## 1. a <a id=\"af1\"></a>\n";
-        String second = "## 2. b <a id=\"af2\"></a>\n";
-        Files.writeString(dir.resolve("gap.md"), first + second + "## 4. d <a id=\"af4\"></a>\n");
+        String first = "## AF1: a <a id=\"af1\"></a>\n";
+        String second = "## AF2: b <a id=\"af2\"></a>\n";
+        Files.writeString(dir.resolve("gap.md"), first + second + "## AF4: d <a id=\"af4\"></a>\n");
         Files.writeString(dir.resolve("dup.md"), first + second + second);
-        Files.writeString(dir.resolve("clean.md"), first + second + "## 3. c <a id=\"af3\"></a>\n");
+        Files.writeString(dir.resolve("clean.md"), first + second + "## AF3: c <a id=\"af3\"></a>\n");
 
         assertTrue(audit(Files.readString(dir.resolve("gap.md"))).stream()
                         .anyMatch(v -> v.contains("gap")),
@@ -82,11 +82,11 @@ class ApiFindingsNumberingGuardTest {
 
     @Test
     void theGuardFiresOnMissingMismatchedAndMalformedAnchors() {
-        for (String heading : List.of("## 1. a", "## 1. a <a id=\"af2\"></a>",
-                "## 1. a <a id=\"af01\"></a>", "## Unnumbered finding <a id=\"af1\"></a>")) {
+        for (String heading : List.of("## AF1: a", "## AF1: a <a id=\"af2\"></a>",
+                "## AF1: a <a id=\"af01\"></a>", "## Unnumbered finding <a id=\"af1\"></a>")) {
             assertTrue(audit(heading).stream().anyMatch(v -> v.contains("anchor")), heading);
         }
-        assertTrue(audit("## 1. a <a id=\"af1\"></a>").isEmpty());
+        assertTrue(audit("## AF1: a <a id=\"af1\"></a>").isEmpty());
     }
 
     private static List<String> audit(String markdown) {
