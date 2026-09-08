@@ -34,7 +34,7 @@ class ModelProfileJsonTest {
         ((ObjectNode) profile.path("structure")).put("fieldCount", -1);
 
         var error = assertThrows(
-                IllegalArgumentException.class,
+                ProfileInputException.class,
                 () -> ModelProfileJson.read(profile.toString()));
 
         assertTrue(error.getMessage().contains("$.structure.fieldCount"));

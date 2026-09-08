@@ -104,7 +104,7 @@ final class RuleDepsCommand extends BaseCommand {
         } catch (IOException e) {
             return fail("deps failed: " + e.getMessage());
         } catch (RuntimeException e) {
-            return failOrRethrowDomainRejection("deps failed: ", e);
+            throw withFailureContext("deps failed: ", e);
         }
     }
 }

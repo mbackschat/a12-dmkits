@@ -19,6 +19,7 @@ import io.github.mbackschat.a12.dm.core.ModelResolver;
 import io.github.mbackschat.a12.dm.modelkit.SupportedCharactersContract;
 
 import io.github.mbackschat.a12.dm.core.ModelConsistencyException;
+import io.github.mbackschat.a12.dm.core.ModelInputException;
 import io.github.mbackschat.a12.dm.edit.EditSession;
 import picocli.CommandLine.Command;
 import picocli.CommandLine.Mixin;
@@ -185,11 +186,15 @@ final class ConfigModifyCommand extends BaseCommand {
         String resultJson;
         try {
             mod.applyTo(session, changed);
+        } catch (ModelInputException malformed) {
+            throw malformed;
+        } catch (IllegalArgumentException invalidEdit) {
+            return fail(invalidEdit.getMessage());
+        }
+        try {
             resultJson = session.validate().toJson();
         } catch (ModelConsistencyException e) {
             return emitKernelRejection("the config change is rejected by the kernel", e);
-        } catch (RuntimeException e) {
-            return failEditGate(e);
         }
         var advisories = mod.advisories();
         return emitMutation(ModelWrite.of(resultIdentity())

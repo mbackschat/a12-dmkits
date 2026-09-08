@@ -79,8 +79,6 @@ final class TypedefExtractCommand extends BaseCommand {
             resultJson = doc.validate(resolver).toJson();
         } catch (ModelConsistencyException e) {
             return emitKernelRejection("extract left the model invalid", e);
-        } catch (RuntimeException e) {
-            return failEditGate(e);
         }
 
         ObjectNode changed = MAPPER.createObjectNode();

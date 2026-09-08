@@ -1200,6 +1200,8 @@ ModelDocument.read(json)
 ```
 Add-ops reuse the build-from-scratch node emitter, so an *added* field is byte-shaped identically to a *built* one. A missing target path fails fast with `IllegalArgumentException`; the full constraint set rides `validate()`. *Locked by `modelkit.ModelEditTest`.*
 
+Both `ModelDocument.validate(resolver)` and `EditSession.validate()` preserve the origin of a failure: malformed model input raises `ModelInputException`, an unresolved include raises `UnresolvedReferenceException`, and a diagnosed kernel expansion or consistency refusal raises `ModelConsistencyException`. An unrelated resolver exception propagates unchanged; it does not constitute a model verdict. The adapter recognizes A12's `DocumentModelExpansionException` at the expansion call, rather than classifying every exception from a validation entry point as a rejection. *Locked by `ValidationFailureBoundaryTest` and `cli.EditGateRejectionTierTest`.*
+
 `validate()` also leaves a **receipt**: `consistencyGate()` returns `Optional<Verification>` — `KERNEL_CONFIRMED` when the real oracle arbitrated, `STRUCTURAL_ONLY` in a backend-free build, and **empty** until the gate has run. It is state-checked, so an edit *after* the gate revokes it rather than vouching for a tree the kernel never saw; re-validating restores it. Read it when you publish provenance ("who confirmed this model") — never `Backends.verification()`, which answers the different question of whether a backend is on the classpath. `EditSession.consistencyGate()` is the same accessor over the session's one terminal gate. *Locked by `cli.EditGateReceiptTest`; the rationale is [finding 113](API-FINDINGS.md).*
 
 An **index field** may be declared on a non-repeatable group as well as a repeatable one: `rootGroup("Single", g -> g.indexField("Key").field("Key", FieldKind.STRING))`. `GroupBuilder.indexField`, `ModelDocument.setIndexField`, and `GroupEditor.setIndexField` all require an existing direct-child field, without imposing repeatability. *Kernel acceptance and read/edit preservation: `modelkit.IndexFieldTest`; enumeration declaration and message-parameter distinction: `RuleMessageIndexTerminalLawsTest` ([KF280](KERNEL-FINDINGS.md#kf280)).*
@@ -1868,6 +1870,8 @@ Compare a synthesized model's re-extracted profile with its target through the s
 ```java
 String comparisonJson = ModelProfiles.compare(targetProfileJson, actualProfileJson);
 ```
+
+Diagnosed profile parsing failures and the synthesizer's bounded-group requirement raise `ProfileInputException`, an `IllegalArgumentException` subtype. Unexpected processing exceptions remain distinct. This type describes our performance-profile tooling format; it is not an A12 model or Document type. *Locked by `ModelProfileJsonTest` and `cli.LocalFailureBoundaryTest`.*
 
 ## 7. The LLM session — the loop the skill teaches, for both personas
 

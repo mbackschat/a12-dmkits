@@ -10,12 +10,9 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.function.Function;
 
-import io.github.mbackschat.a12.dm.core.ModelConsistencyException;
-import io.github.mbackschat.a12.dm.core.ModelInputException;
 import io.github.mbackschat.a12.dm.core.ModelLoader;
 import io.github.mbackschat.a12.dm.core.ModelResolver;
 import io.github.mbackschat.a12.dm.core.ReferenceResolvers;
-import io.github.mbackschat.a12.dm.core.UnresolvedReferenceException;
 import io.github.mbackschat.a12.dm.core.Verification;
 import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft;
 import io.github.mbackschat.a12.dm.modelkit.ElementDraft;
@@ -573,19 +570,7 @@ public final class EditSession {
 
     /** The kernel gate: re-bind the whole model (deserialize → expand → checkConsistency), once. */
     public EditSession validate() {
-        Verification gate;
-        try {
-            gate = ModelLoader.loadAndCheck(json, resolver);
-        } catch (ModelConsistencyException e) {
-            throw e;
-        } catch (UnresolvedReferenceException | ModelInputException e) {
-            // Input loading failed before consistency checking; wrapping it would fabricate a gate receipt.
-            throw e;
-        } catch (RuntimeException e) {
-            // deserialize/expand tier — surface the cause via the shared factory (probe 07: the terminal
-            // gate used to drop it, unlike the per-edit gate; one factory keeps them from drifting).
-            throw ModelConsistencyException.notKernelValid(e);
-        }
+        Verification gate = ModelLoader.loadAndCheck(json, resolver);
         gatedJson = json;
         gatedBy = gate;
         return this;

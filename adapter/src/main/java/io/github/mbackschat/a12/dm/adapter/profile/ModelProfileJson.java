@@ -32,20 +32,23 @@ final class ModelProfileJson {
         Objects.requireNonNull(json, "json");
         try {
             JsonNode root = JSON.readTree(json);
+            if (root == null) {
+                throw new ProfileInputException("profile JSON is empty");
+            }
             JsonNode profile = root.has("structure") ? root : root.path("data");
             if (!profile.isObject()) {
-                throw new IllegalArgumentException("profile JSON must be a bare profile or extraction envelope");
+                throw new ProfileInputException("profile JSON must be a bare profile or extraction envelope");
             }
             rejectNegativeNumbers(profile, "$");
             return JSON.treeToValue(profile, SynthesisProfile.class);
         } catch (JsonProcessingException e) {
-            throw new IllegalArgumentException("not a valid model profile JSON: " + e.getOriginalMessage(), e);
+            throw new ProfileInputException("not a valid model profile JSON: " + e.getOriginalMessage(), e);
         }
     }
 
     private static void rejectNegativeNumbers(JsonNode node, String path) {
         if (node.isIntegralNumber() && node.longValue() < 0) {
-            throw new IllegalArgumentException("profile value must be non-negative at " + path);
+            throw new ProfileInputException("profile value must be non-negative at " + path);
         }
         if (node.isObject()) {
             node.properties().forEach(entry ->

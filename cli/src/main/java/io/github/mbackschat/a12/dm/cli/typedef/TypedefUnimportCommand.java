@@ -53,15 +53,16 @@ final class TypedefUnimportCommand extends BaseCommand {
         }
         ModelResolver resolver = workspace.resolverFor(model);
         ModelDocument doc = ModelDocument.read(modelJson);
+        try {
+            doc.removeImport(reference);
+        } catch (IllegalArgumentException invalidEdit) {
+            return fail(invalidEdit.getMessage());
+        }
         String resultJson;
         try {
-            resultJson = doc.removeImport(reference)
-                    .validate(resolver)
-                    .toJson();
+            resultJson = doc.validate(resolver).toJson();
         } catch (ModelConsistencyException e) {
             return emitKernelRejection("removing the type-def import is rejected by the kernel", e);
-        } catch (RuntimeException e) {
-            return failEditGate(e);
         }
         ObjectNode changed = MAPPER.createObjectNode();
         changed.put("unimported", reference);

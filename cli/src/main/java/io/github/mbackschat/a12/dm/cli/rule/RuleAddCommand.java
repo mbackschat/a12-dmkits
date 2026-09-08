@@ -172,8 +172,6 @@ final class RuleAddCommand extends BaseCommand {
             // `fail`, so a rule refused for its error text produced empty stdout and a prose stderr line while
             // the same verb refused for its condition produced the envelope.
             return emitKernelRejection("the rule is rejected by the kernel", e);
-        } catch (RuntimeException e) {
-            return failEditGate(e);
         }
         List<Diagnostic> warnings = LintBackstop.lintPersisted(reModel, ruleFullName, field);
 

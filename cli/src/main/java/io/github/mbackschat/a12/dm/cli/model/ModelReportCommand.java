@@ -101,7 +101,7 @@ final class ModelReportCommand extends BaseCommand {
             out().print(env.toJsonString());
             return env.exitCode();
         } catch (RuntimeException e) {
-            return failOrRethrowDomainRejection("report failed: ", e);
+            throw withFailureContext("report failed: ", e);
         }
     }
 

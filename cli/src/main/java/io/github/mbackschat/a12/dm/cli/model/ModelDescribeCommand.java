@@ -50,7 +50,7 @@ final class ModelDescribeCommand extends BaseCommand {
             // so it goes to Cli's error boundary rather than reading as something the caller can fix.
             throw new IllegalStateException("cannot serialize the model card: " + e.getMessage(), e);
         } catch (RuntimeException e) {
-            return failOrRethrowDomainRejection("describe failed: ", e);
+            throw withFailureContext("describe failed: ", e);
         }
     }
 }

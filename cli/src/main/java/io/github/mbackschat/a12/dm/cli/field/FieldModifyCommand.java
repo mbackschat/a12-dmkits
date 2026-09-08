@@ -137,8 +137,6 @@ final class FieldModifyCommand extends BaseCommand {
             resultJson = doc.validate(resolver).toJson();
         } catch (ModelConsistencyException e) {
             return emitKernelRejection("the change is rejected by the kernel", e);
-        } catch (RuntimeException e) {
-            return failEditGate(e);
         }
         return emitMutation(ModelWrite.of(resultIdentity())
                 .summaries("would modify " + fieldPath,

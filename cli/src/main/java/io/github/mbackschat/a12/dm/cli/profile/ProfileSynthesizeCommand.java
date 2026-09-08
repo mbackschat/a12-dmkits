@@ -11,6 +11,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 
 import io.github.mbackschat.a12.dm.adapter.profile.ModelSynthesizer;
+import io.github.mbackschat.a12.dm.adapter.profile.ProfileInputException;
 import io.github.mbackschat.a12.dm.cli.BaseCommand;
 import io.github.mbackschat.a12.dm.cli.ConsistencyEvidence;
 import io.github.mbackschat.a12.dm.cli.ParamKind;
@@ -67,8 +68,10 @@ final class ProfileSynthesizeCommand extends BaseCommand {
         try {
             synthesized = ModelSynthesizer.synthesized(profileJson, seed);
             modelJson = synthesized.dmJson();
+        } catch (ProfileInputException badProfile) {
+            return fail("profile synthesis failed: " + badProfile.getMessage());
         } catch (RuntimeException e) {
-            return failOrRethrowDomainRejection("profile synthesis failed: ", e);
+            throw withFailureContext("profile synthesis failed: ", e);
         }
 
         if (outputPath == null) {

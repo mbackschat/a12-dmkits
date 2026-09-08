@@ -30,7 +30,6 @@ import io.github.mbackschat.a12.dm.core.ModelInputException;
 import io.github.mbackschat.a12.dm.core.ModelLoader;
 import io.github.mbackschat.a12.dm.core.ModelResolver;
 import io.github.mbackschat.a12.dm.core.ReferenceResolvers;
-import io.github.mbackschat.a12.dm.core.UnresolvedReferenceException;
 import io.github.mbackschat.a12.dm.core.ValueKind;
 import io.github.mbackschat.a12.dm.core.Verification;
 
@@ -2037,25 +2036,8 @@ public final class ModelDocument {
     /** As {@link #validate()}, resolving includes / type-def imports via a <b>kernel-free</b>
      *  {@link ModelResolver} ({@code id → DM-JSON}). */
     public ModelDocument validate(ModelResolver resolver) {
-        // OUTSIDE the try on purpose: serializing our own edited tree is not a gate, so a failure here is a
-        // tool defect and must not be relabelled as "the edited model is not kernel-valid" (see the catch below).
         String json = toJson();
-        Verification gate;
-        try {
-            gate = ModelLoader.loadAndCheck(json, resolver);
-        } catch (ModelConsistencyException e) {
-            throw e; // checkConsistency tier — already the uniform "model invalid" type
-        } catch (UnresolvedReferenceException | ModelInputException e) {
-            // Input loading failed before consistency checking; wrapping it would fabricate a gate receipt.
-            throw e;
-        } catch (RuntimeException e) {
-            // deserialize/expand tier (e.g. a duplicate element id surfaces as IllegalArgumentException):
-            // funnel into the same type so a caller sees one "invalid edit" signal regardless of tier — and
-            // SURFACE the underlying cause's message via the shared factory (probe 04: a bare "not
-            // kernel-valid" with no code/where left an agent nothing to act on). Same factory as the session
-            // terminal gate (EditSession.validate) so the cause-append can't drift between the two gates.
-            throw ModelConsistencyException.notKernelValid(e);
-        }
+        Verification gate = ModelLoader.loadAndCheck(json, resolver);
         gatedJson = json;
         gatedBy = gate;
         return this;

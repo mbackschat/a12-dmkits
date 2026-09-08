@@ -82,8 +82,6 @@ final class IncludeRenameCommand extends BaseCommand {
             resultJson = rewritten.toJson();
         } catch (ModelConsistencyException e) {
             return emitKernelRejection("rename left the model invalid", e);
-        } catch (RuntimeException e) {
-            return failEditGate(e);
         }
 
         ObjectNode changed = MAPPER.createObjectNode();

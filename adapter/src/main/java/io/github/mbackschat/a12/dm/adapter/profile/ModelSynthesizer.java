@@ -73,7 +73,7 @@ public final class ModelSynthesizer {
 
     static Synthesized synthesized(SynthesisProfile profile, long seed) {
         if (profile.structure().repeatability().unboundedCount() > 0) {
-            throw new IllegalArgumentException(
+            throw new ProfileInputException(
                     "profile synthesis requires bounded repeatable groups");
         }
         BoundModel model = BoundModel.ofJson(

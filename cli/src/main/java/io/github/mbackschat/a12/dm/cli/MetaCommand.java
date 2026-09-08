@@ -142,8 +142,6 @@ final class MetaCommand extends BaseCommand {
         } catch (ModelConsistencyException e) {
             return emitKernelRejection(ResultIdentity.META_MODIFY,
                     "the metadata change is rejected by the kernel", e);
-        } catch (RuntimeException e) {
-            return failEditGate(e);
         }
         return emitMutation(ModelWrite.of(ResultIdentity.META_MODIFY)
                 .summaries("would change metadata of " + ref,

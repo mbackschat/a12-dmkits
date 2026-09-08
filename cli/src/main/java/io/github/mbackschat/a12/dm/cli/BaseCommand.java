@@ -148,10 +148,9 @@ public abstract class BaseCommand implements Callable<Integer> {
      * {@code cannot read model:} already uses — a structured refusal is for a precheck on a resolvable target,
      * not for input the tool could not read at all". G58/G61/G62 moved every UNREADABLE input and UNWRITABLE
      * output onto coded refusals, so that precedent no longer exists. What keeps this on the plain-text channel
-     * is the standing design {@link #failOrRethrowDomainRejection} states: a reader's own parse/render failure
-     * reports its local text, and only an invalid stored model or an unresolved reference escapes to the
-     * structured mapper. A document that PARSED and was rejected belongs to that class, not to the unreadable
-     * one — so this is a deliberate position, not a slice waiting to be done.
+     * is this boundary's typed {@link DocumentInputError}: it reports diagnosed Document input defects,
+     * never an arbitrary reader or renderer exception. Unexpected failures belong to {@link Cli}'s
+     * internal-error mapper.
      *
      * <p>The one enriched case is the retired {@code {"fields": {…}}} wrapper: a document that still carries it
      * fails as an unknown model path {@code /fields}, which is true but unhelpful, so it also gets the migration
@@ -566,38 +565,15 @@ public abstract class BaseCommand implements Callable<Integer> {
     }
 
     /**
-     * Preserve input-domain rejections caught by a broad command-local {@link RuntimeException} boundary.
-     * Malformed input, an invalid stored model, or an unresolved model reference must escape to
-     * {@link Cli}'s single structured-envelope mapper; other local failures retain their command context.
-     * Use this only around loading the caller-supplied model, never around validation of an edited candidate.
+     * Add reader context without changing the typed refusals understood by {@link Cli}'s exception mapper.
+     * An unclassified failure remains an internal error, with its original cause available on stderr.
      */
-    protected int failOrRethrowDomainRejection(String messagePrefix, RuntimeException failure) {
+    protected RuntimeException withFailureContext(String messagePrefix, RuntimeException failure) {
         if (failure instanceof ModelConsistencyException || failure instanceof UnresolvedReferenceException
-                || failure instanceof ModelInputException) {
-            throw failure;
+                || failure instanceof ModelInputException || failure instanceof ModelPreparationError) {
+            return failure;
         }
-        return fail(messagePrefix + failure.getMessage());
-    }
-
-    /**
-     * The edit-gate twin of {@link #failOrRethrowDomainRejection}: fail with the gate's own message, but let an
-     * {@link UnresolvedReferenceException} escape to {@link Cli}'s seam, which owns its documented contract
-     * (a corrective {@code RK_UNRESOLVED_REFERENCE} rejection at exit 1 — CLI-SPEC §3b).
-     *
-     * <p><b>Why a second helper rather than the one above.</b> An edit command must keep handling
-     * {@link ModelConsistencyException} <em>itself</em>, because the rejection of an edited candidate is the
-     * result it reports — so it cannot use a helper that rethrows that type. What it must not do is swallow a
-     * <em>different</em> rejection into an unstructured {@code fail}, which is what a bare
-     * {@code catch (RuntimeException e) -> fail(e.getMessage())} did at all 23 edit gates: a plain stderr line at
-     * exit 2 in place of the corrective envelope the same model gets on the read path. Before that, the wrap in
-     * {@code ModelDocument.validate} had hidden the whole class by relabelling our resolver's refusal as a
-     * consistency failure — which is why the two fixes only make sense together.
-     */
-    protected int failEditGate(RuntimeException failure) {
-        if (failure instanceof UnresolvedReferenceException || failure instanceof ModelInputException) {
-            throw failure;
-        }
-        return fail(failure.getMessage());
+        return new IllegalStateException(messagePrefix + failure.getMessage(), failure);
     }
 
     /**

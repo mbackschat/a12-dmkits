@@ -70,7 +70,7 @@ final class ModelExportJsonschemaCommand extends BaseCommand {
         try {
             gated = BoundModel.ofJson(dmJson);
         } catch (RuntimeException e) {
-            return failOrRethrowDomainRejection("cannot export the model: ", e);
+            throw withFailureContext("cannot export the model: ", e);
         }
         Dialect resolvedDialect = dialect != null ? dialect : Dialect.JSON_SCHEMA;
         JsonSchemaExporter.ExportResult result;

@@ -14,9 +14,9 @@
 
 ## 1. Open
 
-### CG21 — Audit unexpected exceptions inside local validation boundaries (2026-09-08) <a id="cg21"></a>
+### CG22 — Preserve generated-JSON decoding failures as internal errors (2026-09-08) <a id="cg22"></a>
 
-**Source-assessed; discriminator not yet executed.** `EditSession.validate` and `ModelDocument.validate` wrap otherwise unclassified `RuntimeException`s as `ModelConsistencyException`; `BaseCommand.failOrRethrowDomainRejection` converts remaining local reader failures to its ordinary failure result. A valid included model with a resolver that throws an unrelated sentinel NPE should discriminate an internal defect from a model verdict through these outer boundaries. The malformed-input classification tests lock the adapter boundary, not this wider claim. **Acceptance:** inject the defect through each owning boundary, enumerate the intended domain exceptions, and preserve unexpected failures without inventing a consistency verdict. This is separate from malformed DM-JSON classification because it changes the treatment of failures after a successful load; do not widen the current input classifier to absorb it.
+**Source-assessed; malformed generated-output discriminator not yet executed.** `ComputationExplainCommand` and `RuleDepsCommand` catch `IOException` from decoding their own explanation JSON and return plain exit 2. This is a separate checked-exception boundary from CG21's runtime-exception handlers. **Acceptance:** share a generated-JSON decoder that preserves the parsing cause as an internal error, exercise malformed output and a valid-output control, use it at both sites, and retain successful command behavior. Caller-supplied model/Document/spec input parsing is excluded.
 
 ## 2. Deferred — with re-open triggers
 

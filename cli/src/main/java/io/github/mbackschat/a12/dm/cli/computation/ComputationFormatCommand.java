@@ -66,7 +66,7 @@ final class ComputationFormatCommand extends BaseCommand {
             out().print(env.toJsonString());
             return env.exitCode();
         } catch (RuntimeException e) {
-            return failOrRethrowDomainRejection("format failed: ", e);
+            throw withFailureContext("format failed: ", e);
         }
     }
 }

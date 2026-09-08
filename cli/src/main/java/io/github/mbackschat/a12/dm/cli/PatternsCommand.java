@@ -174,9 +174,8 @@ final class PatternsCommand extends BaseCommand {
         ModelResolver resolver = workspace.resolverFor(model);
 
         PatternEntry.Instantiation inst;
-        BoundModel bound;
+        BoundModel bound = BoundModel.ofJson(modelJson, resolver);
         try {
-            bound = BoundModel.ofJson(modelJson, resolver);
             inst = pattern.instantiate(bound, args);
         } catch (IllegalArgumentException bad) {
             // The kits' own builders refuse here — a missing --arg, an unresolved path, a bad enum value, and
@@ -192,7 +191,7 @@ final class PatternsCommand extends BaseCommand {
             // parsing the process. The exception already carries the structured diagnostic; publish it.
             return rejectPrecheck(ResultIdentity.PATTERNS_SCAFFOLD, refused);
         } catch (RuntimeException e) {
-            return failOrRethrowDomainRejection("cannot scaffold from '" + pattern.id() + "': ", e);
+            throw withFailureContext("cannot scaffold from '" + pattern.id() + "': ", e);
         }
 
         return switch (inst) {
@@ -371,7 +370,7 @@ final class PatternsCommand extends BaseCommand {
         try {
             written = ConsistencyEvidence.of(BoundModel.ofJson(persisted, workspace.resolverFor(model)));
         } catch (RuntimeException e) {
-            return failOrRethrowDomainRejection("the scaffolded " + kind + " does not persist cleanly: ", e);
+            throw withFailureContext("the scaffolded " + kind + " does not persist cleanly: ", e);
         }
         if (dryRun) {
             return print(ResultEnvelope.preview(ResultIdentity.PATTERNS_SCAFFOLD,
