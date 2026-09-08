@@ -354,7 +354,7 @@ public final class GroupEditor extends ElementMetadataEditor<GroupEditor> implem
         return this;
     }
 
-    /** Mark a direct child field as this repeatable group's row key ({@code indexField}). Chains. */
+    /** Declare this group's direct-child index field, including on a non-repeatable group. Chains. */
     public GroupEditor setIndexField(String fieldName) {
         session.setIndexField(location.path().value(), fieldName);
         return this;

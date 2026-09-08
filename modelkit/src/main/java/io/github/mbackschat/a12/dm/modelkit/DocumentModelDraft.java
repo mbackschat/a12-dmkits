@@ -957,9 +957,8 @@ public final class DocumentModelDraft {
         }
 
         /**
-         * Mark a direct child field as this repeatable group's row key ({@code indexFieldName}) — the
-         * value that identifies a row, letting two lists iterate in lockstep. Requires {@link
-         * #repeatable(int)}; the named field must be a direct child (both checked at build).
+         * Declare this group's index field ({@code indexFieldName}). The named field must be a direct
+         * child. Non-repeatable groups may also declare an index field (KERNEL-FINDINGS KF280).
          */
         public GroupBuilder indexField(String fieldName) {
             this.indexFieldName = fieldName;
@@ -1111,10 +1110,6 @@ public final class DocumentModelDraft {
 
         private ElementDraft.Group toDraft() {
             if (indexFieldName != null) {
-                if (repeatability == 1) {
-                    throw new IllegalStateException("group '" + name + "' sets an index field '"
-                            + indexFieldName + "' but is not repeatable");
-                }
                 boolean present = elements.stream()
                         .anyMatch(e -> e instanceof ElementDraft.Field f && f.name().equals(indexFieldName));
                 if (!present) {

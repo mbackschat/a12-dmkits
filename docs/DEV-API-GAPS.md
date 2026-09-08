@@ -36,15 +36,7 @@ The gaps below were the **ergonomic and consistency remainder** — what added f
 
 ## 2. Open
 
-### DG52 — `DocumentModelDraft` refuses an index field on a NON-REPEATABLE group, and the kernel admits it <a id="dg52"></a>
-
-**Measured 2026-09-08.** `GroupBuilder.toDraft()` throws `group '…' sets an index field '…' but is not repeatable`. Measured against `checkConsistency`: the same model, authored as raw DM JSON with `repeatability: 1`, is **ADMITTED**, and the shape is what makes the kernel's own `INVALID_INDEX_FIELD_NONREP_ENUM` reachable at all — so our refusal is broader than its basis and it removes a legal shape from the typed surface ([KF280](KERNEL-FINDINGS.md#kf280), locked in `rulekit.validate.laws.RuleMessageIndexTerminalLawsTest`, which flips the JSON precisely because the builder will not author it).
-
-**The SORT-FIELD sibling three lines below it in the same method is the control, and it is CORRECT:** a sort field on a non-repeatable group draws `MVK_INVALID_SORTINFO` from the kernel, so exactly one of the two adjacent refusals is over-broad — this is not "our builder is generally stricter than the kernel".
-
-**The READ path is unaffected**, which is what keeps this a gap rather than a defect: `ModelDocument` and the `EditSession` group editors work on the JSON tree and never route through `GroupBuilder.toDraft()`, so a legal model carrying the shape stays readable and editable. Only fresh authoring through the draft builder is blocked.
-
-**What would settle it:** decide whether modelkit relaxes to the kernel's boundary (the standing "a client-side refusal needs a measured kernel basis" rule points that way, and the basis says admit) or keeps the refusal with its reason written down — an index field is a repeatable group's row key and cannot key a single row, so refusing early is arguably a service. Not decided inside the slice that measured it, per the convergence gate.
+_None open._
 
 ---
 

@@ -1167,17 +1167,11 @@ public final class ModelDocument {
     }
 
     /**
-     * Designate a direct-child field of the <b>repeatable</b> group at {@code groupPath} as its index field
-     * — the repetition row-key that arms {@code RepetitionNotUnique} + parallel iteration. Requires a
-     * repeatable group (an index field on a single group is a degenerate row-key) and an existing
-     * direct-child field; fails fast otherwise. The {@code validate()} gate stays the authoritative check.
+     * Designate an existing direct-child field as the group's index field. Non-repeatable groups may
+     * also declare one (KERNEL-FINDINGS KF280); {@code validate()} remains the authoritative gate.
      */
     public ModelDocument setIndexField(String groupPath, String fieldName) {
         ObjectNode body = groupBody(groupPath);
-        if (body.path(DmKeys.REPEATABILITY).asInt(1) <= 1) {
-            throw new IllegalArgumentException("an index field needs a repeatable group; " + groupPath
-                    + " is not repeatable");
-        }
         boolean childField = false;
         for (JsonNode e : body.path(DmKeys.ELEMENTS)) {
             if (DmNodes.is(ElementType.FIELD, e) && fieldName.equals(e.path(DmKeys.NAME).asText())) {

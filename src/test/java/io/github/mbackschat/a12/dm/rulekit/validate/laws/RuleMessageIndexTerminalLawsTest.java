@@ -1,7 +1,6 @@
 package io.github.mbackschat.a12.dm.rulekit.validate.laws;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotEquals;
 
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -9,6 +8,7 @@ import java.util.Map;
 import org.junit.jupiter.api.Test;
 
 import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft;
+import io.github.mbackschat.a12.dm.edit.EditSession;
 import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Condition;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Dsl;
@@ -169,14 +169,21 @@ class RuleMessageIndexTerminalLawsTest {
     // ---- the axes a12-kernel-lean's SPEC-2026-09-07-10 added ------------------------------------
 
     /** The same shape with an ENUMERATION index field carrying a declared category. */
-    private static final String ENUM_POLICY = DocumentModelDraft.named("enum-index").locale("en_US")
+    private static final String ENUM_POLICY = enumPolicy(true);
+
+    private static String enumPolicy(boolean repeating) {
+        return DocumentModelDraft.named("enum-index").locale("en_US")
             .rootGroup("Policy", policy -> policy
                     .stringField("Reference", f -> { })
-                    .group("Claims", claims -> claims.repeatable(20).indexField("Tier")
+                    .group("Claims", claims -> {
+                        if (repeating) claims.repeatable(20);
+                        claims.indexField("Tier")
                             .enumField("Tier", e -> e.value("BASIC").value("PREMIUM")
                                     .category("Band", "STANDARD", "PRIORITY"))
-                            .stringField("Payout", f -> { })))
+                            .stringField("Payout", f -> { });
+                    }))
             .build().toJson();
+    }
 
     private static final BoundModel E = BoundModel.ofJson(ENUM_POLICY);
 
@@ -246,22 +253,15 @@ class RuleMessageIndexTerminalLawsTest {
     }
 
     /**
-     * <b>{@code INVALID_INDEX_FIELD_NONREP_ENUM} is reachable, and reaching it needed a raw-JSON model</b> —
-     * the only such model in this file, and deliberately so. The kernel ADMITS a non-repeatable group that
-     * carries an index field (the control row); our own {@code DocumentModelDraft} refuses to author one, so
-     * the class is unreachable through the typed surface. That refusal is broader than its measured basis and
-     * is recorded as a gap (DEV-API-GAPS), which is why this row flips {@code repeatability} in the JSON
-     * instead: authoring the shape is the very thing under measurement.
-     *
-     * <p>The SORT-field sibling of that refusal is the control for reading this as "our builder is generally
-     * stricter": there the kernel refuses too, with {@code MVK_INVALID_SORTINFO}, so exactly one of the two
-     * adjacent client-side refusals is over-broad.
+     * KF280 distinguishes an admitted index-field declaration from the refused message parameter;
+     * only the repeatability builder call differs from the repeating control model.
      */
     @Test
     void aNonRepeatableIndexedGroupIsAdmittedByTheKernelAndRefusesTheParameter() {
-        String nonRepeatable = ENUM_POLICY.replaceAll("\"repeatability\"\\s*:\\s*20", "\"repeatability\":1");
-        assertNotEquals(ENUM_POLICY, nonRepeatable, "the repeatability flip must actually have applied");
-        String condition = "FieldFilled(/Policy/Claims/Tier) And FieldNotFilled(/Policy/Claims/Payout)";
+        String nonRepeatable = enumPolicy(false);
+        var claims = EditSession.read(nonRepeatable).group(CLAIMS);
+        String condition = render(Dsl.fieldFilled(claims.field("Tier"))
+                .and(Dsl.fieldNotFilled(claims.field("Payout"))));
 
         Map<String, String> actual = new LinkedHashMap<>();
         actual.put("the model itself — control", KernelLaws.messageVerdict(
