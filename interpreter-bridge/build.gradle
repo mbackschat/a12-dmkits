@@ -8,6 +8,7 @@
 // a sibling. Kernel-free, like the kits — the kernel-backed provider stays in :adapter.
 plugins {
     id 'java-library'
+    id 'a12.build-guards'
     // Kotlin JVM — this module's own sources. The source AST it maps FROM is the interpreter's Kotlin AST, and
     // Kotlin's `internal` marks the mapping's helpers as module-scoped, which the Kotlin compiler enforces and
     // Java has no equivalent for. It is a source-level boundary only: `internal` is JVM-public, so the compiled
@@ -50,21 +51,17 @@ tasks.named('test') {
 // The module's kernel-freedom, enforced over COMPILED dependencies. The mapping exists so rulekit's checks can
 // run with NO kernel on the classpath, and it holds in TEST scope too. A source-regex predecessor could blank
 // real Kotlin code after a comment delimiter inside a string; the compiled-reference guard cannot.
-def verifyInterpreterBridgePurity = tasks.register('verifyInterpreterBridgePurity') {
+def verifyInterpreterBridgePurity = tasks.register('verifyInterpreterBridgePurity',
+        io.github.mbackschat.a12.dm.buildlogic.VerifyCompiledPurityTask) {
     group = 'verification'
     description = 'Fail if any interpreter-bridge main or test class depends on com.mgmtp.*/groovy.*.'
     dependsOn tasks.named('classes'), tasks.named('testClasses')
-    def classRoots = providers.provider {
-        sourceSets.main.output.classesDirs.files + sourceSets.test.output.classesDirs.files
-    }
-    inputs.files(classRoots)
-    doLast {
-        rootProject.verifyCompiledPurity(
-            'interpreter-bridge purity — main and test',
-            classRoots.get(),
-            ['com.mgmtp.', 'groovy.'],
-            'java.util.UUID')
-    }
+    guardName = 'interpreter-bridge purity — main and test'
+    classRoots.from(sourceSets.main.output.classesDirs, sourceSets.test.output.classesDirs)
+    forbidden = ['com.mgmtp.', 'groovy.']
+    positiveControl = 'java.util.UUID'
+    javaLauncher = javaToolchains.launcherFor { languageVersion = JavaLanguageVersion.of(21) }
+    stamp = layout.buildDirectory.file('guards/interpreter-bridge-purity.txt')
 }
 tasks.named('check') { dependsOn verifyInterpreterBridgePurity }
 
@@ -85,7 +82,7 @@ publishing {
                         + 'in :adapter remains the authoritative, total one. Put exactly one provider on the '\
                         + 'classpath: with both, read-back throws AmbiguousBackendException rather than '\
                         + 'choosing, and ReadBackends.prefer(<provider>.class) settles it. MIT.'
-                rootProject.dmkitsPom(delegate)
+                a12Guards.dmkitsPom(delegate)
             }
         }
     }

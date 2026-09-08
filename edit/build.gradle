@@ -4,6 +4,7 @@
 // `verifyKitPurity`). Published as io.github.mbackschat.a12.dm:dmkits-edit (MIT).
 plugins {
     id 'java-library'
+    id 'a12.build-guards'
     id 'maven-publish'
 }
 
@@ -37,7 +38,7 @@ publishing {
             pom {
                 name = 'dmkits-edit'
                 description = 'a12-dmkits — dm.edit: the cross-kit reviewable-diff editing surface (EditSession/GroupEditor) over core + modelkit + rulekit. MIT.'
-                rootProject.dmkitsPom(delegate)
+                a12Guards.dmkitsPom(delegate)
             }
         }
     }

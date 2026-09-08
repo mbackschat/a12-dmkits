@@ -1,10 +1,11 @@
 plugins {
     id 'java-library'
+    id 'a12.build-guards'
     id 'maven-publish'
     // Pin Kotlin once at the root: Gradle reports independent loads in :adapter and :interpreter as an
     // unsupported configuration that may break the build.
-    id 'org.jetbrains.kotlin.jvm' version '2.2.0' apply false
-    id 'org.jetbrains.kotlin.multiplatform' version '2.2.0' apply false
+    id 'org.jetbrains.kotlin.jvm' version '2.4.0' apply false
+    id 'org.jetbrains.kotlin.multiplatform' version '2.4.0' apply false
 }
 
 group = 'io.github.mbackschat.a12.dm'
@@ -141,6 +142,7 @@ tasks.named('test') {
     dependsOn 'catalogProseReviewGuardTest'
     dependsOn 'releaseGapGuardTest'
     dependsOn 'leakGuardTest'
+    dependsOn 'gateWiringGuardTest'
     // Same tier and for the stated reason: it binds docs/TEMPORAL-FORMAT-VOCABULARY.md to the kernel that
     // decides it, declares its inputs, and costs ~3 s. It first hung off `check` alone, which CI does not run
     // (`ci.yml` names `test`), so the guard would have been unreachable exactly where it matters.
@@ -160,9 +162,9 @@ tasks.named('test') {
     // repo files at runtime"). Derived from those tasks — see `routeExclusivelyHostedTests`. `dumpKitApi` and
     // `syncDocSnippets` are regenerators over classes `apiGuardTest`/`docGuardTest` already own, and
     // `interpreterReleaseGuardTest` runs its own `releaseGuardTest` source set, so neither owns anything here.
-    routeExclusivelyHostedTests(it, ['docGuardTest', 'jsonConstructionGuardTest', 'apiGuardTest',
+    a12Guards.routeExclusivelyHostedTests(it, ['docGuardTest', 'jsonConstructionGuardTest', 'apiGuardTest',
                                      'catalogProseReviewGuardTest', 'deliveryGuardTest', 'releaseGapGuardTest',
-                                     'leakGuardTest', 'vocabularyGuardTest'],
+                                     'leakGuardTest', 'vocabularyGuardTest', 'gateWiringGuardTest'],
             ['dumpKitApi'             : 'regenerator over apiGuardTest\'s class — writes the goldens instead of asserting',
              'syncDocSnippets'        : 'regenerator over docGuardTest\'s class — writes the snippets instead of asserting',
              'dumpTemporalVocabulary' : 'regenerator over vocabularyGuardTest\'s class — writes the derived '
@@ -183,7 +185,7 @@ tasks.register('jsonConstructionGuardTest', Test) {
     filter {
         includeTestsMatching 'io.github.mbackschat.a12.dm.A12JsonConstructionGuardTest'
     }
-    guardInputs(it, [
+    a12Guards.guardInputs(it, [
             'core main sources'       : fileTree('core/src/main') { include '**/*.java', '**/*.kt' },
             'modelkit main sources'   : fileTree('modelkit/src/main') { include '**/*.java', '**/*.kt' },
             'rulekit main sources'    : fileTree('rulekit/src/main') { include '**/*.java', '**/*.kt' },
@@ -194,13 +196,42 @@ tasks.register('jsonConstructionGuardTest', Test) {
             'interpreter commonMain'  : fileTree('interpreter/src/commonMain') { include '**/*.java', '**/*.kt' },
             'interpreter jvmMain'     : fileTree('interpreter/src/jvmMain') { include '**/*.java', '**/*.kt' },
             'interpreter jsMain'      : fileTree('interpreter/src/jsMain') { include '**/*.java', '**/*.kt' },
+            'bridge main sources'     : fileTree('interpreter-bridge/src/main') { include '**/*.java', '**/*.kt' },
     ])
 }
 
-// PrivateMarkerLeakGuardTest scans every git-tracked file, and "the git-tracked set" is not something a
-// Gradle input can express: a newly tracked file under any excluded directory would leave the task UP-TO-DATE
-// and the scan silently unrun. A leak guard that can be stale is worse than no leak guard, so this one always
-// runs — a few hundred text files, costing about as much as the fork that hosts it.
+// A promoted pre-check that nothing calls is not a pre-check, and every artifact still reads as done: its lock
+// passes by invoking the gate directly, and the ledger row cites that lock. Only the CALL SITE distinguishes a
+// wired gate from an unwired one, so this guard derives the refusing gates from source and requires each to be
+// reached by the condition-text consumer. Its own task for the reason jsonConstructionGuardTest has one: the
+// source trees it reads at runtime must be declared inputs, or a wiring-only edit leaves a stale-green `test`
+// — measured, by planting an unwiring mutant and watching the broad suite report UP-TO-DATE.
+tasks.register('gateWiringGuardTest', Test) {
+    description = 'Every refusing BoundModel gate is reached by the condition-text consumer.'
+    group = 'verification'
+    useJUnitPlatform()
+    testClassesDirs = sourceSets.test.output.classesDirs
+    classpath = sourceSets.test.runtimeClasspath
+    filter {
+        includeTestsMatching 'io.github.mbackschat.a12.dm.rulekit.dsl.PromotedGateIsReachedGuardTest'
+    }
+    a12Guards.guardInputs(it, [
+            'rulekit main sources' : fileTree('rulekit/src/main') { include '**/*.java' },
+            'bridge main sources'  : fileTree('interpreter-bridge/src/main') { include '**/*.java', '**/*.kt' },
+    ])
+}
+
+// PrivateMarkerLeakGuardTest scans every git-tracked file. A fileTree cannot express that set — a newly
+// tracked file under any excluded directory would leave the task UP-TO-DATE and the scan silently unrun — and
+// a leak guard that can be stale is worse than no leak guard, so this one always runs: a few hundred text
+// files, costing about as much as the fork that hosts it.
+//
+// A ValueSource CAN express it, measured: `providers.of(<git ls-files>)` mapped to a FileCollection goes
+// UP-TO-DATE on no change, re-runs on a tracked file's content change, ignores an untracked file, and re-runs
+// when one is `git add`ed — the case this comment's first sentence used to call impossible — all of it
+// configuration-cache correct, with `git ls-files` costing 7 ms on this repository. Adopting it here trades a
+// guarantee that cannot go stale for one that depends on the value source being re-evaluated, which is a
+// deliberate call rather than a cleanup; see docs/GUARD-INPUT-PROPOSAL.md.
 tasks.register('leakGuardTest', Test) {
     description = 'Repository-wide scan: no tracked file may publish a private registry, access token, or key.'
     group = 'verification'
@@ -242,7 +273,7 @@ tasks.register('catalogProseReviewGuardTest', Test) {
     filter {
         includeTestsMatching 'io.github.mbackschat.a12.dm.rulekit.catalog.CatalogProseReviewGuardTest'
     }
-    guardInputs(it, [
+    a12Guards.guardInputs(it, [
             'root test evidence'              : fileTree('src/test') { include '**/*.java', '**/*.kt' },
             'adapter test evidence'           : fileTree('adapter/src/test') { include '**/*.java', '**/*.kt' },
             'interpreter commonTest evidence' : fileTree('interpreter/src/commonTest') { include '**/*.java', '**/*.kt' },
@@ -250,243 +281,6 @@ tasks.register('catalogProseReviewGuardTest', Test) {
             'interpreter jsTest evidence'     : fileTree('interpreter/src/jsTest') { include '**/*.java', '**/*.kt' },
             'cli test evidence'               : fileTree('cli/src/test') { include '**/*.java', '**/*.kt' },
     ])
-}
-
-// --- Guard-input non-empty assertion (kernel-decoupling §3b #17, the silent-empty-fileTree class-fix) -----
-// A guard task that READS repo files at runtime declares them as `.optional()` fileTree inputs so an edit
-// re-runs only that guard. The trap: a moved/renamed folder silently EMPTIES such an input, and the guard
-// then goes green while checking NOTHING (a false green that only an expensive probe would ever catch). This
-// helper declares the inputs AND adds a doFirst that FAILS LOUDLY when any named tree is empty/missing — so
-// every future folder move is caught by a build failure, not a silent pass. Defined on the root project's
-// `ext` so `:cli`/`:adapter` reach it as `rootProject.guardInputs(...)` (root configures first). Applies to
-// EVERY `.optional()`-fileTree guard (root docGuardTest, cli docGuardTest + semanticsMapGuardTest, adapter
-// corpusReplayTest) — the whole class, not just this reorg's moves.
-ext.guardInputs = { Test task, Map<String, ?> named ->
-    task.inputs.files(named.values().toArray())
-        .withPropertyName('guardReadRepoFiles')
-        .withPathSensitivity(org.gradle.api.tasks.PathSensitivity.RELATIVE)
-        .optional()
-    task.doFirst {
-        def empty = named.findAll { name, v ->
-            (v instanceof File) ? !v.exists() : task.project.files(v).isEmpty()
-        }
-        if (empty) {
-            throw new GradleException(
-                "${task.name}: guarded runtime-read input(s) ${empty.keySet()} are EMPTY or MISSING — a moved " +
-                "or renamed folder likely silenced this guard while it checked nothing (kernel-decoupling §3b " +
-                "#17, the silent-empty-fileTree false-green class). Re-point the guard's fileTree to the moved " +
-                "location; a guard must never run against an empty input.")
-        }
-    }
-}
-
-// `guardInputs`' exclusive-ownership counterpart. A guard owning runtime inputs the broad `test` task does not
-// declare must run in a DEDICATED task AND be excluded from `test` — and those two lists were kept by hand, so
-// they drifted: root's `SourceStatisticsReleaseBoundaryTest` and four cli `docGuardTest` classes were measurably
-// executing in BOTH lanes. This derives `test`'s excludes FROM the owning tasks' includes, so the two can no
-// longer disagree and adding a class to a guard task removes it from the broad suite in the same edit.
-//
-// It also closes the trap that ownership creates: `:<module>:test --tests '*AnOwnedClass'` fails as Gradle's bare
-// "No tests found for given includes", which names neither the exclusion nor the task that DOES host the class
-// (it cost two sessions). Same self-explaining-surface rule the CLI follows — emit the command to run instead.
-//
-// Only for tasks that own their classes EXCLUSIVELY. `:adapter`'s perf/capture lanes deliberately re-run classes
-// the broad suite also runs (`FootprintScenarioFixtureGuardTest` is hosted by two tasks on purpose), so they are
-// a different shape and keep their hand-written excludes.
-ext.routeExclusivelyHostedTests = { Test broad, List<String> owningTaskNames,
-                                    Map<String, String> classifiedNonOwners = [:],
-                                    Map<String, String> untracedDuringCapture = [:] ->
-    // Fail on an EMPTY derivation, the same silent-empty class `guardInputs` guards for on the input side. Without
-    // this the helper can be gutted to yield nothing and every text-matching guard still passes while the owned
-    // classes quietly re-enter the broad lane — a cold review demonstrated exactly that mutant surviving.
-    def hostByClass = [:]
-    owningTaskNames.each { name ->
-        def patterns = broad.project.tasks.named(name, Test).get().filter.includePatterns
-        if (patterns.isEmpty()) {
-            throw new GradleException(
-                    "'${name}' is declared an exclusive owner but its filter includes NO test class, so " +
-                    "${broad.path} would silently re-run what that lane is supposed to own.")
-        }
-        patterns.each {
-            // Refuse ambiguous ownership rather than last-wins: with two owners the corrective would name
-            // whichever was configured last, which can be a REGENERATOR (it writes goldens instead of asserting).
-            if (hostByClass.containsKey(it) && hostByClass[it] != name) {
-                throw new GradleException(
-                        "'${it}' is claimed as exclusively owned by both '${hostByClass[it]}' and '${name}'. " +
-                        "Exactly one lane owns a class; classify the other as a non-owner with its reason.")
-            }
-            hostByClass[it] = name
-        }
-    }
-    // Every Test task that filters classes out of the SAME compiled output must be classified — an owner, or a
-    // reasoned non-owner. This is what makes "a new exclusively owning task must be added to the owners list"
-    // an enforced invariant rather than a comment; an unclassified lane fails the build naming itself.
-    def sharedDirs = broad.testClassesDirs.files
-    broad.project.tasks.withType(Test).each { t ->
-        if (t.name == broad.name || owningTaskNames.contains(t.name) || classifiedNonOwners.containsKey(t.name)) {
-            return
-        }
-        if (t.filter.includePatterns.isEmpty()) {
-            return      // runs its whole source set unfiltered, so it owns no individual class here
-        }
-        if (t.testClassesDirs.files.intersect(sharedDirs).isEmpty()) {
-            return      // a separate source set: its classes cannot run in the broad lane at all
-        }
-        throw new GradleException(
-                "Test task '${t.name}' filters classes out of the same compiled output as ${broad.path} but is " +
-                "neither an exclusive owner nor a classified non-owner. Add it to the owners list, or classify " +
-                "it with a reason (a regenerator over already-owned classes, or an additive lane the broad " +
-                "suite also runs).")
-    }
-    // The native-image REFLECTION CAPTURE traces this lane only (`-PrkNativeAgent`), and excluding a class that
-    // drives the product in-process would shrink the traced surface — the one class CLAUDE.md calls invisible to
-    // both the capture and the gate's trip-wire. During a capture the exclusion is therefore not applied at all,
-    // so the traced set stays a superset of what it was before this derivation existed. Capture is release-only.
-    // NOTE for whoever absorbs a lane's classes here: absorbing the CLASSES without the owning task's RUNTIME
-    // INPUTS is a defect, and it shipped once. `publicContractTest` supplies the selected executable and its
-    // build-time version snapshot; during a capture its four classes run in this lane, which originally supplied
-    // neither, so all 13 tried to exec the module directory.
-    // Two of them additionally drive the CLI IN-PROCESS, so excluding them instead would have silently shrunk
-    // the captured metadata — measured: 5 committed entries lost, including the picocli field injections for
-    // `rule eval` and `batch`. The traced lane must therefore SUPPLY what it absorbs (see cli/build.gradle).
-    // A capture keeps owned classes IN this lane so the traced surface stays whole — but that absorption has
-    // TWO failure modes, and both were shipped. Sorted by the only axis that decides them: does the class
-    // exercise dmtool's RUNTIME, or build-time tooling?
-    //
-    //  • runtime → stays IN, and this lane must SUPPLY the owning task's runtime inputs. Omitting them made
-    //    13 `publicContractTest` cases exec the module directory; excluding those classes instead loses real
-    //    metadata, because two of the four also drive the CLI in-process (measured: 5 entries, among them the
-    //    picocli field injections behind `rule eval` and `batch`).
-    //  • build tooling → stays OUT, because its traffic is not dmtool reachability. `MutationTailSingleSourceTest`
-    //    invokes javac, and tracing it leaked `jdk.compiler` resource bundles into the shipped metadata
-    //    (caught by `NativeImageMetadataHygieneTest`, whose message asks for exactly this exclusion).
-    //    What makes staying OUT safe is an ENUMERATION, not a metadata diff: the class's only product-facing
-    //    reflection is `new CommandLine(new RootCommand())`, which ≥12 classes that remain in this lane also
-    //    perform (`CliTestSupport`, `InternalErrorBoundaryTest`, `McpHttpWireTest`, …) and production `Cli`
-    //    does too. Measuring "no members lost against the baseline" does NOT establish this and must not be
-    //    cited for it — the baseline was itself captured with the class already excluded, so that comparison
-    //    is true either way. A cold review caught exactly that non-discriminating basis (2026-08-07).
-    def tracingForNativeImage = broad.project.hasProperty('rkNativeAgent')
-    untracedDuringCapture.each { name, reason ->
-        if (!owningTaskNames.contains(name)) {
-            throw new GradleException("'${name}' is classified untraced-during-capture but owns nothing in " +
-                    "${broad.path}; the two lists must agree.")
-        }
-    }
-    def buildTooling = hostByClass.findAll { cls, owner -> untracedDuringCapture.containsKey(owner) }.keySet()
-    if (tracingForNativeImage) {
-        buildTooling.each { broad.filter.excludeTestsMatching(it) }
-        // For every lane that stays in, assert its CONFIGURATION-TIME system properties came with it — one
-        // second, instead of a 27-minute capture that dies on the first absorbed class.
-        //
-        // Deliberately narrow, and the narrowness is the honest part: this compares `systemProperties` KEYS
-        // only. A task may classify a key in `nativeCaptureNonRuntimeSystemProperties` only when it controls
-        // JUnit scheduling rather than test/product inputs. The capture intentionally re-hosts those tests
-        // serially, so copying such a property would alter scheduling without adding a reachable product shape.
-        // Every classification carries a reason and must name a property the owner actually declares.
-        // It does NOT see a property set inside a `doFirst` (root `deliveryGuardTest` does exactly that), a
-        // wrong VALUE for a key that is present, a `dependsOn` (the other half of the fix this guard was written
-        // for is `dependsOn installDist`, which nothing derives), or an `inputs.file`. Widening it means resolving
-        // execution-time state at configuration time, which Gradle does not offer. So: this catches the one
-        // failure mode that actually occurred, and the rest of the absorption contract stays the author's job.
-        (owningTaskNames - untracedDuringCapture.keySet()).each { name ->
-            def owner = broad.project.tasks.named(name, Test).get()
-            def classified = owner.extensions.extraProperties.has('nativeCaptureNonRuntimeSystemProperties')
-                    ? owner.extensions.extraProperties.get('nativeCaptureNonRuntimeSystemProperties') : [:]
-            if (!(classified instanceof Map) || classified.any { key, reason ->
-                    !owner.systemProperties.containsKey(key) || !(reason instanceof String) || reason.isBlank()
-            }) {
-                throw new GradleException(
-                        "'${name}' has an invalid nativeCaptureNonRuntimeSystemProperties classification; " +
-                        'every row must name one declared system property and give a non-blank reason.')
-            }
-            def unsupplied = owner.systemProperties.keySet() - broad.systemProperties.keySet() - classified.keySet()
-            if (!unsupplied.isEmpty()) {
-                throw new GradleException(
-                        "-PrkNativeAgent makes ${broad.path} run '${name}''s classes, but ${unsupplied.sort()} " +
-                        "is declared on '${name}' and not here. Supply it on the traced lane; do NOT exclude " +
-                        "the classes unless they are build tooling — a lane can drive the product in-process " +
-                        "as well, and dropping it shrinks the captured metadata silently.")
-            }
-            if (!classified.isEmpty()) {
-                logger.lifecycle("${broad.path}: '${name}' capture re-host omits scheduler-only properties " +
-                        "${classified.keySet().sort()} (${classified.values().join('; ')})")
-            }
-        }
-        broad.doFirst {
-            logger.lifecycle("${broad.path}: -PrkNativeAgent set — ${hostByClass.size() - buildTooling.size()} " +
-                    "exclusively-owned classes stay IN to keep the capture's surface complete; " +
-                    "${buildTooling.size()} stay out as build tooling (${untracedDuringCapture.keySet().sort()}).")
-        }
-    } else {
-        hostByClass.keySet().each { broad.filter.excludeTestsMatching(it) }
-        // The EFFECT assertion, not a restatement of the wiring: if an owned class actually executes in the broad
-        // lane — by any mutation of the derivation above, however written — the lane fails naming the leak. That is
-        // what the text-matching guards could not see, and what let five classes double-run unnoticed.
-        def leaked = [] as Set
-        broad.afterTest { desc, result ->
-            if (hostByClass.containsKey(desc.className)) {
-                leaked << desc.className
-            }
-        }
-        broad.doLast {
-            if (!leaked.isEmpty()) {
-                throw new GradleException(
-                        "${broad.path} executed ${leaked.size()} class(es) a dedicated lane owns exclusively: " +
-                        "${leaked.sort()}. Their runtime inputs are declared on the owning task, not here, so " +
-                        "running them in this lane can go up-to-date into a false green.")
-            }
-        }
-    }
-    // The root project's path is already ':', so only a subproject needs the separator appended.
-    def taskPathPrefix = broad.project.path == ':' ? ':' : broad.project.path + ':'
-    // Gradle's `--tests` accepts a trailing `.method`, so probe the pattern with that segment dropped too.
-    def matches = { String pattern, String fqcn ->
-        def hit = { String p -> fqcn ==~ ('\\Q' + p.replace('*', '\\E.*\\Q') + '\\E') }
-        hit(pattern) || (pattern.contains('.') && hit(pattern.substring(0, pattern.lastIndexOf('.'))))
-    }
-    broad.doFirst {
-        if (tracingForNativeImage) {
-            return      // nothing was excluded, so there is nothing to reroute
-        }
-        def patterns = []
-        try {
-            patterns = new ArrayList(broad.filter.commandLineIncludePatterns)
-        } catch (Throwable ignored) {
-            return      // internal accessor gone: fall back to Gradle's own message, never break the build
-        }
-        def misrouted = patterns.isEmpty() ? [:]
-                : hostByClass.findAll { fqcn, owner -> patterns.any { matches(it, fqcn) } }
-        if (misrouted.isEmpty()) {
-            return
-        }
-        // Stay silent when the patterns still reach something this task can run, so a broad pattern spanning
-        // both lanes behaves exactly as before.
-        def stillReachable = false
-        broad.testClassesDirs.files.findAll { it.isDirectory() }.each { dir ->
-            dir.traverse(type: groovy.io.FileType.FILES) { file ->
-                if (!file.name.endsWith('.class') || file.name.contains('$')) {
-                    return
-                }
-                def rel = dir.toPath().relativize(file.toPath()).toString().replace(File.separator, '.')
-                def fqcn = rel.substring(0, rel.length() - '.class'.length())
-                if (!hostByClass.containsKey(fqcn) && patterns.any { matches(it, fqcn) }) {
-                    stillReachable = true
-                }
-            }
-        }
-        if (!stillReachable) {
-            throw new GradleException(
-                    "--tests ${patterns} matches only classes ${taskPathPrefix}test deliberately excludes, " +
-                    "because a dedicated task owns their runtime inputs. Run that task instead:\n" +
-                    misrouted.collect { fqcn, owner ->
-                        // Echo the patterns the caller actually typed, so a `.method` selector survives; and no
-                        // `-Pfast`, which is only implemented for the adapter lanes.
-                        "  ${fqcn}\n      ./build.sh ${taskPathPrefix}${owner} " +
-                        patterns.findAll { matches(it, fqcn) }.collect { "--tests '${it}'" }.join(' ')
-                    }.join('\n'))
-        }
-    }
 }
 
 tasks.register('deliveryGuardTest', Test) {
@@ -503,12 +297,12 @@ tasks.register('deliveryGuardTest', Test) {
         includeTestsMatching 'io.github.mbackschat.a12.dm.SourceStatisticsReleaseBoundaryTest'
         includeTestsMatching 'io.github.mbackschat.a12.dm.ReleasePerfGateRefusalTest'
         includeTestsMatching 'io.github.mbackschat.a12.dm.JdkPinScriptTest'
-        includeTestsMatching 'io.github.mbackschat.a12.dm.LaneGuardScriptTest'
+        includeTestsMatching 'io.github.mbackschat.a12.dm.BashHookScriptTest'
         includeTestsMatching 'io.github.mbackschat.a12.dm.TestEvidenceScriptTest'
         includeTestsMatching 'io.github.mbackschat.a12.dm.InfographicFreshnessLocaleTest'
         includeTestsMatching 'io.github.mbackschat.a12.dm.TypeScriptRuntimeLauncherTest'
     }
-    guardInputs(it, [
+    a12Guards.guardInputs(it, [
             'release perf gate'       : file('scripts/release-perf-gate.sh'),
             'release perf self-test'  : file('scripts/selftest-release-perf-gate.sh'),
             'plugin installer'        : file('scripts/ensure-dmtool.sh'),
@@ -523,6 +317,11 @@ tasks.register('deliveryGuardTest', Test) {
             // "verified" locally against a task that had not run, and only reading the task state caught it.
             'pre-commit hook'         : file('.githooks/pre-commit'),
             'doc-guard hook self-test': file('scripts/selftest-precommit-doc-guards.sh'),
+            // BashHookScriptTest executes this selftest, which drives the hook itself — BOTH are runtime
+            // inputs, and the settings file is read to assert the hook is still wired at all.
+            'bash hook'               : file('.claude/hooks/guard-long-run-antipatterns.sh'),
+            'bash hook self-test'     : file('scripts/selftest-bash-hook.sh'),
+            'claude settings'         : file('.claude/settings.json'),
             'pre-push hook'           : file('.githooks/pre-push'),
             'pre-push hook self-test' : file('scripts/selftest-prepush-ci.sh'),
             'infographic preflight'   : file('scripts/check-infographic-freshness.sh'),
@@ -553,11 +352,6 @@ tasks.register('deliveryGuardTest', Test) {
             'JDK pin self-test'       : file('scripts/selftest-jdk-pin.sh'),
             'GraalVM native verifier': file('scripts/verify-graalvm-native.sh'),
             'GraalVM native identity': file('gradle/graalvm-native.properties'),
-            // LaneGuardScriptTest executes this selftest, which sources lane-guard.sh — BOTH are runtime inputs,
-            // the same pairing as the JDK pin and doc-guard hook entries above. build.sh sources the guard on
-            // every invocation, so a break here breaks every build, not just this lane.
-            'lane guard'              : file('scripts/lane-guard.sh'),
-            'lane guard self-test'    : file('scripts/selftest-lane-guard.sh'),
             // TestEvidenceScriptTest executes this selftest, which copies the shell command, shared Node gate,
             // and TypeScript implementation into fabricated repos — all are runtime inputs. This tool's output
             // is read AS evidence, so a silent break in it is believed rather than noticed.
@@ -593,7 +387,7 @@ tasks.register('releaseGapGuardTest', Test) {
     filter {
         includeTestsMatching 'io.github.mbackschat.a12.dm.ReleaseGapBlockerTest'
     }
-    guardInputs(it, [
+    a12Guards.guardInputs(it, [
             'release gap checker': file('scripts/check-release-gaps.sh'),
             'gap ledgers'        : fileTree('docs') { include '*-GAPS.md' },
     ])
@@ -626,6 +420,8 @@ tasks.register('docGuardTest', Test) {
     classpath = sourceSets.test.runtimeClasspath
     filter {
         includeTestsMatching 'io.github.mbackschat.a12.dm.ApiFindingsNumberingGuardTest'
+        includeTestsMatching 'io.github.mbackschat.a12.dm.MvkLedgerTest'
+        includeTestsMatching 'io.github.mbackschat.a12.dm.KernelCodeLiteralRatchetTest'
         includeTestsMatching 'io.github.mbackschat.a12.dm.DocSnippetFreshnessTest'
         // ...but not its in-place fixer, which is a TOOL and not a check: `@EnabledIfSystemProperty` makes it
         // report as skipped on every verification run, and a lane carrying a permanent benign skip cannot use
@@ -647,7 +443,7 @@ tasks.register('docGuardTest', Test) {
         includeTestsMatching 'io.github.mbackschat.a12.dm.VersionMentionFreshnessTest'
         includeTestsMatching 'io.github.mbackschat.a12.dm.rulekit.catalog.DslCatalogBridgeTest'
     }
-    guardInputs(it, [
+    a12Guards.guardInputs(it, [
             'docs/API-GUIDE.md': file('docs/API-GUIDE.md'),
             // Derive from the conventional live test-source layout rather than duplicating the Lock registry's
             // file list. A future module/source lock is covered automatically; linked worktrees and generated
@@ -660,7 +456,9 @@ tasks.register('docGuardTest', Test) {
             // entry above covers: main sources, the KMP source sets (commonMain, jsTest, …), the dedicated
             // src/<lane>Test trees and loose script sources all scan. Undeclared, any of those could introduce a
             // build/ write site while this lane stayed UP-TO-DATE and the guard unrun. Its denominator is
-            // Checkout.sources(), which no Gradle input can express, so this tree is a deliberate superset of it.
+            // Checkout.sources() — the git-tracked set — and this tree is a deliberate SUPERSET of it. A
+            // ValueSource over `git ls-files` would declare that set exactly (7 ms, configuration-cache
+            // correct); adopting it is an open decision, not a missing capability. docs/GUARD-INPUT-PROPOSAL.md.
             'build-path scan sources': fileTree('.') {
                 include '**/*.java', '**/*.kt'
                 exclude '.claude/**', '**/build/**', '.git/**', '**/.gradle/**'
@@ -668,6 +466,18 @@ tasks.register('docGuardTest', Test) {
             // ApiFindingsNumberingGuardTest reads the findings list at runtime: the ordinals are public
             // anchors ("finding N", cited from production sources), so a prose-only edit must re-run it.
             'docs/API-FINDINGS.md': file('docs/API-FINDINGS.md'),
+            // MvkLedgerTest reads the ledger's rows and bucket column at runtime. It used to run in the
+            // broad `test` lane, which declares no markdown, so an edit to the ledger alone left that lane
+            // UP-TO-DATE and the ledger's own guard silently did not run — measured by mutating a bucket and
+            // watching `> Task :test UP-TO-DATE` report green.
+            // LockCitationResolvesTest resolves every test class cited as a lock in these.
+            'lock citation docs' : files(
+                    'docs/KERNEL-FINDINGS.md',
+                    'docs/INTERPRETER-FINDINGS.md',
+                    'docs/MVK-LEDGER.md',
+                    'docs/KERNEL-SEMANTICS.md',
+                    'docs/INTERPRETER-PERFORMANCE.md',
+                    'docs/INTERPRETER-PERFORMANCE-RESULTS.md'),
             // PerfAnchorCoverageGuardTest reads the committed absolute-time anchor beside PerfGateTest's source
             // (already covered above) to check that every growth lane is anchored at both scales — IF280.
             'perf anchors': file('adapter/src/test/resources/perf/anchors.json'),
@@ -702,10 +512,21 @@ tasks.register('docGuardTest', Test) {
             // BuildPerformancePolicyTest reads both at runtime: the repository declaration order and the
             // public-only marker. Undeclared, removing either would leave this lane UP-TO-DATE and unrun.
             'root settings'    : file('settings.gradle'),
-            // NOT the .no-global-gradle-repos marker: deleting it is the sanctioned way to build through a
-            // private registry, and guardInputs treats a missing input as infrastructure breakage with a
-            // misleading message. BuildPerformancePolicyTest asserts the marker directly, so removing it
-            // still fails — with a diagnostic that names what actually happened.
+            // The repository declaration is single-sourced and applied by BOTH settings files, so all three
+            // are read at runtime and all three are declared. Undeclared, moving a repository out of the
+            // shared file would leave this lane UP-TO-DATE and the single-sourcing assertion unrun.
+            'shared repositories': file('gradle/public-repositories.gradle'),
+            'build-logic settings': file('build-logic/settings.gradle'),
+            // The observed-reads wire's producing half. It crosses a build boundary, so nothing but a text
+            // match holds the two property names equal; undeclared, renaming one would leave this lane
+            // UP-TO-DATE and the equality unchecked.
+            'guard extension source': file(
+                    'build-logic/src/main/kotlin/io/github/mbackschat/a12/dm/buildlogic/BuildGuardsExtension.kt'),
+            // The two .no-global-gradle-repos markers are declared BELOW rather than here: deleting one is
+            // the sanctioned way to build through a private registry, and guardInputs would report that as
+            // an empty input — infrastructure breakage, which is the wrong diagnostic. They still have to be
+            // declared somewhere, or deleting one leaves this lane UP-TO-DATE and the assertion that they
+            // exist never runs.
             'cli build'        : file('cli/build.gradle'),
             // BuildPerformancePolicyTest has read build.sh at runtime since it was written, and reads the
             // preparation script since the JDK-pin single-sourcing check joined it. Undeclared, re-encoding the
@@ -722,6 +543,7 @@ tasks.register('docGuardTest', Test) {
             'infographic specification': file('docs/INFOGRAPHICS.md'),
             'nightly workflow' : file('.github/workflows/nightly-performance.yml'),
             'perf launcher'    : file('scripts/perf.sh'),
+            'perf anchor script': file('scripts/perf-anchor.sh'),
             // Both joined the JDK-pin denominator when they stopped re-encoding `java_home -v 21`. The JS one
             // is not a shell script but emits one, which is the same policy decision in a different language.
             'perf key profiler': file('scripts/perf-keys.sh'),
@@ -748,6 +570,16 @@ tasks.register('docGuardTest', Test) {
             // dsl sources + the operator catalog moved to :rulekit in the Stage-4 module cut.
             'dsl sources'      : fileTree('rulekit/src/main/java/io/github/mbackschat/a12/dm/rulekit/dsl') { include '**/*.java' },
             'operator catalog' : fileTree('rulekit/src/main/resources/catalog')])
+
+    // The two public-only markers, declared OUTSIDE guardInputs on purpose. They are read at runtime — the
+    // policy test asserts each build root carries one — so undeclared, deleting one leaves this lane
+    // UP-TO-DATE and that assertion never runs. They cannot ride guardInputs: a deliberate deletion is the
+    // sanctioned way to build through a private registry, and the emptiness refusal would report it as a
+    // moved folder. `.optional()` is what lets a declared file legally not exist.
+    inputs.files(files('.no-global-gradle-repos', 'build-logic/.no-global-gradle-repos'))
+            .withPropertyName('publicOnlyMarkers')
+            .withPathSensitivity(org.gradle.api.tasks.PathSensitivity.RELATIVE)
+            .optional()
 }
 
 // --- The public-API surface lock (Set S; RELEASE-SPEC §11, TESTING-SPEC "structural-law guardians") ------
@@ -755,7 +587,7 @@ tasks.register('docGuardTest', Test) {
 // so it runs HERE with `api/` declared as THIS task's inputs (the docGuardTest lane). A golden edit re-runs
 // ONLY this guard (never the ~150-test suite) and can't restore from the build cache into a false green; a
 // kit's public API changing invalidates the task via the kit classes already on `sourceSets.test.runtimeClasspath`.
-// `test` dependsOn this (below), so CI + a plain `:test` always drive it. `guardInputs` (root ext, kernel-decoupling §3b #17)
+// `test` dependsOn this (below), so CI + a plain `:test` always drive it. `guardInputs` (the a12Guards extension)
 // also fails LOUDLY if `api/` goes empty/missing — a moved golden dir can't silence the guard.
 tasks.register('apiGuardTest', Test) {
     description = 'Golden-diff visibility lock for the published artifacts\' public API (split out so a golden edit re-runs only this).'
@@ -771,7 +603,7 @@ tasks.register('apiGuardTest', Test) {
     filter {
         includeTestsMatching 'io.github.mbackschat.a12.dm.api.PublicApiGuardTest'
     }
-    guardInputs(it, [
+    a12Guards.guardInputs(it, [
             'api goldens'              : fileTree('api') { include '**/*.api' },
             'bridge main sources'      : fileTree('interpreter-bridge/src/main') { include '**/*.kt', '**/*.java' },
     ])
@@ -800,7 +632,7 @@ tasks.register('interpreterReleaseGuardTest', Test) {
     useJUnitPlatform()
     testClassesDirs = sourceSets.releaseGuardTest.output.classesDirs
     classpath = sourceSets.releaseGuardTest.runtimeClasspath
-    guardInputs(it, [
+    a12Guards.guardInputs(it, [
             'assembler'         : file('scripts/assemble-interpreter-release-repo.sh'),
             'source statistics' : file('scripts/update-code-statistics.sh'),
             'mirror checker'    : file('scripts/check-interpreter-release-repo.sh'),
@@ -846,13 +678,16 @@ tasks.register('vocabularyGuardTest', Test) {
     filter {
         includeTestsMatching 'io.github.mbackschat.a12.dm.rulekit.validate.laws.TemporalFormatVocabularyGuardTest'
     }
-    guardInputs(it, [
+    a12Guards.guardInputs(it, [
             'the derived vocabulary': file('docs/TEMPORAL-FORMAT-VOCABULARY.md'),
             // Every registered consumer is read at runtime; undeclared, dropping a format from one would leave
             // this lane UP-TO-DATE and the containment check unrun — the exact staleness the guard exists for.
             'vocabulary consumers'  : files(
                     'adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/TemporalDeclaredFormatGateDiffTest.kt',
-                    'interpreter/src/commonTest/kotlin/io/github/mbackschat/a12/dm/interpreter/TemporalDeclaredFormatFormalTest.kt'),
+                    'interpreter/src/commonTest/kotlin/io/github/mbackschat/a12/dm/interpreter/TemporalDeclaredFormatFormalTest.kt',
+                    'src/test/java/io/github/mbackschat/a12/dm/rulekit/validate/laws/TemporalExtractionFormatGateLawsTest.java',
+                    'src/test/java/io/github/mbackschat/a12/dm/rulekit/dsl/UntypedTemporalExtractionGateTest.java',
+                    'src/test/java/io/github/mbackschat/a12/dm/rulekit/dsl/TemporalFormatComponentsTest.java'),
     ])
 }
 
@@ -902,50 +737,60 @@ tasks.register('syncDocSnippets', Test) {
     outputs.upToDateWhen { false }
 }
 
-// A compiled dependency edge is the purity boundary. Source regexes cannot model Java text blocks, Kotlin raw
-// strings/templates, or Kotlin's nested comments; a delimiter inside a literal once hid later code from a guard.
-// jdeps reads class dependencies instead, so comments and string constants are irrelevant by construction.
-ext.verifyCompiledPurity = { String guardName, Collection<File> classRoots, Collection<String> forbidden,
-        String positiveControl ->
-    def existingRoots = classRoots.findAll { it.exists() }
-    def classCount = existingRoots.sum(0) { root ->
-        fileTree(root).matching { include '**/*.class' }.files.size()
-    }
-    if (classCount == 0) {
-        throw new GradleException("${guardName} scanned ZERO class files — the compiled source roots moved or emptied")
-    }
-
-    def launcher = javaToolchains.launcherFor {
-        languageVersion = JavaLanguageVersion.of(21)
-    }.get()
-    def executableName = System.getProperty('os.name').toLowerCase(Locale.ROOT).contains('win') ? 'jdeps.exe' : 'jdeps'
-    def jdeps = new File(launcher.executablePath.asFile.parentFile, executableName)
-    if (!jdeps.isFile()) {
-        throw new GradleException("${guardName} cannot find jdeps beside ${launcher.executablePath.asFile}")
-    }
-
-    def execution = providers.exec {
-        commandLine([jdeps.absolutePath, '-verbose:class', '--ignore-missing-deps'] + existingRoots*.absolutePath)
-        ignoreExitValue = true
-    }
-    def result = execution.result.get()
-    def output = execution.standardOutput.asText.get()
-    if (result.exitValue != 0) {
-        throw new GradleException("${guardName} could not inspect compiled dependencies:\n${output}")
-    }
-
-    def dependencies = output.readLines().collect { line ->
-        def edge = line =~ /^\s*\S+\s+->\s+(\S+)/
-        edge.find() ? edge.group(1) : null
-    }.findAll()
-    if (!dependencies.any { it.startsWith(positiveControl) }) {
-        throw new GradleException("${guardName} did not see its compiled-reference positive control ${positiveControl}")
-    }
-    def violations = dependencies.findAll { dependency -> forbidden.any { dependency.startsWith(it) } }.unique().sort()
-    if (violations) {
-        throw new GradleException("${guardName} violated; forbidden compiled dependencies:\n  " + violations.join('\n  '))
+// A PARTIAL compile output is a false green Gradle's own task line does not report. Observed 2026-09-03:
+// `:adapter:compileJava` reported UP-TO-DATE while its output held 11 of 135 class files, and the first
+// symptom was root `:test` failing with "package io.github.mbackschat.a12.dm.adapter does not exist" — a
+// compilation error in an unrelated module, which reads as anything but a build-state problem. The build
+// cache entry was intact and a verified clean restored all 135, so the trigger is upstream of the cache
+// (Gradle logged an OPERATING_SYSTEM file-watching overflow in the same runs) and is NOT established.
+//
+// The invariant is drift-free rather than a pinned count: javac emits one class file per source type plus
+// one per nested/anonymous type, so a main source set can never yield FEWER class files than `.java` files.
+// Measured across the estate at the time of writing — adapter 135/43, rulekit 290/195, cli 258/169, and
+// `edit` exactly 9/9, which is why the comparison is `<` and not a ratio.
+def javaMainModules = ['core', 'rulekit', 'modelkit', 'edit', 'adapter', 'cli', 'schemakit']
+def compileCompletenessInputs = javaMainModules.collectEntries { module ->
+    [(module): [sources: file("${module}/src/main/java"), classes: file("${module}/build/classes/java/main")]]
+}
+def verifyCompileCompleteness = tasks.register('verifyCompileCompleteness') {
+    description = 'Refuse a main source set whose compiled output holds fewer class files than it has sources.'
+    group = 'verification'
+    dependsOn javaMainModules.collect { ":${it}:classes" }
+    outputs.upToDateWhen { false }
+    doLast {
+        def short_ = []
+        compileCompletenessInputs.each { module, dirs ->
+            if (!dirs.sources.isDirectory()) {
+                return
+            }
+            // `package-info.java` carries no type, so javac emits NO class for it unless it declares an
+            // annotation. Counting it makes the invariant false, and `edit` sits at exactly 9 classes for 9
+            // sources — one unannotated package-info there would be a permanent false red no rebuild clears.
+            int sources = 0
+            dirs.sources.eachFileRecurse {
+                if (it.isFile() && it.name.endsWith('.java') && it.name != 'package-info.java') { sources++ }
+            }
+            int classes = 0
+            if (dirs.classes.isDirectory()) {
+                dirs.classes.eachFileRecurse { if (it.isFile() && it.name.endsWith('.class')) { classes++ } }
+            }
+            if (classes < sources) {
+                short_ << "${module}: ${classes} class file(s) for ${sources} source(s) in ${dirs.classes}"
+            }
+        }
+        if (short_) {
+            throw new GradleException("a main source set compiled INCOMPLETELY, which Gradle reports as a "
+                    + "normal task outcome and which surfaces downstream as 'package ... does not exist' in "
+                    + "an unrelated module:\n  " + short_.join('\n  ')
+                    + "\nRe-run `./build.sh :<module>:clean` and then the build, and CHECK THE ARTIFACT "
+                    + "rather than the task line — the output directory, not `UP-TO-DATE`/`FROM-CACHE`.")
+        }
     }
 }
+// On `test`, not `check`: CI runs `… test :adapter:test :cli:test …` and never the root `check`, and `check`
+// depends on `test` rather than the reverse — so a guard hung off `check` would not run in CI at all, which
+// is the shape it exists to prevent. The symptom it explains is root `:test` failing, so that is its lane.
+tasks.named('test') { dependsOn verifyCompileCompleteness }
 
 // --- Kit purity, locked (kernel-decoupling stage 3; mirrors :interpreter's verifyInterpreterPurity) ------
 // The kits (dm.core / dm.rulekit.* / dm.modelkit / dm.edit) import ZERO kernel types — the kernel lives
@@ -955,24 +800,27 @@ ext.verifyCompiledPurity = { String guardName, Collection<File> classRoots, Coll
 // non-empty class denominator keep an empty scan from passing. Test scope is out of scope on purpose — the
 // kernel stays the oracle in tests. Stage 4: the kits are now their own modules, so this single root guard
 // inspects all four modules' main-class outputs (one place, covers the whole class).
-def verifyKitPurity = tasks.register('verifyKitPurity') {
+def kitProjects = ['core', 'rulekit', 'modelkit', 'edit']
+def verifyKitPurity = tasks.register('verifyKitPurity',
+        io.github.mbackschat.a12.dm.buildlogic.VerifyCompiledPurityTask) {
     group = 'verification'
     description = 'Fail if any kit main class has a compiled com.mgmtp.* dependency.'
-    def kitProjects = ['core', 'rulekit', 'modelkit', 'edit']
     dependsOn kitProjects.collect { ":${it}:classes" }
-    def classRoots = providers.provider {
-        kitProjects.collectMany { project(":${it}").sourceSets.main.output.classesDirs.files }
-    }
-    inputs.files(classRoots)
-    doLast {
-        verifyCompiledPurity(
-            'kit purity — core/rulekit/modelkit/edit main',
-            classRoots.get(),
-            ['com.mgmtp.'],
-            'java.lang.Object')
-    }
+    guardName = 'kit purity — core/rulekit/modelkit/edit main'
+    classRoots.from(kitProjects.collect { project(":${it}").sourceSets.main.output.classesDirs })
+    forbidden = ['com.mgmtp.']
+    positiveControl = 'java.lang.Object'
+    javaLauncher = javaToolchains.launcherFor { languageVersion = JavaLanguageVersion.of(21) }
+    stamp = layout.buildDirectory.file('guards/kit-purity.txt')
 }
 tasks.named('check') { dependsOn verifyKitPurity }
+
+// The included build holds this repository's shared build code, and its own tests are the only thing that
+// can see a mutation in it: a text-matching guard over a build script passes on a gutted derivation. The
+// fast unit lane rides `test` so CI and the inner loop both carry it for ~1 s; the TestKit lane, which
+// spawns real Gradle builds at ~16 s, rides `check` and is named explicitly in CI.
+tasks.named('test') { dependsOn gradle.includedBuild('build-logic').task(':test') }
+tasks.named('check') { dependsOn gradle.includedBuild('build-logic').task(':check') }
 
 // --- The no-backend lane (kernel-decoupling §2c; the Stage-3 acceptance bar) -----------------------------
 // Run the kits with NO backend on the classpath — a Maven-Central consumer's posture — and prove the §2c
@@ -1012,27 +860,6 @@ tasks.named('check') { dependsOn 'noBackendTest' }
 // no jar) that depends on the five kit artifacts — preserving the coordinate RELEASE-SPEC §8 documents and
 // letting a consumer pull the whole set with one dependency. :adapter stays UNPUBLISHED (the kernel
 // backend, owner ruling 2); :cli is binary-only. Verifiable bar: `publishToMavenLocal` → inspect the POMs.
-ext.dmkitsPom = { pom ->
-    pom.url = 'https://github.com/mbackschat/a12-dmtool-releases'
-    pom.licenses {
-        license {
-            name = 'MIT License'
-            url = 'https://opensource.org/licenses/MIT'
-            distribution = 'repo'
-        }
-    }
-    pom.developers {
-        developer {
-            id = 'mbackschat'
-            name = 'Martin Backschat'
-        }
-    }
-    pom.scm {
-        url = 'https://github.com/mbackschat/a12-dmtool-releases'
-        connection = 'scm:git:https://github.com/mbackschat/a12-dmtool-releases.git'
-    }
-}
-
 publishing {
     publications {
         // POM-only aggregator (no `from components` → no jar): the `dmkits` umbrella that depends on the
@@ -1043,7 +870,7 @@ publishing {
                 name = 'dmkits'
                 description = 'a12-dmkits — aggregator POM depending on the dm kits (core/rulekit/modelkit/edit/schemakit). MIT.'
                 packaging = 'pom'
-                dmkitsPom(delegate)
+                a12Guards.dmkitsPom(delegate)
                 withXml {
                     def deps = asNode().appendNode('dependencies')
                     ['dmkits-core', 'dmkits-rulekit', 'dmkits-modelkit', 'dmkits-edit', 'dmkits-schemakit'].each { a ->

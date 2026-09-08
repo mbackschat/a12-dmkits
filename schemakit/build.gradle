@@ -11,6 +11,7 @@
 // Reuse-first: do not rebuild capability that already exists in those modules; surface gaps for the owner.
 plugins {
     id 'java-library'
+    id 'a12.build-guards'
     id 'maven-publish'
 }
 
@@ -120,7 +121,7 @@ publishing {
             pom {
                 name = 'dmkits-schemakit'
                 description = 'a12-dmkits — dm.schemakit: JSON Schema ⇄ Document Model import/export, authored through the dmkits typed surface. MIT.'
-                rootProject.dmkitsPom(delegate)
+                a12Guards.dmkitsPom(delegate)
             }
         }
     }

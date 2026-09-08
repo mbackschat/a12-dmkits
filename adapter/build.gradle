@@ -1,5 +1,6 @@
 plugins {
     id 'java-library'
+    id 'a12.build-guards'
     id 'java-test-fixtures'
     // Kotlin JVM — for the interpreter↔kernel differential tests (laws/*DiffTest.kt) + the KernelCustomConditions
     // bridge in main; consumes :interpreter. See docs/INTERPRETER-ARCHITECTURE.md (the kernel-as-oracle approach).
@@ -56,6 +57,10 @@ sourceSets {
 }
 
 dependencies {
+    // Kotlin 2.4 refuses an inferred type whose type annotations are not on the compile classpath, and
+    // the kernel's Lombok-processed signatures carry `@lombok.NonNull`. Compile-only: it is an
+    // annotation the Kotlin compiler must resolve, never something this module ships or runs against.
+    testCompileOnly 'org.projectlombok:lombok:1.18.42'
     // The kernel-free kits — BoundModel/Rule/Dsl + ReferenceResolvers + the SPI ports this backend implements.
     // Stage-4 module cut: the single root project split into per-kit modules, so `api project(':')` becomes an
     // `api` edge to each kit (re-exported to consumers — :cli/:schemakit — exactly as `project(':')` was).
@@ -502,7 +507,7 @@ tasks.register('workspacePreparationFixtureGuardTest', Test) {
         includeTestsMatching(
             'io.github.mbackschat.a12.dm.adapter.WorkspacePreparationFixtureGuardTest')
     }
-    rootProject.guardInputs(it, ['typed workspace-preparation fixtures': workspacePreparationFixtureFiles])
+    a12Guards.guardInputs(it, ['typed workspace-preparation fixtures': workspacePreparationFixtureFiles])
 }
 
 tasks.register('syncWorkspacePreparationFixtures', Test) {
@@ -541,7 +546,7 @@ tasks.register('footprintFixtureGuardTest', Test) {
     filter {
         includeTestsMatching 'io.github.mbackschat.a12.dm.adapter.perf.FootprintScenarioFixtureGuardTest'
     }
-    rootProject.guardInputs(it, ['typed footprint model fixtures': footprintFixtureFiles])
+    a12Guards.guardInputs(it, ['typed footprint model fixtures': footprintFixtureFiles])
 }
 
 tasks.register('syncFootprintFixtures', Test) {
@@ -573,7 +578,7 @@ tasks.register('retainedComputationFixtureGuardTest', Test) {
     filter {
         includeTestsMatching 'io.github.mbackschat.a12.dm.adapter.laws.RetainedComputationFixtureGuardTest'
     }
-    rootProject.guardInputs(it, ['typed retained-result model fixture': files(retainedComputationFixture)])
+    a12Guards.guardInputs(it, ['typed retained-result model fixture': files(retainedComputationFixture)])
 }
 
 tasks.register('syncRetainedComputationFixture', Test) {
@@ -611,7 +616,7 @@ tasks.register('performanceFixtureGuardTest', Test) {
     filter {
         includeTestsMatching 'io.github.mbackschat.a12.dm.adapter.perf.PerformanceScenarioFixtureGuardTest'
     }
-    rootProject.guardInputs(it, ['typed performance fixtures': performanceFixtureFiles])
+    a12Guards.guardInputs(it, ['typed performance fixtures': performanceFixtureFiles])
 }
 
 tasks.register('syncPerformanceFixtures', Test) {
@@ -660,7 +665,7 @@ tasks.register('profileFixtureGuardTest', Test) {
         includeTestsMatching 'io.github.mbackschat.a12.dm.adapter.profile.ModelSynthesisFidelityTest'
         includeTestsMatching 'io.github.mbackschat.a12.dm.adapter.profile.ProfileFixtureGuardTest'
     }
-    rootProject.guardInputs(it, [
+    a12Guards.guardInputs(it, [
         'compact profile': profileFixtureFiles[0],
         'breadth-shaped profile': profileFixtureFiles[1],
         'depth-shaped profile': profileFixtureFiles[2],
@@ -702,7 +707,7 @@ tasks.register('profileCliPerfTest', Test) {
     filter {
         includeTestsMatching 'io.github.mbackschat.a12.dm.adapter.perf.ProfileCliPerfTest'
     }
-    rootProject.guardInputs(it, [
+    a12Guards.guardInputs(it, [
         'compact profile': profileFixtureFiles[0],
         'breadth-shaped profile': profileFixtureFiles[1],
         'depth-shaped profile': profileFixtureFiles[2],
@@ -742,7 +747,7 @@ tasks.register('synthesizedModelPerfTest', Test) {
     filter {
         includeTestsMatching 'io.github.mbackschat.a12.dm.adapter.perf.SynthesizedModelPerfTest'
     }
-    rootProject.guardInputs(it, [
+    a12Guards.guardInputs(it, [
         'compact profile': profileFixtureFiles[0],
         'breadth-shaped profile': profileFixtureFiles[1],
         'depth-shaped profile': profileFixtureFiles[2],
@@ -908,9 +913,9 @@ tasks.register('corpusReplayTest', Test) {
         includeTestsMatching 'io.github.mbackschat.a12.dm.adapter.laws.CorpusReplayTest'
         includeTestsMatching 'io.github.mbackschat.a12.dm.adapter.laws.CorpusSchemaGuardTest'
     }
-    // guardInputs (root ext, kernel-decoupling §3b #17): the committed corpus is this guard's runtime input —
+    // guardInputs (the a12Guards extension): the committed corpus is this guard's runtime input —
     // declare it AND fail loudly if it goes empty, so a moved corpus tree can't silence the replay guard.
-    rootProject.guardInputs(it, ['conformance corpus': rootProject.fileTree('corpus') { include '**/*.json' }])
+    a12Guards.guardInputs(it, ['conformance corpus': rootProject.fileTree('corpus') { include '**/*.json' }])
 }
 
 // The broad lane's `excludeTestsMatching` list is hand-written, and a hand-written list drifts from the lanes it

@@ -1,0 +1,21 @@
+// The PLUGIN repository set for both builds in this checkout, plus `build-logic`'s own dependency
+// repositories — SINGLE-SOURCED, applied with `apply from: <this>, to: it`. It does NOT cover the main
+// build's dependency repositories, which are declared in `build.gradle` and deliberately include
+// mavenLocal() for the kernel; see docs/BUILD-ENVIRONMENT.md for why those two halves differ.
+//
+// Why one file rather than two identical blocks: an included build shares NO configuration with the build
+// that includes it — not repositories, not plugin management, not versions (Gradle's composite-builds
+// guide). So `build-logic` needs its own declaration, and a second hand-kept copy is a second thing to keep
+// right. Three application sites, all of which expose `repositories { }`: each settings file's
+// `PluginManagementSpec`, and `build-logic`'s `dependencyResolutionManagement`.
+//
+// Ordering is the point, and it is why the declaration exists at all: a machine-global Gradle init script
+// can append a private, credentialed registry in `settingsEvaluated` — AFTER this file — so ours are tried
+// first and an injected registry degrades to a fallback. See docs/BUILD-ENVIRONMENT.md.
+//
+// Deliberately NOT mavenLocal(): no plugin resolves from it, and putting a mutable, unchecksummed local
+// repository first in the plugin path would change resolution for every contributor and both CI jobs.
+repositories {
+    gradlePluginPortal()
+    mavenCentral()
+}

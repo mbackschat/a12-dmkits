@@ -5,6 +5,7 @@
 // root `verifyKitPurity` guard). Published as io.github.mbackschat.a12.dm:dmkits-core (MIT).
 plugins {
     id 'java-library'
+    id 'a12.build-guards'
     id 'maven-publish'
 }
 
@@ -37,7 +38,7 @@ publishing {
             pom {
                 name = 'dmkits-core'
                 description = 'a12-dmkits — dm.core: the kernel-free DM-JSON reader/index/resolver, diagnostic vocabulary, and the backend SPI ports. MIT.'
-                rootProject.dmkitsPom(delegate)
+                a12Guards.dmkitsPom(delegate)
             }
         }
     }

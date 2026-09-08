@@ -2,14 +2,18 @@
 // script appends its own in `settingsEvaluated` — after this file — so ours are tried first and an injected
 // private registry degrades to a fallback instead of deciding where our plugins come from. The committed
 // `.no-global-gradle-repos` marker removes the injection entirely on a machine whose init script honours it.
-// Together: a bare `./gradlew` resolves from public repositories. See docs/BUILD-ENVIRONMENT.md.
-// Deliberately NOT mavenLocal(): no plugin here comes from it, and putting a mutable, unchecksummed local
-// repository first in the plugin path would change resolution for every contributor and both CI jobs.
+// Together: a bare `./gradlew` resolves from public repositories. See docs/BUILD-ENVIRONMENT.md, and
+// `gradle/public-repositories.gradle` for which repositories and why.
 pluginManagement {
-    repositories {
-        gradlePluginPortal()
-        mavenCentral()
-    }
+    // The repository set is single-sourced in `gradle/public-repositories.gradle` and applied here and in
+    // `build-logic/settings.gradle`. An included build shares no plugin management with the build that
+    // includes it, so it needs its own declaration; one file means there is no second copy to keep right.
+    apply from: file('gradle/public-repositories.gradle'), to: it
+
+    // `build-logic` supplies this build's convention plugins, so it is included HERE rather than at the top
+    // level: only a build included from `pluginManagement` can contribute plugins to the build that includes
+    // it. Its own settings file carries the marker and the repository apply, because neither is inherited.
+    includeBuild 'build-logic'
 }
 
 rootProject.name = 'a12-dmkits'

@@ -5,6 +5,7 @@
 // io.github.mbackschat.a12.dm:dmkits-rulekit (MIT).
 plugins {
     id 'java-library'
+    id 'a12.build-guards'
     id 'maven-publish'
 }
 
@@ -41,7 +42,7 @@ publishing {
             pom {
                 name = 'dmkits-rulekit'
                 description = 'a12-dmkits — dm.rulekit: the typed rule/computation DSL, EN/DE renderer, operator catalog, validators, and the ConditionReadBack read seam. MIT.'
-                rootProject.dmkitsPom(delegate)
+                a12Guards.dmkitsPom(delegate)
             }
         }
     }

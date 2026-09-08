@@ -4,6 +4,7 @@
 // `verifyKitPurity`). Published as io.github.mbackschat.a12.dm:dmkits-modelkit (MIT).
 plugins {
     id 'java-library'
+    id 'a12.build-guards'
     id 'maven-publish'
 }
 
@@ -38,7 +39,7 @@ publishing {
             pom {
                 name = 'dmkits-modelkit'
                 description = 'a12-dmkits — dm.modelkit: the document-model structure builder that emits kernel-accepted DM-JSON. MIT.'
-                rootProject.dmkitsPom(delegate)
+                a12Guards.dmkitsPom(delegate)
             }
         }
     }

@@ -1,0 +1,17 @@
+// The build that supplies this repository's convention plugins. Included from the root settings file's
+// `pluginManagement` block, which is the only inclusion point that lets a build contribute plugins.
+//
+// It shares NOTHING with the build that includes it — not repositories, not plugin management, not
+// versions — so both declarations below are here because they are NOT inherited, and both are the same
+// single-sourced file the root build applies.
+pluginManagement {
+    apply from: file('../gradle/public-repositories.gradle'), to: it
+}
+
+dependencyResolutionManagement {
+    // `kotlin-dsl` pulls the Kotlin Gradle plugin and stdlib as ordinary dependencies of the plugin
+    // source set, so this build needs a dependency repository as well as a plugin one.
+    apply from: file('../gradle/public-repositories.gradle'), to: it
+}
+
+rootProject.name = 'build-logic'

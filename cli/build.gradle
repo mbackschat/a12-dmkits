@@ -1,5 +1,6 @@
 plugins {
     id 'application'
+    id 'a12.build-guards'
     id 'org.graalvm.buildtools.native' version '1.1.1'   // release native image (opt-in `:cli:nativeCompile`, GraalVM 25)
 }
 
@@ -448,9 +449,9 @@ tasks.register('docGuardTest', Test) {
         includeTestsMatching 'io.github.mbackschat.a12.dm.cli.interp.ModelLoaderParityTest'
         includeTestsMatching 'io.github.mbackschat.a12.dm.cli.JdkPinGuardTest'
     }
-    // guardInputs (root ext, kernel-decoupling §3b #17) declares these runtime-read files as inputs AND fails
+    // guardInputs (the a12Guards extension) declares these runtime-read files as inputs AND fails
     // loudly if any tree goes empty — so a moved folder can't silently turn this guard into a false green.
-    rootProject.guardInputs(it, [
+    a12Guards.guardInputs(it, [
             'examples/*.md'      : rootProject.fileTree('examples') { include '**/*.md' },
             // DirectoryIndexGuardTest reads scripts/ + its index (examples/ rides the *.md tree above), so an
             // added/renamed/removed script must re-run the guard that checks its index row.
@@ -505,7 +506,7 @@ tasks.register('evalGuardTest', Test) {
         includeTestsMatching 'io.github.mbackschat.a12.dm.cli.eval.EvalGoldOracleTest'
         includeTestsMatching 'io.github.mbackschat.a12.dm.cli.eval.EvalSuiteLedgerTest'
     }
-    rootProject.guardInputs(it, [
+    a12Guards.guardInputs(it, [
             'eval task corpus'       : rootProject.fileTree('eval/tasks') { include '**/*.json' },
             'benchmark workflow'     : rootProject.file('eval/benchmark.workflow.js'),
             'gap-finder workflow'    : rootProject.file('eval/gap-finder.workflow.js')])
@@ -544,9 +545,9 @@ tasks.register('semanticsMapGuardTest', Test) {
         // The basis contract reads the same two docs — a mechanism claim must name its oracle.
         includeTestsMatching 'io.github.mbackschat.a12.dm.cli.KernelDocsBasisContractTest'
     }
-    // guardInputs (root ext, kernel-decoupling §3b #17): declare the map's derivation surfaces as inputs AND
+    // guardInputs (the a12Guards extension): declare the map's derivation surfaces as inputs AND
     // fail loudly if any lock tree / catalog / corpus goes empty (a moved folder must not silence this guard).
-    rootProject.guardInputs(it, [
+    a12Guards.guardInputs(it, [
             'docs/SEMANTICS-MAP.md'   : rootProject.file('docs/SEMANTICS-MAP.md'),
             'docs/KERNEL-FINDINGS.md' : rootProject.file('docs/KERNEL-FINDINGS.md'),
             'docs/KERNEL-SEMANTICS.md': rootProject.file('docs/KERNEL-SEMANTICS.md'),
@@ -594,7 +595,7 @@ tasks.register('staleGapGuardTest', Test) {
         includeTestsMatching 'io.github.mbackschat.a12.dm.cli.StaleGapReferenceGuardTest'
         includeTestsMatching 'io.github.mbackschat.a12.dm.cli.StaleGapReferenceClassifierTest'
     }
-    rootProject.guardInputs(it, staleGapGuardInputs)
+    a12Guards.guardInputs(it, staleGapGuardInputs)
 }
 
 // The referent-drift guard (ReferentDriftGuardTest) reads EVERY prose and source file in the repository at
@@ -615,7 +616,7 @@ tasks.register('referentGuardTest', Test) {
         includeTestsMatching 'io.github.mbackschat.a12.dm.cli.QuotedTitleCitationRatchetTest'
         includeTestsMatching 'io.github.mbackschat.a12.dm.cli.DerivedFigureDatingGuardTest'
     }
-    rootProject.guardInputs(it, [
+    a12Guards.guardInputs(it, [
             'repo prose + source': rootProject.fileTree(rootProject.projectDir) {
                 include '**/*.md', '**/*.java', '**/*.kt', '**/*.gradle', '**/*.gradle.kts', '**/*.sh'
                 exclude '**/build/**', '**/.git/**', '**/.gradle/**', '**/node_modules/**'
@@ -633,7 +634,7 @@ tasks.register('mutationTailGuardTest', Test) {
     filter {
         includeTestsMatching 'io.github.mbackschat.a12.dm.cli.MutationTailSingleSourceTest'
     }
-    rootProject.guardInputs(it, [
+    a12Guards.guardInputs(it, [
             'CLI production Java': rootProject.fileTree('cli/src/main/java') { include '**/*.java' },
             'verb demonstrations': rootProject.file('cli/src/main/resources/verb-examples.json')])
 }
@@ -648,7 +649,7 @@ tasks.register('sourceProvenanceGuardTest', Test) {
     filter {
         includeTestsMatching 'io.github.mbackschat.a12.dm.cli.SourceProvenanceBuildTest'
     }
-    rootProject.guardInputs(it, [
+    a12Guards.guardInputs(it, [
             'CLI build wiring'          : project.file('build.gradle'),
             'source provenance program' : sourceProvenanceProgram])
 }
@@ -749,7 +750,7 @@ tasks.named('test') {
     // `dumpOperatorIndex` runs OperatorIndexGuardTest with `operatorIndex.fix=true`, so it writes
     // docs/OPERATOR-INDEX.md instead of asserting against it — the same shape as root's `dumpKitApi` over the
     // API goldens. It owns no class: docGuardTest does, and this lane only re-enters it in fixer mode.
-    rootProject.routeExclusivelyHostedTests(it, dedicatedTestTasks,
+    a12Guards.routeExclusivelyHostedTests(it, dedicatedTestTasks,
             ['dumpOperatorIndex': 'regenerator over docGuardTest\'s OperatorIndexGuardTest — writes the '
                     + 'committed index instead of asserting against it'],
             ['mutationTailGuardTest': 'MutationTailSingleSourceTest invokes javac to parse production source, '

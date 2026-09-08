@@ -119,7 +119,7 @@ jobs:
         working-directory: a12-dmkits
         env:
           JAVA_HOME: ${{ env.JAVA_HOME_21_X64 }}
-        run: ./gradlew --no-daemon test :adapter:test :cli:test :cli:publicContractTest :interpreter:allTests :interpreter-bridge:check :verifyKitPurity :noBackendTest -PrunFuzz
+        run: ./gradlew --no-daemon test :adapter:test :cli:test :cli:publicContractTest :interpreter:allTests :interpreter-bridge:check :verifyKitPurity :noBackendTest :build-logic:functionalTest -PrunFuzz
 
       # Both agent plugins (Claude Code, Codex) bundle COPIES of the single-source assets — the skills,
       # installer, and release-asset manifest — synced by scripts/sync-plugin-assets.sh. Fail loudly if any
@@ -154,3 +154,19 @@ jobs:
         env:
           JAVA_HOME: ${{ env.JAVA_HOME_21_X64 }}
         run: ./scripts/verify-demos.sh
+
+      # A red run otherwise leaves only a ~53-minute log to read. Gradle's HTML reports carry the failing
+      # test, its message and its stack; the Problems report carries anything reported through the Problems
+      # API. `if: failure()` fires when ANY earlier step failed, and this is the last step, so it covers the
+      # whole job. Nothing here needs a token permission — an artifact upload uses the runner's own upload
+      # endpoint, not the API — so `permissions: contents: read` above is unchanged.
+      - name: Upload build reports (failed runs only)
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-reports
+          path: |
+            a12-dmkits/**/build/reports/**
+            a12-dmkits/**/build/test-results/**
+          retention-days: 14
+          if-no-files-found: ignore

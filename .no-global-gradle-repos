@@ -5,7 +5,8 @@
 # An init script that honours this marker skips this build, so a bare `./gradlew` resolves from mavenLocal
 # + Maven Central + the plugin portal, exactly as settings.gradle and build.gradle declare. Scope: the
 # marker is read from the build's ROOT directory, so a nested buildSrc or included build has its own root
-# and would not be covered. This repository has neither.
+# and is not covered by this file. This repository has one included build, `build-logic`, which therefore
+# carries its own copy of this marker.
 #
 # Delete this file to build through such a registry on purpose, e.g. inside a network where it is the only
 # reachable mirror. The deletion shows up in `git status` and affects this checkout only.
