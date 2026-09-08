@@ -28,6 +28,11 @@ TASKS=(
   :interpreter:compileTestKotlinJvm
   :interpreter:compileTestDevelopmentExecutableKotlinJs
   :adapter:compileTestKotlin
+  # The included build sits on every invocation's path, so whether ITS output relocates across worktrees is
+  # a property of the whole estate's cache, not of one module. It is cheap to compile and would therefore
+  # never earn a place on cost; it earns one because a composite build is the case most likely to carry an
+  # absolute path into its cache key, and nothing else here would notice.
+  :build-logic:compileKotlin
 )
 EXPECTED_CACHE_HITS=(
   :interpreter:compileKotlinJvm
@@ -36,6 +41,7 @@ EXPECTED_CACHE_HITS=(
   :interpreter:compileTestKotlinJs
   :interpreter:compileTestDevelopmentExecutableKotlinJs
   :adapter:compileTestKotlin
+  :build-logic:compileKotlin
 )
 
 git -C "$ROOT" worktree add --quiet --detach "$PRIME_WORKTREE" "$REVISION"

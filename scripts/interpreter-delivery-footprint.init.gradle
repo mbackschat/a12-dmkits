@@ -188,8 +188,8 @@ gradle.projectsEvaluated {
         dependsOn interpreter.tasks.named('jvmJar')
         archiveFileName = 'interpreter-jvm-runtime.zip'
         destinationDirectory = interpreter.layout.buildDirectory.dir('delivery-footprint')
-        preserveFileTimestamps = false
-        reproducibleFileOrder = true
+        // Reproducibility comes from Gradle 9's archive defaults; only the duplicate policy is ours, because
+        // a footprint measured over a silently de-duplicated closure would understate it.
         duplicatesStrategy = DuplicatesStrategy.FAIL
         from(interpreter.tasks.named('jvmJar').flatMap { it.archiveFile }) { into 'lib' }
         from(interpreter.configurations.named('jvmRuntimeClasspath')) { into 'lib' }

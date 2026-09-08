@@ -4,6 +4,26 @@
 # latest-only plugin mirror; the interpreter must retain cumulative Maven and API version directories,
 # so only the validation and identity boundaries are shared between the two product assemblers.
 
+# The markers a generated public mirror must never carry, split by the two kinds the refusal message
+# distinguishes. The split IS the classification: naming the kind by re-testing these patterns keeps one
+# definition, where matching on the found text needs a second, weaker copy of them that can drift. A file
+# carrying both kinds is reported as a machine-local path.
+RELEASE_MACHINE_LOCAL_PATTERNS=(
+  -e '/Users/'
+  -e '/home/[^/[:space:]]+/'
+  -e '[A-Za-z]:\\Users\\'
+  -e 'file:(//)?(/Users/|/home/|[A-Za-z]:)'
+)
+RELEASE_SECRET_PATTERNS=(
+  -e 'mgm-tp\.com'
+  -e '(gh[pousr]|github_pat|npm)_[A-Za-z0-9_]{20,}'
+  -e '-----BEGIN (RSA |EC |OPENSSH )?PRIVATE KEY-----'
+)
+RELEASE_PRIVATE_MARKER_PATTERNS=(
+  "${RELEASE_MACHINE_LOCAL_PATTERNS[@]}"
+  "${RELEASE_SECRET_PATTERNS[@]}"
+)
+
 release_sha256() {
   shasum -a 256 "$1" | awk '{print $1}'
 }
@@ -62,11 +82,19 @@ release_verify_public_inventory() {
 release_write_public_inventory() {
   local root="${1:?public mirror root is required}"
   local target="$root/PUBLIC-FILES.sha256"
-  local temporary
+  local temporary listing
   temporary="$(mktemp)"
-  while IFS= read -r relative; do
-    printf '%s  %s\n' "$(release_sha256 "$root/$relative")" "$relative"
-  done < <(release_public_files "$root") > "$temporary"
+  listing="$(mktemp)"
+  release_public_files "$root" > "$listing"
+  # `shasum` accepts many files and its own output IS the inventory format, which is also what
+  # `shasum -c` reads back in release_verify_public_inventory. The emptiness guard matters: with no
+  # arguments shasum would hash its stdin and write a spurious entry.
+  if [[ -s "$listing" ]]; then
+    ( cd "$root" && tr '\n' '\0' < "$listing" | xargs -0 shasum -a 256 ) > "$temporary"
+  else
+    : > "$temporary"
+  fi
+  rm -f "$listing"
   mv "$temporary" "$target"
 }
 
@@ -100,32 +128,21 @@ release_check_interpreter_mirror_allowlist() {
 
 release_scan_public_tree() {
   local root="${1:?public mirror root is required}"
-  local match
-  while IFS= read -r -d '' file; do
-    if ! grep -Iq . "$file" 2>/dev/null; then
-      continue
-    fi
-    match="$(
-      grep -En -m1 \
-        -e 'mgm-tp\.com' \
-        -e '/Users/' \
-        -e '/home/[^/[:space:]]+/' \
-        -e '[A-Za-z]:\\Users\\' \
-        -e 'file:(//)?(/Users/|/home/|[A-Za-z]:)' \
-        -e '(gh[pousr]|github_pat|npm)_[A-Za-z0-9_]{20,}' \
-        -e '-----BEGIN (RSA |EC |OPENSSH )?PRIVATE KEY-----' \
-        "$file" 2>/dev/null || true
-    )"
-    if [[ -n "$match" ]]; then
-      case "$match" in
-        *'/Users/'*|*'/home/'*|*'\\Users\\'*|*'file:'*)
-          echo "public mirror contains a machine-local path in ${file#"$root/"}" >&2
-          ;;
-        *)
-          echo "public mirror contains a secret/private-source marker in ${file#"$root/"}" >&2
-          ;;
-      esac
-      return 1
-    fi
-  done < <(find "$root" -path "$root/.git" -prune -o -type f -print0)
+  local offender
+  # One grep over the whole tree names the first offending file: -I skips binary content and grep reports
+  # files in argument order. Nothing parses grep's output — the kind is decided by re-testing the offender
+  # against the machine-local set, so no filename or match text is ever split on a delimiter.
+  offender="$(
+    {
+      find "$root" -path "$root/.git" -prune -o -type f -print0 |
+        xargs -0 grep -lEI "${RELEASE_PRIVATE_MARKER_PATTERNS[@]}"
+    } 2>/dev/null | head -n 1
+  )" || true
+  [[ -n "$offender" ]] || return 0
+  if grep -qEI "${RELEASE_MACHINE_LOCAL_PATTERNS[@]}" "$offender" 2>/dev/null; then
+    echo "public mirror contains a machine-local path in ${offender#"$root/"}" >&2
+  else
+    echo "public mirror contains a secret/private-source marker in ${offender#"$root/"}" >&2
+  fi
+  return 1
 }
