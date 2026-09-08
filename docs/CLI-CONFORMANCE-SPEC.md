@@ -37,6 +37,8 @@ Local validation boundaries preserve that distinction too. `ModelDocument.valida
 
 Argument validation stays outside those loading and validation catches: scaffolding binds its model before validating pattern arguments, while config modification and typedef unimport retain their existing edit-argument failure handling before calling `validate`. `LocalFailureBoundaryTest`, `ConfigVerbTest`, and `TypedefImportVerbTest` lock malformed scaffold input, removal of the last locale, and an absent import.
 
+Explanation and rendered-diff decoding uses `BaseCommand.readGeneratedJson`: malformed, empty, or trailing JSON produced by our own renderer raises an internal failure with its parsing cause, not an input failure. `GeneratedJsonBoundaryTest` checks malformed and valid payloads and injects decoding failures through all four commands, asserting exit 70, the parser cause, no verification claim, unchanged source bytes, and successful execution after restoring the decoder. `ComputationVerbTest`, `RuleDepsVerbTest`, and `ModifyVerbTest` cover normal command behavior.
+
 ### 2. The self-explain contract (discoverability)
 
 A cold agent learns the whole surface from the tool:

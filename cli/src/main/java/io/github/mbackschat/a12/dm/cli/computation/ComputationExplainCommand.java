@@ -9,7 +9,6 @@ import io.github.mbackschat.a12.dm.cli.SafetyChecks;
 import io.github.mbackschat.a12.dm.cli.SafetyGate;
 import io.github.mbackschat.a12.dm.cli.WorkspaceOption;
 
-import java.io.IOException;
 import java.util.List;
 import java.util.Optional;
 
@@ -66,7 +65,7 @@ final class ComputationExplainCommand extends BaseCommand {
             JsonNode data;
             String summary;
             if (read instanceof ReadComputation.Converted converted) {
-                data = MAPPER.readTree(new ModelContext(bound).explainComputation(converted.computation()).toJson());
+                data = readGeneratedJson(new ModelContext(bound).explainComputation(converted.computation()).toJson());
                 summary = "explained " + computation;
             } else {
                 ReadComputation.Opaque opaque = (ReadComputation.Opaque) read;
@@ -84,8 +83,6 @@ final class ComputationExplainCommand extends BaseCommand {
                     ConsistencyEvidence.of(bound));
             out().print(env.toJsonString());
             return env.exitCode();
-        } catch (IOException e) {
-            return fail("explain failed: " + e.getMessage());
         } catch (RuntimeException e) {
             throw withFailureContext("explain failed: ", e);
         }

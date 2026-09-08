@@ -14,9 +14,7 @@
 
 ## 1. Open
 
-### CG22 — Preserve generated-JSON decoding failures as internal errors (2026-09-08) <a id="cg22"></a>
-
-**Source-assessed; malformed generated-output discriminator not yet executed.** `ComputationExplainCommand` and `RuleDepsCommand` catch `IOException` from decoding their own explanation JSON and return plain exit 2. This is a separate checked-exception boundary from CG21's runtime-exception handlers. **Acceptance:** share a generated-JSON decoder that preserves the parsing cause as an internal error, exercise malformed output and a valid-output control, use it at both sites, and retain successful command behavior. Caller-supplied model/Document/spec input parsing is excluded.
+_None open._
 
 ## 2. Deferred — with re-open triggers
 

@@ -12,6 +12,8 @@ import java.util.Set;
 import java.util.concurrent.Callable;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
@@ -562,6 +564,16 @@ public abstract class BaseCommand implements Callable<Integer> {
     protected int print(ResultEnvelope env) {
         out().print(env.toJsonString());
         return env.exitCode();
+    }
+
+    /** Our own renderers supply this JSON; a decoding failure is an internal defect (CLI-CONFORMANCE §1). */
+    protected static JsonNode readGeneratedJson(String json) {
+        try {
+            return JSON.readerFor(JsonNode.class)
+                    .with(DeserializationFeature.FAIL_ON_TRAILING_TOKENS).readValue(json);
+        } catch (JsonProcessingException failure) {
+            throw new IllegalStateException("cannot decode generated JSON", failure);
+        }
     }
 
     /**
