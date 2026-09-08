@@ -2852,6 +2852,7 @@ public enum io.github.mbackschat.a12.dm.rulekit.validate.RkCode
   public java.lang.String code()
   public java.lang.String fix()
   public java.lang.String meaning()
+  public boolean predictsKernelRefusal()
   public io.github.mbackschat.a12.dm.core.Severity severity()
   public io.github.mbackschat.a12.dm.rulekit.validate.DiagnosticSource source()
   public static io.github.mbackschat.a12.dm.rulekit.validate.RkCode valueOf(java.lang.String)

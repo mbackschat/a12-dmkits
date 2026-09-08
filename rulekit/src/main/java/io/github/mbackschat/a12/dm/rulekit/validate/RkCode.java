@@ -1,5 +1,7 @@
 package io.github.mbackschat.a12.dm.rulekit.validate;
 
+import io.github.mbackschat.a12.dm.core.KernelCode;
+
 import java.util.Optional;
 
 import io.github.mbackschat.a12.dm.core.Severity;
@@ -33,8 +35,8 @@ public enum RkCode {
             "the condition's polarity looks inverted for a requiredness rule — it appears to fire when the field IS filled rather than when it is missing.",
             "re-check the polarity; a 'required' rule fires on the NOT-filled case."),
     NEG_CONDITION_IN_ITERATION(Severity.WARNING, DiagnosticSource.LINT,
-            "a negated condition inside an iteration (repeatable group) often reads opposite to intent over the rows.",
-            "state the per-row condition positively, or confirm the negation is intended across all repetitions."),
+            "a negated condition inside an iteration (repeatable group) that no positive presence guard bounds — the kernel rejects this shape with " + KernelCode.MVK_NEG_CONDITION_IN_ITERATION + ", so this advisory PREDICTS a refusal rather than advising on intent.",
+            "state the per-row condition positively, or add the positive presence guard the kernel needs to bound the iteration."),
     REDUNDANT_OPERAND(Severity.WARNING, DiagnosticSource.LINT,
             "an operand is redundant — it cannot change the predicate's outcome.",
             "drop the redundant operand."),
@@ -230,6 +232,25 @@ public enum RkCode {
     /** The canonical severity for the catalog (a specific emit may differ; the wire carries the emitted value). */
     public Severity severity() {
         return severity;
+    }
+
+    /**
+     * Whether this advisory PREDICTS a kernel refusal, as opposed to advising on A12 evaluation semantics.
+     *
+     * <p>The distinction decides what a firing on kernel-LEGAL input means, and the two answers are opposites.
+     * For a prediction it is a conformance defect: the advisory says the kernel rejects the shape and the
+     * kernel does not. For the rest it is the advisory doing its job — {@code UNGUARDED_NUMBER_COMPARISON}
+     * exists precisely to warn that an empty number reads as 0, which the kernel accepts and the author may
+     * not have intended.
+     *
+     * <p>Recorded because the difference was invisible and got measured as if it were uniform: an external
+     * conformance pass counted every advisory firing on legal input as a miss, when only the predictions
+     * qualify. {@code NEG_CONDITION_IN_ITERATION} is the one that mattered — and its declared text used to
+     * read as intent advice while the text it EMITTED claimed the kernel rejects, which is the drift
+     * {@code RkCode} classification now holds shut.
+     */
+    public boolean predictsKernelRefusal() {
+        return this == NEG_CONDITION_IN_ITERATION || this == COMPUTATION_FORBIDDEN_CONSTRUCT;
     }
 
     /** The canonical source for the catalog. */

@@ -4726,6 +4726,30 @@ An independent differential over real models found the advisory firing on six sh
 
 *(Locked: `validate.laws.IterationGuardAdmissionRoutesLawsTest`. The advisory now counts a comparison, treats an unstarred presence as licensing any level, and leaves a max-2 group alone — each with a false-positive control in `lint.IterationGuardLintLevelTest`.)*
 
+## §9 supplement: `MVK_NO_WILDCARD` is a claim about each LEVEL, not about the reference — a ref can carry a star and still be missing one (kernel `checkConsistency`, 2026-09-08) <a id="kf1016"></a>
+
+> Fold: pending — sharpens §9's wildcard tier; folds beside [KF185](#kf185).
+
+An external differential reported 56 cases of this code, 33 containing a star and 21 not, and asked whether the family is two-sided — "a star where none is admitted" as well as "no star where one is required" — or whether its message-to-code mapping was conflating two templates. Neither.
+
+**The bundle carries ONE template** — *"Missing specification of an asterisk for '%s' in '%s'"* — and the opposite direction is two different codes (`MVK_NO_WILDCARDS_ALLOWED`, `MVK_NO_WILDCARDS_G_ALLOWED`). So there is nothing to separate. **And the judgement is per LEVEL**, measured over two repeatable levels with the error field held at the root:
+
+| spelling | verdict |
+|---|---|
+| `Milestones*/Tasks*/Effort` — both levels starred | admitted |
+| `Milestones*/Tasks/Effort` — outer starred, inner bare, **contains a star** | `MVK_NO_WILDCARD` |
+| `Milestones/Tasks*/Effort` — inner starred, outer bare, **contains a star** | `MVK_NO_WILDCARD` |
+| `Milestones/Tasks/Effort` — neither starred | `MVK_NO_WILDCARD` |
+| `Milestones*/Budget` / `Milestones/Budget` — the single-level control | admitted / `MVK_NO_WILDCARD` |
+
+**Every repeatable level answers for its own star**, so a reference can carry one and still be missing one. That explains a 33/21 split with no second direction, and it makes *"does this reference contain a star"* the wrong question for a client-side gate: it would pass the 33 and, keyed the other way, refuse legal input. The mechanism agrees — `CheckEntityUtils` accumulates its wildcard flag level by level while walking a ref's indices, and returns immediately unless the level under inspection iterates.
+
+**The axis held fixed, and why it is forced rather than unvaried:** every row puts the error field at the ROOT. The same operand shape can be admitted outright when the error field sits inside the iterated group ([KF185](#kf185)), so mixing loci would move two variables at once. The single-level control is what rules out depth as the explanation.
+
+**What this does NOT license.** Part of the code's trigger set is contextual — the error field's locus, parallel iteration, and index-keying each decide it ([MVK-LEDGER](MVK-LEDGER.md)'s row records all three) — so the level-wise half is locally pre-checkable and the rest is not. A gate may key on each level's own binding; it may not conclude from these rows that the whole family is local.
+
+*(Locked: `validate.laws.WildcardLevelBindingLawsTest`.)*
+
 ## §1 supplement: the duplicate/overlap predicate is UNIFORM across carriers — the skip belongs to the check, not to the operator (kernel `checkConsistency`, 2026-09-07) <a id="kf1015"></a>
 
 > Fold: pending — the carrier sweep the duplicate class needed before any client gate is wired.
