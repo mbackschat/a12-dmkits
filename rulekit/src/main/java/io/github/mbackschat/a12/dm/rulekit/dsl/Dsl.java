@@ -1060,8 +1060,10 @@ public final class Dsl {
 
     /**
      * {@code Date(day, month, year)} with the kernel's complete component union: a bounded Number field, an
-     * exact digit-pattern String field, a matching extractor/constant, or an exact {@code yyyy} Date field at
-     * the Year position. The kernel validates each field declaration against its position. catalog:Date
+     * exact digit-pattern String field, a matching extractor/constant, or a field declared exactly
+     * {@code yyyy} at the Year position — on ANY date-bearing kind, since that gate reads the declaration
+     * and not the kind (KF271). The kernel validates each field declaration against its position.
+     * catalog:Date
      */
     public static DateExpr date(TemporalComponent day, TemporalComponent month, TemporalComponent year) {
         return new DateExpr(new DateConstruction(day.expression(), month.expression(), year.expression()));
@@ -1839,8 +1841,11 @@ public final class Dsl {
 
     private static Condition flattenedListQuantifier(
             ValueListQuantifier q, java.util.List<String> values, FieldListRef first, FieldListRef... rest) {
-        // Starred (flattened) lists are wildcard scopes — the kernel skips duplicate-reference checking
-        // for wildcarded refs (CheckEntityListenUtils.checkDuplicatesInDirectRefs), so no dedup here.
+        // Starred (flattened) lists are wildcard scopes, and the kernel's DIRECT gate
+        // (CheckEntityListenUtils.checkDuplicatesInDirectRefs) skips a wildcarded ref, so an identical one may
+        // occupy two slots and there is no dedup here. That is one gate, not an exemption from duplicate
+        // checking: the indirect-overlap arm (MVK_DUPLICATE_PARAM2) is unaffected by the star and stays
+        // kernel-arbitrated, as it is for every operand list.
         var fields = new java.util.ArrayList<ValueListOperand>();
         fields.add(checkedStringList(first));
         for (FieldListRef r : rest) {
@@ -2280,9 +2285,24 @@ public final class Dsl {
         return new GroupPresenceCondition(group, true);
     }
 
+    /**
+     * {@code GroupFilled($group)} — the group's presence read in the outer repetition environment a
+     * {@code Having} captured (the {@code $} correlation, D13). Admitted inside a filter; on a level the
+     * enclosing iteration binds and the star does not reopen, the marker is redundant and both spellings
+     * behave alike (KERNEL-FINDINGS §9). catalog:GroupFilled
+     */
+    public static Condition groupFilled(GroupRef group, boolean outer) {
+        return new GroupPresenceCondition(group, true, outer);
+    }
+
     /** {@code GroupNotFilled(group)} — the group is absent; negative conditions on a repeatable group need guarding (§5). catalog:GroupNotFilled */
     public static Condition groupNotFilled(GroupRef group) {
         return new GroupPresenceCondition(group, false);
+    }
+
+    /** {@code GroupNotFilled($group)} — the {@code $}-correlated peer of {@link #groupFilled(GroupRef, boolean)}. catalog:GroupNotFilled */
+    public static Condition groupNotFilled(GroupRef group, boolean outer) {
+        return new GroupPresenceCondition(group, false, outer);
     }
 
     /** {@code AllGroupsFilled(g1, g2, …)} — every listed group is present. catalog:AllGroupsFilled */

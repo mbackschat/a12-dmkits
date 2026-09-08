@@ -1,5 +1,6 @@
 package io.github.mbackschat.a12.dm.cli;
 
+import io.github.mbackschat.a12.dm.core.EntityPath;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -207,7 +208,7 @@ final class PatternsCommand extends BaseCommand {
         String errorField = inst.errorField();
         int slash = errorField.lastIndexOf('/');
         String group = errorField.substring(0, slash);
-        String rel = "../" + errorField.substring(slash + 1);
+        String rel = EntityPath.of(group).elementReference(EntityPath.of(errorField));
         String ruleName = name != null ? name : derivedName(pattern.id());
         String errorCode = code != null ? code : inst.suggestedCode();
         List<LocalizedText> msgs = messages(bound, pattern.summary());

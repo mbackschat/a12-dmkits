@@ -2,6 +2,7 @@ package io.github.mbackschat.a12.dm.cli.include;
 
 import io.github.mbackschat.a12.dm.cli.BaseCommand;
 import io.github.mbackschat.a12.dm.cli.ConsistencyEvidence;
+import io.github.mbackschat.a12.dm.cli.ModelPaths;
 import io.github.mbackschat.a12.dm.cli.ModelWrite;
 import io.github.mbackschat.a12.dm.cli.ParamKind;
 import io.github.mbackschat.a12.dm.cli.Refusal;
@@ -49,7 +50,8 @@ final class IncludeAddCommand extends BaseCommand {
 
     @ParamKind(ParamKind.Kind.GROUP_PATH)
     @Option(names = "--parent", required = true, paramLabel = "<path>",
-            description = "the parent group's full name-path to mount under (e.g. /Order)")
+            description = "the parent group's full name-path to mount under (e.g. /Order); `/` "
+                    + "(equivalently the empty string) mounts at the ROOT level")
     String parent;
 
     @ParamKind(ParamKind.Kind.NEW_NAME)
@@ -88,10 +90,11 @@ final class IncludeAddCommand extends BaseCommand {
             return 2;
         }
         ModelResolver resolver = workspace.resolverFor(model);
+        String parent = ModelPaths.rootLevelParent(this.parent);
         String mountPath = parent + "/" + name;
         if (!parent.isEmpty()) {   // "" = a root mount, which has no parent group to check
             Optional<Refusal> refusal = new SafetyGate()
-                    .require(SafetyChecks.exists(ModelDocument.read(modelJson), parent, true))
+                    .require(SafetyChecks.parentExists(ModelDocument.read(modelJson), parent))
                     .firstFailure();
             if (refusal.isPresent()) {
                 return refuse(refusal.get());

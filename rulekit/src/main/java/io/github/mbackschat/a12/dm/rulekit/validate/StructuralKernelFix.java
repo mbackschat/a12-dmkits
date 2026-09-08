@@ -19,7 +19,11 @@ import java.util.Optional;
  *       <b>entity-resolution</b> code ({@code MVK_INVALID_ENTITY} — a bare/relative name that doesn't bind;
  *       the fix is the absolute path), and the <b>enum locale-coverage</b> code
  *       ({@code MVK_INTERNAL_VALUES_AND_DISPLAY_VALUES} — an enum value labeled in some declared locales but
- *       not all, whose opaque "display value and XML value not specified together" message hides the gap).</li>
+ *       not all, whose opaque "display value and XML value not specified together" message hides the gap),
+ *       and the <b>field-declaration</b> pair, where a DateType's config disagrees with its declared format
+ *       ({@code MVK_ADDITIONAL_CHECK_INVALID}, {@code MVK_OPTIONAL_DATE_TYPE_INVALID} — the two gates read the
+ *       format differently, so neither message says which formats would work, and the second echoes the
+ *       offending one back in German pattern letters).</li>
  *   <li><b>CROSS-CONTEXT codes</b> — documented by operator(s), but ALSO fired by a construct the catalog
  *       cannot describe, so the documenter's fix is <em>wrong</em> there (probe findings F06-2 / dec-places):
  *       {@code MVK_NO_WILDCARD} (CurrentRepetition documents it, but a non-iterating aggregate / computation
@@ -31,8 +35,11 @@ import java.util.Optional;
  *       {@code ==}/{@code !=} operands, but a computed field whose scale differs from its expression raises
  *       it too — the
  *       "round one with RoundDown" comparison fix mis-stamps the computation case, where the fix is to
- *       match the computed field's scale). The catalog can only see operators, never these other triggers,
- *       so the corrective must be authored here at the code level.</li>
+ *       match the computed field's scale; and since 2026-09-07 a third trigger, the POWER's derived scale,
+ *       which is unknown for every shape but a scale-0 base under a nonnegative literal exponent
+ *       (KERNEL-FINDINGS KF269) — that context is what makes an author's own operands read as "?"). The
+ *       catalog can only see operators, never these other triggers, so the corrective must be authored here
+ *       at the code level.</li>
  * </ol>
  *
  * <p>Hand-authored guidance, like the {@code RK_*} meanings in {@link RkCode} — but locked the same
@@ -70,6 +77,49 @@ public final class StructuralKernelFix {
                             + "the typed/full-model oracle additionally rejects uppercase `\\P`. "
                             + "MVK_INVALID_PATTERN can therefore mean invalid Java syntax or a Java-valid "
                             + "kernel-rejected form; it is not a general cross-runtime portability check.")),
+            Map.entry(KernelCode.MVK_ADDITIONAL_CHECK_INVALID, new Hint(
+                    "A date field's opt-in pre-1900 check (`youngerThan1900Check`, our "
+                            + "`dateField(…).rejectBefore1900()`) requires the declared FORMAT to carry a YEAR. "
+                            + "Over the kernel's admitted format vocabulary it is accepted on `yyyy`, `yyyy-MM`, "
+                            + "`yyyyMM`, `yyyy-MM-dd`, `dd.MM.yyyy`, `yyyyMMdd` and `yyyy-MM-dd'T'HH:mm:ss`, and "
+                            + "refused on the year-free `MM`, `MM-dd`, `MMdd`, `ddMM` and `HH:mm:ss`. So either "
+                            + "declare a year-bearing format or drop the check — it is not admitted-and-inert on a "
+                            + "year-free declaration, so there is no way to keep both. An INCOMPLETE format is not "
+                            + "the trigger: `yyyy` and `yyyy-MM` carry no day and are accepted.",
+                    "The kernel gates the additional date check on the declared format's YEAR component rather "
+                            + "than on the field's kind, so the code means the format and the check disagree — "
+                            + "never that the check is unsupported for this field type.")),
+            Map.entry(KernelCode.MVK_OPTIONAL_DATE_TYPE_INVALID, new Hint(
+                    "A partially known date (`datePrecision` DAY_OPTIONAL / MONTH_OPTIONAL / YEAR_OPTIONAL) "
+                            + "requires the declared FORMAT to be a COMPLETE date and nothing further. Over the "
+                            + "kernel's admitted format vocabulary that is exactly `yyyy-MM-dd`, `dd.MM.yyyy` and "
+                            + "`yyyyMMdd`; every component-omitting format is refused, and so is the instant "
+                            + "`yyyy-MM-dd'T'HH:mm:ss` despite carrying all three date components. Declare one of "
+                            + "those three, or leave the precision at its FULL default — the precision is what "
+                            + "lets the stored VALUE omit parts (`00.02.2024`), so the format must still be able "
+                            + "to spell all of them. Do NOT copy the format out of this rejection: it echoes the "
+                            + "spelling in GERMAN pattern letters (`JJJJ-MM` for `yyyy-MM`, `MM-TT` for `MM-dd`) "
+                            + "in every locale, and those are not declarable.",
+                    "The kernel requires a complete date format before it will accept a partial-precision marker, "
+                            + "and reports the conflict against the format rather than against the precision — the "
+                            + "verdict is the same for all three partial values, so the code identifies the "
+                            + "mismatch and not which side to edit.")),
+            Map.entry(KernelCode.MVK_INVALID_COMPARE_TO_DATE, new Hint(
+                    "Check the LITERAL before the field. A double-quoted literal whose CONTENT parses as a date "
+                            + "is a TEMPORAL constant — `\"05.03.2024\"` is one — and it reports this date class "
+                            + "against whatever it meets, including a String, Enumeration or Number field with "
+                            + "nothing temporal about it. So the code does NOT imply either side is a date. If "
+                            + "the field really is textual, stop the literal looking like a date rather than "
+                            + "changing the field.",
+                    "This is the kernel's COMPARISON vocabulary, not an assignment-specific class: it fires the "
+                            + "same way on a plain rule condition, inside a Having filter, and on a computation's "
+                            + "constant assignment. Which class a wrong-kind constant draws is an ordered ladder "
+                            + "over the (constant, field) PAIR rather than a function of the field: a BOOLEAN "
+                            + "field reports " + KernelCode.MVK_INVALID_COMPARE_TO_YESNO + " and a CONFIRM one "
+                            + KernelCode.MVK_INVALID_COMPARE_TO_YES + " for any constant at all; failing those, a temporal "
+                            + "constant reports THIS code against every remaining kind; only then does the "
+                            + "field's own kind decide. Measured in KERNEL-FINDINGS entry KF257, which carries "
+                            + "the ladder and its controls.")),
             Map.entry(KernelCode.MVK_NO_WILDCARD, new Hint(
                     "A repeatable group is referenced from a rule that does not iterate over it — the fix is "
                             + "operator-dependent. For an AGGREGATE, flatten the repetitions with the `*` wildcard: "
@@ -179,8 +229,10 @@ public final class StructuralKernelFix {
             Map.entry(KernelCode.MVK_INVALID_ENTITY, new Hint(
                     "The group or field name in the condition could not be resolved in the rule's scope. Use its "
                             + "ABSOLUTE path (a leading `/`, e.g. `/Order/Items/Sku`) rather than a bare or relative "
-                            + "name — a short name is unreliable across sibling groups under a wrapper and binds only "
-                            + "when the model sets `fieldRefByShortNameAllowed`. If the name is already correct, check "
+                            + "name — a bare name binds against the rule's OWN group first, and reaches ANY other "
+                            + "group (an ancestor's field included: there is no upward search) only through the "
+                            + "model-wide fallback, which needs `fieldRefByShortNameAllowed` AND a unique match. "
+                            + "If the name is already correct, check "
                             + "the rule's iteration scope contains it: a per-row field needs the rule to iterate over "
                             + "its repeatable group (set the rule group to that group's PARENT, error field inside).",
                     "MVK_INVALID_ENTITY (\"the group or field 'X' is not valid\") means the kernel could not resolve "
@@ -246,7 +298,7 @@ public final class StructuralKernelFix {
                     "The kernel could not establish compatible DERIVED decimal scales here. Numeric == / != carries "
                             + "a known SIGNED scale or unknown plus an independent multiplicative-constant capability: "
                             + "when known scales differ, only a capable SMALLER-scale side may be padded; an unknown "
-                            + "scale rejects. ORDERING (< <= > >=) is exempt. TWO contexts trigger this code: "
+                            + "scale rejects. ORDERING (< <= > >=) is exempt. THREE contexts trigger this code: "
                             + "(1) a COMPUTED FIELD whose declared scale is incompatible with its expression "
                             + "(e.g. a field re-scaled to 2 places while the Sum-computed field stays scale 0) — "
                             + "re-scale the computed field or explicitly round the expression, doing both edits in ONE "
@@ -255,7 +307,12 @@ public final class StructuralKernelFix {
                             + "comparison is decided ahead of that refusal; (2) numeric == / != with "
                             + "incompatible derived scales — round one side to a known compatible scale, or accept it with "
                             + "allowDifferingDecimals:true on the rule spec (the kernel's one suppressible warning — it "
-                            + "prepends @SuppressWarning(MVK_INVALID_COMPARE_DEC_PLACES)).",
+                            + "prepends @SuppressWarning(MVK_INVALID_COMPARE_DEC_PLACES)); (3) a POWER, whose scale is "
+                            + "DERIVED and is reported as '?' more often than authors expect — it is known (and 0) only "
+                            + "for a scale-0 base under a nonnegative literal exponent, never the base's own scale, so a "
+                            + "decimal-scale base, a non-literal exponent such as a field or aggregate, and a negative "
+                            + "literal exponent all leave it unknown; ordering the power instead of comparing it for "
+                            + "equality is usually the smallest repair.",
                     "MVK_INVALID_COMPARE_DEC_PLACES (\"the fractional digits of lhs and rhs are different\") fires "
                             + "when numeric == / != cannot reconcile the operands' derived signed-scale/capability "
                             + "summaries, OR when a computed field is incompatible with its expression. It is not "
@@ -284,23 +341,28 @@ public final class StructuralKernelFix {
         String m = message.toLowerCase(java.util.Locale.ROOT);
         if (m.contains("date range format is invalid") || m.contains("date format is invalid")) {
             return Optional.of(new Hint(
-                    "A date/time field FORMAT must be a LOWERCASE Java pattern from the kernel's fixed allowed set "
-                            + "(the editor's UPPERCASE labels like YYYY-MM-DD are display labels, NOT format values). "
-                            + "Verified: DATE `yyyy-MM-dd` or `dd.MM.yyyy`, and the component-omitting `yyyy`, "
-                            + "`yyyy-MM`, `yyyyMM`, `MM`, `MM-dd` (a whitelist, not a compositional rule — "
-                            + "`yyyy/MM`, `MM.yyyy`, `MM-yyyy` and `dd.MM` are refused); DATERANGE the FORMAT "
+                    "A date/time field FORMAT must be a CASE-SENSITIVE Java pattern from the kernel's fixed allowed "
+                            + "set — case is not merely lowercase, since `MM` means months where `mm` means minutes, "
+                            + "so `yyyy-mm-dd` is a different pattern rather than a miscased one, and neither it nor "
+                            + "the editor's UPPERCASE display label `YYYY-MM-DD` is accepted. "
+                            + "Derived from the kernel, TWELVE are admitted and each on any of DATE/TIME/DATETIME: "
+                            + "the complete dates `yyyy-MM-dd`, `dd.MM.yyyy`, `yyyyMMdd`; the component-omitting "
+                            + "`yyyy`, `yyyy-MM`, `yyyyMM`, `MM`, `MM-dd`, `MMdd`, `ddMM`; the clock `HH:mm:ss`; "
+                            + "and the instant `yyyy-MM-dd'T'HH:mm:ss` (a whitelist, not a compositional rule — "
+                            + "`yyyy/MM`, `MM.yyyy`, `MM-yyyy` and `dd.MM` are refused, so the separator decides "
+                            + "between same-component spellings); DATERANGE the FORMAT "
                             + "AND SEPARATOR are allowlisted as a PAIR, "
                             + "and exactly EIGHT are admitted — `dd.MM.yyyy`+`-`, `yyyy-MM-dd`+`/`, `yyyy`+`/`, "
                             + "`yyyy-MM`+`/`, `MM`+`/`, `MM-dd`+`/`, `MM`+`` (the empty separator, which halves "
                             + "the stored value), and `dd.MM`+`-`; swapping the separator is always refused "
                             + "(`MM`+`-`, `dd.MM.yyyy`+`/`), no format takes `.`, `yyyyMM` is a legal DATE "
-                            + "format but not a legal DATERANGE one, and `dd.MM` is the reverse; TIME "
-                            + "`HH:mm:ss` (not `HH:mm`); DATEFRAGMENT "
-                            + "`MM`/`yyyy`/`yyyy-MM`/`MM-dd`; DATE_TIME the ISO `yyyy-MM-dd'T'HH:mm:ss` or the "
-                            + "time-only `HH:mm:ss`. Those per-kind lists are the CONVENTIONAL declarations, not "
-                            + "restrictions: outside DATERANGE the gate reads the STRING and never the kind, so "
-                            + "one whitelist serves DATE/TIME/DATETIME and a cross-kind spelling is admitted. "
-                            + "See `schema field add`.",
+                            + "format but not a legal DATERANGE one, and `dd.MM` is the reverse; and DATEFRAGMENT "
+                            + "admits the same twelve, measured as its own domain rather than inherited. The "
+                            + "per-kind conventions are DEFAULTS, never restrictions — TIME `HH:mm:ss` (never "
+                            + "`HH:mm`), DATEFRAGMENT `MM`/`yyyy`/`yyyy-MM`/`MM-dd`, and DATE_TIME the ISO "
+                            + "instant `yyyy-MM-dd'T'HH:mm:ss`, though the degenerate time-only `HH:mm:ss` is "
+                            + "just as legal there: outside DATERANGE the gate reads the STRING and never the "
+                            + "kind, so a cross-kind spelling is admitted. See `schema field add`.",
                     "The kernel validates a date/time field's declared format against a fixed allowed set (the same "
                             + "regardless of locale) and rejects anything else with a message but no MVK_ code."));
         }

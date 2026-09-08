@@ -664,7 +664,7 @@ The knowhow is **not homogeneous**, and the project already has a **formalizatio
 | **B. Structural validity** (what is a valid DM) | MVK ledger (CI-checked) · slot-parity tests · 16 `BasicConsistencyCheck` categories (reflectively locked) · MM_ metamodels (oracle) | ◐ Partly — and *the kernel already formalized it* (metamodel = the formal schema; validator = the executable check) |
 | **C. Behavioral semantics** (empty-as-0, polarity, path walk-up, date arg order) | prose in KERNEL-FINDINGS/SEMANTICS; *some* locked as executable `…LawsTest` | ◐ Partly — the **irreducibly-ours** part; *not* in the metamodel, it's engine behavior |
 | **D. Rule *patterns*** (how real rules are written) | prose in [WORKSPACE-CORPUS-ANALYSIS](WORKSPACE-CORPUS-ANALYSIS.md) | ✗ No (deliberately — it drives the backlog, not a runtime artifact) |
-| **E. Rationale / judgment** (the *why*) | prose | ✗ **By design** — CLAUDE.md: "keep prose for the rationale, which doesn't tabulate" |
+| **E. Rationale / judgment** (the *why*) | prose | ✗ **By design** — [DOC-DISCIPLINE](DOC-DISCIPLINE.md) §3 keeps prose for the rationale/argument, which doesn't tabulate |
 
 The options to formalize — **not exclusive; the right answer layers them by knowledge kind:**
 

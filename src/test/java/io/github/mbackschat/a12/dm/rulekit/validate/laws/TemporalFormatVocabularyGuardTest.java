@@ -33,6 +33,15 @@ import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel;
  * 2026-08-29 and reached an outbound handback to a peer project, who caught it. Neither needed new measurement
  * — both sets were already wrong when written.
  *
+ * <p><b>The third and fourth, both found by widening this artifact rather than by any consumer noticing
+ * (2026-09-05).</b> Deriving the field vocabulary turned up {@code MMdd}, {@code ddMM} and {@code yyyyMMdd},
+ * which no file in the estate had ever named — so the three shipped schema descriptions and the diagnostic
+ * enricher were all quantifying the set ("Seven DATE-SHAPED patterns are admitted") three members short. Then
+ * probing DATEFRAGMENT as its own domain found the opposite register: every surface named FOUR fragment
+ * formats where the kernel admits all twelve, {@link #PROSE_CLAIMANTS} included, and {@link
+ * #COMPLETENESS_CLAIMANTS} could not have caught either, because the guidance a consumer reads is prose and
+ * has no delimitable enumeration to check.
+ *
  * <p><b>Why derivation rather than a shared constant.</b> Sharing one list propagates a short list faithfully;
  * it cannot catch the case where the list was short at its origin, which is both incidents. The kernel is the
  * only thing that knows, so the set is recomputed from it and committed as a derived artifact, the same shape
@@ -101,7 +110,32 @@ class TemporalFormatVocabularyGuardTest {
                 all.add(date + " " + time);
             }
         }
+        all.addAll(caseVariants(all));
         return all;
+    }
+
+    /**
+     * The CASE axis, which every generator above holds fixed: components and separators vary, letter case never
+     * does. That is why eleven published schema descriptions and the diagnostic enricher could all say a format
+     * is "a LOWERCASE Java pattern" and that the editor's UPPERCASE labels are invalid, with neither claim
+     * probed — a description asserting a rule no candidate exercises is the same defect as a short allowlist,
+     * one layer up. Reported by a12-kernel-lean 2026-09-05, who read the description literally, wrote
+     * {@code yyyy-mm-dd} and lost a round to it.
+     *
+     * <p><b>Both spellings of every candidate, not a hand-picked pair.</b> The lowercase reading is not merely
+     * miscased — in a Java pattern {@code mm} is minutes where {@code MM} is months, so {@code yyyy-mm-dd} is a
+     * different pattern rather than a sloppy one, and only the kernel can say which of the two the gate rejects
+     * it for. Generating the axis rather than naming two members follows this file's own rule: a hand-written
+     * list cannot miss what it does not think of.
+     */
+    private static Set<String> caseVariants(Set<String> base) {
+        Set<String> variants = new LinkedHashSet<>();
+        for (String format : base) {
+            variants.add(format.toLowerCase(java.util.Locale.ROOT));
+            variants.add(format.toUpperCase(java.util.Locale.ROOT));
+        }
+        variants.removeAll(base);
+        return variants;
     }
 
     /** Every ordered non-empty selection of [components], joined by each separator (singles joined by none). */
@@ -223,6 +257,41 @@ class TemporalFormatVocabularyGuardTest {
         return out;
     }
 
+    // ── the third derived domain: the DATEFRAGMENT format ───────────────────────────────────────────────────
+
+    /**
+     * A DATEFRAGMENT declares its format under its own key ({@code formatOfFragment}) and is the one
+     * date-bearing kind {@link Kind} does not cover, so its vocabulary is a separate domain rather than a
+     * projection of the shared one — exactly like the DATERANGE pair above.
+     *
+     * <p><b>Why it is measured rather than reasoned from KF206.</b> Kind-independence was established over
+     * DATE / TIME / DATE_TIME; a fragment is by definition a date that is NOT a full calendar date, so it is
+     * the one kind where a narrower set is plausible. Extending it by analogy would be a scope transfer onto
+     * an unmeasured carrier, and the estate's shipped guidance already carried a four-member fragment list
+     * whose denominator nobody had measured.
+     */
+    private static boolean admitsFragment(String format) {
+        String json = DocumentModelDraft.named("vocabulary").locale("en_US")
+                .rootGroup("Doc", d -> d.dateFragmentField("F", f -> f.fragmentFormat(format)))
+                .build().toJson();
+        try {
+            BoundModel.ofJson(json);
+            return true;
+        } catch (ModelConsistencyException e) {
+            return false;
+        }
+    }
+
+    static Set<String> admittedFragmentFormats() {
+        Set<String> out = new TreeSet<>();
+        for (String format : candidates()) {
+            if (admitsFragment(format)) {
+                out.add(format);
+            }
+        }
+        return out;
+    }
+
     static Set<String> admittedFormats(Map<String, Verdict> partition) {
         Set<String> out = new TreeSet<>();
         partition.forEach((format, verdict) -> {
@@ -299,6 +368,16 @@ class TemporalFormatVocabularyGuardTest {
                     .append(halves[1].isEmpty() ? "*(empty)*" : "`" + halves[1] + "`").append(" |\n");
         }
 
+        Set<String> fragments = admittedFragmentFormats();
+        out.append("\n## DATEFRAGMENT formats admitted — ").append(fragments.size()).append("\n\n");
+        out.append("A DATEFRAGMENT declares `formatOfFragment` and is the one date-bearing kind the table at the\n");
+        out.append("top does not cover, so it is measured separately rather than inherited from KF206's\n");
+        out.append("kind-independence — a fragment is by definition a date that is not a full calendar date, which\n");
+        out.append("makes it the kind where a narrower set is plausible. Probed over the same candidate formats.\n\n");
+        for (String format : fragments) {
+            out.append("- `").append(format).append("`\n");
+        }
+
         out.append("\n## Candidate universe — ").append(partition.size()).append("\n\n");
         out.append("Every format string put to the kernel, and **the denominator of every count above.** It is the\n");
         out.append("union of the estate's existing probes with a generated set: each ordered selection of the date\n");
@@ -328,8 +407,9 @@ class TemporalFormatVocabularyGuardTest {
      * it produced, and every consumer would then be checked against that. These floors are the only thing
      * standing between a degraded probe and a codified one.
      *
-     * <p>The numbers are deliberate floors well under the live counts (113 candidates, 12 admitted, 101 refused
-     * at 2026-08-29): they answer "did the probe happen and does it discriminate", not "how big is the set", and
+     * <p>The numbers are deliberate floors well under the live counts (375 candidates, 12 admitted, 363 refused
+     * at 2026-09-05, after the case axis landed): they answer "did the probe happen and does it discriminate",
+     * not "how big is the set", and
      * a floor that tracked the live count would need editing whenever the kernel moved. Both verdicts must occur,
      * because a probe that admitted everything — a degraded backend, say — would satisfy the containment arm too.
      */
@@ -347,6 +427,12 @@ class TemporalFormatVocabularyGuardTest {
         Set<String> pairs = admittedRangePairs();
         assertTrue(pairs.size() >= 5 && pairs.size() < RANGE_SEPARATORS.size() * partition.size(),
                 () -> "the range-pair probe did not discriminate: " + pairs.size() + " pairs");
+
+        // Third backend call, same failure mode: an all-false `admitsFragment` would render an empty section
+        // and the regenerator would codify it. Both verdicts must occur for the section to mean anything.
+        Set<String> fragments = admittedFragmentFormats();
+        assertTrue(!fragments.isEmpty() && fragments.size() < partition.size(),
+                () -> "the fragment probe did not discriminate: " + fragments.size() + " admitted");
     }
 
     @Test
@@ -428,7 +514,12 @@ class TemporalFormatVocabularyGuardTest {
                     + "missing format is a cell where the client-side refusal is unchecked against the kernel",
             "src/test/java/io/github/mbackschat/a12/dm/rulekit/dsl/TemporalFormatComponentsTest.java",
             "its vacuity control asserts EVERY admitted format names a component; on a short list the control "
-                    + "still passes while covering less than it claims");
+                    + "still passes while covering less than it claims",
+            "src/test/java/io/github/mbackschat/a12/dm/rulekit/validate/laws/"
+                    + "TemporalDeclarationConfigAdmissionLawsTest.java",
+            "its DateType-config grids are the measured BASIS a client-side refusal may key on, and both "
+                    + "gates read the format's components — so a short axis would narrow that basis silently, "
+                    + "in the one direction where over-rejection makes a legal model unauthorable");
 
     private static final String REGION_START = "VOCABULARY-GRID-START";
     private static final String REGION_END = "VOCABULARY-GRID-END";
@@ -491,6 +582,172 @@ class TemporalFormatVocabularyGuardTest {
     }
 
     /**
+     * PROSE surfaces that enumerate the admitted vocabulary for a human or an agent, and what each is for.
+     *
+     * <p>Separate from {@link #COMPLETENESS_CLAIMANTS} because these carry no delimitable enumeration — the set
+     * is written into an English sentence inside a JSON string or a Java text block — so the marked-region
+     * mechanism cannot apply. They are guarded all the same, and for the sharper reason: a test's short list
+     * costs coverage, while these four are the guidance a consumer READS, so a short list here is advice that
+     * a legal declaration is illegal. Both recorded incidents landed in exactly this family.
+     */
+    private static final Map<String, String> PROSE_CLAIMANTS = Map.of(
+            "cli/src/main/resources/schema/field-add.schema.json",
+            "the published `schema field add` description quantifies the admitted set for the agent authoring a "
+                    + "field, so a short list reads as a closed allowlist",
+            "cli/src/main/resources/schema/field-modify.schema.json",
+            "the same claim on the post-creation surface",
+            "cli/src/main/resources/schema/typedef-add.schema.json",
+            "the same claim on the type-definition surface",
+            "rulekit/src/main/java/io/github/mbackschat/a12/dm/rulekit/validate/StructuralKernelFix.java",
+            "the curated corrective for the kernel's code-free format rejection — the one place a consumer who "
+                    + "already got the format wrong is told which ones are right");
+
+    /** The characters that can occur INSIDE a format token, so a match at either edge is a different token. */
+    private static final String FORMAT_CHAR = "[A-Za-z0-9'.:\\-]";
+
+    /**
+     * Every prose claimant names every admitted format, matched at token boundaries.
+     *
+     * <p><b>Plain containment is not enough here, measured against this guard's own two incidents.</b> Seven of
+     * the twelve admitted formats are substrings of another — {@code MM-dd} sits inside {@code yyyy-MM-dd},
+     * {@code MMdd} inside {@code yyyyMMdd}, {@code MM} and {@code yyyy} inside almost everything — so a
+     * substring check is satisfied by a list that never mentions them. That is not hypothetical: {@code MM-dd}
+     * is precisely the member missing from three published schema descriptions until 2026-08-19, and a
+     * substring check would have passed the whole time. Requiring a non-format character on both sides makes
+     * the match about the token rather than the letters.
+     */
+    @Test
+    void everyProseSurfaceNamesEveryAdmittedFormat() throws IOException {
+        Set<String> admitted = admittedFormats(partition());
+        Map<String, List<String>> missing = new LinkedHashMap<>();
+        for (Map.Entry<String, String> claimant : PROSE_CLAIMANTS.entrySet()) {
+            Path source = Path.of(claimant.getKey());
+            assertTrue(Files.exists(source),
+                    () -> "a registered prose claimant no longer exists: " + source + " — delete the row or "
+                            + "repoint it. Reason on file: " + claimant.getValue());
+            String text = Files.readString(source);
+            List<String> absent = admitted.stream().filter(format -> !namesAsToken(text, format)).toList();
+            if (!absent.isEmpty()) {
+                missing.put(claimant.getKey(), absent);
+            }
+        }
+        assertEquals(Map.of(), missing,
+                "these surfaces tell a consumer which formats are admitted and omit one the kernel accepts, so "
+                        + "they advertise a legal declaration as illegal. Add the formats, or remove the file "
+                        + "from PROSE_CLAIMANTS with its reason. The admitted set is in " + ARTIFACT);
+    }
+
+    private static boolean namesAsToken(String text, String format) {
+        return java.util.regex.Pattern
+                .compile("(?<!" + FORMAT_CHAR + ")" + java.util.regex.Pattern.quote(format)
+                        + "(?!" + FORMAT_CHAR + ")")
+                .matcher(text).find();
+    }
+
+    /**
+     * The equal-set, different-spelling pairs the admitted vocabulary yields, re-derived here and compared
+     * against the list {@link TemporalEqualSetPairDenominatorLawsTest} sweeps.
+     *
+     * <p><b>Why this belongs in this file rather than in that one.</b> An equal-set pair is the only kind of row
+     * that separates the component-SET gate from the format-STRING one, so its count is a denominator, and this
+     * is the only class that knows which formats the kernel actually admits. Stating the count where the sweep
+     * lives is exactly how it came to say "two exist": the number was read off the pairs work had used. Here it
+     * cannot be, because the pairs are computed from {@link #admittedFormats(Map)} — add a thirteenth admitted
+     * spelling to any family and this fails until the sweep covers it.
+     *
+     * <p>The component set is read off the format's letters, which is sound only because each admitted format
+     * names every component it carries in exactly ONE run — so the letter set and the component set coincide.
+     * That premise is <em>asserted</em> below rather than left in this paragraph, and the classifier's own
+     * output is pinned for the two time-bearing formats: nothing in the admitted vocabulary pairs two formats
+     * that agree on their date letters and differ on a single time letter, so the corpus alone leaves
+     * {@code H}, {@code m} and {@code s} individually unconstrained (mutants measured surviving 2026-09-07).
+     */
+    @Test
+    void theEqualSetPairDenominatorMatchesTheAdmittedVocabulary() {
+        Map<String, Set<String>> byComponents = new LinkedHashMap<>();
+        for (String format : admittedFormats(partition())) {
+            byComponents.computeIfAbsent(componentLettersOf(format), key -> new TreeSet<>()).add(format);
+        }
+
+        Set<List<String>> derived = new java.util.LinkedHashSet<>();
+        byComponents.forEach((components, spellings) -> {
+            List<String> ordered = List.copyOf(spellings);
+            for (int i = 0; i < ordered.size(); i++) {
+                for (int j = i + 1; j < ordered.size(); j++) {
+                    derived.add(List.of(ordered.get(i), ordered.get(j)));
+                }
+            }
+        });
+
+        Set<List<String>> swept = TemporalEqualSetPairDenominatorLawsTest.EQUAL_SET_PAIRS.stream()
+                .map(pair -> List.copyOf(new TreeSet<>(pair)))
+                .collect(java.util.stream.Collectors.toCollection(java.util.LinkedHashSet::new));
+
+        assertEquals(derived, swept,
+                "the equal-set pair denominator the kernel's admitted vocabulary yields is not the one "
+                        + TemporalEqualSetPairDenominatorLawsTest.class.getSimpleName() + " sweeps. That test "
+                        + "carries the only rows separating the component-set gate from the format-string one, "
+                        + "so an unswept pair is a hole in that separation, not a missing example.");
+    }
+
+    /**
+     * The classifier's soundness premise, and its own output where the corpus cannot discriminate.
+     *
+     * <p>Grouping formats by their component LETTERS is only the same thing as grouping them by component SET
+     * while every admitted format names each component in one run — {@code MMdd} is {MONTH, DAY}, but a
+     * hypothetical {@code MM-dd-MM} would collapse to the same letters while carrying MONTH twice. The first
+     * assertion holds that premise. The second pins the two time-bearing formats' classifications, because the
+     * twelve admitted formats contain no pair that agrees on date letters and differs on one time letter, so
+     * dropping {@code H}, {@code m} or {@code s} from the letter set changes no grouping and no derived pair.
+     */
+    @Test
+    void theComponentLetterClassifierIsSoundAndItsTimeLettersAreLoadBearing() {
+        for (String format : admittedFormats(partition())) {
+            assertEquals(componentLettersOf(format).length() / 3, componentRunsOf(format),
+                    () -> "grouping by letters equals grouping by components only while each component "
+                            + "appears in ONE run; " + format + " breaks that premise");
+        }
+        assertEquals("[H, m, s]", componentLettersOf("HH:mm:ss"),
+                "the clock format's three time components, each individually load-bearing here");
+        assertEquals("[H, M, d, m, s, y]", componentLettersOf("yyyy-MM-dd'T'HH:mm:ss"),
+                "and the stamp's six — the quoted 'T' is erased, not read as a component");
+    }
+
+    /** How many maximal runs of a component letter {@code format} contains. */
+    private static int componentRunsOf(String format) {
+        int runs = 0;
+        char previous = 0;
+        boolean quoted = false;
+        for (char c : format.toCharArray()) {
+            if (c == '\'') {
+                quoted = !quoted;
+                previous = 0;
+                continue;
+            }
+            boolean component = !quoted && "yMdHms".indexOf(c) >= 0;
+            if (component && c != previous) {
+                runs++;
+            }
+            previous = component ? c : 0;
+        }
+        return runs;
+    }
+
+    /** The format's component letters as a canonical key — {@code dd.MM.yyyy} and {@code yyyyMMdd} agree. */
+    private static String componentLettersOf(String format) {
+        Set<Character> letters = new TreeSet<>();
+        boolean quoted = false;
+        for (char c : format.toCharArray()) {
+            if (c == '\'') {
+                quoted = !quoted;
+            } else if (!quoted && "yMdHms".indexOf(c) >= 0) {
+                letters.add(c);
+            }
+        }
+        return letters.toString();
+    }
+
+    /**
      * Every claimant is a declared Gradle input of the task that hosts this guard.
      *
      * <p>The registry above and {@code build.gradle}'s {@code vocabulary consumers} list are two copies of one
@@ -501,7 +758,9 @@ class TemporalFormatVocabularyGuardTest {
     @Test
     void everyClaimantIsADeclaredInputOfItsOwnGuardTask() throws IOException {
         String build = Files.readString(Path.of("build.gradle"));
-        List<String> undeclared = COMPLETENESS_CLAIMANTS.keySet().stream()
+        Set<String> registered = new LinkedHashSet<>(COMPLETENESS_CLAIMANTS.keySet());
+        registered.addAll(PROSE_CLAIMANTS.keySet());
+        List<String> undeclared = registered.stream()
                 .filter(path -> !build.contains("'" + path + "'"))
                 .toList();
         assertEquals(List.of(), undeclared,

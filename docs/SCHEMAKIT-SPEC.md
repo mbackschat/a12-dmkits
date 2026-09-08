@@ -33,7 +33,14 @@ The buildable contract for `:schemakit`, the JSON-Schema import/export subprojec
 
 **Why** — the kernel is reached through controlled, **type-converting** surfaces so no raw kernel object ever leaks into schemakit, keeping its out-surface plain data and the module portable. *Native-safety note:* `:adapter` is JVM (bundled inside the native binary like the CLI; its Groovy/runtime-eval is JVM-only / refused in native), so a future kernel-free native/JS build leans on root `:` + `:interpreter` and avoids `:adapter`; `:adapter` is used where the typed kernel read is the cleaner path.
 
-**How it's enforced** — `verifySchemakitPurity` (wired into `check`, mirroring the interpreter's purity lint) fails the build on a `com.mgmtp.*` / `groovy.*` import in `src/main`, so schemakit's source stays free of raw kernel types regardless of which modules sit on its classpath.
+**How it's enforced** — the two rows above are two different claims and take two different instruments, which is what DG45 was opened over (closed 2026-09-05).
+
+| the claim | the guard | why that instrument |
+|---|---|---|
+| no `com.mgmtp.*` / `groovy.*` in schemakit's **own code** | `verifySchemakitPurity` (`:schemakit:check`) — `jdeps` over the compiled main classes, the shared `verifyCompiledPurity` the kit and bridge gates use | a compiled edge is the coupling. Its `import`-regex predecessor read only `.java` files and only lines starting with `import`, so a fully-qualified use or a name in a text block was invisible to it |
+| no **direct dependency** on the raw kernel jars | `verifyPublishedClasspathsAreKernelFree` (root `check`) — resolves `compileClasspath` + `runtimeClasspath`, the configurations `from components.java` builds the POM from, and refuses any `com.mgmtp.*` module | a dependency reaches a POM by being **declared**, not by being imported. A kernel jar that is present and simply unused is invisible to every source and linkage guard, and lands on the consumer's classpath anyway — the one thing a consumer actually feels |
+
+Both run in CI by name (`ci.yml`), because both hang off a `check` the workflow does not invoke; `GateTierWiringTest.pushCiNamesEveryCheckOnlyGuardHoldingTheKernelFreeClaim` fails if either name is dropped. The resolution guard covers all six published artifacts, not schemakit alone — the claim, the POM mechanism, and the blind spot are identical across the kits and the bridge.
 
 ---
 

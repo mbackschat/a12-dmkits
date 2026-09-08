@@ -93,10 +93,19 @@ class EnricherOwnershipEvidenceTest {
      * operator from a value, so "the message named someone else" is not a fact it can establish. The hedge is the
      * honest disposition: it says which constructs the code is documented for and that the corrective applies only if
      * that is what you used.
+     *
+     * <p><b>The specimen must be a LIVE non-documenter pair, and it moved on 2026-09-07.</b> It used to be
+     * {@code MinValue(...)} raising {@code MVK_NOT_SORTABLE}, a code only {@code MaxValue} documented. Closing G77
+     * gave {@code MinValue} its own corrective for that code, so the quoted operator became a documenter and the
+     * enricher correctly established it — which retires the pair rather than breaking the rule. {@code MinValue}
+     * quoted on {@code MVK_DUPLICATE_PARAM2} is the replacement: that code is documented by {@code AllGroupsFilled}
+     * alone, before and after that change, so the hedge is still the honest disposition here. If a later change
+     * gives {@code MinValue} a corrective for THIS code too, re-point the specimen again — do not weaken the
+     * assertions, because the invariant is about the enricher and not about any one pair.
      */
     @Test
     void aQuotedNonDocumenterLeavesOwnershipUnestablished() {
-        ValidationResult result = check("FieldFilled(UnitPrice) And MinValue(CustomerName, ProductCode) > 0");
+        ValidationResult result = check("FieldFilled(CustomerName) And MinValue(Items*, Items*/Count) > 0");
 
         Diagnostic d = result.diagnostics().stream()
                 .filter(x -> x.summary().contains("'MinValue'"))

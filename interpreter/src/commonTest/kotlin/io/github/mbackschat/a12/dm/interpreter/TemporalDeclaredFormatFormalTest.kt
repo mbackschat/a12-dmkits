@@ -80,6 +80,10 @@ class TemporalDeclaredFormatFormalTest {
             Cell("202406", null), Cell("158310", DATE), Cell("2024-06", FMT), Cell("202413", FMT),
             Cell("000006", FMT),
         ),
+        // `02-29` is admitted HERE because [code] declares no base year and the fallback anchor is a leap
+        // year; under a declared non-leap Base Year the same cell is `datumFormatFalsch`, since a yearless day
+        // is bounded by its month's length in the anchor year (KF247, tri-engine). Every row in this grid
+        // shares that one configuration, so the leap-day rows state their result for it and not in general.
         "MM-dd" to listOf(Cell("06-15", null), Cell("02-30", FMT), Cell("04-31", FMT), Cell("02-29", null)),
         "yyyyMMdd" to listOf(
             Cell("20240615", null), Cell("15831016", null), Cell("15831015", DATE), Cell("00000615", FMT),

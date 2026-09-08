@@ -573,6 +573,7 @@ public record io.github.mbackschat.a12.dm.rulekit.dsl.BoolRef
   public io.github.mbackschat.a12.dm.rulekit.dsl.Condition isNotTrue()
   public io.github.mbackschat.a12.dm.rulekit.dsl.Condition isTrue()
   public io.github.mbackschat.a12.dm.rulekit.dsl.Condition notFilled()
+  public io.github.mbackschat.a12.dm.rulekit.dsl.BoolRef outer()
   public final java.lang.String toString()
 
 public final class io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel
@@ -865,6 +866,7 @@ public record io.github.mbackschat.a12.dm.rulekit.dsl.ConfirmRef
   public final int hashCode()
   public io.github.mbackschat.a12.dm.rulekit.dsl.Condition notConfirmed()
   public io.github.mbackschat.a12.dm.rulekit.dsl.Condition notFilled()
+  public io.github.mbackschat.a12.dm.rulekit.dsl.ConfirmRef outer()
   public final java.lang.String toString()
 
 public record io.github.mbackschat.a12.dm.rulekit.dsl.CountAggregate implements io.github.mbackschat.a12.dm.rulekit.dsl.Calculation
@@ -1368,7 +1370,9 @@ public final class io.github.mbackschat.a12.dm.rulekit.dsl.Dsl
   public static io.github.mbackschat.a12.dm.rulekit.dsl.TimeExpr firstFilledTime(io.github.mbackschat.a12.dm.rulekit.dsl.FirstFilledOperand)
   public static io.github.mbackschat.a12.dm.rulekit.dsl.TimeExpr firstFilledTime(io.github.mbackschat.a12.dm.rulekit.dsl.FirstFilledOperand, io.github.mbackschat.a12.dm.rulekit.dsl.FirstFilledOperand, io.github.mbackschat.a12.dm.rulekit.dsl.FirstFilledOperand[])
   public static io.github.mbackschat.a12.dm.rulekit.dsl.Condition groupFilled(io.github.mbackschat.a12.dm.rulekit.dsl.GroupRef)
+  public static io.github.mbackschat.a12.dm.rulekit.dsl.Condition groupFilled(io.github.mbackschat.a12.dm.rulekit.dsl.GroupRef, boolean)
   public static io.github.mbackschat.a12.dm.rulekit.dsl.Condition groupNotFilled(io.github.mbackschat.a12.dm.rulekit.dsl.GroupRef)
+  public static io.github.mbackschat.a12.dm.rulekit.dsl.Condition groupNotFilled(io.github.mbackschat.a12.dm.rulekit.dsl.GroupRef, boolean)
   public static io.github.mbackschat.a12.dm.rulekit.dsl.Condition groupsNotCollectivelyFilled(io.github.mbackschat.a12.dm.rulekit.dsl.GroupListOperand, io.github.mbackschat.a12.dm.rulekit.dsl.GroupListOperand[])
   public static io.github.mbackschat.a12.dm.rulekit.dsl.Condition groupsNotCollectivelyFilled(io.github.mbackschat.a12.dm.rulekit.dsl.GroupRef, io.github.mbackschat.a12.dm.rulekit.dsl.GroupRef[])
   public static io.github.mbackschat.a12.dm.rulekit.dsl.Condition groupsNotCollectivelyFilled(java.util.List<? extends io.github.mbackschat.a12.dm.rulekit.dsl.GroupRef>)
@@ -1643,6 +1647,7 @@ public final class io.github.mbackschat.a12.dm.rulekit.dsl.FieldInfo
   public java.util.Optional<java.lang.String> pattern()
   public io.github.mbackschat.a12.dm.rulekit.dsl.FieldRef ref()
   public int scale()
+  public io.github.mbackschat.a12.dm.core.ValueKind temporalClass()
   public java.lang.String toString()
 
 public record io.github.mbackschat.a12.dm.rulekit.dsl.FieldListEntityListCondition implements io.github.mbackschat.a12.dm.rulekit.dsl.Condition
@@ -1863,23 +1868,28 @@ public final class io.github.mbackschat.a12.dm.rulekit.dsl.GroupListPredicate im
 
 public record io.github.mbackschat.a12.dm.rulekit.dsl.GroupListRef implements io.github.mbackschat.a12.dm.rulekit.dsl.AggregateOperand, io.github.mbackschat.a12.dm.rulekit.dsl.GroupListOperand, io.github.mbackschat.a12.dm.rulekit.dsl.ValueListOperand
   public GroupListRef(io.github.mbackschat.a12.dm.rulekit.dsl.GroupRef, java.util.List<io.github.mbackschat.a12.dm.rulekit.dsl.GroupRef>)
+  public GroupListRef(io.github.mbackschat.a12.dm.rulekit.dsl.GroupRef, java.util.List<io.github.mbackschat.a12.dm.rulekit.dsl.GroupRef>, boolean)
+  public boolean correlated()
   public final boolean equals(java.lang.Object)
   public java.util.Optional<java.lang.String> exactIdentity()
   public java.lang.String fieldPath()
   public java.util.List<io.github.mbackschat.a12.dm.rulekit.dsl.GroupRef> flattened()
   public io.github.mbackschat.a12.dm.rulekit.dsl.GroupRef group()
   public final int hashCode()
+  public io.github.mbackschat.a12.dm.rulekit.dsl.GroupListRef outer()
   public java.lang.String path()
   public java.lang.String renderedPath()
   public final java.lang.String toString()
 
 public record io.github.mbackschat.a12.dm.rulekit.dsl.GroupPresenceCondition implements io.github.mbackschat.a12.dm.rulekit.dsl.Condition
   public GroupPresenceCondition(io.github.mbackschat.a12.dm.rulekit.dsl.GroupRef, boolean)
+  public GroupPresenceCondition(io.github.mbackschat.a12.dm.rulekit.dsl.GroupRef, boolean, boolean)
   public final boolean equals(java.lang.Object)
   public boolean filled()
   public io.github.mbackschat.a12.dm.rulekit.dsl.GroupRef group()
   public final int hashCode()
   public java.lang.String operatorId()
+  public boolean outer()
   public final java.lang.String toString()
 
 public enum io.github.mbackschat.a12.dm.rulekit.dsl.GroupQuantifier
@@ -2667,6 +2677,7 @@ public record io.github.mbackschat.a12.dm.rulekit.validate.Diagnostic
   public final int hashCode()
   public static io.github.mbackschat.a12.dm.rulekit.validate.Diagnostic internal(java.util.Optional<java.lang.String>, java.lang.String, io.github.mbackschat.a12.dm.rulekit.validate.Diagnostic.Where, java.util.Optional<java.lang.String>)
   public static io.github.mbackschat.a12.dm.rulekit.validate.Diagnostic precheck(io.github.mbackschat.a12.dm.rulekit.validate.RkCode, java.lang.String, io.github.mbackschat.a12.dm.rulekit.validate.Diagnostic.Where)
+  public static io.github.mbackschat.a12.dm.rulekit.validate.Diagnostic precheck(io.github.mbackschat.a12.dm.rulekit.validate.RkCode, java.lang.String, io.github.mbackschat.a12.dm.rulekit.validate.Diagnostic.Where, java.lang.String)
   public static io.github.mbackschat.a12.dm.rulekit.validate.Diagnostic precheck(java.util.Optional<java.lang.String>, java.lang.String, io.github.mbackschat.a12.dm.rulekit.validate.Diagnostic.Where, java.util.Optional<java.lang.String>, java.util.Optional<java.lang.String>)
   public static io.github.mbackschat.a12.dm.rulekit.validate.Diagnostic precheckWarning(java.util.Optional<java.lang.String>, java.lang.String, io.github.mbackschat.a12.dm.rulekit.validate.Diagnostic.Where, java.util.Optional<java.lang.String>, java.util.Optional<java.lang.String>)
   public io.github.mbackschat.a12.dm.core.Severity severity()

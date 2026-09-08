@@ -78,16 +78,33 @@ class RuleSlotLawsTest {
         assertNotNull(BoundModel.ofJson(withProbeRule("DupLocaleProbe", List.of(en("a"), en("b"), de("x")))));
     }
 
+    /**
+     * The same-group name collision is caught by a kernel THROW, not by the {@code MVK_NAME_RULES_DUPLICATE}
+     * metamodel rule — the kernel refuses to build the model at all and the metamodel rule never gets to
+     * report (instrument-4 territory, KERNEL-FINDINGS pre-tier note).
+     *
+     * <p><b>The throw happens INSIDE {@code checkConsistency}, not before it</b>, which is what makes it this
+     * gate's business: the adapter's guard wraps that call alone and never {@code expand}, and a mutant on that
+     * catch clause kills this test. An earlier name and wording here said "before checkConsistency" and
+     * "deserialize/convert tier" — pointing a future reader at the one tier the guard deliberately excludes.
+     *
+     * <p><b>It arrives as a REJECTION, and used not to.</b> The kernel throws a bare
+     * {@code IllegalArgumentException} there, which escaped {@code ModelLoader.loadAndCheck} and reached a
+     * caller as an internal-defect envelope — asserting the opposite of the truth, since the input is invalid
+     * and the kernel is what said so ([KF259]). This is the second member of that class: the first was a blank
+     * temporal {@code format}, and this one was never reported, which is what makes it the confirmation rather
+     * than a second symptom.
+     */
     @Test
-    void aDuplicateRuleNameIsRejectedBeforeCheckConsistency() {
-        // The same-group name collision is caught by the kernel's deserialize/convert tier
-        // (IllegalArgumentException), not by the MVK_NAME_RULES_DUPLICATE metamodel rule —
-        // the earlier tier shadows it (instrument-4 territory, KERNEL-FINDINGS pre-tier note).
+    void aDuplicateRuleNameIsRejectedByAThrowInsideCheckConsistency() {
         String once = withProbeRule("DupNameProbe", List.of(en("x"), de("x")));
         String twice = ModelWriter.addRule(once, "/Subscription", "DupNameProbe", "../Tier",
                 "PROBE", "FieldNotFilled(Tier)", "ERROR", List.of(en("x"), de("x")));
-        IllegalArgumentException ex =
-                assertThrows(IllegalArgumentException.class, () -> BoundModel.ofJson(twice));
+        ModelConsistencyException ex =
+                assertThrows(ModelConsistencyException.class, () -> BoundModel.ofJson(twice));
         assertTrue(ex.getMessage().contains("two child elements with the same name"), ex::getMessage);
+        assertTrue(ex.notifications().stream()
+                        .anyMatch(n -> n.message().contains("the kernel could not build this model")),
+                () -> "the rejection must carry the kernel's own reason: " + ex.notifications());
     }
 }

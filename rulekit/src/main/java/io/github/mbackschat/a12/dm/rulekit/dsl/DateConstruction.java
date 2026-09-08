@@ -11,12 +11,16 @@ import io.github.mbackschat.a12.dm.core.ValueKind;
  * of {@link ValueKind#DATE}; wrap in a {@link DateExpr} to compare/shift it. Components render in
  * argument position — a field bare, a literal as its value, an extraction as its call.
  *
- * <p>The kernel requires each component declaration to be position-compatible (§6:
- * {@code MVK_WRONG_DATE_FORMAT_FOR_OP}/{@code MVK_NO_DIGIT_PATTERN}). A field's bounds are model data, so that
- * gate cannot live here — it is {@link BoundModel#dateOf}, which refuses a NUMBER component whose declared
- * bounds are not its SLOT's, locked by {@code dsl.DateConstructionSlotBoundsGateTest}. Two parts of the rule
- * stay the kernel's call for want of a measurement: a String component's exact digit pattern, and the year
- * slot's {@code yyyy} Date exception.
+ * <p>The kernel requires each component declaration to be position-compatible (bounded Number, exact
+ * digit-pattern String, or the complete year's exact {@code yyyy} declaration — on any date-bearing kind,
+ * because that gate reads the format rather than the kind ({@code KF271}); §6:
+ * {@code MVK_WRONG_DATE_FORMAT_FOR_OP}/{@code MVK_NO_DIGIT_PATTERN}).
+ *
+ * <p>The NUMBER-bounds conjunct IS pre-checked, though not here: a field's bounds are model data, so it lives
+ * on {@link BoundModel#dateOf}, which refuses a NUMBER component whose declared bounds are not its SLOT's
+ * (locked by {@code dsl.DateConstructionSlotBoundsGateTest}). The other two conjuncts stay the kernel's call
+ * (F4/N7) for want of a measurement: a String component's exact digit pattern, and the year slot's
+ * {@code yyyy} Date exception.
  */
 import io.github.mbackschat.a12.dm.core.KernelCode;
 import io.github.mbackschat.a12.dm.core.Refusals;

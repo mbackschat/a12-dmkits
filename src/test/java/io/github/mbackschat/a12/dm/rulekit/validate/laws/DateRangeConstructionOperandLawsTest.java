@@ -29,17 +29,21 @@ import io.github.mbackschat.a12.dm.rulekit.validate.RuleValidator;
  * sample. The <b>grammar</b> admits only an {@code entitySpec} in either slot, so a point-in-time constant, a
  * shifted date, or a date literal is a parse error ({@code MVK_UNEXPECTED_TOKEN}) — it never reaches a type
  * check. Everything that IS an entity then passes a <b>semantic</b> gate that rejects with
- * {@code MVK_WRONG_DATE_FORMAT_FOR_OP}: a non-date field, a date whose {@code datePrecision} is partial, a
- * date-time, a range, and two operands whose formats carry different date components.
+ * {@code MVK_WRONG_DATE_FORMAT_FOR_OP}: every kind outside the date-bearing set, a date whose
+ * {@code datePrecision} is partial, a temporal field whose DECLARED FORMAT carries no date component (a
+ * stamp or a clock, whatever its kind), and two operands whose formats carry different date components.
  *
  * <p><b>What that means for the typed surface.</b> Every refusal {@code Dsl.dateRange} makes is inside the
  * measured refusal set, so none is broader than its basis: the operand-must-be-an-entity-reference check mirrors
- * the grammar rows, and the DATE/DATE_FRAGMENT kind check mirrors the non-date field rows. It also confirms the
- * two shapes the surface deliberately ADMITS — a date fragment (on either side, including mixed with a date) and
- * a semantically indexed cell. Three refusals are left to the kernel rather than pre-checked, which is the safe
- * direction (delegation can only under-report): a partial-precision date, a wildcard operand, and mismatched
- * components. The rows below prove the kernel actually catches all three, so the delegation is real rather than
- * assumed.
+ * the grammar rows, and the date-bearing-kind check mirrors the non-date field rows — <em>all</em> of them, one
+ * kind at a time, which is what makes "inside the measured set" a fact rather than a sample (the complement had
+ * been measured at three of its eight kinds; extended 2026-09-07). {@code UNKNOWN} alone stays unmeasured, for
+ * want of an authorable counterpart. It also confirms the two shapes the surface deliberately ADMITS — a date
+ * fragment (on either side, including mixed with a date) and a semantically indexed cell. Four refusals are left
+ * to the kernel rather than pre-checked, which is the safe direction (delegation can only under-report): a
+ * partial-precision date, a wildcard operand, mismatched components, and — since the widening — a date-bearing
+ * KIND whose declared format carries no date component. The rows below prove the kernel actually catches every
+ * one, so the delegation is real rather than assumed.
  */
 class DateRangeConstructionOperandLawsTest {
 
@@ -56,6 +60,13 @@ class DateRangeConstructionOperandLawsTest {
                     .dateTimeField("Stamp2", d -> d.format("yyyy-MM-dd'T'HH:mm:ss"))
                     .numberField("Qty", n -> n.fractionDigits(0))
                     .stringField("Note", s -> { })
+                    // The kinds the client refusal covered without a measured row of its own — the whole
+                    // non-date-bearing denominator, not the three that happened to be sampled.
+                    .enumField("Tier", e -> e.value("BASIC").value("PLUS"))
+                    .field("Renewed", io.github.mbackschat.a12.dm.modelkit.FieldKind.BOOLEAN)
+                    .field("Signed", io.github.mbackschat.a12.dm.modelkit.FieldKind.CONFIRM)
+                    .timeField("Clock", t -> t.format("HH:mm:ss"))
+                    .customField("Serial", c -> c.type("SelectionCode"))
                     .dateRangeField("Window", d -> d.format("dd.MM.yyyy").separator("-"))
                     .dateRangeField("MonthWindow", d -> d.format("MM").separator("/"))
                     .group("Lines", l -> l.repeatable(20).indexField("Sku")
@@ -78,6 +89,7 @@ class DateRangeConstructionOperandLawsTest {
     private static String verdict(String condition) {
         return verdict(condition, "../End");
     }
+
 
     @Test
     void theGrammarAdmitsOnlyAnEntityReferenceInEitherConstructionSlot() {
@@ -118,9 +130,31 @@ class DateRangeConstructionOperandLawsTest {
         // Refused: the kind rows the typed surface pre-checks…
         verdicts.put("number field", verdict("DateRange(/Policy/Qty, /Policy/End) == [/Policy/Window]"));
         verdicts.put("string field", verdict("DateRange(/Policy/Note, /Policy/End) == [/Policy/Window]"));
+        // …and one that is NOT a kind row, though it sat among them until it was measured: what refuses here is
+        // the STAMP FORMAT, not the DATE_TIME kind. A DATE_TIME field declared `yyyy-MM-dd` is an admitted
+        // endpoint (TemporalConstructorDeclaredFormatGateLawsTest), so the typed surface no longer pre-checks
+        // this one and the row records a format refusal the kernel owns.
         verdicts.put("date-time field",
                 verdict("DateRange(/Policy/Stamp, /Policy/Stamp2) == [/Policy/Window]", "../Window"));
         verdicts.put("range field", verdict("DateRange(/Policy/Window, /Policy/End) == [/Policy/Window]"));
+        // The rest of the non-date-bearing denominator. `isDateBearingKind` refuses every kind outside
+        // {DATE, DATE_FRAGMENT, TIME, DATE_TIME}, and until these rows existed only three of them had a
+        // measured basis — the javadoc claimed the check "stops where the measurement does" while covering
+        // five more (added 2026-09-07, cold review). UNKNOWN alone stays unmeasured — it has no authorable
+        // A12 counterpart — so it is the one kind this refusal covers without a row.
+        verdicts.put("enum field", verdict("DateRange(/Policy/Tier, /Policy/End) == [/Policy/Window]"));
+        verdicts.put("boolean field", verdict("DateRange(/Policy/Renewed, /Policy/End) == [/Policy/Window]"));
+        verdicts.put("confirm field", verdict("DateRange(/Policy/Signed, /Policy/End) == [/Policy/Window]"));
+        // The liveness row beside CUSTOM separates "refused at this gate" from "this fixture's field is not
+        // referenceable" — and earned itself immediately: a first attempt read MVK_INVALID_ENTITY as the
+        // kernel's verdict on a custom endpoint when the field had simply not reached the model.
+        verdicts.put("custom field", verdict("DateRange(/Policy/Serial, /Policy/End) == [/Policy/Window]"));
+        verdicts.put("the same custom field, merely referenced — liveness",
+                verdict("FieldFilled(/Policy/Serial) And [/Policy/Start] != [/Policy/End]", "../End"));
+        // …and the clock-declared TIME field, which IS a date-bearing KIND the client admits: its refusal is
+        // the format's, which is what keeps the widened kind check from being an over-admission.
+        verdicts.put("clock-declared time field",
+                verdict("DateRange(/Policy/Clock, /Policy/End) == [/Policy/Window]"));
         // …and the three it delegates.
         verdicts.put("partial precision", verdict("DateRange(/Policy/DayOptional, /Policy/End) == [/Policy/Window]"));
         verdicts.put("differing components",
@@ -150,6 +184,12 @@ class DateRangeConstructionOperandLawsTest {
         expected.put("string field", "MVK_WRONG_DATE_FORMAT_FOR_OP");
         expected.put("date-time field", "MVK_WRONG_DATE_FORMAT_FOR_OP");
         expected.put("range field", "MVK_WRONG_DATE_FORMAT_FOR_OP");
+        expected.put("enum field", "MVK_WRONG_DATE_FORMAT_FOR_OP");
+        expected.put("boolean field", "MVK_WRONG_DATE_FORMAT_FOR_OP");
+        expected.put("confirm field", "MVK_WRONG_DATE_FORMAT_FOR_OP");
+        expected.put("custom field", "MVK_WRONG_DATE_FORMAT_FOR_OP");
+        expected.put("the same custom field, merely referenced — liveness", "accepted");
+        expected.put("clock-declared time field", "MVK_WRONG_DATE_FORMAT_FOR_OP");
         expected.put("partial precision", "MVK_WRONG_DATE_FORMAT_FOR_OP");
         expected.put("differing components", "MVK_WRONG_DATE_FORMAT_FOR_OP");
         expected.put("wildcard", "MVK_NO_WILDCARDS_ALLOWED");

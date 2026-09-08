@@ -210,4 +210,61 @@ class RuleMessageGroupParameterLawsTest {
         expected.put("the FIRST root by name, from that same rule", INVALID_GROUP);
         assertEquals(expected, actual, "the shorthand is chain-relative, so a model-wide reading is excluded");
     }
+
+    /**
+     * <b>{@code RuleGroup} is refused when the rule sits in a ROOT group, even though the rule's own group is
+     * in the admitted set from everywhere else</b> (added 2026-09-05). Every fixture above puts the rule three
+     * levels down, so "the rule's own group plus its ancestors, at any depth" was stated over a population that
+     * never reached the root locus — the constant no row inside that set could expose.
+     *
+     * <p><b>The gate belongs to the WORD, not to the position.</b> The two rows beside it name the very same
+     * group and are admitted: {@code RootGroup} resolves to it as the chain root, and the absolute
+     * {@code /Order} names it outright. So the kernel is not refusing a reference to that group — it is
+     * refusing that one spelling, on its own code, which is why this does not weaken the containment account.
+     *
+     * <p><b>The control moves exactly one variable.</b> Same model, same message, same shape of condition, the
+     * rule one level lower — and the shorthand is admitted. Two models could not say that: they differ in
+     * every way nobody thought about.
+     *
+     * <p>Reported for the COMPUTATION carrier by a12-kernel-lean, whose {@code spec/11-messages-and-custom.md}
+     * flagged the validation-rule crossing as unmeasured; they then measured that crossing and told us. This
+     * row is our own measurement of it, on our own carrier — their report is what prompted it, not its basis.
+     */
+    @Test
+    void theRuleGroupShorthandIsRefusedAtTheROOTLocusWhileTheSameGroupIsNameableTwoOtherWays() {
+        Map<String, String> actual = new LinkedHashMap<>();
+        actual.put("RuleGroup, rule IN the root group", atRootLocus("RuleGroup"));
+        actual.put("RootGroup, same rule", atRootLocus("RootGroup"));
+        actual.put("the root by absolute path, same rule", atRootLocus("/Order"));
+        actual.put("RuleGroup, rule ONE LEVEL down — control", oneLevelDown("RuleGroup"));
+
+        Map<String, String> expected = new LinkedHashMap<>();
+        expected.put("RuleGroup, rule IN the root group", "RULEGROUP_IMMEDIATELY_BELOW_ROOT");
+        expected.put("RootGroup, same rule", ADMITTED);
+        expected.put("the root by absolute path, same rule", ADMITTED);
+        expected.put("RuleGroup, rule ONE LEVEL down — control", ADMITTED);
+        assertEquals(expected, actual, "the refusal is of the WORD at that locus, not of the group it names");
+    }
+
+    /**
+     * A second, deliberately shallow model so the rule can sit either directly in the root group or one level
+     * below it, leaving the rule's LOCUS as the only difference between the rows above. Own domain (retail
+     * ordering), kept separate from {@code POLICY} rather than bolted onto it, because adding a root-level
+     * field there would move a variable under every other row in this class.
+     */
+    private static final String ORDER = DocumentModelDraft.named("order").locale("en_US")
+            .rootGroup("Order", o -> o
+                    .field("Reference", FieldKind.STRING)
+                    .group("Lines", l -> l.repeatable(9).field("Sku", FieldKind.STRING)))
+            .build().toJson();
+
+    private static String atRootLocus(String argument) {
+        return KernelLaws.messageVerdict(ORDER, "/Order", "../Reference",
+                "FieldFilled(/Order/Reference)", "en_US", "Order $#" + argument + "$ needs a reference.");
+    }
+
+    private static String oneLevelDown(String argument) {
+        return KernelLaws.messageVerdict(ORDER, "/Order/Lines", "../Sku",
+                "FieldFilled(/Order/Lines/Sku)", "en_US", "Line $#" + argument + "$ needs a sku.");
+    }
 }

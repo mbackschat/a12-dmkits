@@ -20,6 +20,8 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.function.Function;
+import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
 import com.fasterxml.jackson.databind.JsonNode;
@@ -422,9 +424,11 @@ public final class KernelRuntimeProbe {
         }
 
         // Built once for the whole request: generating and compiling the kernel's Java validator is the
-        // expensive half, and every row shares one model.
-        RuntimeLaws.KernelEngine groovyDynamic = RuntimeLaws.kernelEngine(request.modelJson());
-        RuntimeLaws.JavaKernelEngine javaStatic = RuntimeLaws.kernelJavaEngine(request.modelJson());
+        // expensive half, and every row shares one model. A build that RAISES is captured rather than fatal,
+        // and its fault then rides every row of that strategy — that is the blast radius of one failed build.
+        Built<RuntimeLaws.KernelEngine> groovyDynamic = build(() -> RuntimeLaws.kernelEngine(request.modelJson()));
+        Built<RuntimeLaws.JavaKernelEngine> javaStatic =
+                build(() -> RuntimeLaws.kernelJavaEngine(request.modelJson()));
         Date clock = request.clock().orElse(null);
         Locale locale = request.locale();
 
@@ -435,23 +439,172 @@ public final class KernelRuntimeProbe {
             // One immutable DocumentV2 per strategy, observed by every requested entry point: DocumentV2 is
             // immutable and neither validateFull nor compute writes to it, so a second deserialization would
             // only be a second chance to differ.
-            var groovyInstance = groovyDynamic.instance(row.documentJson());
-            var javaInstance = javaStatic.instance(row.documentJson());
             rows.add(new KernelProbeArtifact.Row(row.name(), List.of(
-                    new KernelProbeArtifact.Engine(GROOVY_DYNAMIC,
-                            project(groovyDynamic.validationMessages(groovyInstance, clock, locale)),
-                            compute ? Optional.of(project(groovyDynamic.computation(groovyInstance, clock, locale)))
-                                    : Optional.empty(),
-                            row.relevant().map(rel -> project(groovyDynamic
-                                    .partialValidationMessages(groovyInstance, rel, clock, locale)))),
-                    new KernelProbeArtifact.Engine(JAVA_STATIC,
-                            project(javaStatic.validationMessages(javaInstance, clock, locale)),
-                            compute ? Optional.of(project(javaStatic.computation(javaInstance, clock, locale)))
-                                    : Optional.empty(),
-                            row.relevant().map(rel -> project(javaStatic
-                                    .partialValidationMessages(javaInstance, rel, clock, locale)))))));
+                    observe(GROOVY_DYNAMIC, groovyDynamic, engine -> {
+                        var instance = instance(() -> engine.instance(row.documentJson()));
+                        return new KernelProbeArtifact.Engine(GROOVY_DYNAMIC,
+                                channel(Observation.VALIDATE_FULL,
+                                        () -> project(engine.validationMessages(instance, clock, locale))),
+                                compute ? Optional.of(channel(Observation.COMPUTE,
+                                        () -> project(engine.computation(instance, clock, locale))))
+                                        : Optional.empty(),
+                                row.relevant().map(rel -> channel(Observation.VALIDATE_PART, () -> project(engine
+                                        .partialValidationMessages(instance, rel, clock, locale)))));
+                    }),
+                    observe(JAVA_STATIC, javaStatic, engine -> {
+                        var instance = instance(() -> engine.instance(row.documentJson()));
+                        return new KernelProbeArtifact.Engine(JAVA_STATIC,
+                                channel(Observation.VALIDATE_FULL,
+                                        () -> project(engine.validationMessages(instance, clock, locale))),
+                                compute ? Optional.of(channel(Observation.COMPUTE,
+                                        () -> project(engine.computation(instance, clock, locale))))
+                                        : Optional.empty(),
+                                row.relevant().map(rel -> channel(Observation.VALIDATE_PART, () -> project(engine
+                                        .partialValidationMessages(instance, rel, clock, locale)))));
+                    }))));
         }
         return new KernelProbeArtifact(header, rows, mandatory);
+    }
+
+    // ---- fault capture ---------------------------------------------------------------------------
+
+    /**
+     * One strategy's engine, or the raise that stopped it being built. Not an {@code Optional} plus a nullable
+     * fault: the two states are exclusive and a reader of this type cannot mistake which one it holds.
+     */
+    private sealed interface Built<E> {
+
+        record Engine<E>(E engine) implements Built<E> {
+        }
+
+        record Failed<E>(KernelProbeArtifact.Fault fault) implements Built<E> {
+        }
+    }
+
+    private static <E> Built<E> build(Supplier<E> builder) {
+        try {
+            return new Built.Engine<>(builder.get());
+        } catch (RuntimeException e) {
+            return new Built.Failed<>(fault(ENGINE_BUILD, e));
+        }
+    }
+
+    /**
+     * One (row, strategy) observation, with every raise inside it captured as the block's whole content.
+     *
+     * <p><b>The unit is the strategy's observation of the row, not the individual channel.</b> A strategy that
+     * cannot validate a document is not a strategy whose compute answer means anything, and publishing one
+     * channel beside a raise in another would reintroduce exactly the misreading the artifact refuses — so the
+     * first channel that raises ends the block, and {@code fault.observation} says which one it was.
+     */
+    private static <E> KernelProbeArtifact.Engine observe(String name, Built<E> built,
+            Function<E, KernelProbeArtifact.Engine> observation) {
+        return switch (built) {
+            case Built.Failed<E> failed -> KernelProbeArtifact.Engine.faulted(name, failed.fault());
+            case Built.Engine<E> ready -> {
+                try {
+                    yield observation.apply(ready.engine());
+                } catch (Raised raised) {
+                    yield KernelProbeArtifact.Engine.faulted(name, raised.fault());
+                }
+            }
+        };
+    }
+
+    /** Runs one observed channel, converting a kernel raise into the fault that replaces the whole block. */
+    private static <T> T channel(Observation observation, Supplier<T> read) {
+        try {
+            return read.get();
+        } catch (RuntimeException e) {
+            throw new Raised(fault(observation.wireName(), e));
+        }
+    }
+
+    /** As {@link #channel}, for the document deserialization that precedes every channel. */
+    private static <T> T instance(Supplier<T> read) {
+        try {
+            return read.get();
+        } catch (RuntimeException e) {
+            throw new Raised(fault(DOCUMENT_INSTANCE, e));
+        }
+    }
+
+    /** The locus of a raise that happened before any requested channel could be read. */
+    private static final String DOCUMENT_INSTANCE = "documentInstance";
+
+    /** The locus of a raise while building one strategy's engine — it rides every row of that strategy. */
+    private static final String ENGINE_BUILD = "engineBuild";
+
+    /** Carries a captured {@link KernelProbeArtifact.Fault} out of a channel to the block that replaces. */
+    private static final class Raised extends RuntimeException {
+
+        private static final long serialVersionUID = 1L;
+
+        private final transient KernelProbeArtifact.Fault fault;
+
+        Raised(KernelProbeArtifact.Fault fault) {
+            super(fault.observation(), null, false, false);
+            this.fault = fault;
+        }
+
+        KernelProbeArtifact.Fault fault() {
+            return fault;
+        }
+    }
+
+    private static KernelProbeArtifact.Fault fault(String observation, Throwable raised) {
+        List<KernelProbeArtifact.Fault.Raise> chain = new ArrayList<>();
+        // Bounded and cycle-safe: a self-referencing cause chain would otherwise hang a run that is already
+        // failing, and the depth is generous enough that no real kernel chain reaches it.
+        for (Throwable link = raised; link != null && chain.size() < MAX_CAUSE_DEPTH; link = link.getCause()) {
+            chain.add(new KernelProbeArtifact.Fault.Raise(
+                    link.getClass().getName(), Optional.ofNullable(link.getMessage())));
+            if (link.getCause() == link) {
+                break;
+            }
+        }
+        return new KernelProbeArtifact.Fault(observation, chain);
+    }
+
+    private static final int MAX_CAUSE_DEPTH = 16;
+
+    /**
+     * Every fault the run captured, as {@code <row> / <strategy> at <locus>: <type>: <message>} lines, in row
+     * then strategy order — the summary the failure carries once the artifact is safely written.
+     */
+    static List<String> faults(KernelProbeArtifact artifact) {
+        List<String> lines = new ArrayList<>();
+        for (KernelProbeArtifact.Row row : artifact.rows()) {
+            for (KernelProbeArtifact.Engine engine : row.engines()) {
+                engine.fault().ifPresent(fault -> lines.add(row.name() + " / " + engine.engine() + " at "
+                        + fault.observation() + ": " + fault.chain().stream()
+                                .map(raise -> raise.type() + raise.message().map(m -> ": " + m).orElse(""))
+                                .collect(Collectors.joining(" ← "))));
+            }
+        }
+        return List.copyOf(lines);
+    }
+
+    /**
+     * The run observed at least one kernel raise. Thrown <b>after</b> the artifact is written, so the run fails
+     * — a fault is not a success — while the observation it made is retained and pinnable.
+     */
+    public static final class FaultsObserved extends RuntimeException {
+
+        private static final long serialVersionUID = 1L;
+
+        private final transient List<String> faults;
+
+        FaultsObserved(Path out, List<String> faults) {
+            super("the kernel raised on " + faults.size() + " (row, strategy) observation(s); the artifact at "
+                    + out.toAbsolutePath() + " records each one:\n  " + String.join("\n  ", faults));
+            this.faults = List.copyOf(faults);
+        }
+
+        /** The captured faults, one line each, in the artifact's own row then strategy order. */
+        public List<String> faults() {
+            return faults;
+        }
     }
 
     /**
@@ -567,6 +720,13 @@ public final class KernelRuntimeProbe {
         KernelProbeArtifact artifact = run(request, header(request));
         write(out, artifact.toJson());
         System.out.println("[kernel-probe] " + request.rows().size() + " row(s) → " + out.toAbsolutePath());
+
+        // Written first, failed second. A raise is an observation the artifact now carries, so it must survive
+        // the run that fails on it — the order is the whole fix (a12-kernel-lean's instrument note, 2026-09-04).
+        List<String> faults = faults(artifact);
+        if (!faults.isEmpty()) {
+            throw new FaultsObserved(out, faults);
+        }
     }
 
     /**

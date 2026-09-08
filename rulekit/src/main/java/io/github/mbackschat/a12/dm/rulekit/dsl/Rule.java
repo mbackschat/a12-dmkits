@@ -43,9 +43,12 @@ public record Rule(
     // Builders are created via BoundModel#rule(GroupRef) — model-aware so messages can be checked
     // against the model's DECLARED locales (which are arbitrary; en/de are not special).
 
-    /** The error entity's path relative to the rule element (which sits inside the group). */
+    /**
+     * The error entity's path relative to the rule element (which sits inside the group) — the same
+     * single-sourced convention {@link Computation#computedFieldRelPath()} uses, so the two cannot drift.
+     */
     public String errorEntityRelPath() {
-        return "../" + errorField.path().value().substring(group.path().value().length() + 1);
+        return group.path().elementReference(errorField.path());
     }
 
     /**

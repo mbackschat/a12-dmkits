@@ -1,5 +1,6 @@
 package io.github.mbackschat.a12.dm.cli.rule;
 
+import io.github.mbackschat.a12.dm.core.EntityPath;
 import io.github.mbackschat.a12.dm.cli.BaseCommand;
 import io.github.mbackschat.a12.dm.cli.ConsistencyEvidence;
 import io.github.mbackschat.a12.dm.cli.LintBackstop;
@@ -94,7 +95,7 @@ final class RuleCheckCommand extends BaseCommand {
         if (!ModelPaths.isAbsoluteEntityPath(field)) {
             return refuseOptionValue(RkCode.INVALID_VALUE,
                     "--field must be an absolute path (e.g. /Group/Field), got: " + field,
-                    "--field", null, RkCode.INVALID_VALUE.fix());
+                    "--field", null, ModelPaths.absoluteEntityPathFix("--field", field, group));
         }
         String effectiveGroup = group;
         if (effectiveGroup == null) {
@@ -106,7 +107,8 @@ final class RuleCheckCommand extends BaseCommand {
                     "--field " + field + " must be inside --group " + effectiveGroup,
                     "--field", field, RkCode.ERROR_FIELD_OUTSIDE_GROUP.fix());
         }
-        String errorEntityRelPath = "../" + field.substring(effectiveGroup.length() + 1);
+        String errorEntityRelPath =
+                EntityPath.of(effectiveGroup).elementReference(EntityPath.of(field));
 
         String json = readModelJson(model);
         if (json == null) {

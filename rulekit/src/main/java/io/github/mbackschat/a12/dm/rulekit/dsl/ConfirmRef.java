@@ -10,6 +10,15 @@ package io.github.mbackschat.a12.dm.rulekit.dsl;
  */
 public record ConfirmRef(FieldRef field) {
 
+    /**
+     * Marks this reference as the {@code $} outer-iteration correlation ({@code [$path] == True}) — the
+     * confirm peer of {@link BoolRef#outer()}, added for the same measured reason and carried the same way,
+     * on the underlying {@link FieldRef}.
+     */
+    public ConfirmRef outer() {
+        return new ConfirmRef(field.outer());
+    }
+
     public Condition filled() {
         return field.filled();
     }

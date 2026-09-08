@@ -88,7 +88,8 @@ public final class ComputationSpec {
                     "computedField");
         }
         if (!ModelPaths.isAbsoluteEntityPath(computedField)) {
-            return notAnAbsolutePath("computedField", computedField);
+            return notAnAbsolutePath("computedField", computedField,
+                    spec.hasNonNull("group") ? spec.get("group").asText() : null);
         }
         int slash = computedField.lastIndexOf('/');
         String fieldName = computedField.substring(slash + 1);
@@ -175,8 +176,14 @@ public final class ComputationSpec {
         return refusal(RkCode.INVALID_VALUE, summary, arg);
     }
 
-    private static Parsed notAnAbsolutePath(String key, String value) {
-        return refusal(RkCode.INVALID_VALUE, ModelPaths.notAnAbsoluteEntityPath(key, value), key);
+    /**
+     * A path-shape refusal, carrying the path the author MEANT rather than the code's generic corrective.
+     * {@code declaredGroup} is the spec's own {@code group} when it has one — the only base a relative value can
+     * resolve against here, since a malformed {@code computedField} cannot yield one.
+     */
+    private static Parsed notAnAbsolutePath(String key, String value, String declaredGroup) {
+        return refusal(RkCode.INVALID_VALUE, ModelPaths.notAnAbsoluteEntityPath(key, value), key,
+                ModelPaths.absoluteEntityPathFix(key, value, declaredGroup));
     }
 
     /**
@@ -188,6 +195,11 @@ public final class ComputationSpec {
      */
     private static Parsed refusal(RkCode code, String summary, String arg) {
         return new Parsed(null, null, Diagnostic.precheck(code, summary, Diagnostic.Where.arg(null, arg)));
+    }
+
+    /** …and with a corrective computed from the value, where the code's generic one would not describe it. */
+    private static Parsed refusal(RkCode code, String summary, String arg, String fix) {
+        return new Parsed(null, null, Diagnostic.precheck(code, summary, Diagnostic.Where.arg(null, arg), fix));
     }
 
     private static List<LocalizedText> messages(JsonNode spec) {

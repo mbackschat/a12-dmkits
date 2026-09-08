@@ -55,5 +55,6 @@ include 'interpreter-bridge'
 
 // The :schemakit module (docs/SCHEMAKIT-SPEC.md): JSON Schema ⇄ Document Model import/export. JVM/Java,
 // native-safe. Depends on root `:` (public-kernel-only) + later :interpreter — and MUST NOT touch the
-// kernel beyond kernel-md-facade (owner constraint; held by verifySchemakitPurity). Spike under `.spike`.
+// kernel beyond kernel-md-facade (owner constraint; held by verifySchemakitPurity over its compiled classes
+// and by the root verifyPublishedClasspathsAreKernelFree over what its POM resolves). Spike under `.spike`.
 include 'schemakit'

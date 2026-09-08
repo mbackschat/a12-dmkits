@@ -188,6 +188,18 @@ public final class SafetyChecks {
      * attempted, so a typo'd path yields a structured, corrective diagnostic (not a bare downstream error).
      */
     public static SafetyCheck exists(ModelDocument doc, String path, boolean isGroup) {
+        return exists(doc, path, isGroup,
+                "pass an existing " + (isGroup ? "group" : "field")
+                        + "'s full name-path (see `model describe` or `" + (isGroup ? "group" : "field") + " read`)");
+    }
+
+    /**
+     * As {@link #exists(ModelDocument, String, boolean)} with a caller-supplied corrective, for a slot whose
+     * likeliest wrong value is not merely a mistyped path. The {@code --parent} slots use it: an author who
+     * meant the ROOT level needs to be told that spelling, not told to go and read the model
+     * ({@link ModelPaths#missingParentHint}).
+     */
+    public static SafetyCheck exists(ModelDocument doc, String path, boolean isGroup, String hint) {
         return () -> {
             boolean present = isGroup ? doc.groupPaths().contains(path) : doc.fieldPaths().contains(path);
             if (present) {
@@ -198,10 +210,15 @@ public final class SafetyChecks {
             Diagnostic diagnostic = Diagnostic.precheck(Optional.of(code),
                     "no " + kind + " at '" + path + "'",
                     Diagnostic.Where.path(path),
-                    Optional.of("pass an existing " + kind + "'s full name-path (see `model describe` or `" + kind + " read`)"),
+                    Optional.of(hint),
                     Optional.empty());
             return Optional.of(new Refusal(kind + " '" + path + "' does not exist — refusing", null, diagnostic));
         };
+    }
+
+    /** The {@code --parent} slot's existence check — {@link #exists} with the root-level corrective. */
+    public static SafetyCheck parentExists(ModelDocument doc, String parent) {
+        return exists(doc, parent, true, ModelPaths.missingParentHint("group"));
     }
 
     /**

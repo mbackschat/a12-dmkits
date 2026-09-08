@@ -25,10 +25,13 @@ import io.github.mbackschat.a12.dm.rulekit.dsl.GroupListRef;
  * <p><b>So the kind became explicit, supplied by the factory.</b> That is not a workaround but the accurate
  * model: each factory already names the kind it means — {@code latestOf} is the DATE one, {@code latestTimeOf}
  * the TIME one — so the information was always present at the call site and merely re-derived from the operand
- * afterwards. The field arm keeps a kind check, so a DATE list handed to {@code latestTimeOf} still fails
- * fast rather than mis-typing the aggregate — narrowed 2026-08-24 from kind EQUALITY to the temporal
- * CLASS, because the kernel admits a DATE {@code yyyy} beside a DateFragment {@code yyyy} and equality
- * refused that legal pair ([KF193], {@code TemporalAggregateComponentSetLawsTest}).
+ * afterwards. The field arm keeps ONE kind check, and it has narrowed twice: from kind EQUALITY to the temporal
+ * CLASS (2026-08-24, because the kernel admits a DATE {@code yyyy} beside a DateFragment {@code yyyy}), and
+ * then to the bare ROUTING question — is this operand date-like at all — because the class the kernel's gate
+ * reads is the DECLARATION's and a {@code ValueKind} cannot see one, so a date-declared TIME field is a legal
+ * member of a DATE list ([KF271], 2026-09-07). What remains is the only temporal question a kind answers; the
+ * class and the component set are the kernel's ([KF193],
+ * {@code TemporalAggregateComponentSetLawsTest}).
  *
  * <p><b>Scope: the STARRED form only.</b> `KF187` measures both repetition shapes as ACCEPT for this carrier, but
  * the unstarred group is left out until a runtime row exists for it — widening authoring past what the evaluator
@@ -37,14 +40,19 @@ import io.github.mbackschat.a12.dm.rulekit.dsl.GroupListRef;
  */
 class DateExtremaGroupOperandLawsTest {
 
-    /** An all-DATE repeatable group: the kind gate reads the EXPANSION, so a mixed group would mask the row. */
+    /** {@code Inspections} is all-DATE: the group arm reads the EXPANSION, so a mixed group would mask the row. */
     private static final String CLAIM_JSON = DocumentModelDraft.named("claim").locale("en_US")
             .rootGroup("Claim", g -> {
                 g.stringField("Reference", f -> { });
                 g.dateField("ClaimedOn", f -> { });
+                g.timeField("InspectedAt", f -> { });
                 g.group("Inspections", i -> i.repeatable(10)
                         .dateField("VisitedOn", f -> { })
                         .dateField("ClearedOn", f -> { }));
+                // Its own group, so `Inspections` stays all-DATE and the group-scope rows keep measuring
+                // an expansion the kernel admits.
+                g.group("Inspectors", i -> i.repeatable(10)
+                        .stringField("InspectorName", f -> { }));
             }).build().toJson();
 
     private static final BoundModel CLAIM = BoundModel.ofJson(CLAIM_JSON);
@@ -80,16 +88,35 @@ class DateExtremaGroupOperandLawsTest {
     }
 
     /**
-     * The FIELD arm keeps a kind check — the control that making the kind explicit did not disable the fast
-     * failure a wrong-kind field list used to get. It reads the temporal CLASS, and a DATE list under the TIME
-     * factory crosses it: date-presence differs, which is exactly what the kernel refuses.
+     * The control that making the kind explicit did not disable the fast failure a wrong-kind field list used to
+     * get — <b>narrowed to what a kind can actually decide.</b> A STRING list under a date-like factory is not
+     * date-like at all, which is the routing question, and it still fails fast.
      */
     @Test
-    void aFieldListOfTheWrongKindStillFailsFast() {
+    void aFieldListOfANonDateLikeKindStillFailsFast() {
         var thrown = org.junit.jupiter.api.Assertions.assertThrows(IllegalArgumentException.class,
-                () -> Dsl.latestTimeOf(CLAIM.flatten("/Claim/Inspections*/VisitedOn")));
-        org.junit.jupiter.api.Assertions.assertTrue(thrown.getMessage().contains("TIME")
-                        || thrown.getMessage().contains("DATE"),
-                () -> "a DATE list handed to the TIME factory must say so: " + thrown.getMessage());
+                () -> Dsl.latestTimeOf(CLAIM.flatten("/Claim/Inspectors*/InspectorName")));
+        org.junit.jupiter.api.Assertions.assertTrue(thrown.getMessage().contains("STRING"),
+                () -> "a STRING list handed to a date-like factory must say so: " + thrown.getMessage());
+    }
+
+    /**
+     * …and the class boundary is <b>delegated</b>, with the kernel row that grounds the delegation beside it. A
+     * DATE list under the TIME factory used to throw here; it cannot, because the same check would have to
+     * refuse the date-declared TIME field the kernel admits in a DATE list ([KF271]). So the factory builds it
+     * and the kernel reports it — which is also the only way the author sees the kernel's own code, and the
+     * code it reports is the COMPARISON's ({@code MVK_INVALID_COMPARE_TO_DATE}, the coarse direct-comparison
+     * gate) rather than the operand gate's: the one-element list is internally consistent, and what disagrees
+     * is the date it computes against the clock declaration it is compared to.
+     */
+    @Test
+    void aDateListUnderTheTimeFactoryIsBuiltAndRefusedByTheKernel() {
+        Condition crossing = Dsl.fieldFilled(CLAIM.field("/Claim/Reference"))
+                .and(Dsl.latestTimeOf(CLAIM.flatten("/Claim/Inspections*/VisitedOn"))
+                        .eq(CLAIM.time("/Claim/InspectedAt")));
+        assertEquals("FieldFilled(/Claim/Reference) And MaxValue(/Claim/Inspections*/VisitedOn)"
+                + " == [/Claim/InspectedAt]", render(crossing));
+        KernelLaws.rejectsModel(CLAIM_JSON, "/Claim", "../Reference", render(crossing),
+                "MVK_INVALID_COMPARE_TO_DATE");
     }
 }

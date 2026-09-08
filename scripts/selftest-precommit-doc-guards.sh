@@ -42,7 +42,8 @@ set -e
 # All four lanes, not just the two the hook started with: the refusal is the only place a session learns
 # which commands to run, so a lane silently dropped from the hook would leave a doc-driven guard unrun with
 # nothing to notice it — which is how a red landed on 033fe3ef6 before referentGuardTest was required here.
-for task in ":docGuardTest" ":cli:docGuardTest" ":cli:referentGuardTest" ":cli:staleGapGuardTest"; do
+for task in ":docGuardTest" ":cli:docGuardTest" ":cli:referentGuardTest" ":cli:staleGapGuardTest" \
+            ":cli:semanticsMapGuardTest"; do
   [[ "$out" == *"$task"* ]] || fail "the refusal did not name $task: $out"
 done
 [[ "$out" == *"-Pfast"* ]] || fail "the refusal did not warn that -Pfast skips them: $out"
@@ -53,7 +54,8 @@ done
 fabricate_guard_evidence() {
   local d
   for d in build/test-results/docGuardTest cli/build/test-results/docGuardTest \
-           cli/build/test-results/referentGuardTest cli/build/test-results/staleGapGuardTest; do
+           cli/build/test-results/referentGuardTest cli/build/test-results/staleGapGuardTest \
+           cli/build/test-results/semanticsMapGuardTest; do
     mkdir -p "$REPO/$d"
     touch "$REPO/$d/TEST-x.xml"
   done

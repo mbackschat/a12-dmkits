@@ -4,6 +4,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Set;
 
+import io.github.mbackschat.a12.dm.core.EntityPath;
 import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel;
 
 /**
@@ -51,7 +52,7 @@ public final class ModelPaths {
             return false;
         }
         // segment 0 is the empty string ahead of the leading '/'; an entity below the root has at least two more.
-        var segments = io.github.mbackschat.a12.dm.core.EntityPath.of(path).segments();
+        var segments = EntityPath.of(path).segments();
         return segments.size() >= 3 && segments.subList(1, segments.size()).stream().noneMatch(String::isEmpty);
     }
 
@@ -63,6 +64,119 @@ public final class ModelPaths {
      */
     public static String notAnAbsoluteEntityPath(String key, String value) {
         return key + " must be an absolute path with no empty segment (e.g. /Group/Field), got: " + value;
+    }
+
+    /**
+     * The CORRECTIVE for a value this predicate rejected — the absolute form, computed when we can, rather
+     * than a restatement of the rule the summary already gave.
+     *
+     * <p><b>Why it computes rather than advises.</b> These refusals previously carried
+     * {@code RkCode.INVALID_VALUE.fix()}, a generic "give the value the type the schema declares" that is true
+     * of every rejected value and therefore tells an author nothing about this one. The value that lands here
+     * is often a RELATIVE path, because the typed Java rule API spells the same slot relatively
+     * ({@code DraftRule.errorEntityRelPath} takes {@code ../Field}) while every CLI path option is absolute —
+     * two live conventions for one concept. Measured 2026-09-04: one session hit this four times in a row
+     * without the summary ever registering, because its probe filter had discarded the summary and kept only
+     * the code.
+     *
+     * <p><b>It proposes a path for exactly ONE value shape, and that restraint is the correction of a defect
+     * this method shipped with.</b> Only a {@code ../}-prefixed value says unambiguously what it meant: that is
+     * the stored-reference convention, whose leading {@code ..} is the hop off the rule element onto its group,
+     * so the remainder resolves against the group and the answer is derived rather than guessed. Every other
+     * relative shape — a bare {@code CustomerName}, a {@code Sub/Leaf}, a {@code ./X}, a model FILE path — is
+     * genuinely ambiguous without consulting the model, and the first version guessed anyway: it resolved
+     * against a placeholder element name, which then survived into the answer, so {@code --field CustomerName}
+     * under {@code /Order} was told <em>"did you mean /Order/TheRuleBeingAuthored/CustomerName?"</em> — a path
+     * no model can contain, at all six call sites, found by a cold review the same day. A corrective is copied
+     * without being checked, which makes a confident wrong path strictly worse than the generic text it
+     * replaced. So: derive, or say plainly that you cannot. Proposing for the remaining shapes needs the
+     * model, and {@link #suggestField} shows what that costs; it is not available at every call site here.
+     *
+     * @param key the option or spec key, e.g. {@code --field}
+     * @param value what the caller passed
+     * @param groupPath the rule/computation group when the caller supplied one, else {@code null}; only a
+     *     {@code ../}-prefixed value resolves against it, and {@code /} or empty is the root LEVEL, which holds
+     *     groups rather than fields and so is no base for a field path
+     */
+    public static String absoluteEntityPathFix(String key, String value, String groupPath) {
+        String relativeConvention = " (the relative `../Field` spelling belongs to the typed Java API's stored"
+                + " reference — errorEntityRelPath, computedFieldRelPath — not to any CLI path key, every one"
+                + " of which is absolute)";
+        String trimmed = value == null ? "" : value.trim();
+        if (!trimmed.startsWith("../")) {
+            // Includes the absolute-but-malformed values (an empty segment, a bare root group) and every
+            // ambiguous relative shape. No example is synthesized from the value: concatenating it produced
+            // `/Order/../CustomerName`, which this same predicate then admits and the model rejects.
+            return "give " + key + " an absolute name-path starting at a root group, e.g. /Order/CustomerName"
+                    + " (see `model describe` for the model's own paths)." + relativeConvention;
+        }
+        String base = groupPath == null ? "" : groupPath.trim();
+        while (base.endsWith("/")) {
+            base = base.substring(0, base.length() - 1);
+        }
+        if (base.isEmpty()) {
+            return "give " + key + " an absolute name-path; there is no group here to resolve a relative one"
+                    + " against (`/` and the empty string name the root LEVEL, which holds groups, not fields)."
+                    + relativeConvention;
+        }
+        // One `../` is the hop off the rule/computation element onto its own group; whatever follows resolves
+        // from the group through the same algebra that PRODUCED the reference (EntityPath.resolve), so the two
+        // directions cannot disagree.
+        String resolved = EntityPath.of(base).resolve(trimmed.substring(3)).value();
+        if (!isAbsoluteEntityPath(resolved)) {
+            return "resolved against " + base + " the value names " + resolved
+                    + ", which is not a field path; give " + key + " an absolute one." + relativeConvention;
+        }
+        return "did you mean " + resolved + "?" + relativeConvention;
+    }
+
+    /** The {@code --parent} spelling that names the root LEVEL rather than a group in the model. */
+    public static final String ROOT_LEVEL_PARENT = "/";
+
+    /**
+     * The {@code --parent} value to work with, accepting {@code /} as a synonym for the root LEVEL.
+     *
+     * <p><b>Why a synonym rather than a new path form.</b> Every add-verb that can create something at the top
+     * of a model — {@code group add}, {@code include add}, {@code group multiselect}, {@code group attachment} —
+     * expresses "no parent" as the EMPTY string, which is what {@code ModelDocument} itself keys on. That was
+     * the only route and it was undocumented, so the spelling an author reaches for first ({@code /}) failed with
+     * {@code no group at '/'} — a message that reads as "your model has no root" and led a12-kernel-lean's agent
+     * to conclude multi-root models are unauthorable through the CLI (their instrument note, 2026-09-04). This is
+     * an affordance at the flag, NOT an invented pointer syntax: {@code /} is not a legal A12 absolute path at all
+     * ({@link #isAbsoluteEntityPath} refuses it, on {@code ElementPathUtils.splitAbsPath}'s own contract), so no
+     * A12 shape is being redefined and nothing downstream ever sees the synonym.
+     *
+     * <p>Normalizing in one place is the point: four verbs share the meaning, and four hand-written checks would
+     * be four chances to accept it in three of them.
+     */
+    public static String rootLevelParent(String parent) {
+        return ROOT_LEVEL_PARENT.equals(parent) ? "" : parent;
+    }
+
+    /**
+     * The refusal for a {@code --parent} that names no group, sharpened to name the root-level spelling —
+     * because the value an author most often gets wrong here is one that MEANT the root level.
+     */
+    /**
+     * The {@code field add --parent} corrective, which differs from the group verbs' at exactly one value.
+     *
+     * <p>A field cannot be a root element, so `/` is genuinely refused for a field — but the sibling add-verbs
+     * now accept it, and this verb's own help calls its {@code --parent} "the alias matching every sibling
+     * add-verb". Without this branch an author who learned the spelling there is told "no group at '/'", which
+     * reads as an inconsistent tool rather than as the root level holding groups and not fields.
+     */
+    public static String fieldParentHint(String parent) {
+        if (ROOT_LEVEL_PARENT.equals(parent) || parent.isEmpty()) {
+            return "a field always lives inside a group, and `/` (equivalently the empty string) names the ROOT "
+                    + "LEVEL, which holds groups: the sibling add-verbs use that spelling to create a new ROOT "
+                    + "GROUP, so add the group first and then this field with `--parent /<ThatGroup>`";
+        }
+        return missingParentHint("group");
+    }
+
+    public static String missingParentHint(String kind) {
+        return "pass an existing " + kind + "'s full name-path (see `model describe` or `" + kind + " read`), "
+                + "or `/` (equivalently the empty string) to add at the ROOT level";
     }
 
     public static String fieldProblem(BoundModel model, String path) {

@@ -2,6 +2,7 @@ package io.github.mbackschat.a12.dm.cli.group;
 
 import io.github.mbackschat.a12.dm.cli.BaseCommand;
 import io.github.mbackschat.a12.dm.cli.ConsistencyEvidence;
+import io.github.mbackschat.a12.dm.cli.ModelPaths;
 import io.github.mbackschat.a12.dm.cli.ModelWrite;
 import io.github.mbackschat.a12.dm.cli.ParamKind;
 import io.github.mbackschat.a12.dm.cli.Refusal;
@@ -34,7 +35,8 @@ final class GroupAddCommand extends BaseCommand {
 
     @ParamKind(ParamKind.Kind.GROUP_PATH)
     @Option(names = "--parent", required = true, paramLabel = "<path>",
-            description = "the parent group, by full name-path, e.g. /Order")
+            description = "the parent group, by full name-path, e.g. /Order; `/` (equivalently the empty "
+                    + "string) adds a new ROOT group")
     String parent;
 
     @ParamKind(ParamKind.Kind.NEW_NAME)
@@ -66,11 +68,12 @@ final class GroupAddCommand extends BaseCommand {
             return 2;
         }
         ModelResolver resolver = workspace.resolverFor(model);
+        String parent = ModelPaths.rootLevelParent(this.parent);
         String target = parent + "/" + name;
         ModelDocument doc = ModelDocument.read(modelJson);
         if (!parent.isEmpty()) {   // "" = a new root group, which has no parent to check
             Optional<Refusal> refusal = new SafetyGate()
-                    .require(SafetyChecks.exists(doc, parent, true))
+                    .require(SafetyChecks.parentExists(doc, parent))
                     .firstFailure();
             if (refusal.isPresent()) {
                 return refuse(refusal.get());

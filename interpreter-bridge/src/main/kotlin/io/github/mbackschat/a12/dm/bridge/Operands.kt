@@ -4,9 +4,12 @@ import io.github.mbackschat.a12.dm.core.ModelIndex
 import io.github.mbackschat.a12.dm.core.ValueKind
 import io.github.mbackschat.a12.dm.interpreter.ast.Expr
 import io.github.mbackschat.a12.dm.rulekit.dsl.AggregateOperand
+import io.github.mbackschat.a12.dm.rulekit.dsl.Calculation
+import io.github.mbackschat.a12.dm.rulekit.dsl.DateListAggregate
 import io.github.mbackschat.a12.dm.rulekit.dsl.FieldListRef
 import io.github.mbackschat.a12.dm.rulekit.dsl.FieldOperand
 import io.github.mbackschat.a12.dm.rulekit.dsl.FieldRef
+import io.github.mbackschat.a12.dm.rulekit.dsl.FieldValue
 import io.github.mbackschat.a12.dm.rulekit.dsl.GroupListRef
 import io.github.mbackschat.a12.dm.rulekit.dsl.GroupRef
 import io.github.mbackschat.a12.dm.rulekit.dsl.GroupSemanticIndexFieldValue
@@ -74,14 +77,25 @@ internal class Operands(private val mapping: Mapping) {
     }
 
     /** Resolve an operand that must name a group. */
-    fun groupRef(node: Expr): GroupRef {
+    fun groupRef(node: Expr): GroupRef = groupRef(node, allowOuter = false)
+
+    /**
+     * As [groupRef], with the `$` correlation left to the CALLER when its slot has somewhere to put one.
+     * `GroupRef` itself carries no marker — the decision API-FINDINGS finding 135 made, and the reason the
+     * default arm still refuses — so only a caller holding a node with its own `outer` component (today:
+     * `CurrentRepetition`) may pass `allowOuter`. A slot without one must keep refusing rather than drop the
+     * marker silently, which `verifyOuterPreserved` would catch as a corrupted read anyway.
+     */
+    fun groupRef(node: Expr, allowOuter: Boolean): GroupRef {
         if (node is Expr.Star && node.having != null) {
             throw UnmappedConstructException(
                 "a Having filter on the group operand " + node.path + " — a GroupRef carries no filter"
             )
         }
         if (node is Expr.EntitySource) {
-            requireNotCorrelated(node, "a group")
+            if (!allowOuter) {
+                requireNotCorrelated(node, "a group")
+            }
             return mapping.model().group(declared(node.path))
         }
         throw if (node is Expr.SemanticIndex) {
@@ -160,6 +174,27 @@ internal class Operands(private val mapping: Mapping) {
     }
 
     /**
+     * The declared temporal class of a mapped value — [Mapping.temporalClass]'s implementation, and the one
+     * place in this bridge that knows a temporal dispatch reads the DECLARATION rather than the kind.
+     *
+     * Only a field read can carry a declaration, so everything else answers its own kind; the collapse of
+     * DATE_FRAGMENT into the DATE class is rulekit's, reused rather than restated.
+     */
+    fun temporalClass(value: Calculation): ValueKind = when (value) {
+        is FieldValue -> declaredTemporalClass(value.field().fieldPath(), value.kind())
+        is FieldOperand -> declaredTemporalClass(value.fieldPath(), value.kind())
+        else -> value.kind()
+    }
+
+    fun operandTemporalClass(operand: FieldOperand): ValueKind =
+        declaredTemporalClass(operand.fieldPath(), operand.kind())
+
+    private fun declaredTemporalClass(path: String, declaredKind: ValueKind): ValueKind =
+        mapping.model().fieldAt(path)
+            .map { DateListAggregate.temporalClassOf(it.temporalClass()) }
+            .orElse(declaredKind)
+
+    /**
      * Resolve an operand in an entity-list slot, which accepts a field, a repetition list, a group scope, an
      * index-selected FIELD, or — since [IndexedGroupValue] became an [AggregateOperand] — an index-selected
      * GROUP. Both indexed forms behave like a single entity here: they never satisfy arity alone the way a
@@ -177,8 +212,7 @@ internal class Operands(private val mapping: Mapping) {
             return if (mapping.isGroup(node.path)) indexedGroup(node) else indexedValue(node)
         }
         if (node is Expr.Field && mapping.isGroup(node.path)) {
-            requireNotCorrelated(node, "a group scope")
-            return mapping.model().flattenGroup(declared(node.path))
+            return correlate(mapping.model().flattenGroup(declared(node.path)), node.outer)
         }
         return fieldRef(node)
     }
@@ -206,7 +240,8 @@ internal class Operands(private val mapping: Mapping) {
     /**
      * The group analog of [semanticIndex] — an index-selected GROUP, resolved the same way as the plain
      * (unindexed) group arm above: `flattenGroup` reads the model's own repeatability, and its result is never
-     * re-guessed here. A group can never itself carry `$`, so an outer-marked target is refused the same way.
+     * re-guessed here. A group's own semantic INDEX has no marker slot, so an outer-marked target is refused
+     * the same way — unlike a group-presence leaf, which carries one (see `Predicates.groupPresence`).
      * The wildcard/index conflict (`MVK_SEMANTIC_INDEX_AND_WILDCARD`) is rulekit's own guard, in
      * [IndexedGroupValue]'s leaf records — not pre-checked here.
      */
@@ -248,10 +283,13 @@ internal class Operands(private val mapping: Mapping) {
                 "a Having filter on the group scope " + star.path + " — only a repetition list carries one"
             )
         }
-        requireNotCorrelated(star, "a group scope")
         declared(star.path)
-        return mapping.model().flattenGroup(starPath(star))
+        return correlate(mapping.model().flattenGroup(starPath(star)), star.outer)
     }
+
+    /** A group scope carries the `$` marker on its own operand position, like its field-list sibling (DG49). */
+    private fun correlate(scope: GroupListRef, outer: Boolean): GroupListRef =
+        if (outer) scope.outer() else scope
 
     /**
      * The starred path rulekit's `flatten`/`flattenGroup` read, rebuilt from the AST.
@@ -323,11 +361,26 @@ internal class Operands(private val mapping: Mapping) {
 
         private fun correlate(ref: FieldRef, outer: Boolean): FieldRef = if (outer) ref.outer() else ref
 
+        /**
+         * Refuse a `$`-marked source in a slot that has no representation for the marker.
+         *
+         * <p><b>The message names the SLOT, not the API</b>, because what the API can hold has changed twice.
+         * `GroupPresenceCondition` gained the marker (API-FINDINGS 135), then `GroupListRef` did and
+         * `CurrentRepetition`'s own `outer` component was threaded (API-FINDINGS 138) — so the group scopes,
+         * the group lists and the repetition index all reconstruct their marker now, and this refusal is down
+         * to the ONE slot with genuinely nowhere to put one: a bare `GroupRef` in `CountAggregate.groups`,
+         * which `NumberOfFilledGroups` uses.
+         *
+         * <p>Refusing there is the honest answer rather than a residual to close: dropping the marker would
+         * corrupt the read into a non-correlated rule, and `verifyOuterPreserved` would degrade the rule to a
+         * verbatim `Opaque` anyway — the same outcome, reached without a diagnostic naming the cause.
+         */
         private fun requireNotCorrelated(source: Expr.EntitySource, what: String) {
             if (source.outer) {
                 throw UnmappedConstructException(
                     "the \$-correlation on " + what + ", " + source.path +
-                        " — rulekit correlates a field or a repetition list, not a group"
+                        " — this slot takes a bare group reference, which carries no marker (a group-presence " +
+                        "leaf does: GroupFilled(\$G) reads back with its marker)"
                 )
             }
         }

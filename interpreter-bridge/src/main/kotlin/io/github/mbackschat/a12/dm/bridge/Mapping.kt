@@ -1,6 +1,7 @@
 package io.github.mbackschat.a12.dm.bridge
 
 import io.github.mbackschat.a12.dm.core.ModelIndex
+import io.github.mbackschat.a12.dm.core.ValueKind
 import io.github.mbackschat.a12.dm.interpreter.ast.Cond
 import io.github.mbackschat.a12.dm.interpreter.ast.Expr
 import io.github.mbackschat.a12.dm.rulekit.dsl.AggregateOperand
@@ -28,6 +29,22 @@ internal interface Mapping {
 
     /** Structural questions the typed refs cannot answer, chiefly whether a path names a group. */
     fun index(): ModelIndex
+
+    /**
+     * The temporal class a value's DECLARATION selects — DATE, TIME or DATE_TIME — which is what every kernel
+     * temporal gate reads (KF271). A TIME field declared `yyyy-MM-dd` answers **DATE**, and is a legal
+     * comparison partner and list member for a plain DATE field; keying a dispatch on [Calculation.kind]
+     * instead refuses conditions the kernel admits, measured at both temporal dispatches this bridge owns
+     * ([CrossKindTemporalTranslationTest]).
+     *
+     * Anything that is not a field read answers its own kind, so this is a safe substitute for `kind()` at a
+     * dispatch and never a substitute for it as a *fact about the model* — the declared kind is still what
+     * [typedRef] and the operator gates report.
+     */
+    fun temporalClass(value: Calculation): ValueKind
+
+    /** The same class for an entity-list operand, which is not always a [Calculation]. */
+    fun operandTemporalClass(operand: FieldOperand): ValueKind
 
     /** Map a nested condition. */
     fun condition(node: Cond): Condition
@@ -75,6 +92,12 @@ internal interface Mapping {
 
     /** Resolve an operand that must name a group. */
     fun groupRef(node: Expr): GroupRef
+
+    /**
+     * As [groupRef], but with the `$` correlation left to a caller whose own node can hold one — `GroupRef`
+     * carries no marker, so every other slot must keep refusing rather than drop it (DEV-API-GAPS `DG49`).
+     */
+    fun groupRef(node: Expr, allowOuter: Boolean): GroupRef
 
     /**
      * Resolve a raw group-reference TOKEN — the form a scope keyword captures, rather than an operand the

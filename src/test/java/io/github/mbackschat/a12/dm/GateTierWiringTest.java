@@ -66,6 +66,37 @@ class GateTierWiringTest {
                 "the Gradle cache action and build must share the isolated user home");
     }
 
+    /**
+     * <b>A guard that hangs off {@code check} reaches CI only by being NAMED, and this workflow names tasks
+     * one by one.</b> Every gate below holds part of the published kits' kernel-free claim, and each is a
+     * {@code check} dependency rather than a {@code test} one, so dropping its name from the run line silently
+     * retires it. That is not hypothetical: {@code :schemakit:check} appeared in NO lane here until 2026-09-05,
+     * so the fifth published kit's 27 test classes and {@code verifySchemakitPurity} — the guard
+     * SCHEMAKIT-SPEC §1 cites for the module's kernel-free claim — had never once run in CI.
+     *
+     * <p><b>The assertion is on the {@code run:} LINE, not on the file.</b> A file-wide {@code contains} is
+     * satisfied by the comment above that line explaining why each gate is named there — measured: deleting
+     * {@code :schemakit:check} from the invocation left this test green, because the prose still mentioned it.
+     */
+    @Test
+    void pushCiNamesEveryCheckOnlyGuardHoldingTheKernelFreeClaim() throws IOException {
+        String invocation = Files.readString(locate(".github/workflows/ci.yml")).lines()
+                .map(String::strip)
+                .filter(line -> line.startsWith("run: ./gradlew"))
+                .reduce((a, b) -> {
+                    throw new AssertionError("more than one gradlew invocation in ci.yml — say which one holds "
+                            + "the kernel-free gates before asserting on it");
+                })
+                .orElseThrow(() -> new AssertionError("ci.yml runs no gradlew invocation at all"));
+
+        for (String gate : List.of(":verifyKitPurity", ":verifyPublishedClasspathsAreKernelFree",
+                ":schemakit:check", ":interpreter-bridge:check", ":noBackendTest")) {
+            assertTrue(invocation.contains(gate), () -> gate + " must be INVOKED by ci.yml — it hangs off a "
+                    + "`check` this workflow never runs, so a gate missing from the command does not run at "
+                    + "all, however thoroughly the comments describe it. Invocation was: " + invocation);
+        }
+    }
+
     @Test
     void infographicFreshnessSetsUpPinnedNodeThenBlocksHeavySetupWithoutASecondJob() throws IOException {
         String ci = Files.readString(locate(".github/workflows/ci.yml"));

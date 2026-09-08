@@ -75,6 +75,31 @@ internal object BridgeModels {
             .build().toJson()
     }
 
+    /**
+     * A model whose temporal fields' KINDS and DECLARED FORMATS disagree — a TIME and a DATE_TIME field each
+     * declared `yyyy-MM-dd`, plus a DATE field declared with a clock format as the diagonal. The kernel reads
+     * the declaration at every temporal gate (KF271), so these are legal comparison partners for the plain
+     * DATE and TIME fields beside them; a kind-keyed dispatch mistranslates or refuses them.
+     *
+     * Its own model rather than an addition to [orderJson]: every other bridge test binds that one, and a new
+     * cross-kind field there would silently widen their denominators.
+     */
+    val crossKindTemporalJson: String by lazy {
+        DocumentModelDraft.named("travel-cover-crosskind").locale("en_US")
+            .rootGroup("Cover") { cover ->
+                cover
+                    .field("Holder", FieldKind.STRING)
+                    .dateField("StartsOn") { it.format("yyyy-MM-dd") }
+                    .dateField("EndsOn") { it.format("yyyy-MM-dd") }
+                    .timeField("AuditedOn") { it.format("yyyy-MM-dd") }
+                    .dateTimeField("FiledOn") { it.format("yyyy-MM-dd") }
+                    .dateField("ShiftAt") { it.format("HH:mm:ss") }
+                    .timeField("ShiftFrom") { it.format("HH:mm:ss") }
+                    .dateRangeField("CoverWindow") { it.format("yyyy-MM-dd").separator("/") }
+            }
+            .build().toJson()
+    }
+
     fun shipmentJson(): String {
         val model = BoundModel.ofJson(DocumentModelDraft.named("port").locale("en_US")
             .rootGroup("Shipment") { it.field("Carrier", FieldKind.STRING) }

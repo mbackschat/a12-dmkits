@@ -24,6 +24,9 @@ public record io.github.mbackschat.a12.dm.core.ComputationInfo
   public java.lang.String targetFieldPath()
   public final java.lang.String toString()
 
+public class io.github.mbackschat.a12.dm.core.ConsistencyCheckFailedException extends java.lang.RuntimeException
+  public ConsistencyCheckFailedException(java.lang.String, java.lang.Throwable)
+
 public final class io.github.mbackschat.a12.dm.core.DmKeys
   public static final java.lang.String ALIAS
   public static final java.lang.String ANNOTATIONS
@@ -85,12 +88,14 @@ public enum io.github.mbackschat.a12.dm.core.ElementType
 
 public record io.github.mbackschat.a12.dm.core.EntityPath
   public EntityPath(java.util.List<java.lang.String>)
+  public java.lang.String elementReference(io.github.mbackschat.a12.dm.core.EntityPath)
   public final boolean equals(java.lang.Object)
   public final int hashCode()
   public boolean isInside(io.github.mbackschat.a12.dm.core.EntityPath)
   public boolean isStrictlyInside(io.github.mbackschat.a12.dm.core.EntityPath)
   public static io.github.mbackschat.a12.dm.core.EntityPath of(java.lang.String)
   public java.lang.String relativize(io.github.mbackschat.a12.dm.core.EntityPath)
+  public io.github.mbackschat.a12.dm.core.EntityPath resolve(java.lang.String)
   public java.util.List<java.lang.String> segments()
   public java.lang.String toString()
   public java.lang.String value()

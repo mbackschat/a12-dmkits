@@ -303,7 +303,7 @@ dmtool -m /tmp/apply-typo.dm.json apply /tmp/apply-typo-ops.json 2>&1; echo "(ex
 (exit 1)
 ```
 
-→ `failedAt: 0`, `outcome: "rejected"`, `written: false`. `RK_UNKNOWN_ARG` points `where.arg` at the offending key (`grop`) and the `fix` is the correction (`did you mean 'group'?`). A **bad op** is the sibling case — `RK_UNKNOWN_OP` lists the supported ops:
+→ `failedAt: 0`, `outcome: "rejected"`, `written: false`. `RK_UNKNOWN_ARG` points `where.arg` at the offending key (`grop`) and the `fix` is the correction (`did you mean 'group'?`). A **bad op** is the sibling case — `RK_UNKNOWN_OP` lists the supported `(target op)` pairs:
 
 ```bash
 printf "%s" '[ {"target":"field","op":"bogus","group":"/Order","name":"X","kind":"NUMBER"} ]' > /tmp/apply-badop-ops.json
@@ -316,12 +316,12 @@ echo "(exit ${PIPESTATUS[0]})"
 {
   "code": "RK_UNKNOWN_OP",
   "summary": "apply does not support op 'field bogus'",
-  "fix": "supported ops: computation add, computat…"
+  "fix": "supported (target op) pairs: computation…"
 }
 (exit 1)
 ```
 
-→ `RK_UNKNOWN_OP` rejects `field bogus` and the `fix` enumerates the supported `target op` pairs — so the agent discovers the valid set from the diagnostic itself. (We truncate the long `fix` for the demo.)
+→ `RK_UNKNOWN_OP` rejects `field bogus` and the `fix` enumerates the supported **`(target op)` pairs** — so the agent discovers the valid set from the diagnostic itself. (We truncate the long `fix` for the demo.) The wording earns its parenthesis: an op-record spells its op as **two keys**, while the list is space-joined, so a `fix` that just said "supported ops: … rule add …" read as a value for `op` — and an agent that had written `{"op": "rule add"}` was handed back the very spelling it was refused for (measured 2026-09-04). Pass only `op` and the corrective now splits the label for you.
 
 ## Cross-type corrective — a batch op fed to apply
 

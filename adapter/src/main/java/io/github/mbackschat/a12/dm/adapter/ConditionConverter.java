@@ -406,7 +406,7 @@ final class ConditionConverter {
                     .map(e -> e.isField()
                             ? (AggregateOperand) (isWildcard(e) ? model.flatten(reconstructStarPath(e))
                                     : model.field(e.getFullName()))
-                            : model.flattenGroup(reconstructStarPath(e)))
+                            : groupScopeOf(e, reconstructStarPath(e)))
                     .toList();
             return Dsl.entityListPredicate(entityListQuantifier(name).orElseThrow(), operands);
         }
@@ -425,7 +425,7 @@ final class ConditionConverter {
                     }
                     return (GroupListOperand) model.field(e.getFullName());
                 }
-                return (GroupListOperand) model.flattenGroup(
+                return (GroupListOperand) groupScopeOf(e,
                         isWildcard(e) ? reconstructStarPath(e) : e.getFullName());
             }).toArray(GroupListOperand[]::new);
             // the fixed singleton NoGroupFilled(F) has the scalar presence semantics — canonicalize
@@ -517,17 +517,26 @@ final class ConditionConverter {
                         || name == EntityListConditionName.AtLeastOneGroupFilled)
                 && entities.stream().anyMatch(ConditionConverter::isWildcard)) {
             GroupListRef[] scopes = entities.stream()
-                    .map(e -> model.flattenGroup(reconstructStarPath(e)))
+                    .map(e -> groupScopeOf(e, reconstructStarPath(e)))
                     .toArray(GroupListRef[]::new);
             return groupFillQuantifier(name, scopes, entityList);
         }
+        // A $-correlated single-group presence leaf inside a Having filter (D13). Threaded rather than
+        // dropped: the kernel admits `GroupFilled($G)` beside an in-scope conjunct (KERNEL-FINDINGS §9), so
+        // erasing the marker here would either corrupt the read or — since verifyOuterPreserved counts the
+        // markers the render carries — refuse a legal model as Opaque.
+        boolean outerGroup = single && entities.get(0).isOuter();
         return switch (name) {
             // single-group GroupFilled/GroupNotFilled canonicalize to AllGroupsFilled/NoGroupFilled[g]
-            case AllGroupsFilled -> single ? model.group(p[0]).filled() : groups(paths, Dsl::allGroupsFilled);
-            case NoGroupFilled -> single ? model.group(p[0]).notFilled() : groups(paths, Dsl::noGroupFilled);
-            case AtLeastOneGroupFilled -> groups(paths, Dsl::atLeastOneGroupFilled);
-            case NotAllGroupsFilled -> groups(paths, Dsl::notAllGroupsFilled);
-            case GroupsNotCollectivelyFilled -> groups(paths, Dsl::groupsNotCollectivelyFilled);
+            case AllGroupsFilled -> single
+                    ? Dsl.groupFilled(model.group(p[0]), outerGroup)
+                    : markedGroups(entities, Dsl::allGroupsFilled);
+            case NoGroupFilled -> single
+                    ? Dsl.groupNotFilled(model.group(p[0]), outerGroup)
+                    : markedGroups(entities, Dsl::noGroupFilled);
+            case AtLeastOneGroupFilled -> markedGroups(entities, Dsl::atLeastOneGroupFilled);
+            case NotAllGroupsFilled -> markedGroups(entities, Dsl::notAllGroupsFilled);
+            case GroupsNotCollectivelyFilled -> markedGroups(entities, Dsl::groupsNotCollectivelyFilled);
             // field-fill quantifiers over a GROUP scope (the fields inside the group, all reps if starred)
             case AllFieldsFilled -> groupScopedFieldFill(entities, Dsl::allFieldsFilled);
             case AtLeastOneFieldFilled -> groupScopedFieldFill(entities, Dsl::atLeastOneFieldFilled);
@@ -627,7 +636,7 @@ final class ConditionConverter {
     private Condition groupScopedFieldFill(List<IEntityId> entities,
             BiFunction<GroupListRef, GroupListRef[], Condition> factory) {
         GroupListRef[] scopes = entities.stream()
-                .map(e -> model.flattenGroup(reconstructStarPath(e))).toArray(GroupListRef[]::new);
+                .map(e -> groupScopeOf(e, reconstructStarPath(e))).toArray(GroupListRef[]::new);
         return factory.apply(scopes[0], Arrays.copyOfRange(scopes, 1, scopes.length));
     }
 
@@ -649,6 +658,21 @@ final class ConditionConverter {
     private Condition groups(List<String> paths, BiFunction<GroupRef, GroupRef[], Condition> factory) {
         List<GroupRef> refs = paths.stream().map(model::group).toList();
         return factory.apply(refs.get(0), refs.subList(1, refs.size()).toArray(GroupRef[]::new));
+    }
+
+    /**
+     * The same quantifier over group ENTITIES rather than paths, so each operand keeps its {@code $}
+     * outer-iteration marker (D13). The representation is unchanged for an unmarked list:
+     * {@code GroupListPredicate}'s group constructor already wraps every {@code GroupRef} in a bare
+     * {@code GroupListRef}, so this builds the identical node and renders the identical text — it only stops
+     * throwing the marker away on the path from entity to operand (DEV-API-GAPS {@code DG49}).
+     */
+    private Condition markedGroups(List<IEntityId> entities,
+            BiFunction<GroupListOperand, GroupListOperand[], Condition> factory) {
+        GroupListOperand[] operands = entities.stream()
+                .map(e -> (GroupListOperand) groupScopeOf(e, e.getFullName()))
+                .toArray(GroupListOperand[]::new);
+        return factory.apply(operands[0], Arrays.copyOfRange(operands, 1, operands.length));
     }
 
     private FieldRef[] fieldRefs(List<String> paths) {
@@ -1079,13 +1103,22 @@ final class ConditionConverter {
         return null;
     }
 
-    /** Dispatch a {@code [field] <op> other} comparison by the field's kind (other = the constant/field operand). */
+    /**
+     * Dispatch a {@code [field] <op> other} comparison by the field's kind (other = the constant/field operand).
+     *
+     * <p><b>A temporal field dispatches on its DECLARATION, not its kind</b> ({@code FieldInfo.temporalClass}).
+     * The comparison-admission gate partitions temporal operands by declared format ({@code KF211},
+     * {@code KF248}), so a TIME field declared {@code yyyy-MM-dd} must become a {@code DateRef} here — keyed on
+     * the kind it became a {@code TimeRef} that could not be compared against the date it was authored against,
+     * and a clock-declared DATE reached {@code BoundModel.date} and threw, surfacing a legal model as a
+     * "converter error" rather than as a rule. Locked by {@code CrossKindTemporalOperandReadTest}.
+     */
     private Condition fieldValueComparison(IFieldIdOperation field, ComparisonOperation op, IOperation other,
             ICondition origin) {
         String path = field.getField().getFullName();
         ValueKind kind = model.fieldAt(path)
                 .orElseThrow(() -> unsupported("comparison on unknown field " + path, origin))
-                .kind();
+                .temporalClass();
         // a $ outer-iteration correlation on the left operand (D13) — threaded for the kinds whose
         // handles expose outer(); other kinds leave the marker unset and the N8 backstop (verifyOuterPreserved)
         // catches the silent drop and degrades the rule to Opaque.
@@ -1123,8 +1156,10 @@ final class ConditionConverter {
             case DATE_FRAGMENT -> dateComparison(leftOuter ? model.dateFragment(path).outer() : model.dateFragment(path), op, other, origin);
             case TIME -> timeComparison(leftOuter ? model.time(path).outer() : model.time(path), op, other, origin);
             case DATE_TIME -> dateTimeComparison(leftOuter ? model.dateTime(path).outer() : model.dateTime(path), op, other, origin);
-            case BOOLEAN -> booleanComparison(model.bool(path), op, other, origin);
-            case CONFIRM -> confirmComparison(model.confirm(path), op, other, origin);
+            case BOOLEAN -> booleanComparison(leftOuter ? model.bool(path).outer() : model.bool(path),
+                    op, other, origin);
+            case CONFIRM -> confirmComparison(leftOuter ? model.confirm(path).outer() : model.confirm(path),
+                    op, other, origin);
             // a custom-typed field's value is text — the kernel compares it as a string (m.custom → StringRef)
             case CUSTOM -> stringComparison(leftOuter ? model.custom(path).outer() : model.custom(path), op, other, origin);
             case DATE_RANGE -> dateRangeComparison(leftOuter ? model.dateRange(path).outer() : model.dateRange(path),
@@ -1170,22 +1205,43 @@ final class ConditionConverter {
         return Dsl.firstFilledDateRange(operands.getFirst(), operands.get(1), rest);
     }
 
+    /**
+     * The endpoint gate reads the endpoint's DECLARED FORMAT, so the handle is chosen by the declaration's
+     * temporal class rather than by the field's kind: a TIME- or DATE_TIME-declared {@code yyyy-MM-dd} field is
+     * an admitted endpoint in either position and in both at once, and this had refused all three outright
+     * ({@code KF211}'s rule at this gate; the admissions are locked by
+     * {@code rulekit.validate.laws.TemporalConstructorDeclaredFormatGateLawsTest} and the reads by
+     * {@code CrossKindTemporalOperandReadTest}). A DATE_FRAGMENT keeps its own class and its own handle.
+     */
     private DateOperand dateRangeEndpoint(IEntityId field, Object origin) {
         String path = field.getFullName();
-        ValueKind kind = model.fieldAt(path)
-                .orElseThrow(() -> unsupported("DateRange on unknown field " + path, origin)).kind();
+        FieldInfo info = model.fieldAt(path)
+                .orElseThrow(() -> unsupported("DateRange on unknown field " + path, origin));
+        ValueKind declared = info.temporalClass();
         if (hasSemanticIndex(field)) {
             Calculation indexed = semanticIndex(field, origin).index();
-            if (kind == ValueKind.DATE || kind == ValueKind.DATE_FRAGMENT) {
+            if (declared == ValueKind.DATE || declared == ValueKind.DATE_FRAGMENT) {
                 return new DateExpr(indexed);
             }
-            throw unsupported("DateRange on a " + kind + " semantic-index field " + path, origin);
+            throw unsupported("DateRange on a " + describe(info) + " semantic-index field " + path, origin);
         }
-        return switch (kind) {
+        return switch (declared) {
             case DATE -> field.isOuter() ? model.date(path).outer() : model.date(path);
             case DATE_FRAGMENT -> field.isOuter() ? model.dateFragment(path).outer() : model.dateFragment(path);
-            default -> throw unsupported("DateRange on a " + kind + " field " + path, origin);
+            default -> throw unsupported("DateRange on a " + describe(info) + " field " + path, origin);
         };
+    }
+
+    /**
+     * A field for a diagnostic, naming the property the decision was actually made on. A refusal here is
+     * decided by the DECLARED FORMAT, so printing the kind alone tells the reader to go and check the wrong
+     * thing — and on a cross-declared field it prints a kind that is admitted at this gate under a different
+     * declaration, which reads as a contradiction (cold review 2026-09-07).
+     */
+    private static String describe(FieldInfo info) {
+        return info.format().filter(format -> info.temporalClass() != info.kind())
+                .map(format -> info.kind() + " declared " + format)
+                .orElseGet(() -> String.valueOf(info.kind()));
     }
 
     private Condition dateRangeComparison(DateRangeOperand left, ComparisonOperation operation,
@@ -1380,7 +1436,23 @@ final class ConditionConverter {
         if (groupEntity.getFilterCondition() != null) {
             throw unsupported("group-scope aggregate with a Having filter", origin);
         }
-        return model.flattenGroup(reconstructStarPath(groupEntity));
+        return groupScopeOf(groupEntity, reconstructStarPath(groupEntity));
+    }
+
+    /**
+     * A group scope with its {@code $} outer-iteration correlation threaded (D13) — the ONE place a group
+     * entity becomes a {@link GroupListRef}, so a marker cannot be dropped at one of five call sites and
+     * preserved at the other four.
+     *
+     * <p>Dropping it is not a cosmetic loss: {@code verifyOuterPreserved} counts source markers against
+     * rendered ones and degrades the whole rule to a verbatim {@link ReadResult.Opaque} when they disagree,
+     * so a legal model — the kernel admits {@code AllGroupsFilled($A, $B)} beside an in-scope conjunct — was
+     * UNREADABLE rather than merely unauthorable (DEV-API-GAPS {@code DG49};
+     * {@code adapter.laws.CorrelatedGroupListReadTest}).
+     */
+    private GroupListRef groupScopeOf(IEntityId entity, String starPath) {
+        GroupListRef scope = model.flattenGroup(starPath);
+        return entity.isOuter() ? scope.outer() : scope;
     }
 
     /** {@code getFullName()} drops the wildcard; re-insert {@code *} after each segment marked WILDCARD in indices. */
@@ -2069,7 +2141,7 @@ final class ConditionConverter {
         }
         if (op instanceof IFieldIdOperation field && field.getOperatorName() == FieldIdOperationName.FieldValue
                 && model.fieldAt(field.getField().getFullName())
-                        .map(i -> i.kind() == ValueKind.DATE_TIME).orElse(false)) {
+                        .map(i -> i.temporalClass() == ValueKind.DATE_TIME).orElse(false)) {
             DateTimeRef dt = model.dateTime(field.getField().getFullName());
             return field.getField().isOuter() ? dt.outer() : dt;   // $ correlation (D13)
         }
@@ -2154,8 +2226,9 @@ final class ConditionConverter {
     /** Operation-shape discriminator for values whose kernel family is date-time rather than date. */
     private boolean isDateTimeValue(IOperation op) {
         if (op instanceof IFieldIdOperation field && field.getOperatorName() == FieldIdOperationName.FieldValue) {
+            // The DECLARATION's class, like every other temporal decision here ([KF271]).
             return model.fieldAt(field.getField().getFullName())
-                    .map(i -> i.kind() == ValueKind.DATE_TIME).orElse(false);
+                    .map(i -> i.temporalClass() == ValueKind.DATE_TIME).orElse(false);
         }
         if (op instanceof IDateTimeConstructionOperation) {
             return true;
@@ -2261,7 +2334,8 @@ final class ConditionConverter {
     /** A time-valued operand: a time field ({@code FieldValue}), a time constant, or {@code TimeFromDateTime(dt)}. */
     private TimeOperand convertTimeOperand(IOperation op, Object origin) {
         if (op instanceof IFieldIdOperation field && field.getOperatorName() == FieldIdOperationName.FieldValue
-                && model.fieldAt(field.getField().getFullName()).map(i -> i.kind() == ValueKind.TIME).orElse(false)) {
+                && model.fieldAt(field.getField().getFullName())
+                        .map(i -> i.temporalClass() == ValueKind.TIME).orElse(false)) {
             TimeRef time = model.time(field.getField().getFullName());
             return field.getField().isOuter() ? time.outer() : time;   // $ correlation (D13)
         }
@@ -2342,8 +2416,12 @@ final class ConditionConverter {
     /** Exact DATE/TIME/DATETIME family of one kernel operation, or {@code null} when it carries no such clue. */
     private TemporalKind temporalOperandKind(IOperation op) {
         if (op instanceof IFieldIdOperation field && field.getOperatorName() == FieldIdOperationName.FieldValue) {
+            // The DECLARATION's class, like every other temporal decision here ([KF271]). This one decides
+            // which FAMILY the right operand of a temporal comparison belongs to, so reading the kind made
+            // `[<DATE_TIME stamp>] == [<DATE declared as a stamp>]` — kernel-admitted — take the cross-family
+            // ordering arm and come back Opaque on the equality verbs.
             return model.fieldAt(field.getField().getFullName())
-                    .map(FieldInfo::kind)
+                    .map(FieldInfo::temporalClass)
                     .map(ConditionConverter::temporalKind)
                     .orElse(null);
         }
@@ -2569,12 +2647,16 @@ final class ConditionConverter {
             if (!entity.isField()) {
                 continue;   // a group scope is typed by its expansion — the kernel's verdict, not ours
             }
-            ValueKind kind = model.fieldAt(entity.getFullName()).map(i -> i.kind()).orElse(null);
-            // The COMPARABILITY CLASS, not the kind: DATE and DATE_FRAGMENT share one, and the kernel admits a
-            // list mixing them (rulekit `DateListAggregate.temporalClassOf`, measured). Keying this on kind
-            // equality made an authorable, kernel-admitted `MaxValue(<DATE yyyy>, <DATE_FRAGMENT yyyy>)`
-            // unreadable — it fell to the NUMERIC arm and came back Opaque (cold review 2026-08-24).
-            ValueKind temporalClass = kind == null ? null : DateListAggregate.temporalClassOf(kind);
+            // The COMPARABILITY CLASS, not the kind — and the class each operand's DECLARATION selects, which
+            // is what the kernel's own gate reads ([KF271]). Two corrections landed here, both from the same
+            // root: keying on kind EQUALITY made a kernel-admitted `MaxValue(<DATE yyyy>, <DATE_FRAGMENT yyyy>)`
+            // unreadable (cold review 2026-08-24), and keying the class on the KIND left the same defect for a
+            // TIME field declared `yyyy-MM-dd`, whose list the kernel admits (cold review 2026-09-07 —
+            // `CrossKindTemporalOperandReadTest`). Either way the rule fell to the NUMERIC arm and came back
+            // Opaque. `temporalClass()` resolves the declaration; `temporalClassOf` collapses DATE_FRAGMENT.
+            ValueKind declared = model.fieldAt(entity.getFullName())
+                    .map(FieldInfo::temporalClass).orElse(null);
+            ValueKind temporalClass = declared == null ? null : DateListAggregate.temporalClassOf(declared);
             if (temporalClass != ValueKind.DATE && temporalClass != ValueKind.TIME
                     && temporalClass != ValueKind.DATE_TIME) {
                 return null;

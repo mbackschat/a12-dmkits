@@ -231,24 +231,36 @@ class RuleMessageParameterLawsTest {
 
     /**
      * <b>The load-bearing pair.</b> A keyed parameter's gate is on the INDEX, not on the field: against a
-     * condition that reads only {@code Claims/Payout For "C-1"}, the keyed parameter naming a DIFFERENT
-     * field of that group is admitted, while the unkeyed spelling of that same field is refused. Every
-     * refusing row quotes a field and a key together, so only the admitted row separates the two accounts.
+     * condition that reads only {@code Claims/Payout For "C-1"}, the keyed parameter naming the group's
+     * INDEX FIELD is admitted, while the unkeyed spelling of that same field is refused. Every refusing
+     * row quotes a field and a key together, so only the admitted row separates the two accounts.
+     *
+     * <p><b>Corrected 2026-09-05 — "a DIFFERENT field" was too wide, and the index field is why.</b> The
+     * first version of this table read {@code ClaimNo} as an ordinary other field, but it is the group's
+     * declared {@code indexField}, so "any field of the group, once keyed" and "the keyed field, or the
+     * index" were indistinguishable across every row here. The {@code Severity} row is the discriminator:
+     * a third field, neither keyed by the condition nor the index, is REFUSED. Found by authoring the
+     * construct through {@code dmtool} for an external consumer, on a fixture whose repeatable group
+     * happened to carry a third field.
      */
     @Test
     void theKeyedParameterIsGatedOnTheIndexAndNotOnTheField() {
         Map<String, String> verdicts = new LinkedHashMap<>();
-        verdicts.put("keyed, field ABSENT from the condition",
+        verdicts.put("keyed, the group's INDEX field, absent from the condition",
                 verdict(POLICY, GROUP, READS_KEYED_PAYOUT, "see $Claims/ClaimNo For \"C-1\"$"));
         verdicts.put("unkeyed spelling of that same field",
                 verdict(POLICY, GROUP, READS_KEYED_PAYOUT, "see $Claims/ClaimNo$"));
         verdicts.put("keyed the same way as the condition",
                 verdict(POLICY, GROUP, READS_KEYED_PAYOUT, "see $Claims/Payout For \"C-1\"$"));
+        verdicts.put("keyed, a THIRD field — neither the condition's nor the index",
+                verdict(POLICY, GROUP, READS_KEYED_PAYOUT, "see $Claims/Severity For \"C-1\"$"));
 
         assertEquals(Map.of(
-                "keyed, field ABSENT from the condition", ADMITTED,
+                "keyed, the group's INDEX field, absent from the condition", ADMITTED,
                 "unkeyed spelling of that same field", "INVALID_FIELD",
-                "keyed the same way as the condition", ADMITTED), verdicts);
+                "keyed the same way as the condition", ADMITTED,
+                "keyed, a THIRD field — neither the condition's nor the index",
+                "MVK_INDEX_FOR_ERROR_TEXT_INVALID"), verdicts);
     }
 
     /** The index must match the condition's — a different key, or none at all, is its own class. */

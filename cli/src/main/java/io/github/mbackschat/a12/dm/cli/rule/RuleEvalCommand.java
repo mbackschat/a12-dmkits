@@ -1,5 +1,6 @@
 package io.github.mbackschat.a12.dm.cli.rule;
 
+import io.github.mbackschat.a12.dm.core.EntityPath;
 import io.github.mbackschat.a12.dm.cli.BaseCommand;
 import io.github.mbackschat.a12.dm.cli.CustomSupportOptions;
 import io.github.mbackschat.a12.dm.cli.ModelPaths;
@@ -106,10 +107,11 @@ final class RuleEvalCommand extends BaseCommand {
             if (!ModelPaths.isAbsoluteEntityPath(field)) {
                 return refuseOptionValue(RkCode.INVALID_VALUE,
                     "--field must be an absolute path (e.g. /Group/Field), got: " + field,
-                    "--field", null, RkCode.INVALID_VALUE.fix());
+                    "--field", null, ModelPaths.absoluteEntityPathFix("--field", field, null));
             }
             candidateGroup = field.substring(0, slash);
-            candidateErrorEntityRelPath = "../" + field.substring(slash + 1);
+            candidateErrorEntityRelPath =
+                    EntityPath.of(candidateGroup).elementReference(EntityPath.of(field));
         }
         String modelPath = model();
         String json = readModelJson(modelPath);   // null (after printing the failure) if no -m / unreadable

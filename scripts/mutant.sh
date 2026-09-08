@@ -18,9 +18,9 @@
 # USAGE
 #   scripts/mutant.sh <file> <old-text> <new-text> <test-filter> [gradle-lane]
 #
-# The lane defaults to :adapter:test. Name the ONE lane that owns the control — passing several defeats the
-# point: the first version of this script ran `:adapter:test :cli:test` and timed out at 2 minutes, which is
-# the very cost it exists to remove.
+# The lane is INFERRED from the mutated file's module and printed; pass a 5th argument to override. Name the
+# ONE lane that owns the control — passing several defeats the point: the first version of this script ran
+# `:adapter:test :cli:test` and timed out at 2 minutes, which is the very cost it exists to remove.
 #
 #   scripts/mutant.sh adapter/src/test/kotlin/.../PerfHarness.kt \
 #       'if (seen.single().growth < ceiling) return seen.single()' \
@@ -36,7 +36,33 @@ set -euo pipefail
 cd "$(dirname "${BASH_SOURCE[0]}")/.."
 
 [ $# -ge 4 ] || { sed -n '3,34p' "$0" | sed 's/^# \{0,1\}//'; exit 2; }
-FILE=$1; OLD=$2; NEW=$3; FILTER=$4; LANE=${5:-:adapter:test}
+FILE=$1; OLD=$2; NEW=$3; FILTER=$4
+
+# The lane, INFERRED from where the mutated file lives, because getting it wrong costs a whole run and reads
+# like a finding: `:adapter:test` was the unconditional default, so a mutant planted in core/ or cli/ reported
+# "matched no test" and had to be re-launched with the lane appended (measured twice on 2026-09-04). An explicit
+# 5th argument still wins — the inference is a default, not a policy. Root `:test` owns every module without its
+# own test source set (core, rulekit, modelkit, edit), which is why it is the fallback rather than an error.
+if [ $# -ge 5 ]; then
+  LANE=$5
+else
+  # Repo-relative, so an absolute or ./-prefixed path (the form a review packet quotes) still matches.
+  REL=${FILE#"$PWD/"}; REL=${REL#./}
+  case $REL in
+    interpreter/src/jsMain/*|interpreter/src/jsTest/*)
+      echo "mutant: REFUSING to guess a lane for a JS-only source set. :interpreter:jvmTest never compiles" >&2
+      echo "        $REL, so the mutant applies and every test passes — a false SURVIVED, which is the one" >&2
+      echo "        outcome this script exists to prevent. Name the JS lane explicitly as the 5th argument." >&2
+      exit 2 ;;
+    adapter/*) LANE=:adapter:test ;;
+    cli/*) LANE=:cli:test ;;
+    interpreter/*) LANE=:interpreter:jvmTest ;;
+    interpreter-bridge/*) LANE=:interpreter-bridge:test ;;
+    schemakit/*) LANE=:schemakit:test ;;
+    *) LANE=:test ;;
+  esac
+  echo "mutant: lane inferred from the file's module: $LANE (pass a 5th argument to override)"
+fi
 
 [ -f "$FILE" ] || { echo "mutant: no such file: $FILE" >&2; exit 2; }
 if ! git diff --quiet -- "$FILE" || ! git diff --cached --quiet -- "$FILE"; then
@@ -78,15 +104,38 @@ fi
 echo "mutant applied: $(git diff --shortstat -- "$FILE" | sed 's/^ *//')"
 
 LOG=$(mktemp)
-if ./build.sh --console=plain -Pfast "$LANE" --tests "$FILTER" > "$LOG" 2>&1; then
+# `-Pfast` drops the guard prerequisites, which is the whole speed win — but it SKIPS docGuardTest,
+# evalGuardTest and mutationTailGuardTest outright, so naming one of them as the lane under -Pfast runs
+# nothing and reports the mutant SURVIVED. Whenever the lane IS a guard task, the flag comes off.
+FAST=-Pfast
+case $LANE in
+  *docGuardTest|*evalGuardTest|*mutationTailGuardTest|*GuardTest)
+    FAST=
+    echo "mutant: $LANE is skipped by -Pfast, so this run drops the flag (slower, and the only correct option)" ;;
+esac
+if ./build.sh --console=plain $FAST "$LANE" --tests "$FILTER" > "$LOG" 2>&1; then
   VERDICT=0
 else
   VERDICT=1
 fi
 # A filter that matched NO test also "fails" — distinguish it, or a typo reads as a kill.
 if grep -q 'No tests found for given includes' "$LOG"; then
-  echo "mutant: the filter '$FILTER' matched no test — that is a typo, not a verdict" >&2
-  /bin/rm -f "$LOG"; exit 2
+  echo "mutant: the filter '$FILTER' matched no test in $LANE — that is a typo or the wrong lane, not a verdict" >&2
+  exit_and_clean=2
+fi
+# The control may be hosted by a DEDICATED task, which the broad lane excludes by construction
+# (`routeExclusivelyHostedTests` derives each exclude list from the dedicated tasks' includes). The build
+# already names the task to run; surface that instead of leaving the operator to guess, because a wrong lane
+# is the one outcome that looks like a finding. Measured 2026-09-04: the lane inference cannot know which
+# classes a dedicated task hosts, so the routing message is the only reliable signal.
+if grep -q 'deliberately excludes' "$LOG"; then
+  echo "mutant: $LANE does not host that control — the build names the task that does:" >&2
+  sed -n '/deliberately excludes/,/^$/p' "$LOG" | sed 's/^/        /' >&2
+  echo "        Re-run with that task as the 5th argument." >&2
+  exit_and_clean=2
+fi
+if [ "${exit_and_clean:-0}" -ne 0 ]; then
+  /bin/rm -f "$LOG"; exit "$exit_and_clean"
 fi
 
 if [ "$VERDICT" -eq 1 ]; then

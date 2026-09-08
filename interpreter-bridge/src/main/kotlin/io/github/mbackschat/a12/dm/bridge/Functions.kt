@@ -114,7 +114,10 @@ internal class Functions(private val mapping: Mapping) {
     }
 
     private fun countOfFilledFields(args: List<Expr>): Calculation {
-        if (args.isNotEmpty() && args.all { it is Expr.Field && mapping.isGroup(it.path) }) {
+        // A MARKED group cannot ride the bare-GroupRef arm — `CountAggregate.groups` is a `List<GroupRef>`
+        // and a group reference carries no marker; the aggregate-operand arm below maps it to a
+        // `GroupListRef`, which does. Same rendered text either way (DG49).
+        if (args.isNotEmpty() && args.all { it is Expr.Field && mapping.isGroup(it.path) && !it.outer }) {
             val groups = args.map { mapping.groupRef(it) }
             return Dsl.numberOfFilledFields(groups[0], *groups.drop(1).toTypedArray()).expression()
         }
@@ -388,11 +391,8 @@ internal class Functions(private val mapping: Mapping) {
             throw UnmappedConstructException(mode.operatorId() + " with " + args.size + " operands")
         }
         val operand = mapping.calculation(args[0])
-        return if (args.size == 1) {
-            Rounding(mode, operand)
-        } else {
-            Rounding(mode, operand, intLiteral(args[1], mode.operatorId()))
-        }
+        val places = if (args.size == 2) intLiteral(args[1], mode.operatorId()) else 0
+        return if (places > 0) Rounding(mode, operand, places) else Rounding(mode, operand)
     }
 
     /**
@@ -404,15 +404,15 @@ internal class Functions(private val mapping: Mapping) {
             throw UnmappedConstructException(mode.operatorId() + " with " + args.size + " operands")
         }
         val field = numberRef(args[0], mode.operatorId())
-        val hasPlaces = args.size == 2
-        val places = if (hasPlaces) intLiteral(args[1], mode.operatorId()) else 0
+        val places = if (args.size == 2) intLiteral(args[1], mode.operatorId()) else 0
+        val explicit = places > 0
         return when (mode) {
             FieldRounding.Mode.ROUND_DOWN ->
-                (if (hasPlaces) Dsl.roundDownValue(field, places) else Dsl.roundDownValue(field)).expression()
+                (if (explicit) Dsl.roundDownValue(field, places) else Dsl.roundDownValue(field)).expression()
             FieldRounding.Mode.ROUND_UP ->
-                (if (hasPlaces) Dsl.roundUpValue(field, places) else Dsl.roundUpValue(field)).expression()
+                (if (explicit) Dsl.roundUpValue(field, places) else Dsl.roundUpValue(field)).expression()
             FieldRounding.Mode.ROUND_ACCOUNTING ->
-                (if (hasPlaces) {
+                (if (explicit) {
                     Dsl.roundAccountingValue(field, places)
                 } else {
                     Dsl.roundAccountingValue(field)
@@ -422,9 +422,10 @@ internal class Functions(private val mapping: Mapping) {
     }
 
     /**
-     * `CurrentRepetition(group)` — the non-correlated form only. The `$`-marked form needs a group operand
-     * that STILL resolves when `$`-marked, but [Mapping.groupRef] refuses any `$`-correlated source outright,
-     * so that form is unreachable from here.
+     * `CurrentRepetition(group)`, in both correlation forms. The `$`-marked spelling is a real admitted shape
+     * — it is what the whole `Having` scope/iteration account is about (KERNEL-FINDINGS `KF244`) — and
+     * `CurrentRepetition` is the one group slot whose rulekit node has carried an `outer` component all along,
+     * so the marker is threaded here rather than refused (DEV-API-GAPS `DG49`).
      */
     private fun currentRepetition(args: List<Expr>): Calculation {
         if (args.size != 1) {
@@ -436,7 +437,9 @@ internal class Functions(private val mapping: Mapping) {
                     " with no multi-group form"
             )
         }
-        return Dsl.currentRepetition(mapping.groupRef(args[0])).expression()
+        val group = args[0]
+        val outer = group is Expr.EntitySource && group.outer
+        return Dsl.currentRepetition(mapping.groupRef(group, allowOuter = true), outer).expression()
     }
 
     /**
@@ -717,18 +720,23 @@ internal class Functions(private val mapping: Mapping) {
     private fun aggregateOperands(args: List<Expr>): List<AggregateOperand> =
         args.map { mapping.aggregateOperand(it) }
 
-    private companion object {
+    /**
+     * The class that picks the factory — the first operand that has one, read as its DECLARED temporal class
+     * rather than its kind. A group scope has none: a group's kind lives in the expansion the kernel resolves,
+     * so a list of nothing but group scopes leaves the choice unmade rather than guessed.
+     *
+     * Reading the kind here typed `MaxValue(<TIME yyyy-MM-dd>, <DATE yyyy-MM-dd>)` as a TIME extremum, whose
+     * comparison against a DATE then had no signature — a kernel-admitted condition (KF271) that came out
+     * untranslatable, measured in [CrossKindTemporalTranslationTest]. Not a companion member, because
+     * resolving a declaration needs the model.
+     */
+    private fun routingKind(operands: List<AggregateOperand>, operator: String): ValueKind =
+        operands.filterIsInstance<FieldOperand>().firstOrNull()?.let { mapping.operandTemporalClass(it) }
+            ?: throw UnmappedConstructException(
+                "$operator over group scopes only — the result kind is the expansion's"
+            )
 
-        /**
-         * The kind that picks the factory — the first operand that has one. A group scope has none: a group's
-         * kind lives in the expansion the kernel resolves, so a list of nothing but group scopes leaves the
-         * choice unmade rather than guessed.
-         */
-        private fun routingKind(operands: List<AggregateOperand>, operator: String): ValueKind =
-            operands.filterIsInstance<FieldOperand>().firstOrNull()?.kind()
-                ?: throw UnmappedConstructException(
-                    "$operator over group scopes only — the result kind is the expansion's"
-                )
+    private companion object {
 
         /** A root group is a single path segment: `/Order` has no second slash. */
         private fun isRootGroup(group: GroupRef): Boolean = group.path().value().indexOf('/', 1) < 0

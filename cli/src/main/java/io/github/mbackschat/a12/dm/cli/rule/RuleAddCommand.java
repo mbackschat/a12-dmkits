@@ -1,5 +1,6 @@
 package io.github.mbackschat.a12.dm.cli.rule;
 
+import io.github.mbackschat.a12.dm.core.EntityPath;
 import io.github.mbackschat.a12.dm.cli.BaseCommand;
 import io.github.mbackschat.a12.dm.cli.ConsistencyEvidence;
 import io.github.mbackschat.a12.dm.cli.LintBackstop;
@@ -123,8 +124,13 @@ final class RuleAddCommand extends BaseCommand {
         String name = spec.hasNonNull("name") ? spec.get("name").asText() : code;
         int slash = field.lastIndexOf('/');
         if (!ModelPaths.isAbsoluteEntityPath(field)) {
-            return rejectSpecParse(RkCode.INVALID_VALUE,
-                    ModelPaths.notAnAbsoluteEntityPath("field", field), "field", null);
+            // The group cannot be derived from a malformed field, so only a DECLARED one can resolve a relative
+            // value — and saying which is missing is the corrective.
+            return rejectSpecParse(Diagnostic.precheck(RkCode.INVALID_VALUE,
+                    ModelPaths.notAnAbsoluteEntityPath("field", field),
+                    Diagnostic.Where.arg(null, "field"),
+                    ModelPaths.absoluteEntityPathFix("field", field,
+                            spec.hasNonNull("group") ? spec.get("group").asText() : null)));
         }
         // the rule group (iteration scope) defaults to the error field's parent; `group` overrides it (mirrors
         // `rule check --group`) for an operator that must sit at the PARENT of a repeated group — RepetitionNotUnique.
@@ -135,7 +141,7 @@ final class RuleAddCommand extends BaseCommand {
             return rejectSpecParse(RkCode.ERROR_FIELD_OUTSIDE_GROUP,
                     "field " + field + " must be inside the rule group " + group, "field", field);
         }
-        String errorEntityRelPath = "../" + field.substring(group.length() + 1);
+        String errorEntityRelPath = EntityPath.of(group).elementReference(EntityPath.of(field));
         ModelResolver resolver = workspace.resolverFor(model);
 
         ValidationResult check = new RuleValidator().check(modelJson,

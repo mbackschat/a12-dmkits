@@ -27,13 +27,31 @@ class PurityGuardMechanismTest {
 
     @Test
     void purityGatesDoNotApproximateEitherSourceLanguageWithCommentRegexes() throws IOException {
-        for (String relative : new String[] {"build.gradle", "interpreter-bridge/build.gradle"}) {
+        for (String relative : new String[] {
+                "build.gradle", "interpreter-bridge/build.gradle", "schemakit/build.gradle"}) {
             String build = Files.readString(CHECKOUT.resolve(relative));
             assertTrue(build.contains("VerifyCompiledPurityTask"), relative
                     + " must register the compiled-dependency task type; a purity gate that reads source "
                     + "text cannot model Java text blocks, Kotlin raw strings, or Kotlin's nested comments");
             assertFalse(build.contains("replaceAll(/(?s)\\/\\*.*?\\*\\//"), relative);
+            assertFalse(build.contains("=~ /^\\s*import\\s+"), relative + " still matches imports by regex — a "
+                    + "fully-qualified use, a Kotlin source, or a name in a text block escapes that reading");
         }
+    }
+
+    /**
+     * <b>The blind spot no purity gate can cover.</b> Compiled edges answer what our classes LINK; a kernel jar
+     * that a published module merely declares is unlinked, invisible to jdeps, and on every consumer's
+     * classpath regardless — so the claim a consumer actually cares about needs a resolution-level guard
+     * (DEV-API-GAPS DG45). Asserted here because the two mechanisms are one contract split across two
+     * instruments, and dropping either leaves the other reading as complete.
+     */
+    @Test
+    void theKernelFreeClaimAlsoHasAResolutionGuardBecauseLinkageCannotSeeAnUnusedDependency() throws IOException {
+        String build = Files.readString(CHECKOUT.resolve("build.gradle"));
+        assertTrue(build.contains("verifyKernelFreeClasspath"), "the resolution-level guard must exist");
+        assertTrue(build.contains("resolutionResult"),
+                "it must read RESOLVED dependencies — a declared-only kernel jar is exactly what it is for");
     }
 
     @Test

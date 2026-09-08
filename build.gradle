@@ -245,6 +245,11 @@ tasks.register('leakGuardTest', Test) {
     filter {
         includeTestsMatching 'io.github.mbackschat.a12.dm.PrivateMarkerLeakGuardTest'
         includeTestsMatching 'io.github.mbackschat.a12.dm.TrackedOutputGuardTest'
+        // The PreToolUse long-run hook, driven end to end through its selftest. It belongs in an always-run
+        // task rather than an input-declared one: its subject is a shell script plus a hook config in TWO
+        // harness directories (.claude and .codex), and an input list over that spread is exactly the "files
+        // someone remembered" denominator the comment below rejects for the JDK pin.
+        includeTestsMatching 'io.github.mbackschat.a12.dm.LongRunGuardScriptTest'
         // Derived denominator, so it belongs in the always-run task: an authored list of pin consumers can
         // only ever check the files someone remembered, which is how the committed .envrc re-encoded the pin
         // unnoticed while a six-entry list read as a complete guard.
@@ -445,6 +450,9 @@ tasks.register('docGuardTest', Test) {
     }
     a12Guards.guardInputs(it, [
             'docs/API-GUIDE.md': file('docs/API-GUIDE.md'),
+            // A gap ledger's rows are read at runtime to resolve `DEV-API-GAPS DGn` citations; undeclared,
+            // closing or re-filing a gap would leave this lane UP-TO-DATE with the citation check unrun.
+            'docs/DEV-API-GAPS.md': file('docs/DEV-API-GAPS.md'),
             // Derive from the conventional live test-source layout rather than duplicating the Lock registry's
             // file list. A future module/source lock is covered automatically; linked worktrees and generated
             // outputs are anchored exclusions.
@@ -687,7 +695,12 @@ tasks.register('vocabularyGuardTest', Test) {
                     'interpreter/src/commonTest/kotlin/io/github/mbackschat/a12/dm/interpreter/TemporalDeclaredFormatFormalTest.kt',
                     'src/test/java/io/github/mbackschat/a12/dm/rulekit/validate/laws/TemporalExtractionFormatGateLawsTest.java',
                     'src/test/java/io/github/mbackschat/a12/dm/rulekit/dsl/UntypedTemporalExtractionGateTest.java',
-                    'src/test/java/io/github/mbackschat/a12/dm/rulekit/dsl/TemporalFormatComponentsTest.java'),
+                    'src/test/java/io/github/mbackschat/a12/dm/rulekit/dsl/TemporalFormatComponentsTest.java',
+                    'src/test/java/io/github/mbackschat/a12/dm/rulekit/validate/laws/TemporalDeclarationConfigAdmissionLawsTest.java',
+                    'cli/src/main/resources/schema/field-add.schema.json',
+                    'cli/src/main/resources/schema/field-modify.schema.json',
+                    'cli/src/main/resources/schema/typedef-add.schema.json',
+                    'rulekit/src/main/java/io/github/mbackschat/a12/dm/rulekit/validate/StructuralKernelFix.java'),
     ])
 }
 
@@ -792,6 +805,36 @@ def verifyCompileCompleteness = tasks.register('verifyCompileCompleteness') {
 // is the shape it exists to prevent. The symptom it explains is root `:test` failing, so that is its lane.
 tasks.named('test') { dependsOn verifyCompileCompleteness }
 
+// What a CONSUMER receives is decided by RESOLVED dependencies, never by our imports. A compiled-purity guard
+// proves our own classes do not LINK the kernel; it is blind to a kernel jar a published module merely CARRIES
+// — declared, unused, and on every consumer's classpath the moment they add the artifact, because a dependency
+// reaches a POM by being declared and not by being imported. So this asks the configurations `from
+// components.java` generates the POM from. The positive control runs the SAME group-prefix predicate against a
+// group known to be present, so a matcher that silently stopped matching cannot pass as "nothing forbidden".
+ext.verifyKernelFreeClasspath = { String guardName, Collection<Configuration> configurations,
+        Collection<String> forbiddenGroups, String positiveControlGroup ->
+    def modules = configurations.collectMany { configuration ->
+        configuration.incoming.resolutionResult.allComponents.collect { it.id }
+                .findAll { it instanceof org.gradle.api.artifacts.component.ModuleComponentIdentifier }
+                .collect { [configuration: configuration.name, id: it] }
+    }
+    if (modules.isEmpty()) {
+        throw new GradleException("${guardName} resolved ZERO external modules — the configurations moved or emptied")
+    }
+    if (!modules.any { it.id.group.startsWith(positiveControlGroup) }) {
+        throw new GradleException("${guardName} did not see its resolution positive control ${positiveControlGroup}")
+    }
+    def violations = modules
+            .findAll { entry -> forbiddenGroups.any { entry.id.group.startsWith(it) } }
+            .collect { "${it.configuration}: ${it.id.displayName}".toString() }
+            .unique().sort()
+    if (violations) {
+        throw new GradleException(
+            "${guardName} violated — a consumer of the published artifact would receive raw kernel jars:\n  "
+            + violations.join('\n  '))
+    }
+}
+
 // --- Kit purity, locked (kernel-decoupling stage 3; mirrors :interpreter's verifyInterpreterPurity) ------
 // The kits (dm.core / dm.rulekit.* / dm.modelkit / dm.edit) import ZERO kernel types — the kernel lives
 // behind the SPI ports (dm.core.spi.* / dm.rulekit.spi.*) that :adapter implements. This guard is the
@@ -821,6 +864,29 @@ tasks.named('check') { dependsOn verifyKitPurity }
 // spawns real Gradle builds at ~16 s, rides `check` and is named explicitly in CI.
 tasks.named('test') { dependsOn gradle.includedBuild('build-logic').task(':test') }
 tasks.named('check') { dependsOn gradle.includedBuild('build-logic').task(':check') }
+// --- What the published POMs hand a consumer, locked (DEV-API-GAPS DG45) ---------------------------------
+// Every artifact below advertises a kernel-free consumer classpath — the kits behind their SPI ports,
+// dmkits-schemakit "never the raw kernel jars directly" (SCHEMAKIT-SPEC §1), dmkits-interpreter-bridge as the
+// no-kernel provider of ConditionReadBack. Until this guard the whole class advertised that with only a
+// compiled-linkage lint behind it, which cannot see a declared-but-unimported dependency, so the guarantee a
+// consumer actually cares about was the one nothing checked. Six modules rather than the one gap that named
+// it: the claim, the POM mechanism and the blind spot are identical across them.
+def verifyPublishedClasspathsAreKernelFree = tasks.register('verifyPublishedClasspathsAreKernelFree') {
+    group = 'verification'
+    description = 'Fail if a published kernel-free artifact resolves a raw kernel module onto a consumer classpath.'
+    def kernelFreePublications = ['core', 'rulekit', 'modelkit', 'edit', 'schemakit', 'interpreter-bridge']
+    doLast {
+        kernelFreePublications.each { name ->
+            def published = project(":${name}")
+            verifyKernelFreeClasspath(
+                "published classpath — dmkits-${name}",
+                [published.configurations.compileClasspath, published.configurations.runtimeClasspath],
+                ['com.mgmtp.'],
+                'com.fasterxml.jackson.')
+        }
+    }
+}
+tasks.named('check') { dependsOn verifyPublishedClasspathsAreKernelFree }
 
 // --- The no-backend lane (kernel-decoupling §2c; the Stage-3 acceptance bar) -----------------------------
 // Run the kits with NO backend on the classpath — a Maven-Central consumer's posture — and prove the §2c

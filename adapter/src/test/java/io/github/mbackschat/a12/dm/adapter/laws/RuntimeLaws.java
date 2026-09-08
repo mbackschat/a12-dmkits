@@ -14,6 +14,7 @@ import java.util.Date;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
@@ -351,7 +352,7 @@ public final class RuntimeLaws {
      * a differential can compare the interpreter's {@code Message} to the kernel's {@code IMessage}.
      */
     record Msg(String code, String errorField, IMessage.MessageType type,
-            String field, List<String> referenced, List<String> omissionResponsible) {
+            String field, List<String> referenced, List<String> omissionResponsible, String key) {
     }
 
     /** A kernel field pointer rendered the interpreter's clean way (path + indices), for the differential. */
@@ -363,6 +364,59 @@ public final class RuntimeLaws {
      *  compute identity the corpus records (CONFORMANCE-CORPUS-SPEC §7), replacing the historical index-strip. */
     private static String fmtPointer(DocumentPointer p) {
         return PointerKt.formatPointer(p.fullName(), p.repetitionIndexes());
+    }
+
+    /**
+     * The LOSSLESS key of a kernel message pointer — the twin of the interpreter's {@code Message.errorKey},
+     * rendered by the same {@code pointerComparisonKey} so the two sides cannot drift into two spellings.
+     *
+     * <p>{@link Msg#field()} drops the terminal coordinate, which is the constant 1 on a field pointer and a
+     * real ROW on a repeatable group one — so three distinct kernel findings collapse to one string and a row
+     * misattribution compares EQUAL. Compare {@link Msg#key()} wherever a finding can attach to a group node
+     * (INTERPRETER-GAPS {@code IG145}); {@link #toMsgs} refuses the collapse rather than leaving it to be
+     * remembered.
+     */
+    private static String pointerKey(PartiallyKnownDocumentMultiPointer p) {
+        return PointerKt.pointerComparisonKey(p.fullName(), p.repetitionIndexes());
+    }
+
+    /**
+     * Every kernel message list this harness produces, with the lossy house-form projection POISONED wherever
+     * it actually loses something.
+     *
+     * <p><b>Why the harness intervenes at all.</b> The blind spot is invisible by construction: a differential
+     * comparing {@code code@field} passes whether or not the engine put the finding on the right row, so
+     * nothing about the wrong test looks wrong. Two findings sharing a house form while differing in their
+     * {@link Msg#key()} are exactly that case, and they are cheap to detect right where the messages are
+     * built — so it is caught here rather than left as a rule each of the ~90 differential files must recall.
+     *
+     * <p><b>Why poison rather than throw.</b> Throwing would also block the legitimate non-comparing reads —
+     * {@link Msg#errorField()}, the kernel's own pointer {@code toString}, is how
+     * {@code NestedOverLimitAbsorptionDiffTest} pins the coordinates this key is checked against, and a guard
+     * that made its own oracle unreachable would be trading one blind spot for another. Poisoning fails the
+     * comparison at the assertion, where the diff shows the reason and the remedy.
+     *
+     * <p>Scope, stated because it is narrower than it looks: this checks the ERROR pointer. The rich channels
+     * ({@code referenced}, {@code omissionResponsible}) carry the same projection and are NOT checked — no
+     * fixture here has yet produced a collapsing pair on them, and a guard whose trigger has never fired is a
+     * claim rather than a measurement.
+     */
+    private static List<Msg> toMsgs(List<? extends IMessage> kernelMessages) {
+        List<Msg> msgs = kernelMessages.stream().map(RuntimeLaws::toMsg).toList();
+        Map<String, Set<String>> keysByHouseForm = new LinkedHashMap<>();
+        for (Msg m : msgs) {
+            keysByHouseForm.computeIfAbsent(m.field(), unused -> new LinkedHashSet<>()).add(m.key());
+        }
+        return msgs.stream().map(m -> keysByHouseForm.get(m.field()).size() > 1
+                ? new Msg(m.code(), m.errorField(), m.type(), lossy(m.field(), keysByHouseForm.get(m.field())),
+                        m.referenced(), m.omissionResponsible(), m.key())
+                : m).toList();
+    }
+
+    /** The poisoned house form: what was lost, and the field to compare instead. */
+    private static String lossy(String houseForm, Set<String> keys) {
+        return "<LOSSY-IG145 " + houseForm + " collapses " + keys.size() + " findings " + keys
+                + " — compare Msg.key()>";
     }
 
     /** The {@link IMessage.MessageType} of the fired {@code errorCode} (empty when it did not fire). */
@@ -408,7 +462,7 @@ public final class RuntimeLaws {
 
     /** Evaluate an explicit document instance; return every message (code + pointer) the kernel raised. */
     static List<Msg> messages(String modelJson, Doc doc) {
-        return validate(modelJson, doc, Locale.US).getMessages().stream().map(RuntimeLaws::toMsg).toList();
+        return toMsgs(validate(modelJson, doc, Locale.US).getMessages());
     }
 
     // ---- A12's OWN Document-JSON ingress (the serializer path, not the V1-string path) -----------
@@ -486,7 +540,8 @@ public final class RuntimeLaws {
         return new Msg(m.getErrorCode(), String.valueOf(m.getErrorFieldPointer()), m.getMessageType(),
                 fmtPointer(m.getErrorFieldPointer()),
                 m.getReferencedFieldsPointers().stream().map(RuntimeLaws::fmtPointer).toList(),
-                m.getRefOmissionErrorResponsiblePointers().stream().map(RuntimeLaws::fmtPointer).toList());
+                m.getRefOmissionErrorResponsiblePointers().stream().map(RuntimeLaws::fmtPointer).toList(),
+                pointerKey(m.getErrorFieldPointer()));
     }
 
     // ---- modern custom-condition path (DocumentV2 + DocumentProcessingConfig) --------------------
@@ -509,8 +564,7 @@ public final class RuntimeLaws {
 
     /** Every message from the modern custom-condition path (see {@link #validateWithConditions}). */
     static List<Msg> messages(String modelJson, Doc doc, Map<String, ICustomCondition> customConditions) {
-        return validateWithConditions(modelJson, doc, customConditions).getMessages().stream()
-                .map(RuntimeLaws::toMsg).toList();
+        return toMsgs(validateWithConditions(modelJson, doc, customConditions).getMessages());
     }
 
     /**
@@ -535,8 +589,7 @@ public final class RuntimeLaws {
 
     static List<Msg> messages(
             String modelJson, Doc doc, ICustomFieldTypeFactory fieldTypeFactory, Locale locale) {
-        return validateWithFieldTypes(modelJson, doc, fieldTypeFactory, locale)
-                .getMessages().stream().map(RuntimeLaws::toMsg).toList();
+        return toMsgs(validateWithFieldTypes(modelJson, doc, fieldTypeFactory, locale).getMessages());
     }
 
     static Optional<String> customFieldErrorTextOf(
@@ -604,7 +657,7 @@ public final class RuntimeLaws {
         DocumentProcessingConfig config = DocumentProcessingConfig.builder(Locale.US)
                 .customConditionFactory(ICustomConditionFactory.fromMap(customConditions))
                 .build();
-        return engine.rt.validatePart(v2, relevantPointers, config).getMessages().stream().map(RuntimeLaws::toMsg).toList();
+        return toMsgs(engine.rt.validatePart(v2, relevantPointers, config).getMessages());
     }
 
     /** The kernel's fully-rendered (localized, params substituted) error text for {@code errorCode}. */
@@ -613,6 +666,21 @@ public final class RuntimeLaws {
                 .filter(m -> m.getErrorCode().equals(errorCode))
                 .map(IMessage::getErrorText)
                 .findFirst();
+    }
+
+    /**
+     * Every rendered text one code produced, <b>in the kernel's own message order</b>.
+     *
+     * <p>{@link #errorTextOf} takes the first, which is right for a rule that fires once and silently wrong for
+     * a PER-ROW rule: the rendered text is exactly where the rows differ, so collapsing them to the first hides
+     * the quantity under test. A parameter whose value is the firing row's own coordinate cannot be measured
+     * any other way.
+     */
+    static List<String> errorTextsOf(String modelJson, String errorCode, Doc doc, Locale locale) {
+        return validate(modelJson, doc, locale).getMessages().stream()
+                .filter(m -> m.getErrorCode().equals(errorCode))
+                .map(IMessage::getErrorText)
+                .toList();
     }
 
     static Set<String> firedCodes(String modelJson, Doc doc) {
@@ -903,7 +971,7 @@ public final class RuntimeLaws {
         DocumentV2 v2 = engine.instance(doc);
         DocumentProcessingConfig config = config(null, locale);
         DocumentV2 applied = engine.rt.compute(v2, config).applyTo(v2);   // changes set, errored/cleared emptied — new immutable doc
-        return engine.rt.validateFull(applied, config).getMessages().stream().map(RuntimeLaws::toMsg).toList();
+        return toMsgs(engine.rt.validateFull(applied, config).getMessages());
     }
 
     /** Whether the rule with {@code errorCode} fires for the given explicit instance. */
@@ -1414,7 +1482,7 @@ public final class RuntimeLaws {
          * interpreter and the Groovy-dynamic strategy at the SAME granularity (polarity + row, not codes-only).
          */
         List<Msg> messages(DocumentV2 instance) {
-            return rt.validateFull(instance, config(null, Locale.US)).getMessages().stream().map(RuntimeLaws::toMsg).toList();
+            return toMsgs(rt.validateFull(instance, config(null, Locale.US)).getMessages());
         }
 
         /** Fully rendered validation text from the generated-Java strategy, at an explicit locale. */
@@ -1425,11 +1493,19 @@ public final class RuntimeLaws {
                     .findFirst();
         }
 
+        /** The generated-Java twin of {@link RuntimeLaws#errorTextsOf} — every text, in message order. */
+        List<String> errorTextsOf(DocumentV2 instance, String errorCode, Locale locale) {
+            return rt.validateFull(instance, config(null, locale)).getMessages().stream()
+                    .filter(message -> message.getErrorCode().equals(errorCode))
+                    .map(IMessage::getErrorText)
+                    .toList();
+        }
+
         /** Generated-Java validation with the same per-call custom-condition callbacks as the dynamic path. */
         List<Msg> messages(DocumentV2 instance, Map<String, ICustomCondition> customConditions) {
             DocumentProcessingConfig config = DocumentProcessingConfig.builder(Locale.US)
                     .customConditionFactory(ICustomConditionFactory.fromMap(customConditions)).build();
-            return rt.validateFull(instance, config).getMessages().stream().map(RuntimeLaws::toMsg).toList();
+            return toMsgs(rt.validateFull(instance, config).getMessages());
         }
 
         /** Generated-Java validation with the same per-call custom-field-type factory as the dynamic path. */
@@ -1441,7 +1517,7 @@ public final class RuntimeLaws {
                 DocumentV2 instance, ICustomFieldTypeFactory fieldTypeFactory, Locale locale) {
             DocumentProcessingConfig config = DocumentProcessingConfig.builder(locale)
                     .customFieldTypeFactory(fieldTypeFactory).build();
-            return rt.validateFull(instance, config).getMessages().stream().map(RuntimeLaws::toMsg).toList();
+            return toMsgs(rt.validateFull(instance, config).getMessages());
         }
 
         Optional<String> customFieldErrorTextOf(
@@ -1500,7 +1576,7 @@ public final class RuntimeLaws {
             DocumentV2 v2 = instance(doc);
             DocumentProcessingConfig config = config(null, Locale.US);
             DocumentV2 applied = rt.compute(v2, config).applyTo(v2);
-            return rt.validateFull(applied, config).getMessages().stream().map(RuntimeLaws::toMsg).toList();
+            return toMsgs(rt.validateFull(applied, config).getMessages());
         }
 
         /**
@@ -1521,7 +1597,7 @@ public final class RuntimeLaws {
             Set<DocumentMultiPointer> relevantPointers = relevantPointers(relevant);
             DocumentProcessingConfig config = DocumentProcessingConfig.builder(Locale.US)
                     .customConditionFactory(ICustomConditionFactory.fromMap(customConditions)).build();
-            return rt.validatePart(v2, relevantPointers, config).getMessages().stream().map(RuntimeLaws::toMsg).toList();
+            return toMsgs(rt.validatePart(v2, relevantPointers, config).getMessages());
         }
 
         // ---- modern clock-pinnable path (the corpus tri-verification's java-static leg, §9) ----------
@@ -1533,13 +1609,13 @@ public final class RuntimeLaws {
 
         /** As {@link #messagesModern(Doc, Date)} but at an explicit locale (the sweep's model-declared locale). */
         List<Msg> messagesModern(Doc doc, Date clock, Locale locale) {
-            return rt.validateFull(instance(doc), config(clock, locale)).getMessages().stream().map(RuntimeLaws::toMsg).toList();
+            return toMsgs(rt.validateFull(instance(doc), config(clock, locale)).getMessages());
         }
 
         /** Static-JAVA {@code validatePart(DocumentV2, relevant, config)} — clock-pinnable. */
         List<Msg> messagesPartModern(Doc doc, Set<Relevant> relevant, Date clock) {
             Set<DocumentMultiPointer> rel = relevantPointers(relevant);
-            return rt.validatePart(instance(doc), rel, config(clock)).getMessages().stream().map(RuntimeLaws::toMsg).toList();
+            return toMsgs(rt.validatePart(instance(doc), rel, config(clock)).getMessages());
         }
 
         /** Static-JAVA {@code compute(DocumentV2, config)} — clock-pinnable. */

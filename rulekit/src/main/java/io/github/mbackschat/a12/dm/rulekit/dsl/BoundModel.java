@@ -723,7 +723,12 @@ public final class BoundModel {
     }
 
     public Computation.Builder computation(FieldRef computed) {
-        return new Computation.Builder(computed, index.locales());
+        // The target's declared temporal format, not just its kind: the kernel's assignment gate reads the
+        // format string and the kind reaches it nowhere ([KF222]), so the builder is given what the kernel
+        // reads. Empty for a non-temporal field, and for a temporal one that declares no format and so takes
+        // its kind's default — where the two agree by construction.
+        return new Computation.Builder(computed, index.locales(),
+                index.temporalFormat(computed.path().value()).orElse(null));
     }
 
     // --- field-list quantifiers (PROJECT-DESIGN §5) — each validates every path against the model -------

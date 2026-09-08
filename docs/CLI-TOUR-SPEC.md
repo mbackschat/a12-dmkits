@@ -25,7 +25,7 @@ export JAVA_HOME="$(/usr/libexec/java_home -v 21)"
 export PATH="$PWD/bin:$PATH"
 ```
 
-Long `dmtool` calls are wrapped with trailing `\` (one logical piece per line) for readability — `showboat` runs each ```bash``` block as one shell, so continuations execute identically and `verify` stays green (see CLAUDE.md "Wrap long CLI calls").
+Long `dmtool` calls are wrapped with trailing `\` (one logical piece per line) for readability — `showboat` runs each ```bash``` block as one shell, so continuations execute identically and `verify` stays green (the contract and its ratchet: [Reader-facing formatting](#reader-facing-formatting--three-rules-each-with-its-guard) below).
 
 ## Authoring model — how showboat builds a demo (so you never have to re-derive it)
 

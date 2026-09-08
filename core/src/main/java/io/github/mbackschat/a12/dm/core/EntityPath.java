@@ -128,6 +128,107 @@ public record EntityPath(List<String> segments) {
         return String.join("/", steps);
     }
 
+    /**
+     * The stored reference an ELEMENT of this group uses to name {@code target} — the forward direction of the
+     * rule/computation convention, whose inverse is {@link #resolve} against that element.
+     *
+     * <p><b>Why the base here is the GROUP while the reference is relative to the ELEMENT.</b> The element
+     * sits one level inside its group, so the reference always opens with the {@code ..} that climbs off it,
+     * and the remainder is this group's own {@link #relativize} of the target. Deriving it from the element
+     * instead would be the same string on every reachable input and the EMPTY reference on one: a rule or
+     * computation whose name equals its target's last segment in the same group, where the element path and
+     * the target path coincide.
+     *
+     * <p><b>That input is unreachable, and the empty reference it would produce is REFUSED</b> — measured
+     * through a route that skips every client-side check ({@code adapter.laws.SelfNamedRuleErrorReferenceLawsTest},
+     * kernel 30.8.1, 2026-09-05). The kernel will not convert a model whose rule shares a name with a field of
+     * its group at all ({@code Group.addChildEntity}: "Cannot have two child elements with the same name"),
+     * and an empty {@code errorEntityRelPath} on a legally named rule draws {@code MVK_ERROR_FIELD_MISSING} /
+     * {@code MVK_MISSING_ERROR_FIELD}. So this convention is not merely the incumbent one: it is the one that
+     * stays legal where the two could differ.
+     *
+     * @param target the absolute path of the field the element names
+     */
+    public String elementReference(EntityPath target) {
+        return "../" + relativize(target);
+    }
+
+    /**
+     * The absolute path a stored {@code reference} names, resolved against this base — the <b>inverse</b> of
+     * {@link #relativize}. A reference starting with {@code /} is already absolute and passes through; each
+     * {@code ..} pops one segment off the base; {@code .} and empty segments are skipped; anything else
+     * descends.
+     *
+     * <p><b>The base is whatever the reference is relative to, and A12 has TWO conventions</b> — so this is pure
+     * algebra and the CALLER owns the choice. A rule's or computation's stored error/computed-field reference is
+     * relative to the ELEMENT, which sits inside its group, so the first {@code ..} climbs off the element and
+     * lands on the group ({@code ../Field} against {@code /Order/SomeRule} is {@code /Order/Field}); a
+     * CONDITION-operand reference is relative to the GROUP itself, which is the base {@code RawLengthDiagnostic}
+     * and the interpreter bridge correctly pass. Picking the wrong one shifts the answer by exactly one level
+     * and is the mistake this method's own history is about, so name which convention a call site is in.
+     *
+     * <p><b>Why this is here rather than only in {@link ModelIndex#resolvePath}.</b> This direction already
+     * existed, as a {@code static} on the model READER that never consults a model — pure path algebra filed
+     * under the index. Filing an operation by its first consumer rather than by its type is why callers looking
+     * for it on the path type did not find it and wrote their own: the interpreter carries two of its own
+     * ({@code Paths.resolveErrorPath} clamps like this one, {@code load.ModelLoader.resolveRel} throws on an
+     * over-climb instead), and on 2026-09-04 a draft of the CLI's {@code --field} corrective got the convention
+     * BACKWARDS in the working tree — it read the first {@code ..} as climbing ABOVE the group, so
+     * {@code ../CustomerName} under {@code /Order} named a sibling of {@code /Order}. It was caught by its own
+     * new test before it was committed, so the repository's history does not contain it; what the history does
+     * show is that nothing existing would have caught it, because no test related the two directions. That is
+     * the defect class this record exists for (see the class doc): a path relation spelled out at a call site
+     * instead of named on the value. {@code ModelReader.resolveRelPath} now delegates here, so there is one
+     * implementation rather than an agreement to maintain.
+     *
+     * <p><b>What the round trip does and does not buy.</b> {@code EntityPathTest} pins
+     * {@code resolve(relativize(t)) == t} over a path cross-product, which constrains this ALGEBRA — an
+     * inverted convention here lands somewhere else and fails. It cannot constrain which base a CALLER picks,
+     * and that is where the same mistake recurs: the corrective above shipped resolving against a placeholder
+     * element name whose text then survived into its answer. A call site's base choice needs its own test.
+     *
+     * <p><b>The base is expected to be ABSOLUTE.</b> Most producers here are — a group path or element path out
+     * of a model walk — but not all: {@code RawLengthDiagnostic} passes a caller-supplied {@code DraftRule}
+     * group, and {@code DraftRule} validates none, so an empty or relative base is reachable from the published
+     * API. Behaviour there is total but not meaningful (the first segment is taken for the leading empty one
+     * and dropped) and is pinned rather than left to discovery, because the spelling this replaced threw on an
+     * empty base and produced a doubled separator on a relative one. Note the change of failure MODE at that
+     * one caller: it used to throw and have the throw swallowed, skipping enrichment, and now returns a path
+     * that resolves to nothing, skipping enrichment — same outcome, no exception.
+     *
+     * <p><b>Totality.</b> Deliberately total, matching the behaviour these callers already depend on: a
+     * reference with more {@code ..} than the base has segments clamps at the root level rather than failing, so
+     * {@code /A/B} with {@code ../../../X} is {@code /X}. A caller that needs the difference — a corrective
+     * proposing a value the author can use — tests the RESULT for the shape it needs
+     * ({@code ModelPaths.isAbsoluteEntityPath}) rather than relying on this to refuse. (The interpreter's
+     * {@code ModelLoader.resolveRel} deliberately does NOT clamp; it is a load-time gate, not this contract.)
+     */
+    public EntityPath resolve(String reference) {
+        if (Objects.requireNonNull(reference, "reference").startsWith("/")) {
+            return of(reference);
+        }
+        // Held without the leading empty segment so a climb to the root level is an empty list rather than a
+        // special case, then re-anchored on the way out.
+        List<String> resolved = new ArrayList<>(segments.subList(Math.min(1, segments.size()), segments.size()));
+        // A TRAILING empty segment is dropped, which the string spelling this replaced did for free (Java's
+        // default `split` discards trailing empties). Deliberate rather than incidental: kept, the empty
+        // segment absorbs one `..`, so `/A/B/` with `../X` would name /A/B/X where the base names /A/B — a
+        // different element, on a base that is absolute and therefore inside this method's contract.
+        while (!resolved.isEmpty() && resolved.get(resolved.size() - 1).isEmpty()) {
+            resolved.remove(resolved.size() - 1);
+        }
+        for (String step : reference.split("/")) {
+            if ("..".equals(step)) {
+                if (!resolved.isEmpty()) {
+                    resolved.remove(resolved.size() - 1);
+                }
+            } else if (!step.isEmpty() && !".".equals(step)) {
+                resolved.add(step);
+            }
+        }
+        return of("/" + String.join("/", resolved));
+    }
+
     @Override
     public String toString() {
         return value();

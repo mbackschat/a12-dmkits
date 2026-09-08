@@ -71,6 +71,12 @@ class AggregateGroupOperandLawsTest {
                     l.repeatable(10).numberField("Amount", f -> f.fractionDigits(0, 2));
                     l.group("Fees", e -> e.repeatable(10).numberField("Fee", f -> f.fractionDigits(0, 2)));
                 });
+                // A NON-repeatable all-number shell, so the unstarred group operand has a legal carrier: a
+                // repeatable one must star (MVK_NO_WILDCARD) and cannot answer the unstarred question at all.
+                g.group("Totals", s -> {
+                    s.numberField("Net", f -> f.fractionDigits(0, 2));
+                    s.numberField("Gross", f -> f.fractionDigits(0, 2));
+                });
             }).build().toJson();
 
     private static final BoundModel INVOICE = BoundModel.ofJson(INVOICE_JSON);
@@ -210,6 +216,37 @@ class AggregateGroupOperandLawsTest {
                 guardedOrder(Dsl.numberOfFilledFields(ORDER.flattenGroup("/Order/Items"))), "MVK_NO_WILDCARD");
     }
 
+    /**
+     * <b>An UNSTARRED group operand is authorable through the typed surface on every entity-list carrier</b>,
+     * and the kernel admits it. {@code DEV-API-GAPS} {@code DG42} claimed the opposite — that
+     * {@code AggregateOperand}'s group arm is the STARRED {@code GroupListRef} and four carriers therefore had
+     * to be authored as raw strings. That reading is wrong: {@code GroupListRef}'s star lives in its
+     * {@code flattened} list, which a bare path leaves EMPTY, so {@code flattenGroup("/Invoice/Totals")} is the
+     * unstarred operand and every carrier already takes it.
+     *
+     * <p>The gap survived because the two readings agree on every fixture in the file above: each of those uses
+     * a REPEATABLE group, where the unstarred spelling is refused by the kernel anyway
+     * ({@link #anUnstarredRepeatableGroupScopeIsRejected}), so "the surface cannot author it" and "the kernel
+     * refuses it" produce the same red. Only a non-repeatable shell separates them, which is why this fixture
+     * grew one rather than reusing {@code Lines}.
+     */
+    @Test
+    void anUnstarredGroupOperandIsAuthorableOnEveryEntityListCarrier() {
+        var totals = INVOICE.flattenGroup("/Invoice/Totals");
+        KernelLaws.acceptsModel(INVOICE_JSON, "/Invoice", "../Reference",
+                guardedInvoice(Dsl.sum(totals)));
+        KernelLaws.acceptsModel(INVOICE_JSON, "/Invoice", "../Reference",
+                guardedInvoice(Dsl.maxValue(totals)));
+        KernelLaws.acceptsModel(INVOICE_JSON, "/Invoice", "../Reference",
+                guardedInvoice(Dsl.minValue(totals)));
+        KernelLaws.acceptsModel(INVOICE_JSON, "/Invoice", "../Reference",
+                guardedInvoice(Dsl.numberOfDifferentValues(totals)));
+        KernelLaws.acceptsModel(INVOICE_JSON, "/Invoice", "../Reference",
+                guardedInvoice(Dsl.numberOfValueInFields(7L, totals)));
+        KernelLaws.acceptsModel(INVOICE_JSON, "/Invoice", "../Reference",
+                guardedInvoice(Dsl.numberOfFilledFields(totals)));
+    }
+
     /** …and the starred form of that same operand is accepted, so the law is not vacuous. */
     @Test
     void theStarredFormOfTheSameOperandIsAccepted() {
@@ -248,6 +285,22 @@ class AggregateGroupOperandLawsTest {
     void aGroupScopeBesideItsOwnDescendantIsRejected() {
         KernelLaws.rejectsModel(INVOICE_JSON, "/Invoice", "../Reference",
                 "FieldFilled(Reference) And Sum(/Invoice/Lines*, /Invoice/Lines*/Fees*) > 0",
+                "MVK_DUPLICATE_PARAM2");
+    }
+
+    /**
+     * The same pair with the operands REVERSED — descendant first. `ListAggregate`'s public javadoc says the
+     * containment arm refuses the pair "whichever side carries it", and until this row that symmetry was
+     * asserted on parent-first measurements only (a cold review, 2026-09-04). A relation-based gate is the
+     * likelier implementation, but likelier is not measured, and the sentence is a public contract.
+     */
+    @Test
+    void theContainmentRefusalDoesNotDependOnWhichOperandComesFirst() {
+        // Authored as a raw string for the same reason as the parent-first row above: the typed surface now
+        // pre-checks this arm and would refuse the pair before the kernel could be asked. The client refusal
+        // is locked separately in dsl.EntityListDuplicateGateTest.
+        KernelLaws.rejectsModel(INVOICE_JSON, "/Invoice", "../Reference",
+                "FieldFilled(Reference) And Sum(/Invoice/Lines*/Fees*, /Invoice/Lines*) > 0",
                 "MVK_DUPLICATE_PARAM2");
     }
 }

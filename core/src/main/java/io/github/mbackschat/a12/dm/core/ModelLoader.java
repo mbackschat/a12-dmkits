@@ -53,12 +53,30 @@ public final class ModelLoader {
             ModelReader.expand(dmJson, resolver);
             return Verification.STRUCTURAL_ONLY;
         }
-        List<Notification> errors = oracle.get().checkConsistency(dmJson, resolver).stream()
+        List<Notification> errors = notifications(oracle.get(), dmJson, resolver).stream()
                 .filter(n -> n.severity() == Severity.ERROR)
                 .toList();
         if (!errors.isEmpty()) {
             throw new ModelConsistencyException(errors);
         }
         return Verification.KERNEL_CONFIRMED;
+    }
+
+    /**
+     * The oracle's verdict, with a backend that could not BUILD the model folded into the same channel.
+     *
+     * <p>A whole model has nothing injected, so a build failure is the backend's verdict on the bytes it was
+     * handed and belongs in the notification list with its receipt intact. Left to escape it reaches a caller
+     * as an internal-defect envelope — "this is a tool defect, not an invalid input" — which asserts the
+     * opposite of the truth (KERNEL-FINDINGS KF259). The draft gate wants the other disposition and gets it,
+     * because {@link ConsistencyCheckFailedException} stays a {@link RuntimeException} for its catch-all.
+     */
+    private static List<Notification> notifications(ConsistencyOracle oracle, String dmJson,
+            ModelResolver resolver) {
+        try {
+            return oracle.checkConsistency(dmJson, resolver);
+        } catch (ConsistencyCheckFailedException couldNotBuild) {
+            return List.of(new Notification(Severity.ERROR, couldNotBuild.getMessage()));
+        }
     }
 }

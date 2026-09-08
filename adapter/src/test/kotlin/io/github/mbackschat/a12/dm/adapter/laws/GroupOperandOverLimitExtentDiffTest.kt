@@ -7,6 +7,11 @@ import io.github.mbackschat.a12.dm.interpreter.load.ModelLoader
 import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft
 import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft.GroupBuilder
 import io.github.mbackschat.a12.dm.modelkit.FieldKind
+import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel
+import io.github.mbackschat.a12.dm.rulekit.dsl.ConditionLanguage
+import io.github.mbackschat.a12.dm.rulekit.dsl.Dsl
+import io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer
+import io.github.mbackschat.a12.dm.rulekit.dsl.NumberExpr
 import java.util.Locale
 import java.util.function.Consumer
 import org.junit.jupiter.api.Assertions.assertEquals
@@ -28,12 +33,19 @@ import org.junit.jupiter.api.Test
  * **Every row carries its in-capacity control**, the identical cell one index lower, because a carrier that
  * simply cannot see this subtree would also answer `0` on the over-limit document.
  *
- * **Why the conditions are raw strings here.** The typed surface offers no unstarred-`GroupRef` factory for four
- * of these six carriers (`numberOfValueInFields`, `sum`, `minValue`/`maxValue`, `numberOfDifferentValues` all take
- * an `AggregateOperand`, whose group arm is the STARRED `GroupListRef`), while the kernel admits all of them —
- * asserted per probe model by [requireAdmitted]. That gap is recorded in `DEV-API-GAPS` and is a separate slice;
- * the shape under test is precisely one the typed surface cannot express, which is when the laws tiers use the
- * raw form.
+ * **Every operand here is authored through the typed surface, and the SPELLING is chosen by the renderer.**
+ * An earlier version of this file built its conditions as raw strings and said the typed surface could not
+ * express an unstarred group operand on four of these six carriers. That was wrong, and the error is worth
+ * keeping because it produced a gap row that survived for days: `GroupListRef`'s star lives in its `flattened`
+ * list, which `BoundModel.flattenGroup` leaves EMPTY for a bare path, so the unstarred operand was always
+ * authorable. Every fixture that could have caught it used a REPEATABLE group, where the kernel refuses the
+ * unstarred spelling anyway — so "the surface cannot author it" and "the kernel refuses it" produced the same
+ * red, and only a non-repeatable shell separates them
+ * (`rulekit.validate.laws.AggregateGroupOperandLawsTest.anUnstarredGroupOperandIsAuthorableOnEveryEntityListCarrier`).
+ *
+ * <p>The two spellings this file deliberately contrasts — `Sum(Amounts)` against `Sum(/Return/Amounts)` — are
+ * ONE typed expression rendered two ways: [read] renders relative to the rule group and [readAbsolute] with no
+ * base group. That is the property that made the raw form look necessary and is exactly what the renderer owns.
  *
  * Own domain (e-commerce returns processing).
  */
@@ -53,9 +65,12 @@ class GroupOperandOverLimitExtentDiffTest {
         const val CODE = "GOL"
         const val UNAVAILABLE = "no candidate fired — the carrier could not evaluate"
 
+        const val NOTES = "/Return/Notes"
+        const val FLAGS = "/Return/Flags"
+        const val AMOUNTS = "/Return/Amounts"
+
         /** The starred FIELD list over the Number shell — the spelling the aggregate carriers are typed for. */
         const val FEES = "/Return/Amounts/Charges*/Fee"
-        const val SUM_FEES = "Sum($FEES)"
     }
 
     /**
@@ -85,6 +100,16 @@ class GroupOperandOverLimitExtentDiffTest {
                     })
                 })
         }).build().toJson()
+
+    private val bound = BoundModel.ofJson(base)
+
+    /** The three fixed (unstarred) shells and the starred field list, as typed operands. */
+    private val notes = bound.flattenGroup(NOTES)
+    private val flags = bound.flattenGroup(FLAGS)
+    private val amounts = bound.flattenGroup(AMOUNTS)
+    private val parcelsStar = bound.flattenGroup("$NOTES/Parcels*")
+    private val chargesStar = bound.flattenGroup("$AMOUNTS/Charges*")
+    private val feeList = bound.flatten(FEES)
 
     /** Mirrors one document build across the kernel doc and the interpreter document from one call site. */
     private class Both(model: String) {
@@ -173,6 +198,18 @@ class GroupOperandOverLimitExtentDiffTest {
             else -> "AMBIGUOUS $fired"
         }
     }
+
+    /** The rule-group-RELATIVE spelling — `Sum(Amounts)`, which is what an author writing in `/Return` gets. */
+    private fun read(expr: NumberExpr, candidates: List<String>, build: (Both) -> Unit): String =
+        read(DslRenderer(ConditionLanguage.EN, RETURN).render(expr.expression()), candidates, build)
+
+    /**
+     * The ABSOLUTE spelling of the same typed expression — `Sum(/Return/Amounts)`. The two differ only in the
+     * renderer's base group, which is the whole point of the spelling rows below: one operand, two texts, so a
+     * difference in outcome cannot be a difference in what was referenced.
+     */
+    private fun readAbsolute(expr: NumberExpr, candidates: List<String>, build: (Both) -> Unit): String =
+        read(DslRenderer(ConditionLanguage.EN).render(expr.expression()), candidates, build)
 
     // ---- the documents ----
 
@@ -276,10 +313,10 @@ class GroupOperandOverLimitExtentDiffTest {
     fun theFillCountOverAFixedGroupOperandExcludesAnOverLimitCellAtEitherDepth() {
         val counts = listOf("0", "1")
         val actual = linkedMapOf(
-            "outer — only content over-limit" to read("NumberOfFilledFields(Notes)", counts, ::onlyOverLimitOuter),
-            "outer — in-capacity control" to read("NumberOfFilledFields(Notes)", counts, ::onlyInCapOuter),
-            "inner — only content over-limit" to read("NumberOfFilledFields(Notes)", counts, ::onlyOverLimitInner),
-            "inner — in-capacity control" to read("NumberOfFilledFields(Notes)", counts, ::onlyInCapInner),
+            "outer — only content over-limit" to read(Dsl.numberOfFilledFields(notes), counts, ::onlyOverLimitOuter),
+            "outer — in-capacity control" to read(Dsl.numberOfFilledFields(notes), counts, ::onlyInCapOuter),
+            "inner — only content over-limit" to read(Dsl.numberOfFilledFields(notes), counts, ::onlyOverLimitInner),
+            "inner — in-capacity control" to read(Dsl.numberOfFilledFields(notes), counts, ::onlyInCapInner),
         )
         assertEquals(
             linkedMapOf(
@@ -302,21 +339,21 @@ class GroupOperandOverLimitExtentDiffTest {
         val counts = listOf("0", "1")
         val actual = linkedMapOf(
             "value count, String — only content over-limit"
-                to read("NumberOfValueInFields(\"KEEP\" In Notes)", counts, ::onlyOverLimitOuter),
+                to read(Dsl.numberOfValueInFields("KEEP", notes), counts, ::onlyOverLimitOuter),
             "value count, String — in-capacity control"
-                to read("NumberOfValueInFields(\"KEEP\" In Notes)", counts, ::onlyInCapOuter),
+                to read(Dsl.numberOfValueInFields("KEEP", notes), counts, ::onlyInCapOuter),
             "value count, Boolean — only content over-limit"
-                to read("NumberOfValueInFields(True In Flags)", counts, ::boolOverLimit),
+                to read(Dsl.numberOfValueInFields(true, flags), counts, ::boolOverLimit),
             "value count, Boolean — in-capacity control"
-                to read("NumberOfValueInFields(True In Flags)", counts, ::boolInCap),
+                to read(Dsl.numberOfValueInFields(true, flags), counts, ::boolInCap),
             "Sum — in-capacity 5, over-limit 7"
-                to read("Sum(Amounts)", listOf("0", "5", "7", "12"), ::feeInCapFiveOverLimitSeven),
+                to read(Dsl.sum(amounts), listOf("0", "5", "7", "12"), ::feeInCapFiveOverLimitSeven),
             "MaxValue — in-capacity 5, over-limit 7"
-                to read("MaxValue(Amounts)", listOf("0", "5", "7"), ::feeInCapFiveOverLimitSeven),
+                to read(Dsl.maxValue(amounts), listOf("0", "5", "7"), ::feeInCapFiveOverLimitSeven),
             "MinValue — in-capacity 7, over-limit 5"
-                to read("MinValue(Amounts)", listOf("0", "5", "7"), ::feeInCapSevenOverLimitFive),
+                to read(Dsl.minValue(amounts), listOf("0", "5", "7"), ::feeInCapSevenOverLimitFive),
             "NumberOfDifferentValues — in-capacity 5, over-limit 7"
-                to read("NumberOfDifferentValues(Amounts)", listOf("0", "1", "2"), ::feeInCapFiveOverLimitSeven),
+                to read(Dsl.numberOfDifferentValues(amounts), listOf("0", "1", "2"), ::feeInCapFiveOverLimitSeven),
         )
         assertEquals(
             linkedMapOf(
@@ -349,8 +386,8 @@ class GroupOperandOverLimitExtentDiffTest {
     fun anInCapacityMalformedCellPoisonsTheAggregateWhereAnOverLimitOneDoesNot() {
         val candidates = listOf("0", "5", "7", "12")
         val actual = linkedMapOf(
-            "malformed IN CAPACITY" to read("Sum(Amounts)", candidates, ::malformedInCap),
-            "the same cell OVER LIMIT" to read("Sum(Amounts)", candidates, ::malformedOverLimit),
+            "malformed IN CAPACITY" to read(Dsl.sum(amounts), candidates, ::malformedInCap),
+            "the same cell OVER LIMIT" to read(Dsl.sum(amounts), candidates, ::malformedOverLimit),
         )
         assertEquals(
             linkedMapOf(
@@ -380,16 +417,16 @@ class GroupOperandOverLimitExtentDiffTest {
             Triple("fill count — only content over-limit", ::onlyOverLimitOuter, counts),
             Triple("fill count — in-capacity control", ::onlyInCapOuter, counts),
         ).map { (label, doc, ladder) ->
-            label to Pair(read("NumberOfFilledFields(/Return/Notes)", ladder, doc),
-                read("NumberOfFilledFields(/Return/Notes/Parcels*)", ladder, doc))
+            label to Pair(readAbsolute(Dsl.numberOfFilledFields(notes), ladder, doc),
+                readAbsolute(Dsl.numberOfFilledFields(parcelsStar), ladder, doc))
         } + listOf(
             Triple("Sum — in-capacity 5, over-limit 7", ::feeInCapFiveOverLimitSeven, sums),
             Triple("Sum — both in capacity, control", ::feeBothInCapacity, sums),
             Triple("Sum — malformed in capacity", ::malformedInCap, sums),
             Triple("Sum — malformed over limit", ::malformedOverLimit, sums),
         ).map { (label, doc, ladder) ->
-            label to Pair(read("Sum(/Return/Amounts)", ladder, doc),
-                read("Sum(/Return/Amounts/Charges*)", ladder, doc))
+            label to Pair(readAbsolute(Dsl.sum(amounts), ladder, doc),
+                readAbsolute(Dsl.sum(chargesStar), ladder, doc))
         }
 
         val differing = pairs.filter { it.second.first != it.second.second }
@@ -430,12 +467,12 @@ class GroupOperandOverLimitExtentDiffTest {
         val sums = listOf("0", "5", "7", "12")
         val counts = listOf("0", "1", "2")
         val carriers = linkedMapOf(
-            "Sum" to Pair(SUM_FEES, sums),
-            "MaxValue" to Pair("MaxValue($FEES)", sums),
-            "MinValue" to Pair("MinValue($FEES)", sums),
-            "NumberOfDifferentValues" to Pair("NumberOfDifferentValues($FEES)", counts),
-            "NumberOfFilledFields" to Pair("NumberOfFilledFields($FEES)", counts),
-            "NumberOfValueInFields" to Pair("NumberOfValueInFields(5 In $FEES)", counts),
+            "Sum" to Pair(Dsl.sum(feeList), sums),
+            "MaxValue" to Pair(Dsl.maxValue(feeList), sums),
+            "MinValue" to Pair(Dsl.minValue(feeList), sums),
+            "NumberOfDifferentValues" to Pair(Dsl.numberOfDifferentValues(feeList), counts),
+            "NumberOfFilledFields" to Pair(Dsl.numberOfFilledFields(feeList), counts),
+            "NumberOfValueInFields" to Pair(Dsl.numberOfValueInFields(5L, feeList), counts),
         )
         val documents = linkedMapOf<String, (Both) -> Unit>(
             "no repeatable row at all" to ::noChargeRow,
@@ -458,8 +495,8 @@ class GroupOperandOverLimitExtentDiffTest {
                 "Sum — starred group spelling" to "0",
             ),
             linkedMapOf(
-                "Sum — fixed group spelling" to read("Sum(/Return/Amounts)", sums, ::onlyFeeOverLimit),
-                "Sum — starred group spelling" to read("Sum(/Return/Amounts/Charges*)", sums, ::onlyFeeOverLimit),
+                "Sum — fixed group spelling" to readAbsolute(Dsl.sum(amounts), sums, ::onlyFeeOverLimit),
+                "Sum — starred group spelling" to readAbsolute(Dsl.sum(chargesStar), sums, ::onlyFeeOverLimit),
             ),
             "and the group spellings answer as the field one, on the document the capacity projection empties",
         )
@@ -483,13 +520,13 @@ class GroupOperandOverLimitExtentDiffTest {
             ),
             linkedMapOf(
                 "malformed IN CAPACITY — fixed"
-                    to read("NumberOfFilledFields(/Return/Amounts)", ladder, ::malformedInCap),
+                    to readAbsolute(Dsl.numberOfFilledFields(amounts), ladder, ::malformedInCap),
                 "malformed IN CAPACITY — starred"
-                    to read("NumberOfFilledFields(/Return/Amounts/Charges*)", ladder, ::malformedInCap),
+                    to readAbsolute(Dsl.numberOfFilledFields(chargesStar), ladder, ::malformedInCap),
                 "the same cell OVER LIMIT — fixed"
-                    to read("NumberOfFilledFields(/Return/Amounts)", ladder, ::malformedOverLimit),
+                    to readAbsolute(Dsl.numberOfFilledFields(amounts), ladder, ::malformedOverLimit),
                 "the same cell OVER LIMIT — starred"
-                    to read("NumberOfFilledFields(/Return/Amounts/Charges*)", ladder, ::malformedOverLimit),
+                    to readAbsolute(Dsl.numberOfFilledFields(chargesStar), ladder, ::malformedOverLimit),
             ),
             "the count carrier splits where Sum splits — measured, not carried across from Sum",
         )
@@ -527,24 +564,24 @@ class GroupOperandOverLimitExtentDiffTest {
                 "Sum — the same cell over limit" to "5",
             ),
             linkedMapOf(
-                "Sum — in-capacity 5, over-limit 7" to read(SUM_FEES, sums, ::feeInCapFiveOverLimitSeven),
-                "Sum — both in capacity, control" to read(SUM_FEES, sums, ::feeBothInCapacity),
+                "Sum — in-capacity 5, over-limit 7" to read(Dsl.sum(feeList), sums, ::feeInCapFiveOverLimitSeven),
+                "Sum — both in capacity, control" to read(Dsl.sum(feeList), sums, ::feeBothInCapacity),
                 "MaxValue — in-capacity 5, over-limit 7"
-                    to read("MaxValue($FEES)", sums, ::feeInCapFiveOverLimitSeven),
-                "MaxValue — both in capacity, control" to read("MaxValue($FEES)", sums, ::feeBothInCapacity),
+                    to read(Dsl.maxValue(feeList), sums, ::feeInCapFiveOverLimitSeven),
+                "MaxValue — both in capacity, control" to read(Dsl.maxValue(feeList), sums, ::feeBothInCapacity),
                 "MinValue — in-capacity 7, over-limit 5"
-                    to read("MinValue($FEES)", sums, ::feeInCapSevenOverLimitFive),
-                "MinValue — both in capacity, control" to read("MinValue($FEES)", sums, ::feeBothInCapacity),
+                    to read(Dsl.minValue(feeList), sums, ::feeInCapSevenOverLimitFive),
+                "MinValue — both in capacity, control" to read(Dsl.minValue(feeList), sums, ::feeBothInCapacity),
                 "NumberOfDifferentValues — in-capacity 5, over-limit 7"
-                    to read("NumberOfDifferentValues($FEES)", counts, ::feeInCapFiveOverLimitSeven),
+                    to read(Dsl.numberOfDifferentValues(feeList), counts, ::feeInCapFiveOverLimitSeven),
                 "NumberOfDifferentValues — both in capacity, control"
-                    to read("NumberOfDifferentValues($FEES)", counts, ::feeBothInCapacity),
+                    to read(Dsl.numberOfDifferentValues(feeList), counts, ::feeBothInCapacity),
                 "NumberOfValueInFields 5 — in-capacity 7, over-limit 5"
-                    to read("NumberOfValueInFields(5 In $FEES)", counts, ::feeInCapSevenOverLimitFive),
+                    to read(Dsl.numberOfValueInFields(5L, feeList), counts, ::feeInCapSevenOverLimitFive),
                 "NumberOfValueInFields 5 — both in capacity, control"
-                    to read("NumberOfValueInFields(5 In $FEES)", counts, ::feeBothInCapacity),
-                "Sum — malformed in capacity" to read(SUM_FEES, sums, ::malformedInCap),
-                "Sum — the same cell over limit" to read(SUM_FEES, sums, ::malformedOverLimit),
+                    to read(Dsl.numberOfValueInFields(5L, feeList), counts, ::feeBothInCapacity),
+                "Sum — malformed in capacity" to read(Dsl.sum(feeList), sums, ::malformedInCap),
+                "Sum — the same cell over limit" to read(Dsl.sum(feeList), sums, ::malformedOverLimit),
             ),
             "the extent belongs to the operand, and the field spelling answers exactly as the group spelling did",
         )
@@ -558,11 +595,12 @@ class GroupOperandOverLimitExtentDiffTest {
      */
     @Test
     fun theLadderRefusesAModelTheKernelWouldNotAdmit() {
+        val sumOverStrings = DslRenderer(ConditionLanguage.EN, RETURN).render(Dsl.sum(notes).expression())
         val refused = assertThrows(IllegalStateException::class.java) {
-            fires("Sum(Notes) == 0", ::feeBothInCapacity)
+            fires("$sumOverStrings == 0", ::feeBothInCapacity)
         }
         assertTrue(
-            refused.message!!.contains("Sum(Notes)"),
+            refused.message!!.contains(sumOverStrings),
             "the refusal must name the condition it refused, or the ladder cannot say which row is unmeasured",
         )
     }

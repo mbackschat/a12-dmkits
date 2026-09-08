@@ -39,6 +39,8 @@ class RuleMessageParameterLanguageLawsTest {
     private static final String ADMITTED = KernelLaws.ADMITTED;
     private static final String NOT_AN_ENTITY = "INVALID_ENTITY";
     private static final String RECOGNISED_BUT_REFUSED_HERE = "INVALID_PARAMETER";
+    private static final String NOT_A_GROUP = "INVALID_GROUP";
+    private static final String RETIRED_ON_THE_MODERN_ROUTE = "PARAM_INVALID_IN_NEW_WORLD";
     private static final String DOES_NOT_PARSE = "MVK_UNEXPECTED_TOKEN";
 
     // ---- the English model, condition language en_US -------------------------------------------
@@ -167,6 +169,64 @@ class RuleMessageParameterLanguageLawsTest {
                 "en model, $LfdNr$", NOT_AN_ENTITY,
                 "de model, $LfdNr$", NOT_AN_ENTITY,
                 "de model, $RootGroup$", NOT_AN_ENTITY), verdicts);
+    }
+
+    /**
+     * …and in the {@code $#…$} GROUP position, where those two words DO live ([KF214]), the same bilingual
+     * split holds: each language admits its own spelling and looks the other's up as a group name.
+     *
+     * <p>This is the row that makes the name-position absence above position-scoped rather than a claim about
+     * the terminal bundle, and it is measured in both languages because a table taken on one model cannot
+     * tell "this position recognises the terminal" from "this position recognises the English words".
+     */
+    @Test
+    void bothShorthandsAreAdmittedInTheGroupPositionAndOnlyInTheirOwnLanguage() {
+        Map<String, String> verdicts = new LinkedHashMap<>();
+        verdicts.put("en model, $#RuleGroup$", en(EN_READS_ROW, "see $#RuleGroup$", "/Policy/Claims", "../Payout"));
+        verdicts.put("en model, $#RegelKontext$",
+                en(EN_READS_ROW, "see $#RegelKontext$", "/Policy/Claims", "../Payout"));
+        verdicts.put("de model, $#RegelKontext$",
+                de(DE_READS_ROW, "siehe $#RegelKontext$", "/Vertrag/Schaeden", "../Auszahlung"));
+        verdicts.put("de model, $#RuleGroup$",
+                de(DE_READS_ROW, "siehe $#RuleGroup$", "/Vertrag/Schaeden", "../Auszahlung"));
+        verdicts.put("en model, $#RootGroup$", en(EN_READS_ROW, "see $#RootGroup$", "/Policy/Claims", "../Payout"));
+        verdicts.put("en model, $#LfdNr$", en(EN_READS_ROW, "see $#LfdNr$", "/Policy/Claims", "../Payout"));
+        verdicts.put("de model, $#LfdNr$",
+                de(DE_READS_ROW, "siehe $#LfdNr$", "/Vertrag/Schaeden", "../Auszahlung"));
+        verdicts.put("de model, $#RootGroup$",
+                de(DE_READS_ROW, "siehe $#RootGroup$", "/Vertrag/Schaeden", "../Auszahlung"));
+
+        assertEquals(Map.of(
+                "en model, $#RuleGroup$", ADMITTED,
+                "en model, $#RegelKontext$", NOT_A_GROUP,
+                "de model, $#RegelKontext$", ADMITTED,
+                "de model, $#RuleGroup$", NOT_A_GROUP,
+                "en model, $#RootGroup$", ADMITTED,
+                "en model, $#LfdNr$", NOT_A_GROUP,
+                "de model, $#LfdNr$", ADMITTED,
+                "de model, $#RootGroup$", NOT_A_GROUP), verdicts);
+    }
+
+    /**
+     * …and a RETIRED terminal in that same position is language-INDEPENDENT, which is what separates "the
+     * bundle selects a spelling" from "the bundle simply lacks the other language's words". {@code $#Zeile$}
+     * is spelled identically in both languages and draws {@code PARAM_INVALID_IN_NEW_WORLD} under each — the
+     * kernel parses it and refuses it on the modern route. A bundle that merely omitted the other language's
+     * words would have to refuse it as an unknown group, and it does not.
+     *
+     * <p>Reported as a12-kernel-lean's {@code SPEC-2026-09-05-03}; measured here on the same model pair the
+     * bilingual rows above use, so the two tables share their fixture and cannot disagree about it.
+     */
+    @Test
+    void aRetiredTerminalInTheGroupPositionIsRefusedIdenticallyInBothLanguages() {
+        Map<String, String> verdicts = new LinkedHashMap<>();
+        verdicts.put("en model, $#Zeile$", en(EN_READS_ROW, "see $#Zeile$", "/Policy/Claims", "../Payout"));
+        verdicts.put("de model, $#Zeile$",
+                de(DE_READS_ROW, "siehe $#Zeile$", "/Vertrag/Schaeden", "../Auszahlung"));
+
+        assertEquals(Map.of(
+                "en model, $#Zeile$", RETIRED_ON_THE_MODERN_ROUTE,
+                "de model, $#Zeile$", RETIRED_ON_THE_MODERN_ROUTE), verdicts);
     }
 
     // ---- the one keyword-position terminal -------------------------------------------------------

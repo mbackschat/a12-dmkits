@@ -15,10 +15,16 @@ import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.TestInstance
 
 /**
- * Tri-engine differential — on a level the enclosing iteration BINDS and the operand's star does NOT reopen, the
- * `$` marker is REDUNDANT: the bare reference already reads the bound coordinate. a12-kernel-lean's
- * `SPEC-2026-09-03-07` corrects a clause that called `$` the sole way a filter reaches an out-of-scope field;
- * the corrected rule splits by LEVEL rather than by scope, and this file measures the non-reopened half.
+ * Tri-engine differential — on an unstarred ANCESTOR of the operand's own path, the `$` marker is REDUNDANT:
+ * the bare reference already reads the coordinate the candidate environment inherits from the captured prefix.
+ * a12-kernel-lean's `SPEC-2026-09-03-07` corrects a clause that called `$` the sole way a filter reaches an
+ * out-of-scope field; the corrected rule splits by LEVEL rather than by scope, and this file measures the
+ * non-reopened half.
+ *
+ * **The carrier is the ancestor, not every bound level** — [KF237]'s 2026-09-05 correction. On a repeatable
+ * SIBLING the enclosing iteration also binds the level, and there the bare spelling is a static refusal
+ * (`MVK_INVALID_ITERATION_IN_FILTER_CONDITION`, [KF244]), so the marker is load-bearing rather than redundant.
+ * This file's topology is an ancestor throughout; nothing here transfers to a sibling.
  *
  * **The topology is what makes the claim non-trivial.** The rule iterates `Lines` and the operand stars only
  * `Items`, so `Lines` is bound-but-not-reopened. On a level the star DOES reopen the two spellings differ — the

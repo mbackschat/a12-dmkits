@@ -1319,7 +1319,8 @@
       "returns": "boolean",
       "meaning": "True iff the referenced group has admitted content. For a repeatable group the row itself is content, so an empty, freshly created row counts as filled. For a non-repeatable group, content means a formally admitted descendant value or an instantiated repeatable descendant row.",
       "constraints": [
-        "the operand is a group (or root group) reference, never a field"
+        "the operand is a group (or root group) reference, never a field",
+        "a REPEATABLE operand needs the error field inside a repetition: with the error field outside every repetition it is refused MVK_NO_WILDCARD, and with the error field inside the operand's own repetition it is admitted. A NON-repeatable operand — a root group included — carries no repetition to bind and is admitted at either locus. The rule's own group is not the axis: the same condition with the same absolute error field is admitted from either host. A star is always refused MVK_NO_WILDCARDS_ALLOWED"
       ],
       "gotchas": [
         {
@@ -1332,6 +1333,10 @@
         },
         {
           "text": "an enclosing GroupFilled(Group) counts as referencing the rule's error field (no MVK_ERROR_FIELD_NOT_REFERENCED)",
+          "kind": "AUTHORING"
+        },
+        {
+          "text": "inside a Having filter a group leaf obeys the same scope gate as a field one, marked or not: alone it draws MVK_NO_ITERATION_FOR_WILDCARD in BOTH spellings, and beside an in-scope conjunct both are admitted — so a refusal of GroupFilled($G) alone is about the missing in-scope reference, not about the $",
           "kind": "AUTHORING"
         }
       ],
@@ -1907,6 +1912,14 @@
         "error": "arithmetic needs numeric operands",
         "fix": "ProductCode is a string; arithmetic operands must be numeric"
       },
+      "correctives": [
+        {
+          "code": "MVK_INVALID_COMPARE_DEC_PLACES",
+          "whenOperands": [],
+          "fix": "the power derives a KNOWN scale only from a scale-0 BASE raised to a nonnegative literal exponent, and that derived scale is 0 — it is never the base's. Every other shape derives an UNKNOWN scale (reported as '?' on that side): a decimal-scale base, a non-literal exponent such as a field or an aggregate, a negative literal exponent, and a bare division anywhere in the expression. Equality (== / !=) refuses an unknown scale while ORDERING (< <= > >=) admits it, so the cheapest fix is often to order instead. Otherwise pin the scale with RoundAccounting(expr, n), or accept the mismatch on the rule itself with allowDifferingDecimals — the kernel's one suppressible warning, which prepends @SuppressWarning(MVK_INVALID_COMPARE_DEC_PLACES) and admits every unknown-scale operand shape alike",
+          "probe": { "dsl": "[UnitPrice] ^ 2 == 100.00" }
+        }
+      ],
       "sinceKernel": "30.8.x"
     },
     {
@@ -2317,7 +2330,7 @@
       "meaning": "True iff at least one of the listed fields holds one of the listed values.",
       "constraints": [
         "syntax: Name(f1, f2 In v1, v2) — the In separator is language-independent",
-        "all listed fields must share one base type (MVK_VARYING_TYPES_NOT_ALLOWED); no exact reference may repeat (MVK_DUPLICATE_PARAM1)",
+        "all listed fields must share one base type (MVK_VARYING_TYPES_NOT_ALLOWED); no exact reference may repeat (MVK_DUPLICATE_PARAM1) — and 'exact' is doing real work: the gate reads the reference FORM, not the field, so a wildcarded (starred) occurrence is a repetition-wide scan rather than an exact reference and MAY repeat. (Code, Code In ...) is refused while (Items*/Sku, Items*/Sku In ...) is ADMITTED",
         "for enums each literal must be in the UNION of the selected members' domains (a direct reference's stored values plus a category projection's category values), NOT in every one (MVK_INVALID_STRING_CONSTANT_FOR_ENUMERATION_OR_CATEGORY)",
         "a value-side field list makes it entity-valued: both sides share one base type, no reference repeats across the combined lists, and enum-domain containment is NOT required",
         "values may also be string literals or field references"
@@ -2626,7 +2639,8 @@
       "constraints": [
         "more than one field, OR a single flattened repetition list (Group*/field), OR at least one group (MVK_PARAMSIZE_INVALIDN)",
         "field kinds may be mixed (it counts presence, not values)",
-        "root groups are not allowed (MVK_ROOT_GROUP_REFERENCED); no enum-category arguments"
+        "root groups are not allowed (MVK_ROOT_GROUP_REFERENCED); no enum-category arguments",
+        "no repeated DIRECT operand (MVK_DUPLICATE_PARAM1), but a wildcarded (starred) operand may repeat. The star exempts that ONE gate and no more: two operands where one strictly CONTAINS the other — a group scope beside its own descendant — are refused MVK_DUPLICATE_PARAM2 whichever side carries it, even with both starred"
       ],
       "gotchas": [
         {
@@ -2929,7 +2943,7 @@
           ]
         },
         {
-          "text": "the temporal gate reads the declared FORMAT STRING, not the field kind, so 'all operands the same kind' is neither necessary nor sufficient: a Date declared yyyy beside a DateFragment declared yyyy is ADMITTED across two kinds, while two Date fields differing only in declared format are rejected MVK_ONLY_STRING_ENUM_NUMBER_DATE_ALLOWED — including 'yyyy-MM-dd' beside 'dd.MM.yyyy', which denote the SAME components. That is the one place this operator disagrees with MaxValue/MinValue/NumberOfDifferentValues, whose gate is the component SET and admits that pair; no Base Year lifts this one",
+          "text": "the temporal gate reads the declared FORMAT STRING, not the field kind, so 'all operands the same kind' is neither necessary nor sufficient: a Date declared yyyy beside a DateFragment declared yyyy is ADMITTED across two kinds, while two Date fields differing only in declared format are rejected MVK_ONLY_STRING_ENUM_NUMBER_DATE_ALLOWED — including 'yyyy-MM-dd' beside 'dd.MM.yyyy', which denote the SAME components. That is ONE of two places this operator disagrees with MaxValue/MinValue/NumberOfDifferentValues, whose gate is the component SET and admits that pair; no Base Year lifts this one. The other is datePrecision: a partially known Date is ADMITTED here and refused there, under a code those operators carry rather than this one (see `operators MaxValue`), because this operator compares stored text and they compare a decoded date — same root, opposite outcome, so do not read either disagreement as the only one",
           "kind": "AUTHORING"
         }
       ],
@@ -2981,7 +2995,7 @@
       "meaning": "The sum of the listed number fields' values, typically over a repetition list.",
       "constraints": [
         "number fields only (MVK_NO_NUMBER)",
-        "more than one field or a repetition list (MVK_PARAMSIZE_INVALIDN); no repeated DIRECT field (MVK_DUPLICATE_PARAM1), but a wildcarded (starred) operand may repeat and is consumed again at each slot"
+        "more than one field or a repetition list (MVK_PARAMSIZE_INVALIDN); no repeated DIRECT field (MVK_DUPLICATE_PARAM1), but a wildcarded (starred) operand may repeat and is consumed again at each slot. The star exempts that ONE gate and no more: two operands where one strictly CONTAINS the other — a group scope beside its own descendant — are refused MVK_DUPLICATE_PARAM2 whichever side carries it, even with both starred"
       ],
       "gotchas": [
         {
@@ -3073,8 +3087,8 @@
       "returns": "the operands' common NUMBER, DATE, TIME, or DATETIME kind",
       "meaning": "The largest of the listed values; unspecified fields are ignored. Over number fields it returns a number; over a date repetition list it returns the latest date.",
       "constraints": [
-        "sortable fields only — NUMBER, or temporal fields (DATE, DATEFRAGMENT, TIME, DATE_TIME) whose declared COMPONENT SETS match after optional Base-Year supplementation (MVK_NOT_SORTABLE / MVK_DATEFORMATS_NOT_COMPATIBLE)",
-        "more than one field or a repetition list; no repeated direct field, but a wildcarded (starred) operand may repeat (MVK_DUPLICATE_PARAM1)"
+        "sortable fields only — NUMBER, or temporal fields (DATE, DATEFRAGMENT, TIME, DATE_TIME) whose declared COMPONENT SETS match after optional Base-Year supplementation (MVK_NOT_SORTABLE / MVK_DATEFORMATS_NOT_COMPATIBLE). The set is the DECLARATION's and the declared KIND takes no part, so a TIME- or DATE_TIME-declared field carrying yyyy-MM-dd is a legal member of a plain DATE list, while the same TIME field carrying HH:mm:ss beside that DATE is refused MVK_DATEFORMATS_NOT_COMPATIBLE. The set is also UNORDERED: 'MM-dd' beside 'ddMM' is admitted although the two decode the same four digits in opposite orders, which decides whether an importer may put two order-opposed spellings in one list",
+        "more than one field or a repetition list; no repeated direct field, but a wildcarded (starred) operand may repeat (MVK_DUPLICATE_PARAM1). The star exempts that ONE gate and no more: two operands where one strictly CONTAINS the other — a group scope beside its own descendant — are refused MVK_DUPLICATE_PARAM2 whichever side carries it, even with both starred"
       ],
       "gotchas": [
         {
@@ -3097,6 +3111,24 @@
           "whenOperands": [],
           "fix": "use DATE, TIME, or DATE_TIME fields with mutually compatible declared formats",
           "probe": { "dsl": "FieldFilled(OrderDate) And MaxValue(OrderDate, ScheduledAt) > \"01.01.2020\"" }
+        },
+        {
+          "code": "MVK_DATE_AND_NONDATE",
+          "whenOperands": [],
+          "fix": "the FIRST operand fixes the expected class and the reported code names THAT class, not the offender's — a temporal leader beside a non-temporal operand is MVK_DATE_AND_NONDATE, while the same two operands in the other order are MVK_NOT_SORTABLE. Make the list family-homogeneous rather than reordering it",
+          "probe": { "dsl": "FieldFilled(CustomerName) And MaxValue(OrderDate, Quantity) > [DeliveryDate]" }
+        },
+        {
+          "code": "MVK_NOT_SORTABLE",
+          "whenOperands": [],
+          "fix": "exactly two operand classes sort here: NUMBER, and temporal fields sharing one declared COMPONENT SET. STRING, ENUM, BOOLEAN, CONFIRM, DATE_RANGE and CUSTOM are refused in EVERY position, leading or following, and a starred single-field operand takes the same verdict as the plain field — the gate reads the declaration, not the operand form. A GROUP operand is judged by its EXPANSION, whose first declared member fixes the expected class, so a group that also holds numbers still draws this code when a string is declared first; name the sortable fields instead of the group. To count or compare a non-sortable kind use NumberOfDifferentValues (which admits STRING, ENUM and CUSTOM) or FieldValuesNotUnique",
+          "probe": { "dsl": "FieldFilled(CustomerName) And MaxValue(Items*) == 0" }
+        },
+        {
+          "code": "MVK_PARTIAL_DATE_NOT_ALLOWED",
+          "whenOperands": [],
+          "fix": "this operator compares a DECODED date, which a partially known one does not have. A DateType declaring datePrecision DAY_OPTIONAL, MONTH_OPTIONAL or YEAR_OPTIONAL is therefore refused however its components are declared — precision is independent of the component set, so a full yyyy-MM-dd declaration is still refused when it is optional-day. A group operand is refused when ANY member of its expansion is partial, not just the first. Use fully known date fields; if you need to compare partial dates, FieldValuesNotUnique compares the stored TEXT and admits them, and ValueAsDate takes a partial as its source",
+          "probe": { "dsl": "FieldFilled(OrderDate) And MaxValue(ApproxDate, OrderDate) > \"01.01.2020\"" }
         }
       ],
       "semantics": {
@@ -3215,7 +3247,8 @@
       "returns": "the operands' common NUMBER, DATE, TIME, or DATETIME kind",
       "meaning": "The smallest of the listed values; unspecified fields are ignored. Over number fields it returns a number; over a date repetition list it returns the earliest date.",
       "constraints": [
-        "same slot rules as MaxValue: NUMBER, or temporal fields whose declared COMPONENT SETS match after optional Base-Year supplementation"
+        "same slot rules as MaxValue: NUMBER, or temporal fields whose declared COMPONENT SETS match after optional Base-Year supplementation — the DECLARATION's set, read as an UNORDERED set, with the declared kind taking no part",
+        "more than one field or a repetition list; no repeated direct field, but a wildcarded (starred) operand may repeat (MVK_DUPLICATE_PARAM1). The star exempts that ONE gate and no more: two operands where one strictly CONTAINS the other — a group scope beside its own descendant — are refused MVK_DUPLICATE_PARAM2 whichever side carries it, even with both starred"
       ],
       "gotchas": [
         {
@@ -3233,6 +3266,24 @@
           "whenOperands": [],
           "fix": "use DATE, TIME, or DATE_TIME fields with mutually compatible declared formats",
           "probe": { "dsl": "FieldFilled(OrderDate) And MinValue(OrderDate, ScheduledAt) > \"01.01.2020\"" }
+        },
+        {
+          "code": "MVK_DATE_AND_NONDATE",
+          "whenOperands": [],
+          "fix": "the FIRST operand fixes the expected class and the reported code names THAT class, not the offender's — a temporal leader beside a non-temporal operand is MVK_DATE_AND_NONDATE, while the same two operands in the other order are MVK_NOT_SORTABLE. Make the list family-homogeneous rather than reordering it",
+          "probe": { "dsl": "FieldFilled(CustomerName) And MinValue(OrderDate, Quantity) > [DeliveryDate]" }
+        },
+        {
+          "code": "MVK_NOT_SORTABLE",
+          "whenOperands": [],
+          "fix": "exactly two operand classes sort here: NUMBER, and temporal fields sharing one declared COMPONENT SET. STRING, ENUM, BOOLEAN, CONFIRM, DATE_RANGE and CUSTOM are refused in EVERY position, leading or following, and a starred single-field operand takes the same verdict as the plain field — the gate reads the declaration, not the operand form. A GROUP operand is judged by its EXPANSION, whose first declared member fixes the expected class, so a group that also holds numbers still draws this code when a string is declared first; name the sortable fields instead of the group. To count or compare a non-sortable kind use NumberOfDifferentValues (which admits STRING, ENUM and CUSTOM) or FieldValuesNotUnique",
+          "probe": { "dsl": "FieldFilled(CustomerName) And MinValue(Items*) == 0" }
+        },
+        {
+          "code": "MVK_PARTIAL_DATE_NOT_ALLOWED",
+          "whenOperands": [],
+          "fix": "this operator compares a DECODED date, which a partially known one does not have. A DateType declaring datePrecision DAY_OPTIONAL, MONTH_OPTIONAL or YEAR_OPTIONAL is therefore refused however its components are declared — precision is independent of the component set, so a full yyyy-MM-dd declaration is still refused when it is optional-day. A group operand is refused when ANY member of its expansion is partial, not just the first. Use fully known date fields; if you need to compare partial dates, FieldValuesNotUnique compares the stored TEXT and admits them, and ValueAsDate takes a partial as its source",
+          "probe": { "dsl": "FieldFilled(OrderDate) And MinValue(ApproxDate, OrderDate) > \"01.01.2020\"" }
         }
       ],
       "semantics": {
@@ -3628,6 +3679,14 @@
         "error": "MVK_TOO_MANY_CONST_FOR_CALC_OP",
         "fix": "each Min/Max call admits ONE literal — nest the calls instead: Min(Min([Quantity], 1), 2) > 0"
       },
+      "correctives": [
+        {
+          "code": "MVK_DATE_AND_NONDATE",
+          "whenOperands": [],
+          "fix": "the FIRST operand fixes the expected class and the reported code names THAT class, not the offender's — a temporal leader beside a non-temporal operand is MVK_DATE_AND_NONDATE, while the same two operands in the other order are MVK_NOT_SORTABLE. Make the operand list family-homogeneous rather than reordering it",
+          "probe": { "dsl": "FieldFilled(CustomerName) And Min([OrderDate], [Quantity]) > [DeliveryDate]" }
+        }
+      ],
       "semantics": {
         "aggregateIdentity": {
           "perKind": {
@@ -3779,6 +3838,14 @@
         "error": "MVK_TOO_MANY_CONST_FOR_CALC_OP",
         "fix": "each Min/Max call admits ONE literal — nest the calls instead: Max(Max([Quantity], 1), 2) > 100"
       },
+      "correctives": [
+        {
+          "code": "MVK_DATE_AND_NONDATE",
+          "whenOperands": [],
+          "fix": "the FIRST operand fixes the expected class and the reported code names THAT class, not the offender's — a temporal leader beside a non-temporal operand is MVK_DATE_AND_NONDATE, while the same two operands in the other order are MVK_NOT_SORTABLE. Make the operand list family-homogeneous rather than reordering it",
+          "probe": { "dsl": "FieldFilled(CustomerName) And Max([OrderDate], [Quantity]) > [DeliveryDate]" }
+        }
+      ],
       "semantics": {
         "aggregateIdentity": {
           "perKind": {
@@ -4019,13 +4086,13 @@
       "meaning": "Counts the distinct values among the listed fields (the count/number of different values), typically over a repetition list.",
       "constraints": [
         "operands must be type-homogeneous, in one of three classes: string/enum/custom together, all numbers, or all date-like — DATE/DATEFRAGMENT/TIME/DATETIME. The FIRST operand fixes the expected class and the reported code names THAT class, not the offender's: (Weight, Label) reports MVK_NUMBER_AND_NON_NUMBER while (Label, Weight) over the same two fields reports MVK_STRING_ENUM_AND_NON_STRING_ENUM (MVK_STRING_ENUM_AND_NON_STRING_ENUM / MVK_NUMBER_AND_NON_NUMBER / MVK_DATE_AND_NONDATE)",
-        "date-like operands must additionally share one declared COMPONENT SET — two date-like fields are not enough (MVK_DATEFORMATS_NOT_COMPATIBLE)",
+        "date-like operands must additionally share one declared COMPONENT SET — two date-like fields are not enough (MVK_DATEFORMATS_NOT_COMPATIBLE). The set comes from the DECLARED FORMAT, not the kind, so a date-declared TIME field counts alongside a plain DATE",
         "no booleans/confirms — but this code is reachable only from the LEADING slot: a boolean behind a string is reported as a homogeneity mismatch instead (MVK_ONLY_STRING_ENUM_NUMBER_CMP_DATE_ALLOWED)",
-        "more than one field or a repetition list; no repeated direct field, but a wildcarded (starred) operand may repeat (MVK_DUPLICATE_PARAM1)"
+        "more than one field or a repetition list; no repeated direct field, but a wildcarded (starred) operand may repeat (MVK_DUPLICATE_PARAM1). The star exempts that ONE gate and no more: two operands where one strictly CONTAINS the other — a group scope beside its own descendant — are refused MVK_DUPLICATE_PARAM2 whichever side carries it, even with both starred"
       ],
       "gotchas": [
         {
-          "text": "date-like operands ARE allowed here, and share MaxValue/MinValue's temporal gate exactly. The gate reads the declared COMPONENT SET, not the format spelling and not the kind: 'yyyy-MM-dd' beside 'dd.MM.yyyy' is ADMITTED (same {year,month,day}, different spelling), as is a DATE 'yyyy' beside a DATEFRAGMENT 'yyyy', while 'yyyy-MM-dd' beside a 'yyyy-MM-dd''T''HH:mm:ss' DATETIME is rejected MVK_DATEFORMATS_NOT_COMPATIBLE because the time components differ. A declared Base Year adds the year to BOTH sets first, so a yearless 'MM' joins 'yyyy-MM' but still not the year-only 'yyyy'. Do not carry this gate over to FieldValuesNotUnique, whose temporal gate really is one identical declared FORMAT STRING reported under its own distinct code — it rejects both spelling pairs this operator admits; see `operators FieldValuesNotUnique` for that code and its rows",
+          "text": "date-like operands ARE allowed here, and share MaxValue/MinValue's temporal gate exactly. The gate reads the declared COMPONENT SET as an UNORDERED set — not the format spelling, not the component order, and not the kind: 'yyyy-MM-dd' beside 'dd.MM.yyyy' is ADMITTED (same {year,month,day}, different spelling), so is a DATE 'yyyy' beside a DATEFRAGMENT 'yyyy', and so is 'MM-dd' beside 'ddMM' — two spellings that decode the same four digits in OPPOSITE orders, which is the sharpest form of this rule and decides whether an importer may put them in one list. Only a differing set is rejected: 'yyyy-MM-dd' beside a 'yyyy-MM-dd''T''HH:mm:ss' DATETIME draws MVK_DATEFORMATS_NOT_COMPATIBLE because the time components differ. A declared Base Year adds the year to BOTH sets first, so a yearless 'MM' joins 'yyyy-MM' but still not the year-only 'yyyy'. Do not carry this gate over to FieldValuesNotUnique or FirstFilledValue, whose temporal gate really is one identical declared FORMAT STRING, each reported under its own distinct code — both reject every spelling pair this operator admits; see `operators FieldValuesNotUnique` for that code and its rows",
           "kind": "AUTHORING",
           "seeAlso": [
             "MaxValue",
@@ -4034,6 +4101,13 @@
         },
         {
           "text": "the rejection code names the FIRST operand's class, not the offending operand's, so reordering the same two fields changes the error you get: (Weight, Label) reports MVK_NUMBER_AND_NON_NUMBER and (Label, Weight) reports MVK_STRING_ENUM_AND_NON_STRING_ENUM. The kernel's message text names the offender ('Corrupt: ...') while the code names the class the list was judged against, so do not switch on the code to find the bad operand. It goes further than naming: the leading operand selects which gate runs at all, so MVK_ONLY_STRING_ENUM_NUMBER_CMP_DATE_ALLOWED appears only when the INADMISSIBLE kind leads — a boolean behind a string is reported as a homogeneity mismatch instead. FieldValuesNotUnique is the opposite and its gates span the whole list; do not carry either operator's rule to the other",
+          "kind": "SURPRISE",
+          "seeAlso": [
+            "FieldValuesNotUnique"
+          ]
+        },
+        {
+          "text": "temporal operands are counted by DECODED DATE, not by stored text — so the differently-spelled pair the temporal gate admits does NOT count twice for being spelled differently. Two fields declared 'yyyy-MM-dd' and 'dd.MM.yyyy' holding '2024-03-05' and '05.03.2024' are ONE distinct value; holding '2024-03-05' and '06.03.2024' they are two. This is what you want from a distinct count, but it means the operator cannot detect that one date was entered in two different formats — nothing here reads the spelling",
           "kind": "SURPRISE",
           "seeAlso": [
             "FieldValuesNotUnique"
@@ -4060,6 +4134,22 @@
           "fix": "NumberOfDifferentValues needs date-like fields with compatible declared formats",
           "probe": {
             "dsl": "FieldFilled(Quantity) And NumberOfDifferentValues(OrderDate, ScheduledAt) > 0"
+          }
+        },
+        {
+          "code": "MVK_ONLY_STRING_ENUM_NUMBER_CMP_DATE_ALLOWED",
+          "whenOperands": [],
+          "fix": "BOOLEAN, CONFIRM and DATE_RANGE have no admitted counting domain here — this code names the offending KIND itself, not a mix, and is reachable only from the LEADING slot (behind an admitted leader the same operand is reported as a homogeneity mismatch instead). CUSTOM, by contrast, IS admitted and counts as a string. For date ranges count a component field instead, or use AtLeastOneDateRangeOverlaps / DateRangesOverlap for the relation you actually need; for a boolean or confirm, count with NumberOfFilledFields or compare it directly",
+          "probe": {
+            "dsl": "FieldFilled(CustomerName) And NumberOfDifferentValues(CoverageWindow, Items*/ItemCoverage) > 0"
+          }
+        },
+        {
+          "code": "MVK_PARTIAL_DATE_NOT_ALLOWED",
+          "whenOperands": [],
+          "fix": "this operator counts DECODED dates, which a partially known one does not have. A DateType declaring datePrecision DAY_OPTIONAL, MONTH_OPTIONAL or YEAR_OPTIONAL is therefore refused however its components are declared — precision is independent of the component set, so a full yyyy-MM-dd declaration is still refused when it is optional-day. A group operand is refused when ANY member of its expansion is partial, not just the first. Use fully known date fields, or FieldValuesNotUnique, whose gate compares the stored TEXT and admits a partial",
+          "probe": {
+            "dsl": "FieldFilled(OrderDate) And NumberOfDifferentValues(ApproxDate, OrderDate) > 0"
           }
         }
       ],
@@ -4129,7 +4219,7 @@
       "constraints": [
         "at least two fields (or at least one group), else MVK_PARAMSIZE_INVALIDN",
         "the constant follows the 'In' grammar literal; the fields are bare entity refs",
-        "a field may not be listed more than once (MVK_DUPLICATE_PARAM1; MVK_DUPLICATE_PARAM2 via a group)"
+        "a DIRECT field may not be listed more than once (MVK_DUPLICATE_PARAM1; MVK_DUPLICATE_PARAM2 via a group), but a wildcarded (starred) operand MAY repeat — the gate reads the reference form, not the field, so (0 In Total, Total) is refused while (0 In Items*/Count, Items*/Count) is ADMITTED"
       ],
       "gotchas": [
         {
@@ -4196,7 +4286,8 @@
       "meaning": "Filters a *-repetition list, keeping only candidates whose complete condition is known true, before an aggregate or quantifier consumes selected cells.",
       "constraints": [
         "the filtered field must carry an asterisk (MVK_WILDCARDS_REQUIRED) — only flattened lists can be filtered",
-        "the filter condition may not contain CustomCondition, RepetitionNotUnique, or a nested Having (MVK_DISALLOWED_CONSTRUCT_IN_FILTER_CONDITION); semantic indexing is rejected with MVK_SEMANTIC_INDEX_NOT_ALLOWED, and parallel iteration is also forbidden"
+        "the filter condition may not contain CustomCondition, RepetitionNotUnique, or a nested Having (MVK_DISALLOWED_CONSTRUCT_IN_FILTER_CONDITION); semantic indexing is rejected with MVK_SEMANTIC_INDEX_NOT_ALLOWED, and parallel iteration is also forbidden",
+        "the condition answers to TWO independent gates, and the code says which one refused. SCOPE (MVK_NO_ITERATION_FOR_WILDCARD): the condition carries no unmarked reference into a level the operand's star reopens — ANY in-scope conjunct clears it, and this is what a non-repeatable group or an unstarred ancestor on the operand's own path draws. ITERATION (MVK_INVALID_ITERATION_IN_FILTER_CONDITION): a reference names a repeatable level OFF the operand's path — no conjunct clears it, and neither does the rule iterating that very level; the $ marker is the remedy, and it needs an enclosing iteration to capture or the code becomes MVK_NO_WILDCARD. so 'add an in-scope reference' repairs the first gate and does nothing for the second (all kernel-checked)"
       ],
       "gotchas": [
         {
@@ -4259,7 +4350,7 @@
       "meaning": "The current iteration index of the given group, as a number expression.",
       "constraints": [
         "the argument is a group, not a field (MVK_NO_FIELDS_ALLOWED)",
-        "the rule must iterate over that group, otherwise MVK_NO_WILDCARD (position-dependent — kernel-checked)"
+        "an UNMARKED operand binds to EITHER the enclosing iteration — the rule's row, or the target row of a computation whose target is repeatable — OR an operand's own star that reopens the group inside a Having filter; the $-marked form reads the captured environment and binds only to the enclosing iteration. unbound outside any filter it is MVK_NO_WILDCARD, and so is the $-marked form with no enclosing iteration to capture. INSIDE a Having filter the operand carries no code of its own: it answers to that filter's two gates exactly as a plain field reference does, which is why a refusal there is read off Having's constraint and not off the operand's spelling (all kernel-checked)"
       ],
       "gotchas": [
         {
@@ -4267,7 +4358,7 @@
           "kind": "AUTHORING"
         },
         {
-          "text": "the rule must iterate over the group (its error field lies under it); from a non-iterating rule the kernel rejects it (MVK_NO_WILDCARD)",
+          "text": "from a non-iterating host the kernel rejects a bare CurrentRepetition (MVK_NO_WILDCARD) — unless it sits in a Having filter on an operand whose own star reopens THAT group, which binds it there; naming a repeatable level OFF the operand's path is MVK_INVALID_ITERATION_IN_FILTER_CONDITION even when the rule itself iterates that level, so inside a filter it is the star and never the enclosing iteration that binds; adding $ inside such a filter reverses the verdict, so the marker is never erasable here",
           "kind": "SURPRISE"
         },
         {
@@ -4290,7 +4381,7 @@
       "invalidExample": {
         "dsl": "FieldFilled(CustomerName) And CurrentRepetition(Items) > 1",
         "error": "MVK_NO_WILDCARD",
-        "fix": "CurrentRepetition needs the rule to iterate over the group — put the error field inside Items"
+        "fix": "CurrentRepetition needs a binding — put the error field inside Items so the rule iterates it, or move the operand into a Having filter on a starred Items* aggregate, whose own star binds it without the rule iterating"
       },
       "seeAlso": [
         "Having"
@@ -5580,6 +5671,16 @@
         "dsl": "FieldFilled(OrderDate) And AtLeastOneDateRangeOverlaps(CoverageWindow IN Items*/ItemCoverage)",
         "note": "fires when the coverage window overlaps any line-item coverage"
       },
+      "correctives": [
+        {
+          "code": "MVK_INVALID_PARAMETER_FOR_DATE_RANGE_COMPARISON",
+          "whenOperands": [],
+          "fix": "the slot BEFORE In takes exactly ONE plain date-range field: no group, no star, no Having filter, and no star above a nonrepeatable terminal. The refusal belongs to that SLOT and not to the operand form — every one of those shapes is admitted AFTER In on the same model — so swap the operands rather than rewriting them: put the single range on the left and the flattened list on the right. If you meant 'no two rows overlap', neither slot is the answer: author a model-level rule with DateRangesOverlap over one flattened list. A group whose expansion mixes kinds reports MVK_VARYING_TYPES_NOT_ALLOWED instead, in either slot, because that gate runs ahead of this one",
+          "probe": {
+            "dsl": "FieldFilled(OrderDate) And AtLeastOneDateRangeOverlaps(Items*/ItemCoverage In CoverageWindow)"
+          }
+        }
+      ],
       "semantics": {
         "boundary": {
           "value": "INCLUSIVE",
@@ -6366,7 +6467,8 @@
       "returns": "date",
       "meaning": "Constructs a comparable date from day, month, and year (optionally century + 2-digit decade) temporal components. A component may be a bounded number field/expression or a quoted digit string; field-backed components render as bare entity refs and literal components remain quoted.",
       "constraints": [
-        "each operand is a temporal component: a bounded-integer / digit-patterned number field or expression, or a quoted digit string; the kernel rejects a plain scale-0 number field (MVK_WRONG_DATE_FORMAT_FOR_OP)"
+        "each operand is a temporal component: a bounded-integer / digit-patterned number field or expression, or a quoted digit string; the kernel rejects a plain scale-0 number field (MVK_WRONG_DATE_FORMAT_FOR_OP)",
+        "the complete-Year position additionally admits a bare temporal field DECLARED yyyy, and reads that declaration rather than the kind — a DATE, a TIME and a DATE_TIME field each declared yyyy are all admitted there. Both conjuncts are necessary: the same three kinds declared yyyy-MM-dd are refused at Year, and a yyyy field is refused at the Day and Month positions, all MVK_WRONG_DATE_FORMAT_FOR_OP (Locked: rulekit.validate.laws.TemporalConstructorDeclaredFormatGateLawsTest)"
       ],
       "gotchas": [
         {
@@ -6742,7 +6844,7 @@
         }
       ],
       "constraints": [
-        "at least two direct selectors, or one repetition-list/group selector; all expanded values must share one owner family — STRING/CUSTOM/ENUMERATION interchange freely, and within the TEMPORAL family the gate reads the DECLARED FORMAT rather than the kind: a Date declared yyyy beside a DateFragment declared yyyy is admitted across kinds, while two Dates differing only in declared format are refused (measured 2026-08-15; same rule FieldValuesNotUnique carries). A cross-family list draws MVK_VARYING_TYPES_NOT_ALLOWED and Confirm fields draw MVK_NO_BOOLY_ALLOWED (Locked: rulekit.validate.laws.FirstFilledValueFamilyLawsTest)",
+        "at least two direct selectors, or one repetition-list/group selector; all expanded values must share one owner family — STRING/CUSTOM/ENUMERATION interchange freely, and within the TEMPORAL family the gate reads the DECLARED FORMAT STRING rather than the kind or the component set: a Date declared yyyy beside a DateFragment declared yyyy is admitted across kinds, while two temporal fields differing only in declared spelling are refused — including every equal-component-set pair the twelve-format vocabulary admits, all seven of them, under the SAME MVK_VARYING_TYPES_NOT_ALLOWED a cross-family list draws. That is FieldValuesNotUnique's rule and the opposite of MaxValue/MinValue/NumberOfDifferentValues', which admit those pairs. Confirm fields draw MVK_NO_BOOLY_ALLOWED (Locked: rulekit.validate.laws.FirstFilledValueFamilyLawsTest, rulekit.validate.laws.TemporalEqualSetPairDenominatorLawsTest)",
         "an exact non-wildcard entity duplicate draws MVK_DUPLICATE_PARAM1, repeating a wildcarded group preserves two legal authored slots, and a fixed group beside its strict descendant draws MVK_DUPLICATE_PARAM2. Exact duplicates are checked in authored encounter order, so whichever repeated entity completes first names the repair witness regardless of whether it is a field or group; every exact duplicate pre-empts strict overlap. This is static admission only (Locked: rulekit.validate.laws.FirstFilledValueDuplicatePrecedenceLawsTest)"
       ],
       "validExample": {
@@ -6932,7 +7034,7 @@
         }
       ],
       "constraints": [
-        "each operand is a bare full DATE or DATE_FRAGMENT entity reference, and both formats contain the same date components and no time component; DATE and DATE_FRAGMENT may be mixed, lexical spellings may differ, and a computation target must be a DATE_RANGE declaring those same components"
+        "each operand is a bare entity reference whose DECLARED FORMAT carries date components and no time component — the declared KIND takes no part, so a TIME-declared or DATE_TIME-declared field carrying yyyy-MM-dd is admitted in the start position, the finish position and both at once, while a stamp-formatted DATE_TIME and a clock-formatted DATE are refused MVK_WRONG_DATE_FORMAT_FOR_OP. A DATE_FRAGMENT is admitted and may be mixed in. Both formats must contain the SAME date components, lexical spellings may differ, and a computation target must be a DATE_RANGE declaring those same components (Locked: rulekit.validate.laws.TemporalConstructorDeclaredFormatGateLawsTest)"
       ],
       "validExample": {
         "dsl": "DateRange(OrderDate, DeliveryDate) == [CoverageWindow]",

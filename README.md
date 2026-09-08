@@ -481,6 +481,9 @@ dmtool -m order.dm.json field add fee-spec.json
 printf '%s' "$SPEC" | dmtool -m order.dm.json field add -
 
 dmtool -m order.dm.json group add --parent /Order --name Shipping
+# --parent / (equivalently the empty string) adds a new ROOT group — the shape that separates
+# model-wide from root-wide addressing; the same spelling works for include/multiselect/attachment
+dmtool -m order.dm.json group add --parent / --name Claim
 # repeatable group + its index field (the row-key arming RepetitionNotUnique / parallel iteration)
 dmtool -m order.dm.json group modify /Order/Items --index-field Sku
 

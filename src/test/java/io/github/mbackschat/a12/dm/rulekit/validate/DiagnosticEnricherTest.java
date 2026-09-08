@@ -200,6 +200,28 @@ class DiagnosticEnricherTest {
                 () -> "names the two-repair sequence, got: " + fix);
     }
 
+    /**
+     * KF269 — the POWER is a third context for this code, and the one whose scale an author cannot guess.
+     *
+     * <p>The two contexts above both hand the author a scale they can see: a computed field's declaration, or two
+     * operands they wrote. A power's is DERIVED and is 0 only from a scale-0 base under a nonnegative literal
+     * exponent — never the base's own scale — so {@code [UnitPrice] ^ 2} (scale 2) reports its side as "?" and
+     * nothing in the message says why. The catalog's {@code Arithmetic} corrective carries that rule, but this
+     * code is cross-context, so {@code StructuralKernelFix} wins at the enricher and the catalog text never
+     * reaches a rejection. Measured 2026-09-07: without this third context the author is told to round a side
+     * whose scale they had no reason to think was unknown.
+     */
+    @Test
+    void theDecimalScaleHintNamesThePowersDerivedScaleAsItsThirdContext() {
+        String fix = ENRICHER.enrich(raw("MVK_INVALID_COMPARE_DEC_PLACES")).fix().orElse("");
+        assertTrue(fix.contains("power"),
+                () -> "names the power context at all, got: " + fix);
+        assertTrue(fix.contains("scale-0 base") && fix.contains("literal exponent"),
+                () -> "names the ONE shape that derives a known scale, got: " + fix);
+        assertTrue(fix.contains("ORDERING") || fix.contains("< <= > >="),
+                () -> "names the exempt comparison family, which is the cheapest repair, got: " + fix);
+    }
+
     @Test
     void rawTypeValueUseGetsThePresenceCorrective() {
         Diagnostic enriched = ENRICHER.enrich(raw("MVK_INVALID_RAW_TYPE"));
@@ -223,10 +245,17 @@ class DiagnosticEnricherTest {
     @Test
     void aSoleCatalogDocumenterIsNotEvidenceOfOwnership() {
         // The catalog is a PARTIAL map of code → operators, so "exactly one entry documents this code" is equally
-        // consistent with an UNDOCUMENTED SIBLING having raised it. Measured by review: MVK_NOT_SORTABLE is
-        // documented for MaxValue and not for MinValue, so a real `MinValue(...)` rejection was explained as
-        // "The largest of the listed values". A sole-documenter shortcut is therefore not a shortcut but a guess.
-        Diagnostic enriched = ENRICHER.enrich(raw("MVK_NOT_SORTABLE"));
+        // consistent with an UNDOCUMENTED SIBLING having raised it. A sole-documenter shortcut is therefore not a
+        // shortcut but a guess.
+        //
+        // The specimen moved on 2026-09-07, and why is the point. This test was written on MVK_NOT_SORTABLE,
+        // documented for MaxValue and not MinValue, so a real `MinValue(...)` rejection was explained as "The
+        // largest of the listed values". Closing G77 gave MinValue its own corrective for that code, which fixes
+        // that rejection at the SOURCE — and thereby retires MVK_NOT_SORTABLE as a specimen, since the union join
+        // now hedges it as multi-construct instead. MVK_STRING_ENUM_AND_NON_STRING_ENUM is documented only by
+        // NumberOfDifferentValues, before and after that change, so the invariant is still measured on a code
+        // where it is live rather than on one the fix made vacuous.
+        Diagnostic enriched = ENRICHER.enrich(raw("MVK_STRING_ENUM_AND_NON_STRING_ENUM"));
 
         assertTrue(enriched.explain().isEmpty(),
                 () -> "a lone documenter must not be treated as the established owner, got: " + enriched.explain());

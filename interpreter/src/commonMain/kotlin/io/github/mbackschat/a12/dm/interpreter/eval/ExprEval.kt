@@ -425,9 +425,29 @@ internal fun Interpreter.evalAssignedExpr(expr: Expr, targetKind: Kind?, targetD
     if (expr !is Expr.StrLit) return evalExpr(expr)
     return when (targetKind) {
         Kind.DATE -> coerceDate(Val.Txt(expr.v), targetDateFormat)
-        Kind.DATE_TIME -> Val.Txt(parseDateTimeToIso(expr.v, DATE_TIME_LITERAL_FORMAT) ?: expr.v)
+        Kind.DATE_TIME -> dateTimeLiteral(expr.v)
         else -> evalExpr(expr)
     }
+}
+
+/**
+ * A DATE_TIME literal canonicalized against its target — and [Val.DomainFailure] when the label it names has
+ * **no instant** in the model's declared zone.
+ *
+ * A wall time inside a spring-forward gap is not a time, so there is nothing for the kernel's conversion to
+ * produce: it yields no computed outcome and reports `berechnungsWertFehler` per in-capacity target row on the
+ * operand channel (KF231), which is structurally the numeric domain failure and is why the same carrier serves
+ * both. Before this the label was canonicalized, stored, and then flagged by the target's own format check —
+ * agreeing that the cell has no valid value but saying so on the wrong channel (IF326, graduated from IG147).
+ *
+ * **Deliberately narrow to the unresolvable-instant condition.** A temporal constant that fails its target's
+ * *value policy* keeps store-and-flag: the same KF231 measurement has a pre-1900 Date constant ERRORED
+ * retaining its rendered `1899-12-31`, so "a temporal constant whose target check fails has no value" is
+ * false. Only a label with no instant loses its value here.
+ */
+private fun Interpreter.dateTimeLiteral(text: String): Val {
+    val iso = parseDateTimeToIso(text, DATE_TIME_LITERAL_FORMAT) ?: return Val.Txt(text)
+    return if (isGapLocal(iso, timeZone)) Val.DomainFailure else Val.Txt(iso)
 }
 
 /** The kernel's date-time constant spelling: the German date, a literal `T`, and the clock (`KF223`). */
@@ -468,10 +488,13 @@ private fun Interpreter.producesDate(e: Expr): Boolean = when (e) {
  * are refused at admission under `MVK_INVALID_COMPARE_TO_DATE` (KF239, measured): the year disagreement, and a
  * day that needs a real year to exist (`29.02.`; `31.04.` is refused on the same ground and `30.04.` admitted,
  * so the gate validates the day rather than special-casing February). But a temporal OPERATION admits a
- * year-free literal with no year-free field in sight, and `DifferenceInDays("28.02.", "01.03.")` then answers 1
- * or 2 according to the anchor's leap-ness. **Measured: both kernel strategies answer 2, so the anchor must be
- * a LEAP year** — which is a constraint on the constant below, not a free choice
- * (`adapter.laws.YearlessConstantOperationDiffTest`).
+ * year-free literal, and `DifferenceInDays("28.02.", "01.03.")` then answers 1 or 2 according to the anchor's
+ * leap-ness. **Measured on one model varying only its Base Year: 2024 answers 2, 2023 answers 1, an unconfigured
+ * model answers 2.** So the anchor is the declared Base Year — which the `baseYear ?:` below already prefers —
+ * and [YEARLESS_ANCHOR_YEAR] constrains the UNCONFIGURED fallback only
+ * (`adapter.laws.YearlessConstantOperationDiffTest`). A first version of this comment said "the anchor must be a
+ * leap year" without that qualifier; every row behind it declared no Base Year, so it could not tell the two
+ * accounts apart (a12-kernel-lean `SPEC-2026-09-04-01` supplied the axis).
  *
  * **[declaredFormat] is deliberately NOT defaulted.** Its absence means "nothing in scope declares a year", which
  * is a reason to anchor rather than a reason to abstain — the opposite of what a defaulted `null` produced. Two
@@ -497,9 +520,11 @@ private fun Interpreter.coerceDate(v: Val, declaredFormat: String?): Val {
 /**
  * The year a yearless literal borrows when no base year is declared; see [coerceDate].
  *
- * **It must be a leap year.** On the temporal-operation carrier the choice is kernel-observable, and both kernel
- * strategies count 2 days from `28.02.` to `01.03.` (`adapter.laws.YearlessConstantOperationDiffTest`). A common
- * year here would answer 1 and diverge.
+ * **It must be a leap year**, and it binds only this unconfigured case — a model that declares a Base Year
+ * anchors to that instead, and [coerceDate] prefers it. On the temporal-operation carrier the choice is
+ * kernel-observable: with no Base Year declared both kernel strategies count 2 days from `28.02.` to `01.03.`
+ * (`adapter.laws.YearlessConstantOperationDiffTest`). A common year here would answer 1 and diverge. Which leap
+ * year is not pinned — reading the borrowed year back is refused `MVK_NO_CONST`.
  */
 private const val YEARLESS_ANCHOR_YEAR = 2000
 
@@ -684,8 +709,9 @@ private fun Interpreter.evalFunc(f: Expr.Func): Val {
     // Time(hours, minutes, seconds): the constructed time as `HH:mm:ss`. Components are in range by model
     // validity (an out-of-range constant is MVK_WRONG_DATE_FORMAT_FOR_OP at codegen); empty/malformed → Unknown.
     FunctionOp.TIME -> evalTime(f).asTimeVal()
-    // DateRange(start, finish): a date range from two owner entity references — full DATE or DATE_FRAGMENT,
-    // optionally semantic-index selected. The value is equality-comparable with another range and renders to
+    // DateRange(start, finish): a date range from two owner entity references whose DECLARED FORMAT carries
+    // date components and no time component — the kind takes no part, so a TIME- or DATE_TIME-declared
+    // `yyyy-MM-dd` field is an admitted endpoint (KF271) — optionally semantic-index selected. The value is equality-comparable with another range and renders to
     // the target field's format at the compute() boundary. Empty/malformed → Unknown.
     //
     // The two endpoints complete ASYMMETRICALLY, exactly as a STORED fragment range's do: the kernel's

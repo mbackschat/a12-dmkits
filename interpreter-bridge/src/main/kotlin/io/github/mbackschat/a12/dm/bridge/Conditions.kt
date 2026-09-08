@@ -128,8 +128,12 @@ internal class Conditions(private val mapping: Mapping) {
             ValueKind.ENUMERATION -> enumComparison(cmp.op, left, right)
             ValueKind.BOOLEAN -> booleanComparison(cmp.op, left, right)
             ValueKind.CONFIRM -> confirmComparison(cmp.op, left, right)
+            // The temporal arm is entered on the KIND — every date-like kind routes here — but the operand
+            // FAMILY inside it is picked by the declaration, which is the class the kernel's gate reads.
             ValueKind.DATE, ValueKind.DATE_FRAGMENT, ValueKind.TIME, ValueKind.DATE_TIME ->
-                temporalComparison(cmp.op, left, right)
+                temporalComparison(
+                    cmp.op, left, right, mapping.temporalClass(left), mapping.temporalClass(right),
+                )
             ValueKind.DATE_RANGE -> dateRangeComparison(cmp.op, left, right)
             else -> throw noTypedComparison(cmp.op, left, right)
         }
@@ -187,7 +191,7 @@ internal class Conditions(private val mapping: Mapping) {
      */
     private fun enumComparison(op: CmpOp, left: Calculation, right: Calculation): Condition {
         if (right is StringLiteral && left is FieldValue) {
-            val ref = mapping.model().enumOf(left.field().path().value())
+            val ref = mapping.model().enumOf(left.field().path().value()).keeping(left) { outer() }
             return when (op) {
                 CmpOp.EQ -> ref.`is`(right.value())
                 CmpOp.NE -> ref.isNot(right.value())
@@ -218,7 +222,7 @@ internal class Conditions(private val mapping: Mapping) {
         if (left !is FieldValue || right !is BoolLiteral) {
             throw noTypedComparison(op, left, right)
         }
-        val ref: BoolRef = mapping.model().bool(left.field().path().value())
+        val ref: BoolRef = mapping.model().bool(left.field().path().value()).keeping(left) { outer() }
         return when (op) {
             CmpOp.EQ -> if (right.value()) ref.isTrue else ref.isFalse
             CmpOp.NE -> if (right.value()) ref.isNotTrue else ref.isNotFalse
@@ -234,7 +238,7 @@ internal class Conditions(private val mapping: Mapping) {
         if (left !is FieldValue || right !is BoolLiteral || !right.value()) {
             throw noTypedComparison(op, left, right)
         }
-        val ref: ConfirmRef = mapping.model().confirm(left.field().path().value())
+        val ref: ConfirmRef = mapping.model().confirm(left.field().path().value()).keeping(left) { outer() }
         return when (op) {
             CmpOp.EQ -> ref.confirmed()
             CmpOp.NE -> ref.notConfirmed()
@@ -276,7 +280,7 @@ internal class Conditions(private val mapping: Mapping) {
             return mapping.model().baseYearNumber()
         }
         if (value is FieldValue) {
-            return mapping.model().num(value.field().path().value()).asNumber()
+            return mapping.model().num(value.field().path().value()).keeping(value) { outer() }.asNumber()
         }
         if (value.kind() != ValueKind.NUMBER) {
             throw UnmappedConstructException("a " + value.kind() + " expression in a numeric slot")
@@ -291,7 +295,7 @@ internal class Conditions(private val mapping: Mapping) {
      */
     private fun dateRangeOperand(op: CmpOp, value: Calculation, other: Calculation): DateRangeOperand {
         if (value is FieldValue) {
-            return mapping.model().dateRange(value.field().path().value())
+            return mapping.model().dateRange(value.field().path().value()).keeping(value) { outer() }
         }
         if (value is IndexedFieldValue) {
             return DateRangeIndexedValue(value)
@@ -441,6 +445,20 @@ internal class Conditions(private val mapping: Mapping) {
 
     private companion object {
 
+        /**
+         * Carry the `$` correlation across a REBUILD. Typing a comparison operand means going from the
+         * untyped [FieldValue] back to the model's own handle for the field's DECLARED kind — and that
+         * rebuild starts from the path alone, so the marker is gone unless it is re-applied here.
+         *
+         * <b>Why it needs a named helper rather than an `if` per site.</b> A dropped marker renders exactly
+         * like an uncorrelated reference and only changes which ROW the operand reads, so nothing looks
+         * wrong: five sites carried it, one sibling had it right, and no unit test could see the difference
+         * because the module's own tests compare against hand-authored rulekit types. The catalog parity net
+         * caught it by comparing a `Having` filter against the kernel (DEV-API-GAPS `DG44`).
+         */
+        private fun <T> T.keeping(value: FieldValue, outer: T.() -> T): T =
+            if (value.outer()) outer() else this
+
         private fun band(tolerance: Dec): Tolerance {
             val value = tolerance.v
             return when {
@@ -462,10 +480,20 @@ internal class Conditions(private val mapping: Mapping) {
         /**
          * Dates, times and date-times. Each family compares within itself; date and date-time also compare
          * across, but for ORDERING only — the equality verbs take their own family.
+         *
+         * [leftClass]/[rightClass] are each side's DECLARED temporal class ([Mapping.temporalClass]), not its
+         * kind: a TIME field declared `yyyy-MM-dd` belongs to the DATE family here, which is what makes
+         * `[TimeAsDate] == [Date]` — kernel-admitted (KF271) — translatable at all.
          */
-        private fun temporalComparison(op: CmpOp, left: Calculation, right: Calculation): Condition {
-            val l = temporalOperand(op, left, right)
-            val r = temporalOperand(op, right, left)
+        private fun temporalComparison(
+            op: CmpOp,
+            left: Calculation,
+            right: Calculation,
+            leftClass: ValueKind,
+            rightClass: ValueKind,
+        ): Condition {
+            val l = temporalOperand(op, left, right, leftClass, rightClass)
+            val r = temporalOperand(op, right, left, rightClass, leftClass)
             if (l is DateOperand) {
                 if (r is DateOperand) {
                     return when (op) {
@@ -553,15 +581,21 @@ internal class Conditions(private val mapping: Mapping) {
          * or DATE_TIME constant this gate has to type from `other` itself, via rulekit's existing public entry
          * points ([Dsl.timeValue]/[Dsl.dateTimeValue]) rather than the generic kind switch.
          */
-        private fun temporalOperand(op: CmpOp, value: Calculation, other: Calculation): TemporalOperand {
+        private fun temporalOperand(
+            op: CmpOp,
+            value: Calculation,
+            other: Calculation,
+            valueClass: ValueKind,
+            otherClass: ValueKind,
+        ): TemporalOperand {
             if (value is StringLiteral) {
-                return when (other.kind()) {
+                return when (otherClass) {
                     ValueKind.TIME -> Dsl.timeValue(value.value())
                     ValueKind.DATE_TIME -> Dsl.dateTimeValue(value.value())
                     else -> throw noTypedComparison(op, value, other)
                 }
             }
-            return when (value.kind()) {
+            return when (valueClass) {
                 ValueKind.DATE, ValueKind.DATE_FRAGMENT -> DateExpr(value)
                 ValueKind.TIME -> TimeExpr(value)
                 ValueKind.DATE_TIME -> DateTimeExpr(value)

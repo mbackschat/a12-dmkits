@@ -467,8 +467,9 @@ internal class ComputationEngine(
     /** One computed-field outcome for [comp] at target-cell [reps] from its evaluated [v]: VALUE (resolved,
      *  empty-as-0 applies) / CLEARED (an Unknown, or a final empty text — IF123; no value) / ERRORED (a
      *  formally-invalid or no-fit result — [Computed.value] retains the ATTEMPTED rendered value, matching
-     *  the kernel's store-and-flag, IF34/IF92). A numeric domain failure has no value and therefore retains
-     *  the public CLEARED/no-value delta while its target is internally poisoned for dependent reads.
+     *  the kernel's store-and-flag, IF34/IF92). A domain failure — numeric, or a DATE_TIME literal with no
+     *  instant in the declared zone (IF326) — has no value and therefore retains the public CLEARED/no-value
+     *  delta while its target is internally poisoned for dependent reads.
      *  [reps] rides onto [Computed.indices] for the per-row identity (§7). */
     private data class ComputedAttempt(
         val result: Computed,

@@ -122,6 +122,18 @@ public record Diagnostic(
     }
 
     /**
+     * The same, with a corrective COMPUTED from the offending value instead of the code's generic one — for a
+     * refusal where the code's {@code fix} would describe every rejected value and therefore none of them.
+     *
+     * <p>It exists because three call sites had begun spelling the conversion by hand
+     * ({@code Optional.of(code.code())} beside {@code Optional.of(fix)}), which is both the mismatched-pair
+     * hazard the overload above was created to remove and a five-argument call with four adjacent strings.
+     */
+    public static Diagnostic precheck(RkCode code, String summary, Where where, String fix) {
+        return precheck(Optional.of(code.code()), summary, where, Optional.of(fix), Optional.empty());
+    }
+
+    /**
      * A <i>deferred</i> kernel-semantic pre-check (PRECHECK origin, WARNING) — advisory, not a
      * {@code build()} throw (F11): rulekit predicts a kernel judgment but lets the live kernel be the
      * authority, so a heuristic that drifts from a newer kernel can never be the sole reason a rule

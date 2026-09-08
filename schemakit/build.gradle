@@ -7,7 +7,8 @@
 // THE boundary (owner constraint 2026-06-28; refined — :adapter IS permitted, SCHEMAKIT-SPEC §1): schemakit
 // reaches the kernel ONLY through the project's own mediated modules — root `:` (kernel via kernel-md-facade),
 // :adapter (the N8 type-converting internal-read boundary), and the kernel-free :interpreter — never the RAW
-// kernel jars directly, and never importing com.mgmtp.* in its own source (held by `verifySchemakitPurity`).
+// kernel jars directly (held by the root `verifyPublishedClasspathsAreKernelFree`, over what a consumer of the
+// published POM resolves), and never linking com.mgmtp.* from its own classes (held by `verifySchemakitPurity`).
 // Reuse-first: do not rebuild capability that already exists in those modules; surface gaps for the owner.
 plugins {
     id 'java-library'
@@ -72,47 +73,34 @@ tasks.named('test') {
 }
 
 // --- The boundary, locked (SCHEMAKIT-SPEC §1; mirrors :interpreter's verifyInterpreterPurity) ----------
-// schemakit's own source must stay free of RAW kernel/groovy types and emit plain data ("data out, never
+// schemakit's own main classes must stay free of RAW kernel/groovy types and emit plain data ("data out, never
 // kernel objects"). It reaches the kernel only through the project's mediated modules (root `:`, :adapter,
-// :interpreter), which return dmkits types — so a `com.mgmtp.*`/`groovy.*` import in src/main is a forbidden
-// raw-kernel coupling. The lint fails the build on one, regardless of which modules sit on the classpath.
-def verifySchemakitPurity = tasks.register('verifySchemakitPurity') {
+// :interpreter), which return dmkits types — so a compiled `com.mgmtp.*`/`groovy.*` dependency edge out of
+// src/main is a forbidden raw-kernel coupling, regardless of which modules sit on the classpath.
+//
+// Compiled edges rather than the `import` regex this used to be: the regex read only `.java` files and only
+// lines beginning with `import`, so a fully-qualified use, a Kotlin source, or a name inside a text block was
+// invisible to it, and its non-empty denominator was the file tree rather than anything compiled. That is one
+// half of DEV-API-GAPS DG45; the other half — a kernel jar DECLARED but never imported, which no source or
+// linkage guard can see — is the root `verifyPublishedClasspathsAreKernelFree`. Test scope stays out on
+// purpose: :adapter is a test dependency here precisely so the kernel can be the oracle.
+def verifySchemakitPurity = tasks.register('verifySchemakitPurity',
+        io.github.mbackschat.a12.dm.buildlogic.VerifyCompiledPurityTask) {
     group = 'verification'
-    description = 'Fail on a raw com.mgmtp/groovy import so schemakit uses only dmkits-typed surfaces.'
-    def mainSrc = file('src/main')
-    inputs.dir(mainSrc)
-    doLast {
-        def forbidden = ['com.mgmtp.', 'groovy.']
-        def violations = []
-        if (mainSrc.exists()) {
-            mainSrc.eachFileRecurse { f ->
-                if (!f.name.endsWith('.java')) return
-                f.eachLine { line, n ->
-                    def m = (line =~ /^\s*import\s+([\w.]+)/)
-                    if (m) {
-                        def imp = m.group(1)
-                        forbidden.each { bad ->
-                            if (imp.startsWith(bad)) {
-                                violations << "src/main/${f.name}:${n}: import ${imp}".toString()
-                            }
-                        }
-                    }
-                }
-            }
-        }
-        if (violations) {
-            throw new GradleException(
-                "schemakit purity violated — its own source must use dmkits-typed surfaces, never RAW kernel\n" +
-                "types (reach the kernel via root ':', :adapter, or :interpreter — SCHEMAKIT-SPEC §1).\n" +
-                "Forbidden imports:\n  " + violations.join('\n  '))
-        }
-    }
+    description = 'Fail on a compiled com.mgmtp/groovy edge so schemakit uses only dmkits-typed surfaces.'
+    dependsOn tasks.named('classes')
+    guardName = 'schemakit purity — main (reach the kernel via root \':\', :adapter or :interpreter, SCHEMAKIT-SPEC §1)'
+    classRoots.from(sourceSets.main.output.classesDirs)
+    forbidden = ['com.mgmtp.', 'groovy.']
+    positiveControl = 'java.lang.Object'
+    javaLauncher = javaToolchains.launcherFor { languageVersion = JavaLanguageVersion.of(21) }
+    stamp = layout.buildDirectory.file('guards/schemakit-purity.txt')
 }
 tasks.named('check') { dependsOn verifySchemakitPurity }
 
 // Publishing (Stage 4, Package B): io.github.mbackschat.a12.dm:dmkits-schemakit — MIT. Its POM depends on
 // the kernel-free kits (dmkits-core/-modelkit/-rulekit) only; :adapter is test-scope, so no backend/kernel
-// leaks into the published POM (verifySchemakitPurity already guarantees no com.mgmtp in source).
+// leaks into the published POM — the claim the root `verifyPublishedClasspathsAreKernelFree` resolves.
 publishing {
     publications {
         maven(MavenPublication) {

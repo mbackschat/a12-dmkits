@@ -140,6 +140,10 @@ public record Computation(
          */
         private final FieldRef computedField;
         private final List<String> declaredLocales;
+        /** The computed field's declared temporal {@code format}, or null when it declares none / is not
+         *  temporal. The kernel's assignment gate reads this string and never the field's kind (KF222), so
+         *  the builder needs it to avoid refusing cells the kernel admits. */
+        private final String computedFieldFormat;
         private String name;
         private GroupRef group;
         private Condition commonPrecondition;
@@ -149,9 +153,10 @@ public record Computation(
         private Comments comments = Comments.none();
         private String rootComment;
 
-        Builder(FieldRef computedField, List<String> declaredLocales) {
+        Builder(FieldRef computedField, List<String> declaredLocales, String computedFieldFormat) {
             this.computedField = computedField;
             this.declaredLocales = List.copyOf(declaredLocales);
+            this.computedFieldFormat = computedFieldFormat;
         }
 
         public Builder name(String name) {
@@ -274,9 +279,7 @@ public record Computation(
                         KernelCode.MVK_INVALID_COMPARE_TO_YES, "the computed CONFIRM field " + computedPath
                                 + " takes only the constant True — the kernel rejects False");
                 require(operationMatchesComputedKind(a.operation()),
-                        "the operation '" + new DslRenderer().render(a.operation()) + "' yields "
-                                + a.operation().kind() + " but the computed field " + computedPath
-                                + " is " + computedField.kind() + " — kinds must match");
+                        assignmentMismatchMessage(a.operation(), computedPath));
             }
             requireNoSelfReference(strongestSelfRead(computedPath), computedPath);
             for (Alternative a : alternatives) {
@@ -360,11 +363,55 @@ public record Computation(
          * it carries the kernel's own code instead of a kind-mismatch message.
          */
         private boolean operationMatchesComputedKind(Calculation operation) {
-            return operation.kind() == computedField.kind()
-                    || operation instanceof FirstFilledValue
-                            && FirstFilledValue.sameOwnerFamily(operation.kind(), computedField.kind())
-                    || operation instanceof BaseYear && computedField.kind() == ValueKind.NUMBER
-                    || operation instanceof BoolLiteral && computedField.kind() == ValueKind.CONFIRM;
+            if (operation instanceof FirstFilledValue
+                    && FirstFilledValue.sameOwnerFamily(operation.kind(), computedField.kind())) {
+                return true;
+            }
+            if (operation instanceof BaseYear && computedField.kind() == ValueKind.NUMBER) {
+                return true;
+            }
+            if (operation instanceof BoolLiteral && computedField.kind() == ValueKind.CONFIRM) {
+                return true;
+            }
+            TemporalFormatFamily wanted = TemporalFormatFamily.ofDefaultFor(operation.kind());
+            TemporalFormatFamily target = temporalTargetFamily();
+            if (wanted != null && target != null) {
+                // On a temporal pair the format REPLACES kind equality rather than joining it: equal kinds are
+                // not a pass either, because a DATE-kind field declared `HH:mm:ss` refuses a date value. Both
+                // directions are measured (KF222, `adapter.laws.ConstantTargetFormatLawsTest`).
+                return wanted == target;
+            }
+            return operation.kind() == computedField.kind();
+        }
+
+        /**
+         * The family the computed field actually accepts: its declared temporal FORMAT's, falling back to its
+         * kind's default when it declares none — the case where kind and format say the same thing anyway.
+         * Null when the field's kind is outside the governed set, which keeps plain kind equality in charge
+         * there instead of silently widening it.
+         */
+        private TemporalFormatFamily temporalTargetFamily() {
+            TemporalFormatFamily declared = TemporalFormatFamily.of(computedFieldFormat);
+            return declared != null ? declared : TemporalFormatFamily.ofDefaultFor(computedField.kind());
+        }
+
+        /**
+         * The refusal text, naming whichever gate actually decided. On a temporal target with a declared
+         * format the kind is not the reason and saying "kinds must match" would send the author to change the
+         * wrong declaration — the format is what the kernel reads, so the message names it and what it takes.
+         */
+        private String assignmentMismatchMessage(Calculation operation, String computedPath) {
+            String rendered = new DslRenderer().render(operation);
+            TemporalFormatFamily target = temporalTargetFamily();
+            if (computedFieldFormat != null && target != null
+                    && TemporalFormatFamily.ofDefaultFor(operation.kind()) != null) {
+                return "the operation '" + rendered + "' yields " + operation.kind() + " but the computed"
+                        + " field " + computedPath + " declares format '" + computedFieldFormat + "', which"
+                        + " takes " + target + " values — the kernel's assignment gate reads the declared"
+                        + " FORMAT, never the field's kind";
+            }
+            return "the operation '" + rendered + "' yields " + operation.kind() + " but the computed field "
+                    + computedPath + " is " + computedField.kind() + " — kinds must match";
         }
 
         private static boolean isFalseConstant(Calculation operation) {

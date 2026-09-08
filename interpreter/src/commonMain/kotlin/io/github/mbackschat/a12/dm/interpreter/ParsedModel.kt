@@ -133,8 +133,11 @@ internal class ParsedModel(
         // MVK_ERROR_FIELD_NOT_IN_RULEGROUP), so the anchor move changes no per-row iteration.
         val group = parentGroup(comp.targetPath)
         val node = "$group/$name"
+        // The computation's own declared errorMessage is the text this rule renders: the parameter terminal
+        // bundle belongs to the OWNING DECLARATION, not to a validation rule, which the kernel says in its
+        // own refusal on this carrier — it calls the computation a rule (IF324).
         return RuleDef(node, group, "FieldFilled(${comp.targetPath}) And <implicit validation of $name>",
-            name, relativePath(node, comp.targetPath))
+            name, relativePath(node, comp.targetPath), messages = comp.messages)
     }
 
     /**

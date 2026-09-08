@@ -115,11 +115,17 @@ jobs:
       # local `check` and Stage 4 is exactly a change that could regress the kernel-free property.
       # `:interpreter-bridge:check` is the second ConditionReadBack provider plus its own purity lint;
       # `check` rather than `test` because the lint is what holds the module's kernel-free claim.
+      # `:schemakit:check` for the same reason and a sharper one: until 2026-09-05 the fifth published kit
+      # appeared in NO lane here, so neither its 27 test classes nor `verifySchemakitPurity` — the guard
+      # SCHEMAKIT-SPEC §1 cites for the module's kernel-free claim — had ever run in CI. It costs 4 s.
+      # `:verifyPublishedClasspathsAreKernelFree` is the resolution-level half of that same claim across all
+      # six published artifacts, and is named explicitly for the reason the two above are: it hangs off root
+      # `check`, which this workflow does not run.
       - name: Build & test rulekit (kits + adapter + cli + fuzzers + kernel-free nets)
         working-directory: a12-dmkits
         env:
           JAVA_HOME: ${{ env.JAVA_HOME_21_X64 }}
-        run: ./gradlew --no-daemon test :adapter:test :cli:test :cli:publicContractTest :interpreter:allTests :interpreter-bridge:check :verifyKitPurity :noBackendTest :build-logic:functionalTest -PrunFuzz
+        run: ./gradlew --no-daemon test :adapter:test :cli:test :cli:publicContractTest :interpreter:allTests :interpreter-bridge:check :schemakit:check :verifyKitPurity :verifyPublishedClasspathsAreKernelFree :noBackendTest :build-logic:functionalTest -PrunFuzz
 
       # Both agent plugins (Claude Code, Codex) bundle COPIES of the single-source assets — the skills,
       # installer, and release-asset manifest — synced by scripts/sync-plugin-assets.sh. Fail loudly if any

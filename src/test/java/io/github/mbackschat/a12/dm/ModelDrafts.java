@@ -62,7 +62,10 @@ public final class ModelDrafts {
                         .field("Ref", FieldKind.STRING)
                         .dateFragmentField("MonthOnly", f -> f.fragmentFormat("MM"))
                         .dateFragmentField("YearOnly", f -> f.fragmentFormat("yyyy"))
-                        .dateField("FullDate", dd -> dd.format("yyyy-MM-dd")))
+                        .dateField("FullDate", dd -> dd.format("yyyy-MM-dd"))
+                        // A DATE declared `yyyy` beside the complete one: the pair the `Date(...)` complete-Year
+                        // position separates, since that gate reads the declared format and not the kind.
+                        .dateField("YearAsDate", dd -> dd.format("yyyy")))
                 .build();
     }
 

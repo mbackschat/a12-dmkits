@@ -1048,6 +1048,10 @@ class DmInterpreter private constructor(
                         enumValueOf = { path, stored -> model.enumValueTextOf(path, stored, pass.locale) },
                         enumCategoryOf = model::enumCategoryTokenOf,
                         baseYearOf = { offset -> model.baseYear?.let { year -> (year + offset).toString() } },
+                        // `$#group$` renders the FIRING ROW's own 1-based index at that group's level, and 1 for
+                        // a non-repeatable group — the same coordinate `CurrentRepetition` reads, which is why
+                        // both go through `repsOf(path).last()` rather than through two derivations (KF245).
+                        groupIndexOf = { argument -> groupParameterIndex(argument, rule.group, ctx) },
                     )
                 } ?: ""
                 val matchingRnuOutcome = rnuCache?.rows?.get(ctx.repsOf(errorPath))?.takeIf { it.type == type }
@@ -1088,6 +1092,30 @@ class DmInterpreter private constructor(
             }
             doc.messagePointer(reference.path, repetitions)
         }
+    }
+
+    /**
+     * The `$#…$` message parameter's value: the firing row's own 1-based index at the named group's level, and
+     * `1` for a non-repeatable group ([KF245]).
+     *
+     * <p>The argument is an ABSOLUTE group path, or one of the two keyword shorthands for the endpoints of the
+     * rule's own ancestor chain — spelled in the model's CONDITION language, which is why the comparison is
+     * against [messageTerminals] rather than against the English words ([KF198]'s five bilingual terminals).
+     * A `null` return leaves the token verbatim; the admission gate ([KF214]) has already refused anything
+     * outside the rule's ancestor chain, so an unresolvable argument here means the model was written past
+     * that gate rather than that the rendering has a case to cover.
+     */
+    private fun groupParameterIndex(argument: String, ruleGroup: String, ctx: EvalContext): String? {
+        val path = when (argument) {
+            messageTerminals.ruleGroup -> ruleGroup
+            messageTerminals.rootGroup -> ruleGroup.split('/').take(2).joinToString("/")
+            else -> argument
+        }
+        // The declared-group test is what makes the verbatim fallback REAL: `repsOf` answers for any string,
+        // padding an unknown path with 1s, so without it the other language's spelling would render `1`
+        // rather than survive as its own token — a wrong VALUE where the kernel gives a refusal.
+        if (path !in model.groupPaths) return null
+        return ctx.repsOf(path).lastOrNull()?.toString()
     }
 
     private fun messageLabel(path: String, locale: String, ctx: EvalContext): String {

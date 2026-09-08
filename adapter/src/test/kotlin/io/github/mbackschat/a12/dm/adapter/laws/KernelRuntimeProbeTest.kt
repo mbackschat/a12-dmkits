@@ -151,17 +151,34 @@ class KernelRuntimeProbeTest {
      *
      * Both directions are asserted, so neither half can rot into a vacuous pass: `en_US` on a `de_DE`-only model
      * fails and names the locale, and the same model observed at its declared `de_DE` produces the firing.
+     *
+     * <p><b>The refusal is RETAINED as a fault, not aborted (2026-09-04).</b> The kernel reports it from inside
+     * `validateFull`, so it arrives at the same seam as any other raise and the probe cannot tell a
+     * request-level cause from a document-level one without inventing a classification it has not measured. So
+     * it is captured like the rest: the run still fails and the failure still names the locale and the kernel's
+     * own reason, and the artifact now records that refusal on every block instead of existing nowhere. The
+     * signature a consumer reads for this class is EVERY row faulting at the same locus with the same chain —
+     * stated in `docs/KERNEL-PROBE-SPEC.md` §5 rather than classified here.
      */
     @Test
     fun theRequestPinsAnEvaluationLocaleBecauseTheKernelRefusesAnUndeclaredOne() {
-        val refused = assertThrows(IllegalArgumentException::class.java) {
-            KernelRuntimeProbe.main(
-                arrayOf(germanRequest("").toString(), dir.resolve("de-default.json").toString()),
-            )
+        val out = dir.resolve("de-default.json")
+        val refused = assertThrows(KernelRuntimeProbe.FaultsObserved::class.java) {
+            KernelRuntimeProbe.main(arrayOf(germanRequest("").toString(), out.toString()))
         }
         assertTrue(
             "en_US" in refused.message.orEmpty() && "not supported" in refused.message.orEmpty(),
             "the kernel's own refusal must surface, naming the locale: ${refused.message}",
+        )
+        val refusedRows = MAPPER.readTree(Files.readString(out)).path("rows")
+        assertFalse(refusedRows.isEmpty, "the artifact must exist and carry the rows the refusal reached")
+        assertTrue(
+            refusedRows.all { row ->
+                row.path("enginesAgree").asBoolean() && row.path("engines").all { engine ->
+                    engine.path("fault").path("observation").asText() == "validateFull"
+                }
+            },
+            "a request-level cause faults every row on every strategy at one locus — that is its signature",
         )
 
         val artifact = probe(germanRequest(""" "locale": "de_DE", """), "de-declared.json")

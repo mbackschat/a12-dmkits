@@ -36,6 +36,36 @@ public final class FieldInfo {
         return kind;
     }
 
+    /**
+     * The temporal class this field's <b>declaration</b> puts it in — {@link ValueKind#DATE},
+     * {@link ValueKind#TIME} or {@link ValueKind#DATE_TIME} read off {@link #format()} for a DATE/TIME/DATE_TIME
+     * field, and the field's own {@link #kind()} for everything else (a DATE_FRAGMENT stays one; so does a
+     * NUMBER). This is the question every gate below the declaration actually asks: A12's temporal format
+     * vocabulary is kind-independent, so a TIME field declared {@code yyyy-MM-dd} carries the Gregorian floor,
+     * compares against a DATE and constructs a DATE_RANGE endpoint, while its own kind's clock operators refuse
+     * it (KERNEL-FINDINGS KF211, measured on both codegen strategies).
+     *
+     * <p><b>For DISPATCH, never for refusal.</b> Choosing which typed handle to build is exactly what this
+     * answers; refusing a field because its class disagrees with its kind would be a client-side refusal with
+     * no measured kernel basis — which is why {@link BoundModel#date} still admits a kind-matching field whose
+     * declared format disagrees, and why the kernel's own gate remains the arbiter of anything below.
+     *
+     * <p>One definition, both directions: the adapter's read path decides which handle a kernel operand becomes
+     * and had kept this keyed on the kind at four sites, each of which turned a kernel-admitted condition into
+     * an {@code Opaque} rule. A second copy of the letter scanning is the smell that fix exists to avoid.
+     */
+    public ValueKind temporalClass() {
+        if (!TemporalFormats.isTemporal(kind)) {
+            return kind;
+        }
+        String declared = format().orElseGet(() -> TemporalFormats.defaultFormat(kind));
+        return switch (TemporalFormats.shapeOf(declared)) {
+            case DATE -> ValueKind.DATE;
+            case TIME -> ValueKind.TIME;
+            case DATE_TIME -> ValueKind.DATE_TIME;
+        };
+    }
+
     /** The containing group's path (every field has one; root groups contain the top-level fields). */
     public String groupPath() {
         return path.substring(0, path.lastIndexOf('/'));
