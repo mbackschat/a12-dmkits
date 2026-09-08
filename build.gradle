@@ -10,6 +10,8 @@ plugins {
 group = 'io.github.mbackschat.a12.dm'
 version = '0.13.0'
 
+apply from: 'gradle/focused-test-selection.gradle'
+
 // Single-source the shared coordinates (kernel-decoupling Stage 4, PROPOSAL §3a): the published kit modules
 // (core/rulekit/modelkit/edit + schemakit) inherit group + version from HERE, so bump-version.sh's
 // `^version = ` edit (the line above) stays the one source of truth and every artifact shares the 0.x train.
@@ -149,9 +151,10 @@ tasks.named('test') {
         dependsOn 'docGuardTest'
         dependsOn 'interpreterReleaseGuardTest'
         dependsOn 'deliveryGuardTest'
+        dependsOn 'focusedSelectionGuardTest'
     } else {
         doFirst {
-            logger.lifecycle('-Pfast: SKIPPING docGuardTest, interpreterReleaseGuardTest, deliveryGuardTest '
+            logger.lifecycle('-Pfast: SKIPPING docGuardTest, interpreterReleaseGuardTest, deliveryGuardTest, focusedSelectionGuardTest '
                     + '— this run is NOT the estate. Re-run without -Pfast before treating green as a checkpoint.')
         }
     }
@@ -162,7 +165,7 @@ tasks.named('test') {
     // `interpreterReleaseGuardTest` runs its own `releaseGuardTest` source set, so neither owns anything here.
     routeExclusivelyHostedTests(it, ['docGuardTest', 'jsonConstructionGuardTest', 'apiGuardTest',
                                      'catalogProseReviewGuardTest', 'deliveryGuardTest', 'releaseGapGuardTest',
-                                     'leakGuardTest', 'vocabularyGuardTest'],
+                                     'leakGuardTest', 'vocabularyGuardTest', 'focusedSelectionGuardTest'],
             ['dumpKitApi'             : 'regenerator over apiGuardTest\'s class — writes the goldens instead of asserting',
              'syncDocSnippets'        : 'regenerator over docGuardTest\'s class — writes the snippets instead of asserting',
              'dumpTemporalVocabulary' : 'regenerator over vocabularyGuardTest\'s class — writes the derived '
@@ -799,6 +802,21 @@ dependencies {
     releaseGuardTestImplementation 'org.junit.jupiter:junit-jupiter'
     releaseGuardTestRuntimeOnly 'org.junit.platform:junit-platform-launcher'
 }
+tasks.register('focusedSelectionGuardTest', Test) {
+    description = 'Prove focused test selection refuses before unrelated prerequisite suites execute.'
+    group = 'verification'
+    useJUnitPlatform()
+    testClassesDirs = sourceSets.test.output.classesDirs
+    classpath = sourceSets.test.runtimeClasspath
+    filter.includeTestsMatching 'io.github.mbackschat.a12.dm.FocusedTestSelectionGuardTest'
+    systemProperty 'focusedTestPolicy', file('gradle/focused-test-selection.gradle').absolutePath
+    systemProperty 'gradleExecutable', new File(gradle.gradleHomeDir, 'bin/gradle').absolutePath
+    guardInputs(it, ['selection policy': file('gradle/focused-test-selection.gradle'),
+                     'live project properties': file('gradle.properties'),
+                     'live wiring': fileTree('.') { include '**/*.gradle'; exclude '**/build/**', '.gradle*/**' }])
+}
+tasks.named('check') { dependsOn 'focusedSelectionGuardTest' }
+
 tasks.register('interpreterReleaseGuardTest', Test) {
     description = 'Synthetic interpreter mirror and staged-publisher laws with every runtime-read release input declared.'
     group = 'verification'
