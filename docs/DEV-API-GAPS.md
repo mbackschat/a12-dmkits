@@ -8,6 +8,16 @@
 >
 > **Scope — the filter that matters.** dmkits has **model-authoring scope**: it defines, edits, validates, reads, and tests a document **model** — its fields/groups/type-defs/includes/config and its **rules + computations** (the condition-language DSL). It is **not** a runtime form engine, a document-instance data-binding layer, a rendering/UI toolkit, or a persistence/service layer. The kernel dev doc is ~80% about the *runtime consumer* (manipulating document *instances*); those concerns are deliberately **out of scope** (§3).
 
+> **Id allocation — one CHUNK per author, declared here and nowhere else.** Two branches appending from one
+> base allocate the same next id, so a merge has to renumber whichever side is smaller and move every
+> citation with it — and a citation rewritten to the *wrong* entry still resolves, so no guard can see that
+> mistake. Not hypothetical for this series: DG47 was allocated on both sides and named two different gaps, one of which `main` had already closed. Allocating from a per-author range removes the
+> collision, and ids are dense within a range rather than globally. The boundaries live on the line below
+> and nowhere else; an open upper bound means the range has no declared end.
+>
+> `dg-id-chunks: 1-999 = Martin Backschat; 1001- = Alexander Ried`
+
+
 ---
 
 ## 1. The loop we're improving
@@ -36,7 +46,7 @@ The gaps below were the **ergonomic and consistency remainder** — what added f
 
 ## 2. Open
 
-- **DG47 — `ReadResult.Opaque` now carries two different answers, and a consumer cannot tell them apart**
+- **DG1001 — `ReadResult.Opaque` now carries two different answers, and a consumer cannot tell them apart**
   (surfaced 2026-09-02 while widening the bridge's format gate). `Opaque` is documented as "a rule preserved
   verbatim because its condition uses a not-yet-modeled construct", and `InterpreterConditionReadBack.read`
   catches every `RuntimeException` into it — so it also means "mapped fine, but a rulekit check rejected it".

@@ -17,7 +17,7 @@ import io.github.mbackschat.a12.dm.modelkit.FieldKind;
  *
  * <p><b>Intrinsic</b>, so it lives in {@link DateConstruction}'s own constructor rather than on
  * {@link BoundModel} — which extractor occupies which slot is visible from the operands the node holds, with
- * no model involved (API-FINDINGS 137). That is the opposite placement from the precision and component-set
+ * no model involved (API-FINDINGS 145). That is the opposite placement from the precision and component-set
  * gates, and the distinction is the point.
  *
  * <p>The two refusals partition on <b>family admissibility</b> versus <b>position</b>, which is measured and

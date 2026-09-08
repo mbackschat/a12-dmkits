@@ -53,7 +53,7 @@ public record FieldListEntityListCondition(
      * predicate family and is true of this slot only.
      *
      * <p>Intrinsic: whether an operand is starred is visible from the operand itself, so this belongs here
-     * rather than on the model-bound facade (API-FINDINGS 137).
+     * rather than on the model-bound facade (API-FINDINGS 145).
      */
     private static void requireUnstarredSingleRange(List<ValueListOperand> fields) {
         for (ValueListOperand operand : fields) {

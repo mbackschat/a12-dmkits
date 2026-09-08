@@ -26,7 +26,7 @@ public record TimeConstruction(List<Calculation> components) implements Calculat
      * Time position accepts — is {@code MVK_DATE_OR_TIME_EXTRACT_OP_NOT_ALLOWED}.
      *
      * <p>Intrinsic: which extractor occupies which slot is visible from the operands, so it belongs here
-     * rather than on the model-bound facade (API-FINDINGS 137).
+     * rather than on the model-bound facade (API-FINDINGS 145).
      */
     public TimeConstruction {
         components = List.copyOf(components);

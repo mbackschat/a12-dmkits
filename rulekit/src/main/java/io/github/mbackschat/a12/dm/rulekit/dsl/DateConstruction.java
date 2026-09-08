@@ -39,7 +39,7 @@ public record DateConstruction(Calculation day, Calculation month, Calculation y
      * ordinary position and family rules, so a matching extractor there is admitted.
      *
      * <p>Intrinsic: which extractor sits in which slot is visible from the operands, so this belongs here
-     * rather than on the model-bound facade (API-FINDINGS 137).
+     * rather than on the model-bound facade (API-FINDINGS 145).
      */
     public DateConstruction {
         checkComponent(day, DateExtraction.Unit.DAY, false);
