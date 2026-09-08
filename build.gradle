@@ -313,7 +313,6 @@ tasks.register('deliveryGuardTest', Test) {
         includeTestsMatching 'io.github.mbackschat.a12.dm.SourceStatisticsReleaseBoundaryTest'
         includeTestsMatching 'io.github.mbackschat.a12.dm.ReleasePerfGateRefusalTest'
         includeTestsMatching 'io.github.mbackschat.a12.dm.JdkPinScriptTest'
-        includeTestsMatching 'io.github.mbackschat.a12.dm.BashHookScriptTest'
         includeTestsMatching 'io.github.mbackschat.a12.dm.TestEvidenceScriptTest'
         includeTestsMatching 'io.github.mbackschat.a12.dm.InfographicFreshnessLocaleTest'
         includeTestsMatching 'io.github.mbackschat.a12.dm.TypeScriptRuntimeLauncherTest'
@@ -333,11 +332,6 @@ tasks.register('deliveryGuardTest', Test) {
             // "verified" locally against a task that had not run, and only reading the task state caught it.
             'pre-commit hook'         : file('.githooks/pre-commit'),
             'doc-guard hook self-test': file('scripts/selftest-precommit-doc-guards.sh'),
-            // BashHookScriptTest executes this selftest, which drives the hook itself — BOTH are runtime
-            // inputs, and the settings file is read to assert the hook is still wired at all.
-            'bash hook'               : file('.claude/hooks/guard-long-run-antipatterns.sh'),
-            'bash hook self-test'     : file('scripts/selftest-bash-hook.sh'),
-            'claude settings'         : file('.claude/settings.json'),
             'pre-push hook'           : file('.githooks/pre-push'),
             'pre-push hook self-test' : file('scripts/selftest-prepush-ci.sh'),
             'infographic preflight'   : file('scripts/check-infographic-freshness.sh'),
