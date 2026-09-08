@@ -437,6 +437,11 @@ public final class DocumentModelDraft {
                 if (n.zeroNotAllowed()) {
                     inner.put("zeroNotAllowed", true);
                 }
+                // Emitted only when set, like its two flag neighbours: A12's default is signed, and the
+                // kernel reads this key inverted as hasSign().
+                if (n.positivesOnly()) {
+                    inner.put("positivesOnly", true);
+                }
                 if (n.leadingZerosAllowed()) {
                     inner.put("leadingZerosAllowed", true);
                 }

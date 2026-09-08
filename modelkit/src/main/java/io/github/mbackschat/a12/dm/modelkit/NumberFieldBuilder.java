@@ -14,6 +14,7 @@ public final class NumberFieldBuilder extends FieldAttrs<NumberFieldBuilder> {
     private Integer minLength;
     private Integer maxLength;
     private Integer maxIntegerDigits;
+    private boolean positivesOnly;
 
     /** Fix the maximum scale (0..{@code n} decimal places); the minimum stays 0. */
     public NumberFieldBuilder fractionDigits(int n) {
@@ -35,6 +36,17 @@ public final class NumberFieldBuilder extends FieldAttrs<NumberFieldBuilder> {
 
     public NumberFieldBuilder max(String value) {
         this.maxValue = new BigDecimal(value);
+        return this;
+    }
+
+    /**
+     * Declare the field UNSIGNED (A12's {@code positivesOnly}; the kernel reads it inverted as
+     * {@code hasSign()}, so signed is the default). Beyond input validation this decides slot eligibility in a
+     * date construction: a component satisfies the kernel's low-side requirement by declaring a non-negative
+     * minimum OR by being unsigned, so an unsigned field needs no minimum to be a legal day or month.
+     */
+    public NumberFieldBuilder positivesOnly() {
+        this.positivesOnly = true;
         return this;
     }
 
@@ -81,6 +93,7 @@ public final class NumberFieldBuilder extends FieldAttrs<NumberFieldBuilder> {
                 .minValue(minValue)
                 .maxValue(maxValue)
                 .zeroNotAllowed(zeroNotAllowed)
+                .positivesOnly(positivesOnly)
                 .leadingZerosAllowed(leadingZerosAllowed)
                 .trait(trait)
                 .minLength(minLength)

@@ -84,6 +84,7 @@ public final class ModelReader {
     private final ObjectNode expanded;
     private final Map<String, JsonNode> byPath;
     private final List<String> locales;
+    private final Integer baseYear;
     /** Surviving mounted rules/computations whose fragments retain a genuine unmappable reference. */
     private final List<String> includedElementsWithUnmappedReferences;
     private final List<ComputationInfo> computations;
@@ -96,6 +97,7 @@ public final class ModelReader {
         this.expanded = state.expanded();
         this.byPath = state.index().byPath();
         this.locales = state.model().locales();
+        this.baseYear = state.model().baseYear();
         this.includedElementsWithUnmappedReferences = state.model().unmappedReferences();
         this.computations = state.index().computations();
         this.originsByPath = state.provenance().originsByPath();
@@ -133,7 +135,7 @@ public final class ModelReader {
         Provenance provenance = new Provenance(Map.copyOf(originsByPath), Map.copyOf(typeRefsByPath));
         return new ModelReader(new State(root,
                 new IndexState(byPath, List.copyOf(computations)),
-                new ModelState(readLocales(root), unmappedReferences),
+                new ModelState(readLocales(root), readBaseYear(root), unmappedReferences),
                 provenance));
     }
 
@@ -146,6 +148,14 @@ public final class ModelReader {
         } catch (com.fasterxml.jackson.core.JsonProcessingException e) {
             throw new IllegalStateException("failed to emit expanded DM-JSON", e);
         }
+    }
+
+    /**
+     * The model's declared base year ({@code modelInfo.baseYear}), or empty when it declares none. Read at the
+     * model level like {@link #locales()} because it is model-level state a gate depends on, not a field's.
+     */
+    public java.util.Optional<Integer> baseYear() {
+        return java.util.Optional.ofNullable(baseYear);
     }
 
     /** The model's declared locales (header {@code locales}), each as a Java locale string (e.g. {@code en_US}). */
@@ -196,7 +206,7 @@ public final class ModelReader {
     private record IndexState(Map<String, JsonNode> byPath, List<ComputationInfo> computations) {
     }
 
-    private record ModelState(List<String> locales, List<String> unmappedReferences) {
+    private record ModelState(List<String> locales, Integer baseYear, List<String> unmappedReferences) {
     }
 
     private record Provenance(Map<String, String> originsByPath, Map<String, String> typeRefsByPath) {
@@ -758,6 +768,20 @@ public final class ModelReader {
     }
 
     // ── helpers ───────────────────────────────────────────────────────────────────────────────────────────
+
+    /**
+     * {@code content.modelInfo.baseYear}, stored as a STRING by A12's own writer, so it is parsed rather than
+     * read as a number; an unparseable or absent declaration is "none" rather than an error, because this is a
+     * read accessor over a model some other tool wrote.
+     */
+    private static Integer readBaseYear(ObjectNode root) {
+        String declared = root.path(DmKeys.CONTENT).path(DmKeys.MODEL_INFO).path(DmKeys.BASE_YEAR).asText("");
+        try {
+            return declared.isEmpty() ? null : Integer.valueOf(declared.trim());
+        } catch (NumberFormatException notANumber) {
+            return null;
+        }
+    }
 
     private static List<String> readLocales(ObjectNode root) {
         List<String> locales = new ArrayList<>();

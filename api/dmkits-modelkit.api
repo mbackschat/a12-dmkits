@@ -386,6 +386,7 @@ public static record io.github.mbackschat.a12.dm.modelkit.FieldTypeSpec.EnumValu
 public static record io.github.mbackschat.a12.dm.modelkit.FieldTypeSpec.NumberSpec implements io.github.mbackschat.a12.dm.modelkit.FieldTypeSpec
   public NumberSpec(java.lang.Integer, java.lang.Integer, java.math.BigDecimal, java.math.BigDecimal, boolean, boolean, io.github.mbackschat.a12.dm.modelkit.NumberTrait)
   public NumberSpec(java.lang.Integer, java.lang.Integer, java.math.BigDecimal, java.math.BigDecimal, boolean, boolean, io.github.mbackschat.a12.dm.modelkit.NumberTrait, java.lang.Integer, java.lang.Integer, java.lang.Integer)
+  public NumberSpec(java.lang.Integer, java.lang.Integer, java.math.BigDecimal, java.math.BigDecimal, boolean, boolean, io.github.mbackschat.a12.dm.modelkit.NumberTrait, java.lang.Integer, java.lang.Integer, java.lang.Integer, boolean)
   public NumberSpec(java.lang.Integer, java.math.BigDecimal, java.math.BigDecimal)
   public static io.github.mbackschat.a12.dm.modelkit.FieldTypeSpec.NumberSpec.Builder builder()
   public final boolean equals(java.lang.Object)
@@ -399,6 +400,7 @@ public static record io.github.mbackschat.a12.dm.modelkit.FieldTypeSpec.NumberSp
   public java.lang.Integer minFractionalDigits()
   public java.lang.Integer minLength()
   public java.math.BigDecimal minValue()
+  public boolean positivesOnly()
   public final java.lang.String toString()
   public io.github.mbackschat.a12.dm.modelkit.NumberTrait trait()
   public boolean zeroNotAllowed()
@@ -414,6 +416,7 @@ public static final class io.github.mbackschat.a12.dm.modelkit.FieldTypeSpec.Num
   public io.github.mbackschat.a12.dm.modelkit.FieldTypeSpec.NumberSpec.Builder minFractionalDigits(java.lang.Integer)
   public io.github.mbackschat.a12.dm.modelkit.FieldTypeSpec.NumberSpec.Builder minLength(java.lang.Integer)
   public io.github.mbackschat.a12.dm.modelkit.FieldTypeSpec.NumberSpec.Builder minValue(java.math.BigDecimal)
+  public io.github.mbackschat.a12.dm.modelkit.FieldTypeSpec.NumberSpec.Builder positivesOnly(boolean)
   public io.github.mbackschat.a12.dm.modelkit.FieldTypeSpec.NumberSpec.Builder trait(io.github.mbackschat.a12.dm.modelkit.NumberTrait)
   public io.github.mbackschat.a12.dm.modelkit.FieldTypeSpec.NumberSpec.Builder zeroNotAllowed(boolean)
 
@@ -763,6 +766,7 @@ public final class io.github.mbackschat.a12.dm.modelkit.NumberFieldBuilder exten
   public io.github.mbackschat.a12.dm.modelkit.NumberFieldBuilder maxLength(int)
   public io.github.mbackschat.a12.dm.modelkit.NumberFieldBuilder min(java.lang.String)
   public io.github.mbackschat.a12.dm.modelkit.NumberFieldBuilder minLength(int)
+  public io.github.mbackschat.a12.dm.modelkit.NumberFieldBuilder positivesOnly()
   protected io.github.mbackschat.a12.dm.modelkit.FieldTypeSpec spec()
   public io.github.mbackschat.a12.dm.modelkit.NumberFieldBuilder unit(io.github.mbackschat.a12.dm.modelkit.NumberTrait)
   public io.github.mbackschat.a12.dm.modelkit.NumberFieldBuilder zeroNotAllowed()

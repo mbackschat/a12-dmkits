@@ -15,6 +15,9 @@ import io.github.mbackschat.a12.dm.core.KernelPatternPolicy;
  * <p>{@code null} fields mean "slot not set" (the kernel's default applies). Value-range sanity
  * (min ≤ max) is checked where the builder constructs the record; full validity is the kernel's call.
  */
+import io.github.mbackschat.a12.dm.core.KernelCode;
+import io.github.mbackschat.a12.dm.core.Refusals;
+
 public sealed interface FieldTypeSpec {
 
     /** The kernel DM-JSON {@code fieldType.type} discriminator (e.g. {@code "StringType"}). */
@@ -91,8 +94,8 @@ public sealed interface FieldTypeSpec {
             // KERNEL-FINDINGS IF29: a no-value-validation string MUST permit line breaks — the kernel rejects
             // the pair otherwise (MVK_STRING_TYPE_NO_VAL_AND_NO_LINE_BREAK). Fail fast with our own message.
             if (noValueValidation && !lineBreaksPermitted) {
-                throw new IllegalArgumentException(
-                        "noValueValidation requires line breaks to be permitted (MVK_STRING_TYPE_NO_VAL_AND_NO_LINE_BREAK)");
+                throw Refusals.of(KernelCode.MVK_STRING_TYPE_NO_VAL_AND_NO_LINE_BREAK,
+                        "noValueValidation requires line breaks to be permitted");
             }
             // a LinkedHashMap copy keeps the per-locale hint-list emit deterministic (idempotent toJson)
             suggestions = suggestions == null
@@ -141,7 +144,8 @@ public sealed interface FieldTypeSpec {
      */
     record NumberSpec(Integer minFractionalDigits, Integer maxFractionalDigits, BigDecimal minValue,
             BigDecimal maxValue, boolean zeroNotAllowed, boolean leadingZerosAllowed, NumberTrait trait,
-            Integer minLength, Integer maxLength, Integer maxIntegerDigits) implements FieldTypeSpec {
+            Integer minLength, Integer maxLength, Integer maxIntegerDigits,
+            boolean positivesOnly) implements FieldTypeSpec {
 
         /** The kernel's cap on a number field's declared scale (measured: 15 is refused at model check). */
         static final int MAX_SCALE = 14;
@@ -180,16 +184,24 @@ public sealed interface FieldTypeSpec {
             return new Builder();
         }
 
+        /** The pre-{@code positivesOnly} canonical arity, retained so existing callers stay source-safe. */
+        public NumberSpec(Integer minFractionalDigits, Integer maxFractionalDigits, BigDecimal minValue,
+                BigDecimal maxValue, boolean zeroNotAllowed, boolean leadingZerosAllowed, NumberTrait trait,
+                Integer minLength, Integer maxLength, Integer maxIntegerDigits) {
+            this(minFractionalDigits, maxFractionalDigits, minValue, maxValue, zeroNotAllowed,
+                    leadingZerosAllowed, trait, minLength, maxLength, maxIntegerDigits, false);
+        }
+
         /** Backward-compatible pre-length form; new internal callers use {@link #builder()}. */
         public NumberSpec(Integer minFractionalDigits, Integer maxFractionalDigits, BigDecimal minValue,
                 BigDecimal maxValue, boolean zeroNotAllowed, boolean leadingZerosAllowed, NumberTrait trait) {
             this(minFractionalDigits, maxFractionalDigits, minValue, maxValue, zeroNotAllowed,
-                    leadingZerosAllowed, trait, null, null, null);
+                    leadingZerosAllowed, trait, null, null, null, false);
         }
 
         /** The earlier form: a max-scale (0..{@code fractionDigits}) number with an optional value range. */
         public NumberSpec(Integer fractionDigits, BigDecimal minValue, BigDecimal maxValue) {
-            this(null, fractionDigits, minValue, maxValue, false, false, null, null, null, null);
+            this(null, fractionDigits, minValue, maxValue, false, false, null, null, null, null, false);
         }
 
         @Override
@@ -208,6 +220,7 @@ public sealed interface FieldTypeSpec {
             private Integer minLength;
             private Integer maxLength;
             private Integer maxIntegerDigits;
+            private boolean positivesOnly;
 
             public Builder minFractionalDigits(Integer value) {
                 this.minFractionalDigits = value;
@@ -259,9 +272,22 @@ public sealed interface FieldTypeSpec {
                 return this;
             }
 
+
+            /**
+             * A12's {@code positivesOnly} — the kernel reads it inverted as {@code hasSign()}, whose default is
+             * therefore SIGNED. It matters beyond input validation: a date construction's component may satisfy
+             * the kernel's low-side requirement either by declaring a non-negative minimum OR by being
+             * unsigned, so a field can be a legal day or month slot with no minimum at all.
+             */
+            public Builder positivesOnly(boolean value) {
+                this.positivesOnly = value;
+                return this;
+            }
+
             public NumberSpec build() {
                 return new NumberSpec(minFractionalDigits, maxFractionalDigits, minValue, maxValue,
-                        zeroNotAllowed, leadingZerosAllowed, trait, minLength, maxLength, maxIntegerDigits);
+                        zeroNotAllowed, leadingZerosAllowed, trait, minLength, maxLength, maxIntegerDigits,
+                        positivesOnly);
             }
         }
     }
