@@ -217,6 +217,19 @@ The safe shape, using the publisher's own functions against a clone of the mirro
 
 GitHub Releases and GitHub Pages are the first-party host. Public third-party dependencies continue to resolve from their normal upstream registries. The project does not mirror Maven Central or npm dependencies and does not use the private source repository as a consumer resolution fallback.
 
+Anonymous resolution is what selects that host. GitHub Packages serves Maven only over an authenticated
+endpoint — a personal access token is required even for a public package — so it cannot host an artifact a
+reader is meant to resolve without credentials, and the common workaround of shipping a read-only token in
+the consumer's build is a credential leak rather than a fix. JitPack resolves anonymously but builds the
+project's source on its own infrastructure, which neither the kernel bootstrap nor the clean-room boundary
+permits. That leaves Maven Central, which stays out of scope for first-party interpreter artifacts
+([INTERPRETER-RELEASE-GAPS](INTERPRETER-RELEASE-GAPS.md) §3), and a static tree, which is this one.
+
+**Re-open trigger:** GitHub Pages carries a 1 GB soft limit and this mirror is cumulative, retaining every
+version's Maven and API-documentation directories. At the current cost of roughly 27 MB per release the
+limit is tens of releases away, not hundreds; reaching a quarter of it is the point to decide between
+pruning superseded API directories and moving first-party hosting to Central.
+
 The interpreter mirror reuses the dmtool release protocol, identity boundary, checksum format, generated-mirror discipline, draft/go-live split, Pages deployment, and anonymous verification. Interpreter-specific machinery is permitted only where its cumulative Maven/API and multi-consumer artifact shapes differ materially from dmtool's latest-only binary mirror.
 
 ## 12. Open release work

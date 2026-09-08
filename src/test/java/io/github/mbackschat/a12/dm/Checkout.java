@@ -6,6 +6,9 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.List;
 import java.util.regex.Pattern;
 
@@ -121,7 +124,58 @@ public final class Checkout {
         if (!resolved.startsWith(root) || resolved.equals(root)) {
             throw new IllegalArgumentException(relative + " does not name a path inside the checkout");
         }
+        ReadLog.record(relative(resolved));
         return resolved;
+    }
+
+    /**
+     * Records which repo files a guard actually reads, so a task's DECLARED inputs can be checked against them
+     * instead of kept in sync by hand.
+     *
+     * <p>The failure it catches is silent: a file a guard reads but nothing declares leaves its lane
+     * UP-TO-DATE on an edit to that file, so the guard is green while checking nothing.
+     *
+     * <p>Writes one file per JVM (tests fork, and several forks may run in parallel), flushed by a shutdown
+     * hook because the forked JVM exits before Gradle's {@code doLast} reads them.
+     */
+    /**
+     * The system property the guard's Gradle task sets to say "record what you read here", and this JVM's
+     * half of a two-build contract: the producer is `a12Guards.guardInputs` in the `build-logic` included
+     * build, which cannot share a compilation unit with this source set. If the two names diverge, nothing
+     * throws — {@link ReadLog#record} simply returns, every observation set is empty, and the undeclared-read
+     * check passes because it saw nothing, which is indistinguishable from a real pass.
+     * {@code BuildPerformancePolicyTest} holds the two names equal.
+     */
+    static final String OBSERVED_READS_PROPERTY = "a12.guard.observedReads";
+
+    private static final class ReadLog {
+
+        private static final String OUTPUT_PROPERTY = OBSERVED_READS_PROPERTY;
+        private static final Set<String> SEEN = ConcurrentHashMap.newKeySet();
+        private static final AtomicBoolean HOOKED = new AtomicBoolean();
+
+        private ReadLog() {
+        }
+
+        static void record(String relative) {
+            String dir = System.getProperty(OUTPUT_PROPERTY);
+            if (dir == null || !SEEN.add(relative)) {
+                return;                                   // not under observation, or already recorded
+            }
+            if (HOOKED.compareAndSet(false, true)) {
+                Runtime.getRuntime().addShutdownHook(new Thread(() -> flush(dir)));
+            }
+        }
+
+        private static void flush(String dir) {
+            try {
+                Path out = Path.of(dir).resolve("reads-" + ProcessHandle.current().pid() + ".txt");
+                Files.createDirectories(out.getParent());
+                Files.write(out, new java.util.TreeSet<>(SEEN));
+            } catch (IOException writingIsBestEffort) {
+                // A report that cannot be written must never fail the guard it is observing.
+            }
+        }
     }
 
     /**

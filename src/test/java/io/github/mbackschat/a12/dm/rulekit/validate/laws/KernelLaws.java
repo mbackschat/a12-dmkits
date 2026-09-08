@@ -10,6 +10,7 @@ import io.github.mbackschat.a12.dm.ModelDrafts;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Computation;
 import io.github.mbackschat.a12.dm.rulekit.dsl.LocalizedText;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Rule;
+import io.github.mbackschat.a12.dm.rulekit.validate.DraftComputation;
 import io.github.mbackschat.a12.dm.rulekit.validate.DraftRule;
 import io.github.mbackschat.a12.dm.rulekit.validate.RuleValidator;
 import io.github.mbackschat.a12.dm.rulekit.validate.ValidationResult;
@@ -129,6 +130,16 @@ final class KernelLaws {
         assertRejects(json, rule, expectedCode);
     }
 
+    /**
+     * As the {@code String}-condition {@code rejectsModelInsteadOf} above, on a typed rule — the form a fixture needs when the error field is a
+     * kind the string variant cannot name. Same exclusivity reasoning: a law claiming one gate fires
+     * <em>instead of</em> another is untested by an {@code anyMatch}, which passes whether or not the other
+     * gate co-fired.
+     */
+    static void rejectsModelInsteadOf(String json, Rule rule, String expectedCode, String preemptedCode) {
+        assertRejectsInsteadOf(VALIDATOR.check(json, rule.draft()), rule.render(), expectedCode, preemptedCode);
+    }
+
     /** Typed-computation variant: the target and the rendered operation derive from the rulekit object. */
     static void acceptsModel(String json, Computation computation) {
         ValidationResult r = VALIDATOR.check(json, computation.draft());
@@ -192,7 +203,15 @@ final class KernelLaws {
      * first</em>, and a one-code assertion cannot see a co-firing second gate.
      */
     static String computationVerdict(String json, Computation computation) {
-        ValidationResult r = VALIDATOR.check(json, computation.draft());
+        return computationVerdict(json, computation.draft());
+    }
+
+    /**
+     * As above, on a DRAFT written directly — for a law whose subject is a shape the typed builder REFUSES,
+     * where going through {@code Computation.Builder} would measure our own gate instead of the kernel's.
+     */
+    static String computationVerdict(String json, DraftComputation draft) {
+        ValidationResult r = VALIDATOR.check(json, draft);
         return r.ok() ? ADMITTED : r.diagnostics().stream()
                 .map(d -> d.code().orElse("(no code: " + d.summary() + ")")).collect(Collectors.joining(","));
     }

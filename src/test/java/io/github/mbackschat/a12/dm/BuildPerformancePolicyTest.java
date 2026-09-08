@@ -110,26 +110,63 @@ class BuildPerformancePolicyTest {
         }
     }
 
+    /**
+     * An included build shares no plugin management with the build that includes it, so each declares its
+     * own — and two hand-kept copies is the drift this single source exists to remove. The test therefore
+     * checks both halves: every build applies the shared file, and none of them declares a repository of
+     * its own beside it.
+     */
     @Test
-    void publicRepositoriesComeFirstAndTheOptOutMarkerIsCommitted() throws IOException {
+    void publicRepositoriesAreSingleSourcedAndEveryBuildRootCarriesTheOptOutMarker() throws IOException {
         Path repositoryRoot = locate("settings.gradle").getParent();
-        String settings = SourceText.uncommented(locate("settings.gradle"));
-
-        int declaration = settings.indexOf("pluginManagement {");
-        assertTrue(declaration >= 0,
-                "settings.gradle must declare its own plugin repositories; with none declared, Gradle resolves "
-                        + "plugins from whatever a machine-global init script injects");
-        assertTrue(declaration < settings.indexOf("rootProject.name"),
-                "the declaration has to come first: an init script appends its repositories in settingsEvaluated, "
-                        + "so ours are tried first only by being declared here");
-        assertTrue(settings.contains("gradlePluginPortal()") && settings.contains("mavenCentral()"),
-                "the declared plugin repositories must be the public ones this project actually resolves from");
-        assertFalse(settings.contains("mavenLocal()"),
+        String shared = SourceText.uncommented(repositoryRoot.resolve("gradle/public-repositories.gradle"));
+        assertTrue(shared.contains("gradlePluginPortal()") && shared.contains("mavenCentral()"),
+                "the shared declaration must name the public repositories this project actually resolves from");
+        assertFalse(shared.contains("mavenLocal()"),
                 "no plugin here comes from mavenLocal, and putting a mutable unchecksummed local repository "
                         + "in the plugin path would change resolution for every contributor and both CI jobs");
-        assertTrue(Files.isRegularFile(repositoryRoot.resolve(".no-global-gradle-repos")),
-                "the committed marker is what makes an init-script-injecting machine skip this build entirely; "
-                        + "deleting it is how you deliberately build through such a registry");
+
+        for (String build : new String[] {"", "build-logic/"}) {
+            Path root = repositoryRoot.resolve(build.isEmpty() ? "." : build).normalize();
+            String settings = SourceText.uncommented(root.resolve("settings.gradle"));
+
+            int declaration = settings.indexOf("pluginManagement {");
+            assertTrue(declaration >= 0, build + "settings.gradle must declare its own plugin repositories; "
+                    + "with none declared, Gradle resolves plugins from whatever a machine-global init "
+                    + "script injects, and plugin management is NOT inherited from an including build");
+            assertTrue(declaration < settings.indexOf("rootProject.name"), build
+                    + "settings.gradle's declaration has to come first: an init script appends its "
+                    + "repositories in settingsEvaluated, so ours are tried first only by being declared here");
+            assertTrue(settings.contains("public-repositories.gradle"), build
+                    + "settings.gradle must apply the single-sourced repository file rather than restate it");
+            assertFalse(settings.contains("gradlePluginPortal()") || settings.contains("mavenCentral()"),
+                    build + "settings.gradle names a repository beside the shared file it applies. A second "
+                            + "copy is a second thing to keep right, which is what single-sourcing removes");
+            assertTrue(Files.isRegularFile(root.resolve(".no-global-gradle-repos")), build
+                    + ".no-global-gradle-repos is missing. The marker is read from a BUILD's root directory, "
+                    + "so an included build has its own root and is not covered by the repository's copy; "
+                    + "without it, an init-script-injecting machine still reaches that build");
+        }
+    }
+
+    /**
+     * The observed-reads wire crosses a build boundary, so no compiler holds its two ends together. The
+     * producer is the `build-logic` included build; the consumer is {@link Checkout}. Divergence is SILENT —
+     * the recorder returns early, every observation set is empty, and the undeclared-read check passes
+     * because it saw nothing, which is exactly the false green the check exists to prevent.
+     *
+     * <p>A text match is the only instrument available across two Gradle builds, and the subject genuinely
+     * is a file. What it cannot see is the property being read from somewhere other than this constant.
+     */
+    @Test
+    void theObservedReadsPropertyNameIsTheSameOnBothSidesOfTheBuildBoundary() throws IOException {
+        String source = Files.readString(locate(
+                "build-logic/src/main/kotlin/io/github/mbackschat/a12/dm/buildlogic/BuildGuardsExtension.kt"));
+        assertTrue(source.contains('"' + Checkout.OBSERVED_READS_PROPERTY + '"'),
+                "the guard task must set the same system property Checkout reads ("
+                        + Checkout.OBSERVED_READS_PROPERTY + "). These are two string literals in two "
+                        + "different Gradle builds; if they diverge nothing throws, the observation set is "
+                        + "empty, and the undeclared-read check passes because it saw nothing");
     }
 
     @Test

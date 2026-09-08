@@ -418,7 +418,17 @@ class TemporalFormatVocabularyGuardTest {
                     + "missing one silently narrows a published kernel claim",
             "interpreter/src/commonTest/kotlin/io/github/mbackschat/a12/dm/interpreter/"
                     + "TemporalDeclaredFormatFormalTest.kt",
-            "the multiplatform half of the same grid, whose KDoc states the cell count as a denominator");
+            "the multiplatform half of the same grid, whose KDoc states the cell count as a denominator",
+            "src/test/java/io/github/mbackschat/a12/dm/rulekit/validate/laws/"
+                    + "TemporalExtractionFormatGateLawsTest.java",
+            "its unit x format grid measures the extraction gate over the WHOLE vocabulary and states the cell "
+                    + "count as its denominator, so a missing format narrows a published kernel claim (KF1001)",
+            "src/test/java/io/github/mbackschat/a12/dm/rulekit/dsl/UntypedTemporalExtractionGateTest.java",
+            "the typed peer of that grid: it holds rulekit's own gate to the same complete denominator, so a "
+                    + "missing format is a cell where the client-side refusal is unchecked against the kernel",
+            "src/test/java/io/github/mbackschat/a12/dm/rulekit/dsl/TemporalFormatComponentsTest.java",
+            "its vacuity control asserts EVERY admitted format names a component; on a short list the control "
+                    + "still passes while covering less than it claims");
 
     private static final String REGION_START = "VOCABULARY-GRID-START";
     private static final String REGION_END = "VOCABULARY-GRID-END";

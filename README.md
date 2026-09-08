@@ -10,7 +10,7 @@ Author, read, and safely edit the **rules** and **structure** of A12 Kernel docu
 - **modelkit** — the model's **structure**, the same way: fields, groups, type definitions, includes, document config
 - **dm.edit** — `EditSession`: structure + rule edits on one in-memory model, behind a single kernel gate
 - **schemakit** — JSON Schema / OpenAPI ⇄ document model, import and export
-- **the interpreter** — **[PUBLIC RELEASE REPOSITORY →](https://github.com/mbackschat/a12-interpreter-releases)** — kernel-free runtime evaluation (validate / compute); one engine for the JVM, native binary, Node.js, and browser, with a production browser JavaScript entry of about 250 kB gzip
+- **the interpreter** — **[PUBLIC RELEASE REPOSITORY →](https://github.com/mbackschat/a12-interpreter-releases)** — kernel-free runtime evaluation (validate / compute); one engine for the JVM, native binary, Node.js, and browser, with a production browser JavaScript entry of about 240 kB gzip
 - **`dmtool`** — **[PUBLIC RELEASE REPOSITORY →](https://github.com/mbackschat/a12-dmtool-releases)** — the CLI over all of it: self-describing, machine-readable by default, explicitly profiled artifacts, agent-first
 
 <p align="center">
@@ -914,7 +914,7 @@ Runtime evaluation — *which rules fire on this document, what does each comput
 
 The same engine runs on the JVM, Node.js and in the browser, and the figures below come from two runtimes — latency measured in system Chrome, cross-engine comparison and memory measured on the JVM.
 
-Small enough to ship to a browser — the production JavaScript entry is **250 kB gzip**, with no A12 Kernel bytecode — and quick enough to re-run on every keystroke.
+Small enough to ship to a browser — the production JavaScript entry is **240 kB gzip**, with no A12 Kernel bytecode — and quick enough to re-run on every keystroke.
 
 <p align="center">
   <a href="assets/infographics/interpreter-vs-kernel.png">
@@ -1045,8 +1045,12 @@ Other useful tasks:
 
 ```sh
 ./gradlew :adapter:test                              # the opt-in internal-tier module
+./gradlew :build-logic:check                         # the shared build code's own tests (unit + TestKit)
 ./gradlew :cli:run --args="-m model.json model check"   # run the standalone CLI in dev (no packaging)
 ```
+
+The shared build code lives in the `build-logic` included build rather than in the root build script, so it
+has unit tests; `./gradlew test` already runs the fast half of them.
 
 `./gradlew :test` runs the cross-kit library suite (root `:` is the integration-test host over the four kernel-free kit modules `:core`/`:rulekit`/`:modelkit`/`:edit`); the kits' main stays kernel-free and the kernel enters only as a test-scope oracle. See [`docs/CLI-SPEC.md`](docs/CLI-SPEC.md) for the CLI.
 

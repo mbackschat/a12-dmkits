@@ -35,8 +35,31 @@ class GateTierWiringTest {
         assertTrue(ci.contains(":interpreter:allTests"),
                 "CI must run :interpreter:allTests on every push — it is the only lane that executes the JS/Node "
                         + "target, and :interpreter:check would pull the release machinery in with it");
+        // The purity gates are named here and hang off `check`, which CI does not run — so the workflow line
+        // IS their reachability. PurityGuardMechanismTest's javadoc says so; without this, that claim has no
+        // enforcement and the gate could leave CI in a one-line edit.
+        //
+        // Against the INVOCATION, not the file: every one of these task names also appears in the prose
+        // above the step explaining why it is there, so a whole-file `contains` is satisfied by the comment
+        // that survives the deletion. Measured while writing this — the first version passed with the task
+        // removed from the command.
+        String invocation = ci.lines().filter(line -> line.contains("./gradlew")).findFirst().orElse("");
+        assertTrue(invocation.contains(":verifyKitPurity"), "CI's gradle invocation must name "
+                + ":verifyKitPurity — it hangs off `check`, which CI does not run, so this is the only thing "
+                + "that makes the kit-purity gate reachable at all. Found: " + invocation);
+        assertTrue(invocation.contains(":noBackendTest"), "CI's gradle invocation must name :noBackendTest — "
+                + "the degraded no-kernel-backend lane hangs off `check` too. Found: " + invocation);
+        assertTrue(invocation.contains(":build-logic:functionalTest"), "CI's gradle invocation must name "
+                + ":build-logic:functionalTest. Found: " + invocation);
         assertFalse(ci.contains("schedule:"),
                 "push/PR correctness CI must not rerun on the nightly schedule");
+        // The other half of that invariant, and it lives in the build rather than the workflow: CI names the
+        // TestKit lane explicitly, but the 37-case unit lane reaches CI only by riding root `test`. Delete
+        // the dependency and it silently leaves both CI and the inner loop.
+        String rootBuild = Files.readString(locate("build.gradle"));
+        assertTrue(rootBuild.contains("gradle.includedBuild('build-logic').task(':test')"),
+                "root `test` must depend on :build-logic:test — it is the only route by which the shared "
+                        + "build code's unit lane reaches CI, which runs `test` and not `check`");
         assertTrue(ci.contains("uses: gradle/actions/setup-gradle@v6"),
                 "CI must persist the configured Gradle user home instead of discarding its local build cache");
         assertTrue(ci.contains("GRADLE_USER_HOME: ${{ github.workspace }}/.gradle-isolated"),

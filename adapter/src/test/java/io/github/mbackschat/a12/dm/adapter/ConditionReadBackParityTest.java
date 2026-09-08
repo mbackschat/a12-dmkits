@@ -109,6 +109,15 @@ class ConditionReadBackParityTest {
                         .and(Dsl.sumOfProducts(
                                 m.flatten("/Order/Lines*/Quantity"), m.flatten("/Order/Lines*/UnitPrice"))
                                 .gt(m.num("/Order/Total").asNumber()))),
+                // The extraction families, whose bridge mapping now states a declared-format verdict rather
+                // than delegating it (KF1001) — the surface that changed needs the kernel's own read-back
+                // beside it, not only our expectation of it.
+                order("YearExtractionRule", m -> Dsl.fieldFilled(m.field("/Order/Reference"))
+                        .and(Dsl.yearFromDate(m.date("/Order/OrderedOn")).gt(2000))),
+                order("TimeExtractionRule", m -> Dsl.fieldFilled(m.field("/Order/Reference"))
+                        .and(Dsl.hoursFromTime(m.dateTime("/Order/ScheduledAt")).gt(0))),
+                order("DateTimeSplitRule", m -> Dsl.fieldFilled(m.field("/Order/Reference"))
+                        .and(Dsl.dateFromDateTime(m.dateTime("/Order/ScheduledAt")).before(Dsl.today()))),
                 // Per-row: authored inside the repeating group, so the references need no asterisk.
                 line("RowComparisonRule", m -> m.num("/Order/Lines/Quantity").asNumber()
                         .lt(m.num("/Order/Lines/UnitPrice").asNumber())),
@@ -171,7 +180,7 @@ class ConditionReadBackParityTest {
     void theCorpusCoversDistinctConstructs() {
         // The EXACT count, not a floor: a floor of 15 let three constructs disappear while still passing,
         // which is the shrink this assertion exists to catch. Adding a case updates this number deliberately.
-        assertEquals(19, CORPUS.size(),
+        assertEquals(22, CORPUS.size(),
                 "the corpus changed size — add the case's number here if that was intended");
         BoundModel m = BoundModel.ofJson(ORDER_JSON);
         assertEquals(CORPUS.size(),

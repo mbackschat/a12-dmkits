@@ -1,5 +1,6 @@
 package io.github.mbackschat.a12.dm.cli;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.IOException;
@@ -89,6 +90,28 @@ class DocAnchorResolveGuardTest {
     /** Its assigned address. Trailing, so the §-tag stays at the start of the heading (see the test). */
     private static final Pattern KF_ANCHOR = Pattern.compile("<a id=\"kf(\\d+)\">");
 
+    /**
+     * The chunk declaration KERNEL-FINDINGS carries in its own preamble, and the single source of the
+     * boundaries: {@code kf-id-chunks: 1-999 = Martin Backschat; 1001- = Alexander Ried}. Read rather than restated,
+     * because a second copy of the numbers is exactly the drift this class exists to prevent.
+     */
+    private static final Pattern KF_ID_CHUNKS = Pattern.compile("kf-id-chunks:\\s*([^`\\n]+)");
+
+    /** One {@code first-last = owner} chunk of that line; an empty {@code last} declares no upper bound. */
+    private static final Pattern KF_ID_CHUNK = Pattern.compile("(\\d+)\\s*-\\s*(\\d*)\\s*=\\s*([^;]+)");
+
+    /** A contiguous id range one author allocates from. {@code last} is {@link Integer#MAX_VALUE} when open. */
+    private record IdChunk(int first, int last, String owner) {
+        boolean holds(int id) {
+            return id >= first && id <= last;
+        }
+
+        @Override
+        public String toString() {
+            return "kf" + first + "-" + (last == Integer.MAX_VALUE ? "" : last) + " (" + owner + ")";
+        }
+    }
+
     /** Sanity floor: the kernel-findings record carries 188 entries (2026-08-16). */
     private static final int MIN_KERNEL_FINDINGS = 140;
 
@@ -145,6 +168,14 @@ class DocAnchorResolveGuardTest {
      * (2026-08-16). The ids are assigned once in document order and are <b>dense</b>, which is what makes a
      * silent deletion visible; the contract is that a finding is never deleted or renumbered.
      *
+     * <p><b>Density holds per CHUNK, because ids are allocated per author.</b> Two branches appending from one
+     * base allocate the same next id, so a merge would have to renumber whichever side is smaller and move
+     * every citation with it — and a citation rewritten to the <i>wrong</i> entry still resolves, so neither
+     * this guard nor any other can see that mistake. Giving each author its own range removes the collision
+     * rather than policing its aftermath. The boundaries are declared once, in KERNEL-FINDINGS's own
+     * {@code kf-id-chunks:} line, and this check takes them as input; an id in no declared chunk fails here,
+     * so a range cannot be entered without being declared.
+     *
      * <p>The anchor is <b>trailing</b>, never a title prefix, and that is load-bearing:
      * {@code KernelDocsFoldContractTest} and {@code SemanticsMapResolveTest} both pin the §-tag with
      * {@code ^#{2,3} §(\d+)}, so a prefix would silently blind the §-mirror on <b>143</b> headings (2026-08-16 —
@@ -174,17 +205,82 @@ class DocAnchorResolveGuardTest {
                 + "`<a id=\"kfN\"></a>` (TRAILING, never before the §-tag):\n  "
                 + String.join("\n  ", unanchored));
 
-        List<Integer> sorted = new ArrayList<>(ids);
-        sorted.sort(null);
-        List<String> broken = new ArrayList<>();
-        for (int i = 0; i < sorted.size(); i++) {
-            if (sorted.get(i) != i + 1) {
-                broken.add("expected kf" + (i + 1) + " but the sorted ids jump to kf" + sorted.get(i));
-                break;
+        List<IdChunk> chunks = chunks(markdown);
+        assertTrue(!chunks.isEmpty(), () -> "KERNEL-FINDINGS carries no `kf-id-chunks:` line — the density "
+                + "check reads its ranges from there and would otherwise check nothing.");
+
+        List<String> broken = densityViolations(ids, chunks);
+        assertTrue(broken.isEmpty(), () -> "KF ids must be unique and dense WITHIN their declared chunk "
+                + "(a finding is never deleted or renumbered; allocate from your own chunk, declared in "
+                + "KERNEL-FINDINGS's `kf-id-chunks:` line):\n  " + String.join("\n  ", broken));
+    }
+
+    /**
+     * Does-fire proof for the chunked density check, against fabricated inputs — the same two methods the real
+     * check calls. A clean two-chunk allocation must stay silent; a gap inside a chunk, a gap at a chunk's
+     * first id, a duplicate, and an id belonging to no declared chunk must each fire.
+     */
+    @Test
+    void theDensityCheckFiresOnAGapADuplicateAndAnIdOutsideEveryDeclaredChunk() {
+        List<IdChunk> chunks = chunks(
+                "prose `kf-id-chunks: 1-999 = A. Person; 1001- = B. Person` more prose\n");
+        assertEquals(2, chunks.size(), () -> "expected the two declared chunks, got " + chunks);
+
+        assertTrue(densityViolations(List.of(3, 1, 2, 1002, 1001), chunks).isEmpty(),
+                () -> "a dense allocation in both chunks must stay silent, got "
+                        + densityViolations(List.of(3, 1, 2, 1002, 1001), chunks));
+
+        assertTrue(fires(List.of(1, 2, 3, 1001, 1003), chunks, "kf1002"), "a gap inside a chunk must fire");
+        assertTrue(fires(List.of(1, 2, 3, 1002), chunks, "kf1001"), "a gap at a chunk's first id must fire");
+        assertTrue(fires(List.of(1, 2, 2, 1001), chunks, "used twice"), "a duplicate id must fire");
+        assertTrue(fires(List.of(1, 2, 3, 1000), chunks, "outside every declared chunk"),
+                "an id in no declared chunk must fire");
+    }
+
+    private static boolean fires(List<Integer> ids, List<IdChunk> chunks, String expected) {
+        return densityViolations(ids, chunks).stream().anyMatch(v -> v.contains(expected));
+    }
+
+    /** The chunks KERNEL-FINDINGS declares, in declaration order; empty when the line is absent. */
+    private static List<IdChunk> chunks(String markdown) {
+        Matcher declaration = KF_ID_CHUNKS.matcher(markdown);
+        if (!declaration.find()) {
+            return List.of();
+        }
+        List<IdChunk> chunks = new ArrayList<>();
+        Matcher chunk = KF_ID_CHUNK.matcher(declaration.group(1));
+        while (chunk.find()) {
+            int last = chunk.group(2).isEmpty() ? Integer.MAX_VALUE : Integer.parseInt(chunk.group(2));
+            chunks.add(new IdChunk(Integer.parseInt(chunk.group(1)), last, chunk.group(3).strip()));
+        }
+        return chunks;
+    }
+
+    /** One violation per duplicate id, per gap inside a chunk, and per id no declared chunk holds. */
+    private static List<String> densityViolations(List<Integer> ids, List<IdChunk> chunks) {
+        List<String> violations = new ArrayList<>();
+        Set<Integer> seen = new LinkedHashSet<>();
+        for (int id : ids) {
+            if (!seen.add(id)) {
+                violations.add("kf" + id + " is used twice");
             }
         }
-        assertTrue(broken.isEmpty(), () -> "KF ids must be dense 1..N and unique (a finding is never deleted "
-                + "or renumbered):\n  " + String.join("\n  ", broken));
+        for (IdChunk chunk : chunks) {
+            List<Integer> allocated = seen.stream().filter(chunk::holds).sorted().toList();
+            for (int i = 0; i < allocated.size(); i++) {
+                if (allocated.get(i) != chunk.first() + i) {
+                    violations.add(chunk + ": expected kf" + (chunk.first() + i)
+                            + " but the sorted ids jump to kf" + allocated.get(i));
+                    break;
+                }
+            }
+        }
+        for (int id : seen) {
+            if (chunks.stream().noneMatch(c -> c.holds(id))) {
+                violations.add("kf" + id + " falls outside every declared chunk");
+            }
+        }
+        return violations;
     }
 
     /**

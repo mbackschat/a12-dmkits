@@ -1,6 +1,8 @@
 package io.github.mbackschat.a12.dm.rulekit.validate.laws;
 
 import io.github.mbackschat.a12.dm.ModelDrafts;
+import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft;
+import io.github.mbackschat.a12.dm.modelkit.FieldKind;
 import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Calculation;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Computation;
@@ -125,6 +127,32 @@ class DateRangeComparabilityLawsTest {
     void aCrossedProfileFirstFilledTargetIsRejected() {
         KernelLaws.rejectsModel(PROFILES,
                 computation("/Cover/DayWindow", ROW_MONTH_WINDOWS.expression()),
+                "MVK_INVALID_COMPARE_TO_DATE_RANGE");
+    }
+
+    // ── the Base-Year discriminator ───────────────────────────────────────────────────────────────────────
+    // The kernel passes `false` for base-year completion here, so this gate must NOT behave like the
+    // entity-list aggregates' component-set gate, which DOES supplement every set with YEAR when the model
+    // declares one (KF193). `MM` against `yyyy-MM` is the pair that separates the two readings: supplemented,
+    // both are {YEAR, MONTH} and would be admitted; unsupplemented they differ and must be refused.
+
+    private static final String BASE_YEAR_PROFILES = DocumentModelDraft.named("range-profiles-base-year")
+            .locale("en_US").baseYear(2024)
+            .rootGroup("Cover", c -> c
+                    .field("Ref", FieldKind.STRING)
+                    .dateRangeField("MonthWindow", r -> r.format("MM").separator("/"))
+                    .dateRangeField("YearMonthWindow", r -> r.format("yyyy-MM").separator("/")))
+            .build().toJson();
+
+    @Test
+    void aDeclaredBaseYearDoesNotMakeAYearlessRangeComparable() {
+        BoundModel m = BoundModel.ofJson(BASE_YEAR_PROFILES);
+        KernelLaws.rejectsModel(BASE_YEAR_PROFILES,
+                m.rule(m.group("/Cover")).name("RangeCompare")
+                        .errorField(m.dateRange("/Cover/MonthWindow").field())
+                        .when(m.dateRange("/Cover/MonthWindow").eq(m.dateRange("/Cover/YearMonthWindow")))
+                        .code("RANGE_COMPARE").severity(Severity.ERROR)
+                        .message(Dsl.en("Base-year probe.")).build(),
                 "MVK_INVALID_COMPARE_TO_DATE_RANGE");
     }
 }

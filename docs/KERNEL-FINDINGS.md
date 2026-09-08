@@ -8,6 +8,10 @@ Kernel-behavior facts **verified by experiment against kernel `30.8.1`**; we **c
 
 > **Fold status (the two-doc contract, 2026-07-11).** Every finding heading below carries a fold-status line as its first body line: `> Fold: folded → §n.` (the finding's canonical claim now lives in that [KERNEL-SEMANTICS](KERNEL-SEMANTICS.md) section — the entry here keeps the claim, the provenance, and the lock pointers; several targets join with ` + `), `> Fold: not-foldable — <reason>.` (nothing to fold — an authoring/structure/serialization/toolchain fact outside KERNEL-SEMANTICS's evaluation scope, or pure provenance), or `> Fold: pending — <reason>.` (genuinely unsettled content). A **folded** finding MAY be compressed to its evidence skeleton — claim + provenance (date, oracle, kernel version) + locks. **Retro-compressing the existing folded entries is DECLINED (2026-07-29), and new entries are authored at skeleton weight instead.** The reason is that these docs are read by grep/sed, never whole: the heading already carries claim + oracle + date and `grep -A1` adds the fold marker, so the only cost compression saves is a full-entry `sed` — which a reader performs precisely when they want the detail compression would delete. What a folded entry uniquely holds is the **worked measurement** (probe inputs, matrices, the readings ruled out); the canonical section holds the claim and the lock test holds the executable assertion, but neither narrates what else was measured. *Re-open trigger:* per-entry `sed` cost becomes a measured bottleneck. A finding is **never deleted or renumbered**: `-GAPS` deletions, code comments, and the SEMANTICS-MAP resolve through these headings, and the kernel-upgrade workflow re-verifies findings on a pin bump. A `folded` marker is a **live claim**: appending a new paragraph to an already-folded finding either folds the new claim upstream in the same commit or flips the marker back to `pending — <what still needs folding>`. The contract — markers, targets, the §-mirror, and the canonical **anchor set** (the 14 section slugs + the field-types table, every intra-doc link resolving) — is enforced by `cli … KernelDocsFoldContractTest` (the `semanticsMapGuardTest` lane).
 
+> **Id allocation — one CHUNK per author, declared here and nowhere else.** Two branches appending from one base allocate the same next id, so a merge has to renumber whichever side is smaller and move every citation with it — and a citation rewritten to the *wrong* entry still resolves, so no guard can see that mistake. Allocating from a per-author range removes the collision, and with it the sweep: ids are dense **within** a range rather than globally, and a merge integrates both sides untouched. `DocAnchorResolveGuardTest` reads the boundaries from the line below, which is the only place they are written — a second copy is the drift the guard exists to prevent. An open upper bound means the range has no declared end.
+>
+> `kf-id-chunks: 1-999 = Martin Backschat; 1001- = Alexander Ried`
+
 ## The canonical Document JSON and `DocumentPointer` string — A12 already defines both (source-verified 2026-07-28) <a id="kf1"></a>
 
 > Fold: not-foldable — serialization/addressing format, outside KERNEL-SEMANTICS's runtime-evaluation scope.
@@ -566,7 +570,7 @@ Corrects the earlier attribution (which wrongly gave `trait:"amount"` its own `s
 
 **Precedence, probe-verified:** the total-digit check pre-empts leading-zeros, the scale-0 decimal-separator check, and signed-zero (e.g. `01234567890123456` → `stelligkeitZuLang`, not `zahlHatFuehrendeNullen`). The **decisive** case that separates the two: amount `scale=5`, value `12345678901` (11 integer, 0 fractional, 11 total) → **`zahlZuvieleVorkommastellen`** (11 > `15−5`), because total 11 ≤ 15 so the generic check does not fire. Interpreter: INTERPRETER-FINDINGS IF67, differential-locked by `adapter.laws.FieldConstraintFormalDiffTest` (+ multiplatform `interpreter.NumberDigitFormalTest`).
 
-**STRING `noValueValidation` DISABLES the whole string format check** (source + probe-verified 2026-06-26). When `StringType.noValueValidation:true`, the kernel's `FormatDefinitionString.validiereFormat` returns `Valid` *immediately* — pattern, length, and the default newline check are all skipped. The key is MVK-constrained: it **forbids** `pattern`/`minLength` (`MVK_STRING_TYPE_PARAMS_INCONSISTENT` — only `maxLength` may accompany it) and **requires** `lineBreaksPermitted:true` (`MVK_STRING_TYPE_NO_VAL_AND_NO_LINE_BREAK`). So on a *kernel-valid* model the single observable runtime effect is that a declared **`maxLength` is NOT enforced** (a longer value is clean). Reachable on shipped A12 Tools StringType fields (Country/City/Person). The interpreter models it — INTERPRETER-FINDINGS IF29.
+**STRING `noValueValidation` DISABLES the whole string format check** (source + probe-verified 2026-06-26). When `StringType.noValueValidation:true`, the kernel's `FormatDefinitionString.validiereFormat` returns `Valid` *immediately* — pattern, length, and the default newline check are all skipped. The key is MVK-constrained: it **forbids** `pattern`/`minLength` (`MVK_STRING_TYPE_PARAMS_INCONSISTENT` — only `maxLength` may accompany it) and **requires** `lineBreaksPermitted:true` (`MVK_STRING_TYPE_NO_VAL_AND_NO_LINE_BREAK`). So on a *kernel-valid* model the single observable runtime effect is that a declared **`maxLength` is NOT enforced** (a longer value is clean). Reachable on shipped A12 Tools StringType fields (Country/City/Person). The interpreter models it — INTERPRETER-FINDINGS IF29. *(The line-break co-requirement is locked: `validate.laws.StringNoValueValidationLawsTest` — modelkit refuses the pair at `build()`, so the law corrupts an emitted legal model rather than authoring the illegal one, and asserts the corruption applied.)*
 
 ## §3 supplement — the full NUMBER formal-error PRECEDENCE order (source `FormatDefinitionZahl.validiereFormat`, 2026-07-07) <a id="kf37"></a>
 
@@ -4383,3 +4387,426 @@ Confirms a12-kernel-lean's `SPEC-2026-09-03-09`. This repository had measured bo
 **The producer cannot be asked which kind it is.** Both clearing rows report `cleared=true, errored=false` on the producer's own instance, so a consumer predicting propagation from that flag is wrong on the malformed row. The channel that does separate them for a producer with NO dependents is the eager `formalErrorsInOperands` inventory: the source-invalid producer's own operand appears there and the precondition-cleared one's does not. It is an INVENTORY rather than a causal attribution — it also names operands of computations that succeeded, measured in [KF235](#kf235) on a spelling that computes a value — so the consumer's discriminator is whether the producer's own operand set intersects it, not the inventory's mere non-emptiness. The residue is a producer cleared because a COMPUTED field it read was poisoned: a computed field is outside that inventory's scope by definition, so that case stays indistinguishable.
 
 *(Locked: `adapter.laws.DependencyClearKindDiffTest` — five documents over one diamond, tri-engine, plus the producer-state and operand-inventory channels asserted directly.)*
+
+## §6 supplement: the extraction operand gate reads the declared format's COMPONENT SET, not its shape — complete over the admitted vocabulary (kernel `checkConsistency`, 2026-09-02) <a id="kf1001"></a>
+
+> Fold: pending — completes [KF211](#kf211)'s operand tier at component granularity; fold with it.
+
+[KF211](#kf211) established that a temporal field's declared format, never its kind, decides what it is at every gate, and measured the stored-value tier as its formal channel. At the **operand** tier the rule is sharper than "the format decides": an extraction unit is admitted **iff the declared format carries that unit's component letter** — `DayFromDate`←`d`, `MonthFromDate`/`QuarterFromDate`←`M`, `YearFromDate`←`y`, `HoursFromTime`←`H`, `MinutesFromTime`←`m`, `SecondsFromTime`←`s`; the split family (`DateFromDateTime`/`TimeFromDateTime`) needs a date letter **and** a time letter, which over the admitted vocabulary only `yyyy-MM-dd'T'HH:mm:ss` carries. Every refusal is `MVK_WRONG_DATE_FORMAT_FOR_OP`. Measured over the complete admitted format vocabulary (12 strings, owner `TemporalFormatVocabularyGuardTest`) × 9 units = 108 cells, kind held fixed at DATE so the format is the only variable; the expectation is computed from the rule rather than transcribed, so the kernel adjudicates the mechanism.
+
+**The three discriminating cells**, each defeating a rival reading: **not the kind** — every field is DATE-kind and `HoursFromTime` is *admitted* on the one declared `HH:mm:ss`; **not the shape** — `DayFromDate` is refused on `yyyy-MM` and admitted on `yyyy-MM-dd`, which rulekit's three-valued `TemporalFormats.Shape` classifies identically, so a shape-keyed gate cannot state this law and a component-keyed one must; **case-sensitive letters** — `MinutesFromTime` is refused on `MM` and admitted on `HH:mm:ss`.
+
+**A fourth kind participates.** A `DATE_FRAGMENT` declared `yyyy` admits `YearFromDate` and refuses `MonthFromDate`/`SecondsFromTime`/`DateFromDateTime` — the same component rule — although `TemporalFormats.isTemporal` counts only DATE/TIME/DATE_TIME. Any gate built on this law has that kind to account for. Consistent with the already-recorded `Add*` granularity rule (§6, `AddDays` needs a day, `AddMonths` a month), which is this same component test on the shift family. **A field whose declaration is ABSENT answers as its kind's DEFAULT format's components allow** — DATE→`yyyy-MM-dd`, TIME→`HH:mm:ss`, DATE_TIME→ISO — measured on all three, so one rule covers that case and a gate resolving an absent declaration through `TemporalFormats.defaultFormat` is on measured ground. *(Corrected 2026-09-02: the first fixture for this row built its fields with an empty configurer, which does NOT leave the format absent — modelkit materializes the kind default into the JSON, so that fixture measured the declared path while reading as though it measured the absent one. The row now strips the key after emission and asserts the strip applied; the verdicts are unchanged, but they were not established until it did.)*
+
+**What it leaves delegated, and why that is not yet closable.** rulekit's client-side gate reads a bare `Calculation`, which carries no format, so it states only the point-in-time rule ([`TemporalRefusalDenominatorTest`](../src/test/java/io/github/mbackschat/a12/dm/rulekit/dsl/TemporalRefusalDenominatorTest.java)) and delegates the choice among temporal kinds. `BoundModel.date`/`time`/`dateTime` do read the format but return early on a kind match, so a DATE field declared `yyyy` still yields a `DateRef` that answers `DayFromDate`; that short-circuit's javadoc called the refusal unmeasured, and this entry is the measurement it was waiting for. *(Locked: `validate.laws.TemporalExtractionFormatGateLawsTest`.)*
+
+## §6/§9 supplement: `MVK_PARTIAL_DATE_NOT_ALLOWED`'s complete denominator is the three entity-list aggregates (kernel `checkConsistency`, 2026-09-03) <a id="kf1002"></a>
+
+> Fold: pending — pairs with [KF193](#kf193); the two refusals share one check method and one carrier set.
+
+The ledger carried this code as "partly-known dates are barred from **most** date ops". It is three ops. The code is thrown from a single site, `CheckEntityListenUtils.checkOpTypesAreComparableDatetimeType`, whose only callers are the entity-list aggregate checks (`CheckFeldListenOpImpl` under `MIN_WERT`/`MAX_WERT`, `CheckFeldListenAnzahlOpImpl` under `ANZAHL_VERSCHIEDENER_WERTE`) — so the whole denominator is **`MaxValue`, `MinValue`, `NumberOfDifferentValues`**. That is the same method and the same three carriers as [KF193](#kf193)'s component-set gate: **one kernel check, two refusals**, and a promotion that gates one arm sits exactly where the other already does.
+
+Measured, every row on operands sharing one declared format so the component-set arm cannot fire and precision is the only variable moved:
+
+| row | verdict |
+|---|---|
+| each of the three carriers, a `DAY_OPTIONAL` operand | `MVK_PARTIAL_DATE_NOT_ALLOWED` |
+| **liveness control** — the same three over a full-precision pair, same format | admitted |
+| all three partial precisions (`DAY_`/`MONTH_`/`YEAR_OPTIONAL`) | refused; the gate asks *partly known*, not *how much* |
+| the partial operand in FIRST position | refused — the check is reached on the list's first field's base type, so first/second is not a discriminator |
+| a DATE_FRAGMENT operand | `MVK_DATEFORMATS_NOT_COMPATIBLE`, **not** this code — `partlyKnownDateTypeIfPresent` answers for an `IDateType` only, so "incomplete by format" and "partly known by declaration" are different things |
+| a DATETIME pair | admitted (no precision declaration exists to read) |
+| an operand that is BOTH partly known and of a different component set | **this code**, not `MVK_DATEFORMATS_NOT_COMPATIBLE` — so the precision arm precedes the component-set arm, which is what a client-side gate must copy |
+
+**A partial precision cannot name a component its format lacks.** `yyyy-MM` declared `DAY_OPTIONAL` is refused at MODEL level, `MVK_OPTIONAL_DATE_TYPE_INVALID` — found while trying to build the both-arms row from a single field, which is therefore unconstructible: that row needs a partial operand and a differently-formatted full one.
+
+The last two rows are the discriminating ones: without the fragment row, "any incomplete temporal operand" fits every other row and is false; without the liveness control the whole table is satisfied by a fixture that cannot do anything at all.
+
+*(Locked: `validate.laws.PartialDateAggregateLawsTest`. The single-throw-site claim is source-read over `../a12-kernel`; every row above is kernel-measured here.)*
+
+## §9 supplement: the parallel-iteration code partitions on PARALLELISM, and parallel iteration needs a shared index name (kernel `checkConsistency`, 2026-09-03) <a id="kf1003"></a>
+
+> Fold: pending — pairs with the iteration-admission entry above; both concern what an unguarded negative reports and where.
+
+`MVK_PARALLEL_ITERATION_INVALID` had one measured row in the estate — a bare `NoFieldFilled` over two parallel-iterated groups — and the ledger explained it semantically, "the condition could fire with no filled instance". That row holds the pure-negative operator AND the two-group parallelism constant together, so "unguarded negative" and "unguarded negative in a parallel iteration" fit it equally. Varying the parallelism alone:
+
+| condition (rule at `/Order/Items`, error field `../Sku`) | verdict |
+|---|---|
+| `NoFieldFilled` over **one** repeatable group's two fields | `MVK_NEG_CONDITION_IN_ITERATION` |
+| `NoFieldFilled` over **two parallel** repeatable groups | `MVK_PARALLEL_ITERATION_INVALID` |
+| `AtLeastOneFieldFilled` over the same two groups | admitted |
+
+So the two codes partition on **parallelism**, not on polarity: the same unguarded negative reports one code at a single level and the other across parallel levels, and the polarity control shows neither fires on a positive.
+
+**And the prerequisite, found by getting it wrong first: two repeatable groups are parallel-iterable only when they DECLARE THE SAME INDEX FIELD NAME.** A fixture whose groups carry no index never reaches either code — a cross-group operand list reports `MVK_NO_WILDCARD`, because the kernel cannot pair rows and demands a wildcard instead. The estate's existing `logistics` fixture has this property (both `Lines` and `Picks` declare `LineRef`) without stating it, which is why the original row worked and a naive re-fixture does not.
+
+**The sibling code, `MVK_PARALLEL_ITERATION_NOT_ALLOWED`, had no test anywhere and its law is narrower than the ledger's wording.** "RepetitionNotUnique must not mix with parallel iteration" turns out to mean CONJOINING RNU with a parallel operand list; RNU keys spanning the two groups is a different rule reporting `MVK_NOT_IN_SAME_PATH`. **The liveness control decided this and earned its place immediately**: with the rule placed inside the repeatable group, RNU alone is already `MVK_REPEATABLE_GROUP_MISSING`, so every row measured "RNU is unusable here" and the table was about to be recorded as "the mixing never reaches this code". Moving the rule to the group above makes RNU alone admitted and the mixing row reports the code.
+
+*(Locked: `validate.laws.ParallelIterationCodeBoundaryLawsTest`.)*
+
+## §9 supplement: an index-selected reference PINS a row and does not iterate (kernel `checkConsistency`, 2026-09-03) <a id="kf1004"></a>
+
+> Fold: pending — belongs with the iteration-admission entries above.
+
+An unguarded negative over an **index-selected** cell is **admitted**, where the same negative over a plain per-row read at the iterating level is `MVK_NEG_CONDITION_IN_ITERATION`. So an index selection is not a read of the repeatable level at all — it pins one row — and the iteration gates have nothing to say about it.
+
+| condition | verdict |
+|---|---|
+| plain negative at the iterating level | `MVK_NEG_CONDITION_IN_ITERATION` |
+| the same negative on an index-selected cell | **admitted** |
+| the index-selected positive (liveness) | admitted |
+| a PLAIN negative with the rule at the same non-repeating group | `MVK_NEG_CONDITION_IN_ITERATION` |
+
+**That last row is the control, and it was missing from the first version of this entry** (cold review, same day): the discriminator moves the rule group as well as the index selection, so "admitted because an index selection pins a row" and "admitted because the rule is anchored at a non-repeating group" were not separated. Holding the group fixed and dropping only the index still refuses, so the pinning reading is the one that survives.
+
+**Consequence for rulekit, and it was a live false positive.** `Linter` read an `IndexedPresenceCondition` exactly like a plain field read, so it flagged the admitted shape as an unguarded negative — over-warning on a legal model, the one direction an advisory cannot afford. The negative arm is now excluded.
+
+**What is NOT measured here, and is therefore left permissive:** whether an index-selected POSITIVE can license a plain negative at that level. By the same pinning argument it should not, but that is an inference from this row rather than a measurement, and counting it as a guard is the under-warning direction.
+
+*(Locked: `validate.laws.IndexedOperandIterationLawsTest`; the lint side is `lint.IterationGuardLintLevelTest`.)*
+
+## §6 supplement: a date-range construction's ENDPOINTS must agree, and that refusal is the construction's, not the comparison's (kernel `checkConsistency`, 2026-09-04) <a id="kf1005"></a>
+
+> Fold: pending — pairs with [KF182](#kf182)'s comparison law; the two are one topic with two loci.
+
+`DateRangeComparabilityLawsTest` measures `==`/`!=` between two date ranges and reports `MVK_INVALID_COMPARE_TO_DATE_RANGE`. Every row of it gives the construction two **agreeing** endpoints and varies the stored range, so across that whole set "the comparison's two operands disagree" and "the construction's own two endpoints disagree" are indistinguishable — the constant-across-the-set confound. They are different laws, under different codes, with different repair sites.
+
+Measured on `range-profiles`, the construction `DateRange(FromYear, ToDate)` (`{YEAR}` against `{YEAR, MONTH, DAY}`):
+
+| row | verdict |
+|---|---|
+| **liveness control** — `DateRange(FromDate, ToDate) == [DateWindow]`, endpoints agreeing and matching the stored range | admitted |
+| `DateRange(FromYear, ToDate) == [DateWindow]` — stored range matches the construction's END endpoint | `MVK_WRONG_DATE_FORMAT_FOR_OP`, *"At 'DateRange': Wrong date format at 'ToDate'"* |
+| the same construction against `[YearWindow]`, matching its START endpoint instead | the identical code **and** message — so the stored operand is not a variable of this verdict |
+| either row, checked for `MVK_INVALID_COMPARE_TO_DATE_RANGE` | **absent** — asserted, not merely unobserved |
+
+Two things follow. The error attaches **at the construction** and names the offending endpoint, so this is not the comparison gate under another name; and because the code differs, the code is itself the discriminator between the two laws.
+
+The repair site follows from that. `BoundModel.rangeComponents` yields a construction's profile only when its endpoints agree and otherwise returns `null`, which DELEGATES — so no comparison-surface gate can reach this shape however it is routed. The check is contextual (an endpoint's component set is its field's declared format), so it cannot live in the record either: it is `BoundModel.dateRangeOf`.
+
+*(Locked: `validate.laws.DateRangeConstructionEndpointComponentLawsTest`, whose two refusal rows assert the comparison code absent; typed peer `dsl.DateRangeEndpointComponentGateTest`.)*
+
+## §9 supplement: an out-of-group error field PRE-EMPTS the iteration gate, so the error-field axis is not free (kernel `checkConsistency`, 2026-09-04) <a id="kf1006"></a>
+
+> Fold: pending — belongs with [KF1004](#kf1004) and the iteration-admission entries.
+
+[KF1003](#kf1003)/[KF1004](#kf1004)'s neighbour `IterationGuardLevelLawsTest` establishes that a positive presence guard admits a negative sibling only when it references the negative's own repeatable level. Every row of it also pins the ERROR FIELD to that level, so "the guard must reference the NEGATIVE's level" and "the guard must reference the level the ERROR FIELD selects" fit its whole set equally — and two sibling groups at one depth cannot express a row that separates them.
+
+Measured on a NESTED model (`Lines` repeatable, `Parts` repeatable inside it), negative always `FieldNotFilled(Code)` on the inner level:
+
+| guard's level | error field's level | verdict |
+|---|---|---|
+| inner — the negative's own | inner | admitted |
+| outer | inner | `MVK_NEG_CONDITION_IN_ITERATION` |
+| **unguarded** (control) | inner | `MVK_NEG_CONDITION_IN_ITERATION` |
+| inner | **outer** | `MVK_ERROR_FIELD_NOT_IN_RULEGROUP` |
+| outer | **outer** | `MVK_ERROR_FIELD_NOT_IN_RULEGROUP` |
+| unguarded | **outer** | `MVK_ERROR_FIELD_NOT_IN_RULEGROUP` |
+
+| **non-iterating** condition, outer error field | — | `MVK_ERROR_FIELD_NOT_IN_RULEGROUP` |
+
+The error-field axis therefore **cannot be varied while the rule stays legal**, and that gate PRE-EMPTS the iteration one (`MVK_NEG_CONDITION_IN_ITERATION` is absent from every such row, asserted rather than merely unobserved).
+
+**The kernel's message is NOT the mechanism.** It reads *"The error field '/Order/Lines/Sku' is not in the rule group **but the condition specifies iteration**"*, and the last row above takes a condition that iterates at no level and draws the same code. So the refusal is not conditioned on iteration; the clause misdescribes it. *(Corrected 2026-09-04, same day: this entry first stated the message's clause as the rule, which is the basis the standing table names as invalid — an error message's wording. One cell settled it.)*
+
+Two consequences. The rival reading is **unfalsifiable on any kernel-legal model**, which is weaker than refuted and is the honest statement: the error field must sit in the rule group, so its level is the rule group's and never varies against the negative's. And the guard-level rule stands, now on a grid rather than one column — the neighbouring file's constant was forced, worth saying out loud because an unstated forced constraint is indistinguishable from an axis nobody thought to vary.
+
+**What this grid in turn holds constant: the RULE GROUP**, always the inner level. Varying it needs a negative over a deeper repeatable level from an outer rule group, which wants a wildcard the builder refuses (`MVK_NO_WILDCARDS_ALLOWED`), so the discriminating model may be unrepresentable rather than unmeasured — an open link, named rather than assumed away.
+
+**This bounds a clause published one day earlier.** `MVK_ERROR_FIELD_AND_ITERATION_INVALID`'s disposition rested on "an ordinary rule's error field is admitted across repetition boundaries". That holds only while the condition does NOT iterate; once it does, an out-of-group error field draws the code above. The two codes stay distinct, so the disposition survives — its supporting clause needed the iteration condition attached.
+
+*(Locked: `validate.laws.IterationGuardErrorFieldLevelLawsTest`, one table so a kernel shift shows every cell.)*
+
+## §6 supplement: a point-in-time CONSTANT answers its kind's default format — the gate reached only field reads (kernel `checkConsistency`, 2026-09-04) <a id="kf1007"></a>
+
+> Fold: pending — extends [KF1001](#kf1001)'s format gate to the operands that are not field reads.
+
+[KF1001](#kf1001)'s gate is format-keyed: an extraction is admitted iff the operand's declared format carries the unit's component, and a field declaring NO format answers its kind's default. `Dsl.declaredFormatOf` resolved only a `FieldValue`/`IndexedFieldValue`, so every operand that is not a field read fell through to `null` and was delegated — which looked like the correct answer for a constant, since "it has no declaration" is true.
+
+**It is not the correct answer, and the discriminator is a TIME-family unit.** Measured over the complete unit vocabulary of both carriers — all seven `DateExtraction.Unit` members and both `DateTimePart.Unit` members:
+
+| operand | `Year`/`Month`/`Day`/`Quarter` | `Hours`/`Minutes`/`Seconds` | `Date`/`TimeFromDateTime` |
+|---|---|---|---|
+| `BaseYear` (kind DATE) | admitted | `MVK_WRONG_DATE_FORMAT_FOR_OP` | `MVK_WRONG_DATE_FORMAT_FOR_OP` |
+| `Today` (kind DATE) | admitted | `MVK_WRONG_DATE_FORMAT_FOR_OP` | — |
+| `Now` (kind DATE_TIME) | admitted | **admitted** | admitted |
+| a `yyyy-MM-dd` field — the control | admitted | `MVK_WRONG_DATE_FORMAT_FOR_OP` | `MVK_WRONG_DATE_FORMAT_FOR_OP` |
+| a `yyyy` field — the control that refutes the `yyyy` hypothesis | admitted for `Year` only | — | — |
+
+So each constant behaves **exactly** as a field declaring no format of its kind: the two DATE-kind constants match `yyyy-MM-dd` on all nine cells, `Now` matches `yyyy-MM-dd'T'HH:mm:ss`. That is not a rule about `BaseYear`; it is [KF1001](#kf1001)'s existing kind-default fallback reaching an operand the resolver could not see.
+
+**Why a DATE unit cannot establish this, which is what made the first reading of these rows wrong.** A complete date admits all four date units, so "the gate reads no format" and "the operand answers a complete-date default" predict the identical verdict in every date cell. Only a time-family unit separates them — one account delegates, the other refuses — and the kernel refuses. The `yyyy` field control is still needed and still does its job: it refutes the *other* hypothesis, that the constant declares `yyyy`, since month, day and quarter are admitted for the constant and refused for that field.
+
+**Corrected 2026-09-04, same day, by a cold review.** This entry first read "the extraction format gate does NOT reach `BaseYear` — its delegate branch is correct", from a table whose every row took a date unit. The disposition it drew (do not assign `yyyy`) was right and is retained above; the mechanism and the conclusion that no format gate is promotable were both wrong. The rows were honestly measured and the account was the first one that fit them — the failure was a missing discriminating cell, not a bad measurement.
+
+*(Locked: `validate.laws.BaseYearExtractionFormatLawsTest`, one table over the full vocabulary with the two field controls. Promoted in `Dsl.declaredFormatOf`; typed rows in `dsl.UntypedTemporalExtractionGateTest`, consumer rows in `bridge.FunctionsTest`.)*
+
+## §6 supplement: a `Date` construction's NUMBER component must match its SLOT's range exactly (kernel `checkConsistency`, 2026-09-04) <a id="kf1008"></a>
+
+> Fold: pending — completes [KF1005](#kf1005)'s neighbour, the other construction whose declaration rule needs a model.
+
+`DateConstruction` records the kernel's requirement as "each component declaration must be position-compatible (bounded Number, exact digit-pattern String, or the complete year's exact `yyyy` Date exception)" and delegates it as model-dependent. "Bounded" turns out to be too weak a word for what the kernel checks.
+
+Measured, `Valid(Date(day, month, "2009"))`, one component varied per row:
+
+| slot | the component's declaration | verdict |
+|---|---|---|
+| month | NUMBER `1..12` | admitted |
+| month | NUMBER `max 12`, no lower bound — the "sign allowed" shape | `MVK_WRONG_DATE_FORMAT_FOR_OP` |
+| month | NUMBER `1..99` | `MVK_WRONG_DATE_FORMAT_FOR_OP` |
+| month | NUMBER unbounded | `MVK_WRONG_DATE_FORMAT_FOR_OP` |
+| month | STRING with no digit pattern | `MVK_NO_DIGIT_PATTERN` — a different code, so a different law |
+| day | NUMBER `1..31` | admitted |
+| **day** | **NUMBER `1..12`** | **`MVK_WRONG_DATE_FORMAT_FOR_OP`** |
+| **month** | **NUMBER `1..31`** | **`MVK_WRONG_DATE_FORMAT_FOR_OP`** |
+| **day** | **NUMBER `1..30`** — inside the slot without filling it | **`MVK_WRONG_DATE_FORMAT_FOR_OP`** |
+| every component a constant | — | `MVK_ONLY_CONSTANTS_USED`, again a separate law |
+| the FOUR-component form, day `1..31` + month `1..12` | — | admitted |
+| the four-component form, either slot given the other's range | — | `MVK_WRONG_DATE_FORMAT_FOR_OP` |
+
+| month | NUMBER unsigned, `max 12`, **no minimum at all** | **admitted** |
+| day | NUMBER unsigned, `max 31`, no minimum | **admitted** |
+| month | NUMBER unsigned, **`maxLength 2`**, no maximum | **admitted** |
+| month | NUMBER *signed*, `maxLength 2`, no maximum — the control | `MVK_WRONG_DATE_FORMAT_FOR_OP` |
+| month | NUMBER `-5..12` — a minimum, but negative | `MVK_WRONG_DATE_FORMAT_FOR_OP` |
+| month | NUMBER `1..12` with **scale 2** | `MVK_WRONG_DATE_FORMAT_FOR_OP` |
+
+**The rule is three conjuncts, and two of them have two satisfying forms each:** no declared FRACTION; a CEILING as either `maxLength` of the slot's width or `maxValue` equal to the slot's own maximum; and a LOW SIDE as either a non-negative `minValue` or an UNSIGNED declaration (`positivesOnly`). The value form of the ceiling is per-slot and exact rather than containment — a `1..12` field is refused in the DAY slot even though every value it holds is a legal day.
+
+**Corrected 2026-09-07 by an independent differential over a large corpus of real models, which is where the cost landed: this gate refused 15 constructions the kernel admits, and it was the only source of over-rejection on the branch.** The first version of this entry read the low side as "bounded on both sides" and the ceiling as a value maximum only, because the fixture's builder could declare neither an unsigned number nor a length ceiling — so the rows were honest, the controls were real, and three legal shapes were unrepresentable in the grid. The unsigned form is the one real models use everywhere. *(Two smaller misses came with it, in the other direction: a NEGATIVE minimum satisfied the old gate, and a declared scale was never checked.)*
+
+**The signed-`maxLength` control is what makes the low side legible.** With the ceiling satisfied by the length, the only difference between that refused row and its admitted neighbour is the sign declaration — so unsignedness, not the ceiling, is doing the work.
+
+The `1..30` row is what makes "exact" more than a summary of two extremes: a bound strictly inside the slot is refused as well, so the test really is the slot's own maximum. The four-component rows are here because that form has rules of its own for the two YEAR positions it splits — inheriting the day and month rule would have been a scope transfer, and it is instead measured.
+
+**One row is absent on purpose:** the year slot, whose ceiling the kernel treats FLEXIBLY where these two are exact (source: `checkMaxValue` admits a smaller maximum for the complete year and the century). Nothing here licenses a claim about it, and the gate does not touch it.
+
+**A fixture trap worth recording, because it inverts the result.** Comparing the construction to a date field (`Date(...) == FullDate`) does not parse, and `MVK_UNEXPECTED_TOKEN` surfaces only on the rows where the DECLARATION is acceptable — the refusals fire first and mask it. The whole table then reads as a uniform refusal, and the two admitted cells look like parse noise. `Valid(...)` avoids it. Conditions must also reference the error field or `MVK_ERROR_FIELD_NOT_REFERENCED` masks every row.
+
+*(Locked: `validate.laws.DateConstructionComponentDeclarationLawsTest`; typed peer `dsl.DateConstructionSlotBoundsGateTest`, whose delegation rows pin the two deliberate absences.)*
+
+## §6 supplement: `BaseYear` needs a DECLARED base year on every carrier — the rule the format gate was mistaken for (kernel `checkConsistency`, 2026-09-04) <a id="kf1009"></a>
+
+> Fold: pending — pairs with [KF1007](#kf1007), which refutes the neighbouring format rule over the same constant.
+
+[KF1007](#kf1007) refutes a format gate over `BaseYear`: the kernel admits month, day and quarter extraction over it while refusing all three over a `yyyy` field. **Every row of that refutation declares a base year**, so configuration is the axis it holds constant — and the real rule lives on the other side of it.
+
+Measured over every carrier the kits can build, on two fixtures differing in exactly one builder call (`.baseYear(2024)`):
+
+| carrier | no declaration | declared |
+|---|---|---|
+| the date role, compared to a date field | `MVK_NO_BASE_YEAR` | admitted |
+| the numeric role (`Dsl.baseYearNumber`) | `MVK_NO_BASE_YEAR` | admitted |
+| the DATE-TIME role, compared to a date-time field | `MVK_NO_BASE_YEAR` | admitted |
+| an extraction over it (`YearFromDate(BaseYear)`) | `MVK_NO_BASE_YEAR` | admitted |
+| `StartOfDateRange(BaseYear)` | `MVK_NO_BASE_YEAR` | admitted |
+| `EndOfDateRange(BaseYear)` | `MVK_NO_BASE_YEAR` | admitted |
+
+Uniform, with a positive control on every row. The date-time carrier is in the table because `:adapter`'s converter reconstructs one — a denominator taken from the DSL's factories alone would have missed it and the gate would then have claimed a carrier nothing measured.
+
+**Why this rule is safe to state where the format one was not**, which is the whole point of the pair: it reads a fact the model declares outright, so it is exact in both directions — it refuses exactly when the kernel does, and it cannot refuse a model that declares a base year. A format rule would have to invent a declaration the constant does not carry. Two rules over one operand, one an invention and one exact, and the tell is whether the model states the fact or you inferred it.
+
+**A fixture note that inverts a measurement.** A hand-spelled `FiledOn == BaseYear` does not parse (`MVK_UNEXPECTED_TOKEN`) and the parse error masks the verdict; worse, spelling it the other way around parses in one column and not the other, which reads as a real asymmetry. Build the condition through the typed DSL and let the renderer emit the canonical form. Conditions must also reference the error field or `MVK_ERROR_FIELD_NOT_REFERENCED` masks every row.
+
+*(Locked: `validate.laws.BaseYearDeclarationLawsTest` (kernel, one table), `dsl.BaseYearDeclarationGateTest` (typed), `bridge.BaseYearDeclarationGateTest` (the consumer path, including the `Opaque` read-back). Promoted to `BoundModel.baseYear`/`baseYearNumber`/`startOfBaseYear`/`endOfBaseYear`; the `Dsl` forms stay ungated for the inbound converters, which rebuild the constant through them.)*
+
+## §9 supplement: an `Or` lends no guard at ANY depth, so only a conjunctively-reached positive licenses (kernel `checkConsistency`, 2026-09-07) <a id="kf1010"></a>
+
+> Fold: pending — completes the composition axis beside [KF1003](#kf1003)/[KF1004](#kf1004) and the guard-level entries.
+
+Two composition shapes were measured: a guard CONJOINED with the negative licenses it, and a guard as its DIRECT `Or` sibling does not. The shape between them — a positive inside an `Or` whose whole disjunction is conjoined with the negative — was not, and `Linter.collectPositiveLevels` recursed through a `LogicCondition` whatever its operator, so such a positive suppressed the advisory.
+
+Measured on two independent repeatable groups plus a non-repeating root field, negative always `FieldNotFilled(Sku)` at the inner level:
+
+| condition | verdict |
+|---|---|
+| **liveness** — same-level positive `And` negative | admitted |
+| **baseline** — unguarded negative | `MVK_NEG_CONDITION_IN_ITERATION` |
+| `(same-level positive Or off-level positive) And negative` | `MVK_NEG_CONDITION_IN_ITERATION` |
+| `(off-level positive Or same-level positive) And negative` | `MVK_NEG_CONDITION_IN_ITERATION` |
+| **control** — `(off-level Or off-level) And negative` | `MVK_NEG_CONDITION_IN_ITERATION` |
+
+So an `Or` lends nothing, and it lends nothing at every depth rather than only between direct siblings: a positive licenses the conjoined negative **only when reached through `And` alone**. The control row is what makes the two middle rows mean something — it differs from them in nothing but whether a same-level positive appears inside the disjunction, so the refusals are not merely the negative's own.
+
+The advisory's permissive treatment of this shape was therefore a **false negative**, now closed. Widening it cannot introduce a false positive on a legal shape, because an admitted one still needs a same-level positive reached conjunctively and that path is untouched — pinned by the conjunctive-guard-beside-an-`Or` row in the lint lock, without which the widening would be indistinguishable from "warn whenever an `Or` appears".
+
+*(Locked: `validate.laws.IterationGuardNestedCompositionLawsTest`, one table; advisory rows in `lint.IterationGuardLintLevelTest`.)*
+
+## §9 supplement: a negative over the RULE'S OWN group is not self-bounding (kernel `checkConsistency`, 2026-09-07) <a id="kf1011"></a>
+
+> Fold: pending — closes the rule-group axis the guard-level entries hold constant.
+
+[KF1006](#kf1006) records that the error field cannot move off the rule group while the rule stays legal, and names the rule GROUP as the axis its own grid does not vary. This varies it. An independent differential predicted that a negative over the group the rule already iterates is ADMITTED, on the reasoning that the rule's iteration bounds it and nothing else needs to.
+
+Measured on three independent repeatable groups, none an ancestor of another, with **no conjunct appended to satisfy the error-field reference** — see the note below, which is why an earlier version of this table read the other way:
+
+| rule group | condition | verdict |
+|---|---|---|
+| `Items` | `GroupNotFilled(/Order/Items)` | `MVK_NEG_CONDITION_IN_ITERATION` |
+| `Items` | `… And GroupFilled(/Order/Notes)` — a guard over another repeatable group | `MVK_NO_WILDCARD` |
+| `Items` | `… And GroupFilled(/Order/Items)` — a guard over the SAME group | admitted |
+| `Audits` | `GroupNotFilled(/Order/Items)` — a third group, not an ancestor | `MVK_NO_WILDCARD` |
+| **liveness** — `Items` | a bare field negative | `MVK_NEG_CONDITION_IN_ITERATION` |
+
+**The prediction is refuted.** A negative over the rule's own group draws the iteration code exactly as a field negative does; the rule's own iteration does not bound it. What admits it is a positive over the same group — the existing level rule, needing no addition. And the reported shape never reaches the iteration gate at all: a cross-group reference from that rule group is refused under `MVK_NO_WILDCARD` for its own reason.
+
+**A methodological trap, and it inverted this table once.** The usual way to satisfy `MVK_ERROR_FIELD_NOT_REFERENCED` is to append `And FieldFilled(<error field>)` — and that conjunct **is a positive presence guard at the negative's own level**, which is the very property an iteration-guard law is measuring. Appended, every row here reads ADMITTED and the table looks like a law. So a law about iteration guards must reference its error field through the condition already under test, or not at all.
+
+*(Locked: `validate.laws.IterationGuardOwnGroupLawsTest`. The advisory does not warn on the admitted row — `lint.IterationGuardLintLevelTest`.)*
+
+## §9 supplement: an index selection pins a row only when its KEY is a constant (kernel `checkConsistency`, 2026-09-07) <a id="kf1012"></a>
+
+> Fold: pending — narrows [KF1004](#kf1004), whose rows all key by a constant.
+
+[KF1004](#kf1004) selects a cell by a CONSTANT key, finds an unguarded negative over it admitted, and concludes an index selection PINS a row rather than iterating. The advisory built on that suppressed every indexed presence. The conclusion is one key-form too wide.
+
+Measured with both rows at the selected field's group and that field as the error field, so the negative satisfies the error-field reference either way and the key's form is the only variable:
+
+| the selection's key | unguarded negative over it |
+|---|---|
+| a CONSTANT | admitted |
+| a FIELD read at its own repeatable level | `MVK_SEMANTIC_INDEX_INVALID_ITER` |
+
+**So it is the key that decides, not the selection.** A field-valued key is itself a repeating read, so the selection iterates with it.
+
+**The code is locus-dependent, which is why neither one characterises the shape.** The same field-keyed negative draws `MVK_NEG_CONDITION_IN_ITERATION` when the rule sits at the KEY's group rather than the selected field's, and `MVK_SEMANTIC_INDEX_INVALID_ITER` when it sits at the selected field's. Both were measured; no mechanism is offered for the split, because nothing here discriminates one.
+
+*(Raised by an independent differential over real models, where the over-wide suppression cost an agreeing refusal. Locked: `validate.laws.IndexedNegativeKeyFormLawsTest`; the advisory now levels a field-keyed negative by its key, with a guard-at-the-key's-level control — `lint.IterationGuardLintLevelTest`.)*
+
+## §9 supplement: three more admission routes for a negative under iteration, and the level rule holds only for the STARRED spelling (kernel `checkConsistency`, 2026-09-07) <a id="kf1013"></a>
+
+> Fold: pending — narrows [KF1006](#kf1006)/[KF1011](#kf1011) and the guard-level entry they rest on.
+
+An independent differential over real models found the advisory firing on six shapes the kernel admits, and offered two mechanisms. Measured, one holds, one is refuted, and two more routes turn up that neither party proposed. Each pair below is one builder call or one conjunct apart.
+
+| route | measured |
+|---|---|
+| a declared INDEX FIELD on the negative's group | **REFUTED** — bare negative refused with the index and without it, same code, even when the error field IS the index |
+| a value COMPARISON on a field at that level | **licenses** — one conjunct apart from a refused bare negative |
+| an UNSTARRED reference into another repeatable group (field or group presence) | **licenses**; the STARRED quantifier over the same field does not |
+| the negative's group **declares an index field AND** has maximum repeatability **exactly 2** | **licenses** — and neither conjunct alone: three repetitions refuse with an index, two refuse without one, at root and nested alike |
+
+**The level rule holds only for the spelling it was measured on.** [KF1006](#kf1006)'s row uses `AtLeastOneGroupFilled(<sibling>*)` — starred — and the general reading "a guard on another repeatable level does not admit" is false: the unstarred read into that same sibling admits. Root-versus-nested is NOT an axis for any of this; both positions behave alike, which also answers the third axis the differential raised.
+
+**The two-conjunct route was got wrong twice in one day, once from each side, and the pattern is the same both times.** The differential first offered the index declaration alone; that was refuted at ten repetitions, where both arms refuse — and ten is where it was measured. A sweep here then read the COUNT alone as the rule, having declared the index in every cell it took. Each set was honestly measured, each held the other's variable constant, and each account fitted every row it had. The 2x3x2 grid is the first thing to move both, and it says the rule is the conjunction: neither an index nor a maximum of two suffices, and conditioning on either alone loses agreeing refusals in the other's direction. Nothing here discriminates a mechanism for where the boundary sits, so only its location is claimed.
+
+**What it cost.** The advisory read "admitted at that level" as a positive PRESENCE predicate and generalised the starred row past its spelling, so it warned on legal models — and this estate's own lock pinned one such warning as correct for a fortnight. The rule's own wording was already right: it says a child that REFERENCES the level, which a comparison does.
+
+*(Locked: `validate.laws.IterationGuardAdmissionRoutesLawsTest`. The advisory now counts a comparison, treats an unstarred presence as licensing any level, and leaves a max-2 group alone — each with a false-positive control in `lint.IterationGuardLintLevelTest`.)*
+
+## §1 supplement: the duplicate/overlap predicate is UNIFORM across carriers — the skip belongs to the check, not to the operator (kernel `checkConsistency`, 2026-09-07) <a id="kf1015"></a>
+
+> Fold: pending — the carrier sweep the duplicate class needed before any client gate is wired.
+
+Nine laws classes already measured `MVK_DUPLICATE_PARAM1`/`MVK_DUPLICATE_PARAM2`, each on the carrier whose gate was then designed. That leaves the arms unmeasured exactly where a client-side gate would newly be wired, and one of the gaps had been filled with prose: `AggregateSlotLawsTest`'s header asserted that `NumberOfValueInFields` "does not share the entity-list wildcard-skip", with no row behind it — its only duplicate row is a DIRECT duplicate, which the skip cannot affect in either direction.
+
+Measured, with each row's control one operator name apart on the identical operand shape:
+
+| carrier | direct duplicate | repeated STARRED operand | group beside its own field |
+|---|---|---|---|
+| `Sum` — entity-list aggregate | `MVK_DUPLICATE_PARAM1` | admitted | `MVK_DUPLICATE_PARAM2` |
+| `NumberOfValueInFields` — value list | `MVK_DUPLICATE_PARAM1` | **admitted** | `MVK_DUPLICATE_PARAM2` |
+| `AllFieldsFilled` — field-list quantifier | `MVK_DUPLICATE_PARAM1` | **admitted** | `MVK_DUPLICATE_PARAM2` |
+| `RepetitionNotUnique` — key list | `MVK_DUPLICATE_PARAM1` (repeated key) | — | — |
+
+And the overlap arm against a STARRED ancestor, which needs a repeatable nested in a repeatable and so takes the `Milestones ▸ Tasks` fixture:
+
+| shape | verdict |
+|---|---|
+| `Sum(M*/T*/Effort, M*/T*/Effort)` — nested starred pair repeated | admitted |
+| `Sum(M*, M*/T*/Effort)` — starred group beside its nested starred descendant | `MVK_DUPLICATE_PARAM2` |
+| `Sum(M*, M*/T*)` — starred group beside its own starred subgroup | `MVK_DUPLICATE_PARAM2` |
+| `FirstFilledValue(M*, M*/T*/Effort)` | `MVK_DUPLICATE_PARAM2` |
+
+**So one predicate serves every carrier**: an exact reference repeated draws PARAM1 and a wildcarded operand is skipped; containment draws PARAM2 and is **not** skipped for a wildcard, on a starred ancestor as much as a fixed one. The skip is a property of the shared check, not of the operator consuming it. Two consequences for an authoring surface: a per-carrier skip policy is not required, and `FirstFilledValue`'s asymmetry — its PARAM1 loop guards on `hasWildcard` and its PARAM2 loop does not — is correct rather than an omission.
+
+**The wildcard BAR is carrier-specific even though the skip is not, and the two are easy to conflate.** A starred field operand is refused outright by the GROUP-list quantifier family (`MVK_NO_WILDCARDS_G_ALLOWED`, §1); the same operand is admitted by the FIELD-list quantifiers, where it then reaches the duplicate check and is skipped by it. "Barred" and "skipped" are different gates and only one transfers.
+
+**The kernel-side denominator, and why the uniformity above is structural rather than coincidental.** The whole kernel raises these two codes from exactly **two lines**, both private in `CheckEntityListenUtils` (`:176` PARAM1, `:164` PARAM2), each with exactly one caller: `checkParamsReferencedOnlyOnce`, which raises nothing itself and invokes **both** arms in sequence. So the two codes share one denominator — **every construct guarded for PARAM1 is guarded for PARAM2** — and PARAM1 pre-empts PARAM2 whenever both would fire. The fan-in is reached from **12 call sites over 10 constructs, governing 38 operators**, and the majority are *operations* rather than conditions: `Sum`, `MaxValue`, `MinValue`, `SumOfProducts`, `FirstFilledValue`, `NumberOfFilledFields`, `NumberOfFilledGroups`, `NumberOfDifferentValues`, `NumberOfValueInFields` all arrive through the same `getRefList`. The operator's *name* does not predict guarding: `MaxValue`/`MinValue` take an entity list and are guarded, while `Max`/`Min` take an operation list and are not. In 9 of the 10 constructs the duplicate check is the FIRST substantive check, so its verdict is observable even on input that also violates arity, wildcard, root-group or type bars; the exception is the `NumberOfFilled*`/`NumberOfDifferentValues` routine, where a category projection anywhere in the list yields `MVK_CATEGORY_NOT_ALLOWED` instead — a disagreement on the code, not on accept/reject.
+
+**The exact-duplicate skip is A12-only.** The test is `ref.hasWildCards() && !parser.isHModel()`, so in an H model there is no skip at all and wildcarded operands participate in the comparison. The containment arm has no wildcard test in either model kind, which is what the starred-ancestry table above measures.
+
+**The identity comparison folds seven components; the three we omit cannot discriminate in an A12 model, so a four-component key is exact rather than lenient.** The kernel compares `EntityRef.equals` over entity path, category, semantic index, outer flag, repetition `indices`, `usb`, and `filterCondition`. Our key carries the first four. The remaining three were each measured out rather than argued out:
+
+| omitted component | why it cannot discriminate |
+|---|---|
+| `filterCondition` | an operand carrying a `Having` filter must be starred (`Sum(Quantity Having …)` is **`MVK_WILDCARDS_REQUIRED`**), and a starred operand is skipped by this arm — so two operands differing only in their filter never reach the comparison |
+| `indices` | the star lives here rather than in the path, and a repeated starred list is admitted, which requires `indices` to contain the wildcard at comparison time — so the skip fires wherever `indices` would have separated two refs |
+| `usb` | rejected outright on an A12 model |
+
+Two consequences. Relative paths are normalized to absolute before comparison, so a key built from the *written* path would miss that `f` and `/RG/G/f` are the same reference — ours is built from the resolved path. And the diagnostic MESSAGE renders only three of the seven components, using the as-written condition text where the predicate uses the normalized path, so the message must not be read as the key in either direction.
+
+**The modifier comparison, confirmed on a second carrier and on BOTH sides of one variable.** An indexed field inside its own indexed group:
+
+| input | observed |
+|---|---|
+| `NumberOfFilledFields(Items/Count For "a", Items For "a")` — same key | `MVK_DUPLICATE_PARAM2` |
+| `NumberOfFilledFields(Items/Count For "a", Items For "b")` — different keys | admitted |
+
+So containment holds under one key and not across two, which is what a modifier-comparing predicate must do and what a bare path-prefix test cannot. Together with the starred-versus-index-selected pair above, the relation is measured on two carriers and in both directions. The value-list carriers answer the same way: `NoFieldValueIncludedInValueList(ShippingAddress, ShippingAddress/City In "x")` is `MVK_DUPLICATE_PARAM2` and the exact duplicate on that carrier is `MVK_DUPLICATE_PARAM1`.
+
+**Where a carrier's own gates sit relative to these arms matters, and one of ours was in the wrong place.** The kernel answers `MVK_DUPLICATE_PARAM2` for `NumberOfFilledGroups(/Depot, Alpha)` — a root beside a group it contains — while our `CountAggregate` answered `MVK_ROOT_GROUP_REFERENCED`, because its root-group loop ran first. The duplicate arms precede the root-group bar in the kernel's own routine for that operator, so the client order now matches. Same shape as the group-list carrier, where containment likewise pre-empts the root-group bar and makes that bar unreachable on a single-root model.
+
+**A group scope is exempt from the exact arm only when it RENDERS with a star**, which is what a client-side identity must key on:
+
+| input | observed |
+|---|---|
+| `Sum(ShippingAddress, ShippingAddress)` — bare non-repeatable group, twice | `MVK_DUPLICATE_PARAM1` |
+| `NoGroupFilled(ShippingAddress, ShippingAddress)` — the same on the group-list carrier | `MVK_DUPLICATE_PARAM1` |
+| `Sum(Items, Items)` — bare REPEATABLE group, twice | `MVK_NO_WILDCARD` |
+| `AtLeastOneGroupFilled(/Order, CustomerName)` — the root group beside a field inside it | `MVK_DUPLICATE_PARAM2` |
+
+The third row **refines the ordering claim above**: the duplicate check is first among the *list-level* checks, but a PER-REF construction check precedes the list entirely, so an operand that is invalid on its own never reaches either arm. Twice observed — also on an index-selected group beside an unstarred descendant.
+
+The fourth row confirms, by direct measurement rather than by our own prose, that a root group beside a sibling operand trips containment before the root-group bar (the aside in [KF191](#kf191)). On a single-root model the root-group bar is therefore unreachable: every second operand lies inside that root. A bridge lock had asserted this shape was "not rulekit's to refuse" and was pinning the kernel's own overlap verdict as uncatchable.
+
+**Containment compares the MODIFIERS, not just the path — so a client gate that requires an equal semantic index before refusing an overlap is right.** One variable apart on one fixture:
+
+| input | observed |
+|---|---|
+| `Sum(Items*, Items*/Count)` — starred ancestor beside its starred descendant | `MVK_DUPLICATE_PARAM2` |
+| `Sum(Items For "SKU-1", Items*/Count)` — the same ancestor **index-selected** instead of starred | `MVK_NO_NUMBER` |
+
+The second row finds no duplicate: the type check fires, and in this routine the duplicate check runs first, so a duplicate would have won. What carries the conclusion is that `Sum(Items*)` alone already draws `MVK_NO_NUMBER`, so the starred ancestor has the identical kind-error liability and still yields the overlap — the two rows differ only in the modifier. *(A disjoint control on the indexed ancestor was cited here and withdrawn: `Sum(Items For "SKU-1")` alone reaches the same kind error, so the ancestor is a sufficient cause in both rows and the control could not discriminate.)*
+
+**Two shapes cannot answer this and are recorded so their pre-emption is not read as evidence:** an index-selected group beside its *unindexed* descendant is `MVK_NO_WILDCARD` (the descendant is invalid on its own — an unstarred repeatable's field needs the star), and the disjoint control is `MVK_NO_NUMBER`. A pre-empting gate is why a cell is unmeasurable, never a verdict on it.
+
+**One carrier the guard reaches and a client gate must NOT be added to: `SumOfProducts`.** `SumOfProducts(Quantity, Quantity)` is `MVK_DUPLICATE_PARAM1`, which makes an absent gate look like an oversight. It is not: the unstarred identical pair is already refused by the parallelism requirement (`MVK_REPEATABLE_LEVEL_REQUIRED` — we report that code where the kernel reports the duplicate, on input both refuse), and the starred identical pair `SumOfProducts(Items*/Count, Items*/Count)` is **admitted**, so refusing it would over-reject. The arm has no reachable input on this carrier. *(Locked so the reasoning fails loudly if the parallelism gate stops refusing: `dsl.SumOfProductsDuplicateUnreachableGateTest`.)*
+
+**Corrected 2026-09-07: the scalar `FieldValueIncludedInValueList`/`FieldValueNotIncludedInValueList` pair IS authorable and IS a duplicate carrier.** This entry first excluded it on the ground that the typed surface exposes only the plural forms. That was wrong and checkable: `ValueListCondition` is the carrier, and `StringRef.in(StringRef, …)` / `NumberRef.in(NumberRef, …)` fill its value list with field READS rather than literals. Its construct appends the single subject field to the value list and checks the union, so a subject repeated inside its own value list is a duplicate:
+
+| input | observed |
+|---|---|
+| `FieldValueIncludedInValueList(CustomerName, [CustomerName])` | `MVK_DUPLICATE_PARAM1` |
+| `FieldValueIncludedInValueList(CustomerName, [ProductCode], [ProductCode])` | `MVK_DUPLICATE_PARAM1` |
+| `FieldValueIncludedInValueList(CustomerName, [ProductCode])` | admitted |
+| `FieldValueIncludedInValueList(Quantity, [ShippingAddress])` | `MVK_NO_GROUPS_ALLOWED` |
+
+The last row is why only the exact arm applies there: a group operand is refused outright, so no operand can contain another. Found by an independent review of the client gate, which read the typed surface instead of taking this entry's word for it.
+
+*(Locked: `validate.laws.DuplicateOverlapCarrierSweepLawsTest` — both tables, with the within-model controls; `dsl.RepetitionNotUniqueDuplicateKeyGateTest` for the promoted key gate. The two fixtures' limits are stated in its javadoc: neither has a non-repeatable group nested inside another group, so fixed-ancestor-below-the-root keeps its coverage in `FirstFilledValueDuplicatePrecedenceLawsTest`'s `Primary ▸ Detail`; every group in both carries at least two fields, so an operand naming a group is never indistinguishable from one naming the single field it happens to have.)*
+
+## §6 supplement: every derived temporal operand answers its kind's default too — the sibling sweep of KF1007 (kernel `checkConsistency`, 2026-09-07) <a id="kf1014"></a>
+
+> Fold: pending — closes the class [KF1007](#kf1007) opened, over the operands that are not field reads.
+
+[KF1007](#kf1007) found the three point-in-time constants wrongly delegated by the format gate. `Dsl.declaredFormatOf` resolves only a field read, so of `Calculation`'s 42 arms it answered for five and delegated the rest — and the constants were the one delegated case anybody had examined. The root-cause rule asks for the siblings before the class is closed, so here they are.
+
+Measured on a model declaring **no base year** (see the trap below), each shape asked a DATE unit and an HOUR:
+
+| derived shape | kind → default | `YearFromDate` | `HoursFromTime` |
+|---|---|---|---|
+| `AddDays(...)` | DATE → `yyyy-MM-dd` | admitted | `MVK_WRONG_DATE_FORMAT_FOR_OP` |
+| `AddHours(...)` | DATE_TIME → ISO | admitted | admitted |
+| `DateFromDateTime(...)` | DATE → `yyyy-MM-dd` | admitted | `MVK_WRONG_DATE_FORMAT_FOR_OP` |
+| `TimeFromDateTime(...)` | TIME → `HH:mm:ss` | `MVK_WRONG_DATE_FORMAT_FOR_OP` | admitted |
+| `StartOfDateRange(...)` | DATE → `yyyy-MM-dd` | admitted | `MVK_WRONG_DATE_FORMAT_FOR_OP` |
+| **controls** — a `yyyy-MM-dd` field, a DATE_TIME field, a TIME field, a DATE field declaring `HH:mm:ss` | — | as their formats allow | as their formats allow |
+
+**All five arms match their kind's default in BOTH directions**, the TIME arm inverting the pattern exactly as `HH:mm:ss` requires. So the gate was silent on five more operands of the same class, and the rule generalises without exception across every carrier the grammar admits.
+
+**Three shapes cannot reach the gate at all.** `FirstFilledValue`, the temporal extrema (`MaxValue`) and `ValueAsDate` render plausibly and the kernel's PARSER rejects each in an extraction slot (`MVK_UNEXPECTED_TOKEN`). Delegating them therefore costs nothing — the kernel never gets a chance to disagree — and that is why they are excluded by name rather than overlooked.
+
+**A confound this table walked into and caught.** Declaring a base year on the probe model — added to make one control work — **supplements the YEAR component**, which admits `YearFromDate` over a format carrying no year and silently inverts every date-unit row. It was caught only because the resulting cells contradicted `TemporalExtractionFormatGateLawsTest`'s CI-green grid on an identical field construction. The row needing a base year now takes its own model. A control that fixes one row by changing the MODEL changes every other row with it.
+
+*(Locked: `validate.laws.DerivedTemporalOperandFormatLawsTest`. Promoted in `Dsl.declaredFormatOf`; the typed peer's delegate-branch row previously used a date SHIFT and so pinned one of these misses as correct — it now names a shape the grammar rejects.)*

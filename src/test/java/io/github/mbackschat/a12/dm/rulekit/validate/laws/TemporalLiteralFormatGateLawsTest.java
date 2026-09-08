@@ -112,6 +112,33 @@ class TemporalLiteralFormatGateLawsTest {
                 "FieldFilled(CustomerName) And [DeliveryDate] > Date(\"01\", \"01\", YearFromDate(OrderDate))");
     }
 
+    /**
+     * The same law on a CARRIER the matrix above never uses: the extractor at the top level of a numeric
+     * comparison, rather than inside a {@code Date(...)}/{@code Time(...)} parameter. This class's claim is
+     * universal — every temporal extractor refuses a convertible literal — but every cell establishing it sits
+     * in a construction position, so the universal reading and "in a construction parameter" were
+     * indistinguishable across the whole set. This is the scope transfer, measured rather than assumed.
+     */
+    @Test
+    void aTopLevelExtractorRefusesAConvertibleLiteralToo() {
+        for (String extraction : java.util.List.of(
+                "DayFromDate(\"01.02.2024\") > 1", "MonthFromDate(\"01.02.2024\") > 1",
+                "YearFromDate(\"01.02.2024\") > 2020", "QuarterFromDate(\"01.02.2024\") > 1")) {
+            KernelLaws.rejectsOrder("/Order", "../OrderDate",
+                    "FieldFilled(OrderDate) And " + extraction, NO_CONST);
+        }
+    }
+
+    /** That carrier's own liveness control: the same units over a FIELD are admitted. */
+    @Test
+    void theSameTopLevelExtractorsOverAFieldAreAdmitted() {
+        for (String extraction : java.util.List.of(
+                "DayFromDate(OrderDate) > 1", "MonthFromDate(OrderDate) > 1",
+                "YearFromDate(OrderDate) > 2020", "QuarterFromDate(OrderDate) > 1")) {
+            KernelLaws.acceptsOrder("/Order", "../OrderDate", "FieldFilled(OrderDate) And " + extraction);
+        }
+    }
+
     private static void rejects(String comparand, String code) {
         KernelLaws.rejectsOrder("/Order", "../CustomerName",
                 "FieldFilled(CustomerName) And [DeliveryDate] > " + comparand, code);

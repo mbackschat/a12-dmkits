@@ -62,6 +62,21 @@ class TemporalFormatHandleTest {
                 "a TIME field declared with the ISO datetime format is a date-time operand");
     }
 
+    /**
+     * A DATE_FRAGMENT declares its format under its own key, and this PUBLIC read surface answers it like any
+     * other temporal declaration — it read empty until the index learned that key. Pinned because a fragment
+     * reaching a format-aware caller for the first time is a behaviour change on a published method, and its
+     * two existing call sites are both non-fragment.
+     */
+    @Test
+    void aDateFragmentsDeclaredFormatIsOnThePublicReadSurface() {
+        BoundModel fragments = BoundModel.ofJson(
+                io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft.named("fragment-read").locale("en_US")
+                        .rootGroup("P", p -> p.dateFragmentField("Year", f -> f.fragmentFormat("yyyy")))
+                        .build().toJson());
+        assertEquals("yyyy", fragments.fieldAt("/P/Year").orElseThrow().format().orElseThrow());
+    }
+
     @Test
     void theDeclaredFormatIsReadableAndDecidesTheRefusals() {
         assertEquals("yyyy-MM-dd", m.fieldAt("/P/TimeAsDate").orElseThrow().format().orElseThrow(),

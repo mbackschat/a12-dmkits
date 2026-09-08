@@ -345,6 +345,39 @@ class ComputationDeclaringGroupLawsTest {
         assertEquals(expected, actual, "the containment demand is the ITERATION's, not the index declaration's");
     }
 
+    /**
+     * THE OTHER HALF of that control, and the table above never had it. The index control re-measures only
+     * the two CONTAINMENT rows; both rows reporting {@code MVK_ERROR_FIELD_NO_INDEX} were taken on
+     * {@code Shipments} alone, so "the group declares an index" is constant across every row that carries
+     * that code — and the code's own name, and the ledger's law for it ("the error-field path needs an index
+     * field in an ancestor group"), are exactly what that constant would explain.
+     *
+     * <p>Re-measured on {@code Returns}, which differs in that one declaration: <b>they do not survive.</b>
+     * All four report {@code MVK_NO_WILDCARD} instead — without an index there is no way to name a row at
+     * all, so an earlier gate fires and the error-site analysis is never reached. The ledger's law for
+     * {@code MVK_ERROR_FIELD_NO_INDEX} therefore holds in a sharper form than it states: the code is what an
+     * INDEX-KEYED ancestor reports when the site cannot reach a row, and a non-keyed one never reports it.
+     * A client-side pre-check for it must condition on the declaration, not merely on placement.
+     */
+    @Test
+    void theNoIndexRowsDoNotSurviveDroppingTheIndexDeclaration() {
+        String perRow = "FieldNotFilled(/Depot/Returns/Units)";
+        Calculation rowValue = M.num("/Depot/Returns/Units").value();
+        Map<String, String> actual = new LinkedHashMap<>();
+        actual.put("rule @ an ancestor of the non-indexed group", ruleVerdict("/Depot", perRow));
+        actual.put("computation @ an ancestor of the non-indexed group", computationVerdict("/Depot", rowValue));
+        actual.put("rule @ the target's own parent", ruleVerdict("/Depot/Stock", perRow));
+        actual.put("computation @ the target's own parent", computationVerdict("/Depot/Stock", rowValue));
+
+        Map<String, String> expected = new LinkedHashMap<>();
+        String noWildcard = "MVK_NO_WILDCARD";
+        expected.put("rule @ an ancestor of the non-indexed group", noWildcard);
+        expected.put("computation @ an ancestor of the non-indexed group", noWildcard);
+        expected.put("rule @ the target's own parent", noWildcard);
+        expected.put("computation @ the target's own parent", noWildcard);
+        assertEquals(expected, actual, "without an index declaration an earlier gate fires and NO_INDEX is unreachable");
+    }
+
     /** The stored consequence of the accepted placements: the reference written into the model. */
     @Test
     void theStoredReferenceWalksOutOfTheDeclaringGroupAndBackDown() {

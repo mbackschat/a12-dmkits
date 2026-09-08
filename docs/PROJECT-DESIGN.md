@@ -194,9 +194,10 @@ One expression language, two kinds — **`Condition`** (boolean) and **`Calculat
 1. **Rule location** — relative paths, short names, and the error-field relationship resolve relative to the rule's group; the same logical condition renders to different text depending on where the rule sits.
 2. **Path resolution & form** — validity and unambiguity of absolute/relative/short paths depend on the group tree.
 3. **Operand types** — `[Quantity] <= 0` needs a NumberType; `-> Category` an existing enum category. Type-safe combinators require field types from the model.
-4. **Repetition / iteration** — `*`, `Having`, `$`, parallel iteration, `For`, `RepetitionNotUnique` depend on which groups repeat and their index fields. A rule iterates iff its **error field is repeatably referenced** — decided by the error field's position in the model, unknowable model-agnostically.
-5. **Enum domains** — allowed values and categories come from the model.
-6. **Cross-checks** — error-field-referenced, keyword collisions, rule-in-group.
+4. **Operand DECLARATIONS** — distinct from their types: a temporal field's declared *format* and *date precision* decide what the kernel admits at every gate, never its kind ([KF211](KERNEL-FINDINGS.md#kf211), [KF1001](KERNEL-FINDINGS.md#kf1001), [KF1002](KERNEL-FINDINGS.md#kf1002)). `MonthFromDate(X)` is a well-formed node that is admissible or not depending on which model `X` comes from, so this is the item that decides WHERE a check can live — see API-FINDINGS 137.
+5. **Repetition / iteration** — `*`, `Having`, `$`, parallel iteration, `For`, `RepetitionNotUnique` depend on which groups repeat and their index fields. A rule iterates iff its **error field is repeatably referenced** — decided by the error field's position in the model, unknowable model-agnostically.
+6. **Enum domains** — allowed values and categories come from the model.
+7. **Cross-checks** — error-field-referenced, keyword collisions, rule-in-group.
 
 **The model index is cheap and fully public-tier** (verified against `kernel-md-model-api` 30.8.1): group tree (paths, repeatability via `IGroup.getRepeatability()`, index fields), field kinds via `instanceof` on `IFieldType` subtypes (the interface itself is a bare marker — the §5b "no readable type tag" fact), `IField.getEffectiveType()` for TypeDef resolution, number scale via `INumberType.getMaxFractionalDigits()`, enum values/categories, date formats/precision, plus model config (`isFieldRefByShortNameAllowed`, `getConditionLanguage`, base year). The index is defined over **DM-JSON content**, so Java and a future TS implementation build the same index from the same data.
 
