@@ -901,13 +901,8 @@ new DslRenderer(ConditionLanguage.DE).render(condition);   // same AST, German k
 ValidationResult vr = new RuleValidator().check(modelJson, draftRule);   // F4: real kernel, no compile
 vr.diagnostics().forEach(d -> System.out.println(d.code() + " " + d.fix()));  // F4a: code + catalog-joined fix
 
-// …and the candidate's ERROR TEXT, through the kernel's SECOND checker. Without messages the validator
-// injects a per-locale placeholder (the rule's own name, always valid), so that checker never fires.
-DraftRule withText = DraftRule.builder()
-        .groupPath("/Order").name("CheckRule").errorEntityRelPath("../DeliveryDate")
-        .errorCondition(condition).errorCode("DELIVERY_BEFORE_ORDER").severity("ERROR")
-        .messages(List.of(Dsl.en("Delivery $DeliveryDate.value$ precedes the order date.")))
-        .build();
+// Authored messages travel with the typed rule, so candidate validation also reaches the error-text checker.
+DraftRule withText = rule.draft();
 new RuleValidator().undeclaredMessageLocales(modelJson, withText);   // refuse these: the kernel never checks them
 
 // F4a unified surface: KERNEL (span-pointed) + LINT warnings + gotcha INFO in one result
@@ -917,6 +912,10 @@ System.out.println(all.toJson());                          // agent-parseable, o
 BoundModel m2 = m.add(rule);                               // snapshot (F0): write → NEW binding, re-validated
 m2.writeTo(path);                                          // DM-JSON write path — authored JSON, includes preserved (D9, F6)
 ```
+
+Both `rule.draft()` and `computation.draft()` preserve their authored localized messages, including when rendering conditions in German. `RuleValidator` checks supplied text for the model's declared locales; an explicitly message-free draft retains the per-locale placeholders, and a partial draft replaces only the supplied locales. `CandidateMessageFidelityTest` locks message-only acceptance/rejection through the real kernel; `CandidateMessageCheckTest` covers rule/computation specs and pattern scaffolds. The older `DraftComputation` constructors remain message-free compatibility forms. See [AF144](API-FINDINGS.md#af144).
+
+Ancestor group operands end on the parent-navigation segment: from `/Shipment/Parcels/Labels`, its parent renders as `..` and its root as `../..`. Neither carries a trailing slash. `AncestorGroupRenderingTest` checks both rendered forms against the kernel ([AF145](API-FINDINGS.md#af145)).
 
 Relative paths never escape their root group: a rule under `/Dashboard` renders a typed reference to `/Dashboard/Status` as `Status`, while a typed reference to `/Application/Approved` remains `/Application/Approved`. The latter cannot be rendered as `../Application/Approved`; the DSL's parent navigation does not cross root-group boundaries.
 

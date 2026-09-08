@@ -558,10 +558,10 @@ internal class AutoChecks(
     /**
      * The STRUCTURAL over-repetition messages (KERNEL-FINDINGS "over-repetition errors"; the kernel's
      * `FormalChecker`): each entity instance whose group coordinate exceeds its effective maximum is
-     * flagged — a **field** inside an over-limit repeatable ancestor (the over-limit level is *intermediate*) →
-     * `zuGrosseKontextnummer` (full field pointer); a **repeatable group row** whose OWN index is over the cap →
-     * `zuGrosseZeile`; a non-repeatable group coordinate above 1 uses `zuGrosseLfdNummer` for that group and its
-     * descendants. Group pointers omit their own trailing index. One VALUE message per over-limit instance. An
+     * flagged according to the first exceeded coordinate's position: root → `zuGrosseLfdNummer`, deeper own
+     * group coordinate → `zuGrosseZeile`, deeper ancestor → `zuGrosseKontextnummer` (KF58, SPEC-2026-09-08-01).
+     * Both repeatable and fixed-cap groups follow this rule. Group display pointers omit their own trailing
+     * index; message keys retain it. One VALUE message per over-limit instance. An
      * over-limit instance is "unknown": [computeFormalResultAt] suppresses rules over it and [formalErrors] skips
      * its format check (it carries the over-repetition code instead).
      */
@@ -597,25 +597,24 @@ internal class AutoChecks(
     }
 
     private enum class OverRepetitionType(val code: String) {
-        REPEATABLE_ROW(OVER_REPETITION_ROW),
-        REPEATABLE_CONTEXT(OVER_REPETITION_CONTEXT),
-        NON_REPEATABLE(OVER_REPETITION_FIXED),
+        ROW(OVER_REPETITION_ROW),
+        CONTEXT(OVER_REPETITION_CONTEXT),
+        ROOT_SERIAL(OVER_REPETITION_FIXED),
     }
 
     private fun overRepetitionType(
         exceeded: ModelPathIndex.ExceededBound,
         ownLevel: Int? = null,
-    ): OverRepetitionType = when (exceeded.kind) {
-        ModelPathIndex.BoundKind.NON_REPEATABLE -> OverRepetitionType.NON_REPEATABLE
-        ModelPathIndex.BoundKind.REPEATABLE ->
-            if (exceeded.level == ownLevel) OverRepetitionType.REPEATABLE_ROW
-            else OverRepetitionType.REPEATABLE_CONTEXT
+    ): OverRepetitionType = when (exceeded.level) {
+        0 -> OverRepetitionType.ROOT_SERIAL
+        ownLevel -> OverRepetitionType.ROW
+        else -> OverRepetitionType.CONTEXT
     }
 
     private fun OverRepetitionType.messageText(locale: String): String = when (this) {
-        OverRepetitionType.NON_REPEATABLE -> fixedRepetitionText(locale)
-        OverRepetitionType.REPEATABLE_ROW -> overRepetitionText(locale, row = true)
-        OverRepetitionType.REPEATABLE_CONTEXT -> overRepetitionText(locale, row = false)
+        OverRepetitionType.ROOT_SERIAL -> fixedRepetitionText(locale)
+        OverRepetitionType.ROW -> overRepetitionText(locale, row = true)
+        OverRepetitionType.CONTEXT -> overRepetitionText(locale, row = false)
     }
 
     /** The deepest repeatable ancestor group of [path] (the kernel's `lowestRepeatableGroupPath`), or null. */

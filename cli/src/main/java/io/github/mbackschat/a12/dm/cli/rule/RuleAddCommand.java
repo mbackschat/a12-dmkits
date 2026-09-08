@@ -145,7 +145,8 @@ final class RuleAddCommand extends BaseCommand {
         ModelResolver resolver = workspace.resolverFor(model);
 
         ValidationResult check = new RuleValidator().check(modelJson,
-                new DraftRule(group, name, errorEntityRelPath, condition, code, severity), resolver);
+                DraftRule.builder().groupPath(group).name(name).errorEntityRelPath(errorEntityRelPath)
+                        .errorCondition(condition).errorCode(code).severity(severity).messages(messages).build(), resolver);
         if (!check.ok()) {
             // G30: operand-aware corrective on the rejected text path (see TextConditionCorrective / RuleCheckCommand).
             List<Diagnostic> diagnostics =

@@ -22,7 +22,7 @@ import kotlin.test.assertTrue
  *  - exposes over-repetition and does NOT invoke a registered custom validator on the over-limit cell;
  *  - makes an absent descendant read UNAVAILABLE (a per-row rule is suppressed, not fired on empty→0);
  *  - is OUTSIDE every star aggregate / count domain (`Sum`, `NumberOfFilledGroups(G*)` range over in-cap rows).
- * The physical over-limit row stays instantiated (it still emits `zuGrosseZeile`).
+ * The physical over-limit row stays instantiated (these deeper-than-root rows emit `zuGrosseZeile`).
  */
 class OverRepetitionFormalGateMultiplatformTest {
 

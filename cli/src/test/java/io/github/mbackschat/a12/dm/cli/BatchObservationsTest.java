@@ -54,7 +54,7 @@ class BatchObservationsTest {
         JsonNode artifact = MAPPER.readTree(Files.readString(observations));
         assertEquals(List.of("schemaVersion", "dmtool", "kernelBuilt", "kernelRuntime", "source", "model",
                 "observations"), fieldNames(artifact));
-        assertEquals(1, artifact.path("schemaVersion").asInt());
+        assertEquals(2, artifact.path("schemaVersion").asInt());
         VersionInfo version = VersionInfo.current();
         assertEquals(version.rulekit(), artifact.path("dmtool").asText());
         assertEquals(version.kernelBuiltAgainst(), artifact.path("kernelBuilt").asText());
@@ -67,13 +67,15 @@ class BatchObservationsTest {
         assertEquals(3, recorded.size());
         assertEquals(List.of("id", "inputHash", "ok", "valid", "codes"), fieldNames(recorded.get(0)));
         assertEquals("accepted", recorded.get(0).path("id").asText());
-        assertEquals(sha256(accepted.getBytes(StandardCharsets.UTF_8)), recorded.get(0).path("inputHash").asText());
+        assertEquals("9bc18cad1456cac10393e1dd5194a9deb634da46c44ca038bed9bc238a84d73a",
+                recorded.get(0).path("inputHash").asText());
         assertTrue(recorded.get(0).path("ok").asBoolean());
         assertTrue(recorded.get(0).path("valid").asBoolean());
         assertEquals(List.of(), MAPPER.convertValue(recorded.get(0).path("codes"), List.class));
 
         assertEquals("rejected", recorded.get(1).path("id").asText());
-        assertEquals(sha256(rejected.getBytes(StandardCharsets.UTF_8)), recorded.get(1).path("inputHash").asText());
+        assertEquals("35a25c06e1764256d2693a82b5f707a9369e17d911a44972383d1e49dfe96469",
+                recorded.get(1).path("inputHash").asText());
         assertTrue(recorded.get(1).path("ok").asBoolean(),
                 "a completed kernel gate is ok even when its verdict is invalid");
         assertFalse(recorded.get(1).path("valid").asBoolean());
@@ -124,7 +126,8 @@ class BatchObservationsTest {
         assertTrue(envelope.path("data").path("allExitedZero").asBoolean());
         JsonNode child = envelope.path("data").path("results").get(0).path("result");
         JsonNode recorded = MAPPER.readTree(Files.readString(observations)).path("observations").get(0);
-        assertEquals(sha256(authored), recorded.path("inputHash").asText());
+        assertEquals("3d21f6297019e9c5e6b500ded9951a969ddf02ce0e2e9e4dcd203eadb884f108",
+                recorded.path("inputHash").asText());
         assertEquals(child.path("ok").asBoolean(), recorded.path("ok").asBoolean());
         assertEquals(child.has("valid"), recorded.has("valid"));
         if (child.has("valid")) {

@@ -114,18 +114,16 @@ public record Computation(
     /** The F4 validator draft rendered in the destination model's condition {@code language}. */
     public DraftComputation draft(ConditionLanguage language) {
         DslRenderer renderer = new DslRenderer(language, groupPath);
-        return new DraftComputation(
-                groupPath,
-                name,
-                computedFieldRelPath(),
-                commonPrecondition.map(c -> renderer.render(c, comments)).orElse(null),
-                alternatives.stream()
+        return DraftComputation.builder().groupPath(groupPath).name(name)
+                .computedFieldRelPath(computedFieldRelPath())
+                .commonPrecondition(commonPrecondition.map(c -> renderer.render(c, comments)).orElse(null))
+                .alternatives(alternatives.stream()
                         .map(a -> new DraftComputation.Alternative(
                                 a.precondition().map(p -> renderer.render(p, comments)).orElse(null),
                                 renderer.render(a.operation(), comments),
                                 a.toleranceRangeOp().orElse(null)))
-                        .toList(),
-                errorCodesToSuppress);
+                        .toList())
+                .errorCodesToSuppress(errorCodesToSuppress).messages(messages).build();
     }
 
     public static final class Builder {

@@ -85,11 +85,10 @@ fun customTypeInvalidText(locale: String): String =
     else "Value is not a valid instance of the custom field type."
 
 /**
- * The kernel's STRUCTURAL over-repetition codes (`FormalChecker.checkIndicesLessOrEqualThanMax`): a repeatable
- * group instance whose **own** row index exceeds its declared `repeatability` is **`zuGrosseZeile`** (on the
- * group entity); an entity (e.g. a field) sitting **inside** an over-limit repeatable ancestor — where the
- * over-limit index is an *intermediate* level, not the entity's own — is **`zuGrosseKontextnummer`**. A
- * non-repeatable group has effective maximum 1 and uses **`zuGrosseLfdNummer`** for itself and its descendants.
+ * The kernel's STRUCTURAL over-repetition codes are selected by the first exceeded coordinate's position:
+ * position zero is **`zuGrosseLfdNummer`**, a deeper group's own coordinate is **`zuGrosseZeile`**, and a
+ * deeper ancestor coordinate is **`zuGrosseKontextnummer`**. Repeatability determines the cap, not the code
+ * (KF58, corrected by RootOverLimitPositionDiffTest, 2026-09-08).
  * All are VALUE errors on the `formalePruefung` path, and an over-limit instance is "unknown" (its ordinary
  * checks are suppressed). KERNEL-FINDINGS §9. (The `FEHLER_LAUFENDE_NR_ZU_GROSS` sibling rides the
  * USB/multi-form form counter — out of the single-document interpreter's scope.)
@@ -106,10 +105,10 @@ fun overRepetitionText(locale: String, row: Boolean): String = when {
     else -> "A containing group's repetition index is too large."
 }
 
-/** Our OWN end-user text for a non-repeatable group coordinate above its effective maximum 1. */
+/** Our own root-coordinate error text; the function name is retained for source compatibility. */
 fun fixedRepetitionText(locale: String): String =
-    if (locale.startsWith("de")) "Der Wiederholungsindex einer nicht wiederholbaren Gruppe ist größer als 1."
-    else "A non-repeatable group's repetition index is greater than 1."
+    if (locale.startsWith("de")) "Der Wiederholungsindex der Wurzelgruppe überschreitet ihre Obergrenze."
+    else "The root group's repetition index exceeds its maximum."
 
 /**
  * The formal-error checks the interpreter performs, each with the kernel's verbatim [id].

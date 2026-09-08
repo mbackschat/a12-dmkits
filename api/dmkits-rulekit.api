@@ -2674,13 +2674,16 @@ public enum io.github.mbackschat.a12.dm.rulekit.validate.DiagnosticSource
 public record io.github.mbackschat.a12.dm.rulekit.validate.DraftComputation
   public DraftComputation(java.lang.String, java.lang.String, java.lang.String, java.lang.String, java.util.List<io.github.mbackschat.a12.dm.rulekit.validate.DraftComputation.Alternative>)
   public DraftComputation(java.lang.String, java.lang.String, java.lang.String, java.lang.String, java.util.List<io.github.mbackschat.a12.dm.rulekit.validate.DraftComputation.Alternative>, java.util.List<java.lang.String>)
+  public DraftComputation(java.lang.String, java.lang.String, java.lang.String, java.lang.String, java.util.List<io.github.mbackschat.a12.dm.rulekit.validate.DraftComputation.Alternative>, java.util.List<java.lang.String>, java.util.List<io.github.mbackschat.a12.dm.rulekit.dsl.LocalizedText>)
   public java.util.List<io.github.mbackschat.a12.dm.rulekit.validate.DraftComputation.Alternative> alternatives()
+  public static io.github.mbackschat.a12.dm.rulekit.validate.DraftComputation.Builder builder()
   public java.lang.String commonPrecondition()
   public java.lang.String computedFieldRelPath()
   public final boolean equals(java.lang.Object)
   public java.util.List<java.lang.String> errorCodesToSuppress()
   public java.lang.String groupPath()
   public final int hashCode()
+  public java.util.List<io.github.mbackschat.a12.dm.rulekit.dsl.LocalizedText> messages()
   public java.lang.String name()
   public final java.lang.String toString()
 
@@ -2699,6 +2702,16 @@ public static final class io.github.mbackschat.a12.dm.rulekit.validate.DraftComp
   public io.github.mbackschat.a12.dm.rulekit.validate.DraftComputation.Alternative build()
   public io.github.mbackschat.a12.dm.rulekit.validate.DraftComputation.Alternative.Builder precondition(java.lang.String)
   public io.github.mbackschat.a12.dm.rulekit.validate.DraftComputation.Alternative.Builder toleranceRangeOp(io.github.mbackschat.a12.dm.rulekit.dsl.ToleranceBand)
+
+public static final class io.github.mbackschat.a12.dm.rulekit.validate.DraftComputation.Builder
+  public io.github.mbackschat.a12.dm.rulekit.validate.DraftComputation.Builder alternatives(java.util.List<io.github.mbackschat.a12.dm.rulekit.validate.DraftComputation.Alternative>)
+  public io.github.mbackschat.a12.dm.rulekit.validate.DraftComputation build()
+  public io.github.mbackschat.a12.dm.rulekit.validate.DraftComputation.Builder commonPrecondition(java.lang.String)
+  public io.github.mbackschat.a12.dm.rulekit.validate.DraftComputation.Builder computedFieldRelPath(java.lang.String)
+  public io.github.mbackschat.a12.dm.rulekit.validate.DraftComputation.Builder errorCodesToSuppress(java.util.List<java.lang.String>)
+  public io.github.mbackschat.a12.dm.rulekit.validate.DraftComputation.Builder groupPath(java.lang.String)
+  public io.github.mbackschat.a12.dm.rulekit.validate.DraftComputation.Builder messages(java.util.List<io.github.mbackschat.a12.dm.rulekit.dsl.LocalizedText>)
+  public io.github.mbackschat.a12.dm.rulekit.validate.DraftComputation.Builder name(java.lang.String)
 
 public record io.github.mbackschat.a12.dm.rulekit.validate.DraftRule
   public DraftRule(java.lang.String, java.lang.String, java.lang.String, java.lang.String, java.lang.String, java.lang.String)

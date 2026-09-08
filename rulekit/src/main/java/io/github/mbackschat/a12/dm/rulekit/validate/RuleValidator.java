@@ -200,8 +200,8 @@ public final class RuleValidator {
      * {@link #check} runs before validating, exposed for callers that need the rule-bearing model
      * <em>without</em> persisting it: e.g. evaluating a CANDIDATE rule against a document instance
      * ({@code eval-doc --condition}), where the draft must be present in the model the kernel runs but is
-     * never written back. A placeholder error message per declared locale is added (so the kernel's
-     * message-required check doesn't mask the condition).
+     * never written back. Supplied messages are checked; omitted locales receive a placeholder so the
+     * message-required check does not mask the authored candidate.
      */
     public String inject(String modelJson, DraftRule rule) {
         return injectInto(modelJson, rule.groupPath(), (root, elements) ->
@@ -297,20 +297,7 @@ public final class RuleValidator {
         body.put("errorCondition", rule.errorCondition());
         body.put("severity", rule.severity());
 
-        // A rule must carry error text (MVK_ERROR_MESSAGE_MISSING) — inject a placeholder per model locale so
-        // that requirement doesn't mask the condition diagnostics we actually care about. A supplied message
-        // REPLACES its locale's placeholder and nothing else, so a candidate carrying one locale's text is
-        // checked for that text rather than reported missing the other: the caller only claimed to be authoring
-        // what they supplied. The placeholder is also WHY a candidate check could not reach the kernel's
-        // error-text checker before messages could be supplied — the rule's own name is always a valid text.
-        Map<String, String> supplied = new LinkedHashMap<>();
-        rule.messages().forEach(m -> supplied.put(m.locale(), m.text()));
-        ArrayNode messages = body.putArray("errorMessage");
-        for (String code : localeCodes) {
-            ObjectNode message = messages.addObject();
-            message.put("locale", code);
-            message.put("text", supplied.getOrDefault(code, rule.name()));
-        }
+        addMessages(body, localeCodes, rule.messages(), rule.name());
         return node;
     }
 
@@ -370,13 +357,20 @@ public final class RuleValidator {
             }
         }
 
-        // Computations also require error text (MVK_ERROR_MESSAGE_MISSING) — placeholder per locale.
+        addMessages(body, localeCodes, computation.messages(), computation.name());
+        return node;
+    }
+
+    private static void addMessages(ObjectNode body, List<String> localeCodes,
+            List<LocalizedText> authored, String fallback) {
+        // MVK_ERROR_MESSAGE_MISSING must not mask a partial candidate, but supplied text must reach the checker.
+        Map<String, String> supplied = new LinkedHashMap<>();
+        authored.forEach(m -> supplied.put(m.locale(), m.text()));
         ArrayNode messages = body.putArray("errorMessage");
         for (String code : localeCodes) {
             ObjectNode message = messages.addObject();
             message.put("locale", code);
-            message.put("text", computation.name());
+            message.put("text", supplied.getOrDefault(code, fallback));
         }
-        return node;
     }
 }

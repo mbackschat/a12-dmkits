@@ -212,7 +212,8 @@ final class PatternsCommand extends BaseCommand {
         String errorCode = code != null ? code : inst.suggestedCode();
         List<LocalizedText> msgs = messages(bound, pattern.summary());
 
-        DraftRule draft = new DraftRule(group, ruleName, rel, inst.condition(), errorCode, "ERROR");
+        DraftRule draft = DraftRule.builder().groupPath(group).name(ruleName).errorEntityRelPath(rel)
+                .errorCondition(inst.condition()).errorCode(errorCode).severity("ERROR").messages(msgs).build();
         ValidationResult check = new RuleValidator().check(modelJson, draft, resolver);
         // G30: operand-aware corrective on the rejected text path (see TextConditionCorrective).
         List<Diagnostic> ruleDiagnostics =
@@ -243,10 +244,12 @@ final class PatternsCommand extends BaseCommand {
         Computation computation = inst.computation();
         DraftComputation built = computation.draft();
         String compName = name != null ? name : built.name();
-        // re-stamp the caller's chosen name over the idiom's placeholder (the structural draft is unchanged)
-        DraftComputation draft = new DraftComputation(built.groupPath(), compName,
-                built.computedFieldRelPath(), built.commonPrecondition(), built.alternatives());
         List<LocalizedText> msgs = messages(bound, pattern.summary());
+        // re-stamp the caller's chosen name over the idiom's placeholder (the structural draft is unchanged)
+        DraftComputation draft = DraftComputation.builder().groupPath(built.groupPath()).name(compName)
+                .computedFieldRelPath(built.computedFieldRelPath()).commonPrecondition(built.commonPrecondition())
+                .alternatives(built.alternatives()).errorCodesToSuppress(built.errorCodesToSuppress())
+                .messages(msgs).build();
 
         ValidationResult check = new RuleValidator().check(modelJson, draft, resolver);
 

@@ -1,6 +1,8 @@
 package io.github.mbackschat.a12.dm.cli;
 
 import java.io.IOException;
+import java.io.ByteArrayOutputStream;
+import java.io.DataOutputStream;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -10,7 +12,9 @@ import java.util.ArrayList;
 import java.util.HexFormat;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
+import java.util.TreeMap;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -20,7 +24,7 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 /** Builds the deliberately narrow, deterministic observation artifact for static kernel candidate verdicts. */
 final class BatchObservationCapture {
 
-    private static final int SCHEMA_VERSION = 1;
+    private static final int SCHEMA_VERSION = 2;
     private static final ObjectMapper MAPPER = new ObjectMapper();
 
     record Rejection(int index, String message, String fix) { }
@@ -131,17 +135,17 @@ final class BatchObservationCapture {
                         throw invalid(index, "rule check observation " + index + " has no --condition",
                                 "pass the exact authored condition with --condition");
                     }
-                    authoredInput = condition.getBytes(StandardCharsets.UTF_8);
+                    authoredInput = candidateInput(parsed, null);
                 }
                 case "computation add" -> {
                     requireDryRun(index, parsed);
                     String spec = parsed.value("<computation-spec.json>");
-                    authoredInput = specBytes(index, spec, protectedInputs);
+                    authoredInput = candidateInput(parsed, specBytes(index, spec, protectedInputs));
                 }
                 case "computation modify" -> {
                     requireDryRun(index, parsed);
                     String spec = parsed.value("--spec");
-                    authoredInput = specBytes(index, spec, protectedInputs);
+                    authoredInput = candidateInput(parsed, specBytes(index, spec, protectedInputs));
                 }
                 default -> throw invalid(index,
                         "observation item " + index + " is not a supported static kernel candidate: " + parsed.verb(),
@@ -168,6 +172,44 @@ final class BatchObservationCapture {
         }
         Path singleModel = !childWithoutModel && models.size() == 1 ? models.iterator().next() : null;
         return new Plan(prepared, singleModel, normalizedDestination);
+    }
+
+    private static byte[] candidateInput(CommandContracts.ParsedParameters parsed, byte[] spec) throws IOException {
+        var bytes = new ByteArrayOutputStream();
+        var frame = new DataOutputStream(bytes);
+        writeText(frame, "dmtool-observation-input-v2");
+        writeText(frame, parsed.verb());
+        switch (parsed.verb()) {
+            case "rule check" -> {
+                for (String option : List.of("--condition", "--field", "--group", "--code", "--severity", "--name")) {
+                    writeText(frame, parsed.value(option));
+                }
+                var messages = new TreeMap<String, String>();
+                if (parsed.values().get("--message") instanceof Map<?, ?> values) {
+                    values.forEach((locale, text) -> messages.put(locale.toString(), text.toString()));
+                }
+                for (var message : messages.entrySet()) {
+                    writeText(frame, message.getKey());
+                    writeText(frame, message.getValue());
+                }
+            }
+            case "computation add" -> writeBytes(frame, spec);
+            case "computation modify" -> {
+                writeText(frame, parsed.value("<computationPathInModel>"));
+                writeBytes(frame, spec);
+            }
+            default -> throw new IllegalArgumentException("unsupported observation verb: " + parsed.verb());
+        }
+        return bytes.toByteArray();
+    }
+
+    private static void writeText(DataOutputStream frame, String text) throws IOException {
+        writeBytes(frame, text == null ? null : text.getBytes(StandardCharsets.UTF_8));
+    }
+
+    private static void writeBytes(DataOutputStream frame, byte[] bytes) throws IOException {
+        frame.writeInt(bytes == null ? -1 : bytes.length);
+        if (bytes != null) frame.write(bytes);
     }
 
     private static byte[] specBytes(int index, String spec, Set<Path> protectedInputs)

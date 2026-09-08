@@ -126,7 +126,10 @@ public final class DslRenderer {
                 rel.append('/');
             }
         }
-        return rel.isEmpty() ? absolute : rel.toString();
+        if (rel.isEmpty()) return absolute;
+        // An ancestor ends at a parent-navigation segment; the kernel rejects its trailing separator (DG54).
+        if (rel.charAt(rel.length() - 1) == '/') rel.setLength(rel.length() - 1);
+        return rel.toString();
     }
 
     /**
