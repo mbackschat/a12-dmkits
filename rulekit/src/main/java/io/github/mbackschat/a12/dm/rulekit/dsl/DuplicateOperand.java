@@ -16,6 +16,15 @@ import io.github.mbackschat.a12.dm.core.HasEntityPath;
  * Modelling it once also removes the reason two hand-written mirrors could drift apart unnoticed: starredness
  * had no accessor on any operand union, so each gate re-derived it by {@code instanceof} inside its own switch.
  *
+ * <p><b>Sealed, and the window for that closes at the first release.</b> Nothing outside this package can use
+ * an implementation of its own: {@code DuplicateGate} is not published, and no published method accepts a
+ * {@code DuplicateOperand} — every call site is a carrier constructor in this package, and every carrier's
+ * parameter is one of the sealed unions. So the openness had no reachable consumer, while the cost was real:
+ * {@code exactIdentity()} and {@code overlapModifier()} encode a MEASURED rule, and the gate refuses models
+ * based on what an operand reports about itself, so an outside implementor could supply the very basis the
+ * standing rule requires be measured against the kernel. Sealing it before it ships costs nothing; sealing it
+ * afterwards would be source- and binary-breaking.
+ *
  * <p><b>The identity is exactly four components</b> — resolved path, category projection, semantic index, and
  * the {@code $} outer-iteration flag. The kernel's {@code EntityRef.equals} compares seven; the other three
  * cannot discriminate in an A12 model and were each measured out rather than argued out, so four is exact
@@ -23,7 +32,8 @@ import io.github.mbackschat.a12.dm.core.HasEntityPath;
  * RESOLVED one, since the kernel normalizes relative to absolute before comparing, and the diagnostic message
  * renders fewer components than the predicate compares, so message text is never the key.
  */
-public interface DuplicateOperand extends HasEntityPath {
+public sealed interface DuplicateOperand extends HasEntityPath
+        permits AggregateOperand, ValueListOperand, GroupListOperand, FieldValue, FirstFilledOperand {
 
     /** The rendered path — {@code *} on flattened segments, {@code field -> Cat} for a category projection,
      *  {@code base For "key"} for an index selection. Diagnostics only; never an identity. */

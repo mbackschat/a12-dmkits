@@ -207,17 +207,28 @@ tasks.register('jsonConstructionGuardTest', Test) {
 // source trees it reads at runtime must be declared inputs, or a wiring-only edit leaves a stale-green `test`
 // — measured, by planting an unwiring mutant and watching the broad suite report UP-TO-DATE.
 tasks.register('gateWiringGuardTest', Test) {
-    description = 'Every refusing BoundModel gate is reached by the condition-text consumer.'
+    description = 'Every refusing BoundModel gate is reached by the condition-text consumer, and every ' +
+            'duplicate-gate decision site is named and controlled.'
     group = 'verification'
     useJUnitPlatform()
     testClassesDirs = sourceSets.test.output.classesDirs
     classpath = sourceSets.test.runtimeClasspath
     filter {
         includeTestsMatching 'io.github.mbackschat.a12.dm.rulekit.dsl.PromotedGateIsReachedGuardTest'
+        includeTestsMatching 'io.github.mbackschat.a12.dm.rulekit.dsl.DuplicateGateSiteDenominatorGuardTest'
     }
     a12Guards.guardInputs(it, [
             'rulekit main sources' : fileTree('rulekit/src/main') { include '**/*.java' },
             'bridge main sources'  : fileTree('interpreter-bridge/src/main') { include '**/*.java', '**/*.kt' },
+            // The site sweep and the launcher it runs through are read at runtime; undeclared, editing either
+            // would leave this lane UP-TO-DATE with the denominator unchecked.
+            'gate site sweep'      : file('scripts/typescript/gate-mutant-sweep.ts'),
+            'gate site sweep tests': file('scripts/typescript/gate-mutant-sweep.test.ts'),
+            'TypeScript runtime gate': file('scripts/run-typescript.sh'),
+            // The sweep DERIVES each site's control class from the test tree, so deleting a control is exactly
+            // the edit that must re-run this lane — and it touches no main source, which is what would have
+            // left it UP-TO-DATE.
+            'root test sources'    : fileTree('src/test/java') { include '**/*.java' },
     ])
 }
 

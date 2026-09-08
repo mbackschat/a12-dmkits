@@ -4726,6 +4726,29 @@ An independent differential over real models found the advisory firing on six sh
 
 *(Locked: `validate.laws.IterationGuardAdmissionRoutesLawsTest`. The advisory now counts a comparison, treats an unstarred presence as licensing any level, and leaves a max-2 group alone — each with a false-positive control in `lint.IterationGuardLintLevelTest`.)*
 
+## §1 supplement: the duplicate arms are keyed on the OPERAND LIST, not the keyword — and they run ahead of every operand-kind bar (kernel `checkConsistency`, 2026-09-08) <a id="kf1017"></a>
+
+> Fold: pending — extends [KF1015](#kf1015) from carriers to the keywords WITHIN a carrier.
+
+[KF1015](#kf1015) measured the predicate as uniform across structurally different carriers. It measured one keyword per carrier, which leaves the axis a search groups with the member you read: nine field-list quantifiers share one record, so the client side transfers trivially and the KERNEL's uniformity is a separate claim. Measured on all eight unmeasured members, three arms each:
+
+| arm | every one of the nine |
+|---|---|
+| `Op(Quantity, Quantity)` — exact direct duplicate | `MVK_DUPLICATE_PARAM1` |
+| `Op(ShippingAddress, ShippingAddress/City)` — group beside its own field | `MVK_DUPLICATE_PARAM2` |
+| `Op(Items*, Items*/Count)` — the same containment with the star on BOTH sides | `MVK_DUPLICATE_PARAM2` |
+| `Op(Items*/Count, Items*/Count)` — repeated starred operand | admitted |
+
+**24 of 24 cells agree, and the one apparent exception is an operand-kind bar rather than a disagreement.** `DateRangesOverlap` answers `MVK_NO_DATE_RANGE` on a starred NUMBER field, so its exemption has to be measured on a starred date range (`Items*/ItemCoverage`), where it is admitted like the rest. `FieldValuesNotUnique` and `DateRangesOverlap` are the two members that are not filled-quantifier siblings — one compares values, one pairs endpoints — so they are where a keyword-keyed rule would have shown.
+
+**The ordering is the sharper half:** `DateRangesOverlap(ShippingAddress, ShippingAddress/City)` reports `MVK_DUPLICATE_PARAM2`, while that same group alone draws `MVK_NO_GROUPS_ALLOWED`. So the duplicate arms speak BEFORE the operator's own operand-kind check, which is why a client gate must run them first to report the code the kernel would.
+
+**The value-list family is two carriers wearing one id.** A LITERAL value list gates the field list alone; a field-READ value list gates the two lists as ONE union, so a reference repeated across the halves is `MVK_DUPLICATE_PARAM1`. `AtLeastOneDateRangeOverlaps` has no literal spelling at all, so its duplicate is always a cross-list one — and its exemption is only observable inside the value list, because a STARRED SUBJECT is refused `MVK_INVALID_PARAMETER_FOR_DATE_RANGE_COMPARISON` whatever the value side holds. Measured both ways: `(Items*/ItemCoverage In CoverageWindow)` refused, `(CoverageWindow In Items*/ItemCoverage, Items*/ItemCoverage)` admitted, and the fixed twin of that last row refused `MVK_DUPLICATE_PARAM1`.
+
+**Fixture limit, stated because a silent one reads as a law:** `order.dm.json` carries exactly ONE fixed date-range field, so "repeated inside the value list" and "repeated across the two lists" are the same condition there; the row separating them needs a second fixed range and takes its own inline model.
+
+*(Locked: `validate.laws.EntityListQuantifierDuplicateSiblingLawsTest`, `validate.laws.ValueListQuantifierDuplicateSiblingLawsTest`. Each code is additionally a kernel-executed catalog claim probe — `operator-claim-probes.json`, run by `CatalogKernelClaimEvidenceTest`.)*
+
 ## §9 supplement: `MVK_NO_WILDCARD` is a claim about each LEVEL, not about the reference — a ref can carry a star and still be missing one (kernel `checkConsistency`, 2026-09-08) <a id="kf1016"></a>
 
 > Fold: pending — sharpens §9's wildcard tier; folds beside [KF185](#kf185).
@@ -5207,6 +5230,8 @@ Which class the kernel reports for a wrong-kind constant assignment is **not** a
 
 `MVK_DUPLICATE_PARAM1` rejects an *exact* reference repeated in one operand list — and "exact" is load-bearing. A **wildcarded (starred) occurrence is a repetition-wide scan rather than an exact reference**, so two of them are two independent reads and repeat legally:
 
+> **Superseded as the general statement by [KF1015](#kf1015) (2026-09-08).** That entry measures the exemption as a property of the SHARED check rather than of any operator — the kernel raises both duplicate codes from one fan-in reached by 12 call sites over 38 operators — so the rule below holds on every carrier, not only the two measured here. What stays canonical in this entry is its own carrier rows, the shipped-catalog contradiction, and the liveness-control lesson.
+
 | operand list | verdict |
 |---|---|
 | `AtLeastOneFieldValueIncludedInValueList(Code, Code In …)` | `MVK_DUPLICATE_PARAM1` |
@@ -5219,7 +5244,7 @@ Which class the kernel reports for a wrong-kind constant assignment is **not** a
 
 **The liveness control is what makes the admissions mean anything.** Without a distinct-reference row on each carrier, "the starred repeat is admitted" and "this operator never reaches the duplicate gate at all" are the same observation; the direct-duplicate row then shows the gate is armed in the same model.
 
-**Reported by a12-kernel-lean on four carriers** (value list, `NumberOfDifferentValues`, `FieldValuesNotUnique`, `Sum`). Measured here on the two whose *wording* was wrong, since our published text is what carried the defect — the other two already said the right thing. Their same-day corroboration from the other direction is **their report and not re-derived here**: at the DateRange overlap operators a keyed reference repeated under the *same* key refuses and under a *different* key is admitted, which would make the exact identity the (field, key) pair.
+**Reported by a12-kernel-lean on four carriers** (value list, `NumberOfDifferentValues`, `FieldValuesNotUnique`, `Sum`). Measured here on the two whose *wording* was wrong, since our published text is what carried the defect — the other two already said the right thing. Their same-day corroboration from the other direction was **their report and not re-derived here**: at the DateRange overlap operators a keyed reference repeated under the *same* key refuses and under a *different* key is admitted, which would make the exact identity the (field, key) pair. **Re-derived here 2026-09-08 and confirmed — see [KF1015](#kf1015):** on `NumberOfFilledFields`, one field under one key twice is `MVK_DUPLICATE_PARAM1` and under two keys is admitted, and the same holds one level up for an indexed GROUP. So the identity folds the key in, and the containment arm compares it too — an index-selected ancestor contains its descendant under the same key and not under a different one.
 
 *(Locked: `validate.laws.StarredOperandRepeatExemptionLawsTest` — both carriers, each with its direct-duplicate row and its distinct-reference liveness control.)*
 

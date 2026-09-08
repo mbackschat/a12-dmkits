@@ -12,7 +12,7 @@ import io.github.mbackschat.a12.dm.core.ValueKind;
  * and outer-iteration correlation. Keeping those modifiers on one immutable value prevents one modifier
  * from erasing another during read-back or rendering.
  */
-public final class FirstFilledOperand {
+public final class FirstFilledOperand implements DuplicateOperand {
 
     /** The key of an optional owner semantic-index modifier. */
     public sealed interface SemanticIndexKey permits LiteralIndex, FieldIndex { }
@@ -211,8 +211,42 @@ public final class FirstFilledOperand {
         return field instanceof FieldListRef || group != null && !group.flattened().isEmpty();
     }
 
-    String identityPath() {
+    @Override
+    public String fieldPath() {
         return field != null ? field.fieldPath() : group.path();
+    }
+
+    /**
+     * This carrier's operands are richer than the sealed unions' — an owner entity may be a field OR a group,
+     * and its semantic index may be keyed by a literal or by a field read. Both fold into the identity, because
+     * the same entity under two different keys is two operands and the kernel compares the key.
+     */
+    @Override
+    public Optional<String> exactIdentity() {
+        if (hasWildcard()) {
+            return Optional.empty();
+        }
+        return Optional.of((outerReference() ? "$" : "") + fieldPath() + overlapModifier());
+    }
+
+    /**
+     * Category and semantic index, as the containment arm compares them.
+     *
+     * <p>Two arms have no reachable input at any locus this carrier can author today, so a mutant emptying
+     * either is EXPECTED to survive: a FIELD-keyed index is refused by the semantic-index iteration gate
+     * first, and the {@code $} correlation is legal only inside a {@code Having} filter
+     * (both measured, {@code validate.laws.DuplicateOverlapCarrierSweepLawsTest}). They are kept because
+     * omitting a component the kernel compares is the direction that OVER-refuses if the shape ever becomes
+     * authorable — and the iteration code is locus-dependent, so this is not a global unreachability claim.
+     */
+    @Override
+    public String overlapModifier() {
+        return category().map(c -> "Cat:" + c).orElse("")
+                + semanticIndex().map(key -> switch (key) {
+                    case LiteralIndex literal -> "For:\"" + literal.value() + "\"";
+                    case FieldIndex fieldKey -> "For:" + (fieldKey.field().correlated() ? "$" : "")
+                            + fieldKey.field().renderedPath();
+                }).orElse("");
     }
 
     private static FieldOperand withoutOuter(FieldOperand field) {

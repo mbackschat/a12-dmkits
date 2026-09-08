@@ -1005,7 +1005,8 @@
       "returns": "boolean",
       "meaning": "In validation, true iff every declared slot is known filled; a known empty, unavailable, or declared-but-uninstantiated slot prevents firing.",
       "constraints": [
-        "the operand is a field-reference list (typically two or more fields), or one or more groups whose recursively contained fields form the scope"
+        "the operand is a field-reference list (typically two or more fields), or one or more groups whose recursively contained fields form the scope",
+        "no repeated DIRECT operand (MVK_DUPLICATE_PARAM1), but a wildcarded (starred) operand MAY repeat — the gate reads the reference FORM, not the field, so (Quantity, Quantity) is refused while (Items*/Count, Items*/Count) is ADMITTED. The star exempts that ONE gate and no more: two operands where one strictly CONTAINS the other — a group scope beside its own descendant — are refused MVK_DUPLICATE_PARAM2, even with the star on both sides"
       ],
       "gotchas": [
         {
@@ -1063,7 +1064,8 @@
       "returns": "boolean",
       "meaning": "In validation, true iff no instantiated slot is filled and no instantiated slot is unavailable.",
       "constraints": [
-        "the operand is a field-reference list, or one or more groups whose recursively contained fields form the scope"
+        "the operand is a field-reference list, or one or more groups whose recursively contained fields form the scope",
+        "no repeated DIRECT operand (MVK_DUPLICATE_PARAM1), but a wildcarded (starred) operand MAY repeat — the gate reads the reference FORM, not the field, so (Quantity, Quantity) is refused while (Items*/Count, Items*/Count) is ADMITTED. The star exempts that ONE gate and no more: two operands where one strictly CONTAINS the other — a group scope beside its own descendant — are refused MVK_DUPLICATE_PARAM2, even with the star on both sides"
       ],
       "gotchas": [
         {
@@ -1098,7 +1100,8 @@
       "returns": "boolean",
       "meaning": "In validation, true iff at least one instantiated slot is known filled; unavailable slots contribute no witness.",
       "constraints": [
-        "the operand is a field-reference list, or one or more groups whose recursively contained fields form the scope"
+        "the operand is a field-reference list, or one or more groups whose recursively contained fields form the scope",
+        "no repeated DIRECT operand (MVK_DUPLICATE_PARAM1), but a wildcarded (starred) operand MAY repeat — the gate reads the reference FORM, not the field, so (Quantity, Quantity) is refused while (Items*/Count, Items*/Count) is ADMITTED. The star exempts that ONE gate and no more: two operands where one strictly CONTAINS the other — a group scope beside its own descendant — are refused MVK_DUPLICATE_PARAM2, even with the star on both sides"
       ],
       "gotchas": [
         {
@@ -1133,7 +1136,8 @@
       "returns": "boolean",
       "meaning": "In validation, true iff at least one declared slot is known empty or declared-but-uninstantiated; an unavailable slot alone is not empty.",
       "constraints": [
-        "the operand is a field-reference list, or one or more groups whose recursively contained fields form the scope"
+        "the operand is a field-reference list, or one or more groups whose recursively contained fields form the scope",
+        "no repeated DIRECT operand (MVK_DUPLICATE_PARAM1), but a wildcarded (starred) operand MAY repeat — the gate reads the reference FORM, not the field, so (Quantity, Quantity) is refused while (Items*/Count, Items*/Count) is ADMITTED. The star exempts that ONE gate and no more: two operands where one strictly CONTAINS the other — a group scope beside its own descendant — are refused MVK_DUPLICATE_PARAM2, even with the star on both sides"
       ],
       "gotchas": [
         {
@@ -1192,7 +1196,8 @@
       "returns": "boolean",
       "meaning": "In validation, true iff at least one instantiated slot is known filled and at least one declared slot is known empty or uninstantiated; unavailable slots contribute to neither witness.",
       "constraints": [
-        "the operand is a field-reference list, or one or more groups whose recursively contained fields form the scope"
+        "the operand is a field-reference list, or one or more groups whose recursively contained fields form the scope",
+        "no repeated DIRECT operand (MVK_DUPLICATE_PARAM1), but a wildcarded (starred) operand MAY repeat — the gate reads the reference FORM, not the field, so (Quantity, Quantity) is refused while (Items*/Count, Items*/Count) is ADMITTED. The star exempts that ONE gate and no more: two operands where one strictly CONTAINS the other — a group scope beside its own descendant — are refused MVK_DUPLICATE_PARAM2, even with the star on both sides"
       ],
       "gotchas": [
         {
@@ -1251,7 +1256,8 @@
       "returns": "boolean",
       "meaning": "In validation, true iff no instantiated slot is filled and none is unavailable, or at least two instantiated slots are known filled.",
       "constraints": [
-        "the operand is a field-reference list, or one or more groups whose recursively contained fields form the scope"
+        "the operand is a field-reference list, or one or more groups whose recursively contained fields form the scope",
+        "no repeated DIRECT operand (MVK_DUPLICATE_PARAM1), but a wildcarded (starred) operand MAY repeat — the gate reads the reference FORM, not the field, so (Quantity, Quantity) is refused while (Items*/Count, Items*/Count) is ADMITTED. The star exempts that ONE gate and no more: two operands where one strictly CONTAINS the other — a group scope beside its own descendant — are refused MVK_DUPLICATE_PARAM2, even with the star on both sides"
       ],
       "gotchas": [
         {
@@ -1283,7 +1289,8 @@
       "returns": "boolean",
       "meaning": "In validation, true iff at least two instantiated slots are known filled; unavailable slots contribute no witness. Also applies over a group scope.",
       "constraints": [
-        "the operand is a field-reference list, or one or more groups whose recursively contained fields form the scope"
+        "the operand is a field-reference list, or one or more groups whose recursively contained fields form the scope",
+        "no repeated DIRECT operand (MVK_DUPLICATE_PARAM1), but a wildcarded (starred) operand MAY repeat — the gate reads the reference FORM, not the field, so (Quantity, Quantity) is refused while (Items*/Count, Items*/Count) is ADMITTED. The star exempts that ONE gate and no more: two operands where one strictly CONTAINS the other — a group scope beside its own descendant — are refused MVK_DUPLICATE_PARAM2, even with the star on both sides"
       ],
       "gotchas": [
         {
@@ -2171,7 +2178,8 @@
         "the field must be a string, enumeration, or number field (no booleans/confirms)",
         "the field is a bare path (no brackets); values follow as a comma list",
         "value types must match the field's kind; numeric values are INTEGER literals only (a decimal is a parse error)",
-        "for an enumeration every listed value must be in the enum's domain"
+        "for an enumeration every listed value must be in the enum's domain",
+        "the field and its value list are gated as ONE union, so a subject repeated inside its own value list is MVK_DUPLICATE_PARAM1. The value list resolves FIRST, whatever the authored order: where the subject's collision and a value-list collision compete, the witness named is always the value list's. Only that exact arm applies: a group operand draws MVK_NO_GROUPS_ALLOWED, so no operand can contain another"
       ],
       "gotchas": [
         {
@@ -2330,7 +2338,7 @@
       "meaning": "True iff at least one of the listed fields holds one of the listed values.",
       "constraints": [
         "syntax: Name(f1, f2 In v1, v2) — the In separator is language-independent",
-        "all listed fields must share one base type (MVK_VARYING_TYPES_NOT_ALLOWED); no exact reference may repeat (MVK_DUPLICATE_PARAM1) — and 'exact' is doing real work: the gate reads the reference FORM, not the field, so a wildcarded (starred) occurrence is a repetition-wide scan rather than an exact reference and MAY repeat. (Code, Code In ...) is refused while (Items*/Sku, Items*/Sku In ...) is ADMITTED",
+        "all listed fields must share one base type (MVK_VARYING_TYPES_NOT_ALLOWED); no exact reference may repeat (MVK_DUPLICATE_PARAM1) — and 'exact' is doing real work: the gate reads the reference FORM, not the field, so a wildcarded (starred) occurrence is a repetition-wide scan rather than an exact reference and MAY repeat. (Code, Code In ...) is refused while (Items*/Sku, Items*/Sku In ...) is ADMITTED. The denominator depends on the spelling: a LITERAL value list gates the field list alone, while a field-READ value list is gated as ONE union of both lists, so a reference repeated across the halves is MVK_DUPLICATE_PARAM1 too",
         "for enums each literal must be in the UNION of the selected members' domains (a direct reference's stored values plus a category projection's category values), NOT in every one (MVK_INVALID_STRING_CONSTANT_FOR_ENUMERATION_OR_CATEGORY)",
         "a value-side field list makes it entity-valued: both sides share one base type, no reference repeats across the combined lists, and enum-domain containment is NOT required",
         "values may also be string literals or field references"
@@ -2815,7 +2823,8 @@
         "each key must be repeatable relative to the rule group (MVK_REPEATABLE_GROUP_MISSING) — the rule sits at the parent and iterates",
         "the optional @From reference group must be repeatable (MVK_GROUP_NOT_REPEATABLE)",
         "all keys must lie on a single path — keys spread across two parallel repeatable groups draw MVK_NOT_IN_SAME_PATH (it cannot span a parallel iteration)",
-        "one condition tree may contain at most one RepetitionNotUnique leaf (MVK_INVALID_COMBINATION_OF_REPETITON_NOT_UNIQUE)"
+        "one condition tree may contain at most one RepetitionNotUnique leaf (MVK_INVALID_COMBINATION_OF_REPETITON_NOT_UNIQUE)",
+        "no key may repeat (MVK_DUPLICATE_PARAM1) — RepetitionNotUnique(Items/Sku, Items/Sku) is refused; and a correlated key beside its uncorrelated twin never reaches that arm, drawing MVK_INVALID_OUTER_ITERATION instead"
       ],
       "gotchas": [
         {
@@ -2925,7 +2934,8 @@
         "takes plain or flattened (starred) field operands",
         "more than one operand, OR one flattened repetition list (Group*/field) which already expands to many rows — a single DIRECT field is rejected MVK_PARAMSIZE_INVALIDN",
         "every operand must share ONE comparability category (MVK_VARYING_TYPES_NOT_ALLOWED) — {String, Custom}, {Enumeration}, {Number}, or the temporal family {Date, Time, DateTime, DateFragment}; differing Number scales are admitted, which is what makes cross-scale equality reachable",
-        "Boolean, Confirm, and DateRange operands are refused outright (MVK_ONLY_STRING_ENUM_NUMBER_DATE_ALLOWED), and every temporal operand must carry one IDENTICAL declared format string, else the same code — each gate reads the WHOLE operand list, so reordering the operands never changes which code you get"
+        "Boolean, Confirm, and DateRange operands are refused outright (MVK_ONLY_STRING_ENUM_NUMBER_DATE_ALLOWED), and every temporal operand must carry one IDENTICAL declared format string, else the same code — each gate reads the WHOLE operand list, so reordering the operands never changes which code you get",
+        "no repeated DIRECT operand (MVK_DUPLICATE_PARAM1), but a wildcarded (starred) operand MAY repeat — the gate reads the reference FORM, not the field, so (Quantity, Quantity) is refused while (Items*/Count, Items*/Count) is ADMITTED. The star exempts that ONE gate and no more: two operands where one strictly CONTAINS the other — a group scope beside its own descendant — are refused MVK_DUPLICATE_PARAM2, even with the star on both sides"
       ],
       "gotchas": [
         {
@@ -5574,7 +5584,8 @@
         }
       ],
       "constraints": [
-        "the operands are date-range fields (or a flattened repetition list of them)"
+        "the operands are date-range fields (or a flattened repetition list of them)",
+        "no repeated DIRECT operand (MVK_DUPLICATE_PARAM1), but a wildcarded (starred) operand MAY repeat — (Items*/ItemCoverage, Items*/ItemCoverage) is ADMITTED; a group scope beside its own descendant is refused MVK_DUPLICATE_PARAM2. Both duplicate arms run AHEAD of this operator's group bar, so (ShippingAddress, ShippingAddress/City) reports MVK_DUPLICATE_PARAM2 rather than the MVK_NO_GROUPS_ALLOWED that same group draws on its own"
       ],
       "validExample": {
         "dsl": "FieldFilled(OrderDate) And DateRangesOverlap(CoverageWindow, Items*/ItemCoverage)",
@@ -5665,7 +5676,8 @@
         }
       ],
       "constraints": [
-        "a date-range field, then In, then a date-range field list (often a flattened repetition list)"
+        "a date-range field, then In, then a date-range field list (often a flattened repetition list)",
+        "the subject and the value list are gated as ONE union, so a reference repeated across the two halves is MVK_DUPLICATE_PARAM1 — (CoverageWindow In CoverageWindow) is refused. A wildcarded (starred) operand MAY repeat, and the value list is the only place it can: a STARRED SUBJECT is refused MVK_INVALID_PARAMETER_FOR_DATE_RANGE_COMPARISON whatever the value side holds, while a starred operand repeated inside the value list is ADMITTED"
       ],
       "validExample": {
         "dsl": "FieldFilled(OrderDate) And AtLeastOneDateRangeOverlaps(CoverageWindow IN Items*/ItemCoverage)",

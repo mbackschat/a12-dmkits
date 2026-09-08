@@ -199,6 +199,23 @@ class DuplicateOverlapCarrierSweepLawsTest {
                 verdict(CALENDAR, "/Cal", "../Marker",
                         "MaxValue(/Cal/Window/Opens, /Cal/Window/Closes) == [/Cal/Marker]"));
 
+        // --- FirstFilledValue's INDEXED owner entities. Its operand type is richer than the sealed unions'
+        // (field-or-group, literal-or-field key), and after the predicate was merged onto it the only guard on
+        // the key arms sat in a bridge translation test in another module.
+        actual.put("FirstFilledValue | indexed owner, same literal key twice",
+                order("FirstFilledValue(Items/Count For \"a\", Items/Count For \"a\") > 0"));
+        actual.put("FirstFilledValue | indexed owner, DIFFERENT literal keys",
+                order("FirstFilledValue(Items/Count For \"a\", Items/Count For \"b\") > 0"));
+
+        // A FIELD-keyed index is refused by the semantic-index iteration gate at this locus, before the
+        // duplicate arm speaks — so the field-key arm of the identity has no reachable input here and a mutant
+        // emptying it is EXPECTED to survive. Not a global unreachability claim: that code is locus-dependent
+        // ([KF1012](#kf1012)), so another locus may admit the shape.
+        actual.put("FirstFilledValue | indexed owner, same FIELD key twice",
+                order("FirstFilledValue(Items/Count For Sku, Items/Count For Sku) > 0"));
+        actual.put("FirstFilledValue | field key beside a literal key on one owner",
+                order("FirstFilledValue(Items/Count For Sku, Items/Count For \"a\") > 0"));
+
         // --- RepetitionNotUnique: the repeated key is measured; a key pair spanning a nesting is not, and
         // cannot be built on this fixture (see the class note) — it takes the project table below.
         actual.put("RNU | repeated key",
@@ -296,6 +313,10 @@ class DuplicateOverlapCarrierSweepLawsTest {
         expected.put("indexed group | same group, DIFFERENT keys", KernelLaws.ADMITTED);
         expected.put("temporal aggregate | group beside a date field inside it", P2);
         expected.put("temporal aggregate | two disjoint date fields", KernelLaws.ADMITTED);
+        expected.put("FirstFilledValue | indexed owner, same literal key twice", P1);
+        expected.put("FirstFilledValue | indexed owner, DIFFERENT literal keys", KernelLaws.ADMITTED);
+        expected.put("FirstFilledValue | indexed owner, same FIELD key twice", "MVK_SEMANTIC_INDEX_INVALID_ITER");
+        expected.put("FirstFilledValue | field key beside a literal key on one owner", "MVK_SEMANTIC_INDEX_INVALID_ITER");
         expected.put("RNU | repeated key", P1);
         expected.put("RNU | correlated key beside its uncorrelated twin", "MVK_INVALID_OUTER_ITERATION");
 

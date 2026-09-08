@@ -1525,7 +1525,7 @@ public static record io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer.Rendere
   public java.lang.String text()
   public final java.lang.String toString()
 
-public interface io.github.mbackschat.a12.dm.rulekit.dsl.DuplicateOperand extends io.github.mbackschat.a12.dm.core.HasEntityPath
+public sealed interface io.github.mbackschat.a12.dm.rulekit.dsl.DuplicateOperand extends io.github.mbackschat.a12.dm.core.HasEntityPath
   public default io.github.mbackschat.a12.dm.core.EntityPath entityPath()
   public abstract java.util.Optional<java.lang.String> exactIdentity()
   public abstract java.lang.String fieldPath()
@@ -1780,12 +1780,14 @@ public record io.github.mbackschat.a12.dm.rulekit.dsl.FieldValueAsString impleme
   public java.lang.String operatorId()
   public final java.lang.String toString()
 
-public final class io.github.mbackschat.a12.dm.rulekit.dsl.FirstFilledOperand
+public final class io.github.mbackschat.a12.dm.rulekit.dsl.FirstFilledOperand implements io.github.mbackschat.a12.dm.rulekit.dsl.DuplicateOperand
   public java.util.Optional<java.lang.String> category()
   public boolean equals(java.lang.Object)
+  public java.util.Optional<java.lang.String> exactIdentity()
   public java.util.List<io.github.mbackschat.a12.dm.rulekit.dsl.FieldRef> expandedGroupFields()
   public boolean expandsToList()
   public java.util.Optional<io.github.mbackschat.a12.dm.rulekit.dsl.FieldOperand> field()
+  public java.lang.String fieldPath()
   public io.github.mbackschat.a12.dm.rulekit.dsl.FirstFilledOperand forIndex(io.github.mbackschat.a12.dm.rulekit.dsl.FieldRef)
   public io.github.mbackschat.a12.dm.rulekit.dsl.FirstFilledOperand forIndex(java.lang.String)
   public java.util.Optional<io.github.mbackschat.a12.dm.rulekit.dsl.GroupListRef> group()
@@ -1795,6 +1797,7 @@ public final class io.github.mbackschat.a12.dm.rulekit.dsl.FirstFilledOperand
   public static io.github.mbackschat.a12.dm.rulekit.dsl.FirstFilledOperand of(io.github.mbackschat.a12.dm.rulekit.dsl.FieldOperand)
   public io.github.mbackschat.a12.dm.rulekit.dsl.FirstFilledOperand outer()
   public boolean outerReference()
+  public java.lang.String overlapModifier()
   public java.lang.String renderedPath()
   public java.util.Optional<io.github.mbackschat.a12.dm.rulekit.dsl.FirstFilledOperand.SemanticIndexKey> semanticIndex()
   public java.lang.String toString()
