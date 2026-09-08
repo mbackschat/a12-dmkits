@@ -17,7 +17,8 @@ import picocli.CommandLine.Parameters;
  * lives in {@link ReferenceRewritingRefactorCommand}; the per-op specifics in {@link StructureRefactor#fieldMove}.
  */
 @Command(name = "move", mixinStandardHelpOptions = true,
-        description = "Move a field to a different parent group; references are rewritten to the new path.")
+        description = "Move a field to a different parent group. Propagates references using the kernel's "
+                + "MoveSupportDM rewriter and checks the resulting model with the kernel before writing.")
 final class FieldMoveCommand extends ReferenceRewritingRefactorCommand {
 
     @ParamKind(ParamKind.Kind.FIELD_PATH)
