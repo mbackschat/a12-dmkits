@@ -17,6 +17,9 @@ import io.github.mbackschat.a12.dm.core.Verification;
  * typed field handles looked up from a loaded {@link ModelIndex}, so paths and operand kinds are
  * resolved at runtime with no codegen. Unknown paths / wrong kinds fail fast at handle creation.
  */
+import io.github.mbackschat.a12.dm.core.KernelCode;
+import io.github.mbackschat.a12.dm.core.Refusals;
+
 public final class BoundModel {
 
     private final ModelIndex index;
@@ -315,6 +318,83 @@ public final class BoundModel {
         throw new IllegalArgumentException(path + " is not a " + label + " field (kind=" + kind + ")");
     }
 
+    /**
+     * Whether the model declares a base year. The kit-internal read of
+     * {@link io.github.mbackschat.a12.dm.core.ModelIndex#baseYear}, for the temporal gates that supplement an
+     * operand's component set with YEAR when one is declared.
+     */
+    boolean hasBaseYear() {
+        return index.baseYear().isPresent();
+    }
+
+    // --- BaseYear, checked against the model's declaration --------------------------------------------
+    //
+    // The precondition is the model's, not the operand's, so it is the same check for every carrier and it is
+    // EXACTLY decidable — a model either declares a base year or it does not. That is what separates it from a
+    // format gate over the same constant, which is measured NOT to exist
+    // (`validate.laws.BaseYearExtractionFormatLawsTest`: the kernel admits month, day and quarter extraction
+    // over `BaseYear` while refusing all three over a `yyyy` field). One rule is a property of the model and
+    // safe to state; the other would be an invention. The four factories mirror `Dsl`'s one-for-one, and each
+    // is reached by the condition-text consumer — `PromotedGateIsReachedGuardTest` keeps it that way.
+
+    /** {@code BaseYear} as a comparable date, checked against this model's declaration. catalog:BaseYear */
+    public DateExpr baseYear() {
+        requireDeclaredBaseYear("BaseYear");
+        return Dsl.baseYear();
+    }
+
+    /** {@code BaseYear} as the year number, checked against this model's declaration. catalog:BaseYear */
+    public NumberExpr baseYearNumber() {
+        requireDeclaredBaseYear("BaseYear");
+        return Dsl.baseYearNumber();
+    }
+
+    /** {@code StartOfDateRange(BaseYear)}, checked against this model's declaration. catalog:StartOfDateRange */
+    public DateExpr startOfBaseYear() {
+        requireDeclaredBaseYear("StartOfDateRange(BaseYear)");
+        return Dsl.startOfBaseYear();
+    }
+
+    /** {@code EndOfDateRange(BaseYear)}, checked against this model's declaration. catalog:EndOfDateRange */
+    public DateExpr endOfBaseYear() {
+        requireDeclaredBaseYear("EndOfDateRange(BaseYear)");
+        return Dsl.endOfBaseYear();
+    }
+
+    /**
+     * Every carrier of the constant needs the model to declare a base year, measured uniformly over all six the
+     * kits can build — the date, numeric and date-time roles, an extraction over it, and both range bounds
+     * ({@code validate.laws.BaseYearDeclarationLawsTest}, each row with its admitted control on a fixture
+     * differing in one builder call).
+     *
+     * <p>The extraction carrier needs no gate of its own: it takes a {@link DateOperand}, so it can only be
+     * built over a constant one of these factories already returned.
+     */
+    private void requireDeclaredBaseYear(String construct) {
+        if (hasBaseYear()) {
+            return;
+        }
+        throw Refusals.of(KernelCode.MVK_NO_BASE_YEAR,
+                construct + " needs the model to declare a base year; this model declares none");
+    }
+
+    /**
+     * The declared temporal format at {@code fieldPath}, or {@code null} when the field declares none. The
+     * kit-internal read of {@link io.github.mbackschat.a12.dm.core.ModelIndex#temporalFormat}, for the gates
+     * that key on the declaration rather than the kind.
+     */
+    String temporalFormat(String fieldPath) {
+        return index.temporalFormat(fieldPath).orElse(null);
+    }
+
+    /**
+     * The field's declared date precision, or {@code null} when it declares none — which means FULL, since
+     * A12's serializer omits the key for the default (see {@code ModelIndex.datePrecision}).
+     */
+    String datePrecision(String fieldPath) {
+        return index.datePrecision(fieldPath).orElse(null);
+    }
+
     /** A typed date-fragment handle (a year-month partial date; an extraction source). Throws if not a date fragment. */
     public DateFragmentRef dateFragment(String path) {
         ValueKind kind = index.kindOf(path);
@@ -345,6 +425,12 @@ public final class BoundModel {
      */
     public boolean iteratesForErrorField(String errorFieldPath) {
         return nearestRepeatableAncestor(errorFieldPath).isPresent();
+    }
+
+    /** Whether the group at {@code groupPath} itself repeats — the peer of {@link #nearestRepeatableAncestor}
+     *  for an operand that IS a group rather than a field. */
+    public boolean isRepeatingGroup(String groupPath) {
+        return index.isRepeating(groupPath);
     }
 
     /** The nearest (deepest) repeatable group on the path to {@code fieldPath}, if any. */
@@ -381,8 +467,8 @@ public final class BoundModel {
             if (starred) {
                 String groupPath = base.toString();
                 if (!index.isRepeating(groupPath)) {
-                    throw new IllegalArgumentException("'" + groupPath + "' is not repeatable —"
-                            + " a star is only allowed on repeatable groups (MVK_INVALID_WILDCARD)");
+                    throw Refusals.of(KernelCode.MVK_INVALID_WILDCARD, "'" + groupPath + "' is not repeatable —"
+                            + " a star is only allowed on repeatable groups");
                 }
                 flattened.add(new GroupRef(EntityPath.of(groupPath), true));
             }
@@ -409,8 +495,8 @@ public final class BoundModel {
             if (starred) {
                 String groupPath = base.toString();
                 if (!index.isRepeating(groupPath)) {
-                    throw new IllegalArgumentException("'" + groupPath + "' is not repeatable —"
-                            + " a star is only allowed on repeatable groups (MVK_INVALID_WILDCARD)");
+                    throw Refusals.of(KernelCode.MVK_INVALID_WILDCARD, "'" + groupPath + "' is not repeatable —"
+                            + " a star is only allowed on repeatable groups");
                 }
                 flattened.add(new GroupRef(EntityPath.of(groupPath), true));
             }
@@ -511,6 +597,11 @@ public final class BoundModel {
     /** The group's maximum repetitions — the repeatability count ({@code 1} = non-repeatable). */
     public int maxRepetitions(String path) {
         return index.maxRepetitions(path);
+    }
+
+    /** Whether the group declares an index field — half of the iteration-admission rule (§9). */
+    public boolean declaresIndexField(String groupPath) {
+        return index.declaresIndexField(groupPath);
     }
 
     /** The non-throwing peek — exploring is lenient; narrowing (on {@link FieldInfo}) is strict. */
@@ -636,6 +727,302 @@ public final class BoundModel {
     }
 
     // --- field-list quantifiers (PROJECT-DESIGN §5) — each validates every path against the model -------
+
+    // --- The entity-list aggregates, checked ------------------------------------------------------------
+    //
+    // These live here rather than on `Dsl` because their admissibility is CONTEXTUAL: the kernel gates them
+    // on the operands' declared component sets and date precision, which the operands themselves do not
+    // carry. `Dsl` constructs from resolved operands and stays model-free, which is what the inbound
+    // converters need — reconstructing a kernel-accepted condition must never refuse. This is the authoring
+    // layer, so it is the one that checks. (PROJECT-DESIGN: rulekit is model-bound at its core.)
+    //
+    // Operand-taking rather than path-taking, unlike most of this class: an index-selected cell is a legal
+    // operand and has no path spelling.
+
+    /** {@code MaxValue(…)} over DATE operands, checked against this model. catalog:MaxValue */
+    public DateExpr latestOf(AggregateOperand first, AggregateOperand... rest) {
+        Dsl.requireFullDatePrecision("MaxValue", this, first, rest);
+        Dsl.requireComparableComponentSets("MaxValue", this, first, rest);
+        return Dsl.latestOf(first, rest);
+    }
+
+    /** {@code MinValue(…)} over DATE operands, checked against this model. catalog:MinValue */
+    public DateExpr earliestOf(AggregateOperand first, AggregateOperand... rest) {
+        Dsl.requireFullDatePrecision("MinValue", this, first, rest);
+        Dsl.requireComparableComponentSets("MinValue", this, first, rest);
+        return Dsl.earliestOf(first, rest);
+    }
+
+    /** {@code MaxValue(…)} over TIME operands, checked against this model. catalog:MaxValue */
+    public TimeExpr latestTimeOf(AggregateOperand first, AggregateOperand... rest) {
+        Dsl.requireFullDatePrecision("MaxValue", this, first, rest);
+        Dsl.requireComparableComponentSets("MaxValue", this, first, rest);
+        return Dsl.latestTimeOf(first, rest);
+    }
+
+    /** {@code MinValue(…)} over TIME operands, checked against this model. catalog:MinValue */
+    public TimeExpr earliestTimeOf(AggregateOperand first, AggregateOperand... rest) {
+        Dsl.requireFullDatePrecision("MinValue", this, first, rest);
+        Dsl.requireComparableComponentSets("MinValue", this, first, rest);
+        return Dsl.earliestTimeOf(first, rest);
+    }
+
+    /** {@code MaxValue(…)} over DATETIME operands, checked against this model. catalog:MaxValue */
+    public DateTimeExpr latestDateTimeOf(AggregateOperand first, AggregateOperand... rest) {
+        Dsl.requireFullDatePrecision("MaxValue", this, first, rest);
+        Dsl.requireComparableComponentSets("MaxValue", this, first, rest);
+        return Dsl.latestDateTimeOf(first, rest);
+    }
+
+    /** {@code MinValue(…)} over DATETIME operands, checked against this model. catalog:MinValue */
+    public DateTimeExpr earliestDateTimeOf(AggregateOperand first, AggregateOperand... rest) {
+        Dsl.requireFullDatePrecision("MinValue", this, first, rest);
+        Dsl.requireComparableComponentSets("MinValue", this, first, rest);
+        return Dsl.earliestDateTimeOf(first, rest);
+    }
+
+    /** {@code NumberOfDifferentValues(…)}, checked against this model. catalog:NumberOfDifferentValues */
+    public NumberExpr numberOfDifferentValues(AggregateOperand first, AggregateOperand... rest) {
+        Dsl.requireFullDatePrecision("NumberOfDifferentValues", this, first, rest);
+        Dsl.requireComparableComponentSets("NumberOfDifferentValues", this, first, rest);
+        return Dsl.numberOfDifferentValues(first, rest);
+    }
+
+    // --- Date-range comparability, checked --------------------------------------------------------------
+    //
+    // Contextual, so it lives here rather than on DateRangeOperand.eq/ne: the same operand pair is
+    // admissible or not depending on the model. The ungated eq/ne stay for the inbound converters.
+
+    /** {@code left == right} between two date ranges, checked against this model's declarations. */
+    public Condition rangesEqual(DateRangeOperand left, DateRangeOperand right) {
+        requireComparableRangeComponents(left, right);
+        return left.eq(right);
+    }
+
+    /** {@code left != right} between two date ranges, checked against this model's declarations. */
+    public Condition rangesNotEqual(DateRangeOperand left, DateRangeOperand right) {
+        requireComparableRangeComponents(left, right);
+        return left.ne(right);
+    }
+
+    /**
+     * {@code DateRange(start, end)}, checked against this model's declarations. Contextual for the same reason
+     * the comparison above is: an endpoint's component set comes from its field's declared format.
+     *
+     * <p>Distinctly named rather than an overload of {@link #dateRange(String)} so that a read path reaching
+     * the checked form is visible to a text scan ({@code dsl.ReadPathFormatGateIsolationTest}).
+     * {@link Dsl#dateRange} stays ungated for the inbound converters.
+     */
+    public DateRangeConstruction dateRangeOf(DateOperand start, DateOperand end) {
+        return dateRangeOf(start.expression(), end.expression());
+    }
+
+    /**
+     * The same construction from two OPAQUE expressions — the form a condition-text converter holds, which has
+     * no typed date handle to pass. It resolves rather than merely validates, which is why it takes the model
+     * (the reasoning A3's {@code Dsl.dateExtraction} records). The record's own compact constructor still
+     * applies the intrinsic endpoint gate first.
+     */
+    public DateRangeConstruction dateRangeOf(Calculation start, Calculation end) {
+        DateRangeConstruction construction = new DateRangeConstruction(start, end);
+        requireAgreeingEndpointComponents(construction);
+        return construction;
+    }
+
+    /**
+     * {@code Date(day, month, year)}, checked against this model's declarations. A NUMBER component must
+     * declare bounds that fit its own SLOT; the record's compact constructor keeps the intrinsic
+     * extractor-position gate, which needs no model.
+     */
+    public DateConstruction dateOf(Calculation day, Calculation month, Calculation year) {
+        DateConstruction construction = new DateConstruction(day, month, year);
+        requireSlotCompatibleNumberBounds(day, DAY_SLOT_MAX, "day");
+        requireSlotCompatibleNumberBounds(month, MONTH_SLOT_MAX, "month");
+        return construction;
+    }
+
+    /** The four-component form. Its century and decade slots carry no measured bound rule, so they delegate. */
+    public DateConstruction dateOf(Calculation day, Calculation month, Calculation century, Calculation decade) {
+        DateConstruction construction =
+                new DateConstruction(day, month, century, java.util.Optional.of(decade));
+        requireSlotCompatibleNumberBounds(day, DAY_SLOT_MAX, "day");
+        requireSlotCompatibleNumberBounds(month, MONTH_SLOT_MAX, "month");
+        return construction;
+    }
+
+    private static final java.math.BigDecimal DAY_SLOT_MAX = java.math.BigDecimal.valueOf(31);
+    private static final java.math.BigDecimal MONTH_SLOT_MAX = java.math.BigDecimal.valueOf(12);
+    /** Both gated slots are two digits wide, which is the length form of their ceiling. */
+    private static final int SLOT_MAX_LENGTH = 2;
+
+    /**
+     * A NUMBER component must satisfy THREE conjuncts, and two of them have two satisfying forms each
+     * ({@code validate.laws.DateConstructionComponentDeclarationLawsTest}, kernel
+     * {@code MVK_WRONG_DATE_FORMAT_FOR_OP}):
+     *
+     * <ol>
+     * <li>no declared FRACTION — the component must be a whole number;</li>
+     * <li>a CEILING, as either a {@code maxLength} of the slot's width or a {@code maxValue} equal to the
+     *     slot's own maximum. The value form is per-slot and exact rather than containment: a 1..31 field is
+     *     admitted as a day and refused as a month, and 1..30 is refused as a day although every value it
+     *     holds is a legal day;</li>
+     * <li>a LOW SIDE, as either a declared NON-NEGATIVE minimum or an UNSIGNED declaration
+     *     ({@code positivesOnly}). Either alone suffices, which is why a field with a ceiling and no minimum
+     *     at all is a legal slot — the shape real models use.</li>
+     * </ol>
+     *
+     * <p>The year slot is not gated here: its ceiling is flexible in a way these two are not, and nothing
+     * measures it.
+     */
+    private void requireSlotCompatibleNumberBounds(Calculation component,
+            java.math.BigDecimal slotMax, String slot) {
+        String path = declaredNumberFieldPath(component);
+        if (path == null) {
+            return;
+        }
+        if (index.numberScale(path) != 0) {
+            throw slotRefusal(slot, path, "declares a fraction; a date component must be a whole number");
+        }
+        var maxLength = index.numberMaxLength(path);
+        var max = index.numberMax(path);
+        boolean ceiling = (maxLength.isPresent() && maxLength.getAsInt() == SLOT_MAX_LENGTH)
+                || (max.isPresent() && max.get().compareTo(slotMax) == 0);
+        if (!ceiling) {
+            throw slotRefusal(slot, path, "needs a ceiling: either maxLength " + SLOT_MAX_LENGTH
+                    + " or maxValue " + slotMax.toPlainString());
+        }
+        var min = index.numberMin(path);
+        boolean lowSide = (min.isPresent() && min.get().signum() >= 0) || index.numberPositivesOnly(path);
+        if (!lowSide) {
+            throw slotRefusal(slot, path, "needs either a non-negative minValue or positivesOnly");
+        }
+    }
+
+    private static IllegalArgumentException slotRefusal(String slot, String path, String why) {
+        return Refusals.of(KernelCode.MVK_WRONG_DATE_FORMAT_FOR_OP,
+                "the " + slot + " component '" + path + "' " + why);
+    }
+
+    /** The component's field path when it is a declared NUMBER entity reference, else {@code null}. */
+    private static String declaredNumberFieldPath(Calculation component) {
+        FieldRef field = switch (component) {
+            case FieldValue value -> value.field();
+            case IndexedFieldValue value -> value.field();
+            default -> null;
+        };
+        return field != null && field.kind() == ValueKind.NUMBER ? field.path().value() : null;
+    }
+
+    /**
+     * Both endpoints must expose the same declared date-component set. The kernel reports
+     * {@code MVK_WRONG_DATE_FORMAT_FOR_OP} <b>at the construction</b>, naming the offending endpoint, and
+     * reports it whatever the construction is later compared against — so this is not the comparison gate
+     * above under another name, and the two are held apart by
+     * {@code validate.laws.DateRangeConstructionEndpointComponentLawsTest}, which asserts the comparison's
+     * code absent.
+     *
+     * <p>An endpoint whose declaration cannot be resolved is DELEGATED rather than refused.
+     */
+    private void requireAgreeingEndpointComponents(DateRangeConstruction construction) {
+        java.util.Set<TemporalFormats.Component> start = endpointComponents(construction.start());
+        java.util.Set<TemporalFormats.Component> end = endpointComponents(construction.end());
+        if (start == null || end == null || start.equals(end)) {
+            return;
+        }
+        throw Refusals.of(KernelCode.MVK_WRONG_DATE_FORMAT_FOR_OP,
+                "a date-range construction needs both endpoints to declare the same date components; got "
+                        + start + " and " + end);
+    }
+
+    /**
+     * Both range operands must expose the same declared date-component set (KERNEL-FINDINGS
+     * {@code DateRangeComparabilityLawsTest}). An operand whose declaration cannot be resolved — a computed
+     * range — is DELEGATED rather than refused.
+     *
+     * <p><b>Base-year completion is deliberately NOT applied</b>, unlike the entity-list aggregates' gate:
+     * the kernel passes {@code false} here, and a declared base year is measured not to make a yearless range
+     * comparable. The two rules look alike and differ on exactly that, so they do not share a helper.
+     */
+    private void requireComparableRangeComponents(DateRangeOperand left, DateRangeOperand right) {
+        java.util.Set<TemporalFormats.Component> a = rangeComponents(left);
+        java.util.Set<TemporalFormats.Component> b = rangeComponents(right);
+        if (a == null || b == null || a.equals(b)) {
+            return;
+        }
+        throw Refusals.of(KernelCode.MVK_INVALID_COMPARE_TO_DATE_RANGE,
+                "a date-range comparison needs both operands to declare the same "
+                        + "date components; got " + a + " and " + b);
+    }
+
+    /** The operand's declared component set, or {@code null} when there is nothing to read. */
+    private java.util.Set<TemporalFormats.Component> rangeComponents(DateRangeOperand operand) {
+        return switch (operand) {
+            case DateRangeRef ref -> componentsOfField(ref.field().path().value());
+            case DateRangeConstruction construction -> {
+                // A construction's profile is its endpoints'. Disagreeing endpoints are refused by
+                // dateRangeOf, proven by dsl.DateRangeEndpointComponentGateTest — but only on THAT route: one
+                // built through the deliberately ungated Dsl.dateRange reaches no client gate at all, so this
+                // arm delegates rather than assuming the pair was checked.
+                var start = endpointComponents(construction.start());
+                var end = endpointComponents(construction.end());
+                yield start != null && start.equals(end) ? start : null;
+            }
+            // An INDEX-SELECTED range delegates: A9 measured that carrier for the extraction-format and
+            // aggregate component-set gates, not for this one, and reusing that verdict here would be a
+            // scope transfer rather than a measurement.
+            default -> null;
+        };
+    }
+
+    private java.util.Set<TemporalFormats.Component> componentsOfField(String path) {
+        String declared = temporalFormat(path);
+        return declared == null ? null : TemporalFormats.componentsOf(declared);
+    }
+
+    private java.util.Set<TemporalFormats.Component> endpointComponents(Calculation endpoint) {
+        return switch (endpoint) {
+            case FieldValue value -> componentsOfField(value.field().path().value());
+            case IndexedFieldValue indexed -> componentsOfField(indexed.field().path().value());
+            default -> null;
+        };
+    }
+
+    // --- ValueAsDate: the REQUIRING direction of the precision declaration ------------------------------
+
+    /** {@code ValueAsDate(field, FirstDay)}, checked to require a partially known date against this model. */
+    public DateExpr valueAsDateFirstDay(FieldRef partiallyKnownDate) {
+        requirePartiallyKnownDate(partiallyKnownDate);
+        return Dsl.valueAsDateFirstDay(partiallyKnownDate);
+    }
+
+    /** {@code ValueAsDate(field, LastDay)}, checked to require a partially known date against this model. */
+    public DateExpr valueAsDateLastDay(FieldRef partiallyKnownDate) {
+        requirePartiallyKnownDate(partiallyKnownDate);
+        return Dsl.valueAsDateLastDay(partiallyKnownDate);
+    }
+
+    /**
+     * {@code ValueAsDate} admits only a partly-known date; a full-precision DateType and a DATE_FRAGMENT are
+     * both {@code MVK_INVALID_DATE_TYPE_FOR_OP} (`validate.laws.ValueAsDateOperandPrecisionLawsTest`). Scoped
+     * to those two kinds: neither the factory nor the record kind-checks, and no other kind was measured, so
+     * refusing one here would state a rule nothing measured.
+     */
+    private void requirePartiallyKnownDate(FieldRef field) {
+        ValueKind kind = field.kind();
+        if (kind != ValueKind.DATE && kind != ValueKind.DATE_FRAGMENT) {
+            return;
+        }
+        String path = field.path().value();
+        String precision = datePrecision(path);
+        if (!DatePrecisions.isRecognised(precision)) {
+            return;
+        }
+        if (!DatePrecisions.isPartiallyKnown(precision)) {
+            throw Refusals.of(KernelCode.MVK_INVALID_DATE_TYPE_FOR_OP,
+                    "ValueAsDate needs a partially known date; '" + path
+                            + "' declares no optional component");
+        }
+    }
 
     public Condition allFieldsFilled(String... paths) {
         return fieldList(Quantifier.ALL_FIELDS_FILLED, paths);

@@ -12,6 +12,9 @@ import java.util.Optional;
  * the rule must iterate, and the optional {@code @From} scope group must be repeatable
  * ({@code MVK_GROUP_NOT_REPEATABLE}, pre-checked in {@link #from}).
  */
+import io.github.mbackschat.a12.dm.core.KernelCode;
+import io.github.mbackschat.a12.dm.core.Refusals;
+
 public record RepetitionNotUniqueCondition(List<FieldRef> keys, Optional<GroupRef> scope)
         implements Condition {
 
@@ -20,13 +23,18 @@ public record RepetitionNotUniqueCondition(List<FieldRef> keys, Optional<GroupRe
         if (keys.isEmpty()) {
             throw new IllegalArgumentException("RepetitionNotUnique needs at least one key field");
         }
+        // Only the exact arm applies, and by signature rather than by choice: List<FieldRef> erases the
+        // star that would exempt an operand, admits no category or index, and a field's path is a strict
+        // prefix of nothing (MVK_DUPLICATE_PARAM1, KERNEL-FINDINGS kf1015 and kf186).
+        DuplicateGate.rejectExactDuplicates("RepetitionNotUnique", keys);
     }
+
 
     /** Scopes the uniqueness check to each repetition of {@code reference} ({@code @From}). catalog:FromScope */
     public RepetitionNotUniqueCondition from(GroupRef reference) {
         if (!reference.repeating()) {
-            throw new IllegalArgumentException("the @From reference group must be repeatable: "
-                    + reference.path() + " (MVK_GROUP_NOT_REPEATABLE)");
+            throw Refusals.of(KernelCode.MVK_GROUP_NOT_REPEATABLE, "the @From reference group must be repeatable: "
+                    + reference.path());
         }
         return new RepetitionNotUniqueCondition(keys, Optional.of(reference));
     }

@@ -16,6 +16,9 @@ import io.github.mbackschat.a12.dm.core.ValueKind;
  * ({@code MVK_NO_WILDCARD}). Under-reporting is safe; quoting a wrong code is not, so the refusal message
  * names the code the kernel emits for that exact PAIR, per the matrix in {@code SumOfProductsLawsTest}.
  */
+import io.github.mbackschat.a12.dm.core.KernelCode;
+import io.github.mbackschat.a12.dm.core.Refusals;
+
 public record SumOfProducts(FieldOperand left, FieldOperand right) implements Calculation {
 
     public SumOfProducts {
@@ -23,9 +26,9 @@ public record SumOfProducts(FieldOperand left, FieldOperand right) implements Ca
         requireNumber(right);
         if (!(left instanceof FieldListRef leftList) || !(right instanceof FieldListRef rightList)
                 || !owningGroup(left).equals(owningGroup(right))) {
-            throw new IllegalArgumentException("SumOfProducts needs two repetition lists whose fields share one"
-                    + " owning group; " + left.renderedPath() + " and " + right.renderedPath()
-                    + " are not parallel (" + mismatchCode(left, right) + ")");
+            throw Refusals.of(mismatchCode(left, right),
+                    "SumOfProducts needs two repetition lists whose fields share one owning group; "
+                            + left.renderedPath() + " and " + right.renderedPath() + " are not parallel");
         }
         requireLowestLevelStar(leftList);
         requireLowestLevelStar(rightList);
@@ -44,14 +47,14 @@ public record SumOfProducts(FieldOperand left, FieldOperand right) implements Ca
      * not itself wildcard is {@code MVK_NO_WILDCARD}; everything else is {@code MVK_DIFFERENT_GROUPS}. Applying
      * one code per operand instead got two of these three wrong.
      */
-    private static String mismatchCode(FieldOperand left, FieldOperand right) {
+    private static KernelCode mismatchCode(FieldOperand left, FieldOperand right) {
         if (left instanceof FieldRef && right instanceof FieldRef) {
-            return "MVK_REPEATABLE_LEVEL_REQUIRED";
+            return KernelCode.MVK_REPEATABLE_LEVEL_REQUIRED;
         }
         if (unwildcardedBelowTheOthersStar(left, right) || unwildcardedBelowTheOthersStar(right, left)) {
-            return "MVK_NO_WILDCARD";
+            return KernelCode.MVK_NO_WILDCARD;
         }
-        return "MVK_DIFFERENT_GROUPS";
+        return KernelCode.MVK_DIFFERENT_GROUPS;
     }
 
     private static boolean unwildcardedBelowTheOthersStar(FieldOperand operand, FieldOperand other) {
@@ -73,12 +76,14 @@ public record SumOfProducts(FieldOperand left, FieldOperand right) implements Ca
 
     private static void requireLowestLevelStar(FieldListRef operand) {
         if (operand.flattened().size() != 1) {
-            throw new IllegalArgumentException("SumOfProducts permits an asterisk only at its lowest"
-                    + " repetition position (MVK_WILDCARD_ONLY_AT_LOWEST_LEVEL_ALLOWED)");
+            throw Refusals.of(KernelCode.MVK_WILDCARD_ONLY_AT_LOWEST_LEVEL_ALLOWED,
+                    "SumOfProducts permits an asterisk only at its lowest"
+                            + " repetition position");
         }
         if (operand.filter().isPresent()) {
-            throw new IllegalArgumentException("SumOfProducts needs an unrestricted asterisk at its lowest"
-                    + " repetition position (MVK_WILDCARD_AT_LOWEST_LEVEL_REQUIRED)");
+            throw Refusals.of(KernelCode.MVK_WILDCARD_AT_LOWEST_LEVEL_REQUIRED,
+                    "SumOfProducts needs an unrestricted asterisk at its lowest"
+                            + " repetition position");
         }
     }
 

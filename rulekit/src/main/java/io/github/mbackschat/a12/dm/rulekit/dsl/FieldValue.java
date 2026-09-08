@@ -7,11 +7,31 @@ package io.github.mbackschat.a12.dm.rulekit.dsl;
  * {@code Having} filter (kernel: {@code MVK_INVALID_OUTER_ITERATION} otherwise, D13); ordinary
  * value reads leave it {@code false}.
  */
-public record FieldValue(FieldRef field, boolean outer) implements Calculation {
+public record FieldValue(FieldRef field, boolean outer) implements Calculation, DuplicateOperand {
 
     /** An ordinary (non-correlated) value read. */
     public FieldValue(FieldRef field) {
         this(field, false);
+    }
+
+    @Override
+    public String renderedPath() {
+        return (outer ? "$" : "") + field.renderedPath();
+    }
+
+    @Override
+    public String fieldPath() {
+        return field.fieldPath();
+    }
+
+    /**
+     * A value read carries its OWN correlation flag, so {@code [$path]} and {@code [path]} are two operands.
+     * This arm exists because a value list admits field references beside literals, and the kernel checks the
+     * subject field and the value list as ONE union.
+     */
+    @Override
+    public java.util.Optional<String> exactIdentity() {
+        return java.util.Optional.of((outer ? "$" : "") + field.path().value());
     }
 
     @Override

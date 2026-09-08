@@ -23,15 +23,6 @@ package io.github.mbackschat.a12.dm.rulekit.dsl;
  * {@link AggregateOperand} made the identical call for the identical reason, and this interface now matches it
  * rather than carrying a member one of its arms cannot honestly answer.
  */
-public sealed interface ValueListOperand permits FieldOperand, EnumCategoryAccess, GroupListRef {
-
-    /** The rendered path — with {@code *} on flattened segments ({@link FieldListRef}); {@code field -> Cat} form for a category projection. */
-    String renderedPath();
-
-    /**
-     * The base entity's path (no stars, no category) — what the operand references, for F9/error-field checks.
-     * For the {@link GroupListRef} arm this is the GROUP's path: the operand references the group, and the
-     * fields it contributes are the kernel's expansion of it.
-     */
-    String fieldPath();
+public sealed interface ValueListOperand extends DuplicateOperand
+        permits FieldOperand, EnumCategoryAccess, GroupListRef {
 }

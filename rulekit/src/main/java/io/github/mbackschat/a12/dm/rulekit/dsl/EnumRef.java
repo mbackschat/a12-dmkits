@@ -10,6 +10,9 @@ import java.util.Map;
  * later rejects. {@link #category(String)} navigates to a model-declared category
  * ({@code [field -> Category]}). Obtain from {@link BoundModel#enumOf(String)}.
  */
+import io.github.mbackschat.a12.dm.core.KernelCode;
+import io.github.mbackschat.a12.dm.core.Refusals;
+
 public record EnumRef(FieldRef field, List<String> allowedValues, Map<String, List<String>> categories,
         boolean correlated) implements EnumListRef, NumericTextSource {
 
@@ -51,8 +54,8 @@ public record EnumRef(FieldRef field, List<String> allowedValues, Map<String, Li
     public CategoryRef category(String name) {
         List<String> values = categories.get(name);
         if (values == null) {
-            throw new IllegalArgumentException("'" + name + "' is not a category of " + field.path()
-                    + " — declared: " + categories.keySet() + " (MVK_CATEGORY_UNKOWN)");
+            throw Refusals.of(KernelCode.MVK_CATEGORY_UNKOWN, "'" + name + "' is not a category of " + field.path()
+                    + " — declared: " + categories.keySet());
         }
         return new CategoryRef(field, name, values);
     }
@@ -162,9 +165,16 @@ public record EnumRef(FieldRef field, List<String> allowedValues, Map<String, Li
         return isNot(other);
     }
 
+    /**
+     * The single-comparison carrier cites a DIFFERENT code from the value-list one, measured rather than
+     * assumed: the kernel reports {@code MVK_INVALID_STRING_CONSTANT_FOR_ENUM_COMPARISON} here and
+     * {@code MVK_INVALID_STRING_CONSTANT_FOR_ENUMERATION} for {@code in}/{@code notIn}
+     * ({@code validate.laws.UnbackedClientRefusalLawsTest}), so the two must not share a code however alike
+     * the refused input looks.
+     */
     private Condition compareTo(CompareOp op, String value) {
         if (!allowedValues.contains(value)) {
-            throw new IllegalArgumentException(
+            throw Refusals.of(KernelCode.MVK_INVALID_STRING_CONSTANT_FOR_ENUM_COMPARISON,
                     "'" + value + "' is not a value of " + field.path() + " — allowed: " + allowedValues
                             + io.github.mbackschat.a12.dm.core.Suggest.hint(value, allowedValues));
         }
@@ -195,8 +205,9 @@ public record EnumRef(FieldRef field, List<String> allowedValues, Map<String, Li
 
     EnumValueLiteral checkedLiteral(String value) {
         if (!allowedValues.contains(value)) {
-            throw new IllegalArgumentException("'" + value + "' is not a value of " + field.path()
-                    + " — allowed: " + allowedValues + " (MVK_INVALID_STRING_CONSTANT_FOR_ENUMERATION)");
+            throw Refusals.of(KernelCode.MVK_INVALID_STRING_CONSTANT_FOR_ENUMERATION,
+                    "'" + value + "' is not a value of " + field.path()
+                            + " — allowed: " + allowedValues);
         }
         return new EnumValueLiteral(value);
     }

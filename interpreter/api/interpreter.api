@@ -2,7 +2,6 @@ public final class io/github/mbackschat/a12/dm/interpreter/A12PartiallyKnownMult
 	public static final field Companion Lio/github/mbackschat/a12/dm/interpreter/A12PartiallyKnownMultiPointer$Companion;
 	public static final field UNKNOWN I
 	public static final field WILDCARD I
-	public synthetic fun <init> (Ljava/lang/String;Ljava/util/List;Lkotlin/jvm/internal/DefaultConstructorMarker;)V
 	public fun equals (Ljava/lang/Object;)Z
 	public final fun getFullName ()Ljava/lang/String;
 	public final fun getRepetitionIndexes ()Ljava/util/List;
@@ -30,7 +29,6 @@ public final class io/github/mbackschat/a12/dm/interpreter/A12PathPart {
 
 public final class io/github/mbackschat/a12/dm/interpreter/A12Pointer {
 	public static final field Companion Lio/github/mbackschat/a12/dm/interpreter/A12Pointer$Companion;
-	public synthetic fun <init> (Ljava/util/List;Lkotlin/jvm/internal/DefaultConstructorMarker;)V
 	public fun equals (Ljava/lang/Object;)Z
 	public final fun getFullName ()Ljava/lang/String;
 	public final fun getPathParts ()Ljava/util/List;
@@ -64,7 +62,6 @@ public final class io/github/mbackschat/a12/dm/interpreter/ComputationOutcome : 
 
 public final class io/github/mbackschat/a12/dm/interpreter/ComputationReport : io/github/mbackschat/a12/dm/interpreter/ModelOwned {
 	public static final field Companion Lio/github/mbackschat/a12/dm/interpreter/ComputationReport$Companion;
-	public synthetic fun <init> (Ljava/util/List;Ljava/util/List;Ljava/util/List;Ljava/util/List;Lio/github/mbackschat/a12/dm/interpreter/ModelOwnerIdentity;Lio/github/mbackschat/a12/dm/interpreter/ModelVersionIdentity;Lkotlin/jvm/internal/DefaultConstructorMarker;)V
 	public final fun applyTo (Lio/github/mbackschat/a12/dm/interpreter/DocumentSnapshot;)Lio/github/mbackschat/a12/dm/interpreter/DocumentSnapshot;
 	public final fun getActions ()Ljava/util/List;
 	public final fun getFormalErrorsInOperands ()Ljava/util/List;
@@ -103,7 +100,6 @@ public abstract interface class io/github/mbackschat/a12/dm/interpreter/CustomCo
 
 public final class io/github/mbackschat/a12/dm/interpreter/CustomConditionDocumentView : io/github/mbackschat/a12/dm/interpreter/ModelOwned {
 	public static final field Companion Lio/github/mbackschat/a12/dm/interpreter/CustomConditionDocumentView$Companion;
-	public synthetic fun <init> (Lio/github/mbackschat/a12/dm/interpreter/DocumentSnapshot;Lio/github/mbackschat/a12/dm/interpreter/ModelMetadata;Lio/github/mbackschat/a12/dm/interpreter/model/CustomConditionData;Lkotlin/jvm/internal/DefaultConstructorMarker;)V
 	public final fun fields ()Ljava/util/List;
 	public final fun getModel ()Lio/github/mbackschat/a12/dm/interpreter/ModelMetadata;
 	public fun getModelVersion ()Lio/github/mbackschat/a12/dm/interpreter/ModelVersionIdentity;
@@ -121,7 +117,6 @@ public abstract interface class io/github/mbackschat/a12/dm/interpreter/CustomCo
 
 public final class io/github/mbackschat/a12/dm/interpreter/CustomConditionInvocation {
 	public static final field Companion Lio/github/mbackschat/a12/dm/interpreter/CustomConditionInvocation$Companion;
-	public synthetic fun <init> (Lio/github/mbackschat/a12/dm/interpreter/CustomConditionDocumentView;Ljava/util/List;Ljava/util/List;Lio/github/mbackschat/a12/dm/interpreter/FieldPointer;Lkotlin/jvm/internal/DefaultConstructorMarker;)V
 	public final fun getDocument ()Lio/github/mbackschat/a12/dm/interpreter/CustomConditionDocumentView;
 	public final fun getErrorPointer ()Lio/github/mbackschat/a12/dm/interpreter/FieldPointer;
 	public final fun getFormallyIncorrectEntities ()Ljava/util/List;
@@ -133,7 +128,6 @@ public final class io/github/mbackschat/a12/dm/interpreter/CustomConditionInvoca
 
 public final class io/github/mbackschat/a12/dm/interpreter/CustomConditionRegistry {
 	public static final field Companion Lio/github/mbackschat/a12/dm/interpreter/CustomConditionRegistry$Companion;
-	public synthetic fun <init> (Lio/github/mbackschat/a12/dm/interpreter/CustomConditionFactory;Lkotlin/jvm/internal/DefaultConstructorMarker;)V
 	public static final fun builder ()Lio/github/mbackschat/a12/dm/interpreter/CustomConditionRegistry$Builder;
 	public static final fun empty ()Lio/github/mbackschat/a12/dm/interpreter/CustomConditionRegistry;
 	public static final fun fromFactory (Lio/github/mbackschat/a12/dm/interpreter/CustomConditionFactory;)Lio/github/mbackschat/a12/dm/interpreter/CustomConditionRegistry;
@@ -156,7 +150,6 @@ public abstract interface class io/github/mbackschat/a12/dm/interpreter/CustomFi
 
 public final class io/github/mbackschat/a12/dm/interpreter/CustomFieldTypeRegistry {
 	public static final field Companion Lio/github/mbackschat/a12/dm/interpreter/CustomFieldTypeRegistry$Companion;
-	public synthetic fun <init> (Lio/github/mbackschat/a12/dm/interpreter/CustomFieldTypeFactory;Lkotlin/jvm/internal/DefaultConstructorMarker;)V
 	public static final fun builder ()Lio/github/mbackschat/a12/dm/interpreter/CustomFieldTypeRegistry$Builder;
 	public static final fun empty ()Lio/github/mbackschat/a12/dm/interpreter/CustomFieldTypeRegistry;
 	public static final fun fromFactory (Lio/github/mbackschat/a12/dm/interpreter/CustomFieldTypeFactory;)Lio/github/mbackschat/a12/dm/interpreter/CustomFieldTypeRegistry;
@@ -227,7 +220,6 @@ public final class io/github/mbackschat/a12/dm/interpreter/CustomizationKind : j
 
 public final class io/github/mbackschat/a12/dm/interpreter/CustomizationRegistrationError : java/lang/IllegalArgumentException {
 	public static final field Companion Lio/github/mbackschat/a12/dm/interpreter/CustomizationRegistrationError$Companion;
-	public synthetic fun <init> (Lio/github/mbackschat/a12/dm/interpreter/CustomizationKind;Lio/github/mbackschat/a12/dm/interpreter/CustomizationRegistrationReason;Ljava/lang/String;Lkotlin/jvm/internal/DefaultConstructorMarker;)V
 	public final fun getCode ()Ljava/lang/String;
 	public final fun getCustomizationKind ()Lio/github/mbackschat/a12/dm/interpreter/CustomizationKind;
 	public final fun getName ()Ljava/lang/String;
@@ -247,7 +239,6 @@ public final class io/github/mbackschat/a12/dm/interpreter/CustomizationRegistra
 
 public final class io/github/mbackschat/a12/dm/interpreter/DocumentCoordinateError : java/lang/RuntimeException {
 	public static final field Companion Lio/github/mbackschat/a12/dm/interpreter/DocumentCoordinateError$Companion;
-	public synthetic fun <init> (Lio/github/mbackschat/a12/dm/interpreter/DocumentCoordinateReason;Ljava/lang/String;Ljava/lang/Integer;Ljava/lang/Integer;Ljava/lang/Integer;Lkotlin/jvm/internal/DefaultConstructorMarker;)V
 	public final fun getActualCoordinateCount ()Ljava/lang/Integer;
 	public final fun getCode ()Ljava/lang/String;
 	public final fun getCoordinateIndex ()Ljava/lang/Integer;
@@ -284,7 +275,6 @@ public final class io/github/mbackschat/a12/dm/interpreter/DocumentDecodeLimits 
 	public static final field HARD_MAX_PATH_CODE_UNITS I
 	public static final field HARD_MAX_RAW_CODE_UNITS_PER_FIELD I
 	public static final field HARD_MAX_TOTAL_RAW_CODE_UNITS I
-	public synthetic fun <init> (IIIIIIILkotlin/jvm/internal/DefaultConstructorMarker;)V
 	public static final fun builder ()Lio/github/mbackschat/a12/dm/interpreter/DocumentDecodeLimits$Builder;
 	public static final fun defaults ()Lio/github/mbackschat/a12/dm/interpreter/DocumentDecodeLimits;
 	public final fun getMaxDocumentCodeUnits ()I
@@ -314,7 +304,6 @@ public final class io/github/mbackschat/a12/dm/interpreter/DocumentDecodeLimits$
 
 public final class io/github/mbackschat/a12/dm/interpreter/DocumentEncodeError : java/lang/RuntimeException {
 	public static final field Companion Lio/github/mbackschat/a12/dm/interpreter/DocumentEncodeError$Companion;
-	public synthetic fun <init> (Ljava/lang/String;Ljava/lang/String;Lkotlin/jvm/internal/DefaultConstructorMarker;)V
 	public final fun getCode ()Ljava/lang/String;
 	public final fun getModelPath ()Ljava/lang/String;
 	public final fun getPointer ()Ljava/lang/String;
@@ -347,7 +336,6 @@ public final class io/github/mbackschat/a12/dm/interpreter/DocumentInputDiagnost
 
 public final class io/github/mbackschat/a12/dm/interpreter/DocumentInputError : java/lang/RuntimeException {
 	public static final field Companion Lio/github/mbackschat/a12/dm/interpreter/DocumentInputError$Companion;
-	public synthetic fun <init> (Ljava/util/List;Lkotlin/jvm/internal/DefaultConstructorMarker;)V
 	public final fun getCode ()Ljava/lang/String;
 	public final fun getDiagnostics ()Ljava/util/List;
 }
@@ -395,7 +383,6 @@ public abstract interface class io/github/mbackschat/a12/dm/interpreter/Document
 
 public final class io/github/mbackschat/a12/dm/interpreter/DocumentSnapshot : io/github/mbackschat/a12/dm/interpreter/ModelOwned {
 	public static final field Companion Lio/github/mbackschat/a12/dm/interpreter/DocumentSnapshot$Companion;
-	public synthetic fun <init> (Lio/github/mbackschat/a12/dm/interpreter/ModelOwnerIdentity;Lio/github/mbackschat/a12/dm/interpreter/ModelVersionIdentity;Ljava/lang/String;Lio/github/mbackschat/a12/dm/interpreter/eval/Document;Lkotlin/jvm/internal/DefaultConstructorMarker;)V
 	public final fun getDocumentId ()Ljava/lang/String;
 	public fun getModelVersion ()Lio/github/mbackschat/a12/dm/interpreter/ModelVersionIdentity;
 	public fun getOwner ()Lio/github/mbackschat/a12/dm/interpreter/ModelOwnerIdentity;
@@ -406,7 +393,6 @@ public final class io/github/mbackschat/a12/dm/interpreter/DocumentSnapshot$Comp
 
 public final class io/github/mbackschat/a12/dm/interpreter/FieldPointer : io/github/mbackschat/a12/dm/interpreter/DocumentPointer {
 	public static final field Companion Lio/github/mbackschat/a12/dm/interpreter/FieldPointer$Companion;
-	public synthetic fun <init> (Ljava/lang/String;Ljava/util/List;Lio/github/mbackschat/a12/dm/interpreter/ModelOwnerIdentity;Lio/github/mbackschat/a12/dm/interpreter/ModelVersionIdentity;Lkotlin/jvm/internal/DefaultConstructorMarker;)V
 	public fun getCoordinates ()Ljava/util/List;
 	public fun getEntityKind ()Lio/github/mbackschat/a12/dm/interpreter/ModelEntityKind;
 	public fun getModelVersion ()Lio/github/mbackschat/a12/dm/interpreter/ModelVersionIdentity;
@@ -419,7 +405,6 @@ public final class io/github/mbackschat/a12/dm/interpreter/FieldPointer$Companio
 
 public final class io/github/mbackschat/a12/dm/interpreter/GroupPointer : io/github/mbackschat/a12/dm/interpreter/DocumentPointer {
 	public static final field Companion Lio/github/mbackschat/a12/dm/interpreter/GroupPointer$Companion;
-	public synthetic fun <init> (Ljava/lang/String;Ljava/util/List;Lio/github/mbackschat/a12/dm/interpreter/ModelOwnerIdentity;Lio/github/mbackschat/a12/dm/interpreter/ModelVersionIdentity;Lkotlin/jvm/internal/DefaultConstructorMarker;)V
 	public fun getCoordinates ()Ljava/util/List;
 	public fun getEntityKind ()Lio/github/mbackschat/a12/dm/interpreter/ModelEntityKind;
 	public fun getModelVersion ()Lio/github/mbackschat/a12/dm/interpreter/ModelVersionIdentity;
@@ -432,7 +417,6 @@ public final class io/github/mbackschat/a12/dm/interpreter/GroupPointer$Companio
 
 public final class io/github/mbackschat/a12/dm/interpreter/Interpreter : io/github/mbackschat/a12/dm/interpreter/ModelOwned {
 	public static final field Companion Lio/github/mbackschat/a12/dm/interpreter/Interpreter$Companion;
-	public synthetic fun <init> (Lio/github/mbackschat/a12/dm/interpreter/PreparedModel;Lio/github/mbackschat/a12/dm/interpreter/InterpreterConfiguration;Lkotlin/jvm/internal/DefaultConstructorMarker;)V
 	public final fun applyComputations (Lio/github/mbackschat/a12/dm/interpreter/DocumentSnapshot;)Lio/github/mbackschat/a12/dm/interpreter/DocumentSnapshot;
 	public final fun applyComputations (Lio/github/mbackschat/a12/dm/interpreter/DocumentSnapshot;Ljava/lang/String;)Lio/github/mbackschat/a12/dm/interpreter/DocumentSnapshot;
 	public static synthetic fun applyComputations$default (Lio/github/mbackschat/a12/dm/interpreter/Interpreter;Lio/github/mbackschat/a12/dm/interpreter/DocumentSnapshot;Ljava/lang/String;ILjava/lang/Object;)Lio/github/mbackschat/a12/dm/interpreter/DocumentSnapshot;
@@ -455,7 +439,6 @@ public final class io/github/mbackschat/a12/dm/interpreter/Interpreter$Companion
 
 public final class io/github/mbackschat/a12/dm/interpreter/InterpreterConfiguration {
 	public static final field Companion Lio/github/mbackschat/a12/dm/interpreter/InterpreterConfiguration$Companion;
-	public synthetic fun <init> (Lio/github/mbackschat/a12/dm/interpreter/CustomFieldTypeRegistry;Lio/github/mbackschat/a12/dm/interpreter/CustomConditionRegistry;Lkotlin/jvm/internal/DefaultConstructorMarker;)V
 	public static final fun builder ()Lio/github/mbackschat/a12/dm/interpreter/InterpreterConfiguration$Builder;
 	public static final fun defaults ()Lio/github/mbackschat/a12/dm/interpreter/InterpreterConfiguration;
 }
@@ -473,7 +456,6 @@ public final class io/github/mbackschat/a12/dm/interpreter/InterpreterConfigurat
 
 public final class io/github/mbackschat/a12/dm/interpreter/InterpreterIntegrationError : java/lang/RuntimeException {
 	public static final field Companion Lio/github/mbackschat/a12/dm/interpreter/InterpreterIntegrationError$Companion;
-	public synthetic fun <init> (Lio/github/mbackschat/a12/dm/interpreter/InterpreterIntegrationPhase;Lio/github/mbackschat/a12/dm/interpreter/InterpreterIntegrationReason;Ljava/lang/Throwable;Lkotlin/jvm/internal/DefaultConstructorMarker;)V
 	public final fun getCode ()Ljava/lang/String;
 	public final fun getPhase ()Lio/github/mbackschat/a12/dm/interpreter/InterpreterIntegrationPhase;
 	public final fun getReason ()Lio/github/mbackschat/a12/dm/interpreter/InterpreterIntegrationReason;
@@ -502,7 +484,6 @@ public final class io/github/mbackschat/a12/dm/interpreter/InterpreterIntegratio
 
 public final class io/github/mbackschat/a12/dm/interpreter/InterpreterSupportReport {
 	public static final field Companion Lio/github/mbackschat/a12/dm/interpreter/InterpreterSupportReport$Companion;
-	public synthetic fun <init> (Ljava/util/List;Lkotlin/jvm/internal/DefaultConstructorMarker;)V
 	public final fun getFullySupported ()Z
 	public final fun getUnsupported ()Ljava/util/List;
 }
@@ -530,7 +511,6 @@ public final class io/github/mbackschat/a12/dm/interpreter/ModelCollectionSignal
 
 public final class io/github/mbackschat/a12/dm/interpreter/ModelDependency {
 	public static final field Companion Lio/github/mbackschat/a12/dm/interpreter/ModelDependency$Companion;
-	public synthetic fun <init> (Ljava/lang/String;Ljava/lang/String;Lio/github/mbackschat/a12/dm/interpreter/ModelReferencePurpose;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Lkotlin/jvm/internal/DefaultConstructorMarker;)V
 	public final fun component1 ()Ljava/lang/String;
 	public final fun component2 ()Ljava/lang/String;
 	public final fun component3 ()Lio/github/mbackschat/a12/dm/interpreter/ModelReferencePurpose;
@@ -586,7 +566,6 @@ public final class io/github/mbackschat/a12/dm/interpreter/ModelExpansionResult$
 
 public final class io/github/mbackschat/a12/dm/interpreter/ModelMetadata : io/github/mbackschat/a12/dm/interpreter/ModelOwned {
 	public static final field Companion Lio/github/mbackschat/a12/dm/interpreter/ModelMetadata$Companion;
-	public synthetic fun <init> (Lio/github/mbackschat/a12/dm/interpreter/PreparedModel;Lkotlin/jvm/internal/DefaultConstructorMarker;)V
 	public final fun getDocumentModelId ()Ljava/lang/String;
 	public fun getModelVersion ()Lio/github/mbackschat/a12/dm/interpreter/ModelVersionIdentity;
 	public fun getOwner ()Lio/github/mbackschat/a12/dm/interpreter/ModelOwnerIdentity;
@@ -611,7 +590,6 @@ public final class io/github/mbackschat/a12/dm/interpreter/ModelOwnerIdentity$Co
 
 public final class io/github/mbackschat/a12/dm/interpreter/ModelOwnerMismatchError : java/lang/RuntimeException {
 	public static final field Companion Lio/github/mbackschat/a12/dm/interpreter/ModelOwnerMismatchError$Companion;
-	public synthetic fun <init> (Lio/github/mbackschat/a12/dm/interpreter/ModelOwnerIdentity;Lio/github/mbackschat/a12/dm/interpreter/ModelOwnerIdentity;Lkotlin/jvm/internal/DefaultConstructorMarker;)V
 	public final fun getActual ()Lio/github/mbackschat/a12/dm/interpreter/ModelOwnerIdentity;
 	public final fun getCode ()Ljava/lang/String;
 	public final fun getExpected ()Lio/github/mbackschat/a12/dm/interpreter/ModelOwnerIdentity;
@@ -692,7 +670,6 @@ public final class io/github/mbackschat/a12/dm/interpreter/ModelPreparationDiagn
 
 public final class io/github/mbackschat/a12/dm/interpreter/ModelPreparationError : java/lang/RuntimeException {
 	public static final field Companion Lio/github/mbackschat/a12/dm/interpreter/ModelPreparationError$Companion;
-	public synthetic fun <init> (Ljava/util/List;Ljava/lang/Throwable;Lkotlin/jvm/internal/DefaultConstructorMarker;)V
 	public final fun getCode ()Ljava/lang/String;
 	public final fun getDiagnostics ()Ljava/util/List;
 }
@@ -718,7 +695,6 @@ public final class io/github/mbackschat/a12/dm/interpreter/ModelPreparationLimit
 	public static final field HARD_MAX_REFERENCE_EDGES I
 	public static final field HARD_MAX_STRUCTURE_DEPTH I
 	public static final field HARD_MAX_TOTAL_BYTES I
-	public synthetic fun <init> (IIIIIIIILkotlin/jvm/internal/DefaultConstructorMarker;)V
 	public static final fun builder ()Lio/github/mbackschat/a12/dm/interpreter/ModelPreparationLimits$Builder;
 	public static final fun defaults ()Lio/github/mbackschat/a12/dm/interpreter/ModelPreparationLimits;
 	public final fun getMaxModelBytes ()I
@@ -801,7 +777,6 @@ public final class io/github/mbackschat/a12/dm/interpreter/ModelReferencePurpose
 
 public final class io/github/mbackschat/a12/dm/interpreter/ModelReferenceStep {
 	public static final field Companion Lio/github/mbackschat/a12/dm/interpreter/ModelReferenceStep$Companion;
-	public synthetic fun <init> (Ljava/lang/String;Lio/github/mbackschat/a12/dm/interpreter/ModelReferencePurpose;Ljava/lang/String;Ljava/lang/String;Lkotlin/jvm/internal/DefaultConstructorMarker;)V
 	public final fun component1 ()Ljava/lang/String;
 	public final fun component2 ()Lio/github/mbackschat/a12/dm/interpreter/ModelReferencePurpose;
 	public final fun component3 ()Ljava/lang/String;
@@ -820,7 +795,6 @@ public final class io/github/mbackschat/a12/dm/interpreter/ModelReferenceStep$Co
 
 public final class io/github/mbackschat/a12/dm/interpreter/ModelSourceLoadContext {
 	public static final field Companion Lio/github/mbackschat/a12/dm/interpreter/ModelSourceLoadContext$Companion;
-	public synthetic fun <init> (ILio/github/mbackschat/a12/dm/interpreter/ModelCollectionSignal;Lkotlin/jvm/internal/DefaultConstructorMarker;)V
 	public final fun getMaximumBytes ()I
 	public final fun getSignal ()Lio/github/mbackschat/a12/dm/interpreter/ModelCollectionSignal;
 }
@@ -839,7 +813,6 @@ public final class io/github/mbackschat/a12/dm/interpreter/ModelSourceProvider$D
 
 public final class io/github/mbackschat/a12/dm/interpreter/ModelSourceProviderError : java/lang/RuntimeException {
 	public static final field Companion Lio/github/mbackschat/a12/dm/interpreter/ModelSourceProviderError$Companion;
-	public synthetic fun <init> (Lio/github/mbackschat/a12/dm/interpreter/ModelSourceProviderFailureReason;Ljava/lang/String;Ljava/lang/String;Ljava/lang/Throwable;Lkotlin/jvm/internal/DefaultConstructorMarker;)V
 	public static final fun builder ()Lio/github/mbackschat/a12/dm/interpreter/ModelSourceProviderError$Builder;
 	public final fun getCode ()Ljava/lang/String;
 	public final fun getModelId ()Ljava/lang/String;
@@ -879,7 +852,6 @@ public final class io/github/mbackschat/a12/dm/interpreter/ModelVersionIdentity$
 
 public final class io/github/mbackschat/a12/dm/interpreter/ModelWorkspace {
 	public static final field Companion Lio/github/mbackschat/a12/dm/interpreter/ModelWorkspace$Companion;
-	public synthetic fun <init> (Lio/github/mbackschat/a12/dm/interpreter/workspace/AdmittedWorkspace;Lio/github/mbackschat/a12/dm/interpreter/ModelPreparationLimits;Ljava/lang/String;Lkotlin/jvm/internal/DefaultConstructorMarker;)V
 	public final fun expand (Ljava/lang/String;)Ljava/lang/String;
 	public static final fun fromSources (Ljava/util/List;)Lio/github/mbackschat/a12/dm/interpreter/ModelWorkspace;
 	public static final fun fromSources (Ljava/util/List;Lio/github/mbackschat/a12/dm/interpreter/ModelPreparationLimits;)Lio/github/mbackschat/a12/dm/interpreter/ModelWorkspace;
@@ -970,7 +942,6 @@ public abstract interface class io/github/mbackschat/a12/dm/interpreter/Relevant
 
 public final class io/github/mbackschat/a12/dm/interpreter/RelevantSelectionPointer : io/github/mbackschat/a12/dm/interpreter/RelevantEntityPointer {
 	public static final field Companion Lio/github/mbackschat/a12/dm/interpreter/RelevantSelectionPointer$Companion;
-	public synthetic fun <init> (Lio/github/mbackschat/a12/dm/interpreter/ModelEntityKind;Ljava/lang/String;Ljava/util/List;Lio/github/mbackschat/a12/dm/interpreter/ModelOwnerIdentity;Lio/github/mbackschat/a12/dm/interpreter/ModelVersionIdentity;Lkotlin/jvm/internal/DefaultConstructorMarker;)V
 	public final fun getCoordinates ()Ljava/util/List;
 	public fun getEntityKind ()Lio/github/mbackschat/a12/dm/interpreter/ModelEntityKind;
 	public fun getModelVersion ()Lio/github/mbackschat/a12/dm/interpreter/ModelVersionIdentity;
@@ -983,7 +954,6 @@ public final class io/github/mbackschat/a12/dm/interpreter/RelevantSelectionPoin
 
 public final class io/github/mbackschat/a12/dm/interpreter/UnknownModelPathError : java/lang/RuntimeException {
 	public static final field Companion Lio/github/mbackschat/a12/dm/interpreter/UnknownModelPathError$Companion;
-	public synthetic fun <init> (Ljava/lang/String;Lkotlin/jvm/internal/DefaultConstructorMarker;)V
 	public final fun getCode ()Ljava/lang/String;
 	public final fun getPath ()Ljava/lang/String;
 }
@@ -1049,7 +1019,6 @@ public final class io/github/mbackschat/a12/dm/interpreter/ValidationFindingType
 
 public final class io/github/mbackschat/a12/dm/interpreter/ValidationReport {
 	public static final field Companion Lio/github/mbackschat/a12/dm/interpreter/ValidationReport$Companion;
-	public synthetic fun <init> (Ljava/util/List;Ljava/util/List;Lkotlin/jvm/internal/DefaultConstructorMarker;)V
 	public final fun getFindings ()Ljava/util/List;
 	public final fun getFullySupported ()Z
 	public final fun getNoErrorOccurred ()Z
@@ -1070,7 +1039,6 @@ public final class io/github/mbackschat/a12/dm/interpreter/ValidationSeverity : 
 
 public final class io/github/mbackschat/a12/dm/interpreter/WorkspaceModelSource {
 	public static final field Companion Lio/github/mbackschat/a12/dm/interpreter/WorkspaceModelSource$Companion;
-	public synthetic fun <init> (Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Lkotlin/jvm/internal/DefaultConstructorMarker;)V
 	public static final fun builder ()Lio/github/mbackschat/a12/dm/interpreter/WorkspaceModelSource$Builder;
 	public final fun getDiagnosticLabel ()Ljava/lang/String;
 	public final fun getExpectedSha256 ()Ljava/lang/String;

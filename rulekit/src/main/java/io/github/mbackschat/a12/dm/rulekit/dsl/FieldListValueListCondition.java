@@ -26,6 +26,7 @@ public record FieldListValueListCondition(
         if (values.isEmpty()) {
             throw new IllegalArgumentException("a value list needs at least one value");
         }
+        DuplicateGate.rejectDuplicates(quantifier.operatorId(), fields);
     }
 
     @Override

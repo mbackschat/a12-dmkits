@@ -1,5 +1,7 @@
 package io.github.mbackschat.a12.dm.rulekit.dsl;
 
+import java.util.Optional;
+
 /**
  * A field value reached through a semantic index — {@code [Field For key]} (KERNEL-SEMANTICS §9): the
  * literal-keyed {@link SemanticIndexValue} or the field-keyed {@link SemanticIndexFieldValue}. Beyond
@@ -57,18 +59,45 @@ public sealed interface IndexedFieldValue extends Calculation, FieldOperand
      * The compound identity used for exact-duplicate detection ({@code MVK_DUPLICATE_PARAM1}) — field
      * path, index key, and every {@code $} correlation in the shape (the field's own, and — for the
      * field-keyed form — the key field's own too, since a correlated key reads a different repetition
-     * than an uncorrelated one and the two must stay distinguishable). Shared by both {@code
-     * ListAggregate.checkNoDuplicates} and {@code Dsl.referenceIdentity} so the compound computation
-     * lives in one place. Deliberately excludes the indirect-overlap case ({@code MVK_DUPLICATE_PARAM2},
-     * an indexed field reached once directly and once through a group scope): that stays
-     * kernel-arbitrated, exactly as it already does for the {@link GroupListRef} arm.
+     * than an uncorrelated one and the two must stay distinguishable). Read by {@code DuplicateGate}
+     * through {@link #exactIdentity()}, so the compound computation lives in one place. The
+     * indirect-overlap arm ({@code MVK_DUPLICATE_PARAM2} — an indexed field reached once directly and
+     * once through a group scope) is not this key's business: it compares {@link #overlapModifier()}
+     * against the path relation instead, because an index selection removes an overlap that the same
+     * scope starred would have.
      *
      * <p>Identical to {@link #renderedPath()} today — two references that print the same diagnostic
      * path ARE the same identity — so this delegates rather than re-computing the same string; its own
-     * name and javadoc exist because the two callers care about a dedup key, not a diagnostic string,
+     * name and javadoc exist because the gate cares about a dedup key, not a diagnostic string,
      * and that distinction is worth keeping even where the values happen to coincide.
      */
     default String duplicateIdentity() {
         return renderedPath();
+    }
+
+    @Override
+    default Optional<String> exactIdentity() {
+        return Optional.of(duplicateIdentity());
+    }
+
+    /**
+     * The index selection participates in containment: an index-selected ancestor does not contain a
+     * plainly-addressed descendant (kernel-measured, KERNEL-FINDINGS {@code kf1015}).
+     *
+     * <p>The key field's own {@code $} is folded in, for the same reason the EXACT arm folds it: a correlated
+     * key reads a different repetition than an uncorrelated one, and the kernel compares that flag. The fold
+     * changes no verdict today, because a correlated index key is refused before it can stand beside an
+     * uncorrelated twin — {@code MVK_INVALID_OUTER_ITERATION} at a plain rule locus (measured, KERNEL-FINDINGS
+     * {@code kf1015}). It is kept for symmetry rather than for a reachable case, so a mutant that removes it
+     * is expected to survive; omitting it is the direction that would be broader than the kernel if the
+     * shape ever became authorable.
+     */
+    @Override
+    default String overlapModifier() {
+        return switch (this) {
+            case SemanticIndexValue v -> "For:" + v.indexValue();
+            case SemanticIndexFieldValue v -> "For:" + (v.indexField().correlated() ? "$" : "")
+                    + v.indexField().renderedPath();
+        };
     }
 }

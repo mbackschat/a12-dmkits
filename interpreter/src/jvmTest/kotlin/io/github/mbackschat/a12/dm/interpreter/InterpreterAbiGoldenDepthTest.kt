@@ -11,10 +11,10 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 import kotlin.test.assertTrue
-import org.jetbrains.kotlin.abi.tools.api.AbiFilters
-import org.jetbrains.kotlin.abi.tools.api.AbiToolsFactory
-import org.jetbrains.kotlin.abi.tools.api.v2.AbiToolsV2
-import org.jetbrains.kotlin.abi.tools.api.v2.KlibTarget
+import org.jetbrains.kotlin.abi.tools.AbiFilters
+import org.jetbrains.kotlin.abi.tools.AbiToolsFactory
+import org.jetbrains.kotlin.abi.tools.AbiTools
+import org.jetbrains.kotlin.abi.tools.KlibTarget
 
 /**
  * Locks the scope of the reviewed Kotlin ABI goldens without implementing a second Kotlin ABI model.
@@ -36,9 +36,9 @@ class InterpreterAbiGoldenDepthTest {
     private val nonContractFacadeNames = requireNotNull(
         System.getProperty("interpreter.abi.non-contract-facade-names"),
     ).split(',').filter(String::isNotEmpty).toSet()
-    private val abiTools: AbiToolsV2 by lazy {
+    private val abiTools: AbiTools by lazy {
         ServiceLoader.load(AbiToolsFactory::class.java)
-            .map { it.get().v2 }
+            .map { it.get() }
             .single()
     }
 

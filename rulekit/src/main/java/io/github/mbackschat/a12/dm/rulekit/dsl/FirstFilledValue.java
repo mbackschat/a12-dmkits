@@ -20,6 +20,9 @@ import io.github.mbackschat.a12.dm.core.ValueKind;
  * while a scalar form needs a second operand. The owner groups String/Custom/Enumeration and
  * Date/DateFragment into result families, while the other kinds remain exact.
  */
+import io.github.mbackschat.a12.dm.core.KernelCode;
+import io.github.mbackschat.a12.dm.core.Refusals;
+
 public record FirstFilledValue(FirstFilledOperand firstOperand, List<FirstFilledOperand> trailingOperands)
         implements Calculation {
 
@@ -35,15 +38,14 @@ public record FirstFilledValue(FirstFilledOperand firstOperand, List<FirstFilled
 
     public FirstFilledValue {
         if (!firstOperand.expandsToList() && trailingOperands.isEmpty()) {
-            throw new IllegalArgumentException("FirstFilledValue needs at least two scalar fields"
-                    + " or one repetition list (MVK_PARAMSIZE_INVALIDN)");
+            throw Refusals.of(KernelCode.MVK_PARAMSIZE_INVALIDN, "FirstFilledValue needs at least two scalar fields"
+                    + " or one repetition list");
         }
         trailingOperands = List.copyOf(trailingOperands);
         List<FirstFilledOperand> all = operands(firstOperand, trailingOperands);
         for (FirstFilledOperand operand : all) {
             if (operand.kind() == ValueKind.CONFIRM) {
-                throw new IllegalArgumentException("FirstFilledValue does not accept CONFIRM operands"
-                        + " (MVK_NO_BOOLY_ALLOWED)");
+                throw Refusals.of(KernelCode.MVK_NO_BOOLY_ALLOWED, "FirstFilledValue does not accept CONFIRM operands");
             }
             if (!sameOwnerFamily(firstOperand.kind(), operand.kind())) {
                 throw new IllegalArgumentException("FirstFilledValue operands must have one owner result family; "
@@ -108,8 +110,8 @@ public record FirstFilledValue(FirstFilledOperand firstOperand, List<FirstFilled
         Set<EntityIdentity> seen = new HashSet<>();
         for (FirstFilledOperand operand : operands) {
             if (!hasWildcard(operand) && !seen.add(identity(operand))) {
-                throw new IllegalArgumentException("FirstFilledValue: '" + describe(operand)
-                        + "' is listed more than once (MVK_DUPLICATE_PARAM1)");
+                throw Refusals.of(KernelCode.MVK_DUPLICATE_PARAM1, "FirstFilledValue: '" + describe(operand)
+                        + "' is listed more than once");
             }
         }
         for (FirstFilledOperand child : operands) {
@@ -122,9 +124,8 @@ public record FirstFilledValue(FirstFilledOperand firstOperand, List<FirstFilled
                 if (childIdentity.isStrictlyInside(parentIdentity)
                         && Objects.equals(childIdentity.category(), parentIdentity.category())
                         && Objects.equals(childIdentity.semanticIndex(), parentIdentity.semanticIndex())) {
-                    throw new IllegalArgumentException("FirstFilledValue: '" + describe(child)
-                            + "' is already included through " + describe(candidateParent)
-                            + " (MVK_DUPLICATE_PARAM2)");
+                    throw Refusals.of(KernelCode.MVK_DUPLICATE_PARAM2, "FirstFilledValue: '" + describe(child)
+                            + "' is already included through " + describe(candidateParent));
                 }
             }
         }

@@ -29,6 +29,9 @@ import io.github.mbackschat.a12.dm.core.ValueKind;
  * supplementation ({@code DateFormat.hasSameComponents}), which is model data, and an over-strict copy would
  * refuse the legal equal-set-different-spelling pairs the kernel admits.
  */
+import io.github.mbackschat.a12.dm.core.KernelCode;
+import io.github.mbackschat.a12.dm.core.Refusals;
+
 public record DateListAggregate(Mode mode, List<AggregateOperand> operands, ValueKind kind) implements Calculation {
 
     /** The two date aggregations, carrying the catalog operator-id shared with the numeric variant. */
@@ -50,13 +53,17 @@ public record DateListAggregate(Mode mode, List<AggregateOperand> operands, Valu
     public DateListAggregate {
         operands = List.copyOf(operands);
         if (kind != ValueKind.DATE && kind != ValueKind.TIME && kind != ValueKind.DATE_TIME) {
-            throw new IllegalArgumentException(mode.operatorId() + " over date-like values needs a DATE, TIME,"
-                    + " or DATETIME operand kind; got " + kind + " (MVK_NOT_SORTABLE)");
+            throw Refusals.of(KernelCode.MVK_NOT_SORTABLE,
+                    mode.operatorId() + " over date-like values needs a DATE, TIME,"
+                            + " or DATETIME operand kind; got " + kind);
         }
         if (operands.size() < 2 && operands.stream().noneMatch(ListAggregate::satisfiesArityAlone)) {
-            throw new IllegalArgumentException(mode.operatorId() + " needs more than one field, a"
-                    + " repetition list, or a group scope (MVK_PARAMSIZE_INVALIDN)");
+            throw Refusals.of(KernelCode.MVK_PARAMSIZE_INVALIDN, mode.operatorId() + " needs more than one field, a"
+                    + " repetition list, or a group scope");
         }
+        // Ahead of the kind loop, matching the kernel: its routine checks duplicates before the type
+        // gates, so an overlap is answered even when the descendant is also the wrong temporal class.
+        DuplicateGate.rejectDuplicates(mode.operatorId(), operands);
         for (AggregateOperand operand : operands) {
             switch (operand) {
                 // The FIELD arm keeps a kind check: a field or field list KNOWS its kind, so a DATE list handed
@@ -80,7 +87,6 @@ public record DateListAggregate(Mode mode, List<AggregateOperand> operands, Valu
                 case IndexedGroupValue ignored -> { }
             }
         }
-        ListAggregate.checkNoDuplicates(mode.operatorId(), operands);
     }
 
     /**

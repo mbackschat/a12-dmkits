@@ -44,6 +44,9 @@ import io.github.mbackschat.a12.dm.rulekit.validate.PrecheckException;
  * ({@code MVK_ERROR_MESSAGE_MISSING}). Scale beyond the kind check is the kernel's call (D13).
  * Mutual exclusivity of preconditions is semantic — only the kernel/runtime can judge it.
  */
+import io.github.mbackschat.a12.dm.core.KernelCode;
+import io.github.mbackschat.a12.dm.core.Refusals;
+
 public record Computation(
         String groupPath,
         String name,
@@ -252,25 +255,24 @@ public record Computation(
         public Computation build() {
             require(name != null && !name.isBlank(), "a computation needs a name — name(...)");
             require(!alternatives.isEmpty(), "a computation needs at least one alternative — calc(...) or when(...).calc(...)");
-            require(!messages.isEmpty(),
-                    "a computation needs at least one error message (self-validation text;"
-                            + " the kernel rejects message-less computations with MVK_ERROR_MESSAGE_MISSING)"
-                            + " — message(en(...))");
+            require(!messages.isEmpty(), KernelCode.MVK_ERROR_MESSAGE_MISSING,
+                    "a computation needs at least one error message (self-validation text; the kernel rejects"
+                            + " message-less computations) — message(en(...))");
             LocalizedText.checkDeclared(declaredLocales, messages, "computation");
 
             boolean anyUnconditional = alternatives.stream().anyMatch(a -> a.precondition().isEmpty());
             boolean anyConditional = alternatives.stream().anyMatch(a -> a.precondition().isPresent());
-            require(!(anyUnconditional && anyConditional),
+            require(!(anyUnconditional && anyConditional), KernelCode.MVK_ERROR_EMPTY_PRECONDITION,
                     "alternatives must be either one unconditional calc(...) or all preconditioned"
-                            + " when(...).calc(...) — the kernel rejects mixing with MVK_ERROR_EMPTY_PRECONDITION");
+                            + " when(...).calc(...) — the kernel rejects mixing");
             require(!anyUnconditional || alternatives.size() == 1,
                     "only one unconditional alternative is possible — add preconditions to disambiguate");
 
             String computedPath = computedField.path().value();
             for (Alternative a : alternatives) {
                 require(!isFalseConstant(a.operation()) || computedField.kind() != ValueKind.CONFIRM,
-                        "the computed CONFIRM field " + computedPath + " takes only the constant True — the"
-                                + " kernel rejects False with MVK_INVALID_COMPARE_TO_YES");
+                        KernelCode.MVK_INVALID_COMPARE_TO_YES, "the computed CONFIRM field " + computedPath
+                                + " takes only the constant True — the kernel rejects False");
                 require(operationMatchesComputedKind(a.operation()),
                         "the operation '" + new DslRenderer().render(a.operation()) + "' yields "
                                 + a.operation().kind() + " but the computed field " + computedPath
@@ -339,11 +341,11 @@ public record Computation(
          */
         private void requireNoSelfReference(SelfRead selfRead, String computedPath) {
             switch (selfRead.mode()) {
-                case PROJECTED -> fail("the computed field " + computedPath + " must not be read through a"
-                        + " semantic index or category projection in " + selfRead.slot()
-                        + " (MVK_ERROR_SEMANTIC_INDEX_OR_CATEGORY_FOR_ERRORFIELD)");
-                case PLAIN -> fail("the computed field " + computedPath + " must not be referenced in "
-                        + selfRead.slot() + " (MVK_ERROR_REFERENCE_TO_CALCULATED_FIELD)");
+                case PROJECTED -> fail(KernelCode.MVK_ERROR_SEMANTIC_INDEX_OR_CATEGORY_FOR_ERRORFIELD,
+                        "the computed field " + computedPath + " must not be read through a semantic index"
+                                + " or category projection in " + selfRead.slot());
+                case PLAIN -> fail(KernelCode.MVK_ERROR_REFERENCE_TO_CALCULATED_FIELD, "the computed field "
+                        + computedPath + " must not be referenced in " + selfRead.slot());
                 case NONE -> { }
             }
         }
@@ -369,25 +371,35 @@ public record Computation(
             return operation instanceof BoolLiteral(boolean value) && !value;
         }
 
-        /** Lifts an {@code MVK_*}/{@code RK_*} code out of a precheck message when it names one. */
-        private static final Pattern PRECHECK_CODE = Pattern.compile("(MVK|RK)_[A-Z0-9_]+");
+        /** A refusal that names the kernel code it claims. */
+        private void require(boolean ok, KernelCode code, String problem) {
+            if (!ok) {
+                fail(code, problem);
+            }
+        }
 
+        /**
+         * A refusal with NO kernel code, for a shape whose kernel counterpart has not been measured. The code
+         * used to be lifted out of the message by regex, so a message that happened to name one carried it
+         * and a typo silently carried nothing; naming it explicitly is what makes the difference visible.
+         */
         private void require(boolean ok, String problem) {
             if (!ok) {
-                fail(problem);
+                throw new PrecheckException(Diagnostic.precheck(Optional.empty(), problem,
+                        new Diagnostic.Where(computedField.path().value(), Optional.empty()),
+                        Optional.empty(), Optional.empty()));
             }
         }
 
         /**
          * Fail fast with a structured PRECHECK diagnostic (a {@link PrecheckException}, itself an
          * {@code IllegalStateException}) — parity with {@code Rule.Builder.check}. The {@code MVK_*}/
-         * {@code RK_*} code is lifted from the message when it names one (as {@code Diagnostic} does for
-         * kernel notifications), so a caller reads {@code diagnostic().code()} instead of scraping prose.
+         * The code is named by the caller, so a reader gets it from {@code diagnostic().code()} rather than
+         * by scraping prose.
          */
-        private void fail(String problem) {
-            Matcher matcher = PRECHECK_CODE.matcher(problem);
-            Optional<String> code = matcher.find() ? Optional.of(matcher.group()) : Optional.empty();
-            throw new PrecheckException(Diagnostic.precheck(code, problem,
+        private void fail(KernelCode code, String problem) {
+            throw new PrecheckException(Diagnostic.precheck(Optional.of(code.name()),
+                    Refusals.message(code, problem),
                     new Diagnostic.Where(computedField.path().value(), Optional.empty()),
                     Optional.empty(), Optional.empty()));
         }
@@ -395,9 +407,8 @@ public record Computation(
         /** CustomCondition is forbidden in computation rules (KERNEL-SEMANTICS §14). */
         private void requireNoCustomCondition(Condition c) {
             switch (c) {
-                case CustomConditionRef ignored -> fail(
-                        "CustomCondition is not allowed in a computation rule"
-                                + " (MVK_ERROR_INVALID_LANGUAGE_FEATURE; KERNEL-SEMANTICS §14)");
+                case CustomConditionRef ignored -> fail(KernelCode.MVK_ERROR_INVALID_LANGUAGE_FEATURE,
+                        "CustomCondition is not allowed in a computation rule (KERNEL-SEMANTICS §14)");
                 case LogicCondition l -> {
                     requireNoCustomCondition(l.left());
                     requireNoCustomCondition(l.right());

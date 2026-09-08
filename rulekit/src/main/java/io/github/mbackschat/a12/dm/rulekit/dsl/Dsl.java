@@ -32,6 +32,9 @@ import io.github.mbackschat.a12.dm.core.ValueKind;
  *   <li>group predicates — {@code groupFilled}, {@code allGroupsFilled}, …</li>
  * </ol>
  */
+import io.github.mbackschat.a12.dm.core.KernelCode;
+import io.github.mbackschat.a12.dm.core.Refusals;
+
 public final class Dsl {
 
     /** The kernel's date-constant form (German {@code dd.MM.yyyy}); see {@link DateLiteral}. */
@@ -66,9 +69,8 @@ public final class Dsl {
         return switch (field) {
             case FieldRef ref -> fieldFilled(ref);
             case IndexedFieldValue indexed -> new SemanticIndex(indexed).filled();
-            case FieldListRef list -> throw new IllegalArgumentException(
-                    "FieldFilled needs a single field, not the repetition list "
-                            + list.renderedPath() + " (MVK_NO_WILDCARDS_ALLOWED)");
+            case FieldListRef list -> throw Refusals.of(KernelCode.MVK_NO_WILDCARDS_ALLOWED, "FieldFilled needs a single field, not the repetition list "
+                            + list.renderedPath());
         };
     }
 
@@ -77,9 +79,8 @@ public final class Dsl {
         return switch (field) {
             case FieldRef ref -> fieldNotFilled(ref);
             case IndexedFieldValue indexed -> new SemanticIndex(indexed).notFilled();
-            case FieldListRef list -> throw new IllegalArgumentException(
-                    "FieldNotFilled needs a single field, not the repetition list "
-                            + list.renderedPath() + " (MVK_NO_WILDCARDS_ALLOWED)");
+            case FieldListRef list -> throw Refusals.of(KernelCode.MVK_NO_WILDCARDS_ALLOWED, "FieldNotFilled needs a single field, not the repetition list "
+                            + list.renderedPath());
         };
     }
 
@@ -226,6 +227,107 @@ public final class Dsl {
         return listAggregate(ListAggregate.AggOp.MIN_VALUE, first, rest);
     }
 
+
+    /**
+     * The entity-list aggregates' OTHER refusal, and it precedes the component-set one.
+     *
+     * <p>The kernel reaches both from one check, {@code CheckEntityListenUtils.checkOpTypesAreComparableDatetimeType},
+     * and a partly-known DATE operand reports {@code MVK_PARTIAL_DATE_NOT_ALLOWED} even when the pair's
+     * component sets also disagree — measured, not assumed ([KF1002], {@code PartialDateAggregateLawsTest}),
+     * which is why this runs first.
+     *
+     * <p>Deliberately NOT folded into {@link #requireComparableComponentSets}: that one supplements every set
+     * with YEAR when the model declares a base year, and this rule has nothing to do with base year. They
+     * share a call site and nothing else.
+     *
+     * <p>It is DATE-only by construction rather than by an operator list: only a {@code DateType} can declare
+     * a precision, so a TIME, DATETIME or DATE_FRAGMENT operand reads empty and delegates — which is what the
+     * fragment row of the measurement requires.
+     */
+    static void requireFullDatePrecision(String operatorId, BoundModel model,
+            AggregateOperand first, AggregateOperand... rest) {
+        var operands = new java.util.ArrayList<AggregateOperand>();
+        operands.add(first);
+        operands.addAll(java.util.List.of(rest));
+        for (AggregateOperand operand : operands) {
+            String path = declaredFieldPath(operand);
+            if (path == null) {
+                continue;
+            }
+            String precision = model.datePrecision(path);
+            if (precision == null) {
+                continue;
+            }
+            if (!DatePrecisions.guaranteedComponents(precision).containsAll(
+                    java.util.EnumSet.of(TemporalFormats.Component.YEAR, TemporalFormats.Component.MONTH,
+                            TemporalFormats.Component.DAY))) {
+                throw Refusals.of(KernelCode.MVK_PARTIAL_DATE_NOT_ALLOWED,
+                        operatorId + " does not admit a partly-known date; '"
+                                + path + "' is declared " + precision);
+            }
+        }
+    }
+
+    /**
+     * The temporal admission the entity-list aggregates apply: every operand's DECLARED COMPONENT SET must be
+     * equal, after YEAR is added to all of them when the model declares a base year (KERNEL-FINDINGS KF193,
+     * locked by {@code validate.laws.TemporalAggregateComponentSetLawsTest}). Comparing SETS rather than
+     * format strings is the whole point — {@code yyyy-MM-dd} and {@code dd.MM.yyyy} are the same set and the
+     * kernel admits the pair, which is why this stayed kernel-delegated until a component classifier existed.
+     *
+     * <p>A GROUP SCOPE is DELEGATED rather than checked, under existing policy: it
+     * carries no format of its own, the rule applies to its EXPANSION, and
+     * {@link #checkEntityValuedKindsAndDuplicates} already declines to re-derive that extent because an
+     * over-strict copy would refuse a legal model. An index-selected operand IS checked: the declaration it
+     * reads is the selected field's ({@code validate.laws.IndexedTemporalOperandFormatLawsTest}).
+     * Under-reporting is safe either way; the kernel still arbitrates.
+     */
+    static void requireComparableComponentSets(String operatorId, BoundModel model,
+            AggregateOperand first, AggregateOperand... rest) {
+        var operands = new java.util.ArrayList<AggregateOperand>();
+        operands.add(first);
+        operands.addAll(java.util.List.of(rest));
+
+        boolean supplemented = model.hasBaseYear();
+        String witnessPath = null;
+        java.util.Set<TemporalFormats.Component> witness = null;
+        for (AggregateOperand operand : operands) {
+            String path = declaredFieldPath(operand);
+            if (path == null || !TemporalFormats.readsComponents(model.field(path).kind())) {
+                continue;
+            }
+            String declared = model.temporalFormat(path);
+            if (declared == null) {
+                continue;
+            }
+            java.util.Set<TemporalFormats.Component> components =
+                    java.util.EnumSet.copyOf(TemporalFormats.componentsOf(declared));
+            if (supplemented) {
+                components.add(TemporalFormats.Component.YEAR);
+            }
+            if (witness == null) {
+                witness = components;
+                witnessPath = path;
+            } else if (!witness.equals(components)) {
+                throw Refusals.of(KernelCode.MVK_DATEFORMATS_NOT_COMPATIBLE,
+                        operatorId + " needs every temporal operand to declare the"
+                                + " same date components; '" + witnessPath + "' declares " + witness + " and '" + path
+                                + "' declares " + components
+                                + (supplemented ? " (both supplemented by the model's base year)" : ""));
+            }
+        }
+    }
+
+    /** The model path of an operand that directly names ONE field declaration, else {@code null}. */
+    private static String declaredFieldPath(AggregateOperand operand) {
+        return switch (operand) {
+            case FieldRef ref -> ref.path().value();
+            case FieldListRef list -> list.field().path().value();
+            case IndexedFieldValue indexed -> indexed.field().path().value();
+            default -> null;
+        };
+    }
+
     // --- the DATE extrema ---------------------------------------------------------------------
     // Each factory NAMES the kind it means, so it supplies it to the aggregate rather than letting the record
     // re-derive it from the operands. That is what lets a GROUP scope in: a group carries no kind of its own
@@ -265,6 +367,8 @@ public final class Dsl {
     public static DateTimeExpr earliestDateTimeOf(AggregateOperand first, AggregateOperand... rest) {
         return new DateTimeExpr(dateExtremum(DateListAggregate.Mode.EARLIEST, ValueKind.DATE_TIME, first, rest));
     }
+
+    // --- the DATE extrema, with the model, so the component-set gate can run -------------------
 
     private static DateListAggregate dateExtremum(DateListAggregate.Mode mode, ValueKind kind,
             AggregateOperand first, AggregateOperand... rest) {
@@ -1138,6 +1242,170 @@ public final class Dsl {
         return new TimeExpr(new DateTimePart(DateTimePart.Unit.TIME, dateTime.expression()));
     }
 
+    // ── the extraction families over a bare Calculation ───────────────────────────────────────────
+
+    /**
+     * {@code <unit>FromDate}/{@code <unit>FromTime} over an arbitrary {@link Calculation}, gated against the
+     * operand's DECLARED FORMAT — the entry point for a caller reading a parsed AST rather than writing Java
+     * against the typed handles, which already carry their format because {@link BoundModel} only issues them
+     * for a field whose declaration fits.
+     *
+     * <p>Named for the family rather than per operator, unlike the typed factories above: this path takes the
+     * unit as a value, which is how an AST reader holds it, and nine near-identical overloads would restate
+     * one rule nine times.
+     *
+     * <p>The gate is exactly the measured one — an extraction is refused iff the operand's declared format
+     * lacks the unit's component (KERNEL-FINDINGS KF1001, locked by
+     * {@code validate.laws.TemporalExtractionFormatGateLawsTest}). An operand whose format cannot be resolved
+     * — an expression, a literal, anything but a plain field read — is DELEGATED rather than refused: there is
+     * nothing to read, and refusing would state a rule nothing measured.
+     *
+     * <p><b>A format outside the admitted vocabulary is judged by the same letter scan, deliberately.</b> The
+     * measurement covers the twelve strings the kernel admits, and a kernel-free binding (a lenient load, or a
+     * structural-only expand) can present any string at all. Scanning it is not an unmeasured widening of the
+     * rule but the kernel's own keying applied to a declaration the kernel would reject at the MODEL level, so
+     * no extraction verdict over it is meaningful either way; refusing on the component it plainly lacks is
+     * the more useful of two moot answers. The vocabulary itself is owned and published by
+     * {@code validate.laws.TemporalFormatVocabularyGuardTest}.
+     *
+     * @throws IllegalArgumentException if the source is not a point in time at all
+     *     ({@code MVK_NO_DATE}, stated by {@link DateExtraction} itself), if its declared format lacks the
+     *     component {@code unit} extracts ({@code MVK_WRONG_DATE_FORMAT_FOR_OP}), or if its declared
+     *     precision leaves that component unknown ({@code MVK_INVALID_DATE_TYPE}).
+     */
+    public static DateExtraction dateExtraction(BoundModel model, DateExtraction.Unit unit, Calculation source) {
+        TemporalFormats.Component wanted = componentOf(unit);
+        String declared = declaredFormatOf(model, source);
+        if (declared != null && !TemporalFormats.componentsOf(declared).contains(wanted)) {
+            throw wrongFormat(unit.operatorId(), model, source, declared,
+                    "the " + wanted.name().toLowerCase(java.util.Locale.ROOT));
+        }
+        String precision = declaredPrecisionOf(model, source);
+        if (precision != null && DatePrecisions.speaksAbout(wanted)
+                && !DatePrecisions.guaranteedComponents(precision).contains(wanted)) {
+            throw wrongPrecision(unit.operatorId(), source, precision, wanted);
+        }
+        return new DateExtraction(unit, source);
+    }
+
+    /**
+     * The operand's declared date precision, or {@code null} when this rule has nothing to read — an operand
+     * that is not a plain field read, or a field declaring no precision, which means FULL.
+     */
+    private static String declaredPrecisionOf(BoundModel model, Calculation source) {
+        FieldRef read = switch (source) {
+            case FieldValue value -> value.field();
+            case IndexedFieldValue indexed -> indexed.field();
+            default -> null;
+        };
+        return read == null ? null : model.datePrecision(read.path().value());
+    }
+
+    /** The precision gate's refusal — a separate code from the format gate's, as the kernel reports it. */
+    private static IllegalArgumentException wrongPrecision(String operatorId, Calculation source,
+            String precision, TemporalFormats.Component wanted) {
+        String path = switch (source) {
+            case FieldValue value -> value.field().path().value();
+            case IndexedFieldValue indexed -> indexed.field().path().value();
+            default -> "the operand";
+        };
+        return Refusals.of(KernelCode.MVK_INVALID_DATE_TYPE, operatorId + " needs a source that guarantees "
+                + "the " + wanted.name().toLowerCase(java.util.Locale.ROOT) + "; '" + path
+                + "' is declared " + precision + ", which admits an unknown "
+                + wanted.name().toLowerCase(java.util.Locale.ROOT));
+    }
+
+    /**
+     * {@code DateFromDateTime}/{@code TimeFromDateTime} over an arbitrary {@link Calculation} — the split
+     * family's peer of {@link #dateExtraction}. Both units need a source carrying BOTH halves, which over the
+     * admitted format vocabulary only the ISO date-time does.
+     *
+     * @throws IllegalArgumentException on a non-point-in-time source ({@code MVK_NO_DATE}) or a declared
+     *     format missing either half ({@code MVK_WRONG_DATE_FORMAT_FOR_OP}).
+     */
+    public static DateTimePart dateTimePart(BoundModel model, DateTimePart.Unit unit, Calculation source) {
+        String declared = declaredFormatOf(model, source);
+        if (declared != null && !TemporalFormats.carriesBothHalves(declared)) {
+            throw wrongFormat(unit.operatorId(), model, source, declared, "both a date and a time component");
+        }
+        return new DateTimePart(unit, source);
+    }
+
+    /** The component each extraction unit reads — the kernel's own keying (KF1001). */
+    private static TemporalFormats.Component componentOf(DateExtraction.Unit unit) {
+        return switch (unit) {
+            case DAY -> TemporalFormats.Component.DAY;
+            case MONTH, QUARTER -> TemporalFormats.Component.MONTH;
+            case YEAR -> TemporalFormats.Component.YEAR;
+            case HOURS -> TemporalFormats.Component.HOUR;
+            case MINUTES -> TemporalFormats.Component.MINUTE;
+            case SECONDS -> TemporalFormats.Component.SECOND;
+        };
+    }
+
+    /**
+     * The format the operand's declaration resolves to, or {@code null} when this rule has nothing to read —
+     * which is every case the kernel keeps: an operand that reads no single field (an expression or a literal
+     * carries no declaration), a kind outside the component rule's domain (the non-temporal refusal is
+     * {@link DateExtraction}'s own {@code MVK_NO_DATE}), and a fragment declaring no format, whose default was
+     * never measured because the builder requires one.
+     *
+     * <p>An INDEX-SELECTED cell reads the same declaration as a plain read of the same field, because
+     * selecting a row cannot change one that belongs to the field — measured in
+     * {@code validate.laws.IndexedTemporalOperandFormatLawsTest} rather than assumed, which is why it was
+     * delegated until then.
+     */
+    private static String declaredFormatOf(BoundModel model, Calculation source) {
+        // An operand with no declaration of its own answers its KIND's default format — the same rule KF1001
+        // measures for a field declaring none, reaching the operands that are not field reads. Measured over
+        // the complete unit vocabulary for the three point-in-time constants (KF1007) and for every derived
+        // temporal shape the grammar admits as an extraction source (KF1014), each in BOTH directions: the
+        // DATE arms admit date units and refuse the hour, DATE_TIME admits both, TIME inverts it.
+        //
+        // The three shapes NOT listed here — FirstFilledValue, the temporal extrema and ValueAsDate — render
+        // plausibly and the kernel's parser rejects them in an extraction slot, so they cannot reach this gate
+        // and delegating them costs nothing.
+        if (source instanceof Today || source instanceof Now || source instanceof BaseYear
+                || source instanceof DateShift || source instanceof DateTimePart
+                || source instanceof DateRangeBound) {
+            return TemporalFormats.defaultFormat(source.kind());
+        }
+        FieldRef read = switch (source) {
+            case FieldValue value -> value.field();
+            case IndexedFieldValue indexed -> indexed.field();
+            default -> null;
+        };
+        if (read == null) {
+            return null;
+        }
+        String path = read.path().value();
+        if (model.fieldAt(path).isEmpty()) {
+            // A caller that passed a model the operand does not come from has a wiring bug, and it must not
+            // arrive as an IllegalArgumentException: that is the refusal type, so it would read as a kernel
+            // verdict about the rule rather than a mistake about the model.
+            throw new IllegalStateException(path + " is not a field of the model passed to this factory");
+        }
+        ValueKind kind = read.kind();
+        if (!TemporalFormats.readsComponents(kind)) {
+            return null;
+        }
+        String declared = model.temporalFormat(path);
+        if (declared != null) {
+            return declared;
+        }
+        // Fall back only where the kind's default was measured (KF1001 covers DATE/TIME/DATE_TIME). A
+        // fragment declares its format or cannot be bound at all, so it never reaches here.
+        return TemporalFormats.isTemporal(kind) ? TemporalFormats.defaultFormat(kind) : null;
+    }
+
+    private static IllegalArgumentException wrongFormat(String operatorId, BoundModel model, Calculation source,
+            String declared, String wanted) {
+        String path = source instanceof FieldValue value ? value.field().path().value() : "the operand";
+        return Refusals.of(KernelCode.MVK_WRONG_DATE_FORMAT_FOR_OP,
+                operatorId + " needs a source whose declared format carries "
+                        + wanted + "; '" + path + "' is declared " + declared);
+    }
+
     /** Integral convenience overload for {@code AddDays(date, n)}; the {@link NumberExpr} overload accepts any
      *  signed numeric amount. Yields a comparable date. catalog:AddDays */
     public static DateExpr addDays(DateOperand date, long amount) {
@@ -1374,6 +1642,7 @@ public final class Dsl {
         return fields;
     }
 
+
     /** {@code NumberOfDifferentValues(…)} — distinct-value count over type-homogeneous operands. catalog:NumberOfDifferentValues */
     public static NumberExpr numberOfDifferentValues(AggregateOperand first, AggregateOperand... rest) {
         var fields = new java.util.ArrayList<AggregateOperand>();
@@ -1519,7 +1788,6 @@ public final class Dsl {
         for (StringRef r : rest) {
             fields.add(r.field());
         }
-        rejectDuplicateReferences(q.operatorId(), fields);
         var literals = values.stream().<Calculation>map(StringLiteral::new).toList();
         return new FieldListValueListCondition(q, fields, literals);
     }
@@ -1539,13 +1807,12 @@ public final class Dsl {
             operands.add(ref.listOperand());
             union.addAll(ref.admissibleValues());   // direct → stored values; category → category values
         }
-        rejectDuplicateReferences(q.operatorId(), operands);
         var literals = new java.util.ArrayList<Calculation>();
         for (String v : values) {
             if (!union.contains(v)) {
-                throw new IllegalArgumentException("'" + v + "' is not in the union of the selected"
-                        + " enumeration/category domains " + union
-                        + " (MVK_INVALID_STRING_CONSTANT_FOR_ENUMERATION_OR_CATEGORY)");
+                throw Refusals.of(KernelCode.MVK_INVALID_STRING_CONSTANT_FOR_ENUMERATION_OR_CATEGORY,
+                        "'" + v + "' is not in the union of the selected"
+                                + " enumeration/category domains " + union);
             }
             literals.add(new EnumValueLiteral(v));
         }
@@ -1635,7 +1902,7 @@ public final class Dsl {
         fields.add(first);
         fields.addAll(java.util.List.of(rest));
         var values = java.util.List.<ValueListOperand>copyOf(valueFields);
-        checkEntityValuedKindsAndDuplicates(q.operatorId(), fields, values);
+        checkEntityValuedKinds(q.operatorId(), fields, values);
         return new FieldListEntityListCondition(q, fields, values);
     }
 
@@ -1669,11 +1936,13 @@ public final class Dsl {
     }
 
     /**
-     * The entity-valued (shape-C) gate the kernel applies: every operand across BOTH sides shares one base
-     * kind (String/Enumeration/Number, {@code MVK_VARYING_TYPES_NOT_ALLOWED} / {@code MVK_ONLY_STRING_ENUM_NUMBER_ALLOWED}),
-     * and no exact reference occurs twice across the combined lists ({@code MVK_DUPLICATE_PARAM1}).
+     * The entity-valued (shape-C) KIND gate the kernel applies: every operand across BOTH sides shares one base
+     * kind (String/Enumeration/Number, {@code MVK_VARYING_TYPES_NOT_ALLOWED} / {@code MVK_ONLY_STRING_ENUM_NUMBER_ALLOWED}).
+     *
+     * <p>The duplicate arms over the same combined list belong to {@link FieldListEntityListCondition}'s own
+     * constructor, because they are intrinsic and one factory reaches that record without passing here.
      */
-    private static void checkEntityValuedKindsAndDuplicates(String opName,
+    private static void checkEntityValuedKinds(String opName,
             java.util.List<ValueListOperand> fields, java.util.List<ValueListOperand> values) {
         var combined = new java.util.ArrayList<ValueListOperand>(fields);
         combined.addAll(values);
@@ -1689,61 +1958,18 @@ public final class Dsl {
             }
             ValueListBaseKind k = baseKind(kindOf(op));
             if (k == null) {
-                throw new IllegalArgumentException(opName + " accepts only String, Enumeration, or Number"
-                        + " operands; '" + op.renderedPath() + "' is " + kindOf(op)
-                        + " (MVK_ONLY_STRING_ENUM_NUMBER_ALLOWED)");
+                throw Refusals.of(KernelCode.MVK_ONLY_STRING_ENUM_NUMBER_ALLOWED,
+                        opName + " accepts only String, Enumeration, or Number"
+                                + " operands; '" + op.renderedPath() + "' is " + kindOf(op));
             }
             if (base == null) {
                 base = k;
             } else if (base != k) {
-                throw new IllegalArgumentException(opName + " requires all operands (both sides) to share one"
-                        + " base kind; found " + base + " and " + k + " (MVK_VARYING_TYPES_NOT_ALLOWED)");
+                throw Refusals.of(KernelCode.MVK_VARYING_TYPES_NOT_ALLOWED,
+                        opName + " requires all operands (both sides) to share one"
+                                + " base kind; found " + base + " and " + k);
             }
         }
-        rejectDuplicateReferences(opName, combined);
-    }
-
-    /**
-     * Reject an exact repeated reference in a value-list operand list — the kernel's
-     * {@code CheckEntityListenUtils.checkParamsReferencedOnlyOnce}. Identity is the reference itself
-     * (field path, plus {@code -> category} for a projection, plus {@code $} for a correlation); a
-     * <b>wildcard</b> (flattened {@link FieldListRef}) scope is skipped, exactly as the kernel skips
-     * wildcarded refs in {@code checkDuplicatesInDirectRefs}.
-     */
-    private static void rejectDuplicateReferences(String opName, java.util.List<ValueListOperand> operands) {
-        var seen = new java.util.HashSet<String>();
-        for (ValueListOperand op : operands) {
-            String identity = referenceIdentity(op);
-            if (identity == null) {
-                continue;   // a wildcard scope — not deduped (matches the kernel)
-            }
-            if (!seen.add(identity)) {
-                throw new IllegalArgumentException("'" + identity + "' occurs more than once in " + opName
-                        + " — the kernel rejects an exact duplicate reference (MVK_DUPLICATE_PARAM1)");
-            }
-        }
-    }
-
-    /** The exact-reference identity for duplicate detection, or {@code null} for a wildcard scope (skipped). */
-    private static String referenceIdentity(ValueListOperand op) {
-        return switch (op) {
-            case FieldListRef ignored -> null;   // wildcard/flattened list — kernel skips dedup here
-            case FieldRef f -> (f.correlated() ? "$" : "") + f.path();
-            // An indexed field behaves like a single field entity here too: the same field under two
-            // different index keys is NOT a duplicate. Identity folds in the key (and
-            // every $ correlation in the shape) via the shared IndexedFieldValue#duplicateIdentity,
-            // rather than repeating that compound computation here (see ListAggregate's identical arm).
-            case IndexedFieldValue indexed -> indexed.duplicateIdentity();
-            case EnumCategoryAccess c -> (c.outer() ? "$" : "") + c.field().path() + " -> " + c.category();
-            // A GROUP scope is DELEGATED, not deduped here. A starred one is measured-skipped by the kernel
-            // (`checkDuplicatesInDirectRefs` skips wildcarded refs — AggregateGroupOperandLawsTest lists the same
-            // starred group twice and it is ACCEPTED), while an unstarred group's dedup behaviour is unmeasured.
-            // Skipping is the only safe direction for the unmeasured half: delegation can under-report and the
-            // kernel still catches it, whereas a dedup we invent here could refuse a legal model with no way for
-            // anyone to notice. The indirect ancestor/descendant arm (MVK_DUPLICATE_PARAM2) is kernel-only
-            // regardless — it is a relation between two operands this identity-based check never sees.
-            case GroupListRef ignored -> null;
-        };
     }
 
     // --- field-list quantifiers — at least one field by signature ------------------------------
