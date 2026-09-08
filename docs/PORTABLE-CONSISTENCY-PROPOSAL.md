@@ -278,7 +278,9 @@ The required companion operations in §12 use those same sources, prepared snaps
 
 Completeness remains separate from rejection: an INVALID result may be incomplete. Warnings do not make a model invalid. Implementation defects remain operational failures, not disguised domain rejections.
 
-A minimal proposed TypeScript status shape is below. It is a proposal for our result envelope, not a new A12 domain type or an existing exported API:
+**Every consistency check returns a full structured diagnostic report.** `ConsistencyStatus` is only the report's summary; returning an outcome string or this status object alone does not satisfy the public contract. This applies equally to VALID, INVALID and INCONCLUSIVE, including an INVALID result with incomplete coverage.
+
+A minimal proposed TypeScript shape for that summary is below. It is one part of our result envelope, not a new A12 domain type or an existing exported API:
 
 ```ts
 type ConsistencyStatus =
@@ -287,7 +289,28 @@ type ConsistencyStatus =
   | { readonly outcome: "INCONCLUSIVE"; readonly complete: false };
 ```
 
-The complete report additionally carries the compatibility profile, portable engine/version, diagnostics, and located coverage gaps. Reuse the existing diagnostic concepts (`severity`, `code`, `summary`, `where`, `fix`, `explain`) and the existing non-throwing API projection conventions. Final names and wire fields require an explicit API/schema review before publication; this document fixes the semantics rather than declaring an unverified export.
+The report has the following required content. A full report describes the analysis actually performed; it does not imply that coverage is complete.
+
+| Report content | Required semantics |
+|---|---|
+| Status | Outcome and completeness under the rules above |
+| Compatibility and provenance | The compatibility profile and its version, portable engine/version, and checked source/snapshot identity |
+| Diagnostics | All findings from completed applicable checks, with `severity`, stable `code`, `summary`, source/declaration location (`where`), explanation (`explain`) and applicable corrective guidance (`fix`). Preserve rule/computation identity and available source spans; identify model/source-level failures at that level instead of inventing a rule location. When no corrective is known, represent that explicitly rather than fabricate one |
+| Coverage evidence | The required checks that completed and located gaps for every unexamined portion, with the reason it could not be checked. A failed prerequisite identifies the dependent analysis it prevented |
+
+Accumulate independent findings across declarations and check families; finding the first ERROR must not end the whole check. Suppress findings that depend on a failed prerequisite as specified in §5.5, while recording the resulting coverage gaps. Resource limits must be visible as incomplete coverage, never silent truncation. VALID still returns the report with any warnings and completed-check evidence; an empty diagnostics collection is explicit. INCONCLUSIVE preserves every finding already obtained alongside the gaps. A consumer must be able to understand what failed, where, why, what corrective is available, and what remains unchecked without parsing a log or issuing another diagnostic request.
+
+Reuse the existing diagnostic concepts and non-throwing API projection conventions, with the shared ownership required by A2/C2 in §12. Final names and wire fields require an explicit API/schema review before publication; this document fixes the semantics rather than declaring an unverified export. D owns finding accumulation and source attribution, C2 owns diagnostic enrichment, and F owns the public report projection/schema and its consumer acceptance matrix below.
+
+**F — full diagnostic report acceptance matrix.** Run these cases through actual Java, packed Node and browser consumers. A status-only projection, first-error short circuit, dropped location/corrective or silently omitted coverage gap must each make the relevant guard fail.
+
+| Case | Required report assertion |
+|---|---|
+| Supported valid input, with a separate warning-bearing control | VALID, complete coverage, profile/engine/source identity and explicit diagnostics collection; preserve the control's warning without changing validity |
+| Two independently invalid declarations, covering a rule and a computation | INVALID and both classified, located, explained findings with their known correctives; retaining only the first fails |
+| A definite violation beside an unsupported declaration or missing dependency | INVALID with `complete: false`, the established diagnostic and the located gap with its blocked checks |
+| Uncheckable input without a definite violation | INCONCLUSIVE, explicit diagnostics collection and located reasons for incomplete analysis; no fabricated rejection |
+| Failed prerequisite beside an independently checkable declaration, plus a resource-limit control | Retain independent findings, identify blocked dependent checks, suppress dependent noise and expose the limit as a coverage gap |
 
 **The first one-check slice cannot emit VALID by construction.** Its result type contains only INVALID and INCONCLUSIVE, both with `complete: false` for full rule/computation consistency. A clean reference check is recorded as completed evidence and still yields INCONCLUSIVE while other required checks remain unimplemented. It must not expose the final VALID result factory. The completed engine gains that construction path only through internal coverage evidence that the required, applicable checks for the named profile actually ran. This requirement concerns results emitted by the implementation, not whether an application can hand-author a similar JSON object.
 
