@@ -1,5 +1,6 @@
 package io.github.mbackschat.a12.dm;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.IOException;
@@ -14,85 +15,90 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
 /**
- * <b>The API-FINDINGS ordinal guard.</b> {@code docs/API-FINDINGS.md} carries its findings as a markdown
- * <b>ordered list</b>, and they are cited as "finding N" from <b>147</b> occurrences (2026-08-16,
- * case-insensitive, excluding the doc itself, and counting the {@code finding #N} variant — the bare form alone
- * is 146; a further 22 use the {@code API-FINDINGS n} notation) across the docs, the tests, and
- * <em>production</em> sources ({@code SemanticIndex}, {@code FieldInfo}). That makes the ordinal a public
- * anchor riding the weakest possible carrier: a renderer numbers an ordered list <b>sequentially from the
- * first item</b> and ignores the later source numbers, so deleting or inserting one item silently shifts
- * every following anchor in the rendered view while the source still looks intact. The doc's own preamble
- * promises "the numbering is stable so the {@code finding N} anchors resolve" — until this guard, nothing
- * checked it.
+ * Keeps API-FINDINGS section numbers and explicit anchors aligned with existing "finding N" citations.
  *
- * <p>Three properties, all cheap and all violated by exactly the edits that would break a citation:
- *
- * <ol>
- *   <li><b>Dense</b> — the ordinals are {@code 1..N} with no gap, so a deletion cannot pass unnoticed.</li>
- *   <li><b>Unique</b> — no ordinal appears twice (the shape a careless insert produces).</li>
- *   <li><b>Aligned</b> — {@code max == count}, so source numbering equals what a renderer will show.</li>
- * </ol>
- *
- * <p>A floor guards the guard: the live doc carries <b>125</b> findings (2026-08-16), so a scan that suddenly
- * finds almost none means the working directory or the list shape moved, and the check would "pass" while
- * checking nothing. {@link #MIN_FINDINGS} stays well below the live count deliberately — it is a
- * did-the-scan-happen floor, not a growth ratchet, so it must not need editing when a finding is added.
- *
- * <p>It reads a repo doc at runtime, so it runs in the root {@code docGuardTest} task with
- * {@code docs/API-FINDINGS.md} declared as that task's input (TESTING-SPEC "Tests that read repo files at
- * runtime") — a prose-only edit re-runs just this lane and can never restore from the build cache into a
- * false green.
+ * <p>The findings preamble promises stable numbering; headings must stay dense and unique in document
+ * order, and each heading's {@code afN} anchor must agree with its visible number. The scan floor catches
+ * a changed heading format that would otherwise make the check vacuous. The root {@code docGuardTest}
+ * declares the document as a runtime input so prose-only edits re-run this guard.
  */
 class ApiFindingsNumberingGuardTest {
 
     private static final Checkout CHECKOUT = Checkout.locate();
 
-    /**
-     * A findings item: an ordinal at line start, then the doc's <b>bolded claim</b> convention
-     * ({@code 103. **A DM-JSON mapper is a semantic decision** — …}). Anchoring on the bold is deliberate:
-     * a bare {@code ^\d+\. } would also swallow unrelated numbered prose that happens to sit at column 0.
-     * Both forms count 125 in the live doc (2026-08-16), so the stricter one loses nothing today and cannot drift into
-     * false positives later. Nested/sub-lists are indented, so the line anchor already excludes them.
-     */
-    private static final Pattern ITEM = Pattern.compile("^(\\d+)\\. \\*\\*", Pattern.MULTILINE);
+    private static final Pattern ITEM = Pattern.compile("^## (\\d+)\\. ", Pattern.MULTILINE);
+    private static final Pattern HEADING = Pattern.compile("^## .+$", Pattern.MULTILINE);
+    private static final Pattern ANCHORED_ITEM =
+            Pattern.compile("## ([1-9]\\d*)\\. \\S.* <a id=\"af([1-9]\\d*)\"></a>");
 
     /** The live doc carries 125 findings (2026-08-16); the floor only catches a scan that found nothing. */
     private static final int MIN_FINDINGS = 90;
 
     @Test
+    void sectionHeadingsCarryTheFindingNumbers() {
+        assertEquals(List.of(1, 2), ordinals("""
+                ## 1. First claim <a id="af1"></a>
+
+                Body with an unrelated list:
+                1. **Not a finding**
+
+                ## 2. Second claim <a id="af2"></a>
+                """));
+    }
+
+    @Test
     void ordinalsAreDenseUniqueAndAligned() throws IOException {
-        List<Integer> ordinals = ordinals(Files.readString(CHECKOUT.requireFile("docs/API-FINDINGS.md")));
+        String markdown = Files.readString(CHECKOUT.requireFile("docs/API-FINDINGS.md"));
+        List<Integer> ordinals = ordinals(markdown);
 
         assertTrue(ordinals.size() >= MIN_FINDINGS,
                 () -> "found only " + ordinals.size() + " findings in docs/API-FINDINGS.md (floor " + MIN_FINDINGS
-                        + ") — did the list shape or the working dir change? The guard would check nothing.");
-        assertTrue(audit(ordinals).isEmpty(), () -> String.join("\n  ", audit(ordinals)));
+                        + ") — did the heading shape or the working dir change? The guard would check nothing.");
+        assertTrue(audit(markdown).isEmpty(), () -> String.join("\n  ", audit(markdown)));
     }
 
     /**
-     * Does-fire proof against a fabricated doc, exercising {@link #audit(List)} — the same method the real
+     * Does-fire proof against a fabricated doc, exercising {@link #audit(String)} — the same method the real
      * check calls — for each defect class: a gap (deletion), a duplicate (careless insert), and a
-     * count/max mismatch. A clean list must not fire.
+     * count/max mismatch. Clean sections must not fire.
      */
     @Test
     void theGuardFiresOnAGapADuplicateAndAMisalignedMax(@TempDir Path dir) throws IOException {
-        Files.writeString(dir.resolve("gap.md"), "1. **a**\n2. **b**\n4. **d**\n");
-        Files.writeString(dir.resolve("dup.md"), "1. **a**\n2. **b**\n2. **b again**\n");
-        Files.writeString(dir.resolve("clean.md"), "1. **a**\n2. **b**\n3. **c**\n");
+        String first = "## 1. a <a id=\"af1\"></a>\n";
+        String second = "## 2. b <a id=\"af2\"></a>\n";
+        Files.writeString(dir.resolve("gap.md"), first + second + "## 4. d <a id=\"af4\"></a>\n");
+        Files.writeString(dir.resolve("dup.md"), first + second + second);
+        Files.writeString(dir.resolve("clean.md"), first + second + "## 3. c <a id=\"af3\"></a>\n");
 
-        assertTrue(audit(ordinals(Files.readString(dir.resolve("gap.md")))).stream()
+        assertTrue(audit(Files.readString(dir.resolve("gap.md"))).stream()
                         .anyMatch(v -> v.contains("gap")),
                 "a deleted finding must fire the density check");
-        assertTrue(audit(ordinals(Files.readString(dir.resolve("dup.md")))).stream()
+        assertTrue(audit(Files.readString(dir.resolve("dup.md"))).stream()
                         .anyMatch(v -> v.contains("duplicate")),
                 "a duplicated ordinal must fire");
-        assertTrue(audit(ordinals(Files.readString(dir.resolve("clean.md")))).isEmpty(),
-                "a dense, unique, aligned list must NOT fire");
+        assertTrue(audit(Files.readString(dir.resolve("clean.md"))).isEmpty(),
+                "dense, unique, aligned sections must NOT fire");
     }
 
-    /** Every violation the ordinal contract can carry, so the does-fire arm drives the real code path. */
-    private static List<String> audit(List<Integer> ordinals) {
+    @Test
+    void theGuardFiresOnMissingMismatchedAndMalformedAnchors() {
+        for (String heading : List.of("## 1. a", "## 1. a <a id=\"af2\"></a>",
+                "## 1. a <a id=\"af01\"></a>", "## Unnumbered finding <a id=\"af1\"></a>")) {
+            assertTrue(audit(heading).stream().anyMatch(v -> v.contains("anchor")), heading);
+        }
+        assertTrue(audit("## 1. a <a id=\"af1\"></a>").isEmpty());
+    }
+
+    private static List<String> audit(String markdown) {
         List<String> violations = new ArrayList<>();
+        Matcher headings = HEADING.matcher(markdown);
+        while (headings.find()) {
+            Matcher item = ANCHORED_ITEM.matcher(headings.group());
+            if (!item.matches() || !item.group(1).equals(item.group(2))) {
+                violations.add("missing or mismatched finding number/anchor: " + headings.group());
+            }
+        }
+        List<Integer> ordinals = ordinals(markdown);
         List<Integer> seen = new ArrayList<>();
         for (int i = 0; i < ordinals.size(); i++) {
             int ordinal = ordinals.get(i);
@@ -103,13 +109,13 @@ class ApiFindingsNumberingGuardTest {
             int expected = i + 1;
             if (ordinal != expected) {
                 violations.add("gap or misorder at position " + expected + ": found " + ordinal
-                        + " — a renderer will show " + expected + ", so every later 'finding N' citation shifts");
+                        + " — section numbers must remain dense and in document order");
             }
         }
         int max = ordinals.stream().mapToInt(Integer::intValue).max().orElse(0);
         if (!ordinals.isEmpty() && max != ordinals.size()) {
             violations.add("max ordinal " + max + " != count " + ordinals.size()
-                    + " — source numbering disagrees with the rendered numbering");
+                    + " — section numbers must span 1..N");
         }
         return violations;
     }
@@ -122,5 +128,4 @@ class ApiFindingsNumberingGuardTest {
         }
         return out;
     }
-
-    /** Locate a repo-root file regardless of the module working dir (mirrors {@code DocSnippetFreshnessTest}). */}
+}

@@ -673,7 +673,7 @@ tasks.register('docGuardTest', Test) {
                 include '**/*.java', '**/*.kt'
                 exclude '.claude/**', '**/build/**', '.git/**', '**/.gradle/**'
             },
-            // ApiFindingsNumberingGuardTest reads the findings list at runtime: the ordinals are public
+            // ApiFindingsNumberingGuardTest reads the findings sections at runtime: the ordinals are public
             // anchors ("finding N", cited from production sources), so a prose-only edit must re-run it.
             'docs/API-FINDINGS.md': file('docs/API-FINDINGS.md'),
             // PerfAnchorCoverageGuardTest reads the committed absolute-time anchor beside PerfGateTest's source
