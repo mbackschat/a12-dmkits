@@ -100,6 +100,32 @@ Consequence: the kernel is an unstable dependency, so the suite is also an **ear
 | **Self-sufficiency eval (N6)** | can a cold LLM author/read rules from the CLI + skill alone? | the Workflow runner | clean subagent + judge — [`EVAL-SPEC.md`](EVAL-SPEC.md) |
 | **Kernel-runtime observation probe** *(not a gate — a measurement)* | what does the real kernel do at runtime on **this** model + document, on both codegen strategies? | `./gradlew :adapter:kernelProbe -Prequest=… -Pout=…` → a byte-reproducible artifact; locked by `adapter/…/laws/KernelRuntimeProbeTest` + `KernelProbeComputeTest` (kernel-backed) and `KernelProbeArtifactTest` + `KernelProbeComputeShapeTest` (shape) | real kernel `validateFull`, and `compute` when the request's `observe` asks for it, on both strategies — [`KERNEL-PROBE-SPEC.md`](KERNEL-PROBE-SPEC.md). Absent from `check`: it asserts nothing, and it exists so a runtime question does not cost a purpose-written test |
 
+### Designing a kernel witness grid <a id="witness-grid-design"></a>
+
+Before building fixtures for a new or widened kernel-semantic claim, put the experiment design in the task's existing acceptance matrix. This applies to static admission checks, runtime differentials, and observation probes. Keep the witnesses that already establish observations; add cases that distinguish explanations. A green grid supports only the distinctions it actually measures.
+
+Use this compact plan:
+
+| Item | Record before the run |
+|---|---|
+| Claim and rival | The proposed rule, its scope, and a plausible competing explanation that fits the evidence held so far. Source reading may suggest the rival; it does not discharge the behavioral measurement. |
+| Discriminator | An authorable input on which the two explanations predict different observable results; write both predictions. Pair it with a control differing only on the intended axis. |
+| Axes | Relevant dimensions, their values, and one of the four treatments below. Inspect fixture helpers and defaults as well as visible row arguments. |
+| Oracle and acceptance | The exact kernel entry point, engine, ingress route, and result channel needed for the claim; name which observation would support, refute, or leave it unresolved. Use the [claim-kind rules](../CLAUDE.md#kernel-claim-oracles). |
+
+| Axis treatment | What must be explicit |
+|---|---|
+| **Varied** | Values exercised and the cases/controls that distinguish them. If claiming a complete finite domain, derive its denominator from the owning vocabulary or implementation and connect that denominator to the executed cases. |
+| **Held fixed** | The chosen value and the resulting limit on the conclusion. A constant inside a helper is still a fixed axis. |
+| **Constrained by valid input** | The coupled values or edits and the kernel evidence requiring them. An authoring limitation or a failed attempt alone does not establish impossibility; an unverified constraint remains unmeasured. Do not attribute an effect independently to factors the legal inputs cannot separate. |
+| **Unmeasured** | The missing distinction and the claim it prevents. If that distinction is required for the proposed conclusion, measure it before publishing the conclusion or narrow the conclusion to what was established. |
+
+Choose axes from the claim and its rivals, rather than from the fixture's convenient parameters. In particular, separate declared kind from format components, comparison operator from comparand, coordinate position from repeatability, and document ingress from direct cell construction when those distinctions could change the account. Audit the grid as a whole: a valid one-axis control in one background does not establish the same effect in another. For a suspected two-factor interaction, include the relevant 2×2 combinations; record any unmeasured or constrained corner. This is not a requirement to cross every property with every other property.
+
+For example, the position-versus-repeatability question in [RootOverLimitPositionDiffTest](../adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/RootOverLimitPositionDiffTest.kt) needs a repeatable root and a fixed deeper group: those are the cases where the two accounts disagree. Its bounded descendants and direct document construction remain fixed; adding more rows under those same conditions cannot establish the unbounded-descendant or JSON-ingress arms. This is the distinction between a useful witness and an unsupported extension of its scope ([KF58](KERNEL-FINDINGS.md#kf58)).
+
+Before publishing, reconcile the plan with the inputs actually executed, including any prerequisite rejection that prevented a row from reaching its intended gate. State observed results separately from the explanation, retain the fixed/constrained/unmeasured limits in the owning finding, and name the regression lock. The author and terminal reviewer check this correspondence; a green test or coverage count cannot establish that an omitted rival or axis was considered. The plan belongs with the existing task/review material, and its durable conclusions belong in the existing findings; it creates no additional registry or probe request field.
+
 ### Systematic semantic matrices before fuzzing
 
 A defect class that spans a semantic pipeline is tested as one finite model, not as an accumulating list of anecdotes. First name the stages and the meaningful equivalence partitions at each stage. For an index identity relation, the lifecycle is `stored cell -> formal admission -> canonical key -> collision or ambiguity policy -> row selection or parallel join -> three-valued result -> message pointer`.

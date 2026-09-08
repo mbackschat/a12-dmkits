@@ -11,6 +11,7 @@ Agent-first router: find your job, follow the links. The per-doc entries below d
 | answer a **kernel runtime-semantics** question (what fires, empty-value, iteration, polarity) | [KERNEL-SEMANTICS](KERNEL-SEMANTICS.md) → [SEMANTICS-MAP](SEMANTICS-MAP.md) → [KERNEL-FINDINGS](KERNEL-FINDINGS.md) |
 | **measure** a kernel runtime question over your own model + document, without writing a test | [KERNEL-PROBE-SPEC](KERNEL-PROBE-SPEC.md) |
 | know **where a new test goes** (which tier, which law lane) | [TESTING-SPEC](TESTING-SPEC.md) |
+| **design a kernel witness grid** that distinguishes competing explanations | [TESTING-SPEC — witness-grid plan](TESTING-SPEC.md#witness-grid-design) |
 | **run a build or test correctly** (which lane, the run budget, perf isolation, long-run mechanics, what a green proves) | [AGENT-RUN-DISCIPLINE](AGENT-RUN-DISCIPLINE.md) |
 | get a build **running on a machine** (Gradle home, JDK pin, private-registry injection, build cache) | [BUILD-ENVIRONMENT](BUILD-ENVIRONMENT.md) — or just run [`scripts/doctor.sh`](../scripts/doctor.sh) |
 | resolve an issued **interpreter API/release gap id**, including shipped work | [INTERPRETER-GAP-ID-REGISTRY](INTERPRETER-GAP-ID-REGISTRY.md) |

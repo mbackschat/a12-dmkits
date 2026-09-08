@@ -131,9 +131,9 @@ The recovery is mandatory: freeze the observations already established; name the
 
 Review obeys the same discipline; how it does is "Cold adversarial review gates" below.
 
-## Before you STATE a finding: match the oracle to the CLAIM KIND, or surface the doubt (standing requirement, 2026-07-25)
+## Before you STATE a finding: match the oracle to the CLAIM KIND, or surface the doubt (standing requirement, 2026-07-25) <a id="kernel-claim-oracles"></a>
 
-**A finding is done when the right oracle has been run — not when it is plausible.** The retro that produced this rule is unambiguous: across a long kernel exchange the *measurements* were right nearly every time and the *mechanisms* were wrong four times, because a mechanism was shipped carrying the confidence of the observation it explained. So pick the oracle by the **kind** of claim, and never let one kind borrow another's authority.
+**A finding is done when the right oracle has been run — not when it is plausible.** Before building fixtures for a new or widened kernel-semantic claim, complete the [witness-grid plan](docs/TESTING-SPEC.md#witness-grid-design) in the task's acceptance matrix; carry it into the terminal review. The retro that produced this rule is unambiguous: across a long kernel exchange the *measurements* were right nearly every time and the *mechanisms* were wrong four times, because a mechanism was shipped carrying the confidence of the observation it explained. So pick the oracle by the **kind** of claim, and never let one kind borrow another's authority.
 
 | claim kind | the oracle that settles it | stays a HYPOTHESIS until |
 |---|---|---|

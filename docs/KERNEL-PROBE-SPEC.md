@@ -50,6 +50,8 @@ Not `validatePart` — a probe that guessed at more surface than it was asked fo
 
 ## 3. The request
 
+Design the cases with the [witness-grid plan](TESTING-SPEC.md#witness-grid-design) before constructing the request. Keep that plan in the task's acceptance matrix; the request and artifact identify inputs and observations, not which competing explanation the grid can distinguish.
+
 One document model plus one or more named documents. **Authoring stays on dmtool's structured verbs** — the probe grows no second authoring surface, so a rule or computation reaches the probe by being in the model file, added with `dmtool rule add` / `computation add`. The model is read exactly as the kernel's own deserializer reads it, with no reference resolution, so it must be self-contained (`dmtool model expand`).
 
 Documents are **A12's canonical Document JSON** — the same shape `dmtool model seed` writes and `model eval --instance` reads ([`document-instance.schema.json`](../cli/src/main/resources/schema/document-instance.schema.json)) — read through A12's own `IDocumentV2Serializer`. So one document file feeds the interpreter and this probe alike, and a difference between them is a real difference rather than an ingress artifact.
