@@ -42,8 +42,6 @@ Kernel runtime entry points over the supplied document, on **both** kernel codeg
 | `mandatoryInformation` | **per model** | `IRuleCollectionMetaInformation.getMandatoryInformationFromRules` | the top-level `mandatoryInformation` |
 | `dynamicEnumerations` | **per model** | `IRuleCollectionMetaInformation.getDynamicEnumerationStringValues` | the top-level `dynamicEnumerations` |
 
-Not `validatePart` — a probe that guessed at more surface than it was asked for would be inventing contract (§7).
-
 **A model-level observation reads no document, and the request contract follows from that rather than from a list.** `mandatoryInformation` derives its three name sets from the model's rule CONDITIONS, so it runs once for the whole request — not per row, not per strategy — and a request may ask for it with no `rows` at all. Its scope is carried on the `Observation` enum, and both halves of the request rule are derived from that: a request naming any per-row observation must carry rows and must observe `validateFull`; a request naming only model-level ones must carry none, because a row nothing looks at is the same silent no-op the `validateFull` rule refuses. Built for a12-kernel-lean's `EXP-2026-08-30-01`, which needs to compare the derived sets across two models differing in one rule literal — a question no document evaluation can reach. The kernel types stay behind `KernelAdapter.mandatoryInformation`, which returns plain `Set<String>`, so nothing about dmtool's kernel boundary or its native build changes.
 
 **A strategy split is the finding, so it is never merged away.** Each row keeps one block per strategy and `enginesAgree` is *derived* from them; no caller can author it. On a legal-input split the ratified oracle is dynamic Groovy and the static-Java result is characterized, never adopted (INTERPRETER-FINDINGS IF136, [CONFORMANCE-CORPUS-SPEC](CONFORMANCE-CORPUS-SPEC.md) §11). It is derived from **every** channel a block reports, not from the messages alone: two strategies that agree on every message and disagree on one computed outcome are a split, and a flag computed from one channel would have reported agreement its own row contradicts.
@@ -197,6 +195,5 @@ a12-dmkits owns kernel invocation, engine identity, and the artifact schema and 
 
 - **Not a CLI verb**, and never a change to the native profile, `Cli.JVM_ONLY_VERBS`, the Groovy exclusion, or the retired `--kernel` flag (§1).
 - **Not an authoring surface.** No inline rule or computation injection: that would be a second way to spell a rule beside the typed builder and `rule-add.schema.json`, and the probe's input is a finished model. A computation reaches the probe by being *in* the model, added with `dmtool computation add`, exactly as a rule does.
-- **Not `validatePart`.** It is a real second gap — `RepetitionNotUnique` partial validation needs every composite-key cell relevant, and no route reaches it — but it stays out until asked for on its own terms, for the reason in §2.
 - **Not a gate.** It asserts nothing, is absent from `check`, and its outputs are never cached.
 - **Not new semantics.** It reports what the kernel reports.
