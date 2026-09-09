@@ -57,6 +57,24 @@ The gaps below were the **ergonomic and consistency remainder** — what added f
   type both providers implement, and no consumer has yet asked to tell the two apart. **What would settle it:**
   a consumer that needs to distinguish "retry when the bridge learns this" from "this rule is broken".
 
+- **DG1002 — the lane guard is present, unowned, and described by two contradictory statements**
+  (surfaced 2026-09-09 by a cold review of the merge). `scripts/lane-guard.sh`,
+  `scripts/selftest-lane-guard.sh` and `LaneGuardScriptTest.java` were deleted deliberately in
+  `5f04713af`/`9cba5b174`, with the reason recorded in `BUILD-LOGIC-PROPOSAL.md`
+  ("Closed: `lane-guard.sh` is deleted, because Gradle already does its job exactly"). `origin/main` never
+  touched them, so a plain merge would have kept the deletion; the resolution in `e4493d560` reverted it.
+  Three consequences are live: `LaneGuardScriptTest` is claimed by **no** lane, so it runs in broad `:test`
+  whose inputs do not cover the two scripts — an edit to either leaves the lane UP-TO-DATE with the guard
+  unrun; `BUILD-LOGIC-PROPOSAL.md` says the script is deleted while it is tracked; and `scripts/README.md`
+  says it is "sourced by `build.sh`", which greps to **zero** references. Nothing is red, which is what makes
+  it invisible. **Why filed rather than fixed:** re-deleting reverses content the merge introduced and
+  touches a proposal decision, a README pair and the shell-portability discovery set, so it is a decision
+  rather than a repair. **What would settle it:** confirming the deletion still stands, after which the three
+  files and their two README rows go together.
+
+  Also exposed: the merge-loss sweep that missed it only looks for content **added** on our side that went
+  absent, so a deletion our side made and the merge reverted is outside its denominator by construction.
+
 ---
 
 ## 3. Adjacent but out of scope
