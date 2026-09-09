@@ -133,25 +133,6 @@ expect_allow "a bare mention mid-sentence is not refused" r1 \
   "echo 'the poll used pgrep -f gradle and self-matched'"
 expect_allow "the probe without the full-match flag is not the anti-pattern" r1 'pgrep gradle'
 
-printf '\nrecursive rm of a Gradle output path — both halves carry weight, so both are cased\n'
-
-# The does-NOT-fire half is what decides whether this check survives contact: the pattern scans the rm's own
-# arguments, so a commit message or an echo that merely names such a path must go through, and so must a
-# single-file removal — the log a long run writes lives under build/.
-expect_block "a module build subdir"            r1 'rm -rf adapter/build/kotlin'
-expect_block "a target reached after a cd"       r1 'cd ~/src/a12-dmkits && rm -rf adapter/build/classes'
-expect_block "the repo-root build/"              r1 'rm -rf build/tmp'
-expect_block "the -fr flag order"                r1 'rm -fr ./build/classes'
-expect_block "separated flags"                   r1 'rm -r -f adapter/build/tmp'
-expect_block "an absolute path"                  r1 'rm -rf /srv/ci/workspace/interpreter/build'
-expect_block "a trailing build directory"        r1 'rm -rf adapter/build'
-expect_block "test-results is NOT exempt"        r1 'rm -rf build/test-results/test'
-expect_allow "a non-recursive single file"       r1 'rm -f build/run.log'
-expect_allow "a path with no build segment"      r1 'rm -rf /tmp/scratch/work'
-expect_allow "a directory merely named rebuild"  r1 'rm -rf tools/rebuild'
-expect_allow "a sibling directory, not build"    r1 'rm -rf adapter/bin'
-expect_allow "the path named in an echo"         r1 'echo do not remove build/kotlin by hand'
-
 printf '\ndual-runtime — Codex CLI sends the same fields, so the same script must serve it\n'
 
 # codex-cli 0.153.4 PreToolUse payload keys, measured from the binary: session_id, turn_id, agent_type,

@@ -39,27 +39,4 @@ if printf '%s' "$cmd" | grep -qE '(^|[;|&(!])[[:space:]]*pgrep[[:space:]]+(-[a-z
     exit 2
 fi
 
-# (3) A recursive `rm` of a GRADLE OUTPUT path. Gradle owns that tree, and partial removal desyncs the
-#     incremental caches from the class output they describe — the result does not read as a corrupt cache, it
-#     reads as inconsistent compile errors in your own code. `./build.sh :<module>:clean` is the whole fix.
-#
-#     WHY A PATH SEGMENT AND NOT A RESOLVED PATH: resolving needs the command's effective cwd, which a
-#     PreToolUse hook cannot know. A `build` SEGMENT is cwd-independent — `build/x`, `./build/x`,
-#     `adapter/build/x`, `/abs/adapter/build/x` all carry it. The match is scoped to the rm's OWN arguments, so
-#     a commit message or echo that merely mentions such a path does not trip it; and it requires a RECURSIVE
-#     flag, so removing a single file (`rm -f build/run.log`) is untouched. Known blind spot, left
-#     deliberately: `cd adapter/build && rm -rf kotlin`, whose target carries no segment.
-#
-#     NO exception for `build/test-results/`. CLAUDE.md names deleting it only as the FALLBACK for reading a
-#     run's XMLs; `scripts/test-evidence.sh <log>` is the primary and needs no deletion, so refusing the
-#     fallback is what routes to the better tool.
-rm_targets="$(printf '%s' "$cmd" \
-    | grep -oE '(^|[;|&(!])[[:space:]]*rm[[:space:]]+(-[a-zA-Z]*[rR][a-zA-Z]*|--recursive)([[:space:]]+[^;|&]*)?' \
-    || true)"
-if [ -n "$rm_targets" ] \
-    && printf '%s' "$rm_targets" | grep -qE '(^|[^[:alnum:]_.-])build/|/build([[:space:]]|$)'; then
-    printf '%s\n' 'Blocked: a recursive rm of a Gradle output path. Partial hand-deletion of build/ desyncs the incremental caches from the class output they describe, and the result does not look like a corrupted cache — it looks like nonsensical, inconsistent compile errors in your own code. Use `./build.sh :<module>:clean`; Gradle owns that tree, and nothing that must survive lives under build/ (SurvivingDataNotInBuildGuardTest enforces that). If you were clearing build/test-results to read a run'"'"'s XMLs, use `scripts/test-evidence.sh <log>` instead — it counts only the XMLs written during that run, so no deletion is needed.' >&2
-    exit 2
-fi
-
 exit 0
