@@ -420,6 +420,7 @@ public enum io.github.mbackschat.a12.dm.core.KernelCode
 
 public static enum io.github.mbackschat.a12.dm.core.KernelCode.Bucket
   public static final io.github.mbackschat.a12.dm.core.KernelCode.Bucket ADVISORY
+  public static final io.github.mbackschat.a12.dm.core.KernelCode.Bucket DERIVATION_ONLY
   public static final io.github.mbackschat.a12.dm.core.KernelCode.Bucket ERASED
   public static final io.github.mbackschat.a12.dm.core.KernelCode.Bucket KERNEL_DELEGATED
   public static final io.github.mbackschat.a12.dm.core.KernelCode.Bucket NA_STRUCTURAL

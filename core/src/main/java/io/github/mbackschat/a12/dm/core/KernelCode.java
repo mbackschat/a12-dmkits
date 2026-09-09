@@ -110,8 +110,8 @@ public enum KernelCode {
     MVK_INVALID_WILDCARD_FOR_RULEGROUP(Bucket.ERASED),
     MVK_INVALID_WILDCARD_REL(Bucket.ERASED),
     MVK_ITERATION_RESTRICTION_IN_A12_MODEL(Bucket.ERASED),
-    MVK_MAX_GROUP_RESTRICTION_TO_ONE(Bucket.ERASED),
-    MVK_MAX_LFDNR_RESTRICTION_TO_ONE(Bucket.ERASED),
+    MVK_MAX_GROUP_RESTRICTION_TO_ONE(Bucket.DERIVATION_ONLY),
+    MVK_MAX_LFDNR_RESTRICTION_TO_ONE(Bucket.DERIVATION_ONLY),
     MVK_MISSING_CONST_IN_PATTERN_COMP(Bucket.ERASED),
     MVK_MISSING_ERROR_FIELD(Bucket.PRE_CHECKED),
     MVK_MISSING_YEAR(Bucket.KERNEL_DELEGATED),
@@ -336,7 +336,13 @@ public enum KernelCode {
         /** Left to the kernel entirely. */
         KERNEL_DELEGATED,
         /** Not a rule about conditions — model structure the kits do not author. */
-        NA_STRUCTURAL
+        NA_STRUCTURAL,
+        /**
+         * Authorable, but reported by a kernel DERIVATION method rather than by a consistency rule, so no
+         * F4/F6 run reports it however the model is shaped. It reads like {@link #KERNEL_DELEGATED} and
+         * differs in the one way that matters: the delegate is silent.
+         */
+        DERIVATION_ONLY
     }
 
     private final Set<Bucket> buckets;

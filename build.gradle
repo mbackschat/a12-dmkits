@@ -652,7 +652,7 @@ tasks.register('focusedSelectionGuardTest', Test) {
     filter.includeTestsMatching 'io.github.mbackschat.a12.dm.FocusedTestSelectionGuardTest'
     systemProperty 'focusedTestPolicy', file('gradle/focused-test-selection.gradle').absolutePath
     systemProperty 'gradleExecutable', new File(gradle.gradleHomeDir, 'bin/gradle').absolutePath
-    guardInputs(it, ['selection policy': file('gradle/focused-test-selection.gradle'),
+    a12Guards.guardInputs(it, ['selection policy': file('gradle/focused-test-selection.gradle'),
                      'live project properties': file('gradle.properties'),
                      'live wiring': fileTree('.') { include '**/*.gradle'; exclude '**/build/**', '.gradle*/**' }])
 }

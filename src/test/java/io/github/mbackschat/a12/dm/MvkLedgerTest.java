@@ -95,7 +95,8 @@ class MvkLedgerTest {
      * at all.
      */
     private static final List<String> BUCKET_ATOMS = List.of(
-            "erased", "pre-checked", "advisory", "renderer-preserved", "kernel-delegated", "n/a-structural");
+            "erased", "pre-checked", "advisory", "renderer-preserved", "kernel-delegated", "n/a-structural",
+            "derivation-only");
 
     /**
      * Every bucket is atoms from {@link #BUCKET_ATOMS} joined by {@code " + "} in that order. A combination
@@ -150,6 +151,7 @@ class MvkLedgerTest {
             case "renderer-preserved" -> KernelCode.Bucket.RENDERER_PRESERVED;
             case "kernel-delegated" -> KernelCode.Bucket.KERNEL_DELEGATED;
             case "n/a-structural" -> KernelCode.Bucket.NA_STRUCTURAL;
+            case "derivation-only" -> KernelCode.Bucket.DERIVATION_ONLY;
             default -> throw new IllegalArgumentException("unmapped bucket atom: " + atom);
         };
     }
