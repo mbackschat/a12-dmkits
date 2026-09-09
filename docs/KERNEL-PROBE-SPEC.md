@@ -40,14 +40,15 @@ Kernel runtime entry points over the supplied document, on **both** kernel codeg
 | `compute` | per row | `IDocumentRtService.compute` | each engine block's `computations` |
 | `validatePart` | per row | `IDocumentRtService.validatePart` | each engine block's `partialMessages` |
 | `mandatoryInformation` | **per model** | `IRuleCollectionMetaInformation.getMandatoryInformationFromRules` | the top-level `mandatoryInformation` |
-
-Not `validatePart` — a probe that guessed at more surface than it was asked for would be inventing contract (§7).
+| `dynamicEnumerations` | **per model** | `IRuleCollectionMetaInformation.getDynamicEnumerationStringValues` | the top-level `dynamicEnumerations` |
 
 **A model-level observation reads no document, and the request contract follows from that rather than from a list.** `mandatoryInformation` derives its three name sets from the model's rule CONDITIONS, so it runs once for the whole request — not per row, not per strategy — and a request may ask for it with no `rows` at all. Its scope is carried on the `Observation` enum, and both halves of the request rule are derived from that: a request naming any per-row observation must carry rows and must observe `validateFull`; a request naming only model-level ones must carry none, because a row nothing looks at is the same silent no-op the `validateFull` rule refuses. Built for a12-kernel-lean's `EXP-2026-08-30-01`, which needs to compare the derived sets across two models differing in one rule literal — a question no document evaluation can reach. The kernel types stay behind `KernelAdapter.mandatoryInformation`, which returns plain `Set<String>`, so nothing about dmtool's kernel boundary or its native build changes.
 
 **A strategy split is the finding, so it is never merged away.** Each row keeps one block per strategy and `enginesAgree` is *derived* from them; no caller can author it. On a legal-input split the ratified oracle is dynamic Groovy and the static-Java result is characterized, never adopted (INTERPRETER-FINDINGS IF136, [CONFORMANCE-CORPUS-SPEC](CONFORMANCE-CORPUS-SPEC.md) §11). It is derived from **every** channel a block reports, not from the messages alone: two strategies that agree on every message and disagree on one computed outcome are a split, and a flag computed from one channel would have reported agreement its own row contradicts.
 
 ## 3. The request
+
+Design the cases with the [witness-grid plan](TESTING-SPEC.md#witness-grid-design) before constructing the request. Keep that plan in the task's acceptance matrix; the request and artifact identify inputs and observations, not which competing explanation the grid can distinguish.
 
 One document model plus one or more named documents. **Authoring stays on dmtool's structured verbs** — the probe grows no second authoring surface, so a rule or computation reaches the probe by being in the model file, added with `dmtool rule add` / `computation add`. The model is read exactly as the kernel's own deserializer reads it, with no reference resolution, so it must be self-contained (`dmtool model expand`).
 
@@ -145,6 +146,28 @@ The kernel derives these from rule **conditions**, not from the fields a rule re
 
 Each list is sorted. `IMandatoryInformation` exposes `Set<String>`, which carries no order contract, so an artifact pinned by SHA-256 cannot depend on one; nothing guaranteed is lost.
 
+### The `dynamicEnumerations` block
+
+The same terms as its sibling: top level, present exactly when asked for, absent otherwise, so no already-pinned artifact changes bytes. Two keys — `valuesByField`, each dynamic-enumeration field's full name mapped to the constant values the kernel extracted for it, and `diagnostics`, every problem the derivation reported, each with its `code`, `severity`, `rule` and the kernel's own `message`.
+
+**It exists because `checkConsistency` has no route to the derivation.** `DynamicEnumerationService`, whose `DynEnumErrorType` declares twelve classes, is CONSTRUCTED at two sites in the 30.8.1 checkout: that facade method, and `ServiceFactory.getDynamicEnumerationService(...)`, which has no in-kernel caller at all and exists to hand a per-rule `checkDynamicEnumerationRule` to external consumers. Neither site sits on a `DocumentModelConsistencyRule`, so no `model check` / `rule check` / `--dry-run` route can produce any of the twelve however the model is shaped. Reported to us by a12-kernel-lean, 2026-09-07, who suggested exactly this shape; measured and locked here as [KF277](KERNEL-FINDINGS.md#kf277).
+
+**`diagnostics` is NOT a defect list, and misreading it as one is the trap this block carries.** The derivation checks *every* rule and reports one problem for each that is not a dynamic enumeration **in form** — which is true of nearly every ordinary rule. Read the block as "which rules are dynamic enumerations, and why the rest are not". The measured discriminators, one per way of being malformed:
+
+| rule shape | class reported |
+|---|---|
+| `FieldFilled(/Order/ProductCode) And [/Order/ProductCode] != "PREMIUM"` (the canonical form) | none — the field appears in `valuesByField` with `[PREMIUM]` |
+| an ordinary single-leaf rule, e.g. `FieldFilled(/Order/ProductCode)` | `MVK_DYNENUM_INVALID_GATE` |
+| an ordinary conjunction of two presence checks | `MVK_DYNENUM_INVALID_CALCOP` |
+| the canonical form with `==` instead of `!=` | `MVK_DYNENUM_INVALID_CALCOP_OP` |
+| a gate naming a field other than the rule's error field | `MVK_ERROR_WRONG_DYNENUM_FIELD` |
+| a target field the shape forbids, e.g. a NUMBER with fractional digits | `MVK_DYNENUM_INVALID_TYPE` |
+| a field reference on the right of `!=` with no safe guard securing it | `MVK_DYNENUM_INVALID_FIELD_REFERENCE` |
+
+The count is **per rule, not per model**: two ordinary rules draw two diagnostics, and one canonical rule beside one malformed one draws exactly one while still extracting the canonical rule's values.
+
+**Attribution is the kernel's own, and it usually names no rule.** The collection-wide call leaves `rule` null, because the kernel's problem carries the rule only where its message names one. The attributable question — "is *this* rule a well-formed dynamic enumeration?" — is `KernelAdapter.dynamicEnumerationDiagnostics(ruleFullName)`, which asks about one rule and stamps the answer with that rule's path. Passing a model-level path into the collection-wide call would overwrite the kernel's own attribution with something less specific, so it does not.
+
 ### Determinism is structural
 
 Two runs over identical input and an identical source tree produce **byte-identical** artifacts, which is what lets a consumer pin one by SHA-256. It is arranged rather than hoped for:
@@ -172,6 +195,5 @@ a12-dmkits owns kernel invocation, engine identity, and the artifact schema and 
 
 - **Not a CLI verb**, and never a change to the native profile, `Cli.JVM_ONLY_VERBS`, the Groovy exclusion, or the retired `--kernel` flag (§1).
 - **Not an authoring surface.** No inline rule or computation injection: that would be a second way to spell a rule beside the typed builder and `rule-add.schema.json`, and the probe's input is a finished model. A computation reaches the probe by being *in* the model, added with `dmtool computation add`, exactly as a rule does.
-- **Not `validatePart`.** It is a real second gap — `RepetitionNotUnique` partial validation needs every composite-key cell relevant, and no route reaches it — but it stays out until asked for on its own terms, for the reason in §2.
 - **Not a gate.** It asserts nothing, is absent from `check`, and its outputs are never cached.
 - **Not new semantics.** It reports what the kernel reports.

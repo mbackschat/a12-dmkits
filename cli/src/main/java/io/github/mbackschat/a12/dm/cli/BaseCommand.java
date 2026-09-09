@@ -12,12 +12,15 @@ import java.util.Set;
 import java.util.concurrent.Callable;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import io.github.mbackschat.a12.dm.core.Notification;
 
 import io.github.mbackschat.a12.dm.core.ModelConsistencyException;
+import io.github.mbackschat.a12.dm.core.ModelInputException;
 import io.github.mbackschat.a12.dm.core.UnresolvedReferenceException;
 import io.github.mbackschat.a12.dm.interpreter.DocumentInputDiagnostic;
 import io.github.mbackschat.a12.dm.interpreter.DocumentInputError;
@@ -147,10 +150,9 @@ public abstract class BaseCommand implements Callable<Integer> {
      * {@code cannot read model:} already uses — a structured refusal is for a precheck on a resolvable target,
      * not for input the tool could not read at all". G58/G61/G62 moved every UNREADABLE input and UNWRITABLE
      * output onto coded refusals, so that precedent no longer exists. What keeps this on the plain-text channel
-     * is the standing design {@link #failOrRethrowDomainRejection} states: a reader's own parse/render failure
-     * reports its local text, and only an invalid stored model or an unresolved reference escapes to the
-     * structured mapper. A document that PARSED and was rejected belongs to that class, not to the unreadable
-     * one — so this is a deliberate position, not a slice waiting to be done.
+     * is this boundary's typed {@link DocumentInputError}: it reports diagnosed Document input defects,
+     * never an arbitrary reader or renderer exception. Unexpected failures belong to {@link Cli}'s
+     * internal-error mapper.
      *
      * <p>The one enriched case is the retired {@code {"fields": {…}}} wrapper: a document that still carries it
      * fails as an unknown model path {@code /fields}, which is true but unhelpful, so it also gets the migration
@@ -564,38 +566,26 @@ public abstract class BaseCommand implements Callable<Integer> {
         return env.exitCode();
     }
 
-    /**
-     * Preserve input-domain rejections caught by a broad command-local {@link RuntimeException} boundary.
-     * Strict model readers still use their local failure text for ordinary parse/render failures, but an invalid
-     * stored model or unresolved model reference must escape to {@link Cli}'s single structured-envelope mapper.
-     * Use this only around loading the caller-supplied model, never around validation of an edited candidate.
-     */
-    protected int failOrRethrowDomainRejection(String messagePrefix, RuntimeException failure) {
-        if (failure instanceof ModelConsistencyException || failure instanceof UnresolvedReferenceException) {
-            throw failure;
+    /** Our own renderers supply this JSON; a decoding failure is an internal defect (CLI-CONFORMANCE §1). */
+    protected static JsonNode readGeneratedJson(String json) {
+        try {
+            return JSON.readerFor(JsonNode.class)
+                    .with(DeserializationFeature.FAIL_ON_TRAILING_TOKENS).readValue(json);
+        } catch (JsonProcessingException failure) {
+            throw new IllegalStateException("cannot decode generated JSON", failure);
         }
-        return fail(messagePrefix + failure.getMessage());
     }
 
     /**
-     * The edit-gate twin of {@link #failOrRethrowDomainRejection}: fail with the gate's own message, but let an
-     * {@link UnresolvedReferenceException} escape to {@link Cli}'s seam, which owns its documented contract
-     * (a corrective {@code RK_UNRESOLVED_REFERENCE} rejection at exit 1 — CLI-SPEC §3b).
-     *
-     * <p><b>Why a second helper rather than the one above.</b> An edit command must keep handling
-     * {@link ModelConsistencyException} <em>itself</em>, because the rejection of an edited candidate is the
-     * result it reports — so it cannot use a helper that rethrows that type. What it must not do is swallow a
-     * <em>different</em> rejection into an unstructured {@code fail}, which is what a bare
-     * {@code catch (RuntimeException e) -> fail(e.getMessage())} did at all 23 edit gates: a plain stderr line at
-     * exit 2 in place of the corrective envelope the same model gets on the read path. Before that, the wrap in
-     * {@code ModelDocument.validate} had hidden the whole class by relabelling our resolver's refusal as a
-     * consistency failure — which is why the two fixes only make sense together.
+     * Add reader context without changing the typed refusals understood by {@link Cli}'s exception mapper.
+     * An unclassified failure remains an internal error, with its original cause available on stderr.
      */
-    protected int failEditGate(RuntimeException failure) {
-        if (failure instanceof UnresolvedReferenceException) {
-            throw failure;
+    protected RuntimeException withFailureContext(String messagePrefix, RuntimeException failure) {
+        if (failure instanceof ModelConsistencyException || failure instanceof UnresolvedReferenceException
+                || failure instanceof ModelInputException || failure instanceof ModelPreparationError) {
+            return failure;
         }
-        return fail(failure.getMessage());
+        return new IllegalStateException(messagePrefix + failure.getMessage(), failure);
     }
 
     /**
@@ -651,6 +641,12 @@ public abstract class BaseCommand implements Callable<Integer> {
         return ResultEnvelope.rejected(identity,
                 "a model reference could not be resolved: " + e.reference(), List.of(d),
                 RejectionBasis.preflight());
+    }
+
+    static ResultEnvelope modelInputEnvelope(ResultIdentity identity, ModelInputException failure, String source) {
+        Diagnostic diagnostic = Diagnostic.precheck(RkCode.MODEL_INPUT_INVALID, failure.getMessage(),
+                Diagnostic.Where.arg(null, source == null ? MODEL_LABEL : source));
+        return ResultEnvelope.refused(identity, "the model input is malformed", List.of(diagnostic));
     }
 
     /** Convert every portable workspace diagnostic into the CLI's corrective, self-describing refusal shape. */

@@ -9,7 +9,6 @@ import io.github.mbackschat.a12.dm.cli.SafetyChecks;
 import io.github.mbackschat.a12.dm.cli.SafetyGate;
 import io.github.mbackschat.a12.dm.cli.WorkspaceOption;
 
-import java.io.IOException;
 import java.util.List;
 import java.util.Optional;
 
@@ -79,7 +78,7 @@ final class RuleDepsCommand extends BaseCommand {
             String summary;
             if (read instanceof ReadResult.Converted converted) {
                 // Project the same explanation rule explain emits, keeping only the dependency facets.
-                JsonNode explanation = MAPPER.readTree(new ModelContext(bound).explain(converted.condition()).toJson());
+                JsonNode explanation = readGeneratedJson(new ModelContext(bound).explain(converted.condition()).toJson());
                 JsonNode references = explanation.get("references");
                 data.set("references", references);
                 data.set("iterates", explanation.get("iterates"));
@@ -101,10 +100,8 @@ final class RuleDepsCommand extends BaseCommand {
                     ConsistencyEvidence.of(bound));
             out().print(env.toJsonString());
             return env.exitCode();
-        } catch (IOException e) {
-            return fail("deps failed: " + e.getMessage());
         } catch (RuntimeException e) {
-            return failOrRethrowDomainRejection("deps failed: ", e);
+            throw withFailureContext("deps failed: ", e);
         }
     }
 }

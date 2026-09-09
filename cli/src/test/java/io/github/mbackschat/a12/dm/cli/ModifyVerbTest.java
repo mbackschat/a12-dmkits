@@ -16,6 +16,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel;
+import io.github.mbackschat.a12.dm.adapter.KernelAdapter;
 
 /**
  * The {@code modify} verb — the WRITE end of the F8 modify-by-re-express loop: re-express a rule's
@@ -37,17 +38,15 @@ class ModifyVerbTest {
     @Test
     void writesTheModifiedModelInPlaceByDefault(@TempDir Path dir) throws Exception {
         Path m = model(dir);
+        String replacement = "[MonthlyFee] > 2000";
         var res = CliTestSupport.run("-m", m.toString(), "rule", "modify",
-                CliTestSupport.RULE_FULL_NAME, "--condition", "[MonthlyFee] > 2000");
+                CliTestSupport.RULE_FULL_NAME, "--condition", replacement);
         assertEquals(0, res.code(), res::err);
         // the before/after diff rides the envelope's `changed` (its own `changed` flag marks the edit)
         assertTrue(MAPPER.readTree(res.out()).get("changed").get("changed").asBoolean(),
                 () -> "shows the change: " + res.out());
-        // and the model FILE now carries the new bound (written in place), still kernel-reloadable
         String written = Files.readString(m);
-        assertTrue(written.contains("2000"), "the in-place model carries the new condition");
-        assertFalse(written.contains("> 1000") && !written.contains("2000"), "old bound replaced");
-        assertTrue(BoundModel.ofJson(written).toJson().contains("FeeCapRule"), "round-trips through the kernel");
+        assertEquals(replacement, KernelAdapter.ofJson(written).canonicalConditionText(CliTestSupport.RULE_FULL_NAME));
     }
 
     @Test

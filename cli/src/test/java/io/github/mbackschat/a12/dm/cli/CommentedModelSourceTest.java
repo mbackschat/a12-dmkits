@@ -1,11 +1,12 @@
 package io.github.mbackschat.a12.dm.cli;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -98,8 +99,9 @@ class CommentedModelSourceTest {
 
         CliTestSupport.Result res = CliTestSupport.run("-m", broken.toString(), "model", "describe");
 
-        assertNotEquals(0, res.code(), () -> "a trailing comma is not part of A12's leniency: " + res.out());
-        assertTrue(res.err().toLowerCase().contains("model") || !res.err().isBlank(),
-                () -> "and it fails with a diagnostic rather than silently: " + res.err());
+        assertEquals(2, res.code(), () -> "a trailing comma is not part of A12's leniency: " + res.out());
+        var envelope = new ObjectMapper().readTree(res.out());
+        assertEquals("RK_MODEL_INPUT_INVALID", envelope.at("/diagnostics/0/code").asText(), res::out);
+        assertTrue(res.err().isBlank(), res::err);
     }
 }

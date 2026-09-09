@@ -1,0 +1,16 @@
+// --tests filters a Test task, never its prerequisites. Graph readiness is the last point where all
+// command-line filters are known and no unrelated release/doc suite has started (2026-09-08 incident).
+gradle.taskGraph.whenReady { graph ->
+    if (rootProject.hasProperty('fast') || rootProject.hasProperty('rkNativeAgent')) {
+        return
+    }
+    def filtered = graph.allTasks.findAll { task ->
+        task instanceof Test && task.name == 'test' && !task.filter.commandLineIncludePatterns.isEmpty()
+    }
+    if (!filtered.isEmpty()) {
+        throw new GradleException(
+                "Focused test selection on ${filtered*.path.join(', ')} requires -Pfast: --tests does not " +
+                "filter prerequisite suites. Add -Pfast and run any required guard tasks separately by name. " +
+                "Native metadata capture (-PrkNativeAgent) deliberately retains its full prerequisite surface.")
+    }
+}

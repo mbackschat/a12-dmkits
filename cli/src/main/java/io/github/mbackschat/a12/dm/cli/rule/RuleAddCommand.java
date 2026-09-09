@@ -145,7 +145,8 @@ final class RuleAddCommand extends BaseCommand {
         ModelResolver resolver = workspace.resolverFor(model);
 
         ValidationResult check = new RuleValidator().check(modelJson,
-                new DraftRule(group, name, errorEntityRelPath, condition, code, severity), resolver);
+                DraftRule.builder().groupPath(group).name(name).errorEntityRelPath(errorEntityRelPath)
+                        .errorCondition(condition).errorCode(code).severity(severity).messages(messages).build(), resolver);
         if (!check.ok()) {
             // G30: operand-aware corrective on the rejected text path (see TextConditionCorrective / RuleCheckCommand).
             List<Diagnostic> diagnostics =
@@ -172,8 +173,6 @@ final class RuleAddCommand extends BaseCommand {
             // `fail`, so a rule refused for its error text produced empty stdout and a prose stderr line while
             // the same verb refused for its condition produced the envelope.
             return emitKernelRejection("the rule is rejected by the kernel", e);
-        } catch (RuntimeException e) {
-            return failEditGate(e);
         }
         List<Diagnostic> warnings = LintBackstop.lintPersisted(reModel, ruleFullName, field);
 

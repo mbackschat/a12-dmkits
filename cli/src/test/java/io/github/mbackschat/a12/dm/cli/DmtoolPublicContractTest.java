@@ -320,7 +320,7 @@ class DmtoolPublicContractTest {
         assertEquals(0, first.code(), () -> first.out() + first.err());
         String firstBytes = Files.readString(observations);
         JsonNode artifact = MAPPER.readTree(firstBytes);
-        assertEquals(1, artifact.path("schemaVersion").asInt());
+        assertEquals(2, artifact.path("schemaVersion").asInt());
         assertEquals("fee-cap", artifact.path("observations").get(0).path("id").asText());
         assertTrue(artifact.path("observations").get(0).path("valid").asBoolean());
         JsonNode firstEnvelope = MAPPER.readTree(first.out());

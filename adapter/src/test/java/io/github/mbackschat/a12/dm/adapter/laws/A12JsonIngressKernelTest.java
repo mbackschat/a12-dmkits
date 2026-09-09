@@ -66,6 +66,18 @@ class A12JsonIngressKernelTest {
             row("Quantity", "\"007\"", "7"),
             row("Quantity", "\"+5\"", "5"),
             row("Quantity", "0e5", "0"),
+            // The SIGN rows, which decide the reachability of two formal classes on this route: a leading plus
+            // and a minus on a ZERO magnitude are both canonicalised away with no code, so `zahlMitPlus` and
+            // `zahlNullEnthaeltVorzeichen` have no reachable precondition here at all — while `"-5"` keeps its
+            // sign, so the predicate is (plus) or (minus on a zero magnitude), not "the sign is dropped".
+            // a12-kernel-lean reached the same conclusion from 278 observations on their own carrier and asked
+            // which route ours takes; the direct-cell route every other oracle in this package uses is what
+            // reaches those two classes (KF253).
+            row("Quantity", "-0.0", "0.0"),
+            row("Quantity", "\"-0.0\"", "0.0"),
+            row("Quantity", "-0", "0"),
+            row("Quantity", "-0e5", "0"),
+            row("Quantity", "\"-5\"", "-5"),
             row("Quantity", "\"\"", "null"),
             row("Quantity", "0.0000001", "0.0000001", "zahlHatDezimalTrenner"),
             row("Quantity", "1234567890123456789012.5", "1234567890123456789012.5", "stelligkeitZuLang"),
@@ -84,6 +96,7 @@ class A12JsonIngressKernelTest {
             row("LineTotal", "250.0", "250.0"),
             row("LineTotal", "250.5", "250.5"),
             row("LineTotal", "250.00", "250.00"),
+            row("LineTotal", "\"+250.00\"", "250.00"),
             row("LineTotal", "250.555", "250.555", "zahlFalscheAnzahlNachkommastellen"),
             row("LineTotal", "\"\"", "null"),
 

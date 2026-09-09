@@ -9,7 +9,6 @@ name: CI
 on:
   push:
     branches: [main]
-  pull_request:
   workflow_dispatch:
 
 # Supersede, don't finish. A run takes ~53 min while pushes land in bursts, so without this a superseded
@@ -106,7 +105,7 @@ jobs:
           JAVA25_HOME: ${{ env.JAVA_HOME_25_X64 }}
         run: ./bootstrap.sh
 
-      # The default suite + the differential FUZZERS (-PrunFuzz) run on every push/PR — fuzzers are
+      # The default suite + the differential FUZZERS (-PrunFuzz) run on main pushes and manual runs — fuzzers are
       # correctness nets (interpreter == kernel). The isolated routine perf gate lives in the dedicated
       # nightly-performance workflow (docs/TESTING-SPEC "Test tiers"). Stage-4 module cut: root `test`
       # still exists (root is the cross-kit integration-test host, PROPOSAL §3a Option 1) so it runs the same

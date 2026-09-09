@@ -1,13 +1,11 @@
 package io.github.mbackschat.a12.dm.adapter;
 
-import java.io.IOException;
-import java.io.StringReader;
-import java.io.UncheckedIOException;
 import java.util.ArrayList;
 import java.util.List;
 
 import com.mgmtp.a12.kernel.md.facade.DocumentModelServiceFactory;
 import com.mgmtp.a12.kernel.md.model.api.IDocumentModel;
+import com.mgmtp.a12.kernel.md.model.api.services.DocumentModelExpansionException;
 import com.mgmtp.a12.kernel.md.model.api.services.IDocumentModelSerializer;
 import com.mgmtp.a12.kernel.md.model.api.services.IDocumentModelService;
 
@@ -28,13 +26,14 @@ final class KernelModelPreparation {
     static ExpandedModel expand(String modelJson, ModelResolver resolver) {
         IDocumentModelSerializer serializer = FACTORY.createDocumentModelSerializer();
         IDocumentModelService service = FACTORY.createDocumentModelService();
+        IDocumentModel model = KernelModelInput.deserialize(serializer, modelJson);
         try {
-            IDocumentModel model = serializer.deserialize(new StringReader(modelJson));
             service.expand(model, KernelResolvers.of(resolver));
-            return new ExpandedModel(model, service);
-        } catch (IOException exception) {
-            throw new UncheckedIOException("failed to deserialize the model DM-JSON", exception);
+        } catch (DocumentModelExpansionException rejected) {
+            // DocumentModelService.expand throws this type for reported ERRORs; callback defects have no verdict.
+            throw ModelConsistencyException.notKernelValid(rejected);
         }
+        return new ExpandedModel(model, service);
     }
 
     record ExpandedModel(IDocumentModel model, IDocumentModelService service) {
@@ -83,12 +82,10 @@ final class KernelModelPreparation {
          *
          * <p><b>It folds a build failure exactly as {@code ModelLoader.loadAndCheck} does, and for the same
          * reason:</b> a whole model has nothing injected, so a backend that refuses to construct it is
-         * delivering its verdict on the caller's bytes. Left to escape, the typed exception reaches a CLI
-         * reader's {@code catch (RuntimeException)} and — being neither of the two types
-         * {@code failOrRethrowDomainRejection} rethrows — degrades into an unstructured text failure at exit 2,
-         * where the same model's ordinary kernel rejection gets a JSON envelope at exit 1. Measured 2026-09-07
-         * on {@code model read} with a blank temporal format; the sibling {@code model check}, which goes
-         * through {@code ModelLoader}, was already correct. Two whole-model gates, one folded and one did not.
+         * delivering its verdict on the caller's bytes. On 2026-09-07, an escaping build failure from
+         * {@code model read} reached the former reader helper's plain exit-2 sink, while {@code model check}
+         * already folded it into a kernel rejection. Both whole-model gates must consume the typed build
+         * failure; otherwise a kernel refusal reaches the current internal-error mapper (KF259).
          */
         IDocumentModel requireConsistent() {
             List<Notification> reported;

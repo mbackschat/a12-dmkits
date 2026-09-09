@@ -133,9 +133,9 @@ final class ComputationModifyCommand extends BaseCommand {
             }
             RenderedDiff diff = KernelAdapter.ofJson(modelJson, resolver)
                     .diffComputation(computation, modConverted.computation());
-            changed = MAPPER.readTree(diff.toJson());
-        } catch (IOException | RuntimeException e) {
-            return fail("re-expression failed: " + e.getMessage());
+            changed = readGeneratedJson(diff.toJson());
+        } catch (RuntimeException e) {
+            throw withFailureContext("re-expression failed: ", e);
         }
 
         return emitMutation(ModelWrite.of(resultIdentity())

@@ -76,7 +76,7 @@ final class ExportCommand extends BaseCommand {
         try {
             bound = BoundModel.ofJson(json, workspace.resolverFor(model));
         } catch (RuntimeException e) {
-            return failOrRethrowDomainRejection("export failed: ", e);
+            throw withFailureContext("export failed: ", e);
         }
         if (outputDir != null) {
             Path dir = Path.of(outputDir);
@@ -95,14 +95,14 @@ final class ExportCommand extends BaseCommand {
                 return refuseUnwritableOutput(ResultIdentity.EXPORT_RENDER, "--out-dir <dir>", outputDir, e,
                         landed);
             } catch (RuntimeException e) {
-                return failOrRethrowDomainRejection("export failed: ", e);
+                throw withFailureContext("export failed: ", e);
             }
         }
         try {
             out().print(render(only == null ? Artifact.MODEL_CARD : only, bound, json));
             return 0;
         } catch (RuntimeException e) {
-            return failOrRethrowDomainRejection("export failed: ", e);
+            throw withFailureContext("export failed: ", e);
         }
     }
 

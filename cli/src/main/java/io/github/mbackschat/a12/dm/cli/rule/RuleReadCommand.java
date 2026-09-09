@@ -75,7 +75,7 @@ final class RuleReadCommand extends BaseCommand {
             out().print(env.toJsonString());
             return env.exitCode();
         } catch (RuntimeException e) {
-            return failOrRethrowDomainRejection("read failed: ", e);
+            throw withFailureContext("read failed: ", e);
         }
     }
 }

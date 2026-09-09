@@ -10,6 +10,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import io.github.mbackschat.a12.dm.adapter.profile.ModelProfiles;
+import io.github.mbackschat.a12.dm.adapter.profile.ProfileInputException;
 import io.github.mbackschat.a12.dm.cli.BaseCommand;
 import io.github.mbackschat.a12.dm.cli.ComparisonOutcome;
 import io.github.mbackschat.a12.dm.cli.ParamKind;
@@ -56,8 +57,10 @@ final class ProfileCompareCommand extends BaseCommand {
         String comparisonJson;
         try {
             comparisonJson = ModelProfiles.compare(targetJson, actualJson);
+        } catch (ProfileInputException badProfile) {
+            return fail("profile comparison failed: " + badProfile.getMessage());
         } catch (RuntimeException e) {
-            return failOrRethrowDomainRejection("profile comparison failed: ", e);
+            throw withFailureContext("profile comparison failed: ", e);
         }
 
         JsonNode comparison;

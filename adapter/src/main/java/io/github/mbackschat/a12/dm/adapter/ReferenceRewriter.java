@@ -1,7 +1,6 @@
 package io.github.mbackschat.a12.dm.adapter;
 
 import java.io.IOException;
-import java.io.StringReader;
 import java.io.StringWriter;
 import java.io.UncheckedIOException;
 import java.util.Map;
@@ -44,7 +43,7 @@ public final class ReferenceRewriter {
     public static String rewriteReferences(String modelJson, Map<String, String> entityMoves) {
         try {
             IDocumentModelSerializer serializer = FACTORY.createDocumentModelSerializer();
-            IDocumentModel model = serializer.deserialize(new StringReader(modelJson));
+            IDocumentModel model = KernelModelInput.deserialize(serializer, modelJson);
             // the public model wraps the internal one; MoveSupportDM mutates the internal in place, and
             // serializing the wrapper reflects it (getInternDocumentModel unwraps — shared state).
             DocumentModel intern = ExternalDocumentModelSerializerService.getInternDocumentModel(model);

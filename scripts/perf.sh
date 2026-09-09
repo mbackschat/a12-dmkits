@@ -42,8 +42,8 @@ run_gradle() {  # $1 = task, the rest = extra Gradle args; writes RAW to $out (n
     shift
     # The perf tests are @Tag("perf"), excluded from :adapter:test unless opted in (adapter/build.gradle) — so
     # broad test-task modes pass -PrunPerf. The routine gate instead owns a dedicated, always-run task.
-    echo "running: ./build.sh --console=plain -i $task $* (raw → $out)"
-    ./build.sh --console=plain -i "$task" "$@" > "$out" 2>&1
+    echo "running: ./build.sh --console=plain -Pfast -i $task $* (raw → $out)"
+    ./build.sh --console=plain -Pfast -i "$task" "$@" > "$out" 2>&1
 }
 
 case "$mode" in

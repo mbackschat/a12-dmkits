@@ -70,9 +70,11 @@ public record Rule(
         return draft(ConditionLanguage.EN);
     }
 
-    /** The F4 validator draft rendered in the destination model's condition {@code language}. */
+    /** The F4 validator draft, including authored messages, rendered in the destination model's condition {@code language}. */
     public DraftRule draft(ConditionLanguage language) {
-        return new DraftRule(group.path().value(), name, errorEntityRelPath(), render(language), code, severity.name());
+        return DraftRule.builder().groupPath(group.path().value()).name(name)
+                .errorEntityRelPath(errorEntityRelPath()).errorCondition(render(language))
+                .errorCode(code).severity(severity.name()).messages(messages).build();
     }
 
     /**

@@ -161,8 +161,9 @@ public final class ComputationSpec {
         // beside its field and becomes a walk out and back down when `group` put it elsewhere.
         String computedFieldRelPath =
                 EntityPath.of(groupPath + "/" + name).relativize(EntityPath.of(computedField));
-        DraftComputation draft = new DraftComputation(groupPath, name, computedFieldRelPath,
-                text(spec, "commonPrecondition"), alternatives, errorCodesToSuppress);
+        DraftComputation draft = DraftComputation.builder().groupPath(groupPath).name(name)
+                .computedFieldRelPath(computedFieldRelPath).commonPrecondition(text(spec, "commonPrecondition"))
+                .alternatives(alternatives).errorCodesToSuppress(errorCodesToSuppress).messages(messages).build();
         return new Parsed(draft, messages, null);
     }
 

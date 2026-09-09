@@ -84,7 +84,7 @@ final class WhereUsedCommand extends BaseCommand {
             out().print(env.toJsonString());
             return env.exitCode();
         } catch (RuntimeException e) {
-            return failOrRethrowDomainRejection("where-used failed: ", e);
+            throw withFailureContext("where-used failed: ", e);
         }
     }
 }

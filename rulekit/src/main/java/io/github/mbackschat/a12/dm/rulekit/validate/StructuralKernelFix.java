@@ -3,6 +3,8 @@ package io.github.mbackschat.a12.dm.rulekit.validate;
 import java.util.Map;
 import java.util.Optional;
 
+import io.github.mbackschat.a12.dm.core.KernelCode;
+
 /**
  * Curated {@code fix}/{@code explain} for kernel codes the operator catalog-join can't correctly serve.
  * {@link DiagnosticEnricher} consults this <b>first</b>, so these win over the join. Two kinds live here —
@@ -58,8 +60,6 @@ import java.util.Optional;
  * CROSS-CONTEXT code's operator home would give the wrong fix. The CLI resolves both through
  * {@link #forCode} instead.
  */
-import io.github.mbackschat.a12.dm.core.KernelCode;
-
 public final class StructuralKernelFix {
 
     /** A corrective {@code (fix, explain)} pair for one structural kernel code. */
@@ -78,17 +78,22 @@ public final class StructuralKernelFix {
                             + "MVK_INVALID_PATTERN can therefore mean invalid Java syntax or a Java-valid "
                             + "kernel-rejected form; it is not a general cross-runtime portability check.")),
             Map.entry(KernelCode.MVK_ADDITIONAL_CHECK_INVALID, new Hint(
-                    "A date field's opt-in pre-1900 check (`youngerThan1900Check`, our "
-                            + "`dateField(…).rejectBefore1900()`) requires the declared FORMAT to carry a YEAR. "
-                            + "Over the kernel's admitted format vocabulary it is accepted on `yyyy`, `yyyy-MM`, "
-                            + "`yyyyMM`, `yyyy-MM-dd`, `dd.MM.yyyy`, `yyyyMMdd` and `yyyy-MM-dd'T'HH:mm:ss`, and "
-                            + "refused on the year-free `MM`, `MM-dd`, `MMdd`, `ddMM` and `HH:mm:ss`. So either "
-                            + "declare a year-bearing format or drop the check — it is not admitted-and-inert on a "
+                    "A DATE or DATEFRAGMENT field's opt-in pre-1900 check (`youngerThan1900Check`, our "
+                            + "`dateField(…)`/`dateFragmentField(…).rejectBefore1900()`) requires the declared "
+                            + "FORMAT to carry a YEAR. Over the kernel's admitted format vocabulary it is "
+                            + "accepted on `yyyy`, `yyyy-MM`, `yyyyMM`, `yyyy-MM-dd`, `dd.MM.yyyy`, `yyyyMMdd` "
+                            + "and `yyyy-MM-dd'T'HH:mm:ss`, and refused on the year-free `MM`, `MM-dd`, `MMdd`, "
+                            + "`ddMM` and `HH:mm:ss` — identically on both kinds. So either declare a "
+                            + "year-bearing format or drop the check — it is not admitted-and-inert on a "
                             + "year-free declaration, so there is no way to keep both. An INCOMPLETE format is not "
-                            + "the trigger: `yyyy` and `yyyy-MM` carry no day and are accepted.",
+                            + "the trigger: `yyyy` and `yyyy-MM` carry no day and are accepted. A DATERANGE is "
+                            + "EXEMPT from this gate — every admitted (format, separator) pair takes the check, "
+                            + "the year-free ones included — so if a year-free period is what you need, declare "
+                            + "it as a range.",
                     "The kernel gates the additional date check on the declared format's YEAR component rather "
-                            + "than on the field's kind, so the code means the format and the check disagree — "
-                            + "never that the check is unsupported for this field type.")),
+                            + "than on the field's kind — except that the DATERANGE kind is not gated at all — so "
+                            + "the code means the format and the check disagree, never that the check is "
+                            + "unsupported for this field type.")),
             Map.entry(KernelCode.MVK_OPTIONAL_DATE_TYPE_INVALID, new Hint(
                     "A partially known date (`datePrecision` DAY_OPTIONAL / MONTH_OPTIONAL / YEAR_OPTIONAL) "
                             + "requires the declared FORMAT to be a COMPLETE date and nothing further. Over the "

@@ -23,9 +23,8 @@ public class ModelConsistencyException extends RuntimeException {
     }
 
     /**
-     * For a model the kernel rejects <em>before</em> {@code checkConsistency} (deserialize/expand tier —
-     * e.g. a duplicate element id, a malformed type node), so a structure-edit gate can surface every
-     * kernel rejection as one type. Carries no notifications (the cause holds the kernel detail).
+     * For a model the kernel rejects during expansion, before {@code checkConsistency}.
+     * Carries no notifications (the cause holds the kernel detail).
      */
     public ModelConsistencyException(String message, Throwable cause) {
         super(message, cause);
@@ -33,14 +32,9 @@ public class ModelConsistencyException extends RuntimeException {
     }
 
     /**
-     * The single uniform "edited model is not kernel-valid" wrap for a deserialize/expand-tier rejection (a
-     * non-{@code ModelConsistencyException} {@link RuntimeException} / {@code IOException} thrown while
-     * re-binding the edited model), <b>surfacing the cause's message</b> so the rejection is never
-     * content-free. This is the shared root for the two kernel-gate sites — the per-edit gate
-     * ({@code ModelDocument.validate}) and the session terminal gate ({@code EditSession.validate}), which
-     * backs the {@code apply}/{@code batch} commit — so the cause-append cannot drift between them. (Probe
-     * 04 fixed the per-edit site inline; probe 07 found the terminal gate still bare — the duplication was
-     * the defect, hence one factory.)
+     * Preserve the cause's detail for a diagnosed kernel expansion rejection.
+     * The adapter calls this only for the kernel's {@code DocumentModelExpansionException}; an arbitrary
+     * loading, callback, or serialization failure is not evidence that the kernel rejected the model.
      */
     public static ModelConsistencyException notKernelValid(Throwable cause) {
         String message = cause == null ? null : cause.getMessage();

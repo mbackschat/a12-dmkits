@@ -14,7 +14,7 @@ import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 
 /**
- * Tri-engine differential — **an over-limit row ABSORBS every violation beneath it**: the outermost violated row
+ * Tri-engine differential — **an over-limit row ABSORBS every violation beneath it**: below a nonrepeatable root, the outermost violated row
  * draws one `zuGrosseZeile`, one `zuGrosseKontextnummer` per written node under it, and an over-limit row nested
  * inside that subtree draws no row code and is named nowhere. a12-kernel-lean's `SPEC-2026-08-30-10`, measured
  * here on our own fixture.

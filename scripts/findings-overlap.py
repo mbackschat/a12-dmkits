@@ -39,8 +39,9 @@ denominator and their blind spots stated:
   1. It finds LEXICAL overlap only. A restatement in wholly different vocabulary is invisible, so
      this bounds the problem from one side: it can prove duplication EXISTS, never that none does.
   2. MIN_TOKENS silently drops 3 entries (API10, API42, API47). They are never scored.
-  3. The families are parsed at different GRANULARITY — an IF/KF entry contributes its whole body,
-     an API entry only its first line — so every API-involving cosine is biased downward.
+  3. At the time of this measurement, an IF/KF entry contributed its whole body but an API entry
+     only its first line, biasing API-involving cosine downward. Since the API section conversion
+     (2026-09-08), all three families contribute their complete section bodies.
   4. The 0.40 cutoff is CALIBRATED, not assumed: an injected clone of IF112 scores 1.000, and a
      clone with eight frequent domain terms substituted still scores 0.859, so a real restatement
      lands far above it. 84 pairs sit above 0.30 and were not read individually.
@@ -102,10 +103,11 @@ def load():
                          r'^#{2,4} (IF\d+):?(.*?)<a id="if\d+"></a>\s*$', 1, 2)
     entries += _anchored(DOCS / "KERNEL-FINDINGS.md",
                          r'^#{2,4} (?P<t>.*?)<a id="(?P<i>kf\d+)"></a>\s*$', "i", "t")
-    for line in (DOCS / "API-FINDINGS.md").read_text().split("\n"):
-        m = re.match(r"^(\d+)\. \*\*(.*)$", line)
-        if m:
-            entries.append({"id": "API" + m.group(1), "title": m.group(2)[:160], "body": [m.group(2)]})
+    api_entries = _anchored(DOCS / "API-FINDINGS.md",
+                            r'^## AF(\d+): (.*?) <a id="af\d+"></a>\s*$', 1, 2)
+    for entry in api_entries:
+        entry["id"] = "API" + entry["id"]
+    entries += api_entries
     for e in entries:
         e["tf"] = Counter(tokens(e["title"] + " " + "\n".join(e["body"])))
     return [e for e in entries if sum(e["tf"].values()) >= MIN_TOKENS]

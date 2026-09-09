@@ -48,6 +48,24 @@ dmtool -m examples/models/order-ruled.dm.json model check
 
 → `valid: true` with an empty `diagnostics` array means the kernel accepts the model as-is. Note the **ok/valid split**: `ok` says the validate op ran; `valid` is its verdict about the model. A failing model would list diagnostics (each with `code`, `severity`, message) and exit `1`.
 
+Malformed input has no consistency verdict. It is refused with exit 2 and a corrective `PRECHECK` diagnostic, without `valid` or `verification`.
+
+```bash
+broken_model=$(mktemp)
+printf '{"header":' > "$broken_model"
+dmtool -m "$broken_model" model check > "$broken_model.result"
+input_exit=$?
+jq -c '{outcome, code: .diagnostics[0].code, source: .diagnostics[0].source,
+        hasVerdict: (has("valid") or has("verification"))}' "$broken_model.result"
+printf 'exit=%s\n' "$input_exit"
+rm "$broken_model" "$broken_model.result"
+```
+
+```output
+{"outcome":"refused","code":"RK_MODEL_INPUT_INVALID","source":"PRECHECK","hasVerdict":false}
+exit=2
+```
+
 ## rule read
 
 Reads a rule stored in the model and renders its condition back as DSL — the kernel's own canonical text — plus the rule's stored error `messages` (locale → text, raw/uninterpolated, for auditing the wording without a runtime-eval verb). The rule is named by a positional path; a read's payload rides the envelope's `data`. A partial parse returns a tolerant `Opaque` passthrough instead.

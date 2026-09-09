@@ -182,7 +182,7 @@ final class ModelDiffCommand extends BaseCommand {
             out().print(env.toJsonString());
             return env.exitCode();
         } catch (RuntimeException e) {
-            return failOrRethrowDomainRejection("diff failed: ", e);
+            throw withFailureContext("diff failed: ", e);
         }
     }
 

@@ -46,8 +46,9 @@ import io.github.mbackschat.a12.dm.rulekit.validate.KernelVersion;
  *
  * <p><b>What is observed is the request's choice</b> ({@link Observation}), and each observation is either
  * per-ROW or per-MODEL. The row observations are {@code validateFull} — required whenever any row is observed
- * — and {@code compute}; the model observation is {@code mandatoryInformation}, which reads no document and may
- * be asked for alone, with no {@code rows} at all. A request that does not ask for an optional block produces
+ * — and {@code compute}; the model observations are {@code mandatoryInformation} and
+ * {@code dynamicEnumerations}, which read no document and may be asked for alone, with no {@code rows} at all.
+ * A request that does not ask for an optional block produces
  * the artifact it always produced, byte for byte, because consumers pin these bytes by SHA-256.
  *
  * <p><b>It is a measurement instrument, not a verb.</b> Kernel runtime evaluation does Groovy runtime code
@@ -132,7 +133,22 @@ public final class KernelRuntimeProbe {
          * kernel derives from the model's rule CONDITIONS. Model-level: it reads no document, runs no
          * evaluation, and is reported once for the request rather than per row or per strategy.
          */
-        MANDATORY_INFORMATION("mandatoryInformation", Scope.MODEL);
+        MANDATORY_INFORMATION("mandatoryInformation", Scope.MODEL),
+
+        /**
+         * {@code IRuleCollectionMetaInformation.getDynamicEnumerationStringValues} — the field&rarr;allowed-values
+         * map the kernel's dynamic-enumeration derivation extracts, and every problem it reports on the way.
+         * Model-level, like its sibling.
+         *
+         * <p><b>It is here because the consistency gate has no route to it.</b> {@code DynamicEnumerationService}
+         * is constructed at two sites in the kernel — that facade method, and a facade factory with no in-kernel
+         * caller — and neither sits on a consistency rule, so its twelve {@code MVK_DYNENUM_*} classes are
+         * unobservable through {@code model check} / {@code rule check} however the model is shaped. <b>Its diagnostics are not defects:</b> the derivation
+         * checks every rule and reports one problem per rule that is not a dynamic enumeration IN FORM, which is
+         * true of almost every ordinary rule. Read the block as "which rules are dynamic enumerations, and why
+         * the rest are not", never as a model-health verdict.
+         */
+        DYNAMIC_ENUMERATIONS("dynamicEnumerations", Scope.MODEL);
 
         /** Whether an observation needs a document. The request contract is derived from this, never listed. */
         enum Scope { ROW, MODEL }
@@ -417,10 +433,14 @@ public final class KernelRuntimeProbe {
                 request.observe().contains(Observation.MANDATORY_INFORMATION)
                         ? Optional.of(mandatoryInformation(request.modelJson()))
                         : Optional.empty();
+        Optional<KernelAdapter.DynamicEnumerations> dynamicEnumerations =
+                request.observe().contains(Observation.DYNAMIC_ENUMERATIONS)
+                        ? Optional.of(dynamicEnumerations(request.modelJson()))
+                        : Optional.empty();
         if (request.rows().isEmpty()) {
             // No engine is built at all. Generating and compiling the kernel's Java validator is the expensive
             // half of a run, and a model-level query reads the rule collection rather than generated code.
-            return new KernelProbeArtifact(header, List.of(), mandatory);
+            return new KernelProbeArtifact(header, List.of(), mandatory, dynamicEnumerations);
         }
 
         // Built once for the whole request: generating and compiling the kernel's Java validator is the
@@ -463,7 +483,7 @@ public final class KernelRuntimeProbe {
                                         .partialValidationMessages(instance, rel, clock, locale)))));
                     }))));
         }
-        return new KernelProbeArtifact(header, rows, mandatory);
+        return new KernelProbeArtifact(header, rows, mandatory, dynamicEnumerations);
     }
 
     // ---- fault capture ---------------------------------------------------------------------------
@@ -618,6 +638,16 @@ public final class KernelRuntimeProbe {
         var out = new EnumMap<KernelAdapter.MandatorySet, List<String>>(KernelAdapter.MandatorySet.class);
         derived.forEach((set, names) -> out.put(set, List.copyOf(names)));
         return out;
+    }
+
+    /**
+     * The kernel's dynamic-enumeration derivation over the request's model — the field&rarr;values map and every
+     * problem it reported. Delegates to {@code KernelAdapter.dynamicEnumerations}, so the kernel types stay
+     * there; model-level for the same reason as its sibling, and the only route to the derivation's classes at
+     * all (see {@link Observation#DYNAMIC_ENUMERATIONS}).
+     */
+    private static KernelAdapter.DynamicEnumerations dynamicEnumerations(String modelJson) {
+        return KernelAdapter.ofJson(modelJson).dynamicEnumerations();
     }
 
     /** The consistency gate — the same oracle {@code rule check} reports {@code KERNEL_CONFIRMED} from. */

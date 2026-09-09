@@ -98,6 +98,34 @@
         }
       }
     },
+    "dynamicEnumerations": {
+      "type": "object",
+      "required": ["valuesByField", "diagnostics"],
+      "additionalProperties": false,
+      "description": "the kernel's dynamic-enumeration derivation over the model's rule collection (`IRuleCollectionMetaInformation.getDynamicEnumerationStringValues`) — a MODEL-level observation, so it appears once rather than per row or per strategy, and it reads no document. ABSENT unless the request asked for it, which is what keeps every already-pinned artifact byte-identical. **This is the only route to the derivation the tool has**: its checker (`DynamicEnumerationService`) is constructed at two sites in the kernel — this facade method, and a facade factory with no in-kernel caller — and neither sits on a consistency rule, so its twelve `MVK_DYNENUM_*` / `MVK_ERROR_*` classes cannot be produced by `model check` or `rule check` however the model is shaped. **`diagnostics` is NOT a defect list.** The derivation checks EVERY rule and reports one problem for each that is not a dynamic enumeration IN FORM — measured: an ordinary single-leaf rule draws `MVK_DYNENUM_INVALID_GATE`, an ordinary conjunction `MVK_DYNENUM_INVALID_CALCOP` — so on a model of ordinary rules the block carries roughly one entry per rule and none of them is a fault. Read it as \"which rules are dynamic enumerations, and why the rest are not\".",
+      "properties": {
+        "valuesByField": {
+          "type": "object",
+          "additionalProperties": { "type": "array", "items": { "type": "string" } },
+          "description": "each dynamic-enumeration field's full name mapped to the constant values the kernel extracted for it, keyed by field name so the order is deterministic under a SHA-256 pin"
+        },
+        "diagnostics": {
+          "type": "array",
+          "description": "every problem the derivation reported, in the kernel's own order",
+          "items": {
+            "type": "object",
+            "required": ["code", "severity", "rule", "message"],
+            "additionalProperties": false,
+            "properties": {
+              "code": { "type": ["string", "null"], "description": "the class the kernel named (e.g. `MVK_DYNENUM_INVALID_GATE`), or null when its message carried none" },
+              "severity": { "type": "string", "enum": ["INFO", "WARNING", "ERROR"] },
+              "rule": { "type": ["string", "null"], "description": "the rule the kernel's own message attributed the problem to, or null when it named none — the usual case for this derivation, which is why a per-rule attributed verdict is `KernelAdapter.dynamicEnumerationDiagnostics(ruleFullName)` rather than this block" },
+              "message": { "type": "string", "description": "the kernel's own text, verbatim" }
+            }
+          }
+        }
+      }
+    },
     "rows": {
       "type": "array",
       "description": "one entry per request row, in request order; EMPTY when the request observed only model-level entry points, which read no document",

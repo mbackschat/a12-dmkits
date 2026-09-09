@@ -1,9 +1,12 @@
 package io.github.mbackschat.a12.dm.cli.computation;
 
 import io.github.mbackschat.a12.dm.cli.CliTestSupport;
+import io.github.mbackschat.a12.dm.adapter.KernelAdapter;
+import io.github.mbackschat.a12.dm.rulekit.read.ReadComputation;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.nio.file.Files;
@@ -160,6 +163,11 @@ class ComputationVerbTest {
         assertEquals("applied", j.get("outcome").asText());
         assertTrue(j.get("written").asBoolean());
         assertTrue(j.has("changed"), "carries the rendered diff");
+        var persisted = assertInstanceOf(ReadComputation.Converted.class,
+                KernelAdapter.ofJson(Files.readString(model)).readComputation(COMP)).computation().draft();
+        assertEquals(1, persisted.alternatives().size());
+        assertEquals(M.readTree(Files.readString(spec)).at("/alternatives/0/operation").asText(),
+                persisted.alternatives().getFirst().operation());
     }
 
     @Test

@@ -75,7 +75,7 @@ final class ModelUsageCommand extends BaseCommand {
             out().print(env.toJsonString());
             return env.exitCode();
         } catch (RuntimeException e) {
-            return failOrRethrowDomainRejection("usage failed: ", e);
+            throw withFailureContext("usage failed: ", e);
         }
     }
 }

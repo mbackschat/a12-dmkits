@@ -162,8 +162,6 @@ final class FieldAddCommand extends BaseCommand {
             resultJson = doc.validate(resolver).toJson();
         } catch (ModelConsistencyException e) {
             return emitKernelRejection("the field is rejected by the kernel", e);
-        } catch (RuntimeException e) {
-            return failEditGate(e);
         }
         return emitMutation(ModelWrite.of(resultIdentity())
                 .summaries("would add field " + target,

@@ -935,13 +935,8 @@ new DslRenderer(ConditionLanguage.DE).render(condition);   // same AST, German k
 ValidationResult vr = new RuleValidator().check(modelJson, draftRule);   // F4: real kernel, no compile
 vr.diagnostics().forEach(d -> System.out.println(d.code() + " " + d.fix()));  // F4a: code + catalog-joined fix
 
-// …and the candidate's ERROR TEXT, through the kernel's SECOND checker. Without messages the validator
-// injects a per-locale placeholder (the rule's own name, always valid), so that checker never fires.
-DraftRule withText = DraftRule.builder()
-        .groupPath("/Order").name("CheckRule").errorEntityRelPath("../DeliveryDate")
-        .errorCondition(condition).errorCode("DELIVERY_BEFORE_ORDER").severity("ERROR")
-        .messages(List.of(Dsl.en("Delivery $DeliveryDate.value$ precedes the order date.")))
-        .build();
+// Authored messages travel with the typed rule, so candidate validation also reaches the error-text checker.
+DraftRule withText = rule.draft();
 new RuleValidator().undeclaredMessageLocales(modelJson, withText);   // refuse these: the kernel never checks them
 
 // F4a unified surface: KERNEL (span-pointed) + LINT warnings + gotcha INFO in one result
@@ -951,6 +946,10 @@ System.out.println(all.toJson());                          // agent-parseable, o
 BoundModel m2 = m.add(rule);                               // snapshot (F0): write → NEW binding, re-validated
 m2.writeTo(path);                                          // DM-JSON write path — authored JSON, includes preserved (D9, F6)
 ```
+
+Both `rule.draft()` and `computation.draft()` preserve their authored localized messages, including when rendering conditions in German. `RuleValidator` checks supplied text for the model's declared locales; an explicitly message-free draft retains the per-locale placeholders, and a partial draft replaces only the supplied locales. `CandidateMessageFidelityTest` locks message-only acceptance/rejection through the real kernel; `CandidateMessageCheckTest` covers rule/computation specs and pattern scaffolds. The older `DraftComputation` constructors remain message-free compatibility forms. See [AF144](API-FINDINGS.md#af144).
+
+Ancestor group operands end on the parent-navigation segment: from `/Shipment/Parcels/Labels`, its parent renders as `..` and its root as `../..`. Neither carries a trailing slash. `AncestorGroupRenderingTest` checks both rendered forms against the kernel ([AF145](API-FINDINGS.md#af145)).
 
 Relative paths never escape their root group: a rule under `/Dashboard` renders a typed reference to `/Dashboard/Status` as `Status`, while a typed reference to `/Application/Approved` remains `/Application/Approved`. The latter cannot be rendered as `../Application/Approved`; the DSL's parent navigation does not cross root-group boundaries.
 
@@ -1234,9 +1233,13 @@ ModelDocument.read(json)
 ```
 Add-ops reuse the build-from-scratch node emitter, so an *added* field is byte-shaped identically to a *built* one. A missing target path fails fast with `IllegalArgumentException`; the full constraint set rides `validate()`. *Locked by `modelkit.ModelEditTest`.*
 
+Both `ModelDocument.validate(resolver)` and `EditSession.validate()` preserve the origin of a failure: malformed model input raises `ModelInputException`, an unresolved include raises `UnresolvedReferenceException`, and a diagnosed kernel expansion or consistency refusal raises `ModelConsistencyException`. An unrelated resolver exception propagates unchanged; it does not constitute a model verdict. The adapter recognizes A12's `DocumentModelExpansionException` at the expansion call, rather than classifying every exception from a validation entry point as a rejection. *Locked by `ValidationFailureBoundaryTest` and `cli.EditGateRejectionTierTest`.*
+
 `validate()` also leaves a **receipt**: `consistencyGate()` returns `Optional<Verification>` — `KERNEL_CONFIRMED` when the real oracle arbitrated, `STRUCTURAL_ONLY` in a backend-free build, and **empty** until the gate has run. It is state-checked, so an edit *after* the gate revokes it rather than vouching for a tree the kernel never saw; re-validating restores it. Read it when you publish provenance ("who confirmed this model") — never `Backends.verification()`, which answers the different question of whether a backend is on the classpath. `EditSession.consistencyGate()` is the same accessor over the session's one terminal gate. *Locked by `cli.EditGateReceiptTest`; the rationale is [finding 113](API-FINDINGS.md).*
 
-A repeatable group can also declare a **display row sort** on the from-scratch builder — `GroupBuilder.sortField("Amount", SortOrder.DESC).sortField("Sku", SortOrder.ASC)` (multi-key, in declaration order). Like `indexField` it fails fast on a non-repeatable group or a non-child field. It is display/USB-only — the kernel doesn't reorder rows for validate/compute (so the interpreter ignores it) — making it an authoring + read-fidelity slot (finding 51). *Locked by `modelkit.GroupSortFieldTest` (kernel read-back).*
+An **index field** may be declared on a non-repeatable group as well as a repeatable one: `rootGroup("Single", g -> g.indexField("Key").field("Key", FieldKind.STRING))`. `GroupBuilder.indexField`, `ModelDocument.setIndexField`, and `GroupEditor.setIndexField` all require an existing direct-child field, without imposing repeatability. *Kernel acceptance and read/edit preservation: `modelkit.IndexFieldTest`; enumeration declaration and message-parameter distinction: `RuleMessageIndexTerminalLawsTest` ([KF280](KERNEL-FINDINGS.md#kf280)).*
+
+A repeatable group can also declare a **display row sort** on the from-scratch builder — `GroupBuilder.sortField("Amount", SortOrder.DESC).sortField("Sku", SortOrder.ASC)` (multi-key, in declaration order). It fails fast on a non-repeatable group or a non-child field. It is display/USB-only — the kernel doesn't reorder rows for validate/compute (so the interpreter ignores it) — making it an authoring + read-fidelity slot (finding 51). *Locked by `adapter.GroupSortFieldTest` (kernel read-back).*
 
 An enumeration index field can declare its **S-value** — the model-owned stored-token default an eligible clean-empty index cell receives during FULL validation and computation, and that partial validation silently suppresses (SPEC-2026-07-23-14/-15):
 
@@ -1297,6 +1300,28 @@ DocumentModelDraft draft = permit()
 ```
 
 This emits A12's `DateType.youngerThan1900Check`; the CLI peer is `"date":{"rejectBefore1900":true}`. It applies to stored values and any authorable computed target. Do not infer that a computation may target the partial precision shown above: kernel 30.8.1 rejects `DAY_OPTIONAL`, `MONTH_OPTIONAL`, and `YEAR_OPTIONAL` computation targets because the computation's generated implicit comparison reads the partial target as a value (`MVK_INVALID_DATE_TYPE`), and that code is not suppressible (finding 108 / IF237).
+
+**That check requires the declared format to carry a YEAR**, and the requirement is the format's rather than the kind's: over the kernel's admitted vocabulary it is accepted on `yyyy`, `yyyy-MM`, `yyyyMM`, `yyyy-MM-dd`, `dd.MM.yyyy`, `yyyyMMdd` and `yyyy-MM-dd'T'HH:mm:ss`, and refused `MVK_ADDITIONAL_CHECK_INVALID` on the year-free `MM`, `MM-dd`, `MMdd`, `ddMM` and `HH:mm:ss`. Incompleteness is not the trigger — `yyyy` carries no day and is accepted. The builder does not pre-check it: the kernel's own diagnostic carries a curated corrective naming the accepted formats (`StructuralKernelFix`), and a client-side refusal would also fire on the READ path, making an inconsistent-but-present model unreadable rather than merely unauthorable ([KF251](KERNEL-FINDINGS.md#kf251)).
+
+**The same check rides two further declarations, and a Number can be declared unsigned:**
+
+<!-- snippet: unsigned-and-pre-1900-carriers -->
+```java
+DocumentModelDraft draft = permit()
+        .rootGroup("Permit", group -> group
+                .numberField("Deposit", n -> n.fractionDigits(2).positivesOnly())
+                .numberField("Adjustment", n -> n.fractionDigits(2))
+                .dateFragmentField("BilledMonth", f -> f.fragmentFormat("yyyy-MM").rejectBefore1900())
+                .dateFragmentField("NotedMonth", f -> f.fragmentFormat("yyyy-MM"))
+                .dateRangeField("CoverWindow",
+                        r -> r.format("dd.MM.yyyy").separator("-").rejectBefore1900())
+                .dateRangeField("NotedWindow", r -> r.format("dd.MM.yyyy").separator("-")))
+        .build();
+```
+
+`positivesOnly()` emits A12's `NumberType.positivesOnly` (CLI: `"number":{"positivesOnly":true}`), which is the **only** input to the runtime's `hatVorzeichen` — a non-negative `min` bounds the value without changing the sign polarity. Two consequences, both measured: a minus is the formal error `zahlMitVorzeichen`, and an *empty* unsigned number can be filled bigger but never smaller, so a directional comparison over it types VALUE where a signed one types OMISSION. A minus on a **zero** magnitude reports the sign class rather than `zahlNullEnthaeltVorzeichen`, so the two are alternatives rather than a precedence pair.
+
+`DateFragmentFieldBuilder.rejectBefore1900()` and `DateRangeFieldBuilder.rejectBefore1900()` (CLI: `"dateFragment"`/`"dateRange"` `{"rejectBefore1900":true}`) carry the check on the other two declarations. **They do not share the year co-requirement.** The fragment kind reproduces the DATE gate exactly, while a DATERANGE takes the check on every admitted `(format, separator)` pair — the year-free ones included, where it then measures the model's base-year completion. So if you need a year-free period guarded against pre-1900 dates, declare it as a range; there is no year-free DATE or DATEFRAGMENT that will hold the flag ([KF276](KERNEL-FINDINGS.md#kf276)).
 
 A **date RANGE** adds one property beyond format and separator: `interpretationOfYear` decides which endpoint of a *wrapping* yearless range keeps the base year. Without it, an ordinary winter cover window (`01.11-31.01` on a `dd.MM` range) reads as start-after-end and is reported invalid. The direction is the reverse of what the names suggest — the value names the endpoint the base year **labels**, and the opposite endpoint moves:
 
@@ -1878,6 +1903,8 @@ Compare a synthesized model's re-extracted profile with its target through the s
 ```java
 String comparisonJson = ModelProfiles.compare(targetProfileJson, actualProfileJson);
 ```
+
+Diagnosed profile parsing failures and the synthesizer's bounded-group requirement raise `ProfileInputException`, an `IllegalArgumentException` subtype. Unexpected processing exceptions remain distinct. This type describes our performance-profile tooling format; it is not an A12 model or Document type. *Locked by `ModelProfileJsonTest` and `cli.LocalFailureBoundaryTest`.*
 
 ## 7. The LLM session — the loop the skill teaches, for both personas
 

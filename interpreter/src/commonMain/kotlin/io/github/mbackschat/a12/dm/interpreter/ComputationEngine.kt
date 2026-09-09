@@ -156,7 +156,7 @@ internal class ComputationEngine(
         val operandRelevant: Relevance = { path, _ -> path in operands.fields }
         val selectedIndexRelevant: Relevance = { path, _ -> path in operands.indexFields }
         // Over-repetition is the one formal check that speaks about GROUP paths as well as field paths: its
-        // second walk reports the over-limit ROW (`zuGrosseZeile`) at the group itself. `operandRelevant` holds
+        // second walk reports the over-limit group (serial at the root, row below it). `operandRelevant` holds
         // operand FIELD paths, so testing a group against it was a category error rather than a filter — the row
         // walk could never fire under compute for any model, and the channel was silently short one code on
         // every over-limit operand. Both halves of the scope are measured, not inferred: the kernel reports
@@ -164,8 +164,8 @@ internal class ComputationEngine(
         // two levels above the operand (OverLimitOperandComputeArmDiffTest, 2026-08-31).
         //
         // The set is the COMPLETE ancestry, non-repeatable groups included, mirroring the kernel's own complete
-        // walk (KERNEL-FINDINGS KF58). Those carry `zuGrosseLfdNummer` rather than `zuGrosseZeile` and are NOT
-        // separately measured, because no input to the public compute surface can reach one: it accepts only a
+        // walk (KERNEL-FINDINGS KF58). Fixed-group overflows are NOT separately measured on this route,
+        // because no input to the public compute surface can reach one: it accepts only a
         // DocumentSnapshot, whose sole public constructors are `readDocument` and `seedDocument`, and A12
         // Document JSON has no shape for a non-repeatable group row above 1 — our own writer refuses that state
         // (A12DocumentJson, DocumentEncodeError), while `seedDocument` instantiates one row per repeatable group.

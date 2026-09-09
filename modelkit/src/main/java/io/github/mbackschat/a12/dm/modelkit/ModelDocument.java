@@ -26,10 +26,10 @@ import io.github.mbackschat.a12.dm.core.DmKeys;
 import io.github.mbackschat.a12.dm.core.ElementType;
 import io.github.mbackschat.a12.dm.core.EntityPaths;
 import io.github.mbackschat.a12.dm.core.ModelConsistencyException;
+import io.github.mbackschat.a12.dm.core.ModelInputException;
 import io.github.mbackschat.a12.dm.core.ModelLoader;
 import io.github.mbackschat.a12.dm.core.ModelResolver;
 import io.github.mbackschat.a12.dm.core.ReferenceResolvers;
-import io.github.mbackschat.a12.dm.core.UnresolvedReferenceException;
 import io.github.mbackschat.a12.dm.core.ValueKind;
 import io.github.mbackschat.a12.dm.core.Verification;
 
@@ -82,11 +82,11 @@ public final class ModelDocument {
         try {
             JsonNode node = MAPPER.readTree(dmJson);
             if (!(node instanceof ObjectNode obj)) {
-                throw new IllegalArgumentException("not a DM-JSON object");
+                throw new ModelInputException("not a DM-JSON object");
             }
             return new ModelDocument(obj);
         } catch (JsonProcessingException e) {
-            throw new IllegalArgumentException("invalid DM-JSON", e);
+            throw new ModelInputException("invalid DM-JSON: " + e.getMessage(), e);
         }
     }
 
@@ -1167,17 +1167,11 @@ public final class ModelDocument {
     }
 
     /**
-     * Designate a direct-child field of the <b>repeatable</b> group at {@code groupPath} as its index field
-     * — the repetition row-key that arms {@code RepetitionNotUnique} + parallel iteration. Requires a
-     * repeatable group (an index field on a single group is a degenerate row-key) and an existing
-     * direct-child field; fails fast otherwise. The {@code validate()} gate stays the authoritative check.
+     * Designate an existing direct-child field as the group's index field. Non-repeatable groups may
+     * also declare one (KERNEL-FINDINGS KF280); {@code validate()} remains the authoritative gate.
      */
     public ModelDocument setIndexField(String groupPath, String fieldName) {
         ObjectNode body = groupBody(groupPath);
-        if (body.path(DmKeys.REPEATABILITY).asInt(1) <= 1) {
-            throw new IllegalArgumentException("an index field needs a repeatable group; " + groupPath
-                    + " is not repeatable");
-        }
         boolean childField = false;
         for (JsonNode e : body.path(DmKeys.ELEMENTS)) {
             if (DmNodes.is(ElementType.FIELD, e) && fieldName.equals(e.path(DmKeys.NAME).asText())) {
@@ -2042,27 +2036,8 @@ public final class ModelDocument {
     /** As {@link #validate()}, resolving includes / type-def imports via a <b>kernel-free</b>
      *  {@link ModelResolver} ({@code id → DM-JSON}). */
     public ModelDocument validate(ModelResolver resolver) {
-        // OUTSIDE the try on purpose: serializing our own edited tree is not a gate, so a failure here is a
-        // tool defect and must not be relabelled as "the edited model is not kernel-valid" (see the catch below).
         String json = toJson();
-        Verification gate;
-        try {
-            gate = ModelLoader.loadAndCheck(json, resolver);
-        } catch (ModelConsistencyException e) {
-            throw e; // checkConsistency tier — already the uniform "model invalid" type
-        } catch (UnresolvedReferenceException e) {
-            // OUR resolver refused, not the gate. It has its own documented contract at the CLI seam
-            // (RK_UNRESOLVED_REFERENCE, exit 1), so wrapping it published a kernel arbitration that never
-            // happened — verification: KERNEL_CONFIRMED over a refusal we made ourselves.
-            throw e;
-        } catch (RuntimeException e) {
-            // deserialize/expand tier (e.g. a duplicate element id surfaces as IllegalArgumentException):
-            // funnel into the same type so a caller sees one "invalid edit" signal regardless of tier — and
-            // SURFACE the underlying cause's message via the shared factory (probe 04: a bare "not
-            // kernel-valid" with no code/where left an agent nothing to act on). Same factory as the session
-            // terminal gate (EditSession.validate) so the cause-append can't drift between the two gates.
-            throw ModelConsistencyException.notKernelValid(e);
-        }
+        Verification gate = ModelLoader.loadAndCheck(json, resolver);
         gatedJson = json;
         gatedBy = gate;
         return this;

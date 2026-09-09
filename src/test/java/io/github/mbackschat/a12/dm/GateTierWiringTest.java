@@ -52,7 +52,7 @@ class GateTierWiringTest {
         assertTrue(invocation.contains(":build-logic:functionalTest"), "CI's gradle invocation must name "
                 + ":build-logic:functionalTest. Found: " + invocation);
         assertFalse(ci.contains("schedule:"),
-                "push/PR correctness CI must not rerun on the nightly schedule");
+                "main-push correctness CI must not rerun on the nightly schedule");
         // The other half of that invariant, and it lives in the build rather than the workflow: CI names the
         // TestKit lane explicitly, but the 37-case unit lane reaches CI only by riding root `test`. Delete
         // the dependency and it silently leaves both CI and the inner loop.
@@ -192,13 +192,13 @@ class GateTierWiringTest {
     void theCheapGuardsAreNotBehindTheFastLever() throws IOException {
         // Root: the six that bind a committed artifact — API goldens, catalog prose-review digests, the
         // JSON-construction classification, the release-gap ledger, the kernel-derived temporal vocabulary —
-        // against the three broad ones. This list is a subset check, so a new always-on guard is unlocked until
+        // against the broad guards and Gradle process controls. This list is a subset check, so a new always-on guard is unlocked until
         // it is named here: `vocabularyGuardTest` was added 2026-08-29 after a cold review found its build
         // comment claiming this tier with nothing asserting it.
         assertFastLeverSplit("build.gradle",
                 List.of("jsonConstructionGuardTest", "apiGuardTest", "catalogProseReviewGuardTest",
                         "releaseGapGuardTest", "leakGuardTest", "vocabularyGuardTest"),
-                List.of("docGuardTest", "interpreterReleaseGuardTest", "deliveryGuardTest"));
+                List.of("docGuardTest", "interpreterReleaseGuardTest", "deliveryGuardTest", "focusedSelectionGuardTest"));
         // :adapter — the four FIXTURE guards (6.6s) against the two broad ones (82.7s). A committed fixture
         // that silently stops matching what the code produces is the same class as a stale golden.
         assertFastLeverSplit("adapter/build.gradle",

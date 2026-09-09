@@ -60,8 +60,7 @@ class ApplyVerbTest {
     void theApplyTerminalGateSurfacesTheKernelCauseNotABareNotValid(@TempDir Path dir) throws Exception {
         // probe 07 (root-cause sweep): a rejection at the apply TERMINAL gate (EditSession.validate) used to
         // flatten to a cause-less "the edited model is not kernel-valid" — unlike the per-edit gate
-        // (ModelDocument.validate), which probe 04 fixed inline. The duplication was the defect; both now
-        // route through ModelConsistencyException.notKernelValid, so the apply commit NAMES the cause.
+        // (ModelDocument.validate), which probe 04 fixed inline. Both gates must preserve the kernel's detail.
         // Trigger: a duplicate field name slips the per-op precheck and is caught only by the terminal gate.
         Path model = CliTestSupport.orderRuled(dir);   // /Order/Items already has a Sku field
         Path ops = dir.resolve("ops.json");

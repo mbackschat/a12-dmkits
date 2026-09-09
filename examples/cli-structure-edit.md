@@ -257,7 +257,7 @@ dmtool -m /tmp/struct2.dm.json group read /Subscription/Addons
 
 ## group modify — the index field (repetition row-key)
 
-A repetition list can name one direct-child field as its **index field** — the row-key that arms the `RepetitionNotUnique` uniqueness check and parallel iteration. `group modify --index-field` sets it (it requires a repeatable group + an existing child field); `group read` then echoes `data.indexField`:
+A group can name one direct-child field as its **index field**. On a repetition list it is the row-key that arms the `RepetitionNotUnique` uniqueness check and parallel iteration. `group modify --index-field` sets it on either a repeatable or a non-repeatable group; `group read` then echoes `data.indexField`:
 
 ```bash
 dmtool -m /tmp/struct2.dm.json group modify /Subscription/Addons --index-field Name
@@ -292,7 +292,21 @@ dmtool -m /tmp/struct2.dm.json group read /Subscription/Addons | jq '.data'
 }
 ```
 
-→ `changed.indexField: Name` and the read's `data.indexField` confirm the row-key landed. `--clear-index-field` removes it; an index field on a single (non-repeating) group is refused.
+→ `changed.indexField: Name` and the read's `data.indexField` confirm the row-key landed. `--clear-index-field` removes it. The same declaration works on a single (non-repeating) group:
+
+```bash
+dmtool -m /tmp/struct2.dm.json group modify /Subscription/Billing --index-field BaseFee | jq '{outcome, changed}'
+```
+
+```output
+{
+  "outcome": "applied",
+  "changed": {
+    "group": "/Subscription/Billing",
+    "indexField": "BaseFee"
+  }
+}
+```
 
 ## group modify — the row sort (display order)
 
@@ -507,7 +521,7 @@ dmtool -m /tmp/struct2-td.json typedef remove Currency >/tmp/struct2-td-rej.json
   "diagnostics" : [ {
     "severity" : "ERROR",
     "source" : "KERNEL",
-    "summary" : "the edited model is not kernel-valid: Typedefinition with id 'Currency' could not be found.",
+    "summary" : "the kernel could not build this model: Typedefinition with id 'Currency' could not be found.",
     "where" : { }
   } ],
   "written" : false

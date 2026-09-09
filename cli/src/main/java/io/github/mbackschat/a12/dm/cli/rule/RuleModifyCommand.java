@@ -12,7 +12,6 @@ import io.github.mbackschat.a12.dm.cli.SafetyChecks;
 import io.github.mbackschat.a12.dm.cli.SafetyGate;
 import io.github.mbackschat.a12.dm.cli.WorkspaceOption;
 
-import java.io.IOException;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -171,9 +170,9 @@ final class RuleModifyCommand extends BaseCommand {
                 }
                 // the diff fields (before/after/changed/lossiness/unified) ride `changed` directly — the
                 // established condition-modify shape; severity/message (below) are added as sibling keys
-                changed.setAll((ObjectNode) MAPPER.readTree(diff.toJson()));
-            } catch (IOException | RuntimeException e) {
-                return fail("re-expression failed: " + e.getMessage());
+                changed.setAll((ObjectNode) readGeneratedJson(diff.toJson()));
+            } catch (RuntimeException e) {
+                throw withFailureContext("re-expression failed: ", e);
             }
         }
         if (severity != null) {

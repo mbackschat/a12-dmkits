@@ -539,6 +539,32 @@ private fun wrapsAcrossTheYear(startValues: List<String>, endValues: List<String
 private const val LEAP_PROBE_YEAR = 2000
 
 /**
+ * The year an endpoint of a year-free DATE_RANGE gets for the kernel's DATE-POSITION checks (the always-on
+ * Gregorian floor and the opt-in pre-1900 check) when its format names no year — `null` when the format
+ * carries one, so the declared year applies.
+ *
+ * **The kernel supplements the base year in exactly one case, and it is narrower than "no year".**
+ * `DateUtil.completeDateAndFormat` appends a year only when `formatContainsOnlyDayMonth(format)` — day AND
+ * month present, year absent — so `dd.MM` and `MM-dd` are measured against [baseYear], while a pure `MM`
+ * range gets no year appended at all and its endpoint parses at the [RANGE_PARSE_DEFAULT_YEAR] a
+ * year-less pattern defaults to. That is above both thresholds, which is why neither position check ever
+ * fires on a pure `MM` range whatever the model's base year (KF253, measured on base years 1500/1899/1901
+ * with the reversed value as the liveness control).
+ *
+ * The interpreter's own [parseRangeToIso] deliberately still completes every missing year with [baseYear],
+ * because the interval and wrap rules it feeds are measured that way. This helper exists so the two
+ * position checks read the year the KERNEL uses for them rather than the one the endpoint was built with.
+ */
+internal fun rangePositionCheckYear(format: String, baseYear: Int): Int? {
+    val comps = dateFragment(format)?.second ?: return null
+    if ('y' in comps) return null
+    return if ('d' in comps && 'M' in comps) baseYear else RANGE_PARSE_DEFAULT_YEAR
+}
+
+/** The year a year-less date pattern parses to when the kernel appends none (`SimpleDateFormat`'s epoch year). */
+internal const val RANGE_PARSE_DEFAULT_YEAR = 1970
+
+/**
  * Assemble the ISO `yyyy-MM-dd` for ONE endpoint of a date range from its fragment's captured [values] in
  * [comps] order, completing the components the [comps] don't carry per the kernel's per-side interval rule
  * (see [parseRangeToIso]): a missing YEAR → [baseYear]; a missing MONTH → `01` (start) or `12` (end); a

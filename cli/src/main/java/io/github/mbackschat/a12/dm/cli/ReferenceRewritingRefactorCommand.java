@@ -99,8 +99,6 @@ public abstract class ReferenceRewritingRefactorCommand extends BaseCommand {
             resultJson = rewritten.toJson();
         } catch (ModelConsistencyException e) {
             return emitKernelRejection(refactor.op() + " left the model invalid", e);
-        } catch (RuntimeException e) {
-            return failEditGate(e);
         }
 
         ObjectNode changed = MAPPER.createObjectNode();

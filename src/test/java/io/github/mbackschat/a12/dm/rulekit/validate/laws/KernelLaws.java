@@ -217,6 +217,23 @@ final class KernelLaws {
     }
 
     /**
+     * The RULE twin of {@link #computationVerdict}, on the shared Order fixture — {@link #ADMITTED} or the
+     * comma-joined classes. A table law reaches for this whenever its claim is <em>which gate reports</em>
+     * rather than merely <em>that one does</em>: a one-code assertion cannot distinguish a refusal attributed
+     * to the gate under test from the same refusal arriving from a different gate that happens to co-fire.
+     */
+    static String orderVerdict(String group, String errorField, String condition) {
+        return verdictModel(ORDER, group, errorField, condition);
+    }
+
+    /** {@link #orderVerdict} on a caller-supplied model, for a table whose carrier the fixtures cannot supply. */
+    static String verdictModel(String json, String group, String errorField, String condition) {
+        ValidationResult r = check(json, group, errorField, condition);
+        return r.ok() ? ADMITTED : r.diagnostics().stream()
+                .map(d -> d.code().orElse("(no code: " + d.summary() + ")")).collect(Collectors.joining(","));
+    }
+
+    /**
      * The kernel's verdict on ONE error-message TEXT — {@link #ADMITTED} or the comma-joined classes it
      * reported — with the condition held fixed. The message axis needs its own entry point because
      * {@link #check} varies the condition and always supplies a placeholder text.
@@ -232,8 +249,11 @@ final class KernelLaws {
         assertTrue(control.ok(), () -> "the CONDITION is refused, so this row measures nothing about the "
                 + "message: " + control.diagnostics());
         ValidationResult verdict = VALIDATOR.check(json, message(group, errorField, condition, locale, messageText));
+        // The summary rides a CODELESS diagnostic because on this surface codelessness is itself a
+        // measurable property: the template's supplementary-plane refusal carries no class and is identified
+        // only by its text, so a bare "(no code)" would make two different refusals indistinguishable.
         return verdict.ok() ? ADMITTED
-                : verdict.diagnostics().stream().map(d -> d.code().orElse("(no code)"))
+                : verdict.diagnostics().stream().map(d -> d.code().orElse("(no code: " + d.summary() + ")"))
                         .collect(Collectors.joining(","));
     }
 

@@ -364,6 +364,10 @@ The `ReadResult` peer for **computations** (calculated fields): `KernelAdapter.r
 - **Unified whole-model read** — `readModel(): ModelRead{rules, computations}`, two disjoint maps + `convertedRules()`/`convertedComputations()`/`fullyTyped()`; the single entry point to round-trip a foreign model completely. CLI: `model read` (`adapter.UnifiedModelReadTest`, `cli.ReadVerbTest`).
 - **explain a computation** — `ModelContext.explainComputation(Computation) → ComputationExplanation` (computed field + kind, common precondition + per-alternative precondition/operation projected with the catalog glossary + referenced fields, messages, gloss). CLI: `explain --computation` (`context.ComputationExplanationTest`, `cli.ExplainVerbTest`). A `--rule` that names a computation now redirects (`ModelPaths.ruleProblem` overload).
 
+## Malformed model input at deserialization (2026-09-08)
+
+`DocumentModelSerializerImpl.deserialize` resolves references before returning its model. Missing rule `errorEntityRelPath`, computation `computedFieldRelPath`, and sort-field `name` therefore throw before consistency checking can report a verdict. `KernelModelInput` classifies deserialization I/O failures as `ModelInputException`; for a null-reference failure it reads the same input with the kernel serializer's own mapper and checks those required slots on the kernel's objects. An otherwise valid graph preserves the original unexpected failure. `ModelInputFailureTest` locks the malformed inputs through read, check, and edit; `ModelInputClassificationTest` locks the valid-graph control and an unrelated resolver failure. The CLI maps the typed exception to `RK_MODEL_INPUT_INVALID`/`PRECHECK`, exit 2, without a consistency receipt (see [CLI conformance](CLI-CONFORMANCE-SPEC.md)).
+
 ## Runtime behavioral-law oracle (F-LAW, 2026-06-06)
 
 Two tiers of "law" lock the kernel's behavior — keep them distinct:

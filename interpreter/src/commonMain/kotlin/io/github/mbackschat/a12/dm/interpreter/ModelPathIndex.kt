@@ -8,14 +8,9 @@ import io.github.mbackschat.a12.dm.interpreter.model.ModelDef
  * indexed lookups while a document is validated (IF196).
  */
 internal class ModelPathIndex(model: ModelDef) {
-    enum class BoundKind {
-        REPEATABLE,
-        NON_REPEATABLE,
-    }
+    data class ExceededBound(val level: Int)
 
-    data class ExceededBound(val level: Int, val kind: BoundKind)
-
-    private data class Bound(val level: Int, val maximum: Int, val kind: BoundKind)
+    private data class Bound(val level: Int, val maximum: Int)
 
     private data class PathInfo(
         val ancestors: List<String>,
@@ -31,8 +26,7 @@ internal class ModelPathIndex(model: ModelDef) {
             through = through,
             bounds = through.mapIndexedNotNull { level, prefix ->
                 model.effectiveGroupRepetitionMaximums[prefix]?.let { maximum ->
-                    val kind = if (prefix in model.repeatable) BoundKind.REPEATABLE else BoundKind.NON_REPEATABLE
-                    Bound(level, maximum, kind)
+                    Bound(level, maximum)
                 }
             },
         )
@@ -48,7 +42,7 @@ internal class ModelPathIndex(model: ModelDef) {
     fun exceededBound(path: String, reps: List<Int>): ExceededBound? {
         for (bound in info(path).bounds) {
             if (bound.level < reps.size && reps[bound.level] > bound.maximum) {
-                return ExceededBound(bound.level, bound.kind)
+                return ExceededBound(bound.level)
             }
         }
         return null

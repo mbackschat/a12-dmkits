@@ -205,7 +205,7 @@ class BuildPerformancePolicyTest {
                 "native capture must reuse build.sh's common-directory-aware Gradle home");
         assertFalse(script.contains("./build.sh --continue"),
                 "the tracing test suite must fail the capture instead of continuing to copy partial metadata");
-        assertTrue(script.contains("./build.sh :cli:test --tests 'io.github.mbackschat.a12.dm.cli.NativeImageMetadataHygieneTest'"),
+        assertTrue(script.contains("./build.sh :cli:test -Pfast --tests 'io.github.mbackschat.a12.dm.cli.NativeImageMetadataHygieneTest'"),
                 "the destination-dependent hygiene check must run after the captured metadata is copied");
         assertFalse(script.contains("export GRADLE_USER_HOME"),
                 "native capture must not derive a second Gradle home from a linked worktree's parent");

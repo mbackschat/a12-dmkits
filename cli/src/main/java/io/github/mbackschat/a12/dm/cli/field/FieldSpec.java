@@ -217,9 +217,11 @@ public final class FieldSpec {
                     req(spec.path("dateRange"), "format"), req(spec.path("dateRange"), "separator"),
                     // absent key = STANDARD (the default has no DM-JSON spelling); an unknown token throws a
                     // corrective naming it, which the caller surfaces as an invalid-spec refusal.
-                    RangeYearInterpretation.fromJson(text(spec.path("dateRange"), "interpretationOfYear")));
+                    RangeYearInterpretation.fromJson(text(spec.path("dateRange"), "interpretationOfYear")),
+                    spec.path("dateRange").path("rejectBefore1900").asBoolean(false));
             case "DATEFRAGMENT", "DATE_FRAGMENT" -> new FieldTypeSpec.DateFragmentSpec(
-                    req(spec.path("dateFragment"), "format"));
+                    req(spec.path("dateFragment"), "format"),
+                    spec.path("dateFragment").path("rejectBefore1900").asBoolean(false));
             case "BOOLEAN" -> new FieldTypeSpec.BooleanSpec();
             case "CONFIRM" -> new FieldTypeSpec.ConfirmSpec();
             // a kind with no config block falls through its case above with empty config (= a bare spec);
@@ -255,6 +257,7 @@ public final class FieldSpec {
                 .minLength(intOrNull(n, "minLength"))
                 .maxLength(intOrNull(n, "maxLength"))
                 .maxIntegerDigits(intOrNull(n, "maxIntegerDigits"))
+                .positivesOnly(n.path("positivesOnly").asBoolean(false))
                 .build();
     }
 

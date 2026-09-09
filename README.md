@@ -239,7 +239,7 @@ dmtool -m order.dm.json model info
 # the model card: fields, kinds, enum domains, groups
 dmtool -m order.dm.json model describe
 
-# run it through the real kernel → {valid, diagnostics[]}
+# run it through the real kernel → {valid, diagnostics[]}; malformed input is refused (exit 2)
 dmtool -m order.dm.json model check
 
 # one field in full: kind, required, AND its per-kind config (min/max/unit/pattern/format)
@@ -484,7 +484,7 @@ dmtool -m order.dm.json group add --parent /Order --name Shipping
 # --parent / (equivalently the empty string) adds a new ROOT group — the shape that separates
 # model-wide from root-wide addressing; the same spelling works for include/multiselect/attachment
 dmtool -m order.dm.json group add --parent / --name Claim
-# repeatable group + its index field (the row-key arming RepetitionNotUnique / parallel iteration)
+# index field (also allowed on non-repeatable groups; repeating groups use it as their row key)
 dmtool -m order.dm.json group modify /Order/Items --index-field Sku
 
 # a reusable type — simple via --kind, or a rich ENUM/restricted type via a spec

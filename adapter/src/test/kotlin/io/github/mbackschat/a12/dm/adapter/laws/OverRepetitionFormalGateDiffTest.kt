@@ -154,7 +154,7 @@ class OverRepetitionFormalGateDiffTest {
     }
 
     /**
-     * A non-repeatable group has effective maximum 1, but coordinate 2 remains representable for formal
+     * A non-repeatable root group has effective maximum 1, but coordinate 2 remains representable for formal
      * validation. Both the group and its field expose the dedicated fixed-repetition code.
      */
     @Test

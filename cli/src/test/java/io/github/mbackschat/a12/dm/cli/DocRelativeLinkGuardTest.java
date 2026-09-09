@@ -71,7 +71,10 @@ class DocRelativeLinkGuardTest {
      */
     private static final Set<String> UNVERIFIABLE_OUTSIDE_THE_REPO = Set.of(
             // KERNEL-31-UPGRADE-PROPOSAL names the sibling kit that publishes the kernel to mavenLocal.
-            "../../a12-kernel-bootstrap");
+            "../../a12-kernel-bootstrap",
+            // PORTABLE-CONSISTENCY-PROPOSAL cites the consistency gate's source in the consult-only sibling.
+            "../../a12-kernel/kernel-md/kernel-md-model/src/main/java/com/mgmtp/a12/kernel/md/model/internal/service/consistency/DocumentModelConsistencyRulesProvider.java",
+            "../../a12-kernel/kernel-md/kernel-md-model/src/main/java/com/mgmtp/a12/kernel/md/model/internal/service/consistency/rules/CodeGenerationRule.java");
 
     @Test
     void everyRelativeLinkTargetExists() throws IOException {

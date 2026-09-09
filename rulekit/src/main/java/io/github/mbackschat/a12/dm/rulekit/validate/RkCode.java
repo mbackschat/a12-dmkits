@@ -110,6 +110,10 @@ public enum RkCode {
                     + "the remaining element is refused so evaluation never silently mis-reports.",
             "check every reference in the named included element resolves inside the included model; or "
                     + "author the rule on the INCLUDING model referencing the mounted fields, or use a relative form."),
+    MODEL_INPUT_INVALID(Severity.ERROR, DiagnosticSource.PRECHECK,
+            "the model DM-JSON could not be read as an A12 model, before a consistency verdict was available.",
+            "repair the model JSON at the reported location: complete truncated JSON, remove unknown properties, "
+                    + "use the expected value types, and supply required rule/computation references; then retry."),
     MODEL_PREPARATION_FAILED(Severity.ERROR, DiagnosticSource.PRECHECK,
             "the portable workspace could not turn the selected model-reference closure into one unambiguous, "
                     + "self-contained model. The diagnostic summary names the exact preparation reason; no partial "

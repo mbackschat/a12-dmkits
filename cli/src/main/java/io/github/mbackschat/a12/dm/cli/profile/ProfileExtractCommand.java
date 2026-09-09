@@ -57,7 +57,7 @@ final class ProfileExtractCommand extends BaseCommand {
         } catch (JsonProcessingException e) {
             throw new IllegalStateException("the extracted profile is not valid JSON", e);
         } catch (RuntimeException e) {
-            return failOrRethrowDomainRejection("profile extraction failed: ", e);
+            throw withFailureContext("profile extraction failed: ", e);
         }
 
         if (outputPath == null) {

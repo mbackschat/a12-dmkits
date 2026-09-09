@@ -113,10 +113,6 @@ class GroupModifyVerbTest {
                 () -> "names the missing group: " + res.out() + res.err());
     }
 
-    // G24 — the repetition row-key (indexFieldName). Settable only via the builder before; this exposes it on
-    // `group modify`. It designates a direct-child field as the key and arms RepetitionNotUnique / parallel
-    // iteration, so it requires a repeatable group + an existing child field.
-
     @Test
     void setsAGroupIndexField(@TempDir Path dir) throws Exception {
         Path m = subscription(dir);
@@ -142,14 +138,13 @@ class GroupModifyVerbTest {
     }
 
     @Test
-    void indexFieldOnANonRepeatableGroupIsRejected(@TempDir Path dir) throws Exception {
+    void setsANonRepeatableGroupIndexField(@TempDir Path dir) throws Exception {
         Path m = subscription(dir);
-        // /Subscription/Billing is a single group — an index field there is a degenerate row-key
         var res = CliTestSupport.run("-m", m.toString(), "group", "modify", "/Subscription/Billing",
                 "--index-field", "BaseFee");
-        assertNotEquals(0, res.code());
-        assertTrue((res.out() + res.err()).toLowerCase().contains("repeat"),
-                () -> "names the repeatability requirement: " + res.out() + res.err());
+        assertEquals(0, res.code(), res::out);
+        var read = CliTestSupport.run("-m", m.toString(), "group", "read", "/Subscription/Billing");
+        assertEquals("BaseFee", M.readTree(read.out()).path("data").path("indexField").asText(), read::out);
     }
 
     @Test

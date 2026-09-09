@@ -71,7 +71,7 @@ dmtool schema computation add | jq -r '
 
 ```output
 commit: MODEL_WRITE, failure=NO_WRITE
-These values describe what survives a failure this tool detects and reports: a rejected invocation, a domain refusal, and a failing child op. They are not claims about an I/O failure during the write itself, or about abnormal process termination — every destination is truncated and rewritten in place, never atomically replaced, so in those two cases the destination is not guaranteed to be left unchanged. Re-verify an interrupted run with `dmtool model check`.
+These values describe what survives a failure this tool detects and reports: a rejected invocation, a domain refusal (including malformed model input before consistency checking), and a failing child op. They are not claims about an I/O failure during the write itself, or about abnormal process termination — every destination is truncated and rewritten in place, never atomically replaced, so in those two cases the destination is not guaranteed to be left unchanged. Re-verify an interrupted run with `dmtool model check`.
 ```
 
 Persist the same accepted spec, then read its canonical stored form.

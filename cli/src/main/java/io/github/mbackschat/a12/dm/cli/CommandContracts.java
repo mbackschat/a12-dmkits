@@ -67,7 +67,8 @@ final class CommandContracts {
          * be promised to leave it unchanged.
          */
         static final String SCOPE = "These values describe what survives a failure this tool detects and "
-                + "reports: a rejected invocation, a domain refusal, and a failing child op. They are not claims "
+                + "reports: a rejected invocation, a domain refusal (including malformed model input before "
+                + "consistency checking), and a failing child op. They are not claims "
                 + "about an I/O failure during the write itself, or about abnormal process termination — every "
                 + "destination is truncated and rewritten in place, never atomically replaced, so in those two "
                 + "cases the destination is not guaranteed to be left unchanged. Re-verify an interrupted run "

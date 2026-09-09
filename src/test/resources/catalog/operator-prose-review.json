@@ -3049,11 +3049,18 @@
       "operator": "AtLeastOneFieldValueIncludedInValueList",
       "lane": "CONSTRAINT",
       "ordinal": 3,
-      "digest": "sha256:4bb96cd1045980028de14d2a55847912482ced7e5ad59186dc52e9f83cb98d26",
+      "digest": "sha256:7620b48e4657c5ce29c03b4302fc83d88af0bc04b65a15e92a50df8fde923197",
       "classifications": [
-        "REJECTION"
+        "REJECTION",
+        "ADMISSION"
       ],
-      "evidence": []
+      "evidence": [
+        {
+          "classification": "ADMISSION",
+          "type": "KERNEL_LAW",
+          "id": "rulekit.validate.laws.EntityListSoleOperandArityLawsTest#theEntityValuedValueListAdmitsASoleFieldOnEachSideWhileItsOwnTwoGatesStillFire"
+        }
+      ]
     },
     {
       "operator": "AtLeastOneFieldValueIncludedInValueList",
@@ -3878,7 +3885,7 @@
       "operator": "FieldValuesNotUnique",
       "lane": "CONSTRAINT",
       "ordinal": 1,
-      "digest": "sha256:07e62e57b96f244816fc0c4fbb1e253380ee4e34437f8fc6588a51ddfab2c77b",
+      "digest": "sha256:289731b60161665201a0aeaa21548fa29dfe58975a32beeb12488a1b9c1bd53d",
       "classifications": [
         "REJECTION",
         "ADMISSION"
@@ -3888,6 +3895,11 @@
           "classification": "ADMISSION",
           "type": "KERNEL_LAW",
           "id": "FieldValuesNotUniqueAdmissionLawsTest#aSingleStarredSlotIsAdmitted"
+        },
+        {
+          "classification": "ADMISSION",
+          "type": "KERNEL_LAW",
+          "id": "rulekit.validate.laws.EntityListSoleOperandArityLawsTest#theGroupArmHoldsOnTheTwoCarriersWhoseCatalogPhrasingOmittedIt"
         }
       ]
     },
@@ -4014,11 +4026,18 @@
       "operator": "Sum",
       "lane": "CONSTRAINT",
       "ordinal": 1,
-      "digest": "sha256:86f93bc6aa3c2c2cce4722685fa04ead3f1b83e4fc8bc4d7b30325e4d7ffe6ab",
+      "digest": "sha256:a2df13217ff70b86e5c6e89ce58e51cb97355f95ec375e6bd73ffac365bfaabb",
       "classifications": [
-        "REJECTION"
+        "REJECTION",
+        "ADMISSION"
       ],
-      "evidence": []
+      "evidence": [
+        {
+          "classification": "ADMISSION",
+          "type": "KERNEL_LAW",
+          "id": "rulekit.validate.laws.EntityListSoleOperandArityLawsTest#theGroupArmHoldsOnTheTwoCarriersWhoseCatalogPhrasingOmittedIt"
+        }
+      ]
     },
     {
       "operator": "Sum",
@@ -7920,7 +7939,7 @@
       "operator": "FirstFilledValue",
       "lane": "CONSTRAINT",
       "ordinal": 0,
-      "digest": "sha256:67a11f968826acfe94b004d87c095b9c99c7416ba4a2464f155eb832c93c5937",
+      "digest": "sha256:85d6a0da316badd6b6f2a0833ecf662c8f2c69b891cb6cd7bbff99d349155d62",
       "classifications": [
         "REJECTION",
         "ADMISSION"
@@ -7935,6 +7954,11 @@
           "classification": "ADMISSION",
           "type": "KERNEL_LAW",
           "id": "FirstFilledValueFamilyLawsTest#theTemporalGateKeysOnTheDeclaredFormatNotTheKind"
+        },
+        {
+          "classification": "ADMISSION",
+          "type": "KERNEL_LAW",
+          "id": "rulekit.validate.laws.EntityListSoleOperandArityLawsTest#oneRepetitionListOrGroupSelectorSatisfiesTheArityRuleAloneWhileOnePlainFieldDoesNot"
         }
       ]
     },

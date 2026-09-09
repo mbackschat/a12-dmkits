@@ -287,7 +287,8 @@ data class FieldDef(
     /** The field-owned empty-required text (`requirednessConfig.errorMessage`), keyed by locale. This is a
      *  separate producer from [patternMessages]: notably, its measured route preserves `$$` verbatim. */
     val requiredMessages: Map<String, String> = emptyMap(),
-    /** A DateType's opt-in `youngerThan1900Check`: a concrete value before 1900-01-01 is `datumFalsch`.
+    /** The opt-in `youngerThan1900Check` of a DATE, DATEFRAGMENT or DATERANGE declaration: a concrete value
+     *  before 1900-01-01 is `datumFalsch` (`datumBereichDatumFalsch` for a range's start).
      *  Distinct from the always-on Gregorian floor at 1583-10-16. */
     val rejectBefore1900: Boolean = false,
 )
@@ -385,8 +386,17 @@ data class FieldConstraints(
     val numberMinLength: Int? = null,
     /** NUMBER `maxLength` — value-string length above it → `zahlZuLang`. */
     val numberMaxLength: Int? = null,
-    /** DATE `youngerThan1900Check` — values before 1900-01-01 are `datumFalsch`; default false. */
+    /** The opt-in `youngerThan1900Check` of a DATE, DATEFRAGMENT or DATERANGE declaration — a value before
+     *  1900-01-01 is `datumFalsch` (`datumBereichDatumFalsch` for a range's start); default false. */
     val rejectBefore1900: Boolean = false,
+    /** NUMBER `positivesOnly` — the kernel's `hatVorzeichen == false`. A minus is `zahlMitVorzeichen`. This is a
+     *  PROJECTION of [FieldDef.signed], which stays the single declaration of the fact; it is repeated here
+     *  because the per-cell formal check receives only the constraints. */
+    val positivesOnly: Boolean = false,
+    /** NUMBER `trait:"amount"` (the kernel's `ZahlArt.GELDBETRAG`) as a flag rather than as the digit cap
+     *  [amountMaxIntegerDigits] derives from it: the sign check's nested zero case reads the trait itself, and
+     *  the cap is absent whenever an explicit [maxIntegerDigits] wins, so the cap cannot stand in for it. */
+    val amountTrait: Boolean = false,
 ) {
     /** Whether this field carries any NON-DEFAULT constraint, so it must be stored (else [NONE] — whose false
      *  booleans already encode the kernel defaults — is used). The `*Allowed`/`*NotAllowed` flags count only when
@@ -395,7 +405,7 @@ data class FieldConstraints(
         enumValues.isNotEmpty() || minValue != null || maxValue != null || (minFractionalDigits ?: 0) > 0 ||
         lineBreaksPermitted || leadingZerosAllowed || zeroNotAllowed || noValueValidation ||
         maxIntegerDigits != null || amountMaxIntegerDigits != null || numberMinLength != null ||
-        numberMaxLength != null || rejectBefore1900
+        numberMaxLength != null || rejectBefore1900 || positivesOnly || amountTrait
 
     companion object {
         val NONE = FieldConstraints()
@@ -620,6 +630,8 @@ data class ModelDef(
                 numberMinLength = it.numberMinLength,
                 numberMaxLength = it.numberMaxLength,
                 rejectBefore1900 = it.rejectBefore1900,
+                positivesOnly = !it.signed,
+                amountTrait = it.amountTrait,
             )
         }
         .filterValues { it.any }
