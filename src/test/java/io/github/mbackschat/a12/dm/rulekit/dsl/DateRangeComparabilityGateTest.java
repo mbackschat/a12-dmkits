@@ -18,7 +18,7 @@ import io.github.mbackschat.a12.dm.modelkit.FieldKind;
  * <p>It lives on {@link BoundModel} rather than on {@link DateRangeOperand#eq}, because the rule is
  * CONTEXTUAL — the same pair of operands is admissible or not depending on the model they were declared in —
  * and the ungated {@code eq}/{@code ne} stay for the inbound converters, whose obligation is to reconstruct a
- * kernel-accepted condition without refusing it (API-FINDINGS 137).
+ * kernel-accepted condition without refusing it (API-FINDINGS AF148).
  *
  * <p><b>It does NOT reuse the entity-list aggregates' component-set comparison</b>, and the base-year row is
  * why: that gate supplements every operand set with YEAR when the model declares a base year, and the kernel

@@ -1,6 +1,7 @@
 package io.github.mbackschat.a12.dm.rulekit.dsl;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -55,6 +56,24 @@ class ScalarValueListDuplicateGateTest {
         StringRef code = ORDER.str("/Order/ProductCode");
         String message = refusal(() -> ORDER.str("/Order/CustomerName").in(code, code));
         assertTrue(message.contains("MVK_DUPLICATE_PARAM1"), () -> "expected the kernel's code: " + message);
+    }
+
+    /**
+     * The union's ORDER, pinned client-side: when the subject's collision and a value-list collision
+     * compete, the value list is reached first and is the one named. This is what makes values-first-
+     * subject-last load-bearing rather than cosmetic — reversing it would name the subject where the kernel
+     * names the value ({@code validate.laws.ValueListQuantifierDuplicateSiblingLawsTest} measures the kernel
+     * side in both authored orders).
+     */
+    @Test
+    void whenTwoCollisionsCompeteTheValueListIsNamed() {
+        StringRef subject = ORDER.str("/Order/ProductCode");
+        StringRef city = ORDER.str("/Order/ShippingAddress/City");
+        String message = refusal(() -> subject.in(city, city, subject));
+        assertTrue(message.contains("City"), () -> "the value list resolves first: " + message);
+        assertFalse(message.contains("ProductCode"),
+                () -> "the subject's own collision must not be the witness while a list collision stands: "
+                        + message);
     }
 
     /** The control: a distinct subject and value reference is the operator's ordinary shape. */

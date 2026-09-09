@@ -14,7 +14,7 @@ import io.github.mbackschat.a12.dm.ModelDrafts;
  * SET, and the kernel reports {@code MVK_WRONG_DATE_FORMAT_FOR_OP} at the construction when they differ.
  *
  * <p>It lives on {@link BoundModel} because an endpoint's component set comes from the field's declared
- * format, so only a model can resolve it — the contextual half of the API-FINDINGS 137 split. The record's own
+ * format, so only a model can resolve it — the contextual half of the API-FINDINGS AF148 split. The record's own
  * constructor keeps the INTRINSIC gate (each endpoint must be a date or date-fragment entity reference), which
  * is visible from the operands alone.
  *

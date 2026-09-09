@@ -10,11 +10,11 @@ import org.junit.jupiter.api.Test;
 import io.github.mbackschat.a12.dm.Fixtures;
 
 /**
- * KERNEL-FINDINGS §1 — the SIBLING sweep of the field-list quantifier family: the eight keywords whose
- * duplicate arms nothing has measured.
+ * KERNEL-FINDINGS §1 — the SIBLING sweep of the field-list quantifier family, all nine keywords over
+ * all four duplicate arms.
  *
- * <p>{@code DuplicateOverlapCarrierSweepLawsTest} measures the family on {@code AllFieldsFilled} alone. That is
- * one member of nine, and it is the member whose gate was being designed — so a claim written into the other
+ * <p>{@code DuplicateOverlapCarrierSweepLawsTest} measures three of the four arms on {@code AllFieldsFilled}
+ * alone. That is one member of nine, and it is the member whose gate was being designed — so a claim written into the other
  * eight operators' catalog entries would be a scope transfer across the axis the grep grouped and nobody read.
  * Client-side the transfer is trivially sound (one record, {@code EntityListPredicate}, keyed only by the
  * keyword), which is exactly why it needs measuring: the catalog states what the KERNEL refuses, and the
@@ -24,8 +24,9 @@ import io.github.mbackschat.a12.dm.Fixtures;
  * and {@code DateRangesOverlap} pairs endpoints — so if the family's duplicate rule were keyed on anything but
  * the operand list, those two are where it would show.
  *
- * <p>The three arms per keyword: an exact direct duplicate, a group beside its own descendant field, and a
- * repeated STARRED operand (the exemption). The leading {@code FieldFilled(Quantity)} satisfies
+ * <p>The four arms per keyword: an exact direct duplicate, a group beside its own descendant field, a
+ * repeated STARRED operand (the exemption), and that same containment with the star on BOTH sides (the
+ * boundary the star does not buy). The leading {@code FieldFilled(Quantity)} satisfies
  * {@code MVK_ERROR_FIELD_NOT_REFERENCED} for rows whose operands do not mention the error field.
  *
  * <p><b>{@code DateRangesOverlap}'s starred rows use the fixture's date-range fields, not its numbers.</b> It
@@ -37,8 +38,13 @@ import io.github.mbackschat.a12.dm.Fixtures;
  */
 class EntityListQuantifierDuplicateSiblingLawsTest {
 
-    /** The eight members of {@code Quantifier} that no row measured. */
+    /**
+     * All nine members of {@code Quantifier}. {@code AllFieldsFilled} is here rather than excluded as
+     * "already measured": the carrier sweep takes three of its arms and not the both-starred containment
+     * one, so excluding it would leave that arm's published claim resting on the other eight.
+     */
     private static final String[] SIBLINGS = {
+        "AllFieldsFilled",
         "NoFieldFilled",
         "AtLeastOneFieldFilled",
         "NotAllFieldsFilled",

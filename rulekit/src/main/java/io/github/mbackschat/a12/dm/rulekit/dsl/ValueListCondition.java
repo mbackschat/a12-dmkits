@@ -30,10 +30,13 @@ public record ValueListCondition(FieldRef field, boolean included, List<Calculat
     /**
      * The value list and the subject as the kernel builds them — values first, subject LAST.
      *
-     * <p>The order mirrors the kernel's construction and nothing here depends on it: the arm reports the
-     * second occurrence, and a duplicate on this carrier means the subject and a value name the same entity,
-     * so both occurrences render the same text either way. Stated because the mirroring is deliberate, not
-     * because it is observable — a mutant that reverses it survives, and correctly so.
+     * <p><b>The order is load-bearing and observable.</b> A duplicate here need not involve the subject at
+     * all — a reference can repeat within the value list — so where the subject's collision and a value-list
+     * collision compete, whichever the union reaches first is the one reported. The kernel resolves the value
+     * list first whatever the authored order, and this order is what matches it; putting the subject at the
+     * head would name the subject where the kernel names the value.
+     * (Locked: {@code validate.laws.ValueListQuantifierDuplicateSiblingLawsTest}'s competing-collision pair,
+     * and {@code dsl.ScalarValueListDuplicateGateTest}'s client-side twin.)
      */
     private static List<DuplicateOperand> union(FieldRef field, List<Calculation> values) {
         var union = new java.util.ArrayList<DuplicateOperand>();

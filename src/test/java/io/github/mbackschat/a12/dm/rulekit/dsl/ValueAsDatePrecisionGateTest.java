@@ -18,7 +18,7 @@ import io.github.mbackschat.a12.dm.modelkit.FieldKind;
  *
  * <p>Contextual, so it lives on {@link BoundModel}. The {@code Dsl} factories of the same names stay
  * unchecked because they take no model and so cannot read a precision declaration; a converter that HOLDS a
- * model — the interpreter bridge included — goes through the facade (API-FINDINGS 137).
+ * model — the interpreter bridge included — goes through the facade (API-FINDINGS AF148).
  *
  * <p>Scoped to the kinds the kernel measurement covers — DATE and DATE_FRAGMENT. Any other kind delegates:
  * neither the factory nor the record kind-checks today, and refusing there under THIS code would state a rule

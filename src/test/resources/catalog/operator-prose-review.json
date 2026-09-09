@@ -2950,7 +2950,7 @@
       "operator": "FieldValueNotIncludedInValueList",
       "lane": "CONSTRAINT",
       "ordinal": 0,
-      "digest": "sha256:6e6d6d2e486def541c03f55dde3443d8e35520c4c5f6a1f94dff5b1b17e15a93",
+      "digest": "sha256:fc818c1cd2a2cee159dad7006aa997774d4899f36f76b13fd21bacd0a313e143",
       "classifications": [
         "REJECTION"
       ],
@@ -3029,7 +3029,7 @@
       "operator": "AtLeastOneFieldValueIncludedInValueList",
       "lane": "CONSTRAINT",
       "ordinal": 1,
-      "digest": "sha256:90cc5c0581eafeb87147fccfebe42aa98674247926ec02a362846f85ef000b03",
+      "digest": "sha256:4c831b7dbd325551c4038637ce972766a3a52b356a23665536079ab0193d35b7",
       "classifications": [
         "REJECTION"
       ],
@@ -27888,6 +27888,27 @@
         {
           "type": "CLAIM_PROBE",
           "id": "FieldValueIncludedInValueList.group-operand"
+        }
+      ]
+    },
+    {
+      "id": "literal.AtLeastOneFieldValueIncludedInValueList.constraint1.MVK_DUPLICATE_PARAM2",
+      "operator": "AtLeastOneFieldValueIncludedInValueList",
+      "kind": "CONDITION",
+      "units": [
+        {
+          "lane": "CONSTRAINT",
+          "ordinal": 1
+        }
+      ],
+      "expected": {
+        "verdict": "REJECTED",
+        "code": "MVK_DUPLICATE_PARAM2"
+      },
+      "evidence": [
+        {
+          "type": "CLAIM_PROBE",
+          "id": "AtLeastOneFieldValueIncludedInValueList.containment"
         }
       ]
     }

@@ -16,7 +16,7 @@ import io.github.mbackschat.a12.dm.Fixtures;
  * of routing through the shared quantifier path, which left the {@code AtLeastOneDateRangeOverlaps} arm with no
  * gate at all while its three siblings had one.
  *
- * <p>The gate now sits in the records, which is where an intrinsic check belongs (API-FINDINGS 137) and is what
+ * <p>The gate now sits in the records, which is where an intrinsic check belongs (API-FINDINGS AF148) and is what
  * makes every construction path — the factories, a direct {@code new}, and the kernel→AST read — reach it. Two
  * things came with the move. The kernel checks each list alone and then their UNION, so a reference repeated
  * ACROSS the two lists is a duplicate; and the CONTAINMENT arm now runs here too, which the factory never did.

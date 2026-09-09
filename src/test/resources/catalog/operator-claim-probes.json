@@ -6622,6 +6622,25 @@
         "dsl": "FieldFilled(CustomerName) And AtLeastOneFieldValueIncludedInValueList(Priority In RushLevel)",
         "verdict": "ACCEPTED"
       }
+    },
+    {
+      "id": "AtLeastOneFieldValueIncludedInValueList.containment",
+      "operator": "AtLeastOneFieldValueIncludedInValueList",
+      "kind": "CONDITION",
+      "fixture": "ORDER",
+      "trigger": {
+        "group": "/Order",
+        "field": "../CustomerName",
+        "dsl": "FieldFilled(CustomerName) And NoFieldValueIncludedInValueList(ShippingAddress, ShippingAddress/City In \"x\")",
+        "verdict": "REJECTED",
+        "code": "MVK_DUPLICATE_PARAM2"
+      },
+      "control": {
+        "group": "/Order",
+        "field": "../CustomerName",
+        "dsl": "FieldFilled(CustomerName) And NoFieldValueIncludedInValueList(ShippingAddress/Street, ShippingAddress/City In \"x\")",
+        "verdict": "ACCEPTED"
+      }
     }
   ]
 }

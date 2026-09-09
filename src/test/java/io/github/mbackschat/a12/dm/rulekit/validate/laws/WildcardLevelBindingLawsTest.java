@@ -13,7 +13,8 @@ import io.github.mbackschat.a12.dm.Fixtures;
 /**
  * KERNEL-FINDINGS §9 — is {@code MVK_NO_WILDCARD} a claim about the REFERENCE or about each LEVEL?
  *
- * <p>An external differential reports 56 cases of this code, of which 33 contain a star and 21 do not, and
+ * <p>An external differential reports this code split 33 with a star against 21 without — their count over
+ * a corpus we cannot query, cited as their report, and
  * asks whether the family is two-sided — "a star where none is admitted" as well as "no star where one is
  * required" — or whether its message-to-code mapping is conflating two templates.
  *

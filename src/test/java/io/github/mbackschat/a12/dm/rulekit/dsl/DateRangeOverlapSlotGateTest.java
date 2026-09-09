@@ -14,7 +14,7 @@ import io.github.mbackschat.a12.dm.modelkit.FieldKind;
  * {@code AtLeastOneDateRangeOverlaps}' first slot takes exactly one UNSTARRED date-range field.
  *
  * <p>Intrinsic — starredness is visible from the operand — so it sits in
- * {@link FieldListEntityListCondition}'s constructor, not on {@link BoundModel} (API-FINDINGS 137).
+ * {@link FieldListEntityListCondition}'s constructor, not on {@link BoundModel} (API-FINDINGS AF148).
  */
 class DateRangeOverlapSlotGateTest {
 

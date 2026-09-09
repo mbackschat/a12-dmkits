@@ -240,6 +240,19 @@ class IterationGuardAdmissionRoutesLawsTest {
             }
         }
 
+        // The axis the grid holds constant even after the contents widening: in every cell above the RULE
+        // sits on the same group the negative names and the same group carrying the index and the count, so
+        // "the negative's group" and "the rule's group" are indistinguishable. Separated here by moving the
+        // rule to the nested non-repeating child while the negative keeps naming the repeatable ancestor,
+        // on the refusing side as well as the admitting one — which is where the two accounts would diverge.
+        for (int n : new int[] {2, 3}) {
+            String json = repeatCountModel(true, n, true, true);
+            actual.put("locus R(" + n + ") rule on the repeatable group itself",
+                    verdict(json, "/Q", "../S", "GroupNotFilled(/Q)"));
+            actual.put("locus R(" + n + ") rule on its non-repeating child",
+                    verdict(json, "/Q/g", "../f", "GroupNotFilled(/Q)"));
+        }
+
         Map<String, String> expected = new LinkedHashMap<>();
         expected.put("H1 bare negative, group declares an index", NEG);
         expected.put("H1 bare negative, NO index declared", NEG);
@@ -270,6 +283,14 @@ class IterationGuardAdmissionRoutesLawsTest {
                 }
             }
         }
+
+        // Inert: moving the rule off the group the negative names changes nothing in either direction, so
+        // the conjunction is a claim about the group the NEGATIVE names, and the rule's own locus is not an
+        // axis of it.
+        expected.put("locus R(2) rule on the repeatable group itself", KernelLaws.ADMITTED);
+        expected.put("locus R(2) rule on its non-repeating child", KernelLaws.ADMITTED);
+        expected.put("locus R(3) rule on the repeatable group itself", NEG);
+        expected.put("locus R(3) rule on its non-repeating child", NEG);
 
         assertEquals(expected, actual);
     }

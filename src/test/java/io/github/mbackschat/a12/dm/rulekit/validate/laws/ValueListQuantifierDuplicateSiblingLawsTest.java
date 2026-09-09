@@ -18,8 +18,12 @@ import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft;
  * {@code AtLeastOneFieldValueIncludedInValueList}, {@code NoFieldValueIncludedInValueList} and the scalar
  * {@code FieldValueIncludedInValueList}. That leaves {@code NotAllFieldValuesIncludedInValueList}, the scalar
  * {@code FieldValueNotIncludedInValueList}, and {@code AtLeastOneDateRangeOverlaps} — the last of which is the
- * one member with no literal spelling at all, so it is also the only one whose duplicate can ONLY be a
- * cross-list one.
+ * one member with no literal spelling at all, so its duplicate is never a literal-list one: it is either
+ * across the two halves or within the value list, and both loci are measured below.
+ *
+ * <p><b>The scalar negative twin takes ONE spelling, and by refusal rather than by choice.</b> A literal
+ * carries no reference identity, so a literal value list admits no duplicate at all — the missing cell is
+ * forced, not unvaried, which is why only the field-read spelling appears for it below.
  *
  * <p><b>The two spellings matter because they are two carriers.</b> A literal value list
  * ({@code f1, f2 In "a"}) gates the field list alone; a field-READ value list ({@code f1 In f2}) gates the two

@@ -55,7 +55,7 @@ class ReadPathFormatGateIsolationTest {
      * The factories that apply a declared-format gate. Reaching any of them from the read path is the defect.
      *
      * <p>The {@code Dsl.} pair resolves an opaque expression and so keeps its model there; every other
-     * promoted contextual gate lives on {@code BoundModel} (the settled receiver — API-FINDINGS 137), so the
+     * promoted contextual gate lives on {@code BoundModel} (the settled receiver — API-FINDINGS AF148), so the
      * list has to name those too, or it would guard a shrinking minority of the gated surface. They are matched
      * on the call suffix because the receiver at a call site is a local variable, not the type name; each name
      * is unique in the kits, and {@code dateRangeOf}/{@code dateOf} are deliberately NOT overloads of
