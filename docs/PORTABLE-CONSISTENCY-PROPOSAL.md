@@ -1,6 +1,8 @@
 # Portable static validation of A12 rules and computations
 
-> **Proposal — 2026-09-08.** Research and design for a Kernel-free validator usable from TypeScript applications, browser JavaScript, Node.js, and Java/Kotlin. No implementation is authorized by this document. Recommended direction: selectively port the relevant dmkits foundations into Kotlin Multiplatform, keep one implementation of shared constraints, and reuse the interpreter's portable parser and workspace preparation.
+> **Revised proposal — 2026-09-10.** High-performance, standalone Kernel-free consistency checking for TypeScript, browser JavaScript, Node.js and Java/Kotlin. Selectively port the relevant dmkits foundations into Kotlin Multiplatform, share measured semantic constraints, and give the checker its own source-aware preparation and representation. Preserve the optimized interpreter independently. This revision is for review; fresh implementation follows approval of the revised design and a new bounded plan.
+
+**Restart boundary.** The owner restored `main` to the proposal-only commit `c8e3b99795fe9c2ce3e9db32632a6dd8f6537043`. The abandoned implementation, unfinished changes and performance evidence are preserved on `archive/portable-consistency-attempt-2026-09-10`, ending at `6b4c6838737b5db7ad264ba7e207446b3cfcb27d`. Its implementation plan and portable API guide are historical references, not active contracts. This revision incorporates the standalone-checker approach discussed on 2026-09-10; it does not carry the abandoned module graph or migration harness into the new implementation.
 
 **Lifecycle.** As each required slice ships, graduate its public contract into the owning specifications in the same commit. Archive this proposal once all required slices and the final availability gate N are complete, retaining it as the design/evidence record under the [documentation lifecycle](DOC-DISCIPLINE.md).
 
@@ -14,12 +16,12 @@ The requested operation is: **given a DocumentModel containing rules and/or comp
 
 | Component / path | Responsibility | Kernel boundary |
 |---|---|---|
-| Interpreter | Evaluate rules/computations against Documents and provide reusable portable parsing infrastructure | Must remain Kernel-free |
-| New portable validator | Check a DocumentModel's declarations under the supported A12 authoring semantics, using shared original dmkits logic and portable infrastructure | Kernel-free throughout preparation, checking and its standalone dependency closure |
+| Interpreter | Evaluate rules/computations against Documents using independently optimized execution preparation and representations | Kernel-free; ordinary evaluation has no checker dependency |
+| New portable validator | Check a DocumentModel's declarations using shared original dmkits semantics and checker-owned analysis preparation | Kernel-free and independent of interpreter implementation throughout preparation, checking and standalone production dependency closure |
 | Default dmtool `model check` / `rule check` | Preserve access to the real Kernel oracle in JVM and native distributions | Kernel-backed and enabled by default |
 | Proposed second dmtool checking path | Expose the same portable validator used by JS applications | No Kernel calls; disabled by default and selected explicitly by the caller |
 
-The optional CLI mode is another consumer of the standalone validator, not how a JS application accesses it. Neither checking path silently falls back to the other, and results identify the engine that actually answered. Missing portable coverage cannot be concealed by consulting Kernel. H1–H3 and F1's packaged tests enforce these boundaries.
+The optional CLI mode is another consumer of the standalone validator, not how a JS application accesses it. Neither checking path silently falls back to the other, and results identify the engine that actually answered. Missing portable coverage cannot be concealed by consulting Kernel. H1–H5 and F1's packaged tests define the acceptance obligations below.
 
 The new validator must be Kernel-free; the whole dmtool distribution need not be. Future removal of dmtool's Kernel path is neither required nor assumed. All agreed §12 features and cleanups remain required final deliverables, implemented as separate slices with finite acceptance matrices.
 
@@ -35,12 +37,13 @@ The discussion established these requirements:
 | Use no Kernel code in the portable checker or standalone consumer artifacts — hard owner constraint | Zero direct or transitive Kernel runtime code or delegation on those paths, including bundled, generated, translated, or remotely invoked Kernel implementations; dmtool's separately selected Kernel path remains required by H3 |
 | Integrate easily into existing TypeScript applications on Node.js — hard owner constraint | Install a normal package, import its typed API, supply model JSON, and consume diagnostics in-process; reuse the existing JavaScript packaging infrastructure without requiring Kotlin/JVM tooling, a CLI, or a service |
 | Avoid duplicating the Java implementation's knowledge | Prefer a selective port and shared ownership of constraints over a separately maintained Kotlin checker |
-| Explain the role of the interpreter and BoundModel | Reuse the interpreter's portable preparation/parsing facilities; preserve BoundModel as the Java authoring façade over shared model knowledge |
+| Preserve both performance goals — hard owner constraint | Deliver high-performance first and incremental checking independently of interpreter performance; neither product may trade away the other's budget |
+| Explain the role of the interpreter and BoundModel | Reuse original source and tests without depending on interpreter runtime objects; preserve BoundModel as the Java authoring façade over shared model knowledge |
 | Deliver design and implementation detail | Specify the scope, public guarantees, component boundaries, bounded implementation slices, and tests that establish the guarantees |
 | Deliver all §12 synergies, application features and supporting cleanups — owner scope decision, 2026-09-08 | Implement them as separate required slices with finite acceptance matrices; intermediate releases may deliver subsets, but the final product must make every feature available to consumers |
 | Preserve dmtool as a Kernel-backed oracle, including native — hard owner constraint | Keep the Kernel path bundled, exposed and default on the oracle surface in both JVM and native distributions; portable checking is additive and never silently substitutes for it |
 
-**Recommendation:** create a portable dmkits consistency capability in Kotlin Multiplatform. Move the relevant model-query and validation responsibilities into shared code, have Java authoring use that code, and add the constraints currently delegated to Kernel there. The interpreter contributes reusable infrastructure; its evaluator does not become the consistency checker. JavaScript delivery already exists: `interpreter/build.gradle` configures Node, browser, ES modules, a library binary, and TypeScript definitions, while the existing packed-consumer estate supplies the integration test infrastructure. Reuse that delivery path and qualify the new static operation through it.
+**Recommendation:** create a standalone portable dmkits consistency capability in Kotlin Multiplatform. Move relevant model-query and validation responsibilities into shared code used by Java authoring and the checker. The checker owns analysis syntax, binding views and cache lifetimes; the interpreter owns execution syntax, lowering and lifetimes. Existing original parser/workspace source, tests and JavaScript delivery tooling are reuse candidates, not mandatory production dependencies. Shared code does not imply shared objects. Neither component must prepare the other's representation.
 
 ### Hard acceptance conditions confirmed by the owner
 
@@ -58,6 +61,14 @@ The consumer needs no JVM, Kotlin compiler, Gradle build, CLI subprocess, or val
 
 **Existing wording to synchronize in F1:** [interpreter/CLAUDE.md](../interpreter/CLAUDE.md), license-boundary bullets, calls the consistency path JVM-only and the native runtime Kernel-free, whereas [NATIVE-IMAGE-GRAALVM §4](NATIVE-IMAGE-GRAALVM.md) explicitly retains Kernel `checkConsistency` for native `rule check`/`model check`. Distinguish the Kernel-free evaluator/portable library from the Kernel-bundling dmtool distribution; the older wording must not narrow H3.
 
+**H4 — preserve the optimized interpreter independently.** The checker must impose no analysis preparation, retained source graph or checker dependency on ordinary evaluation. Preserve interpreter behavior, public contracts, latency, memory and delivered size against the fixed restart baseline above. Retain the existing permanent correctness, differential, performance and release gates. During the migration, the owner's 5% maximum increase applies separately to each comparable interpreter measurement row; a faster checker or another faster row cannot compensate. Missing or inconclusive required evidence cannot pass. This temporary allowance expires at final gate N; it does not relax permanent performance bars or become a new permanent tolerance.
+
+Use the existing measurement owners to cover JVM, plain Node and browser consumers: cold load/preparation through first result, warm validation/computation/single-rule operations, retained/peak memory where the host supports measurement, release behavior and delivered dependency size. Freeze the finite workload/collector matrix before affected implementation; compare matching inputs, runtimes and launch conditions. An unchanged interpreter production/build closure needs no repeated performance sweep for a checker-only edit. Changes to shared facts or build/package dependencies can affect that closure and require the corresponding comparison. Final qualification must account for the full matrix; no new migration-specific benchmark framework or hook/CI evidence machinery is required by this proposal.
+
+**H5 — high-performance standalone checking.** First analysis and incremental analysis are hard product requirements alongside H4. Set explicit, measured release budgets for cold first result, prepared checking, after-edit analysis, memory and package size on JVM, plain Node and browser under §8 before performance qualification. Unset or missed required budgets block F/L/N; a cached report lookup cannot qualify first-analysis or after-edit latency. No numerical checker budget is asserted without a measured workload basis.
+
+**Standalone also means interpreter-independent.** The checker's compiled implementation and installed JVM/JavaScript production closure must exclude the interpreter implementation, even if unused evaluator code could be tree-shaken in a browser. A neutral leaf shared by both is permitted under §5.1; a repackaged interpreter is not. Build-only test/tooling reuse is allowed. Installing or building the standalone checker must not require building the interpreter artifact. Boundary and packaged-consumer controls must detect a forbidden production dependency, not merely an evaluation call.
+
 ## 2. Research basis and limits
 
 The source assessment used the a12-rulekit checkout at commit `2631dfaf6e1b8d41fc37bea006b6f81f521ef5b9`, inspected on 2026-09-08, and selected source files in the sibling a12-kernel checkout. The project's referenced semantic baseline is Kernel 30.8.1. A future implementation must pin the actual oracle artifact and model/metamodel versions in its conformance manifest.
@@ -67,6 +78,25 @@ This proposal distinguishes **source observations**, **existing documented evide
 The inspected loci are listed in [Sources](#11-sources). This was a bounded architectural inspection, not an exhaustive enumeration of callers, constraints, model carriers, or grammar coverage. In particular, the selected operator and builder sources demonstrate where checks live; they do not establish coverage of their siblings.
 
 Links are relative to this document. Project sources resolve within this checkout; Kernel-source citations require the sibling `a12-kernel` checkout.
+
+### Restart research and blast radius — 2026-09-10
+
+The September 8 observations above describe the retained baseline. The abandoned attempt supplies additional evidence, not current implementation claims. Its source/publication inspection found `:consistency` exposing `api project(':interpreter')`, interpreter-owned source/limit types in its JVM API, checker retention of workspace/source-parse objects, and npm/Maven assembly tied to interpreter sources/artifacts. Its boundary test explicitly allowed parser dependencies and did not establish interpreter-free installed closure. These findings explain why restoring the baseline is a cleaner starting point than changing one dependency declaration.
+
+Reproduce those bounded reads without changing branches using `git show 6b4c683873:consistency/build.gradle`, the same revision's `consistency/api/consistency.api`, `consistency/src/commonMain/kotlin/io/github/mbackschat/a12/dm/consistency/ConsistencyChecker.kt`, and its `consistency/gradle/{npm-package,maven-publication}.gradle` files. The inspection covered their contents and direct imports across checker inspections; it did not establish the complete extraction/caller closure. At the restored baseline, the [parser](../interpreter/src/commonMain/kotlin/io/github/mbackschat/a12/dm/interpreter/parse/Parser.kt) and [AST](../interpreter/src/commonMain/kotlin/io/github/mbackschat/a12/dm/interpreter/ast/Ast.kt) still import interpreter decimal/model types. A neutral parser is therefore not a proven file-only move.
+
+The archive's full rerun records 23 measured comparison rows above 5%: 12 JVM, eight Node and three browser. Retrieve the evidence with `git show 6b4c683873:perf-results/h4/2026-09-10-full-rerun/complete/regressions-above-five-percent.json` and its explanation with `git show 6b4c683873:docs/INTERPRETER-PERFORMANCE-RESULTS.md`. Failed and inconclusive qualification remains recorded. These are observations of the abandoned candidate, not regressions asserted of restored `main`, proof that representation sharing caused every increase, or a performance result for the proposed checker. No new performance run is part of this proposal revision.
+
+| Surface | Required treatment in the fresh approach |
+|---|---|
+| Checker preparation and inspections | Reuse useful original code and established expectations, with checker-owned source-aware state; do not restore interpreter workspace/AST imports as the architecture |
+| Shared semantics and Java façades | Selectively translate original responsibilities, retain existing Java tests and deliberate authoring policies; recover independently useful archived fixes only with their owning evidence |
+| JVM/TypeScript API and delivery | Own checker source/limit types outside the interpreter while retaining canonical fields; review signatures, package closure, ABI and actual consumer use together |
+| Interpreter | Start from the restored baseline and retain its existing harness; no separate repair of the abandoned implementation is a prerequisite |
+| Fixtures and tooling | Reuse baseline owners and selected archived evidence; migration-only comparators, hooks and orchestration stay retired |
+| Documentation | This proposal owns the new design. Write a new implementation plan after review and an API guide with executable examples as the new API is implemented; update living architecture/API docs when their code actually changes |
+
+The archive's preview signatures are not a compatibility obligation for the fresh checker. Existing baseline Java/interpreter APIs are. Useful small shared-fact boundaries from the archive remain candidates, not a requirement to recreate its module names or graph. Exact extraction size and a delivery estimate remain unestablished.
 
 ## 3. Findings that determine the design
 
@@ -138,7 +168,8 @@ The Kernel's `DocumentModelConsistencyRulesProvider` registers `CodeGenerationRu
 - Check relationships across declarations where validity depends on them, including computation dependencies.
 - Provide the same semantic result from Java/Kotlin, TypeScript/browser, and Node consumers.
 - Report structured diagnostics and explicit incomplete coverage; never turn an unsupported construct into a positive validity claim.
-- Keep one implementation for each shared semantic constraint, used by both the Java authoring façade and the portable checker where their contracts coincide.
+- Keep one implementation for each shared semantic constraint, used by both the Java authoring façade and the portable checker where their contracts coincide; this does not require shared prepared objects with the interpreter.
+- Deliver the independent checker performance and interpreter preservation obligations in H4/H5, with interpreter-free standalone checker production closure.
 - Preserve A12 model shapes, reference syntax, and relevant JSON behavior. Use original portable implementations, following the project's source-reading and no-transliteration discipline.
 - Deliver the required §12 application features: Node CI integration, candidate-edit checks before saving, interactive editor diagnostics, change-impact reports, context-aware completion, incremental checking, and compatibility comparisons.
 - Complete §12's shared-ownership and cleanup slices and qualify every application feature through its documented packaged API and a working consumer example. A–F establish the validator foundation; they do not complete the full proposal.
@@ -167,40 +198,42 @@ The required editor features are reusable library capabilities with a working ed
 - A wholesale port of model editing, rendering, review, CLI, and publishing facilities.
 - Hidden network access or Kernel fallback in the deployed checker.
 - Porting constraints belonging only to unrelated Kernel derivation services without a rule-consistency requirement.
+- A universal AST or workspace, mandatory shared checker/interpreter preparation, or resurrection of the abandoned migration harness.
 
 ## 5. Recommended design
 
-### 5.1 Initial module cut: a portable checker above the interpreter
+### 5.1 Standalone checker with independent preparation
 
-**Choose a new KMP checker module above `:interpreter` for Slices B–E.** It reuses the interpreter's portable parsing/workspace facilities and owns selectively ported dmkits model-query and static-constraint responsibilities. Java façades and the TypeScript API consume this checker; the checker has no dependency back on Java dmkits. This preserves an acyclic graph while avoiding a prerequisite migration of the parser and workspace.
+**Choose a standalone KMP consistency component with no production dependency on `:interpreter`.** It owns source admission, source-aware parsing, binding, analysis and reusable snapshots. Portable model facts and measured constraints serve the checker and designated Java façades below their public surfaces; they depend on neither consumer. Module names are an implementation choice; the dependency direction is the contract.
 
 ```mermaid
 flowchart TD
-    J[Java dmkits façade / BoundModel] --> V[Portable dmkits static checker]
-    T[TypeScript and JavaScript API] --> V
-    V --> C[Ported model context and shared constraints]
-    V --> I[Interpreter module: portable parser and workspace]
-    I --> E[Existing evaluator implementation]
+    J[Java dmkits façades] --> C[Portable model facts and measured constraints]
+    T[TypeScript and JavaScript checker API] --> V[Standalone checker and analysis snapshots]
+    J --> V
+    V --> C
+    I[Interpreter and execution preparation] -. compatible small facts only .-> F[Optional neutral facts leaf]
+    C -. optional reuse .-> F
 ```
 
-The `I → E` relationship describes module contents/dependencies, not an evaluation call from the checker. Checking must invoke no rule execution or runtime callbacks. The initial consumer package may contain unused evaluator implementation code; H1 prohibits Kernel code, not this project's own original interpreter code. Package presence and first-load cost must be measured separately from whether evaluation runs.
+Java's checking entry points may consume the checker; its existing authoring checks consume the applicable shared constraints without constructing an analysis snapshot for every builder operation. The interpreter may reuse a compatible small facts leaf, but never the checker, diagnostic layer or its prepared graph. Neither checker installation nor ordinary evaluation pulls in the other implementation.
 
 **Hard module boundary:** the new KMP module and its own test source sets remain Kernel-free. Kernel acceptance/rejection differentials live in `:adapter`, mirroring the interpreter's existing oracle split. Java integration tests may exercise the Java façade but do not put Kernel into the portable module's test dependencies.
 
-The initial cut requires no move of parser/workspace source. Slice A must still verify that the necessary helpers are available across the KMP boundary. An internal-only helper needs a deliberate, narrow shared seam or an explicitly reviewed extraction; do not duplicate it or accidentally freeze the whole evaluator API. Existing purity requirements remain in force. Any actual changes to interpreter sources, dependencies, or exports trigger the relevant guards and regression lanes; “above” is not a blanket exemption from verification.
+**Default: checker-owned infrastructure, translated or adapted from our existing source.** Reuse the existing parser/workspace algorithms and their test expectations where applicable, while allowing analysis syntax to retain information execution does not need. This is permission to port this project's original code, not to transliterate upstream Kernel code or independently rediscover measured constraints. Name the owner of any copied mechanics and reuse its conformance expectations so fixes can be assessed across consumers.
 
-**Extraction trigger:** in Slice F, measure the installed validator in plain Node as well as the production browser bundle: package/dependency bytes, import-to-first-result latency, and retained memory. ES modules and `binaries.library()` do not prove that an ordinary Node import tree-shakes evaluator code. Extract parser/workspace into a lower shared module only if a measured cost justifies the change, or a demonstrated ownership/dependency constraint makes the initial cut untenable. The shared checker remains the single owner of each ported constraint whether or not this later extraction happens.
+**Optional neutral syntax reuse:** extract a small dependency only when its actual closure is bounded, ownership is clear and both performance contracts survive. Neutral syntax may feed different analysis and execution representations. It must not mandate common prepared objects, eager parsing, lowering or cache lifetimes. Extraction is not a prerequisite; prefer a checker-owned port if a shared implementation forces interpreter changes or analysis costs. Installed JVM/Node/browser closure is qualified independently of browser tree-shaking.
 
 ### 5.2 Port responsibilities, not entire public classes
 
 | Existing responsibility | Proposed disposition |
 |---|---|
 | ModelIndex's model queries, effective kinds, repetition and category facts | Port the required behavior into a portable context, using the existing expanded JSON and A12 shapes |
-| Java ModelReader expansion | Reuse and reconcile with existing portable workspace expansion; do not introduce a third expander |
+| Java ModelReader expansion | Reuse original expansion behavior within checker-owned preparation and reconcile designated Java queries; preserve A12 sources without forcing evaluator preparation to change |
 | BoundModel's reference binding | Delegate the relevant Java behavior to the portable context; keep authoring convenience and write APIs on the JVM |
 | Rule/computation/expression constructor checks | Extract shared semantic predicates or check functions; Java builders may continue to fail fast while model checking accumulates diagnostics |
-| Interpreter condition/expression parser | Reuse; extend its syntax evidence and acceptance tests where authoring validation requires more than runtime parsing |
-| Interpreter undeclared-reference query | Reuse for the first static vertical slice; preserve missing-versus-ambiguous classification and declaring-group precedence, and expose a result that cannot claim full validity |
+| Interpreter condition/expression parser | Port/adapt our original source and reuse its tests for checker-owned syntax; a neutral extraction is optional under §5.1 |
+| Interpreter undeclared-reference query | Reuse relevant original lookup logic and expectations in the checker; preserve missing-versus-ambiguous classification and declaring-group precedence without calling DmInterpreter |
 | Diagnostic vocabulary | Project the existing code/severity/location/fix concepts into portable results; do not scrape exception messages as the new semantic interface |
 | RuleValidator/ConsistencyOracle integration | Preserve the Kernel oracle and default under H3; expose portable checks through a distinct, explicit result/selection path, never as an automatically discovered substitute provider |
 
@@ -210,7 +243,7 @@ An extraction does not force Java callers to accept Kotlin collection types, nul
 
 A builder AST is designed to represent authorable objects. Static analysis must also represent a parsed expression with a wrong argument kind, unresolved reference, or forbidden scope. Feed those cases to explicit checks instead of relying on whether the expression can be reconstructed as a Java object.
 
-Reuse the existing parser AST wherever it retains the required information. Preserve original text, grouping, reference spelling, and source locations where normalization would erase a discriminator. Do not render a candidate through the typed DSL and then validate the repaired output: the contract concerns the caller's original declaration.
+Reuse the existing parser's useful syntax concepts in the checker-owned representation. Preserve original text, grouping, reference spelling, and source locations where normalization would erase a discriminator. No interpreter AST identity or execution lowering is required. Do not render a candidate through the typed DSL and then validate the repaired output: the contract concerns the caller's original declaration.
 
 Similarly, retain declaration presence and original source ownership alongside effective model facts. Included content and normalized ids must remain attributable to the supplied source. Any additional internal bookkeeping serves diagnostics; it must not invent a parallel public A12 model or pointer format.
 
@@ -235,11 +268,11 @@ No new rejection is justified solely by a Java type restriction, a generic parse
 
 These are diagnostic dependencies, not permission to continue nonsensical analysis after a prerequisite failed. Report independent findings where possible; suppress dependent noise. A single uncheckable rule prevents whole-input VALID, but need not stop checking unrelated declarations.
 
-### 5.6 Parse once into a reusable model representation
+### 5.6 Reuse analysis within checker-owned snapshots
 
 **Recommended TS contract:** prepare an immutable model snapshot once, then run static checks directly over its source-aware syntax and bound model context. There is no required interpreter-AST → dmkits-AST conversion in the TS validation path. Port dmkits' relevant constraints, not the requirement to reconstruct every expression through its Java builders.
 
-“One representation” means a prepared model graph containing declarations, model facts, source associations, and an AST for each condition/expression. It does not mean that the JSON tree and every rule must be forced into one expression-tree type. Binding/type information and dependency indexes are derived views, not additional parses of the DSL.
+The checker snapshot contains declarations, model facts, source associations and retained syntax. Binding/type information and dependency indexes are derived views, not additional DSL parses. “Prepare once” applies within that analysis owner; it imposes no common representation on the Java authoring AST or interpreter execution model.
 
 ```mermaid
 flowchart LR
@@ -247,22 +280,23 @@ flowchart LR
     P --> M[Reusable prepared model: source-aware ASTs and model context]
     M --> V[Static consistency checks]
     M --> D[Diagnostics and dependency queries]
-    M -. optional integration .-> E[Interpreter evaluation using the same parsed programs]
 ```
 
 **Ownership and lifetime:** the prepared handle owns parsed source trees, syntax, and bound declarations. Rechecking that handle must not reparse JSON or DSL, rebuild a dmkits AST, or repeat workspace expansion. Callers providing new source/configuration/dependency snapshots create a new handle; the required incremental-checking Slice L reuses unchanged state across revisions through an explicit API while keeping each snapshot immutable. A one-shot check remains available for simple integrations and internally prepares once per call. There is no promise of automatic caching across repeated calls with raw JSON.
 
-**Input fidelity:** parse each source document and authored condition/expression once within a prepared snapshot and its declared language. Preserve raw spelling, grouping and locations alongside syntax. An included declaration mounted at different scopes may need different binding instances; reuse its syntax while resolving each mount separately. Expansion/remapping must operate on retained trees and bindings instead of rendering DSL or model JSON and reparsing it. This requires separating syntax from context-dependent resolution where the existing parser combines them. Runtime normalization must never erase a discriminator before the static checker sees it.
+**Input fidelity:** parse each source document and authored condition/expression once within a prepared snapshot and its declared language, including retention of failed parse attempts. Preserve raw spelling, grouping and locations alongside syntax. An included declaration mounted at different scopes may need different binding instances; reuse its syntax while resolving each mount separately. Expansion/remapping must operate on retained trees and bindings instead of rendering DSL or model JSON and reparsing it. Separate syntax from context-dependent resolution inside checker preparation where needed. Interpreter normalization must never determine the checker's input denominator.
 
-**Existing behavior versus required work:** `ParsedModel` already caches condition and computation ASTs lazily within a model owner. `ConditionBridge` currently parses and constructs a separate typed rulekit AST; that remains an optional JVM authoring/read-back adapter, not the TS checker's pipeline. The JSON round trip has precise source loci: [ReferenceAssembly](../interpreter/src/commonMain/kotlin/io/github/mbackschat/a12/dm/interpreter/workspace/ReferenceAssembly.kt) line 24 derives `json` through `root.toString()`; [ModelWorkspace](../interpreter/src/commonMain/kotlin/io/github/mbackschat/a12/dm/interpreter/ModelWorkspace.kt) line 216 passes `assembly.json` into `create`, whose `loadDefinition` calls [ModelLoader](../interpreter/src/commonMain/kotlin/io/github/mbackschat/a12/dm/interpreter/load/ModelLoader.kt) lines 65–67 (`load(dmJson: String)` → `A12_JSON.parseToJsonElement(dmJson)`). Therefore strict parse-once preparation is a design requirement to implement, not a claim about the present API. Introduce a narrow internal tree/prepared-state seam accepting the retained `JsonObject` through creation/loading, while preserving admission and resource-limit checks; keep JSON serialization at actual input/output boundaries. Removing this JSON round trip does not by itself establish the separate DSL syntax/binding reuse contract above. Source for current AST caching: [ParsedModel](../interpreter/src/commonMain/kotlin/io/github/mbackschat/a12/dm/interpreter/ParsedModel.kt).
+**Existing behavior versus required work:** [ParsedModel](../interpreter/src/commonMain/kotlin/io/github/mbackschat/a12/dm/interpreter/ParsedModel.kt) caches execution ASTs lazily; `ConditionBridge` constructs a separate typed rulekit AST. Those owners remain independent. The baseline [ReferenceAssembly](../interpreter/src/commonMain/kotlin/io/github/mbackschat/a12/dm/interpreter/workspace/ReferenceAssembly.kt), [ModelWorkspace](../interpreter/src/commonMain/kotlin/io/github/mbackschat/a12/dm/interpreter/ModelWorkspace.kt) and [ModelLoader](../interpreter/src/commonMain/kotlin/io/github/mbackschat/a12/dm/interpreter/load/ModelLoader.kt) contain a JSON serialization/reparse path. Checker-owned preparation must meet its parse-once contract rather than inherit that round trip. This requirement does not mandate modifying the interpreter's creation/loading path.
 
-Java's typed authoring AST can remain for source compatibility. Adapt its boundary when necessary, but do not impose that representation or its reconstruction cost on TS consumers. This does not require a repository-wide AST merger. Sharing parsed programs with optional evaluation needs an explicit internal seam and its own evidence; no evaluation dependency or callback is required to perform static checking.
+Java's typed authoring AST remains for source compatibility. An application choosing both consistency and evaluation may hold two prepared representations and pay for two parses. Measure that combined cost separately; no zero-copy integration, shared-program adapter or elimination of all cross-component duplicate parsing is promised. A preflight can pass a consistency result alongside canonical sources at an explicit integration boundary without sharing prepared objects.
 
 ## 6. Public contract
 
 ### Inputs
 
 Use the existing finite-source/provider workspace concepts: an entry model identity and caller-supplied model sources. Offer both a one-shot check for simple integrations and an explicit reusable preparation handle for repeated checks/queries, following §5.6. No AST conversion or Kotlin-specific representation is exposed to the TS caller. No Document argument is accepted. Source acquisition can be asynchronous; checking an already available immutable workspace need not require callbacks, filesystem access, or network access.
+
+Preserve the established source fields and A12 JSON/pointer contracts while owning checker-facing types outside the interpreter. In the JVM API, a source/limit type or compatibility adapter must not reintroduce an interpreter dependency. Review proposed one-shot/preparation names and signatures as a fresh public API; the archived preview does not freeze them. Existing baseline Java authoring and interpreter APIs remain subject to their compatibility guards.
 
 The supported profile is a shipped, versioned, machine-readable manifest identifying the pinned A12 semantics, relevant model versions, grammar productions, required check families, and explicit exclusions. Runtime completeness calculation must consult it. CI reconciles its declared checks with the implementation registry and executed accepted/rejected/incomplete witnesses; a label or an example count alone cannot establish coverage. Out-of-profile syntax produces a located coverage gap and prevents VALID; if a separate definite violation is found, INVALID with incomplete coverage remains appropriate. Variants and custom constructs need explicit disposition. The runtime loader's variant filtering must not determine which declarations count as checked. If a variant configuration or custom declaration cannot be checked, report that limitation rather than silently certify a filtered model.
 
@@ -334,13 +368,13 @@ Implement one bounded slice at a time. Each slice identifies its immutable const
 
 | Slice | Deliverable | Acceptance and oracle | Explicit non-goals |
 |---|---|---|---|
-| A — dependency and constraint inventory | Enumerated port boundary, grammar dispositions, and versioned constraint manifest, including the named A1–A4 deliverables below | Record searches, matches found/read, current enforcement, authoring-policy distinctions, Kernel firing source, and test witness for every item in the selected first slice; explicitly disposition the grammar ledger's legacy rows and both additional diagnostic tiers; no unclassified item can count as covered | No speculative full-kit port, no percentage inferred from MVK counts |
+| A — dependency and constraint inventory | Enumerated standalone port boundary, grammar dispositions, versioned constraint manifest and named A1–A4 deliverables | Record searches, matches found/read, current enforcement, authoring-policy distinctions, Kernel firing source and existing test owner for every selected item; disposition legacy grammar and additional diagnostic tiers. Name checker-owned infrastructure and any optional neutral leaf, and freeze H4/H5 measurement workloads before affected implementation; no unclassified item counts as covered | No speculative full-kit port, universal parser prerequisite or percentage inferred from MVK counts |
 | B0 — static reference vertical slice | Reused reference check behind the first portable API | Permanently lock §3.4 row 2 as the positive control: one model-wide `Code`, fallback on, Kernel ACCEPT and no unresolved-reference finding; pair with row 1, changing only the flag. Include absent reference, ambiguous fallback with `MVK_FIELDNAME_NOT_UNIQUE`, and declaring-group precedence. Require completed reference-check evidence for the control while the overall B0 verdict remains INCONCLUSIVE (`complete: false`); the slice's type cannot emit VALID. Execute packed Node/browser consumers as well as JVM | No claim of complete rule/computation validity, no evaluator API exposed as the new contract |
 | B — portable model context | Reusable prepared model and shared queries, preserving authored source associations and §5.6 parse-once ownership | Canonical self-contained and include/typedef fixtures agree between current Java queries and portable queries; invalid-context controls remain diagnosable; JVM/Node/browser results agree | No public TypeScript authoring DSL, no editing/persistence |
-| C — shared local constraints | First frozen families extracted from Java and used from both consumers | Red/green tests for each constraint, admitted twins and inbound invalid DSL; existing Java behavior preserved except separately justified policy separation; real Kernel accept/reject evidence for every A12 refusal | No implied coverage of unported families or global computation laws |
+| C — shared local constraints | First frozen families translated from Java and used from both consumers | Reuse retained Java cases and independent Kernel evidence; add red/green cases only for an uncovered behavior, defect or platform difference. Preserve admitted twins and inbound invalid DSL, Java behavior and separately justified policy separation | No rediscovery of covered constraints, implied coverage of unported families or global computation laws |
 | D — stored rules and computations | Complete declaration parsing, binding, local checks, and located results for the selected profile | Exercise rules, operations, common preconditions, every alternative, targets, and relevant messages; unknown/unsupported cases stay distinct from invalid; never require a Document | No execution, no repair by rendering through builders |
 | E — relational constraints | Frozen families for repetition/filter/index semantics and computation relationships | Discriminating Kernel accept/reject grids, including cross-group and cross-computation controls; each family exposes its remaining coverage boundary | No SAT solver or business-intent analysis |
-| F — public delivery and qualification | Existing JS delivery infrastructure extended for the static API, JVM integration, documented profile, complete result semantics | Run the same accepted/rejected/inconclusive corpus through actual Java, Node, and browser consumers; verify production dependency closure, Java API compatibility, deterministic diagnostics, and honest receipts; measure the validator-only consumer footprint before deciding on extraction | No automatic removal of dmtool's Kernel backend; no inherited evaluator qualification or assumed tree-shaking |
+| F — public delivery and qualification | Standalone checker package using existing delivery tooling where suitable, JVM integration, documented profile and complete reports | Run the same accepted/rejected/inconclusive corpus through Java, packed Node and browser; verify Kernel/interpreter-free production closure, Java API compatibility, deterministic diagnostics and receipts. Meet the first-check/memory/size budgets under H5 independently of H4 | No automatic Kernel removal, inherited evaluator qualification or assumed tree-shaking |
 
 ### Required engine coexistence and consumer integration
 
@@ -360,7 +394,7 @@ The finite acceptance matrices for B1–B3, C1–C2 and G–M are maintained onc
 |---|---|---|
 | B1 | Shared binding with explicit resolved, missing and ambiguous outcomes | Part of portable context B; required by B0's final classified reference path |
 | B2 | Separate admission, binding, consistency, authoring policy and evaluator eligibility | Part of B; required before D can diagnose invalid input faithfully |
-| B3 | Reconciled Java/portable preparation, source fidelity and parse reuse | Part of B; supplies the prepared state used by D and L |
+| B3 | Checker-owned preparation, reconciled Java query semantics, source fidelity and parse reuse | Part of B; supplies analysis state used by D and L without constraining interpreter preparation |
 | C1 | Shared structured semantic findings beneath Java builders | Lands with each selected constraint family in C, before its D consumer |
 | C2 | Shared diagnostic facts and portable resource delivery | Follows A2's ownership decision; required by diagnostic-producing B0/D paths |
 | G | Node CI integration | Uses F's published validator contract |
@@ -380,6 +414,7 @@ The finite acceptance matrices for B1–B3, C1–C2 and G–M are maintained onc
 | Editor capabilities work together | The integration example exercises H/I/K/L in a real browser, including a rejected candidate and a superseded request |
 | Consolidation serves both consumers | B1–B3/C1–C2 pass their dependency, fidelity and behavior controls through the retained Java APIs and portable consumers |
 | Final delivery honors H1/H2/H3 | Artifact-specific guards prove standalone packages are Kernel-free while packaged JVM/native dmtool retain the explicitly selected Kernel oracle; F1–F3 pass, the combined suite verifies source ownership, and every emitted receipt identifies the selected/executed engine |
+| Checker independence and both performance goals hold | Installed checker closure contains no interpreter implementation; H4 preserves the interpreter and H5 meets every required checker budget, including L's after-edit workloads. Missing or inconclusive evidence does not pass; permanent interpreter gates remain unchanged |
 | Compatibility comparison is usable | M ships both A3-pinned real profiles with their independent evidence and executes the comparison example |
 
 N cannot pass with a required feature represented only by documentation, a stub, an internal-only API or a deferred task. Non-goals remain those in §4; N qualifies the listed features together without adding another product.
@@ -403,7 +438,7 @@ Extracting a shared constraint is complete only when its designated Java caller 
 
 ### Retain Java tests and distinguish the test oracles
 
-Retain and extend the existing Java API tests through the migration; translating production checks to Kotlin does not require translating their tests. Before extracting each frozen constraint family, map its existing tests into A4's witness inventory and add missing contract cases against the Java API. Preserve independently established expectations when switching the Java caller to the shared Kotlin implementation. A changed expectation needs a separately justified contract correction, not merely agreement with the port. Reuse fixtures and add portable tests where needed; mechanically translating the Java suite is neither the migration strategy nor evidence of independent correctness.
+**Start from existing source and tests.** Directly translate this project's Java implementations, including classes and useful comments, instead of rediscovering established behavior. Retain Java API tests against the migrated implementation; translate existing tests when portability requires it, without treating translation as independent evidence. Before adding any test or fixture, identify its existing owner and the specific uncovered requirement, translation defect or platform difference. Reuse cases, fixtures and expectations first. New behavior and real defects use red/green TDD and the appropriate Kernel oracle; already-covered ports do not need a fresh test matrix. A changed expectation requires a separately justified contract correction. This discipline also applies when recovering useful work from the archive.
 
 | Test lane | Execution and oracle | What it establishes / owning slices |
 |---|---|---|
@@ -428,11 +463,13 @@ F2's harness must not require portable preparation or Java builder admission to 
 | JS matches JVM | Execute the same fixtures through Java, packed Node and real-browser consumers, comparing the full portable report contract; this establishes cross-platform parity, not an independent semantic oracle |
 | A scope is complete | Enumerated constraint/grammar/context manifest with anchored exclusions, witnesses, and no unresolved entry inside the claimed scope |
 | Standalone portable production artifacts are Kernel-free | Compiled dependency and publication/package closure guards with positive controls; do not apply this claim to dmtool, which deliberately bundles Kernel under H3 |
+| Standalone checking is interpreter-independent | Compiled and installed JVM/JavaScript closure guards detect a forbidden interpreter dependency, including unused artifacts; packed Node/browser and external JVM consumers install and run without the interpreter artifact. Do not equate absence of evaluation calls with this claim |
 | A report describes checks that ran | Does-fire controls for skipped stages, missing sources, unsupported syntax, early failures, and partial diagnostics |
 | Preparation parses once and checks reuse it | Instrument JSON/DSL parser entry points and expansion ownership; check self-contained input, includes mounted twice, rules plus every computation fragment, malformed syntax, and repeated queries. Counts must not increase when rechecking one handle; controls must detect a serialize/reparse round trip. Exercise the counters through JVM and packed JS consumers |
 | H1: portable artifacts/path contain no Kernel implementation or delegation | Standalone dependency/package closure guards with forbidden-dependency positive controls; provenance review for generated/copied material; actual packed-consumer execution without Kernel or fallback services; invocation guards for the portable path inside dmtool |
 | H2: easy TypeScript/Node library use | A separate ordinary TypeScript project installs the packed package, compiles against shipped declarations, and checks valid, invalid, and unsupported rule/computation models in Node through the documented API, with no JVM/CLI/toolchain setup |
 | H3: dmtool retains the requested Kernel oracle in both artifacts | F1's actual JVM/native launcher tests establish default and explicit Kernel selection, positive receipts and no substitution on selected-engine failure; the client-facing contract remains compatible with the verified consumer pin |
+| H4/H5: both performance goals hold independently | Existing collectors compare the affected interpreter rows with the fixed restart baseline; checker cold, prepared, incremental, memory and delivery observations meet their separately frozen budgets. Controls expose missing evidence and stale incremental results; a cached report cannot satisfy first-analysis measurements |
 | Portable and Kernel consistency agree within a declared profile | F2 reuses A4's admitted/rejected corpus with independent Kernel observations and explicit incomplete/excluded cases; mutation controls detect semantic disagreement and wrong-engine receipts |
 
 For each new or widened Kernel-semantic claim, write the project's witness grid before fixtures: hypothesis, rival mechanism, varied axis, held-constant controls, carriers, and oracle. Include both legal and illegal twins. Exercise stored DM-JSON as well as typed authoring so constructor restrictions cannot conceal over-rejection.
@@ -447,9 +484,18 @@ Run targeted tests per slice under the repository's [run discipline](AGENT-RUN-D
 
 ### Performance
 
-No latency or memory target has been measured for this feature. Do not inherit the interpreter's evaluation benchmark as a static-checking guarantee. Measure cold package load plus first consistency result separately from repeated checks, using model size, declaration count, expression size, include depth, and dependency topology as axes. Reuse prepared context and parsed syntax within one check; avoid rebuilding the whole model per rule.
+**H4 and H5 are independent completion gates.** No numerical checker release budget has yet been qualified. Measure representative workloads before setting those budgets; leaving them unset cannot qualify a high-performance checker. Use model size, declaration count, expression size, include depth and dependency topology to select bounded workloads from existing fixtures, not a new Cartesian fixture collection.
 
-Record baselines on JVM, plain Node using the shipped package entry point, and the production browser bundle before proposing numerical release bars. ESM tree-shaking is a candidate optimization to measure, not a premise of the module choice. Resource limits must produce an explicit incomplete/operational outcome rather than a false positive verdict. Incremental analysis is required in L: measurements guide its reuse strategy and latency targets, not whether it is delivered. A worker is an implementation choice; the required editor scheduling and cancellation behavior must hold whichever mechanism is used.
+| Boundary | Required observation |
+|---|---|
+| Cold standalone use | Installed package load through preparation and first complete consistency result, on JVM, plain Node and browser |
+| Prepared use | Initial analysis work and repeated same-snapshot queries reported separately, including any cached-report reuse |
+| After-edit use | L's rule/computation, field configuration, include/typedef, removal and profile changes; compare complete reports with fresh analysis and prove unaffected work is reused |
+| Resources and delivery | Retained memory, release behavior, supported peak observations and installed/downloaded production closure size |
+| Interpreter-only use | H4's fixed-baseline comparisons plus unchanged permanent correctness/performance/release gates |
+| Combined application | Actual cost of using both components; no shared-graph or zero-duplicate-parsing claim without implementation and measurement |
+
+Freeze explicit checker latency/memory/size budgets, workload identities and host/collector rules before performance qualification. Report cold, prepared and incremental numbers separately; a returned cached report says nothing about fresh analysis cost. Reuse existing measurement and consumer owners; add only a missing observation needed for these named contracts. Archived measurements can inform workload selection, but do not qualify new code. Resource limits yield incomplete/operational outcomes, never false positive verdicts. Incremental checking remains required regardless of its measured speedup; scheduling, cancellation and supersession retain their §12 contracts.
 
 ## 9. Risks and design decisions
 
@@ -457,7 +503,9 @@ Record baselines on JVM, plain Node using the shipped package entry point, and t
 |---|---|
 | Selective port versus a new interpreter checker | Selective port: preserves existing knowledge and creates one maintenance owner |
 | Selective port versus all of dmkits | Port the dependency closure required for consistency and the committed §12 capabilities; candidate/editor integration does not require a wholesale port of editing, rendering or CLI facilities |
-| Initial module placement | A new checker above `:interpreter` for B–E, with Java façades and the TS API consuming it; verify helper accessibility in A and measure the plain-Node/browser consumer cost in F before extracting a lower layer |
+| Module and representation ownership | Standalone checker-owned preparation and syntax; shared constraints below Java/checker consumers. Independence avoids compulsory analysis costs on the interpreter and compulsory evaluator delivery to checker consumers |
+| Neutral syntax extraction versus original-code port | Prefer a checker-owned port unless a bounded neutral dependency demonstrably benefits both consumers; shared source need not imply shared prepared objects |
+| Two performance goals | Enforce H4/H5 independently. Defer numerical checker budgets until workloads are measured, but block performance completion while budgets are unset or missed |
 | Kernel-derived material | Reuse original project code/catalogs and independently recorded facts; source reading for understanding is allowed. Assess a concrete copied/generated artifact before incorporating it, and escalate unresolved provenance/licensing questions about that artifact. This is an engineering process rule, not an actionable legal conclusion |
 | Runtime ModelDef as the sole validation input | Retain source-aware authoring context; runtime defaults, projections, and filters can erase evidence |
 | Typed builder restrictions mistaken for Kernel laws | Classify policy versus semantics before sharing a refusal; protect inbound legal shapes with tests |
@@ -468,13 +516,13 @@ Record baselines on JVM, plain Node using the shipped package entry point, and t
 | Completeness confidence | Use source inventories plus discriminating negative cases; neither an operator count nor a green valid-model corpus proves rejection coverage |
 | Development without Kernel available | Portable unit/consumer tests can run independently; new A12 acceptance claims require pinned Kernel-oracled tests in `:adapter`, never in the portable module |
 
-Porting is not automatically a mechanical Java-to-Kotlin conversion. Jackson-backed trees, public Java numeric/optional types, exception-driven construction, and type-level exclusions require deliberate boundaries. There is insufficient evidence for a calendar estimate. The inventory should produce estimates by constraint family and coupling, separating reused logic, porting work, new semantics, and public compatibility work.
+Direct Java-to-Kotlin translation is the default for reusable original behavior. Jackson-backed trees, public Java numeric/optional types, exception-driven construction and type-level exclusions still need deliberate boundaries. There is insufficient evidence for a calendar estimate; distinguish translation, new semantics and public compatibility work rather than counting fixtures or probes as implementation progress.
 
 The recommendation is architectural rather than a claim that a smaller port boundary has already been proven. A port that unexpectedly pulls in editing or the entire typed renderer should trigger repartitioning before implementation expands.
 
 ## 10. Completion criteria
 
-The proposal's product is complete only when all required slices in §7 and §12 pass their finite acceptance matrices and N's final availability gate passes. This includes the consistency foundation A–F, coexistence/consumer integration F1–F3, supporting consolidation B1–B3/C1–C2, and every application feature G–M. The declared rule/computation profiles must have finite, reviewed acceptance denominators; their required checks must be implemented and independently evidenced; Java and JS consumers must share the relevant semantics; and an application must be able to submit canonical model sources and receive truthful portable static results without Kernel, Documents, or evaluation callbacks. Independently, JVM and native dmtool must retain and identify their Kernel-backed oracle under H3.
+The proposal's product is complete only when all required slices in §7 and §12 pass their finite acceptance matrices and N's final availability gate passes. This includes A–F, F1–F3, B1–B3/C1–C2 and every application feature G–M. The declared profiles must have finite, reviewed acceptance denominators and independent evidence. Java and JS share relevant semantics; standalone consumers receive truthful results without Kernel, interpreter implementation, Documents or evaluation callbacks. H4 preserves the interpreter independently, H5 qualifies high-performance checking, and JVM/native dmtool retain their Kernel oracle under H3.
 
 **Available at the end means delivered and usable:** Node CI integration, candidate-edit checking, editor diagnostics, impact reports, completion, incremental checking and two-profile compatibility comparison must all be documented, exported and exercised through the packed consumer package. The editor integration example and Java/portable ownership guards must pass as specified in N. An intermediate validator release is allowed, but it is not completion of this proposal. Performance measurements, sequencing decisions, missing version evidence or a remaining internal helper cannot waive a required feature; unresolved acceptance work keeps the proposal incomplete.
 
@@ -530,7 +578,7 @@ The value beyond JavaScript delivery is consolidation: one maintenance owner for
 | Typed authoring and incoming DSL | Shared A12 semantics regardless of authoring route, with deliberate dmkits policy kept distinct | B2/C1: paired Java/TS cases plus the designated-façade dependency and mutation controls |
 | Reference binding | One owner for local lookup, short-name fallback, missing/ambiguous resolution, and applicable index/category context | B1: both consumers depend on the shared resolver; its full selected witness grid runs on JVM/JS |
 | Diagnostics | Checks own measured violation/context classification; existing catalog and diagnostic sources own reusable meanings and correctives | A2/C2: equivalent classified diagnostics across consumers, resource delivery and source/projection parity |
-| Preparation | Reuse source trees, parsed programs and model facts under one immutable owner | B3: §5.6 parser/expansion counts and same-owner reuse controls |
+| Preparation | Reuse source trees, syntax and model facts within an immutable checker owner, independent of execution preparation | B3: §5.6 parser/expansion counts and same-owner reuse controls |
 | Compatibility knowledge | Connect profiles, registered checks, catalog facts and witnesses | A/F/M: runtime completeness consumes the profile; CI detects a claim without a registered check and executed evidence |
 | Preserved downstream oracle | JVM/native dmtool retain Kernel with explicit engine identity; portable checking remains additive | F1: packaged selection/provenance tests and substitution controls |
 | Durable consistency differential | Two independent consistency implementations are continuously compared on the reusable selected corpus | A4/F2: admitted/rejected controls, profile-scoped comparisons and semantic/identity mutation checks |
@@ -538,9 +586,9 @@ The value beyond JavaScript delivery is consolidation: one maintenance owner for
 | Schemakit validity gate | Schemakit uses the shared portable consistency gate while preserving its compiled/publication purity boundary | F3: gate fixtures plus `verifySchemakitPurity` and published closure guards; the purity guard remains a build guard, not the runtime validator |
 | Interpreter consistency preflight | A consumer can request an honest static precondition separately from execution preparation and support checking | F3: explicit completed/invalid/incomplete preflight results; preparation alone cannot claim consistency and existing evaluation admission is not silently widened |
 
-F3's interpreter-consumer integration lives in the higher-level checker/facade that already consumes `:interpreter`; it must not reverse the dependency or add Kernel to the interpreter. Standalone JS preparation and consistency checking remain the primary product. The optional dmtool mode consumes that product through the same implementation boundary.
+F3's interpreter-consumer preflight lives in an explicit integration façade or application that may depend on both products. Neither standalone core depends on the other. The consumer requests a static result separately from execution preparation/support; no common prepared graph or automatic evaluator admission change is required. The optional dmtool mode uses the same standalone checker.
 
-A concrete current duplication is bare-reference lookup in [ConditionBridge](../interpreter-bridge/src/main/kotlin/io/github/mbackschat/a12/dm/bridge/ConditionBridge.kt) and [ParsedModel](../interpreter/src/commonMain/kotlin/io/github/mbackschat/a12/dm/interpreter/ParsedModel.kt). Both implement declaring-group precedence and optional unique short-name fallback. Consolidate that responsibility through the smallest shared seam; do not merge every AST traversal, since dependency analysis, message references, iteration scope and runtime relevance can intentionally have different domains.
+A concrete current duplication is bare-reference lookup in [ConditionBridge](../interpreter-bridge/src/main/kotlin/io/github/mbackschat/a12/dm/bridge/ConditionBridge.kt) and [ParsedModel](../interpreter/src/commonMain/kotlin/io/github/mbackschat/a12/dm/interpreter/ParsedModel.kt). Both implement declaring-group precedence and optional unique short-name fallback. B1 consolidates the designated Java authoring and checker binding semantics. Interpreter reuse of a small facts leaf is optional and subject to H4; it must not turn into a requirement to merge AST traversal, binding views or preparation lifetimes across different semantic domains.
 
 **Diagnostic classification and corrective ownership.** The portable check identifies the measured violation and supplies structured context (including the operator when known). The existing [operator catalog](../rulekit/src/main/resources/catalog/operators.json) remains the data source for operator meanings and code-specific correctives; the checker consumes that resource directly or through a deterministic generated projection, never a second hand-authored dictionary. Catalog membership is not a classifier or proof of rejection: one code can have several triggers, and the catalog is a partial map. Do not infer an operator merely because it is the only catalog entry documenting a code.
 
@@ -574,6 +622,6 @@ These are independently verified changes within the foundation's selected respon
 | B1 — Explicit binding outcomes | One shared owner preserves resolved, missing and ambiguous outcomes with scope context | §3.4's four rows plus declaring-group precedence, relative/absolute references and applicable indexed/category references run through Java and portable callers. Assert the resolved target as well as diagnostics; missing and ambiguous controls remain distinct, and the legal control resolves | No universal merger of AST traversals with different semantic domains |
 | B2 — Separate analysis phases | Separate loading, binding, consistency, authoring policy and evaluator eligibility | A malformed source gives an admission diagnostic; a parseable invalid declaration remains inspectable; a policy-only restriction is not an A12 rejection; an evaluator-only support gap cannot invalidate a statically checkable declaration; independent declarations remain analyzable after a local failure. Use phase does-fire controls and Kernel acceptance controls where validity is claimed | No evaluator execution or bypass of required admission checks |
 | C2 — Shared diagnostic data | Deliver catalog, code-level correctives and applicable RK meanings from their existing owners through the portable API | Execute an operator corrective, an orphan code, a cross-context code, a multi-owner code and an applicable RK diagnostic through both consumers. Source/projection parity and freshness controls fail on stale generated data; structured context selects appropriate guidance without message scraping | No second operator registry or fourth diagnostic dictionary |
-| B3 — Reconciled preparation and source fidelity | Share/reconcile required Java and portable preparation responsibilities, retain authored values and origins, and remove redundant parsing | Compare self-contained, include/typedef, repeated-mount and malformed-input fixtures through both consumers; assert effective facts and original source ownership. Run all §5.6 parser/expansion counters, including repeated queries and malformed syntax. Published input/output preserves A12 shapes and the applicable JSON fidelity contract | No third expander, universal AST merger or wholesale reader replacement without evidence |
+| B3 — Checker preparation and source fidelity | Reuse original preparation behavior under a checker owner, reconcile required Java query semantics, retain authored values/origins and avoid reparsing within analysis | Compare self-contained, include/typedef, repeated-mount and malformed-input fixtures through Java and checker consumers; assert effective facts and original source ownership. Run §5.6 counters for repeated queries, mounts and malformed syntax. Preserve A12 shapes/JSON behavior and unchanged old snapshots | No interpreter preparation rewrite, shared runtime object requirement, universal AST merger or independent rediscovery of expansion semantics |
 
 A whole-kit port, a universal AST merger and a language server remain separate decisions. Kernel removal from either dmtool artifact is prohibited within this proposal by H3 and supplies no claimed native-image benefit. Every synergy, application feature and supporting cleanup listed above is required for final delivery; §7's N gate verifies that they are implemented, integrated and available together.
