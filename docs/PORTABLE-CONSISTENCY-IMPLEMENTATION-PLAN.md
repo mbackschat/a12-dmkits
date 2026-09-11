@@ -280,7 +280,11 @@ All four implement the same rule shape: candidate `base/name` first (declaring-g
 
 **One diagnostic vocabulary.** `DiagnosticCode` spans the source-reading phases rather than growing a per-phase enum, so a consumer never reconciles two parallel diagnostic estates; the earlier `AdmissionDiagnosticCode`/`AdmissionDiagnostic` names are gone, with no alias.
 
-**Still open in B2, and deliberately a separate landing:** the §5.4 three-category separation — an authoring-policy restriction that must never read as a Kernel rejection, and an evaluator-support gap that limits completeness without invalidating a statically checkable declaration. Those need the finding classification and the status derivation, which is where phase separation becomes load-bearing rather than structural.
+**Only a measured A12 constraint, violated at ERROR, rejects a model.** [§5.4](PORTABLE-CONSISTENCY-PROPOSAL.md#54-separate-three-kinds-of-checks)'s three categories are `FindingCategory`, and `Finding.justifiesRejection` is the single locus that grants the power to one of them. Both halves are load-bearing and separately controlled: an `AUTHORING_POLICY` or `EVALUATOR_SUPPORT` finding stated at ERROR does not reject, and an `A12_CONSTRAINT` finding at WARNING does not either. The asymmetry is deliberate — a refusal the Kernel never issues is undetectable because the Kernel is never asked, so the direction that needs guarding is ours-reading-as-A12's.
+
+**`ConsistencyStatus` has no `Valid`, and the enforcement is the compiler.** No required check family is implemented, so nothing can establish that the pinned profile's applicable checks ran; both variants report `complete = false`. The control is an exhaustive `when` over the sealed interface, which stops compiling if a third variant appears — so [proposal §7](PORTABLE-CONSISTENCY-PROPOSAL.md#7-implementation-slices-and-finite-acceptance-matrices)'s "the first one-check slice cannot emit VALID by construction" cannot be lifted quietly instead of with its coverage evidence.
+
+**Still open in B2:** nothing. The five acceptance cases are covered; `statusOf` summarizes findings and never replaces them, which is F's report contract rather than this slice's.
 
 ### Decisions to resolve during A
 
