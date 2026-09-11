@@ -245,22 +245,38 @@ class PreparationTest {
 
     /**
      * No shape of well-formed JSON may make preparation raise: the module advertises that it reports and
-     * skips what it cannot read, and an escaping exception is the one form the proposal forbids for an
-     * operational failure. Each input below reaches a different unguarded accessor.
+     * skips what it cannot read, and an escaping exception is the one form the proposal admits for neither a
+     * verdict nor a coverage gap. Each input reaches a different accessor that would otherwise throw, and
+     * each must come back as a located finding rather than as a silence.
      */
     @Test
-    fun noWellFormedSourceMakesPreparationRaise() {
+    fun aMemberOfTheWrongJsonTypeIsDiagnosedRatherThanRaised() {
         listOf(
             """{"header":{},"content":{"modelRoot":{"rootGroups":{}}}}""",
             """{"header":{},"content":{"modelRoot":{"rootGroups":[7]}}}""",
             model("""{"type":"Group","id":"/O","name":"O","Group":{"elements":{}}}"""),
+            model("""{"type":"Group","id":"/O","name":"O","Group":7}""", ""),
             model("", "\"modelConfig\":{\"fieldRefByShortNameAllowed\":1},"),
-            """{"header":{},"content":{"modelRoot":{"rootGroups":[{"type":"Group","name":"O","Group":7}]}}}""",
-            "42",
-            """{"foo":1}""",
         ).forEach { json ->
+            assertEquals(
+                listOf(DiagnosticCode.DECLARATION_NOT_WELL_FORMED),
+                prepared(json).diagnostics.map { it.code },
+                json,
+            )
+        }
+    }
+
+    /**
+     * Well-formed JSON that is not a DocumentModel prepares to an empty fact base without raising. That it
+     * is currently indistinguishable from a legitimately empty model is a known gap, owned by the admission
+     * contract rather than by this phase; what is locked here is only that it does not throw.
+     */
+    @Test
+    fun jsonThatIsNotADocumentModelPreparesEmptyWithoutRaising() {
+        listOf("42", """{"foo":1}""", """{"content":[]}""").forEach { json ->
             val prepared = prepared(json)
-            assertTrue(prepared.diagnostics.size + prepared.elements.size >= 0, json)
+            assertEquals(emptyList(), prepared.elements, json)
+            assertFalse(prepared.fieldRefByShortNameAllowed, json)
         }
     }
 

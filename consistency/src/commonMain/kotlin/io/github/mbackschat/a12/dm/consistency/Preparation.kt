@@ -96,8 +96,14 @@ private class Collector(private val modelId: String) {
             malformed(path, "a declaration must carry an `id`")
         }
         elements += DeclaredElement(path, name, kind, id, element)
+        // The envelope is optional — the Kernel default-constructs the element when it is absent — but a
+        // present one must be an object, since the Kernel binds it to the kind's type.
+        val envelope = element[kind]
+        if (envelope != null && envelope !is JsonObject) {
+            return malformed(path, "`$kind` must be a JSON object")
+        }
         when (DeclaredKind.of(kind)) {
-            DeclaredKind.GROUP -> each(element[kind]?.get("elements"), path, "$path's `elements`") {
+            DeclaredKind.GROUP -> each(envelope?.get("elements"), path, "$path's `elements`") {
                 collect(it, path, path)
             }
             // An unrecognized `type` makes the whole source unreadable to the Kernel, so it is reported here
