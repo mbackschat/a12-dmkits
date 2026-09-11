@@ -37,8 +37,7 @@ Rows below are dependency stages, not permission to combine every named slice in
 | 10 | G Node CI example; H candidate checking | F's package can be consumed normally. G distinguishes invalid, incomplete and operational failure; H checks immutable candidates without persistence and agrees with fresh checking | Terminal review of each public consumer contract |
 | 11 | J impact reports; I editor diagnostics, as separate slices | J uses E's dependency facts and H's candidates. I uses source-aware partial analysis and H's snapshots; neither depends on the other's implementation | Terminal review of affected/unaffected controls for J and source-location controls for I |
 | 12 | L incremental checking | L uses B3/J and must match fresh full reports while demonstrating reuse. Complete the H/I/L browser integration once it lands | Terminal review per API, including stale-cache controls |
-| 13 | M two-profile compatibility comparison | A3 has pinned two real versions and independent witnesses; both profiles' required implementations are present. Compare with separate checks under each profile | Terminal review of profile evidence and deterministic public differences |
-| 14 | N combined availability and qualification | Every earlier slice passes its frozen matrix; all G–J/L/M exports and the browser integration work from shipped packages. Complete §5 below | Terminal whole-product contract review before declaring completion |
+| 13 | N combined availability and qualification | Every earlier slice passes its frozen matrix; all G–J/L exports and the browser integration work from shipped packages. Complete §5 below | Terminal whole-product contract review before declaring completion |
 
 Packed delivery belongs to F. A2's earlier resource check is a bounded packed-resource experiment using existing tooling, not an early implementation of the full package estate. B0's JVM/common tests and F2's adapter lane do not depend on F. F owns their packed Node/browser corpus replay, using the same inputs rather than inventing another matrix.
 
@@ -52,7 +51,7 @@ Packed delivery belongs to F. A2's earlier resource check is a bounded packed-re
 | Constraint/profile denominator | Map the laws and grammar productions the Kernel can raise on an A12 model’s rules and computations to current enforcement, Kernel firing sources, raw-input carriers, prerequisites, authoring policies, witnesses and exclusions. Include conversion/non-MVK and applicable generation-path restrictions | Every entry has a disposition; unresolved entries prevent a complete coverage claim. A code count is not a law count |
 | A1 erased-bucket disposition | Re-derive the proposal's dated enumeration and disposition every matching row. Rows are in scope by default; an exclusion cites a Kernel path that is dead for A12 input | Reachability/acceptance claims have the appropriate Kernel evidence. Builder inability, renderer avoidance and an absent rulekit authoring surface are each barred as an exclusion basis |
 | A2 diagnostic ownership | Map catalog guidance, `StructuralKernelFix`, applicable `RkCode` knowledge and consumer projections. Prefer direct resource reuse; use deterministic projection when delivery/size or Java-owned guidance requires it | Bounded packed Node resource check plus source/projection freshness and contextual guidance controls; acyclic graph, no new hand-maintained dictionary |
-| A3 two-version basis | Record 30.8.1 and exactly one additional available real A12 version, artifact identities, accessible independent oracles and finite profile witnesses | Artifact/version availability and oracle access are verified. If the second version cannot be obtained, identify the concrete acquisition blocker; M/N remain blocked, while unrelated slices can proceed |
+| A3 single pinned profile | Record the one sibling-defined A12 version (`2025.06-ext5` / kernel `30.8.1`), its artifact identity, oracle access and finite witness matrix | Identity and oracle access verified against the sibling. A second A12 version is out of scope while M is deferred |
 | A4 corpus ownership | Identify retained fixtures and typed authors, canonical sources, stable case ids, profile applicability and explicit accepted/rejected/incomplete expectations | Reuse one input owner across common replay, adapter differentials and packed consumers. Add only minimal raw-input mutations needed to reach shapes builders cannot author |
 | H4 comparison matrix | Fixed restart revision, row/workload identities, hosts, collectors, matching runtime/launch rules, and the resolved-production-set plus built-artifact-digest comparison | Every required row has an existing measurement owner or a named missing observation. The mechanical closure/artifact comparison decides whether an affected sweep is necessary |
 | H5 budget proposal | Workload identities, candidate budget recommendations and a bounded calibration-spike specification for cold, prepared and after-edit checking; include resources/release and combined use | A fixes the scenarios, collectors and calibration task described in §5. Sampling, reproducibility evidence and owner ratification are later prerequisites of F qualification, not claims discharged by this inventory |
@@ -131,7 +130,7 @@ So one boundary is fully owned, one has a collector awaiting checker rows, and f
 
 **Why not the other fixture trees.** They are measured and each has an owner with a different job: `cli/src/test/resources/models` (22 model files) serves the JUnit and eval lanes, `examples/models` (16) serves the published demos under their own CI gate, and `adapter/src/test/resources` (20) serves the Kernel differentials. [CLAUDE.md](../CLAUDE.md) keeps the demo and JUnit trees deliberately decoupled, so A4 does not repoint any of them; the corpus is the only tree already designed as a shared input owner with per-case oracle identity.
 
-**Per-case `kernelVersion` is also M's hook.** Because each case already pins the artifact it was measured against, a second profile does not need a parallel corpus either — it needs cases whose expectation is recorded per pinned version. Recorded here so M reuses this owner rather than inventing one.
+**Per-case `kernelVersion` stays useful even with M deferred.** It records which artifact each expectation was measured against, so a corpus case cannot silently outlive its oracle — and if cross-version comparison is ever revived, it needs cases keyed this way rather than a parallel corpus.
 
 ### A2 — diagnostic ownership and portable delivery (decided 2026-09-12)
 
@@ -235,25 +234,13 @@ Both resolvers were read in full. They are the same rule over different fact sou
 
 **Why not select workloads from the committed corpus.** Measured: `corpus/models` clusters at 23.6–24.0 KB across its files, with no spread along declaration count or include depth. It is a case-per-model tree, not a size ladder, so it cannot supply the scaling axis `MANY_RULES_48` → `MANY_RULES_192` already provides.
 
-### A3 record — second profile basis (measured 2026-09-12)
+### A3 record — single pinned profile (decided 2026-09-12)
 
-**The second profile is `31.1.0`, and its source is already in the sibling — owner-approved 2026-09-12 because the sibling's remote is the public GitHub repository.** Measured by ref position only (`git log --oneline -1`, `git rev-list --count`), reading commit subjects rather than any `2026-ext0` file content:
+**The project keeps one A12 version, and A3's two-version basis is withdrawn with M.** The pinned profile is whatever the sibling `a12-kernel` checkout carries — today `2025.06-ext5` / kernel `30.8.1` — recorded with its artifact identity and oracle access. No second version is required, sought, or admissible while M is deferred; the reasoning is in [proposal §4](PORTABLE-CONSISTENCY-PROPOSAL.md#4-required-functionality-and-scope-boundaries)'s deferral record.
 
-| Ref | Commit | Release |
-|---|---|---|
-| `main` (checked out) | `cb66e51` | `2025.06-ext5` — kernel `30.8.1` |
-| `origin/main` | `f10b920` | `2026.06-ext0` — kernel `31.1.0` |
-| `origin/release/2025.06` | `cb66e51` | `2025.06-ext5` — kernel `30.8.1` |
+**What was measured before the deferral, kept because it is the evidence a revival would start from.** The sibling's `origin/main` is `f10b920` "Release 2026.06-ext0 - 31.1.0" and its local `main` is `cb66e51`, one commit apart, fetched 2026-07-17 — so a second version's *source* was never the obstacle. A runnable oracle was: `31.1.0` is not in `mavenLocal`, and publishing it means bootstrap Phase 0 over `f10b920`, carrying an unresolved a12-base version identity (`30.0.1` upstream against the kernel's pinned `30.0.0`). Those costs, plus the `28.4.0` → `29.4.0` format move, are what made the deferral the better trade.
 
-Our checkout sits exactly **one commit behind `origin/main`**, fetched 2026-07-17.
-
-**Source presence is not oracle access.** A3 needs a *runnable* kernel to execute consistency checks against, and `31.1.0` is not published to `mavenLocal`; producing it means running the bootstrap kit over `f10b920`, whose work items [KERNEL-31-UPGRADE-PROPOSAL](KERNEL-31-UPGRADE-PROPOSAL.md) Phase 0 enumerates. That is the remaining work for M, and it is bounded rather than open-ended.
-
-**Do not reach for a machine Gradle-cache jar — that route is forbidden and was never qualified.** The abandoned attempt tried exactly this: its own plan at `6b4c683873` records that "the wider machine Gradle cache also contains facade jars for 30.7.1, 31.1.0 and 31.1.1" *(their measurement, quoted, not re-derived here)* while conceding that "a cached facade is not a verified transitive closure" and advertising no second profile. So it yielded nothing usable, and scanning the machine for A12 releases is precisely what [CLAUDE.md](../CLAUDE.md)'s sourcing rule now forbids. The sibling ref is the only admissible origin.
-
-**Disposition.** The second profile is identified and its source approved; M and N remain blocked until a runnable `31.1.0` oracle is published from `f10b920`. Every other slice proceeds; nothing in A–L depends on it.
-
-**M inherits one design question.** Its contract is to check *the same sources* under both profiles while explicitly excluding automatic model migration, and `31.1.0` carries a mandatory document-model format move (`28.4.0` → `29.4.0` per that proposal's analysis, quoted not re-measured) against our 65 committed `28.4.0` models. Those requirements collide across a format boundary, so "the same sources" needs defining first — dual-format fixtures, or an out-of-band migration whose output is pinned as a fixture.
+**One route stays forbidden regardless.** The abandoned attempt scanned the wider machine Gradle cache and found facade jars for "30.7.1, 31.1.0 and 31.1.1" *(its measurement, quoted)* while conceding "a cached facade is not a verified transitive closure" and advertising no second profile. Machine-scanning for A12 releases is ruled out by [CLAUDE.md](../CLAUDE.md)'s sourcing rule; the sibling is the only admissible origin, and it defines the single version.
 
 ### Decisions to resolve during A
 
@@ -271,7 +258,7 @@ Each implementation task records: the frozen behavior/family set, source/test ow
 | Shared behavior and Java compatibility | Retained Java tests and applicable compiled API checks; designated-façade dependency and targeted mutation controls prove both consumers use the shared predicate |
 | A12 decision/classification | Independent pinned Kernel calls in `:adapter`, using original canonical inputs; portable module tests remain Kernel-free |
 | Truthful report and coverage | Common tests with explicit expected findings/gaps; controls for skipped checks, first-error short circuit, lost attribution, failed prerequisites and unsupported input. Full report projection repeats through F consumers |
-| Profile manifest ↔ implementation registry ↔ executed witnesses | A defines the finite mapping; F owns the CI reconciliation and M extends it for the second profile. Controls must fail when a manifest claims an unregistered check or a required witness has no execution evidence. Runtime completeness tests must also fail when a required profile check is skipped, even if the remaining checks pass |
+| Profile manifest ↔ implementation registry ↔ executed witnesses | A defines the finite mapping and F owns the CI reconciliation. Controls must fail when a manifest claims an unregistered check or a required witness has no execution evidence. Runtime completeness tests must also fail when a required profile check is skipped, even if the remaining checks pass |
 | Source fidelity and reuse | Instrument the checker parser/expansion owner for self-contained, repeated-mount, malformed and all computation-fragment cases; repeat queries and old snapshots must retain their contract |
 | Standalone ownership | Compiled/installed closure plus complete shipped-file/provenance enumeration, in both directions, with forbidden-dependency/file positive controls; external consumers run without the other core or Kernel |
 | Engine identity | F1's actual invocation and substitution controls; derive receipts from resolved published implementation identity, preserving requested engine and failure stage. Verify JVM/native artifacts, not backend presence alone |
