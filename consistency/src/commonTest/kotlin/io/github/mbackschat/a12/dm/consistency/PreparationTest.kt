@@ -183,6 +183,30 @@ class PreparationTest {
         )
     }
 
+    /**
+     * The discriminator decides descent, not the presence of an `elements` array: the Kernel's reader
+     * switches on `type` and only its `Group` arm has children, so a non-group envelope carrying that key
+     * declares nothing. Without this case a checker that descended into any envelope holding `elements`
+     * passes every other test here, because no real fixture puts the key anywhere else.
+     */
+    @Test
+    fun onlyAGroupDeclaresChildrenEvenIfAnotherEnvelopeCarriesTheKey() {
+        val prepared = prepared(
+            """
+            {"header":{"id":"order"},"content":{"modelRoot":{"rootGroups":[
+              {"type":"Group","id":"/Order","name":"Order","Group":{"elements":[
+                {"type":"Field","id":"/Order/Code","name":"Code","Field":{"elements":[
+                  {"type":"Field","id":"/Order/Code/Nested","name":"Nested","Field":{}}
+                ]}}
+              ]}}
+            ]}}}
+            """.trimIndent(),
+        )
+
+        assertEquals(listOf("/Order", "/Order/Code"), prepared.elements.map { it.path })
+        assertEquals(emptyList(), prepared.diagnostics)
+    }
+
     @Test
     fun preparationReadsWhetherTheModelAllowsShortNameFieldReferences() {
         fun flagOf(modelConfig: String) = prepared(
