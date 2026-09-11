@@ -79,6 +79,29 @@ Enumerated with `git grep -l <symbol> -- '*/src/main/*' '*/src/commonMain/*'` fo
 
 **`ParsedModel` has no test file naming it**, so its behavior is covered indirectly — through `UndeclaredReferenceTest` and the interpreter's own lanes. That is a recall limit of the by-name search, not evidence that it is untested; B1 must identify its actual coverage owner before relying on it.
 
+### A1 — method finding: the legacy exclusion is per-SITE, not per-code (measured 2026-09-12)
+
+Under the conformance rule the 60 erased rows split into 52 that are **in scope by default** — needing no evidence, since exclusion is what requires it — and 8 whose ledger cell claims legacy/H-model. Only those 8 need work.
+
+**A package-path heuristic looked like it would settle them, and a control refuted it.** The kernel separates legacy checks structurally (`…/check/bedingung/hdv/…`, `CheckAnzahlAngegebenOpHModelImpl`), so "every site under `/hdv/` or named `HModel`" was the obvious mechanical criterion. Measured with `grep -rl <code> a12-kernel --include='*.java'`, excluding `/build/` and the three enum declaration files:
+
+| Code | Files | Under `hdv`/`HModel` |
+|---|---|---|
+| `MVK_CONDITION_WITH_WILDCARD` | 1 | 1 |
+| `MVK_INVALID_ROOT_GROUP_CONSTR` | 2 | 2 |
+| `MVK_CONDITION_WITHOUT_REPEATABLE_ROOTGROUP` | 2 | 1 |
+| `MVK_DIFFERENT_ROOT_GROUPS` | 3 | 2 |
+| `MVK_INVALID_PARAMS_FOR_OP` | 3 | 2 |
+| `MVK_INVALID_UNSPECIFIED_TYPE` | 1 | **0** |
+| *control* `MVK_INVALID_ENTITY` (in scope) | 3 | **1** |
+| *control* `MVK_FIELDNAME_NOT_UNIQUE` (in scope) | 1 | 0 |
+
+Two rows kill the criterion. `MVK_INVALID_UNSPECIFIED_TYPE` is called "legacy-only" by the ledger and has **no** `hdv` file at all; `MVK_INVALID_ENTITY` is squarely in scope — it is §3.4's own worked witness — and **has** one. So the heuristic both over- and under-matches.
+
+**The finding is that the unit of disposition is the firing SITE, not the code.** Most of these codes are referenced from several files, and a code can be raised from a legacy path and a live one. [Proposal §7](PORTABLE-CONSISTENCY-PROPOSAL.md#7-implementation-slices-and-finite-acceptance-matrices) already says one code can represent several laws firing from several sources; this measures it. A1 therefore reads each candidate's sites individually, and the ledger's "legacy-only" prose is a lead rather than a basis.
+
+**Recall limits.** `grep -rl` counts **files mentioning the token**, not firing sites: a file may reference a code without raising it, and an indirection through a constant would not be matched. No check implementation body has been read yet, so no row above is dispositioned — this measures only that the cheap criterion fails.
+
 ### Checker-owned types (decided 2026-09-11)
 
 With no neutral leaf, the checker owns every type on its own side of the boundary. Named here so the closure and shipped-file guards have a list to check rather than a judgement to make.
