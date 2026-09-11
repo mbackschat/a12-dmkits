@@ -225,6 +225,16 @@ Both resolvers were read in full. They are the same rule over different fact sou
 
 **Two constraints B1 inherits from this reading.** The shared resolver must not force eager construction of the short-name map — `ConditionBridge` builds it lazily on first fallback use, and an eager shared owner would add that cost to every bridge construction. And B1's contract requires explicit resolved/missing/ambiguous outcomes while both current callers deliberately collapse ambiguity and absence into the candidate, which is the measured kernel-compatible behaviour; so B1 widens the shared **result type** and leaves each existing caller's collapsing projection intact, rather than changing what either caller does.
 
+### Stage-1 freezes (2026-09-12)
+
+**First implementation family: reference binding (B1).** Its cases are [proposal §3.4](PORTABLE-CONSISTENCY-PROPOSAL.md#34-reuse-existing-static-reference-checking-distinguish-it-from-execution-preparation)'s four rows plus declaring-group precedence, relative and absolute references, and applicable indexed/category references. Fixture authoring follows [ShortNameTierLawsTest](../src/test/java/io/github/mbackschat/a12/dm/rulekit/validate/laws/ShortNameTierLawsTest.java), which builds through `DocumentModelDraft` and carries **raw bare-name condition strings on purpose**, because the claim is about a path form the typed renderer never emits — exactly the typed-valid-model-plus-minimal-raw-mutation discipline A4 requires.
+
+**One fixture gap blocks B0's positive control.** §3.4's four-row model is **not committed**: `git ls-files` finds no `StaticReferenceReviewProbe`, and the proposal already records that probe as session evidence rather than a regression lock. So B0 must land that model as an A4 corpus consistency case before it can assert row 2 — the matrix's only Kernel *acceptance* row, and the one the [testing spec](TESTING-SPEC.md)'s all-refusals argument makes mandatory.
+
+**Performance workload identities: the existing four.** `interpreter/build.gradle` defines `performanceModelFixtures` as `B1`, `B2`, `MANY_RULES_48` and `MANY_RULES_192`, authored once through modelkit/`EditSession`/rulekit in `:adapter`, committed, then inlined into KMP test source by `generatePerformanceFixtureSource`. Those four names are the frozen workload identities, and the checker's rows attach to them rather than to a new set.
+
+**Why not select workloads from the committed corpus.** Measured: `corpus/models` clusters at 23.6–24.0 KB across its files, with no spread along declaration count or include depth. It is a case-per-model tree, not a size ladder, so it cannot supply the scaling axis `MANY_RULES_48` → `MANY_RULES_192` already provides.
+
 ### A3 record — second profile basis (measured 2026-09-12)
 
 **The second profile is `31.1.0`, and its source is already in the sibling — owner-approved 2026-09-12 because the sibling's remote is the public GitHub repository.** Measured by ref position only (`git log --oneline -1`, `git rev-list --count`), reading commit subjects rather than any `2026-ext0` file content:
