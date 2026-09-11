@@ -153,6 +153,26 @@ A Node consumer cannot read Java source at all, which is precisely the condition
 
 **Recall limits.** 25 and 52 are counts of distinct `MVK_*` tokens and of four-space-indented enum constants in those two files; neither is a verified count of the distinct codes each source ultimately *serves*, and the applicable-subset boundary is settled by the filter above rather than by these totals.
 
+### Constraint/profile denominator (measured 2026-09-12, disposition partial)
+
+**The denominator is bounded and enumerated at source level.** Counted by section from [MVK-LEDGER](MVK-LEDGER.md) and by disposition column from [GRAMMAR-LEDGER](GRAMMAR-LEDGER.md):
+
+| Source | Entries | In this profile? |
+|---|---|---|
+| `ParserErrorTypesEnum` — condition and expression parsing | 176 | **yes** — rules and computations |
+| `CalculationErrorType` — computations | 18 | **yes** |
+| `FehlertextErrorType` — error text | 1 | **yes** — the scope validates relevant messages |
+| `MM_Common` — metamodel structure | 105 | **no** — structure is context, not subject matter |
+| Grammar productions: 46 `rendered`, 22 `plumbing`, 16 `legacy`, 3 `entry`, 2 `directive` | 89 | the 16 `legacy` are the grammar-side counterpart of A1's exclusion, and GRAMMAR-LEDGER owns that bucket's definition |
+| `NoMetaModelCheckErrorType` — codegen | 26 *(proposal's figure, not re-derived)* | **applicable subset yes** — `CodeGenerationRule.checkModel` calls `generateValidationCode`, so these surface when checking a stored model |
+| `DynEnumErrorType` — dynamic-enum derivation | 12 *(proposal's figure, not re-derived)* | **candidate exclusion** — a separate derivation service, dispositioned in its own right rather than by absence from the four-source ledger |
+
+The rule/computation MVK denominator is therefore **195 rows** (176 + 18 + 1), and 195 + 105 reconciles with the ledger's documented 300.
+
+**Disposition is partial, and that is the finding rather than an omission.** A1 dispositioned the 60-row erased bucket per firing site. The remaining **135** in-scope rows carry ledger dispositions written to answer a different question — whether rulekit's typed API can author the shape — so each needs the same per-site treatment against "can this fire for an A12 model's rules or computations". Until they do, no complete coverage claim is available, which is exactly what this record's exit oracle requires.
+
+**A code count is not a law count, and A1 measured why.** `MVK_INVALID_PARAMS_FOR_OP` is raised from three call sites, one legacy and one not; `MVK_CONDITION_WITHOUT_REPEATABLE_ROOTGROUP` is raised from a general utility whose only caller is legacy. So the 195 is a bound on *entries to disposition*, never a count of laws or of checks to implement, and the frozen implementation families in C/D/E take their size from measured law families rather than from this number.
+
 ### A1 — erased-bucket disposition (per-site, measured 2026-09-12)
 
 **Result: 55 of 60 in scope, 5 excluded as legacy.** The 52 rows with no legacy claim are in by default under the conformance rule. Of the 8 that claimed legacy, five survive the claim and three do not. Every disposition below cites the firing site read; sites are in `a12-kernel/kernel-tool/kernel-core-parser` unless noted.
