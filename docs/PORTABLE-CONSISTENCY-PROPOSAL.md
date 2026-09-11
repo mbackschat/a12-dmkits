@@ -6,6 +6,8 @@
 
 **Lifecycle.** As each required slice ships, graduate its public contract into the owning specifications in the same commit. Archive this proposal once all required slices and the final availability gate N are complete, retaining it as the design/evidence record under the [documentation lifecycle](DOC-DISCIPLINE.md).
 
+The [implementation plan](PORTABLE-CONSISTENCY-IMPLEMENTATION-PLAN.md) sequences the reviewed slices, their prerequisites and review checkpoints. The acceptance matrices below remain the product contract.
+
 ## 1. User requirements and the decision being proposed
 
 The requested operation is: **given a DocumentModel containing rules and/or computations, determine whether those declarations are valid under A12's authoring semantics.** The user explicitly excludes executing rules against Documents: this is model consistency checking, not data validation.
