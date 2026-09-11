@@ -1,30 +1,32 @@
 package io.github.mbackschat.a12.dm.consistency
 
+import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
-import kotlinx.serialization.json.boolean
-import kotlinx.serialization.json.jsonArray
-import kotlinx.serialization.json.jsonObject
-import kotlinx.serialization.json.jsonPrimitive
 
 /**
  * One declared element of a DocumentModel, as the model declares it.
  *
- * [path] is the element's `id` verbatim: A12 stores the canonical path there, so the checker reads paths and
- * never assembles them. [kind] is the `type` discriminator verbatim rather than a checker-side enum, so a
- * kind this build does not handle stays a located declaration instead of a silently dropped one.
+ * [path] is the element's canonical path — the join of the `name` segments from the root, which is the
+ * Kernel's own `getFullName()` and the thing a condition references. It is deliberately NOT the element's
+ * [id]: `id` is an **opaque identifier** in a disjoint namespace, equal to the path only in fixtures we
+ * authored ourselves. Real models carry hash ids, and keying by `id` resolved ~0% of a foreign model's rule
+ * references before `ModelIndex` was re-keyed by the name-path (KERNEL-INTEGRATION-NOTES, "`getId()` is an
+ * *opaque identifier*, NOT the path").
  *
- * @param declaration the kind's own authored envelope, retained unchanged and absent when the model omits it
- *     (which the kernel's reader permits). It is kept whole rather than projected into per-kind fields so an
- *     invalid declaration stays inspectable and no parallel A12 model is invented; the phase that needs a
- *     projection derives one.
+ * @param kind the `type` discriminator verbatim, matched case-sensitively wherever it is interpreted, since
+ *     the Kernel's own reader switches on the exact spelling.
+ * @param declaration the whole authored element node, retained unchanged — envelope, annotations and
+ *     descriptions alike. Keeping the node rather than projecting per-kind fields is what lets an invalid
+ *     declaration stay inspectable without inventing a parallel A12 model.
  */
 data class DeclaredElement(
     val path: String,
     val name: String,
     val kind: String,
-    val declaration: JsonObject? = null,
+    val id: String?,
+    val declaration: JsonObject,
 )
 
 /**
@@ -33,8 +35,8 @@ data class DeclaredElement(
  * @param fieldRefByShortNameAllowed the model's `content.modelConfig.fieldRefByShortNameAllowed`. It decides
  *     whether a bare reference the declaring group does not have may resolve to a unique model-wide field
  *     short name, so reference resolution cannot be done without it.
- * @param diagnostics declarations the checker could not read. Preparation reports and skips them rather than
- *     failing, so one broken element cannot mask its siblings' findings.
+ * @param diagnostics what the checker could not read. Preparation reports and skips rather than failing, so
+ *     one broken element cannot mask its siblings' findings — and no input makes [prepare] raise.
  */
 data class PreparedModel(
     val elements: List<DeclaredElement>,
@@ -43,15 +45,17 @@ data class PreparedModel(
 )
 
 /**
- * The four element kinds the kernel's `ElementDeserializer` switch admits; any other `type` is its
- * `IllegalArgumentException`. Only [GROUP] carries children, which is why descent is decided by the
- * discriminator and not by whichever envelope happens to hold an `elements` array.
+ * The four element kinds the Kernel's `ElementDeserializer` switch admits; any other `type` is its
+ * `IllegalArgumentException` on the whole source. Only [GROUP] carries children, which is why descent is
+ * decided by the discriminator and not by whichever envelope happens to hold an `elements` array.
  */
-private enum class DeclaredKind {
-    FIELD, GROUP, RULE, COMPUTATION;
+private enum class DeclaredKind(val wire: String) {
+    FIELD("Field"), GROUP("Group"), RULE("Rule"), COMPUTATION("Computation");
 
     companion object {
-        fun of(type: String): DeclaredKind? = entries.firstOrNull { it.name == type.uppercase() }
+        /** Matched on the wire spelling, because the Kernel's switch is case-SENSITIVE: `"group"` hits its
+         *  `default:` arm and makes the whole source unreadable, where `"Group"` is a group. */
+        fun of(type: String): DeclaredKind? = entries.firstOrNull { it.wire == type }
     }
 }
 
@@ -59,12 +63,11 @@ private enum class DeclaredKind {
 fun prepare(admitted: Admission.Admitted): PreparedModel {
     val content = (admitted.parsed as? JsonObject)?.get("content") as? JsonObject
     val collector = Collector(admitted.source.modelId)
-    (content?.get("modelRoot") as? JsonObject)?.get("rootGroups")?.jsonArray
-        ?.forEach { collector.collect(it, enclosing = null) }
+    val root = (content?.get("modelRoot") as? JsonObject)?.get("rootGroups")
+    collector.each(root, at = null, what = "content.modelRoot.rootGroups") { collector.collect(it, "", null) }
     return PreparedModel(
         elements = collector.elements,
-        fieldRefByShortNameAllowed = (content?.get("modelConfig") as? JsonObject)
-            ?.get("fieldRefByShortNameAllowed")?.jsonPrimitive?.boolean ?: false,
+        fieldRefByShortNameAllowed = collector.flag(content),
         diagnostics = collector.diagnostics,
     )
 }
@@ -73,26 +76,57 @@ private class Collector(private val modelId: String) {
     val elements = mutableListOf<DeclaredElement>()
     val diagnostics = mutableListOf<Diagnostic>()
 
-    /** @param enclosing the nearest readable ancestor path, used to locate a declaration that cannot name itself. */
-    fun collect(node: JsonElement, enclosing: String?) {
+    /**
+     * @param parentPath the enclosing element's canonical path, which this element's `name` extends.
+     * @param enclosing the nearest path that could be derived, used to locate a declaration too broken to
+     *     name itself.
+     */
+    fun collect(node: JsonElement, parentPath: String, enclosing: String?) {
         val element = node as? JsonObject ?: return malformed(enclosing, "a declaration must be a JSON object")
         val kind = element.text("type")
-            // Without `type` the envelope cannot be found either — the one failure that does hide children.
-            ?: return malformed(enclosing, "a declaration must carry its `type` discriminator")
-        val envelope = element[kind] as? JsonObject
-        val path = element.text("id")
         val name = element.text("name")
-        if (path == null || name == null) {
-            malformed(enclosing, "a declaration must carry both `id` and `name`")
-        } else {
-            elements += DeclaredElement(path, name, kind, envelope)
+        // `type` names the envelope and `name` places the subtree, so a declaration missing either cannot be
+        // descended into. `id` is not in that set: it identifies the element but no longer locates it.
+        if (kind == null || name == null) {
+            return malformed(enclosing, "a declaration must carry both `type` and `name`")
         }
+        val path = "$parentPath/$name"
+        val id = element.text("id")
+        if (id == null) {
+            malformed(path, "a declaration must carry an `id`")
+        }
+        elements += DeclaredElement(path, name, kind, id, element)
         when (DeclaredKind.of(kind)) {
-            // Descend even from a declaration we could not read: its children name themselves, and dropping
-            // a subtree would turn one broken header into a silent hole in the analysis.
-            DeclaredKind.GROUP -> envelope?.get("elements")?.jsonArray
-                ?.forEach { collect(it, enclosing = path ?: enclosing) }
-            DeclaredKind.FIELD, DeclaredKind.RULE, DeclaredKind.COMPUTATION, null -> Unit
+            DeclaredKind.GROUP -> each(element[kind]?.get("elements"), path, "$path's `elements`") {
+                collect(it, path, path)
+            }
+            // An unrecognized `type` makes the whole source unreadable to the Kernel, so it is reported here
+            // rather than passing as an inert declaration this build merely does not handle.
+            null -> malformed(path, "`$kind` is not an A12 element type")
+            DeclaredKind.FIELD, DeclaredKind.RULE, DeclaredKind.COMPUTATION -> Unit
+        }
+    }
+
+    /** Iterate a member that must be an array, diagnosing rather than raising when it is not. */
+    fun each(value: JsonElement?, at: String?, what: String, body: (JsonElement) -> Unit) {
+        when (value) {
+            null -> Unit
+            is JsonArray -> value.forEach(body)
+            else -> malformed(at, "$what must be a JSON array")
+        }
+    }
+
+    /** `fieldRefByShortNameAllowed`, absent or unreadable meaning off — never a raised conversion. */
+    fun flag(content: JsonObject?): Boolean {
+        val declared = (content?.get("modelConfig") as? JsonObject)?.get("fieldRefByShortNameAllowed")
+            ?: return false
+        return when ((declared as? JsonPrimitive)?.takeIf { !it.isString }?.content) {
+            "true" -> true
+            "false" -> false
+            else -> {
+                malformed(null, "`fieldRefByShortNameAllowed` must be a JSON boolean")
+                false
+            }
         }
     }
 
@@ -101,4 +135,7 @@ private class Collector(private val modelId: String) {
     }
 }
 
-private fun JsonObject.text(key: String): String? = (this[key] as? JsonPrimitive)?.takeIf { it.isString }?.content
+private fun JsonObject.text(key: String): String? =
+    (this[key] as? JsonPrimitive)?.takeIf { it.isString }?.content
+
+private operator fun JsonElement?.get(key: String): JsonElement? = (this as? JsonObject)?.get(key)

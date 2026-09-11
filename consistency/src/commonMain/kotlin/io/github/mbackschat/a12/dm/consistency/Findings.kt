@@ -25,6 +25,10 @@ enum class FindingCategory {
 /**
  * A finding's severity — the Kernel's own three levels, mirrored rather than imported so this module keeps
  * no project dependency (the same treatment [ModelSource] gets). `dm.core.Severity` is the Java-side peer.
+ *
+ * **Declaration order is load-bearing**, because A12's own enum says so: its `Severity` carries the comment
+ * that "the order of the severities in this enum is important since ordinal() is used to compare two of
+ * them". Comparing two of ours must mean the same thing, so the order is locked rather than incidental.
  */
 enum class FindingSeverity {
     INFO,
@@ -48,8 +52,13 @@ data class Finding(
 ) {
     /**
      * Whether this finding alone makes the model invalid: a measured A12 constraint, violated at ERROR.
-     * Both halves are load-bearing — the Kernel's consistency check rejects on ERROR notifications alone,
-     * and the other two categories are ours rather than A12's.
+     *
+     * Both halves are load-bearing, and the ERROR half is **our** threshold rather than the Kernel's:
+     * `checkConsistency` returns `void` and emits a notification stream, so it expresses no rejection at all.
+     * Every dmkits consumer draws the line at ERROR — `dm.core.ModelLoader` filters
+     * `severity() == Severity.ERROR`, and `rulekit.ValidationResult.ok()` is `noneMatch(ERROR)` — and this
+     * agrees with them deliberately. Whether A12 itself treats a WARNING-only model as acceptable is not
+     * measured here; that would be an `:adapter` probe.
      */
     val justifiesRejection: Boolean
         get() = category == FindingCategory.A12_CONSTRAINT && severity == FindingSeverity.ERROR
@@ -64,7 +73,11 @@ data class Finding(
  * earns it, and [complete] becomes derived at the same time.
  */
 sealed interface ConsistencyStatus {
-    /** Whether every required check for this input and profile completed. */
+    /**
+     * Whether every required check for this input and profile completed. Constant `false` today because no
+     * required check family is implemented, so it carries no information yet and cannot distinguish one
+     * reason for incompleteness from another — the coverage evidence that makes it informative is F's report.
+     */
     val complete: Boolean
 
     /** At least one measured A12 acceptance constraint is violated; other portions may be unexamined. */

@@ -24,16 +24,28 @@ class AdmissionRetentionTest {
     }
 
     /**
-     * The discriminating case for the read-path fidelity contract: a bound's authored scale must survive.
-     * A parse that decoded through a binary double would yield "250.0" here, and the trailing zero would be
-     * unrecoverable downstream — the loss happens at parse time, upstream of any check that needs it.
+     * The discriminating case for the read-path fidelity contract, on the carrier that actually holds a
+     * bound: a `NumberType`'s `maxValue`. A parse that decoded through a binary double would yield "250.0"
+     * here, and the trailing zero would be unrecoverable downstream — the loss happens at parse time,
+     * upstream of any check that needs it. The fixture uses A12's real envelope rather than an invented
+     * `config`/`max` pair, so it also fails if that shape is ever mis-navigated.
      */
     @Test
     fun aNumericFieldConfigurationKeepsItsAuthoredScale() {
-        val outcome = admit(ModelSource(modelId = "order", json = """{"config":{"max":250.00}}"""))
+        val json = """
+            {"header":{"id":"order"},"content":{"modelRoot":{"rootGroups":[
+              {"type":"Group","id":"/Order","name":"Order","Group":{"elements":[
+                {"type":"Field","id":"/Order/Total","name":"Total","Field":{"fieldType":{
+                  "type":"NumberType","NumberType":{"minValue":0.00,"maxValue":250.00}}}}
+              ]}}
+            ]}}}
+        """.trimIndent()
 
-        val admitted = assertIs<Admission.Admitted>(outcome)
-        val max = admitted.parsed.jsonObject["config"]!!.jsonObject["max"]!!.jsonPrimitive.content
-        assertEquals("250.00", max)
+        val admitted = assertIs<Admission.Admitted>(admit(ModelSource(modelId = "order", json = json)))
+        val numberType = prepare(admitted).elements.single { it.kind == "Field" }
+            .declaration["Field"]!!.jsonObject["fieldType"]!!.jsonObject["NumberType"]!!.jsonObject
+
+        assertEquals("250.00", numberType["maxValue"]!!.jsonPrimitive.content)
+        assertEquals("0.00", numberType["minValue"]!!.jsonPrimitive.content)
     }
 }

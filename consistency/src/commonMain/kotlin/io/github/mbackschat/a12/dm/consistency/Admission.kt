@@ -1,5 +1,6 @@
 package io.github.mbackschat.a12.dm.consistency
 
+import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonElement
 
@@ -34,13 +35,16 @@ enum class DiagnosticCode {
 
 /**
  * @param at the declared path this concerns, when there is one — absent for a whole-source diagnostic, and
- *     for a declaration too broken to name itself it is the nearest declared ancestor.
+ *     for a declaration too broken to name itself it is the nearest path that could be derived.
+ * @param diagnosticLabel the source's caller-supplied label, carried through so a consumer can name the file
+ *     a finding came from rather than only the model it was attributed to.
  */
 data class Diagnostic(
     val code: DiagnosticCode,
     val modelId: String,
     val explain: String,
     val at: String? = null,
+    val diagnosticLabel: String? = null,
 )
 
 /**
@@ -64,16 +68,27 @@ sealed interface Admission {
  * That is a requirement rather than a convenience: a field configuration's bound or scale must reach a check
  * exactly as authored, and a parse that normalized `250.00` to a binary double would lose it irrecoverably
  * (PORTABLE-CONSISTENCY-PROPOSAL B3, "the applicable JSON fidelity contract on the read path").
+ *
+ * **Comments are admitted because A12 admits them.** Both Kernel mappers are built with
+ * `JsonParser.Feature.ALLOW_COMMENTS` (`ObjectMapperProvider.createPreconfiguredObjectMapper`, and again for
+ * the document serializer), so a commented model is a legal A12 artifact its own tooling round-trips —
+ * refusing one would make a readable file unreadable here. Nothing else is relaxed: neither mapper enables
+ * `ALLOW_TRAILING_COMMA`, so a trailing comma stays a parse error. This is a parity decision, never a
+ * be-forgiving one, and it mirrors `:interpreter`'s `A12_JSON` rather than inventing a second policy.
  */
+@OptIn(ExperimentalSerializationApi::class)
+private val A12_JSON: Json = Json { allowComments = true }
+
 fun admit(source: ModelSource): Admission =
     try {
-        Admission.Admitted(source, Json.parseToJsonElement(source.json))
+        Admission.Admitted(source, A12_JSON.parseToJsonElement(source.json))
     } catch (notWellFormed: IllegalArgumentException) {
         Admission.Rejected(
             Diagnostic(
                 code = DiagnosticCode.SOURCE_NOT_WELL_FORMED,
                 modelId = source.modelId,
                 explain = notWellFormed.message ?: "the source is not well-formed JSON",
+                diagnosticLabel = source.diagnosticLabel,
             ),
         )
     }

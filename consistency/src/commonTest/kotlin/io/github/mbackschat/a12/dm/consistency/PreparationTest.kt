@@ -5,182 +5,194 @@ import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertIs
 import kotlin.test.assertTrue
+import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 
 /**
  * B3's minimum for references: the declared element set and the one model-config flag reference resolution
- * needs, both READ from the model rather than reconstructed.
+ * needs, both read from the model rather than reconstructed — plus B2's two retention cases.
  *
- * A12 gives every element an `id` that already IS its canonical path, and declares its kind twice — as the
- * `type` discriminator and as the key of the envelope holding the kind's own payload. The kernel's
- * `ElementDeserializer` reads `type` first and then looks the envelope up BY that value, so `type` is the
- * discriminator and envelope-by-elimination is not the kernel's mechanism (KERNEL-INTEGRATION-NOTES "A model
- * element declares its kind twice").
+ * A12 declares an element's kind twice, as the `type` discriminator and as the key of the envelope holding
+ * the kind's payload; the Kernel's `ElementDeserializer` reads `type` first and looks the envelope up BY its
+ * value, so `type` is the discriminator and envelope-by-elimination is not the mechanism.
  */
 class PreparationTest {
 
     private fun prepared(json: String): PreparedModel =
-        prepare(assertIs<Admission.Admitted>(admit(ModelSource("order", json))))
+        prepare(assertIs<Admission.Admitted>(admit(ModelSource("m", json))))
 
-    private val twoLevelModel = """
-        {"header":{"id":"order"},"content":{"modelRoot":{"rootGroups":[
-          {"type":"Group","id":"/Order","name":"Order","Group":{"repeatability":1,"elements":[
-            {"type":"Field","id":"/Order/Code","name":"Code","Field":{}},
-            {"type":"Group","id":"/Order/Lines","name":"Lines","Group":{"repeatability":9,"elements":[
-              {"type":"Field","id":"/Order/Lines/Qty","name":"Qty","Field":{}}
-            ]}}
+    /** Prepare a model whose `content.modelRoot.rootGroups` is exactly [rootGroups]. */
+    private fun preparedRoots(rootGroups: String): PreparedModel = prepared(model(rootGroups))
+
+    private fun model(rootGroups: String, modelConfig: String = "") =
+        """{"header":{"id":"m"},"content":{$modelConfig"modelRoot":{"rootGroups":[$rootGroups]}}}"""
+
+    private val twoLevel = model(
+        """
+        {"type":"Group","id":"/Order","name":"Order","Group":{"repeatability":1,"elements":[
+          {"type":"Field","id":"/Order/Code","name":"Code","Field":{}},
+          {"type":"Group","id":"/Order/Lines","name":"Lines","Group":{"repeatability":9,"elements":[
+            {"type":"Field","id":"/Order/Lines/Qty","name":"Qty","Field":{}}
           ]}}
-        ]}}}
-    """.trimIndent()
+        ]}}
+        """,
+    )
 
     @Test
     fun preparationCollectsEveryDeclaredElementWithItsPathAndAuthoredKind() {
-        val prepared = prepared(twoLevelModel)
+        val prepared = prepared(twoLevel)
 
         assertEquals(
             listOf("/Order", "/Order/Code", "/Order/Lines", "/Order/Lines/Qty"),
             prepared.elements.map { it.path },
         )
-        assertEquals(
-            listOf("Group", "Field", "Group", "Field"),
-            prepared.elements.map { it.kind },
-        )
+        assertEquals(listOf("Group", "Field", "Group", "Field"), prepared.elements.map { it.kind })
+        assertEquals(emptyList(), prepared.diagnostics)
     }
 
     /**
-     * The discriminating case against building paths from the tree walk: an element whose `name` differs from
-     * its `id`'s last segment. Concatenating names would report `/Order/Renamed` and resolve every reference
-     * to it wrongly.
+     * The discriminating case, and it runs the opposite way from the obvious reading: `id` is an OPAQUE
+     * identifier and the canonical path is the join of `name` segments — the Kernel's own `getFullName()`
+     * (`DocumentModelVisitorWithFullNames:56` appends `getName()`), which is what a condition references and
+     * what `ModelIndex` keys on. Real models carry hash ids; reading `id` as a path resolved ~0% of a foreign
+     * model's references before `ModelIndex` was re-keyed by the name-path (KERNEL-INTEGRATION-NOTES,
+     * "`getId()` is an *opaque identifier*, NOT the path"). This fixture reuses the shape of the committed
+     * counterexample `src/test/resources/models/idmismatch.dm.json`, whose absence from a fixture sweep is
+     * exactly what once made the two readings indistinguishable.
      */
     @Test
-    fun theDeclaredPathComesFromIdRatherThanFromConcatenatedNames() {
-        val field = prepared(
-            """
-            {"header":{"id":"order"},"content":{"modelRoot":{"rootGroups":[
-              {"type":"Group","id":"/Order","name":"Order","Group":{"elements":[
-                {"type":"Field","id":"/Order/Code","name":"Renamed","Field":{}}
-              ]}}
-            ]}}}
-            """.trimIndent(),
-        ).elements.single { it.kind == "Field" }
+    fun theDeclaredPathIsTheJoinOfNamesAndNotTheOpaqueId() {
+        val prepared = prepared(
+            model(
+                """
+                {"type":"Group","id":"3b16e188fc65d64190ea4482a0336341","name":"Catalog","Group":{"elements":[
+                  {"type":"Field","id":"b4c8890281890d66c079e5ccb2ae0b7a","name":"Sku","Field":{}},
+                  {"type":"Group","id":"914eee50e04ba99a659a9ffa3661433d","name":"Warehouse","Group":{"elements":[
+                    {"type":"Field","id":"5f0d1c2b3a49586778695a4b3c2d1e0f","name":"OnHand","Field":{}}
+                  ]}}
+                ]}}
+                """,
+            ),
+        )
 
-        assertEquals("/Order/Code", field.path)
-        assertEquals("Renamed", field.name)
+        assertEquals(
+            listOf("/Catalog", "/Catalog/Sku", "/Catalog/Warehouse", "/Catalog/Warehouse/OnHand"),
+            prepared.elements.map { it.path },
+        )
+        assertEquals("b4c8890281890d66c079e5ccb2ae0b7a", prepared.elements[1].id, "the id is kept, not discarded")
+    }
+
+    /** Two root groups are legal, and preparing only the first would silently empty half the fact base. */
+    @Test
+    fun everyRootGroupIsPrepared() {
+        val prepared = preparedRoots(
+            """
+            {"type":"Group","id":"/Header","name":"Header","Group":{"elements":[
+              {"type":"Field","id":"/Header/Ref","name":"Ref","Field":{}}
+            ]}},
+            {"type":"Group","id":"/Body","name":"Body","Group":{"elements":[
+              {"type":"Field","id":"/Body/Total","name":"Total","Field":{}}
+            ]}}
+            """,
+        )
+
+        assertEquals(listOf("/Header", "/Header/Ref", "/Body", "/Body/Total"), prepared.elements.map { it.path })
     }
 
     /**
      * The kind envelope is optional: `ElementDeserializer` default-constructs the element when the envelope
      * keyed by `type` is absent, so a declaration carrying only its discriminator and identity is one the
-     * kernel accepts and the checker must therefore see too.
+     * Kernel accepts and the checker must therefore see too.
      */
     @Test
     fun anElementWithoutItsKindEnvelopeIsStillADeclaredElement() {
-        val prepared = prepared(
-            """
-            {"header":{"id":"order"},"content":{"modelRoot":{"rootGroups":[
-              {"type":"Group","id":"/Order","name":"Order","Group":{"elements":[
-                {"type":"Field","id":"/Order/Code","name":"Code"}
-              ]}}
-            ]}}}
-            """.trimIndent(),
+        val prepared = preparedRoots(
+            """{"type":"Group","id":"/Order","name":"Order","Group":{"elements":[
+              {"type":"Field","id":"/Order/Code","name":"Code"}
+            ]}}""",
         )
 
         assertEquals(listOf("/Order", "/Order/Code"), prepared.elements.map { it.path })
+        assertEquals(emptyList(), prepared.diagnostics)
     }
 
     /**
-     * B2, "a parseable invalid declaration remains inspectable": preparation retains each declaration's own
-     * authored envelope verbatim, so a condition the grammar will reject is still there to be diagnosed and
-     * located. Retaining the envelope rather than projecting per-kind fields is deliberate — a checker-side
-     * record of the rule's parts would be the parallel A12 model the proposal's §5.3 forbids, and the phase
-     * that needs a projection can derive it.
+     * B2, "a parseable invalid declaration remains inspectable": the whole authored node is retained, so a
+     * condition the grammar will reject is still there to be diagnosed and located — and so are the members
+     * a per-kind projection would have dropped, like element-level `annotations`, which carry real A12 facts.
      */
     @Test
-    fun anInvalidDeclarationIsRetainedExactlyAsAuthored() {
-        val rule = prepared(
-            """
-            {"header":{"id":"order"},"content":{"modelRoot":{"rootGroups":[
-              {"type":"Group","id":"/Order","name":"Order","Group":{"elements":[
-                {"type":"Rule","id":"/Order/Bad","name":"Bad","Rule":{
-                  "errorCode":"BAD","errorEntityRelPath":"../Code",
-                  "errorCondition":"[NoSuchField] > ("}}
-              ]}}
-            ]}}}
-            """.trimIndent(),
+    fun anInvalidDeclarationIsRetainedWholeAndExactlyAsAuthored() {
+        val rule = preparedRoots(
+            """{"type":"Group","id":"/Order","name":"Order","Group":{"elements":[
+              {"type":"Rule","id":"/Order/Bad","name":"Bad",
+               "annotations":[{"name":"owner","value":"pricing"}],
+               "Rule":{"errorCode":"BAD","errorEntityRelPath":"../Code",
+                       "errorCondition":"[NoSuchField] > ("}}
+            ]}}""",
         ).elements.single { it.kind == "Rule" }
 
         assertEquals(
             "[NoSuchField] > (",
-            rule.declaration?.get("errorCondition")?.jsonPrimitive?.content,
+            rule.declaration["Rule"]?.jsonObject?.get("errorCondition")?.jsonPrimitive?.content,
             "the unparseable condition must survive preparation to be diagnosable",
         )
+        assertEquals(
+            "pricing",
+            rule.declaration["annotations"]?.jsonArray()?.get(0)?.jsonObject?.get("value")?.jsonPrimitive?.content,
+            "an element-level annotation is authored content, not envelope content",
+        )
     }
 
     /**
-     * B2, "independent declarations remain analyzable after a local failure". The kernel reads `id` and
-     * `name` unconditionally and crashes when either is absent; the checker's job is to diagnose that
-     * declaration and keep going, because aborting would hide every sibling's real error behind one typo.
+     * B2, "independent declarations remain analyzable after a local failure". `id` is required by the
+     * Kernel's reader, so its absence is a finding — but it no longer *locates* the element, so the
+     * declaration and its siblings are still prepared at their correct paths.
      */
     @Test
-    fun aDeclarationMissingItsIdentityIsDiagnosedWhileItsSiblingsStillPrepare() {
-        val prepared = prepared(
-            """
-            {"header":{"id":"order"},"content":{"modelRoot":{"rootGroups":[
-              {"type":"Group","id":"/Order","name":"Order","Group":{"elements":[
-                {"type":"Field","name":"Nameless","Field":{}},
-                {"type":"Field","id":"/Order/Code","name":"Code","Field":{}}
-              ]}}
-            ]}}}
-            """.trimIndent(),
+    fun aDeclarationMissingItsIdIsDiagnosedYetStillPlaced() {
+        val prepared = preparedRoots(
+            """{"type":"Group","id":"/Order","name":"Order","Group":{"elements":[
+              {"type":"Field","name":"Nameless","Field":{}},
+              {"type":"Field","id":"/Order/Code","name":"Code","Field":{}}
+            ]}}""",
         )
 
-        assertEquals(listOf("/Order", "/Order/Code"), prepared.elements.map { it.path })
-        assertEquals(
-            listOf(DiagnosticCode.DECLARATION_NOT_WELL_FORMED),
-            prepared.diagnostics.map { it.code },
-        )
-        assertEquals("/Order", prepared.diagnostics.single().at, "located at the nearest declared ancestor")
+        assertEquals(listOf("/Order", "/Order/Nameless", "/Order/Code"), prepared.elements.map { it.path })
+        assertEquals(listOf(DiagnosticCode.DECLARATION_NOT_WELL_FORMED), prepared.diagnostics.map { it.code })
+        assertEquals("/Order/Nameless", prepared.diagnostics.single().at)
     }
 
     /**
-     * The sharper half of the same case: the local failure is the CONTAINER's own header, so a checker that
-     * skipped the broken element would drop a whole subtree of sound declarations. Descent survives because
-     * `type` — the key that names the envelope — is readable; an unreadable `type` is the one failure that
-     * genuinely hides children, and it says so.
+     * `type` names the envelope and `name` places the subtree, so a declaration missing either cannot be
+     * descended into — the one failure that genuinely hides children, and it says so rather than passing.
      */
     @Test
-    fun aGroupWhoseOwnIdentityIsBrokenStillYieldsItsChildren() {
-        val prepared = prepared(
-            """
-            {"header":{"id":"order"},"content":{"modelRoot":{"rootGroups":[
-              {"type":"Group","name":"Order","Group":{"elements":[
-                {"type":"Field","id":"/Order/Code","name":"Code","Field":{}}
-              ]}}
-            ]}}}
-            """.trimIndent(),
-        )
-
-        assertEquals(listOf("/Order/Code"), prepared.elements.map { it.path })
-        assertEquals(1, prepared.diagnostics.size)
+    fun aDeclarationMissingItsTypeOrNameCannotBeDescendedInto() {
+        listOf(
+            """{"id":"/Order","name":"Order","Group":{"elements":[
+              {"type":"Field","id":"/Order/Code","name":"Code","Field":{}}]}}""",
+            """{"type":"Group","id":"/Order","Group":{"elements":[
+              {"type":"Field","id":"/Order/Code","name":"Code","Field":{}}]}}""",
+        ).forEach { rootGroup ->
+            val prepared = preparedRoots(rootGroup)
+            assertEquals(emptyList(), prepared.elements.map { it.path }, rootGroup)
+            assertEquals(listOf(DiagnosticCode.DECLARATION_NOT_WELL_FORMED), prepared.diagnostics.map { it.code })
+        }
     }
 
+    /** The nearest derived path locates a broken declaration, so a nested failure is not reported at the root. */
     @Test
-    fun aDeclarationWithoutAReadableKindCannotBeDescendedInto() {
-        val prepared = prepared(
-            """
-            {"header":{"id":"order"},"content":{"modelRoot":{"rootGroups":[
-              {"id":"/Order","name":"Order","Group":{"elements":[
-                {"type":"Field","id":"/Order/Code","name":"Code","Field":{}}
+    fun aBrokenDeclarationIsLocatedAtItsNearestDerivedAncestor() {
+        val prepared = preparedRoots(
+            """{"type":"Group","id":"/Order","name":"Order","Group":{"elements":[
+              {"type":"Group","id":"/Order/Lines","name":"Lines","Group":{"elements":[
+                {"type":"Field","id":"/Order/Lines/Qty"}
               ]}}
-            ]}}}
-            """.trimIndent(),
+            ]}}""",
         )
 
-        assertEquals(emptyList(), prepared.elements.map { it.path })
-        assertEquals(
-            listOf(DiagnosticCode.DECLARATION_NOT_WELL_FORMED),
-            prepared.diagnostics.map { it.code },
-        )
+        assertEquals("/Order/Lines", prepared.diagnostics.single().at)
     }
 
     /**
@@ -191,31 +203,67 @@ class PreparationTest {
      */
     @Test
     fun onlyAGroupDeclaresChildrenEvenIfAnotherEnvelopeCarriesTheKey() {
-        val prepared = prepared(
-            """
-            {"header":{"id":"order"},"content":{"modelRoot":{"rootGroups":[
-              {"type":"Group","id":"/Order","name":"Order","Group":{"elements":[
-                {"type":"Field","id":"/Order/Code","name":"Code","Field":{"elements":[
-                  {"type":"Field","id":"/Order/Code/Nested","name":"Nested","Field":{}}
-                ]}}
+        val prepared = preparedRoots(
+            """{"type":"Group","id":"/Order","name":"Order","Group":{"elements":[
+              {"type":"Field","id":"/Order/Code","name":"Code","Field":{"elements":[
+                {"type":"Field","id":"/Order/Code/Nested","name":"Nested","Field":{}}
               ]}}
-            ]}}}
-            """.trimIndent(),
+            ]}}""",
         )
 
         assertEquals(listOf("/Order", "/Order/Code"), prepared.elements.map { it.path })
         assertEquals(emptyList(), prepared.diagnostics)
     }
 
+    /**
+     * The Kernel's `type` switch is case-sensitive and its `default:` arm throws, making the whole source
+     * unreadable. Neither a mis-cased nor an unknown kind may pass as an inert declaration here, because
+     * that is the invisible direction: input A12 refuses, analysed by us without a word.
+     */
+    @Test
+    fun aKindA12DoesNotDeclareIsReportedRatherThanAccepted() {
+        listOf("group", "Section").forEach { type ->
+            val prepared = preparedRoots(
+                """{"type":"$type","id":"/Order","name":"Order","$type":{"elements":[]}}""",
+            )
+            assertEquals(
+                listOf(DiagnosticCode.DECLARATION_NOT_WELL_FORMED),
+                prepared.diagnostics.map { it.code },
+                type,
+            )
+        }
+    }
+
     @Test
     fun preparationReadsWhetherTheModelAllowsShortNameFieldReferences() {
-        fun flagOf(modelConfig: String) = prepared(
-            "{\"header\":{\"id\":\"order\"},\"content\":{" + modelConfig +
-                "\"modelRoot\":{\"rootGroups\":[]}}}",
-        ).fieldRefByShortNameAllowed
+        fun flagOf(modelConfig: String) = prepared(model("", modelConfig)).fieldRefByShortNameAllowed
 
         assertTrue(flagOf("\"modelConfig\":{\"fieldRefByShortNameAllowed\":true},"))
         assertFalse(flagOf("\"modelConfig\":{\"fieldRefByShortNameAllowed\":false},"))
         assertFalse(flagOf(""), "an absent modelConfig cannot enable the fallback")
     }
+
+    /**
+     * No shape of well-formed JSON may make preparation raise: the module advertises that it reports and
+     * skips what it cannot read, and an escaping exception is the one form the proposal forbids for an
+     * operational failure. Each input below reaches a different unguarded accessor.
+     */
+    @Test
+    fun noWellFormedSourceMakesPreparationRaise() {
+        listOf(
+            """{"header":{},"content":{"modelRoot":{"rootGroups":{}}}}""",
+            """{"header":{},"content":{"modelRoot":{"rootGroups":[7]}}}""",
+            model("""{"type":"Group","id":"/O","name":"O","Group":{"elements":{}}}"""),
+            model("", "\"modelConfig\":{\"fieldRefByShortNameAllowed\":1},"),
+            """{"header":{},"content":{"modelRoot":{"rootGroups":[{"type":"Group","name":"O","Group":7}]}}}""",
+            "42",
+            """{"foo":1}""",
+        ).forEach { json ->
+            val prepared = prepared(json)
+            assertTrue(prepared.diagnostics.size + prepared.elements.size >= 0, json)
+        }
+    }
+
+    private fun kotlinx.serialization.json.JsonElement.jsonArray() =
+        this as? kotlinx.serialization.json.JsonArray
 }

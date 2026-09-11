@@ -3,6 +3,7 @@ package io.github.mbackschat.a12.dm.consistency
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
+import kotlin.test.assertTrue
 
 /**
  * B2's remaining separation: which kind of finding may reject a model.
@@ -69,18 +70,29 @@ class FindingClassificationTest {
     }
 
     /**
-     * No result may yet claim complete coverage, and none may be VALID — no required check family is
-     * implemented. The exhaustive `when` is the enforcement locus: adding a `Valid` variant stops this
-     * compiling, so the bar cannot be lifted silently rather than with its coverage evidence.
+     * No result any finding set can produce may claim complete coverage, and none may be VALID. The loop is
+     * over `statusOf`'s actual outputs rather than a hand-listed pair, so a later `Valid` variant that
+     * `statusOf` can return fails here instead of merely forcing this test to be edited — which is what an
+     * exhaustive `when` over the sealed type would have done, and is not the same guarantee.
      */
     @Test
-    fun noStatusCanYetClaimCompleteCoverage() {
-        listOf(ConsistencyStatus.Invalid, ConsistencyStatus.Inconclusive).forEach { status ->
-            val complete = when (status) {
-                ConsistencyStatus.Invalid -> status.complete
-                ConsistencyStatus.Inconclusive -> status.complete
-            }
-            assertFalse(complete, "$status must not assert completed coverage")
+    fun noStatusAnyFindingSetProducesCanClaimCompleteCoverage() {
+        val everyFinding = FindingCategory.entries.flatMap { category ->
+            FindingSeverity.entries.map { severity -> finding(category, severity) }
         }
+
+        (everyFinding.map { listOf(it) } + listOf(emptyList(), everyFinding)).forEach { findings ->
+            assertFalse(statusOf(findings).complete, "$findings must not assert completed coverage")
+        }
+    }
+
+    /**
+     * A12's own `Severity` records that `ordinal()` compares two severities, so our mirror's order is a
+     * contract rather than a listing. Without this, reordering the constants passes every other case here.
+     */
+    @Test
+    fun severityOrdersFromLeastToMostSevere() {
+        assertTrue(FindingSeverity.ERROR > FindingSeverity.WARNING)
+        assertTrue(FindingSeverity.WARNING > FindingSeverity.INFO)
     }
 }
