@@ -102,6 +102,18 @@ Two rows kill the criterion. `MVK_INVALID_UNSPECIFIED_TYPE` is called "legacy-on
 
 **Recall limits.** `grep -rl` counts **files mentioning the token**, not firing sites: a file may reference a code without raising it, and an indirection through a constant would not be matched. No check implementation body has been read yet, so no row above is dispositioned — this measures only that the cheap criterion fails.
 
+### A4 — consistency corpus ownership (decided 2026-09-12)
+
+**Reuse the conformance corpus's case convention; do not build a second corpus.** [`corpus/`](../corpus/README.md) already holds every property A4 asks for: 34 cases across 10 family directories, each carrying a stable `meta.id`, the oracle artifact identity in `meta.kernelVersion`, provenance in `meta.source`, `meta.sections` and `meta.tags`, and — the part that matters most for "one input owner" — a `modelRef` indirection into a shared `corpus/models/` tree rather than an inlined model. That is the reuse A4 requires across common replay, adapter differentials and packed consumers.
+
+**One bounded schema change is needed, and it is the whole gap.** [`corpus/case.schema.json`](../corpus/case.schema.json) lists `['meta', 'modelRef', 'document', 'op']` as top-level **required**, and admits exactly three op kinds — `validateFull`, `validatePart`, `compute` — all of which evaluate a Document. A consistency case has **no Document by contract**. So A4 adds a consistency op kind and makes `document` conditional on the kind rather than unconditionally required, leaving every existing case valid and untouched.
+
+**What a consistency case carries instead of a document:** the accepted / rejected / incomplete expectation, and for a rejected case the measured code. Everything else — id, model reference, kernel version, family, tags — keeps the existing convention, so the same tooling enumerates both kinds.
+
+**Why not the other fixture trees.** They are measured and each has an owner with a different job: `cli/src/test/resources/models` (22 model files) serves the JUnit and eval lanes, `examples/models` (16) serves the published demos under their own CI gate, and `adapter/src/test/resources` (20) serves the Kernel differentials. [CLAUDE.md](../CLAUDE.md) keeps the demo and JUnit trees deliberately decoupled, so A4 does not repoint any of them; the corpus is the only tree already designed as a shared input owner with per-case oracle identity.
+
+**Per-case `kernelVersion` is also M's hook.** Because each case already pins the artifact it was measured against, a second profile does not need a parallel corpus either — it needs cases whose expectation is recorded per pinned version. Recorded here so M reuses this owner rather than inventing one.
+
 ### A2 — diagnostic ownership and portable delivery (decided 2026-09-12)
 
 **The delivery decision is forced by the medium each fact lives in, not by preference.**
