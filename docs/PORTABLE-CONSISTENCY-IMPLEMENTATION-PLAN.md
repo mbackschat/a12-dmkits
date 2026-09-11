@@ -102,6 +102,25 @@ Two rows kill the criterion. `MVK_INVALID_UNSPECIFIED_TYPE` is called "legacy-on
 
 **Recall limits.** `grep -rl` counts **files mentioning the token**, not firing sites: a file may reference a code without raising it, and an indirection through a constant would not be matched. No check implementation body has been read yet, so no row above is dispositioned — this measures only that the cheap criterion fails.
 
+### A1 — erased-bucket disposition (per-site, measured 2026-09-12)
+
+**Result: 55 of 60 in scope, 5 excluded as legacy.** The 52 rows with no legacy claim are in by default under the conformance rule. Of the 8 that claimed legacy, five survive the claim and three do not. Every disposition below cites the firing site read; sites are in `a12-kernel/kernel-tool/kernel-core-parser` unless noted.
+
+| Code | Disposition | Basis, at the firing site |
+|---|---|---|
+| `MVK_CONDITION_WITH_WILDCARD` | legacy | sole site is `check/bedingung/hdv/CheckFormularBedingungImpl` |
+| `MVK_INVALID_ROOT_GROUP_CONSTR` | legacy | both sites are `check/…/hdv/` — `CheckFormularBedingungImpl`, `CheckAnzahlAngegebenOpHModelImpl` |
+| `MVK_CONDITION_WITHOUT_REPEATABLE_ROOTGROUP` | legacy | raised by `CheckEntityUtils.checkRootGroupIsRepeatable`, whose **sole caller** is `check/bedingung/hdv/CheckFormularBedingungImpl:132`; its predicate reads `getMaxLfdNr`/`getMaxUsb` |
+| `MVK_DIFFERENT_ROOT_GROUPS` | legacy | raised by `CheckEntityListenUtils.checkAllEntitiesInSameRootGroup`, whose two callers are both `hdv` — `CheckFeldListenOpHModelImpl:86`, `CheckZeilenBedingungImpl:119` |
+| `MVK_ERROR_ITERATION_UNCHECKED` | legacy | `kernel-core-calc`'s `NormalisierteBerechnungsFormHelper` raises it at two sites, **both** guarded `if (isHModel && isIterable)`, each carrying the kernel's own comment that "for A12 DVs, the iteration check precondition is added automatically/implicity" |
+| **`MVK_INVALID_PARAMS_FOR_OP`** | **in scope** | raised by `CheckEntityListenUtils.checkAllFieldsSameL`, which has three callers and **one is not legacy**: `check/operation/CheckFeldListenOpImpl:85` calls it **ungated** for `SUMME_VON_PRODUKTEN` |
+| **`MVK_INVALID_UNSPECIFIED_TYPE`** | **in scope** | `check/entity/CheckEntitySpecImpl.checkUnspecifiedType` fires on any condition entity spec whose field type is `IUnspecifiedType`; no H-model gate anywhere in the path |
+| **`MVK_EXTRACT_OP_NOT_ALLOWED_4_DATE_CONSTRUCT_WITH_4_PARAMS`** | **in scope** | `check/datum/CheckDatumKonstruktImpl.checkYearFormat(century, shortYear)` is reached whenever the construct carries a fourth parameter; no `isHModel` gate in `checkJahresParam` → `checkYearFormat` → `handleDatumExtractOpAtYearParam` |
+
+**Three MVK-ledger rows carry a legacy basis that source-reading contradicts** — the three marked in scope above. Their ledger cells answer a different question (whether rulekit's typed API can author the shape) and may still answer it correctly, but the *stated reason* "legacy-only" does not hold at the firing site. Correcting those cells needs one more step this record deliberately does not take: a kernel probe, or a grammar reading establishing whether the four-parameter `DatumKonstrukt` production and `IUnspecifiedType` fields are reachable in an A12 model. Recorded rather than silently edited, because the evidence here is source-read and an accept/reject claim's terminal oracle is the kernel itself.
+
+**Recall limits.** Firing sites were located with `grep -rl <code> a12-kernel --include='*.java'`, excluding `/build/` and the enum declaration files, then each raising method's callers were enumerated with `grep -rn <method>` under `internal/check`. Read: every site listed above and every caller named. Not established: whether a constant indirection raises any of these codes elsewhere, and whether the in-scope three are reachable from an authorable A12 model — which the conformance rule makes irrelevant to their disposition, since representability is never an exclusion basis.
+
 ### Checker-owned types (decided 2026-09-11)
 
 With no neutral leaf, the checker owns every type on its own side of the boundary. Named here so the closure and shipped-file guards have a list to check rather than a judgement to make.
