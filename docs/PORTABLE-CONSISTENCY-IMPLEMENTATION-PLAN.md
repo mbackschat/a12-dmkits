@@ -61,6 +61,36 @@ Use the [proposal research sources](PORTABLE-CONSISTENCY-PROPOSAL.md#11-sources)
 
 A produces the slice-specific acceptance records needed to start B, not empty tables to be filled during implementation. Preserve these in this plan while they are planning decisions; place the machine-readable profile/check registry with its consuming implementation. Keep measured results in a dated evidence document and link them, following [documentation discipline](DOC-DISCIPLINE.md). Do not create a second status tracker.
 
+### Boundary record — ported responsibilities (measured 2026-09-11, partial)
+
+Enumerated with `git grep -l <symbol> -- '*/src/main/*' '*/src/commonMain/*'` for callers and `git grep -l <symbol> -- '*Test.java' '*Test.kt'` for test files, both at `15af15abd`, excluding the native reachability-metadata JSON. **Read in full:** `ModelIndex`'s 27 public method signatures and the complete main-source caller lists for all five symbols. **Not read:** the bodies of the 81 `BoundModel` callers and the 552 test files — counted only. A test count is file mentions, not coverage.
+
+| Responsibility | Source | Main callers | Test files | Modules | Disposition |
+|---|---|---|---|---|---|
+| Model queries and type facts | [ModelIndex](../core/src/main/java/io/github/mbackschat/a12/dm/core/ModelIndex.java), 401 lines, 27 public methods | 19 | 50 | 5 | Port the query behavior into the portable context |
+| Expansion | [ModelReader](../core/src/main/java/io/github/mbackschat/a12/dm/core/ModelReader.java), 789 lines | 8 | 16 | 5 | Reuse the expansion behavior inside checker-owned preparation |
+| Reference binding | [BoundModel](../rulekit/src/main/java/io/github/mbackschat/a12/dm/rulekit/dsl/BoundModel.java), 679 lines | **81** | **552** | 8 | **Do not port the class.** Extract the binding responsibility beneath it; the façade and its API stay |
+| Bare-reference resolution | [ParsedModel](../interpreter/src/commonMain/kotlin/io/github/mbackschat/a12/dm/interpreter/ParsedModel.kt), 181 lines | 4 | 0 by name | 2 | Stays in the interpreter under NFR #1; one half of the §12 duplication pair |
+| Undeclared-reference query | `DmInterpreter.undeclaredReferences()` | 3 | 1 | 2 | Reuse the lookup logic in the checker; never call `DmInterpreter` |
+
+**`ModelIndex` is the scope decision made concrete.** Of its 27 public methods, eleven are pure type facts — `kindOf`, `numberScale`, `numberMin`/`numberMax`, `stringMinLength`/`stringMaxLength`, `stringPattern`, `temporalFormat`, `stringNoValueValidation`, `enumValues`, `enumCategories` — and six more are structure facts (`isRepeating`, `maxRepetitions`, `isField`, `isGroup`, `nameOf`, `usageTypeOfGroup`). That is exactly the "support in full, do not validate" surface §4 names: the checker reads every one of them to decide a rule's type compatibility and never asks whether the declaration that produced them is itself legal. The port target is therefore already shaped correctly and needs no new concept.
+
+**`BoundModel` settles the "responsibilities, not classes" rule empirically.** 81 main-source callers across eight modules and 552 test files make porting the class impossible and extracting beneath it the only available move — which is what [proposal §5.2](PORTABLE-CONSISTENCY-PROPOSAL.md#52-port-responsibilities-not-entire-public-classes) already prescribes, now with a measured basis rather than a preference. Its compiled Java API is the guard that the extraction preserved behavior.
+
+**`ParsedModel` has no test file naming it**, so its behavior is covered indirectly — through `UndeclaredReferenceTest` and the interpreter's own lanes. That is a recall limit of the by-name search, not evidence that it is untested; B1 must identify its actual coverage owner before relying on it.
+
+### A3 record — second profile basis (measured 2026-09-11)
+
+**The second real version is `31.1.0` (A12 Tools 2026.06-ext0).** It is the only candidate that is both real and a useful discriminator: the 30.8.x line is our own pin, so any other member of it differs at patch level. Upstream preserves the old line as branch `release/2025.06`. The change analysis already exists in [KERNEL-31-UPGRADE-PROPOSAL](KERNEL-31-UPGRADE-PROPOSAL.md); this record adds only its consequences for M.
+
+**It is not obtainable today, and the blocker is concrete.** `31.1.0` is not in `mavenLocal`. Acquisition is scripted — [`a12-kernel-bootstrap`](../../a12-kernel-bootstrap)'s `bootstrap.sh` parameterizes `KERNEL_VERSION`, `BASE_VERSION` and both git refs — but Phase 0 of the 31 proposal is real work beyond flipping them: a12-base moves `29.3.0` → `30.0.0` carrying an unresolved provenance question (the public base release commit identifies itself as `30.0.1` while the kernel pins `30.0.0`), `BASE_MODULES` drops projects deleted upstream, seven direct coordinates rename `kernel-*` → `kernel-internal-*`, and the full facade closure must be verified from an empty cache rather than from the facade POM alone.
+
+**As a discriminator it is better than adequate.** `MVK_WILDCARD_AT_LOWEST_LEVEL_REQUIRED` **kept its name and changed meaning** between the lines, its old sense migrating to a new `…REPEATABLE_LEVEL_REQUIRED` code. A stable name over a moved meaning is the sharpest case a two-profile comparison can be asked to catch, and a comparison that missed it would be worthless.
+
+**One consequence M must resolve before implementation.** Document-model format `28.4.0` → `29.4.0` is mandatory: upstream declares `29.4.0` both the minimum compatible and the latest model version, our 65 committed JSON models are all `28.4.0`, and the chain between them is structural rather than cosmetic (includes restructured, alias indirection removed, `variantFilter` stripped, `Unspecified` removed). M's contract is to check **the same sources** under both profiles while explicitly excluding automatic model migration, so "the same sources" needs a definition first — dual-format fixtures, or an out-of-band migration whose output is pinned as a fixture. This is M's design question, not a reason to widen A.
+
+**Disposition.** M and N stay blocked until bootstrap Phase 0 runs. Every other slice proceeds; nothing in A–L depends on the second profile.
+
 ### Decisions to resolve during A
 
 - **Shared syntax:** default to checker-owned source. Extract a neutral leaf only when the enumerated closure and H4/H5 evidence support it; this avoids turning parser extraction into an interpreter redesign.
