@@ -16,15 +16,31 @@ data class ModelSource(
     val diagnosticLabel: String? = null,
 )
 
-/** Why a source could not be admitted. Distinct from any consistency code: admission is a separate phase. */
-enum class AdmissionDiagnosticCode {
+/**
+ * Why the checker could not take an input at face value — one vocabulary across the phases that read the
+ * source, so a consumer never has to reconcile two parallel diagnostic estates. These are separate from any
+ * consistency code: they say the checker could not form a question, not that A12 answered no.
+ */
+enum class DiagnosticCode {
+    /** The source is not well-formed JSON, so nothing in it can be read. */
     SOURCE_NOT_WELL_FORMED,
+
+    /**
+     * A single declaration lacks the `type`, `id` or `name` the kernel's own reader requires. Reported and
+     * skipped rather than raised, because one broken element must not hide its siblings' real errors.
+     */
+    DECLARATION_NOT_WELL_FORMED,
 }
 
-data class AdmissionDiagnostic(
-    val code: AdmissionDiagnosticCode,
+/**
+ * @param at the declared path this concerns, when there is one — absent for a whole-source diagnostic, and
+ *     for a declaration too broken to name itself it is the nearest declared ancestor.
+ */
+data class Diagnostic(
+    val code: DiagnosticCode,
     val modelId: String,
     val explain: String,
+    val at: String? = null,
 )
 
 /**
@@ -38,7 +54,7 @@ sealed interface Admission {
      * and risk losing what the read preserved.
      */
     data class Admitted(val source: ModelSource, val parsed: JsonElement) : Admission
-    data class Rejected(val diagnostic: AdmissionDiagnostic) : Admission
+    data class Rejected(val diagnostic: Diagnostic) : Admission
 }
 
 /**
@@ -54,8 +70,8 @@ fun admit(source: ModelSource): Admission =
         Admission.Admitted(source, Json.parseToJsonElement(source.json))
     } catch (notWellFormed: IllegalArgumentException) {
         Admission.Rejected(
-            AdmissionDiagnostic(
-                code = AdmissionDiagnosticCode.SOURCE_NOT_WELL_FORMED,
+            Diagnostic(
+                code = DiagnosticCode.SOURCE_NOT_WELL_FORMED,
                 modelId = source.modelId,
                 explain = notWellFormed.message ?: "the source is not well-formed JSON",
             ),

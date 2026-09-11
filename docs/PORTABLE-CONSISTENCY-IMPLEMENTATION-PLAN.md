@@ -41,7 +41,7 @@ Rows below are dependency stages, not permission to combine every named slice in
 
 Packed delivery belongs to F. A2's earlier resource check is a bounded packed-resource experiment using existing tooling, not an early implementation of the full package estate. B0's JVM/common tests and F2's adapter lane do not depend on F. F owns their packed Node/browser corpus replay, using the same inputs rather than inventing another matrix.
 
-## 3. First task: A, with a finite inventory contract
+## 3. Task records — A's finite inventory contract, then each landed stage
 
 **Recommendation:** finish the following records before production translation. They settle what will be shared, what can be claimed and what will measure success. This is an inventory of selected responsibilities and the profile denominator, not a new general-purpose verification framework.
 
@@ -270,12 +270,23 @@ All four implement the same rule shape: candidate `base/name` first (declaring-g
 
 **One route stays forbidden regardless.** The abandoned attempt scanned the wider machine Gradle cache and found facade jars for "30.7.1, 31.1.0 and 31.1.1" *(its measurement, quoted)* while conceding "a cached facade is not a verified transitive closure" and advertising no second profile. Machine-scanning for A12 releases is ruled out by [CLAUDE.md](../CLAUDE.md)'s sourcing rule; the sibling is the only admissible origin, and it defines the single version.
 
+### B2 record — preparation reports what the Kernel's reader raises (decided 2026-09-12)
+
+**Landed:** admission (well-formed source, retained tree, authored numeric scale, source identity), the declared element set read from each element's own `id`, `content.modelConfig.fieldRefByShortNameAllowed`, and the two B2 cases that depend on retention. Kernel-free module and test dependencies are established and guarded by `verifyConsistencyPurity`.
+
+**A declaration is retained whole, not projected.** `DeclaredElement.declaration` is the kind's authored envelope verbatim. A checker-side record of a rule's parts would be the parallel A12 model [proposal §5.3](PORTABLE-CONSISTENCY-PROPOSAL.md#53-retain-invalid-input-long-enough-to-diagnose-it) forbids, and it is also what would lose an *invalid* declaration: the phase that diagnoses `"[NoSuchField] > ("` needs the text, and the phase that projects can derive its own view later.
+
+**Where the Kernel's reader raises, preparation diagnoses.** `ElementDeserializer` reads `type`, `id` and `name` unconditionally, so a declaration missing any of them crashes it (the shape record is in [KERNEL-INTEGRATION-NOTES](KERNEL-INTEGRATION-NOTES.md#dm-json-shape-for-hand-authoring-fixtures)). The checker instead emits `DECLARATION_NOT_WELL_FORMED` located at the nearest declared ancestor and keeps collecting, because B2's "independent declarations remain analyzable after a local failure" is defeated by exactly that abort: one missing `id` would hide every sibling's real finding. **Descent continues through a declaration that could not be read** — its children name themselves — with one exception that is a consequence rather than a policy: `type` names the envelope, so an unreadable `type` leaves no envelope to descend into, and that is the single failure which does hide children.
+
+**One diagnostic vocabulary.** `DiagnosticCode` spans the source-reading phases rather than growing a per-phase enum, so a consumer never reconciles two parallel diagnostic estates; the earlier `AdmissionDiagnosticCode`/`AdmissionDiagnostic` names are gone, with no alias.
+
+**Still open in B2, and deliberately a separate landing:** the §5.4 three-category separation — an authoring-policy restriction that must never read as a Kernel rejection, and an evaluator-support gap that limits completeness without invalidating a statically checkable declaration. Those need the finding classification and the status derivation, which is where phase separation becomes load-bearing rather than structural.
+
 ### Decisions to resolve during A
 
 - **Shared syntax:** default to checker-owned source. Extract a neutral leaf only when the enumerated closure and H4/H5 evidence support it; this avoids turning parser extraction into an interpreter redesign.
 - **Java binding adoption:** investigate designating `ConditionBridge` alongside the relevant Java façades, because otherwise its resolver remains an additional owner. Record the actual decision and residual behavior after reading its closure; do not promise consolidation of `ParsedModel`.
 - **Checker budgets:** specify the candidate recommendation and calibration task in A, then bring its measured record to the owner at the start of F under §5's schedule and the proposal's H5 contract.
-- **Second A12 version:** recommend the closest available real version with independently executable evidence and a useful compatibility discriminator. Name the artifact before selecting it; a synthetic profile cannot substitute.
 
 ## 4. Verification and review protocol
 

@@ -19,7 +19,7 @@ class AdmissionPhaseTest {
         val outcome = admit(ModelSource(modelId = "order", json = "{ not json"))
 
         val rejected = assertIs<Admission.Rejected>(outcome)
-        assertEquals(AdmissionDiagnosticCode.SOURCE_NOT_WELL_FORMED, rejected.diagnostic.code)
+        assertEquals(DiagnosticCode.SOURCE_NOT_WELL_FORMED, rejected.diagnostic.code)
         assertEquals("order", rejected.diagnostic.modelId)
     }
 
