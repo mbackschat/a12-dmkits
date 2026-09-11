@@ -79,6 +79,39 @@ Enumerated with `git grep -l <symbol> -- '*/src/main/*' '*/src/commonMain/*'` fo
 
 **`ParsedModel` has no test file naming it**, so its behavior is covered indirectly — through `UndeclaredReferenceTest` and the interpreter's own lanes. That is a recall limit of the by-name search, not evidence that it is untested; B1 must identify its actual coverage owner before relying on it.
 
+### Checker-owned types (decided 2026-09-11)
+
+With no neutral leaf, the checker owns every type on its own side of the boundary. Named here so the closure and shipped-file guards have a list to check rather than a judgement to make.
+
+| The checker owns | Why it cannot be shared or borrowed |
+|---|---|
+| Its analysis AST | Retains raw spelling, grouping and source locations that execution lowering discards; the interpreter's AST is shaped for evaluation |
+| Its parser | Follows from owning the AST; ported from our original source, reusing its test expectations |
+| Its source and limit types | The archived attempt reached `interpreter/ModelPreparationLimits` into the checker's published JVM API, which is the coupling the shipped-file guard exists to catch |
+| Its model context | The ported `ModelIndex` query behaviour, over checker-owned preparation |
+| Its diagnostic and report types | The public result contract; projects existing diagnostic concepts without importing their Java carriers |
+| Its numeric representation | See the design question below — not `Dec` |
+
+### Neutral leaf — NOT EXTRACTED, allowlist stays empty (decided 2026-09-11)
+
+Measured by reading the import lists of the two files a neutral syntax extraction would have to move. [Parser.kt](../interpreter/src/commonMain/kotlin/io/github/mbackschat/a12/dm/interpreter/parse/Parser.kt) imports `UnsupportedConstructException`, `dec`, the five AST types (`ArithOp`, `CmpOp`, `Cond`, `Expr`, `ValueListQuantOp`) and `ConditionLanguage`. [Ast.kt](../interpreter/src/commonMain/kotlin/io/github/mbackschat/a12/dm/interpreter/ast/Ast.kt) imports `Dec`, `dec`, `decOrNull`, `DEC_ZERO` and `Kind`.
+
+**So the leaf is not small, and its largest member is the interpreter's hottest primitive.** A neutral parser requires moving the whole AST, two model enums, an exception type and the decimal primitive — and `Dec` sits on every arithmetic path the interpreter runs, carrying `big.js` as its JS actual. Putting it behind a module boundary to serve the checker is precisely the trade NFR #1 above forbids taking in passing. [Proposal §5.1](PORTABLE-CONSISTENCY-PROPOSAL.md#51-standalone-checker-with-independent-preparation) already prefers a checker-owned port "if a shared implementation forces interpreter changes"; this one does, measurably.
+
+**Consequence for the closure guard:** the permitted-type allowlist is **empty**, which makes the guard maximally simple — no shared leaf module exists, so any production edge from the checker into interpreter code is a failure with no exceptions to encode. Extraction stays available as a later reviewed change carrying its own H4/H5 evidence, never as a side effect of an implementation slice.
+
+**One design question B inherits.** The checker still needs numeric handling for numeric literals and declared field bounds, and it must not reach for `Dec` to get it: `Dec` carries the kernel's rounding and precision model, while a checker comparing declared configuration needs the value's text preserved. B decides that representation on the [transport-value rule](../CLAUDE.md) — a lexical or `BigDecimal`-style handling, never an evaluation type.
+
+### `ConditionBridge` designation — DESIGNATED (decided 2026-09-11)
+
+Both resolvers were read in full. They are the same rule over different fact sources: candidate `base/name` first (declaring-group precedence), then a **unique** model-wide field short name only when the model's `fieldRefByShortNameAllowed` is on, with **ambiguity and absence both falling back to the candidate**. [ParsedModel](../interpreter/src/commonMain/kotlin/io/github/mbackschat/a12/dm/interpreter/ParsedModel.kt) reads the interpreter's `ModelDef` (`entityPaths`, `fieldsByShortName`) and expresses uniqueness as `singleOrNull()`; [ConditionBridge](../interpreter-bridge/src/main/kotlin/io/github/mbackschat/a12/dm/bridge/ConditionBridge.kt) reads `ModelIndex` (`elementPaths()`, `fieldPaths()` grouped by last segment) and expresses it as `matches.size == 1`. Its own doc comment already states the intent — "mirrors `ParsedModel`'s own resolver rather than inventing a second rule".
+
+**Designate it**, for four reasons. It is an explicit mirror rather than an independent behaviour, so it is the duplication B1 exists to remove. It already reads `ModelIndex`, which is the fact source the checker's context ports, so the shared resolver's natural shape fits it without adaptation. It is JVM-only and sits off the interpreter's evaluation path, so NFR #1 is not engaged. And leaving it undesignated would have B1 — a consolidation slice — raise the implementation count from two to three.
+
+**Residual owners after B1: two, deliberately.** The shared resolver serves the designated Java façades and the checker. `ParsedModel`'s resolver stays in the interpreter, owning resolution against the interpreter's own execution `ModelDef` inside its parse-once lazy AST caches; it stays because the interpreter takes no checker dependency under NFR #1, and because its fact source is the execution model rather than the analysis context. That is a documented duplication, not an oversight, and §12's consolidation claim must be read as holding the count at two.
+
+**Two constraints B1 inherits from this reading.** The shared resolver must not force eager construction of the short-name map — `ConditionBridge` builds it lazily on first fallback use, and an eager shared owner would add that cost to every bridge construction. And B1's contract requires explicit resolved/missing/ambiguous outcomes while both current callers deliberately collapse ambiguity and absence into the candidate, which is the measured kernel-compatible behaviour; so B1 widens the shared **result type** and leaves each existing caller's collapsing projection intact, rather than changing what either caller does.
+
 ### A3 record — second profile basis (resolved 2026-09-11: no second profile available)
 
 **A3 cannot be satisfied today, and the reason is supply rather than effort.** The sibling `a12-kernel` checkout defines the A12 version this project uses — currently `2025.06-ext5` / kernel `30.8.1` — and scanning this machine for a newer release is forbidden, because a newer one here is not OSS and would taint the MIT licence ([CLAUDE.md](../CLAUDE.md), "Test & sample document models"). A3 asks for "exactly one additional **available** real A12 version"; with a single version in the sibling, the additional count is zero. A second profile arrives when the owner updates or adds a sibling, not when a slice goes looking for one.
