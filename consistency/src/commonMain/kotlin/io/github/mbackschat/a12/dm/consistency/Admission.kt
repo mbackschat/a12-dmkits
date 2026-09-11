@@ -1,6 +1,7 @@
 package io.github.mbackschat.a12.dm.consistency
 
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonElement
 
 /**
  * A caller-supplied model source.
@@ -31,7 +32,12 @@ data class AdmissionDiagnostic(
  * questions and a caller must not have to tell them apart by inspecting a diagnostic list.
  */
 sealed interface Admission {
-    data class Admitted(val source: ModelSource) : Admission
+    /**
+     * [parsed] is retained rather than re-derived: B3's parse-once contract. The baseline interpreter path
+     * serializes and reparses between phases, and a checker that inherited that would pay for the round trip
+     * and risk losing what the read preserved.
+     */
+    data class Admitted(val source: ModelSource, val parsed: JsonElement) : Admission
     data class Rejected(val diagnostic: AdmissionDiagnostic) : Admission
 }
 
@@ -45,8 +51,7 @@ sealed interface Admission {
  */
 fun admit(source: ModelSource): Admission =
     try {
-        Json.parseToJsonElement(source.json)
-        Admission.Admitted(source)
+        Admission.Admitted(source, Json.parseToJsonElement(source.json))
     } catch (notWellFormed: IllegalArgumentException) {
         Admission.Rejected(
             AdmissionDiagnostic(
