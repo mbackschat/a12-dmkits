@@ -1,0 +1,96 @@
+// The :consistency module (docs/PORTABLE-CONSISTENCY-PROPOSAL.md): the standalone, Kernel-free consistency
+// checker for a DocumentModel's RULES AND COMPUTATIONS — Kotlin Multiplatform (jvm + js), published for
+// TypeScript/Node consumers under H2.
+//
+// Two dependency rules are the contract, not a preference. It depends on NEITHER the kernel (H1) nor
+// :interpreter (NFR #1, and the plan's empty neutral-leaf allowlist): the checker owns its analysis syntax,
+// and `Dec` sits on the interpreter's arithmetic paths, so sharing one would trade the interpreter's
+// performance for the checker's convenience. Its own test source sets stay Kernel-free too; Kernel
+// differentials live in :adapter.
+plugins {
+    id 'org.jetbrains.kotlin.multiplatform'
+}
+
+kotlin {
+    jvmToolchain(21)
+
+    jvm()
+    js {
+        nodejs()
+    }
+
+    sourceSets {
+        commonMain {
+            dependencies {
+                implementation 'org.jetbrains.kotlinx:kotlinx-serialization-json:1.9.0'
+            }
+        }
+        commonTest {
+            dependencies {
+                implementation kotlin('test')
+            }
+        }
+    }
+}
+
+// --- The boundary guard (plan stage 2; the empty neutral-leaf allowlist's enforcement locus) -------------
+//
+// Mirrors :interpreter's verifyInterpreterPurity, with one addition that is the whole point: the INTERPRETER
+// is forbidden here too. The plan's allowlist for a shared syntax leaf is empty, so there is no permitted
+// type to encode an exception for — any interpreter import is a failure. An import check is the first locus,
+// not the last: H1 also requires compiled/installed closure and shipped-file provenance guards, which belong
+// to F's delivery slice because they need a published package to inspect.
+def verifyConsistencyPurity = tasks.register('verifyConsistencyPurity') {
+    group = 'verification'
+    description = 'Fail on a forbidden import so the checker cannot couple to the kernel or the interpreter.'
+    def srcRoot = file('src')
+    inputs.dir(srcRoot)
+    doLast {
+        def allowedThirdParty = [
+            'kotlinx.serialization.',   // DM-JSON reading, TREE API only — retains a number's literal text (B3)
+        ]
+        def commonAllowed = ['kotlin.', 'io.github.mbackschat.a12.dm.consistency.'] + allowedThirdParty
+        def kernelAndEvaluator = ['com.mgmtp.', 'io.github.mbackschat.a12.dm.interpreter.']
+        def rules = [
+            commonMain: [forbidden: ['java.', 'javax.', 'groovy.'] + kernelAndEvaluator,
+                         allowed  : commonAllowed,
+                         why      : 'must be pure common Kotlin, free of the kernel (H1) and the evaluator (NFR #1)'],
+            jvmMain   : [forbidden: ['groovy.'] + kernelAndEvaluator,
+                         why      : 'the JVM shim may use java.* but never the kernel or the evaluator'],
+            jsMain    : [forbidden: ['java.', 'javax.', 'groovy.'] + kernelAndEvaluator,
+                         why      : 'the JS shim is pure Kotlin/JS with no kernel or evaluator types'],
+            commonTest: [forbidden: kernelAndEvaluator + ['groovy.'],
+                         why      : 'Kernel differentials live in :adapter — this module stays Kernel-free in test scope too'],
+        ]
+        def violations = []
+        rules.each { sourceSet, rule ->
+            def dir = new File(srcRoot, sourceSet)
+            if (!dir.isDirectory()) {
+                return
+            }
+            dir.eachFileRecurse { f ->
+                if (!f.isFile() || !f.name.endsWith('.kt')) {
+                    return
+                }
+                f.eachLine { line ->
+                    def m = (line =~ /^\s*import\s+([\w.]+)/)
+                    if (!m) {
+                        return
+                    }
+                    def imported = m[0][1]
+                    if (rule.forbidden.any { imported.startsWith(it) }) {
+                        violations << "$sourceSet: forbidden import '$imported' in ${f.name} — ${rule.why}"
+                    } else if (rule.allowed && !rule.allowed.any { imported.startsWith(it) }) {
+                        violations << "$sourceSet: undeclared third-party import '$imported' in ${f.name} — " +
+                                'add it to the allowlist deliberately or drop it'
+                    }
+                }
+            }
+        }
+        if (violations) {
+            throw new GradleException("consistency purity violated:\n  " + violations.join('\n  '))
+        }
+    }
+}
+
+tasks.named('check') { dependsOn verifyConsistencyPurity }
