@@ -4,6 +4,7 @@ import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.contentOrNull
 
 /**
  * One declared element of a DocumentModel, as the model declares it.
@@ -141,7 +142,15 @@ private class Collector(private val modelId: String) {
     }
 }
 
-private fun JsonObject.text(key: String): String? =
-    (this[key] as? JsonPrimitive)?.takeIf { it.isString }?.content
+/**
+ * A member read the way the Kernel reads it: `ElementDeserializer` takes `type`, `id` and `name` through
+ * Jackson's `asText()`, which COERCES a non-string scalar rather than refusing it, so `{"id": 5}` is an
+ * element the Kernel reads with id `"5"`. Refusing it here would drop a declaration A12 accepts — the read
+ * path is where an over-strict check makes a legal model unreadable rather than merely unauthorable.
+ *
+ * JSON `null` is treated as absent instead: its Jackson coercion is not measured here, and reporting the
+ * member as missing is the conservative arm, since that is a finding rather than a silent substitution.
+ */
+private fun JsonObject.text(key: String): String? = (this[key] as? JsonPrimitive)?.contentOrNull
 
 private operator fun JsonElement?.get(key: String): JsonElement? = (this as? JsonObject)?.get(key)

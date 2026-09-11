@@ -234,6 +234,24 @@ class PreparationTest {
         }
     }
 
+    /**
+     * The Kernel reads `type`/`id`/`name` through Jackson's `asText()`, which coerces a non-string scalar,
+     * so a numeric id is a declaration A12 accepts. Refusing it here would be a client-side refusal with no
+     * Kernel basis, and on the read path that makes a legal model unreadable rather than merely unauthorable.
+     */
+    @Test
+    fun aNonStringIdentityIsCoercedTheWayTheKernelCoercesIt() {
+        val prepared = preparedRoots(
+            """{"type":"Group","id":5,"name":"Order","Group":{"elements":[
+              {"type":"Field","id":"/Order/Code","name":"Code","Field":{}}
+            ]}}""",
+        )
+
+        assertEquals(listOf("/Order", "/Order/Code"), prepared.elements.map { it.path })
+        assertEquals("5", prepared.elements.first().id)
+        assertEquals(emptyList(), prepared.diagnostics)
+    }
+
     @Test
     fun preparationReadsWhetherTheModelAllowsShortNameFieldReferences() {
         fun flagOf(modelConfig: String) = prepared(model("", modelConfig)).fieldRefByShortNameAllowed
