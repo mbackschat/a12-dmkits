@@ -102,6 +102,26 @@ Two rows kill the criterion. `MVK_INVALID_UNSPECIFIED_TYPE` is called "legacy-on
 
 **Recall limits.** `grep -rl` counts **files mentioning the token**, not firing sites: a file may reference a code without raising it, and an indirection through a constant would not be matched. No check implementation body has been read yet, so no row above is dispositioned — this measures only that the cheap criterion fails.
 
+### A2 — diagnostic ownership and portable delivery (decided 2026-09-12)
+
+**The delivery decision is forced by the medium each fact lives in, not by preference.**
+
+| Owner | Holds | Medium | Delivery |
+|---|---|---|---|
+| [operators.json](../rulekit/src/main/resources/catalog/operators.json) | 110 operator entries — 97 carrying gotchas, 20 carrying plural correctives, 110 carrying a valid example — plus top-level `verifiedAgainst` and `emptyOperandDefaults` | JSON resource, 293 KB | **Packaged directly.** It is already data and already proven readable as Node data ([proposal §12](PORTABLE-CONSISTENCY-PROPOSAL.md#12-project-synergies-additional-features-and-focused-cleanups), 2026-09-08), so no projection and no second authoring lane |
+| [StructuralKernelFix](../rulekit/src/main/java/io/github/mbackschat/a12/dm/rulekit/validate/StructuralKernelFix.java) | code-level and cross-context correctives over 25 distinct `MVK_*` codes | Java source | **Deterministic generated projection** |
+| [RkCode](../rulekit/src/main/java/io/github/mbackschat/a12/dm/rulekit/validate/RkCode.java) | 52 enum constants; the constant name *is* the code minus the `RK_` prefix, each carrying its `Severity` and `DiagnosticSource` | Java source | **Deterministic generated projection**, applicable subset only |
+
+A Node consumer cannot read Java source at all, which is precisely the condition the proposal names for preferring a projection over direct reuse. So the split is not a judgement call: the catalog ships as-is, the two Java-owned sources are generated into a resource the checker packages.
+
+**Applicability is machine-decidable for `RkCode`, which matters because most of it must not ship as A12 semantics.** Each constant carries a `DiagnosticSource` and a `Severity`, and the `LINT`-sourced `WARNING` constants are our own advisory vocabulary rather than A12 rejections — exactly the authoring-policy class [§5.4](PORTABLE-CONSISTENCY-PROPOSAL.md#54-separate-three-kinds-of-checks) says must never be presented as a Kernel verdict. The projection therefore filters on those two fields rather than on a hand-kept list, so a new constant is classified by its own declaration.
+
+**Reuse the established projection mechanism; do not invent one.** The repository already generates resources from typed sources through Gradle task pairs — root `dumpTemporalVocabulary` and `dumpKitApi`, `:cli:dumpOperatorIndex`, and the interpreter's `generate*Source` family. C2 extends that pattern rather than adding a fourth mechanism.
+
+**Graph and guards.** The generator runs in the owning Java module at build time and emits a resource the checker packages, so there is no production edge from checker to rulekit and the build graph stays acyclic under H1/H2. A stale projection must fail a freshness/parity guard, which is the shape `DocSnippetFreshnessTest` already establishes for locked derived content. The 293 KB catalog is an input to H5's resources-and-delivery row and must be enumerated from the shipped package rather than estimated.
+
+**Recall limits.** 25 and 52 are counts of distinct `MVK_*` tokens and of four-space-indented enum constants in those two files; neither is a verified count of the distinct codes each source ultimately *serves*, and the applicable-subset boundary is settled by the filter above rather than by these totals.
+
 ### A1 — erased-bucket disposition (per-site, measured 2026-09-12)
 
 **Result: 55 of 60 in scope, 5 excluded as legacy.** The 52 rows with no legacy claim are in by default under the conformance rule. Of the 8 that claimed legacy, five survive the claim and three do not. Every disposition below cites the firing site read; sites are in `a12-kernel/kernel-tool/kernel-core-parser` unless noted.
