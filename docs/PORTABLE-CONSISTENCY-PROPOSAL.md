@@ -2,6 +2,17 @@
 
 > **Revised proposal — 2026-09-10.** High-performance, standalone Kernel-free consistency checking for TypeScript, browser JavaScript, Node.js and Java/Kotlin. Selectively port the relevant dmkits foundations into Kotlin Multiplatform, share measured semantic constraints, and give the checker its own source-aware preparation and representation. Preserve the optimized interpreter independently. Cold-review corrections are incorporated; fresh implementation follows owner approval of this design and a new bounded plan.
 
+**Scope — exactly this.** The product validates the **rules and computations** of a DocumentModel. Nothing in this document widens that.
+
+| | |
+|---|---|
+| **Checked** | Stored rules and computations — conditions, operations, common and alternative preconditions, targets and relevant messages — against their model context. Every consistency law the Kernel raises on an A12 model's rules and computations is in scope, including the type-compatibility laws operators impose on their operands |
+| **Supported in full, but not checked** | The model structure. The checker understands every group, field and type declaration it is handed, resolves references against it and reads its type facts. It never judges whether a declaration is itself legal |
+| **Not in scope** | Whether the model structure is legal. Declaration laws for groups, fields and types are whole-model consistency — a separate product, not this one |
+| **The only exclusion** | A Kernel law that cannot fire for an A12 model. The Kernel predates A12 and carries paths that are dead or never activated for it; an exclusion cites that path. Nothing is ever excluded because our own builders cannot author it |
+
+Full statement with its evidence obligations: [§4](#4-required-functionality-and-scope-boundaries).
+
 **Restart boundary.** The owner restored `main` to the proposal-only commit `c8e3b99795fe9c2ce3e9db32632a6dd8f6537043`. The abandoned implementation, unfinished changes and performance evidence are preserved on `archive/portable-consistency-attempt-2026-09-10`, ending at `6b4c6838737b5db7ad264ba7e207446b3cfcb27d`. Its implementation plan and portable API guide are historical references, not active contracts. This revision incorporates the standalone-checker approach discussed on 2026-09-10; it does not carry the abandoned module graph or migration harness into the new implementation.
 
 **Lifecycle.** As each required slice ships, graduate its public contract into the owning specifications in the same commit. Archive this proposal once all required slices and the final availability gate N are complete, retaining it as the design/evidence record under the [documentation lifecycle](DOC-DISCIPLINE.md).
@@ -176,7 +187,7 @@ The Kernel's `DocumentModelConsistencyRulesProvider` registers `CodeGenerationRu
 ### Required end-state
 
 - Read canonical A12 DocumentModel JSON and resolve supplied includes and imported typedefs using the existing workspace contracts.
-- Validate stored rules, computation expressions, common and alternative preconditions, targets, relevant messages, and their model context.
+- Validate stored rules, computation expressions, common and alternative preconditions, targets and relevant messages **against** their model context, including the type-compatibility laws operators impose on their operands.
 - Check relationships across declarations where validity depends on them, including computation dependencies.
 - Provide the same semantic result from Java/Kotlin, TypeScript/browser, and Node consumers.
 - Report structured diagnostics and explicit incomplete coverage; never turn an unsupported construct into a positive validity claim.
@@ -187,16 +198,17 @@ The Kernel's `DocumentModelConsistencyRulesProvider` registers `CodeGenerationRu
 - Complete §12's shared-ownership and cleanup slices and qualify every application feature through its documented packaged API and a working consumer example. A–F establish the validator foundation; they do not complete the full proposal.
 - Preserve both dmtool oracle artifacts under H3, provide explicit additive engine selection with positive provenance, and maintain the consistency differential over reusable canonical input fixtures.
 
-**Kernel conformance is the target, and the only exception is reachability — owner decision, 2026-09-11.** The checker conforms to the Kernel for A12 models: every consistency law the Kernel can raise on an A12 DocumentModel is in scope by default. A law leaves that scope only when it **cannot fire for an A12 model**. The Kernel predates A12 and carries paths that are dead or never activated for A12 input — the H-model family is the worked case, and [GRAMMAR-LEDGER](GRAMMAR-LEDGER.md) already owns that bucket's definition. This is a reachability question with a Kernel-source oracle, not a scope preference, so an exclusion cites the dead path rather than declaring the law unwanted.
+**Kernel conformance is the target, and the only exception is reachability — owner decision, 2026-09-11.** The checker conforms to the Kernel for A12 models: every consistency law the Kernel can raise on an A12 model's rules and computations is in scope by default. A law leaves that scope only when it **cannot fire for an A12 model**. The Kernel predates A12 and carries paths that are dead or never activated for A12 input — the H-model family is the worked case, and [GRAMMAR-LEDGER](GRAMMAR-LEDGER.md) already owns that bucket's definition. This is a reachability question with a Kernel-source oracle, not a scope preference, so an exclusion cites the dead path rather than declaring the law unwanted.
 
 **Three bases are barred as exclusions.** A law is never excluded because rulekit's typed builders cannot emit its shape, because the typed renderer avoids it structurally, or because it has no rulekit authoring surface. Each describes our authoring route, and the checker's input is stored DM-JSON, which reaches shapes no builder authors. `MVK_FIELDNAME_NOT_UNIQUE` is the standing witness: classified `erased` because typed handles render qualified references, yet §3.4's fourth row reaches that exact code through stored raw DSL against the real Kernel.
 
-**The metamodel structure is checked in full — owner decision, 2026-09-11.** Field and type declarations are part of the product, not a deferred wider one: `MM_Common`'s number, date, enum, extensible-enum, string, category and dependent-column laws are in scope. They were already a prerequisite in practice, since a rule reading an enum category cannot be soundly checked without checking that enum's category declarations, so making them first-class removes a boundary the checker would have had to cross anyway. Header facts are in scope where a law depends on them, such as the digit budget `MVK_ARITY_TOO_BIG` checks against. Attachment laws stay outside until an established path into rule or computation validity exists.
+**Model structure is context the checker must support in full, not a product it validates — owner clarification, 2026-09-11.** The deliverable is what this document's title says: rules and computations. The checker must therefore understand the whole metamodel it is handed — every group, field and type declaration it needs in order to resolve references and read type facts — and must not fail, skip or degrade on structure it merely has to traverse. Where a rule or computation law depends on a type fact, that law is in scope: an operator requiring type-compatible operands is a rule law and is checked. Whether a type declaration is itself legal — `MM_Common`'s number, date, enum, string and category declaration laws — is whole-model consistency and stays outside this proposal. Reading a declaration is not validating it, and the distinction is what keeps this scope finite.
 
 The checker must validate the structural prerequisites it relies on. A malformed or unsupported prerequisite produces a diagnostic and prevents a complete positive verdict. It must not require the caller to obtain a Kernel-valid model first. The declared profile records what is implemented and what is not, and remains visible in the API and documentation; it no longer encodes a product boundary narrower than the Kernel's own A12 reach.
 
 ### Outside the required delivery scope
 
+- Validating the model structure itself. Whether a group, field or type **declaration** is legal — `MM_Common`'s number, date, enum, string and category declaration laws — is whole-model consistency, not this product. The checker reads and resolves against every declaration it is handed without judging it; the rule and computation laws that depend on a type fact stay in scope, per §4's structure paragraph above.
 - Automatic fixes beyond the required editor diagnostics and completion capabilities.
 - A portable typed authoring API for TypeScript consumers.
 - Exact Kernel diagnostic wording, multiplicity, and ordering.
@@ -382,7 +394,7 @@ The diagnostic compatibility target is correct acceptance/rejection and stable, 
 
 Implement one bounded slice at a time. Each slice identifies its immutable constraint set, sources, positive controls, applicable contexts, and explicit exclusions before coding. The final product remains rules **and** computations; earlier slices may return INCONCLUSIVE on the remainder.
 
-**Delivery commitment:** every slice listed here is required, including the §12 consolidation and application slices below. A–F may establish an intermediate usable validator release. Completion of the proposal requires their acceptance matrices plus S, B1–B3, C1–C2, F1–F3, G–M and the final availability gate N. Sequencing does not make a slice optional, and a feature cannot be dropped because a foundation release already works.
+**Delivery commitment:** every slice listed here is required, including the §12 consolidation and application slices below. A–F may establish an intermediate usable validator release. Completion of the proposal requires their acceptance matrices plus B1–B3, C1–C2, F1–F3, G–M and the final availability gate N. Sequencing does not make a slice optional, and a feature cannot be dropped because a foundation release already works.
 
 | Slice | Deliverable | Acceptance and oracle | Explicit non-goals |
 |---|---|---|---|
@@ -392,7 +404,6 @@ Implement one bounded slice at a time. Each slice identifies its immutable const
 | C — shared local constraints | First frozen families translated from Java and used from both consumers | Reuse retained Java cases and independent Kernel evidence; add red/green cases only for an uncovered behavior, defect or platform difference. Preserve admitted twins and inbound invalid DSL, Java behavior and separately justified policy separation | No rediscovery of covered constraints, implied coverage of unported families or global computation laws |
 | D — stored rules and computations | Complete declaration parsing, binding, local checks, and located results for the selected profile | Exercise rules, operations, common preconditions, every alternative, targets, and relevant messages; unknown/unsupported cases stay distinct from invalid; never require a Document | No execution, no repair by rendering through builders |
 | E — relational constraints | Frozen families for repetition/filter/index semantics and computation relationships | Discriminating Kernel accept/reject grids, including cross-group and cross-computation controls; each family exposes its remaining coverage boundary | No SAT solver or business-intent analysis |
-| S — metamodel structure laws | `MM_Common`'s field and type declaration families — number, date, enum, extensible-enum, string, category and dependent-column laws — plus the header facts they depend on | One frozen family at a time, each with discriminating Kernel accept/reject controls over stored DM-JSON. A declaration defect is reported at the declaration, never attributed to a rule that merely reads it; where a rule check depends on a type fact, assert both the structural finding and the dependent rule's coverage gap | No attachment laws; no model editing or repair; no rule/computation semantics restated here |
 | F — public delivery and qualification | Standalone checker package using existing delivery tooling where suitable, JVM integration, documented profile and complete reports | Run the same accepted/rejected/inconclusive corpus through Java, packed Node and browser; verify Kernel/interpreter-free production closure, Java API compatibility, deterministic diagnostics and receipts. Meet the first-check/memory/size budgets under H5 independently of H4 | No automatic Kernel removal, inherited evaluator qualification or assumed tree-shaking |
 
 ### Required engine coexistence and consumer integration
@@ -543,13 +554,13 @@ The recommendation is architectural rather than a claim that a smaller port boun
 
 ## 10. Completion criteria
 
-The proposal's product is complete only when all required slices in §7 and §12 pass their finite acceptance matrices and N's final availability gate passes. This includes A–F, S, F1–F3, B1–B3/C1–C2 and every application feature G–M. The declared profiles must have finite, reviewed acceptance denominators and independent evidence. Java and JS share relevant semantics; standalone consumers receive truthful results without Kernel, interpreter implementation, Documents or evaluation callbacks. H4 preserves the interpreter independently, H5 qualifies high-performance checking, and JVM/native dmtool retain their Kernel oracle under H3.
+The proposal's product is complete only when all required slices in §7 and §12 pass their finite acceptance matrices and N's final availability gate passes. This includes A–F, F1–F3, B1–B3/C1–C2 and every application feature G–M. The declared profiles must have finite, reviewed acceptance denominators and independent evidence. Java and JS share relevant semantics; standalone consumers receive truthful results without Kernel, interpreter implementation, Documents or evaluation callbacks. H4 preserves the interpreter independently, H5 qualifies high-performance checking, and JVM/native dmtool retain their Kernel oracle under H3.
 
 **Available at the end means delivered and usable:** Node CI integration, candidate-edit checking, editor diagnostics, impact reports, completion, incremental checking and two-profile compatibility comparison must all be documented, exported and exercised through the packed consumer package. The editor integration example and Java/portable ownership guards must pass as specified in N. An intermediate validator release is allowed, but it is not completion of this proposal. Performance measurements, sequencing decisions, missing version evidence or a remaining internal helper cannot waive a required feature; unresolved acceptance work keeps the proposal incomplete.
 
 A model outside that profile remains an explicit INCONCLUSIVE result unless a definite violation is already established. That mechanism enables incremental delivery; it does not discharge an unfinished requirement inside the promised final scope.
 
-H3 prohibits replacing dmtool's Kernel oracle as part of this proposal, in both JVM and native artifacts. Any future removal needs its own owner decision and verified client contract; no coverage milestone here triggers it, and no benefit or completion claim depends on it. The metamodel structure is inside the claim under §4's 2026-09-11 decision; attachment laws are what remains a separate acceptance decision.
+H3 prohibits replacing dmtool's Kernel oracle as part of this proposal, in both JVM and native artifacts. Any future removal needs its own owner decision and verified client contract; no coverage milestone here triggers it, and no benefit or completion claim depends on it. Broadening the portable claim to whole-model structure and metamodel declaration laws is also a separate acceptance decision.
 
 ## 11. Sources
 
