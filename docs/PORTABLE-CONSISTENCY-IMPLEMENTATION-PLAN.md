@@ -102,6 +102,25 @@ Two rows kill the criterion. `MVK_INVALID_UNSPECIFIED_TYPE` is called "legacy-on
 
 **Recall limits.** `grep -rl` counts **files mentioning the token**, not firing sites: a file may reference a code without raising it, and an indirection through a constant would not be matched. No check implementation body has been read yet, so no row above is dispositioned — this measures only that the cheap criterion fails.
 
+### H4/H5 — the six boundaries mapped to existing collectors (measured 2026-09-12)
+
+Read the collector estate before assigning commands, as §5 requires: `interpreter/build.gradle`'s registered tasks, `adapter/build.gradle`'s performance lanes, `scripts/perf*.sh` and `scripts/interpreter-*footprint*.sh`, and [INTERPRETER-PERFORMANCE](INTERPRETER-PERFORMANCE.md)'s named NFRs (`NFR-S1`/`S2` startup, `NFR-P1`/`P2` warm throughput and scaling, `NFR-F1`/`F2` relative footprint).
+
+| Proposal boundary | Existing owner | Status |
+|---|---|---|
+| Interpreter-only use | `interpreterPerformance`, `performanceJvmThroughput`, `performanceAggregateReport`, `interpreterFootprint`, `footprintJvmFork*`, `footprintAggregateReport`, `verifyInterpreterPerformanceClaims`, `syncInterpreterBrowserSize`; adapter's `perfGateTest`, `performanceEligibilityTest`, `interpreterNativePerformance` | **Fully owned.** This is H4's row set; it needs no addition |
+| Resources and delivery | the footprint family above plus `syncInterpreterBrowserSize` and [interpreter-delivery-footprint.sh](../scripts/interpreter-delivery-footprint.sh) | **Collector exists, checker rows do not.** Add checker rows to the same collector rather than a parallel one |
+| Cold standalone use | none for the checker; `NFR-S1`/`S2`'s startup harness is the pattern but measures the interpreter | **Named missing observation** |
+| Prepared use | none for the checker; `NFR-P1`/`P2`'s throughput harness is the pattern | **Named missing observation** |
+| After-edit use | none — nothing measures incremental re-analysis | **Named missing observation**, owned by L |
+| Combined application | none — requires both products by definition | **Named missing observation** |
+
+So one boundary is fully owned, one has a collector awaiting checker rows, and four are missing observations. Per [proposal §7](PORTABLE-CONSISTENCY-PROPOSAL.md#7-implementation-slices-and-finite-acceptance-matrices) each missing one earns a bounded addition to its existing owner — never a new benchmark framework.
+
+**H4's mechanical closure comparison has its parts already.** The comparison that decides whether a checker-only edit requires an interpreter sweep is the interpreter's resolved production dependency set plus the digest of its built artifacts, and `interpreter/build.gradle` already carries a `sha256File` helper feeding `generateInterpreterReleaseChecksums`, which writes "one stable, sorted SHA-256 manifest for npm, Maven, and API-doc payloads". H4 reuses that manifest as the artifact-digest half and adds the resolved-configuration half beside it; it does not introduce a new digest mechanism.
+
+**H5 stays a proposal, not a number.** No checker budget is asserted here: the four missing observations are exactly the workloads a budget would have to be measured over, and [H5](PORTABLE-CONSISTENCY-PROPOSAL.md#hard-acceptance-conditions-confirmed-by-the-owner) requires each budget to pass IF137's six-point gate — including owner ratification — **before** the implementation it gates is measured. The calibration spike §5 schedules after A therefore has a defined shape: add the four missing observations to their named owners above, run them against a disposable checker spike, and bring the measurements to the owner as candidate budgets. Any number written before that ratification would gate nothing.
+
 ### A4 — consistency corpus ownership (decided 2026-09-12)
 
 **Reuse the conformance corpus's case convention; do not build a second corpus.** [`corpus/`](../corpus/README.md) already holds every property A4 asks for: 34 cases across 10 family directories, each carrying a stable `meta.id`, the oracle artifact identity in `meta.kernelVersion`, provenance in `meta.source`, `meta.sections` and `meta.tags`, and — the part that matters most for "one input owner" — a `modelRef` indirection into a shared `corpus/models/` tree rather than an inlined model. That is the reuse A4 requires across common replay, adapter differentials and packed consumers.
