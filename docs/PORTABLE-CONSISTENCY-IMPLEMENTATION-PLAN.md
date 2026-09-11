@@ -135,15 +135,25 @@ Both resolvers were read in full. They are the same rule over different fact sou
 
 **Two constraints B1 inherits from this reading.** The shared resolver must not force eager construction of the short-name map — `ConditionBridge` builds it lazily on first fallback use, and an eager shared owner would add that cost to every bridge construction. And B1's contract requires explicit resolved/missing/ambiguous outcomes while both current callers deliberately collapse ambiguity and absence into the candidate, which is the measured kernel-compatible behaviour; so B1 widens the shared **result type** and leaves each existing caller's collapsing projection intact, rather than changing what either caller does.
 
-### A3 record — second profile basis (resolved 2026-09-11: no second profile available)
+### A3 record — second profile basis (measured 2026-09-12)
 
-**A3 cannot be satisfied today, and the reason is supply rather than effort.** The sibling `a12-kernel` checkout defines the A12 version this project uses — currently `2025.06-ext5` / kernel `30.8.1` — and scanning this machine for a newer release is forbidden, because a newer one here is not OSS and would taint the MIT licence ([CLAUDE.md](../CLAUDE.md), "Test & sample document models"). A3 asks for "exactly one additional **available** real A12 version"; with a single version in the sibling, the additional count is zero. A second profile arrives when the owner updates or adds a sibling, not when a slice goes looking for one.
+**The second profile is `31.1.0`, and its source is already in the sibling — owner-approved 2026-09-12 because the sibling's remote is the public GitHub repository.** Measured by ref position only (`git log --oneline -1`, `git rev-list --count`), reading commit subjects rather than any `2026-ext0` file content:
 
-**What is known about the likely next version, and where that knowledge came from.** `31.1.0` is the natural next release, and our own [KERNEL-31-UPGRADE-PROPOSAL](KERNEL-31-UPGRADE-PROPOSAL.md) — dated 2026-07-17 — already analyses the delta: a mandatory document-model format move `28.4.0` → `29.4.0` against our 65 committed `28.4.0` models, and one genuinely sharp discriminator in `MVK_WILDCARD_AT_LOWEST_LEVEL_REQUIRED`, which kept its name while its old meaning migrated to a separate new code. **Those are that proposal's measurements quoted here, not verifications performed for A3** — no artifact was located or inspected, and none may be sought. Treat the rows as a lead for whenever a second sibling exists, never as pinned evidence.
+| Ref | Commit | Release |
+|---|---|---|
+| `main` (checked out) | `cb66e51` | `2025.06-ext5` — kernel `30.8.1` |
+| `origin/main` | `f10b920` | `2026.06-ext0` — kernel `31.1.0` |
+| `origin/release/2025.06` | `cb66e51` | `2025.06-ext5` — kernel `30.8.1` |
 
-**Disposition.** M and N are blocked on the owner supplying a second A12 sibling. Every other slice proceeds; nothing in A–L depends on the second profile.
+Our checkout sits exactly **one commit behind `origin/main`**, fetched 2026-07-17.
 
-**If a second profile is ever supplied, M inherits one design question.** Its contract is to check *the same sources* under both profiles while explicitly excluding automatic model migration. Across a model-format boundary those two requirements collide, so "the same sources" needs defining first — dual-format fixtures, or an out-of-band migration whose output is pinned as a fixture. Recorded here so the question is not rediscovered at M.
+**Source presence is not oracle access.** A3 needs a *runnable* kernel to execute consistency checks against, and `31.1.0` is not published to `mavenLocal`; producing it means running the bootstrap kit over `f10b920`, whose work items [KERNEL-31-UPGRADE-PROPOSAL](KERNEL-31-UPGRADE-PROPOSAL.md) Phase 0 enumerates. That is the remaining work for M, and it is bounded rather than open-ended.
+
+**Do not reach for a machine Gradle-cache jar — that route is forbidden and was never qualified.** The abandoned attempt tried exactly this: its own plan at `6b4c683873` records that "the wider machine Gradle cache also contains facade jars for 30.7.1, 31.1.0 and 31.1.1" *(their measurement, quoted, not re-derived here)* while conceding that "a cached facade is not a verified transitive closure" and advertising no second profile. So it yielded nothing usable, and scanning the machine for A12 releases is precisely what [CLAUDE.md](../CLAUDE.md)'s sourcing rule now forbids. The sibling ref is the only admissible origin.
+
+**Disposition.** The second profile is identified and its source approved; M and N remain blocked until a runnable `31.1.0` oracle is published from `f10b920`. Every other slice proceeds; nothing in A–L depends on it.
+
+**M inherits one design question.** Its contract is to check *the same sources* under both profiles while explicitly excluding automatic model migration, and `31.1.0` carries a mandatory document-model format move (`28.4.0` → `29.4.0` per that proposal's analysis, quoted not re-measured) against our 65 committed `28.4.0` models. Those requirements collide across a format boundary, so "the same sources" needs defining first — dual-format fixtures, or an out-of-band migration whose output is pinned as a fixture.
 
 ### Decisions to resolve during A
 
