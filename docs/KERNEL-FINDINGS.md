@@ -5832,4 +5832,20 @@ A computation's `errorCodesToSuppress` is declared `List<String>` and is not a s
 
 The consequence is a negative result worth as much as a positive one: **the distinction is positional, not arithmetic**, so counting delimiters detects an imbalance but cannot pick which of the two codes A12 gives — it would be wrong on three of these five. A planned checker increment that would have reported delimiter balance without a grammar was withdrawn on this grid.
 
-*Locked by:* `rulekit.validate.laws.RuleConditionSyntaxLawsTest` (the grid above, with a valid-condition liveness control) and `MvkLedgerTest.ledgerCoversTheParserMessageBundleExactly` (the source that was missing, with an empty-denominator control so a bundle that resolved but carried nothing could not pass vacuously).
+**Extended 2026-09-12 — the trailing-operator grid, and the RETRACTION it forced.** Measured first: a condition ending on `And`, `Or`, a comparison, arithmetic, or a comma all draw `MVK_INCOMPLETE_INPUT`, while `FieldFilled([Tier ->` and `FieldFilled([Tier For` draw `MVK_UNEXPECTED_TOKEN`. That was read as the operator catalog's `OPERATOR`/`PATH_OP` split tracking A12's parse behaviour, so a checker could pick the code from the kind column while looking at nothing before the last token. **It is false in both directions, and one character shows it:**
+
+| condition text | code | the retracted account predicted |
+|---|---|---|
+| `FieldFilled([Tier For` | `MVK_UNEXPECTED_TOKEN` | ✓ — the only row it was built on |
+| `FieldFilled(Tier For` — one bracket fewer | **`MVK_INCOMPLETE_INPUT`** | ✗ |
+| `[Tier For` / `[Tier ->` | **`MVK_INCOMPLETE_INPUT`** | ✗ |
+| `FieldFilled(Tier And` | **`MVK_UNEXPECTED_TOKEN`** | ✗ |
+| `FieldFilled([Tier) And` | **`MVK_UNEXPECTED_TOKEN`** | ✗ |
+| `RepetitionNotUnique(Addons*/Name @From` | **`MVK_INCOMPLETE_INPUT`** | ✗ — a `PATH_OP` |
+| `NumberOfFilledFields(Addons*/Name Having` | **`MVK_INCOMPLETE_INPUT`** | ✗ — a `PATH_OP` |
+
+**The variable is an unclosed delimiter earlier in the text, not the keyword's kind** — a fact about what comes BEFORE the last token, which is exactly what the account denied could matter. It was built on a single table member (`For`; `->` is punctuation and not a keyword at all) and generalized to a three-member kind whose other two members behave the opposite way. Textbook scope transfer: the reuse needed no new branch, so nothing prompted the question.
+
+**What survives is a negative result, and it is the useful half**: which parse code a truncated condition draws depends on the parser's state, so no last-token rule can pick it — the same conclusion the delimiter grid above reached from the other side. The portable checker's completeness family therefore reports only where the text is delimiter-balanced at the trailing operator, which is a boundary drawn around the measured rows and explicitly not a mechanism; everywhere else it is silent, which under-reports and is the safe direction. Before the narrowing it answered `FieldFilled(Tier And` with `MVK_INCOMPLETE_INPUT`, where A12 says `MVK_UNEXPECTED_TOKEN`.
+
+*Locked by:* `rulekit.validate.laws.RuleConditionSyntaxLawsTest` (the grids above, with a valid-condition liveness control, and `whetherTheLastTokenAloneCanDecideTheCode` carrying the refutation with two positive controls showing the truncated texts are truncations of text that parses) and `MvkLedgerTest.ledgerCoversTheParserMessageBundleExactly` (the source that was missing, with an empty-denominator control so a bundle that resolved but carried nothing could not pass vacuously).

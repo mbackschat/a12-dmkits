@@ -120,11 +120,19 @@ class RuleConditionSyntaxLawsTest {
      * generated keyword table's {@code OPERATOR} kind rests on that one row generalizing. It does — across
      * word operators, a comparison, arithmetic, and a trailing comma.
      *
-     * <p><b>And it stops exactly at the catalog's kind boundary, which is why the last two rows are here.</b>
-     * A dangling PATH operator ({@code ->}, {@code For}) is {@code MVK_UNEXPECTED_TOKEN}, not
-     * {@code MVK_INCOMPLETE_INPUT} — so "ends on an operator" is NOT one class, and a check that grouped them
-     * would emit the wrong code for both. The catalog's {@code OPERATOR}/{@code PATH_OP} split tracks A12's
-     * own parse behaviour here, which is what makes the kind column safe to key on.
+     * <p><b>RETRACTED 2026-09-12 — the last two rows do NOT show what this grid originally claimed.</b> They
+     * were read as "a dangling PATH operator draws {@code MVK_UNEXPECTED_TOKEN}, so the catalog's
+     * {@code OPERATOR}/{@code PATH_OP} split tracks A12's parse behaviour and the kind column is safe to key
+     * on". {@link #whetherTheLastTokenAloneCanDecideTheCode} refutes it in both directions: the same
+     * {@code For} with the value bracket removed draws {@code MVK_INCOMPLETE_INPUT}, and a trailing
+     * {@code And} inside an unclosed call draws {@code MVK_UNEXPECTED_TOKEN}. What both of these rows
+     * actually carry is an unclosed {@code [} — a fact about the text BEFORE the last token.
+     *
+     * <p>What survives is narrower and still useful: every row here whose text is delimiter-BALANCED at the
+     * trailing operator draws {@code MVK_INCOMPLETE_INPUT}, across word operators, a comparison and
+     * arithmetic. That is the region the checker restricts itself to. It is a statement about where the
+     * measurements are, not a mechanism — the refutation grid is there precisely because the mechanism this
+     * javadoc used to assert was built on a single table member and generalized to a kind.
      */
     @Test
     void aConditionThatEndsWithAnInfixOperatorIsIncompleteWhateverTheOperator() {
@@ -150,6 +158,69 @@ class RuleConditionSyntaxLawsTest {
         expected.put("ends with the category arrow", "MVK_UNEXPECTED_TOKEN");
         expected.put("ends with the semantic-index keyword", "MVK_UNEXPECTED_TOKEN");
         assertEquals(expected, actual, "whether ending on an infix operator is one class");
+    }
+
+    /**
+     * The grid that REFUTES the account above: the last token does not decide the code, the grammar does.
+     *
+     * <p>The two grids above were read as showing that a trailing {@code OPERATOR} draws
+     * {@code MVK_INCOMPLETE_INPUT} and a trailing {@code PATH_OP} draws {@code MVK_UNEXPECTED_TOKEN}, so a
+     * checker could pick the code from the catalog's kind column alone, looking at nothing before the last
+     * token. <b>Both halves are false, and one discriminating character shows it.</b> Removing the value
+     * bracket from {@code FieldFilled([Tier For} flips it to {@code MVK_INCOMPLETE_INPUT}; adding an unclosed
+     * delimiter before a trailing {@code And} flips that to {@code MVK_UNEXPECTED_TOKEN}. The two remaining
+     * {@code PATH_OP} members behave the opposite way from the one that was measured.
+     *
+     * <p>The account was built on exactly one table member — {@code For} — since {@code ->} is punctuation and
+     * is not a keyword at all, and it was then generalized to a three-member kind whose other two members
+     * contradict it. That is the scope-transfer shape: no new branch was needed, so nothing prompted the
+     * question. What the rows below actually establish is a NEGATIVE result, and it is the useful one: which
+     * parse code a truncated condition draws depends on the parser's state, so no last-token rule can pick it
+     * and the checker must restrict itself to the shapes measured rather than infer the rest.
+     */
+    @Test
+    void whetherTheLastTokenAloneCanDecideTheCode() {
+        Map<String, String> actual = new LinkedHashMap<>();
+        // The rows the retracted account was built on — kept so the refutation is read beside its source.
+        actual.put("For after an unclosed value bracket", verdict("FieldFilled([Tier ->"));
+        actual.put("the arrow after an unclosed value bracket", verdict("FieldFilled([Tier For"));
+        // One character removed, and the code changes: the bracket, not the keyword's kind, was deciding.
+        actual.put("the same arrow with no value bracket", verdict("FieldFilled(Tier ->"));
+        actual.put("the same For with no value bracket", verdict("FieldFilled(Tier For"));
+        actual.put("a bare value bracket and the arrow", verdict("[Tier ->"));
+        actual.put("a bare value bracket and For", verdict("[Tier For"));
+        // …and the OPERATOR side flips the other way, which the account cannot accommodate at all.
+        actual.put("And inside an unclosed call", verdict("FieldFilled(Tier And"));
+        actual.put("And after an unclosed value bracket", verdict("FieldFilled([Tier) And"));
+        // The two PATH_OP members that were never measured, both against the account.
+        actual.put("the from-scope keyword left dangling",
+                verdict("RepetitionNotUnique(Addons*/Name @From"));
+        actual.put("the filter keyword left dangling",
+                verdict("NumberOfFilledFields(Addons*/Name Having"));
+        // Positive controls. What they have to establish is that the two rows above are truncations of text
+        // that PARSES — so a SEMANTIC code here is the control passing, not failing: A12 got through the
+        // grammar and rejected the completed condition on its meaning. (Neither completes to an admitted
+        // condition on this fixture: `@From` wants a non-wildcard scope and the filter's error field is not
+        // referenced by the condition. Both are rejections from well past the parser.)
+        actual.put("the from-scope keyword completed — a control",
+                verdict("RepetitionNotUnique(Addons*/Name @From Addons)"));
+        actual.put("the filter keyword completed — a control",
+                verdict("NumberOfFilledFields(Addons*/Name Having [Addons/Name] == \"x\") > 0"));
+
+        Map<String, String> expected = new LinkedHashMap<>();
+        expected.put("For after an unclosed value bracket", "MVK_UNEXPECTED_TOKEN");
+        expected.put("the arrow after an unclosed value bracket", "MVK_UNEXPECTED_TOKEN");
+        expected.put("the same arrow with no value bracket", "MVK_INCOMPLETE_INPUT");
+        expected.put("the same For with no value bracket", "MVK_INCOMPLETE_INPUT");
+        expected.put("a bare value bracket and the arrow", "MVK_INCOMPLETE_INPUT");
+        expected.put("a bare value bracket and For", "MVK_INCOMPLETE_INPUT");
+        expected.put("And inside an unclosed call", "MVK_UNEXPECTED_TOKEN");
+        expected.put("And after an unclosed value bracket", "MVK_UNEXPECTED_TOKEN");
+        expected.put("the from-scope keyword left dangling", "MVK_INCOMPLETE_INPUT");
+        expected.put("the filter keyword left dangling", "MVK_INCOMPLETE_INPUT");
+        expected.put("the from-scope keyword completed — a control", "MVK_NO_WILDCARD");
+        expected.put("the filter keyword completed — a control", "MVK_ERROR_FIELD_NOT_REFERENCED");
+        assertEquals(expected, actual, "whether the last token's kind alone can pick the parse code");
     }
 
     private static String verdict(String condition) {

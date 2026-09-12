@@ -69,9 +69,13 @@ enum class CheckFamily {
     CONDITION_LEXICALITY,
 
     /**
-     * That no DSL-bearing member ENDS before it is finished — a trailing infix operator, comparison,
-     * arithmetic symbol or comma. Its own constant rather than part of the lexical family because it is a
-     * grammar-adjacent claim about the last token, not a claim about the characters.
+     * That no DSL-bearing member ENDS before it is finished, in the one shape decidable without a grammar: a
+     * trailing infix operator or symbolic comparison in text whose delimiters are all closed, or a comma
+     * inside an open argument list. Its own constant rather than part of the lexical family because it is a
+     * grammar-adjacent claim about how the text ENDS, not a claim about its characters.
+     *
+     * Deliberately narrower than "ends on an operator": with an unclosed delimiter earlier in the text A12
+     * answers the same trailing operator with a different code, so this family reports nothing there.
      */
     CONDITION_COMPLETENESS,
 }

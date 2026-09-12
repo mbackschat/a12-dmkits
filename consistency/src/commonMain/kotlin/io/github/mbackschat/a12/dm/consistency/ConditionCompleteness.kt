@@ -5,14 +5,17 @@ import io.github.mbackschat.a12.dm.consistency.syntax.incompleteInput
 /**
  * DSL text that ends before it is finished — A12's `MVK_INCOMPLETE_INPUT`.
  *
- * The second syntax phase decidable without a grammar, because the answer depends only on the last
- * significant token. The measured class is the infix operators, the symbolic comparison and arithmetic
- * operators, and a trailing comma ([KERNEL-FINDINGS KF300]).
+ * The one phase-2 shape this checker can report without a grammar — and the qualifier is load-bearing, because
+ * the first version of this family claimed the last significant token decides the code and that is measurably
+ * false ([KERNEL-FINDINGS KF300]). It reports only where the text is delimiter-BALANCED at a trailing infix
+ * operator or symbolic comparison, or ends on a comma inside an open argument list; [incompleteInput] carries
+ * the measurements and why the restriction is a boundary rather than a mechanism.
  *
- * **What it deliberately stays silent about.** A dangling PATH operator is `MVK_UNEXPECTED_TOKEN`, a code
- * this checker cannot yet decide, so it is left to the grammatical increment rather than reported under the
- * nearest available code. Silence there is correctness: naming a real defect with the wrong code sends an
- * author to the wrong fix, and the report's gap already says the parser phases are not covered.
+ * **What it deliberately stays silent about**, all of it under-reporting rather than mis-reporting: text with
+ * an unclosed delimiter, which A12 may answer with either code; a trailing `-` or `/`, which the tokenizer
+ * cannot tell from a path step; and every wrong-token shape, which needs the grammar. Naming a real defect
+ * with the wrong code sends an author to the wrong fix, and the report's gap already says the parser phases
+ * are not covered.
  */
 fun PreparedModel.conditionCompletenessFindings(): List<Finding> = elements.flatMap { element ->
     val body = element.body ?: return@flatMap emptyList()
