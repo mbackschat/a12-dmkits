@@ -8,8 +8,10 @@ import kotlin.test.assertIs
  * The two members a stored RULE cannot work without — `errorCondition` and `errorEntityRelPath`.
  *
  * Every verdict below is the Kernel's, measured on the raw stored shapes by
- * `rulekit.validate.laws.RuleConditionAndTargetSlotLawsTest` (kernel 30.8.1, 2026-09-12). `Rule.Builder`
- * requires both, so none of these shapes can be authored through the typed route.
+ * `rulekit.validate.laws.RuleConditionAndTargetSlotLawsTest` — except the two explicit-`null` rows, which
+ * `rulekit.validate.laws.RuleCodeAndSeverityLawsTest` measures across all four of a rule's members
+ * (kernel 30.8.1, 2026-09-12). `Rule.Builder` requires both, so none of these shapes can be authored through
+ * the typed route.
  */
 class RuleConditionAndTargetTest {
 

@@ -18,14 +18,16 @@ package io.github.mbackschat.a12.dm.consistency
  * which is what [CK_MODEL_NOT_BUILDABLE] and the coverage gap beside it say.
  */
 fun PreparedModel.elementNameFindings(): List<Finding> =
+    // Keyed by PATH, which is the parent plus the name — so a collision is by construction between
+    // declarations of one parent, and `at` names the collision itself rather than the parent it sits in.
     elements.groupBy { it.path }.filterValues { it.size > 1 }.map { (path, collided) ->
         Finding(
             FindingCategory.A12_CONSTRAINT,
             FindingSeverity.ERROR,
             CK_MODEL_NOT_BUILDABLE,
-            "this group holds ${collided.size} children named `${path.substringAfterLast('/')}` " +
-                "(${collided.joinToString(", ") { it.kind }}) — A12 cannot build a model with two children " +
-                "of one name under one group, whatever kinds they are, so nothing in it is judged",
+            "${collided.size} declarations here carry the name `${collided.first().name}` " +
+                "(${collided.joinToString(", ") { it.kind }}) — A12 cannot build a model in which two " +
+                "declarations of one parent share a name, whatever kinds they are, so nothing in it is judged",
             path,
         )
     }

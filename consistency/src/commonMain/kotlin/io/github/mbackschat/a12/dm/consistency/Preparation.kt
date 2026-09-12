@@ -84,10 +84,40 @@ data class DeclaredElement(
     val declaration: JsonObject,
     val origin: DeclarationOrigin,
 ) {
+    /**
+     * The [DeclaredKind] this declaration's `type` names, absent when it names none A12 admits.
+     *
+     * Internal because the kind set is the Kernel's, not this API's: a consumer reads [kind] verbatim, and
+     * publishing the enum would make every future `type` A12 adds a breaking change here.
+     */
+    internal val declaredKind: DeclaredKind?
+        get() = DeclaredKind.of(kind)
+
     /** The model this group mounts, when it declares one — `Group.modelAlias`. */
     val modelAlias: String?
-        get() = ((declaration[kind] as? JsonObject)?.get("modelAlias") as? JsonPrimitive)?.contentOrNull
+        get() = (body?.get("modelAlias") as? JsonPrimitive)?.contentOrNull
+
+    /**
+     * The kind's payload as A12 binds it, and absent when A12's own reader refuses to bind it at all.
+     *
+     * The three cases are NOT two. An omitted envelope is legal — the Kernel default-constructs the element,
+     * so every member simply reads as absent, which is an EMPTY object here rather than a refusal. A present
+     * envelope that is not an object is a binding failure: the source never loads, so no member of it may be
+     * judged and a family that reads `null` as "the member is missing" would publish a verdict about a model
+     * A12 never examined.
+     *
+     * Every family that judges MEMBERS must therefore read this rather than casting `declaration[kind]`,
+     * which collapses the legal case onto the refused one.
+     */
+    val body: JsonObject?
+        get() = when (val envelope = declaration[kind]) {
+            null -> EMPTY_BODY
+            is JsonObject -> envelope
+            else -> null
+        }
 }
+
+private val EMPTY_BODY = JsonObject(emptyMap())
 
 /**
  * A mount the checker could not expand, and the reason.
@@ -139,7 +169,7 @@ data class PreparedModel(
  * `IllegalArgumentException` on the whole source. Only [GROUP] carries children, which is why descent is
  * decided by the discriminator and not by whichever envelope happens to hold an `elements` array.
  */
-private enum class DeclaredKind(val wire: String) {
+internal enum class DeclaredKind(val wire: String) {
     FIELD("Field"), GROUP("Group"), RULE("Rule"), COMPUTATION("Computation");
 
     companion object {

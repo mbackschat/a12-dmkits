@@ -47,6 +47,7 @@ class GroupIndexAndSortReferenceLawsTest {
         actual.put("on a NON-repeatable group", verdict(NON_REPEATABLE, "indexFieldName", "\"Street\""));
         actual.put("unresolvable on a NON-repeatable group",
                 verdict(NON_REPEATABLE, "indexFieldName", "\"Missing\""));
+        actual.put("a .. that climbs past the root", verdict(REPEATABLE, "indexFieldName", "\"../../Sku\""));
         actual.put("a descending path with no ..", verdict(REPEATABLE, "indexFieldName", "\"Items/Sku\""));
         actual.put("a child GROUP of the named group", verdict("Order", "indexFieldName", "\"Items\""));
         actual.put("a descending path that DOES resolve", verdict("Order", "indexFieldName", "\"Items/Sku\""));
@@ -75,6 +76,9 @@ class GroupIndexAndSortReferenceLawsTest {
         // The resolution runs on every group, not only a repeatable one — the row that keeps the rows above
         // from being read as "the index is only checked where it is used".
         expected.put("unresolvable on a NON-repeatable group", KernelLaws.NOT_BUILDABLE);
+        // A climb the model has no room for: the sibling resolver treats this as its own outcome, so it is
+        // measured here rather than assumed to fall in with an ordinary miss.
+        expected.put("a .. that climbs past the root", KernelLaws.NOT_BUILDABLE);
         // `Items/Sku` read from INSIDE `/Order/Items` names `/Order/Items/Items/Sku`, which is nothing — so
         // a path is not privileged and the `..` above was not the reason.
         expected.put("a descending path with no ..", KernelLaws.NOT_BUILDABLE);
@@ -98,6 +102,7 @@ class GroupIndexAndSortReferenceLawsTest {
         actual.put("a field that does not exist", verdict(REPEATABLE, "sortFields", "[{\"name\":\"Missing\"}]"));
         actual.put("an empty name", verdict(REPEATABLE, "sortFields", "[{\"name\":\"\"}]"));
         actual.put("an entry with no name", verdict(REPEATABLE, "sortFields", "[{}]"));
+        actual.put("an absolute path", verdict(REPEATABLE, "sortFields", "[{\"name\":\"/Order/Items/Sku\"}]"));
         actual.put("a field OUTSIDE the group that resolves",
                 verdict(REPEATABLE, "sortFields", "[{\"name\":\"../CustomerName\"}]"));
         actual.put("a child GROUP of the named group", verdict("Order", "sortFields", "[{\"name\":\"Items\"}]"));
@@ -113,17 +118,124 @@ class GroupIndexAndSortReferenceLawsTest {
         // `MVK_INVALID_INDEX_FIELD` is named for the index and nothing says a sort field shares its gate.
         expected.put("a field OUTSIDE the group that resolves", "MVK_INVALID_SORT_FIELD");
         expected.put("a child GROUP of the named group", KernelLaws.NOT_BUILDABLE);
+        // Asked on THIS member rather than carried from the index, which is the transfer that needs no new
+        // branch and so prompts no question.
+        expected.put("an absolute path", KernelLaws.RAISED_UNTYPED);
         assertEquals(expected, actual, "what A12 does with each shape of a group's sortFields");
+    }
+
+    /**
+     * A direct-child field is not sufficient — the index field's own TYPE is gated too.
+     *
+     * <p>Every admitted row above names a plain value-validating string field, so "a field of this group" and
+     * "a field of this group that A12 will accept as a key" are one predicate there. They are not the same
+     * claim, and the checker may only make the one it measured.
+     */
+    @Test
+    void anIndexFieldsOwnTypeIsGatedBeyondResolvingAtAll() {
+        Map<String, String> actual = new LinkedHashMap<>();
+        actual.put("a plain string field — the control", verdict(REPEATABLE, "indexFieldName", "\"Sku\""));
+        actual.put("a field declared noValueValidation", noValueValidationVerdict("indexFieldName"));
+        actual.put("the same, as a sort field", noValueValidationVerdict("sortFields"));
+
+        Map<String, String> expected = new LinkedHashMap<>();
+        expected.put("a plain string field — the control", KernelLaws.ADMITTED);
+        expected.put("a field declared noValueValidation", "MVK_INDEX_FIELD_NO_VALUE_VALIDATION");
+        expected.put("the same, as a sort field", "MVK_SORT_FIELD_NO_VALUE_VALIDATION");
+        assertEquals(expected, actual, "the index/sort field's own type");
+    }
+
+    /** The probe with `/Order/Items/Sku` redeclared as a no-value-validation string and named as the key. */
+    private static String noValueValidationVerdict(String member) {
+        try {
+            ObjectNode root = (ObjectNode) MAPPER.readTree(Fixtures.orderJson());
+            ObjectNode items = groupBody(root, "Items");
+            for (var element : items.path("elements")) {
+                if ("Sku".equals(element.path("name").asText())) {
+                    // Both flags together: A12 refuses `noValueValidation` without line breaks
+                    // (`MVK_STRING_TYPE_NO_VAL_AND_NO_LINE_BREAK`), so setting one alone would move a second
+                    // variable and measure that refusal instead of this gate.
+                    ((ObjectNode) element.path("Field").path("fieldType"))
+                            .putObject("StringType")
+                            .put("noValueValidation", true).put("lineBreaksPermitted", true);
+                }
+            }
+            // The fixture already keys this group by `Sku`, so leaving that in place would fire the INDEX
+            // gate beside the sort one and measure both at once.
+            items.remove("indexFieldName");
+            items.set(member, MAPPER.readTree(
+                    "sortFields".equals(member) ? "[{\"name\":\"Sku\"}]" : "\"Sku\""));
+            return KernelLaws.verdictOf(root.toString());
+        } catch (IOException unreadable) {
+            throw new UncheckedIOException("the fixture must parse", unreadable);
+        }
+    }
+
+    /**
+     * Which of the two accounts of the mechanism A12 actually follows — the row neither table above could
+     * separate.
+     *
+     * <p>Every fixture above has DISJOINT short names per level, so "the spelling landed outside this group"
+     * and "no child of this group carries the landed field's short name" are one predicate on every row. They
+     * come apart the moment one short name exists at two levels: {@code ../Sku} written in {@code /Order/Items}
+     * lands on {@code /Order/Sku}, which is outside — and {@code /Order/Items} has a {@code Sku} of its own.
+     *
+     * <p>A checker built on the landing rejects that model. A checker built on the short name admits it. Only
+     * A12 can say which is a rejection it actually makes, and it admits it — so the law is TWO gates: the
+     * spelling must resolve to a field at all, and then that field's SHORT NAME must name a field of this
+     * group. The rows above fit both accounts because no short name in their fixture exists at two levels.
+     */
+    @Test
+    void aDuplicateShortNameSeparatesTheLandingFromTheName() {
+        Map<String, String> actual = new LinkedHashMap<>();
+        actual.put("index ../Sku, no /Order/Sku — the control",
+                verdict(REPEATABLE, "indexFieldName", "\"../Sku\"", false));
+        actual.put("index ../Sku, with /Order/Sku",
+                verdict(REPEATABLE, "indexFieldName", "\"../Sku\"", true));
+        actual.put("sort ../Sku, with /Order/Sku",
+                verdict(REPEATABLE, "sortFields", "[{\"name\":\"../Sku\"}]", true));
+        actual.put("index ../CustomerName, with /Order/Sku",
+                verdict(REPEATABLE, "indexFieldName", "\"../CustomerName\"", true));
+
+        Map<String, String> expected = new LinkedHashMap<>();
+        // Without the second field the spelling resolves to NOTHING, so it never reaches the second gate —
+        // which is why this control had to be the same spelling rather than a different one.
+        expected.put("index ../Sku, no /Order/Sku — the control", KernelLaws.NOT_BUILDABLE);
+        // The row that decides it: the landing is outside the group and A12 ADMITS the model, because
+        // `/Order/Items` carries a `Sku` of its own. A checker judging the LANDING rejects a model A12 takes.
+        expected.put("index ../Sku, with /Order/Sku", KernelLaws.ADMITTED);
+        expected.put("sort ../Sku, with /Order/Sku", KernelLaws.ADMITTED);
+        // …and the name is what matters, not the duplication: a spelling landing outside on a name this group
+        // does NOT carry is still refused in the very same model.
+        expected.put("index ../CustomerName, with /Order/Sku", "MVK_INVALID_INDEX_FIELD");
+        assertEquals(expected, actual, "whether the landing or the short name decides");
     }
 
     /** What A12 says about the order fixture with one member of [group]'s body replaced, or removed. */
     private static String verdict(String group, String member, String rawJson) {
-        return KernelLaws.verdictOf(probe(group, member, rawJson));
+        return verdict(group, member, rawJson, false);
+    }
+
+    /**
+     * …and with a second field named {@code Sku} added to {@code /Order}, so the short name {@code Sku} exists
+     * at two levels. That is the only variable this overload moves.
+     */
+    private static String verdict(String group, String member, String rawJson, boolean duplicateShortName) {
+        return KernelLaws.verdictOf(probe(group, member, rawJson, duplicateShortName));
     }
 
     private static String probe(String group, String member, String rawJson) {
+        return probe(group, member, rawJson, false);
+    }
+
+    private static String probe(String group, String member, String rawJson, boolean duplicateShortName) {
         try {
             ObjectNode root = (ObjectNode) MAPPER.readTree(Fixtures.orderJson());
+            if (duplicateShortName) {
+                ((com.fasterxml.jackson.databind.node.ArrayNode) groupBody(root, "Order").path("elements"))
+                        .add(MAPPER.readTree("{\"type\":\"Field\",\"id\":\"/Order/Sku\",\"name\":\"Sku\","
+                                + "\"Field\":{\"fieldType\":{\"type\":\"StringType\"}}}"));
+            }
             ObjectNode body = groupBody(root, group);
             if (rawJson == null) {
                 body.remove(member);

@@ -380,7 +380,7 @@ The tokenizer's own two departures from a naive lexer stand, and each now has a 
 
 **Three further rejections the review's measurements added, all of them cases where reporting the wrong thing rejects a model A12 accepts.** A candidate at ROOT-GROUP level draws `MVK_INVALID_ROOT_GROUP` rather than `MVK_INVALID_ENTITY`. A group that MOUNTS another model (`modelAlias` with no `elements`) leaves the fact base incomplete, so the reference families are suspended with a gap instead of reporting every reference into it as undeclared. And an unsupported `conditionLanguage` is a REFUSAL, not a fallback — A12 rejects the model outright, so no reading of its conditions exists to report ([KF283](KERNEL-FINDINGS.md#kf283), corrected).
 
-**What this does not yet do.** Reference EXTRACTION is complete and BINDING covers the paths above; what a reference is allowed to be — the iteration gates, the wildcard rules, the operand types — belongs to D, and a resolvable reference remains necessary and not sufficient. Declared non-goals, each stated at its locus: `$`, an all-digit name and the H-model row specifiers on `referencesIn`; the turning-point label's ANCESTOR check (A12 verifies it, this does not, which under-reports); and the `$`, all-digit and H-model cases above. (`Group.indexFieldName` / `Group.sortFields[].name` were listed here as unexamined until their own C family landed; see its record below.)
+**What this does not yet do.** Reference EXTRACTION is complete and BINDING covers the paths above; what a reference is allowed to be — the iteration gates, the wildcard rules, the operand types — belongs to D, and a resolvable reference remains necessary and not sufficient. Declared non-goals, each stated at its locus: `$`, an all-digit name and the H-model row specifiers on `referencesIn`; and the turning-point label's ANCESTOR check (A12 verifies it, this does not, which under-reports). (`Group.indexFieldName` / `Group.sortFields[].name` were listed here as unexamined until their own C family landed; see its record below.)
 
 ### C record — first frozen family: a declaration's own SLOTS (2026-09-12)
 
@@ -423,7 +423,7 @@ The tokenizer's own two departures from a naive lexer stand, and each now has a 
 | the member absent, or an EMPTY list | rejects | `MVK_INCOMPLETE_INPUT` **and** `MVK_CONDITION_MISSING`, `A12_CONSTRAINT` / ERROR |
 | an alternative with no `operation`, or a blank/whitespace/`null` one | rejects | `MVK_INCOMPLETE_INPUT` alone, same |
 | ONE alternative, unguarded | **admits** | nothing |
-| TWO or more, any of them unguarded — first, last or both | rejects | `MVK_ERROR_EMPTY_PRECONDITION` per unguarded alternative, same |
+| TWO or more, any of them unguarded — first, last or both | rejects, with ONE notification for the computation | one `MVK_ERROR_EMPTY_PRECONDITION` naming which alternatives lack a guard, same |
 | a `commonPrecondition` declared beside them | changes neither row above | unchanged — it is a different slot |
 | a precondition present but BLANK or whitespace | rejects, as a PARSE error | nothing — left to the syntax family, and the report says so |
 | the member as an object, a scalar or an explicit `null`, or an alternative that is not an object | **never reads the source** | `CK_MODEL_NOT_BUILDABLE`, same |
@@ -473,16 +473,34 @@ The tokenizer's own two departures from a naive lexer stand, and each now has a 
 | stored shape | A12 | the checker reports |
 |---|---|---|
 | absent, or a bare name of one of the group's own fields | **admits** | nothing |
-| a spelling that resolves to a field OUTSIDE the group | rejects | `MVK_INVALID_INDEX_FIELD` / `MVK_INVALID_SORT_FIELD`, `A12_CONSTRAINT` / ERROR |
+| a spelling that resolves to a field whose short name this group has no field for | rejects | `MVK_INVALID_INDEX_FIELD` / `MVK_INVALID_SORT_FIELD`, `A12_CONSTRAINT` / ERROR |
+| a spelling that lands outside the group on a name the group DOES carry | **admits** | nothing |
+| a direct-child field declared `noValueValidation` | rejects | nothing — the field's own TYPE gate is a family this slice does not own, and every report names it as unexamined |
 | blank, whitespace, a bare name that is not one of its fields, a child group's name, a path naming nothing, an absolute path, a `sortFields` entry with no `name` | **never produces a verdict** | `CK_MODEL_NOT_BUILDABLE`, same |
 
 **They could not ride the existing reference machinery, and that is the reason the gap stayed open rather than an oversight.** The resolution has no short-name fallback — a bare name is looked up among the group's own fields alone — and each member carries its own code, so reusing `ReferenceRole`'s codes would have reported a rule's law on a group's member.
 
-**One mechanism covers every row and it is discriminated, not fitted** ([KF295](KERNEL-FINDINGS.md#kf295)): A12 resolves positionally from the group, then judges the landing. The `Items/Sku` pair separates that from "`..` is special" — the same spelling stops the build in one group and draws the code one level up — and the checker therefore tests where the path LANDED, never how it was spelled. Testing the spelling passes the second row wrongly, which is why the implementation says so at the branch.
+**TWO gates, and the second reads a NAME** ([KF295](KERNEL-FINDINGS.md#kf295)): the spelling must land on a field at all, and that field's SHORT NAME must then name a field of this group. **The first landing of this family got the second gate wrong and shipped an over-rejection**, caught by the terminal review and settled against the Kernel: it judged where the path LANDED, so a model with the short name `Sku` at two levels — `../Sku` written in `/Order/Items`, which A12 admits because that group has a `Sku` of its own — was rejected. No fixture in the family could see it, because every one had disjoint short names per level, which made "landed outside" and "no field of that name here" the same predicate on every row. The discriminating row is now locked on both members.
 
 **Two further boundaries were measured because the mechanism alone does not settle them.** The check runs on EVERY group, not only a repeatable one. And an ABSENT member is legal while a BLANK one is fatal — the blank-counts-as-absent law three sibling slots follow, inverted as far as it can go.
 
 **One row is a third member of [KF259](KERNEL-FINDINGS.md#kf259)'s class:** an absolute spelling makes the Kernel raise past every typed channel. The checker reports the model as unusable, which is what a consumer acts on; that A12 delivers it untyped is A12's reporting defect, recorded rather than reproduced.
+
+### Terminal review of the five C families, and what it changed (2026-09-12)
+
+One cold adversarial review over the frozen range, as [§2](#2-execution-order-and-landing-boundaries) order 5 requires. It found four things the fixtures could not see, and every one was settled against the Kernel rather than against the reviewer's reading.
+
+| finding | settled by | outcome |
+|---|---|---|
+| the ordering family judged the LANDING, not the short name | a new row: the same short name at two levels | **over-rejection, confirmed and fixed** |
+| a non-object kind envelope reached the member families as "the member is absent" | a new row: a `Computation` envelope that is not an object | **tier collapse, confirmed and fixed at the root** |
+| `MVK_CONDITION_MISSING` was explained by "no alternative means no precondition slot" | two new rows declaring a `commonPrecondition` | **mechanism refuted**; the codes were right, the explanation was not, and it is now stated as an observation |
+| the checker emitted one precondition finding per unguarded alternative | the notification stream, which the code table de-duplicates | **confirmed**; A12 raises one, so the checker now reports one |
+| a direct-child field is "the only thing that is legal" | two new rows on a `noValueValidation` field | **over-claim, confirmed**; the type gate is a family this slice does not own, and every report now names it |
+
+**The root fix for the envelope class is `DeclaredElement.body`, and it is a THREE-state answer where the code had two.** An omitted envelope is legal — A12 default-constructs the element, so every member genuinely reads as absent — while a present non-object one is a binding failure the source never survives. Casting `declaration[kind] as? JsonObject` collapses those onto one `null`, which four families then read as "the member is missing". The property distinguishes them once, and the sweep covered the two earlier families (`errorCode`, `errorMessage`) that carried the same defect unnoticed.
+
+**Two of the five findings were about a CONSTANT the whole fixture set shared, and neither was visible from inside it** — disjoint short names per level, and no `commonPrecondition` on the no-work rows. That is the confound no control inside a set can catch, and a review reading the set from outside is what found them.
 
 ### Decisions to resolve during A
 

@@ -18,7 +18,10 @@ import kotlin.test.assertTrue
  */
 class GroupOrderingReferenceTest {
 
-    private fun codesFor(itemsBody: String = "", catalogBody: String = "") = prepare(
+    /** A second field carrying the short name `Sku`, so that name exists at two levels. */
+    private val SKU = """,{"type":"Field","id":"f3","name":"Sku","Field":{}}"""
+
+    private fun codesFor(itemsBody: String = "", catalogBody: String = "", catalogExtra: String = "") = prepare(
         assertIs<Admission.Admitted>(
             admit(
                 ModelSource(
@@ -26,7 +29,7 @@ class GroupOrderingReferenceTest {
                     {"header":{"id":"catalog","locales":[{"code":"en_US"}]},
                      "content":{"modelRoot":{"rootGroups":[
                       {"type":"Group","id":"g0","name":"Catalog","Group":{$catalogBody"elements":[
-                        {"type":"Field","id":"f0","name":"Label","Field":{}},
+                        {"type":"Field","id":"f0","name":"Label","Field":{}}$catalogExtra,
                         {"type":"Group","id":"g1","name":"Items","Group":{$itemsBody"elements":[
                           {"type":"Field","id":"f1","name":"Sku","Field":{}},
                           {"type":"Field","id":"f2","name":"Count","Field":{}}
@@ -120,6 +123,34 @@ class GroupOrderingReferenceTest {
             ),
         ).groupOrderingFindings().single().explain
         assertTrue("illegal relative path" in explain, explain)
+    }
+
+    /**
+     * Which of the two accounts the checker follows — the row that separates the LANDING from the NAME.
+     *
+     * The fixture above has disjoint short names per level, so "landed outside this group" and "this group
+     * has no field of that name" are one predicate on every one of its rows. Giving `Catalog` a `Sku` of its
+     * own separates them: `../Sku` written in `Items` lands outside and A12 ADMITS it, because `Items` has a
+     * `Sku`. A checker judging the landing rejects a model the Kernel takes — the over-rejection class.
+     */
+    @Test
+    fun aDuplicateShortNameSeparatesTheLandingFromTheName() {
+        val actual = mutableMapOf<String, List<String>>()
+        actual["../Sku, no Catalog/Sku — the control"] = codesFor(index("../Sku"))
+        actual["../Sku, with Catalog/Sku"] = codesFor(index("../Sku"), catalogExtra = SKU)
+        actual["sort ../Sku, with Catalog/Sku"] = codesFor(sort("../Sku"), catalogExtra = SKU)
+        actual["../Label, with Catalog/Sku"] = codesFor(index("../Label"), catalogExtra = SKU)
+
+        val expected = mapOf(
+            // Without the second field the spelling lands on nothing, so it never reaches the second gate.
+            "../Sku, no Catalog/Sku — the control" to listOf("CK_MODEL_NOT_BUILDABLE"),
+            "../Sku, with Catalog/Sku" to listOf(),
+            "sort ../Sku, with Catalog/Sku" to listOf(),
+            // …and the NAME is what decides, not the duplication: a landing outside on a name this group does
+            // not carry is still refused in the very same model.
+            "../Label, with Catalog/Sku" to listOf("MVK_INVALID_INDEX_FIELD"),
+        )
+        assertEquals(expected, actual, "whether the landing or the short name decides")
     }
 
     /**

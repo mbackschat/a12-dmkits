@@ -13,15 +13,26 @@ import kotlinx.serialization.json.contentOrNull
  * it names nothing is a law about THAT member, these two have codes of their own, and their resolution has
  * no short-name fallback.
  *
- * **One mechanism explains every row: A12 resolves the spelling positionally from the group, then judges
- * what it landed on.** A direct child FIELD is the only thing that is legal. Something else that exists — a
- * field one level down, a field of the parent reached with `..` — draws the member's own code. Anything
- * that resolves to nothing, blank and whitespace included, stops A12 from BUILDING the model, so no verdict
- * about it exists at all (`GroupIndexAndSortReferenceLawsTest`, kernel 30.8.1, 2026-09-12).
+ * **TWO gates, and the second reads a NAME rather than a position.** A12 resolves the spelling positionally
+ * from the group; one that does not land on a field stops the model from being BUILT, so no verdict about it
+ * exists. One that does land keeps only that field's SHORT NAME, and the group must then carry a field of
+ * that name — otherwise the member's own code (`GroupIndexAndSortReferenceLawsTest`, kernel 30.8.1,
+ * 2026-09-12).
  *
- * That mechanism is discriminated rather than fitted: `Items/Sku` read from inside `/Order/Items` names
- * nothing and stops the build, while the same spelling read from `/Order` resolves to a real field outside
- * the group and draws the code. A reading where `..` is the special ingredient gets that pair wrong.
+ * **The second gate is why "judge where the path landed" is wrong, and exactly one row separates them.**
+ * With the short name `Sku` living at two levels, `../Sku` written in `/Order/Items` lands on `/Order/Sku` —
+ * outside the group — and A12 ADMITS the model, because `/Order/Items` carries a `Sku` of its own. A checker
+ * judging the landing rejects a model A12 takes. Every other row has disjoint short names per level, where
+ * the two accounts agree, which is why that row had to be built rather than inferred.
+ *
+ * A third reading, that `..` is the special ingredient, is refuted separately: `Items/Sku` read from inside
+ * `/Order/Items` names nothing and stops the build, while the same spelling read from `/Order` lands on a
+ * real field and reaches the second gate.
+ *
+ * **The landed field's own TYPE is gated too, and that is NOT checked here.** A `noValueValidation` string
+ * draws `MVK_INDEX_FIELD_NO_VALUE_VALIDATION` / `MVK_SORT_FIELD_NO_VALUE_VALIDATION` even as a direct child
+ * (measured in the same lock), and the table-enum gate beside it is unmeasured. So passing both gates above
+ * is necessary and not sufficient, and every report says so rather than letting silence read as approval.
  *
  * **An ABSENT member is legal and a BLANK one is fatal** — the sibling slot families' "blank counts as
  * absent" law inverted as far as it goes. And the check runs on every group, not only a repeatable one, so a
@@ -32,13 +43,10 @@ import kotlinx.serialization.json.contentOrNull
  * as an untyped raise is [KF259]'s class, not something a consumer can act on differently.
  */
 fun PreparedModel.groupOrderingFindings(): List<Finding> =
-    elements.filter { it.kind == GROUP_KIND }.flatMap { group ->
-        val body = group.declaration[GROUP_KIND] as? JsonObject
+    elements.filter { it.declaredKind == DeclaredKind.GROUP }.flatMap { group ->
+        val body = group.body
         indexFindings(group, body) + sortFindings(group, body)
     }
-
-private const val GROUP_KIND = "Group"
-private const val FIELD_KIND = "Field"
 
 private fun PreparedModel.indexFindings(group: DeclaredElement, body: JsonObject?): List<Finding> {
     val declared = (body?.get("indexFieldName") as? JsonPrimitive)?.takeIf { it.isString }?.contentOrNull
@@ -78,27 +86,31 @@ private fun PreparedModel.orderingFinding(
     if (written.startsWith("/")) {
         return unbuildable(group, "`$member` is `$written`, which A12 refuses as an illegal relative path")
     }
+    // GATE ONE — the spelling must land on a field at all. A climb past the root cannot reach one either:
+    // the model root holds groups, so every clamped path names a group path, never a field.
     val landed = resolvePositionally(group.path, written)
     val target = elements.firstOrNull { it.path == landed }
-    return when {
-        // DIRECT child, tested on where it LANDED rather than on how it was spelled: `Items/Sku` written in
-        // `/Order` lands on a real field whose own parent is `/Order/Items`, so it is outside — and comparing
-        // the spelling would have called it a direct child.
-        target != null && target.kind == FIELD_KIND && landed.substringBeforeLast('/') == group.path -> null
-        target != null && target.kind == FIELD_KIND -> Finding(
-            FindingCategory.A12_CONSTRAINT,
-            FindingSeverity.ERROR,
-            outsideCode,
-            "`$member` is `$written`, which names `$landed` — a field outside this group, where A12 accepts " +
-                "only one of the group's own",
-            group.path,
-        )
-        else -> unbuildable(
+    if (target == null || target.declaredKind != DeclaredKind.FIELD) {
+        return unbuildable(
             group,
-            "`$member` is `$written`, which names no field of this group — a blank or unresolvable one " +
-                "included, and a child GROUP of that name does not count",
+            "`$member` is `$written`, which names no field at all — a blank or unresolvable one included, " +
+                "and a GROUP of that name does not count",
         )
     }
+    // GATE TWO — A12 keeps only the landed field's SHORT NAME and looks it up under this group, so what
+    // decides is whether the group has a field of that NAME, not whether the path stayed inside it.
+    val shortName = landed.substringAfterLast('/')
+    if (elements.any { it.path == "${group.path}/$shortName" && it.declaredKind == DeclaredKind.FIELD }) {
+        return null
+    }
+    return Finding(
+        FindingCategory.A12_CONSTRAINT,
+        FindingSeverity.ERROR,
+        outsideCode,
+        "`$member` is `$written`, which names `$landed`; A12 keeps only the name `$shortName` and this " +
+            "group has no field called that",
+        group.path,
+    )
 }
 
 /**

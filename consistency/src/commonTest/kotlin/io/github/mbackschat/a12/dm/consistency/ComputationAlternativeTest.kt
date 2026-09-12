@@ -108,7 +108,9 @@ class ComputationAlternativeTest {
             "two, both guarded" to listOf(),
             "two, the LAST unguarded" to oneMissing,
             "two, the FIRST unguarded" to oneMissing,
-            "two, both unguarded" to listOf("MVK_ERROR_EMPTY_PRECONDITION", "MVK_ERROR_EMPTY_PRECONDITION"),
+            // ONE finding, not one per alternative: A12 raises a single notification for the computation,
+            // and reporting two would claim it said twice what it said once.
+            "two, both unguarded" to oneMissing,
             "two, one precondition null" to oneMissing,
         )
         assertEquals(expected, actual, "which alternatives owe a precondition")
@@ -162,6 +164,51 @@ class ComputationAlternativeTest {
         )
         assertEquals(expected, actual, "shapes A12's reader refuses")
     }
+
+    /**
+     * An envelope A12 cannot bind is a tier ABOVE any verdict about the member inside it.
+     *
+     * The two shapes look identical to a reader that casts `declaration["Computation"]` to an object and
+     * takes `null` for "the member is absent": one is legal and one is unreadable. A12 DEFAULT-CONSTRUCTS a
+     * computation whose envelope is omitted, so every member of it genuinely reads as absent and the no-work
+     * verdict is right; a present non-object envelope never loads at all, and reporting the same two codes
+     * there publishes a verdict about a model A12 never examined.
+     */
+    @Test
+    fun anEnvelopeA12CannotBindIsNotAnAbsentMember() {
+        val actual = mutableMapOf<String, List<String>>()
+        actual["the envelope omitted"] = codesForRaw("")
+        actual["the envelope as a string"] = codesForRaw(""""Computation":"oops"""")
+        actual["the envelope as an array"] = codesForRaw(""""Computation":[]""")
+
+        val expected = mapOf(
+            "the envelope omitted" to listOf("MVK_INCOMPLETE_INPUT", "MVK_CONDITION_MISSING"),
+            "the envelope as a string" to listOf("CK_MODEL_NOT_BUILDABLE"),
+            "the envelope as an array" to listOf("CK_MODEL_NOT_BUILDABLE"),
+        )
+        assertEquals(expected, actual, "a computation's own envelope")
+    }
+
+    /** A one-computation model whose whole `Computation` member is written verbatim, or omitted. */
+    private fun codesForRaw(envelope: String) = prepare(
+        assertIs<Admission.Admitted>(
+            admit(
+                ModelSource(
+                    """
+                    {"header":{"id":"catalog","locales":[{"code":"en_US"}]},
+                     "content":{"modelRoot":{"rootGroups":[
+                      {"type":"Group","id":"g0","name":"Catalog","Group":{"elements":[
+                        {"type":"Field","id":"f0","name":"Price","Field":{}},
+                        {"type":"Computation","id":"c0","name":"PriceCalc"${
+                        if (envelope.isEmpty()) "" else ",$envelope"
+                    }}
+                      ]}}
+                     ]}}}
+                    """.trimIndent(),
+                ),
+            ),
+        ),
+    ).computationAlternativeFindings().map { it.code }
 
     /** A rule carries no alternative list, and nothing here may report one missing from it. */
     @Test

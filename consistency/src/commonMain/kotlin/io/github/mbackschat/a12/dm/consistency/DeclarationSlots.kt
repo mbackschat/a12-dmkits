@@ -42,13 +42,13 @@ import kotlinx.serialization.json.contentOrNull
  */
 fun PreparedModel.declarationSlotFindings(): List<Finding> =
     declaredLocaleFindings() +
-        elements.filter { it.kind in EXECUTABLE_KINDS }.flatMap { element ->
+        elements.filter { it.declaredKind in EXECUTABLE_KINDS }.flatMap { element ->
             reservedNameFinding(element) + errorCodeFindings(element) +
                 messageFindings(element, declaredLocales)
         }
 
 /** The two element kinds that carry these slots: A12's executables, the checker's whole subject matter. */
-private val EXECUTABLE_KINDS = setOf("Rule", "Computation")
+private val EXECUTABLE_KINDS = setOf(DeclaredKind.RULE, DeclaredKind.COMPUTATION)
 
 /** The namespace A12 reserves for itself, matched case-INSENSITIVELY as the Kernel matches it. */
 private const val RESERVED_NAME_PREFIX = "vk_vk"
@@ -117,7 +117,7 @@ private fun errorCodeFindings(element: DeclaredElement): List<Finding> {
     if (element.kind != "Rule") {
         return emptyList()
     }
-    val declared = (element.declaration[element.kind] as? JsonObject)?.get("errorCode")
+    val declared = (element.body ?: return emptyList())["errorCode"]
     return when {
         declared == null || (declared is JsonPrimitive && declared.isString && declared.content.isBlank()) ->
             listOf(
@@ -270,7 +270,8 @@ private fun authoredLocalePolicyFindings(
  * it stops the read instead of contributing an unusable entry.
  */
 private fun DeclaredElement.authoredMessages(): AuthoredMessages {
-    val entries = when (val member = (declaration[kind] as? JsonObject)?.get("errorMessage")) {
+    val payload = body ?: return AuthoredMessages.Refused("`$kind` is present and is not a JSON object")
+    val entries = when (val member = payload["errorMessage"]) {
         is JsonArray -> member.toList()
         is JsonObject -> member.values.toList()
         else -> emptyList<JsonElement>()

@@ -5575,6 +5575,10 @@ The structure of a stored `computationAlternatives`, measured because `Computati
 | two alternatives, one precondition present but BLANK or whitespace | `MVK_UNEXPECTED_TOKEN` |
 | two alternatives, one precondition an explicit `null` | `MVK_ERROR_EMPTY_PRECONDITION` |
 
+**Corrected 2026-09-12: the second code is an observation, not the consequence it was written as.** "With no alternative there is no precondition slot either, so both gates fire" fitted every row and was never tested — all of them were measured with no `commonPrecondition`. Declaring one leaves the pair exactly as it is, so a condition slot on the model does not remove `MVK_CONDITION_MISSING`. Why it fires is not established here; that it fires beside `MVK_INCOMPLETE_INPUT`, and only when there is no alternative at all, is.
+
+**A12 raises ONE notification for the unguarded case, however many alternatives lack a guard.** The code table cannot see that — comma-joined codes are de-duplicated — so it was measured on the notification stream. The message names the declaration and carries no alternative index, which is why the checker reports one finding per computation rather than one per alternative.
+
 **The precondition law is the one a reader gets wrong, and it needed three rows to locate.** A single unguarded alternative is accepted, which makes "an alternative may be unguarded" look settled; add a second and the pair is refused. The two accounts that fit that one observation — *the last is the fallback and owes nothing* versus *each of several owes a guard* — differ on every real model, and the rows separate them: unguarding the FIRST, the LAST, or BOTH all draw the same code, so the demand is per-alternative once there is more than one.
 
 **"Empty precondition" names the ABSENT member only — blank is a different defect in a different family.** Three slot families now agree that a blank string counts as absent (`errorCode`, [KF291](#kf291); a message `text`, [KF290](#kf290)), and the fourth does not: a precondition that is present goes to the condition parser whatever it spells, so `""` and `"   "` draw `MVK_UNEXPECTED_TOKEN` rather than this code. A checker that carried the blank-is-absent law across would name the wrong defect, in the family that cannot fix it.
@@ -5611,7 +5615,7 @@ The two members a stored rule cannot work without, measured because `Rule.Builde
 
 > Fold: not-foldable — a model-structure law on the element envelope, outside the evaluation scope.
 
-[KF132](#kf132) records that two same-named sibling elements in one group are refused at the CONVERT tier, before `checkConsistency`, so the `MVK_NAME_RULES_DUPLICATE` metamodel rule never gets to report. That one observation fits several accounts that differ on models an author writes by accident, so each boundary was measured.
+[KF132](#kf132) records that two same-named sibling elements in one group are refused by a throw from inside `checkConsistency`, so the `MVK_NAME_RULES_DUPLICATE` metamodel rule never gets to report. That one observation fits several accounts that differ on models an author writes by accident, so each boundary was measured.
 
 | stored shape | A12 |
 |---|---|
@@ -5637,15 +5641,28 @@ The two relative field references A12 declares on a GROUP. No lock covered eithe
 | stored shape | A12 |
 |---|---|
 | the member ABSENT | ADMITTED — an index is optional |
-| a bare name of one of the group's own FIELDS | ADMITTED |
+| a bare name of one of the group's own FIELDS, plainly typed | ADMITTED |
 | blank, whitespace, or any bare name that is not one of them | **NOT BUILDABLE** |
 | a bare name of a child GROUP | **NOT BUILDABLE** |
 | a spelling that RESOLVES to a field outside the group — `../Label`, or `Items/Sku` read one level up | `MVK_INVALID_INDEX_FIELD` / `MVK_INVALID_SORT_FIELD` |
 | a spelling that resolves to nothing — `Items/Sku` read from inside `Items` | **NOT BUILDABLE** |
-| an ABSOLUTE path | **raised untyped** — `ElementPathUtils.splitRelPath`, "illegal relPath" |
+| an ABSOLUTE path, on EITHER member | **raised untyped** — `ElementPathUtils.splitRelPath`, "illegal relPath" |
+| a `..` climbing past the root | **NOT BUILDABLE** — it can reach no field, the model root holding groups |
+| a direct-child field declared `noValueValidation` | `MVK_INDEX_FIELD_NO_VALUE_VALIDATION` / `MVK_SORT_FIELD_NO_VALUE_VALIDATION` |
 | a `sortFields` entry with no `name` | **UNREADABLE** |
 
-**One mechanism covers every row, and it is discriminated rather than fitted.** A12 resolves the spelling positionally from the group, then judges what it landed on: a direct child field is legal, anything else that EXISTS draws the member's own code, and anything that resolves to nothing stops the model from being built. The rival reading — that `..` is the special ingredient — is refuted by the `Items/Sku` pair: written inside `/Order/Items` it names nothing and stops the build, written in `/Order` it names a real field and draws the code. The spelling is identical; only where it lands differs.
+**TWO gates, and the second reads a NAME rather than a position.** A12 resolves the spelling positionally from the group; one that does not land on a field stops the model from being BUILT. One that does land keeps only that field's SHORT NAME, and the group must then carry a field of that name — otherwise the member's own code.
+
+**Corrected 2026-09-12, before the first consumer shipped:** this entry first said "resolves positionally, then judges what it landed on", with the `Items/Sku` pair cited as its discriminator. That pair refutes *"`..` is the special ingredient"* and nothing more — both accounts predict it identically. The case that separates them is a short name living at TWO levels, which no fixture here had: with `/Order/Sku` present, `../Sku` written in `/Order/Items` lands OUTSIDE the group and A12 **admits** the model, because `/Order/Items` carries a `Sku` of its own. A checker judging the landing rejects a model the Kernel takes. The rows above are unchanged; the mechanism they were read as supporting was not one of them.
+
+| the separating row | A12 |
+|---|---|
+| `../Sku` from `/Order/Items`, with `/Order/Sku` declared | ADMITTED |
+| the same, as a `sortFields` name | ADMITTED |
+| `../Sku` from `/Order/Items`, with NO `/Order/Sku` | **NOT BUILDABLE** — it lands on nothing, so it never reaches the second gate |
+| `../Label` from `/Order/Items`, with `/Order/Sku` declared | `MVK_INVALID_INDEX_FIELD` — the NAME decides, not the duplication |
+
+**And passing both gates is still not sufficient: the landed field's own TYPE is gated.** A `noValueValidation` string draws `MVK_INDEX_FIELD_NO_VALUE_VALIDATION`, and as a sort field `MVK_SORT_FIELD_NO_VALUE_VALIDATION`, even as a direct child of its group. Every admitted row above names a plain value-validating string, so "a field of this group" and "a field A12 will accept as a key" were one predicate across the whole set. The table-enum gate beside it (`MVK_INDEX_FIELD_NO_TABLE_ENUM`) is unmeasured.
 
 **An ABSENT member is legal and a BLANK one is fatal**, which inverts the blank-counts-as-absent law three sibling slots follow ([KF290](#kf290), [KF291](#kf291)) and does so in the harshest direction available.
 

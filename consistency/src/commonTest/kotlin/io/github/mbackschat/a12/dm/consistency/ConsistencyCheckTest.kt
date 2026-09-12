@@ -13,6 +13,22 @@ import kotlin.test.assertTrue
  */
 class ConsistencyCheckTest {
 
+    /**
+     * A completed analysis runs EVERY family the enum names — the guard that makes the report's own
+     * denominator checkable.
+     *
+     * `checksCompleted` is built by hand beside the enum, so adding a constant and forgetting the list
+     * publishes a family as unimplemented while its findings ride in the report, or the reverse. That
+     * happened within one commit of adding the seventh constant, and nothing failed. The set is evidence a
+     * consumer reads; it may not be assembled where a miss is silent.
+     */
+    @Test
+    fun aCompletedAnalysisRunsEveryFamilyTheEnumNames() {
+        val report = check(model(rule("../Code")))
+        assertEquals(CheckFamily.entries.toSet(), report.checksCompleted,
+            "every family must either run or be removed from the enum")
+    }
+
     private fun model(rule: String) = ModelSource(
         """
         {"header":{"id":"order","locales":[{"code":"en_US"}]},"content":{"modelRoot":{"rootGroups":[

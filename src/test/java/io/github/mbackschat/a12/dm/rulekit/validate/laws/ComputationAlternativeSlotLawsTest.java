@@ -59,7 +59,8 @@ class ComputationAlternativeSlotLawsTest {
         Map<String, String> expected = new LinkedHashMap<>();
         expected.put("one alternative — the control", KernelLaws.ADMITTED);
         // A computation with nothing to compute reports the incompleteness AND that its condition is
-        // missing: with no alternative there is no precondition slot either, so both gates fire.
+        // missing. Both codes, not one — and the second is NOT explained by "there is no precondition slot
+        // then": declaring a `commonPrecondition` does not remove it (see the third test).
         expected.put("the member absent", "MVK_INCOMPLETE_INPUT,MVK_CONDITION_MISSING");
         expected.put("an empty list", "MVK_INCOMPLETE_INPUT,MVK_CONDITION_MISSING");
         // An explicit `null` on the LIST refuses the reader where an omitted list draws a verdict — and the
@@ -144,13 +145,90 @@ class ComputationAlternativeSlotLawsTest {
         Map<String, String> actual = new LinkedHashMap<>();
         actual.put("one unguarded, with a common precondition",
                 verdict("[" + ALTERNATIVE + "]", "FieldFilled(../Tier)"));
+        actual.put("NO alternative, with a common precondition", verdict(null, "FieldFilled(../Tier)"));
+        actual.put("an empty list, with a common precondition", verdict("[]", "FieldFilled(../Tier)"));
         actual.put("two unguarded, with a common precondition",
                 verdict("[" + ALTERNATIVE + "," + ALTERNATIVE + "]", "FieldFilled(../Tier)"));
 
         Map<String, String> expected = new LinkedHashMap<>();
         expected.put("one unguarded, with a common precondition", KernelLaws.ADMITTED);
+        // The no-work rows sat on the wrong side of this table's own variable: measured with NO common
+        // precondition, "with no alternative there is no precondition slot either" fitted them and was never
+        // tested. It is FALSE — a declared common precondition is a condition slot and the code fires anyway.
+        // The pair of codes is the observation; why the second one fires is not established here.
+        expected.put("NO alternative, with a common precondition", "MVK_INCOMPLETE_INPUT,MVK_CONDITION_MISSING");
+        expected.put("an empty list, with a common precondition", "MVK_INCOMPLETE_INPUT,MVK_CONDITION_MISSING");
         expected.put("two unguarded, with a common precondition", "MVK_ERROR_EMPTY_PRECONDITION");
         assertEquals(expected, actual, "whether a common precondition substitutes for an alternative's own");
+    }
+
+    /**
+     * A shape whose ENVELOPE A12's reader refuses, which is a tier above any verdict about the slot.
+     *
+     * <p>It is measured because a checker reading `declaration["Computation"]` as an object gets `null` here
+     * and cannot tell that from an absent `computationAlternatives` — so the row that keeps the two apart has
+     * to exist before the code can be trusted to keep them apart.
+     */
+    @Test
+    void aNonObjectComputationEnvelopeIsRefusedByTheReader() {
+        assertEquals(KernelLaws.UNREADABLE, KernelLaws.verdictOf(withEnvelope("\"oops\"")));
+        assertEquals(KernelLaws.UNREADABLE, KernelLaws.verdictOf(withEnvelope("[]")));
+    }
+
+    /**
+     * How many notifications A12 raises for two unguarded alternatives — one shared, or one each.
+     *
+     * <p>The code table cannot answer it, because {@link KernelLaws#verdictOf} de-duplicates codes and one
+     * notification spells the same string as two. A checker reporting one finding per unguarded alternative
+     * makes a claim about A12's own report, so it needs this oracle rather than that one.
+     */
+    @Test
+    void oneUnguardedNotificationCoversTheWholeComputation() {
+        io.github.mbackschat.a12.dm.core.ModelConsistencyException rejected =
+                org.junit.jupiter.api.Assertions.assertThrows(
+                        io.github.mbackschat.a12.dm.core.ModelConsistencyException.class,
+                        () -> io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel.ofJson(
+                                probe("[" + ALTERNATIVE + "," + ALTERNATIVE + "]", null)));
+        long raised = rejected.notifications().stream()
+                .filter(n -> n.message().contains("MVK_ERROR_EMPTY_PRECONDITION")).count();
+        // ONE, for the computation — A12 names the declaration, not the alternative, and its message carries
+        // no alternative index at all. A checker emitting one finding per unguarded alternative would tell a
+        // consumer A12 said something twice that it said once.
+        assertEquals(1, raised, () -> "notifications for two unguarded alternatives: " + rejected.notifications());
+    }
+
+    /** The probe with the computation's whole envelope replaced by [rawJson]. */
+    private static String withEnvelope(String rawJson) {
+        String written = ModelWriter.addComputation(Fixtures.subscriptionJson(), DraftComputation.builder()
+                .groupPath(GROUP).name("AlternativeProbe").computedFieldRelPath("../EffectiveFee")
+                .alternatives(List.of(new DraftComputation.Alternative(null, OPERATION)))
+                .messages(List.of(en("x"), de("y")))
+                .build(), List.of(en("x"), de("y")));
+        try {
+            ObjectNode root = (ObjectNode) MAPPER.readTree(written);
+            for (var top : root.path("content").path("modelRoot").path("rootGroups")) {
+                if (replaceEnvelope(top, MAPPER.readTree(rawJson))) {
+                    return root.toString();
+                }
+            }
+            throw new IllegalStateException("the probe computation is no longer where this test writes it");
+        } catch (IOException unreadable) {
+            throw new UncheckedIOException("the writer's own output and the raw fragment must parse", unreadable);
+        }
+    }
+
+    private static boolean replaceEnvelope(com.fasterxml.jackson.databind.JsonNode node,
+            com.fasterxml.jackson.databind.JsonNode envelope) {
+        if ("AlternativeProbe".equals(node.path("name").asText()) && node.has("Computation")) {
+            ((ObjectNode) node).set("Computation", envelope);
+            return true;
+        }
+        for (var child : node.path("Group").path("elements")) {
+            if (replaceEnvelope(child, envelope)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private static String guarded(String precondition) {

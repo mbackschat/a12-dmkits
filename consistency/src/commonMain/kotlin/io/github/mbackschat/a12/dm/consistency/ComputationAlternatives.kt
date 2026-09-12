@@ -36,16 +36,17 @@ import kotlinx.serialization.json.JsonPrimitive
  * one that was inferred from its neighbour was the one that turned out wrong.
  */
 fun PreparedModel.computationAlternativeFindings(): List<Finding> =
-    elements.filter { it.kind == COMPUTATION_KIND }.flatMap { alternativeFindings(it) }
-
-private const val COMPUTATION_KIND = "Computation"
+    elements.filter { it.declaredKind == DeclaredKind.COMPUTATION }.flatMap { alternativeFindings(it) }
 
 /**
  * A computation is a whole element A12 refuses or judges as one, so an unreadable shape stops the read here
  * rather than contributing an alternative nothing can be said about.
  */
 private fun alternativeFindings(element: DeclaredElement): List<Finding> {
-    val member = (element.declaration[COMPUTATION_KIND] as? JsonObject)?.get("computationAlternatives")
+    // An envelope A12 cannot bind is a tier ABOVE any verdict about this member, and reading it as an
+    // absent member would report two codes about a model A12 never examined.
+    val body = element.body ?: return listOf(unreadableEnvelope(element))
+    val member = body["computationAlternatives"]
     return when {
         member == null -> noWorkFindings(element)
         member is JsonArray && member.isEmpty() -> noWorkFindings(element)
@@ -107,24 +108,30 @@ private fun alternativeFindings(element: DeclaredElement, alternatives: JsonArra
     if (declared.size < 2) {
         return missingWork
     }
-    return missingWork + declared.mapIndexedNotNull { index, alternative ->
-        val precondition = alternative["precondition"]
-        // Only an ABSENT or `null` member is an empty precondition. A present one is a condition, and
-        // whether it parses is the syntax family's question.
-        if (precondition != null && precondition !is JsonNull) {
-            null
-        } else {
-            Finding(
-                FindingCategory.A12_CONSTRAINT,
-                FindingSeverity.ERROR,
-                "MVK_ERROR_EMPTY_PRECONDITION",
-                "this computation has ${declared.size} alternatives and alternative ${index + 1} declares " +
-                    "no precondition — every one of several owes its own, and a `commonPrecondition` does " +
-                    "not stand in for it",
-                element.path,
-            )
-        }
+    // Only an ABSENT or `null` member is an empty precondition. A present one is a condition, and whether it
+    // parses is the syntax family's question.
+    val unguarded = declared.withIndex()
+        .filter { (_, alternative) -> alternative["precondition"].let { it == null || it is JsonNull } }
+        .map { (index, _) -> index + 1 }
+    if (unguarded.isEmpty()) {
+        return missingWork
     }
+    // ONE finding for the computation, however many alternatives are unguarded: A12 raises a single
+    // notification naming the declaration and carrying no alternative index at all (measured —
+    // `ComputationAlternativeSlotLawsTest.oneUnguardedNotificationCoversTheWholeComputation`). Emitting one
+    // per alternative would tell a consumer A12 said twice what it said once; the numbers go in the text,
+    // where they help an author without being claimed as A12's own report.
+    return missingWork + Finding(
+        FindingCategory.A12_CONSTRAINT,
+        FindingSeverity.ERROR,
+        "MVK_ERROR_EMPTY_PRECONDITION",
+        "this computation has ${declared.size} alternatives and " +
+            (if (unguarded.size == 1) "alternative ${unguarded.single()} declares" else
+                "alternatives ${unguarded.joinToString(", ")} declare") +
+            " no precondition — every one of several owes its own, and a `commonPrecondition` does not " +
+            "stand in for it",
+        element.path,
+    )
 }
 
 private fun unreadable(element: DeclaredElement, explain: String): Finding = Finding(

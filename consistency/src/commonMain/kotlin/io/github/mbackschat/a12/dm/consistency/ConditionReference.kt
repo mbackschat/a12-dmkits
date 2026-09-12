@@ -34,7 +34,7 @@ data class ConditionReference(
  * still a reference here.
  */
 fun PreparedModel.conditionReferences(): List<ConditionReference> = elements.flatMap { element ->
-    val body = element.declaration[element.kind] as? JsonObject ?: return@flatMap emptyList()
+    val body = element.body ?: return@flatMap emptyList()
     val group = element.path.substringBeforeLast('/', missingDelimiterValue = "")
     conditionTexts(element.kind, body).flatMap { (member, text) ->
         referencesIn(text, conditionLanguage).map { written ->

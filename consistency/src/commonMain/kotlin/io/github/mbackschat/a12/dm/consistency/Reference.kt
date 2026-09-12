@@ -148,7 +148,7 @@ fun PreparedModel.resolve(
     } else {
         elements
     }
-    val matches = scope.filter { it.kind == FIELD_KIND && it.path.substringAfterLast('/') == name }
+    val matches = scope.filter { it.declaredKind == DeclaredKind.FIELD && it.path.substringAfterLast('/') == name }
     return when (matches.size) {
         0 -> Reference.Undeclared(candidate)
         1 -> Reference.Resolved(matches.single().path)
@@ -156,4 +156,4 @@ fun PreparedModel.resolve(
     }
 }
 
-private const val FIELD_KIND = "Field"
+

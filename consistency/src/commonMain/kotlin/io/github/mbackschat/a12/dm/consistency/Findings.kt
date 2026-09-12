@@ -94,3 +94,20 @@ sealed interface ConsistencyStatus {
 /** Summarize [findings]. The summary never replaces them: a consumer reads the findings, not the verdict. */
 fun statusOf(findings: List<Finding>): ConsistencyStatus =
     if (findings.any { it.justifiesRejection }) ConsistencyStatus.Invalid else ConsistencyStatus.Inconclusive
+
+/**
+ * A declaration whose kind envelope is present and is not a JSON object.
+ *
+ * A12 binds that envelope to the kind's own type, so a non-object one is a binding failure: the source never
+ * loads and no member of that declaration may be judged. Every family that reads members reports this
+ * instead of reading the members as absent — which is the same defect one tier down, and the direction that
+ * publishes a verdict about a model A12 never examined.
+ */
+internal fun unreadableEnvelope(element: DeclaredElement) = Finding(
+    FindingCategory.A12_CONSTRAINT,
+    FindingSeverity.ERROR,
+    CK_MODEL_NOT_BUILDABLE,
+    "`${element.kind}` here is present and is not a JSON object, which A12's own reader refuses — the " +
+        "source never loads, and an OMITTED envelope is what A12 default-constructs instead",
+    element.path,
+)

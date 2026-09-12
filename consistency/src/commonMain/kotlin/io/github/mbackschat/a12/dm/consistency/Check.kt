@@ -222,13 +222,18 @@ private val UNREAD_MEMBERS = listOf(
         reason = "a computation alternative's precondition is checked for PRESENCE only — whether its text " +
             "parses is the syntax family's question and is not decided here",
     ),
+    CoverageGap(
+        at = null,
+        reason = "a group's index/sort field is checked for RESOLUTION only — A12 also gates the field's own " +
+            "type there (a `noValueValidation` string is refused, and the table-enum gate beside it is " +
+            "unmeasured), so silence about one is not approval of it",
+    ),
 )
 
 private val UNIMPLEMENTED_FAMILIES = listOf(
     CoverageGap(
         at = null,
-        reason = "only the reference families, the declaration slots, a computation's alternatives, a " +
-            "rule's condition/target members and element-name uniqueness are implemented; every other " +
-            "required family of the pinned profile was not examined",
+        reason = "only the families named by `CheckFamily` are implemented; every other required family of " +
+            "the pinned profile was not examined",
     ),
 )

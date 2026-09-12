@@ -26,13 +26,11 @@ import kotlinx.serialization.json.JsonPrimitive
  * `null` precondition are ordinary verdicts.
  */
 fun PreparedModel.ruleConditionAndTargetFindings(): List<Finding> =
-    elements.filter { it.kind == RULE_KIND }.flatMap { element ->
-        val body = element.declaration[RULE_KIND] as? JsonObject
+    elements.filter { it.declaredKind == DeclaredKind.RULE }.flatMap { element ->
+        val body = element.body ?: return@flatMap listOf(unreadableEnvelope(element))
         requiredTextFindings(element, body?.get("errorCondition"), CONDITION) +
             requiredTextFindings(element, body?.get("errorEntityRelPath"), ERROR_TARGET)
     }
-
-private const val RULE_KIND = "Rule"
 
 /**
  * One required member's two outcomes, named so each row states which tier it belongs to.

@@ -33,7 +33,7 @@ data class DeclaredReference(
  */
 fun PreparedModel.declaredReferences(): List<DeclaredReference> = elements.mapNotNull { element ->
     val declared = DECLARED_BY_KIND[element.kind] ?: return@mapNotNull null
-    val relative = (element.declaration[element.kind] as? JsonObject)
+    val relative = element.body
         ?.get(declared.first)?.let { (it as? JsonPrimitive)?.contentOrNull }
         ?: return@mapNotNull null
     // No rehosting here, unlike a condition reference: `errorEntityRelPath` and `computedFieldRelPath` are
