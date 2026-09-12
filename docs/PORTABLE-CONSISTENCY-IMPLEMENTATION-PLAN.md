@@ -387,6 +387,23 @@ The tokenizer's own two departures from a naive lexer stand, and each now has a 
 
 **What this does not yet do.** Reference EXTRACTION is complete and BINDING covers the paths above; what a reference is allowed to be — the iteration gates, the wildcard rules, the operand types — belongs to D, and a resolvable reference remains necessary and not sufficient. Declared non-goals, each stated at its locus: `$`, an all-digit name and the H-model row specifiers on `referencesIn`; and the turning-point label's ANCESTOR check (A12 verifies it, this does not, which under-reports). (`Group.indexFieldName` / `Group.sortFields[].name` were listed here as unexamined until their own C family landed; see its record below.)
 
+### Syntax-layer record — partitioned, and its first phase landed (2026-09-12)
+
+**The partition exists because the layer is not one slice, and A12 itself says where the seams are.** A condition that does not parse draws one of FOUR phase-specific codes, measured through `checkConsistency` ([KF300](KERNEL-FINDINGS.md#kf300)): `MVK_LEXER_STANDARD_ERROR` when the text cannot be tokenized, then `MVK_UNEXPECTED_TOKEN`, `MVK_EXPECTED_TOKEN_NOT_FOUND` and `MVK_INCOMPLETE_INPUT` from the parser. The phases differ in RISK as much as in code, which is what makes them separate increments rather than one.
+
+| increment | decidable from | over-rejection risk | state |
+|---|---|---|---|
+| **lexical** — the text tokenizes at all | the characters alone | none: a lexical failure does not depend on the grammar | **landed** (`CheckFamily.CONDITION_LEXICALITY`) |
+| **balanced structure** — delimiters pair up | token sequence, no grammar | low | open |
+| **grammatical** — the tokens form a condition A12 accepts | the full grammar | **high — this is the one that can reject a legal model** | open |
+
+**The first increment reports only the shape that was measured.** An unterminated string literal, which the checker's tokenizer already recognized and the report simply never surfaced. A12's own message text ("Character '%s' at position %d is incorrect") shows it also refuses illegal CHARACTERS, and which those are is unmeasured — `@@@` lexes cleanly and fails a phase later — so nothing is claimed about them and the report carries a gap saying exactly that.
+
+**The gate the GRAMMATICAL increment must pass before it lands, recorded now so it is not negotiated later.** A parser stricter than A12's rejects models the Kernel accepts, which is the one direction this checker must never take, so that increment is not shippable on unit tests alone: it needs the corpus `adapter.laws.ParserCorpusSweepTest` already drives — every catalog `validExample` and `computationExample`, their German localizations, and the opt-in real corpora — replayed against the checker's parser with a 100% acceptance bar on the always-on populations. The catalog lives in `rulekit` and the checker must not depend on it, so the corpus reaches `:consistency` the way its keyword table already does: GENERATED into the module with a regenerate-and-diff guard. That generator is part of the grammatical increment, not a prerequisite to be done separately.
+
+**Family ownership is settled, and it was not obvious.** An unknown name used as a call, a foreign-language keyword, and a bare field reference as the whole condition are each `MVK_UNEXPECTED_TOKEN` — parse failures, not reference failures. So an unresolvable name never reaches A12's reference check, and the syntax layer owns it: reporting one of them from the reference family would name the wrong defect, and reporting from both would report it twice.
+
+
 ### C record — first frozen family: a declaration's own SLOTS (2026-09-12)
 
 **Frozen family: the `name` and `errorMessage` slots of a stored rule or computation.** It is the family that can land before the checker owns a syntax layer — every row reads members A12 declares as structured JSON — and it is the first one where the Java builders' knowledge is a real asset rather than an analogy, because [proposal §3.2](PORTABLE-CONSISTENCY-PROPOSAL.md#32-java-already-contains-valuable-validation-knowledge-embedded-in-authoring)'s named sources (`Rule.Builder.build`, `LocalizedText.checkDeclared`) enforce exactly these five shapes today.

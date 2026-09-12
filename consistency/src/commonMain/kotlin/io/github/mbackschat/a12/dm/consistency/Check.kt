@@ -60,6 +60,13 @@ enum class CheckFamily {
      * because A12 accepts the models it concerns.
      */
     VARIANT_FILTER,
+
+    /**
+     * That every DSL-bearing member can be TOKENIZED — the syntax layer's first phase, and the only one
+     * decidable without a grammar. Whether the tokens then form a condition A12's parser accepts is a
+     * separate question this family does not answer.
+     */
+    CONDITION_LEXICALITY,
 }
 
 /**
@@ -179,6 +186,7 @@ internal fun check(
         } + prepared.declarationSlotFindings() + prepared.computationAlternativeFindings() +
         prepared.computationRoundingFindings() + prepared.suppressedWarningFindings() +
         prepared.ruleConditionAndTargetFindings() + prepared.variantFilterFindings() +
+        prepared.conditionLexicalFindings() +
         prepared.elementNameFindings() + prepared.groupOrderingFindings()
     return ConsistencyReport(
         modelId = admitted.modelId,
@@ -190,7 +198,7 @@ internal fun check(
             CheckFamily.RULE_CONDITION_AND_TARGET, CheckFamily.ELEMENT_NAME_UNIQUENESS,
             CheckFamily.GROUP_ORDERING_REFERENCES, CheckFamily.GROUP_ORDERING_FIELD_TYPE,
             CheckFamily.COMPUTATION_ROUNDING, CheckFamily.SUPPRESSED_WARNINGS,
-            CheckFamily.VARIANT_FILTER),
+            CheckFamily.VARIANT_FILTER, CheckFamily.CONDITION_LEXICALITY),
         gaps = prepared.gaps() + prepared.emptyFactBase() + findings.buildBlocked() +
             prepared.variantFilterGaps() + UNREAD_MEMBERS + UNIMPLEMENTED_FAMILIES,
     )
@@ -256,6 +264,13 @@ private val UNREAD_MEMBERS = listOf(
         reason = "a group's index/sort field is judged on its `StringType` body alone — a `fieldType` that " +
             "carries the `noValueValidation` flag anywhere else is left unjudged, because A12 reads that " +
             "flag only after deciding the type IS a string and no row measures the other shapes",
+    ),
+    CoverageGap(
+        at = null,
+        reason = "DSL text is checked for LEXICAL readability only — an unterminated string literal, which " +
+            "A12 answers with `MVK_LEXER_STANDARD_ERROR`. Whether the tokens then form a condition A12's " +
+            "PARSER accepts is not decided here, so the three parser-phase codes are never reported; nor is " +
+            "A12's illegal-CHARACTER class, which its message text implies and no row measures",
     ),
     CoverageGap(
         at = null,

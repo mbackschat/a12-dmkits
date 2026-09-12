@@ -55,7 +55,7 @@ fun PreparedModel.conditionReferences(): List<ConditionReference> = elements.fla
  * computation would leave an author looking through all of them. Alternatives are numbered by position
  * because they have no names of their own.
  */
-private fun conditionTexts(kind: String, body: JsonObject): List<Pair<String, String>> = when (kind) {
+internal fun conditionTexts(kind: String, body: JsonObject): List<Pair<String, String>> = when (kind) {
     "Rule" -> listOfNotNull(body.text("errorCondition")?.let { "errorCondition" to it })
     "Computation" -> buildList {
         body.text("commonPrecondition")?.let { add("commonPrecondition" to it) }
