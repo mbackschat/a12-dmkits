@@ -24,6 +24,7 @@ class VariantFilterTest {
         ruleFilter: String? = null,
         computationFilter: String? = null,
         fieldFilter: String? = null,
+        ruleErrorCode: String = "\"PROBE\"",
     ) = ModelSource(
         """
         {"header":{"id":"catalog","locales":[{"code":"en_US"}]},
@@ -34,7 +35,7 @@ class VariantFilterTest {
         }}},
             {"type":"Rule","id":"r0","name":"PriceRule","Rule":{
               "errorCondition":"$ruleCondition","errorEntityRelPath":"../Price",
-              "errorCode":"PROBE","errorMessage":[{"locale":"en_US","text":"x"}]${
+              "errorCode":$ruleErrorCode,"errorMessage":[{"locale":"en_US","text":"x"}]${
             ruleFilter?.let { ""","variantFilter":$it""" } ?: ""
         }}},
             {"type":"Computation","id":"c0","name":"PriceCalc","Computation":{
@@ -196,17 +197,23 @@ class VariantFilterTest {
     }
 
     /**
-     * The exemption, and it rests on a measured row rather than on symmetry.
+     * The exemption, and it rests on measured rows rather than on symmetry.
      *
-     * An `ONLY`-filtered rule with an empty `errorCode` still refuses the model — so a filter suppresses what
-     * A12 would SAY ABOUT a declaration and cannot rescue a model that fails to BUILD. A checker that dropped
-     * every finding for a filtered declaration would report an unloadable model as merely unexamined.
+     * A12's READER runs a tier before any variant logic, so a shape it refuses is refused whatever the filter
+     * says — measured on an `errorCode` that is JSON null and on a message entry whose locale the reader
+     * rejects, both UNREADABLE filtered and unfiltered
+     * (`rulekit.validate.laws.RuleVariantFilterLawsTest`). A filter suppresses what A12 would SAY ABOUT a
+     * declaration and cannot rescue a model that fails to BUILD, so a checker that dropped every finding for a
+     * filtered declaration would report an unloadable model as merely unexamined.
+     *
+     * The `ONLY` filter here is VALID on purpose: an unbindable filter shape is not itself suppressed, so it
+     * cannot exercise the exemption, and a test using one passes whether the exemption exists or not.
      */
     @Test
     fun aFindingThatTheModelWillNotBuildSurvivesTheFilter() {
-        val unbindable = """{"filterType":"SOMETIMES","variants":["premium"]}"""
-        assertEquals(listOf(CK_MODEL_NOT_BUILDABLE), codesFor("FieldFilled(Price)", filter = unbindable),
-            "an unbindable filter shape is not a verdict the filter can hide")
+        val report = check(source(ruleFilter = only, ruleErrorCode = "null"))
+        assertEquals(listOf(CK_MODEL_NOT_BUILDABLE), report.findings.filter { it.at == "/Catalog/PriceRule" }
+            .map { it.code }, "a model that does not load is not a verdict the filter can hide")
     }
 
     /**

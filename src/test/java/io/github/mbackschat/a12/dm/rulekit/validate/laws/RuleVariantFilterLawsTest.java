@@ -159,6 +159,13 @@ class RuleVariantFilterLawsTest {
         // and it must not reproduce `MVK_ERROR_CODE_MISSING` here, which A12 stops reporting.
         expected.put("an empty error code, unfiltered", "MVK_ERROR_CODE_MISSING");
         expected.put("an empty error code, ONLY", KernelLaws.NOT_BUILDABLE);
+        // The two shapes A12's READER refuses, which is a tier earlier than any variant logic — so these are
+        // the rows that make "the filter cannot rescue a model that does not load" a measured class rather
+        // than the single instance above. They are what the checker's CK_MODEL_NOT_BUILDABLE exemption rests on.
+        expected.put("an error code that is JSON null, unfiltered", KernelLaws.UNREADABLE);
+        expected.put("an error code that is JSON null, ONLY", KernelLaws.UNREADABLE);
+        expected.put("an error message whose locale the reader refuses, unfiltered", KernelLaws.UNREADABLE);
+        expected.put("an error message whose locale the reader refuses, ONLY", KernelLaws.UNREADABLE);
         assertEquals(expected, actual, "which kinds of break an ONLY variant filter hides");
     }
 
@@ -202,8 +209,10 @@ class RuleVariantFilterLawsTest {
         UNLEXABLE_CONDITION("a condition that cannot be tokenized"),
         ERROR_TARGET("an error target naming no field"),
         ERROR_MESSAGES("no error message at all"),
-        // Last because it is the one break the filter does NOT hide, and the grid reads as its punchline.
-        ERROR_CODE("an empty error code");
+        // Last because these are the breaks the filter does NOT hide, and the grid reads as its punchline.
+        ERROR_CODE("an empty error code"),
+        NULL_ERROR_CODE("an error code that is JSON null"),
+        REFUSED_MESSAGE_LOCALE("an error message whose locale the reader refuses");
 
         private final String label;
 
@@ -221,6 +230,9 @@ class RuleVariantFilterLawsTest {
                 case ERROR_TARGET -> rule.put("errorEntityRelPath", "../NoSuchFieldAnywhere");
                 case ERROR_CODE -> rule.put("errorCode", "");
                 case ERROR_MESSAGES -> rule.putArray("errorMessage");
+                case NULL_ERROR_CODE -> rule.putNull("errorCode");
+                case REFUSED_MESSAGE_LOCALE -> rule.putArray("errorMessage").addObject()
+                        .put("locale", "not a locale").put("text", "x");
             }
         }
     }
