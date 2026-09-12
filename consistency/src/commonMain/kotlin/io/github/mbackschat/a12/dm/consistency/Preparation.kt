@@ -63,7 +63,7 @@ private enum class DeclaredKind(val wire: String) {
 /** Read [Admission.Admitted]'s retained tree into the declarations the checker works from. */
 fun prepare(admitted: Admission.Admitted): PreparedModel {
     val content = (admitted.parsed as? JsonObject)?.get("content") as? JsonObject
-    val collector = Collector(admitted.source.modelId)
+    val collector = Collector(admitted.modelId)
     val root = (content?.get("modelRoot") as? JsonObject)?.get("rootGroups")
     collector.each(root, at = null, what = "content.modelRoot.rootGroups") { collector.collect(it, "", null) }
     return PreparedModel(

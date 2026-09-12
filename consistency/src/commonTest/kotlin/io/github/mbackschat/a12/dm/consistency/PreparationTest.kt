@@ -19,7 +19,7 @@ import kotlinx.serialization.json.jsonPrimitive
 class PreparationTest {
 
     private fun prepared(json: String): PreparedModel =
-        prepare(assertIs<Admission.Admitted>(admit(ModelSource("m", json))))
+        prepare(assertIs<Admission.Admitted>(admit(ModelSource(json))))
 
     /** Prepare a model whose `content.modelRoot.rootGroups` is exactly [rootGroups]. */
     private fun preparedRoots(rootGroups: String): PreparedModel = prepared(model(rootGroups))
@@ -270,8 +270,8 @@ class PreparationTest {
     @Test
     fun aMemberOfTheWrongJsonTypeIsDiagnosedRatherThanRaised() {
         listOf(
-            """{"header":{},"content":{"modelRoot":{"rootGroups":{}}}}""",
-            """{"header":{},"content":{"modelRoot":{"rootGroups":[7]}}}""",
+            """{"header":{"id":"m"},"content":{"modelRoot":{"rootGroups":{}}}}""",
+            """{"header":{"id":"m"},"content":{"modelRoot":{"rootGroups":[7]}}}""",
             model("""{"type":"Group","id":"/O","name":"O","Group":{"elements":{}}}"""),
             model("""{"type":"Group","id":"/O","name":"O","Group":7}""", ""),
             model("", "\"modelConfig\":{\"fieldRefByShortNameAllowed\":1},"),
@@ -285,16 +285,17 @@ class PreparationTest {
     }
 
     /**
-     * Well-formed JSON that is not a DocumentModel prepares to an empty fact base without raising. That it
-     * is currently indistinguishable from a legitimately empty model is a known gap, owned by the admission
-     * contract rather than by this phase; what is locked here is only that it does not throw.
+     * A model that declares its content elsewhere — a type-definition library, or one whose root groups are
+     * all mounted includes — prepares to an empty fact base. That it is currently indistinguishable from a
+     * model with nothing in it is a known coverage-report gap, owned by F; what is locked here is only that
+     * it neither raises nor invents declarations.
      */
     @Test
-    fun jsonThatIsNotADocumentModelPreparesEmptyWithoutRaising() {
-        listOf("42", """{"foo":1}""", """{"content":[]}""").forEach { json ->
+    fun aModelWithNoRootGroupsPreparesEmptyWithoutRaising() {
+        listOf("""{"header":{"id":"m"},"content":{}}""", model("")).forEach { json ->
             val prepared = prepared(json)
             assertEquals(emptyList(), prepared.elements, json)
-            assertFalse(prepared.fieldRefByShortNameAllowed, json)
+            assertEquals(emptyList(), prepared.diagnostics, json)
         }
     }
 

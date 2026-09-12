@@ -16,11 +16,11 @@ class AdmissionRetentionTest {
 
     @Test
     fun admissionRetainsTheParsedTreeSoALaterPhaseNeedNotReparse() {
-        val outcome = admit(ModelSource(modelId = "order", json = """{"modelInfo":{"name":"order"}}"""))
+        val outcome = admit(ModelSource("""{"header":{"id":"order"},"modelInfo":{"name":"Order"}}"""))
 
         val admitted = assertIs<Admission.Admitted>(outcome)
         val name = admitted.parsed.jsonObject["modelInfo"]!!.jsonObject["name"]!!.jsonPrimitive.content
-        assertEquals("order", name)
+        assertEquals("Order", name)
     }
 
     /**
@@ -41,7 +41,7 @@ class AdmissionRetentionTest {
             ]}}}
         """.trimIndent()
 
-        val admitted = assertIs<Admission.Admitted>(admit(ModelSource(modelId = "order", json = json)))
+        val admitted = assertIs<Admission.Admitted>(admit(ModelSource(json)))
         val numberType = prepare(admitted).elements.single { it.kind == "Field" }
             .declaration["Field"]!!.jsonObject["fieldType"]!!.jsonObject["NumberType"]!!.jsonObject
 

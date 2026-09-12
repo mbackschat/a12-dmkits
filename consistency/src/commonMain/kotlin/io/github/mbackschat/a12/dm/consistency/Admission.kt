@@ -3,16 +3,20 @@ package io.github.mbackschat.a12.dm.consistency
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.contentOrNull
 
 /**
  * A caller-supplied model source.
  *
- * The field names follow the interpreter's `WorkspaceModelSource` (`json`, `diagnosticLabel`) on purpose:
- * the checker owns this type so its published API carries no interpreter dependency, while a consumer of
- * either product meets the same canonical names.
+ * The field names and their *shape* follow the interpreter's `WorkspaceModelSource` on purpose: the checker
+ * owns this type so its published API carries no interpreter dependency, while a consumer of either product
+ * meets the same canonical names. That includes the absence a reader might not notice — **there is no
+ * caller-supplied model id**, because the peer extracts the exact `header.id` from the source rather than
+ * trusting a parameter, and an identity the caller asserts is an echo rather than a retention.
  */
 data class ModelSource(
-    val modelId: String,
     val json: String,
     val diagnosticLabel: String? = null,
 )
@@ -27,6 +31,13 @@ enum class DiagnosticCode {
     SOURCE_NOT_WELL_FORMED,
 
     /**
+     * The source is well-formed JSON but declares no `header.id`, so it cannot be identified. A12 puts the
+     * model's identity there and every reference between sources resolves through it, so a source without
+     * one is not a DocumentModel this checker can attribute anything to.
+     */
+    SOURCE_HAS_NO_IDENTITY,
+
+    /**
      * A single declaration lacks the `type`, `id` or `name` the kernel's own reader requires. Reported and
      * skipped rather than raised, because one broken element must not hide its siblings' real errors.
      */
@@ -34,6 +45,7 @@ enum class DiagnosticCode {
 }
 
 /**
+ * @param modelId the source's own `header.id`, absent when admission could not read one.
  * @param at the declared path this concerns, when there is one — absent for a whole-source diagnostic, and
  *     for a declaration too broken to name itself it is the nearest path that could be derived.
  * @param diagnosticLabel the source's caller-supplied label, carried through so a consumer can name the file
@@ -41,7 +53,7 @@ enum class DiagnosticCode {
  */
 data class Diagnostic(
     val code: DiagnosticCode,
-    val modelId: String,
+    val modelId: String?,
     val explain: String,
     val at: String? = null,
     val diagnosticLabel: String? = null,
@@ -57,7 +69,8 @@ sealed interface Admission {
      * serializes and reparses between phases, and a checker that inherited that would pay for the round trip
      * and risk losing what the read preserved.
      */
-    data class Admitted(val source: ModelSource, val parsed: JsonElement) : Admission
+    /** @param modelId the source's own `header.id`, extracted rather than asserted. */
+    data class Admitted(val source: ModelSource, val modelId: String, val parsed: JsonElement) : Admission
     data class Rejected(val diagnostic: Diagnostic) : Admission
 }
 
@@ -79,16 +92,23 @@ sealed interface Admission {
 @OptIn(ExperimentalSerializationApi::class)
 private val A12_JSON: Json = Json { allowComments = true }
 
-fun admit(source: ModelSource): Admission =
-    try {
-        Admission.Admitted(source, A12_JSON.parseToJsonElement(source.json))
+fun admit(source: ModelSource): Admission {
+    val parsed = try {
+        A12_JSON.parseToJsonElement(source.json)
     } catch (notWellFormed: IllegalArgumentException) {
-        Admission.Rejected(
-            Diagnostic(
-                code = DiagnosticCode.SOURCE_NOT_WELL_FORMED,
-                modelId = source.modelId,
-                explain = notWellFormed.message ?: "the source is not well-formed JSON",
-                diagnosticLabel = source.diagnosticLabel,
-            ),
+        return source.rejected(
+            DiagnosticCode.SOURCE_NOT_WELL_FORMED,
+            notWellFormed.message ?: "the source is not well-formed JSON",
         )
     }
+    val modelId = ((parsed as? JsonObject)?.get("header") as? JsonObject)
+        ?.get("id")?.let { (it as? JsonPrimitive)?.contentOrNull }
+    return if (modelId.isNullOrBlank()) {
+        source.rejected(DiagnosticCode.SOURCE_HAS_NO_IDENTITY, "the source declares no `header.id`")
+    } else {
+        Admission.Admitted(source, modelId, parsed)
+    }
+}
+
+private fun ModelSource.rejected(code: DiagnosticCode, explain: String) =
+    Admission.Rejected(Diagnostic(code, modelId = null, explain = explain, diagnosticLabel = diagnosticLabel))

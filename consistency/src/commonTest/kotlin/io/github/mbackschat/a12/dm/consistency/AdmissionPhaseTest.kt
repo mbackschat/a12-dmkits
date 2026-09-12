@@ -17,19 +17,41 @@ class AdmissionPhaseTest {
 
     @Test
     fun malformedSourceIsRejectedAtAdmission() {
-        val outcome = admit(ModelSource(modelId = "order", json = "{ not json"))
+        val outcome = admit(ModelSource("{ not json"))
 
         val rejected = assertIs<Admission.Rejected>(outcome)
         assertEquals(DiagnosticCode.SOURCE_NOT_WELL_FORMED, rejected.diagnostic.code)
-        assertEquals("order", rejected.diagnostic.modelId)
+        assertEquals(null, rejected.diagnostic.modelId, "an unreadable source cannot name the model it is")
+    }
+
+    /**
+     * Identity is EXTRACTED from `header.id`, never asserted by the caller: A12 puts the model's identity
+     * there and every cross-source reference resolves through it, so a caller-supplied id would be an echo
+     * rather than the retention stage 2 requires. `WorkspaceModelSource` takes the same shape, which is why
+     * [ModelSource] has no id parameter at all.
+     */
+    @Test
+    fun identityComesFromTheSourcesOwnHeader() {
+        val admitted = assertIs<Admission.Admitted>(
+            admit(ModelSource("""{"header":{"id":"orders/v2"},"content":{}}""")),
+        )
+
+        assertEquals("orders/v2", admitted.modelId)
+    }
+
+    @Test
+    fun aSourceWithoutAHeaderIdCannotBeAdmitted() {
+        listOf("""{"content":{}}""", """{"header":{},"content":{}}""", """{"header":{"id":"  "}}""")
+            .forEach { json ->
+                val rejected = assertIs<Admission.Rejected>(admit(ModelSource(json)), json)
+                assertEquals(DiagnosticCode.SOURCE_HAS_NO_IDENTITY, rejected.diagnostic.code, json)
+            }
     }
 
     /** The caller's label names the file a finding came from, which the model id alone cannot. */
     @Test
     fun theSourcesLabelTravelsWithItsDiagnostic() {
-        val outcome = admit(
-            ModelSource(modelId = "order", json = "{ not json", diagnosticLabel = "orders/order.dm.json"),
-        )
+        val outcome = admit(ModelSource("{ not json", diagnosticLabel = "orders/order.dm.json"))
 
         assertEquals("orders/order.dm.json", assertIs<Admission.Rejected>(outcome).diagnostic.diagnosticLabel)
     }
@@ -43,19 +65,18 @@ class AdmissionPhaseTest {
     fun aCommentedSourceIsAdmittedWhileATrailingCommaIsStillARejection() {
         val commented = "{\n  // the order model\n  \"header\": {\"id\": \"order\"}\n}"
 
-        assertIs<Admission.Admitted>(admit(ModelSource("order", commented)))
-        assertTrue(admit(ModelSource("order", """{"header":{"id":"order"},}""")) is Admission.Rejected)
+        assertIs<Admission.Admitted>(admit(ModelSource(commented)))
+        assertTrue(admit(ModelSource("""{"header":{"id":"order"},}""")) is Admission.Rejected)
     }
 
     /** The authored text survives admission — a later check cannot recover what admission normalized away. */
     @Test
     fun wellFormedSourceIsAdmittedWithItsAuthoredTextRetained() {
-        val json = """{"modelInfo":{"name":"order"}}"""
+        val json = """{"header":{"id":"order"},"content":{"modelInfo":{"name":"Order"}}}"""
 
-        val outcome = admit(ModelSource(modelId = "order", json = json))
+        val admitted = assertIs<Admission.Admitted>(admit(ModelSource(json)))
 
-        val admitted = assertIs<Admission.Admitted>(outcome)
         assertEquals(json, admitted.source.json)
-        assertEquals("order", admitted.source.modelId)
+        assertEquals("order", admitted.modelId)
     }
 }
