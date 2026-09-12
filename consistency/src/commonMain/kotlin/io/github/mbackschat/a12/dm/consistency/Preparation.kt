@@ -109,6 +109,10 @@ data class UnexpandedMount(val at: String, val alias: String, val reason: String
  * @param fieldRefByShortNameAllowed the model's `content.modelConfig.fieldRefByShortNameAllowed`. It decides
  *     whether a bare reference the declaring group does not have may resolve to a unique model-wide field
  *     short name, so reference resolution cannot be done without it.
+ * @param declaredLocales the ENTRY model's `header.locales[].code`, in declaration order. It is the only set
+ *     in play after expansion, for a mounted declaration as much as for a local one: A12 refuses to expand a
+ *     provider that does not declare every locale of the entry model, so no mounted declaration can ever
+ *     answer to a narrower set (measured 2026-09-12, `IncludedDeclarationLocaleScopeLawsTest`).
  * @param unexpandedMounts the mounts that left the fact base incomplete.
  * @param diagnostics what the checker could not read. Preparation reports and skips rather than failing, so
  *     one broken element cannot mask its siblings' findings — and no input makes [prepare] raise.
@@ -118,6 +122,7 @@ data class PreparedModel(
     val fieldRefByShortNameAllowed: Boolean,
     val conditionLanguage: ConditionLanguage = ConditionLanguage.DEFAULT,
     val unsupportedConditionLanguage: String? = null,
+    val declaredLocales: List<String> = emptyList(),
     val unexpandedMounts: List<UnexpandedMount> = emptyList(),
     val diagnostics: List<Diagnostic> = emptyList(),
 )
@@ -155,14 +160,14 @@ fun prepare(
     val content = (admitted.parsed as? JsonObject)?.get("content") as? JsonObject
     val declaredCode = content.conditionLanguageCode()?.takeIf { it.isNotBlank() }
     val declaredLanguage = declaredCode?.let { ConditionLanguage.of(it) }
-    val collector = Collector(providers)
-    val root = (content?.get("modelRoot") as? JsonObject)?.get("rootGroups")
     val entry = Scope(
         header = (admitted.parsed as? JsonObject)?.get("header") as? JsonObject,
         origin = DeclarationOrigin(admitted.modelId),
         visiting = setOf(admitted.modelId),
         diagnosticLabel = admitted.source.diagnosticLabel,
     )
+    val collector = Collector(providers, entry.header.declaredLocales().toSet())
+    val root = (content?.get("modelRoot") as? JsonObject)?.get("rootGroups")
     collector.each(root, at = null, what = "content.modelRoot.rootGroups", scope = entry) {
         collector.collect(it, "", null, entry)
     }
@@ -171,6 +176,7 @@ fun prepare(
         fieldRefByShortNameAllowed = collector.flag(content, entry),
         conditionLanguage = declaredLanguage ?: ConditionLanguage.DEFAULT,
         unsupportedConditionLanguage = declaredCode.takeIf { it != null && declaredLanguage == null },
+        declaredLocales = entry.header.declaredLocales(),
         unexpandedMounts = collector.unexpandedMounts,
         diagnostics = collector.diagnostics,
     )
@@ -192,7 +198,11 @@ private data class Scope(
     val diagnosticLabel: String?,
 )
 
-private class Collector(private val providers: Map<String, Admission.Admitted>) {
+private class Collector(
+    private val providers: Map<String, Admission.Admitted>,
+    /** The ENTRY model's declared locales — every provider mounted anywhere must cover this same set. */
+    private val entryLocales: Set<String>,
+) {
     val elements = mutableListOf<DeclaredElement>()
     val diagnostics = mutableListOf<Diagnostic>()
     val unexpandedMounts = mutableListOf<UnexpandedMount>()
@@ -262,6 +272,20 @@ private class Collector(private val providers: Map<String, Admission.Admitted>) 
         }
         val provider = providers[reference]
             ?: return unexpanded(path, alias, "no source with `header.id` `$reference` was supplied")
+        val providerHeader = (provider.parsed as? JsonObject)?.get("header") as? JsonObject
+        // A12 refuses to expand a provider that does not declare every locale of the entry model — a
+        // DocumentModelExpansionException raised before any declaration is read, so the whole model is
+        // unusable rather than this one mount (measured 2026-09-12,
+        // `IncludedDeclarationLocaleScopeLawsTest`). Stated as a gap for the same reason as an unreadable
+        // `includeLevel` above: reaching CK_MODEL_NOT_BUILDABLE from the mount path would need it to carry
+        // findings as well as gaps, and this UNDER-reports deliberately rather than mounting a tree A12
+        // never builds.
+        val uncovered = entryLocales - providerHeader.declaredLocales().toSet()
+        if (uncovered.isNotEmpty()) {
+            return unexpanded(path, alias, "`$reference` does not declare the entry model's " +
+                "${uncovered.joinToString(", ")}, so A12 refuses to expand this include at all and " +
+                "nothing here is a verdict about the model")
+        }
         val providerContent = (provider.parsed as? JsonObject)?.get("content") as? JsonObject
         val roots = ((providerContent?.get("modelRoot") as? JsonObject)?.get("rootGroups") as? JsonArray)
             ?.filterIsInstance<JsonObject>()
@@ -387,6 +411,17 @@ private fun JsonObject.declaresUnreadableIncludeLevel(): Boolean {
 private fun JsonObject?.declaresShortNameFallback(): Boolean =
     ((this?.get("modelConfig") as? JsonObject)?.get("fieldRefByShortNameAllowed") as? JsonPrimitive)
         ?.contentOrNull == "true"
+
+/**
+ * The locale codes a header declares, matched as authored. A12 compares a message's locale against this set
+ * by exact string — a bare `en` is a different code from `en_US` and is not a supported validation locale at
+ * all (KERNEL-FINDINGS §13) — so normalizing here would resolve a coverage gap the Kernel reports.
+ */
+private fun JsonObject?.declaredLocales(): List<String> =
+    (this?.get("locales") as? JsonArray)
+        ?.filterIsInstance<JsonObject>()
+        ?.mapNotNull { it.text("code")?.takeIf(String::isNotBlank) }
+        .orEmpty()
 
 /**
  * The model reference an alias names. `modelAlias` is only a header lookup key — never a tree node — and the

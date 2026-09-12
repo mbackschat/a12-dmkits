@@ -57,6 +57,19 @@ class ComputationAuthoringTest {
     }
 
     @Test
+    void rejectsAReservedVkVkComputationName() {
+        // The reserved namespace is not the rule element's alone, despite MVK_RULE_NAME_INVALID's name —
+        // the kernel rejects a computation called vk_vk_* with exactly that code (measured on both carriers,
+        // locked by validate.laws.ComputationSlotLawsTest). Rule.Builder has pre-checked it since 2026-06-10.
+        PrecheckException ex = assertThrows(PrecheckException.class, () ->
+                m.computation(m.num("/Subscription/Billing/EffectiveFee")).name("VK_VK_FeeComp")
+                        .calc(m.num("/Subscription/Billing/BaseFee").value())
+                        .message(en("x"), de("x"))
+                        .build());
+        assertEquals(Optional.of("MVK_RULE_NAME_INVALID"), ex.diagnostic().code());
+    }
+
+    @Test
     void buildsAnUnconditionalComputationTheKernelAccepts() {
         Computation comp = m.computation(m.num("/Subscription/Billing/EffectiveFee"))
                 .name("EffectiveFeeComp")

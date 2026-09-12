@@ -380,6 +380,28 @@ The tokenizer's own two departures from a naive lexer stand, and each now has a 
 
 **What this does not yet do.** Reference EXTRACTION is complete and BINDING covers the paths above; what a reference is allowed to be — the iteration gates, the wildcard rules, the operand types — belongs to D, and a resolvable reference remains necessary and not sufficient. Declared non-goals, each stated at its locus: `$`, an all-digit name and the H-model row specifiers on `referencesIn`; the turning-point label's ANCESTOR check (A12 verifies it, this does not, which under-reports); and `Group.indexFieldName` / `Group.sortFields[].name`, which are relative field references every report now names as unexamined.
 
+### C record — first frozen family: a declaration's own SLOTS (2026-09-12)
+
+**Frozen family: the `name` and `errorMessage` slots of a stored rule or computation.** It is the family that can land before the checker owns a syntax layer — every row reads members A12 declares as structured JSON — and it is the first one where the Java builders' knowledge is a real asset rather than an analogy, because [proposal §3.2](PORTABLE-CONSISTENCY-PROPOSAL.md#32-java-already-contains-valuable-validation-knowledge-embedded-in-authoring)'s named sources (`Rule.Builder.build`, `LocalizedText.checkDeclared`) enforce exactly these five shapes today.
+
+| shape | A12 | the checker reports |
+|---|---|---|
+| `name` begins `vk_vk`, any letter case | rejects | `MVK_RULE_NAME_INVALID`, `A12_CONSTRAINT` / ERROR |
+| `errorMessage` absent, empty, or every `text` blank | rejects | `MVK_ERROR_MESSAGE_MISSING`, same |
+| one declared locale's entry absent or blank, others filled | rejects | `MVK_ERROR_MESSAGE_FOR_LANGUAGE_MISSING`, same |
+| an entry for an UNDECLARED locale | **admits**, never examining the text | `RK_UNDECLARED_MESSAGE_LOCALE`, `AUTHORING_POLICY` / WARNING |
+| DUPLICATE entries for one locale | **admits**, keeping one without saying which | `MVK_LANGUAGE_DUPLICATE`, `AUTHORING_POLICY` / WARNING |
+
+**The two admitted rows carry as much weight as the three refusals**, and they are why C1's "authoring policy remains separately classified" needed a family with real rows rather than prose: `LocalizedText.checkDeclared` refuses both, deliberately and for good reasons, and a checker that inherited either refusal would reject a model the Kernel accepts. `Finding.justifiesRejection` already withholds that power from the category; these are the first findings to exercise it.
+
+**Both carriers measured, and the one that looked settled was not.** `MVK_RULE_NAME_INVALID` reads as a rule's law and rejects a computation too — the Kernel calls both elements "Rule" in its diagnostics ([KF160](KERNEL-FINDINGS.md#kf160), widened). The prediction going in was the opposite, and it is exactly the scope transfer that needs no new branch and so prompts no question. It also exposed a live gap in the component being measured against: `Computation.Builder.build` had no such pre-check where `Rule.Builder.build` has had one since 2026-06-10, so it now has one.
+
+**One CONSTANT ran through every fixture this family inherited, and two rows were added to break it.** Every message measurement in [KERNEL-FINDINGS §13](KERNEL-FINDINGS.md#kf158) held two declared locales and blanked *all* of them, so "a blank text is no message" and "this locale has no message" were one observation; blanking only `de_DE` separates them and draws the per-locale code. And emptying `header.locales` is the only row on the other side of that axis: the message demand survives, so the checker may report `MVK_ERROR_MESSAGE_MISSING` without first knowing what the model declares.
+
+**Which locale set a MOUNTED declaration answers to had no answer, and A12 gives it one layer earlier than expected.** A provider that does not declare every locale of the entry model cannot be expanded at all ([KF288](KERNEL-FINDINGS.md#kf288)), so no mounted declaration ever faces a narrower set and the entry's is the only one in play. Preparation now suspends such a mount by name — under-reporting deliberately, on the same footing as an `includeLevel` spelling A12's enum refuses.
+
+**C1's compile-time extraction is BLOCKED by publication order, and that is a measured constraint rather than a preference.** C1 asks for one shared finding-producing function both consumers call, which means a dependency edge from `:rulekit` to `:consistency`: the shared function must live in `commonMain` to reach the JS target, and nothing else is reachable from both. `:rulekit` is published as `dmkits-rulekit` and `:consistency` is not published at all, so that edge would put an unresolvable coordinate in a shipped POM. Publishing `:consistency` to fix it is F's decision, taken with F's API and packaging review — [§2](#2-execution-order-and-landing-boundaries) puts packed delivery there on purpose, and F3 is where the dmkits edge is already required. So the family lands in the checker now with the Kernel as the shared oracle for both consumers, and C1's extraction rides F3. **Re-open trigger:** the first `:consistency` publication.
+
 ### Decisions to resolve during A
 
 - **Shared syntax:** default to checker-owned source. Extract a neutral leaf only when the enumerated closure and H4/H5 evidence support it; this avoids turning parser extraction into an interpreter redesign.

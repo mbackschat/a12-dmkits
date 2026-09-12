@@ -33,6 +33,7 @@ class WorkspaceMountTest {
 
     private fun rule(name: String, errorPath: String, condition: String) =
         """{"type":"Rule","id":"r-$name","name":"$name","Rule":{"errorCode":"C",
+           "errorMessage":[{"locale":"en_US","text":"x"}],
            "errorEntityRelPath":"$errorPath","errorCondition":"$condition"}}"""
 
     /**
@@ -245,6 +246,58 @@ class WorkspaceMountTest {
                     .checksCompleted,
         )
     }
+
+    /**
+     * A provider that does not declare every locale of the ENTRY model cannot be mounted at all.
+     *
+     * A12 refuses the expansion outright — `DocumentModelExpansionException`, before any declaration is read
+     * — so a checker that mounted it would analyse a tree the Kernel never builds, and every finding about it
+     * would be the checker's own reading. Measured 2026-09-12 by `IncludedDeclarationLocaleScopeLawsTest`,
+     * which also carries the row that bounds it: a provider declaring MORE than the entry mounts normally,
+     * which is why this suspends on coverage rather than on equality.
+     */
+    @Test
+    fun aProviderMissingAnEntryLocaleSuspendsTheMount() {
+        val narrow = source(
+            """
+            {"header":{"id":"address","locales":[{"code":"en_US"}]},"content":{"modelRoot":{"rootGroups":[
+              {"type":"Group","id":"g","name":"Address","Group":{"elements":[${field("Street")}]}}
+            ]}}}
+            """,
+        )
+        val report = check(bilingualHost(), narrow)
+
+        assertEquals(emptySet(), report.checksCompleted)
+        assertTrue(report.gaps.any { it.at == "/Order/ShipTo" && "de_DE" in it.reason }, report.gaps.toString())
+    }
+
+    /** The control for the row above: the same provider declaring both locales mounts and is checked. */
+    @Test
+    fun aProviderCoveringEveryEntryLocaleMountsNormally() {
+        val wide = source(
+            """
+            {"header":{"id":"address","locales":[{"code":"en_US"},{"code":"de_DE"}]},
+             "content":{"modelRoot":{"rootGroups":[
+              {"type":"Group","id":"g","name":"Address","Group":{"elements":[${field("Street")}]}}
+            ]}}}
+            """,
+        )
+
+        assertTrue(CheckFamily.CONDITION_REFERENCES in check(bilingualHost(), wide).checksCompleted)
+    }
+
+    /** The host of the two rows above, declaring two locales where [host] declares none. */
+    private fun bilingualHost() = source(
+        """
+        {"header":{"id":"order","locales":[{"code":"en_US"},{"code":"de_DE"}],"modelReferences":[
+          {"alias":"addr","purpose":"include","reference":"address"}
+        ]},"content":{"modelRoot":{"rootGroups":[
+          {"type":"Group","id":"g0","name":"Order","Group":{"elements":[
+            {"type":"Group","id":"g1","name":"ShipTo","Group":{"modelAlias":"addr"}}
+          ]}}
+        ]}}}
+        """,
+    )
 
     /** SINGLE_RG needs exactly one root group in the provider; the Kernel refuses zero or several. */
     @Test

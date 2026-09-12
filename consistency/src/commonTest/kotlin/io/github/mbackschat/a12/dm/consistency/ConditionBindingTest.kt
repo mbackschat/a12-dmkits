@@ -23,6 +23,7 @@ class ConditionBindingTest {
               {"type":"Group","id":"g1","name":"Lines","Group":{"elements":[
                 {"type":"Field","id":"f1","name":"Amount","Field":{}},
                 {"type":"Rule","id":"r0","name":"Check","Rule":{"errorCode":"C",
+                  "errorMessage":[{"locale":"en_US","text":"x"}],
                   "errorEntityRelPath":"../Amount","errorCondition":"$condition"}}
               ]}}
             ]}}
@@ -156,6 +157,7 @@ class ConditionBindingTest {
               {"type":"Group","id":"g0","name":"Order","Group":{"elements":[
                 {"type":"Field","id":"f0","name":"Total","Field":{}},
                 {"type":"Computation","id":"c0","name":"Comp","Computation":{
+                  "errorMessage":[{"locale":"en_US","text":"x"}],
                   "computedFieldRelPath":"../Total",
                   "commonPrecondition":"FieldFilled(NopeOne)",
                   "computationAlternatives":[
@@ -194,6 +196,7 @@ class ConditionBindingTest {
               {"type":"Group","id":"g0","name":"Order","Group":{"elements":[
                 {"type":"Group","id":"g1","name":"Address","Group":{"modelAlias":"address-model"}},
                 {"type":"Rule","id":"r0","name":"Check","Rule":{"errorCode":"C",
+                  "errorMessage":[{"locale":"en_US","text":"x"}],
                   "errorEntityRelPath":"../Address/Street","errorCondition":"FieldFilled(Address/Street)"}}
               ]}}
             ]}}}
@@ -218,6 +221,7 @@ class ConditionBindingTest {
             {"header":{"id":"order"},"content":{"modelRoot":{"rootGroups":[
               {"type":"Group","id":"g0","name":"Order","Group":{"elements":[
                 {"type":"Computation","id":"c0","name":"Comp","Computation":{
+                  "errorMessage":[{"locale":"en_US","text":"x"}],
                   "computedFieldRelPath":"../Nope",
                   "computationAlternatives":[{"operation":"{ 1 }"}]}}
               ]}}

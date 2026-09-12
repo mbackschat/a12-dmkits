@@ -13,6 +13,9 @@ enum class CheckFamily {
 
     /** Every entity named in a rule's condition or a computation's operations resolves. */
     CONDITION_REFERENCES,
+
+    /** A rule's and a computation's own declaration slots: the reserved name prefix, the error messages. */
+    DECLARATION_SLOTS,
 }
 
 /**
@@ -129,13 +132,14 @@ internal fun check(
     val findings = declared.mapNotNull { it.target.asFinding(it.role, it.declaredAt) } +
         prepared.conditionReferences().mapNotNull {
             it.target.asFinding(ReferenceRole.CONDITION_ENTITY, it.declaredAt, it.member)
-        }
+        } + prepared.declarationSlotFindings()
     return ConsistencyReport(
         modelId = admitted.modelId,
         status = statusOf(findings),
         findings = findings,
         diagnostics = inherited + prepared.diagnostics,
-        checksCompleted = setOf(CheckFamily.DECLARED_REFERENCES, CheckFamily.CONDITION_REFERENCES),
+        checksCompleted = setOf(CheckFamily.DECLARED_REFERENCES, CheckFamily.CONDITION_REFERENCES,
+            CheckFamily.DECLARATION_SLOTS),
         gaps = prepared.gaps() + prepared.emptyFactBase() + declared.buildBlocked() + UNREAD_MEMBERS +
             UNIMPLEMENTED_FAMILIES,
     )
@@ -202,7 +206,7 @@ private val UNREAD_MEMBERS = listOf(
 private val UNIMPLEMENTED_FAMILIES = listOf(
     CoverageGap(
         at = null,
-        reason = "only the reference families are implemented; every other required family of the pinned " +
-            "profile was not examined",
+        reason = "only the reference families and the declaration slots are implemented; every other " +
+            "required family of the pinned profile was not examined",
     ),
 )

@@ -254,6 +254,13 @@ public record Computation(
 
         public Computation build() {
             require(name != null && !name.isBlank(), "a computation needs a name — name(...)");
+            // The reserved namespace is not the rule element's alone, despite the code's name: the kernel
+            // rejects a computation called vk_vk_* with exactly this code (measured 2026-09-12 on both
+            // carriers, locked by validate.laws.ComputationSlotLawsTest). Rule.Builder has pre-checked it
+            // since 2026-06-10; this side was missed because the code reads as a rule's law.
+            require(!name.regionMatches(true, 0, "vk_vk", 0, 5),
+                    "computation names beginning with vk_vk (any letter case) are reserved by the kernel"
+                            + " (it rejects them with MVK_RULE_NAME_INVALID) — pick a different name");
             require(!alternatives.isEmpty(), "a computation needs at least one alternative — calc(...) or when(...).calc(...)");
             require(!messages.isEmpty(),
                     "a computation needs at least one error message (self-validation text;"

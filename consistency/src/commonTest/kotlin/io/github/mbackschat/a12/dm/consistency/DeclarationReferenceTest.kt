@@ -38,6 +38,7 @@ class DeclarationReferenceTest {
 
     private fun rule(relPath: String) =
         """{"type":"Rule","id":"r0","name":"Check","Rule":{"errorCode":"C",
+           "errorMessage":[{"locale":"en_US","text":"x"}],
            "errorEntityRelPath":"$relPath","errorCondition":"FieldFilled(Code)"}}"""
 
     @Test

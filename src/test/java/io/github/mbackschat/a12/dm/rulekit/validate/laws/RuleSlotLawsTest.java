@@ -6,9 +6,15 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.util.List;
 
 import org.junit.jupiter.api.Test;
+
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 
 import io.github.mbackschat.a12.dm.Fixtures;
 import io.github.mbackschat.a12.dm.core.ModelConsistencyException;
@@ -39,6 +45,66 @@ class RuleSlotLawsTest {
                 () -> "expected " + code + ", kernel said: " + ex.getMessage());
     }
 
+    /**
+     * An {@code errorMessage} member that is ABSENT rather than an empty array — a shape the writer never
+     * emits and stored DM-JSON can carry, so a reader that equates the two is asserting a transfer it has not
+     * run. Measured here because the wrong answer is the dangerous one: treating absent as "no messages"
+     * would refuse a model A12 might accept.
+     */
+    @Test
+    void anAbsentErrorMessageMemberIsRejectedLikeAnEmptyOne() {
+        String json = withoutErrorMessageMember(withProbeRule("NoMessageMemberProbe", List.of()));
+        assertCode(assertThrows(ModelConsistencyException.class, () -> BoundModel.ofJson(json)),
+                "MVK_ERROR_MESSAGE_MISSING");
+    }
+
+    /**
+     * With NO declared locale there is no per-locale demand left — and the message demand survives anyway.
+     *
+     * <p>The cell matters because every row above holds two declared locales, so "a rule needs a message"
+     * and "a rule needs a message for each declared locale" are the same observation across the whole set.
+     * Emptying {@code header.locales} is the only row on the other side of that axis: it settles that a
+     * checker may report {@code MVK_ERROR_MESSAGE_MISSING} without first knowing what the model declares.
+     */
+    @Test
+    void aMessagelessRuleIsRejectedEvenWhenTheModelDeclaresNoLocale() {
+        String json = withoutDeclaredLocales(withProbeRule("NoLocaleProbe", List.of()));
+        assertCode(assertThrows(ModelConsistencyException.class, () -> BoundModel.ofJson(json)),
+                "MVK_ERROR_MESSAGE_MISSING");
+    }
+
+    /** Empty {@code header.locales}, refusing rather than silently passing an unchanged model through. */
+    private static String withoutDeclaredLocales(String json) {
+        try {
+            ObjectNode root = (ObjectNode) new ObjectMapper().readTree(json);
+            ObjectNode header = (ObjectNode) root.path("header");
+            if (!header.path("locales").isArray() || header.path("locales").isEmpty()) {
+                throw new IllegalStateException("the fixture declares no locales to remove");
+            }
+            header.putArray("locales");
+            return root.toString();
+        } catch (IOException unreadable) {
+            throw new UncheckedIOException("the writer's own output must be readable", unreadable);
+        }
+    }
+
+    /** Drop the probe's {@code errorMessage} member, refusing rather than silently passing the input through. */
+    private static String withoutErrorMessageMember(String json) {
+        try {
+            ObjectNode root = (ObjectNode) new ObjectMapper().readTree(json);
+            for (JsonNode element : root.path("content").path("modelRoot").path("rootGroups").get(0)
+                    .path("Group").path("elements")) {
+                JsonNode body = element.path("Rule");
+                if (body.isObject() && ((ObjectNode) body).remove("errorMessage") != null) {
+                    return root.toString();
+                }
+            }
+            throw new IllegalStateException("the probe rule carries no errorMessage member to remove");
+        } catch (IOException unreadable) {
+            throw new UncheckedIOException("the writer's own output must be readable", unreadable);
+        }
+    }
+
     @Test
     void theProbeShapeItselfIsAccepted() {
         // negative control: the slot shape used below is fine when name + messages are legal
@@ -67,6 +133,43 @@ class RuleSlotLawsTest {
     void aBlankMessageTextCountsAsNoMessageAtAll() {
         // §13: blank text serializes as an absent message — MVK_ERROR_MESSAGE_MISSING, not an empty one
         assertCode(rejected("BlankMsgProbe", List.of(en(""))), "MVK_ERROR_MESSAGE_MISSING");
+    }
+
+    /**
+     * The blank text of ONE declared locale, which separates the two message codes.
+     *
+     * <p>The row above and every other blank-text measurement here left the other declared locale with no
+     * entry at all, so "blank counts as absent" and "this locale has no message" were one observation and
+     * the code that answered could not be attributed to either. Holding {@code en_US}'s text non-blank moves
+     * only the blank.
+     */
+    @Test
+    void aBlankTextForOneDeclaredLocaleIsThatLocalesMessageMissing() {
+        assertCode(rejected("BlankOneLocaleProbe", List.of(en("x"), de(""))),
+                "MVK_ERROR_MESSAGE_FOR_LANGUAGE_MISSING");
+    }
+
+    /**
+     * The locale-coverage law, measured rather than inherited. {@code LocalizedText.checkDeclared} refuses
+     * this shape citing {@code MVK_ERROR_MESSAGE_FOR_LANGUAGE_MISSING}, and until now nothing here had asked
+     * the kernel — a client-side refusal whose basis was a code name. The fixture declares {@code en_US} and
+     * {@code de_DE}, so dropping the German text moves exactly one variable against
+     * {@link #theProbeShapeItselfIsAccepted}.
+     */
+    @Test
+    void aMessageMissingForADeclaredLocaleIsRejected() {
+        assertCode(rejected("MissingLocaleProbe", List.of(en("x"))), "MVK_ERROR_MESSAGE_FOR_LANGUAGE_MISSING");
+    }
+
+    /**
+     * The other half of the same law, and the one a checker must NOT reproduce: a text for a locale the model
+     * never declares is tolerated. {@code LocalizedText.checkDeclared} refuses it deliberately — it usually
+     * hides a typo — so this row is what makes that an authoring policy rather than an A12 rejection.
+     */
+    @Test
+    void aMessageForAnUndeclaredLocaleIsSilentlyTolerated() {
+        assertNotNull(BoundModel.ofJson(withProbeRule("UndeclaredLocaleProbe",
+                List.of(en("x"), de("x"), new LocalizedText("fr_FR", "x")))));
     }
 
     @Test
