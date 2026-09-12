@@ -122,10 +122,24 @@ case $LANE in
     FAST=
     echo "mutant: $LANE is skipped by -Pfast, so this run drops the flag (slower, and the only correct option)" ;;
 esac
-if ./build.sh --console=plain $FAST "$LANE" --tests "$FILTER" > "$LOG" 2>&1; then
+# `--rerun` is not optional. Gradle skips a task it finds UP-TO-DATE, and a mutated file is only an input of
+# the tasks that declare it — a doc never is — so re-using a filter string from an earlier run leaves the lane
+# up-to-date, runs NOTHING, and reports SURVIVED. Measured 2026-09-12 on `docs/MVK-LEDGER.md`: the same mutant
+# read SURVIVED, then KILLED on a re-run whose only difference was that the lane actually executed.
+if ./build.sh --console=plain $FAST "$LANE" --rerun --tests "$FILTER" > "$LOG" 2>&1; then
   VERDICT=0
 else
   VERDICT=1
+fi
+# A lane that is not a Test task rejects `--tests` while CONFIGURING, so Gradle fails before running anything
+# and every mutant reads as killed. This is the false verdict in the opposite direction from the ones below,
+# and the more dangerous one: it confirms whatever the operator hoped. Measured 2026-09-12, when a review
+# packet named `:consistency:check` — a lifecycle task — and its first three mutants were void.
+if grep -q "Unknown command-line option '--tests'" "$LOG"; then
+  echo "mutant: $LANE is not a Test task, so it rejects --tests and fails before running anything —" >&2
+  echo "        every mutant would read 'killed'. Name the Test task itself (for a Kotlin Multiplatform" >&2
+  echo "        module that is :<module>:jvmTest or :<module>:jsNodeTest, never :<module>:check)." >&2
+  exit_and_clean=2
 fi
 # A filter that matched NO test also "fails" — distinguish it, or a typo reads as a kill.
 if grep -q 'No tests found for given includes' "$LOG"; then
