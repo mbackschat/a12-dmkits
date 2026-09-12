@@ -90,6 +90,19 @@ enum class CheckFamily {
      * its own.
      */
     CONNECTIVE_AGREEMENT,
+
+    /**
+     * That every DSL-bearing member FORMS a condition — or, for a computation's `operation`, an expression.
+     * The last of the syntax phases and the only one that needs a parser, which is why it reports the two
+     * codes the earlier families cannot: a token the grammar cannot use where it stands, and a text that ends
+     * with a bracket still open.
+     *
+     * Its parser is deliberately looser than A12's grammar, checking the shape the productions share rather
+     * than each operator's own argument arity. A wrong-arity call is therefore not reported, which the
+     * report's gap says: over-rejection is the one direction this checker may not take, and a per-operator
+     * reproduction would be a second copy of the catalog.
+     */
+    CONDITION_GRAMMAR,
 }
 
 /**
@@ -210,7 +223,7 @@ internal fun check(
         prepared.computationRoundingFindings() + prepared.suppressedWarningFindings() +
         prepared.ruleConditionAndTargetFindings() + prepared.variantFilterFindings() +
         prepared.conditionLexicalFindings() + prepared.conditionCompletenessFindings() +
-        prepared.connectiveAgreementFindings() +
+        prepared.connectiveAgreementFindings() + prepared.conditionGrammarFindings() +
         prepared.elementNameFindings() + prepared.groupOrderingFindings()
     val findings = judged.notSuppressedBy(prepared.variantFilterSuppressed())
     return ConsistencyReport(
@@ -224,7 +237,8 @@ internal fun check(
             CheckFamily.GROUP_ORDERING_REFERENCES, CheckFamily.GROUP_ORDERING_FIELD_TYPE,
             CheckFamily.COMPUTATION_ROUNDING, CheckFamily.SUPPRESSED_WARNINGS,
             CheckFamily.VARIANT_FILTER, CheckFamily.CONDITION_LEXICALITY,
-            CheckFamily.CONDITION_COMPLETENESS, CheckFamily.CONNECTIVE_AGREEMENT),
+            CheckFamily.CONDITION_COMPLETENESS, CheckFamily.CONNECTIVE_AGREEMENT,
+            CheckFamily.CONDITION_GRAMMAR),
         gaps = prepared.gaps() + prepared.emptyFactBase() + findings.buildBlocked() +
             prepared.variantFilterGaps() + UNREAD_MEMBERS + UNIMPLEMENTED_FAMILIES,
     )
@@ -310,13 +324,11 @@ private val UNREAD_MEMBERS = listOf(
     ),
     CoverageGap(
         at = null,
-        reason = "DSL text is checked for LEXICAL readability, for ending too early, and for mixing `And` " +
-            "with `Or` inside one bracket pair, never for GRAMMAR, " +
-            "so no wrong-token shape is judged on its grammar — including text that ends on an operator " +
-            "with a delimiter still open, which A12 answers differently and this checker leaves alone. " +
-            "A12's illegal-CHARACTER class is unmeasured and also unreported. (`MVK_UNEXPECTED_TOKEN` does " +
-            "appear in reports, from the suppression-pragma family, which reads a rendered pragma rather " +
-            "than a condition — so seeing it is not evidence that a condition was parsed.)",
+        reason = "the condition parser checks the SHAPE the grammar's productions share — a call is a name " +
+            "and a parenthesised argument list — and not each operator's own argument arity or operand " +
+            "kinds, so a call with the wrong number or kind of arguments is left to A12. Reproducing those " +
+            "per operator would be a second copy of the catalog, and every place the copy disagreed would " +
+            "refuse a condition A12 admits. A12's illegal-CHARACTER class is unmeasured and unreported too",
     ),
     CoverageGap(
         at = null,
