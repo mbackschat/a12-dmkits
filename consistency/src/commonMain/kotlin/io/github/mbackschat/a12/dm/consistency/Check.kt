@@ -28,6 +28,9 @@ enum class CheckFamily {
 
     /** A rule's `errorCondition` and `errorEntityRelPath` are present and carry text. */
     RULE_CONDITION_AND_TARGET,
+
+    /** No group holds two children of the same name, whatever kinds they are. */
+    ELEMENT_NAME_UNIQUENESS,
 }
 
 /**
@@ -145,7 +148,7 @@ internal fun check(
         prepared.conditionReferences().mapNotNull {
             it.target.asFinding(ReferenceRole.CONDITION_ENTITY, it.declaredAt, it.member)
         } + prepared.declarationSlotFindings() + prepared.computationAlternativeFindings() +
-        prepared.ruleConditionAndTargetFindings()
+        prepared.ruleConditionAndTargetFindings() + prepared.elementNameFindings()
     return ConsistencyReport(
         modelId = admitted.modelId,
         status = statusOf(findings),
@@ -153,7 +156,7 @@ internal fun check(
         diagnostics = inherited + prepared.diagnostics,
         checksCompleted = setOf(CheckFamily.DECLARED_REFERENCES, CheckFamily.CONDITION_REFERENCES,
             CheckFamily.DECLARATION_SLOTS, CheckFamily.COMPUTATION_ALTERNATIVES,
-            CheckFamily.RULE_CONDITION_AND_TARGET),
+            CheckFamily.RULE_CONDITION_AND_TARGET, CheckFamily.ELEMENT_NAME_UNIQUENESS),
         gaps = prepared.gaps() + prepared.emptyFactBase() + findings.buildBlocked() + UNREAD_MEMBERS +
             UNIMPLEMENTED_FAMILIES,
     )
@@ -224,8 +227,8 @@ private val UNREAD_MEMBERS = listOf(
 private val UNIMPLEMENTED_FAMILIES = listOf(
     CoverageGap(
         at = null,
-        reason = "only the reference families, the declaration slots, a computation's alternatives and a " +
-            "rule's condition/target members are implemented; every other required family of the pinned " +
-            "profile was not examined",
+        reason = "only the reference families, the declaration slots, a computation's alternatives, a " +
+            "rule's condition/target members and element-name uniqueness are implemented; every other " +
+            "required family of the pinned profile was not examined",
     ),
 )

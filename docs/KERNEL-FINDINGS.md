@@ -2073,7 +2073,7 @@ The count-family fill is never shrinkable in any of these shapes. *(Locked: `ada
 Two structural gates fire *outside* `checkConsistency`, found while scoping the F6 DM-JSON write path:
 
 - **Deserialize tier (Jackson binding).** `serializer.deserialize(reader)` is a Jackson read — malformed JSON, an unknown `"type"` discriminator, an unparseable number/enum, and the **locale-format check** (`en_us` → "Invalid locale format", before any consistency pass) fail here as `IOException`/binding errors, *not* `MVK_*` codes. Not enum-enumerable; documented, not locked.
-- **Convert tier (model assembly, found 2026-06-10 while locking the rule-slot laws).** Building the validation model rejects **two same-named sibling elements in one group** with a plain `IllegalArgumentException` ("Cannot have two child elements with the same name …") — *before* `checkConsistency`, so the `MVK_NAME_RULES_DUPLICATE` metamodel rule is shadowed by this tier for the same-group case. *(Locked: `validate.laws.RuleSlotLawsTest`.)*
+- **Convert tier (model assembly, found 2026-06-10 while locking the rule-slot laws).** Building the validation model rejects **two same-named sibling elements in one group** with a plain `IllegalArgumentException` ("Cannot have two child elements with the same name …"), so the `MVK_NAME_RULES_DUPLICATE` metamodel rule is shadowed by this tier for the same-group case. **Corrected 2026-09-12:** the throw happens INSIDE `checkConsistency`, not before it — this entry said "before", pointing a reader at the one tier the adapter's guard deliberately excludes; the guard wraps that call alone and a mutant on its catch clause kills the lock. The uniqueness scope it enforces is [KF294](#kf294). *(Locked: `validate.laws.RuleSlotLawsTest`.)*
 - **Serialize/write gate — `BasicConsistencyCheck`.** `serialize(model, writer, …)` runs `BasicConsistencyCheck.checkModel` first and **aborts the write on any ERROR** — so this, not `checkConsistency`, is what an F6 `writeTo` must satisfy. Its `BasicDocumentModelConsistencyCategory` enum (16 categories) is the enumerable contract: `ID_EMPTY`, `NAME_EMPTY`, `ERROR_{ENTITY,CODE,CONDITION}_EMPTY`, `COMPUTED_FIELD_EMPTY`, `COMPUTATION_OPERATION_EMPTY`, `ENUM_TYPE_DUPLICATE_{VALUE,CATEGORIES}`, `LOCALIZED_TEXT_{ELEMENT,TYPEDEF}_NULL_PROBLEM`, `INDEX_FIELD_NAME_EMPTY`, `SORT_FIELD_NAME_EMPTY`, `TYPEDEF_{TYPE_REF,ID,NAME}_EMPTY`.
 
 rulekit's authoring builders already satisfy the rule/computation subset (`ERROR_*`, `COMPUTED_FIELD/OPERATION`, `LOCALIZED_TEXT_ELEMENT`) by construction; the rest are model-structure concerns rulekit doesn't author (it only *adds rules/computations to an already-valid model*). *(Locked: `SerializerTierParityTest` — reflective parity over the category enum, so a kernel upgrade adding a category fails loudly.)*
@@ -5606,3 +5606,24 @@ The two members a stored rule cannot work without, measured because `Rule.Builde
 **Both blank rows draw a PAIR of codes, and one pair is a naming trap.** `MVK_ERROR_FIELD_MISSING` and `MVK_MISSING_ERROR_FIELD` are two distinct codes from two enums that fire together on the same shape; quoting either alone under-reports what A12 said, and the two are easy to read as one typo. A one-code assertion would have seen neither the second gate on the condition (`MVK_INCOMPLETE_INPUT`) nor the second here.
 
 *(Locked: `rulekit.validate.laws.RuleConditionAndTargetSlotLawsTest` — one assertion per member.)*
+
+## §13 supplement — how far an element NAME must be unique: one group's children, across kinds, case-sensitively (`checkConsistency`, measured, 2026-09-12) <a id="kf294"></a>
+
+> Fold: not-foldable — a model-structure law on the element envelope, outside the evaluation scope.
+
+[KF132](#kf132) records that two same-named sibling elements in one group are refused at the CONVERT tier, before `checkConsistency`, so the `MVK_NAME_RULES_DUPLICATE` metamodel rule never gets to report. That one observation fits several accounts that differ on models an author writes by accident, so each boundary was measured.
+
+| stored shape | A12 |
+|---|---|
+| two rules of one name in one group | **NOT BUILDABLE** — a rejection carrying no `MVK_*` code |
+| a rule named after a sibling FIELD | **NOT BUILDABLE** |
+| a rule named after a sibling GROUP | **NOT BUILDABLE** |
+| the same name in two DIFFERENT groups | ADMITTED |
+| a rule named after a field in another group | ADMITTED |
+| two names in one group differing only in letter case | ADMITTED |
+
+**The demand spans KINDS, and a "rule names must be unique" reading passes two of the three refusals.** The collision is among a group's children whatever each child is — the Kernel's own wording is "two child elements with the same name" — so a rule may not take the name of a sibling field or a sibling subgroup. This is the row a checker that only indexes executables cannot see at all.
+
+**And it is case-SENSITIVE, where the `vk_vk` prefix law on the same member is case-INSENSITIVE** ([KF160](#kf160)). Two laws reading one slot with opposite case rules is exactly the pair that gets unified by accident, so `Probe` beside `probe` in one group is admitted and must draw nothing.
+
+*(Locked: `rulekit.validate.laws.ElementNameUniquenessLawsTest` — one assertion over the six boundaries.)*
