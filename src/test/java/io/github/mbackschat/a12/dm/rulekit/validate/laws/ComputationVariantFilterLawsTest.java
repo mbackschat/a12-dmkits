@@ -119,8 +119,57 @@ class ComputationVariantFilterLawsTest {
         assertEquals(expected, actual, "what A12 does with each shape of a computation's variantFilter");
     }
 
+    /**
+     * The control that separates DECLARATION KIND from GROUP PLACEMENT, which moved together until now.
+     *
+     * <p>The computation probe above sits at {@code /Subscription/Billing} because that is where the computed
+     * field lives, while the rule probe it is compared against sits at {@code /Subscription}. Every cell
+     * agreed, and the natural reading — the filter behaves the same on both carriers — was not the only one
+     * available: nothing in the two grids excluded a dependence on where the declaration sits. This runs a
+     * RULE at the computation's own group, so the carrier comparison is within one group and the placement
+     * variable is held fixed.
+     *
+     * <p>The four rows are the discriminating cells of the grid above: the liveness control, the break
+     * detected unfiltered, the break hidden by {@code ONLY}, and the {@code ALL_EXCEPT} cell that keeps the
+     * default variant and so must stay judged. The condition texts are the rule probe's own, retargeted to
+     * this group's field, so the only thing that differs from that probe is the group.
+     */
+    @Test
+    void aRuleAtTheComputationsOwnGroupBehavesAsOneAtTheRootGroup() {
+        Map<String, String> actual = new LinkedHashMap<>();
+        actual.put("sound, no filter — the liveness control", ruleVerdict("FieldFilled(EffectiveFee)", null));
+        actual.put("BROKEN, no filter — proves the break is detectable",
+                ruleVerdict("FieldFilled(NoSuchFieldAnywhere)", null));
+        actual.put("BROKEN, filtered to a non-default variant",
+                ruleVerdict("FieldFilled(NoSuchFieldAnywhere)", ONLY_PREMIUM));
+        actual.put("BROKEN, ALL_EXCEPT a non-default variant — default still included",
+                ruleVerdict("FieldFilled(NoSuchFieldAnywhere)",
+                        "{\"filterType\":\"ALL_EXCEPT\",\"variants\":[\"premium\"]}"));
+
+        Map<String, String> expected = new LinkedHashMap<>();
+        expected.put("sound, no filter — the liveness control", KernelLaws.ADMITTED);
+        expected.put("BROKEN, no filter — proves the break is detectable", "MVK_INVALID_ENTITY");
+        expected.put("BROKEN, filtered to a non-default variant", KernelLaws.ADMITTED);
+        expected.put("BROKEN, ALL_EXCEPT a non-default variant — default still included", "MVK_INVALID_ENTITY");
+        assertEquals(expected, actual, "whether a rule's group placement changes what its variant filter does");
+    }
+
     private static String verdict(String operation, String filterJson) {
         return KernelLaws.verdictOf(probe(operation, filterJson));
+    }
+
+    private static String ruleVerdict(String condition, String filterJson) {
+        String written = ModelWriter.addRule(Fixtures.subscriptionJson(), GROUP, "PlacementProbe",
+                "../EffectiveFee", "PROBE", condition, "ERROR", List.of(en("x"), de("y")));
+        try {
+            ObjectNode root = (ObjectNode) MAPPER.readTree(written);
+            if (filterJson != null) {
+                bodyOf(root, "PlacementProbe", "Rule").set("variantFilter", MAPPER.readTree(filterJson));
+            }
+            return KernelLaws.verdictOf(root.toString());
+        } catch (IOException unreadable) {
+            throw new UncheckedIOException("the writer's own output and the raw fragment must parse", unreadable);
+        }
     }
 
     private static String probe(String operation, String filterJson) {
@@ -144,21 +193,26 @@ class ComputationVariantFilterLawsTest {
     }
 
     private static ObjectNode computationBody(ObjectNode root) {
+        return bodyOf(root, "VariantProbe", "Computation");
+    }
+
+    /** The declaration named [name] carrying a [kind] member, wherever in the tree the writer put it. */
+    private static ObjectNode bodyOf(ObjectNode root, String name, String kind) {
         for (var top : root.path("content").path("modelRoot").path("rootGroups")) {
-            ObjectNode found = findProbe(top);
+            ObjectNode found = findProbe(top, name, kind);
             if (found != null) {
                 return found;
             }
         }
-        throw new IllegalStateException("the probe computation is no longer where this test writes it");
+        throw new IllegalStateException("the probe " + name + " is no longer where this test writes it");
     }
 
-    private static ObjectNode findProbe(JsonNode node) {
-        if ("VariantProbe".equals(node.path("name").asText()) && node.has("Computation")) {
-            return (ObjectNode) node.path("Computation");
+    private static ObjectNode findProbe(JsonNode node, String name, String kind) {
+        if (name.equals(node.path("name").asText()) && node.has(kind)) {
+            return (ObjectNode) node.path(kind);
         }
         for (var child : node.path("Group").path("elements")) {
-            ObjectNode found = findProbe(child);
+            ObjectNode found = findProbe(child, name, kind);
             if (found != null) {
                 return found;
             }
