@@ -5486,3 +5486,32 @@ The third row is what bounds it: without it "the provider must match the entry" 
 **This is NOT the rule the mount exclusions follow, and assuming one rule for both is how those readers were wrong.** `excludeRules` and `excludeComputations` reach A12 through `ElementDeserializer`'s `JsonNode.booleanValue()`, which is false for every non-Boolean and never refuses ([KF3](#kf3)); this member reaches a `boolean` field through the POJO binding, which coerces three string spellings and refuses the rest. Two members, two Jackson paths, three different answers for `"True"`.
 
 *(Locked: `rulekit.validate.laws.ShortNameFlagSpellingLawsTest` — the whole table in one assertion.)*
+
+## §13 supplement — a message slot has THREE verdicts, and a locale is matched as a PARSED locale rather than as text (`ModelLoader` + `checkConsistency`, measured, 2026-09-12) <a id="kf290"></a>
+
+> Fold: pending — the raw-shape half of [KF158](#kf158)'s message-locale law; fold both into §13 in one pass.
+
+[KF158](#kf158) measures the message law through `ModelWriter`, which emits one canonical spelling of everything. Stored DM-JSON does not, and a checker reading it meets shapes the writer cannot author. Measured on the shared subscription fixture with the header's `locales` and the rule's `errorMessage` substituted raw:
+
+**Three verdicts, and the third is the one a reader must not fold away.** `ModelInputException` is A12's READER refusing the bytes — no rule is examined and no consistency verdict exists; `ModelConsistencyException` carrying an `MVK_*` code is its verdict on a model it did read. A reader that reports the first as an `MVK_*` finding presents its own opinion as A12's about a model A12 never judged.
+
+| stored shape | A12 |
+|---|---|
+| header `en-US` · message `en_US` (and the reverse) | **ADMITTED** — both spellings parse to one locale |
+| header `en_us` | **UNREADABLE** — `Invalid locale format: en_us` |
+| `header.locales` as bare strings (`["en_US","de_DE"]`) | ADMITTED, and the per-locale demand applies in full |
+| message entry with no `locale`, or no `text` | **UNREADABLE** — `Missing locale for localized text` |
+| message entry whose `locale` or `text` is a NUMBER | **UNREADABLE** |
+| `errorMessage` as an OBJECT | **ADMITTED** — the reader iterates the node's elements, which for an object are its values |
+| `errorMessage` as a string or number | `MVK_ERROR_MESSAGE_MISSING` — it yields no entries |
+| two entries for one locale, the LATER one blank | `MVK_ERROR_MESSAGE_MISSING` |
+| two entries for one locale, the EARLIER one blank | ADMITTED |
+| a whitespace-only `text` | `MVK_ERROR_MESSAGE_MISSING` |
+
+**The locale rows are the dangerous ones, and a string comparison cannot get them right.** A12 parses both sides through `LocaleUtils.toLocale` and compares the parsed values, so `en-US` and `en_US` are one locale and a reader comparing text reports `MVK_ERROR_MESSAGE_FOR_LANGUAGE_MISSING` for a model A12 admits. The `en_us` row is what keeps the correction from being "normalize case": A12's parser REFUSES that spelling rather than accepting it leniently, so a normalizing reader would analyse a model that does not load.
+
+**The last entry for a locale wins, and blank means blank rather than empty.** The two duplicate rows differ only in which of the pair is blank and they disagree, which is what establishes the ordering; a reader keeping the first usable entry reports nothing where A12 rejects. `StringUtils.isBlank` is the test, so whitespace-only counts as absent — every earlier measurement of this law used the empty string alone.
+
+**The object row is what keeps the unreadable class from being stated one notch too wide.** It was predicted unreadable by a source read and is admitted: the container's shape is free, and it is the ENTRY's own members that must be strings.
+
+*(Locked: `rulekit.validate.laws.MessageSlotRawShapeLawsTest` — three tables, one assertion each.)*

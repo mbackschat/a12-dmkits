@@ -82,6 +82,21 @@ class ComputationSlotLawsTest {
         assertCode(rejected("vk_vk_probe", List.of(en("x"), de("x"))), "MVK_RULE_NAME_INVALID");
     }
 
+    /**
+     * …and it is case-insensitive here as on a rule.
+     *
+     * <p>Locked because {@code Computation.Builder.build} and the portable checker both assert "any letter
+     * case" on this carrier, and the row above measures only the lowercase spelling. That is precisely the
+     * shape {@link RuleSlotLawsTest#theReservedPrefixIsRejectedInAnyLetterCase} exists to prevent — a
+     * client-side refusal broader than its measured basis — and skipping it here would repeat that defect one
+     * carrier down, inside the change whose point is that a carrier must be run rather than inherited.
+     */
+    @Test
+    void theReservedPrefixRejectsAComputationInAnyLetterCase() {
+        assertCode(rejected("VK_VK_probe", List.of(en("x"), de("x"))), "MVK_RULE_NAME_INVALID");
+        assertCode(rejected("Vk_Vk_probe", List.of(en("x"), de("x"))), "MVK_RULE_NAME_INVALID");
+    }
+
     @Test
     void aBlankMessageTextCountsAsNoMessageAtAll() {
         assertCode(rejected("BlankMsgProbe", List.of(en(""), de(""))), "MVK_ERROR_MESSAGE_MISSING");
