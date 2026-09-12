@@ -314,6 +314,18 @@ All four implement the same rule shape: candidate `base/name` first (declaring-g
 
 **Sharing that guidance with the portable report is C2's remaining piece, deliberately not improvised.** The checker is Kernel-free and carries no project dependency, so it cannot read `StructuralKernelFix`; restating the prose in Kotlin would mint the second live statement the doc rules forbid. The portable findings therefore carry the code and the observation and no `fix` text, rather than advertising guidance with nothing behind it. The single-owner mechanism — a shared resource both sides read, or generation from the Java owner — belongs with F's report contract, which is where the `fix`/`explain` fields become public.
 
+### B0 record — the reference class that needs no parser, and the one that does (2026-09-12)
+
+**Two reference classes, and only one of them is behind the syntax layer.** A12 declares a rule's error target and a computation's target as **structured members** (`errorEntityRelPath`, `computedFieldRelPath`), not as DSL text, so `declaredReferences()` resolves them with no condition parser at all. The references inside condition and operation text are the other class, and they wait for syntax.
+
+**The relative path resolves from the declaring ELEMENT, not from its group**, which matters because the two readings agree on almost everything anyone writes: a rule at `/Order/Check` reaches its sibling as `../Code`, and dropping that step names a child of the rule. `ErrorFieldRelativePathLawsTest` locks it, and the row that discriminates is the only one in this repository where a group-relative resolver would have disagreed with A12.
+
+**Two neighbouring gates were measured in the same pass, because each rejects a path that resolves perfectly well** and a reader seeing only the rejection would blame the path: the condition must also reference the target (`MVK_ERROR_FIELD_NOT_REFERENCED`), and that gate is why the lock's rows vary the error field together with the condition's own reference rather than the path alone — varying the path alone moved two variables and produced three wrong expectations before the Kernel said so. With the reference present, a target inside a repeatable group is ADMITTED, which bounds the second gate rather than leaving it as a guess.
+
+**Consequence for the checker's contract:** `declaredReferences()` answers "does this path name a declared element" and nothing more. A resolvable path is necessary and not sufficient for A12 admission, so this slice's findings must never be read as a rule-level verdict — the remaining gates belong to D.
+
+**The syntax layer is the next partition, and it is not small.** The Kernel's condition lexer resolves operator keywords *dynamically per language* (`ID` carries `setTypeInLexer`, driven by the multi-language handler), so a faithful checker-owned tokenizer needs the per-language keyword catalog rather than fixed literals — and the neutral-leaf record already rules out sharing the interpreter's parser. That is B0's remaining half and slice C's foundation, with its own acceptance matrix.
+
 ### Decisions to resolve during A
 
 - **Shared syntax:** default to checker-owned source. Extract a neutral leaf only when the enumerated closure and H4/H5 evidence support it; this avoids turning parser extraction into an interpreter redesign.
