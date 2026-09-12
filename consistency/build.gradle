@@ -94,3 +94,94 @@ def verifyConsistencyPurity = tasks.register('verifyConsistencyPurity') {
 }
 
 tasks.named('check') { dependsOn verifyConsistencyPurity }
+
+// ─────────────────────────────────────────────────────────────────────────────────────────────────────────
+// The operator keyword table is DERIVED from the catalog, never hand-edited.
+//
+// A faithful tokenizer has to know which names are operator keywords, because A12's own lexer decides that
+// dynamically per language (`ID` carries `setTypeInLexer`, driven by the multi-language handler) rather than
+// with fixed literals. The keywords already have a single owner — rulekit's catalog, whose examples CI runs
+// through the real kernel — so the checker reads a PROJECTION of it rather than minting a second list that
+// would drift silently.
+//
+// It is generated as Kotlin SOURCE rather than a resource because this is a multiplatform module: a resource
+// read costs a different implementation per target, while a generated source file costs none. The guard is
+// the same one `docs/OPERATOR-INDEX.md` gets — regenerate and diff, so an edit to either side fails loudly.
+def catalogFile = rootProject.file('rulekit/src/main/resources/catalog/operators.json')
+def generatedKeywords =
+        file('src/commonMain/kotlin/io/github/mbackschat/a12/dm/consistency/syntax/OperatorKeywords.kt')
+
+def renderOperatorKeywords = { File catalog ->
+    def operators = new groovy.json.JsonSlurper().parse(catalog).operators
+    def rows = []
+    operators.each { op ->
+        [op.keywords?.en, op.keywords?.de].findAll { it }.unique().each { keyword ->
+            rows << [keyword: keyword, kind: op.kind]
+        }
+    }
+    // A keyword may be shared (an operator whose `en` and `de` spellings coincide, or two operators that
+    // render the same symbol). One SPELLING with two KINDS would make the table ambiguous, so it fails here
+    // rather than resolving silently to whichever row came last.
+    def byKeyword = rows.groupBy { it.keyword }
+    def conflicting = byKeyword.findAll { keyword, group -> group.collect { it.kind }.unique().size() > 1 }
+    if (conflicting) {
+        throw new GradleException(
+                "the operator catalog gives one keyword two kinds, which the checker's tokenizer cannot " +
+                        "resolve: ${conflicting.collectEntries { k, v -> [k, v.collect { it.kind }.unique()] }}")
+    }
+    def body = byKeyword.keySet().sort()
+            .collect { "    \"${it}\" to OperatorKind.${byKeyword[it][0].kind.toUpperCase().replace('-', '_')}," }
+            .join('\n')
+    def kinds = operators.collect { it.kind }.unique().sort()
+            .collect { "    ${it.toUpperCase().replace('-', '_')}," }.join('\n')
+    return """package io.github.mbackschat.a12.dm.consistency.syntax
+
+/**
+ * GENERATED from `rulekit/src/main/resources/catalog/operators.json` by `:consistency:generateOperatorKeywords`.
+ * Do not edit: `verifyOperatorKeywords` regenerates and diffs, so a hand edit here or a catalog change there
+ * fails the build. The catalog is the single owner because its examples are CI-executed against the Kernel.
+ */
+
+/** What a keyword is, which decides whether a following name is its operand or a separate reference. */
+enum class OperatorKind {
+${kinds}
+}
+
+/**
+ * Every operator keyword A12 admits, in BOTH render languages, mapped to its kind.
+ *
+ * Both languages are present because a model declares its own `conditionLanguage`, so a checker that knew
+ * only English would read a German condition's keywords as entity references.
+ */
+val OPERATOR_KEYWORDS: Map<String, OperatorKind> = mapOf(
+${body}
+)
+"""
+}
+
+tasks.register('generateOperatorKeywords') {
+    description = 'Regenerates the operator keyword table from the rulekit catalog.'
+    inputs.file(catalogFile)
+    outputs.file(generatedKeywords)
+    doLast {
+        generatedKeywords.parentFile.mkdirs()
+        generatedKeywords.text = renderOperatorKeywords(catalogFile)
+    }
+}
+
+tasks.register('verifyOperatorKeywords') {
+    description = 'Fails when the generated operator keyword table is out of step with the catalog.'
+    inputs.file(catalogFile)
+    inputs.file(generatedKeywords)
+    doLast {
+        def expected = renderOperatorKeywords(catalogFile)
+        if (generatedKeywords.text != expected) {
+            throw new GradleException(
+                    "${generatedKeywords} is out of step with the operator catalog. It is DERIVED, never " +
+                            "hand-edited: regenerate it with `./build.sh :consistency:generateOperatorKeywords` " +
+                            'and commit the result alongside the change that moved it.')
+        }
+    }
+}
+
+tasks.named('check') { dependsOn 'verifyOperatorKeywords' }
