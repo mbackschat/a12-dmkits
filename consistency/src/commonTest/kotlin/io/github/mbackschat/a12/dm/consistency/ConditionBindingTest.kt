@@ -49,6 +49,23 @@ class ConditionBindingTest {
         )
     }
 
+    /**
+     * The same climb when the operand is a GROUP, mirroring the Kernel rows of
+     * `rulekit.validate.laws.ConditionReferencePathLawsTest.theClimbIsTheSameWhenTheOperandIsAGroup`.
+     *
+     * The bare own-group name is the row that needs the lock: `GroupFilled(Lines)` in a rule declared IN
+     * `/Order/Lines` reads as naming that group and names `/Order/Lines/Lines`, which nothing declares. A
+     * resolver that special-cased it to the declaring group would admit a model A12 rejects — and the
+     * spelling that DOES name it, `../Lines`, sits beside it as the control.
+     */
+    @Test
+    fun aGroupOperandClimbsByTheSameRuleAsAFieldOperand() {
+        assertEquals(emptyList(), codes("GroupFilled(../Lines)"))
+        assertEquals(emptyList(), codes("GroupFilled(/Order/Lines)"))
+        assertEquals(listOf("MVK_INVALID_ENTITY"), codes("GroupFilled(Lines)"))
+        assertEquals(listOf("MVK_INVALID_ROOT_GROUP"), codes("GroupFilled(/Nope)"))
+    }
+
     @Test
     fun anUndeclaredConditionEntityIsReportedAtItsRule() {
         val report = check(model("FieldFilled(Nope)"))

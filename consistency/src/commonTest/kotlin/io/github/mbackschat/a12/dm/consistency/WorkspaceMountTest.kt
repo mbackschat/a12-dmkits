@@ -31,6 +31,14 @@ class WorkspaceMountTest {
 
     private fun field(name: String) = """{"type":"Field","id":"f-$name","name":"$name","Field":{}}"""
 
+    /**
+     * A rule carrying an `en_US` text only — which is what makes it findings-free under [host] and NOT under
+     * [bilingualHost], whose entry model also declares `de_DE`.
+     *
+     * The coupling is named rather than left to be discovered: the declaration-slot family judges every
+     * message against the ENTRY model's locale set, so a row that swaps one host for the other silently
+     * gains an `MVK_ERROR_MESSAGE_FOR_LANGUAGE_MISSING` it was not written to expect.
+     */
     private fun rule(name: String, errorPath: String, condition: String) =
         """{"type":"Rule","id":"r-$name","name":"$name","Rule":{"errorCode":"C",
            "errorMessage":[{"locale":"en_US","text":"x"}],

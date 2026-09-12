@@ -127,4 +127,32 @@ class ConditionReferencePathLawsTest {
     void aNameNothingDeclaresDrawsTheEntityCode() {
         rejects("Nope", "MVK_INVALID_ENTITY", "MVK_TOO_MANY_PARENT_GROUPS");
     }
+
+    /**
+     * The same climb on the GROUP carrier — run rather than inherited, because every row above resolves a
+     * FIELD and a rule that holds for one operand kind is a claim about the other until it is measured
+     * there (CLAUDE.md, the scope-transfer row).
+     *
+     * <p>The bare own-group name is the row worth having. A rule declared IN {@code /Order/Lines} writing
+     * {@code GroupFilled(Lines)} reads as naming its own group and does not: the climb starts at the
+     * declaring group, so the candidate is {@code /Order/Lines/Lines}. The spelling that does name it is
+     * {@code ../Lines}, one level up and back down, which is the pair a resolver has to separate.
+     */
+    @Test
+    void theClimbIsTheSameWhenTheOperandIsAGroup() {
+        admitsGroup("../Lines");
+        admitsGroup("/Order/Lines");
+        rejectsGroup("Lines", "MVK_INVALID_ENTITY", "MVK_TOO_MANY_PARENT_GROUPS");
+        rejectsGroup("/Nope", "MVK_INVALID_ROOT_GROUP", "MVK_INVALID_ENTITY");
+    }
+
+    private static void admitsGroup(String reference) {
+        KernelLaws.acceptsModel(ORDERS, "/Order/Lines", "../Amount",
+                "FieldFilled(Amount) And GroupFilled(" + reference + ")");
+    }
+
+    private static void rejectsGroup(String reference, String code, String notThisOne) {
+        KernelLaws.rejectsModelInsteadOf(ORDERS, "/Order/Lines", "../Amount",
+                "FieldFilled(Amount) And GroupFilled(" + reference + ")", code, notThisOne);
+    }
 }

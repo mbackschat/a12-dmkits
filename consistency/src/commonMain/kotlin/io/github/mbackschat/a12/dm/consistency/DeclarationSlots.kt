@@ -210,12 +210,12 @@ private fun authoredLocalePolicyFindings(
 /**
  * The element's authored messages, read exactly as far as A12's own reader gets.
  *
- * Three shapes of the `errorMessage` member itself are measured rather than assumed
- * ([KERNEL-FINDINGS KF290]). An ARRAY and an OBJECT both yield entries, because the reader iterates the
- * node's elements and an object's elements are its values; anything else — a string, a number, an absent
- * member — yields none, and the declaration is simply message-less. Only the ENTRIES have a shape the reader
- * refuses, and a refusal there is about the SOURCE rather than about this declaration, which is why it
- * stops the read instead of contributing an unusable entry.
+ * Three shapes of the `errorMessage` member itself are measured, and then source-located in
+ * `LocalizedTextMapDeserializer.deserialize` ([KERNEL-FINDINGS KF290]): it loops `for (JsonNode entry :
+ * parser.readValueAsTree())`, so an ARRAY yields its elements, an OBJECT its values, and a scalar or an
+ * absent member yields none — leaving the declaration simply message-less. Only the ENTRIES have a shape the
+ * reader refuses, and a refusal there is about the SOURCE rather than about this declaration, which is why
+ * it stops the read instead of contributing an unusable entry.
  */
 private fun DeclaredElement.authoredMessages(): AuthoredMessages {
     val entries = when (val member = (declaration[kind] as? JsonObject)?.get("errorMessage")) {

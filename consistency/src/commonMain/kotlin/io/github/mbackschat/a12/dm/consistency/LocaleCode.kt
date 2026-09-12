@@ -14,13 +14,14 @@ package io.github.mbackschat.a12.dm.consistency
  * INDEPENDENTLY — a table moving both at once attributes every refusal to the header and establishes nothing
  * about a message's own `locale`, which is the shape a checker would then be free to compare as text.
  *
- * **Recall limit, stated because the shape is inferred rather than enumerated.** The rule below reproduces
- * fifteen measured spellings — `en_US`, `en-US`, `en`, `eng`, `fr_CA`, `en_US_POSIX` and `en_123` accepted;
- * `en_us`, `EN_US`, `EN`, `e`, `en_U`, `en_USA` and `klingon` refused; the empty code read but then
- * unbuildable. It is not a transcription of A12's parser, and a spelling outside that set may be classified
- * wrongly. Both wrong answers under-report: a refused-but-valid code drops a declared locale, and an
- * accepted-but-invalid one analyses a model that will not load. A refusal is reported as a diagnostic, so
- * neither is silent.
+ * **Recall limit, stated because the shape is inferred rather than transcribed.** The parser A12 reaches is
+ * Apache Commons Lang's `LocaleUtils.toLocale`, source-located at
+ * `LocalizedTextMapDeserializer.getLocaleFromLocalizedText`; the rule below reproduces the fifteen measured
+ * spellings — `en_US`, `en-US`, `en`, `eng`, `fr_CA`, `en_US_POSIX` and `en_123` accepted; `en_us`, `EN_US`,
+ * `EN`, `e`, `en_U`, `en_USA` and `klingon` refused; the empty code read but then unbuildable — and is not a
+ * port of that implementation, so a spelling outside the measured set may be classified wrongly. Both wrong
+ * answers under-report: a refused-but-valid code drops a declared locale, and an accepted-but-invalid one
+ * analyses a model that will not load. Neither is silent — a refused code is reported.
  */
 internal fun localeKeyOrNull(code: String): String? {
     if (code.isEmpty()) {
