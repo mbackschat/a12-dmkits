@@ -22,11 +22,11 @@ This is exactly the scenario [KERNEL-UPGRADE.md](KERNEL-UPGRADE.md) was written 
 
 | stream | 30.8.1 (now) | 31.1.0 (new) | where we pin it |
 |---|---|---|---|
-| `kernelVersion` (main line) | 30.8.1 | **31.1.0** | `build.gradle:49`, `adapter/build.gradle:35` |
-| distribution label | 2025.06-ext5 | **2026.06-ext0** | `build.gradle:54`, native Windows smoke expectations |
+| `kernelVersion` (main line) | 30.8.1 | **31.1.0** | `build.gradle:78`, `adapter/build.gradle:36` |
+| distribution label | 2025.06-ext5 | **2026.06-ext0** | `build.gradle:83`, native Windows smoke expectations |
 | document-model format | 28.4.0 | **29.4.0** | `core/ModelFormat.java`, 65 committed JSON models, inline fixtures |
-| runtime-api (hardcoded) | 32.3.4 | **33.0.2** | `adapter/build.gradle:223` |
-| customfieldtype-api (test) | 28.2.0 | **29.0.2** | `adapter/build.gradle:236` |
+| runtime-api (hardcoded) | 32.3.4 | **33.0.2** | `adapter/build.gradle:101` |
+| customfieldtype-api (test) | 28.2.0 | **29.0.2** | `adapter/build.gradle:124` |
 | a12-base (kernel pin) | 29.3.0 | **30.0.0** | transitive; the public base source release is 30.0.1 |
 | runtime artifact id | `…runtime-30-8` | `…runtime-31-1` | transitive only — safe |
 | Jackson (kernel-internal) | 2.x `com.fasterxml` | **3.1.2 `tools.jackson`** | not pinned directly |
