@@ -118,6 +118,13 @@ dependencies {
     // expressible. Test scope keeps :interpreter-bridge off :adapter's own consumers.
     testImplementation project(':interpreter-bridge')
 
+    // The Kernel-free consistency checker — TEST-ONLY, and only so its condition parser can be swept over the
+    // same real corpora the interpreter's is (ParserCorpusSweepTest). Those corpora are external siblings
+    // discovered from this module's tests; the checker must not depend on them, and a second harvest here
+    // would be a second population that could drift from the first. The edge is deliberately test-scoped:
+    // :consistency is a standalone module and nothing shipping depends on it.
+    testImplementation project(':consistency')
+
     // Custom-field-type SPI (predefined types) — TEST-ONLY: lets the differential register a project type
     // (e.g. a pattern-based "EMail") in the kernel oracle, so `Valid(field, "EMail")` does a REAL check (the
     // bare kernel ships none → degenerate no-op). The impl 30.8.1 depends on this api 28.2.0 (ABI-consistent).

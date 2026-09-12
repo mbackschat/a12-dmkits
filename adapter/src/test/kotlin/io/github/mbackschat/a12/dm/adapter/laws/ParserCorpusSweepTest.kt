@@ -1,7 +1,5 @@
 package io.github.mbackschat.a12.dm.adapter.laws
 
-import com.fasterxml.jackson.databind.JsonNode
-import com.fasterxml.jackson.databind.ObjectMapper
 import io.github.mbackschat.a12.dm.adapter.perf.PerfCatalog
 import io.github.mbackschat.a12.dm.interpreter.model.ConditionLanguage
 import io.github.mbackschat.a12.dm.interpreter.parse.parseCondition
@@ -10,9 +8,7 @@ import io.github.mbackschat.a12.dm.rulekit.catalog.OperatorCatalog
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Assumptions.assumeTrue
 import org.junit.jupiter.api.Test
-import java.nio.file.Files
 import java.nio.file.Path
-import kotlin.io.path.extension
 
 /**
  * The **parser coverage sweep** (WI-P of SEMANTICS-FORMALIZATION-PROPOSAL, from Phase-0 S1). Re-creates the
@@ -130,23 +126,24 @@ class ParserCorpusSweepTest {
 
     @Test
     fun kernelMmCorpusSweep() {
-        val root = locateKernelMm()
+        val root = ParserCorpora.kernelMm()
         assumeTrue(root != null, "a12-kernel-mm not present — skipping parser corpus sweep")
         sweepCorpus("kernel-mm", root!!)
     }
 
     @Test
     fun workspacesCorpusSweep() {
-        val dir = System.getProperty("a12.corpus1.dir")
-        assumeTrue(dir != null && Files.isDirectory(Path.of(dir)),
-            "a12.corpus1.dir not set / absent — skipping workspaces parser corpus sweep")
-        sweepCorpus("workspaces", Path.of(dir))
+        val dir = ParserCorpora.workspaces()
+        assumeTrue(dir != null, "a12.corpus1.dir not set / absent — skipping workspaces parser corpus sweep")
+        sweepCorpus("workspaces", dir!!)
     }
 
     // ─────────────────────────────────────────────────────────────────────────────────────────────────────
 
     private fun sweepCorpus(label: String, root: Path) {
-        val (conditions, operations) = harvest(root)
+        val harvested = ParserCorpora.harvest(root)
+        val conditions = harvested.conditions.keys
+        val operations = harvested.operations.keys
         val condFailures = mutableListOf<Failure>()
         val opFailures = mutableListOf<Failure>()
         conditions.forEach { tryParseCond(it, label, condFailures) }
@@ -300,51 +297,8 @@ class ParserCorpusSweepTest {
         return localized.toString()
     }
 
-    /** Harvest DISTINCT condition + operation strings from every `*.json` under [root]. */
-    private fun harvest(root: Path): Pair<Set<String>, Set<String>> {
-        val conditions = LinkedHashSet<String>()
-        val operations = LinkedHashSet<String>()
-        Files.walk(root).use { paths ->
-            paths.filter { it.extension == "json" }.forEach { file ->
-                val tree = try {
-                    MAPPER.readTree(Files.readString(file))
-                } catch (_: Exception) {
-                    return@forEach
-                }
-                collect(tree, conditions, operations)
-            }
-        }
-        return conditions to operations
-    }
-
-    private fun collect(node: JsonNode, conditions: MutableSet<String>, operations: MutableSet<String>) {
-        when {
-            node.isObject -> node.fields().forEach { (key, value) ->
-                if (value.isTextual && value.asText().isNotBlank()) {
-                    when (key) {
-                        "errorCondition", "precondition" -> conditions.add(value.asText())
-                        "operation" -> operations.add(value.asText())
-                    }
-                }
-                collect(value, conditions, operations)
-            }
-            node.isArray -> node.forEach { collect(it, conditions, operations) }
-            else -> {}
-        }
-    }
-
-    private fun locateKernelMm(): Path? {
-        val candidates = buildList {
-            System.getProperty("a12.kernel.mm.dir")?.let { add(it) }
-            add("../a12-kernel-mm/documentModels")
-            add("../../a12-kernel-mm/documentModels")
-        }
-        return candidates.map { Path.of(it) }.firstOrNull { Files.isDirectory(it) }
-    }
-
     private companion object {
         /** A synthetic base deep enough that no realistic `../…` run walks above the root (Phase-0 artifact). */
         const val BASE = "/G0/G1/G2/G3/G4/G5/G6/G7/G8/G9"
-        val MAPPER = ObjectMapper()
     }
 }
