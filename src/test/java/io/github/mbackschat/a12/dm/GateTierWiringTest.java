@@ -172,10 +172,17 @@ class GateTierWiringTest {
         // against the broad guards and Gradle process controls. This list is a subset check, so a new always-on guard is unlocked until
         // it is named here: `vocabularyGuardTest` was added 2026-08-29 after a cold review found its build
         // comment claiming this tier with nothing asserting it.
+        // `leakGuardTest` sat in the always-on list until 2026-09-12, when a warm `--profile` run measured it at
+        // 15.6s of a 16.8s `:test -Pfast` build — 92.7% of the loop it rides on. It is the one guard here that
+        // declares `upToDateWhen { false }`, so it alone re-runs in full every time while the rest go
+        // UP-TO-DATE for free; and a repo-wide secret scan mirrors no committed artifact, so skipping it
+        // leaves nothing stale. Both conjuncts fail, and the general rule is locked by
+        // noAlwaysRunTaskRidesTheUnconditionalTier below.
         assertFastLeverSplit("build.gradle",
                 List.of("jsonConstructionGuardTest", "apiGuardTest", "catalogProseReviewGuardTest",
-                        "releaseGapGuardTest", "leakGuardTest", "vocabularyGuardTest"),
-                List.of("docGuardTest", "interpreterReleaseGuardTest", "deliveryGuardTest", "focusedSelectionGuardTest"));
+                        "releaseGapGuardTest", "vocabularyGuardTest"),
+                List.of("docGuardTest", "interpreterReleaseGuardTest", "deliveryGuardTest",
+                        "focusedSelectionGuardTest", "leakGuardTest"));
         // :adapter — the four FIXTURE guards (6.6s) against the two broad ones (82.7s). A committed fixture
         // that silently stops matching what the code produces is the same class as a stale golden.
         assertFastLeverSplit("adapter/build.gradle",
@@ -187,6 +194,62 @@ class GateTierWiringTest {
         assertFastLeverSplit("cli/build.gradle",
                 List.of("semanticsMapGuardTest", "staleGapGuardTest", "sourceProvenanceGuardTest"),
                 List.of("docGuardTest", "evalGuardTest", "mutationTailGuardTest"));
+    }
+
+    /**
+     * An always-run task may never be an UNCONDITIONAL prerequisite of {@code test}, in any module.
+     *
+     * <p>This is the class behind the incident above, not another instance of it. The unconditional tier's
+     * admission rule is a conjunction — bind a committed artifact to the source it mirrors, AND cost a small
+     * fraction of the loop you ride on — and {@code outputs.upToDateWhen { false }} contradicts both halves by
+     * construction. It re-runs in full on every invocation, so it can never be a small fraction; and a task
+     * with no declared inputs has no committed artifact to go stale, so skipping it costs reach, never a false
+     * green. Nothing checked this, so a guard could be admitted while cheap and then grow without limit: root
+     * {@code leakGuardTest} accreted seven guard classes and reached 92.7% of a warm {@code :test -Pfast} build
+     * before anyone re-derived the tier total it was justified by (2026-09-12).
+     *
+     * <p>Cost alone is deliberately NOT the trigger. A cost ceiling needs a number that must be re-measured to
+     * stay true, which is the very thing that rotted here; this reads a DECLARATION instead, so it cannot go
+     * stale. The remedy when it fires is to move the task behind {@code -Pfast} — CI runs {@code test} without
+     * that lever, so full reach is preserved exactly where an escape matters.
+     */
+    @Test
+    void noAlwaysRunTaskRidesTheUnconditionalTier() throws IOException {
+        var alwaysRunFound = new java.util.ArrayList<String>();
+        var violations = new java.util.ArrayList<String>();
+
+        for (String buildFile : List.of("build.gradle", "adapter/build.gradle", "cli/build.gradle")) {
+            String build = Files.readString(locate(buildFile));
+            String testTask = namedGradleTask(build, "test");
+            int fastAt = testTask.indexOf("if (!project.hasProperty('fast'))");
+            String unconditional = fastAt > 0 ? testTask.substring(0, fastAt) : testTask;
+
+            var registered = java.util.regex.Pattern.compile("tasks\\.register\\('([A-Za-z0-9]+)'")
+                    .matcher(build);
+            while (registered.find()) {
+                String task = registered.group(1);
+                if (!gradleTask(build, task).contains("outputs.upToDateWhen { false }")) {
+                    continue;
+                }
+                alwaysRunFound.add(buildFile + ":" + task);
+                if (unconditional.contains("dependsOn '" + task + "'")) {
+                    violations.add(buildFile + ": " + task);
+                }
+            }
+        }
+
+        // Positive control on the scan's own denominator: the estate's regenerators (dump*/sync*) and
+        // measurement tasks (perfGateTest, *PerfTest) all declare it, so finding none would mean the registered
+        // -task pattern or the block bounding broke, and a green result would prove nothing.
+        assertFalse(alwaysRunFound.isEmpty(),
+                "found no always-run task at all across the three build files, so this scan checked nothing — "
+                        + "fix the detector rather than trusting the green");
+        assertTrue(violations.isEmpty(),
+                "an always-run task hangs off `test` unconditionally, so every focused inner-loop run pays for "
+                        + "it in full and its cost can grow without any measurement noticing:\n"
+                        + String.join("\n", violations)
+                        + "\nMove it behind the -Pfast lever. CI runs `test` without -Pfast, so its reach is "
+                        + "kept where an escape actually matters.");
     }
 
     /**

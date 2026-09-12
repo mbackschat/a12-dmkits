@@ -119,14 +119,28 @@ tasks.named('test') {
     // `-Pfast` drops the EXPENSIVE guard prerequisites for the dev inner loop, because `--tests` filters only
     // the test task and NOT its dependencies, so a single law-test run otherwise paid for every guard.
     //
-    // A GUARD CHEAP ENOUGH THAT DROPPING IT SAVES NOTHING IS NEVER DROPPABLE. Measured on this machine
+    // A GUARD CHEAP ENOUGH THAT DROPPING IT SAVES NOTHING IS NEVER DROPPABLE. The rule is a CONJUNCTION, and
+    // both halves are load-bearing: a guard stays unconditional when it binds a COMMITTED ARTIFACT to the
+    // source it must mirror AND costs a small fraction of the loop it rides on. Measured on this machine
     // (2026-08-15, first green non-fast root run, per-task test time from the result XMLs):
     //
     //   interpreterReleaseGuardTest 77.2s | docGuardTest 51.2s | deliveryGuardTest 8.8s   <- droppable, 137.2s
     //   leakGuardTest 3.6s | catalogProseReviewGuardTest 1.5s | jsonConstructionGuardTest 0.4s
     //   apiGuardTest 0.2s | releaseGapGuardTest 0.1s                                       <- always on, 5.8s
     //
-    // for reference the 1794-test suite itself is 17.0s. Dropping the always-on five saves 4% of guard time
+    // Re-measured 2026-09-12, warm `:test -Pfast` on a clean tree (Gradle --profile, nothing to do):
+    // `leakGuardTest` had grown to 15.6s of a 16.8s build — 92.7% of the loop it rides on — because it is the
+    // one prerequisite here carrying `upToDateWhen { false }`, so it re-runs IN FULL on every invocation while
+    // the other six go UP-TO-DATE at zero cost. Seven guard classes had accreted into it (the scan itself is
+    // 8.7s over 37.7M chars of tracked text; ShellPortability 2.3s, JdkPin 2.2s, LongRun 1.4s, the rest 0.2s),
+    // each individually justified by "derived denominator, must always run", and nothing re-derived the tier
+    // total. So it FAILS BOTH conjuncts: an always-run task can never be a small fraction of the loop, and a
+    // repo-wide scan mirrors no committed artifact — skipping it leaves nothing stale, it simply does not scan.
+    // It moved behind the lever; CI (`ci.yml` names `test`, no -Pfast) and the end-of-session non-fast run keep
+    // its full reach, which is where a leak can actually escape. The general rule this instance taught is now
+    // mechanical: GateTierWiringTest.noAlwaysRunTaskRidesTheUnconditionalTier.
+    //
+    // for reference the 1794-test suite itself is 17.0s. Dropping the always-on six saves ~4% of guard time
     // and costs the whole false-green class: each of them binds a COMMITTED ARTIFACT to the source it must
     // mirror (API goldens, catalog prose-review digests, the JSON-construction classification, the release-gap
     // ledger), so when one is skipped nothing else notices the artifact went stale. They also declare their
@@ -142,7 +156,6 @@ tasks.named('test') {
     dependsOn 'apiGuardTest'
     dependsOn 'catalogProseReviewGuardTest'
     dependsOn 'releaseGapGuardTest'
-    dependsOn 'leakGuardTest'
     // Same tier and for the stated reason: it binds docs/TEMPORAL-FORMAT-VOCABULARY.md to the kernel that
     // decides it, declares its inputs, and costs ~3 s. It first hung off `check` alone, which CI does not run
     // (`ci.yml` names `test`), so the guard would have been unreachable exactly where it matters.
@@ -156,9 +169,10 @@ tasks.named('test') {
         dependsOn 'interpreterReleaseGuardTest'
         dependsOn 'deliveryGuardTest'
         dependsOn 'focusedSelectionGuardTest'
+        dependsOn 'leakGuardTest'
     } else {
         doFirst {
-            logger.lifecycle('-Pfast: SKIPPING docGuardTest, interpreterReleaseGuardTest, deliveryGuardTest, focusedSelectionGuardTest '
+            logger.lifecycle('-Pfast: SKIPPING docGuardTest, interpreterReleaseGuardTest, deliveryGuardTest, focusedSelectionGuardTest, leakGuardTest '
                     + '— this run is NOT the estate. Re-run without -Pfast before treating green as a checkpoint.')
         }
     }

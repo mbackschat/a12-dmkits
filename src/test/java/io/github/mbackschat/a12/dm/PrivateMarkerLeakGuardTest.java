@@ -5,6 +5,7 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.BufferedReader;
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
@@ -278,20 +279,34 @@ class PrivateMarkerLeakGuardTest {
 
     /** {@code git ls-files} is the published set. Failing loudly beats scanning nothing and passing. */
 
-    /** Null for a binary blob or a tracked path with no working-tree file (a submodule, a pending delete). */
+    /**
+     * Null for a binary blob or a tracked path with no working-tree file (a submodule, a pending delete).
+     *
+     * <p>The binary verdict is reached from the first {@value #BINARY_PROBE_BYTES} bytes and the rest is read
+     * only once the file is known to be text. Reading it whole first and discarding it afterwards never
+     * changed a verdict — the probe looks no further either way — but it charged the scan the full size of
+     * every tracked image on every run: 23.2 MB of the 59.3 MB tracked set, 17 files (measured 2026-09-12).
+     */
     private static String readTextOrNull(Path file) throws IOException {
         if (!Files.isRegularFile(file)) {
             return null;
         }
-        byte[] bytes = Files.readAllBytes(file);
-        int probe = Math.min(bytes.length, 8_000);
-        for (int index = 0; index < probe; index++) {
-            if (bytes[index] == 0) {
-                return null;
+        try (var stream = Files.newInputStream(file)) {
+            byte[] head = stream.readNBytes(BINARY_PROBE_BYTES);
+            for (byte probe : head) {
+                if (probe == 0) {
+                    return null;
+                }
             }
+            var text = new ByteArrayOutputStream(head.length);
+            text.write(head);
+            stream.transferTo(text);
+            return text.toString(StandardCharsets.UTF_8);
         }
-        return new String(bytes, StandardCharsets.UTF_8);
     }
+
+    /** How far into a file a NUL may hide before the scan calls it text. Git's own heuristic uses the same 8 KB. */
+    private static final int BINARY_PROBE_BYTES = 8_000;
 
     /** The repository root is the one directory carrying both the settings script and the build wrapper. */
 }
