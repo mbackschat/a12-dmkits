@@ -9,9 +9,15 @@ import kotlinx.serialization.json.contentOrNull
  *
  * @param declaredAt the path of the declaration that carries it.
  * @param member the member it was read from, so a report can say which one did not resolve.
+ * @param role which rejection A12 issues when it does not resolve — the two members differ.
  * @param target what it resolved to.
  */
-data class DeclaredReference(val declaredAt: String, val member: String, val target: Reference)
+data class DeclaredReference(
+    val declaredAt: String,
+    val member: String,
+    val role: ReferenceRole,
+    val target: Reference,
+)
 
 /**
  * Every structural reference in the model: a rule's `errorEntityRelPath` and a computation's
@@ -24,16 +30,16 @@ data class DeclaredReference(val declaredAt: String, val member: String, val tar
  * one-level-off case is the discriminator worth keeping.
  */
 fun PreparedModel.declaredReferences(): List<DeclaredReference> = elements.mapNotNull { element ->
-    val member = MEMBER_BY_KIND[element.kind] ?: return@mapNotNull null
+    val declared = DECLARED_BY_KIND[element.kind] ?: return@mapNotNull null
     val relative = (element.declaration[element.kind] as? JsonObject)
-        ?.get(member)?.let { (it as? JsonPrimitive)?.contentOrNull }
+        ?.get(declared.first)?.let { (it as? JsonPrimitive)?.contentOrNull }
         ?: return@mapNotNull null
-    DeclaredReference(element.path, member, resolveRelative(element.path, relative))
+    DeclaredReference(element.path, declared.first, declared.second, resolveRelative(element.path, relative))
 }
 
-private val MEMBER_BY_KIND = mapOf(
-    "Rule" to "errorEntityRelPath",
-    "Computation" to "computedFieldRelPath",
+private val DECLARED_BY_KIND = mapOf(
+    "Rule" to ("errorEntityRelPath" to ReferenceRole.ERROR_TARGET),
+    "Computation" to ("computedFieldRelPath" to ReferenceRole.COMPUTED_TARGET),
 )
 
 /**
@@ -52,6 +58,9 @@ private fun PreparedModel.resolveRelative(from: String, relative: String): Refer
     }
     val path = "/" + segments.joinToString("/")
     return when {
+        // Above-root is not a separate rejection here: A12 reports the same `MVK_ERROR_FIELD_MISSING` for a
+        // target that climbs too far as for one that names nothing, unlike a condition reference, which has
+        // its own `MVK_TOO_MANY_PARENT_GROUPS` (both measured through `ModelLoader.loadAndCheck`).
         climbedPastRoot -> Reference.Undeclared(path)
         elements.any { it.path == path } -> Reference.Resolved(path)
         else -> Reference.Undeclared(path)

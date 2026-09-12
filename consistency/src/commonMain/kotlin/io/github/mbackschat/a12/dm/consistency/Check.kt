@@ -10,6 +10,9 @@ package io.github.mbackschat.a12.dm.consistency
 enum class CheckFamily {
     /** A rule's error target and a computation's computed field resolve to a declared element. */
     DECLARED_REFERENCES,
+
+    /** Every entity named in a rule's condition or a computation's operations resolves. */
+    CONDITION_REFERENCES,
 }
 
 /**
@@ -64,14 +67,18 @@ fun check(source: ModelSource): ConsistencyReport {
         is Admission.Admitted -> admission
     }
     val prepared = prepare(admitted)
-    val findings = prepared.declaredReferences().mapNotNull { it.target.asFinding(it.declaredAt) }
+    val declared = prepared.declaredReferences()
+    val findings = declared.mapNotNull { it.target.asFinding(it.role, it.declaredAt) } +
+        prepared.conditionReferences().mapNotNull {
+            it.target.asFinding(ReferenceRole.CONDITION_ENTITY, it.declaredAt)
+        }
     return ConsistencyReport(
         modelId = admitted.modelId,
         status = statusOf(findings),
         findings = findings,
         diagnostics = prepared.diagnostics,
-        checksCompleted = setOf(CheckFamily.DECLARED_REFERENCES),
-        gaps = prepared.gaps() + UNIMPLEMENTED_FAMILIES,
+        checksCompleted = setOf(CheckFamily.DECLARED_REFERENCES, CheckFamily.CONDITION_REFERENCES),
+        gaps = prepared.gaps() + declared.buildBlocked() + UNIMPLEMENTED_FAMILIES,
     )
 }
 
@@ -80,11 +87,30 @@ private fun PreparedModel.gaps(): List<CoverageGap> = diagnostics.map {
     CoverageGap(it.at, null, "this declaration could not be read, so no check ran over it: ${it.explain}")
 }
 
+/**
+ * An unresolvable computed field stops the Kernel from BUILDING the model, so A12 reports that failure and
+ * nothing else — no `checkConsistency` verdict is produced at all (measured through
+ * `ModelLoader.loadAndCheck`). Every other finding in the same report is therefore the checker's own reading
+ * rather than something A12 would have said about this model, and the gap says so instead of leaving a
+ * consumer to assume the list is A12's.
+ */
+private fun List<DeclaredReference>.buildBlocked(): List<CoverageGap> =
+    filter { it.role == ReferenceRole.COMPUTED_TARGET && it.target !is Reference.Resolved }
+        .map {
+            CoverageGap(
+                at = it.declaredAt,
+                blocked = null,
+                reason = "the Kernel cannot build a model whose computed field is missing, so it reports " +
+                    "this and stops; any other finding here is this checker's own reading of a model A12 " +
+                    "never got far enough to judge",
+            )
+        }
+
 private val UNIMPLEMENTED_FAMILIES = listOf(
     CoverageGap(
         at = null,
         blocked = null,
-        reason = "only the declared-reference family is implemented; references inside condition and " +
-            "operation text, and every other required family of the pinned profile, were not examined",
+        reason = "only the reference families are implemented; every other required family of the pinned " +
+            "profile was not examined",
     ),
 )

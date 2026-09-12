@@ -1,5 +1,6 @@
 package io.github.mbackschat.a12.dm.consistency
 
+import io.github.mbackschat.a12.dm.consistency.syntax.ConditionLanguage
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
@@ -33,6 +34,9 @@ data class DeclaredElement(
 /**
  * An admitted source's declarations, in declaration order — the fact base every later phase reads.
  *
+ * @param conditionLanguage the model's `content.modelConfig.conditionLanguage.code`. It decides which names
+ *     in a condition are operator keywords and which are entity references, so no condition can be read
+ *     without it; an absent or unrecognized code means English, the same fallback the Java side applies.
  * @param fieldRefByShortNameAllowed the model's `content.modelConfig.fieldRefByShortNameAllowed`. It decides
  *     whether a bare reference the declaring group does not have may resolve to a unique model-wide field
  *     short name, so reference resolution cannot be done without it.
@@ -42,6 +46,7 @@ data class DeclaredElement(
 data class PreparedModel(
     val elements: List<DeclaredElement>,
     val fieldRefByShortNameAllowed: Boolean,
+    val conditionLanguage: ConditionLanguage = ConditionLanguage.EN,
     val diagnostics: List<Diagnostic> = emptyList(),
 )
 
@@ -69,6 +74,7 @@ fun prepare(admitted: Admission.Admitted): PreparedModel {
     return PreparedModel(
         elements = collector.elements,
         fieldRefByShortNameAllowed = collector.flag(content),
+        conditionLanguage = ConditionLanguage.ofCode(content.conditionLanguageCode()),
         diagnostics = collector.diagnostics,
     )
 }
@@ -154,3 +160,11 @@ private class Collector(private val modelId: String) {
 private fun JsonObject.text(key: String): String? = (this[key] as? JsonPrimitive)?.contentOrNull
 
 private operator fun JsonElement?.get(key: String): JsonElement? = (this as? JsonObject)?.get(key)
+
+/**
+ * The declared condition language code, or `null` when the model does not state one — read leniently on
+ * purpose, because an unreadable code is not a reason to refuse the model when A12 itself defaults.
+ */
+private fun JsonObject?.conditionLanguageCode(): String? =
+    ((this?.get("modelConfig") as? JsonObject)?.get("conditionLanguage") as? JsonObject)
+        ?.get("code")?.let { (it as? JsonPrimitive)?.contentOrNull }

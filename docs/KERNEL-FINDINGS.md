@@ -5333,3 +5333,24 @@ Two consequences follow, and both are load-bearing for any tool that reads condi
 The renderer's side of the same map is `AbstractMultiLanguageHandler.hasToBeQuoted(str)`, which is literally `isATerminal(str)` for the model's language. So the set a checker must treat as keywords and the set A12 quotes when a field name collides are one set, per language — and `KeywordReverseParityTest.rendererQuotesEveryLiveLexerTerminalThatCanBeAnEntityName` already exercises that direction.
 
 *(Locked: `consistency.ConditionKeywordProjectionTest` pins the portable checker's shipped keyword table to these bundles in both directions, per language; `rulekit.validate.laws.HModelFormConditionReachabilityLawsTest` locks the behavioural consequence on the Kernel itself. The count is re-derived by the projection test, not restated anywhere.)*
+
+## §10 supplement — an unresolvable reference has THREE different answers, and the two carriers resolve from different origins (`ModelLoader.loadAndCheck`, measured, 2026-09-12) <a id="kf284"></a>
+
+> Fold: not-foldable — §10 states how a path is written and what it names; which rejection each carrier issues, and which one pre-empts the rest, is checker inventory rather than a rule of the language.
+
+One model carries every row: a root group `Order` with a field `Code` and a subgroup `Lines` holding `Amount` and `Sku`, and a rule declared in `/Order/Lines`. Only the reference moves.
+
+**The origin differs by carrier, and the two spellings are one level apart.** A rule's `errorEntityRelPath` climbs from the rule ELEMENT — `../Amount` from `/Order/Lines/ProbeRule` reaches its sibling field — while a reference inside the CONDITION climbs from the rule's GROUP: `../Code` reaches `/Order/Code`, and `../Lines/Code` (the element-relative reading of the same intent) is rejected. A resolver written once for both is wrong on exactly one of them for every model that has a subgroup.
+
+**And the floor is the root GROUP, not the model root, with a code of its own.** From `/Order/Lines`, `../../Code` is `MVK_TOO_MANY_PARENT_GROUPS`; from a rule in `/Order`, one step already is. The boundary is measured on both sides at depth 1, so "two steps are too many" and "the root group is the floor" are separated rather than merely consistent.
+
+| the reference that does not resolve | what A12 reports |
+|---|---|
+| an entity in a condition | `MVK_INVALID_ENTITY` |
+| an entity in a condition, climbing out of the root group | `MVK_TOO_MANY_PARENT_GROUPS` |
+| a rule's `errorEntityRelPath`, whether missing or above the root | `MVK_ERROR_FIELD_MISSING` **and** `MVK_MISSING_ERROR_FIELD`, together |
+| a computation's `computedFieldRelPath` | **no code at all** — the Kernel cannot build the model |
+
+**The last row is the one that changes what a report may claim.** `ModelLoader.loadAndCheck` on that model raises "the kernel could not build this model: The computed field \"/Order/Lines/Nope\" was not found." and reports nothing else — not the other rule's real `MVK_INVALID_ENTITY`, not the missing error texts the same model has. So a model with an unresolvable computed field never receives a consistency verdict at all, and any list of findings for it is the reader's own reading rather than A12's. Searched for a key behind that message across our sources and the kernel checkout: there is none, so a portable report has to own a code for it or say nothing.
+
+*(Locked: `rulekit.validate.laws.ConditionReferencePathLawsTest` for the path rows on the Kernel; the portable checker's mapping is `consistency.ConditionBindingTest` and `consistency.ReferenceDiagnosticTest`.)*

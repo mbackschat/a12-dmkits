@@ -52,7 +52,7 @@ class ConsistencyCheckTest {
         val report = check(model(rule("../Missing")))
 
         assertEquals(ConsistencyStatus.Invalid, report.status)
-        assertEquals(listOf("MVK_INVALID_ENTITY"), report.findings.map { it.code })
+        assertEquals(listOf("MVK_ERROR_FIELD_MISSING"), report.findings.map { it.code })
         assertEquals("/Order/Check", report.findings.single().at)
         assertTrue(
             CheckFamily.DECLARED_REFERENCES in report.checksCompleted,
