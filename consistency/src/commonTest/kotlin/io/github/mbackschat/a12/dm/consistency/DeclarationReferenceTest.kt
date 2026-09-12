@@ -90,10 +90,23 @@ class DeclarationReferenceTest {
         )
     }
 
-    /** An element climbing past the root cannot resolve, and says so rather than producing a bare path. */
+    /**
+     * Climbing to the root and descending again is ordinary; one step FURTHER is the discriminator, because
+     * a resolver that clamped at the root would land on the very same element and agree with the legal case.
+     * A12 admits the first and rejects the second (`ErrorFieldRelativePathLawsTest`), so the checker must
+     * separate them rather than clamp.
+     */
     @Test
-    fun aPathClimbingPastTheRootDoesNotResolve() {
-        assertIs<Reference.Undeclared>(prepared(rule("../../../Code")).declaredReferences().single().target)
+    fun climbingToTheRootResolvesButClimbingPastItDoesNot() {
+        assertEquals(
+            Reference.Resolved("/Order/Code"),
+            prepared(rule("../../Order/Code")).declaredReferences().single().target,
+        )
+        assertEquals(
+            Reference.Undeclared("/Order/Code"),
+            prepared(rule("../../../Order/Code")).declaredReferences().single().target,
+            "clamping at the root would have resolved this to the same element as the legal case",
+        )
     }
 
     /** Every declaration that carries one is reported, so a second rule's broken target is not masked. */

@@ -24,6 +24,9 @@ import org.junit.jupiter.api.Test;
  */
 class ErrorFieldRelativePathLawsTest {
 
+    /** A rejection the kernel reports without an MVK code — it never reaches a classified check. */
+    private static final String UNCODED = "rejected, uncoded";
+
     private static final String ORDER = DocumentModelDraft.named("order-errorfield").locale("en_US")
             .rootGroup("Order", o -> o
                     .field("Code", FieldKind.STRING)
@@ -37,6 +40,11 @@ class ErrorFieldRelativePathLawsTest {
         actual.put("sibling field, with the parent step", verdict("../Code", "FieldFilled(Code)"));
         actual.put("sibling field, without the parent step", verdict("Code", "FieldFilled(Code)"));
         actual.put("field one level deeper", verdict("../Meta/Ref", "FieldFilled(Meta/Ref)"));
+        // Climbing to the root and descending again is ordinary; one step FURTHER is the discriminator, since
+        // a resolver that clamped at the root would land on the same element and silently agree with the row
+        // above it.
+        actual.put("up to the root, then down again", verdict("../../Order/Code", "FieldFilled(Code)"));
+        actual.put("one step PAST the root", verdict("../../../Order/Code", "FieldFilled(Code)"));
 
         Map<String, String> expected = new LinkedHashMap<>();
         expected.put("sibling field, with the parent step", KernelLaws.ADMITTED);
@@ -44,6 +52,8 @@ class ErrorFieldRelativePathLawsTest {
         expected.put("sibling field, without the parent step",
                 "MVK_ERROR_FIELD_MISSING,MVK_MISSING_ERROR_FIELD");
         expected.put("field one level deeper", KernelLaws.ADMITTED);
+        expected.put("up to the root, then down again", KernelLaws.ADMITTED);
+        expected.put("one step PAST the root", UNCODED);
         assertEquals(expected, actual, "the relative path is resolved from the rule element itself");
     }
 
@@ -71,6 +81,6 @@ class ErrorFieldRelativePathLawsTest {
     private static String verdict(String errorFieldRelPath, String condition) {
         ValidationResult r = KernelLaws.checkModel(ORDER, "/Order", errorFieldRelPath, condition);
         return r.ok() ? KernelLaws.ADMITTED : r.diagnostics().stream()
-                .map(d -> d.code().orElse("?")).distinct().reduce((a, b) -> a + "," + b).orElse("?");
+                .map(d -> d.code().orElse(UNCODED)).distinct().reduce((a, b) -> a + "," + b).orElse("?");
     }
 }
