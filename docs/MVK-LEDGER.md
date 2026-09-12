@@ -291,7 +291,7 @@ Caveats that hold across all four paths:
 | `MVK_DISPLAY_VALUES_NOT_ALLOWED` | n/a-structural | enum-type law: a table-backed enum must not also declare inline display values |
 | `MVK_DISPLAY_VALUE_INVALID` | n/a-structural | enum-type law: display values must be valid (custom; also ext. enum) |
 | `MVK_DISPLAY_VALUE_TOO_LONG` | n/a-structural | ext.-enum-type law: display values must respect the type’s max length |
-| `MVK_ERROR_CODE_MISSING` | pre-checked | `Rule.build()` requires a non-blank error code (`RK_INCOMPLETE_RULE`; locked: `RuleAuthoringTest`/`PrecheckDiagnosticTest`) |
+| `MVK_ERROR_CODE_MISSING` | pre-checked | `Rule.build()` requires a non-blank error code (`RK_INCOMPLETE_RULE`; locked: `RuleAuthoringTest`/`PrecheckDiagnosticTest`). **Measured 2026-09-12** ([KF291](KERNEL-FINDINGS.md#kf291)): the basis holds — absent, empty and whitespace-only all draw this code. Two shapes the builder cannot author do NOT: a numeric value is coerced and admitted, and an explicit `null` refuses A12's reader outright, so a checker must not report this code for either (locked: `validate.laws.RuleCodeAndSeverityLawsTest`) |
 | `MVK_ERROR_FIELD_MISSING` | pre-checked | `Rule.build()` requires `errorField(...)`, plus the under-group containment check `RK_ERROR_FIELD_OUTSIDE_GROUP` (locked: `RuleAuthoringTest`) |
 | `MVK_ERROR_MESSAGE_AND_NO_PATTERN` | n/a-structural | string-type law: a type-level error message is only allowed together with a pattern |
 | `MVK_ERROR_MESSAGE_AND_PATTERN_INVALID` | n/a-structural | string-type law: a pattern-bearing type must carry a custom error message |
@@ -352,7 +352,7 @@ Caveats that hold across all four paths:
 | `MVK_ROW_INVALID` | n/a-structural | field law: multi-row fields are legacy-only — forbidden in new-world models |
 | `MVK_ROW_TOO_BIG` | n/a-structural | field law (legacy): multi-row fields capped at 100 000 rows |
 | `MVK_RULE_NAME_INVALID` | pre-checked | `Rule.build()` rejects the reserved `vk_vk` prefix (any letter case) with the code named (locked: `RuleAuthoringTest`); the kernel law itself locked in `validate.laws.RuleSlotLawsTest` ([KF160](KERNEL-FINDINGS.md#kf160)). **Widened 2026-09-12:** it is not the rule element's law — a COMPUTATION named `vk_vk_*` draws the same code, so `Computation.build()` pre-checks it too (locked: `validate.laws.ComputationSlotLawsTest`, `ComputationAuthoringTest`) |
-| `MVK_SEVERITY_MISSING` | pre-checked | `Rule.build()` requires `severity(...)`; the typed `Severity` enum makes invalid values unrepresentable (locked: `RuleAuthoringTest`) |
+| `MVK_SEVERITY_MISSING` | pre-checked, **over-rejecting** | `Rule.build()` requires `severity(...)`; the typed `Severity` enum makes invalid values unrepresentable (locked: `RuleAuthoringTest`). **Measured 2026-09-12** ([KF291](KERNEL-FINDINGS.md#kf291)) and the basis does not hold: an ABSENT `severity` in stored DM-JSON is **accepted** by `checkConsistency`, and none of absent/null/empty fires this code. So the builder refuses a model A12 admits — the audit's over-rejection class. The enum half stands: every spelling outside `ERROR`/`WARNING`/`INFO` makes the model unreadable. What shape DOES fire this code is unmeasured (locked: `validate.laws.RuleCodeAndSeverityLawsTest`) |
 | `MVK_SORT_FIELD_DUPLICATE` | n/a-structural | sort law: sort fields unique within a sort info |
 | `MVK_SORT_INFO_MISSING` | n/a-structural | sort law: field, type, and priority of a sort entry fill together (all-or-none) |
 | `MVK_SORT_PRIO_DUPLICATE` | n/a-structural | sort law: sort priorities unique |

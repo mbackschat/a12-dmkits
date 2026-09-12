@@ -12,8 +12,6 @@ import java.io.UncheckedIOException;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 import org.junit.jupiter.api.Test;
 
@@ -22,7 +20,6 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 
 import io.github.mbackschat.a12.dm.Fixtures;
 import io.github.mbackschat.a12.dm.core.ModelConsistencyException;
-import io.github.mbackschat.a12.dm.core.ModelInputException;
 import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel;
 import io.github.mbackschat.a12.dm.rulekit.validate.ValidationResult;
 import io.github.mbackschat.a12.dm.rulekit.write.ModelWriter;
@@ -43,13 +40,9 @@ class MessageSlotRawShapeLawsTest {
 
     private static final ObjectMapper MAPPER = new ObjectMapper();
 
-    private static final String ADMITTED = "ADMITTED";
+    private static final String ADMITTED = KernelLaws.ADMITTED;
 
-    /** A12's reader refused the bytes, so no rule was ever examined — not a verdict about the model. */
-    private static final String UNREADABLE = "UNREADABLE";
-
-    /** The kernel's own codes, lifted from the notification stream rather than matched against a guess. */
-    private static final Pattern MVK = Pattern.compile("MVK_[A-Z0-9_]+");
+    private static final String UNREADABLE = KernelLaws.UNREADABLE;
 
     private static final String EN = "{\"locale\":\"en_US\",\"text\":\"x\"}";
     private static final String DE = "{\"locale\":\"de_DE\",\"text\":\"y\"}";
@@ -257,35 +250,9 @@ class MessageSlotRawShapeLawsTest {
         assertEquals(expected, actual, "which entry for one locale A12 keeps, and what counts as its text");
     }
 
-    /**
-     * What A12 says about the probe model with the given raw `header.locales` and rule `errorMessage`.
-     *
-     * <p>The two refusals arrive on DIFFERENT exception types, which is the distinction this whole class is
-     * about: {@code ModelInputException} is A12's READER refusing the bytes, before any rule is examined;
-     * {@code ModelConsistencyException} is its verdict on a model it did read. A checker that folds the first
-     * into the second reports its own opinion as A12's about a model A12 never judged.
-     */
+    /** What A12 says about the probe model with the given raw `header.locales` and rule `errorMessage`. */
     private static String verdict(String localesJson, String errorMessageJson) {
-        try {
-            BoundModel.ofJson(probe(localesJson, errorMessageJson));
-            return ADMITTED;
-        } catch (ModelInputException unreadable) {
-            return UNREADABLE;
-        } catch (ModelConsistencyException rejected) {
-            String said = rejected.notifications().stream()
-                    .map(n -> n.message())
-                    .reduce("", (a, b) -> a + " " + b);
-            Matcher codes = MVK.matcher(said);
-            StringBuilder found = new StringBuilder();
-            while (codes.find()) {
-                if (found.indexOf(codes.group()) < 0) {
-                    found.append(found.isEmpty() ? "" : ",").append(codes.group());
-                }
-            }
-            // A rejection carrying no MVK_ code is the kernel refusing to BUILD the model from inside
-            // checkConsistency — still not a verdict about its rules, and still not an input refusal.
-            return found.isEmpty() ? "NOT BUILDABLE" : found.toString();
-        }
+        return KernelLaws.verdictOf(probe(localesJson, errorMessageJson));
     }
 
     /** [model] with an empty `header.locales`, refusing rather than passing input through unchanged. */

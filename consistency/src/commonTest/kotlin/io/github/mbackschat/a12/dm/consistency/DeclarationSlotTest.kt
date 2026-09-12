@@ -28,31 +28,45 @@ class DeclarationSlotTest {
      * @param locales the body of `header.locales`, raw, because the entry shapes A12 admits are part of what
      *     is under test — an object carrying `code`, a bare string, or a spelling its reader refuses.
      * @param messages the whole `errorMessage` member, raw for the same reason, or null to omit it.
+     * @param slots the element's OTHER members, raw. It defaults to what the kind needs to be legal — a rule
+     *     owes an `errorCode`, a computation owes nothing — so a row that does not name this parameter is
+     *     varying only its message slot.
      */
-    private fun model(kind: String, name: String, messages: String?, locales: String = EN_AND_DE) =
-        prepare(
-            assertIs<Admission.Admitted>(
-                admit(
-                    ModelSource(
-                        """
-                        {"header":{"id":"catalog","locales":[$locales]},
-                         "content":{"modelRoot":{"rootGroups":[
-                          {"type":"Group","id":"g0","name":"Catalog","Group":{"elements":[
-                            {"type":"Field","id":"f0","name":"Price","Field":{}},
-                            {"type":"$kind","id":"x0","name":"$name","$kind":{${
-                            messages?.let { """"errorMessage":$it""" } ?: ""
-                        }}}
-                          ]}}
-                         ]}}}
-                        """.trimIndent(),
-                    ),
+    private fun model(
+        kind: String,
+        name: String,
+        messages: String?,
+        locales: String = EN_AND_DE,
+        slots: String = legalSlotsFor(kind),
+    ) = prepare(
+        assertIs<Admission.Admitted>(
+            admit(
+                ModelSource(
+                    """
+                    {"header":{"id":"catalog","locales":[$locales]},
+                     "content":{"modelRoot":{"rootGroups":[
+                      {"type":"Group","id":"g0","name":"Catalog","Group":{"elements":[
+                        {"type":"Field","id":"f0","name":"Price","Field":{}},
+                        {"type":"$kind","id":"x0","name":"$name","$kind":{${
+                        listOfNotNull(messages?.let { """"errorMessage":$it""" }, slots.ifEmpty { null })
+                            .joinToString(",")
+                    }}}
+                      ]}}
+                     ]}}}
+                    """.trimIndent(),
                 ),
             ),
-        )
+        ),
+    )
 
     /** The codes reported for one shape, in report order, so a missing and an extra row both show. */
-    private fun codesFor(kind: String, name: String, messages: String?, locales: String = EN_AND_DE) =
-        model(kind, name, messages, locales).declarationSlotFindings().map { it.code }
+    private fun codesFor(
+        kind: String,
+        name: String,
+        messages: String?,
+        locales: String = EN_AND_DE,
+        slots: String = legalSlotsFor(kind),
+    ) = model(kind, name, messages, locales, slots).declarationSlotFindings().map { it.code }
 
     @Test
     fun eachSlotShapeDrawsTheVerdictTheKernelGivesIt() {
@@ -210,6 +224,47 @@ class DeclarationSlotTest {
         }
     }
 
+    /**
+     * A rule's `errorCode`, and the two neighbouring slots that are deliberately NOT checked.
+     *
+     * The severity rows are the ones worth having. `Rule.Builder` refuses an unset severity citing
+     * `MVK_SEVERITY_MISSING`, and A12 ACCEPTS an absent one — so reproducing that refusal here would reject a
+     * model the Kernel admits, which is the direction no consumer can detect. A spelling outside the enum is
+     * a reader refusal rather than a verdict, and is likewise not this family's to report.
+     */
+    @Test
+    fun aRulesErrorCodeIsCheckedWhereItsSeverityDeliberatelyIsNot() {
+        val actual = mutableMapOf<String, List<String>>()
+        actual["a code — the control"] = codesForRule(""""errorCode":"PROBE"""")
+        actual["no errorCode member"] = codesForRule("")
+        actual["a blank errorCode"] = codesForRule(""""errorCode":"   """")
+        actual["a numeric errorCode"] = codesForRule(""""errorCode":7""")
+        actual["an explicitly null errorCode"] = codesForRule(""""errorCode":null""")
+        actual["no severity member"] = codesForRule(""""errorCode":"PROBE"""")
+        actual["a severity outside the enum"] = codesForRule(""""errorCode":"PROBE","severity":"FATAL"""")
+
+        val expected = mapOf(
+            "a code — the control" to listOf(),
+            "no errorCode member" to listOf("MVK_ERROR_CODE_MISSING"),
+            "a blank errorCode" to listOf("MVK_ERROR_CODE_MISSING"),
+            // Coerced by A12 to the code "7", so refusing it would reject a model the Kernel admits.
+            "a numeric errorCode" to listOf(),
+            "an explicitly null errorCode" to listOf("CK_MODEL_NOT_BUILDABLE"),
+            "no severity member" to listOf(),
+            "a severity outside the enum" to listOf(),
+        )
+        assertEquals(expected, actual, "a rule's code and severity slots")
+    }
+
+    /** A computation carries neither member, and one carrying neither is admitted — so nothing is reported. */
+    @Test
+    fun aComputationHasNoErrorCodeSlotToCheck() {
+        assertEquals(listOf(), codesFor("Computation", "PriceCheck", BOTH), "a computation owes no code")
+    }
+
+    /** A rule whose non-message slots are exactly [slots], so one member moves per row. */
+    private fun codesForRule(slots: String) = codesFor("Rule", "PriceCheck", BOTH, slots = slots)
+
     /** Only an A12 constraint may reject: the two shapes A12 admits must leave the model checkable. */
     @Test
     fun theAdmittedShapesAreAdvisoryRatherThanRejections() {
@@ -255,6 +310,9 @@ class DeclarationSlotTest {
     }
 
     private companion object {
+        /** What this kind must carry beside its messages to be a legal A12 declaration ([KF291]). */
+        fun legalSlotsFor(kind: String) = if (kind == "Rule") """"errorCode":"PROBE"""" else ""
+
         const val EN_AND_DE = """{"code":"en_US"},{"code":"de_DE"}"""
         const val EN = """{"locale":"en_US","text":"too high"}"""
         const val EN_OTHER = """{"locale":"en_US","text":"above the cap"}"""

@@ -2,13 +2,14 @@ package io.github.mbackschat.a12.dm.consistency
 
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.contentOrNull
 
 /**
- * The declaration SLOTS of a stored rule or computation — its `name` and its `errorMessage` texts — together
- * with the declared locale set those texts answer to.
+ * The declaration SLOTS of a stored rule or computation — its `name`, a rule's `errorCode`, and its
+ * `errorMessage` texts — together with the declared locale set those texts answer to.
  *
  * Nothing here needs a condition parser: every row reads members A12 declares as structured JSON, which is
  * what makes this the family that can land before the checker owns a syntax layer.
@@ -42,7 +43,8 @@ import kotlinx.serialization.json.contentOrNull
 fun PreparedModel.declarationSlotFindings(): List<Finding> =
     declaredLocaleFindings() +
         elements.filter { it.kind in EXECUTABLE_KINDS }.flatMap { element ->
-            reservedNameFinding(element) + messageFindings(element, declaredLocales)
+            reservedNameFinding(element) + errorCodeFindings(element) +
+                messageFindings(element, declaredLocales)
         }
 
 /** The two element kinds that carry these slots: A12's executables, the checker's whole subject matter. */
@@ -97,6 +99,56 @@ private fun reservedNameFinding(element: DeclaredElement): List<Finding> =
             ),
         )
     }
+
+/**
+ * A RULE's `errorCode`, which A12 requires non-blank — and the two shapes around it that are not verdicts.
+ *
+ * **Nothing is reported for a computation**, and that is a shape fact rather than an omission: a computation
+ * carries no `errorCode` member at all, and one carrying none is admitted ([KERNEL-FINDINGS KF291]). It is
+ * stated because the sibling name law went the other way — `MVK_RULE_NAME_INVALID` reads as a rule's law and
+ * fires for computations too, so "rule-only" is a claim that needs its own basis here.
+ *
+ * **A `severity` slot is deliberately NOT checked.** An ABSENT `severity` is accepted by A12, and every
+ * spelling outside its enum makes the source unreadable rather than invalid — so there is no verdict for this
+ * family to report, and `MVK_SEVERITY_MISSING` (which `Rule.Builder` raises) fires for none of the measured
+ * shapes. Reproducing that builder refusal here would reject a model the Kernel accepts.
+ */
+private fun errorCodeFindings(element: DeclaredElement): List<Finding> {
+    if (element.kind != "Rule") {
+        return emptyList()
+    }
+    val declared = (element.declaration[element.kind] as? JsonObject)?.get("errorCode")
+    return when {
+        declared == null || (declared is JsonPrimitive && declared.isString && declared.content.isBlank()) ->
+            listOf(
+                Finding(
+                    FindingCategory.A12_CONSTRAINT,
+                    FindingSeverity.ERROR,
+                    "MVK_ERROR_CODE_MISSING",
+                    "this rule declares no error code — A12 refuses it, and a blank `errorCode` counts as " +
+                        "none at all",
+                    element.path,
+                ),
+            )
+        // An explicit `null` refuses A12's own reader on every rule member measured, which is a tier ABOVE a
+        // verdict: no rule is examined, so reporting `MVK_ERROR_CODE_MISSING` here would present this
+        // checker's reading as A12's about a model A12 never judged.
+        declared is JsonNull -> listOf(
+            Finding(
+                FindingCategory.A12_CONSTRAINT,
+                FindingSeverity.ERROR,
+                CK_MODEL_NOT_BUILDABLE,
+                "`errorCode` is an explicit `null`, which A12's own reader refuses — the source never loads, " +
+                    "and an OMITTED member is what draws a verdict instead",
+                element.path,
+            ),
+        )
+        // A scalar is COERCED to the String member — `7` is the error code "7" — so a non-string primitive is
+        // neither missing nor unreadable. A CONTAINER is neither measured nor reported: under-reporting is
+        // the safe direction, and inventing a verdict for it would be a refusal with no Kernel basis.
+        else -> emptyList()
+    }
+}
 
 /**
  * One authored error-message entry, reduced to what A12 collects from it.

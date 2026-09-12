@@ -5534,3 +5534,26 @@ The third row is what bounds it: without it "the provider must match the entry" 
 **A model must declare at least one locale — `MVK_SUPP_LANGUAGES_MISSING` — and it then collects NO message at all.** With `header.locales` empty, every rule draws `MVK_ERROR_MESSAGE_MISSING` however many texts it carries, because collection is keyed by declared locale. The two codes arrive together on any model with a rule, so the attributing row is the base fixture, which declares no rule: it draws `MVK_SUPP_LANGUAGES_MISSING` alone. This is the row that refuted the natural prediction — "with no declared locale, one message is enough" — and it is the reason a portable checker reports the header defect model-level rather than once per declaration.
 
 *(Locked: `rulekit.validate.laws.MessageSlotRawShapeLawsTest` — one assertion per table.)*
+
+## §13 supplement — an ABSENT `severity` is accepted, an explicit JSON `null` refuses the reader, and `errorCode` coerces a scalar (`checkConsistency`, measured, 2026-09-12) <a id="kf291"></a>
+
+> Fold: not-foldable — authoring/model-structure slot laws on the rule element, outside the evaluation scope.
+
+The rule's other two declaration slots, measured for the first time because both are `pre-checked` in the [MVK ledger](MVK-LEDGER.md): `Rule.Builder.build` refuses them, so what A12 itself does had never been asked — and a checker reading stored DM-JSON meets every shape the builder cannot produce.
+
+| stored shape | A12 |
+|---|---|
+| `errorCode` absent · `""` · whitespace-only | `MVK_ERROR_CODE_MISSING` |
+| `errorCode` as a NUMBER (`7`) | **ADMITTED** — Jackson coerces the scalar, so the code is `"7"` |
+| `severity` `"ERROR"` · `"WARNING"` · `"INFO"` | ADMITTED |
+| **`severity` ABSENT** | **ADMITTED** |
+| `severity` `""` · `"error"` · `"Error"` · `"FATAL"` | **UNREADABLE** — a strict enum binding |
+| an explicit `null` on `errorCode`, `severity`, `errorCondition` or `errorEntityRelPath` | **UNREADABLE** |
+
+**`MVK_SEVERITY_MISSING` fires for none of these shapes, so the builder's refusal is broader than any measured basis.** An absent `severity` is simply accepted. That makes `Rule.Builder`'s "severity is required" an over-rejection candidate of exactly the class the [2026-07-25 audit](MVK-LEDGER.md) hunts — a refusal invisible because the Kernel is never asked. **What this does not establish:** what an absent `severity` DEFAULTS to is not measured here, and neither is what shape does fire `MVK_SEVERITY_MISSING`; the code exists in the metamodel and some other input must reach it.
+
+**An explicit `null` is not an absent member, and that is the pair a reader collapses.** `errorCode: null` refuses A12's reader where `errorCode` absent draws a verdict — two tiers for what most readers treat as one shape. The mechanism row is the third test: `errorCondition` and `errorEntityRelPath` are refused by a `null` too, so the refusal follows the NULL rather than a null-hostile accessor on one member. Four members is the whole basis; a member outside them is unmeasured.
+
+**The empty string means different things in different slots, which is why each is measured rather than inferred.** It is a *default* for `fieldRefByShortNameAllowed` ([KF289](#kf289)), *no message* for an `errorMessage` text ([KF290](#kf290)), *missing* for `errorCode`, and an outright reader REFUSAL for `severity`. One shape, four answers, decided by the member's binding.
+
+*(Locked: `rulekit.validate.laws.RuleCodeAndSeverityLawsTest` — one assertion per table.)*

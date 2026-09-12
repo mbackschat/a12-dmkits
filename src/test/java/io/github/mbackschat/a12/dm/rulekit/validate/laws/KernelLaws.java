@@ -28,7 +28,49 @@ final class KernelLaws {
     private static final String LOGISTICS = ModelDrafts.logistics().toJson();
     private static final String PROJECT = Fixtures.projectJson();
 
+    /** A12's READER refused the bytes, so no declaration was ever examined — not a verdict about the model. */
+    static final String UNREADABLE = "UNREADABLE";
+
+    /** Read, but the Kernel could not BUILD the model, so it reports that and no consistency verdict. */
+    static final String NOT_BUILDABLE = "NOT BUILDABLE";
+
+    /** The Kernel's own codes, lifted from the notification stream rather than matched against a guess. */
+    private static final java.util.regex.Pattern MVK = java.util.regex.Pattern.compile("MVK_[A-Z0-9_]+");
+
     private KernelLaws() {
+    }
+
+    /**
+     * What A12 says about a whole stored model — {@link #ADMITTED}, {@link #UNREADABLE},
+     * {@link #NOT_BUILDABLE}, or its distinct {@code MVK_*} codes joined by commas in first-seen order.
+     *
+     * <p><b>Three verdicts, not two, and the third is the one that matters.</b> A shape A12's reader REFUSES
+     * makes the model unreadable, so A12 never judges it at all. Reporting an {@code MVK_*} finding there
+     * presents the reader's own opinion as A12's, and reporting nothing presents an unbuildable model as
+     * clean, so the tiers must be told apart rather than collapsed into "invalid". They arrive on different
+     * exception types, which is what makes the distinction mechanical rather than a reading of messages.
+     */
+    static String verdictOf(String modelJson) {
+        try {
+            io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel.ofJson(modelJson);
+            return ADMITTED;
+        } catch (io.github.mbackschat.a12.dm.core.ModelInputException unreadable) {
+            return UNREADABLE;
+        } catch (io.github.mbackschat.a12.dm.core.ModelConsistencyException rejected) {
+            String said = rejected.notifications().stream()
+                    .map(n -> n.message())
+                    .collect(Collectors.joining(" "));
+            java.util.regex.Matcher codes = MVK.matcher(said);
+            java.util.List<String> found = new java.util.ArrayList<>();
+            while (codes.find()) {
+                if (!found.contains(codes.group())) {
+                    found.add(codes.group());
+                }
+            }
+            // A rejection carrying no MVK_ code is the Kernel refusing to BUILD the model from inside
+            // checkConsistency — still not a verdict about its declarations, and still not an input refusal.
+            return found.isEmpty() ? NOT_BUILDABLE : String.join(",", found);
+        }
     }
 
     /** Asserts the kernel accepts {@code condition} for the given (group, errorField). */
@@ -182,7 +224,10 @@ final class KernelLaws {
         return VALIDATOR.check(json, new DraftRule(group, "ProbeRule", errorField, condition, "PROBE", "ERROR"));
     }
 
-    /** The verdict word a message-axis law reads when the kernel admits the candidate. */
+    /**
+     * The verdict word every law in this package reads when the kernel admits the candidate — shared with
+     * {@link #verdictOf}'s tiers so two axes cannot spell the same outcome differently.
+     */
     static final String ADMITTED = "ADMITTED";
 
     /**
