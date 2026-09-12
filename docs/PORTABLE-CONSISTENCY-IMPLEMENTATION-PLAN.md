@@ -555,6 +555,18 @@ One cold adversarial review over the frozen range, as [§2](#2-execution-order-a
 
 **The slot also completes a grid that had three unmeasured shapes**, added to `RuleCodeAndSeverityLawsTest` because the implementation had to decide them: whitespace, a number and a JSON container are all UNREADABLE. So `severity` shares a carrier with `errorCode` and almost no behaviour — no coercion, blank is not absence, the match is case-SENSITIVE — and a checker sharing one predicate between them would be wrong on five rows. It is also the one member of the standing "JSON container where A12 binds a string" gap that is now decided.
 
+### Port inventory record — what the migration still owes, measured (2026-09-12)
+
+**Why this is a record and not a note: it is STATE.** It says what remains, what is blocked and what is duplicated, so it belongs beside the Status column rather than in a session's output. Every figure below is derived by command, not recalled.
+
+**Duplication today is bounded and smaller than a family count suggests.** Three type names exist in both languages — `ConditionLanguage`, `ConditionReferences` and `ConfigFlag` (checker `commonMain` against `:rulekit`/`:core` main source) — and of nine landed checker laws sampled against Java main source, **three** are also enforced by the typed builders (`MVK_ERROR_MESSAGE_MISSING`, `MVK_RULE_NAME_INVALID`, `MVK_ERROR_EMPTY_PRECONDITION`, in `Rule.java`/`Computation.java`) while **six have no Java counterpart at all** and are net-new capability with nothing to retire. The ceiling on this class is the MVK ledger's 31 `pre-checked` rows, not the number of `CheckFamily` constants.
+
+**The largest remaining piece is NOT a port, and that reframes it.** No Java module parses condition text: the Java path delegates to the Kernel's `IRuleParser` through `KernelAdapter`, so there is no Java parser to migrate. The estate's only Kernel-free parser is the **interpreter's, already Kotlin** (`interpreter/src/commonMain/.../parse/`, 686 lines). The checker's syntax layer therefore reduces to a share-or-rebuild decision between two Kotlin modules, governed by NFR #1's "ordinary evaluation takes on no checker dependency" and §1's "keep interpreter execution preparation independent" — an owner decision, and not a migration step. It gates the condition- and operation-level families in orders 5 and 6.
+
+**C1's blocker stands, but its COST has fallen.** Its re-open trigger is the first `:consistency` publication, and that is unmet: `:consistency` declares no publishing wiring, while `rulekit`, `core`, `edit`, `modelkit`, `schemakit`, `interpreter` and `interpreter-bridge` all do. What has changed is the severity of the premise — the edge was rejected because it "would put an unresolvable coordinate in a shipped POM", and [RELEASE-SPEC](RELEASE-SPEC.md) §1 carries the dmkits distribution struck through with its Central deploy deferred, so no artifact is deployed and no consumer compatibility is inherited. Pulling the publication forward is a smaller decision than when the blocker was written, and it converts each later family from "port and duplicate" into "port and retire".
+
+**Out of scope by the relevance test** (what Kernel-free checking on TS/browser JS/Node/JVM demands): modelkit's authoring surface, `:edit`, `:schemakit`, the CLI, and the Kernel-bound `:adapter`.
+
 ### Decisions to resolve during A
 
 - **Shared syntax:** default to checker-owned source. Extract a neutral leaf only when the enumerated closure and H4/H5 evidence support it; this avoids turning parser extraction into an interpreter redesign.
