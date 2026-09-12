@@ -5585,6 +5585,8 @@ The structure of a stored `computationAlternatives`, measured because `Computati
 
 **An explicit `null` splits BY BINDING SITE, and the split is inside this one member.** On a rule's own members a `null` refuses the reader outright ([KF291](#kf291)); here `computationAlternatives: null` does the same — but one level down, inside an alternative, `operation: null` draws `MVK_INCOMPLETE_INPUT` and `precondition: null` draws `MVK_ERROR_EMPTY_PRECONDITION`, both verdicts and both identical to the omitted member. So the list and the scalars it holds answer differently, and the prediction that carried the rule-member law down was refuted on the list while holding for neither scalar. A checker inferring any of the three from another gets one wrong.
 
+**The demand is size-INDEPENDENT, which every row of the original set left untested** by having exactly two alternatives. With THREE, an unguarded middle one draws the code and three guarded ones are admitted.
+
 **And a `commonPrecondition` does not pay that debt.** Every row above declares none, so "one alternative may be unguarded" and "an unguarded alternative is fine while nothing else guards the computation" are the same observation there — the constant that no control inside the set can catch. Declaring one separates them: the single unguarded alternative stays accepted and the unguarded pair stays refused. The common guard is a different slot, not a substitute.
 
 **The two list-shaped members have DIFFERENT readers, which is why each is measured.** `errorMessage` as an OBJECT is admitted — its reader iterates the node's elements, and an object's elements are its values ([KF290](#kf290)) — while `computationAlternatives` as an object makes the model unreadable. Inferring one from the other would have produced a checker that analyses a model A12 refuses to load.
@@ -5628,6 +5630,8 @@ The two members a stored rule cannot work without, measured because `Rule.Builde
 
 **The demand spans KINDS, and a "rule names must be unique" reading passes two of the three refusals.** The collision is among a group's children whatever each child is — the Kernel's own wording is "two child elements with the same name" — so a rule may not take the name of a sibling field or a sibling subgroup. This is the row a checker that only indexes executables cannot see at all.
 
+**Every row of the original set added a RULE, so "two children of one name" and "a rule taking a name" were one observation.** Measured without a rule anywhere in the collision: two FIELDS of one name, and a FIELD named after a sibling group, are refused the same way; a field added to a different group is admitted. The carrier does not matter, which is what lets a checker key on the path alone.
+
 **And it is case-SENSITIVE, where the `vk_vk` prefix law on the same member is case-INSENSITIVE** ([KF160](#kf160)). Two laws reading one slot with opposite case rules is exactly the pair that gets unified by accident, so `Probe` beside `probe` in one group is admitted and must draw nothing.
 
 *(Locked: `rulekit.validate.laws.ElementNameUniquenessLawsTest` — one assertion over the six boundaries.)*
@@ -5650,6 +5654,7 @@ The two relative field references A12 declares on a GROUP. No lock covered eithe
 | a `..` climbing past the root | **NOT BUILDABLE** — it can reach no field, the model root holding groups |
 | a direct-child field declared `noValueValidation` | `MVK_INDEX_FIELD_NO_VALUE_VALIDATION` / `MVK_SORT_FIELD_NO_VALUE_VALIDATION` |
 | a `sortFields` entry with no `name` | **UNREADABLE** |
+| a `sortFields` entry whose `name` is a NUMBER | **NOT BUILDABLE** — coerced to the name `"5"`, which resolves to nothing |
 
 **TWO gates, and the second reads a NAME rather than a position.** A12 resolves the spelling positionally from the group; one that does not land on a field stops the model from being BUILT. One that does land keeps only that field's SHORT NAME, and the group must then carry a field of that name — otherwise the member's own code.
 

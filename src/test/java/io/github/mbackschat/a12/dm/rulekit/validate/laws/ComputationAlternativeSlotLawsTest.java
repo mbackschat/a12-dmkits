@@ -113,6 +113,10 @@ class ComputationAlternativeSlotLawsTest {
                 verdict("[" + guarded("FieldFilled(../Tier)") + "," + guarded("   ") + "]"));
         actual.put("two, one precondition explicit null", verdict("[" + guarded("FieldFilled(../Tier)")
                 + ",{\"precondition\":null,\"operation\":\"" + OPERATION + "\"}]"));
+        actual.put("THREE, the middle unguarded", verdict("[" + guarded("FieldFilled(../Tier)") + ","
+                + ALTERNATIVE + "," + guarded("FieldNotFilled(../Tier)") + "]"));
+        actual.put("THREE, all guarded", verdict("[" + guarded("FieldFilled(../Tier)") + ","
+                + guarded("FieldNotFilled(../Tier)") + "," + guarded("FieldFilled(../AutoRenew)") + "]"));
 
         Map<String, String> expected = new LinkedHashMap<>();
         expected.put("one, unguarded — the control", KernelLaws.ADMITTED);
@@ -127,6 +131,10 @@ class ComputationAlternativeSlotLawsTest {
         expected.put("two, one precondition blank", "MVK_UNEXPECTED_TOKEN");
         expected.put("two, one precondition whitespace", "MVK_UNEXPECTED_TOKEN");
         expected.put("two, one precondition explicit null", "MVK_ERROR_EMPTY_PRECONDITION");
+        // Every multi row above has exactly TWO alternatives, so "from two on" and "for a pair" were one
+        // observation. The checker applies the demand at any size, which is a claim these two rows settle.
+        expected.put("THREE, the middle unguarded", "MVK_ERROR_EMPTY_PRECONDITION");
+        expected.put("THREE, all guarded", KernelLaws.ADMITTED);
         assertEquals(expected, actual, "which alternatives owe a precondition");
     }
 

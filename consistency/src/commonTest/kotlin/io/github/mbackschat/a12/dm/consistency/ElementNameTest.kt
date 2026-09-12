@@ -54,6 +54,9 @@ class ElementNameTest {
         actual["the same name in two different groups"] =
             codesFor("${field("f0", "Price")},${rule("r0", "Check")}", ",${rule("r1", "Check")}")
         actual["two names differing only in case"] = codesFor("${rule("r0", "Check")},${rule("r1", "check")}")
+        actual["two FIELDS of one name"] = codesFor("${field("f0", "Price")},${field("f1", "Price")}")
+        actual["a field named after a sibling GROUP"] =
+            codesFor("${field("f0", "Archive")},${rule("r0", "Check")}")
 
         val collision = listOf("CK_MODEL_NOT_BUILDABLE")
         val expected = mapOf(
@@ -66,6 +69,10 @@ class ElementNameTest {
             // Case-SENSITIVE, unlike the `vk_vk` prefix law on the same member — two laws on one slot with
             // opposite case rules, which is the pair a checker unifies by accident.
             "two names differing only in case" to listOf(),
+            // Every other row puts a RULE in the collision, so "two children" and "a rule taking a name"
+            // were one observation; these two carry none.
+            "two FIELDS of one name" to collision,
+            "a field named after a sibling GROUP" to collision,
         )
         assertEquals(expected, actual, "how far an element name must be unique")
     }

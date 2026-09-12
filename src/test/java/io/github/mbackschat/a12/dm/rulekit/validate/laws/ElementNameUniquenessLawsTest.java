@@ -4,11 +4,17 @@ import static io.github.mbackschat.a12.dm.rulekit.dsl.Dsl.de;
 import static io.github.mbackschat.a12.dm.rulekit.dsl.Dsl.en;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
+import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
 import org.junit.jupiter.api.Test;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ArrayNode;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 
 import io.github.mbackschat.a12.dm.Fixtures;
 import io.github.mbackschat.a12.dm.rulekit.write.ModelWriter;
@@ -25,6 +31,8 @@ import io.github.mbackschat.a12.dm.rulekit.write.ModelWriter;
  * nested {@code /Subscription/Billing}).
  */
 class ElementNameUniquenessLawsTest {
+
+    private static final ObjectMapper MAPPER = new ObjectMapper();
 
     private static final String ROOT = "/Subscription";
     private static final String NESTED = "/Subscription/Billing";
@@ -59,6 +67,48 @@ class ElementNameUniquenessLawsTest {
         expected.put("a rule named after a field in ANOTHER group", KernelLaws.ADMITTED);
         expected.put("two rules, one group, differing case", KernelLaws.ADMITTED);
         assertEquals(expected, actual, "how far an element name must be unique");
+    }
+
+    /**
+     * The collision is between any two children, and the RULE carrier cannot show that on its own.
+     *
+     * <p>Every row above adds a rule, so "two children of one name" and "a rule taking a name" are one
+     * observation there — and the checker is kind-agnostic, which is a claim about carriers it never
+     * measured. These rows add the collision without a rule anywhere in it.
+     */
+    @Test
+    void theCollisionIsBetweenChildrenWhateverKindsTheyAre() {
+        Map<String, String> actual = new LinkedHashMap<>();
+        actual.put("two FIELDS of one name", verdict(field(Fixtures.subscriptionJson(), "Tier")));
+        actual.put("a field named after a sibling GROUP", verdict(field(Fixtures.subscriptionJson(), "Billing")));
+        actual.put("a field in another group — the control",
+                verdict(field(Fixtures.subscriptionJson(), "InvoiceEmail")));
+
+        Map<String, String> expected = new LinkedHashMap<>();
+        expected.put("two FIELDS of one name", KernelLaws.NOT_BUILDABLE);
+        expected.put("a field named after a sibling GROUP", KernelLaws.NOT_BUILDABLE);
+        expected.put("a field in another group — the control", KernelLaws.ADMITTED);
+        assertEquals(expected, actual, "the collision without a rule in it");
+    }
+
+    /**
+     * A second field of [name] added to the ROOT group, so the collision carries no rule at all.
+     *
+     * <p>Parsed rather than string-spliced: the fixture is pretty-printed, and a literal splice on
+     * {@code "elements":[} matched nothing at all — three rows then came back ADMITTED and agreed with their
+     * own control, which is what a silent no-op looks like from inside a table.
+     */
+    private static String field(String modelJson, String name) {
+        try {
+            ObjectNode root = (ObjectNode) MAPPER.readTree(modelJson);
+            ArrayNode elements = (ArrayNode) root.path("content").path("modelRoot").path("rootGroups").get(0)
+                    .path("Group").path("elements");
+            elements.insert(0, MAPPER.readTree("{\"type\":\"Field\",\"id\":\"probe\",\"name\":\"" + name
+                    + "\",\"Field\":{\"fieldType\":{\"type\":\"StringType\"}}}"));
+            return root.toString();
+        } catch (IOException unreadable) {
+            throw new UncheckedIOException("the fixture and the added field must parse", unreadable);
+        }
     }
 
     private static String verdict(String modelJson) {

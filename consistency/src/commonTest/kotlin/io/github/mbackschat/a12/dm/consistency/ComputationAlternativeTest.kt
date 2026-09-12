@@ -99,6 +99,10 @@ class ComputationAlternativeTest {
         actual["two, the LAST unguarded"] = codesFor("[${guarded("FieldFilled(../Price)")},$work]")
         actual["two, the FIRST unguarded"] = codesFor("[$work,${guarded("FieldFilled(../Price)")}]")
         actual["two, both unguarded"] = codesFor("[$work,$work]")
+        actual["THREE, the middle unguarded"] = codesFor(
+            "[${guarded("FieldFilled(../Price)")},$work,${guarded("FieldNotFilled(../Price)")}]")
+        actual["THREE, all guarded"] = codesFor("[${guarded("FieldFilled(../Price)")}," +
+            "${guarded("FieldNotFilled(../Price)")},${guarded("FieldFilled(../Price)")}]")
         actual["two, one precondition null"] =
             codesFor("""[${guarded("FieldFilled(../Price)")},{"precondition":null,"operation":"42.00"}]""")
 
@@ -111,6 +115,10 @@ class ComputationAlternativeTest {
             // ONE finding, not one per alternative: A12 raises a single notification for the computation,
             // and reporting two would claim it said twice what it said once.
             "two, both unguarded" to oneMissing,
+            // Every measured multi row had exactly two alternatives, so the demand's SIZE-independence was a
+            // claim rather than an observation until these two.
+            "THREE, the middle unguarded" to oneMissing,
+            "THREE, all guarded" to listOf(),
             "two, one precondition null" to oneMissing,
         )
         assertEquals(expected, actual, "which alternatives owe a precondition")

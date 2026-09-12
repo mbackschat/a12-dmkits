@@ -57,12 +57,13 @@ private fun PreparedModel.indexFindings(group: DeclaredElement, body: JsonObject
 private fun PreparedModel.sortFindings(group: DeclaredElement, body: JsonObject?): List<Finding> {
     val entries = body?.get("sortFields") as? JsonArray ?: return emptyList()
     return entries.flatMap { entry ->
-        val name = (entry as? JsonObject)?.get("name")
-            ?.let { (it as? JsonPrimitive)?.takeIf { primitive -> primitive.isString }?.contentOrNull }
+        // A non-string primitive is COERCED to the String member, as a rule's `errorCode` is, so `5` is the
+        // name "5" and resolves like any other — measured, because reporting it as a reader refusal was
+        // this family's one emission with no basis. Only a MISSING `name`, or an entry that is not an
+        // object, is the refusal.
+        val name = (entry as? JsonObject)?.get("name")?.let { (it as? JsonPrimitive)?.contentOrNull }
         if (name == null) {
-            // A12's reader binds each entry to a typed record and refuses one without a string `name`
-            // outright — a tier above any verdict, so it may not draw a sort-field code.
-            listOf(unbuildable(group, "a `sortFields` entry here carries no string `name`"))
+            listOf(unbuildable(group, "a `sortFields` entry here carries no readable `name`"))
         } else {
             listOfNotNull(orderingFinding(group, name, "sortFields[].name", "MVK_INVALID_SORT_FIELD"))
         }

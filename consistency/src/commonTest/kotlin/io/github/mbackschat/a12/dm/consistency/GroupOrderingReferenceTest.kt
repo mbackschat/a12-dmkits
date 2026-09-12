@@ -169,6 +169,7 @@ class GroupOrderingReferenceTest {
         actual["a field outside the group"] = codesFor(sort("../Label"))
         actual["an entry with no name"] = codesFor(""""sortFields":[{}],""")
         actual["two entries, one bad"] = codesFor(""""sortFields":[{"name":"Sku"},{"name":"Missing"}],""")
+        actual["a numeric name"] = codesFor(""""sortFields":[{"name":5}],""")
 
         val expected = mapOf(
             "a field of its own group" to listOf(),
@@ -179,6 +180,9 @@ class GroupOrderingReferenceTest {
             "an entry with no name" to listOf("CK_MODEL_NOT_BUILDABLE"),
             // Each entry is judged on its own, so a good one never covers for a bad one beside it.
             "two entries, one bad" to listOf("CK_MODEL_NOT_BUILDABLE"),
+            // Coerced to the name "5", which resolves to nothing — the same CODE as a reader refusal, and a
+            // different reason, so the explanation had to stop calling it one.
+            "a numeric name" to listOf("CK_MODEL_NOT_BUILDABLE"),
         )
         assertEquals(expected, actual, "a group's sortFields")
     }

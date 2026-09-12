@@ -103,6 +103,7 @@ class GroupIndexAndSortReferenceLawsTest {
         actual.put("an empty name", verdict(REPEATABLE, "sortFields", "[{\"name\":\"\"}]"));
         actual.put("an entry with no name", verdict(REPEATABLE, "sortFields", "[{}]"));
         actual.put("an absolute path", verdict(REPEATABLE, "sortFields", "[{\"name\":\"/Order/Items/Sku\"}]"));
+        actual.put("a numeric name", verdict(REPEATABLE, "sortFields", "[{\"name\":5}]"));
         actual.put("a field OUTSIDE the group that resolves",
                 verdict(REPEATABLE, "sortFields", "[{\"name\":\"../CustomerName\"}]"));
         actual.put("a child GROUP of the named group", verdict("Order", "sortFields", "[{\"name\":\"Items\"}]"));
@@ -121,6 +122,10 @@ class GroupIndexAndSortReferenceLawsTest {
         // Asked on THIS member rather than carried from the index, which is the transfer that needs no new
         // branch and so prompts no question.
         expected.put("an absolute path", KernelLaws.RAISED_UNTYPED);
+        // A non-string `name` is COERCED to the String member, as a rule's `errorCode` is — so it is a name
+        // that resolves to nothing, not a shape the reader refuses. The checker reported the refusal tier
+        // for it on no measured basis until this row.
+        expected.put("a numeric name", KernelLaws.NOT_BUILDABLE);
         assertEquals(expected, actual, "what A12 does with each shape of a group's sortFields");
     }
 
