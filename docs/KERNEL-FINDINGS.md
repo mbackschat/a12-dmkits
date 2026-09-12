@@ -5667,7 +5667,7 @@ The two relative field references A12 declares on a GROUP. No lock covered eithe
 | `../Sku` from `/Order/Items`, with NO `/Order/Sku` | **NOT BUILDABLE** — it lands on nothing, so it never reaches the second gate |
 | `../Label` from `/Order/Items`, with `/Order/Sku` declared | `MVK_INVALID_INDEX_FIELD` — the NAME decides, not the duplication |
 
-**And passing both gates is still not sufficient: the landed field's own TYPE is gated.** A `noValueValidation` string draws `MVK_INDEX_FIELD_NO_VALUE_VALIDATION`, and as a sort field `MVK_SORT_FIELD_NO_VALUE_VALIDATION`, even as a direct child of its group. Every admitted row above names a plain value-validating string, so "a field of this group" and "a field A12 will accept as a key" were one predicate across the whole set. The table-enum gate beside it (`MVK_INDEX_FIELD_NO_TABLE_ENUM`) is unmeasured.
+**And passing both gates is still not sufficient: the landed field's own TYPE is gated.** A `noValueValidation` string draws `MVK_INDEX_FIELD_NO_VALUE_VALIDATION`, and as a sort field `MVK_SORT_FIELD_NO_VALUE_VALIDATION`, even as a direct child of its group. Every admitted row above names a plain value-validating string, so "a field of this group" and "a field A12 will accept as a key" were one predicate across the whole set. *(Amended 2026-09-12: this said the table-enum gate beside it, `MVK_INDEX_FIELD_NO_TABLE_ENUM`, was unmeasured. It is now measured and DEAD for A12 input — the shape it rejects cannot be read at all — and the whole type gate, including the index/sort asymmetry in its source, is enumerated in [KF296](#kf296).)*
 
 **An ABSENT member is legal and a BLANK one is fatal**, which inverts the blank-counts-as-absent law three sibling slots follow ([KF290](#kf290), [KF291](#kf291)) and does so in the harshest direction available.
 
@@ -5678,3 +5678,34 @@ The two relative field references A12 declares on a GROUP. No lock covered eithe
 **The absolute spelling is a third member of [KF259](#kf259)'s class** — the Kernel rejects an invalid input by raising past every typed channel, so a caller that does not catch it publishes an internal-defect envelope for what is really a rejection. `KernelLaws.verdictOf` now has a fourth tier (`RAISED (untyped)`) so a row landing there is visible as a finding rather than blowing up a table.
 
 *(Locked: `rulekit.validate.laws.GroupIndexAndSortReferenceLawsTest` — one assertion per member.)*
+
+## §10 supplement — the ordering members' TYPE gate: a pair of live codes, and one that no stored A12 model can reach (`checkConsistency`, measured + source-verified, 2026-09-12) <a id="kf296"></a>
+
+> Fold: not-foldable — a model-structure law on the group element, outside the evaluation scope.
+
+[KF295](#kf295) established that a group's `indexFieldName` / `sortFields[].name` must resolve to one of the group's own fields, and noted that the landed field's own TYPE is gated beyond that. This entry enumerates that gate, because "the type is gated too" turned out to name three source branches of which only two can fire.
+
+**`NoMetaModelChecks.checkIndexField` runs three gates and returns at the first that fires**, so a type verdict is only ever reached by a reference that already resolved — the two verdicts are exclusive, never cumulative:
+
+| # | gate | code |
+|---|---|---|
+| 1 | `EntityUtils.getEntityInGroup` finds nothing, or finds a non-field | `MVK_INVALID_INDEX_FIELD` |
+| 2 | `FieldUtils.isNoValueValidation(indexField)` | `MVK_INDEX_FIELD_NO_VALUE_VALIDATION` |
+| 3 | `FieldUtils.isTableEnum(indexField.getType())` | `MVK_INDEX_FIELD_NO_TABLE_ENUM` — **unreachable, see below** |
+
+`checkSortField` carries gates 1 and 2 only, with **no table-enumeration gate at all**. That asymmetry is real in source and turns out not to matter, because gate 3 cannot fire either.
+
+**The predicate reads the flag only after deciding the type IS a string.** `isNoValueValidation(f)` is `isString(f) && ((IStringType) f.getType()).isNoValueValidation()`, so the same flag carried by any other type is not this law — which is why a checker keying on the flag alone, rather than on a `StringType` body carrying it, would be wider than its basis.
+
+**Gate 3 is dead for A12 input, and the four links were attacked separately rather than inferred from one another:**
+
+| link | what settles it |
+|---|---|
+| the stored shape | **measured**: a `tableName` inside an `EnumerationType` body makes the reader refuse the model outright (UNREADABLE), on both members. `md.model.a12internal.fieldtypes.EnumerationType` declares `values`, `categories`, `errorMessage`, `alphabeticalSorting` and `sValue` — no table member exists to bind |
+| the construction path | `TypeConverter.convertEnumeration` returns `new EnumerationTypeImpl(errorMessages, values, categoryValues, xmlValues, sValue)`; the constructor takes no table argument, so no caller could supply one |
+| the accessor | `EnumerationTypeImpl.getTableName()` returns `Optional.empty()` unconditionally — no branch, no field behind it |
+| the denominator | 23 files import `core.tool.a12internal.api.ado.IEnumerationType`; exactly **one** implements it, that same class. `CodeGenEnumerationTypeImpl` extends `CodeGenFeldTypBasis` and DELEGATES to an enumeration rather than implementing the interface, and `EnumerationTypeWrapper` implements the identically-named `md.model.api.fieldtypes.IEnumerationType` — a different interface in a different layer, which never reaches `FieldUtils` |
+
+**The last link is the one worth carrying forward: two interfaces named `IEnumerationType` live in different layers, and only one of them is the one the check reads.** A search for the name returns both, and the wrapper is the more plausible-looking answer — it is the a12internal one, it is a real binding of the stored model, and it is wrong. This is the layer collision DOC-DISCIPLINE's golden rule warns about, met in the wild: a basis that just says "IEnumerationType" is ambiguous, and picking the wrong one here would have produced a confident claim that the gate is live.
+
+*(Locked: `rulekit.validate.laws.GroupOrderingFieldTypeLawsTest` — the live pair on both members, and the reader's refusal of the table reference. The checker's own family is `CheckFamily.GROUP_ORDERING_FIELD_TYPE`.)*

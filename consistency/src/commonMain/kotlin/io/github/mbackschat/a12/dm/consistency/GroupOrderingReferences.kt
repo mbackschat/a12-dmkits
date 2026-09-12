@@ -3,6 +3,7 @@ package io.github.mbackschat.a12.dm.consistency
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.booleanOrNull
 import kotlinx.serialization.json.contentOrNull
 
 /**
@@ -29,10 +30,19 @@ import kotlinx.serialization.json.contentOrNull
  * `/Order/Items` names nothing and stops the build, while the same spelling read from `/Order` lands on a
  * real field and reaches the second gate.
  *
- * **The landed field's own TYPE is gated too, and that is NOT checked here.** A `noValueValidation` string
- * draws `MVK_INDEX_FIELD_NO_VALUE_VALIDATION` / `MVK_SORT_FIELD_NO_VALUE_VALIDATION` even as a direct child
- * (measured in the same lock), and the table-enum gate beside it is unmeasured. So passing both gates above
- * is necessary and not sufficient, and every report says so rather than letting silence read as approval.
+ * **A THIRD gate reads the landed field's own TYPE**, and it lives here rather than in a file of its own
+ * because it is the same lookup: `checkIndexField` returns at the first gate that fires, so a type verdict is
+ * only ever reached by a reference that already resolved, and separating them would let a resolution fix read
+ * as a type approval. The report still tells them apart — `CheckFamily.GROUP_ORDERING_FIELD_TYPE` is its own
+ * constant. A `noValueValidation` string draws `MVK_INDEX_FIELD_NO_VALUE_VALIDATION` /
+ * `MVK_SORT_FIELD_NO_VALUE_VALIDATION` even as a direct child (`GroupOrderingFieldTypeLawsTest`).
+ *
+ * **The index member has a FOURTH gate in source that no stored A12 model can reach**, so it is excluded on a
+ * cited dead path rather than carried as silence: `MVK_INDEX_FIELD_NO_TABLE_ENUM` needs
+ * `IEnumerationType.getTableName()` to be present, and the only implementor of that interface returns
+ * `Optional.empty()` unconditionally, is built by a constructor taking no table argument, and binds from a
+ * DM-JSON shape with no table member at all — measured: the reader REFUSES a `tableName` outright. The sort
+ * member has no such gate to begin with, so the pair above is the whole family.
  *
  * **An ABSENT member is legal and a BLANK one is fatal** — the sibling slot families' "blank counts as
  * absent" law inverted as far as it goes. And the check runs on every group, not only a repeatable one, so a
@@ -51,7 +61,12 @@ fun PreparedModel.groupOrderingFindings(): List<Finding> =
 private fun PreparedModel.indexFindings(group: DeclaredElement, body: JsonObject?): List<Finding> {
     val declared = (body?.get("indexFieldName") as? JsonPrimitive)?.takeIf { it.isString }?.contentOrNull
         ?: return emptyList()
-    return listOfNotNull(orderingFinding(group, declared, "indexFieldName", "MVK_INVALID_INDEX_FIELD"))
+    return listOfNotNull(
+        orderingFinding(
+            group, declared, "indexFieldName",
+            "MVK_INVALID_INDEX_FIELD", "MVK_INDEX_FIELD_NO_VALUE_VALIDATION",
+        ),
+    )
 }
 
 private fun PreparedModel.sortFindings(group: DeclaredElement, body: JsonObject?): List<Finding> {
@@ -65,7 +80,12 @@ private fun PreparedModel.sortFindings(group: DeclaredElement, body: JsonObject?
         if (name == null) {
             listOf(unbuildable(group, "a `sortFields` entry here carries no readable `name`"))
         } else {
-            listOfNotNull(orderingFinding(group, name, "sortFields[].name", "MVK_INVALID_SORT_FIELD"))
+            listOfNotNull(
+                orderingFinding(
+                    group, name, "sortFields[].name",
+                    "MVK_INVALID_SORT_FIELD", "MVK_SORT_FIELD_NO_VALUE_VALIDATION",
+                ),
+            )
         }
     }
 }
@@ -77,12 +97,14 @@ private fun PreparedModel.sortFindings(group: DeclaredElement, body: JsonObject?
  *     group's own fields. The two members do NOT share one — `MVK_INVALID_INDEX_FIELD` is named for the
  *     index and `MVK_INVALID_SORT_FIELD` for the sort, and each was measured on its own member rather than
  *     transferred from the other.
+ * @param noValueValidationCode the member's own code for the third gate, likewise unshared.
  */
 private fun PreparedModel.orderingFinding(
     group: DeclaredElement,
     written: String,
     member: String,
     outsideCode: String,
+    noValueValidationCode: String,
 ): Finding? {
     if (written.startsWith("/")) {
         return unbuildable(group, "`$member` is `$written`, which A12 refuses as an illegal relative path")
@@ -101,8 +123,14 @@ private fun PreparedModel.orderingFinding(
     // GATE TWO — A12 keeps only the landed field's SHORT NAME and looks it up under this group, so what
     // decides is whether the group has a field of that NAME, not whether the path stayed inside it.
     val shortName = landed.substringAfterLast('/')
-    if (elements.any { it.path == "${group.path}/$shortName" && it.declaredKind == DeclaredKind.FIELD }) {
-        return null
+    val own = elements.firstOrNull {
+        it.path == "${group.path}/$shortName" && it.declaredKind == DeclaredKind.FIELD
+    }
+    if (own != null) {
+        // GATE THREE — the field A12 ends up with is this group's OWN field of that short name, which is
+        // also the one it reports the type error against, so the finding is attached there and not at the
+        // group that named it.
+        return noValueValidationFinding(own, member, noValueValidationCode)
     }
     return Finding(
         FindingCategory.A12_CONSTRAINT,
@@ -111,6 +139,30 @@ private fun PreparedModel.orderingFinding(
         "`$member` is `$written`, which names `$landed`; A12 keeps only the name `$shortName` and this " +
             "group has no field called that",
         group.path,
+    )
+}
+
+/**
+ * Whether [field] is the one type A12 refuses as an ordering key: a string declared `noValueValidation`.
+ *
+ * The predicate keys on the STRING body carrying the flag, which is `FieldUtils.isNoValueValidation`'s own
+ * shape — it reads the flag only after `isString`, so the same flag on any other type is not this law. A
+ * field whose `fieldType` is absent, holds no `StringType` body, or carries no boolean there is left
+ * unjudged: under-reporting is the only safe direction on a shape no row measures.
+ */
+private fun noValueValidationFinding(field: DeclaredElement, member: String, code: String): Finding? {
+    val string = (field.body?.get("fieldType") as? JsonObject)?.get("StringType") as? JsonObject
+        ?: return null
+    if ((string["noValueValidation"] as? JsonPrimitive)?.booleanOrNull != true) {
+        return null
+    }
+    return Finding(
+        FindingCategory.A12_CONSTRAINT,
+        FindingSeverity.ERROR,
+        code,
+        "`$member` names `${field.path}`, a string declared `noValueValidation` — A12 refuses a field it " +
+            "never validates as an ordering key",
+        field.path,
     )
 }
 

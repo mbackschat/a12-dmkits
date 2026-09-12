@@ -129,52 +129,9 @@ class GroupIndexAndSortReferenceLawsTest {
         assertEquals(expected, actual, "what A12 does with each shape of a group's sortFields");
     }
 
-    /**
-     * A direct-child field is not sufficient — the index field's own TYPE is gated too.
-     *
-     * <p>Every admitted row above names a plain value-validating string field, so "a field of this group" and
-     * "a field of this group that A12 will accept as a key" are one predicate there. They are not the same
-     * claim, and the checker may only make the one it measured.
-     */
-    @Test
-    void anIndexFieldsOwnTypeIsGatedBeyondResolvingAtAll() {
-        Map<String, String> actual = new LinkedHashMap<>();
-        actual.put("a plain string field — the control", verdict(REPEATABLE, "indexFieldName", "\"Sku\""));
-        actual.put("a field declared noValueValidation", noValueValidationVerdict("indexFieldName"));
-        actual.put("the same, as a sort field", noValueValidationVerdict("sortFields"));
-
-        Map<String, String> expected = new LinkedHashMap<>();
-        expected.put("a plain string field — the control", KernelLaws.ADMITTED);
-        expected.put("a field declared noValueValidation", "MVK_INDEX_FIELD_NO_VALUE_VALIDATION");
-        expected.put("the same, as a sort field", "MVK_SORT_FIELD_NO_VALUE_VALIDATION");
-        assertEquals(expected, actual, "the index/sort field's own type");
-    }
-
-    /** The probe with `/Order/Items/Sku` redeclared as a no-value-validation string and named as the key. */
-    private static String noValueValidationVerdict(String member) {
-        try {
-            ObjectNode root = (ObjectNode) MAPPER.readTree(Fixtures.orderJson());
-            ObjectNode items = groupBody(root, "Items");
-            for (var element : items.path("elements")) {
-                if ("Sku".equals(element.path("name").asText())) {
-                    // Both flags together: A12 refuses `noValueValidation` without line breaks
-                    // (`MVK_STRING_TYPE_NO_VAL_AND_NO_LINE_BREAK`), so setting one alone would move a second
-                    // variable and measure that refusal instead of this gate.
-                    ((ObjectNode) element.path("Field").path("fieldType"))
-                            .putObject("StringType")
-                            .put("noValueValidation", true).put("lineBreaksPermitted", true);
-                }
-            }
-            // The fixture already keys this group by `Sku`, so leaving that in place would fire the INDEX
-            // gate beside the sort one and measure both at once.
-            items.remove("indexFieldName");
-            items.set(member, MAPPER.readTree(
-                    "sortFields".equals(member) ? "[{\"name\":\"Sku\"}]" : "\"Sku\""));
-            return KernelLaws.verdictOf(root.toString());
-        } catch (IOException unreadable) {
-            throw new UncheckedIOException("the fixture must parse", unreadable);
-        }
-    }
+    // The index/sort field's own TYPE is a separate family, measured in GroupOrderingFieldTypeLawsTest:
+    // every admitted row here names a plain value-validating string field, so "a field of this group" and
+    // "a field A12 accepts as a key" are one predicate in this file and must not be read as one claim.
 
     /**
      * Which of the two accounts of the mechanism A12 actually follows — the row neither table above could

@@ -34,6 +34,13 @@ enum class CheckFamily {
 
     /** A group's `indexFieldName` and `sortFields[].name` each name one of its own fields. */
     GROUP_ORDERING_REFERENCES,
+
+    /**
+     * …and the field each of them names is one A12 will accept as an ordering key — never a string declared
+     * `noValueValidation`. Its own constant because resolving and being usable are different claims, and a
+     * report that merged them would let a resolution fix read as a type approval.
+     */
+    GROUP_ORDERING_FIELD_TYPE,
 }
 
 /**
@@ -161,7 +168,7 @@ internal fun check(
         checksCompleted = setOf(CheckFamily.DECLARED_REFERENCES, CheckFamily.CONDITION_REFERENCES,
             CheckFamily.DECLARATION_SLOTS, CheckFamily.COMPUTATION_ALTERNATIVES,
             CheckFamily.RULE_CONDITION_AND_TARGET, CheckFamily.ELEMENT_NAME_UNIQUENESS,
-            CheckFamily.GROUP_ORDERING_REFERENCES),
+            CheckFamily.GROUP_ORDERING_REFERENCES, CheckFamily.GROUP_ORDERING_FIELD_TYPE),
         gaps = prepared.gaps() + prepared.emptyFactBase() + findings.buildBlocked() + UNREAD_MEMBERS +
             UNIMPLEMENTED_FAMILIES,
     )
@@ -224,9 +231,9 @@ private val UNREAD_MEMBERS = listOf(
     ),
     CoverageGap(
         at = null,
-        reason = "a group's index/sort field is checked for RESOLUTION only — A12 also gates the field's own " +
-            "type there (a `noValueValidation` string is refused, and the table-enum gate beside it is " +
-            "unmeasured), so silence about one is not approval of it",
+        reason = "a group's index/sort field is judged on its `StringType` body alone — a `fieldType` that " +
+            "carries the `noValueValidation` flag anywhere else is left unjudged, because A12 reads that " +
+            "flag only after deciding the type IS a string and no row measures the other shapes",
     ),
     CoverageGap(
         at = null,
