@@ -54,8 +54,17 @@ else
       echo "        $REL, so the mutant applies and every test passes — a false SURVIVED, which is the one" >&2
       echo "        outcome this script exists to prevent. Name the JS lane explicitly as the 5th argument." >&2
       exit 2 ;;
+    consistency/src/jsMain/*|consistency/src/jsTest/*)
+      echo "mutant: REFUSING to guess a lane for a JS-only source set. :consistency:jvmTest never compiles" >&2
+      echo "        $REL, so the mutant applies and every test passes — a false SURVIVED. Name the JS lane" >&2
+      echo "        (:consistency:jsNodeTest) explicitly as the 5th argument." >&2
+      exit 2 ;;
     adapter/*) LANE=:adapter:test ;;
     cli/*) LANE=:cli:test ;;
+    # A Kotlin Multiplatform module registers no plain `test` task, so the fallback below would not merely run
+    # the wrong lane — it would run one that compiles none of this module's sources and matches no test, which
+    # is a false SURVIVED rather than an error (measured 2026-09-12, planting into consistency/src/commonMain).
+    consistency/*) LANE=:consistency:jvmTest ;;
     interpreter/*) LANE=:interpreter:jvmTest ;;
     interpreter-bridge/*) LANE=:interpreter-bridge:test ;;
     schemakit/*) LANE=:schemakit:test ;;
