@@ -41,6 +41,12 @@ enum class CheckFamily {
      * report that merged them would let a resolution fix read as a type approval.
      */
     GROUP_ORDERING_FIELD_TYPE,
+
+    /**
+     * A computation's `roundingMode` and each alternative's `toleranceRangeOp` — that both spell a value
+     * A12 knows, and that the pair they form is one A12 permits.
+     */
+    COMPUTATION_ROUNDING,
 }
 
 /**
@@ -158,8 +164,8 @@ internal fun check(
         prepared.conditionReferences().mapNotNull {
             it.target.asFinding(ReferenceRole.CONDITION_ENTITY, it.declaredAt, it.member)
         } + prepared.declarationSlotFindings() + prepared.computationAlternativeFindings() +
-        prepared.ruleConditionAndTargetFindings() + prepared.elementNameFindings() +
-        prepared.groupOrderingFindings()
+        prepared.computationRoundingFindings() + prepared.ruleConditionAndTargetFindings() +
+        prepared.elementNameFindings() + prepared.groupOrderingFindings()
     return ConsistencyReport(
         modelId = admitted.modelId,
         status = statusOf(findings),
@@ -168,7 +174,8 @@ internal fun check(
         checksCompleted = setOf(CheckFamily.DECLARED_REFERENCES, CheckFamily.CONDITION_REFERENCES,
             CheckFamily.DECLARATION_SLOTS, CheckFamily.COMPUTATION_ALTERNATIVES,
             CheckFamily.RULE_CONDITION_AND_TARGET, CheckFamily.ELEMENT_NAME_UNIQUENESS,
-            CheckFamily.GROUP_ORDERING_REFERENCES, CheckFamily.GROUP_ORDERING_FIELD_TYPE),
+            CheckFamily.GROUP_ORDERING_REFERENCES, CheckFamily.GROUP_ORDERING_FIELD_TYPE,
+            CheckFamily.COMPUTATION_ROUNDING),
         gaps = prepared.gaps() + prepared.emptyFactBase() + findings.buildBlocked() + UNREAD_MEMBERS +
             UNIMPLEMENTED_FAMILIES,
     )
