@@ -297,10 +297,12 @@ private val UNREAD_MEMBERS = listOf(
     ),
     CoverageGap(
         at = null,
-        reason = "DSL text is checked for LEXICAL readability and for ending too early, never for GRAMMAR — " +
-            "so `MVK_UNEXPECTED_TOKEN` and `MVK_EXPECTED_TOKEN_NOT_FOUND` are never reported, and the text " +
-            "a checker cannot yet judge includes a dangling path operator and every wrong-token shape. " +
-            "A12's illegal-CHARACTER class is unmeasured and also unreported",
+        reason = "DSL text is checked for LEXICAL readability and for ending too early, never for GRAMMAR, " +
+            "so no wrong-token shape is judged on its grammar — including text that ends on an operator " +
+            "with a delimiter still open, which A12 answers differently and this checker leaves alone. " +
+            "A12's illegal-CHARACTER class is unmeasured and also unreported. (`MVK_UNEXPECTED_TOKEN` does " +
+            "appear in reports, from the suppression-pragma family, which reads a rendered pragma rather " +
+            "than a condition — so seeing it is not evidence that a condition was parsed.)",
     ),
     CoverageGap(
         at = null,
