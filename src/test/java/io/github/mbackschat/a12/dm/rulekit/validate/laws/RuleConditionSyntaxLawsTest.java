@@ -192,6 +192,10 @@ class RuleConditionSyntaxLawsTest {
         // …and the OPERATOR side flips the other way, which the account cannot accommodate at all.
         actual.put("And inside an unclosed call", verdict("FieldFilled(Tier And"));
         actual.put("And after an unclosed value bracket", verdict("FieldFilled([Tier) And"));
+        // Mismatched pairs, which a DEPTH COUNTER reads as balanced: the checker matches delimiter kinds
+        // instead, and these two rows are what make that difference observable rather than defensive.
+        actual.put("And after a mismatched closer", verdict("FieldFilled(Tier] And"));
+        actual.put("And after a paren closing a bracket", verdict("FieldFilled[Tier) And"));
         // The two PATH_OP members that were never measured, both against the account.
         actual.put("the from-scope keyword left dangling",
                 verdict("RepetitionNotUnique(Addons*/Name @From"));
@@ -216,6 +220,8 @@ class RuleConditionSyntaxLawsTest {
         expected.put("a bare value bracket and For", "MVK_INCOMPLETE_INPUT");
         expected.put("And inside an unclosed call", "MVK_UNEXPECTED_TOKEN");
         expected.put("And after an unclosed value bracket", "MVK_UNEXPECTED_TOKEN");
+        expected.put("And after a mismatched closer", "MVK_UNEXPECTED_TOKEN");
+        expected.put("And after a paren closing a bracket", "MVK_UNEXPECTED_TOKEN");
         expected.put("the from-scope keyword left dangling", "MVK_INCOMPLETE_INPUT");
         expected.put("the filter keyword left dangling", "MVK_INCOMPLETE_INPUT");
         expected.put("the from-scope keyword completed — a control", "MVK_NO_WILDCARD");

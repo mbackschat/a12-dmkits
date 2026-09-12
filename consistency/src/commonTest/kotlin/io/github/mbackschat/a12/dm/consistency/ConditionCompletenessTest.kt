@@ -85,8 +85,11 @@ class ConditionCompletenessTest {
         // A12 says MVK_UNEXPECTED_TOKEN for both of these, and this family used to say MVK_INCOMPLETE_INPUT.
         assertEquals(emptyList(), codesFor("FieldFilled(Price And"), "an operator inside an unclosed call")
         assertEquals(emptyList(), codesFor("FieldFilled([Price) And"), "an operator after an unclosed bracket")
-        // Counted rather than matched, this one reads as balanced; A12 answers the mismatch differently.
-        assertEquals(emptyList(), codesFor("FieldFilled(Price] And"), "a mismatched delimiter pair")
+        // Mismatched pairs a DEPTH COUNTER calls balanced — A12 answers both MVK_UNEXPECTED_TOKEN. Both
+        // spellings are here because each exercises one closer: drop either and half the kind check is
+        // unguarded, since the other row reaches its verdict through the arm that is still intact.
+        assertEquals(emptyList(), codesFor("FieldFilled(Price] And"), "a bracket closing a parenthesis")
+        assertEquals(emptyList(), codesFor("FieldFilled[Price) And"), "a parenthesis closing a bracket")
     }
 
     /**
