@@ -124,15 +124,13 @@ if [ -n "$doc_triggers" ]; then
 
 Run them — WITHOUT -Pfast, which skips them by design:
 
-  ./build.sh --console=plain :docGuardTest :cli:docGuardTest :cli:referentGuardTest \
-    :cli:staleGapGuardTest :cli:semanticsMapGuardTest
-
-If a task reports UP-TO-DATE, its result files are NOT refreshed and this check still refuses — that
-happens for a markdown file no guard declares as an input (CLAUDE.md and docs/CLAUDE.md among them).
-Append `--rerun` to the task that stayed up-to-date:
-
   ./build.sh --console=plain :docGuardTest --rerun :cli:docGuardTest --rerun \
     :cli:referentGuardTest --rerun :cli:staleGapGuardTest --rerun :cli:semanticsMapGuardTest --rerun
+
+Every `--rerun` is deliberate, and `--rerun` is PER-TASK, so one trailing flag would attach only to the
+last task named. This check reads result-file mtimes, and Gradle does not refresh the outputs of a task it
+finds UP-TO-DATE — which is the normal outcome for the many guards that do not declare your edited file as
+an input. Without the flags the command usually leaves this check refusing exactly as before.
 
 Then commit again. If a demo drifted, the failing guard prints the exact regeneration command.
 
