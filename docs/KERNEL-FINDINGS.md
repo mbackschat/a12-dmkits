@@ -5774,7 +5774,25 @@ A computation's `errorCodesToSuppress` is declared `List<String>` and is not a s
 
 **Shape rows, measured on the same carrier.** An unknown `filterType` and a non-object member are UNREADABLE; a missing `filterType` is NOT BUILDABLE (the member is `@NonNull` with no default, so it fails at construction rather than at read); an explicit `null`, an empty `variants` list and a missing `variants` member are all ADMITTED — so `IVariantFilter.getVariants`'s "never null or empty" javadoc is a contract on the accessor, not a law the reader enforces.
 
-**Extended 2026-09-12: the COMPUTATION carrier behaves identically, measured rather than inherited.** The account above is stated at the model level and names no declaration kind, which is precisely why it was not allowed to transfer on its own — the same 2×2 and the same two controls were re-run with a computation whose `operation` names a field that exists nowhere, and all sixteen cells match the rule carrier: `ONLY` (either variant spelling) ADMITTED, `ALL_EXCEPT` (either) `MVK_INVALID_ENTITY`, the unfiltered broken computation refused so the ADMITTED rows are not vacuous. The shape rows match too. So the filter type alone decides on both carriers, and the checker's coverage gap covers both.
+**Extended 2026-09-12: the COMPUTATION carrier behaves identically, measured rather than inherited.** The account above is stated at the model level and names no declaration kind, which is precisely why it was not allowed to transfer on its own — the same 2×2 and the same two controls were re-run with a computation whose `operation` names a field that exists nowhere, and every cell matches the rule carrier: `ONLY` (either variant spelling) ADMITTED, `ALL_EXCEPT` (either) `MVK_INVALID_ENTITY`, the unfiltered broken computation refused so the ADMITTED rows are not vacuous. The shape rows match too. So the filter type alone decides on both carriers, and the checker's coverage gap covers both. *(The cell count is deliberately not written here: `ComputationVariantFilterLawsTest` is the denominator and grew from 16 cells to 18 on 2026-09-12 while a prose count beside it said sixteen.)*
+
+**Extended 2026-09-12: WHICH KINDS of break the filter hides — it hides every verdict, and the exception is the one a checker must be built around.** The rows above all break the same thing, a condition naming a missing entity, so they establish that `ONLY` suppresses *something* and say nothing about *how much*. Seven breaks were therefore run on one rule, each unfiltered (proving it is detectable) and under `ONLY`:
+
+| break | unfiltered | under `ONLY` |
+|---|---|---|
+| condition names no entity | `MVK_INVALID_ENTITY` | **ADMITTED** |
+| condition cannot be parsed (`FieldFilled(Tier`) | `MVK_EXPECTED_TOKEN_NOT_FOUND` | **ADMITTED** |
+| condition ends early (`FieldFilled(Tier) And`) | `MVK_INCOMPLETE_INPUT` | **ADMITTED** |
+| condition cannot be tokenized | `MVK_LEXER_STANDARD_ERROR` | **ADMITTED** |
+| error target names no field | `MVK_ERROR_FIELD_MISSING`,`MVK_MISSING_ERROR_FIELD` | **ADMITTED** |
+| no error message at all | `MVK_ERROR_MESSAGE_MISSING` | **ADMITTED** |
+| **empty error code** | `MVK_ERROR_CODE_MISSING` | **NOT BUILDABLE** — refused, with no `MVK_*` code at all |
+| `errorCode` is JSON `null` | UNREADABLE | UNREADABLE |
+| message locale the reader refuses | UNREADABLE | UNREADABLE |
+
+**Three predictions were wrong here, all in the same direction**: the declaration's own slots — its error code, its messages, its target — were expected to stay judged, on the theory that a consistency rule reading them never consults variants. They do not. So there is no surviving subset of a filtered declaration that a checker could go on judging, and suppressing one family rather than the whole declaration would still over-reject.
+
+**The line the last three rows draw is what the checker is built on: a filter suppresses what A12 would SAY ABOUT a declaration, and cannot rescue a model that fails to BUILD.** An empty `errorCode` still refuses the model under `ONLY` — and refuses it *without* the code it carries unfiltered, so reproducing `MVK_ERROR_CODE_MISSING` there would be wrong twice over. The two UNREADABLE rows generalize it: A12's reader runs a tier before any variant logic, so a shape it refuses is refused whatever the filter says. Hence the portable checker suppresses every finding on a filtered declaration *except* the ones saying the model does not load.
 
 **`variantFilter` also rides FIELD elements** (`serializer.FieldSerializer` writes it), a carrier outside this checker's rules-and-computations subject matter and not measured here.
 
