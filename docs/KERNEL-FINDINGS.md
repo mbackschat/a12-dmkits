@@ -5751,7 +5751,7 @@ A computation's `errorCodesToSuppress` is declared `List<String>` and is not a s
 
 *(Locked: `rulekit.validate.laws.ComputationSuppressionLawsTest`. The checker's own family is `CheckFamily.SUPPRESSED_WARNINGS`.)*
 
-## §13 supplement — an `ONLY` variant filter removes a declaration from `checkConsistency` entirely, so a BROKEN rule is reported clean (measured 2×2 + source-verified, 2026-09-12) <a id="kf299"></a>
+## §13 supplement — an `ONLY` variant filter removes a declaration from `checkConsistency` entirely, so a BROKEN rule or computation is reported clean (measured 2×2 on both carriers + source-verified, 2026-09-12) <a id="kf299"></a>
 
 > Fold: not-foldable — a model-structure law on the rule element, outside the evaluation scope.
 
@@ -5774,6 +5774,8 @@ A computation's `errorCodesToSuppress` is declared `List<String>` and is not a s
 
 **Shape rows, measured on the same carrier.** An unknown `filterType` and a non-object member are UNREADABLE; a missing `filterType` is NOT BUILDABLE (the member is `@NonNull` with no default, so it fails at construction rather than at read); an explicit `null`, an empty `variants` list and a missing `variants` member are all ADMITTED — so `IVariantFilter.getVariants`'s "never null or empty" javadoc is a contract on the accessor, not a law the reader enforces.
 
+**Extended 2026-09-12: the COMPUTATION carrier behaves identically, measured rather than inherited.** The account above is stated at the model level and names no declaration kind, which is precisely why it was not allowed to transfer on its own — the same 2×2 and the same two controls were re-run with a computation whose `operation` names a field that exists nowhere, and all sixteen cells match the rule carrier: `ONLY` (either variant spelling) ADMITTED, `ALL_EXCEPT` (either) `MVK_INVALID_ENTITY`, the unfiltered broken computation refused so the ADMITTED rows are not vacuous. The shape rows match too. So the filter type alone decides on both carriers, and the checker's coverage gap covers both.
+
 **`variantFilter` also rides FIELD elements** (`serializer.FieldSerializer` writes it), a carrier outside this checker's rules-and-computations subject matter and not measured here.
 
-*(Locked: `rulekit.validate.laws.RuleVariantFilterLawsTest`.)*
+*(Locked: `rulekit.validate.laws.RuleVariantFilterLawsTest` and `rulekit.validate.laws.ComputationVariantFilterLawsTest`.)*
