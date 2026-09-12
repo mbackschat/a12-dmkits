@@ -1792,7 +1792,7 @@
       },
       "invalidExample": {
         "dsl": "Length(Quantity) > 10",
-        "error": "operand type",
+        "error": "MVK_NO_STRING",
         "fix": "Length needs a string field, not a number"
       },
       "semantics": {
@@ -1909,7 +1909,7 @@
       },
       "invalidExample": {
         "dsl": "FieldFilled(CustomerName) And [Quantity] < [ProductCode] + 1",
-        "error": "arithmetic needs numeric operands",
+        "error": "MVK_NO_STRING_OR_NUMBER_FOR_ADD",
         "fix": "ProductCode is a string; arithmetic operands must be numeric"
       },
       "correctives": [

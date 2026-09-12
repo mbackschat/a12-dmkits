@@ -17178,7 +17178,7 @@
       ],
       "expected": {
         "verdict": "REJECTED",
-        "code": "operand type"
+        "code": "MVK_NO_STRING"
       },
       "evidence": [
         {
@@ -17245,7 +17245,7 @@
       ],
       "expected": {
         "verdict": "REJECTED",
-        "code": "arithmetic needs numeric operands"
+        "code": "MVK_NO_STRING_OR_NUMBER_FOR_ADD"
       },
       "evidence": [
         {
