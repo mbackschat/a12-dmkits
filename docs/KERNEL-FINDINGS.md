@@ -5548,7 +5548,10 @@ The rule's other two declaration slots, measured for the first time because both
 | `severity` `"ERROR"` · `"WARNING"` · `"INFO"` | ADMITTED |
 | **`severity` ABSENT** | **ADMITTED** |
 | `severity` `""` · `"error"` · `"Error"` · `"FATAL"` | **UNREADABLE** — a strict enum binding |
+| `severity` whitespace-only · a NUMBER (`7`) · a JSON CONTAINER | **UNREADABLE** *(added 2026-09-12)* — none of `errorCode`'s leniencies carry across: no coercion, and blank is not absence |
 | an explicit `null` on `errorCode`, `severity`, `errorCondition` or `errorEntityRelPath` | **UNREADABLE** |
+
+**The two slots share a carrier and almost no behaviour, which is the transferable half.** `errorCode` coerces a scalar, reads blank as missing, and draws an `MVK_*` verdict; `severity` is an ENUM binding, so it coerces nothing, treats blank as a refusal rather than a default, matches case-SENSITIVELY, and every present shape outside its three constants is the READER's refusal. A checker sharing one predicate across the two would be wrong on five of those rows. *(The portable checker reports the severity tier as `CK_MODEL_NOT_BUILDABLE` — the model never loads — and reports nothing for an absent member; added 2026-09-12.)*
 
 **`MVK_SEVERITY_MISSING` fires for none of these shapes, so the builder's refusal is broader than any measured basis.** An absent `severity` is simply accepted. That makes `Rule.Builder`'s "severity is required" an over-rejection candidate of exactly the class the [2026-07-25 audit](MVK-LEDGER.md) hunts — a refusal invisible because the Kernel is never asked. **What this does not establish:** what an absent `severity` DEFAULTS to is not measured here, and neither is what shape does fire `MVK_SEVERITY_MISSING`; the code exists in the metamodel and some other input must reach it.
 

@@ -8,8 +8,8 @@ import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.contentOrNull
 
 /**
- * The declaration SLOTS of a stored rule or computation — its `name`, a rule's `errorCode`, and its
- * `errorMessage` texts — together with the declared locale set those texts answer to.
+ * The declaration SLOTS of a stored rule or computation — its `name`, a rule's `errorCode` and `severity`,
+ * and its `errorMessage` texts — together with the declared locale set those texts answer to.
  *
  * Nothing here needs a condition parser: every row reads members A12 declares as structured JSON, which is
  * what makes this the family that can land before the checker owns a syntax layer.
@@ -43,7 +43,7 @@ import kotlinx.serialization.json.contentOrNull
 fun PreparedModel.declarationSlotFindings(): List<Finding> =
     declaredLocaleFindings() +
         elements.filter { it.declaredKind in EXECUTABLE_KINDS }.flatMap { element ->
-            reservedNameFinding(element) + errorCodeFindings(element) +
+            reservedNameFinding(element) + errorCodeFindings(element) + severityFindings(element) +
                 messageFindings(element, declaredLocales)
         }
 
@@ -108,10 +108,7 @@ private fun reservedNameFinding(element: DeclaredElement): List<Finding> =
  * stated because the sibling name law went the other way — `MVK_RULE_NAME_INVALID` reads as a rule's law and
  * fires for computations too, so "rule-only" is a claim that needs its own basis here.
  *
- * **A `severity` slot is deliberately NOT checked.** An ABSENT `severity` is accepted by A12, and every
- * spelling outside its enum makes the source unreadable rather than invalid — so there is no verdict for this
- * family to report, and `MVK_SEVERITY_MISSING` (which `Rule.Builder` raises) fires for none of the measured
- * shapes. Reproducing that builder refusal here would reject a model the Kernel accepts.
+ * The `severity` slot beside it is [severityFindings].
  */
 private fun errorCodeFindings(element: DeclaredElement): List<Finding> {
     if (element.kind != "Rule") {
@@ -149,6 +146,53 @@ private fun errorCodeFindings(element: DeclaredElement): List<Finding> {
         else -> emptyList()
     }
 }
+
+/** The three constants A12's `Severity` binding admits — exactly, and case-sensitively. */
+private val SEVERITIES = setOf("ERROR", "WARNING", "INFO")
+
+/**
+ * A RULE's `severity`, which is an ENUM binding and therefore behaves like none of its sibling slots.
+ *
+ * **An ABSENT `severity` is accepted** — A12 defaults it to `ERROR` — so nothing is reported for one, and in
+ * particular never `MVK_SEVERITY_MISSING`, which `Rule.Builder` raises and the Kernel raises for no measured
+ * shape at all. Reproducing that builder refusal would reject a model A12 accepts.
+ *
+ * **A PRESENT member outside the set makes the source UNREADABLE**, and that tier IS reported, as
+ * `errorCode`'s explicit `null` is a few lines above: the model never loads, so a consumer handed silence
+ * would read a clean report for a model that can never be used. This is the one place the two slots'
+ * treatments could look inconsistent, and they are not — they report the same tier, reached by different
+ * shapes.
+ *
+ * **None of the sibling slots' leniencies carry across**, which is why each was measured rather than assumed
+ * (`RuleCodeAndSeverityLawsTest`): there is no coercion (`7` is not a severity, where `7` IS the error code
+ * "7"), blank does not count as absent (the empty string and whitespace are refusals, not defaults), the
+ * match is case-SENSITIVE (`"Error"` is refused), and a JSON container is refused too — the one member of
+ * this checker's standing container gap that is decided.
+ *
+ * Nothing is reported for a computation, for [errorCodeFindings]'s reason: the member does not exist there.
+ */
+private fun severityFindings(element: DeclaredElement): List<Finding> {
+    if (element.kind != "Rule") {
+        return emptyList()
+    }
+    val declared = (element.body ?: return emptyList())["severity"] ?: return emptyList()
+    val spelled = (declared as? JsonPrimitive)?.takeIf { it.isString }?.content
+    if (spelled in SEVERITIES) {
+        return emptyList()
+    }
+    return listOf(
+        Finding(
+            FindingCategory.A12_CONSTRAINT,
+            FindingSeverity.ERROR,
+            CK_MODEL_NOT_BUILDABLE,
+            "`severity` is ${spelled?.let { "`$it`" } ?: "not a string"}, and A12 admits only " +
+                "${SEVERITIES.joinToString(", ") { "`$it`" }} — its reader refuses the source outright, so " +
+                "no consistency verdict about this model exists. Omitting the member is what defaults it.",
+            element.path,
+        ),
+    )
+}
+
 
 /**
  * One authored error-message entry, reduced to what A12 collects from it.

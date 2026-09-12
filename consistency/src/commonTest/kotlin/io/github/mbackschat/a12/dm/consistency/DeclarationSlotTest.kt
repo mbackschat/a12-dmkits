@@ -224,24 +224,15 @@ class DeclarationSlotTest {
         }
     }
 
-    /**
-     * A rule's `errorCode`, and the two neighbouring slots that are deliberately NOT checked.
-     *
-     * The severity rows are the ones worth having. `Rule.Builder` refuses an unset severity citing
-     * `MVK_SEVERITY_MISSING`, and A12 ACCEPTS an absent one — so reproducing that refusal here would reject a
-     * model the Kernel admits, which is the direction no consumer can detect. A spelling outside the enum is
-     * a reader refusal rather than a verdict, and is likewise not this family's to report.
-     */
+    /** A rule's `errorCode` — required non-blank, coerced from a scalar, and refused as an explicit null. */
     @Test
-    fun aRulesErrorCodeIsCheckedWhereItsSeverityDeliberatelyIsNot() {
+    fun aRulesErrorCodeIsRequiredNonBlank() {
         val actual = mutableMapOf<String, List<String>>()
         actual["a code — the control"] = codesForRule(""""errorCode":"PROBE"""")
         actual["no errorCode member"] = codesForRule("")
         actual["a blank errorCode"] = codesForRule(""""errorCode":"   """")
         actual["a numeric errorCode"] = codesForRule(""""errorCode":7""")
         actual["an explicitly null errorCode"] = codesForRule(""""errorCode":null""")
-        actual["no severity member"] = codesForRule(""""errorCode":"PROBE"""")
-        actual["a severity outside the enum"] = codesForRule(""""errorCode":"PROBE","severity":"FATAL"""")
 
         val expected = mapOf(
             "a code — the control" to listOf(),
@@ -250,10 +241,64 @@ class DeclarationSlotTest {
             // Coerced by A12 to the code "7", so refusing it would reject a model the Kernel admits.
             "a numeric errorCode" to listOf(),
             "an explicitly null errorCode" to listOf("CK_MODEL_NOT_BUILDABLE"),
-            "no severity member" to listOf(),
-            "a severity outside the enum" to listOf(),
         )
-        assertEquals(expected, actual, "a rule's code and severity slots")
+        assertEquals(expected, actual, "a rule's error code slot")
+    }
+
+    /**
+     * A rule's `severity` is an ENUM binding, so none of `errorCode`'s leniencies above carry across.
+     *
+     * Every row here was measured (`rulekit.validate.laws.RuleCodeAndSeverityLawsTest`), because each is a
+     * place the sibling slot behaves differently and a checker sharing one predicate would be wrong: there is
+     * no coercion, blank does not count as absent, and the match is case-SENSITIVE. The verdict for every
+     * refused spelling is the READER's, not A12's opinion of the rule, so it is [CK_MODEL_NOT_BUILDABLE] and
+     * never `MVK_SEVERITY_MISSING` — which `Rule.Builder` raises and the Kernel raises for no shape at all.
+     */
+    @Test
+    fun aRulesSeverityIsAStrictEnumAndOnlyItsAbsenceIsLegal() {
+        fun withSeverity(raw: String) = codesForRule(""""errorCode":"PROBE","severity":$raw""")
+        val actual = mutableMapOf<String, List<String>>()
+        actual["ERROR"] = withSeverity(""""ERROR"""")
+        actual["WARNING"] = withSeverity(""""WARNING"""")
+        actual["INFO"] = withSeverity(""""INFO"""")
+        // The one shape A12 accepts without the member: it defaults to ERROR.
+        actual["absent"] = codesForRule(""""errorCode":"PROBE"""")
+        actual["FATAL — outside the enum"] = withSeverity(""""FATAL"""")
+        actual["Error — the right constant, wrong case"] = withSeverity(""""Error"""")
+        actual["lowercase error"] = withSeverity(""""error"""")
+        actual["blank"] = withSeverity("""""""")
+        actual["whitespace only"] = withSeverity(""""   """")
+        actual["a number"] = withSeverity("7")
+        actual["an explicit null"] = withSeverity("null")
+        actual["a JSON container"] = withSeverity("""{"code":"ERROR"}""")
+
+        val unreadable = listOf("CK_MODEL_NOT_BUILDABLE")
+        val expected = mapOf(
+            "ERROR" to listOf(),
+            "WARNING" to listOf(),
+            "INFO" to listOf(),
+            "absent" to listOf(),
+            "FATAL — outside the enum" to unreadable,
+            "Error — the right constant, wrong case" to unreadable,
+            "lowercase error" to unreadable,
+            "blank" to unreadable,
+            "whitespace only" to unreadable,
+            "a number" to unreadable,
+            "an explicit null" to unreadable,
+            // The one member of this checker's standing container gap that IS decided.
+            "a JSON container" to unreadable,
+        )
+        assertEquals(expected, actual, "a rule's severity slot")
+    }
+
+    /** A computation declares no `severity`, so one spelled there is not this family's to judge. */
+    @Test
+    fun aComputationsSeverityIsNotJudged() {
+        assertEquals(
+            listOf(),
+            codesFor("Computation", "PriceCheck", BOTH, slots = """"severity":"FATAL""""),
+            "a computation carries no severity member for A12 to bind",
+        )
     }
 
     /** A computation carries neither member, and one carrying neither is admitted — so nothing is reported. */

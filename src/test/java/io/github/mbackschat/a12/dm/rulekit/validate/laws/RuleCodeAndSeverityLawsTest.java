@@ -102,6 +102,12 @@ class RuleCodeAndSeverityLawsTest {
         actual.put("lowercase error", verdict("severity", "\"error\""));
         actual.put("Error", verdict("severity", "\"Error\""));
         actual.put("FATAL", verdict("severity", "\"FATAL\""));
+        // The three shapes a consumer of this law has to decide and the rows above did not reach: the
+        // sibling `errorCode` slot COERCES a number and reads whitespace as blank, so neither behaviour can
+        // be assumed to carry across to an enum-bound member.
+        actual.put("whitespace only", verdict("severity", "\"   \""));
+        actual.put("a number", verdict("severity", "7"));
+        actual.put("a JSON object", verdict("severity", "{\"code\":\"ERROR\"}"));
 
         Map<String, String> expected = new LinkedHashMap<>();
         expected.put("ERROR — the control", KernelLaws.ADMITTED);
@@ -119,6 +125,9 @@ class RuleCodeAndSeverityLawsTest {
         expected.put("lowercase error", KernelLaws.UNREADABLE);
         expected.put("Error", KernelLaws.UNREADABLE);
         expected.put("FATAL", KernelLaws.UNREADABLE);
+        expected.put("whitespace only", KernelLaws.UNREADABLE);
+        expected.put("a number", KernelLaws.UNREADABLE);
+        expected.put("a JSON object", KernelLaws.UNREADABLE);
         assertEquals(expected, actual, "what A12 does with each shape of a rule's severity");
     }
 
