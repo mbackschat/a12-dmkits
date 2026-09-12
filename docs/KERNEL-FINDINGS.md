@@ -5401,7 +5401,7 @@ One model authored by `DocumentModelDraft`, with exactly one member removed or r
 | `content.modelRoot.rootGroups` set to `[]` | read |
 | `content.modelRoot.rootGroups` removed | read |
 | `content.modelRoot` removed | read |
-| `content` removed | **NOT read** — the deserializer raises |
+| `content` removed, or replaced by a string or an array | **NOT read** — the deserializer raises |
 | `header.modelType` set to `selection` | read |
 | `header.modelType` removed | read |
 
@@ -5430,8 +5430,10 @@ A provider `address` declares `Zip` one group below its root and a rule in its r
 | yes | off | on | accepted |
 | yes | off | off | `MVK_INVALID_ENTITY` |
 
-**Either flag suffices, by a different route, and only the collision separates them.** The provider's flag binds the name inside the provider before integration, so the reference emerges naming an absolute host path (`FieldFilled(Zip)` → `FieldFilled(/Order/ShipTo/Inner/Zip)`, visible in the expanded DM-JSON, and left bare when that flag is off). The host's flag resolves whatever is still bare afterwards, over the whole EXPANDED tree — which is why the host's own `Zip` then makes it ambiguous. Six of the eight cells agree between the two accounts; the separating pair is the two collision rows one flag apart.
+**Either flag suffices, by a different route, and only the collision tells the routes apart.** The grid is exactly: the reference resolves when EITHER flag is on, and when only the host's is on a name the host also declares makes it ambiguous. The provider's flag binds the name inside the provider before integration, so it emerges naming an absolute host path (`FieldFilled(Zip)` → `FieldFilled(/Order/ShipTo/Inner/Zip)`, visible in the expanded DM-JSON, and left bare when that flag is off); the host's flag resolves whatever is still bare afterwards, over the whole EXPANDED tree. The separating pair is the two collision rows one flag apart — every other cell is explained by both accounts.
 
-**Consequence for a checker: the short-name fallback has two different denominators in one model.** A reference authored in a provider whose flag is on searches that provider alone; every other reference searches the whole expanded tree under the entry model's flag. A single denominator is wrong in one direction or the other, and the direction it is wrong in is invisible without a name that both models declare.
+**Consequence for a checker: the short-name fallback has two different denominators in one model.** A reference authored in a provider whose flag is on searches **that MOUNT INSTANCE's expanded subtree**; every other reference searches the whole expanded tree under the entry model's flag. A single denominator is wrong in one direction or the other, and the direction it is wrong in is invisible without a name that both models declare.
+
+**Corrected 2026-09-12, hours later, by a cold review that built the two shapes this entry's own fixture could not.** The sentence above read "searches that provider alone", and the portable checker took the noun literally — keying the denominator on the AUTHORING MODEL. That is wrong in both directions and in the fatal one: a provider is fully expanded before it is bound ([KF3](#kf3)), so a field its own nested include contributed is inside its index and an author-keyed filter drops it; and one provider mounted at two points is two separate indexes, so an author-keyed filter finds both copies and reports `MVK_FIELDNAME_NOT_UNIQUE` for a model the Kernel accepts. Both re-measured through `ModelLoader.loadAndCheck`. The original eight-cell grid stands; it simply has one mount and no nesting, so nothing in it could separate "the provider" from "this mount of it". The entry also carried a wrong cell count ("six of the eight cells agree between the two accounts"), removed above in favour of the rule the grid actually states.
 
 *(Locked: `rulekit.validate.laws.IncludedShortNameBindingLawsTest`, which asserts the whole grid at once; the portable checker's reproduction is `consistency.WorkspaceMountTest`.)*

@@ -762,14 +762,17 @@ tasks.register('docGuardTest', Test) {
             // dsl sources + the operator catalog moved to :rulekit in the Stage-4 module cut.
             'dsl sources'      : fileTree('rulekit/src/main/java/io/github/mbackschat/a12/dm/rulekit/dsl') { include '**/*.java' },
             'operator catalog' : fileTree('rulekit/src/main/resources/catalog'),
-            // CheckerCodeCitationResolvesTest scans EVERY markdown file for a `CK_*` citation, so the tree is
-            // the denominator rather than a list that would have to be extended by whoever writes the next
-            // paragraph. Declaring less would let a prose-only edit introduce a dangling code while this lane
-            // stayed UP-TO-DATE — the failure mode `guardInputs` exists for.
+            // CheckerCodeCitationResolvesTest has a TWO-sided denominator and both sides are declared, because
+            // either one going stale gives the same false green. The citing side is every tracked markdown —
+            // including `.claude/**`, which `Checkout.markdown()` scans and an earlier spelling of this entry
+            // excluded. The defining side is the module that mints the codes: renaming the constant changes
+            // the test's verdict and touches no other input here, and `:consistency` is not on this task's
+            // runtime classpath, so nothing else would have re-run it.
             'citing prose'     : fileTree('.') {
                 include '**/*.md'
-                exclude '.claude/**', '**/build/**', '.git/**', '**/node_modules/**'
-            }])
+                exclude '**/build/**', '.git/**', '**/node_modules/**'
+            },
+            'checker-owned codes': fileTree('consistency/src/commonMain') { include '**/*.kt' }])
 }
 
 // --- The public-API surface lock (Set S; RELEASE-SPEC §11, TESTING-SPEC "structural-law guardians") ------

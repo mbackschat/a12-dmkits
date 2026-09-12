@@ -130,16 +130,24 @@ fun PreparedModel.resolve(
     }
     // WHICH model's flag applies, and WHICH elements the fallback may see, are one question with two
     // answers. A mounted declaration whose own model turns the flag on is bound INSIDE that model before
-    // integration and emerges fully qualified, so it searches its provider alone and a host reusing the name
-    // cannot retarget it. Every other reference — one in the entry model, or one from a provider that leaves
-    // the flag off, which travels bare — is bound over the whole EXPANDED tree under the entry model's flag,
-    // so a mounted field of the same name does make it ambiguous. Both halves measured; see
-    // `DeclarationOrigin.shortNameFallbackAllowed`.
+    // integration and emerges fully qualified, so a host reusing the name cannot retarget it. Every other
+    // reference — one in the entry model, or one from a provider that leaves the flag off, which travels
+    // bare — is bound over the whole EXPANDED tree under the entry model's flag, so a mounted field of the
+    // same name does make it ambiguous. Both halves measured; see `DeclarationOrigin.shortNameFallbackAllowed`.
     val boundInProvider = origin.isMounted && origin.shortNameFallbackAllowed
     if (!boundInProvider && !fieldRefByShortNameAllowed) {
         return Reference.Undeclared(candidate)
     }
-    val scope = if (boundInProvider) elements.filter { it.origin.modelId == origin.modelId } else elements
+    // The denominator is this MOUNT INSTANCE's subtree, not the provider's own declarations. The provider is
+    // fully expanded before it is bound (KF3), so a field its own nested include contributed is inside its
+    // index; and one provider mounted at two points is two separate indexes, so the second copy must not make
+    // the first ambiguous. Keying on the authoring model instead got both cases wrong, in the direction that
+    // rejects a model A12 accepts — measured 2026-09-12 through `ModelLoader.loadAndCheck` on both shapes.
+    val scope = if (boundInProvider) {
+        elements.filter { it.path.startsWith(origin.mountedPrefix + "/") }
+    } else {
+        elements
+    }
     val matches = scope.filter { it.kind == FIELD_KIND && it.path.substringAfterLast('/') == name }
     return when (matches.size) {
         0 -> Reference.Undeclared(candidate)

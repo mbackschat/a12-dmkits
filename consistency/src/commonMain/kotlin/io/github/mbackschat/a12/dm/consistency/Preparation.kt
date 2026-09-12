@@ -155,19 +155,20 @@ fun prepare(
     val content = (admitted.parsed as? JsonObject)?.get("content") as? JsonObject
     val declaredCode = content.conditionLanguageCode()?.takeIf { it.isNotBlank() }
     val declaredLanguage = declaredCode?.let { ConditionLanguage.of(it) }
-    val collector = Collector(admitted.modelId, admitted.source.diagnosticLabel, providers)
+    val collector = Collector(providers)
     val root = (content?.get("modelRoot") as? JsonObject)?.get("rootGroups")
     val entry = Scope(
         header = (admitted.parsed as? JsonObject)?.get("header") as? JsonObject,
         origin = DeclarationOrigin(admitted.modelId),
         visiting = setOf(admitted.modelId),
+        diagnosticLabel = admitted.source.diagnosticLabel,
     )
-    collector.each(root, at = null, what = "content.modelRoot.rootGroups") {
+    collector.each(root, at = null, what = "content.modelRoot.rootGroups", scope = entry) {
         collector.collect(it, "", null, entry)
     }
     return PreparedModel(
         elements = collector.elements,
-        fieldRefByShortNameAllowed = collector.flag(content),
+        fieldRefByShortNameAllowed = collector.flag(content, entry),
         conditionLanguage = declaredLanguage ?: ConditionLanguage.DEFAULT,
         unsupportedConditionLanguage = declaredCode.takeIf { it != null && declaredLanguage == null },
         unexpandedMounts = collector.unexpandedMounts,
@@ -183,13 +184,15 @@ private data class Scope(
     val header: JsonObject?,
     val origin: DeclarationOrigin,
     val visiting: Set<String>,
+    /**
+     * The label of the SOURCE these declarations came from. A workspace check reads several files, so a
+     * diagnostic naming only the entry model would send a reader to the wrong one — which is exactly the
+     * failure the label exists to prevent.
+     */
+    val diagnosticLabel: String?,
 )
 
-private class Collector(
-    private val modelId: String,
-    private val diagnosticLabel: String?,
-    private val providers: Map<String, Admission.Admitted>,
-) {
+private class Collector(private val providers: Map<String, Admission.Admitted>) {
     val elements = mutableListOf<DeclaredElement>()
     val diagnostics = mutableListOf<Diagnostic>()
     val unexpandedMounts = mutableListOf<UnexpandedMount>()
@@ -200,31 +203,32 @@ private class Collector(
      *     name itself.
      */
     fun collect(node: JsonElement, parentPath: String, enclosing: String?, scope: Scope) {
-        val element = node as? JsonObject ?: return malformed(enclosing, "a declaration must be a JSON object")
+        val element = node as? JsonObject
+            ?: return malformed(enclosing, "a declaration must be a JSON object", scope)
         val kind = element.text("type")
         val name = element.text("name")
         // `type` names the envelope and `name` places the subtree, so a declaration missing either cannot be
         // descended into. `id` is not in that set: it identifies the element but no longer locates it.
         if (kind == null || name == null) {
-            return malformed(enclosing, "a declaration must carry both `type` and `name`")
+            return malformed(enclosing, "a declaration must carry both `type` and `name`", scope)
         }
         val path = "$parentPath/$name"
         val id = element.text("id")
         if (id == null) {
-            malformed(path, "a declaration must carry an `id`")
+            malformed(path, "a declaration must carry an `id`", scope)
         }
         elements += DeclaredElement(path, name, kind, id, element, scope.origin)
         // The envelope is optional — the Kernel default-constructs the element when it is absent — but a
         // present one must be an object, since the Kernel binds it to the kind's type.
         val envelope = element[kind]
         if (envelope != null && envelope !is JsonObject) {
-            return malformed(path, "`$kind` must be a JSON object")
+            return malformed(path, "`$kind` must be a JSON object", scope)
         }
         when (DeclaredKind.of(kind)) {
             DeclaredKind.GROUP -> descendGroup(envelope as? JsonObject, path, scope)
             // An unrecognized `type` makes the whole source unreadable to the Kernel, so it is reported here
             // rather than passing as an inert declaration this build merely does not handle.
-            null -> malformed(path, "`$kind` is not an A12 element type")
+            null -> malformed(path, "`$kind` is not an A12 element type", scope)
             DeclaredKind.FIELD, DeclaredKind.RULE, DeclaredKind.COMPUTATION -> Unit
         }
     }
@@ -242,7 +246,7 @@ private class Collector(
         if (!alias.isNullOrEmpty() && (elements == null || (elements as? JsonArray).isNullOrEmpty())) {
             return mount(alias, path, body, scope)
         }
-        each(elements, path, "$path's `elements`") { collect(it, path, path, scope) }
+        each(elements, path, "$path's `elements`", scope) { collect(it, path, path, scope) }
     }
 
     /** Expand the model [alias] names into the mount group at [path], or state why it stayed unexpanded. */
@@ -280,8 +284,9 @@ private class Collector(
                 shortNameFallbackAllowed = providerContent.declaresShortNameFallback(),
             ),
             visiting = scope.visiting + reference,
+            diagnosticLabel = provider.source.diagnosticLabel,
         )
-        each((root["Group"] as? JsonObject)?.get("elements"), path, "`$reference`'s root group elements") {
+        each((root["Group"] as? JsonObject)?.get("elements"), path, "`$reference`'s root group elements", nested) {
             collect(it, path, path, nested)
         }
     }
@@ -296,6 +301,15 @@ private class Collector(
     private fun unsupportedMountOption(body: JsonObject): String? = when {
         (body["includeLevel"] as? JsonPrimitive)?.contentOrNull == "MODEL_ROOT" ->
             "a MODEL_ROOT include mounts every top-level group of the provider and is not expanded here"
+        // `includeLevel` is a strict two-valued enum: any other spelling — `model_root`, a number, a blank —
+        // makes the model UNREADABLE ("No enum constant …IncludeLevel.x", measured 2026-09-12), so A12 never
+        // judges it. Expanding it as the default would invent a verdict for a source the Kernel refuses.
+        // This states it as a gap rather than as the rejection A12 issues, which under-reports deliberately:
+        // the checker owns no code for an unbuildable model beyond `CK_MODEL_NOT_BUILDABLE`, and reaching
+        // that from here would need the mount path to carry findings as well as gaps.
+        body.declaresUnreadableIncludeLevel() ->
+            "`includeLevel` carries a spelling A12's own reader refuses, so the model does not load at all " +
+                "and nothing here is a verdict about it"
         body.flagIsOn("excludeRules") ->
             "`excludeRules` drops the provider's rules before mounting and is not applied here"
         body.flagIsOn("excludeComputations") ->
@@ -308,11 +322,11 @@ private class Collector(
     }
 
     /** Iterate a member that must be an array, diagnosing rather than raising when it is not. */
-    fun each(value: JsonElement?, at: String?, what: String, body: (JsonElement) -> Unit) {
+    fun each(value: JsonElement?, at: String?, what: String, scope: Scope, body: (JsonElement) -> Unit) {
         when (value) {
             null -> Unit
             is JsonArray -> value.forEach(body)
-            else -> malformed(at, "$what must be a JSON array")
+            else -> malformed(at, "$what must be a JSON array", scope)
         }
     }
 
@@ -324,28 +338,43 @@ private class Collector(
      * verdict on a model A12 reads — the read-path half of the over-strictness rule, and the same coercion
      * [text] applies to `type`/`id`/`name`.
      */
-    fun flag(content: JsonObject?): Boolean {
+    fun flag(content: JsonObject?, entry: Scope): Boolean {
         val declared = (content?.get("modelConfig") as? JsonObject)?.get("fieldRefByShortNameAllowed")
             ?: return false
         return when ((declared as? JsonPrimitive)?.contentOrNull) {
             "true" -> true
             "false" -> false
             else -> {
-                malformed(null, "`fieldRefByShortNameAllowed` must be a boolean, or a string spelling one")
+                malformed(null, "`fieldRefByShortNameAllowed` must be a boolean, or a string spelling one", entry)
                 false
             }
         }
     }
 
 
-    private fun malformed(at: String?, explain: String) {
-        // The caller's label rides along, the same way admission's diagnostics carry it: a consumer checking
-        // several sources needs the FILE, not only the model id it happened to declare.
-        diagnostics += Diagnostic(DiagnosticCode.DECLARATION_NOT_WELL_FORMED, modelId, explain, at, diagnosticLabel)
+    private fun malformed(at: String?, explain: String, scope: Scope) {
+        // The identity is the SOURCE the declaration was written in, not the model being checked. A mounted
+        // provider's broken element is the provider's, and attributing it to the entry model sends a reader
+        // to a file that does not contain it — which is the whole reason the label exists.
+        diagnostics += Diagnostic(
+            DiagnosticCode.DECLARATION_NOT_WELL_FORMED,
+            scope.origin.modelId,
+            explain,
+            at,
+            scope.diagnosticLabel,
+        )
     }
 }
 
 private fun JsonArray?.isNullOrEmpty(): Boolean = this == null || this.isEmpty()
+
+/** The two spellings A12's `IncludeLevel` enum admits; absence means `SINGLE_RG`. */
+private val INCLUDE_LEVELS = setOf("SINGLE_RG", "MODEL_ROOT")
+
+private fun JsonObject.declaresUnreadableIncludeLevel(): Boolean {
+    val declared = this["includeLevel"] ?: return false
+    return (declared as? JsonPrimitive)?.contentOrNull !in INCLUDE_LEVELS
+}
 
 /**
  * A PROVIDER's own `fieldRefByShortNameAllowed`, read without diagnosing: an unreadable value in a model that
@@ -369,11 +398,18 @@ private fun JsonObject?.referenceForAlias(alias: String): String? =
         ?.takeIf { it.isNotBlank() }
 
 /**
- * Whether a mount flag is ON. Only a true spelling counts: the Kernel reads a non-Boolean
- * `excludeRules`/`excludeComputations` as FALSE and lets the content survive (KF3's coercion matrix), so a
- * malformed value must not suspend an include that A12 would expand in full.
+ * Whether a mount flag is ON. Only the JSON BOOLEAN `true` counts: the Kernel reads every non-Boolean
+ * `excludeRules`/`excludeComputations` as FALSE and lets the content survive (KF3's coercion matrix, and
+ * re-measured 2026-09-12 over `true`, `"true"`, `"yes"`, `1` and `{}` — only the boolean drops the rule), so
+ * a malformed value must not suspend an include that A12 would expand in full. The quoted `"true"` is the one
+ * that looks harmless and is not, which is why `isString` decides rather than the text.
+ *
+ * Deliberately NOT the coercion [Collector.flag] applies: `fieldRefByShortNameAllowed` DOES accept its quoted
+ * spelling (measured separately). Two members, two Jackson bindings, and assuming one rule for both is how
+ * this was wrong in the first place.
  */
-private fun JsonObject.flagIsOn(key: String): Boolean = (this[key] as? JsonPrimitive)?.contentOrNull == "true"
+private fun JsonObject.flagIsOn(key: String): Boolean =
+    (this[key] as? JsonPrimitive)?.let { !it.isString && it.content == "true" } == true
 
 /**
  * A member read the way the Kernel reads it: `ElementDeserializer` takes `type`, `id` and `name` through

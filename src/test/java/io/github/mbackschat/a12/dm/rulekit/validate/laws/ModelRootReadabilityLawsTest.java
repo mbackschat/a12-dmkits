@@ -76,11 +76,19 @@ class ModelRootReadabilityLawsTest {
                 edited(tree -> content(tree).remove("modelRoot"))));
     }
 
-    /** The only shape the reader cannot take, and therefore the only one a checker may refuse for. */
+    /**
+     * The only shape the reader cannot take, and therefore the only one a checker may refuse for — measured
+     * both ways a source can fail to carry a model container, because a refusal written for "absent" and
+     * applied to "not an object" would be broader than its basis.
+     */
     @Test
-    void anAbsentContentIsNotReadable() {
+    void aContentThatIsNotAModelContainerIsNotReadable() {
         assertThrows(ModelInputException.class, () -> ModelLoader.loadSelfContained(
                 edited(tree -> tree.remove("content"))));
+        assertThrows(RuntimeException.class, () -> ModelLoader.loadSelfContained(
+                edited(tree -> tree.put("content", "not a model"))));
+        assertThrows(RuntimeException.class, () -> ModelLoader.loadSelfContained(
+                edited(tree -> tree.putArray("content"))));
     }
 
     /**

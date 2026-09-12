@@ -205,12 +205,45 @@ class WorkspaceMountTest {
      * A non-Boolean exclusion flag is FALSE to the Kernel and the content survives (KF3's coercion matrix),
      * so it must not suspend an include A12 expands in full — the read-path half of the over-strictness rule.
      */
+    /**
+     * Every non-Boolean exclusion value is FALSE to the Kernel and the content survives (KF3's coercion
+     * matrix, re-measured 2026-09-12 across these four), so none may suspend an include A12 expands in full.
+     * The QUOTED `"true"` is the row that matters: it reads as the flag being set and is not, so a check on
+     * the text rather than the type refuses a legal model.
+     */
     @Test
-    fun aMalformedExclusionFlagDoesNotSuspendTheMount() {
+    fun noMalformedExclusionValueSuspendsTheMount() {
         val address = provider("address", "Address", field("Street"))
-        val report = check(host(mountBody = """"modelAlias":"addr","excludeRules":"yes""""), address)
 
-        assertTrue(CheckFamily.CONDITION_REFERENCES in report.checksCompleted, report.gaps.toString())
+        listOf("\"true\"", "\"yes\"", "1", "{}").forEach { value ->
+            val report = check(host(mountBody = """"modelAlias":"addr","excludeRules":$value"""), address)
+            assertTrue(CheckFamily.CONDITION_REFERENCES in report.checksCompleted, "$value: ${report.gaps}")
+        }
+        assertEquals(
+            emptySet(),
+            check(host(mountBody = """"modelAlias":"addr","excludeRules":true"""), address).checksCompleted,
+            "the boolean IS the flag, and that one suspends",
+        )
+    }
+
+    /**
+     * `includeLevel` is a strict two-valued enum, so any other spelling makes the model unreadable to A12
+     * ("No enum constant …IncludeLevel.model_root", measured). Expanding it as the default would produce a
+     * verdict for a source the Kernel refuses to load — the explicit `SINGLE_RG` row is the control that this
+     * is about the spelling rather than about the member being present.
+     */
+    @Test
+    fun anIncludeLevelSpellingA12CannotReadSuspendsTheMount() {
+        val address = provider("address", "Address", field("Street"))
+        val report = check(host(mountBody = """"modelAlias":"addr","includeLevel":"model_root""""), address)
+
+        assertEquals(emptySet(), report.checksCompleted)
+        assertTrue(report.gaps.any { it.at == "/Order/ShipTo" && "refuses" in it.reason }, report.gaps.toString())
+        assertTrue(
+            CheckFamily.CONDITION_REFERENCES in
+                check(host(mountBody = """"modelAlias":"addr","includeLevel":"SINGLE_RG""""), address)
+                    .checksCompleted,
+        )
     }
 
     /** SINGLE_RG needs exactly one root group in the provider; the Kernel refuses zero or several. */
@@ -285,6 +318,164 @@ class WorkspaceMountTest {
             check(host(), unbound).findings.map { it.code },
             "with neither flag on there is no fallback to reach the provider's own field",
         )
+    }
+
+    /**
+     * The provider-bound fallback's denominator is this MOUNT INSTANCE's subtree, and two shapes prove it
+     * from opposite sides — a denominator keyed on the authoring model gets both wrong, in the direction that
+     * rejects a model A12 accepts. Measured on both through `ModelLoader.loadAndCheck`.
+     *
+     * A provider is fully expanded before it is bound, so a field its own nested include contributed is
+     * inside its index; and one provider mounted twice is two indexes, so the second copy must not make the
+     * first ambiguous. The late-binding row is the control: with the provider's flag off the two copies DO
+     * collide, which is what the Kernel reports too.
+     */
+    @Test
+    fun theProviderBoundFallbackSeesItsMountInstanceAndNoOther() {
+        val geo = provider("geo", "Geo", field("Zip"))
+        val nesting = source(
+            """
+            {"header":{"id":"address","modelReferences":[
+              {"alias":"g","purpose":"include","reference":"geo"}
+            ]},"content":{
+              "modelConfig":{"fieldRefByShortNameAllowed":true},
+              "modelRoot":{"rootGroups":[
+                {"type":"Group","id":"g","name":"Address","Group":{"elements":[
+                  {"type":"Group","id":"gg","name":"Where","Group":{"modelAlias":"g"}},
+                  ${rule("Own", "../Where/Zip", "FieldFilled(Zip)")}
+                ]}}
+              ]}}}
+            """,
+        )
+
+        assertEquals(
+            emptyList(),
+            check(host(), nesting, geo).findings,
+            "the provider was expanded before it was bound, so its nested include's field is in its index",
+        )
+
+        val twice = source(
+            """
+            {"header":{"id":"order","modelReferences":[
+              {"alias":"addr","purpose":"include","reference":"address"}
+            ]},"content":{"modelRoot":{"rootGroups":[
+              {"type":"Group","id":"g0","name":"Order","Group":{"elements":[
+                {"type":"Group","id":"g1","name":"ShipTo","Group":{"modelAlias":"addr"}},
+                {"type":"Group","id":"g2","name":"BillTo","Group":{"modelAlias":"addr"}}
+              ]}}
+            ]}}}
+            """,
+        )
+        val inner = """{"type":"Group","id":"in","name":"Inner","Group":{"elements":[${field("Code")}]}},"""
+        val bound = provider("address", "Address", inner + rule("Bare", "../Inner/Code", "FieldFilled(Code)"), true)
+        val unbound = provider("address", "Address", inner + rule("Bare", "../Inner/Code", "FieldFilled(Code)"))
+
+        assertEquals(
+            emptyList(),
+            check(twice, bound).findings,
+            "each mount is its own index, so the second copy must not make the first ambiguous",
+        )
+        assertEquals(
+            listOf("MVK_INVALID_ENTITY", "MVK_INVALID_ENTITY"),
+            check(twice, unbound).findings.map { it.code },
+            "with nothing bound early and no entry-model flag, neither copy resolves — the control",
+        )
+    }
+
+    /**
+     * Rehosting replaces the provider's own root SEGMENT, never a prefix of a longer name. `/AddressBook` is
+     * a different root that merely starts with the same letters, and rewriting it would silently retarget a
+     * reference at a path nobody wrote.
+     */
+    @Test
+    fun rehostingStopsAtTheRootGroupsOwnSegmentBoundary() {
+        val address = provider(
+            "address",
+            "Address",
+            field("Street") + "," + rule("Ref", "../Street", "FieldFilled(/AddressBook/Thing)"),
+        )
+        val prepared = prepare(
+            admit(host()) as Admission.Admitted,
+            mapOf("address" to (admit(address) as Admission.Admitted)),
+        )
+
+        assertEquals(
+            listOf(Reference.Undeclared("/AddressBook/Thing")),
+            prepared.conditionReferences().map { it.target },
+            "a name that merely shares the provider root's opening letters is not the provider root",
+        )
+    }
+
+    /** A cycle among PROVIDERS alone closes without ever returning to the entry, so it needs its own row. */
+    @Test
+    fun aCycleThatNeverReachesTheEntryModelIsStillReported() {
+        fun mutual(id: String, other: String) = source(
+            """
+            {"header":{"id":"$id","modelReferences":[
+              {"alias":"x","purpose":"include","reference":"$other"}
+            ]},"content":{"modelRoot":{"rootGroups":[
+              {"type":"Group","id":"g","name":"${id.uppercase()}","Group":{"elements":[
+                {"type":"Group","id":"gg","name":"Next","Group":{"modelAlias":"x"}}
+              ]}}
+            ]}}}
+            """,
+        )
+        val entry = source(
+            """
+            {"header":{"id":"order","modelReferences":[
+              {"alias":"addr","purpose":"include","reference":"ma"}
+            ]},"content":{"modelRoot":{"rootGroups":[
+              {"type":"Group","id":"g0","name":"Order","Group":{"elements":[
+                {"type":"Group","id":"g1","name":"ShipTo","Group":{"modelAlias":"addr"}}
+              ]}}
+            ]}}}
+            """,
+        )
+        val report = check(entry, mutual("ma", "mb"), mutual("mb", "ma"))
+
+        assertTrue(
+            report.gaps.any { it.at == "/Order/ShipTo/Next/Next" && "cycle" in it.reason },
+            report.gaps.toString(),
+        )
+    }
+
+    /**
+     * An EMPTY `elements` array beside an alias is still an unexpanded mount — the Kernel's own idempotency
+     * test is "missing or empty", so reading only the missing half would leave the include unresolved and the
+     * subtree silently absent.
+     */
+    @Test
+    fun anEmptyElementsArrayBesideAnAliasIsStillAMount() {
+        val address = provider("address", "Address", field("Street"))
+        val entry = host(
+            mountBody = """"modelAlias":"addr","elements":[]""",
+            extra = rule("R", "../ShipTo/Street", "FieldFilled(ShipTo/Street)"),
+        )
+
+        assertEquals(emptyList(), check(entry, address).findings)
+    }
+
+    /**
+     * A declaration the checker cannot read is attributed to the SOURCE that wrote it. A workspace reads
+     * several files, so naming the entry model would send a reader to one that does not contain the element.
+     */
+    @Test
+    fun aBrokenDeclarationInAProviderNamesTheProvider() {
+        val address = ModelSource(
+            """
+            {"header":{"id":"address"},"content":{"modelRoot":{"rootGroups":[
+              {"type":"Group","id":"g","name":"Address","Group":{"elements":[
+                {"type":"Field","name":"Street","Field":{}}
+              ]}}
+            ]}}}
+            """.trimIndent(),
+            diagnosticLabel = "shared/address.dm.json",
+        )
+        val diagnostic = check(host(), address).diagnostics.single()
+
+        assertEquals(DiagnosticCode.DECLARATION_NOT_WELL_FORMED, diagnostic.code)
+        assertEquals("address", diagnostic.modelId)
+        assertEquals("shared/address.dm.json", diagnostic.diagnosticLabel)
     }
 
     /** An id supplied twice is a diagnostic and the first source wins, so a report never depends on order. */

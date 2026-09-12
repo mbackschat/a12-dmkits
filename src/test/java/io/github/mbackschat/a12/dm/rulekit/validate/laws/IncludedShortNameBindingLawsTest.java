@@ -18,12 +18,19 @@ import org.junit.jupiter.api.Test;
  * {@code fieldRefByShortNameAllowed} decides it — the basis for the portable checker's mounted-reference
  * resolution (PORTABLE-CONSISTENCY-IMPLEMENTATION-PLAN, B3).
  *
- * <p><b>Two flags and one collision, because neither flag alone separates the mechanisms.</b> A provider's
- * own flag binds its references BEFORE integration, so the reference emerges naming an absolute host path; the
- * including model's flag resolves whatever is still bare AFTER expansion, over the whole tree. Both routes
- * accept a name that is unique either way, so a resolver using only one of them passes six of these eight
- * cells. The separating cell is a name the host also declares with the provider's flag ON — early binding
- * survives the collision, late binding cannot — and its twin one flag away is where the collision bites.
+ * <p><b>Two flags and one collision, because neither flag alone separates the mechanisms.</b> The grid says
+ * exactly this: the reference resolves when EITHER flag is on, and when only the including model's is on a
+ * name the host also declares makes it ambiguous. A provider's own flag binds its references BEFORE
+ * integration, so the reference emerges naming an absolute host path; the including model's flag resolves
+ * whatever is still bare AFTER expansion, over the whole tree. Both routes accept a name that is unique
+ * either way, so only the collision rows separate them — early binding survives the collision, late binding
+ * cannot.
+ *
+ * <p><b>What this fixture deliberately does NOT separate.</b> It carries one provider, mounted once, with no
+ * nested include, so it cannot distinguish "the provider's declarations" from "this mount instance's expanded
+ * subtree" as the bound denominator. Those are separated by the shapes in
+ * {@code consistency.WorkspaceMountTest} and recorded in KF287's correction; a consumer reading only this
+ * grid would get that wrong, which is what happened.
  *
  * <p>The oracle is the Kernel end to end: {@code ModelLoader.loadAndCheck} deserializes, expands through the
  * real {@code IDocumentModelService.expand}, and runs {@code checkConsistency}. The whole table is asserted
