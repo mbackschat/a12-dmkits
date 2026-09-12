@@ -2,8 +2,14 @@ package io.github.mbackschat.a12.dm.consistency.syntax
 
 /** What a token is, at the granularity the checker's analyses need. */
 enum class TokenKind {
-    /** An identifier: an operator keyword, an entity name, or a quoted name that escaped a keyword. */
+    /** An identifier: an operator keyword or an entity name. */
     NAME,
+
+    /**
+     * A `'…'` name, quotes stripped. Separate from [NAME] because the quoting is what makes a name that
+     * spells a keyword an entity reference, so a consumer that could not tell them apart would drop it.
+     */
+    QUOTED_NAME,
 
     /** A digit sequence. */
     NUMBER,
@@ -25,9 +31,12 @@ enum class TokenKind {
 }
 
 /**
- * @param start the offset the token begins at, so a finding can carry a source span.
+ * @param text the token's value, which is its source slice except where the lexer strips syntax from it — a
+ *     [TokenKind.QUOTED_NAME] carries the bare name, so [text] is shorter than the span.
+ * @param start the offset the token begins at, and [end] the offset just past it, so a finding can carry a
+ *     source span and a consumer can tell two adjacent tokens from two separated by whitespace.
  */
-data class Token(val kind: TokenKind, val text: String, val start: Int)
+data class Token(val kind: TokenKind, val text: String, val start: Int, val end: Int)
 
 /**
  * Tokenize A12 condition or operation text, following `Base_ConditionLexer.g4`.
@@ -37,8 +46,12 @@ data class Token(val kind: TokenKind, val text: String, val start: Int)
  * no special meaning at all — the C-style reading would end a literal early and read its tail as a
  * reference. A **comment** opens with `;;` and runs to the end of its line.
  *
- * A single-quoted name is A12's escape for a field whose name collides with a keyword; the Kernel strips the
- * quotes in the lexer, so the token carries the bare name and reads as an ordinary [TokenKind.NAME].
+ * A single-quoted name is A12's escape for a field whose name collides with a keyword; the token carries the
+ * bare name under [TokenKind.QUOTED_NAME], which is the escape the Kernel keeps in its own token type.
+ *
+ * One deliberate difference: `Comment` in the grammar continues across newlines while the next non-blank line
+ * also opens with `;;`, so the Kernel emits ONE token where this emits one per line. Nothing downstream reads
+ * a comment's text, and every consumer skips the kind, so the split is invisible where it is consumed.
  *
  * This is a lexer, not a parser: it says what the pieces ARE, never whether they compose into a legal
  * condition. Nothing here rejects input — an unterminated literal is a token kind, so a caller decides.
@@ -54,7 +67,7 @@ fun tokenize(text: String): List<Token> {
 
             char == ';' && text.startsWith(";;", index) -> {
                 index = text.indexOf('\n', index).takeIf { it >= 0 } ?: text.length
-                tokens += Token(TokenKind.COMMENT, text.substring(start, index), start)
+                tokens += Token(TokenKind.COMMENT, text.substring(start, index), start, index)
             }
 
             char == '"' -> {
@@ -64,30 +77,32 @@ fun tokenize(text: String): List<Token> {
                     if (complete) TokenKind.STRING else TokenKind.UNTERMINATED_STRING,
                     text.substring(start, index),
                     start,
+                    index,
                 )
             }
 
             char == '\'' -> {
                 val close = text.indexOf('\'', index + 1)
                 index = if (close < 0) text.length else close + 1
-                // The Kernel's lexer strips the quotes, so downstream sees the same name an unquoted field has.
-                tokens += Token(TokenKind.NAME, text.substring(start, index).trim('\''), start)
+                // The Kernel's lexer strips the quotes too (`setTextUnquotedInLexer`) and keeps the escape in
+                // the token TYPE, which is what [TokenKind.QUOTED_NAME] reproduces.
+                tokens += Token(TokenKind.QUOTED_NAME, text.substring(start, index).trim('\''), start, index)
             }
 
             char.isDigit() -> {
                 while (index < text.length && text[index].isDigit()) index++
-                tokens += Token(TokenKind.NUMBER, text.substring(start, index), start)
+                tokens += Token(TokenKind.NUMBER, text.substring(start, index), start, index)
             }
 
             char.isNameStart() -> {
                 while (index < text.length && text[index].isNamePart()) index++
-                tokens += Token(TokenKind.NAME, text.substring(start, index), start)
+                tokens += Token(TokenKind.NAME, text.substring(start, index), start, index)
             }
 
             else -> {
                 val symbol = SYMBOLS.firstOrNull { text.startsWith(it, index) } ?: char.toString()
                 index += symbol.length
-                tokens += Token(symbol.kindOfSymbol(), symbol, start)
+                tokens += Token(symbol.kindOfSymbol(), symbol, start, index)
             }
         }
     }

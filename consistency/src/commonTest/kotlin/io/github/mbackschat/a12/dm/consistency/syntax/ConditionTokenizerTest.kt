@@ -88,10 +88,17 @@ class ConditionTokenizerTest {
         assertEquals(listOf(TokenKind.NAME, TokenKind.UNTERMINATED_STRING), kinds("""Code "oops"""))
     }
 
-    /** A quoted name escapes a keyword collision; A12 strips the quotes, so the text is the bare name. */
+    /**
+     * A quoted name escapes a keyword collision, so it carries the bare name AND the fact that it was
+     * quoted. The kernel keeps both too, in the type rather than the text: `NameOhnePunktMitQuotes` strips
+     * the quotes (`setTextUnquotedInLexer`) and is a *different terminal* from the keyword the name spells,
+     * which is the only reason `'And'` can be a field. Collapsing it onto [TokenKind.NAME] would leave a
+     * consumer unable to tell `'And'` from `And` and so unable to reproduce the escape.
+     */
     @Test
-    fun aSingleQuotedNameIsAName() {
-        assertEquals(listOf(TokenKind.NAME), kinds("'And'"))
+    fun aSingleQuotedNameKeepsItsNameAndItsQuoting() {
+        assertEquals(listOf(TokenKind.QUOTED_NAME), kinds("'And'"))
         assertEquals(listOf("And"), texts("'And'"))
+        assertEquals(listOf(TokenKind.NAME), kinds("And"))
     }
 }
