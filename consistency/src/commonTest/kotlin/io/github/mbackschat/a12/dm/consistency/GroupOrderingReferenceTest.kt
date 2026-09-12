@@ -154,6 +154,34 @@ class GroupOrderingReferenceTest {
     }
 
     /**
+     * A numeric sort name is a NAME, not a missing one — the branch the code table cannot see.
+     *
+     * Both shapes leave the model unusable and draw the same code, so only the explanation separates them,
+     * and it is what an author acts on: `{"name": 5}` needs a field named, `{}` needs a name added.
+     */
+    @Test
+    fun aNumericSortNameIsExplainedAsANameThatNamesNothing() {
+        val explain = prepare(
+            assertIs<Admission.Admitted>(
+                admit(
+                    ModelSource(
+                        """
+                        {"header":{"id":"catalog","locales":[{"code":"en_US"}]},
+                         "content":{"modelRoot":{"rootGroups":[
+                          {"type":"Group","id":"g0","name":"Catalog","Group":{
+                            "sortFields":[{"name":5}],"elements":[
+                            {"type":"Field","id":"f0","name":"Label","Field":{}}
+                          ]}}
+                         ]}}}
+                        """.trimIndent(),
+                    ),
+                ),
+            ),
+        ).groupOrderingFindings().single().explain
+        assertTrue("names no field at all" in explain, explain)
+    }
+
+    /**
      * The sort member answers the same way and with its OWN code.
      *
      * `MVK_INVALID_INDEX_FIELD` is named for the index, and nothing about the shape says a sort field shares
