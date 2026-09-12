@@ -466,8 +466,13 @@ public final class ModelReader {
             for (JsonNode top : root.path(DmKeys.CONTENT).path(DmKeys.MODEL_ROOT).path(DmKeys.ROOT_GROUPS)) {
                 collect(top, "", paths, fields);
             }
-            boolean allowShortNames = root.path(DmKeys.CONTENT).path(DmKeys.MODEL_CONFIG)
-                    .path(DmKeys.FIELD_REF_BY_SHORT_NAME_ALLOWED).asBoolean(false);
+            // Through A12's own POJO binding rather than `asBoolean`: the two disagree on a capitalized
+            // `"True"` (A12 on, `asBoolean` off — so every model-wide short name would read as undeclared)
+            // and on a fractional number (A12 refuses the model, `asBoolean` truncates and answers).
+            JsonNode flag = root.path(DmKeys.CONTENT).path(DmKeys.MODEL_CONFIG)
+                    .path(DmKeys.FIELD_REF_BY_SHORT_NAME_ALLOWED);
+            boolean allowShortNames = ConfigFlag.ofJsonText(flag.isMissingNode() ? null : flag.toString())
+                    == ConfigFlag.ON;
             return new ModelSymbols(paths, fields, allowShortNames);
         }
 

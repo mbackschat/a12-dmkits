@@ -6,6 +6,7 @@ import com.fasterxml.jackson.databind.JsonNode
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.databind.cfg.JsonNodeFeature
 import com.fasterxml.jackson.databind.json.JsonMapper
+import io.github.mbackschat.a12.dm.core.ConfigFlag
 import io.github.mbackschat.a12.dm.core.ModelIndex
 import io.github.mbackschat.a12.dm.core.ModelReader
 import io.github.mbackschat.a12.dm.core.ModelResolver
@@ -109,10 +110,17 @@ public class InterpreterConditionReadBack : ConditionReadBack {
             ReadResult.Opaque(condition, e.javaClass.simpleName + ": " + e.message)
         }
 
-        /** The model's `fieldRefByShortNameAllowed`, which widens how a bare reference resolves. */
+        /**
+         * The model's `fieldRefByShortNameAllowed`, which widens how a bare reference resolves.
+         *
+         * Read through A12's own POJO binding rather than `asBoolean`, which the two disagree on: a
+         * capitalized `"True"` is on to A12 and off to `asBoolean`, so a bare name A12 binds through the
+         * model-wide tier would be read back against the wrong resolution rule.
+         */
         private fun shortNameRefsAllowed(modelJson: String): Boolean = try {
-            MAPPER.readTree(modelJson).path("content").path("modelConfig")
-                .path("fieldRefByShortNameAllowed").asBoolean(false)
+            val flag = MAPPER.readTree(modelJson).path("content").path("modelConfig")
+                .path("fieldRefByShortNameAllowed")
+            ConfigFlag.ofJsonText(if (flag.isMissingNode) null else flag.toString()) == ConfigFlag.ON
         } catch (e: Exception) {
             false
         }

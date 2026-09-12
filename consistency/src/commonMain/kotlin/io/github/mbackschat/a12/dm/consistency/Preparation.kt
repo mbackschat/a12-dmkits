@@ -373,21 +373,22 @@ private class Collector(
     }
 
     /**
-     * `fieldRefByShortNameAllowed`, absent or unreadable meaning off — never a raised conversion.
+     * `fieldRefByShortNameAllowed`, read through A12's own POJO binding — never a raised conversion.
      *
-     * The QUOTED form is accepted, because the Kernel accepts it: a model declaring `"true"` enables the
-     * model-wide short-name tier (measured, `rule check`). Refusing it here would flip every short-name
-     * verdict on a model A12 reads — the read-path half of the over-strictness rule, and the same coercion
-     * [text] applies to `type`/`id`/`name`.
+     * Every spelling A12 accepts must be accepted here, in both directions: reading a capitalized `"True"`
+     * as off would report `MVK_INVALID_ENTITY` for every bare reference A12 resolves through the model-wide
+     * tier, and reading `1.5` as anything at all would analyse a model that does not deserialize. [configFlag]
+     * carries the measured table; the unreadable case is diagnosed here because it is a member of the SOURCE
+     * rather than of a declaration.
      */
     fun flag(content: JsonObject?, entry: Scope): Boolean {
         val declared = (content?.get("modelConfig") as? JsonObject)?.get("fieldRefByShortNameAllowed")
-            ?: return false
-        return when ((declared as? JsonPrimitive)?.contentOrNull) {
-            "true" -> true
-            "false" -> false
-            else -> {
-                malformed(null, "`fieldRefByShortNameAllowed` must be a boolean, or a string spelling one", entry)
+        return when (configFlag(declared)) {
+            ConfigFlag.ON -> true
+            ConfigFlag.OFF -> false
+            ConfigFlag.UNREADABLE -> {
+                malformed(null, "`fieldRefByShortNameAllowed` carries a value A12's own reader refuses, so " +
+                    "the model does not load at all and nothing here is a verdict about it", entry)
                 false
             }
         }
@@ -421,11 +422,12 @@ private fun JsonObject.declaresUnreadableIncludeLevel(): Boolean {
 /**
  * A PROVIDER's own `fieldRefByShortNameAllowed`, read without diagnosing: an unreadable value in a model that
  * is only being mounted is the entry model's problem to report if it is ever checked itself, and treating it
- * as off matches [Collector.flag]'s own fallback.
+ * as off matches [Collector.flag]'s own fallback. The READING is the same one, which is the point — a
+ * provider's flag decides whether its bare names are bound before integration, so a spelling read differently
+ * here retargets references the entry model cannot see.
  */
 private fun JsonObject?.declaresShortNameFallback(): Boolean =
-    ((this?.get("modelConfig") as? JsonObject)?.get("fieldRefByShortNameAllowed") as? JsonPrimitive)
-        ?.contentOrNull == "true"
+    configFlag((this?.get("modelConfig") as? JsonObject)?.get("fieldRefByShortNameAllowed")) == ConfigFlag.ON
 
 /**
  * What a header's `locales` declares: the locale [keys][localeKeyOrNull] it covers, and the codes it spells

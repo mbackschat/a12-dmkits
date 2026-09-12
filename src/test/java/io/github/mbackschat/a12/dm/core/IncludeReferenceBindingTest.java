@@ -76,6 +76,35 @@ class IncludeReferenceBindingTest {
                 "a flag-off cross-group short name remains unresolved for the model-consistency gate to reject");
     }
 
+    /**
+     * …and the gate reads every spelling A12 reads. A capitalized {@code "True"} is on to A12 and off to
+     * {@code JsonNode.asBoolean}, which is how this site read it until 2026-09-12 — so a provider whose flag
+     * was spelled that way had its cross-group short names left unbound, and the mounted rule then failed the
+     * model-consistency gate on a model A12 accepts.
+     *
+     * <p>The control above is the same fixture with the flag genuinely off, so the two rows differ in the
+     * SPELLING alone rather than in whether a flag is set. Kernel oracle:
+     * {@code rulekit.validate.laws.ShortNameFlagSpellingLawsTest}.
+     */
+    @Test
+    void theShortNameGateTakesEverySpellingA12Takes() {
+        for (String spelling : List.of("true", "\"true\"", "\"True\"", "\"TRUE\"", "1")) {
+            String member = "\"fieldRefByShortNameAllowed\"\\s*:\\s*true";
+            String draft = checksWithCrossGroupShortName();
+            assertTrue(draft.matches("(?s).*" + member + ".*"),
+                    "the fixture no longer writes the member this varies");
+            String included = draft.replaceAll(member,
+                    java.util.regex.Matcher.quoteReplacement("\"fieldRefByShortNameAllowed\":" + spelling));
+
+            ModelReader reader = ModelReader.expand(
+                    policyMounting("checks", "checks", false, false, true),
+                    resolver(Map.of("checks", included)));
+
+            assertTrue(reader.toJson().contains("[/Policy/Cover/Rates/Cap] > 0"),
+                    () -> "A12 reads " + spelling + " as on, so the short name must bind: " + reader.toJson());
+        }
+    }
+
     @Test
     void outerExclusionDropsNestedResidualsWithTheirElements() {
         String leaf = leafWithResidualRuleAndComputation();

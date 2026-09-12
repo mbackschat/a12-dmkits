@@ -22,6 +22,7 @@ import com.fasterxml.jackson.databind.json.JsonMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 
+import io.github.mbackschat.a12.dm.core.ConfigFlag;
 import io.github.mbackschat.a12.dm.core.DmKeys;
 import io.github.mbackschat.a12.dm.core.ElementType;
 import io.github.mbackschat.a12.dm.core.EntityPaths;
@@ -255,8 +256,20 @@ public final class ModelDocument {
                 c.path(DmKeys.DECIMAL_SEPARATOR).asText(),
                 c.path(DmKeys.TIME_ZONE).asText(),
                 c.path(DmKeys.CONDITION_LANGUAGE).path(DmKeys.CODE).asText(),
-                c.path(DmKeys.FIELD_REF_BY_SHORT_NAME_ALLOWED).asBoolean(),
+                shortNameFlag(c) == ConfigFlag.ON,
                 List.copyOf(supported));
+    }
+
+    /**
+     * {@code fieldRefByShortNameAllowed} through A12's own POJO binding rather than {@code asBoolean}.
+     *
+     * The two disagree on a capitalized {@code "True"} — A12 on, {@code asBoolean} off — so reporting this
+     * flag with {@code asBoolean} tells a reader the model-wide short-name tier is disabled where A12 has it
+     * enabled, and this record is what {@code dmtool config read} prints.
+     */
+    private static ConfigFlag shortNameFlag(JsonNode config) {
+        JsonNode flag = config.path(DmKeys.FIELD_REF_BY_SHORT_NAME_ALLOWED);
+        return ConfigFlag.ofJsonText(flag.isMissingNode() ? null : flag.toString());
     }
 
     /** The number of validation rules declared anywhere in the element tree (kernel-free count). */

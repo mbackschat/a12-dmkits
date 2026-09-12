@@ -1,6 +1,8 @@
 package io.github.mbackschat.a12.dm.interpreter.load
 
 import io.github.mbackschat.a12.dm.interpreter.A12_JSON
+import io.github.mbackschat.a12.dm.interpreter.ConfigFlag
+import io.github.mbackschat.a12.dm.interpreter.configFlag
 import kotlin.jvm.JvmStatic
 import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.JsonArray
@@ -77,7 +79,10 @@ object ModelLoader {
         // content.modelConfig.fieldRefByShortNameAllowed (default false) — enables the bare cross-group
         // short-name resolution the condition parser applies (IF119).
         val modelConfig = root.path("content").path("modelConfig")
-        val shortNameRefs = modelConfig.path("fieldRefByShortNameAllowed").asBoolean(false)
+        // Through the kernel's own POJO binding rather than `asBoolean`: the two disagree on a capitalized
+        // `"True"` (kernel ON, asBoolean OFF, so every model-wide short name would go unresolved) and on a
+        // fractional number (kernel refuses the model, asBoolean truncates and answers). KF289 has the table.
+        val shortNameRefs = configFlag(modelConfig.path("fieldRefByShortNameAllowed")) == ConfigFlag.ON
         // content.modelConfig.supportedCharacters (a list of single chars / "X-Y" ranges) — the model-declared
         // legal charset the kernel enforces at runtime (ZeichenNichtImZeichensatz); empty/absent → no restriction (IF120).
         val legalCharset = LegalCharset.ofSupportedCharacters(

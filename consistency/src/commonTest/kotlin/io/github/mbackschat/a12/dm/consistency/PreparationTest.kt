@@ -259,6 +259,9 @@ class PreparationTest {
         assertTrue(flagOf("\"modelConfig\":{\"fieldRefByShortNameAllowed\":true},"))
         assertFalse(flagOf("\"modelConfig\":{\"fieldRefByShortNameAllowed\":false},"))
         assertFalse(flagOf(""), "an absent modelConfig cannot enable the fallback")
+        // The spellings A12 also accepts are `ConfigFlagTest`'s table; this row is here so the two cannot
+        // drift apart silently — a reading that took only the literal `true` would still pass above.
+        assertTrue(flagOf("\"modelConfig\":{\"fieldRefByShortNameAllowed\":\"True\"},"))
     }
 
     /**
@@ -274,7 +277,9 @@ class PreparationTest {
             """{"header":{"id":"m","locales":[{"code":"en_US"}]},"content":{"modelRoot":{"rootGroups":[7]}}}""",
             model("""{"type":"Group","id":"/O","name":"O","Group":{"elements":{}}}"""),
             model("""{"type":"Group","id":"/O","name":"O","Group":7}""", ""),
-            model("", "\"modelConfig\":{\"fieldRefByShortNameAllowed\":1},"),
+            // A spelling A12's own binding refuses. `1` is NOT one: it reads as ON, which is why this row
+            // named a fractional value once the spellings were measured (KF289, `ConfigFlagTest`).
+            model("", "\"modelConfig\":{\"fieldRefByShortNameAllowed\":1.5},"),
         ).forEach { json ->
             assertEquals(
                 listOf(DiagnosticCode.DECLARATION_NOT_WELL_FORMED),

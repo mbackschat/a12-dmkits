@@ -1,8 +1,10 @@
 package io.github.mbackschat.a12.dm.interpreter.workspace
 
+import io.github.mbackschat.a12.dm.interpreter.ConfigFlag
 import io.github.mbackschat.a12.dm.interpreter.ModelPreparationError
 import io.github.mbackschat.a12.dm.interpreter.ModelPreparationLimits
 import io.github.mbackschat.a12.dm.interpreter.ModelReferenceStep
+import io.github.mbackschat.a12.dm.interpreter.configFlag
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
@@ -854,15 +856,17 @@ internal fun JsonObject.withoutModelReferences(): JsonObject {
     )
 }
 
+/**
+ * The model's `fieldRefByShortNameAllowed`, through the kernel's own POJO binding ([configFlag]).
+ *
+ * The earlier reading here refused every STRING spelling outright, so a model declaring `"true"` — which the
+ * kernel takes as on — had its short-name tier silently disabled at assembly, retargeting bare references
+ * across the whole included tree. An unreadable value reads as off: the kernel does not load such a model at
+ * all, so no assembly of it is compared against anything.
+ */
 private fun JsonObject.fieldRefByShortNameAllowed(): Boolean =
-    objectMember("content")
-        ?.objectMember("modelConfig")
-        ?.get("fieldRefByShortNameAllowed")
-        ?.let { it as? JsonPrimitive }
-        ?.takeIf { !it.isString }
-        ?.content
-        ?.toBooleanStrictOrNull()
-        ?: false
+    configFlag(objectMember("content")?.objectMember("modelConfig")?.get("fieldRefByShortNameAllowed")) ==
+        ConfigFlag.ON
 
 internal fun JsonObject.conditionLanguageCode(): String? =
     objectMember("content")

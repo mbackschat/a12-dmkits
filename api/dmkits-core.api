@@ -24,6 +24,14 @@ public record io.github.mbackschat.a12.dm.core.ComputationInfo
   public java.lang.String targetFieldPath()
   public final java.lang.String toString()
 
+public enum io.github.mbackschat.a12.dm.core.ConfigFlag
+  public static final io.github.mbackschat.a12.dm.core.ConfigFlag OFF
+  public static final io.github.mbackschat.a12.dm.core.ConfigFlag ON
+  public static final io.github.mbackschat.a12.dm.core.ConfigFlag UNREADABLE
+  public static io.github.mbackschat.a12.dm.core.ConfigFlag ofJsonText(java.lang.String)
+  public static io.github.mbackschat.a12.dm.core.ConfigFlag valueOf(java.lang.String)
+  public static io.github.mbackschat.a12.dm.core.ConfigFlag[] values()
+
 public class io.github.mbackschat.a12.dm.core.ConsistencyCheckFailedException extends java.lang.RuntimeException
   public ConsistencyCheckFailedException(java.lang.String, java.lang.Throwable)
 

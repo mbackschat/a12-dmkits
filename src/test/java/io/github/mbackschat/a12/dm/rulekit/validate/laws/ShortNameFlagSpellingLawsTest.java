@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import java.io.IOException;
 import java.io.UncheckedIOException;
+import java.math.BigInteger;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
@@ -11,6 +12,7 @@ import org.junit.jupiter.api.Test;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.BigIntegerNode;
 import com.fasterxml.jackson.databind.node.BooleanNode;
 import com.fasterxml.jackson.databind.node.DoubleNode;
 import com.fasterxml.jackson.databind.node.IntNode;
@@ -82,14 +84,19 @@ class ShortNameFlagSpellingLawsTest {
         actual.put("\"TRUE\"", readAs(TextNode.valueOf("TRUE")));
         actual.put("\"false\"", readAs(TextNode.valueOf("false")));
         actual.put("\"False\"", readAs(TextNode.valueOf("False")));
+        actual.put("\"FALSE\"", readAs(TextNode.valueOf("FALSE")));
         actual.put("\"yes\"", readAs(TextNode.valueOf("yes")));
         actual.put("\"\"", readAs(TextNode.valueOf("")));
         actual.put("1", readAs(IntNode.valueOf(1)));
         actual.put("2", readAs(IntNode.valueOf(2)));
         actual.put("-1", readAs(IntNode.valueOf(-1)));
         actual.put("0", readAs(IntNode.valueOf(0)));
+        actual.put("a 26-digit integer", readAs(BigIntegerNode.valueOf(new BigInteger("9".repeat(26)))));
         actual.put("0.5", readAs(DoubleNode.valueOf(0.5)));
         actual.put("1.5", readAs(DoubleNode.valueOf(1.5)));
+        actual.put("\"1\"", readAs(TextNode.valueOf("1")));
+        actual.put("{}", readAs(MAPPER.createObjectNode()));
+        actual.put("[]", readAs(MAPPER.createArrayNode()));
         actual.put("null", readAs(NullNode.getInstance()));
         actual.put("absent", readAs(null));
 
@@ -101,6 +108,7 @@ class ShortNameFlagSpellingLawsTest {
         expected.put("\"TRUE\"", ON);
         expected.put("\"false\"", OFF);
         expected.put("\"False\"", OFF);
+        expected.put("\"FALSE\"", OFF);
         expected.put("\"yes\"", UNREADABLE);
         // The EMPTY string is not an unrecognized spelling: Jackson's empty-string coercion supplies the
         // type's default before the recognized-values check runs, so it reads as OFF rather than refusing.
@@ -109,11 +117,19 @@ class ShortNameFlagSpellingLawsTest {
         expected.put("2", ON);
         expected.put("-1", ON);
         expected.put("0", OFF);
+        // Wider than any machine integer and still read as one, which is the row a reader that CONVERTS
+        // before deciding gets wrong: overflow sends it to the unreadable branch for a model A12 loads.
+        expected.put("a 26-digit integer", ON);
         // The second divergence, and the sharper one: a FRACTIONAL number refuses the model outright, where
         // `asBoolean` truncates to an int and answers false for 0.5 and TRUE for 1.5 — so our readers invent
         // both verdicts for a model A12 will not load, one of them affirmative.
         expected.put("0.5", UNREADABLE);
         expected.put("1.5", UNREADABLE);
+        // A numeric STRING is not a number: the recognized-values check runs on the text, so `"1"` refuses
+        // where the bare `1` is ON. A reader that coerced a string through a numeric path would invert it.
+        expected.put("\"1\"", UNREADABLE);
+        expected.put("{}", UNREADABLE);
+        expected.put("[]", UNREADABLE);
         expected.put("null", OFF);
         expected.put("absent", OFF);
         assertEquals(expected, actual, "how A12 reads each spelling of fieldRefByShortNameAllowed");
