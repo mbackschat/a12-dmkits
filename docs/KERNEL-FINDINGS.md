@@ -5557,3 +5557,32 @@ The rule's other two declaration slots, measured for the first time because both
 **The empty string means different things in different slots, which is why each is measured rather than inferred.** It is a *default* for `fieldRefByShortNameAllowed` ([KF289](#kf289)), *no message* for an `errorMessage` text ([KF290](#kf290)), *missing* for `errorCode`, and an outright reader REFUSAL for `severity`. One shape, four answers, decided by the member's binding.
 
 *(Locked: `rulekit.validate.laws.RuleCodeAndSeverityLawsTest` — one assertion per table.)*
+
+## §11 supplement — a computation's alternative list: one may be unguarded, SEVERAL each owe a precondition, and a common one does not substitute (`checkConsistency`, measured, 2026-09-12) <a id="kf292"></a>
+
+> Fold: not-foldable — an authoring/model-structure law on the computation element, outside the evaluation scope.
+
+The structure of a stored `computationAlternatives`, measured because `Computation.Builder` requires at least one alternative with a non-blank operation, so every degenerate shape below is one only stored DM-JSON carries — and the portable checker must reach "every alternative" to claim the family at all.
+
+| stored shape | A12 |
+|---|---|
+| one alternative, unguarded | ADMITTED |
+| the member ABSENT, or an EMPTY list | `MVK_INCOMPLETE_INPUT` **and** `MVK_CONDITION_MISSING` |
+| an alternative with no `operation`, or a blank/whitespace/explicit-`null` one | `MVK_INCOMPLETE_INPUT` alone |
+| an alternative that is not an object, **or the member as an OBJECT, a scalar, or an explicit `null`** | **UNREADABLE** |
+| two alternatives, both guarded | ADMITTED |
+| two alternatives, ANY of them unguarded — first, last, or both | `MVK_ERROR_EMPTY_PRECONDITION` |
+| two alternatives, one precondition present but BLANK or whitespace | `MVK_UNEXPECTED_TOKEN` |
+| two alternatives, one precondition an explicit `null` | `MVK_ERROR_EMPTY_PRECONDITION` |
+
+**The precondition law is the one a reader gets wrong, and it needed three rows to locate.** A single unguarded alternative is accepted, which makes "an alternative may be unguarded" look settled; add a second and the pair is refused. The two accounts that fit that one observation — *the last is the fallback and owes nothing* versus *each of several owes a guard* — differ on every real model, and the rows separate them: unguarding the FIRST, the LAST, or BOTH all draw the same code, so the demand is per-alternative once there is more than one.
+
+**"Empty precondition" names the ABSENT member only — blank is a different defect in a different family.** Three slot families now agree that a blank string counts as absent (`errorCode`, [KF291](#kf291); a message `text`, [KF290](#kf290)), and the fourth does not: a precondition that is present goes to the condition parser whatever it spells, so `""` and `"   "` draw `MVK_UNEXPECTED_TOKEN` rather than this code. A checker that carried the blank-is-absent law across would name the wrong defect, in the family that cannot fix it.
+
+**An explicit `null` splits BY BINDING SITE, and the split is inside this one member.** On a rule's own members a `null` refuses the reader outright ([KF291](#kf291)); here `computationAlternatives: null` does the same — but one level down, inside an alternative, `operation: null` draws `MVK_INCOMPLETE_INPUT` and `precondition: null` draws `MVK_ERROR_EMPTY_PRECONDITION`, both verdicts and both identical to the omitted member. So the list and the scalars it holds answer differently, and the prediction that carried the rule-member law down was refuted on the list while holding for neither scalar. A checker inferring any of the three from another gets one wrong.
+
+**And a `commonPrecondition` does not pay that debt.** Every row above declares none, so "one alternative may be unguarded" and "an unguarded alternative is fine while nothing else guards the computation" are the same observation there — the constant that no control inside the set can catch. Declaring one separates them: the single unguarded alternative stays accepted and the unguarded pair stays refused. The common guard is a different slot, not a substitute.
+
+**The two list-shaped members have DIFFERENT readers, which is why each is measured.** `errorMessage` as an OBJECT is admitted — its reader iterates the node's elements, and an object's elements are its values ([KF290](#kf290)) — while `computationAlternatives` as an object makes the model unreadable. Inferring one from the other would have produced a checker that analyses a model A12 refuses to load.
+
+*(Locked: `rulekit.validate.laws.ComputationAlternativeSlotLawsTest` — one assertion per table.)*

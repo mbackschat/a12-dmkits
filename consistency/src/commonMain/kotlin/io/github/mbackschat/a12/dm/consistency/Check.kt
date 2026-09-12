@@ -19,6 +19,12 @@ enum class CheckFamily {
      * and the `header.locales` set those messages answer to, which decides what A12 collects from them.
      */
     DECLARATION_SLOTS,
+
+    /**
+     * A computation's `computationAlternatives` — that it carries work at all, and that each of several
+     * alternatives carries its own precondition.
+     */
+    COMPUTATION_ALTERNATIVES,
 }
 
 /**
@@ -135,14 +141,14 @@ internal fun check(
     val findings = declared.mapNotNull { it.target.asFinding(it.role, it.declaredAt) } +
         prepared.conditionReferences().mapNotNull {
             it.target.asFinding(ReferenceRole.CONDITION_ENTITY, it.declaredAt, it.member)
-        } + prepared.declarationSlotFindings()
+        } + prepared.declarationSlotFindings() + prepared.computationAlternativeFindings()
     return ConsistencyReport(
         modelId = admitted.modelId,
         status = statusOf(findings),
         findings = findings,
         diagnostics = inherited + prepared.diagnostics,
         checksCompleted = setOf(CheckFamily.DECLARED_REFERENCES, CheckFamily.CONDITION_REFERENCES,
-            CheckFamily.DECLARATION_SLOTS),
+            CheckFamily.DECLARATION_SLOTS, CheckFamily.COMPUTATION_ALTERNATIVES),
         gaps = prepared.gaps() + prepared.emptyFactBase() + findings.buildBlocked() + UNREAD_MEMBERS +
             UNIMPLEMENTED_FAMILIES,
     )
@@ -203,12 +209,17 @@ private val UNREAD_MEMBERS = listOf(
         reason = "`Group.indexFieldName` and `Group.sortFields[].name` are relative field references too " +
             "and are not resolved here",
     ),
+    CoverageGap(
+        at = null,
+        reason = "a computation alternative's precondition is checked for PRESENCE only — whether its text " +
+            "parses is the syntax family's question and is not decided here",
+    ),
 )
 
 private val UNIMPLEMENTED_FAMILIES = listOf(
     CoverageGap(
         at = null,
-        reason = "only the reference families and the declaration slots are implemented; every other " +
-            "required family of the pinned profile was not examined",
+        reason = "only the reference families, the declaration slots and a computation's alternatives are " +
+            "implemented; every other required family of the pinned profile was not examined",
     ),
 )

@@ -246,7 +246,7 @@ Caveats that hold across all four paths:
 | `MVK_CALC_INVALID_ACTION_TYPE` | erased | law: only ERROR-severity rules may drive a calculation — the generated self-validation rule’s severity is the kernel’s; rulekit exposes no severity slot on computations |
 | `MVK_ERROR_CALC_CYCLE` | kernel-delegated | law: computations must form an acyclic dependency graph — only direct self-reference is pre-checked (`MVK_ERROR_REFERENCE_TO_CALCULATED_FIELD`); cross-computation cycles stay F4’s |
 | `MVK_ERROR_COMPARISON_WITH_OR` | erased | normalized-form law (precondition joined to the comparison by And, never Or) — the rule text is kernel-generated from the typed computation, never hand-written |
-| `MVK_ERROR_EMPTY_PRECONDITION` | pre-checked | `Computation.build()` rejects mixed alternatives; no `.otherwise()` API exists |
+| `MVK_ERROR_EMPTY_PRECONDITION` | pre-checked | `Computation.build()` rejects mixed alternatives; no `.otherwise()` API exists. **Extended 2026-09-12** with the stored-shape law the typed route cannot reach ([KF292](KERNEL-FINDINGS.md#kf292)): a SINGLE unguarded alternative is admitted, and from two on EVERY one owes its own precondition — first, last or both unguarded all draw this code, and a `commonPrecondition` does not substitute (locked: `validate.laws.ComputationAlternativeSlotLawsTest`) |
 | `MVK_ERROR_INDEX_AS_CALCULATED_FIELD` | kernel-delegated | law: an index field cannot be calculated — whether the chosen field is an index field is model data, F4 arbitrates |
 | `MVK_ERROR_INVALID_COMPARISON` | erased | normalized-form law (the self-check comparison must be an inequality/tolerance op) — kernel-generated, unreachable from rulekit |
 | `MVK_ERROR_INVALID_ENUM_CALCULATION` | kernel-delegated | law: an enum-valued computation may produce only constants/enums/categories compatible with the target’s value set — kind is pre-checked (`MVK_INVALID_COMPARE_TO_ENUM_OR_STRING`), value-set fit is model data F4 arbitrates |
@@ -279,7 +279,7 @@ Caveats that hold across all four paths:
 | `MVK_CATEGORY_VALUES_NOT_ALLOWED` | n/a-structural | enum-type law: a table-backed enum must not also declare category values |
 | `MVK_CATEGORY_VALUE_DUPLICATE` | n/a-structural | enum-category law: each internal value mapped at most once per category |
 | `MVK_CATEGORY_VALUE_INVALID` | n/a-structural | enum-category law: category values must be valid (custom check) |
-| `MVK_CONDITION_MISSING` | pre-checked | `Rule.build()` requires `when(...)` (`RK_INCOMPLETE_RULE`; locked: `RuleAuthoringTest`/`PrecheckDiagnosticTest`) |
+| `MVK_CONDITION_MISSING` | pre-checked | `Rule.build()` requires `when(...)` (`RK_INCOMPLETE_RULE`; locked: `RuleAuthoringTest`/`PrecheckDiagnosticTest`). **Extended 2026-09-12:** a COMPUTATION carries it too — an absent or empty `computationAlternatives` leaves no precondition slot, so the code rides beside `MVK_INCOMPLETE_INPUT`, while an alternative that merely lacks its operation draws the incompleteness alone ([KF292](KERNEL-FINDINGS.md#kf292); locked: `validate.laws.ComputationAlternativeSlotLawsTest`) |
 | `MVK_COUNT_OF_VALUES_INVALID` | n/a-structural | enum-type law: each language block must cover all internal values |
 | `MVK_DATE_RANGE_FORMAT_INVALID_CODEGEN` | n/a-structural | date-type law: reference-year range formats cannot go through codegen |
 | `MVK_DEPENDENT_COLUMNS_DUPLICATE` | n/a-structural | enum-type law: dependent columns unique |
