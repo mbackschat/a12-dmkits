@@ -21,7 +21,7 @@ Classifications:
 
 | production | classification | notes |
 |---|---|---|
-| `bedingung` | rendered | `And`/`Or` composition; max three parts per bracket level, no mixed `And`/`Or` (the explicit-parentheses law) |
+| `bedingung` | rendered | `And`/`Or` composition; ANY number of parts per bracket level, no mixed `And`/`Or` there (the explicit-parentheses law). *(Corrected 2026-09-13: this read "max three parts per bracket level", which the production's two labels suggest and its starred inner group refutes — measured in [KF301](KERNEL-FINDINGS.md#kf301).)* |
 | `teilBedingung` | rendered | one branch, optional surrounding `;;` comments — read-tolerated and **authored via the `Comments` side-channel** (`before`/`after`); the leading comment is preserved on write-back (KERNEL-FINDINGS "Condition comments") |
 | `geklammerteBedingung` | rendered | parenthesized sub-condition |
 | `einfacheBedingung` | rendered | the dispatch over all condition families |

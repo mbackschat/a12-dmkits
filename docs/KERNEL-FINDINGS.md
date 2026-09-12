@@ -5875,3 +5875,30 @@ Three things fall out. **The `OPERATOR` kind does generalize** — the two catal
 The last row's first literal runs to the next quote, eating the `)` the grammar was waiting for, so the parser fails before the lexer does. **No grammar-free rule separates it from the third row** — quote counts are odd in both, both carry an earlier complete literal, both leave a delimiter open — so the portable checker keeps reporting the lexical failure there and carries a gap saying the code is wrong for that shape. That is deliberately the opposite treatment from the completeness family above, where a measured boundary existed and the family was narrowed to it; here inventing one would be a fourth mechanism on this layer in one day.
 
 *Locked by:* `rulekit.validate.laws.RuleConditionSyntaxLawsTest` (the grids above, with a valid-condition liveness control, and `whetherTheLastTokenAloneCanDecideTheCode` carrying the refutation with two positive controls showing the truncated texts are truncations of text that parses) and `MvkLedgerTest.ledgerCoversTheParserMessageBundleExactly` (the source that was missing, with an empty-denominator control so a bundle that resolved but carried nothing could not pass vacuously).
+
+## §1 supplement — one bracket level joins ANY number of parts, and the `And`/`Or` mixing refusal is a parser ACTION scoped to a bracket PAIR, not a depth (measured + source-verified, 2026-09-13) <a id="kf301"></a>
+
+> Fold: pending — the arity half belongs beside [KERNEL-SEMANTICS](KERNEL-SEMANTICS.md) §1's existing explicit-parentheses law, which states the mixing half already.
+
+**Why this was measured before a condition parser was written.** [GRAMMAR-LEDGER](GRAMMAR-LEDGER.md)'s `bedingung` row said "max three parts per bracket level", taken from the production's shape. A parser written from that inventory would have rejected a four-part chain A12 admits, which is the one direction a checker must never take.
+
+**The arity claim is false.** All eight rows are admitted, including four parts joined by `And` and four joined by `Or`:
+
+| condition | verdict |
+|---|---|
+| one part — the liveness control | ADMITTED |
+| two, three, FOUR parts joined by `And` | ADMITTED |
+| two, three, FOUR parts joined by `Or` | ADMITTED |
+| four parts split across two bracket levels | ADMITTED |
+
+**Where the wrong reading came from.** The production is `teilBedingung (l1=logOp teilBedingung (l2=logOp teilBedingung {this.checkBedingung(_localctx);})*)?` — the inner group is STARRED, so the parts are unbounded, and the two labels exist so the parser's semantic ACTION can compare connectives, not to bound their number. Reading a label as a cardinality is the trap: the grammar shape carries the check's operands, not the language's arity.
+
+**The mixing half is real, has its own code, and is NOT "both spellings appear in the text".** An unparenthesised mix draws `MVK_BRACKET_MISSING` — A12 refuses to guess a precedence rather than applying one silently, which is the better of the two possible answers: had it ACCEPTED the mix it would also have had a precedence, and a checker that guessed differently would build a different tree for text both accept, a divergence no accept/reject test can see. Five rows carrying BOTH spellings at different levels are admitted (`(A And B) Or C`, `A And (B Or C)`, both sides grouped, a grouped `Or` inside an `And` chain, two levels deep), so a check that looked for both spellings anywhere would reject five conditions A12 accepts.
+
+**A level is a bracket PAIR, not a depth — the row that separates the obvious implementation from the correct one.** Two sibling calls one parenthesis deep, one filter carrying `And` and the other `Or`, joined at the outer level by `Or`, are ADMITTED; the same pair with the OUTER level mixed still draws `MVK_BRACKET_MISSING`, so the check is live on that text rather than switched off by the filters. A checker keyed on a depth COUNTER would record "depth 1 has seen both spellings" and over-reject. A call's parentheses likewise open their own level: `And` inside a `Having` filter with `Or` outside it is ADMITTED.
+
+**The mechanism, source-verified and consistent with every row above.** `CheckBedingungImpl.check` compares `ctx.l1` with `ctx.l2` and throws `MVK_BRACKET_MISSING` when exactly one of them is `Und`; `l1` binds once outside the loop while `l2` rebinds per iteration, so every connective after the first is compared against the first. The check therefore runs per `bedingung` CONTEXT, and exactly three productions open one — the entry rule, `geklammerteBedingung: '(' bedingung ')'`, and the entity filter's `'Mit' filterCond=bedingung`. That is why both a grouping pair and a filter reset the comparison, and why two sibling pairs do not see each other. *(The equivalent-detection caveat: comparing every connective against the first and comparing adjacent pairs both fire at the first switch, so these rows do not discriminate between them; what is source-verified is the operand pair the kernel actually compares, not a behaviour a grid could separate.)*
+
+**What this buys the portable checker.** A same-level `And`/`Or` mix is reportable from tokens alone — a bracket-pair stack is something the tokenizer already supports — and it is the first condition-syntax rule measured here that is NOT defeated by parser state, unlike the delimiter and trailing-token grids of [KF300](#kf300), which both ended in negative results. The discriminating cases those two grids do not cover are the five level-separated admissions and the sibling-pair row: each rejects a plausible cheap implementation (both-spellings-anywhere, depth-counter) that neither earlier grid touches.
+
+*Locked by:* `rulekit.validate.laws.RuleConditionCompositionLawsTest` (four grids: arity with a one-part liveness control, mixing with the five level-separated admissions, a call's parentheses with a filter-parses control, and the sibling-pair row with a mixed-outer-level control).
