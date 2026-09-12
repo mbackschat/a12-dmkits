@@ -15,7 +15,7 @@ class ConditionBindingTest {
 
     private fun model(condition: String, language: String = "en_US") = ModelSource(
         """
-        {"header":{"id":"order"},"content":{
+        {"header":{"id":"order","locales":[{"code":"en_US"}]},"content":{
           "modelConfig":{"conditionLanguage":{"code":"$language"},"fieldRefByShortNameAllowed":false},
           "modelRoot":{"rootGroups":[
             {"type":"Group","id":"g0","name":"Order","Group":{"elements":[
@@ -153,7 +153,7 @@ class ConditionBindingTest {
     fun everyDslBearingMemberOfAComputationIsRead() {
         val source = ModelSource(
             """
-            {"header":{"id":"order"},"content":{"modelRoot":{"rootGroups":[
+            {"header":{"id":"order","locales":[{"code":"en_US"}]},"content":{"modelRoot":{"rootGroups":[
               {"type":"Group","id":"g0","name":"Order","Group":{"elements":[
                 {"type":"Field","id":"f0","name":"Total","Field":{}},
                 {"type":"Computation","id":"c0","name":"Comp","Computation":{
@@ -192,7 +192,7 @@ class ConditionBindingTest {
     fun anUnexpandedMountSuspendsTheReferenceChecksInsteadOfRejecting() {
         val source = ModelSource(
             """
-            {"header":{"id":"order"},"content":{"modelRoot":{"rootGroups":[
+            {"header":{"id":"order","locales":[{"code":"en_US"}]},"content":{"modelRoot":{"rootGroups":[
               {"type":"Group","id":"g0","name":"Order","Group":{"elements":[
                 {"type":"Group","id":"g1","name":"Address","Group":{"modelAlias":"address-model"}},
                 {"type":"Rule","id":"r0","name":"Check","Rule":{"errorCode":"C",
@@ -218,7 +218,7 @@ class ConditionBindingTest {
     fun anUnbuildableComputedTargetIsAlsoACoverageGap() {
         val source = ModelSource(
             """
-            {"header":{"id":"order"},"content":{"modelRoot":{"rootGroups":[
+            {"header":{"id":"order","locales":[{"code":"en_US"}]},"content":{"modelRoot":{"rootGroups":[
               {"type":"Group","id":"g0","name":"Order","Group":{"elements":[
                 {"type":"Computation","id":"c0","name":"Comp","Computation":{
                   "errorMessage":[{"locale":"en_US","text":"x"}],

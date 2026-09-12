@@ -1,12 +1,14 @@
 package io.github.mbackschat.a12.dm.consistency
 
 import kotlinx.serialization.json.JsonArray
+import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.contentOrNull
 
 /**
- * The declaration SLOTS of a stored rule or computation — its `name`, and its `errorMessage` texts.
+ * The declaration SLOTS of a stored rule or computation — its `name` and its `errorMessage` texts — together
+ * with the declared locale set those texts answer to.
  *
  * Nothing here needs a condition parser: every row reads members A12 declares as structured JSON, which is
  * what makes this the family that can land before the checker owns a syntax layer.
@@ -17,6 +19,19 @@ import kotlinx.serialization.json.contentOrNull
  * unchecked. Every row below is measured on both carriers (`RuleSlotLawsTest`, `ComputationSlotLawsTest`,
  * kernel 30.8.1, 2026-09-12).
  *
+ * **A message is collected ONLY for a DECLARED locale, and the last entry for one wins.** Both halves are
+ * measured and both are the direction a naive reader gets wrong: a text for an undeclared locale is never
+ * collected at all — so it cannot cover anything, and a model declaring no locale has no message whatever
+ * its rules carry — and a later blank entry replaces an earlier filled one rather than losing to it
+ * (`MessageSlotRawShapeLawsTest`). Locales are matched as parsed locale KEYS, never as text, so `en-US` and
+ * `en_US` are one locale on both sides.
+ *
+ * **A shape A12's own reader refuses is not a verdict about the model, so it never draws an `MVK_*` code.**
+ * An entry without a string `locale` and a string `text`, or with a locale spelling A12's parser rejects,
+ * makes the source UNREADABLE: no rule is examined and no consistency verdict exists. Reporting
+ * `MVK_ERROR_MESSAGE_MISSING` there would present this checker's own reading as A12's about a model A12
+ * never judged, so those declarations draw [CK_MODEL_NOT_BUILDABLE] and their message slots go unjudged.
+ *
  * **Two of the Java builders' refusals are deliberately NOT rejections here.** A message for an undeclared
  * locale, and a duplicate locale, are both admitted by A12 at this tier; `LocalizedText.checkDeclared`
  * refuses them because each usually hides a typo or dead text, and `MVK_LANGUAGE_DUPLICATE` belongs to the
@@ -25,15 +40,47 @@ import kotlinx.serialization.json.contentOrNull
  * would refuse a model the Kernel accepts, in the direction no consumer can detect.
  */
 fun PreparedModel.declarationSlotFindings(): List<Finding> =
-    elements.filter { it.kind in EXECUTABLE_KINDS }.flatMap { element ->
-        reservedNameFinding(element) + messageFindings(element, declaredLocales)
-    }
+    declaredLocaleFindings() +
+        elements.filter { it.kind in EXECUTABLE_KINDS }.flatMap { element ->
+            reservedNameFinding(element) + messageFindings(element, declaredLocales)
+        }
 
 /** The two element kinds that carry these slots: A12's executables, the checker's whole subject matter. */
 private val EXECUTABLE_KINDS = setOf("Rule", "Computation")
 
 /** The namespace A12 reserves for itself, matched case-INSENSITIVELY as the Kernel matches it. */
 private const val RESERVED_NAME_PREFIX = "vk_vk"
+
+/**
+ * What the model's own `header.locales` costs it, before any declaration is read.
+ *
+ * Both rows are model-level and neither belongs to a rule, but both decide what every message slot below
+ * answers to — a model with no usable declared locale collects no message at all, so its rules would
+ * otherwise each report a missing message with nothing saying why.
+ */
+private fun PreparedModel.declaredLocaleFindings(): List<Finding> = when {
+    unreadableLocaleCodes.isNotEmpty() -> unreadableLocaleCodes.map { code ->
+        Finding(
+            FindingCategory.A12_CONSTRAINT,
+            FindingSeverity.ERROR,
+            CK_MODEL_NOT_BUILDABLE,
+            "`header.locales` declares `$code`, which A12 cannot use as a locale, so the model never " +
+                "loads — nothing else in this report is A12's verdict about it",
+        )
+    }
+    // Only when nothing above fired: an unusable code leaves the key set empty too, and reporting both would
+    // name one defect twice with the second naming the wrong member.
+    declaredLocales.isEmpty() -> listOf(
+        Finding(
+            FindingCategory.A12_CONSTRAINT,
+            FindingSeverity.ERROR,
+            "MVK_SUPP_LANGUAGES_MISSING",
+            "the model declares no locale in `header.locales`, so A12 refuses it — and collects no error " +
+                "message text at all, whatever its rules carry",
+        ),
+    )
+    else -> emptyList()
+}
 
 private fun reservedNameFinding(element: DeclaredElement): List<Finding> =
     if (!element.name.startsWith(RESERVED_NAME_PREFIX, ignoreCase = true)) {
@@ -52,71 +99,100 @@ private fun reservedNameFinding(element: DeclaredElement): List<Finding> =
     }
 
 /**
- * One authored error-message entry, as stored: `errorMessage: [{locale, text}]` on the element's envelope.
+ * One authored error-message entry, reduced to what A12 collects from it.
  *
- * A BLANK text is not a message. A12 reads it as absent rather than as an empty one, so it draws the same
- * refusal an omitted entry does — measured on both carriers, and separated from "this locale has no entry"
- * by the row that leaves the other locale's text intact.
+ * @param localeKey the entry's `locale` as a parsed locale key, absent when it is the empty "any locale"
+ *     code — which reads, and then covers no declared language.
+ * @param text the entry's `text`, blank included. A BLANK text is not a message: A12 reads it as absent
+ *     rather than as an empty one, so it draws the same refusal an omitted entry does — measured on both
+ *     carriers, and separated from "this locale has no entry" by the row that leaves the other locale's
+ *     text intact.
  */
-private data class AuthoredMessage(val locale: String?, val text: String?) {
-    val isUsable: Boolean get() = !locale.isNullOrBlank() && !text.isNullOrBlank()
+private data class AuthoredMessage(val localeKey: String?, val text: String)
+
+/**
+ * The element's `errorMessage`, either as A12 collects it or as the reason A12 refuses to read the source.
+ */
+private sealed interface AuthoredMessages {
+    data class Read(val entries: List<AuthoredMessage>) : AuthoredMessages
+
+    /** @param explain what A12's reader refused, in its own terms. */
+    data class Refused(val explain: String) : AuthoredMessages
 }
 
 private fun messageFindings(element: DeclaredElement, declaredLocales: List<String>): List<Finding> {
-    val authored = element.authoredMessages()
-    val usable = authored.filter { it.isUsable }
-    if (usable.isEmpty()) {
-        // Reported without consulting the declared locales, because it does not depend on them: a
-        // message-less declaration is refused even by a model that declares none at all (the row that puts
-        // this on the other side of the axis every two-locale fixture shares).
-        return listOf(
+    val authored = when (val read = element.authoredMessages()) {
+        is AuthoredMessages.Refused -> return listOf(
+            Finding(
+                FindingCategory.A12_CONSTRAINT,
+                FindingSeverity.ERROR,
+                CK_MODEL_NOT_BUILDABLE,
+                "${read.explain}, so A12's own reader refuses the source and no rule in it is ever " +
+                    "examined — this declaration's error messages are not judged here",
+                element.path,
+            ),
+        )
+        is AuthoredMessages.Read -> read.entries
+    }
+    // What A12 ends up holding: only DECLARED locales are collected, and a later entry replaces an earlier
+    // one for the same locale whether or not it has a text. A reader that kept the first usable entry would
+    // see a message where A12 finds none.
+    val collected = mutableMapOf<String, String>()
+    for (entry in authored) {
+        val key = entry.localeKey?.takeIf { it in declaredLocales } ?: continue
+        collected[key] = entry.text
+    }
+    val covered = collected.filterValues { it.isNotBlank() }.keys
+    val missing = if (covered.isEmpty()) {
+        listOf(
             Finding(
                 FindingCategory.A12_CONSTRAINT,
                 FindingSeverity.ERROR,
                 "MVK_ERROR_MESSAGE_MISSING",
-                "this declaration carries no error message text — A12 refuses it, and a blank `text` counts " +
-                    "as no message at all",
+                "this declaration carries no error message text for any declared locale — A12 refuses it, " +
+                    "and a blank `text` counts as no message at all",
                 element.path,
             ),
         )
+    } else {
+        declaredLocales.filterNot { it in covered }.map { uncovered ->
+            Finding(
+                FindingCategory.A12_CONSTRAINT,
+                FindingSeverity.ERROR,
+                "MVK_ERROR_MESSAGE_FOR_LANGUAGE_MISSING",
+                "the model declares `$uncovered` and this declaration has no error message text for it",
+                element.path,
+            )
+        }
     }
-    val covered = usable.mapNotNull { it.locale }.toSet()
-    return declaredLocales.filterNot { it in covered }.map { missing ->
-        Finding(
-            FindingCategory.A12_CONSTRAINT,
-            FindingSeverity.ERROR,
-            "MVK_ERROR_MESSAGE_FOR_LANGUAGE_MISSING",
-            "the model declares `$missing` and this declaration has no error message text for it",
-            element.path,
-        )
-    } + authoredLocalePolicyFindings(element, authored, declaredLocales)
+    return missing + authoredLocalePolicyFindings(element, authored, declaredLocales)
 }
 
 /**
  * The two locale shapes A12 admits and the Java builders refuse — advisory here, and never a rejection.
  *
- * Both are reported off the AUTHORED entries rather than the usable ones, because that is what an author
- * wrote and would have to edit: a duplicate whose second text is blank is still two entries for one locale.
+ * Both are reported off the AUTHORED entries rather than the collected ones, because that is what an author
+ * wrote and would have to edit: a duplicate whose second text is blank is still two entries for one locale,
+ * and an undeclared locale's entry is never collected at all.
  */
 private fun authoredLocalePolicyFindings(
     element: DeclaredElement,
     authored: List<AuthoredMessage>,
     declaredLocales: List<String>,
 ): List<Finding> {
-    val locales = authored.mapNotNull { it.locale?.takeIf(String::isNotBlank) }
-    val duplicated = locales.groupingBy { it }.eachCount().filterValues { it > 1 }.keys
+    val keys = authored.mapNotNull { it.localeKey }
+    val duplicated = keys.groupingBy { it }.eachCount().filterValues { it > 1 }.keys
     // "Undeclared" is a comparison against a declared set, so a model that declares NONE would make every
     // message undeclared and turn one fact about the model into one advisory per declaration. That model's
-    // problem is that it declares no locale at all, which is a different finding and not this family's.
-    val undeclared =
-        if (declaredLocales.isEmpty()) emptySet() else locales.toSet() - declaredLocales.toSet()
+    // problem is that it declares no locale at all, which `declaredLocaleFindings` already reports.
+    val undeclared = if (declaredLocales.isEmpty()) emptySet() else keys.toSet() - declaredLocales.toSet()
     return duplicated.map { locale ->
         Finding(
             FindingCategory.AUTHORING_POLICY,
             FindingSeverity.WARNING,
             "MVK_LANGUAGE_DUPLICATE",
-            "this declaration has more than one error message for `$locale`; A12 keeps one of them without " +
-                "saying which, and refuses the pair only in its model-as-document tier",
+            "this declaration has more than one error message for `$locale`; A12 keeps the LAST of them, " +
+                "and refuses the pair only in its model-as-document tier",
             element.path,
         )
     } + undeclared.map { locale ->
@@ -125,23 +201,47 @@ private fun authoredLocalePolicyFindings(
             FindingSeverity.WARNING,
             "RK_UNDECLARED_MESSAGE_LOCALE",
             "this declaration has an error message for `$locale`, which the model does not declare, so A12 " +
-                "stores it without ever examining it",
+                "never collects the text and it can cover no locale",
             element.path,
         )
     }
 }
 
 /**
- * The element's authored messages, read leniently: an entry this cannot read is an entry that covers no
- * locale, which is exactly how A12 treats it. Preparation's diagnosing accessors are deliberately not used
- * here — an unreadable message is a FINDING about the declaration, not a source the checker could not read.
+ * The element's authored messages, read exactly as far as A12's own reader gets.
+ *
+ * Three shapes of the `errorMessage` member itself are measured rather than assumed
+ * ([KERNEL-FINDINGS KF290]). An ARRAY and an OBJECT both yield entries, because the reader iterates the
+ * node's elements and an object's elements are its values; anything else — a string, a number, an absent
+ * member — yields none, and the declaration is simply message-less. Only the ENTRIES have a shape the reader
+ * refuses, and a refusal there is about the SOURCE rather than about this declaration, which is why it
+ * stops the read instead of contributing an unusable entry.
  */
-private fun DeclaredElement.authoredMessages(): List<AuthoredMessage> =
-    ((declaration[kind] as? JsonObject)?.get("errorMessage") as? JsonArray)
-        .orEmpty()
-        .map { entry ->
-            val body = entry as? JsonObject
-            AuthoredMessage(body?.member("locale"), body?.member("text"))
+private fun DeclaredElement.authoredMessages(): AuthoredMessages {
+    val entries = when (val member = (declaration[kind] as? JsonObject)?.get("errorMessage")) {
+        is JsonArray -> member.toList()
+        is JsonObject -> member.values.toList()
+        else -> emptyList<JsonElement>()
+    }
+    val read = mutableListOf<AuthoredMessage>()
+    for (entry in entries) {
+        val body = entry as? JsonObject
+            ?: return AuthoredMessages.Refused("an `errorMessage` entry here is not a JSON object")
+        val locale = body.string("locale")
+            ?: return AuthoredMessages.Refused("an `errorMessage` entry here carries no string `locale`")
+        val text = body.string("text")
+            ?: return AuthoredMessages.Refused("an `errorMessage` entry here carries no string `text`")
+        // The empty code is the one A12 READS without producing a locale, so it is an entry that covers
+        // nothing rather than a spelling the reader refuses.
+        val key = localeKeyOrNull(locale)
+        if (key == null && locale.isNotEmpty()) {
+            return AuthoredMessages.Refused("`$locale` is not a locale code A12's parser accepts")
         }
+        read += AuthoredMessage(key, text)
+    }
+    return AuthoredMessages.Read(read)
+}
 
-private fun JsonObject.member(key: String): String? = (this[key] as? JsonPrimitive)?.contentOrNull
+/** A member A12 binds to a `String`, absent when it is missing or is not a JSON string. */
+private fun JsonObject.string(key: String): String? =
+    (this[key] as? JsonPrimitive)?.takeIf { it.isString }?.contentOrNull

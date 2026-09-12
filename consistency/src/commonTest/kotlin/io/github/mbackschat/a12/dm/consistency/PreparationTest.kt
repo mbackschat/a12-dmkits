@@ -25,7 +25,7 @@ class PreparationTest {
     private fun preparedRoots(rootGroups: String): PreparedModel = prepared(model(rootGroups))
 
     private fun model(rootGroups: String, modelConfig: String = "") =
-        """{"header":{"id":"m"},"content":{$modelConfig"modelRoot":{"rootGroups":[$rootGroups]}}}"""
+        """{"header":{"id":"m","locales":[{"code":"en_US"}]},"content":{$modelConfig"modelRoot":{"rootGroups":[$rootGroups]}}}"""
 
     private val twoLevel = model(
         """
@@ -270,8 +270,8 @@ class PreparationTest {
     @Test
     fun aMemberOfTheWrongJsonTypeIsDiagnosedRatherThanRaised() {
         listOf(
-            """{"header":{"id":"m"},"content":{"modelRoot":{"rootGroups":{}}}}""",
-            """{"header":{"id":"m"},"content":{"modelRoot":{"rootGroups":[7]}}}""",
+            """{"header":{"id":"m","locales":[{"code":"en_US"}]},"content":{"modelRoot":{"rootGroups":{}}}}""",
+            """{"header":{"id":"m","locales":[{"code":"en_US"}]},"content":{"modelRoot":{"rootGroups":[7]}}}""",
             model("""{"type":"Group","id":"/O","name":"O","Group":{"elements":{}}}"""),
             model("""{"type":"Group","id":"/O","name":"O","Group":7}""", ""),
             model("", "\"modelConfig\":{\"fieldRefByShortNameAllowed\":1},"),
@@ -292,7 +292,7 @@ class PreparationTest {
      */
     @Test
     fun aModelWithNoRootGroupsPreparesEmptyWithoutRaising() {
-        listOf("""{"header":{"id":"m"},"content":{}}""", model("")).forEach { json ->
+        listOf("""{"header":{"id":"m","locales":[{"code":"en_US"}]},"content":{}}""", model("")).forEach { json ->
             val prepared = prepared(json)
             assertEquals(emptyList(), prepared.elements, json)
             assertEquals(emptyList(), prepared.diagnostics, json)

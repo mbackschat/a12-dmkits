@@ -14,7 +14,10 @@ enum class CheckFamily {
     /** Every entity named in a rule's condition or a computation's operations resolves. */
     CONDITION_REFERENCES,
 
-    /** A rule's and a computation's own declaration slots: the reserved name prefix, the error messages. */
+    /**
+     * A rule's and a computation's own declaration slots — the reserved name prefix and the error messages —
+     * and the `header.locales` set those messages answer to, which decides what A12 collects from them.
+     */
     DECLARATION_SLOTS,
 }
 
@@ -140,7 +143,7 @@ internal fun check(
         diagnostics = inherited + prepared.diagnostics,
         checksCompleted = setOf(CheckFamily.DECLARED_REFERENCES, CheckFamily.CONDITION_REFERENCES,
             CheckFamily.DECLARATION_SLOTS),
-        gaps = prepared.gaps() + prepared.emptyFactBase() + declared.buildBlocked() + UNREAD_MEMBERS +
+        gaps = prepared.gaps() + prepared.emptyFactBase() + findings.buildBlocked() + UNREAD_MEMBERS +
             UNIMPLEMENTED_FAMILIES,
     )
 }
@@ -172,22 +175,21 @@ private fun PreparedModel.gaps(): List<CoverageGap> = diagnostics.map {
 }
 
 /**
- * The declarations that stop the Kernel from BUILDING the model, so A12 reports that failure and nothing
- * else — no `checkConsistency` verdict is produced at all (measured through `ModelLoader.loadAndCheck`).
- * Two reach it: an unresolvable computed field, and any declared target that climbs past the root. Every
- * other finding in the same report is therefore the checker's own reading rather than something A12 would
- * have said about this model, and the gap says so instead of leaving a consumer to assume the list is A12's.
+ * The findings that stop A12 from producing a verdict at all, so every OTHER finding in the same report is
+ * this checker's own reading rather than something A12 would have said about this model.
+ *
+ * They are recognized by their code, because the class is wider than any one family: an unresolvable
+ * computed field and a target climbing past the root stop the Kernel from BUILDING the model (measured
+ * through `ModelLoader.loadAndCheck`), while a message entry or a locale code its READER refuses stops it
+ * one tier earlier still. A consumer told only the findings would assume the list is A12's; the gap says
+ * which it is.
  */
-private fun List<DeclaredReference>.buildBlocked(): List<CoverageGap> =
-    filter {
-        it.target is Reference.AboveRoot ||
-            (it.role == ReferenceRole.COMPUTED_TARGET && it.target !is Reference.Resolved)
-    }.map {
+private fun List<Finding>.buildBlocked(): List<CoverageGap> =
+    filter { it.code == CK_MODEL_NOT_BUILDABLE }.map {
         CoverageGap(
-            at = it.declaredAt,
-            reason = "`${it.member}` makes this model unbuildable, so the Kernel reports that and stops; " +
-                "any other finding here is this checker's own reading of a model A12 never got far " +
-                "enough to judge",
+            at = it.at,
+            reason = "this makes the model unusable, so A12 reports that and stops; every other finding " +
+                "here is this checker's own reading of a model A12 never got far enough to judge",
         )
     }
 

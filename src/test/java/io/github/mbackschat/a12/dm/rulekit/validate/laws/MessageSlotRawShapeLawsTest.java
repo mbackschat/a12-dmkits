@@ -3,6 +3,9 @@ package io.github.mbackschat.a12.dm.rulekit.validate.laws;
 import static io.github.mbackschat.a12.dm.rulekit.dsl.Dsl.de;
 import static io.github.mbackschat.a12.dm.rulekit.dsl.Dsl.en;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.IOException;
 import java.io.UncheckedIOException;
@@ -21,6 +24,7 @@ import io.github.mbackschat.a12.dm.Fixtures;
 import io.github.mbackschat.a12.dm.core.ModelConsistencyException;
 import io.github.mbackschat.a12.dm.core.ModelInputException;
 import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel;
+import io.github.mbackschat.a12.dm.rulekit.validate.ValidationResult;
 import io.github.mbackschat.a12.dm.rulekit.write.ModelWriter;
 
 /**
@@ -64,6 +68,8 @@ class MessageSlotRawShapeLawsTest {
         actual.put("header en_us", verdict("[{\"code\":\"en_us\"}]", "[" + EN + "]"));
         actual.put("header as bare strings", verdict("[\"en_US\",\"de_DE\"]", "[" + EN + "," + DE + "]"));
         actual.put("header as bare strings, one message", verdict("[\"en_US\",\"de_DE\"]", "[" + EN + "]"));
+        actual.put("no declared locale, one message", verdict("[]", "[" + EN + "]"));
+        actual.put("no declared locale, no message", verdict("[]", "[]"));
 
         Map<String, String> expected = new LinkedHashMap<>();
         expected.put("header en_US · message en_US — the control", ADMITTED);
@@ -72,7 +78,134 @@ class MessageSlotRawShapeLawsTest {
         expected.put("header en_us", UNREADABLE);
         expected.put("header as bare strings", ADMITTED);
         expected.put("header as bare strings, one message", "MVK_ERROR_MESSAGE_FOR_LANGUAGE_MISSING");
+        // A model declaring NO locale is invalid in its own right (MVK_SUPP_LANGUAGES_MISSING) AND collects
+        // no message at all, so its rules are message-less whatever they carry. The pair is the row that
+        // separates "this locale has no text" from "there is no text": a message for an undeclared locale is
+        // never collected, so it cannot cover anything.
+        String noLocales = "MVK_SUPP_LANGUAGES_MISSING,MVK_ERROR_MESSAGE_MISSING";
+        expected.put("no declared locale, one message", noLocales);
+        expected.put("no declared locale, no message", noLocales);
         assertEquals(expected, actual, "how A12 matches a message's locale against the declared set");
+    }
+
+    /**
+     * Which locale SPELLINGS A12's reader takes at all — the accept/refuse boundary a checker must mirror,
+     * since normalizing a spelling A12 refuses would analyse a model that does not load.
+     *
+     * <p>The message carries the same code as the header in every row, so the only thing under test is
+     * whether the code is readable; a row that admits says nothing about matching, which the table above
+     * covers.
+     */
+    @Test
+    void aLocaleCodeIsTakenOnlyInTheShapeA12sParserAccepts() {
+        Map<String, String> actual = new LinkedHashMap<>();
+        for (String code : List.of("en_US", "en-US", "en", "fr_CA", "en_US_POSIX", "en_us", "EN_US", "EN",
+                "e", "eng", "en_U", "en_USA", "en_123", "", "klingon")) {
+            actual.put(code.isEmpty() ? "(empty)" : code, verdict("[{\"code\":\"" + code + "\"}]",
+                    "[{\"locale\":\"" + code + "\",\"text\":\"x\"}]"));
+        }
+
+        Map<String, String> expected = new LinkedHashMap<>();
+        expected.put("en_US", ADMITTED);
+        expected.put("en-US", ADMITTED);
+        expected.put("en", ADMITTED);
+        expected.put("fr_CA", ADMITTED);
+        expected.put("en_US_POSIX", ADMITTED);
+        expected.put("en_us", UNREADABLE);
+        expected.put("EN_US", UNREADABLE);
+        expected.put("EN", UNREADABLE);
+        expected.put("e", UNREADABLE);
+        expected.put("eng", ADMITTED);
+        expected.put("en_U", UNREADABLE);
+        expected.put("en_USA", UNREADABLE);
+        expected.put("en_123", ADMITTED);
+        // The empty code READS — it is the "any locale" value — and is then refused a tier later, by the
+        // kernel's own model build rather than by its reader. Kept distinct for the same reason as UNREADABLE.
+        expected.put("(empty)", "NOT BUILDABLE");
+        expected.put("klingon", UNREADABLE);
+        assertEquals(expected, actual, "which locale spellings A12's reader accepts");
+    }
+
+    /**
+     * The same spellings on the MESSAGE side alone — the table above moves both sides at once, so every one
+     * of its refusals is attributable to the header and says nothing about a message's own `locale`.
+     *
+     * <p>That confound matters to a checker rather than being pedantry: if only the header were parsed, a
+     * message locale could be compared as text and a refused spelling would merely fail to match. The rows
+     * below hold the header at the canonical {@code en_US} and vary only the message.
+     */
+    @Test
+    void aMessageLocaleIsReadByTheSameParserAsADeclaredCode() {
+        Map<String, String> actual = new LinkedHashMap<>();
+        for (String code : List.of("en_us", "EN_US", "klingon", "en_U", "")) {
+            actual.put(code.isEmpty() ? "(empty)" : code,
+                    verdict(EN_ONLY, "[{\"locale\":\"" + code + "\",\"text\":\"x\"}]"));
+        }
+
+        Map<String, String> expected = new LinkedHashMap<>();
+        expected.put("en_us", UNREADABLE);
+        expected.put("EN_US", UNREADABLE);
+        expected.put("klingon", UNREADABLE);
+        expected.put("en_U", UNREADABLE);
+        // The empty code reads on this side too, and covers no declared language, so the rule is left with
+        // no message at all rather than the model being unbuildable — the header's own empty-code row is
+        // what makes a model unbuildable, and only there.
+        expected.put("(empty)", "MVK_ERROR_MESSAGE_MISSING");
+        assertEquals(expected, actual, "which locale spellings a message entry accepts");
+    }
+
+    /**
+     * A model that declares no locale is refused for THAT, with no rule involved — the row that keeps the
+     * code attributable.
+     *
+     * <p>Every other no-locale row in this class carries the probe rule, so {@code MVK_SUPP_LANGUAGES_MISSING}
+     * and {@code MVK_ERROR_MESSAGE_MISSING} always arrive together and neither can be attributed. The base
+     * fixture declares no rule at all, which removes the second.
+     */
+    @Test
+    void aModelDeclaringNoLocaleIsRefusedWithoutAnyRuleInvolved() {
+        String noLocales = withoutDeclaredLocales(Fixtures.subscriptionJson());
+        ModelConsistencyException rejected =
+                assertThrows(ModelConsistencyException.class, () -> BoundModel.ofJson(noLocales));
+        assertTrue(rejected.getMessage().contains("MVK_SUPP_LANGUAGES_MISSING"),
+                () -> "expected MVK_SUPP_LANGUAGES_MISSING, kernel said: " + rejected.getMessage());
+        assertFalse(rejected.getMessage().contains("MVK_ERROR_MESSAGE"),
+                () -> "no rule is declared, so no message code may appear: " + rejected.getMessage());
+    }
+
+    /**
+     * The BARE locale, which [KF158](KERNEL-FINDINGS.md#kf158) records as "not supported" at the validation
+     * tier — measured here because the table above admits it, and a disagreement with a clause we already
+     * hold is the hypothesis to test rather than a row to quietly overwrite.
+     *
+     * <p><b>Both paths admit it.</b> A stored model whose header and messages both say {@code en} passes
+     * {@code checkConsistency}, and {@code RuleValidator.check} — which injects a placeholder error text per
+     * declared locale, the mechanism most likely to need a full code — accepts the same model. So the
+     * incumbent row does not hold for this shape on either path.
+     *
+     * <p><b>What this does NOT establish.</b> The original fixture is not reproduced here; it may have paired
+     * a bare header locale with FULL message codes, which is a locale-MATCHING question and would draw
+     * {@code MVK_ERROR_MESSAGE_FOR_LANGUAGE_MISSING} for a reason that has nothing to do with support. That
+     * cell is the second row below. The consequence for a reader is the same either way: refusing a bare code
+     * outright would reject a model A12 admits.
+     */
+    @Test
+    void aBareLocaleIsAdmittedByBothTheStoredAndTheDraftPath() {
+        String model = probe("[{\"code\":\"en\"}]", "[{\"locale\":\"en\",\"text\":\"x\"}]");
+
+        assertEquals(ADMITTED, verdict("[{\"code\":\"en\"}]", "[{\"locale\":\"en\",\"text\":\"x\"}]"),
+                "a stored model declaring a bare locale is consistency-valid");
+        ValidationResult viaDraft = KernelLaws.checkModel(model, "/Subscription", "../Tier",
+                "FieldNotFilled(Tier)");
+        assertTrue(viaDraft.ok(),
+                () -> "the draft validator injects a text per declared locale and accepts a bare one: "
+                        + viaDraft.diagnostics());
+
+        // …and the matching cell, which answers with the OTHER code: a message whose locale is not declared
+        // is never collected at all, so the rule has no message for any declared language rather than one
+        // missing for a particular language. That is the rule the two codes actually split on.
+        assertEquals("MVK_ERROR_MESSAGE_MISSING", verdict("[{\"code\":\"en\"}]", "[" + EN + "]"),
+                "a bare declared locale is not matched by a full message code — they are different locales");
     }
 
     /** The message-ENTRY rows: shapes A12's own {@code LocalizedTextMap} reader meets before any check runs. */
@@ -152,6 +285,21 @@ class MessageSlotRawShapeLawsTest {
             // A rejection carrying no MVK_ code is the kernel refusing to BUILD the model from inside
             // checkConsistency — still not a verdict about its rules, and still not an input refusal.
             return found.isEmpty() ? "NOT BUILDABLE" : found.toString();
+        }
+    }
+
+    /** [model] with an empty `header.locales`, refusing rather than passing input through unchanged. */
+    private static String withoutDeclaredLocales(String model) {
+        try {
+            ObjectNode root = (ObjectNode) MAPPER.readTree(model);
+            ObjectNode header = (ObjectNode) root.path("header");
+            if (!header.has("locales")) {
+                throw new IllegalStateException("the fixture no longer declares `header.locales`");
+            }
+            header.set("locales", MAPPER.createArrayNode());
+            return root.toString();
+        } catch (IOException unreadable) {
+            throw new UncheckedIOException("the fixture must parse", unreadable);
         }
     }
 

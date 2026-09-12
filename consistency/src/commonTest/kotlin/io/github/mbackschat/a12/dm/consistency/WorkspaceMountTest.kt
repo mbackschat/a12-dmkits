@@ -21,7 +21,7 @@ class WorkspaceMountTest {
     /** A provider whose root group carries [elements]; its own root name must never survive into a path. */
     private fun provider(id: String, root: String, elements: String, flag: Boolean = false) = source(
         """
-        {"header":{"id":"$id"},"content":{
+        {"header":{"id":"$id","locales":[{"code":"en_US"}]},"content":{
           "modelConfig":{"fieldRefByShortNameAllowed":$flag},
           "modelRoot":{"rootGroups":[
             {"type":"Group","id":"g","name":"$root","Group":{"elements":[$elements]}}
@@ -43,7 +43,7 @@ class WorkspaceMountTest {
     private fun host(mountBody: String = """"modelAlias":"addr"""", extra: String = "", flag: Boolean = false) =
         source(
             """
-            {"header":{"id":"order","modelReferences":[
+            {"header":{"id":"order","locales":[{"code":"en_US"}],"modelReferences":[
               {"alias":"addr","purpose":"include","reference":"address"}
             ]},"content":{
               "modelConfig":{"fieldRefByShortNameAllowed":$flag},
@@ -118,7 +118,7 @@ class WorkspaceMountTest {
         val geo = provider("geo", "Geo", field("Zip"))
         val address = source(
             """
-            {"header":{"id":"address","modelReferences":[
+            {"header":{"id":"address","locales":[{"code":"en_US"}],"modelReferences":[
               {"alias":"g","purpose":"include","reference":"geo"}
             ]},"content":{"modelRoot":{"rootGroups":[
               {"type":"Group","id":"g","name":"Address","Group":{"elements":[
@@ -139,7 +139,7 @@ class WorkspaceMountTest {
         val address = provider("address", "Address", field("Street"))
         val entry = source(
             """
-            {"header":{"id":"order","modelReferences":[
+            {"header":{"id":"order","locales":[{"code":"en_US"}],"modelReferences":[
               {"alias":"addr","purpose":"include","reference":"address"}
             ]},"content":{"modelRoot":{"rootGroups":[
               {"type":"Group","id":"g0","name":"Order","Group":{"elements":[
@@ -162,7 +162,7 @@ class WorkspaceMountTest {
     fun anIncludeCycleIsReportedRatherThanFollowed() {
         val address = source(
             """
-            {"header":{"id":"address","modelReferences":[
+            {"header":{"id":"address","locales":[{"code":"en_US"}],"modelReferences":[
               {"alias":"back","purpose":"include","reference":"order"}
             ]},"content":{"modelRoot":{"rootGroups":[
               {"type":"Group","id":"g","name":"Address","Group":{"elements":[
@@ -286,7 +286,47 @@ class WorkspaceMountTest {
         assertTrue(CheckFamily.CONDITION_REFERENCES in check(bilingualHost(), wide).checksCompleted)
     }
 
-    /** The host of the two rows above, declaring two locales where [host] declares none. */
+    /**
+     * A MOUNTED declaration's message slots answer to the ENTRY model's locale set, not to the provider's.
+     *
+     * This is the carrier the family's own tests cannot reach, and it is the one where getting it wrong is
+     * invisible: a checker that judged each declaration against the model that WROTE it would report nothing
+     * here, because the provider's own rule covers the provider's own single locale. A12 expands first and
+     * checks afterwards, so the entry's `de_DE` is what the mounted rule must carry — and the provider is
+     * admitted through the mount precisely because it declares a SUPERSET of a narrower entry.
+     */
+    @Test
+    fun aMountedDeclarationsMessagesAreJudgedAgainstTheEntrysLocales() {
+        val provider = source(
+            """
+            {"header":{"id":"address","locales":[{"code":"en_US"},{"code":"de_DE"}]},
+             "content":{"modelRoot":{"rootGroups":[
+              {"type":"Group","id":"g","name":"Address","Group":{"elements":[
+                ${field("Street")},
+                {"type":"Rule","id":"r","name":"StreetFilled","Rule":{"errorCode":"C",
+                 "errorMessage":[{"locale":"en_US","text":"x"}],
+                 "errorEntityRelPath":"../Street","errorCondition":"FieldFilled(Street)"}}
+              ]}}
+            ]}}}
+            """,
+        )
+        val bilingual = check(bilingualHost(), provider).findings
+        val monolingual = check(host(), provider).findings
+
+        assertEquals(
+            listOf("MVK_ERROR_MESSAGE_FOR_LANGUAGE_MISSING"),
+            bilingual.map { it.code },
+            "the entry declares de_DE, so the mounted rule owes a German text: $bilingual",
+        )
+        assertTrue(bilingual.all { it.at == "/Order/ShipTo/StreetFilled" }, bilingual.toString())
+        assertEquals(
+            emptyList(),
+            monolingual.map { it.code },
+            "the same provider under an en_US-only entry owes nothing more: $monolingual",
+        )
+    }
+
+    /** The host of the rows above, declaring two locales where [host] declares one. */
     private fun bilingualHost() = source(
         """
         {"header":{"id":"order","locales":[{"code":"en_US"},{"code":"de_DE"}],"modelReferences":[
@@ -304,7 +344,7 @@ class WorkspaceMountTest {
     fun aProviderWithoutExactlyOneRootGroupSuspendsTheMount() {
         val two = source(
             """
-            {"header":{"id":"address"},"content":{"modelRoot":{"rootGroups":[
+            {"header":{"id":"address","locales":[{"code":"en_US"}]},"content":{"modelRoot":{"rootGroups":[
               {"type":"Group","id":"a","name":"Address","Group":{"elements":[${field("Street")}]}},
               {"type":"Group","id":"b","name":"Other","Group":{"elements":[${field("City")}]}}
             ]}}}
@@ -388,7 +428,7 @@ class WorkspaceMountTest {
         val geo = provider("geo", "Geo", field("Zip"))
         val nesting = source(
             """
-            {"header":{"id":"address","modelReferences":[
+            {"header":{"id":"address","locales":[{"code":"en_US"}],"modelReferences":[
               {"alias":"g","purpose":"include","reference":"geo"}
             ]},"content":{
               "modelConfig":{"fieldRefByShortNameAllowed":true},
@@ -409,7 +449,7 @@ class WorkspaceMountTest {
 
         val twice = source(
             """
-            {"header":{"id":"order","modelReferences":[
+            {"header":{"id":"order","locales":[{"code":"en_US"}],"modelReferences":[
               {"alias":"addr","purpose":"include","reference":"address"}
             ]},"content":{"modelRoot":{"rootGroups":[
               {"type":"Group","id":"g0","name":"Order","Group":{"elements":[
@@ -464,7 +504,7 @@ class WorkspaceMountTest {
     fun aCycleThatNeverReachesTheEntryModelIsStillReported() {
         fun mutual(id: String, other: String) = source(
             """
-            {"header":{"id":"$id","modelReferences":[
+            {"header":{"id":"$id","locales":[{"code":"en_US"}],"modelReferences":[
               {"alias":"x","purpose":"include","reference":"$other"}
             ]},"content":{"modelRoot":{"rootGroups":[
               {"type":"Group","id":"g","name":"${id.uppercase()}","Group":{"elements":[
@@ -475,7 +515,7 @@ class WorkspaceMountTest {
         )
         val entry = source(
             """
-            {"header":{"id":"order","modelReferences":[
+            {"header":{"id":"order","locales":[{"code":"en_US"}],"modelReferences":[
               {"alias":"addr","purpose":"include","reference":"ma"}
             ]},"content":{"modelRoot":{"rootGroups":[
               {"type":"Group","id":"g0","name":"Order","Group":{"elements":[
@@ -516,7 +556,7 @@ class WorkspaceMountTest {
     fun aBrokenDeclarationInAProviderNamesTheProvider() {
         val address = ModelSource(
             """
-            {"header":{"id":"address"},"content":{"modelRoot":{"rootGroups":[
+            {"header":{"id":"address","locales":[{"code":"en_US"}]},"content":{"modelRoot":{"rootGroups":[
               {"type":"Group","id":"g","name":"Address","Group":{"elements":[
                 {"type":"Field","name":"Street","Field":{}}
               ]}}

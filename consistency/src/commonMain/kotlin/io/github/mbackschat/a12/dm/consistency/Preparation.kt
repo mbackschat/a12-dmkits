@@ -109,10 +109,16 @@ data class UnexpandedMount(val at: String, val alias: String, val reason: String
  * @param fieldRefByShortNameAllowed the model's `content.modelConfig.fieldRefByShortNameAllowed`. It decides
  *     whether a bare reference the declaring group does not have may resolve to a unique model-wide field
  *     short name, so reference resolution cannot be done without it.
- * @param declaredLocales the ENTRY model's `header.locales[].code`, in declaration order. It is the only set
- *     in play after expansion, for a mounted declaration as much as for a local one: A12 refuses to expand a
- *     provider that does not declare every locale of the entry model, so no mounted declaration can ever
- *     answer to a narrower set (measured 2026-09-12, `IncludedDeclarationLocaleScopeLawsTest`).
+ * @param declaredLocales the ENTRY model's declared locales as [localeKeyOrNull] KEYS, in declaration order
+ *     and without repeats. Keys rather than the authored spellings because A12 compares parsed locales, so
+ *     `en-US` and `en_US` are one declared locale. It is the only set in play after expansion, for a mounted
+ *     declaration as much as for a local one: A12 refuses to expand a provider that does not declare every
+ *     locale of the entry model, so no mounted declaration can ever answer to a narrower set (measured
+ *     2026-09-12, `IncludedDeclarationLocaleScopeLawsTest`).
+ * @param unreadableLocaleCodes the declared codes that yielded no key, verbatim. Each makes the whole model
+ *     unusable rather than narrowing the set — A12's reader refuses the spelling outright, or, for the empty
+ *     code, reads it and then cannot build the model (measured 2026-09-12, `MessageSlotRawShapeLawsTest`) —
+ *     so they are carried rather than dropped, and the declaration-slot family reports them.
  * @param unexpandedMounts the mounts that left the fact base incomplete.
  * @param diagnostics what the checker could not read. Preparation reports and skips rather than failing, so
  *     one broken element cannot mask its siblings' findings — and no input makes [prepare] raise.
@@ -123,6 +129,7 @@ data class PreparedModel(
     val conditionLanguage: ConditionLanguage = ConditionLanguage.DEFAULT,
     val unsupportedConditionLanguage: String? = null,
     val declaredLocales: List<String> = emptyList(),
+    val unreadableLocaleCodes: List<String> = emptyList(),
     val unexpandedMounts: List<UnexpandedMount> = emptyList(),
     val diagnostics: List<Diagnostic> = emptyList(),
 )
@@ -166,7 +173,8 @@ fun prepare(
         visiting = setOf(admitted.modelId),
         diagnosticLabel = admitted.source.diagnosticLabel,
     )
-    val collector = Collector(providers, entry.header.declaredLocales().toSet())
+    val locales = entry.header.declaredLocales()
+    val collector = Collector(providers, locales.keys.toSet())
     val root = (content?.get("modelRoot") as? JsonObject)?.get("rootGroups")
     collector.each(root, at = null, what = "content.modelRoot.rootGroups", scope = entry) {
         collector.collect(it, "", null, entry)
@@ -176,7 +184,8 @@ fun prepare(
         fieldRefByShortNameAllowed = collector.flag(content, entry),
         conditionLanguage = declaredLanguage ?: ConditionLanguage.DEFAULT,
         unsupportedConditionLanguage = declaredCode.takeIf { it != null && declaredLanguage == null },
-        declaredLocales = entry.header.declaredLocales(),
+        declaredLocales = locales.keys,
+        unreadableLocaleCodes = locales.unreadable,
         unexpandedMounts = collector.unexpandedMounts,
         diagnostics = collector.diagnostics,
     )
@@ -280,7 +289,13 @@ private class Collector(
         // `includeLevel` above: reaching CK_MODEL_NOT_BUILDABLE from the mount path would need it to carry
         // findings as well as gaps, and this UNDER-reports deliberately rather than mounting a tree A12
         // never builds.
-        val uncovered = entryLocales - providerHeader.declaredLocales().toSet()
+        val providerLocales = providerHeader.declaredLocales()
+        if (providerLocales.unreadable.isNotEmpty()) {
+            return unexpanded(path, alias, "`$reference` declares the locale code " +
+                "${providerLocales.unreadable.joinToString(", ")}, which A12 cannot use, so that source " +
+                "never loads and nothing here is a verdict about the model")
+        }
+        val uncovered = entryLocales - providerLocales.keys.toSet()
         if (uncovered.isNotEmpty()) {
             return unexpanded(path, alias, "`$reference` does not declare the entry model's " +
                 "${uncovered.joinToString(", ")}, so A12 refuses to expand this include at all and " +
@@ -413,15 +428,42 @@ private fun JsonObject?.declaresShortNameFallback(): Boolean =
         ?.contentOrNull == "true"
 
 /**
- * The locale codes a header declares, matched as authored. A12 compares a message's locale against this set
- * by exact string — a bare `en` is a different code from `en_US` and is not a supported validation locale at
- * all (KERNEL-FINDINGS §13) — so normalizing here would resolve a coverage gap the Kernel reports.
+ * What a header's `locales` declares: the locale [keys][localeKeyOrNull] it covers, and the codes it spells
+ * in a way A12 cannot use.
+ *
+ * @param keys in declaration order and without repeats. KEYS rather than the authored text because A12
+ *     compares parsed locales — `en-US` and `en_US` are one declared locale, and comparing text would report
+ *     a coverage gap for a model A12 admits.
+ * @param unreadable the codes that yielded no key, verbatim and in declaration order. Dropping them silently
+ *     would analyse a model that never loads; each makes the model unusable and is reported as such.
  */
-private fun JsonObject?.declaredLocales(): List<String> =
-    (this?.get("locales") as? JsonArray)
-        ?.filterIsInstance<JsonObject>()
-        ?.mapNotNull { it.text("code")?.takeIf(String::isNotBlank) }
-        .orEmpty()
+private data class DeclaredLocales(val keys: List<String>, val unreadable: List<String>)
+
+/**
+ * Read a header's declared locales.
+ *
+ * Two members of the shape are measured rather than assumed ([KERNEL-FINDINGS KF290]). An entry may be an
+ * OBJECT carrying `code` or a bare STRING — A12 reads both, and reading only the first leaves the declared
+ * set empty, which silently switches off every per-locale demand. An entry of any other shape carries no
+ * code at all and is skipped, which is what A12's own reader does with it.
+ */
+private fun JsonObject?.declaredLocales(): DeclaredLocales {
+    val keys = mutableListOf<String>()
+    val unreadable = mutableListOf<String>()
+    for (entry in (this?.get("locales") as? JsonArray).orEmpty()) {
+        val code = when (entry) {
+            is JsonObject -> entry.text("code")
+            is JsonPrimitive -> entry.contentOrNull?.takeIf { entry.isString }
+            else -> null
+        } ?: continue
+        val key = localeKeyOrNull(code)
+        when {
+            key == null -> unreadable += code
+            key !in keys -> keys += key
+        }
+    }
+    return DeclaredLocales(keys, unreadable)
+}
 
 /**
  * The model reference an alias names. `modelAlias` is only a header lookup key — never a tree node — and the

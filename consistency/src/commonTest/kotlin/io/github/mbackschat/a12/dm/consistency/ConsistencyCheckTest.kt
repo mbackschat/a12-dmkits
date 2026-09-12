@@ -15,7 +15,7 @@ class ConsistencyCheckTest {
 
     private fun model(rule: String) = ModelSource(
         """
-        {"header":{"id":"order"},"content":{"modelRoot":{"rootGroups":[
+        {"header":{"id":"order","locales":[{"code":"en_US"}]},"content":{"modelRoot":{"rootGroups":[
           {"type":"Group","id":"g0","name":"Order","Group":{"elements":[
             {"type":"Field","id":"f0","name":"Code","Field":{}},
             $rule
@@ -82,7 +82,7 @@ class ConsistencyCheckTest {
      */
     @Test
     fun aSourceThatDeclaresNoElementsSaysSoRatherThanReadingAsClean() {
-        val empty = check(ModelSource("""{"header":{"id":"types"},"content":{"modelRoot":{"rootGroups":[]}}}"""))
+        val empty = check(ModelSource("""{"header":{"id":"types","locales":[{"code":"en_US"}]},"content":{"modelRoot":{"rootGroups":[]}}}"""))
 
         assertEquals(ConsistencyStatus.Inconclusive, empty.status)
         assertEquals(emptyList(), empty.findings)

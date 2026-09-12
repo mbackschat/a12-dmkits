@@ -21,7 +21,7 @@ class DeclarationReferenceTest {
             admit(
                 ModelSource(
                     """
-                    {"header":{"id":"order"},"content":{"modelRoot":{"rootGroups":[
+                    {"header":{"id":"order","locales":[{"code":"en_US"}]},"content":{"modelRoot":{"rootGroups":[
                       {"type":"Group","id":"g0","name":"Order","Group":{"elements":[
                         {"type":"Field","id":"f0","name":"Code","Field":{}},
                         {"type":"Group","id":"g1","name":"Lines","Group":{"elements":[

@@ -43,14 +43,21 @@ fun Reference.asFinding(role: ReferenceRole, at: String, member: String? = null)
 }
 
 /**
- * A rejection A12 issues with no code of its own, because the model never gets built.
+ * A rejection A12 issues with no code of its own, because it never reaches a verdict about the model.
  *
- * Two measured inputs reach it: a computation whose computed field is missing (the Kernel reports the bare
- * text "The computed field \"…\" was not found." from `ValidationModelConverter.getComputationStatement`,
- * with no error type), and a rule whose error target climbs past the root (`ElementPathUtils.absPath` raises
- * an `IndexOutOfBoundsException` during deserialization). Neither carries an `MVK_*` key, so this is the one
- * code the checker owns — minted only after establishing that A12 defines none, and deliberately spelled
- * outside the `MVK_*` and `RK_*` namespaces so a consumer can never mistake it for one.
+ * Four measured inputs reach it, on two different tiers, and the code deliberately covers both because a
+ * consumer acts on them identically — the model is unusable, and nothing else in the report is A12's word
+ * about it. The model **is not built**: a computation whose computed field is missing (the Kernel reports
+ * the bare text "The computed field \"…\" was not found." from
+ * `ValidationModelConverter.getComputationStatement`, with no error type), or a rule whose error target
+ * climbs past the root (`ElementPathUtils.absPath` raises an `IndexOutOfBoundsException` during
+ * deserialization). Or the source **is not read at all**: an `errorMessage` entry without a string `locale`
+ * and `text`, or a locale code A12's parser refuses on either the header or the message side — each raises
+ * `ModelInputException` before any rule is examined (measured 2026-09-12, `MessageSlotRawShapeLawsTest`).
+ *
+ * None carries an `MVK_*` key, so this is the one code the checker owns — minted only after establishing
+ * that A12 defines none, and deliberately spelled outside the `MVK_*` and `RK_*` namespaces so a consumer
+ * can never mistake it for one.
  */
 const val CK_MODEL_NOT_BUILDABLE = "CK_MODEL_NOT_BUILDABLE"
 
