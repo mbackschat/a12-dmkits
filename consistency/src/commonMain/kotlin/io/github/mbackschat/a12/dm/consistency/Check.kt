@@ -115,7 +115,29 @@ fun check(source: ModelSource): ConsistencyReport {
         findings = findings,
         diagnostics = prepared.diagnostics,
         checksCompleted = setOf(CheckFamily.DECLARED_REFERENCES, CheckFamily.CONDITION_REFERENCES),
-        gaps = prepared.gaps() + declared.buildBlocked() + UNREAD_MEMBERS + UNIMPLEMENTED_FAMILIES,
+        gaps = prepared.gaps() + prepared.emptyFactBase() + declared.buildBlocked() + UNREAD_MEMBERS +
+            UNIMPLEMENTED_FAMILIES,
+    )
+}
+
+/**
+ * A source that declares nothing produces a report indistinguishable from one whose references all resolve,
+ * so it says which of the two it is.
+ *
+ * This is a GAP and not a rejection because A12 accepts such a model: a type-def-only library is exactly an
+ * empty root and is Kernel-valid standalone, and the Kernel reads an absent `rootGroups` and an absent
+ * `modelRoot` too (measured 2026-09-12, `ModelRootReadabilityLawsTest`). The one shape it cannot read —
+ * a missing `content` — is refused a phase earlier, at admission.
+ */
+private fun PreparedModel.emptyFactBase(): List<CoverageGap> = if (elements.isNotEmpty()) {
+    emptyList()
+} else {
+    listOf(
+        CoverageGap(
+            at = null,
+            reason = "this source declares no elements, so no rule or computation was examined — a report " +
+                "with no findings here means nothing was found to check, not that nothing was wrong",
+        ),
     )
 }
 

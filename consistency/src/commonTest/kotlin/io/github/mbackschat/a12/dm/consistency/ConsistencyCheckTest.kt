@@ -71,6 +71,30 @@ class ConsistencyCheckTest {
         assertEquals(emptySet(), report.checksCompleted, "nothing was checked, so nothing completed")
     }
 
+    /**
+     * A model that declares nothing produces the same clean report as one whose references all resolve, and
+     * the two are indistinguishable without this gap — "no rule was found wanting" and "no rule was found"
+     * read alike. It is a gap and not a rejection because A12 accepts such a model: a type-def-only library
+     * is exactly an empty root, kernel-valid standalone (`ModelRootReadabilityLawsTest`,
+     * `TypeDefModelImportTest`). The declaring row is the control that the gap tracks the fact base rather
+     * than being stated on every report.
+     */
+    @Test
+    fun aSourceThatDeclaresNoElementsSaysSoRatherThanReadingAsClean() {
+        val empty = check(ModelSource("""{"header":{"id":"types"},"content":{"modelRoot":{"rootGroups":[]}}}"""))
+
+        assertEquals(ConsistencyStatus.Inconclusive, empty.status)
+        assertEquals(emptyList(), empty.findings)
+        assertTrue(
+            empty.gaps.any { it.at == null && "declares no elements" in it.reason },
+            empty.gaps.toString(),
+        )
+        assertTrue(
+            check(model(rule("../Code"))).gaps.none { "declares no elements" in it.reason },
+            "a model that declares elements must not carry the empty-fact-base gap",
+        )
+    }
+
     /** A declaration the checker could not read is a coverage gap, not a silent omission. */
     @Test
     fun anUnreadableDeclarationBecomesACoverageGap() {

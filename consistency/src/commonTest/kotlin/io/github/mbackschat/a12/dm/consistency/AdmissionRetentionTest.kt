@@ -16,10 +16,11 @@ class AdmissionRetentionTest {
 
     @Test
     fun admissionRetainsTheParsedTreeSoALaterPhaseNeedNotReparse() {
-        val outcome = admit(ModelSource("""{"header":{"id":"order"},"modelInfo":{"name":"Order"}}"""))
+        val outcome = admit(ModelSource("""{"header":{"id":"order"},"content":{"modelInfo":{"name":"Order"}}}"""))
 
         val admitted = assertIs<Admission.Admitted>(outcome)
-        val name = admitted.parsed.jsonObject["modelInfo"]!!.jsonObject["name"]!!.jsonPrimitive.content
+        val content = admitted.parsed.jsonObject["content"]!!.jsonObject
+        val name = content["modelInfo"]!!.jsonObject["name"]!!.jsonPrimitive.content
         assertEquals("Order", name)
     }
 

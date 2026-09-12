@@ -5387,3 +5387,25 @@ So the question is reachability, and it was attacked rather than measured once. 
 **Recall limit, stated rather than implied.** Five asymmetries were attacked on one topology, on BOTH carriers (a computation's operation and a rule's comparison, which enter through different grammar entry rules and agree). An authorable shape not in that set — a third repeatable level, or a group with several index fields, where `getIndexGroup`'s choice could differ per operand — would reopen it. The H-model raiser `CheckEntityListenUtilsHModel.checkAllFieldsZIteration` is a separate, already-legacy site.
 
 *(Locked: `rulekit.validate.laws.SumOfProductsOperandIndexLawsTest`.)*
+
+## §12 supplement — a DocumentModel's reader descends only as far as `content`, and never consults `header.modelType`, so "no groups" is a normal model rather than a malformed one (`ModelLoader.loadSelfContained`, measured, 2026-09-12) <a id="kf286"></a>
+
+> Fold: not-foldable — §12 describes the validation model's semantics; how little of the envelope has to be present for A12 to read one at all is ingress inventory, and it exists to bound a client-side refusal.
+
+One model authored by `DocumentModelDraft`, with exactly one member removed or replaced per row:
+
+| the source | A12 |
+|---|---|
+| the ordinary model (control) | read |
+| `content.modelRoot.rootGroups` set to `[]` | read |
+| `content.modelRoot.rootGroups` removed | read |
+| `content.modelRoot` removed | read |
+| `content` removed | **NOT read** — the deserializer raises |
+| `header.modelType` set to `selection` | read |
+| `header.modelType` removed | read |
+
+**The empty root is not a degenerate case, it is an artifact kind.** `DocumentModelDraft.typeDefModel` emits exactly `"rootGroups": []` with `modelType: "document"`, and such a library is kernel-valid standalone (`TypeDefModelImportTest`). So a consumer treating "declares no elements" as unreadable rejects a legal A12 artifact — which is why the portable checker states it as a coverage gap and refuses only the missing-`content` row.
+
+**`header.modelType` is routing metadata, not a discriminator the reader applies.** A12 knows four values — `document`, `additive-document` (`CombinationModelService`), `combination`, `selection` (`SelectionModelService`) — and `UnexpandedModelResolverImpl` switches on it to pick the owning service. The DocumentModel deserializer does not, so a foreign type reads as a document carrying whatever content it has. A checker keying on it would be refusing on its own authority with no Kernel basis behind it.
+
+*(Locked: `rulekit.validate.laws.ModelRootReadabilityLawsTest`; the portable checker's one refusal is `consistency.AdmissionPhaseTest` and its gap `consistency.ConsistencyCheckTest`.)*

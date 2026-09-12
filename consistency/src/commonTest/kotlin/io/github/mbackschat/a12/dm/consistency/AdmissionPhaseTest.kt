@@ -48,6 +48,24 @@ class AdmissionPhaseTest {
             }
     }
 
+    /**
+     * A source with no `content` is not a DocumentModel, and the refusal has a measured Kernel basis rather
+     * than a shape preference: A12's own reader raises on it, where every thinner shape above `content` — an
+     * empty `rootGroups`, an absent `rootGroups`, even an absent `modelRoot` — it reads without complaint
+     * (`ModelRootReadabilityLawsTest`). So this is the one place the checker may refuse, and the rows below
+     * it are why it refuses no further: a type-def-only model is exactly an empty root and is Kernel-valid.
+     */
+    @Test
+    fun aSourceCarryingNoContentIsNotADocumentModel() {
+        val rejected = assertIs<Admission.Rejected>(admit(ModelSource("""{"header":{"id":"order"}}""")))
+
+        assertEquals(DiagnosticCode.SOURCE_HAS_NO_MODEL_CONTENT, rejected.diagnostic.code)
+        assertIs<Admission.Admitted>(
+            admit(ModelSource("""{"header":{"id":"order"},"content":{"modelRoot":{"rootGroups":[]}}}""")),
+            "an empty root is a Kernel-valid model, so it must stay admissible",
+        )
+    }
+
     /** The caller's label names the file a finding came from, which the model id alone cannot. */
     @Test
     fun theSourcesLabelTravelsWithItsDiagnostic() {
@@ -63,7 +81,7 @@ class AdmissionPhaseTest {
      */
     @Test
     fun aCommentedSourceIsAdmittedWhileATrailingCommaIsStillARejection() {
-        val commented = "{\n  // the order model\n  \"header\": {\"id\": \"order\"}\n}"
+        val commented = "{\n  // the order model\n  \"header\": {\"id\": \"order\"},\n  \"content\": {}\n}"
 
         assertIs<Admission.Admitted>(admit(ModelSource(commented)))
         assertTrue(admit(ModelSource("""{"header":{"id":"order"},}""")) is Admission.Rejected)

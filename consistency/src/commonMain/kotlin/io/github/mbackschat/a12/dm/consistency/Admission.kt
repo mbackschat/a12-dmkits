@@ -38,6 +38,15 @@ enum class DiagnosticCode {
     SOURCE_HAS_NO_IDENTITY,
 
     /**
+     * The source carries no `content` object, which is the one shape above the model root that A12's own
+     * reader cannot take: it raises there, while an empty `rootGroups`, an absent `rootGroups` and even an
+     * absent `modelRoot` are all read without complaint (measured 2026-09-12, `ModelRootReadabilityLawsTest`).
+     * Refusing exactly this far and no further is what keeps a type-def-only library — an empty root, and
+     * Kernel-valid standalone — admissible.
+     */
+    SOURCE_HAS_NO_MODEL_CONTENT,
+
+    /**
      * A single declaration lacks the `type`, `id` or `name` the kernel's own reader requires. Reported and
      * skipped rather than raised, because one broken element must not hide its siblings' real errors.
      */
@@ -103,11 +112,16 @@ fun admit(source: ModelSource): Admission {
     }
     val modelId = ((parsed as? JsonObject)?.get("header") as? JsonObject)
         ?.get("id")?.let { (it as? JsonPrimitive)?.contentOrNull }
-    return if (modelId.isNullOrBlank()) {
-        source.rejected(DiagnosticCode.SOURCE_HAS_NO_IDENTITY, "the source declares no `header.id`")
-    } else {
-        Admission.Admitted(source, modelId, parsed)
+    if (modelId.isNullOrBlank()) {
+        return source.rejected(DiagnosticCode.SOURCE_HAS_NO_IDENTITY, "the source declares no `header.id`")
     }
+    if ((parsed as? JsonObject)?.get("content") !is JsonObject) {
+        return source.rejected(
+            DiagnosticCode.SOURCE_HAS_NO_MODEL_CONTENT,
+            "the source declares no `content` object, so it is not a DocumentModel A12 could read",
+        )
+    }
+    return Admission.Admitted(source, modelId, parsed)
 }
 
 private fun ModelSource.rejected(code: DiagnosticCode, explain: String) =
