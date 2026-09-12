@@ -334,8 +334,8 @@ public final class ModelReader {
         origins.put(mountGroup, sourceModel);
 
         boolean modelRoot = "MODEL_ROOT".equals(mountBody.path("includeLevel").asText());
-        boolean excludeRules = mountBody.path("excludeRules").asBoolean(false);
-        boolean excludeComputations = mountBody.path("excludeComputations").asBoolean(false);
+        boolean excludeRules = excludes(mountBody, "excludeRules");
+        boolean excludeComputations = excludes(mountBody, "excludeComputations");
         ArrayNode includedRootGroups = (ArrayNode) includedRoot.path(DmKeys.CONTENT)
                 .path(DmKeys.MODEL_ROOT).path(DmKeys.ROOT_GROUPS);
         ModelSymbols symbols = ModelSymbols.from(includedRoot);
@@ -397,6 +397,16 @@ public final class ModelReader {
         // The include directives are now consumed — drop them so the expanded group is a plain, self-contained
         // group (the kernel likewise doesn't re-expand a group once mounted).
         mountBody.remove(List.of(DmKeys.MODEL_ALIAS, "includeLevel", "excludeRules", "excludeComputations"));
+    }
+
+    /** Whether a mount directive drops the included executables: the JSON literal {@code true} and nothing else.
+     *
+     *  <p>A12 reads these two members with {@code JsonNode.booleanValue()} (kernel serializer
+     *  {@code ElementDeserializer}), which is false for every non-Boolean. Jackson's {@code asBoolean(false)}
+     *  instead coerces {@code "true"} and any non-zero number, so it would drop a rule the Kernel keeps —
+     *  measured 2026-09-12 across nine spellings by {@code WorkspaceIncludeStructureKernelTest}. */
+    private static boolean excludes(ObjectNode mountBody, String directive) {
+        return mountBody.path(directive).isBoolean() && mountBody.path(directive).booleanValue();
     }
 
     /** Resolve the mount alias to its referenced-model string via the base header's {@code modelReferences};

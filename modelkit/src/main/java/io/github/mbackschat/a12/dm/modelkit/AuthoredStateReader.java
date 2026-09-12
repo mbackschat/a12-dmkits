@@ -79,8 +79,8 @@ final class AuthoredStateReader {
         Optional<ModelDocument.MountState> mount = alias == null || alias.isBlank() ? Optional.empty()
                 : Optional.of(new ModelDocument.MountState(alias, new MountOptions(
                         repeatability,
-                        body.path("excludeRules").asBoolean(false),
-                        body.path("excludeComputations").asBoolean(false),
+                        excludes(body, "excludeRules"),
+                        excludes(body, "excludeComputations"),
                         "MODEL_ROOT".equals(body.path("includeLevel").asText())
                                 ? IncludeLevel.MODEL_ROOT : IncludeLevel.SINGLE_RG)));
         return new ModelDocument.GroupStructure(repeatability,
@@ -96,6 +96,17 @@ final class AuthoredStateReader {
     static ModelDocument.DescriptiveState descriptive(JsonNode node) {
         return new ModelDocument.DescriptiveState(localized(node, DmKeys.INTERNAL_DESCRIPTION),
                 localized(node, DmKeys.EXTERNAL_DESCRIPTION), annotations(node));
+    }
+
+    /**
+     * Whether a mount directive drops the included executables: the JSON literal {@code true} and nothing else.
+     * A12 reads these two members with {@code JsonNode.booleanValue()}, which is false for every non-Boolean,
+     * whereas Jackson's {@code asBoolean(false)} coerces {@code "true"} and any non-zero number — so the
+     * coercion reported an exclusion the Kernel never applies (measured 2026-09-12,
+     * {@code WorkspaceIncludeStructureKernelTest}).
+     */
+    private static boolean excludes(ObjectNode body, String directive) {
+        return body.path(directive).isBoolean() && body.path(directive).booleanValue();
     }
 
     private static List<ElementDraft.Annotation> annotations(JsonNode node) {

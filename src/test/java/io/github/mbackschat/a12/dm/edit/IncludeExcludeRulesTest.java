@@ -10,6 +10,11 @@ import java.io.UncheckedIOException;
 
 import org.junit.jupiter.api.Test;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.BooleanNode;
+import com.fasterxml.jackson.databind.node.ObjectNode;
+import com.fasterxml.jackson.databind.node.TextNode;
 import com.mgmtp.a12.kernel.md.facade.DocumentModelServiceFactory;
 import com.mgmtp.a12.kernel.md.model.api.IDocumentModel;
 import io.github.mbackschat.a12.dm.core.ModelResolver;
@@ -38,6 +43,8 @@ class IncludeExcludeRulesTest {
 
     private static final IDocumentModelSerializer SERIALIZER =
             new DocumentModelServiceFactory().createDocumentModelSerializer();
+
+    private static final ObjectMapper MAPPER = new ObjectMapper();
 
     /** The shared model — a price list that carries its OWN rule (error code {@code LIST_PRICE_NEG}). */
     private static String pricelist() {
@@ -112,6 +119,58 @@ class IncludeExcludeRulesTest {
                 "excludeRules drops the included model's rules when the kernel expands the mount");
         assertTrue(expanded.contains("ListPrice"),
                 "only the rules are excluded — the included model's fields still mount");
+    }
+
+    /**
+     * A directive spelled as the JSON STRING {@code "true"} is not an exclusion — A12 reads these members with
+     * {@code JsonNode.booleanValue()}, measured across nine spellings by
+     * {@code WorkspaceIncludeStructureKernelTest} — so the authored state a consumer reads back must not claim
+     * one. Jackson's {@code asBoolean} coerces the string, which made {@code authoredState()} (and the model
+     * review built on it) report a mount as dropping rules the Kernel keeps.
+     *
+     * <p>The expand call is the basis rather than decoration: it establishes on the kernel itself that this
+     * very model keeps its included rule, so the authored state below is being compared against A12's own
+     * reading. The boolean row is the control — a genuine exclusion must still be reported.
+     */
+    @Test
+    void theAuthoredStateReportsOnlyAnExclusionA12WouldApply() throws Exception {
+        ModelResolver resolver = resolver(pricelist());
+        String authored = ModelDocument.read(catalogStructure())
+                .addInclude("pricelist", "pricelist")
+                .mount("/Catalog", "Prices", "pricelist")
+                .validate(resolver)
+                .toJson();
+
+        String textual = withExcludeRules(authored, TextNode.valueOf("true"));
+        assertTrue(expanded(textual, resolver).contains("LIST_PRICE_NEG"),
+                "basis: A12 keeps the included rule when the directive is the string \"true\"");
+        assertFalse(excludesRules(textual),
+                "the authored state must not report an exclusion A12 never applies");
+
+        assertTrue(excludesRules(withExcludeRules(authored, BooleanNode.TRUE)),
+                "a genuine boolean exclusion is still reported");
+    }
+
+    /** What a consumer of the published {@code authoredState()} surface sees about the mount's rule exclusion. */
+    private static boolean excludesRules(String json) {
+        return ModelDocument.read(json).authoredState().groups().get("/Catalog/Prices")
+                .structure().mount().orElseThrow().options().excludeRules();
+    }
+
+    /** The mount body with one directive set, edited on the kit's own output rather than hand-authored. */
+    private static String withExcludeRules(String json, JsonNode value) {
+        try {
+            ObjectNode tree = (ObjectNode) MAPPER.readTree(json);
+            for (JsonNode element : tree.path("content").path("modelRoot").path("rootGroups").get(0)
+                    .path("Group").path("elements")) {
+                if ("Prices".equals(element.path("name").asText())) {
+                    ((ObjectNode) element.path("Group")).set("excludeRules", value);
+                }
+            }
+            return MAPPER.writeValueAsString(tree);
+        } catch (IOException unreadable) {
+            throw new UncheckedIOException("the kit's own output must be readable", unreadable);
+        }
     }
 
     @Test

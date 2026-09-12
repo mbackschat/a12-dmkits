@@ -431,24 +431,50 @@ class WorkspaceIncludeStructureKernelTest {
         assertThrows(RuntimeException.class, () -> KernelModelOracle.ofSelfContained(model.toString()));
     }
 
+    /**
+     * Only the JSON literal {@code true} excludes an included executable, and the JVM reader must agree on
+     * every spelling — not just on the ones a lenient coercion happens to get right.
+     *
+     * <p>The row set exists to defeat the confound the earlier single-value version carried: it measured
+     * {@code {}} alone, which is one of the shapes Jackson's {@code asBoolean} also reads as false, so a
+     * reader coercing the member agreed with the Kernel on every row while diverging on {@code "true"} and
+     * {@code 1}. The spellings below sit on both sides of that coercion. {@code false} and {@code true} are
+     * the polarity controls, so a reader that dropped every executable would not pass either.
+     */
     @Test
-    void kernelAcceptsEachNonBooleanIncludeExclusionAsFalse() {
+    void onlyTheJsonBooleanTrueExcludesAnIncludedExecutable() {
         var component = executableOneRootComponent();
-        for (var expectation : List.of(
-                new ExclusionExpectation("excludeRules", "DescriptionRequired"),
-                new ExclusionExpectation("excludeComputations", "CopyDescription"))) {
-            var entry = tree(entryModel());
-            mountBody(entry).set(expectation.directive(), MAPPER.createObjectNode());
+        ModelResolver resolver = reference -> "component".equals(reference) ? component : null;
+        var spellings = List.of(
+                MAPPER.getNodeFactory().booleanNode(true),
+                MAPPER.getNodeFactory().booleanNode(false),
+                MAPPER.getNodeFactory().textNode("true"),
+                MAPPER.getNodeFactory().textNode("yes"),
+                MAPPER.getNodeFactory().numberNode(1),
+                MAPPER.getNodeFactory().numberNode(0),
+                MAPPER.getNodeFactory().nullNode(),
+                MAPPER.createObjectNode(),
+                MAPPER.createArrayNode());
 
-            var expanded = KernelModelOracle.of(
-                    entry.toString(),
-                    reference -> "component".equals(reference) ? component : null);
+        var kernel = new LinkedHashMap<String, String>();
+        var reader = new LinkedHashMap<String, String>();
+        var expected = new LinkedHashMap<String, String>();
+        for (var executable : IncludedExecutable.values()) {
+            for (JsonNode spelling : spellings) {
+                var entry = tree(entryModel());
+                mountBody(entry).set(executable.directive(), spelling);
 
-            expanded.field("/Permit/Details/Description");
-            assertTrue(expanded.group("/Permit/Details").getElements().stream()
-                    .anyMatch(element -> expectation.elementName().equals(element.getName())),
-                    expectation.directive() + " is treated as false, so the included executable survives");
+                var observation = PreparationParityHarness.observe(entry.toString(), resolver);
+
+                var row = executable.directive() + "=" + spelling;
+                kernel.put(row, executable.verdictIn(observation.kernel()));
+                reader.put(row, executable.verdictIn(observation.reader()));
+                expected.put(row, spelling.isBoolean() && spelling.booleanValue() ? "EXCLUDED" : "KEPT");
+            }
         }
+
+        assertEquals(expected, kernel, "the Kernel excludes on the JSON boolean true and on nothing else");
+        assertEquals(kernel, reader, "the JVM reader diverged from the Kernel on an exclusion directive");
     }
 
     @Test
@@ -952,6 +978,29 @@ class WorkspaceIncludeStructureKernelTest {
         MOUNT
     }
 
-    private record ExclusionExpectation(String directive, String elementName) {
+    /** The two executables an include can drop, each with the mount directive that drops it. */
+    private enum IncludedExecutable {
+        RULE("excludeRules", "/Permit/Details/DescriptionRequired"),
+        COMPUTATION("excludeComputations", "/Permit/Details/CopyDescription");
+
+        private final String directive;
+        private final String path;
+
+        IncludedExecutable(String directive, String path) {
+            this.directive = directive;
+            this.path = path;
+        }
+
+        String directive() {
+            return directive;
+        }
+
+        String verdictIn(PreparationParityHarness.PreparedSurface surface) {
+            boolean survives = switch (this) {
+                case RULE -> surface.rules().contains(path);
+                case COMPUTATION -> surface.computations().containsKey(path);
+            };
+            return survives ? "KEPT" : "EXCLUDED";
+        }
     }
 }
