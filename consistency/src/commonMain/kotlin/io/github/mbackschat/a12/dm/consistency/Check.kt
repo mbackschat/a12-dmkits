@@ -25,6 +25,9 @@ enum class CheckFamily {
      * alternatives carries its own precondition.
      */
     COMPUTATION_ALTERNATIVES,
+
+    /** A rule's `errorCondition` and `errorEntityRelPath` are present and carry text. */
+    RULE_CONDITION_AND_TARGET,
 }
 
 /**
@@ -141,14 +144,16 @@ internal fun check(
     val findings = declared.mapNotNull { it.target.asFinding(it.role, it.declaredAt) } +
         prepared.conditionReferences().mapNotNull {
             it.target.asFinding(ReferenceRole.CONDITION_ENTITY, it.declaredAt, it.member)
-        } + prepared.declarationSlotFindings() + prepared.computationAlternativeFindings()
+        } + prepared.declarationSlotFindings() + prepared.computationAlternativeFindings() +
+        prepared.ruleConditionAndTargetFindings()
     return ConsistencyReport(
         modelId = admitted.modelId,
         status = statusOf(findings),
         findings = findings,
         diagnostics = inherited + prepared.diagnostics,
         checksCompleted = setOf(CheckFamily.DECLARED_REFERENCES, CheckFamily.CONDITION_REFERENCES,
-            CheckFamily.DECLARATION_SLOTS, CheckFamily.COMPUTATION_ALTERNATIVES),
+            CheckFamily.DECLARATION_SLOTS, CheckFamily.COMPUTATION_ALTERNATIVES,
+            CheckFamily.RULE_CONDITION_AND_TARGET),
         gaps = prepared.gaps() + prepared.emptyFactBase() + findings.buildBlocked() + UNREAD_MEMBERS +
             UNIMPLEMENTED_FAMILIES,
     )
@@ -219,7 +224,8 @@ private val UNREAD_MEMBERS = listOf(
 private val UNIMPLEMENTED_FAMILIES = listOf(
     CoverageGap(
         at = null,
-        reason = "only the reference families, the declaration slots and a computation's alternatives are " +
-            "implemented; every other required family of the pinned profile was not examined",
+        reason = "only the reference families, the declaration slots, a computation's alternatives and a " +
+            "rule's condition/target members are implemented; every other required family of the pinned " +
+            "profile was not examined",
     ),
 )

@@ -5586,3 +5586,23 @@ The structure of a stored `computationAlternatives`, measured because `Computati
 **The two list-shaped members have DIFFERENT readers, which is why each is measured.** `errorMessage` as an OBJECT is admitted — its reader iterates the node's elements, and an object's elements are its values ([KF290](#kf290)) — while `computationAlternatives` as an object makes the model unreadable. Inferring one from the other would have produced a checker that analyses a model A12 refuses to load.
 
 *(Locked: `rulekit.validate.laws.ComputationAlternativeSlotLawsTest` — one assertion per table.)*
+
+## §13 supplement — a rule's `errorCondition` and `errorEntityRelPath`: a BLANK one is judged, an ABSENT one is not judged at all (`checkConsistency`, measured, 2026-09-12) <a id="kf293"></a>
+
+> Fold: not-foldable — an authoring/model-structure law on the rule element, outside the evaluation scope.
+
+The two members a stored rule cannot work without, measured because `Rule.Builder.build` requires both — so every shape below is one only stored DM-JSON carries.
+
+| stored shape | A12 |
+|---|---|
+| `errorCondition` present, blank or whitespace | `MVK_CONDITION_MISSING` **and** `MVK_INCOMPLETE_INPUT` |
+| `errorCondition` ABSENT | **NOT BUILDABLE** — a rejection carrying no `MVK_*` code at all |
+| `errorEntityRelPath` present, blank or whitespace | `MVK_ERROR_FIELD_MISSING` **and** `MVK_MISSING_ERROR_FIELD` |
+| `errorEntityRelPath` ABSENT | **UNREADABLE** |
+| either member an explicit `null` | **UNREADABLE** ([KF291](#kf291)) |
+
+**The inversion is the finding: the shape a reader calls "missing" is the one A12 says nothing about.** Three sibling slots read a blank string as absent — `errorCode` ([KF291](#kf291)) and a message `text` ([KF290](#kf290)) — which makes "missing" look like one shape with one code. Here the two shapes sit in different TIERS. A blank member is A12's verdict about the rule; an omitted one stops A12 before any verdict exists, at two different depths: the condition's absence fails the model BUILD from inside `checkConsistency`, while the target's absence refuses the READER one tier earlier still. A checker reporting `MVK_CONDITION_MISSING` for an omitted `errorCondition` would present its own reading as A12's about a model A12 never judged.
+
+**Both blank rows draw a PAIR of codes, and one pair is a naming trap.** `MVK_ERROR_FIELD_MISSING` and `MVK_MISSING_ERROR_FIELD` are two distinct codes from two enums that fire together on the same shape; quoting either alone under-reports what A12 said, and the two are easy to read as one typo. A one-code assertion would have seen neither the second gate on the condition (`MVK_INCOMPLETE_INPUT`) nor the second here.
+
+*(Locked: `rulekit.validate.laws.RuleConditionAndTargetSlotLawsTest` — one assertion per member.)*
