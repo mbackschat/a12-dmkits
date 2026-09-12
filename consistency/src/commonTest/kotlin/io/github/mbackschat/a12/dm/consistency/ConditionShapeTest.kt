@@ -71,8 +71,77 @@ class ConditionShapeTest {
         assertEquals(expected, actual, "the parser's verdict on the measured shapes")
     }
 
-    private fun verdict(text: String): String {
-        val failure = conditionShapeFailure(text, ConditionLanguage.EN) ?: return ACCEPTS
+    /**
+     * The two infixes that join an operand to a value list, in the language each belongs to.
+     *
+     * `In` is carried by the catalog corpus; `To`/`Zu` is carried by NOTHING — not the corpus, not the real
+     * models — which is the same unlocked-widening class a mutation check found in the arithmetic set.
+     * Source: the kernel grammar's `inOp: 'In'|'IN'|'in'` and `toOp: 'Zu'|'ZU'|'zu'`, with the English
+     * spellings in the EN terminal bundle, both pinned into the checker's generated table by
+     * `ConditionKeywordProjectionTest`.
+     *
+     * **The cross-language rows are the ones that matter.** The parser's spelling set is language-BLIND and
+     * holds all six; what keeps `Zu` from being read as an infix in an English model is the keyword table
+     * lookup ahead of it, not the set. So each language gets the other's spelling as a row, and both are
+     * ADMITTED — as an ordinary NAME, which is exactly what A12 does with a word that is not its language's
+     * terminal. A row that refused would be the over-rejection this parser may not commit.
+     */
+    @Test
+    fun theValueListInfixesParseInTheLanguageThatOwnsThemAndAsNamesInTheOther() {
+        val actual = mutableMapOf<String, String>()
+        for (spelling in listOf("In", "IN", "in")) {
+            actual["EN $spelling"] = verdict("""ValueNotConsistent(Tier $spelling Premium, "gold")""")
+            actual["DE $spelling"] = verdict("""WertNichtKonsistent(Tier $spelling Premium, "gold")""", ConditionLanguage.DE)
+        }
+        for (spelling in listOf("To", "TO", "to")) {
+            actual["EN $spelling"] = verdict("""ValueNotConsistent(Tier $spelling Premium, "gold")""")
+            actual["DE $spelling — the other language's spelling"] =
+                verdict("""WertNichtKonsistent(Tier $spelling Premium, "gold")""", ConditionLanguage.DE)
+        }
+        for (spelling in listOf("Zu", "ZU", "zu")) {
+            actual["DE $spelling"] =
+                verdict("""WertNichtKonsistent(Tier $spelling Premium, "gold")""", ConditionLanguage.DE)
+            actual["EN $spelling — the other language's spelling"] =
+                verdict("""ValueNotConsistent(Tier $spelling Premium, "gold")""")
+        }
+
+        assertEquals(
+            actual.keys.associateWith { ACCEPTS },
+            actual,
+            "every value-list infix spelling parses, in both languages",
+        )
+    }
+
+    /**
+     * The rule-context entity is a REFERENCE, not an operator, and must survive the keyword exclusion.
+     *
+     * `regelKontextEntity` is its own grammar production and the catalog does not carry it, so the generated
+     * table files both spellings as `UNCATALOGED` — the same kind as a genuine keyword. A path scan that
+     * excluded every keyword NAME would therefore refuse `GroupFilled(RuleGroup)`, a condition A12 admits.
+     *
+     * Neither spelling is reachable from the generated corpus: the catalog has no example that uses it, so
+     * `ConditionCorpus.keywordsNoExampleLocalizes()` names `RuleGroup` as its one un-exampled keyword. That
+     * is the same unlocked-widening class the arithmetic and value-list mutants found, and it is why the
+     * German spelling gets its own row rather than riding the English one.
+     */
+    @Test
+    fun theRuleContextEntityParsesAsAReferenceInBothLanguages() {
+        val actual = mutableMapOf<String, String>()
+        actual["EN RuleGroup"] = verdict("GroupFilled(RuleGroup)")
+        actual["DE RegelKontext"] = verdict("KontextAngegeben(RegelKontext)", ConditionLanguage.DE)
+        // The liveness control: a name that IS a genuine keyword is still excluded from a path, so these
+        // rows cannot be passing because the parser admits every name wherever it stands.
+        actual["EN a genuine keyword in the same slot"] = verdict("GroupFilled(And)")
+
+        val expected = mutableMapOf<String, String>()
+        expected["EN RuleGroup"] = ACCEPTS
+        expected["DE RegelKontext"] = ACCEPTS
+        expected["EN a genuine keyword in the same slot"] = "MVK_UNEXPECTED_TOKEN"
+        assertEquals(expected, actual, "the rule-context entity parses as a reference, a keyword does not")
+    }
+
+    private fun verdict(text: String, language: ConditionLanguage = ConditionLanguage.EN): String {
+        val failure = conditionShapeFailure(text, language) ?: return ACCEPTS
         return if (failure.ranOutWithDelimiterOpen) "MVK_EXPECTED_TOKEN_NOT_FOUND" else "MVK_UNEXPECTED_TOKEN"
     }
 
