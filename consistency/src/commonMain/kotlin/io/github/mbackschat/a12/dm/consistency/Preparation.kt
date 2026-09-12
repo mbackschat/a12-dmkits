@@ -286,9 +286,12 @@ private class Collector(private val providers: Map<String, Admission.Admitted>) 
             visiting = scope.visiting + reference,
             diagnosticLabel = provider.source.diagnosticLabel,
         )
-        each((root["Group"] as? JsonObject)?.get("elements"), path, "`$reference`'s root group elements", nested) {
-            collect(it, path, path, nested)
-        }
+        // The provider is FULLY EXPANDED before it is mounted (KF3), so its root group gets the same
+        // treatment as any other: when it is itself an unexpanded mount, that include is expanded into this
+        // same path. Reading its `elements` directly instead would find the empty array a mount group carries
+        // and mount nothing at all — silently, since the inner alias is never visited and so never reported
+        // (measured against the Kernel by the `single-provider-root-include` case of the shared matrix).
+        descendGroup(root["Group"] as? JsonObject, path, nested)
     }
 
     /**
