@@ -115,11 +115,22 @@ class ConnectiveAgreementTest {
         // same pair with the OUTER level mixed is still reported.
         actual["…and the same pair with the outer level mixed"] = codesFor("$filterWithAnd Or $filterWithOr And $a")
 
+        // The row that is a claim about THIS CHECKER rather than about A12: two filters sharing ONE argument
+        // list. The kernel's verdict for it is unmeasured — `SumOfProducts` is the only operator whose
+        // argument list takes two entity specs, and it refuses a `Having` on either for a wildcard reason of
+        // its own — so the checker opens a frame at the filter keyword and stays silent, which under-reports
+        // if A12 merges them and over-rejects if it does not. Only the second of those is forbidden.
+        actual["two filters sharing one argument list"] = codesFor(
+            """SumOfProducts(Lines*/Amount Having [Lines/Name] == \"x\" And [Lines/Amount] > 1, """ +
+                """Lines*/Amount Having [Lines/Name] == \"y\" Or [Lines/Amount] > 2) > 0""",
+        )
+
         val expected = mutableMapOf<String, List<String>>()
         expected["a filter's And with an Or outside it"] = emptyList()
         expected["a filter's And with an And outside it"] = emptyList()
         expected["two sibling filters, one And and one Or"] = emptyList()
         expected["…and the same pair with the outer level mixed"] = listOf("MVK_BRACKET_MISSING")
+        expected["two filters sharing one argument list"] = emptyList()
         assertEquals(expected, actual, "whether two calls at one depth share a connective level")
     }
 

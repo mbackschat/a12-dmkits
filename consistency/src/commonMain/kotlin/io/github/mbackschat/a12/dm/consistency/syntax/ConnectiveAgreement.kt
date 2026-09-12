@@ -51,7 +51,6 @@ fun connectiveDisagreement(text: String, language: ConditionLanguage): Connectiv
                     frames.closeFilters()
                     if (frames.size > 1) frames.removeLast()
                 }
-                "," -> frames.closeFilters()
             }
 
             else -> Unit
@@ -60,7 +59,14 @@ fun connectiveDisagreement(text: String, language: ConditionLanguage): Connectiv
     return null
 }
 
-/** Pop every filter frame at the top, which a comma or the enclosing closing delimiter ends. */
+/**
+ * Pop every filter frame at the top, which the enclosing closing delimiter ends.
+ *
+ * The grammar ends a filter's condition at the argument boundary as well, so a comma could close one too —
+ * and it is deliberately not handled, because the only text where the two differ puts a bare connective after
+ * a comma, which is no argument A12's grammar accepts. A branch no legal input reaches is a branch no test
+ * can justify.
+ */
 private fun ArrayDeque<Frame>.closeFilters() {
     while (size > 1 && last().filter) removeLast()
 }
