@@ -5362,3 +5362,28 @@ One model carries every row: a root group `Order` with a field `Code` and a subg
 **The last row is the one that changes what a report may claim.** `ModelLoader.loadAndCheck` on that model raises "the kernel could not build this model: The computed field \"/Order/Lines/Nope\" was not found." and reports nothing else — not the other rule's real `MVK_INVALID_ENTITY`, not the missing error texts the same model has. So a model with an unresolvable computed field never receives a consistency verdict at all, and any list of findings for it is the reader's own reading rather than A12's. Searched for a key behind that message across our sources and the kernel checkout: there is none, so a portable report has to own a code for it or say nothing.
 
 *(Locked: `rulekit.validate.laws.ConditionReferencePathLawsTest` for the path rows on the Kernel, each asserting the rival code does NOT co-fire; `rulekit.validate.laws.ErrorFieldRelativePathLawsTest` for the declared-target rows; the portable checker's mapping is `consistency.ConditionBindingTest` and `consistency.ReferenceDiagnosticTest`.)*
+
+## §9 supplement — two `SumOfProducts` operands cannot be made to differ at their outermost index in an A12 model: five asymmetries, five different gates ahead of the comparison (`checkConsistency`, measured, 2026-09-12) <a id="kf285"></a>
+
+> Fold: not-foldable — §9 states how iteration binds; which checker a legal model can and cannot reach is inventory for the portable checker rather than a rule of the language.
+
+`CheckEntityListenUtils.checkAllFieldsSameL` compares `EntityRef.getLfdNr()` — `indices.get(0)`, the OUTERMOST level's index — across a `SumOfProducts`' two operands and raises `MVK_INVALID_PARAMS_FOR_OP` when they differ. It is called **ungated** from `CheckFeldListenOpImpl`, so a package-path reading calls the code live; the setter enumeration points the other way (all nine `setLfdNr(` sites are `hdv`) and settles nothing, because `indices[0]` is also written by the general index path and by `CheckSemanticIndexImpl`.
+
+So the question is reachability, and it was attacked rather than measured once. One model — a root group holding an indexed repeatable `Lines` with a repeatable `Sub` inside it, both operand fields in `Sub` — with only the operand spelling varied:
+
+| the asymmetry | what refuses it |
+|---|---|
+| both operands carry the same semantic index | **admitted** (the baseline) |
+| both carry one, with different index VALUES | **admitted** — the value never reaches `indices`, only the `SEMANTIC_INDEX` marker does |
+| only one operand carries a semantic index | `MVK_NO_WILDCARD` |
+| neither does, so the outer level is unmarked | `MVK_NO_WILDCARD` |
+| the outer level starred instead | `MVK_WILDCARD_ONLY_AT_LOWEST_LEVEL_ALLOWED` |
+| one operand marks the outer iteration with `$` | `MVK_INVALID_OUTER_ITERATION` — `$` is filter-only |
+| one operand carries a `Having` filter beside its index | `MVK_SEMANTIC_INDEX_NOT_ALLOWED` |
+| the two operands spell one path differently, absolute against relative | **admitted** — spelling is not structure |
+
+**The mechanism the rows agree on**: `checkAllEntitiesInSameGroup` forces both operands into the same group, so they share a path and therefore an index-level structure and an index group; `CheckSemanticIndexImpl` then marks the SAME slot for both, or the model is refused for the level being unmarked. Every route to marking one operand alone meets a different gate first, which is why no single measurement establishes this and the set of attacks is the evidence.
+
+**Recall limit, stated rather than implied.** Five asymmetries were attacked on one topology, on BOTH carriers (a computation's operation and a rule's comparison, which enter through different grammar entry rules and agree). An authorable shape not in that set — a third repeatable level, or a group with several index fields, where `getIndexGroup`'s choice could differ per operand — would reopen it. The H-model raiser `CheckEntityListenUtilsHModel.checkAllFieldsZIteration` is a separate, already-legacy site.
+
+*(Locked: `rulekit.validate.laws.SumOfProductsOperandIndexLawsTest`.)*
