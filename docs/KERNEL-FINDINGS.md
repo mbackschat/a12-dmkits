@@ -5463,3 +5463,23 @@ The third row is what bounds it: without it "the provider must match the entry" 
 **Consequence for the portable checker.** It suspends such a mount by name rather than mounting a tree A12 never builds — deliberately UNDER-reporting, since A12's own answer is a refusal to load and the checker owns no code for that beyond `CK_MODEL_NOT_BUILDABLE`, which the mount path cannot yet carry. Same disposition as an `includeLevel` spelling A12's enum refuses, for the same reason.
 
 *(Locked: `rulekit.validate.laws.IncludedDeclarationLocaleScopeLawsTest` — all four rows, on the Kernel's own `expand`; the checker's suspension is `consistency.WorkspaceMountTest`.)*
+
+## §10 supplement — `fieldRefByShortNameAllowed` is read by Jackson's `boolean` POJO binding, which accepts `"True"` where `JsonNode.asBoolean` does not — and refuses any other string outright (`checkConsistency`, measured, 2026-09-12) <a id="kf289"></a>
+
+> Fold: pending — a model-config admission fact that gates the §10 short-name tier; fold beside [KF287](#kf287), which measures what the flag does once it is on.
+
+[KF287](#kf287) measures what the flag DOES. This measures how A12 decides it is set, because six readers in this repository each decide it differently and four of them are wrong in the dangerous direction. The verdict is read through the model-wide lookup itself — a bare unique name that resolves only when the tier runs — so nothing in the chain is our own reading of the member.
+
+| authored spelling | A12 |
+|---|---|
+| `true` · `"true"` · `"True"` · `"TRUE"` · `1` | **ON** |
+| `false` · `"false"` · `"False"` · `0` · `null` · absent · `""` | OFF |
+| any other string (`"yes"`) | **the model does not deserialize** — `Cannot deserialize value of type 'boolean' from String "yes": only "true"/"True"/"TRUE" or "false"/"False"/"FALSE" recognized` |
+
+**A12 states its own rule in that rejection**, and it is Jackson's standard `boolean` POJO binding on `DocumentModelConfig`, reached through the normal `DocumentModel` → `content` → `modelConfig` chain. `JsonNode.asBoolean` is a DIFFERENT Jackson path with a different rule: it accepts only the lowercase `"true"` and answers false for `"True"`. So every reader here built on `asBoolean` reads a capitalized spelling as OFF where A12 reads it as ON, which turns a reference A12 resolves into `MVK_INVALID_ENTITY` — a refusal the Kernel never issues, and therefore invisible. The sites are `core.ModelReader:470`, `modelkit.ModelDocument:258`, the interpreter's `load.ModelLoader:80` and the bridge's `InterpreterConditionReadBack:115`; the interpreter's `workspace.IncludeAssembly` is stricter still and refuses every string spelling, including the three A12 accepts.
+
+**The empty string is not an unrecognized spelling.** `""` reads as OFF rather than refusing, because Jackson's empty-string coercion supplies the type's default before the recognized-values check runs. It is the row that keeps "any other string refuses" from being stated one notch too wide.
+
+**This is NOT the rule the mount exclusions follow, and assuming one rule for both is how those readers were wrong.** `excludeRules` and `excludeComputations` reach A12 through `ElementDeserializer`'s `JsonNode.booleanValue()`, which is false for every non-Boolean and never refuses ([KF3](#kf3)); this member reaches a `boolean` field through the POJO binding, which coerces three string spellings and refuses the rest. Two members, two Jackson paths, three different answers for `"True"`.
+
+*(Locked: `rulekit.validate.laws.ShortNameFlagSpellingLawsTest` — the whole table in one assertion.)*
