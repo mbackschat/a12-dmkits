@@ -18,10 +18,14 @@ enum class CheckFamily {
 /**
  * A portion of the input that could not be examined, and why.
  *
+ * There is deliberately no "which family" field. A gap is not one-to-one with a family — an unexpanded
+ * mount blocks both reference families at once, and the unread declared members limit one without stopping
+ * it — so a single slot could only ever be filled by guessing. [ConsistencyReport.checksCompleted] already
+ * says which families ran; [reason] says what this particular gap costs.
+ *
  * @param at the declaration it concerns, absent when the gap is the whole analysis.
- * @param blocked the family that could not run, absent when no family is implemented for it at all.
  */
-data class CoverageGap(val at: String?, val blocked: CheckFamily?, val reason: String)
+data class CoverageGap(val at: String?, val reason: String)
 
 /**
  * What a consistency check produced.
@@ -62,7 +66,7 @@ fun check(source: ModelSource): ConsistencyReport {
             findings = emptyList(),
             diagnostics = listOf(admission.diagnostic),
             checksCompleted = emptySet(),
-            gaps = listOf(CoverageGap(null, null, "the source could not be admitted, so nothing was checked")),
+            gaps = listOf(CoverageGap(null, "the source could not be admitted, so nothing was checked")),
         )
         is Admission.Admitted -> admission
     }
@@ -125,7 +129,6 @@ private fun PreparedModel.unmountedIncludes(): List<CoverageGap> = elements
     .map {
         CoverageGap(
             at = it.path,
-            blocked = null,
             reason = "this group mounts the model `${it.modelAlias}` and the mount is not expanded here, " +
                 "so the fact base is incomplete and no reference check can run over this source",
         )
@@ -133,7 +136,7 @@ private fun PreparedModel.unmountedIncludes(): List<CoverageGap> = elements
 
 /** A declaration the checker could not read was not checked either, so each one is also a coverage gap. */
 private fun PreparedModel.gaps(): List<CoverageGap> = diagnostics.map {
-    CoverageGap(it.at, null, "this declaration could not be read, so no check ran over it: ${it.explain}")
+    CoverageGap(it.at, "this declaration could not be read, so no check ran over it: ${it.explain}")
 }
 
 /**
@@ -150,7 +153,6 @@ private fun List<DeclaredReference>.buildBlocked(): List<CoverageGap> =
     }.map {
         CoverageGap(
             at = it.declaredAt,
-            blocked = CheckFamily.CONDITION_REFERENCES,
             reason = "`${it.member}` makes this model unbuildable, so the Kernel reports that and stops; " +
                 "any other finding here is this checker's own reading of a model A12 never got far " +
                 "enough to judge",
@@ -164,7 +166,6 @@ private fun List<DeclaredReference>.buildBlocked(): List<CoverageGap> =
 private val UNREAD_MEMBERS = listOf(
     CoverageGap(
         at = null,
-        blocked = CheckFamily.DECLARED_REFERENCES,
         reason = "`Group.indexFieldName` and `Group.sortFields[].name` are relative field references too " +
             "and are not resolved here",
     ),
@@ -173,7 +174,6 @@ private val UNREAD_MEMBERS = listOf(
 private val UNIMPLEMENTED_FAMILIES = listOf(
     CoverageGap(
         at = null,
-        blocked = null,
         reason = "only the reference families are implemented; every other required family of the pinned " +
             "profile was not examined",
     ),
