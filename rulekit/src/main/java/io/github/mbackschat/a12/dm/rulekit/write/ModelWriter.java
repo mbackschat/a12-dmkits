@@ -333,6 +333,21 @@ public final class ModelWriter {
     private static final Set<String> REBUILT_COMPUTATION_SLOTS = Set.of("type", "id", "name", "Computation");
 
     /**
+     * The same, one level deeper: the {@code Computation} BODY members {@link #computationNode} reconstructs.
+     *
+     * <p>A12 declares two more on {@code md.model.a12internal.Computation} — {@code roundingMode} and
+     * {@code variantFilter} — which no draft here can express, so the rebuild would drop them and a modify
+     * would silently change what the computation MEANS rather than merely losing metadata.
+     *
+     * <p><b>The conditionally-written members are why this is a name set rather than a presence test.</b>
+     * {@code commonPrecondition} and {@code errorCodesToSuppress} are emitted only when the draft carries
+     * them, so carrying over whatever the old element had would make removing either impossible.
+     */
+    private static final Set<String> REBUILT_COMPUTATION_BODY_SLOTS = Set.of(
+            "computedFieldRelPath", "errorCodesToSuppress", "commonPrecondition",
+            "computationAlternatives", "errorMessage");
+
+    /**
      * Carry the old computation's leading {@code ;;} comments AND its element-level metadata onto the rebuilt one.
      * {@code replaceComputation} is remove-old + add-rebuilt, and {@link #computationNode} reconstructs only
      * {@code type}/{@code id}/{@code name} and the {@code Computation} body — so without this, the element's
@@ -348,9 +363,10 @@ public final class ModelWriter {
             if (oldComp == null || newComp == null) {
                 return newModel;
             }
-            carryElementMetadata(oldComp, newComp);
+            carryUnrebuiltSlots(oldComp, newComp, REBUILT_COMPUTATION_SLOTS);
             JsonNode oldBody = oldComp.path("Computation");
             ObjectNode newBody = (ObjectNode) newComp.path("Computation");
+            carryUnrebuiltSlots(oldBody, newBody, REBUILT_COMPUTATION_BODY_SLOTS);
             carryLeading(oldBody, newBody, "commonPrecondition");
             JsonNode oldAlts = oldBody.path("computationAlternatives");
             JsonNode newAlts = newBody.path("computationAlternatives");
@@ -363,13 +379,21 @@ public final class ModelWriter {
         }
     }
 
-    /** Copy every non-rebuilt top-level slot from the old element node onto the rebuilt one (annotations,
-     *  internalDescription, externalDescription, and any future element-level metadata) — leaving the rebuilt
-     *  {@code type}/{@code id}/{@code name}/{@code Computation} authoritative. */
-    private static void carryElementMetadata(ObjectNode oldElement, ObjectNode newElement) {
-        oldElement.fields().forEachRemaining(e -> {
-            if (!REBUILT_COMPUTATION_SLOTS.contains(e.getKey()) && !newElement.has(e.getKey())) {
-                newElement.set(e.getKey(), e.getValue());
+    /**
+     * Copy every slot the rebuild does not own from the old node onto the rebuilt one.
+     *
+     * <p>Applied at both levels of a replaced computation, because the rebuild is partial at both and in the
+     * same way: the element keeps its metadata (annotations, internalDescription, …) and the body keeps the
+     * members no draft can express. Sharing one mechanism is the point — the element level was fixed alone
+     * once, which left the body as a live second site of the same class.
+     *
+     * @param rebuiltSlots the members {@code rebuilt} is authoritative for, named rather than detected so a
+     *     member the draft deliberately dropped is not restored from the old node.
+     */
+    private static void carryUnrebuiltSlots(JsonNode old, ObjectNode rebuilt, Set<String> rebuiltSlots) {
+        old.fields().forEachRemaining(e -> {
+            if (!rebuiltSlots.contains(e.getKey()) && !rebuilt.has(e.getKey())) {
+                rebuilt.set(e.getKey(), e.getValue());
             }
         });
     }

@@ -14,6 +14,7 @@ import io.github.mbackschat.a12.dm.rulekit.dsl.NumberRef;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Severity;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Computation;
 import io.github.mbackschat.a12.dm.rulekit.dsl.StringRef;
+import io.github.mbackschat.a12.dm.rulekit.dsl.ToleranceBand;
 
 /**
  * L2c — the rule-side editors {@link RuleEditor} / {@link ComputationEditor}: a held reference to an
@@ -200,6 +201,52 @@ class RuleComputationEditorTest {
                 () -> "the internalDescription survives the computation modify: " + json);
         assertTrue(json.contains("billing-team"),
                 () -> "the annotation survives the computation modify: " + json);
+    }
+
+    /**
+     * The same contract one level deeper — a Computation BODY member the rebuild does not write.
+     *
+     * <p>The element-level fix above carried `annotations`/`internalDescription` across because
+     * {@code computationNode} reconstructs only `type`/`id`/`name`/`Computation`. The body it reconstructs is
+     * partial in exactly the same way: A12 declares {@code roundingMode} and {@code variantFilter} on
+     * {@code md.model.a12internal.Computation} beside the five members the writer emits, so a modify used to
+     * drop both. That is silent SEMANTIC loss rather than lost metadata — a computation that rounded up came
+     * back rounding exactly — and it is the sibling site the element-level fix left live.
+     *
+     * <p>`roundingMode` has no typed surface at all, so the probe injects it and re-reads. The band on the
+     * alternative is what makes `RoundUp` legal here ({@code KERNEL-FINDINGS KF297}): the pair is judged
+     * together, so a model that kept the mode and lost the band would be refused rather than silently
+     * changed — which is why the re-expression below restates the band through the typed builder.
+     */
+    @Test
+    void preservesAComputationsBodyMembersTheRebuildDoesNotWrite() {
+        EditSession authored = EditSession.read(Fixtures.subscriptionJson());
+        GroupEditor billing = authored.group("/Subscription/Billing");
+        NumberRef baseFee = billing.num("BaseFee");
+        NumberRef effectiveFee = billing.num("EffectiveFee");
+        billing.addComputation(effectiveFee, c -> c.name("RoundedFee")
+                .calc(baseFee.value(), ToleranceBand.TR1)
+                .message(Dsl.en("rounded"), Dsl.de("gerundet")).build());
+        authored.validate();
+        String stored = authored.toJson().replace("\"computedFieldRelPath\" : \"../EffectiveFee\"",
+                "\"roundingMode\" : \"RoundUp\", \"computedFieldRelPath\" : \"../EffectiveFee\"");
+        assertTrue(stored.contains("RoundUp"), "the probe must actually carry the member it is about");
+
+        EditSession s = EditSession.read(stored);
+        s.validate();
+        s.computation("/Subscription/Billing/RoundedFee")
+                .modify(m -> m.computation(m.num("/Subscription/Billing/EffectiveFee"))
+                        .name("RoundedFee")
+                        .calc(NumberLiteral.of("9.99"), ToleranceBand.TR1)
+                        .message(Dsl.en("flat"), Dsl.de("pauschal")).build());
+        s.validate();
+
+        String json = s.toJson();
+        assertTrue(json.contains("9.99"), "the new formula is applied");
+        assertTrue(json.contains("\"roundingMode\""),
+                () -> "the roundingMode survives the computation modify: " + json);
+        assertTrue(json.contains("RoundUp"),
+                () -> "…and keeps its value rather than being reset to the default: " + json);
     }
 
     @Test
