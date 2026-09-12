@@ -14,9 +14,17 @@ enum class ConditionLanguage(val code: String) {
 
     companion object {
         /**
-         * The language [code] names, defaulting to [EN] for an absent or unrecognized code — the same
-         * fallback rulekit's `ModelWriter.conditionLanguage` applies when reading a model.
+         * The language [code] names, or `null` when it names none.
+         *
+         * There is no fallback for an unrecognized code, because A12 has none: a model declaring `fr_FR` is
+         * REFUSED outright ("Die im ValidierungsModus übergebene Sprache fr_FR wird nicht unterstützt",
+         * uncoded, measured by `ModelConfigCoercionLawsTest`). Reading
+         * `AbstractMultiLanguageHandler`'s constructor predicts a silent substitution of German instead;
+         * that substitution exists but a gate ahead of it means no model ever reaches it.
          */
-        fun ofCode(code: String?): ConditionLanguage = entries.firstOrNull { it.code == code } ?: EN
+        fun of(code: String): ConditionLanguage? = entries.firstOrNull { it.code == code }
+
+        /** The language for an ABSENT declaration: English, the default `DocumentModelConfig` carries. */
+        val DEFAULT: ConditionLanguage = EN
     }
 }

@@ -93,8 +93,9 @@ class DeclarationReferenceTest {
     /**
      * Climbing to the root and descending again is ordinary; one step FURTHER is the discriminator, because
      * a resolver that clamped at the root would land on the very same element and agree with the legal case.
-     * A12 admits the first and rejects the second (`ErrorFieldRelativePathLawsTest`), so the checker must
-     * separate them rather than clamp.
+     * A12 admits the first and cannot even LOAD the second — `ErrorFieldRelativePathLawsTest` records that
+     * row as uncoded, since `ElementPathUtils.absPath` raises during deserialization — so the checker
+     * separates them, and separates the past-root case from an ordinary missing element too.
      */
     @Test
     fun climbingToTheRootResolvesButClimbingPastItDoesNot() {
@@ -103,7 +104,7 @@ class DeclarationReferenceTest {
             prepared(rule("../../Order/Code")).declaredReferences().single().target,
         )
         assertEquals(
-            Reference.Undeclared("/Order/Code"),
+            Reference.AboveRoot("../../../Order/Code"),
             prepared(rule("../../../Order/Code")).declaredReferences().single().target,
             "clamping at the root would have resolved this to the same element as the legal case",
         )

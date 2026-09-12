@@ -20,8 +20,9 @@ data class DeclaredReference(
 )
 
 /**
- * Every structural reference in the model: a rule's `errorEntityRelPath` and a computation's
- * `computedFieldRelPath`.
+ * The two DSL-carrier reference members: a rule's `errorEntityRelPath` and a computation's
+ * `computedFieldRelPath`. A12 declares two further relative references this does NOT read —
+ * `Group.indexFieldName` and `Group.sortFields[].name` — and each report says so as a coverage gap.
  *
  * These need no condition parser and the Kernel checks them — an error field that does not resolve is
  * `MVK_ERROR_FIELD_MISSING`. They resolve from the **declaring element**, not from its group: a rule at
@@ -58,10 +59,9 @@ private fun PreparedModel.resolveRelative(from: String, relative: String): Refer
     }
     val path = "/" + segments.joinToString("/")
     return when {
-        // Above-root is not a separate rejection here: A12 reports the same `MVK_ERROR_FIELD_MISSING` for a
-        // target that climbs too far as for one that names nothing, unlike a condition reference, which has
-        // its own `MVK_TOO_MANY_PARENT_GROUPS` (both measured through `ModelLoader.loadAndCheck`).
-        climbedPastRoot -> Reference.Undeclared(path)
+        // Climbing past the root is a DIFFERENT outcome from naming nothing, and worse: the Kernel raises
+        // inside `ElementPathUtils.absPath` while deserializing, so the model never loads and no check runs.
+        climbedPastRoot -> Reference.AboveRoot(relative)
         elements.any { it.path == path } -> Reference.Resolved(path)
         else -> Reference.Undeclared(path)
     }

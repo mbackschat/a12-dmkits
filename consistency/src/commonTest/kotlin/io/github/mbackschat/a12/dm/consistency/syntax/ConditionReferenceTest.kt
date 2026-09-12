@@ -77,6 +77,59 @@ class ConditionReferenceTest {
         assertEquals(listOf("Lines*/Amount"), referencesIn("Sum(Lines*/Amount)", ConditionLanguage.EN))
     }
 
+    /**
+     * Whitespace rides the lexer's HIDDEN channel and is insignificant between ANY two tokens (KF76,
+     * `.. / seg` ≡ `../seg`, and inside an up-run too). An adjacency rule reads spacing as structure and
+     * splits one path into several bogus references; each spaced row here is paired with its tight control.
+     */
+    @Test
+    fun spacingBetweenPathTokensIsInsignificant() {
+        assertEquals(listOf("../Code"), referencesIn("FieldFilled(.. / Code)", ConditionLanguage.EN))
+        assertEquals(listOf("Lines*/Amount"), referencesIn("Sum(Lines* / Amount)", ConditionLanguage.EN))
+        assertEquals(listOf("Lines*/Amount"), referencesIn("Sum(Lines */Amount)", ConditionLanguage.EN))
+        assertEquals(listOf("/Order/Code"), referencesIn("FieldFilled(/ Order / Code)", ConditionLanguage.EN))
+        assertEquals(listOf("../../Code"), referencesIn("FieldFilled(.. .. / Code)", ConditionLanguage.EN))
+    }
+
+    /**
+     * The case that whitespace-insensitivity has to survive: `/` between two BRACKETED operands is division,
+     * not a path. It is told apart by the operands, not by the spacing — a bare identifier is never an
+     * arithmetic operand, so a run that names nothing yields nothing.
+     */
+    @Test
+    fun divisionBetweenBracketedOperandsIsNotAPath() {
+        assertEquals(listOf("A", "B"), referencesIn("[A] / [B] > 1", ConditionLanguage.EN))
+        assertEquals(listOf("A", "B"), referencesIn("[A]/[B] > 1", ConditionLanguage.EN))
+    }
+
+    /** A digit-LEADING name is one identifier: `NameOhnePunktZifferAmAnfang` is `ZiffernFolge STR …`. */
+    @Test
+    fun aDigitLeadingNameIsOneReference() {
+        assertEquals(listOf("1City"), referencesIn("FieldFilled(1City)", ConditionLanguage.EN))
+        assertEquals(emptyList(), referencesIn("[Qty] > 5", ConditionLanguage.EN).filter { it == "5" })
+    }
+
+    /** A keyword ends a path run, because unquoted the Kernel lexes it as the keyword and not as a segment. */
+    @Test
+    fun aKeywordEndsAPathRun() {
+        assertEquals(listOf("A"), referencesIn("FieldFilled(A/And)", ConditionLanguage.EN))
+    }
+
+    /** A trailing separator is a malformed tail, never part of the name it follows. */
+    @Test
+    fun aTrailingSeparatorIsNotPartOfTheName() {
+        assertEquals(listOf("A"), referencesIn("FieldFilled(A/)", ConditionLanguage.EN))
+    }
+
+    /**
+     * The lexer's `STR` alphabet is letters plus `_`, the German umlauts and eszett, and `:` — not just
+     * ASCII letters. A narrower alphabet splits a legal German field name into two references.
+     */
+    @Test
+    fun theNameAlphabetIncludesUnderscoresAndUmlauts() {
+        assertEquals(listOf("Größe_1"), referencesIn("FieldFilled(Größe_1)", ConditionLanguage.EN))
+    }
+
     /** A name quoted to escape a keyword collision IS a reference, which is the point of quoting it. */
     @Test
     fun aQuotedKeywordNameIsAReference() {

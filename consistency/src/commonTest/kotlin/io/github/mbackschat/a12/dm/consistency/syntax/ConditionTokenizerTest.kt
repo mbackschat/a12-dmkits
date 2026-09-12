@@ -89,6 +89,30 @@ class ConditionTokenizerTest {
     }
 
     /**
+     * A digit run followed by a letter is ONE name (`NameOhnePunktZifferAmAnfang: ZiffernFolge STR …`), not
+     * a number and then a name. A pure digit run stays a number, which is the control.
+     */
+    @Test
+    fun aDigitLeadingNameIsOneNameToken() {
+        assertEquals(listOf(TokenKind.NAME), kinds("1City"))
+        assertEquals(listOf("1City"), texts("1City"))
+        assertEquals(listOf(TokenKind.NUMBER), kinds("12"))
+    }
+
+    /**
+     * `/` and `-` are classified as structure rather than operators, because each is a path form as well as
+     * an arithmetic one and only position tells them apart. `*` and `>` have no path reading in that
+     * position and stay operators — the control that keeps this from being "everything is punctuation".
+     */
+    @Test
+    fun aPathSeparatorIsNotClassifiedAsAnOperator() {
+        assertEquals(listOf(TokenKind.PUNCTUATION), kinds("/"))
+        assertEquals(listOf(TokenKind.PUNCTUATION), kinds("-"))
+        assertEquals(listOf(TokenKind.OPERATOR_SYMBOL), kinds("*"))
+        assertEquals(listOf(TokenKind.OPERATOR_SYMBOL), kinds(">="))
+    }
+
+    /**
      * A quoted name escapes a keyword collision, so it carries the bare name AND the fact that it was
      * quoted. The kernel keeps both too, in the type rather than the text: `NameOhnePunktMitQuotes` strips
      * the quotes (`setTextUnquotedInLexer`) and is a *different terminal* from the keyword the name spells,

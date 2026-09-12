@@ -861,10 +861,6 @@ tasks.register('interpreterReleaseGuardTest', Test) {
 
 // The fixer: regenerate the five kit goldens in place from the live dump. One command, no hand-copy. The
 // default run stays assert-only (CI catches a forgotten regenerate); only this task flips to the writer.
-// The vocabulary guard probes the KERNEL (a few hundred consistency checks, ~4 s) and reads the derived artifact
-// plus every consumer that claims to enumerate the admitted set. Its own task for the usual two reasons: an edit
-// to one of those consumers re-runs this guard alone rather than the broad root suite, and the inputs are
-// declared so a cached green cannot leave a consumer's enumeration unchecked.
 // The portable checker's condition-keyword table is generated into a module that may not see the kernel (H1),
 // so its agreement with the kernel lexer is a claim only a kernel-bearing lane can settle. It reads the shipped
 // table as a repo file, hence its own input-declared task: an edit there must re-run this and nothing else.
@@ -883,6 +879,10 @@ tasks.register('keywordProjectionGuardTest', Test) {
     ])
 }
 
+// The vocabulary guard probes the KERNEL (a few hundred consistency checks, ~4 s) and reads the derived artifact
+// plus every consumer that claims to enumerate the admitted set. Its own task for the usual two reasons: an edit
+// to one of those consumers re-runs this guard alone rather than the broad root suite, and the inputs are
+// declared so a cached green cannot leave a consumer's enumeration unchecked.
 tasks.register('vocabularyGuardTest', Test) {
     description = 'The admitted temporal format vocabulary is derived from the kernel, and every consumer that claims it agrees.'
     group = 'verification'

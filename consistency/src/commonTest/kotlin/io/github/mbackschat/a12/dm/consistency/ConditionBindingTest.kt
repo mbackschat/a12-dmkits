@@ -58,6 +58,21 @@ class ConditionBindingTest {
         assertTrue(CheckFamily.CONDITION_REFERENCES in report.checksCompleted)
     }
 
+    /**
+     * A condition language A12 does not support is a refusal, not a fallback: the Kernel rejects the model
+     * outright, so there is no reading of its conditions to report. Answering in some default language
+     * would invent verdicts A12 never reaches.
+     */
+    @Test
+    fun anUnsupportedConditionLanguageStopsTheAnalysis() {
+        val report = check(model("FieldFilled(Amount)", language = "fr_FR"))
+
+        assertEquals(ConsistencyStatus.Invalid, report.status)
+        assertEquals(listOf(CK_MODEL_NOT_BUILDABLE), report.findings.map { it.code })
+        assertEquals(emptySet(), report.checksCompleted)
+        assertEquals(true, report.findings.single().explain.contains("fr_FR"))
+    }
+
     @Test
     fun aConditionPathAboveTheRootIsItsOwnRejection() {
         assertEquals(
@@ -93,6 +108,45 @@ class ConditionBindingTest {
         assertEquals(emptyList(), codes("FieldFilled(Amount) And FieldFilled(Amount)"))
     }
 
+    /**
+     * Whitespace is on the lexer's HIDDEN channel and insignificant between any two tokens (KF76), so the
+     * spaced spellings must bind exactly like the tight ones. The tight rows are the within-model control.
+     */
+    @Test
+    fun spacingInsideAPathChangesNothing() {
+        assertEquals(emptyList(), codes("FieldFilled(Amount) And FieldFilled(.. / Code)"))
+        assertEquals(emptyList(), codes("FieldFilled(Amount) And FieldFilled(/ Order / Code)"))
+        assertEquals(
+            codes("FieldFilled(Amount) And FieldFilled(../Nope)"),
+            codes("FieldFilled(Amount) And FieldFilled(.. / Nope)"),
+        )
+    }
+
+    /**
+     * `..` may carry a turning-point LABEL naming the ancestor it lands on (`relativeUp: relUp? '..'
+     * idName?`), which is a label and not a path segment. Read as a segment it becomes an undeclared
+     * reference to a path the author never wrote.
+     */
+    @Test
+    fun aTurningPointLabelIsNotAPathSegment() {
+        assertEquals(emptyList(), codes("FieldFilled(Amount) And FieldFilled(..Order/Code)"))
+    }
+
+    /**
+     * A digit-LEADING name is one identifier (`NameOhnePunktZifferAmAnfang`). Split into a number and a
+     * name, the reference silently becomes a different, usually declared field — a false negative.
+     */
+    @Test
+    fun aDigitLeadingNameIsOneReference() {
+        assertEquals(listOf("MVK_INVALID_ENTITY"), codes("FieldFilled(1Amount)"))
+    }
+
+    /** A wildcard names the repetition, not the element, so a starred path binds to the declared group. */
+    @Test
+    fun aStarredPathBindsToTheDeclaredElement() {
+        assertEquals(emptyList(), codes("FieldFilled(Amount) And FieldFilled(../Lines*/Amount)"))
+    }
+
     /** A computation's texts are all read, and the finding names the member so an author knows which. */
     @Test
     fun everyDslBearingMemberOfAComputationIsRead() {
@@ -121,7 +175,36 @@ class ConditionBindingTest {
             ),
             prepared.conditionReferences().map { it.member to it.written },
         )
-        assertEquals(3, check(source).findings.count { it.code == "MVK_INVALID_ENTITY" })
+        val findings = check(source).findings.filter { it.code == "MVK_INVALID_ENTITY" }
+        assertEquals(3, findings.size)
+        assertEquals(3, findings.map { it.explain }.toSet().size, "each finding must name its own member")
+    }
+
+    /**
+     * A group that MOUNTS another model carries none of its declarations here, so every reference into it
+     * would read as undeclared. A12 accepts such a model once the mount resolves, so reporting those
+     * references would reject a valid model — the one direction a checker must never take. The report says
+     * the fact base is incomplete instead.
+     */
+    @Test
+    fun anUnexpandedMountSuspendsTheReferenceChecksInsteadOfRejecting() {
+        val source = ModelSource(
+            """
+            {"header":{"id":"order"},"content":{"modelRoot":{"rootGroups":[
+              {"type":"Group","id":"g0","name":"Order","Group":{"elements":[
+                {"type":"Group","id":"g1","name":"Address","Group":{"modelAlias":"address-model"}},
+                {"type":"Rule","id":"r0","name":"Check","Rule":{"errorCode":"C",
+                  "errorEntityRelPath":"../Address/Street","errorCondition":"FieldFilled(Address/Street)"}}
+              ]}}
+            ]}}}
+            """.trimIndent(),
+        )
+        val report = check(source)
+
+        assertEquals(ConsistencyStatus.Inconclusive, report.status)
+        assertEquals(emptyList(), report.findings)
+        assertEquals(emptySet(), report.checksCompleted)
+        assertTrue(report.gaps.any { it.at == "/Order/Address" }, "the mount must be stated as a gap")
     }
 
     /**
@@ -143,7 +226,7 @@ class ConditionBindingTest {
         )
         val report = check(source)
 
-        assertEquals(listOf(CK_COMPUTED_FIELD_NOT_FOUND), report.findings.map { it.code })
+        assertEquals(listOf(CK_MODEL_NOT_BUILDABLE), report.findings.map { it.code })
         assertTrue(
             report.gaps.any { it.at == "/Order/Comp" },
             "the build failure must be stated as a gap, not only as a finding: ${report.gaps}",

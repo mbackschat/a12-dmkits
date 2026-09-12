@@ -32,9 +32,13 @@ class ConditionReferencePathLawsTest {
                 "FieldFilled(Amount) And FieldFilled(" + reference + ")");
     }
 
-    private static void rejects(String reference, String code) {
-        KernelLaws.rejectsModel(ORDERS, "/Order/Lines", "../Amount",
-                "FieldFilled(Amount) And FieldFilled(" + reference + ")", code);
+    /**
+     * Exclusivity, not mere presence: `rejectsModelInsteadOf` asserts the expected code fires AND the rival
+     * one does not, which an `anyMatch` lock cannot separate when both co-fire.
+     */
+    private static void rejects(String reference, String code, String notThisOne) {
+        KernelLaws.rejectsModelInsteadOf(ORDERS, "/Order/Lines", "../Amount",
+                "FieldFilled(Amount) And FieldFilled(" + reference + ")", code, notThisOne);
     }
 
     /**
@@ -45,7 +49,7 @@ class ConditionReferencePathLawsTest {
     @Test
     void aConditionPathClimbsFromTheRuleGroup() {
         admits("../Code");
-        rejects("../Lines/Code", "MVK_INVALID_ENTITY");
+        rejects("../Lines/Code", "MVK_INVALID_ENTITY", "MVK_TOO_MANY_PARENT_GROUPS");
     }
 
     /**
@@ -55,7 +59,7 @@ class ConditionReferencePathLawsTest {
      */
     @Test
     void climbingOutOfTheRootGroupIsItsOwnRejection() {
-        rejects("../../Code", "MVK_TOO_MANY_PARENT_GROUPS");
+        rejects("../../Code", "MVK_TOO_MANY_PARENT_GROUPS", "MVK_INVALID_ENTITY");
     }
 
     /**
@@ -65,8 +69,9 @@ class ConditionReferencePathLawsTest {
      */
     @Test
     void oneStepIsAlreadyTooManyFromARootGroupRule() {
-        KernelLaws.rejectsModel(ORDERS, "/Order", "../Code",
-                "FieldFilled(Code) And FieldFilled(../Code)", "MVK_TOO_MANY_PARENT_GROUPS");
+        KernelLaws.rejectsModelInsteadOf(ORDERS, "/Order", "../Code",
+                "FieldFilled(Code) And FieldFilled(../Code)",
+                "MVK_TOO_MANY_PARENT_GROUPS", "MVK_INVALID_ENTITY");
     }
 
     @Test
@@ -77,9 +82,49 @@ class ConditionReferencePathLawsTest {
                 "FieldFilled(Code) And FieldFilled(Lines/Sku)");
     }
 
+    /**
+     * Whitespace rides the lexer's HIDDEN channel and is insignificant between ANY two tokens
+     * ([KF76](../../../../../../../../../docs/KERNEL-FINDINGS.md)), so every spaced spelling must behave
+     * exactly like its tight twin. Each row here is paired with the tight control in the tests above.
+     */
+    @Test
+    void spacingInsideAPathIsInsignificant() {
+        admits(".. / Code");
+        admits("/ Order / Code");
+        admits(".. / Lines / Sku");
+        rejects(".. / Nope", "MVK_INVALID_ENTITY", "MVK_TOO_MANY_PARENT_GROUPS");
+    }
+
+    /**
+     * `..` may carry a TURNING-POINT LABEL naming the ancestor it lands on (`relativeUp: relUp? '..'
+     * idName?`); the label is not a path segment. The second row is the control that shows A12 checks the
+     * label rather than ignoring it — a label naming the rule's own group, not the ancestor, is refused.
+     */
+    @Test
+    void aTurningPointLabelNamesTheAncestorAndIsNotASegment() {
+        admits("..Order/Code");
+        rejects("..Lines/Code", "MVK_INVALID_ENTITY", "MVK_TOO_MANY_PARENT_GROUPS");
+    }
+
+    /** A digit-LEADING name is one identifier, so it is looked up whole rather than as a number and a name. */
+    @Test
+    void aDigitLeadingNameIsOneEntityName() {
+        rejects("1Amount", "MVK_INVALID_ENTITY", "MVK_UNEXPECTED_TOKEN");
+    }
+
+    /**
+     * A candidate at ROOT-GROUP level draws its own code, so a checker reporting `MVK_INVALID_ENTITY` for it
+     * would name the wrong repair. The second row is the control one level deeper.
+     */
+    @Test
+    void aRootGroupLevelCandidateHasItsOwnRejection() {
+        rejects("/Nope", "MVK_INVALID_ROOT_GROUP", "MVK_INVALID_ENTITY");
+        rejects("/Order/Nope", "MVK_INVALID_ENTITY", "MVK_INVALID_ROOT_GROUP");
+    }
+
     /** The control: an ordinary unresolvable name draws the entity code, so the rows above are specific. */
     @Test
     void aNameNothingDeclaresDrawsTheEntityCode() {
-        rejects("Nope", "MVK_INVALID_ENTITY");
+        rejects("Nope", "MVK_INVALID_ENTITY", "MVK_TOO_MANY_PARENT_GROUPS");
     }
 }

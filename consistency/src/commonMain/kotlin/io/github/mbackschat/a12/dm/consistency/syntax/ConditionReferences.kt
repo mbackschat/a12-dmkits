@@ -3,9 +3,9 @@ package io.github.mbackschat.a12.dm.consistency.syntax
 /**
  * The entities a condition or operation text names, in the order they first appear.
  *
- * Each result is the reference AS WRITTEN — `Code`, `../Warehouse/Sku`, `Lines*` then `Amount` — because only the
- * whole path binds: resolving `Sku` alone would find a different field, or none. Binding them to declarations
- * is the caller's job (`PreparedModel.resolve`); this answers only which names a check has to bind.
+ * Each result is the reference in NORMALIZED spelling: insignificant whitespace removed, a quoted name's
+ * quotes stripped, an up-run separated. That is what binding needs, and it is deliberately not the authored
+ * text — a report that wants the exact bytes reads the tokens and their spans.
  *
  * A name is a reference unless the lexer would resolve it as a keyword, and that question is settled per
  * [language]: the Kernel looks a name up in one language's terminals and every miss becomes an ordinary name
@@ -17,10 +17,9 @@ package io.github.mbackschat.a12.dm.consistency.syntax
  *
  * **Not answered here, deliberately.** A `$`-prefixed reference is reported without the `$`, which is right
  * for binding because the marker selects an outer REPETITION of the same declared element rather than a
- * different one. A bare digit sequence is read as a constant, never as a reference, though the grammar does
- * admit an all-digit name (`nameOhnePunkt: … | ZiffernFolge | …`) — an all-digit field referenced bare is
- * therefore missed. And nothing here decides whether the text parses; a malformed condition yields whatever
- * names it contains.
+ * different one. A `..Name` turning point is consumed as one upward step and its LABEL is not checked
+ * against the ancestor it names — A12 does check it, so this under-reports and never invents a rejection.
+ * And nothing here decides whether the text parses; a malformed condition yields whatever names it contains.
  */
 fun referencesIn(text: String, language: ConditionLanguage): List<String> =
     ReferenceScan(tokenize(text), CONDITION_KEYWORDS.getValue(language)).references()
@@ -54,6 +53,7 @@ private class ReferenceScan(private val tokens: List<Token>, private val keyword
      *
      * Two, for `@From` and `@Von`: the lexer matches those as single terminals while the tokenizer emits the
      * `@` separately, so reading only the name half would leave `From` looking like an undeclared field.
+     * Those two ARE adjacency-sensitive, being one lexer token rather than a path built from several.
      */
     private fun keywordLength(): Int {
         val token = tokens[at]
@@ -82,21 +82,25 @@ private class ReferenceScan(private val tokens: List<Token>, private val keyword
     }
 
     /**
-     * Read the maximal run of path tokens that touch each other.
+     * Read the run of path tokens starting at [at], ignoring whitespace between them.
      *
-     * Adjacency is the whole discriminator, and it is why the tokenizer records a span: the lexer's own
-     * `entity` rule admits no whitespace between a path's parts, so `[A] / [B]` is a division and `A/B` is a
-     * path, and the two are indistinguishable by token kind alone.
+     * **Whitespace is on the lexer's HIDDEN channel and is insignificant between ANY two tokens**
+     * ([KERNEL-FINDINGS KF76]), so a space between `Group*` and its separator changes nothing, and `.. / seg`
+     * is `../seg`. An earlier
+     * version used adjacency as the discriminator against arithmetic and was wrong for exactly that reason.
+     * The real discriminator is the one KF76 names: a bare identifier is never an arithmetic operand — an
+     * operand is bracketed or parenthesized — so `/` and `*` following a bare path segment are always path
+     * syntax, and a run that names nothing (`[A] / [B]`, where `]` ends it) yields no reference at all.
      */
     private fun readReference() {
         val begin = at
         var end = at
         var names = 0
-        while (end < tokens.size && (end == begin || tokens[end].start == tokens[end - 1].end)) {
+        while (end < tokens.size) {
             val token = tokens[end]
             when {
                 // A keyword ends the run: unquoted, the Kernel lexes it as the keyword, so it is not a segment.
-                token.isName() && token.kind == TokenKind.NAME && token.text in keywords -> break
+                token.kind == TokenKind.NAME && token.text in keywords -> break
                 token.isName() -> names++
                 token.kind == TokenKind.NUMBER || token.text in PATH_PUNCTUATION -> Unit
                 else -> break
@@ -105,7 +109,7 @@ private class ReferenceScan(private val tokens: List<Token>, private val keyword
         }
         while (end > begin && tokens[end - 1].text in PATH_SEPARATORS) end--
         if (names > 0) {
-            found += tokens.subList(begin, end).joinToString("") { it.text }
+            found += normalized(tokens.subList(begin, end))
         }
         // Even a run that named nothing consumed its first token, so the scan always advances.
         at = maxOf(end, begin + 1)
@@ -113,3 +117,24 @@ private class ReferenceScan(private val tokens: List<Token>, private val keyword
 }
 
 private fun Token.isName(): Boolean = kind == TokenKind.NAME || kind == TokenKind.QUOTED_NAME
+
+/**
+ * Render the run as one path.
+ *
+ * The one insertion is a separator between two consecutive `..`: whitespace inside an up-run is insignificant
+ * too (`.. ..` is `....`, KF76), and concatenating them would produce a dot-run no path split can read back.
+ */
+private fun normalized(run: List<Token>): String {
+    val text = StringBuilder()
+    var previousWasUp = false
+    run.forEach { token ->
+        val up = token.text == UP_STEP
+        if (up && previousWasUp) text.append('/')
+        text.append(token.text)
+        previousWasUp = up
+    }
+    return text.toString()
+}
+
+private const val UP_STEP = ".."
+

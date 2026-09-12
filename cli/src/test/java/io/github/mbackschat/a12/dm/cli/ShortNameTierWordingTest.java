@@ -39,12 +39,20 @@ class ShortNameTierWordingTest {
                 contains(invalidEntityFix(), "binds against the rule's OWN group first"));
         actual.put("…and denies an upward search rather than implying one",
                 contains(invalidEntityFix(), "there is no upward search"));
+        actual.put("the MVK_FIELDNAME_NOT_UNIQUE hint names the opposite corrective",
+                contains(notUniqueFix(), "OPPOSITE corrective"));
+        actual.put("…and says turning the flag off swaps the code rather than fixing the reference",
+                contains(notUniqueFix(),
+                        "turning `fieldRefByShortNameAllowed` off converts this code into that one "
+                                + "rather than fixing the reference"));
 
         Map<String, String> expected = new LinkedHashMap<>();
         expected.put("--field-ref-by-short-name names the MODEL-WIDE tier", PRESENT);
         expected.put("…and says the rule's own group resolves regardless of the flag", PRESENT);
         expected.put("the MVK_INVALID_ENTITY hint binds against the own group first", PRESENT);
         expected.put("…and denies an upward search rather than implying one", PRESENT);
+        expected.put("the MVK_FIELDNAME_NOT_UNIQUE hint names the opposite corrective", PRESENT);
+        expected.put("…and says turning the flag off swaps the code rather than fixing the reference", PRESENT);
         assertEquals(expected, actual, "the tier is what the measurement established, so the text must say it");
     }
 
@@ -62,5 +70,13 @@ class ShortNameTierWordingTest {
     /** The live enricher hint that rides every {@code MVK_INVALID_ENTITY} diagnostic. */
     private static String invalidEntityFix() {
         return StructuralKernelFix.forCode("MVK_INVALID_ENTITY").orElseThrow().fix();
+    }
+
+    /**
+     * The live hint for the sibling code. Its BEHAVIOURAL claim is locked by {@code ShortNameTierLawsTest};
+     * this pins the sentence that states it, which no laws test can see.
+     */
+    private static String notUniqueFix() {
+        return StructuralKernelFix.forCode("MVK_FIELDNAME_NOT_UNIQUE").orElseThrow().fix();
     }
 }

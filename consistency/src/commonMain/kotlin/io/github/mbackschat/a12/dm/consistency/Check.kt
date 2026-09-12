@@ -67,10 +67,43 @@ fun check(source: ModelSource): ConsistencyReport {
         is Admission.Admitted -> admission
     }
     val prepared = prepare(admitted)
+    prepared.unsupportedConditionLanguage?.let { code ->
+        // A12 refuses the model rather than falling back to a language, so there is no reading of its
+        // conditions to have — every keyword question would be answered in a language A12 never applies.
+        return ConsistencyReport(
+            modelId = admitted.modelId,
+            status = ConsistencyStatus.Invalid,
+            findings = listOf(
+                Finding(
+                    FindingCategory.A12_CONSTRAINT,
+                    FindingSeverity.ERROR,
+                    CK_MODEL_NOT_BUILDABLE,
+                    "`$code` is not a condition language A12 supports, so the model cannot be used at all",
+                ),
+            ),
+            diagnostics = prepared.diagnostics,
+            checksCompleted = emptySet(),
+            gaps = prepared.gaps() + UNIMPLEMENTED_FAMILIES,
+        )
+    }
+    val unmounted = prepared.unmountedIncludes()
+    if (unmounted.isNotEmpty()) {
+        // The fact base is INCOMPLETE, so "no declared element matches" is not a verdict this checker may
+        // reach: the elements are declared, in a model this source does not carry. Reporting the references
+        // anyway would reject a model A12 accepts, which is the one direction a checker must never take.
+        return ConsistencyReport(
+            modelId = admitted.modelId,
+            status = ConsistencyStatus.Inconclusive,
+            findings = emptyList(),
+            diagnostics = prepared.diagnostics,
+            checksCompleted = emptySet(),
+            gaps = prepared.gaps() + unmounted + UNIMPLEMENTED_FAMILIES,
+        )
+    }
     val declared = prepared.declaredReferences()
     val findings = declared.mapNotNull { it.target.asFinding(it.role, it.declaredAt) } +
         prepared.conditionReferences().mapNotNull {
-            it.target.asFinding(ReferenceRole.CONDITION_ENTITY, it.declaredAt)
+            it.target.asFinding(ReferenceRole.CONDITION_ENTITY, it.declaredAt, it.member)
         }
     return ConsistencyReport(
         modelId = admitted.modelId,
@@ -78,9 +111,25 @@ fun check(source: ModelSource): ConsistencyReport {
         findings = findings,
         diagnostics = prepared.diagnostics,
         checksCompleted = setOf(CheckFamily.DECLARED_REFERENCES, CheckFamily.CONDITION_REFERENCES),
-        gaps = prepared.gaps() + declared.buildBlocked() + UNIMPLEMENTED_FAMILIES,
+        gaps = prepared.gaps() + declared.buildBlocked() + UNREAD_MEMBERS + UNIMPLEMENTED_FAMILIES,
     )
 }
+
+/**
+ * Every group that mounts another model and has not been expanded — `modelAlias` set with no `elements`,
+ * the same test `core.ModelReader` applies before mounting. Its subtree's declarations live in the
+ * referenced model, which this source does not carry.
+ */
+private fun PreparedModel.unmountedIncludes(): List<CoverageGap> = elements
+    .filter { it.kind == "Group" && it.mountsAnotherModel }
+    .map {
+        CoverageGap(
+            at = it.path,
+            blocked = null,
+            reason = "this group mounts the model `${it.modelAlias}` and the mount is not expanded here, " +
+                "so the fact base is incomplete and no reference check can run over this source",
+        )
+    }
 
 /** A declaration the checker could not read was not checked either, so each one is also a coverage gap. */
 private fun PreparedModel.gaps(): List<CoverageGap> = diagnostics.map {
@@ -88,23 +137,38 @@ private fun PreparedModel.gaps(): List<CoverageGap> = diagnostics.map {
 }
 
 /**
- * An unresolvable computed field stops the Kernel from BUILDING the model, so A12 reports that failure and
- * nothing else — no `checkConsistency` verdict is produced at all (measured through
- * `ModelLoader.loadAndCheck`). Every other finding in the same report is therefore the checker's own reading
- * rather than something A12 would have said about this model, and the gap says so instead of leaving a
- * consumer to assume the list is A12's.
+ * The declarations that stop the Kernel from BUILDING the model, so A12 reports that failure and nothing
+ * else — no `checkConsistency` verdict is produced at all (measured through `ModelLoader.loadAndCheck`).
+ * Two reach it: an unresolvable computed field, and any declared target that climbs past the root. Every
+ * other finding in the same report is therefore the checker's own reading rather than something A12 would
+ * have said about this model, and the gap says so instead of leaving a consumer to assume the list is A12's.
  */
 private fun List<DeclaredReference>.buildBlocked(): List<CoverageGap> =
-    filter { it.role == ReferenceRole.COMPUTED_TARGET && it.target !is Reference.Resolved }
-        .map {
-            CoverageGap(
-                at = it.declaredAt,
-                blocked = null,
-                reason = "the Kernel cannot build a model whose computed field is missing, so it reports " +
-                    "this and stops; any other finding here is this checker's own reading of a model A12 " +
-                    "never got far enough to judge",
-            )
-        }
+    filter {
+        it.target is Reference.AboveRoot ||
+            (it.role == ReferenceRole.COMPUTED_TARGET && it.target !is Reference.Resolved)
+    }.map {
+        CoverageGap(
+            at = it.declaredAt,
+            blocked = CheckFamily.CONDITION_REFERENCES,
+            reason = "`${it.member}` makes this model unbuildable, so the Kernel reports that and stops; " +
+                "any other finding here is this checker's own reading of a model A12 never got far " +
+                "enough to judge",
+        )
+    }
+
+/**
+ * The reference members A12 declares that this checker does not read. Stated on every report rather than
+ * only in the plan, because a consumer cannot otherwise tell a clean reference result from an unexamined one.
+ */
+private val UNREAD_MEMBERS = listOf(
+    CoverageGap(
+        at = null,
+        blocked = CheckFamily.DECLARED_REFERENCES,
+        reason = "`Group.indexFieldName` and `Group.sortFields[].name` are relative field references too " +
+            "and are not resolved here",
+    ),
+)
 
 private val UNIMPLEMENTED_FAMILIES = listOf(
     CoverageGap(

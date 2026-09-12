@@ -29,14 +29,31 @@ data class DeclaredElement(
     val kind: String,
     val id: String?,
     val declaration: JsonObject,
-)
+) {
+    /** The model this group mounts, when it declares one — `Group.modelAlias`. */
+    val modelAlias: String?
+        get() = ((declaration[kind] as? JsonObject)?.get("modelAlias") as? JsonPrimitive)?.contentOrNull
+
+    /**
+     * Whether this group mounts another model that has NOT been expanded into it. The test is
+     * `core.ModelReader`'s own — an alias with no `elements` — because an already-mounted group carries both
+     * and re-expanding it is what the Kernel's idempotency guard prevents.
+     */
+    val mountsAnotherModel: Boolean
+        get() = !modelAlias.isNullOrEmpty() &&
+            ((declaration[kind] as? JsonObject)?.get("elements") as? JsonArray).isNullOrEmpty()
+}
+
+private fun JsonArray?.isNullOrEmpty(): Boolean = this == null || this.isEmpty()
 
 /**
  * An admitted source's declarations, in declaration order — the fact base every later phase reads.
  *
- * @param conditionLanguage the model's `content.modelConfig.conditionLanguage.code`. It decides which names
- *     in a condition are operator keywords and which are entity references, so no condition can be read
- *     without it; an absent or unrecognized code means English, the same fallback the Java side applies.
+ * @param conditionLanguage the model's `content.modelConfig.conditionLanguage.code`, English when the model
+ *     declares none. It decides which names in a condition are operator keywords and which are entity
+ *     references, so no condition can be read without it.
+ * @param unsupportedConditionLanguage the declared code when A12 does not support it — the model is then
+ *     refused outright rather than read in some fallback language, so no condition may be analysed at all.
  * @param fieldRefByShortNameAllowed the model's `content.modelConfig.fieldRefByShortNameAllowed`. It decides
  *     whether a bare reference the declaring group does not have may resolve to a unique model-wide field
  *     short name, so reference resolution cannot be done without it.
@@ -46,7 +63,8 @@ data class DeclaredElement(
 data class PreparedModel(
     val elements: List<DeclaredElement>,
     val fieldRefByShortNameAllowed: Boolean,
-    val conditionLanguage: ConditionLanguage = ConditionLanguage.EN,
+    val conditionLanguage: ConditionLanguage = ConditionLanguage.DEFAULT,
+    val unsupportedConditionLanguage: String? = null,
     val diagnostics: List<Diagnostic> = emptyList(),
 )
 
@@ -68,18 +86,21 @@ private enum class DeclaredKind(val wire: String) {
 /** Read [Admission.Admitted]'s retained tree into the declarations the checker works from. */
 fun prepare(admitted: Admission.Admitted): PreparedModel {
     val content = (admitted.parsed as? JsonObject)?.get("content") as? JsonObject
-    val collector = Collector(admitted.modelId)
+    val declaredCode = content.conditionLanguageCode()?.takeIf { it.isNotBlank() }
+    val declaredLanguage = declaredCode?.let { ConditionLanguage.of(it) }
+    val collector = Collector(admitted.modelId, admitted.source.diagnosticLabel)
     val root = (content?.get("modelRoot") as? JsonObject)?.get("rootGroups")
     collector.each(root, at = null, what = "content.modelRoot.rootGroups") { collector.collect(it, "", null) }
     return PreparedModel(
         elements = collector.elements,
         fieldRefByShortNameAllowed = collector.flag(content),
-        conditionLanguage = ConditionLanguage.ofCode(content.conditionLanguageCode()),
+        conditionLanguage = declaredLanguage ?: ConditionLanguage.DEFAULT,
+        unsupportedConditionLanguage = declaredCode.takeIf { it != null && declaredLanguage == null },
         diagnostics = collector.diagnostics,
     )
 }
 
-private class Collector(private val modelId: String) {
+private class Collector(private val modelId: String, private val diagnosticLabel: String?) {
     val elements = mutableListOf<DeclaredElement>()
     val diagnostics = mutableListOf<Diagnostic>()
 
@@ -129,22 +150,31 @@ private class Collector(private val modelId: String) {
         }
     }
 
-    /** `fieldRefByShortNameAllowed`, absent or unreadable meaning off — never a raised conversion. */
+    /**
+     * `fieldRefByShortNameAllowed`, absent or unreadable meaning off — never a raised conversion.
+     *
+     * The QUOTED form is accepted, because the Kernel accepts it: a model declaring `"true"` enables the
+     * model-wide short-name tier (measured, `rule check`). Refusing it here would flip every short-name
+     * verdict on a model A12 reads — the read-path half of the over-strictness rule, and the same coercion
+     * [text] applies to `type`/`id`/`name`.
+     */
     fun flag(content: JsonObject?): Boolean {
         val declared = (content?.get("modelConfig") as? JsonObject)?.get("fieldRefByShortNameAllowed")
             ?: return false
-        return when ((declared as? JsonPrimitive)?.takeIf { !it.isString }?.content) {
+        return when ((declared as? JsonPrimitive)?.contentOrNull) {
             "true" -> true
             "false" -> false
             else -> {
-                malformed(null, "`fieldRefByShortNameAllowed` must be a JSON boolean")
+                malformed(null, "`fieldRefByShortNameAllowed` must be a boolean, or a string spelling one")
                 false
             }
         }
     }
 
     private fun malformed(at: String?, explain: String) {
-        diagnostics += Diagnostic(DiagnosticCode.DECLARATION_NOT_WELL_FORMED, modelId, explain, at)
+        // The caller's label rides along, the same way admission's diagnostics carry it: a consumer checking
+        // several sources needs the FILE, not only the model id it happened to declare.
+        diagnostics += Diagnostic(DiagnosticCode.DECLARATION_NOT_WELL_FORMED, modelId, explain, at, diagnosticLabel)
     }
 }
 

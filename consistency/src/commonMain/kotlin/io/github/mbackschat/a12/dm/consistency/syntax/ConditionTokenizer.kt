@@ -91,7 +91,15 @@ fun tokenize(text: String): List<Token> {
 
             char.isDigit() -> {
                 while (index < text.length && text[index].isDigit()) index++
-                tokens += Token(TokenKind.NUMBER, text.substring(start, index), start, index)
+                // A digit run followed by a letter is a NAME, not a number then a name: the lexer's
+                // `NameOhnePunktZifferAmAnfang` is `ZiffernFolge STR (STR|DIGIT)*`, so `1City` is one
+                // identifier. Splitting it would hand a consumer the reference `City`, which usually exists.
+                if (index < text.length && text[index].isNameStart()) {
+                    while (index < text.length && text[index].isNamePart()) index++
+                    tokens += Token(TokenKind.NAME, text.substring(start, index), start, index)
+                } else {
+                    tokens += Token(TokenKind.NUMBER, text.substring(start, index), start, index)
+                }
             }
 
             char.isNameStart() -> {

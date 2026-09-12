@@ -70,6 +70,7 @@ Lock-tree classes whose subject is not one kernel-semantics section — the conc
 | Lane | Guards |
 |---|---|
 | Operator name resolution — the AST name → operator-enum lookup every strategy shares | `OperatorLookupTest` |
+| `modelConfig` READ coercions that decide reference resolution — the short-name flag's quoted form, and an unsupported `conditionLanguage` (a refusal, not a fallback) | `ModelConfigCoercionLawsTest` |
 | Condition concrete syntax (lexing, comments, directives — KERNEL-FINDINGS "Condition lexing"/"Condition comments"/"Condition directives") | `DirectiveLawsTest`, `CommentConditionDiffTest`, `ParserDiffTest`, `ParserCorpusSweepTest`, `KeywordCaseVariantParseTest`, `ConditionLanguageParseTest`, `CommentSkipParseTest`, `ForIndexArgParseTest`, `QuotedPathSegmentParseTest`, `ValueListLiteralParseTest`, `ValueListQuantifierHavingParseTest`, `RuleGroupEntitySuffixParseTest`, `ToInfixParseTest`, `ToInfixDegradeTest`, `StarredSemanticIndexKeyParseTest` |
 | Kernel-diagnostic REACHABILITY through our own gates — which kernel sources a `checkConsistency` call can actually report from, and which classes live only behind a rule-collection derivation ([MVK-LEDGER.md](MVK-LEDGER.md) scope boundary, [kf277](KERNEL-FINDINGS.md#kf277)) | `CodegenErrorClassReachesConsistencyLawsTest`, `RuleCollectionDerivationDiagnosticLawsTest` |
 | Operator-catalog verification lanes ([CATALOG-SPEC.md](CATALOG-SPEC.md) §5) | `CatalogFacetProbesTest`, `CatalogParityTest`, `CatalogOperatorStrategyDiffTest`, `CapabilityEvidenceMatrixTest`, `OperatorAdmissionLawsTest` |

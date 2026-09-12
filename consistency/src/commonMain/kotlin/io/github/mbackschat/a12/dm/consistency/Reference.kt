@@ -67,14 +67,20 @@ enum class ReferenceRole {
 fun PreparedModel.resolveEntity(declaringGroup: String, written: String): Reference {
     val steps = written.split('/').filter { it.isNotEmpty() }.map { it.withoutRepetitionSuffix() }
     val absolute = written.startsWith("/")
-    if (!absolute && steps.size == 1 && steps.single() != UP) {
+    // The two-tier short-name treatment is for a single BARE LEAF. A starred segment names a repeatable
+    // group's iteration rather than a leaf, and the Kernel gates its fallback per `idNameRef`, so `Lines*`
+    // must not reach a model-wide field index that could resolve it to an unrelated field of that name.
+    if (!absolute && steps.size == 1 && steps.single() != UP && !written.contains('*')) {
         return resolve(declaringGroup, steps.single())
     }
     val path = if (absolute) mutableListOf() else declaringGroup.split('/').filter { it.isNotEmpty() }.toMutableList()
     var aboveRoot = false
     steps.forEach { step ->
-        when (step) {
-            UP -> if (path.size <= 1) aboveRoot = true else path.removeAt(path.size - 1)
+        when {
+            // `..` optionally carries a TURNING-POINT LABEL naming the ancestor it lands on
+            // (`relativeUp: relUp? '..' idName?`). The label is not a path segment; A12 checks that it names
+            // the right ancestor and this does not, which under-reports rather than inventing a rejection.
+            step.startsWith(UP) -> if (path.size <= 1) aboveRoot = true else path.removeAt(path.size - 1)
             else -> path += step
         }
     }

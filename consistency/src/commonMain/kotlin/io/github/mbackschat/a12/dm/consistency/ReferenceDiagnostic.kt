@@ -9,6 +9,12 @@ package io.github.mbackschat.a12.dm.consistency
  * all, because the Kernel cannot even build the model. An earlier version reported every unresolved
  * reference as `MVK_INVALID_ENTITY`, which was right for one of the three.
  *
+ * The two roles ALSO differ on climbing too far, in the opposite direction from the obvious guess. A
+ * condition reference that leaves the root group draws `MVK_TOO_MANY_PARENT_GROUPS`, a rejection A12 issues
+ * cleanly; a declared target that does the same makes the model UNLOADABLE — `ElementPathUtils.absPath`
+ * raises before any check runs — so it joins the computed field's class rather than the error field's
+ * (`ErrorFieldRelativePathLawsTest` records that row as uncoded).
+ *
  * All of them carry [FindingCategory.A12_CONSTRAINT] and may reject a model: each is a measured Kernel
  * verdict on a whole model through `ModelLoader.loadAndCheck`, not checker policy.
  *
@@ -18,43 +24,51 @@ package io.github.mbackschat.a12.dm.consistency
  * is where it lands. Restating the prose here is the one thing that must not happen meanwhile.
  *
  * @param at the declaration the reference was written in.
+ * @param member the declaration MEMBER it was written in, when the declaration has several that carry DSL.
+ *     A computation has three kinds, so a finding that named only the computation would leave an author
+ *     reading all of them — and three references to one missing name would report three identical findings.
  */
-fun Reference.asFinding(role: ReferenceRole, at: String): Finding? = when (this) {
-    is Reference.Resolved -> null
-    is Reference.Undeclared -> a12Error(
-        code = role.codeFor(this),
-        at = at,
-        explain = "no declared element matches `$candidate`, and no model-wide field short name resolved it",
-    )
-    is Reference.Ambiguous -> a12Error(
-        code = role.codeFor(this),
-        at = at,
-        explain = "the short name `$name` is carried by ${candidates.size} fields — " +
-            "${candidates.joinToString(", ")} — so the model-wide fallback cannot choose between them",
-    )
-    is Reference.AboveRoot -> a12Error(
-        code = role.codeFor(this),
-        at = at,
-        explain = "`$written` climbs above the model root, so it names no position in this model",
-    )
+fun Reference.asFinding(role: ReferenceRole, at: String, member: String? = null): Finding? {
+    val explain = when (this) {
+        is Reference.Resolved -> return null
+        is Reference.Undeclared ->
+            "no declared element matches `$candidate`, and no model-wide field short name resolved it"
+        is Reference.Ambiguous ->
+            "the short name `$name` is carried by ${candidates.size} fields — " +
+                "${candidates.joinToString(", ")} — so the model-wide fallback cannot choose between them"
+        is Reference.AboveRoot ->
+            "`$written` climbs above the root group, so it names no position in this model"
+    }
+    return a12Error(role.codeFor(this), at, member?.let { "in `$it`: $explain" } ?: explain)
 }
 
 /**
- * A rejection A12 issues with no code of its own: the Kernel refuses to BUILD a model whose computed field
- * is missing ("The computed field \"…\" was not found."), so no `MVK_*` key exists to carry. This is the one
- * code the checker owns, minted only after establishing that A12 defines none — and it is deliberately not
- * an `MVK_*` or `RK_*` spelling, so a consumer can never mistake it for one.
+ * A rejection A12 issues with no code of its own, because the model never gets built.
+ *
+ * Two measured inputs reach it: a computation whose computed field is missing (the Kernel reports the bare
+ * text "The computed field \"…\" was not found." from `ValidationModelConverter.getComputationStatement`,
+ * with no error type), and a rule whose error target climbs past the root (`ElementPathUtils.absPath` raises
+ * an `IndexOutOfBoundsException` during deserialization). Neither carries an `MVK_*` key, so this is the one
+ * code the checker owns — minted only after establishing that A12 defines none, and deliberately spelled
+ * outside the `MVK_*` and `RK_*` namespaces so a consumer can never mistake it for one.
  */
-const val CK_COMPUTED_FIELD_NOT_FOUND = "CK_COMPUTED_FIELD_NOT_FOUND"
+const val CK_MODEL_NOT_BUILDABLE = "CK_MODEL_NOT_BUILDABLE"
 
 private fun ReferenceRole.codeFor(outcome: Reference): String = when (this) {
-    // Both an unresolvable and an above-root error target report this pair; the checker reports the first,
-    // since `MVK_MISSING_ERROR_FIELD` is the metamodel law restating it rather than a second defect.
-    ReferenceRole.ERROR_TARGET -> "MVK_ERROR_FIELD_MISSING"
-    ReferenceRole.COMPUTED_TARGET -> CK_COMPUTED_FIELD_NOT_FOUND
+    // An unresolvable error target reports `MVK_ERROR_FIELD_MISSING` together with `MVK_MISSING_ERROR_FIELD`;
+    // the checker reports the first, the second being the metamodel law restating it rather than a
+    // second defect. An above-root one never reaches a check at all.
+    ReferenceRole.ERROR_TARGET ->
+        if (outcome is Reference.AboveRoot) CK_MODEL_NOT_BUILDABLE else "MVK_ERROR_FIELD_MISSING"
+    ReferenceRole.COMPUTED_TARGET -> CK_MODEL_NOT_BUILDABLE
     ReferenceRole.CONDITION_ENTITY -> when (outcome) {
         is Reference.Ambiguous -> "MVK_FIELDNAME_NOT_UNIQUE"
         is Reference.AboveRoot -> "MVK_TOO_MANY_PARENT_GROUPS"
+        // A candidate at root-group level is its own rejection: the Kernel branches on
+        // `EntityUtils.isRootGroup` (exactly one path separator) before reporting an invalid entity.
+        is Reference.Undeclared ->
+            if (outcome.candidate.count { character -> character == '/' } == 1) "MVK_INVALID_ROOT_GROUP"
+            else "MVK_INVALID_ENTITY"
         else -> "MVK_INVALID_ENTITY"
     }
 }

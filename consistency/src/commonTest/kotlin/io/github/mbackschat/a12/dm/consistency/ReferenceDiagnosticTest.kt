@@ -43,19 +43,33 @@ class ReferenceDiagnosticTest {
     }
 
     /**
+     * A candidate at ROOT-GROUP level is its own rejection: the Kernel branches on `EntityUtils.isRootGroup`
+     * — exactly one path separator — before reporting an invalid entity, so `/Nope` and `/Order/Nope` draw
+     * different codes for the same failure.
+     */
+    @Test
+    fun aRootGroupLevelCandidateReportsTheRootGroupCode() {
+        assertEquals(
+            listOf("MVK_INVALID_ROOT_GROUP", "MVK_INVALID_ENTITY"),
+            listOf(Reference.Undeclared("/Nope"), Reference.Undeclared("/Order/Nope"))
+                .map { it.asFinding(ReferenceRole.CONDITION_ENTITY, at = "/Order/Rule")?.code },
+        )
+    }
+
+    /**
      * The SAME failure in a different place is a different rejection, which is why the role is a parameter
-     * and not a detail: A12 answers an unresolvable error target with `MVK_ERROR_FIELD_MISSING`, and it
-     * answers it the same way whether the path names nothing or climbs too far — where a condition
-     * reference distinguishes those two. Measured on whole models through `ModelLoader.loadAndCheck`.
+     * and not a detail. An unresolvable error target is `MVK_ERROR_FIELD_MISSING`; one that climbs past the
+     * root never reaches a check at all, because `ElementPathUtils.absPath` raises while the model is being
+     * deserialized (`ErrorFieldRelativePathLawsTest` records that row as uncoded). A condition reference
+     * splits the same two the other way round, the above-root case being the one A12 codes.
      */
     @Test
     fun theSameFailureInADifferentRoleIsADifferentRejection() {
-        listOf(Reference.Undeclared("/Order/Nope"), Reference.AboveRoot("../../../Nope")).forEach { outcome ->
-            assertEquals(
-                "MVK_ERROR_FIELD_MISSING",
-                outcome.asFinding(ReferenceRole.ERROR_TARGET, at = "/Order/Rule")?.code,
-            )
-        }
+        assertEquals(
+            listOf("MVK_ERROR_FIELD_MISSING", CK_MODEL_NOT_BUILDABLE),
+            listOf(Reference.Undeclared("/Order/Nope"), Reference.AboveRoot("../../../Nope"))
+                .map { it.asFinding(ReferenceRole.ERROR_TARGET, at = "/Order/Rule")?.code },
+        )
         assertEquals(
             listOf("MVK_INVALID_ENTITY", "MVK_TOO_MANY_PARENT_GROUPS"),
             listOf(Reference.Undeclared("/Order/Nope"), Reference.AboveRoot("../../../Nope"))
@@ -64,17 +78,30 @@ class ReferenceDiagnosticTest {
     }
 
     /**
-     * A missing computed field is the one rejection A12 issues with no code: the Kernel refuses to build the
-     * model at all. The checker owns a code for it rather than borrowing an `MVK_*` key that means something
+     * A model the Kernel cannot BUILD is the one rejection A12 issues with no code — it refuses before any
+     * check runs. The checker owns a code for it rather than borrowing an `MVK_*` key that means something
      * else, and the spelling says whose it is.
      */
     @Test
-    fun aMissingComputedFieldCarriesTheCheckersOwnCode() {
+    fun anUnbuildableModelCarriesTheCheckersOwnCode() {
         val finding = Reference.Undeclared("/Order/Nope")
             .asFinding(ReferenceRole.COMPUTED_TARGET, at = "/Order/Comp")
 
-        assertEquals(CK_COMPUTED_FIELD_NOT_FOUND, finding?.code)
+        assertEquals(CK_MODEL_NOT_BUILDABLE, finding?.code)
         assertEquals(false, finding?.code?.startsWith("MVK_"))
+        assertEquals(false, finding?.code?.startsWith("RK_"))
+    }
+
+    /**
+     * A declaration with several DSL members names the one at fault. Without it, a computation whose three
+     * texts reference the same missing field reports three findings a reader cannot tell apart.
+     */
+    @Test
+    fun aFindingNamesTheMemberTheReferenceWasWrittenIn() {
+        val finding = Reference.Undeclared("/Order/Nope")
+            .asFinding(ReferenceRole.CONDITION_ENTITY, at = "/Order/Comp", member = "commonPrecondition")
+
+        assertEquals(true, finding?.explain?.startsWith("in `commonPrecondition`:"), finding?.explain)
     }
 
     /** A resolved reference is not a finding — the absence is deliberate, not an unhandled arm. */

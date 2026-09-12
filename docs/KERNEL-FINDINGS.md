@@ -5323,7 +5323,9 @@ The same three conditions on the SAME model with only `conditionLanguage` flippe
 
 > Fold: not-foldable — this is how the Kernel's lexer is configured, not a rule of the validation language; the canonical reference describes the language a model writes, not which spellings a given model admits.
 
-`content.modelConfig.conditionLanguage.code` is not a presentation choice. The lexer's `ID` rule carries `{this.getMultiLanguageHandler().setTypeInLexer(this);}`, and that method looks the matched text up in **one** language's terminal map: a hit sets the keyword's token type, and a miss sets `getDefaultTokenType()`, which `ConditionMultiLanguageHandler` defines as `NameOhnePunktSTRAmAnfang` — an ordinary entity name. There is no fallback to the other language, and `SUPPORTED_CONDITION_LANGUAGES` is exactly `{en_US, de_DE}` with anything else silently becoming German.
+`content.modelConfig.conditionLanguage.code` is not a presentation choice. The lexer's `ID` rule carries `{this.getMultiLanguageHandler().setTypeInLexer(this);}`, and that method looks the matched text up in **one** language's terminal map: a hit sets the keyword's token type, and a miss sets `getDefaultTokenType()`, which `ConditionMultiLanguageHandler` defines as `NameOhnePunktSTRAmAnfang` — an ordinary entity name. There is no fallback to the other language, and `SUPPORTED_CONDITION_LANGUAGES` is exactly `{en_US, de_DE}`.
+
+*Corrected 2026-09-12: this first added "with anything else silently becoming German", read off `AbstractMultiLanguageHandler`'s constructor, which does substitute `Locale.GERMANY` for an unsupported locale. It does not manifest. A model declaring `fr_FR` is refused before any lexing — "Die im ValidierungsModus übergebene Sprache fr_FR wird nicht unterstützt", uncoded — under BOTH languages' spellings, so no model reaches that substitution. A source-read fallback stated as behaviour, which is the class the oracle table warns about; `ModelConfigCoercionLawsTest` now measures it.*
 
 Two consequences follow, and both are load-bearing for any tool that reads condition text:
 
@@ -5332,7 +5334,7 @@ Two consequences follow, and both are load-bearing for any tool that reads condi
 
 The renderer's side of the same map is `AbstractMultiLanguageHandler.hasToBeQuoted(str)`, which is literally `isATerminal(str)` for the model's language. So the set a checker must treat as keywords and the set A12 quotes when a field name collides are one set, per language — and `KeywordReverseParityTest.rendererQuotesEveryLiveLexerTerminalThatCanBeAnEntityName` already exercises that direction.
 
-*(Locked: `consistency.ConditionKeywordProjectionTest` pins the portable checker's shipped keyword table to these bundles in both directions, per language; `rulekit.validate.laws.HModelFormConditionReachabilityLawsTest` locks the behavioural consequence on the Kernel itself. The count is re-derived by the projection test, not restated anywhere.)*
+*(Locked: `consistency.ConditionKeywordProjectionTest` pins the portable checker's shipped keyword table to these bundles in both directions, per language; `rulekit.validate.laws.HModelFormConditionReachabilityLawsTest` locks the behavioural consequence on the Kernel itself, and `rulekit.validate.laws.ModelConfigCoercionLawsTest` the unsupported-code refusal. The count is re-derived by the projection test, not restated anywhere.)*
 
 ## §10 supplement — an unresolvable reference has THREE different answers, and the two carriers resolve from different origins (`ModelLoader.loadAndCheck`, measured, 2026-09-12) <a id="kf284"></a>
 
@@ -5347,10 +5349,16 @@ One model carries every row: a root group `Order` with a field `Code` and a subg
 | the reference that does not resolve | what A12 reports |
 |---|---|
 | an entity in a condition | `MVK_INVALID_ENTITY` |
+| an entity in a condition, at ROOT-GROUP level (`/Nope`) | `MVK_INVALID_ROOT_GROUP` — the Kernel branches on `EntityUtils.isRootGroup`, exactly one path separator |
 | an entity in a condition, climbing out of the root group | `MVK_TOO_MANY_PARENT_GROUPS` |
-| a rule's `errorEntityRelPath`, whether missing or above the root | `MVK_ERROR_FIELD_MISSING` **and** `MVK_MISSING_ERROR_FIELD`, together |
+| a rule's `errorEntityRelPath` naming nothing | `MVK_ERROR_FIELD_MISSING` **and** `MVK_MISSING_ERROR_FIELD`, together |
+| a rule's `errorEntityRelPath` climbing PAST the root | **no code at all** — `ElementPathUtils.absPath` raises while the model is deserialized |
 | a computation's `computedFieldRelPath` | **no code at all** — the Kernel cannot build the model |
+
+**Corrected 2026-09-12, hours later, by a cold review that ran the climb one step further than this entry had.** The `errorEntityRelPath` row read "whether missing or above the root", from a probe whose deepest case reached the root rather than passing it. Climbing PAST the root is a different outcome: the model does not load at all (`IndexOutOfBoundsException` in `ElementPathUtils.absPath`, through `EntityReferenceResolverVisitor.visitRule`), so it joins the computed field's class rather than the error field's. The falsifier was already in this repository — `ErrorFieldRelativePathLawsTest` records that row as uncoded — and the entry was written without reconciling against the lock beside it.
+
+**Two more rows belong to the same question and are measured on the same fixture.** Whitespace between path tokens changes nothing, in either direction ([KF76](#kf76) states the lexer fact; `ConditionReferencePathLawsTest` now measures it on the reference path specifically). And `..` may carry a TURNING-POINT LABEL naming the ancestor it lands on: `..Order/Code` from a rule in `/Order/Lines` is admitted, while `..Lines/Code` — the label naming the rule's own group rather than the ancestor — is `MVK_INVALID_ENTITY`, so A12 checks the label rather than ignoring it.
 
 **The last row is the one that changes what a report may claim.** `ModelLoader.loadAndCheck` on that model raises "the kernel could not build this model: The computed field \"/Order/Lines/Nope\" was not found." and reports nothing else — not the other rule's real `MVK_INVALID_ENTITY`, not the missing error texts the same model has. So a model with an unresolvable computed field never receives a consistency verdict at all, and any list of findings for it is the reader's own reading rather than A12's. Searched for a key behind that message across our sources and the kernel checkout: there is none, so a portable report has to own a code for it or say nothing.
 
-*(Locked: `rulekit.validate.laws.ConditionReferencePathLawsTest` for the path rows on the Kernel; the portable checker's mapping is `consistency.ConditionBindingTest` and `consistency.ReferenceDiagnosticTest`.)*
+*(Locked: `rulekit.validate.laws.ConditionReferencePathLawsTest` for the path rows on the Kernel, each asserting the rival code does NOT co-fire; `rulekit.validate.laws.ErrorFieldRelativePathLawsTest` for the declared-target rows; the portable checker's mapping is `consistency.ConditionBindingTest` and `consistency.ReferenceDiagnosticTest`.)*
