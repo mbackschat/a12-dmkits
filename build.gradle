@@ -650,6 +650,7 @@ tasks.register('docGuardTest', Test) {
         includeTestsMatching 'io.github.mbackschat.a12.dm.ObligationsScriptTest'
         includeTestsMatching 'io.github.mbackschat.a12.dm.GateTierWiringTest'
         includeTestsMatching 'io.github.mbackschat.a12.dm.LockCitationResolvesTest'
+        includeTestsMatching 'io.github.mbackschat.a12.dm.CheckerCodeCitationResolvesTest'
         includeTestsMatching 'io.github.mbackschat.a12.dm.PerfAnchorCoverageGuardTest'
         includeTestsMatching 'io.github.mbackschat.a12.dm.PerfTestClassificationTest'
         includeTestsMatching 'io.github.mbackschat.a12.dm.RawClockCensusTest'
@@ -760,7 +761,15 @@ tasks.register('docGuardTest', Test) {
             'obligations tests': file('scripts/selftest-obligations.sh'),
             // dsl sources + the operator catalog moved to :rulekit in the Stage-4 module cut.
             'dsl sources'      : fileTree('rulekit/src/main/java/io/github/mbackschat/a12/dm/rulekit/dsl') { include '**/*.java' },
-            'operator catalog' : fileTree('rulekit/src/main/resources/catalog')])
+            'operator catalog' : fileTree('rulekit/src/main/resources/catalog'),
+            // CheckerCodeCitationResolvesTest scans EVERY markdown file for a `CK_*` citation, so the tree is
+            // the denominator rather than a list that would have to be extended by whoever writes the next
+            // paragraph. Declaring less would let a prose-only edit introduce a dangling code while this lane
+            // stayed UP-TO-DATE — the failure mode `guardInputs` exists for.
+            'citing prose'     : fileTree('.') {
+                include '**/*.md'
+                exclude '.claude/**', '**/build/**', '.git/**', '**/node_modules/**'
+            }])
 }
 
 // --- The public-API surface lock (Set S; RELEASE-SPEC §11, TESTING-SPEC "structural-law guardians") ------
