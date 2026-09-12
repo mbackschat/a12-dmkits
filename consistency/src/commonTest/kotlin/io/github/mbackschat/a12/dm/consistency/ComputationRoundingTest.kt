@@ -82,6 +82,29 @@ class ComputationRoundingTest {
         assertEquals(expected, actual, "what this checker reports for each spelling of `roundingMode`")
     }
 
+    /**
+     * A scalar is named by its CONTENT and a container by its absence of one — the distinction the codes
+     * above cannot show, since both land in the same tier.
+     *
+     * It is asserted because the report is what an author acts on: A12 coerces `7` to the spelling "7" and
+     * then fails it against the set, so calling it "not a string" would name a defect the model does not
+     * have and point at the wrong fix.
+     */
+    @Test
+    fun anUnknownModeIsNamedAsA12ReadsIt() {
+        assertEquals(
+            true,
+            model("7", "[$strict]").computationRoundingFindings().single().explain.contains("is `7`"),
+            "a coerced scalar is named by its content",
+        )
+        assertEquals(
+            true,
+            model("""{"mode":"Exact"}""", "[$strict]").computationRoundingFindings().single()
+                .explain.contains("is not a string"),
+            "a container has no spelling to name",
+        )
+    }
+
     @Test
     fun aToleranceBandOutsideA12sWireValuesMakesTheModelUnbuildable() {
         val actual = mutableMapOf<String, List<String>>()

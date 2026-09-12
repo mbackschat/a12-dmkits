@@ -74,12 +74,14 @@ private fun JsonObject.bound(member: String, admitted: Set<String>): Bound {
     if (declared == null || declared is JsonNull) {
         return Bound.Unset
     }
-    val spelled = (declared as? JsonPrimitive)?.takeIf { it.isString }?.content
+    // A scalar is COERCED to the String member, so `7` is the spelling "7" and fails the set the way an
+    // unknown word does — which is why it is read for its content rather than dismissed as a non-string.
+    // Only a CONTAINER has no spelling, and that one refuses A12's reader a tier earlier. Different tiers,
+    // one code, because this checker owns exactly one and it covers both.
+    val spelled = (declared as? JsonPrimitive)?.content
     if (spelled != null && spelled in admitted) {
         return Bound.Spelled(spelled)
     }
-    // A container refuses A12's READER and any other scalar is coerced to the String member and then fails
-    // the set — different tiers, one code, because this checker owns exactly one and it covers both.
     return Bound.Refused(spelled?.let { "`$it`" } ?: "not a string")
 }
 
