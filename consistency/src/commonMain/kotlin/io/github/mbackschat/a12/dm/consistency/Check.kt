@@ -47,6 +47,12 @@ enum class CheckFamily {
      * A12 knows, and that the pair they form is one A12 permits.
      */
     COMPUTATION_ROUNDING,
+
+    /**
+     * A computation's `errorCodesToSuppress` — that it renders into a pragma A12's parser can read, and that
+     * the one code it may carry is the one A12 lets a computation suppress.
+     */
+    SUPPRESSED_WARNINGS,
 }
 
 /**
@@ -164,7 +170,8 @@ internal fun check(
         prepared.conditionReferences().mapNotNull {
             it.target.asFinding(ReferenceRole.CONDITION_ENTITY, it.declaredAt, it.member)
         } + prepared.declarationSlotFindings() + prepared.computationAlternativeFindings() +
-        prepared.computationRoundingFindings() + prepared.ruleConditionAndTargetFindings() +
+        prepared.computationRoundingFindings() + prepared.suppressedWarningFindings() +
+        prepared.ruleConditionAndTargetFindings() +
         prepared.elementNameFindings() + prepared.groupOrderingFindings()
     return ConsistencyReport(
         modelId = admitted.modelId,
@@ -175,7 +182,7 @@ internal fun check(
             CheckFamily.DECLARATION_SLOTS, CheckFamily.COMPUTATION_ALTERNATIVES,
             CheckFamily.RULE_CONDITION_AND_TARGET, CheckFamily.ELEMENT_NAME_UNIQUENESS,
             CheckFamily.GROUP_ORDERING_REFERENCES, CheckFamily.GROUP_ORDERING_FIELD_TYPE,
-            CheckFamily.COMPUTATION_ROUNDING),
+            CheckFamily.COMPUTATION_ROUNDING, CheckFamily.SUPPRESSED_WARNINGS),
         gaps = prepared.gaps() + prepared.emptyFactBase() + findings.buildBlocked() + UNREAD_MEMBERS +
             UNIMPLEMENTED_FAMILIES,
     )

@@ -5732,3 +5732,21 @@ Two stored members that look independent and are the two conjuncts of one kernel
 **Consequence for the MVK ledger.** `MVK_ERROR_WRONG_ROUNDING_MODE` was bucketed `erased` on the reason "kernel-generated, unreachable from rulekit". The bucket survives — no `roundingMode` exists anywhere in the Java authoring surface, so the typed API genuinely cannot express it — but the reason was a mechanism claim and it is wrong: the mode is an AUTHORED member of the stored model, and the comparison the kernel generates is generated *from* the authored band. This is the failure mode [KF182](#kf182) named, an unrepresentability argument identifying the wrong shape, and it is the second row of the `erased` bucket to fall to the systematic pass the ledger says is still owed.
 
 *(Locked: `rulekit.validate.laws.ComputationRoundingModeLawsTest` — the two spelling tables, the 2×2 pair grid, and the two-alternative carrier. The checker's own family is `CheckFamily.COMPUTATION_ROUNDING`.)*
+
+## §11 supplement — `errorCodesToSuppress` is rendered into a ONE-argument pragma, so the list is single-valued (`checkConsistency`, measured + source-verified, 2026-09-12) <a id="kf298"></a>
+
+> Fold: not-foldable — a model-structure law on the computation element, outside the evaluation scope.
+
+A computation's `errorCodesToSuppress` is declared `List<String>` and is not a set A12 inspects: `ComputationAlternativesJoiner.createPreamble` builds `String.format("@SuppressWarning(%s)\n", String.join(",", errorCodesToSuppress))` and prefixes the generated rule condition with it, so the member is TEXT that A12's own condition parser then reads back. Every row below follows from that rendering and from nothing else, which is why reading the member as a collection gets it wrong.
+
+**A second entry is a PARSE error whatever it spells.** The pragma takes one code, so two entries render `@SuppressWarning(a,b)` and draw `MVK_UNEXPECTED_TOKEN`. The discriminating control carries the SUPPORTED code **twice** and fails identically to one supported plus one bogus — so validity explains nothing and the comma is the defect. A blank entry renders `@SuppressWarning()` and a numeric entry `@SuppressWarning(7)`, both the same failure. A plural-looking member is therefore single-valued in practice, and a checker treating it as a set would admit lists A12 refuses.
+
+**Only `MVK_INVALID_COMPARE_DEC_PLACES` is suppressible**, and any other spelling draws `MVK_INVALID_SUPPRESSED_WARNING` with the offending code echoed in the message — so a reader lifting every `MVK_*` token from that message sees two, the second being the verdict ([MVK-LEDGER](MVK-LEDGER.md) recorded the echo on 2026-07-30).
+
+**This CLEARS a client-side refusal rather than finding one, which was not the expected direction.** `Computation.Builder.errorCodesToSuppress` throws for any code outside that single-member allowlist, and a client-side refusal may never be broader than its measured basis. A12 refuses the same set, so the allowlist is audited and stands.
+
+**The two routes to this pragma are different carriers and only one was previously measured.** [DirectiveLawsTest](../src/test/java/io/github/mbackschat/a12/dm/rulekit/validate/laws/DirectiveLawsTest.java) locks the INLINE form written into a rule's condition text; this entry measures the STRUCTURED member on a computation, which A12 renders into the same directive. A ledger note saying rulekit never authors the directive is true of the inline text and not of the member.
+
+**An explicit `null` refuses the READER**, where the rounding pair beside it takes `null` as absence ([KF297](#kf297)): this member is bound `@NonNull List<String>` rather than through an `Optional` accessor, so the tier is a property of the binding and not of DM-JSON. A bare string and an object are refused too; a numeric ELEMENT is coerced into the list and then fails in the pragma.
+
+*(Locked: `rulekit.validate.laws.ComputationSuppressionLawsTest`. The checker's own family is `CheckFamily.SUPPRESSED_WARNINGS`.)*
