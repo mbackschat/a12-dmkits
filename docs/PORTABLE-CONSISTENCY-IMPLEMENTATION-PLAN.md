@@ -298,6 +298,14 @@ All four implement the same rule shape: candidate `base/name` first (declaring-g
 
 **Still open, logged rather than folded in.** `PreparedModel` collides by name with `:interpreter`'s unrelated type. `Finding.at` is a flat path where [proposal §6](PORTABLE-CONSISTENCY-PROPOSAL.md#6-public-contract) and `rulekit.validate.Diagnostic` both carry a structured `where` with a span. Type-definition libraries, includes and non-model JSON all prepare to an empty fact base with no coverage gap. The purity guard checks import text over four named source sets, two of which do not exist, and has no zero-scan refusal — `verifyCompiledPurity`, already used by `:schemakit`, is the next tier and needs no published package. These are F's and B1's to settle; none violates a B2 acceptance item.
 
+### B1 record — reference binding classifies three outcomes, not two (2026-09-12)
+
+**A12 rejects an undeclared name and an ambiguous one DIFFERENTLY, so the checker must too.** `MVK_INVALID_ENTITY` and `MVK_FIELDNAME_NOT_UNIQUE` carry different correctives — declare the field, versus qualify the reference so it names one — and the interpreter's existing static helper reports both as the same unresolved path ([proposal §3.4](PORTABLE-CONSISTENCY-PROPOSAL.md#34-reuse-existing-static-reference-checking-distinguish-it-from-execution-preparation)). `Reference` is therefore a three-arm sum: `Resolved`, `Undeclared`, `Ambiguous`.
+
+**The tier rule is the Kernel's, not a re-derivation.** The declaring group is tried first and wins outright; only on a miss does the model-wide fallback apply, and only when `fieldRefByShortNameAllowed` is on — the flag gates the second tier alone, which is why it changes the verdict for a name the group lacks and changes nothing for one it has. The fallback indexes **fields**, not every element; a resolver that indexed groups too would resolve a group short name and never be noticed, so that is its own control.
+
+**The grid's accept-side row had no committed oracle until now.** `ShortNameTierLawsTest` holds the ambiguous pair, where the flag only chooses between two rejections — which cannot show the fallback SUCCEEDING, so on its own it leaves open whether the flag enables a lookup or retitles a refusal. `ShortNameUniqueTierLawsTest` adds the unique pair (`MVK_INVALID_ENTITY` → accepted), moving exactly one thing: the sibling group declares `Other` rather than a second `Code`. §3.4 had recorded those rows as executed session evidence and explicitly not locked.
+
 ### Decisions to resolve during A
 
 - **Shared syntax:** default to checker-owned source. Extract a neutral leaf only when the enumerated closure and H4/H5 evidence support it; this avoids turning parser extraction into an interpreter redesign.
