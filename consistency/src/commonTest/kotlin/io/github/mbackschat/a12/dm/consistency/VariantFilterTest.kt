@@ -126,6 +126,35 @@ class VariantFilterTest {
     }
 
     /**
+     * Three ways `filterType` can be wrong, and three different sentences — because two arms named the wrong
+     * defect for two of them.
+     *
+     * A12 refuses all three at the READER (measured, `rulekit.validate.laws.RuleVariantFilterLawsTest`), so
+     * the finding code was never in doubt; the explanation was. `JsonNull` is a `JsonPrimitive` in kotlinx
+     * whose `content` is the text `null`, so `{"filterType": null}` used to be reported byte-identically to a
+     * model that really had written the string `"null"`, and a member holding an object was reported as a
+     * member that was absent.
+     */
+    @Test
+    fun eachWrongFilterTypeShapeIsNamedAsItsOwnDefect() {
+        val explain = mapOf(
+            "absent" to """{"variants":["premium"]}""",
+            "an object" to """{"filterType":{}}""",
+            "a number" to """{"filterType":9}""",
+            "JSON null" to """{"filterType":null}""",
+            "an unknown spelling" to """{"filterType":"SOMETIMES"}""",
+        ).mapValues { (_, json) -> model(ruleFilter = json).variantFilterFindings().single().explain }
+
+        assertTrue(explain.getValue("absent").contains("declares no `filterType`"), explain.toString())
+        for (shape in listOf("an object", "a number", "JSON null")) {
+            assertTrue(explain.getValue(shape).contains("is not a string"), "$shape: ${explain[shape]}")
+        }
+        assertTrue(explain.getValue("an unknown spelling").contains("`SOMETIMES`"), explain.toString())
+        assertEquals(explain.values.toSet().size, 3,
+            "absent, not-a-string and an unknown spelling are three defects and must read as three: $explain")
+    }
+
+    /**
      * An explicit `null` is ADMITTED here, unlike `errorCodesToSuppress` beside it.
      *
      * The difference is the binding, not DM-JSON: this member is reached through an `Optional` accessor while

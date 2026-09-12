@@ -9,8 +9,7 @@ import kotlinx.serialization.json.JsonPrimitive
  *
  * **An `ONLY` filter removes the declaration from A12's check entirely** ([KERNEL-FINDINGS KF299]). The same
  * declaration with a deliberately unresolvable reference is refused with `MVK_INVALID_ENTITY` unfiltered and
- * ADMITTED under `ONLY`, on both the rule and the computation carrier — sixteen cells each, measured rather
- * than transferred. A12 returns no finding, no warning and no code, because
+ * ADMITTED under `ONLY`, on both the rule and the computation carrier, measured rather than transferred. A12 returns no finding, no warning and no code, because
  * `consistency.rules.CodeGenerationRule.checkModel` generates validation code for the default variant and
  * then merely `LOG.warn`s that the check may be incomplete.
  *
@@ -55,7 +54,7 @@ fun PreparedModel.variantFilterSuppressed(): Set<String> = suppressed().map { it
 
 private fun PreparedModel.suppressed(): List<DeclaredElement> = filterable().filter { element ->
     val declared = element.body?.get("variantFilter")
-    declared is JsonObject && declared.filterType() == SUPPRESSING_FILTER
+    declared is JsonObject && declared.filterType() == FilterType.Spelled(SUPPRESSING_FILTER)
 }
 
 /** The shapes A12's own reader refuses, where the model never loads and no verdict about it exists. */
@@ -65,18 +64,26 @@ fun PreparedModel.variantFilterFindings(): List<Finding> =
             // Absent, and an explicit `null`, are both ADMITTED: the member is reached through an `Optional`
             // accessor, unlike `errorCodesToSuppress` beside it, which is bound `@NonNull` and refuses null.
             null, JsonNull -> null
-            is JsonObject -> when (declared.filterType()) {
-                null -> unbuildable(
+            is JsonObject -> when (val type = declared.filterType()) {
+                FilterType.Absent -> unbuildable(
                     element,
                     "`variantFilter` declares no `filterType`, which A12 binds as non-null with no default, " +
                         "so the model fails while being constructed",
                 )
-                in KNOWN_FILTER_TYPES -> null
-                else -> unbuildable(
+                FilterType.NotAString -> unbuildable(
                     element,
-                    "`${declared.filterType()}` is not a variant filter type A12 knows — the types are " +
-                        "${KNOWN_FILTER_TYPES.joinToString(" and ") { "`$it`" }}",
+                    "`variantFilter.filterType` is not a string, so A12's own reader cannot bind it",
                 )
+                is FilterType.Spelled ->
+                    if (type.value in KNOWN_FILTER_TYPES) {
+                        null
+                    } else {
+                        unbuildable(
+                            element,
+                            "`${type.value}` is not a variant filter type A12 knows — the types are " +
+                                KNOWN_FILTER_TYPES.joinToString(" and ") { "`$it`" },
+                        )
+                    }
             }
             else -> unbuildable(
                 element,
@@ -88,7 +95,27 @@ fun PreparedModel.variantFilterFindings(): List<Finding> =
 /** The filter type A12 honours by NOT checking the declaration at all. */
 private const val SUPPRESSING_FILTER = "ONLY"
 
-private val KNOWN_FILTER_TYPES = listOf(SUPPRESSING_FILTER, "ALL_EXCEPT")
+private val KNOWN_FILTER_TYPES = setOf(SUPPRESSING_FILTER, "ALL_EXCEPT")
+
+/**
+ * What the `filterType` member turned out to be — three cases, because the member has three ways of being
+ * wrong and a two-armed reading named the wrong defect for two of them.
+ *
+ * A missing member and a member holding a JSON object are different mistakes and A12 refuses them for
+ * different reasons, while `JsonNull` is a [JsonPrimitive] in kotlinx whose `content` is the literal text
+ * `null` — so a plain cast made `{"filterType": null}` indistinguishable from `{"filterType": "null"}` and
+ * reported the one as the other.
+ */
+private sealed interface FilterType {
+    /** The member is not there at all. */
+    data object Absent : FilterType
+
+    /** The member is there and is not a string — an object, a number, or JSON `null`. */
+    data object NotAString : FilterType
+
+    /** The member is a string, whether or not A12 knows the spelling. */
+    data class Spelled(val value: String) : FilterType
+}
 
 /**
  * The declarations this family judges.
@@ -101,7 +128,14 @@ private fun PreparedModel.filterable(): List<DeclaredElement> = elements.filter 
     it.declaredKind == DeclaredKind.RULE || it.declaredKind == DeclaredKind.COMPUTATION
 }
 
-private fun JsonObject.filterType(): String? = (this["filterType"] as? JsonPrimitive)?.content
+private fun JsonObject.filterType(): FilterType = when (val declared = this["filterType"]) {
+    null -> FilterType.Absent
+    // JsonNull is a JsonPrimitive, so it must be refused BEFORE the primitive arm or its `content` reads back
+    // as the four characters `null` and a missing value is reported as an unknown spelling.
+    JsonNull -> FilterType.NotAString
+    is JsonPrimitive -> if (declared.isString) FilterType.Spelled(declared.content) else FilterType.NotAString
+    else -> FilterType.NotAString
+}
 
 private fun unbuildable(element: DeclaredElement, explain: String): Finding = Finding(
     FindingCategory.A12_CONSTRAINT,

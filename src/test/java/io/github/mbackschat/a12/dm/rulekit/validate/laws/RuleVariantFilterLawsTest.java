@@ -181,6 +181,11 @@ class RuleVariantFilterLawsTest {
         actual.put("no variants member", verdict(SOUND, "{\"filterType\":\"ONLY\"}"));
         actual.put("an explicit null", verdict(SOUND, "null"));
         actual.put("a string instead of an object", verdict(SOUND, "\"ONLY\""));
+        // Three shapes the checker answers with three DIFFERENT messages while only two arms existed, so two
+        // of them named the wrong defect. Measuring them is what lets the messages be specific.
+        actual.put("a filterType that is JSON null", verdict(SOUND, "{\"filterType\":null}"));
+        actual.put("a filterType that is an object", verdict(SOUND, "{\"filterType\":{}}"));
+        actual.put("a filterType that is a number", verdict(SOUND, "{\"filterType\":9}"));
 
         Map<String, String> expected = new LinkedHashMap<>();
         expected.put("absent — the control", KernelLaws.ADMITTED);
@@ -192,6 +197,9 @@ class RuleVariantFilterLawsTest {
         expected.put("no variants member", KernelLaws.ADMITTED);
         expected.put("an explicit null", KernelLaws.ADMITTED);
         expected.put("a string instead of an object", KernelLaws.UNREADABLE);
+        expected.put("a filterType that is JSON null", KernelLaws.UNREADABLE);
+        expected.put("a filterType that is an object", KernelLaws.UNREADABLE);
+        expected.put("a filterType that is a number", KernelLaws.UNREADABLE);
         assertEquals(expected, actual, "what A12 does with each shape of a rule's variantFilter");
     }
 
