@@ -12,6 +12,7 @@ import org.junit.jupiter.api.Test;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.BooleanNode;
+import com.fasterxml.jackson.databind.node.DoubleNode;
 import com.fasterxml.jackson.databind.node.IntNode;
 import com.fasterxml.jackson.databind.node.NullNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
@@ -84,7 +85,11 @@ class ShortNameFlagSpellingLawsTest {
         actual.put("\"yes\"", readAs(TextNode.valueOf("yes")));
         actual.put("\"\"", readAs(TextNode.valueOf("")));
         actual.put("1", readAs(IntNode.valueOf(1)));
+        actual.put("2", readAs(IntNode.valueOf(2)));
+        actual.put("-1", readAs(IntNode.valueOf(-1)));
         actual.put("0", readAs(IntNode.valueOf(0)));
+        actual.put("0.5", readAs(DoubleNode.valueOf(0.5)));
+        actual.put("1.5", readAs(DoubleNode.valueOf(1.5)));
         actual.put("null", readAs(NullNode.getInstance()));
         actual.put("absent", readAs(null));
 
@@ -101,7 +106,14 @@ class ShortNameFlagSpellingLawsTest {
         // type's default before the recognized-values check runs, so it reads as OFF rather than refusing.
         expected.put("\"\"", OFF);
         expected.put("1", ON);
+        expected.put("2", ON);
+        expected.put("-1", ON);
         expected.put("0", OFF);
+        // The second divergence, and the sharper one: a FRACTIONAL number refuses the model outright, where
+        // `asBoolean` truncates to an int and answers false for 0.5 and TRUE for 1.5 — so our readers invent
+        // both verdicts for a model A12 will not load, one of them affirmative.
+        expected.put("0.5", UNREADABLE);
+        expected.put("1.5", UNREADABLE);
         expected.put("null", OFF);
         expected.put("absent", OFF);
         assertEquals(expected, actual, "how A12 reads each spelling of fieldRefByShortNameAllowed");

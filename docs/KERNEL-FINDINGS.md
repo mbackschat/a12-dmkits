@@ -5472,13 +5472,16 @@ The third row is what bounds it: without it "the provider must match the entry" 
 
 | authored spelling | A12 |
 |---|---|
-| `true` · `"true"` · `"True"` · `"TRUE"` · `1` | **ON** |
+| `true` · `"true"` · `"True"` · `"TRUE"` · any non-zero INTEGER (`1`, `2`, `-1`) | **ON** |
 | `false` · `"false"` · `"False"` · `0` · `null` · absent · `""` | OFF |
 | any other string (`"yes"`) | **the model does not deserialize** — `Cannot deserialize value of type 'boolean' from String "yes": only "true"/"True"/"TRUE" or "false"/"False"/"FALSE" recognized` |
+| any FRACTIONAL number (`0.5`, `1.5`) | **the model does not deserialize** |
 
 **A12 states its own rule in that rejection**, and it is Jackson's standard `boolean` POJO binding on `DocumentModelConfig`, reached through the normal `DocumentModel` → `content` → `modelConfig` chain. `JsonNode.asBoolean` is a DIFFERENT Jackson path with a different rule: it accepts only the lowercase `"true"` and answers false for `"True"`. So every reader here built on `asBoolean` reads a capitalized spelling as OFF where A12 reads it as ON, which turns a reference A12 resolves into `MVK_INVALID_ENTITY` — a refusal the Kernel never issues, and therefore invisible. The sites are `core.ModelReader:470`, `modelkit.ModelDocument:258`, the interpreter's `load.ModelLoader:80` and the bridge's `InterpreterConditionReadBack:115`; the interpreter's `workspace.IncludeAssembly` is stricter still and refuses every string spelling, including the three A12 accepts.
 
 **The empty string is not an unrecognized spelling.** `""` reads as OFF rather than refusing, because Jackson's empty-string coercion supplies the type's default before the recognized-values check runs. It is the row that keeps "any other string refuses" from being stated one notch too wide.
+
+**The fractional row is the second divergence, and the sharper one.** `0.5` and `1.5` refuse the model outright, where `asBoolean` truncates to an int: our readers answer OFF for `0.5` and **ON for `1.5`**, inventing two different verdicts about a model A12 will not load — one of them affirmative. The integral rows are the control that separates this from "numbers are refused": `1`, `2` and `-1` all read ON, which is the same answer `asBoolean` gives, so the numeric arm diverges on the FRACTION and not on the type.
 
 **This is NOT the rule the mount exclusions follow, and assuming one rule for both is how those readers were wrong.** `excludeRules` and `excludeComputations` reach A12 through `ElementDeserializer`'s `JsonNode.booleanValue()`, which is false for every non-Boolean and never refuses ([KF3](#kf3)); this member reaches a `boolean` field through the POJO binding, which coerces three string spellings and refuses the rest. Two members, two Jackson paths, three different answers for `"True"`.
 
