@@ -71,10 +71,14 @@ fun tokenize(text: String): List<Token> {
             }
 
             char == '"' -> {
-                index = endOfStringLiteral(text, index)
-                val complete = index <= text.length && text.getOrNull(index - 1) == '"' && index - start >= 2
+                // The scanner reports whether it found a closer. Re-deriving that from the last CHARACTER —
+                // which is what this did until 2026-09-12 — calls a literal complete whenever it happens to
+                // end on a quote, so `"A""` and `"""` both read as terminated when the doubling rule says
+                // neither is, and every consumer downstream is handed a literal that swallowed the rest.
+                val closed = endOfStringLiteral(text, index)
+                index = closed ?: text.length
                 tokens += Token(
-                    if (complete) TokenKind.STRING else TokenKind.UNTERMINATED_STRING,
+                    if (closed != null) TokenKind.STRING else TokenKind.UNTERMINATED_STRING,
                     text.substring(start, index),
                     start,
                     index,
@@ -117,8 +121,13 @@ fun tokenize(text: String): List<Token> {
     return tokens
 }
 
-/** Scan past a `"…"` literal, where `""` is an escaped quote rather than an empty literal then a new one. */
-private fun endOfStringLiteral(text: String, open: Int): Int {
+/**
+ * Scan past a `"…"` literal, where `""` is an escaped quote rather than an empty literal then a new one.
+ *
+ * Returns the index just past the closing quote, or `null` when the text ran out first — the caller cannot
+ * recover that from the returned index, because a literal that runs off the end frequently ends on a quote.
+ */
+private fun endOfStringLiteral(text: String, open: Int): Int? {
     var index = open + 1
     while (index < text.length) {
         if (text[index] != '"') {
@@ -129,7 +138,7 @@ private fun endOfStringLiteral(text: String, open: Int): Int {
             return index + 1
         }
     }
-    return text.length
+    return null
 }
 
 /**

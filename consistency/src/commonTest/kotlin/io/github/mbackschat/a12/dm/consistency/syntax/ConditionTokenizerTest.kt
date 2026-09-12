@@ -82,10 +82,23 @@ class ConditionTokenizerTest {
         assertEquals(listOf("..", "/", "Warehouse", "/", "Sku"), texts("../Warehouse/Sku"))
     }
 
-    /** An unterminated literal is reported rather than silently swallowing the rest of the condition. */
+    /**
+     * An unterminated literal is reported rather than silently swallowing the rest of the condition.
+     *
+     * The last two rows are the ones a passing test used to miss. Completeness was re-derived from the final
+     * CHARACTER, so a literal that ran off the end while happening to end on a quote read as terminated —
+     * and under A12's doubling rule (`""` is one escaped quote, never an empty literal followed by another)
+     * neither of these closes. The first row cannot catch it: it ends on `s`.
+     */
     @Test
     fun anUnterminatedStringLiteralIsItsOwnKind() {
         assertEquals(listOf(TokenKind.NAME, TokenKind.UNTERMINATED_STRING), kinds("""Code "oops"""))
+        assertEquals(listOf(TokenKind.UNTERMINATED_STRING), kinds("\"A\"\""), "an escaped quote then nothing")
+        assertEquals(listOf(TokenKind.UNTERMINATED_STRING), kinds("\"\"\""), "three quotes close nothing")
+        // The controls: these DO close, so the fix cannot have made every literal unterminated.
+        assertEquals(listOf(TokenKind.STRING), kinds("\"A\""), "an ordinary literal")
+        assertEquals(listOf(TokenKind.STRING), kinds("\"\""), "the empty literal")
+        assertEquals(listOf(TokenKind.STRING), kinds("\"A\"\"B\""), "a literal carrying an escaped quote")
     }
 
     /**
