@@ -1,0 +1,153 @@
+package io.github.mbackschat.a12.dm.rulekit.validate.laws;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+
+import java.io.IOException;
+import java.io.UncheckedIOException;
+import java.util.LinkedHashMap;
+import java.util.Map;
+
+import org.junit.jupiter.api.Test;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
+
+import io.github.mbackschat.a12.dm.Fixtures;
+
+/**
+ * The two relative field references A12 declares on a GROUP — {@code indexFieldName} and
+ * {@code sortFields[].name} — measured because no lock covers them and the portable checker names both, in
+ * every report, as members it does not resolve.
+ *
+ * <p>A checker cannot close that gap on the reference machinery it already has: what a rule's
+ * {@code errorEntityRelPath} does when it names nothing ({@code MVK_ERROR_FIELD_MISSING}) is a law about that
+ * member, and reusing it here is the scope transfer that needs no new branch and so prompts no question.
+ *
+ * <p>Own domain (the shared order fixture: the repeatable {@code /Order/Items} keyed by {@code Sku}, and the
+ * non-repeatable {@code /Order/ShippingAddress}).
+ */
+class GroupIndexAndSortReferenceLawsTest {
+
+    private static final ObjectMapper MAPPER = new ObjectMapper();
+
+    private static final String REPEATABLE = "Items";
+    private static final String NON_REPEATABLE = "ShippingAddress";
+
+    @Test
+    void theIndexFieldNameMustNameAFieldOfItsOwnGroup() {
+        Map<String, String> actual = new LinkedHashMap<>();
+        actual.put("Sku — the control", verdict(REPEATABLE, "indexFieldName", "\"Sku\""));
+        actual.put("another field of the same group", verdict(REPEATABLE, "indexFieldName", "\"Count\""));
+        actual.put("absent", verdict(REPEATABLE, "indexFieldName", null));
+        actual.put("empty", verdict(REPEATABLE, "indexFieldName", "\"\""));
+        actual.put("whitespace only", verdict(REPEATABLE, "indexFieldName", "\"   \""));
+        actual.put("a field that does not exist", verdict(REPEATABLE, "indexFieldName", "\"Missing\""));
+        actual.put("a field of the PARENT group", verdict(REPEATABLE, "indexFieldName", "\"CustomerName\""));
+        actual.put("a relative path to one", verdict(REPEATABLE, "indexFieldName", "\"../CustomerName\""));
+        actual.put("on a NON-repeatable group", verdict(NON_REPEATABLE, "indexFieldName", "\"Street\""));
+        actual.put("unresolvable on a NON-repeatable group",
+                verdict(NON_REPEATABLE, "indexFieldName", "\"Missing\""));
+        actual.put("a descending path with no ..", verdict(REPEATABLE, "indexFieldName", "\"Items/Sku\""));
+        actual.put("a child GROUP of the named group", verdict("Order", "indexFieldName", "\"Items\""));
+        actual.put("a descending path that DOES resolve", verdict("Order", "indexFieldName", "\"Items/Sku\""));
+        actual.put("an ABSOLUTE path to the group's own field",
+                verdict(REPEATABLE, "indexFieldName", "\"/Order/Items/Sku\""));
+
+        Map<String, String> expected = new LinkedHashMap<>();
+        expected.put("Sku — the control", KernelLaws.ADMITTED);
+        expected.put("another field of the same group", KernelLaws.ADMITTED);
+        // An index is OPTIONAL, so the member's absence is the one shape that is simply legal.
+        expected.put("absent", KernelLaws.ADMITTED);
+        // Every BARE spelling that does not name a field of THIS group stops A12 from building the model —
+        // blank included, so "blank counts as absent" is false here too and in the harshest direction: the
+        // absent member is legal and the blank one is fatal.
+        expected.put("empty", KernelLaws.NOT_BUILDABLE);
+        expected.put("whitespace only", KernelLaws.NOT_BUILDABLE);
+        expected.put("a field that does not exist", KernelLaws.NOT_BUILDABLE);
+        // The scope is the group's OWN children: a field of the parent is not reachable from here.
+        expected.put("a field of the PARENT group", KernelLaws.NOT_BUILDABLE);
+        // …but a spelling that RESOLVES to a field outside the group is a verdict rather than a build
+        // failure. The two are one mechanism, not two rules: A12 resolves the spelling, then judges what it
+        // landed on — nothing at all stops the build, something outside this group's own fields draws the
+        // code. The rows below discriminate that from "`..` is special".
+        expected.put("a relative path to one", "MVK_INVALID_INDEX_FIELD");
+        expected.put("on a NON-repeatable group", KernelLaws.ADMITTED);
+        // The resolution runs on every group, not only a repeatable one — the row that keeps the rows above
+        // from being read as "the index is only checked where it is used".
+        expected.put("unresolvable on a NON-repeatable group", KernelLaws.NOT_BUILDABLE);
+        // `Items/Sku` read from INSIDE `/Order/Items` names `/Order/Items/Items/Sku`, which is nothing — so
+        // a path is not privileged and the `..` above was not the reason.
+        expected.put("a descending path with no ..", KernelLaws.NOT_BUILDABLE);
+        // The bare-name lookup is over the group's FIELDS: a child group of that name is not one.
+        expected.put("a child GROUP of the named group", KernelLaws.NOT_BUILDABLE);
+        // The same spelling read from `/Order`, where it DOES resolve — to a field one level down, outside
+        // this group's own children. That is the case the two accounts disagree on, and it draws the code.
+        expected.put("a descending path that DOES resolve", "MVK_INVALID_INDEX_FIELD");
+        // An absolute spelling is refused one tier out again, and UNTYPED: `ElementPathUtils.splitRelPath`
+        // raises "illegal relPath" during conversion, past every channel a caller can dispose of. The slot
+        // takes a position relative to the group, and the leading `/` is not a spelling of that.
+        expected.put("an ABSOLUTE path to the group's own field", KernelLaws.RAISED_UNTYPED);
+        assertEquals(expected, actual, "what A12 does with each shape of a group's indexFieldName");
+    }
+
+    @Test
+    void aSortFieldMustNameAFieldOfItsOwnGroup() {
+        Map<String, String> actual = new LinkedHashMap<>();
+        actual.put("Sku — the control", verdict(REPEATABLE, "sortFields", "[{\"name\":\"Sku\"}]"));
+        actual.put("empty list", verdict(REPEATABLE, "sortFields", "[]"));
+        actual.put("a field that does not exist", verdict(REPEATABLE, "sortFields", "[{\"name\":\"Missing\"}]"));
+        actual.put("an empty name", verdict(REPEATABLE, "sortFields", "[{\"name\":\"\"}]"));
+        actual.put("an entry with no name", verdict(REPEATABLE, "sortFields", "[{}]"));
+        actual.put("a field OUTSIDE the group that resolves",
+                verdict(REPEATABLE, "sortFields", "[{\"name\":\"../CustomerName\"}]"));
+        actual.put("a child GROUP of the named group", verdict("Order", "sortFields", "[{\"name\":\"Items\"}]"));
+
+        Map<String, String> expected = new LinkedHashMap<>();
+        expected.put("Sku — the control", KernelLaws.ADMITTED);
+        expected.put("empty list", KernelLaws.ADMITTED);
+        expected.put("a field that does not exist", KernelLaws.NOT_BUILDABLE);
+        expected.put("an empty name", KernelLaws.NOT_BUILDABLE);
+        // One tier further out again: an entry without a `name` refuses A12's reader outright.
+        expected.put("an entry with no name", KernelLaws.UNREADABLE);
+        // The rows the sibling member answers with a CODE — asked here rather than transferred, because
+        // `MVK_INVALID_INDEX_FIELD` is named for the index and nothing says a sort field shares its gate.
+        expected.put("a field OUTSIDE the group that resolves", "MVK_INVALID_SORT_FIELD");
+        expected.put("a child GROUP of the named group", KernelLaws.NOT_BUILDABLE);
+        assertEquals(expected, actual, "what A12 does with each shape of a group's sortFields");
+    }
+
+    /** What A12 says about the order fixture with one member of [group]'s body replaced, or removed. */
+    private static String verdict(String group, String member, String rawJson) {
+        return KernelLaws.verdictOf(probe(group, member, rawJson));
+    }
+
+    private static String probe(String group, String member, String rawJson) {
+        try {
+            ObjectNode root = (ObjectNode) MAPPER.readTree(Fixtures.orderJson());
+            ObjectNode body = groupBody(root, group);
+            if (rawJson == null) {
+                body.remove(member);
+            } else {
+                body.set(member, MAPPER.readTree(rawJson));
+            }
+            return root.toString();
+        } catch (IOException unreadable) {
+            throw new UncheckedIOException("the fixture and the raw fragment must parse", unreadable);
+        }
+    }
+
+    /** The named group's body, refusing rather than returning a model the substitution never reached. */
+    private static ObjectNode groupBody(ObjectNode root, String name) {
+        for (var element : root.path("content").path("modelRoot").path("rootGroups").get(0)
+                .path("Group").path("elements")) {
+            if (name.equals(element.path("name").asText())) {
+                return (ObjectNode) element.path("Group");
+            }
+        }
+        var root0 = root.path("content").path("modelRoot").path("rootGroups").get(0);
+        if (name.equals(root0.path("name").asText())) {
+            return (ObjectNode) root0.path("Group");
+        }
+        throw new IllegalStateException("the fixture no longer declares the group `" + name + "`");
+    }
+}

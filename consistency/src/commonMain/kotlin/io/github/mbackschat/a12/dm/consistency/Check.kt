@@ -31,6 +31,9 @@ enum class CheckFamily {
 
     /** No group holds two children of the same name, whatever kinds they are. */
     ELEMENT_NAME_UNIQUENESS,
+
+    /** A group's `indexFieldName` and `sortFields[].name` each name one of its own fields. */
+    GROUP_ORDERING_REFERENCES,
 }
 
 /**
@@ -148,7 +151,8 @@ internal fun check(
         prepared.conditionReferences().mapNotNull {
             it.target.asFinding(ReferenceRole.CONDITION_ENTITY, it.declaredAt, it.member)
         } + prepared.declarationSlotFindings() + prepared.computationAlternativeFindings() +
-        prepared.ruleConditionAndTargetFindings() + prepared.elementNameFindings()
+        prepared.ruleConditionAndTargetFindings() + prepared.elementNameFindings() +
+        prepared.groupOrderingFindings()
     return ConsistencyReport(
         modelId = admitted.modelId,
         status = statusOf(findings),
@@ -156,7 +160,8 @@ internal fun check(
         diagnostics = inherited + prepared.diagnostics,
         checksCompleted = setOf(CheckFamily.DECLARED_REFERENCES, CheckFamily.CONDITION_REFERENCES,
             CheckFamily.DECLARATION_SLOTS, CheckFamily.COMPUTATION_ALTERNATIVES,
-            CheckFamily.RULE_CONDITION_AND_TARGET, CheckFamily.ELEMENT_NAME_UNIQUENESS),
+            CheckFamily.RULE_CONDITION_AND_TARGET, CheckFamily.ELEMENT_NAME_UNIQUENESS,
+            CheckFamily.GROUP_ORDERING_REFERENCES),
         gaps = prepared.gaps() + prepared.emptyFactBase() + findings.buildBlocked() + UNREAD_MEMBERS +
             UNIMPLEMENTED_FAMILIES,
     )
@@ -208,15 +213,10 @@ private fun List<Finding>.buildBlocked(): List<CoverageGap> =
     }
 
 /**
- * The reference members A12 declares that this checker does not read. Stated on every report rather than
- * only in the plan, because a consumer cannot otherwise tell a clean reference result from an unexamined one.
+ * What this checker reads only PART of. Stated on every report rather than only in the plan, because a
+ * consumer cannot otherwise tell a clean result from an unexamined one.
  */
 private val UNREAD_MEMBERS = listOf(
-    CoverageGap(
-        at = null,
-        reason = "`Group.indexFieldName` and `Group.sortFields[].name` are relative field references too " +
-            "and are not resolved here",
-    ),
     CoverageGap(
         at = null,
         reason = "a computation alternative's precondition is checked for PRESENCE only — whether its text " +

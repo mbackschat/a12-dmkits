@@ -5627,3 +5627,32 @@ The two members a stored rule cannot work without, measured because `Rule.Builde
 **And it is case-SENSITIVE, where the `vk_vk` prefix law on the same member is case-INSENSITIVE** ([KF160](#kf160)). Two laws reading one slot with opposite case rules is exactly the pair that gets unified by accident, so `Probe` beside `probe` in one group is admitted and must draw nothing.
 
 *(Locked: `rulekit.validate.laws.ElementNameUniquenessLawsTest` — one assertion over the six boundaries.)*
+
+## §10 supplement — a group's `indexFieldName` and `sortFields[].name`: resolved from the group, judged by what they land on (`checkConsistency`, measured, 2026-09-12) <a id="kf295"></a>
+
+> Fold: not-foldable — a model-structure reference law on the group element, outside the evaluation scope.
+
+The two relative field references A12 declares on a GROUP. No lock covered either, and the portable checker named both in every report as members it did not resolve.
+
+| stored shape | A12 |
+|---|---|
+| the member ABSENT | ADMITTED — an index is optional |
+| a bare name of one of the group's own FIELDS | ADMITTED |
+| blank, whitespace, or any bare name that is not one of them | **NOT BUILDABLE** |
+| a bare name of a child GROUP | **NOT BUILDABLE** |
+| a spelling that RESOLVES to a field outside the group — `../Label`, or `Items/Sku` read one level up | `MVK_INVALID_INDEX_FIELD` / `MVK_INVALID_SORT_FIELD` |
+| a spelling that resolves to nothing — `Items/Sku` read from inside `Items` | **NOT BUILDABLE** |
+| an ABSOLUTE path | **raised untyped** — `ElementPathUtils.splitRelPath`, "illegal relPath" |
+| a `sortFields` entry with no `name` | **UNREADABLE** |
+
+**One mechanism covers every row, and it is discriminated rather than fitted.** A12 resolves the spelling positionally from the group, then judges what it landed on: a direct child field is legal, anything else that EXISTS draws the member's own code, and anything that resolves to nothing stops the model from being built. The rival reading — that `..` is the special ingredient — is refuted by the `Items/Sku` pair: written inside `/Order/Items` it names nothing and stops the build, written in `/Order` it names a real field and draws the code. The spelling is identical; only where it lands differs.
+
+**An ABSENT member is legal and a BLANK one is fatal**, which inverts the blank-counts-as-absent law three sibling slots follow ([KF290](#kf290), [KF291](#kf291)) and does so in the harshest direction available.
+
+**The check runs on every group, not only a repeatable one.** An unresolvable index on a non-repeatable group is refused just the same, so "the index is only checked where it is used" is false — and that row is the one that keeps the others from being read that way.
+
+**The two members do NOT share a code.** `MVK_INVALID_INDEX_FIELD` is named for the index and `MVK_INVALID_SORT_FIELD` for the sort; the outside-the-group row was measured on each rather than transferred from the other.
+
+**The absolute spelling is a third member of [KF259](#kf259)'s class** — the Kernel rejects an invalid input by raising past every typed channel, so a caller that does not catch it publishes an internal-defect envelope for what is really a rejection. `KernelLaws.verdictOf` now has a fourth tier (`RAISED (untyped)`) so a row landing there is visible as a finding rather than blowing up a table.
+
+*(Locked: `rulekit.validate.laws.GroupIndexAndSortReferenceLawsTest` — one assertion per member.)*

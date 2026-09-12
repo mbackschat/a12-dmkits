@@ -21,8 +21,9 @@ data class DeclaredReference(
 
 /**
  * The two DSL-carrier reference members: a rule's `errorEntityRelPath` and a computation's
- * `computedFieldRelPath`. A12 declares two further relative references this does NOT read —
- * `Group.indexFieldName` and `Group.sortFields[].name` — and each report says so as a coverage gap.
+ * `computedFieldRelPath`. A12 declares two further relative references — `Group.indexFieldName` and
+ * `Group.sortFields[].name` — which are resolved by [groupOrderingFindings] and NOT here: they get no
+ * short-name fallback, and each carries a code of its own, so the roles below do not apply to them.
  *
  * These need no condition parser and the Kernel checks them — an error field that does not resolve is
  * `MVK_ERROR_FIELD_MISSING`. They resolve from the **declaring element**, not from its group: a rule at

@@ -34,6 +34,17 @@ final class KernelLaws {
     /** Read, but the Kernel could not BUILD the model, so it reports that and no consistency verdict. */
     static final String NOT_BUILDABLE = "NOT BUILDABLE";
 
+    /**
+     * The Kernel refused the input by RAISING past every typed channel — a bare {@code RuntimeException}
+     * that is neither an input refusal nor a consistency exception.
+     *
+     * <p>It is a distinct observable outcome and it names a known class rather than a harness slip: the
+     * Kernel rejects some invalid models this way, and left to escape each one reaches a caller as an
+     * internal-defect envelope, asserting the opposite of the truth (KERNEL-FINDINGS KF259). A row landing
+     * here is therefore a finding about A12's reporting, not a passing row.
+     */
+    static final String RAISED_UNTYPED = "RAISED (untyped)";
+
     /** The Kernel's own codes, lifted from the notification stream rather than matched against a guess. */
     private static final java.util.regex.Pattern MVK = java.util.regex.Pattern.compile("MVK_[A-Z0-9_]+");
 
@@ -70,6 +81,9 @@ final class KernelLaws {
             // A rejection carrying no MVK_ code is the Kernel refusing to BUILD the model from inside
             // checkConsistency — still not a verdict about its declarations, and still not an input refusal.
             return found.isEmpty() ? NOT_BUILDABLE : String.join(",", found);
+        } catch (RuntimeException raised) {
+            // Last, so a typed refusal can never land here: only a throw that escaped every channel does.
+            return RAISED_UNTYPED;
         }
     }
 
