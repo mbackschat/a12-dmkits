@@ -92,6 +92,27 @@ class SuppressedWarningsTest {
         assertEquals(listOf(CK_MODEL_NOT_BUILDABLE), codesFor("""{"code":"$supported"}"""), "an object")
     }
 
+    /**
+     * An explicit `null` is NAMED as one, not lumped in with every other non-array shape.
+     *
+     * Both land in the same tier so the codes above cannot show the difference, and the difference is what an
+     * author acts on: `null` means delete the member, while a wrong container means rewrite it as a list.
+     */
+    @Test
+    fun anExplicitNullIsNamedRatherThanCalledANonArray() {
+        assertEquals(
+            true,
+            model("null").suppressedWarningFindings().single().explain.contains("an explicit `null`"),
+            "an explicit null is named as one",
+        )
+        assertEquals(
+            true,
+            model("""{"code":"$supported"}""").suppressedWarningFindings().single()
+                .explain.contains("not a JSON array"),
+            "a container is named as the wrong shape",
+        )
+    }
+
     /** The finding names the computation, so a consumer can act on it without re-deriving the path. */
     @Test
     fun theFindingNamesTheComputationThatCarriesTheMember() {
