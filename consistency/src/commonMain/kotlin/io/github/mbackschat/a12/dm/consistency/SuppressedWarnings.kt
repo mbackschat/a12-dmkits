@@ -39,7 +39,9 @@ private fun suppressionFindings(element: DeclaredElement): List<Finding> {
     // unreadable computation twice in a single report.
     val body = element.body ?: return emptyList()
     val declared = body["errorCodesToSuppress"] ?: return emptyList()
-    if (declared is JsonNull || declared !is JsonArray) {
+    // `JsonNull` is not a `JsonArray`, so this one test catches it too; the two are told apart in the message
+    // below, where the difference is load-bearing — `null` means delete the member, a container means rewrite it.
+    if (declared !is JsonArray) {
         return listOf(
             unbuildable(
                 element,
