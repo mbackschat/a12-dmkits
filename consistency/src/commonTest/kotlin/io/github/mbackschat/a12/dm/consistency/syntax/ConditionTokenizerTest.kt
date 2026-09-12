@@ -137,5 +137,30 @@ class ConditionTokenizerTest {
         assertEquals(listOf(TokenKind.QUOTED_NAME), kinds("'And'"))
         assertEquals(listOf("And"), texts("'And'"))
         assertEquals(listOf(TokenKind.NAME), kinds("And"))
+        assertEquals(listOf(TokenKind.QUOTED_NAME), kinds("'A1:b_ö'"), "every STR and DIGIT the terminal takes")
+    }
+
+    /**
+     * A `'…'` that the name terminal cannot match, and the structure after it SURVIVES.
+     *
+     * The closer is the quote that follows an unbroken run of name characters, not the next quote anywhere —
+     * the naive reading paired the two quotes in `'Tier) And 'x'` and handed the extractor the field name
+     * `Tier) And `, which nobody wrote. The last two rows are closed and still fail, because the terminal is
+     * `'` STR (STR|DIGIT)* `'`: it takes neither an empty name nor a digit-leading one. All four draw
+     * `MVK_LEXER_STANDARD_ERROR` from A12 (`RuleConditionSyntaxLawsTest`).
+     */
+    @Test
+    fun aQuotedNameTheTerminalCannotMatchIsItsOwnKindAndStopsThere() {
+        assertEquals(
+            listOf(
+                TokenKind.NAME, TokenKind.PUNCTUATION, TokenKind.UNTERMINATED_QUOTED_NAME,
+                TokenKind.PUNCTUATION, TokenKind.NAME, TokenKind.QUOTED_NAME,
+            ),
+            kinds("FieldFilled('Tier) And 'x'"),
+            "the run stops at `)`, so the And and the closed name after it stay visible",
+        )
+        assertEquals(listOf("'Tier"), texts("'Tier"), "unclosed at the end of the text")
+        assertEquals(listOf(TokenKind.UNTERMINATED_QUOTED_NAME), kinds("''"), "the empty name")
+        assertEquals(listOf(TokenKind.UNTERMINATED_QUOTED_NAME), kinds("'1City'"), "a digit-leading name")
     }
 }

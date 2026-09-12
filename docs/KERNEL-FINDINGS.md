@@ -5874,6 +5874,20 @@ Three things fall out. **The `OPERATOR` kind does generalize** — the two catal
 
 The last row's first literal runs to the next quote, eating the `)` the grammar was waiting for, so the parser fails before the lexer does. **No grammar-free rule separates it from the third row** — quote counts are odd in both, both carry an earlier complete literal, both leave a delimiter open — so the portable checker keeps reporting the lexical failure there and carries a gap saying the code is wrong for that shape. That is deliberately the opposite treatment from the completeness family above, where a measured boundary existed and the family was narrowed to it; here inventing one would be a fourth mechanism on this layer in one day.
 
+**Extended 2026-09-13 — the OTHER quoting form, which had no row at all.** A `'…'` name is A12's escape for a field whose name spells a keyword (`NameOhnePunktMitQuotes: '\'' STR (STR|DIGIT)* '\''`). Three shapes fail that terminal and all three draw the same code, so nothing finer needs distinguishing:
+
+| condition text | code |
+|---|---|
+| `FieldFilled('Tier` — unclosed at the end | `MVK_LEXER_STANDARD_ERROR` |
+| `FieldFilled('Tier) And FieldFilled(Tier)` — unclosed with structure after it | `MVK_LEXER_STANDARD_ERROR` |
+| `FieldFilled('')` — CLOSED but empty | `MVK_LEXER_STANDARD_ERROR` |
+| `FieldFilled('1City')` — CLOSED but digit-leading | `MVK_LEXER_STANDARD_ERROR` |
+| `FieldFilled('Tier')` — the control | ADMITTED |
+| `FieldFilled('And') Or FieldFilled(Tier)` — the escape doing its job | `MVK_INVALID_ENTITY` — a SEMANTIC code, so `'And'` reached entity resolution instead of being read as the connective |
+| `FieldFilled(Tier)) And 'x` — a parse error EARLIER than the bad quote | **`MVK_UNEXPECTED_TOKEN`** |
+
+The last row generalizes the string-literal result above rather than repeating it: the lexer does not get the first word, so an unpaired quote of EITHER form loses to a parse error that sits earlier. The checker therefore carries one gap covering both terminals. The two closed-but-illegal rows matter because a checker has to decide whether to flag them, and a flag it invented would be an unmeasured refusal — measured, they are refused, and the terminal's `STR` fragment (`a-z A-Z _ Ä Ü Ö ä ü ö ß :`) is reproduced exactly by the checker's tokenizer, so it cannot over-reject a name A12 takes.
+
 *Locked by:* `rulekit.validate.laws.RuleConditionSyntaxLawsTest` (the grids above, with a valid-condition liveness control, and `whetherTheLastTokenAloneCanDecideTheCode` carrying the refutation with two positive controls showing the truncated texts are truncations of text that parses) and `MvkLedgerTest.ledgerCoversTheParserMessageBundleExactly` (the source that was missing, with an empty-denominator control so a bundle that resolved but carried nothing could not pass vacuously).
 
 ## §1 supplement — one bracket level joins ANY number of parts, and the `And`/`Or` mixing refusal is a parser ACTION scoped to a bracket PAIR, not a depth (measured + source-verified, 2026-09-13) <a id="kf301"></a>

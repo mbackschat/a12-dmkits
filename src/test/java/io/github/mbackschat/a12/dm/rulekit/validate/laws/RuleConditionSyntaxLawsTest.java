@@ -314,6 +314,54 @@ class RuleConditionSyntaxLawsTest {
         assertEquals(expected, actual, "which error A12 reports for an unterminated string literal");
     }
 
+    /**
+     * The OTHER quoting form, which is a different terminal and had no row at all.
+     *
+     * <p>A {@code '…'} name is A12's escape for a field whose name spells a keyword
+     * ({@code NameOhnePunktMitQuotes: '\'' STR (STR|DIGIT)* '\''}). It is measured here because the checker's
+     * tokenizer treats an unterminated one the way it once treated an unterminated string literal — by
+     * scanning to the end of the text and calling the result a name — so everything after the stray quote
+     * disappears from every downstream analysis. The controls say quoting an ORDINARY name is legal, which is
+     * what makes the first two rows failures of the quoting rather than of the name.
+     */
+    @Test
+    void whatAnUnterminatedQuotedNameDrawsAndThatQuotingAnOrdinaryNameIsLegal() {
+        Map<String, String> actual = new LinkedHashMap<>();
+        actual.put("unterminated at the end of balanced text", verdict("FieldFilled('Tier"));
+        actual.put("unterminated with structure after it", verdict("FieldFilled('Tier) And FieldFilled(Tier)"));
+        // The controls. Quoting is an escape, not a declaration that the name IS a keyword, so it must be
+        // legal on an ordinary field — otherwise the rows above would be measuring the quotes themselves.
+        actual.put("a closed quoted name — the control", verdict("FieldFilled('Tier')"));
+        actual.put("a closed quoted name whose spelling IS a keyword",
+                verdict("FieldFilled('And') Or FieldFilled(Tier)"));
+        // Two CLOSED shapes the terminal still does not match, measured because the tokenizer has to decide
+        // whether to flag them and a flag it invents would be an unmeasured refusal.
+        actual.put("an empty quoted name", verdict("FieldFilled('')"));
+        actual.put("a quoted name starting with a digit", verdict("FieldFilled('1City')"));
+        // The row that says whether the lexical family's code is right for this terminal in general: a parse
+        // error EARLIER in the text. The string-literal grid already shows a parse error can win.
+        actual.put("a parse error before the bad quote", verdict("FieldFilled(Tier)) And 'x"));
+
+        Map<String, String> expected = new LinkedHashMap<>();
+        expected.put("unterminated at the end of balanced text", "MVK_LEXER_STANDARD_ERROR");
+        expected.put("unterminated with structure after it", "MVK_LEXER_STANDARD_ERROR");
+        expected.put("a closed quoted name — the control", KernelLaws.ADMITTED);
+        // A SEMANTIC code, and that is the whole row: `'And'` reached entity resolution instead of being read
+        // as the connective, so the quoting did its job. The fixture has no field of that name, which is why
+        // the verdict is a reference failure rather than ADMITTED.
+        expected.put("a closed quoted name whose spelling IS a keyword", "MVK_INVALID_ENTITY");
+        // The terminal is `'` STR (STR|DIGIT)* `'`, so neither of these matches it and both fail in the
+        // lexer, exactly like the unterminated rows. All four failing shapes share ONE code, which is what
+        // lets the checker's tokenizer mark them without inventing a distinction A12 does not make.
+        expected.put("an empty quoted name", "MVK_LEXER_STANDARD_ERROR");
+        expected.put("a quoted name starting with a digit", "MVK_LEXER_STANDARD_ERROR");
+        // The lexer does not get the first word: a parse error earlier in the text wins, exactly as it does
+        // for a string literal that swallows a delimiter. So the checker's lexical family carries ONE gap
+        // covering both terminals rather than a separate one per quoting form.
+        expected.put("a parse error before the bad quote", "MVK_UNEXPECTED_TOKEN");
+        assertEquals(expected, actual, "what an unterminated quoted name draws");
+    }
+
     private static String verdict(String condition) {
         return KernelLaws.verdictOf(ModelWriter.addRule(Fixtures.subscriptionJson(), "/Subscription",
                 "SyntaxProbe", "../Tier", "PROBE", condition, "ERROR", List.of(en("x"), de("y"))));

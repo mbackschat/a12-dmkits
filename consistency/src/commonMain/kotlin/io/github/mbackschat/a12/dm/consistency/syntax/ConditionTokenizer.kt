@@ -20,6 +20,14 @@ enum class TokenKind {
     /** A `"` with no closing partner — reported rather than swallowing the rest of the text. */
     UNTERMINATED_STRING,
 
+    /**
+     * A `'…'` that does not match the name terminal: unclosed, empty, or starting with a digit. Separate from
+     * [UNTERMINATED_STRING] because the two are different terminals with different recovery — a string
+     * literal genuinely extends to the end of the text, while a failed quoted name stops at the first
+     * character the terminal cannot take, so the structure after it stays visible to every later analysis.
+     */
+    UNTERMINATED_QUOTED_NAME,
+
     /** A `;;` comment through the end of its line. */
     COMMENT,
 
@@ -86,11 +94,24 @@ fun tokenize(text: String): List<Token> {
             }
 
             char == '\'' -> {
-                val close = text.indexOf('\'', index + 1)
-                index = if (close < 0) text.length else close + 1
-                // The Kernel's lexer strips the quotes too (`setTextUnquotedInLexer`) and keeps the escape in
-                // the token TYPE, which is what [TokenKind.QUOTED_NAME] reproduces.
-                tokens += Token(TokenKind.QUOTED_NAME, text.substring(start, index).trim('\''), start, index)
+                // The terminal is `'` STR (STR|DIGIT)* `'`, so the closer is the one that follows an
+                // unbroken run of name characters — NOT merely the next quote anywhere in the text. Taking
+                // the next quote is what this did until 2026-09-13, and on `'Tier) And 'x'` it produced the
+                // name `Tier) And `, which the reference extractor then reported as a field nobody wrote.
+                var scan = index + 1
+                while (scan < text.length && text[scan].isNamePart()) scan++
+                val closed = scan < text.length && text[scan] == '\''
+                val named = scan > index + 1 && text[index + 1].isNameStart()
+                index = if (closed) scan + 1 else scan
+                tokens += if (closed && named) {
+                    // The Kernel's lexer strips the quotes too (`setTextUnquotedInLexer`) and keeps the
+                    // escape in the token TYPE, which is what [TokenKind.QUOTED_NAME] reproduces.
+                    Token(TokenKind.QUOTED_NAME, text.substring(start + 1, index - 1), start, index)
+                } else {
+                    // Empty, digit-leading, or unclosed — all three draw `MVK_LEXER_STANDARD_ERROR` from A12
+                    // (`RuleConditionSyntaxLawsTest`), so they need no finer distinction here.
+                    Token(TokenKind.UNTERMINATED_QUOTED_NAME, text.substring(start, index), start, index)
+                }
             }
 
             char.isDigit() -> {

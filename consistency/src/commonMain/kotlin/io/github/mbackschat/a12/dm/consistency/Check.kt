@@ -306,11 +306,13 @@ private val UNREAD_MEMBERS = listOf(
     ),
     CoverageGap(
         at = null,
-        reason = "an unterminated string literal is reported as a LEXICAL failure even in the one measured " +
-            "shape where A12 answers `MVK_UNEXPECTED_TOKEN` instead — where the literal runs on and swallows " +
-            "a delimiter the grammar was waiting for, the parser fails before the lexer does. Which error " +
-            "wins depends on the parser's position, so the code is right for the three other measured shapes " +
-            "and wrong for that one until the grammar is available",
+        reason = "an unpaired quote is reported as a LEXICAL failure even in the measured shapes where A12 " +
+            "answers `MVK_UNEXPECTED_TOKEN` instead — where a string literal runs on and swallows a " +
+            "delimiter the grammar was waiting for, and where a parse error sits earlier in the text than " +
+            "the bad quote. Both quoting forms are affected and both fail the same way: the parser gets " +
+            "there first. Which error wins depends on the parser's position, so the code is right for the " +
+            "shapes where the quote is the first failure and wrong for those two until the grammar is " +
+            "available",
     ),
     CoverageGap(
         at = null,
