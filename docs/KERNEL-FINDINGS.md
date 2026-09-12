@@ -5863,4 +5863,15 @@ Three things fall out. **The `OPERATOR` kind does generalize** — the two catal
 
 **Still unreported, and disclosed on every report rather than left silent:** the case variants `AND`/`and`/`ODER` ARE `MVK_INCOMPLETE_INPUT` and the checker misses them, because the generated keyword table carries one canonical spelling per operator and files the kernel's other terminals as uncataloged. That is a shape problem in the table, not a judgement about the text, and it under-reports — the safe direction.
 
+**Extended 2026-09-12 — an unterminated string literal is not ONE class, and the row that locked it was confounded.** The lock's Java literal was `verdict("FieldFilled(\\\"Tier)")`, i.e. a BACKSLASH and a quote, while the table beside it printed `FieldFilled("Tier)`. Both draw the same code — a backslash alone does too, and that now has its own row — so the confound was invisible; the lock now carries the text the table prints. More substantially, which error A12 reports depends on where the PARSER is:
+
+| condition text | code |
+|---|---|
+| `[Tier] == "abc` — unterminated at the end of balanced text | `MVK_LEXER_STANDARD_ERROR` |
+| `FieldFilled("abc` — unterminated at the end, inside an unclosed call | `MVK_LEXER_STANDARD_ERROR` |
+| `[Billing/InvoiceEmail] == "abc" And FieldFilled("x` — after an earlier COMPLETE literal | `MVK_LEXER_STANDARD_ERROR` |
+| `FieldFilled("x) And [Tier] == "abc"` — the literal swallows the call's closer | **`MVK_UNEXPECTED_TOKEN`** |
+
+The last row's first literal runs to the next quote, eating the `)` the grammar was waiting for, so the parser fails before the lexer does. **No grammar-free rule separates it from the third row** — quote counts are odd in both, both carry an earlier complete literal, both leave a delimiter open — so the portable checker keeps reporting the lexical failure there and carries a gap saying the code is wrong for that shape. That is deliberately the opposite treatment from the completeness family above, where a measured boundary existed and the family was narrowed to it; here inventing one would be a fourth mechanism on this layer in one day.
+
 *Locked by:* `rulekit.validate.laws.RuleConditionSyntaxLawsTest` (the grids above, with a valid-condition liveness control, and `whetherTheLastTokenAloneCanDecideTheCode` carrying the refutation with two positive controls showing the truncated texts are truncations of text that parses) and `MvkLedgerTest.ledgerCoversTheParserMessageBundleExactly` (the source that was missing, with an empty-denominator control so a bundle that resolved but carried nothing could not pass vacuously).

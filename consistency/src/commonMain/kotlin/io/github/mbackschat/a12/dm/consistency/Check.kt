@@ -306,6 +306,14 @@ private val UNREAD_MEMBERS = listOf(
     ),
     CoverageGap(
         at = null,
+        reason = "an unterminated string literal is reported as a LEXICAL failure even in the one measured " +
+            "shape where A12 answers `MVK_UNEXPECTED_TOKEN` instead — where the literal runs on and swallows " +
+            "a delimiter the grammar was waiting for, the parser fails before the lexer does. Which error " +
+            "wins depends on the parser's position, so the code is right for the three other measured shapes " +
+            "and wrong for that one until the grammar is available",
+    ),
+    CoverageGap(
+        at = null,
         reason = "text ending on an operator spelled in a case the catalog does not carry — `AND`, `and`, " +
             "`ODER` — is not reported, though A12 answers it exactly as it answers `And`. The generated " +
             "keyword table classifies one canonical spelling per operator and files the kernel's other " +

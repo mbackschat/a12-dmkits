@@ -54,7 +54,11 @@ class RuleConditionSyntaxLawsTest {
         actual.put("an unclosed argument list", verdict("FieldFilled(Tier"));
         actual.put("punctuation that is no condition at all", verdict("@@@"));
         actual.put("a trailing infix operator", verdict("FieldFilled(Tier) And"));
-        actual.put("an unclosed string literal", verdict("FieldFilled(\\\"Tier)"));
+        actual.put("an unclosed string literal", verdict("FieldFilled(\"Tier)"));
+        // The row above used to carry a BACKSLASH as well as the quote, so it moved two variables and the
+        // text it locked was not the text KERNEL-FINDINGS printed beside it. A backslash alone draws the same
+        // code, which is why the confound was invisible — and why it gets its own row instead of a footnote.
+        actual.put("a backslash where no escape exists", verdict("FieldFilled(\\\\Tier)"));
         // The two discriminators between a parse failure and a reference failure.
         actual.put("an unknown name used as a call", verdict("NotAnOperator(Tier)"));
         actual.put("a GERMAN keyword in an English model", verdict("FeldAngegeben(Tier)"));
@@ -68,6 +72,7 @@ class RuleConditionSyntaxLawsTest {
         expected.put("punctuation that is no condition at all", "MVK_UNEXPECTED_TOKEN");
         expected.put("a trailing infix operator", "MVK_INCOMPLETE_INPUT");
         expected.put("an unclosed string literal", "MVK_LEXER_STANDARD_ERROR");
+        expected.put("a backslash where no escape exists", "MVK_LEXER_STANDARD_ERROR");
         // All three discriminators land on the PARSE side, which is the family-ownership answer: an unknown
         // name never reaches the reference check, so the syntax layer owns it and reporting it as an
         // unresolvable reference would name the wrong defect.
@@ -278,6 +283,35 @@ class RuleConditionSyntaxLawsTest {
             expected.put("ends with " + keyword, "MVK_UNEXPECTED_TOKEN");
         }
         assertEquals(expected, actual, "which trailing tokens A12 answers by running out of input");
+    }
+
+    /**
+     * WHEN an unterminated string literal is answered as a LEXER error, and when it is not.
+     *
+     * <p>The first grid measured one such text and the checker's lexical family generalized it to the shape
+     * class. It does not hold: `MVK_LEXER_STANDARD_ERROR` is what A12 says when the lexer's failure is the
+     * FIRST thing it meets, and when a parse error sits earlier in the text that wins instead. The rows below
+     * separate the two, since both shapes contain exactly one unterminated literal and the same odd number of
+     * quote characters — so no amount of counting distinguishes them.
+     */
+    @Test
+    void whenAnUnterminatedLiteralIsTheErrorA12Reports() {
+        Map<String, String> actual = new LinkedHashMap<>();
+        actual.put("unterminated at the end of balanced text", verdict("[Tier] == \"abc"));
+        actual.put("unterminated at the end, inside an unclosed call", verdict("FieldFilled(\"abc"));
+        actual.put("unterminated at the end, after an earlier complete literal",
+                verdict("[Billing/InvoiceEmail] == \"abc\" And FieldFilled(\"x"));
+        // The one that swallows structure: the first literal runs to the NEXT quote, eating `)` and `And`, so
+        // the parser meets a name where it wanted the call's closing paren long before the input runs out.
+        actual.put("an early unterminated literal that swallows the call's closer",
+                verdict("FieldFilled(\"x) And [Tier] == \"abc\""));
+
+        Map<String, String> expected = new LinkedHashMap<>();
+        expected.put("unterminated at the end of balanced text", "MVK_LEXER_STANDARD_ERROR");
+        expected.put("unterminated at the end, inside an unclosed call", "MVK_LEXER_STANDARD_ERROR");
+        expected.put("unterminated at the end, after an earlier complete literal", "MVK_LEXER_STANDARD_ERROR");
+        expected.put("an early unterminated literal that swallows the call's closer", "MVK_UNEXPECTED_TOKEN");
+        assertEquals(expected, actual, "which error A12 reports for an unterminated string literal");
     }
 
     private static String verdict(String condition) {
