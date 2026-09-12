@@ -81,6 +81,39 @@ class ConditionLexicalityTest {
         )
     }
 
+    /**
+     * The OTHER quoting form: a `'…'` name whose terminal cannot match, which A12 answers the same way.
+     *
+     * The last two rows are closed and still refused, because the terminal is `'` STR (STR|DIGIT)* `'` and
+     * takes neither an empty name nor a digit-leading one. All four are measured `MVK_LEXER_STANDARD_ERROR`
+     * (`rulekit.validate.laws.RuleConditionSyntaxLawsTest`). The controls carry the real risk: quoting is an
+     * escape rather than a declaration, so a closed quoted name must pass — reporting one would reject text
+     * A12 admits, the one direction this checker may not take.
+     */
+    @Test
+    fun aQuotedNameTheTerminalCannotMatchIsReportedAsTheSameLexerError() {
+        val actual = mutableMapOf<String, List<String>>()
+        actual["a closed quoted name — the control"] =
+            model("""FieldFilled('Price')""").conditionLexicalFindings().map { it.code }
+        actual["a closed quoted name spelling a keyword"] =
+            model("""FieldFilled('And') Or FieldFilled(Price)""").conditionLexicalFindings().map { it.code }
+        actual["unclosed at the end"] = model("""FieldFilled('Price""").conditionLexicalFindings().map { it.code }
+        actual["unclosed with structure after it"] =
+            model("""FieldFilled('Price) And FieldFilled(Price)""").conditionLexicalFindings().map { it.code }
+        actual["an empty quoted name"] = model("""FieldFilled('')""").conditionLexicalFindings().map { it.code }
+        actual["a digit-leading quoted name"] =
+            model("""FieldFilled('1City')""").conditionLexicalFindings().map { it.code }
+
+        val expected = mutableMapOf<String, List<String>>()
+        expected["a closed quoted name — the control"] = emptyList()
+        expected["a closed quoted name spelling a keyword"] = emptyList()
+        expected["unclosed at the end"] = listOf("MVK_LEXER_STANDARD_ERROR")
+        expected["unclosed with structure after it"] = listOf("MVK_LEXER_STANDARD_ERROR")
+        expected["an empty quoted name"] = listOf("MVK_LEXER_STANDARD_ERROR")
+        expected["a digit-leading quoted name"] = listOf("MVK_LEXER_STANDARD_ERROR")
+        assertEquals(expected, actual, "which quoted names the checker reports as lexically unreadable")
+    }
+
     /** The finding names the offset, so an author can find the quote in a long condition. */
     @Test
     fun theFindingLocatesTheUnterminatedQuote() {
