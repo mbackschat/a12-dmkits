@@ -306,6 +306,14 @@ All four implement the same rule shape: candidate `base/name` first (declaring-g
 
 **The grid's accept-side row had no committed oracle until now.** `ShortNameTierLawsTest` holds the ambiguous pair, where the flag only chooses between two rejections — which cannot show the fallback SUCCEEDING, so on its own it leaves open whether the flag enables a lookup or retitles a refusal. `ShortNameUniqueTierLawsTest` adds the unique pair (`MVK_INVALID_ENTITY` → accepted), moving exactly one thing: the sibling group declares `Other` rather than a second `Code`. §3.4 had recorded those rows as executed session evidence and explicitly not locked.
 
+### C2 record — the reference rejections, and where their correctives live (2026-09-12)
+
+**Both codes ride the finding, and both are A12's.** `Reference.Undeclared` → `MVK_INVALID_ENTITY`, `Reference.Ambiguous` → `MVK_FIELDNAME_NOT_UNIQUE`, each `A12_CONSTRAINT` at ERROR because each is a locked Kernel verdict rather than a policy of ours. The explain names the ambiguous candidates, since a reader cannot qualify a reference to one of them without seeing them.
+
+**A gap in the corrective owner was fixed in the owner.** `StructuralKernelFix` had a hint for `MVK_INVALID_ENTITY` and none for `MVK_FIELDNAME_NOT_UNIQUE`, so the CLI's enricher said nothing on the harder of the two — and it is the harder one precisely because its corrective is the *opposite*: qualify the reference rather than declare the field, and turning `fieldRefByShortNameAllowed` off converts this code into the other rather than fixing anything. That hint now exists, which serves every JVM consumer.
+
+**Sharing that guidance with the portable report is C2's remaining piece, deliberately not improvised.** The checker is Kernel-free and carries no project dependency, so it cannot read `StructuralKernelFix`; restating the prose in Kotlin would mint the second live statement the doc rules forbid. The portable findings therefore carry the code and the observation and no `fix` text, rather than advertising guidance with nothing behind it. The single-owner mechanism — a shared resource both sides read, or generation from the Java owner — belongs with F's report contract, which is where the `fix`/`explain` fields become public.
+
 ### Decisions to resolve during A
 
 - **Shared syntax:** default to checker-owned source. Extract a neutral leaf only when the enumerated closure and H4/H5 evidence support it; this avoids turning parser extraction into an interpreter redesign.

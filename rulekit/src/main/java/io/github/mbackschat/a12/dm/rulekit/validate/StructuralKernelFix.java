@@ -241,6 +241,18 @@ public final class StructuralKernelFix {
                     "MVK_INVALID_ENTITY (\"the group or field 'X' is not valid\") means the kernel could not resolve "
                             + "that name — almost always a bare/relative reference that does not bind across sibling "
                             + "groups, or a field outside the rule's iteration scope.")),
+            Map.entry("MVK_FIELDNAME_NOT_UNIQUE", new Hint(
+                    "The bare name resolved through the model-wide fallback, which found MORE THAN ONE field "
+                            + "with that short name and will not choose between them. Qualify the reference "
+                            + "instead of declaring anything: give it the ABSOLUTE path of the field you mean "
+                            + "(a leading `/`, e.g. `/Order/Warehouse/Code`). This is the OPPOSITE corrective "
+                            + "to MVK_INVALID_ENTITY, which means no field carries the name at all — there the "
+                            + "field is missing, here there are too many, and turning "
+                            + "`fieldRefByShortNameAllowed` off converts this code into that one rather than "
+                            + "fixing the reference.",
+                    "MVK_FIELDNAME_NOT_UNIQUE means the rule's own group does not declare the name, so the "
+                            + "kernel fell back to a model-wide lookup (which `fieldRefByShortNameAllowed` "
+                            + "enables), and that lookup requires a UNIQUE match.")),
             Map.entry("MVK_INTERNAL_VALUES_AND_DISPLAY_VALUES", new Hint(
                     "An enum value's display label (`labels`) covers some of the model's declared locales but not "
                             + "all — the kernel requires every enum value to carry a display label for EVERY declared "
