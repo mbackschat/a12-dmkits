@@ -266,6 +266,20 @@ Caveats that hold across all four paths:
 | Code | Bucket | rulekit treatment / lock |
 |---|---|---|
 | `MVK_INDEX_FOR_ERROR_TEXT_INVALID` | kernel-delegated | law: a semantic index may appear in an error text only when the rule’s condition also uses it — message text is free-form, F4 arbitrates |
+## `vk_parser_common_error_messages` (kernel-core-parser resource bundle, CI check)
+
+**A fourth source, added 2026-09-12 — the ledger's denominator had been three enums plus the metamodel, and these six codes are in none of them.** They live in the parser's own message bundle (`internal/vk_parser_common_error_messages/error_messages_en.properties`, on the test classpath inside the kernel jar), and four of them are what `checkConsistency` ACTUALLY returns for a stored condition that does not parse — measured, not inferred ([KF300](KERNEL-FINDINGS.md#kf300), `rulekit.validate.laws.RuleConditionSyntaxLawsTest`). The blind spot mattered because it hid the whole parse-failure family: `MVK_CONDITION` is a rulekit authoring-surface row and is NOT one of these.
+
+| Code | Bucket | rulekit treatment / lock |
+|---|---|---|
+| `MVK_LEXER_STANDARD_ERROR` | kernel-delegated | the text cannot be TOKENIZED — measured on an unclosed string literal. The typed builder cannot author it; raw-DSL input reaches it. Locked: `RuleConditionSyntaxLawsTest` |
+| `MVK_UNEXPECTED_TOKEN` | kernel-delegated | a token the grammar cannot use where it stands — measured on stray punctuation, an unknown name used as a call, a foreign-language keyword, and a bare field reference as the whole condition. The last three are the family-ownership answer: an unknown name is a PARSE failure and never reaches the reference check. Locked: `RuleConditionSyntaxLawsTest`; also reached via `@SuppressWarning` pragma rendering (`ComputationSuppressionLawsTest`) |
+| `MVK_EXPECTED_TOKEN_NOT_FOUND` | kernel-delegated | a token the grammar REQUIRES is absent — measured on an unclosed argument list. Locked: `RuleConditionSyntaxLawsTest` |
+| `MVK_INCOMPLETE_INPUT` | kernel-delegated | the input simply ends early — measured on a trailing infix operator. Locked: `RuleConditionSyntaxLawsTest` |
+| `MVK_COMMON_PARSER_ERROR` | kernel-delegated, **unmeasured** | the bundle's catch-all (`Unexpected: '%s'.`). No authored input has been found that reaches it rather than one of the four above; stated as unmeasured rather than classified by analogy |
+| `MVK_INTERNAL_ERROR` | kernel-delegated, **unmeasured** | the bundle's internal-failure text (`There is an internal error: '%s'.`). Not author-triggerable as far as measured, and not a structural law |
+
+
 ## `MM_Common` metamodel rules (a12-kernel-mm; opt-in CI check against the sibling clone)
 
 **Resolved 2026-06-10 by the rule-explanation dogfood** (the path mapped in "How the queue resolves" above). All 105 codes' carrier rules — 134, all in `MM_Common_v2` — were read and explained with rulekit's own verbs and classified from the laws themselves, in own words (conditions/messages not reproduced — EUPL). Dogfood score: `read --all` converts **192/192** of the metamodel's rules fully typed; `explain` succeeds on **all 134** MVK carriers (30 distinct operators exercised). The **n/a-structural** rows give the owning entity + the law's gist. Two write-path probes grounded the kernel-delegated rows: a `vk_vk`-prefixed rule name (rejected pre-persist, `MVK_RULE_NAME_INVALID`) and a blank message text (treated as a missing message) — neither mutated the model file. Details: KERNEL-FINDINGS "Reserved rule-name prefix" + §13 supplement.

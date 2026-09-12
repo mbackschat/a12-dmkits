@@ -5779,3 +5779,27 @@ A computation's `errorCodesToSuppress` is declared `List<String>` and is not a s
 **`variantFilter` also rides FIELD elements** (`serializer.FieldSerializer` writes it), a carrier outside this checker's rules-and-computations subject matter and not measured here.
 
 *(Locked: `rulekit.validate.laws.RuleVariantFilterLawsTest` and `rulekit.validate.laws.ComputationVariantFilterLawsTest`.)*
+
+## §13 supplement — a condition that does not parse draws one of FOUR phase-specific codes, and `MVK_CONDITION` is none of them (measured, 2026-09-12) <a id="kf300"></a>
+
+> Fold: not-foldable — a parse-surface law, outside the evaluation scope.
+
+**What `checkConsistency` returns for a stored `errorCondition` that is present, non-blank, and malformed.** Every one of eight predictions for this grid said `MVK_CONDITION`, and all seven malformed rows were wrong. The codes track the ANTLR pipeline phase that failed:
+
+| condition text | code |
+|---|---|
+| `FieldFilled("Tier)` — unclosed string literal | `MVK_LEXER_STANDARD_ERROR` |
+| `@@@` — stray punctuation | `MVK_UNEXPECTED_TOKEN` |
+| `NotAnOperator(Tier)` — unknown name used as a call | `MVK_UNEXPECTED_TOKEN` |
+| `FeldAngegeben(Tier)` — a German keyword in an English model | `MVK_UNEXPECTED_TOKEN` |
+| `Tier` — a bare field reference as the whole condition | `MVK_UNEXPECTED_TOKEN` |
+| `FieldFilled(Tier` — unclosed argument list | `MVK_EXPECTED_TOKEN_NOT_FOUND` |
+| `FieldFilled(Tier) And` — trailing infix operator | `MVK_INCOMPLETE_INPUT` |
+
+**Where the wrong prediction came from, because it is a reusable trap.** [MVK-LEDGER](MVK-LEDGER.md)'s `MVK_CONDITION` row says "for raw-DSL inputs the kernel's parse error is the intended contract" — a statement about *rulekit's authoring surface*, which reads as an answer about what the Kernel REPORTS. It is the narrow-prior-art shape: the record answers confidently and on-topic, and answers a different question. The neighbouring laws class is the same shape one layer down — `RuleConditionAndTargetSlotLawsTest` measures the slot's PRESENCE (absent, empty, whitespace → `MVK_CONDITION_MISSING`), so a grep for condition laws returns it and reads as coverage while the syntax axis is untouched.
+
+**The three rows that decide FAMILY OWNERSHIP, and they all land on the parse side.** An unknown name, a foreign-language keyword, and a bare field reference are each `MVK_UNEXPECTED_TOKEN` rather than a reference diagnostic — so an unresolvable name never reaches the reference check at all. A checker that reported one of them as an unresolvable reference would name the wrong defect, and one that reported it from both families would report it twice.
+
+**These six codes are not in any enum — they are a RESOURCE BUNDLE, and the ledger was blind to it.** They live in `kernel-core-parser`'s `internal/vk_parser_common_error_messages/error_messages_en.properties`, not in `ParserErrorTypesEnum` (176 constants, none of them these). `MvkLedgerTest` therefore reported the ledger complete while all six were missing, because its denominator was three enums plus the metamodel. The bundle ships inside the kernel jar, so it is now a fifth source read from the test classpath, and the six codes have ledger rows; the two that no authored input has been found to reach are classified **unmeasured** rather than by analogy.
+
+*Locked by:* `rulekit.validate.laws.RuleConditionSyntaxLawsTest` (the grid above, with a valid-condition liveness control) and `MvkLedgerTest.ledgerCoversTheParserMessageBundleExactly` (the source that was missing, with an empty-denominator control so a bundle that resolved but carried nothing could not pass vacuously).
