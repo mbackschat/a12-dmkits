@@ -53,6 +53,13 @@ enum class CheckFamily {
      * the one code it may carry is the one A12 lets a computation suppress.
      */
     SUPPRESSED_WARNINGS,
+
+    /**
+     * A rule's or computation's `variantFilter` — that A12 can bind it, and WHICH declarations it takes out
+     * of A12's check. The family is unusual in that its main output is a coverage gap rather than a finding,
+     * because A12 accepts the models it concerns.
+     */
+    VARIANT_FILTER,
 }
 
 /**
@@ -171,7 +178,7 @@ internal fun check(
             it.target.asFinding(ReferenceRole.CONDITION_ENTITY, it.declaredAt, it.member)
         } + prepared.declarationSlotFindings() + prepared.computationAlternativeFindings() +
         prepared.computationRoundingFindings() + prepared.suppressedWarningFindings() +
-        prepared.ruleConditionAndTargetFindings() +
+        prepared.ruleConditionAndTargetFindings() + prepared.variantFilterFindings() +
         prepared.elementNameFindings() + prepared.groupOrderingFindings()
     return ConsistencyReport(
         modelId = admitted.modelId,
@@ -182,9 +189,10 @@ internal fun check(
             CheckFamily.DECLARATION_SLOTS, CheckFamily.COMPUTATION_ALTERNATIVES,
             CheckFamily.RULE_CONDITION_AND_TARGET, CheckFamily.ELEMENT_NAME_UNIQUENESS,
             CheckFamily.GROUP_ORDERING_REFERENCES, CheckFamily.GROUP_ORDERING_FIELD_TYPE,
-            CheckFamily.COMPUTATION_ROUNDING, CheckFamily.SUPPRESSED_WARNINGS),
-        gaps = prepared.gaps() + prepared.emptyFactBase() + findings.buildBlocked() + UNREAD_MEMBERS +
-            UNIMPLEMENTED_FAMILIES,
+            CheckFamily.COMPUTATION_ROUNDING, CheckFamily.SUPPRESSED_WARNINGS,
+            CheckFamily.VARIANT_FILTER),
+        gaps = prepared.gaps() + prepared.emptyFactBase() + findings.buildBlocked() +
+            prepared.variantFilterGaps() + UNREAD_MEMBERS + UNIMPLEMENTED_FAMILIES,
     )
 }
 

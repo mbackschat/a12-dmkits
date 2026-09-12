@@ -76,6 +76,11 @@ class RuleVariantFilterLawsTest {
         actual.put("BROKEN, ONLY the default variant", verdict(BROKEN, "{\"filterType\":\"ONLY\",\"variants\":[\"\"]}"));
         actual.put("BROKEN, ALL_EXCEPT the default variant — the 2x2's fourth cell",
                 verdict(BROKEN, "{\"filterType\":\"ALL_EXCEPT\",\"variants\":[\"\"]}"));
+        // The shape rows below are measured SOUND in the other test, where ADMITTED cannot distinguish "checked
+        // and clean" from "never checked". Carrying the broken condition through them is what settles whether an
+        // ONLY filter naming NO variant still suppresses — which decides whether the checker owes a coverage gap.
+        actual.put("BROKEN, ONLY an empty variants list", verdict(BROKEN, "{\"filterType\":\"ONLY\",\"variants\":[]}"));
+        actual.put("BROKEN, ONLY with no variants member", verdict(BROKEN, "{\"filterType\":\"ONLY\"}"));
 
         Map<String, String> expected = new LinkedHashMap<>();
         expected.put("sound, no filter — the liveness control", KernelLaws.ADMITTED);
@@ -89,6 +94,8 @@ class RuleVariantFilterLawsTest {
         expected.put("BROKEN, ALL_EXCEPT a non-default variant — default still included", "MVK_INVALID_ENTITY");
         expected.put("BROKEN, ONLY the default variant", KernelLaws.ADMITTED);
         expected.put("BROKEN, ALL_EXCEPT the default variant — the 2x2's fourth cell", "MVK_INVALID_ENTITY");
+        expected.put("BROKEN, ONLY an empty variants list", KernelLaws.ADMITTED);
+        expected.put("BROKEN, ONLY with no variants member", KernelLaws.ADMITTED);
         assertEquals(expected, actual, "whether a variant filter takes a rule out of A12's check");
     }
 
