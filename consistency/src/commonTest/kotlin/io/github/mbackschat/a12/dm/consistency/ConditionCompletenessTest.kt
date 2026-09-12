@@ -8,13 +8,13 @@ import kotlin.test.assertTrue
 /**
  * DSL text that simply ENDS too early — A12's `MVK_INCOMPLETE_INPUT`.
  *
- * Measured across word operators, a comparison, arithmetic and a trailing comma
- * ([KERNEL-FINDINGS KF300], `rulekit.validate.laws.RuleConditionSyntaxLawsTest`, kernel 30.8.1, 2026-09-12),
- * so it is one class keyed off the operator catalog's `OPERATOR` kind plus the symbolic operators.
+ * Measured across the catalog's `OPERATOR` kind, all eleven symbolic operators and a trailing comma
+ * ([KERNEL-FINDINGS KF300], `rulekit.validate.laws.RuleConditionSyntaxLawsTest`, kernel 30.8.1, 2026-09-12).
  *
- * **It stops at the catalog's kind boundary and that is measured, not assumed.** A dangling PATH operator
- * (`->`, `For`) is `MVK_UNEXPECTED_TOKEN` instead, so this family must NOT report it — which is the whole
- * reason the last two rows below exist. Grouping the two kinds would emit the wrong code for both.
+ * **It stops at a DELIMITER boundary, not at a kind boundary** — the kind account that first justified these
+ * rows is retracted, and the grid that refutes it is named on the test below. With an unclosed delimiter
+ * earlier in the text A12 answers the same trailing operator with a different code, so this family reports
+ * nothing there.
  */
 class ConditionCompletenessTest {
 
@@ -47,6 +47,10 @@ class ConditionCompletenessTest {
         actual["ends with Or"] = codesFor("FieldFilled(Price) Or")
         actual["ends with a comparison"] = codesFor("[Price] >")
         actual["ends with arithmetic"] = codesFor("[Price] > 1 +")
+        // Filed as punctuation by the tokenizer because each is also a path shape, and silently missing until
+        // the full trailing-token grid measured them (KERNEL-FINDINGS KF300).
+        actual["ends with subtraction"] = codesFor("[Price] -")
+        actual["ends with division"] = codesFor("[Price] /")
         actual["ends with a comma inside a call"] = codesFor("AllFieldsFilled(Price,")
         actual["trailing whitespace after an operator"] = codesFor("FieldFilled(Price) And   ")
         actual["a comment after the operator"] = codesFor("FieldFilled(Price) And ;; note")
@@ -57,6 +61,8 @@ class ConditionCompletenessTest {
         expected["ends with Or"] = listOf("MVK_INCOMPLETE_INPUT")
         expected["ends with a comparison"] = listOf("MVK_INCOMPLETE_INPUT")
         expected["ends with arithmetic"] = listOf("MVK_INCOMPLETE_INPUT")
+        expected["ends with subtraction"] = listOf("MVK_INCOMPLETE_INPUT")
+        expected["ends with division"] = listOf("MVK_INCOMPLETE_INPUT")
         expected["ends with a comma inside a call"] = listOf("MVK_INCOMPLETE_INPUT")
         // Whitespace and comments are not significant tokens, so the operator is still last.
         expected["trailing whitespace after an operator"] = listOf("MVK_INCOMPLETE_INPUT")

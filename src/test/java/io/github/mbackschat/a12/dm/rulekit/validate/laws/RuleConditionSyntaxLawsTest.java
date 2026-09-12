@@ -229,6 +229,57 @@ class RuleConditionSyntaxLawsTest {
         assertEquals(expected, actual, "whether the last token's kind alone can pick the parse code");
     }
 
+    /**
+     * The FULL trailing-token set, because the checker refuses on more than the grid above measured.
+     *
+     * <p>The completeness family keys on two things: the tokenizer's symbolic-operator set (nine symbols) and
+     * the generated keyword table's {@code OPERATOR} kind (the whole catalog, not just {@code And}/{@code Or}).
+     * Two symbols and two keywords had rows. A client-side refusal may never be broader than its measured
+     * basis, so the rest are measured here rather than carried by resemblance — and the symbol most likely to
+     * be wrong is {@code *}, which in A12 is also the REPETITION marker, a second meaning the tokenizer does
+     * not separate.
+     *
+     * <p>The last rows go the other way: {@code AND}, {@code and}, {@code In} and {@code To} are real kernel
+     * lexer terminals that the generated table classifies {@code UNCATALOGED}, because the catalog carries
+     * one canonical spelling per operator. The checker is silent on all of them while catching {@code And} —
+     * an internal inconsistency, and this grid says which direction to fix it in.
+     *
+     * <p>Every row is delimiter-BALANCED, since the grid above showed an unclosed delimiter changes the code.
+     */
+    @Test
+    void whichTrailingTokensRunA12OutOfInput() {
+        Map<String, String> actual = new LinkedHashMap<>();
+        for (String symbol : List.of("==", "!=", "<=", ">=", "<", ">", "+", "*", "^", "-", "/")) {
+            actual.put("ends with " + symbol, verdict("[Tier] " + symbol));
+        }
+        for (String spelling : List.of("And", "AND", "and", "Or", "OR", "or")) {
+            actual.put("ends with " + spelling, verdict("FieldFilled(Tier) " + spelling));
+        }
+        for (String keyword : List.of("In", "IN", "in", "To", "TO", "to", "PatternMatched",
+                "DiffersWithToleranceRange1")) {
+            actual.put("ends with " + keyword, verdict("[Tier] " + keyword));
+        }
+
+        Map<String, String> expected = new LinkedHashMap<>();
+        for (String symbol : List.of("==", "!=", "<=", ">=", "<", ">", "+", "*", "^", "-", "/")) {
+            expected.put("ends with " + symbol, "MVK_INCOMPLETE_INPUT");
+        }
+        for (String spelling : List.of("And", "AND", "and", "Or", "OR", "or")) {
+            expected.put("ends with " + spelling, "MVK_INCOMPLETE_INPUT");
+        }
+        // `PatternMatched` and `DiffersWithToleranceRange1` settle the scope transfer: the family keys on the
+        // catalog's whole OPERATOR kind while only `And`/`Or` had rows, and the kind does generalize.
+        expected.put("ends with PatternMatched", "MVK_INCOMPLETE_INPUT");
+        expected.put("ends with DiffersWithToleranceRange1", "MVK_INCOMPLETE_INPUT");
+        // …and `In`/`To` do NOT, in any spelling. They are kernel terminals the generated table leaves
+        // UNCATALOGED, so the checker is silent on them — which this grid shows is the correct answer rather
+        // than a lucky one, because A12 meets a token it cannot use rather than running out of input.
+        for (String keyword : List.of("In", "IN", "in", "To", "TO", "to")) {
+            expected.put("ends with " + keyword, "MVK_UNEXPECTED_TOKEN");
+        }
+        assertEquals(expected, actual, "which trailing tokens A12 answers by running out of input");
+    }
+
     private static String verdict(String condition) {
         return KernelLaws.verdictOf(ModelWriter.addRule(Fixtures.subscriptionJson(), "/Subscription",
                 "SyntaxProbe", "../Tier", "PROBE", condition, "ERROR", List.of(en("x"), de("y"))));

@@ -306,6 +306,13 @@ private val UNREAD_MEMBERS = listOf(
     ),
     CoverageGap(
         at = null,
+        reason = "text ending on an operator spelled in a case the catalog does not carry — `AND`, `and`, " +
+            "`ODER` — is not reported, though A12 answers it exactly as it answers `And`. The generated " +
+            "keyword table classifies one canonical spelling per operator and files the kernel's other " +
+            "terminals as uncataloged, so the miss is the table's shape rather than a judgement about the text",
+    ),
+    CoverageGap(
+        at = null,
         reason = "a `variantFilter` on a FIELD is neither judged nor counted as excluding anything — the " +
             "member rides field declarations too, and what A12 does with it there is unmeasured, so a rule " +
             "measured on the rules-and-computations carrier is not transferred to it",

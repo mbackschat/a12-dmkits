@@ -3,10 +3,10 @@ package io.github.mbackschat.a12.dm.consistency.syntax
 /**
  * Whether DSL text ends on something that still needs a right-hand side — A12's `MVK_INCOMPLETE_INPUT`.
  *
- * This is the second phase the checker can decide without a grammar, and the reason it can is narrow: the
- * answer depends only on the LAST significant token, never on the structure before it. A12 reports this code
- * when it runs out of input, which measurably happens for a trailing infix operator, a trailing comparison or
- * arithmetic symbol, and a trailing comma ([KERNEL-FINDINGS KF300]).
+ * A12 reports this code when it runs out of input, which measurably happens for a trailing infix operator of
+ * the catalog's `OPERATOR` kind, any of the eleven symbolic comparison and arithmetic operators, and a
+ * trailing comma ([KERNEL-FINDINGS KF300]) — provided every delimiter is closed, which is the whole of the
+ * restriction below.
  *
  * **It fires only where the text is delimiter-BALANCED, and that restriction replaces a refuted mechanism.**
  * This check originally keyed on the operator catalog's `OPERATOR`/`PATH_OP` split, on the reading that a
@@ -32,11 +32,22 @@ fun incompleteInput(text: String, language: ConditionLanguage): IncompleteInput?
         TokenKind.OPERATOR_SYMBOL -> significant.everyDelimiterClosed()
         // A trailing comma is measured on its own and is never balanced by nature — it can only sit inside an
         // argument list that is still open, so requiring closure here would delete the case rather than scope it.
-        TokenKind.PUNCTUATION -> last.text == ","
+        // `-` and `/` are punctuation rather than operator symbols because each is also a path shape, and that
+        // classification silently excluded them from a family whose own doc claimed every arithmetic symbol.
+        // Both are measured `MVK_INCOMPLETE_INPUT` when they end balanced text, so they are named here
+        // explicitly; `->` and `..` stay out, being structure with no measured row.
+        TokenKind.PUNCTUATION ->
+            last.text == "," || (last.text in PATH_AMBIGUOUS_OPERATORS && significant.everyDelimiterClosed())
         else -> false
     }
     return if (dangling) IncompleteInput(last.text, last.start) else null
 }
+
+/**
+ * The two symbols the tokenizer files as punctuation because each is also part of a path — a repetition step
+ * followed by a member name, or a `..` climb — and which are arithmetic operators everywhere else.
+ */
+private val PATH_AMBIGUOUS_OPERATORS = setOf("-", "/")
 
 /**
  * Whether every `(` and `[` in these tokens is closed by its own kind.

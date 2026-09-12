@@ -5848,4 +5848,19 @@ The consequence is a negative result worth as much as a positive one: **the dist
 
 **What survives is a negative result, and it is the useful half**: which parse code a truncated condition draws depends on the parser's state, so no last-token rule can pick it — the same conclusion the delimiter grid above reached from the other side. The portable checker's completeness family therefore reports only where the text is delimiter-balanced at the trailing operator, which is a boundary drawn around the measured rows and explicitly not a mechanism; everywhere else it is silent, which under-reports and is the safe direction. Before the narrowing it answered `FieldFilled(Tier And` with `MVK_INCOMPLETE_INPUT`, where A12 says `MVK_UNEXPECTED_TOKEN`.
 
+**Extended 2026-09-12 — the FULL trailing-token set, because a client-side refusal may not be broader than its measured basis.** The checker refuses on eleven symbolic operators and on the catalog's whole `OPERATOR` kind, where two symbols and two keywords had rows. Measured on a single balanced base (`[Tier] <token>`), one variable per row:
+
+| trailing token | code |
+|---|---|
+| `==` `!=` `<=` `>=` `<` `>` `+` `*` `^` `-` `/` — all eleven | `MVK_INCOMPLETE_INPUT` |
+| `And` `AND` `and` `Or` `OR` `or` | `MVK_INCOMPLETE_INPUT` |
+| `PatternMatched`, `DiffersWithToleranceRange1` | `MVK_INCOMPLETE_INPUT` |
+| `In` `IN` `in` `To` `TO` `to` | **`MVK_UNEXPECTED_TOKEN`** |
+
+Three things fall out. **The `OPERATOR` kind does generalize** — the two catalog operators beyond `And`/`Or` behave alike, so keying on the kind column is safe after all, which the `PATH_OP` half was not. **`*` is fine** despite also being the repetition marker, and `-`/`/` are `MVK_INCOMPLETE_INPUT` too — the tokenizer files them as punctuation because each is also a path shape, which had silently excluded them from a family whose own documentation claimed every arithmetic symbol. **`In` and `To` are not in this class in any spelling**, so the checker's silence about them — a side effect of the generated table filing them as uncataloged — is the right answer rather than a lucky one.
+
+*(The first attempt at this grid used `[Tier] > 1 <token>` and returned `MVK_INVALID_TYPE_FOR_COMPARISON` on six rows: the base text was itself a type error, so the grid moved two variables. Recorded because it is the same control failure this file warns about, caught only by the codes being implausible.)*
+
+**Still unreported, and disclosed on every report rather than left silent:** the case variants `AND`/`and`/`ODER` ARE `MVK_INCOMPLETE_INPUT` and the checker misses them, because the generated keyword table carries one canonical spelling per operator and files the kernel's other terminals as uncataloged. That is a shape problem in the table, not a judgement about the text, and it under-reports — the safe direction.
+
 *Locked by:* `rulekit.validate.laws.RuleConditionSyntaxLawsTest` (the grids above, with a valid-condition liveness control, and `whetherTheLastTokenAloneCanDecideTheCode` carrying the refutation with two positive controls showing the truncated texts are truncations of text that parses) and `MvkLedgerTest.ledgerCoversTheParserMessageBundleExactly` (the source that was missing, with an empty-denominator control so a bundle that resolved but carried nothing could not pass vacuously).
