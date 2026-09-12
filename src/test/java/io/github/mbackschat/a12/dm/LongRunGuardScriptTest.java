@@ -48,7 +48,7 @@ class LongRunGuardScriptTest {
         assertEquals(0, exitCode, () -> "scripts/selftest-long-run-guard.sh failed. This guard sits on a "
                 + "PreToolUse hook, so its two directions have asymmetric costs: a check that stops FIRING "
                 + "lets back the orphaned-build and self-matching-poll waste it was built for, while one that "
-                + "wrongly BLOCKS makes the tool unusable and gets switched off, which is why "
-                + "scripts/lane-guard.sh is still unwired.\n" + output);
+                + "wrongly BLOCKS makes the tool unusable and gets switched off — which is what happened to "
+                + "the lane guard, unwired the night it landed and deleted nineteen days later.\n" + output);
     }
 }

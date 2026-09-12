@@ -530,7 +530,6 @@ tasks.register('deliveryGuardTest', Test) {
         includeTestsMatching 'io.github.mbackschat.a12.dm.SourceStatisticsReleaseBoundaryTest'
         includeTestsMatching 'io.github.mbackschat.a12.dm.ReleasePerfGateRefusalTest'
         includeTestsMatching 'io.github.mbackschat.a12.dm.JdkPinScriptTest'
-        includeTestsMatching 'io.github.mbackschat.a12.dm.LaneGuardScriptTest'
         includeTestsMatching 'io.github.mbackschat.a12.dm.TestEvidenceScriptTest'
         includeTestsMatching 'io.github.mbackschat.a12.dm.InfographicFreshnessLocaleTest'
         includeTestsMatching 'io.github.mbackschat.a12.dm.TypeScriptRuntimeLauncherTest'
@@ -580,11 +579,6 @@ tasks.register('deliveryGuardTest', Test) {
             'JDK pin self-test'       : file('scripts/selftest-jdk-pin.sh'),
             'GraalVM native verifier': file('scripts/verify-graalvm-native.sh'),
             'GraalVM native identity': file('gradle/graalvm-native.properties'),
-            // LaneGuardScriptTest executes this selftest, which sources lane-guard.sh — BOTH are runtime inputs,
-            // the same pairing as the JDK pin and doc-guard hook entries above. build.sh sources the guard on
-            // every invocation, so a break here breaks every build, not just this lane.
-            'lane guard'              : file('scripts/lane-guard.sh'),
-            'lane guard self-test'    : file('scripts/selftest-lane-guard.sh'),
             // TestEvidenceScriptTest executes this selftest, which copies the shell command, shared Node gate,
             // and TypeScript implementation into fabricated repos — all are runtime inputs. This tool's output
             // is read AS evidence, so a silent break in it is believed rather than noticed.

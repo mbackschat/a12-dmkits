@@ -91,7 +91,7 @@ set -e
 expect_rc "a hook copy outside the checkout allows an ordinary command" 0 "$rc_orphan"
 expect_rc "and still blocks an anti-pattern" 2 "$rc_orphan_block"
 
-printf '\nnever refuse justified work — the failure that unwired scripts/lane-guard.sh\n'
+printf '\nnever refuse justified work — the failure that killed the lane guard\n'
 
 expect_allow "an ordinary foreground build" c1 './build.sh :cli:test'
 expect_allow "a filtered build" c1 "./build.sh :cli:test --tests '*Foo*' -Pfast"
