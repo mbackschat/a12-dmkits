@@ -406,6 +406,37 @@ The tokenizer's own two departures from a naive lexer stand, and each now has a 
 
 **The gate the GRAMMATICAL increment must pass before it lands, recorded now so it is not negotiated later.** A parser stricter than A12's rejects models the Kernel accepts, which is the one direction this checker must never take, so that increment is not shippable on unit tests alone: it needs the corpus `adapter.laws.ParserCorpusSweepTest` already drives — every catalog `validExample` and `computationExample`, their German localizations, and the opt-in real corpora — replayed against the checker's parser with a 100% acceptance bar on the always-on populations. The catalog lives in `rulekit` and the checker must not depend on it, so the corpus reaches `:consistency` the way its keyword table already does: GENERATED into the module with a regenerate-and-diff guard. That generator is part of the grammatical increment, not a prerequisite to be done separately.
 
+### Grammatical increment — acceptance matrix (frozen 2026-09-12, before any parser code)
+
+**The denominator is finite and already classified.** `docs/GRAMMAR-LEDGER.md` classifies all **119** parser productions of the Kernel's condition grammar: **70 rendered, 23 plumbing, 3 entry, 2 directive** — the **98** this increment owns — and **21 legacy** (H-model multi-form/Vordruck/USB and bounded row iteration), which are the named non-goal, the same boundary the interpreter draws. Nothing is `queued`, so the scope cannot quietly grow.
+
+**ACCEPT — the floor, always-on, 100% required.** A parser stricter than A12's rejects models the Kernel admits, so this half is the gate, not the reject half.
+
+| population | count | why it is an ACCEPT population |
+|---|---|---|
+| catalog `validExample.dsl` | 110 | CI-executed against the real Kernel |
+| catalog `computationExample.operation` | 8 | same |
+| catalog **`invalidExample.dsl`** | 44 | **grammatically VALID — measured: 0 of 44 carries a parse code**, they fail on 27 distinct SEMANTIC codes (`MVK_INVALID_TYPE_FOR_COMPARISON`, `MVK_NO_CONST`, …). `[CustomerName] <= [ProductCode]` parses perfectly and is a type error |
+| the German localization of all of the above | ×2 | the keyword table is per language; a parser that only handled English would pass every row above and be half a parser |
+| the opt-in real corpora (`a12-kernel-mm`, A12 Tools workspaces) | unbounded | skipped when absent; every failure must fall in an explicitly classified bucket, never a bare count |
+
+**The `invalidExample` row is the trap this matrix exists to prevent.** The name invites reading it as a reject population, and a parser built to reject those 44 would refuse 44 grammatically correct conditions — over-rejection, in the one direction this checker must never take.
+
+**REJECT — each row with the code A12 gives, all measured ([KF300](KERNEL-FINDINGS.md#kf300)).**
+
+| shape | code | state |
+|---|---|---|
+| unterminated string literal | `MVK_LEXER_STANDARD_ERROR` | **landed** |
+| trailing infix operator, comparison, arithmetic, comma | `MVK_INCOMPLETE_INPUT` | **landed** |
+| everything still open at end of input | `MVK_EXPECTED_TOKEN_NOT_FOUND` | this increment |
+| stray punctuation · unknown name used as a call · foreign-language keyword · bare field reference as the whole condition · extra closing parenthesis · unclosed value bracket · bracket closing a parenthesis · stray closing bracket · dangling path operator | `MVK_UNEXPECTED_TOKEN` | this increment |
+
+**NON-GOALS, named rather than left silent.** The 21 legacy productions. A12's illegal-CHARACTER class (its message text implies one; no row measures it). Operand TYPE compatibility — the 27 semantic codes above are a separate layer needing model-resolved types. ARITY, which is **not derivable from the operator catalog at all**: `operands` is a per-slot type contract and 15 of 110 operators pass a different argument count than their slot count in their own kernel-executed example ([CATALOG-SPEC §2](CATALOG-SPEC.md)).
+
+**Oracles.** Every REJECT row is settled by `checkConsistency` through the laws tier (`rulekit.validate.laws.RuleConditionSyntaxLawsTest`), never by reading the grammar. Every ACCEPT row is settled by the generated corpus below. A production's presence in the ledger is a denominator, not an oracle.
+
+**The gate, and it is a build gate rather than a promise.** The catalog lives in `rulekit` and `:consistency` must not depend on it, so the corpus reaches the module the way its keyword table already does: GENERATED into `commonTest` by a Gradle task, with a `verify…` twin that regenerates and diffs, wired to `check`. Until that task exists and those 162 EN texts plus their localizations parse, the increment does not land. **Production coverage of the corpus is NOT claimed** — nobody has mapped examples to productions, and asserting that 162 texts exercise 98 productions without measuring it would be the completeness claim this record is written to avoid.
+
 **Family ownership is settled, and it was not obvious.** An unknown name used as a call, a foreign-language keyword, and a bare field reference as the whole condition are each `MVK_UNEXPECTED_TOKEN` — parse failures, not reference failures. So an unresolvable name never reaches A12's reference check, and the syntax layer owns it: reporting one of them from the reference family would name the wrong defect, and reporting from both would report it twice.
 
 
