@@ -16,7 +16,8 @@ class PurityGuardMechanismTest {
     @Test
     void purityGatesDoNotApproximateEitherSourceLanguageWithCommentRegexes() throws IOException {
         for (String relative : new String[] {
-                "build.gradle", "interpreter-bridge/build.gradle", "schemakit/build.gradle"}) {
+                "build.gradle", "interpreter-bridge/build.gradle", "schemakit/build.gradle",
+                "consistency/build.gradle"}) {
             String build = Files.readString(CHECKOUT.resolve(relative));
             assertTrue(build.contains("verifyCompiledPurity"), relative);
             assertFalse(build.contains("replaceAll(/(?s)\\/\\*.*?\\*\\//"), relative);
@@ -38,6 +39,10 @@ class PurityGuardMechanismTest {
         assertTrue(build.contains("verifyKernelFreeClasspath"), "the resolution-level guard must exist");
         assertTrue(build.contains("resolutionResult"),
                 "it must read RESOLVED dependencies — a declared-only kernel jar is exactly what it is for");
+        assertTrue(Files.readString(CHECKOUT.resolve("consistency/build.gradle"))
+                        .contains("verifyKernelFreeClasspath"),
+                ":consistency is published for npm consumers under H2, so its declared dependencies decide what "
+                        + "they install — the compiled gate alone cannot see a dependency nothing imports");
     }
 
     @Test

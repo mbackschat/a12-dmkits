@@ -1005,8 +1005,12 @@ ext.verifyCompiledPurity = { String guardName, Collection<File> classRoots, Coll
 // reaches a POM by being declared and not by being imported. So this asks the configurations `from
 // components.java` generates the POM from. The positive control runs the SAME group-prefix predicate against a
 // group known to be present, so a matcher that silently stopped matching cannot pass as "nothing forbidden".
+// `allowedGroups`, when given, is the stronger form of the same question: instead of naming the groups that
+// must be absent, it names the ONLY groups that may be present, so a newly declared third-party dependency
+// fails on arrival rather than on someone thinking to forbid it. Groups match EXACTLY — `org.jetbrains` does
+// not admit `org.jetbrains.kotlinx` — because a prefix allowlist quietly widens as an ecosystem grows.
 ext.verifyKernelFreeClasspath = { String guardName, Collection<Configuration> configurations,
-        Collection<String> forbiddenGroups, String positiveControlGroup ->
+        Collection<String> forbiddenGroups, String positiveControlGroup, Collection<String> allowedGroups = [] ->
     def modules = configurations.collectMany { configuration ->
         configuration.incoming.resolutionResult.allComponents.collect { it.id }
                 .findAll { it instanceof org.gradle.api.artifacts.component.ModuleComponentIdentifier }
@@ -1026,6 +1030,17 @@ ext.verifyKernelFreeClasspath = { String guardName, Collection<Configuration> co
         throw new GradleException(
             "${guardName} violated — a consumer of the published artifact would receive raw kernel jars:\n  "
             + violations.join('\n  '))
+    }
+    if (allowedGroups) {
+        def undeclared = modules
+                .findAll { entry -> !allowedGroups.contains(entry.id.group) }
+                .collect { "${it.configuration}: ${it.id.displayName}".toString() }
+                .unique().sort()
+        if (undeclared) {
+            throw new GradleException(
+                "${guardName} resolved module(s) outside its declared allowlist ${allowedGroups.toSorted()}:\n  "
+                + undeclared.join('\n  '))
+        }
     }
 }
 

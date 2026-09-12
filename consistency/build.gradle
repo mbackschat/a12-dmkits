@@ -35,65 +35,71 @@ kotlin {
 
 // --- The boundary guard (plan stage 2; the empty neutral-leaf allowlist's enforcement locus) -------------
 //
-// Mirrors :interpreter's verifyInterpreterPurity, with one addition that is the whole point: the INTERPRETER
-// is forbidden here too. The plan's allowlist for a shared syntax leaf is empty, so there is no permitted
-// type to encode an exception for — any interpreter import is a failure. An import check is the first locus,
-// not the last: H1 also requires compiled/installed closure and shipped-file provenance guards, which belong
-// to F's delivery slice because they need a published package to inspect.
+// Two instruments for one contract, because each is blind where the other sees. `verifyConsistencyPurity`
+// asks what the compiled classes LINK; `verifyConsistencyDependencies` asks what a consumer would RESOLVE,
+// which a linkage guard cannot see, since a jar reaches a POM by being declared and not by being used.
+//
+// Both replace an `import`-text scan, and for the reason SCHEMAKIT-SPEC §1 records from the same mistake
+// there: a regex over import lines misses a fully-qualified use, a name inside a raw string, and anything a
+// comment delimiter inside a literal blanks. jdeps reads class dependencies, so literals and comments are
+// irrelevant by construction, and the shared helper refuses an empty class denominator and requires a
+// compiled-reference positive control before accepting absence.
+//
+// The forbidden set carries the addition that is this module's whole point: the INTERPRETER is forbidden as
+// firmly as the kernel. The plan's allowlist for a shared syntax leaf is empty, so there is no permitted type
+// to encode an exception for. Test scope is IN scope here, unlike the kit and schemakit gates — those keep
+// the kernel as their test oracle, while this module's differentials live in :adapter by design.
 def verifyConsistencyPurity = tasks.register('verifyConsistencyPurity') {
     group = 'verification'
-    description = 'Fail on a forbidden import so the checker cannot couple to the kernel or the interpreter.'
+    description = 'Fail on a compiled kernel, interpreter or Groovy edge out of the checker, in main and test scope.'
+    dependsOn 'jvmMainClasses', 'jvmTestClasses'
     def srcRoot = file('src')
+    // Only the source sets that compile INTO the JVM target are covered — `common*` does, which today is all
+    // of them, so the JVM class output is the whole module. A `jsMain` or `nativeMain` would not compile into
+    // it and jdeps would never see it, so the guard derives what exists and refuses what it cannot reach,
+    // rather than remembering a list that silently stops matching the tree.
+    def coveredSourceSets = ['commonMain', 'commonTest', 'jvmMain', 'jvmTest']
+    def classRoots = providers.provider {
+        kotlin.targets.getByName('jvm').compilations.collectMany { it.output.classesDirs.files }
+    }
     inputs.dir(srcRoot)
+    inputs.files(classRoots)
     doLast {
-        def allowedThirdParty = [
-            'kotlinx.serialization.',   // DM-JSON reading, TREE API only — retains a number's literal text (B3)
-        ]
-        def commonAllowed = ['kotlin.', 'io.github.mbackschat.a12.dm.consistency.'] + allowedThirdParty
-        def kernelAndEvaluator = ['com.mgmtp.', 'io.github.mbackschat.a12.dm.interpreter.']
-        def rules = [
-            commonMain: [forbidden: ['java.', 'javax.', 'groovy.'] + kernelAndEvaluator,
-                         allowed  : commonAllowed,
-                         why      : 'must be pure common Kotlin, free of the kernel (H1) and the evaluator (NFR #1)'],
-            jvmMain   : [forbidden: ['groovy.'] + kernelAndEvaluator,
-                         why      : 'the JVM shim may use java.* but never the kernel or the evaluator'],
-            jsMain    : [forbidden: ['java.', 'javax.', 'groovy.'] + kernelAndEvaluator,
-                         why      : 'the JS shim is pure Kotlin/JS with no kernel or evaluator types'],
-            commonTest: [forbidden: kernelAndEvaluator + ['groovy.'],
-                         why      : 'Kernel differentials live in :adapter — this module stays Kernel-free in test scope too'],
-        ]
-        def violations = []
-        rules.each { sourceSet, rule ->
-            def dir = new File(srcRoot, sourceSet)
-            if (!dir.isDirectory()) {
-                return
-            }
-            dir.eachFileRecurse { f ->
-                if (!f.isFile() || !f.name.endsWith('.kt')) {
-                    return
-                }
-                f.eachLine { line ->
-                    def m = (line =~ /^\s*import\s+([\w.]+)/)
-                    if (!m) {
-                        return
-                    }
-                    def imported = m[0][1]
-                    if (rule.forbidden.any { imported.startsWith(it) }) {
-                        violations << "$sourceSet: forbidden import '$imported' in ${f.name} — ${rule.why}"
-                    } else if (rule.allowed && !rule.allowed.any { imported.startsWith(it) }) {
-                        violations << "$sourceSet: undeclared third-party import '$imported' in ${f.name} — " +
-                                'add it to the allowlist deliberately or drop it'
-                    }
-                }
-            }
+        def unreached = srcRoot.listFiles().findAll { it.isDirectory() }*.name.toSorted()
+                .findAll { !coveredSourceSets.contains(it) }
+        if (unreached) {
+            throw new GradleException(
+                    "consistency source set(s) ${unreached} do not compile into the JVM target, so " +
+                    'verifyConsistencyPurity cannot see them. Give them their own compiled scan before adding code.')
         }
-        if (violations) {
-            throw new GradleException("consistency purity violated:\n  " + violations.join('\n  '))
-        }
+        rootProject.verifyCompiledPurity(
+            'consistency purity — main and test (H1: no kernel; NFR #1: no :interpreter)',
+            classRoots.get(),
+            ['com.mgmtp.', 'groovy.', 'io.github.mbackschat.a12.dm.interpreter.'],
+            'java.lang.Object')
     }
 }
 
-tasks.named('check') { dependsOn verifyConsistencyPurity }
+// What the module may DEPEND on, as an allowlist rather than a denylist: H2 promises an ordinary npm/TS
+// consumption, and every module resolved here becomes something that consumer installs. Naming the permitted
+// groups makes a new third-party dependency fail on arrival; naming forbidden ones would only catch the
+// dependency somebody already thought of. The one third-party group is kotlinx — `kotlinx.serialization`, TREE
+// API only, because it retains a number's literal text (B3) — plus the test framework's own groups.
+def verifyConsistencyDependencies = tasks.register('verifyConsistencyDependencies') {
+    group = 'verification'
+    description = 'Fail if the checker resolves any module outside its declared allowlist, on JVM or JS.'
+    doLast {
+        rootProject.verifyKernelFreeClasspath(
+            'consistency dependencies — jvm and js, main and test',
+            ['jvmRuntimeClasspath', 'jvmTestRuntimeClasspath', 'jsRuntimeClasspath', 'jsTestRuntimeClasspath']
+                    .collect { configurations.getByName(it) },
+            ['com.mgmtp.'],
+            'org.jetbrains.kotlin',
+            ['org.jetbrains', 'org.jetbrains.kotlin', 'org.jetbrains.kotlinx', 'junit', 'org.hamcrest'])
+    }
+}
+
+tasks.named('check') { dependsOn verifyConsistencyPurity, verifyConsistencyDependencies }
 
 // ─────────────────────────────────────────────────────────────────────────────────────────────────────────
 // The condition keyword table is DERIVED, never hand-edited — and it is PER LANGUAGE.
