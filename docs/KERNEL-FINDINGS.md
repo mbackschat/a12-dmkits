@@ -5750,3 +5750,30 @@ A computation's `errorCodesToSuppress` is declared `List<String>` and is not a s
 **An explicit `null` refuses the READER**, where the rounding pair beside it takes `null` as absence ([KF297](#kf297)): this member is bound `@NonNull List<String>` rather than through an `Optional` accessor, so the tier is a property of the binding and not of DM-JSON. A bare string and an object are refused too; a numeric ELEMENT is coerced into the list and then fails in the pragma.
 
 *(Locked: `rulekit.validate.laws.ComputationSuppressionLawsTest`. The checker's own family is `CheckFamily.SUPPRESSED_WARNINGS`.)*
+
+## §13 supplement — an `ONLY` variant filter removes a declaration from `checkConsistency` entirely, so a BROKEN rule is reported clean (measured 2×2 + source-verified, 2026-09-12) <a id="kf299"></a>
+
+> Fold: not-foldable — a model-structure law on the rule element, outside the evaluation scope.
+
+**A rule carrying `variantFilter.filterType = ONLY` is not checked at all.** The same rule with a deliberately unresolvable condition is refused with `MVK_INVALID_ENTITY` when it carries no filter, and ADMITTED when it carries `ONLY`. A12 reports no finding, no warning and no code: the model comes back clean.
+
+**The filter TYPE alone decides; the named variants are irrelevant.** Measured as a within-model 2×2 over `{ONLY, ALL_EXCEPT} × {"premium", ""}`, one broken rule, one variable per cell:
+
+| filter | is the broken rule caught? |
+|---|---|
+| `ONLY ["premium"]` | **no** — ADMITTED |
+| `ONLY [""]` | **no** — ADMITTED, though `""` names the default variant itself |
+| `ALL_EXCEPT ["premium"]` | yes — `MVK_INVALID_ENTITY` |
+| `ALL_EXCEPT [""]` | yes — `MVK_INVALID_ENTITY` |
+
+**Two rival accounts were killed by that grid, and both had survived an earlier version of it.** "A filter merely being present suppresses" dies on the `ALL_EXCEPT` row; "the declaration must belong to the DEFAULT variant" dies on `ONLY [""]`, which names the default variant and is still unchecked. Only the filter type survives. The controls that make the cells readable are a sound rule (admitted either way — liveness) and the same broken rule unfiltered (refused — the break is detectable).
+
+**The source says the same thing and says it to a logger.** `consistency.rules.CodeGenerationRule.checkModel` generates validation code for the default variant, and where `extractUsedVariants(model)` is non-empty it calls `LOG.warn("The given document model {} contains variants. A complete check was done only for the default variant (empty string). Therefore, the check may not be complete.")`. It never calls the problem reporter, and a grep for an `MVK_*` variant code returns nothing — so the incompleteness is real, known upstream, and structurally invisible to every API consumer.
+
+**What this costs us, stated plainly: a clean `checkConsistency` verdict on a model with `ONLY`-filtered declarations is not a clean bill of health**, and that is inherited by everything built on it — `model check`, the F4 oracle, and any report this project publishes. It is not a defect we can fix by checking harder: A12 *accepts* such a model, so reporting an ERROR for the excluded declaration would reject what A12 accepts, which is the one direction a checker must never take. The portable checker's answer is therefore a COVERAGE GAP naming the declaration, which is the honest statement — no verdict about it exists on either side — and the structural counterpart of the Kernel's log line.
+
+**Shape rows, measured on the same carrier.** An unknown `filterType` and a non-object member are UNREADABLE; a missing `filterType` is NOT BUILDABLE (the member is `@NonNull` with no default, so it fails at construction rather than at read); an explicit `null`, an empty `variants` list and a missing `variants` member are all ADMITTED — so `IVariantFilter.getVariants`'s "never null or empty" javadoc is a contract on the accessor, not a law the reader enforces.
+
+**`variantFilter` also rides FIELD elements** (`serializer.FieldSerializer` writes it), a carrier outside this checker's rules-and-computations subject matter and not measured here.
+
+*(Locked: `rulekit.validate.laws.RuleVariantFilterLawsTest`.)*
