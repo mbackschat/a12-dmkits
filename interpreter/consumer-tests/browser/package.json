@@ -8,8 +8,8 @@
     "build:service-worker": "tsc -p tsconfig.service-worker.json",
     "build": "pnpm run check && pnpm run build:scripts && vite build --manifest --base=/a12-interpreter-releases/showcase/ && pnpm run build:service-worker && node build/browser-scripts/write-bundle-size.js",
     "measure:first-answer": "pnpm run build:scripts && node build/browser-scripts/performance.js",
-    "test:performance-policy": "pnpm run build:scripts && node --test build/browser-scripts/performance-policy.test.js",
-    "verify": "pnpm run build && node --test build/browser-scripts/performance-policy.test.js && node build/browser-scripts/smoke.js && node build/browser-scripts/offline.js"
+    "test:scripts": "pnpm run build:scripts && node --test build/browser-scripts/*.test.js",
+    "verify": "pnpm run build && node --test build/browser-scripts/*.test.js && node build/browser-scripts/smoke.js && node build/browser-scripts/offline.js"
   },
   "devDependencies": {
     "@types/node": "20.19.43",

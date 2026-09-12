@@ -117,12 +117,45 @@ export const launchChrome = async (): Promise<Browser> =>
     }),
   );
 
-export const closeChrome = async (browser: Browser): Promise<void> =>
-  withDeadline(
-    "Chrome shutdown",
-    browser.close(),
-    CHROME_SHUTDOWN_DEADLINE_MILLIS,
-  );
+export interface ChromeShutdown {
+  readonly deadlineMillis?: number;
+  readonly report?: (message: string) => void;
+}
+
+/**
+ * Close the browser — and never let TEARDOWN decide qualification.
+ *
+ * Chrome's own exit is slow enough on some hosts to blow any deadline this gate could pick. Measured
+ * 2026-09-12 on macOS 25.6 (arm64): `browser.close()` on an `about:blank` page takes 16.2 s with system
+ * Chrome 153.0.8010.36 and 21.1 s with Chrome for Testing 151.0.7922.34, deterministic to ±5 ms over three
+ * runs and unchanged by `--disable-gpu`. A `pw:browser` trace puts the entire interval between
+ * `<gracefully close start>` and `<process did exit: exitCode=0>` — inside Chrome, after playwright has
+ * asked it to stop — so there is nothing here to fix, and nothing in it is a property of the packaged
+ * artifact this gate qualifies.
+ *
+ * Every measurement is already captured when this runs, and each caller closes in a `finally`, where a
+ * throw REPLACES the run's real outcome: a qualification that passed 33 corpus cases and its first-answer
+ * bar was reported as a failure by its own cleanup. So the deadline is reported and the run continues.
+ * Nothing leaks — the browser still exits on its own and node reaps it (measured the same day: the script
+ * body returned after 2 s, node exited 0 after 17 s, no Chrome process left).
+ */
+export const closeChrome = async (
+  browser: Browser,
+  {
+    deadlineMillis = CHROME_SHUTDOWN_DEADLINE_MILLIS,
+    report = (message: string) => {
+      process.stderr.write(`${message}\n`);
+    },
+  }: ChromeShutdown = {},
+): Promise<void> => {
+  try {
+    await withDeadline("Chrome shutdown", browser.close(), deadlineMillis);
+  } catch (error) {
+    report(
+      `${String(error)} — the browser is still exiting; every measurement was captured before this`,
+    );
+  }
+};
 
 export const withStaticServer = async <T>(
   operation: (url: string) => Promise<T>,
