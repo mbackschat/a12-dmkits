@@ -127,7 +127,12 @@ jobs:
         working-directory: a12-dmkits
         env:
           JAVA_HOME: ${{ env.JAVA_HOME_21_X64 }}
-        run: ./gradlew --no-daemon test :adapter:test :cli:test :cli:publicContractTest :interpreter:allTests :interpreter-bridge:check :consistency:check :schemakit:check :verifyKitPurity :verifyPublishedClasspathsAreKernelFree :noBackendTest -PrunFuzz
+        # The `:interpreter:*` gates are named individually because this workflow runs `:interpreter:allTests`,
+        # not `:interpreter:check` — that lifecycle also drags in dokka, npm packing and Maven staging, which
+        # belong to the release rehearsal. Naming them is what GateTierWiringTest derives and enforces; five of
+        # them ran nowhere at all until 2026-09-12, `verifyInterpreterPurity` — the EUPL import boundary —
+        # among them.
+        run: ./gradlew --no-daemon test :adapter:test :cli:test :cli:publicContractTest :interpreter:allTests :interpreter:verifyInterpreterPurity :interpreter:interpreterRuntimeClosurePolicyTest :interpreter:interpreterAbiGoldenDepthTest :interpreter:verifyInterpreterVersionAlignment :interpreter:verifyInterpreterPerformanceClaims :interpreter-bridge:check :consistency:check :schemakit:check :verifyKitPurity :verifyPublishedClasspathsAreKernelFree :noBackendTest -PrunFuzz
 
       # Both agent plugins (Claude Code, Codex) bundle COPIES of the single-source assets — the skills,
       # installer, and release-asset manifest — synced by scripts/sync-plugin-assets.sh. Fail loudly if any

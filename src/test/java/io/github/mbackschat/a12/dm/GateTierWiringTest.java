@@ -45,11 +45,20 @@ class GateTierWiringTest {
 
     /**
      * <b>A guard that hangs off {@code check} reaches CI only by being NAMED, and this workflow names tasks
-     * one by one.</b> Every gate below holds part of the published kits' kernel-free claim, and each is a
-     * {@code check} dependency rather than a {@code test} one, so dropping its name from the run line silently
-     * retires it. That is not hypothetical: {@code :schemakit:check} appeared in NO lane here until 2026-09-05,
-     * so the fifth published kit's 27 test classes and {@code verifySchemakitPurity} — the guard
-     * SCHEMAKIT-SPEC §1 cites for the module's kernel-free claim — had never once run in CI.
+     * one by one.</b> A {@code check} dependency is not a {@code test} dependency, so a gate absent from the
+     * run line is silently retired. That is not hypothetical, and it has now happened twice:
+     * {@code :schemakit:check} appeared in NO lane until 2026-09-05, so the fifth published kit's 27 test
+     * classes and {@code verifySchemakitPurity} had never once run in CI; and on 2026-09-12 a task-graph diff
+     * (CI 204 tasks against the full {@code check} lifecycle's 295) found five more, including
+     * {@code :interpreter:verifyInterpreterPurity} — the EUPL import boundary that CLAUDE.md calls one of the
+     * two interpreter rules a miss on which is catastrophic.
+     *
+     * <p><b>The denominator is DERIVED, which is the part that matters.</b> The first version of this guard
+     * named five gates in a literal list, and missed the second incident for the reason such a list always
+     * misses one: nothing makes you extend it. So the gates are read out of the build scripts themselves —
+     * every identifier wired into a {@code tasks.named('check')} block, in every module — and each must be
+     * satisfied in CI or carry a written reason here. Adding a gate to {@code check} now fails this test until
+     * it is dispositioned, which is the only version of the rule that cannot go stale.
      *
      * <p><b>The assertion is on the {@code run:} LINE, not on the file.</b> A file-wide {@code contains} is
      * satisfied by the comment above that line explaining why each gate is named there — measured: deleting
@@ -66,12 +75,74 @@ class GateTierWiringTest {
                 })
                 .orElseThrow(() -> new AssertionError("ci.yml runs no gradlew invocation at all"));
 
-        for (String gate : List.of(":verifyKitPurity", ":verifyPublishedClasspathsAreKernelFree",
-                ":schemakit:check", ":interpreter-bridge:check", ":noBackendTest")) {
-            assertTrue(invocation.contains(gate), () -> gate + " must be INVOKED by ci.yml — it hangs off a "
-                    + "`check` this workflow never runs, so a gate missing from the command does not run at "
-                    + "all, however thoroughly the comments describe it. Invocation was: " + invocation);
+        var unreached = new java.util.ArrayList<String>();
+        int derived = 0;
+        for (var module : CHECK_WIRED_BUILD_FILES.entrySet()) {
+            String build = Files.readString(locate(module.getValue()));
+            for (String gate : checkDependencies(build)) {
+                derived++;
+                if (NOT_A_PUSH_CI_GATE.containsKey(gate)
+                        || invocation.contains(":" + gate)
+                        || invocation.contains(module.getKey() + "check")) {
+                    continue;
+                }
+                unreached.add(module.getValue() + ": " + module.getKey() + gate);
+            }
         }
+
+        // Non-vacuity: the estate wires ~24 gates onto `check`, so a detector that finds a handful has stopped
+        // parsing a build script and would report a stranded gate as reached.
+        assertTrue(derived >= 20,
+                "derived only " + derived + " check-wired gates across " + CHECK_WIRED_BUILD_FILES.size()
+                        + " build scripts, so the parse broke and a green result here proves nothing");
+        assertTrue(unreached.isEmpty(),
+                "these gates hang off a `check` that ci.yml never runs, so they execute NOWHERE — name each in "
+                        + "the run line, or give it a reason in NOT_A_PUSH_CI_GATE:\n" + String.join("\n", unreached)
+                        + "\nInvocation was: " + invocation);
+    }
+
+    /** Every build script that wires something onto `check`, keyed by the task prefix CI would have to name. */
+    private static final java.util.Map<String, String> CHECK_WIRED_BUILD_FILES = java.util.Map.of(
+            ":", "build.gradle",
+            ":adapter:", "adapter/build.gradle",
+            ":cli:", "cli/build.gradle",
+            ":interpreter:", "interpreter/build.gradle",
+            ":interpreter-bridge:", "interpreter-bridge/build.gradle",
+            ":consistency:", "consistency/build.gradle",
+            ":schemakit:", "schemakit/build.gradle");
+
+    /**
+     * Gates deliberately outside push CI, each with the reason. A gate belongs here only when running it on
+     * every push would buy nothing — never merely because it is slow, which is an argument for a cheaper gate.
+     */
+    private static final java.util.Map<String, String> NOT_A_PUSH_CI_GATE = java.util.Map.ofEntries(
+            java.util.Map.entry("focusedSelectionGuardTest", "also hangs off root `test`, which CI runs"),
+            java.util.Map.entry("kernelRuntimeClosureReport", "declares itself INFORMATIVE ONLY and promotes no threshold"),
+            java.util.Map.entry("interpreterRuntimeClosure", "produces the measurement interpreterRuntimeClosurePolicyTest asserts on"),
+            java.util.Map.entry("interpreterJsRuntimeClosure", "the JS half of the same producer"),
+            java.util.Map.entry("verifyInterpreterMavenPublication", "release rehearsal: needs a staged Maven repository"),
+            java.util.Map.entry("verifyInterpreterNpmPublication", "release rehearsal: needs a packed npm tarball"),
+            java.util.Map.entry("verifyInterpreterReleaseArtifacts", "release rehearsal: asserts on assembled release assets"),
+            java.util.Map.entry("verifyInterpreterBrowserSizeDocumentation", "release rehearsal: needs the production browser bundle"),
+            java.util.Map.entry("assembleInterpreterPublicMirror", "release step, not a gate"));
+
+    /** Every identifier wired into a {@code tasks.named('check')} block, single-line and braced forms alike. */
+    private static List<String> checkDependencies(String build) {
+        var gates = new java.util.ArrayList<String>();
+        var block = java.util.regex.Pattern.compile("tasks\\.named\\('check'\\)\\s*\\{(.*?)\\n?\\}", java.util.regex.Pattern.DOTALL);
+        var matcher = block.matcher(build);
+        while (matcher.find()) {
+            var names = java.util.regex.Pattern.compile("dependsOn\\s+([A-Za-z0-9_', ]+)").matcher(matcher.group(1));
+            while (names.find()) {
+                for (String name : names.group(1).split(",")) {
+                    String clean = name.strip().replace("'", "");
+                    if (!clean.isEmpty()) {
+                        gates.add(clean);
+                    }
+                }
+            }
+        }
+        return List.copyOf(gates);
     }
 
     @Test
