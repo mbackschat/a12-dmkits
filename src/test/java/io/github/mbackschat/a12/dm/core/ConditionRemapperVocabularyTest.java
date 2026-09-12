@@ -31,9 +31,14 @@ import io.github.mbackschat.a12.dm.rulekit.catalog.OperatorKind;
  * with quoted literals and comments opaque. It never parses a whole condition, which is why its lists are
  * semantic subsets rather than the full terminal set.
  *
- * <p><b>What can be checked, and what cannot.</b> Which keywords introduce a reference position is a
- * judgement about the grammar that no artifact in this repository decides, so the separator lists get a
- * containment check and nothing stronger — asserting the reverse would invent a denominator. The
+ * <p><b>What can be checked, and what cannot.</b> Which keywords introduce a reference position is partly a
+ * judgement about the grammar — but only partly, and the sentence here used to say "no artifact in this
+ * repository decides", which was too strong. The catalog decides one direction outright: every word-shaped
+ * {@code OPERATOR} and {@code PATH_OP} keyword except the reference-group selector IS a separator, and
+ * {@link #everyCatalogSeparatorKeywordIsInTheList} asserts it. That is the corrupting direction — a keyword
+ * silently missing from the list leaves a path unrewritten by a rename, which was demonstrable by deleting
+ * {@code Having} and watching nothing fail. The other direction stays a judgement: {@code In} is a separator
+ * and is in no catalog kind at all, so an equality would invent a denominator. The
  * non-reference atoms are different: they are the identifiers that appear WITHOUT parentheses and are not
  * references, which is precisely the catalog's {@code CONSTANT} kind plus the rule-context entity. That one
  * is an equality in both directions, and it is the valuable half — a constant this list has not learned is
@@ -107,6 +112,54 @@ class ConditionRemapperVocabularyTest {
                     () -> set + " must hold exactly the catalog's constant-kind keywords plus the rule-context "
                             + "entity — a constant missing here is rewritten into a path by the next rename");
         }
+    }
+
+    /**
+     * Every catalog keyword that introduces a reference position is in the separator list.
+     *
+     * <p>The direction that corrupts. A separator missing from the list is not read as a separator, so the
+     * path after it is never rebased and a rename leaves a dangling reference — the same failure mode the
+     * atoms test names, one keyword class over. Deleting {@code Having} from the list used to change nothing.
+     *
+     * <p>The denominator is the catalog's own, not one invented here: the word-shaped members of the
+     * {@code OPERATOR} and {@code PATH_OP} kinds. Symbols are excluded because the remapper scans identifiers,
+     * and the reference-group selector because it carries a sigil the remapper matches separately — both are
+     * declared rather than filtered silently, so a kind gaining a member fails here.
+     */
+    @Test
+    void everyCatalogSeparatorKeywordIsInTheList() {
+        OperatorCatalog catalog = OperatorCatalog.load();
+        for (String language : List.of("EN", "DE")) {
+            Set<String> required = new TreeSet<>();
+            for (OperatorKind kind : List.of(OperatorKind.OPERATOR, OperatorKind.PATH_OP)) {
+                for (OperatorEntry entry : catalog.byKind(kind)) {
+                    OperatorEntry.Keywords keywords = entry.keywords();
+                    String spelling = "EN".equals(language) ? keywords.en() : keywords.de();
+                    if (isWordShaped(spelling) && !REFERENCE_GROUP_SELECTOR.contains(spelling)) {
+                        required.add(spelling);
+                    }
+                }
+            }
+            String set = "EN".equals(language) ? "ENGLISH_REFERENCE_SEPARATORS" : "GERMAN_REFERENCE_SEPARATORS";
+            Set<String> absent = new TreeSet<>(required);
+            absent.removeAll(literalSet(set));
+            assertEquals(Set.of(), absent,
+                    () -> set + " is missing catalog keyword(s) that introduce a reference position, so the "
+                            + "next rename leaves the path after them unrebased");
+            // Without this the loop above passes on an empty catalog kind, which is the vacuity the whole file
+            // exists to avoid — eight operators and two path operators are word-shaped in both languages.
+            assertTrue(required.size() >= 10,
+                    () -> "the catalog's separator kinds came back nearly empty (" + required
+                            + "), so the containment asserted nothing");
+        }
+    }
+
+    /** The lexer spells it with a sigil the remapper matches separately, so the list stores neither form. */
+    private static final Set<String> REFERENCE_GROUP_SELECTOR = Set.of("@From", "@Von");
+
+    /** The catalog's operator kind holds symbols too; the remapper only ever scans identifiers. */
+    private static boolean isWordShaped(String spelling) {
+        return Character.isLetter(spelling.charAt(0));
     }
 
     /**

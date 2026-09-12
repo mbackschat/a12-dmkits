@@ -7,6 +7,7 @@ import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.nio.file.Path;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -24,8 +25,10 @@ import io.github.mbackschat.a12.dm.SourceText;
  * The interpreter's bilingual keyword table holds only real kernel terminals, and every terminal it leaves out
  * is one we can name a reason for.
  *
- * <p><b>Why this exists.</b> {@code ConditionLanguage.GERMAN_TO_CANONICAL} is HAND-WRITTEN — 106 rows against
- * the kernel's 113 EN and 126 DE terminals — and until this test nothing connected it to anything. The catalog
+ * <p><b>Why this exists.</b> {@code ConditionLanguage.GERMAN_TO_CANONICAL} is HAND-WRITTEN, and until this
+ * test nothing connected it to anything. (Its size and the bundles' are pinned by
+ * {@link #theDenominatorsThisGuardComparesAreTheOnesItClaims} rather than stated here: this sentence carried
+ * three figures and all three were wrong.) The catalog
  * has a generator and a diff guard, and {@code :consistency}'s table has
  * {@code ConditionKeywordProjectionTest}; the interpreter's had neither, so a kernel bump or a catalog
  * addition reached it only when someone happened to notice (searched 2026-09-12:
@@ -85,10 +88,11 @@ class InterpreterKeywordProjectionTest {
     /**
      * H-model constructs — multi-form (Vordruck/USB) and bounded row iteration — classified {@code legacy} in
      * {@code docs/GRAMMAR-LEDGER.md} and unreachable from a rulekit-authored model. They exist only in the
-     * German bundle, except {@code #Zeile}, which is a fixed lexer literal in neither.
+     * German bundle. ({@code #Zeile} sat here until 2026-09-12 and is a fixed lexer literal in neither bundle,
+     * so it excused nothing; {@link #everyDeclaredExclusionExcludesARealTerminal} now catches that shape.)
      */
     private static final Set<String> H_MODEL_LEGACY = Set.of(
-            "#Zeile", "AktuelleVordruckNummer", "AnzahlAngegebeneUsb", "AnzahlAngegebenerVordrucke",
+            "AktuelleVordruckNummer", "AnzahlAngegebeneUsb", "AnzahlAngegebenerVordrucke",
             "KeinVordruckAngegeben", "MaximalAngegebenerZeilenindex", "MindestensEinVordruckAngegeben",
             "UsbNichtFortlaufend", "VordruckAngegeben", "VordruckNichtAngegeben", "VordruckNichtFortlaufend",
             "ZeileNichtEindeutig", "ZeilenLueckenlos", "ZeilenNichtAufsteigend");
@@ -155,6 +159,63 @@ class InterpreterKeywordProjectionTest {
                             + "spell it alike, and this bundle no longer agrees: EN=" + en.contains(keyword)
                             + " DE=" + de.contains(keyword));
         }
+    }
+
+    /**
+     * Every declared exclusion actually excludes something — the control the other three classes lacked.
+     *
+     * <p>The four lists are only ever SUBTRACTED, so a member naming nothing is invisible forever: the test
+     * goes on passing and the list goes on reading as a considered set of decisions. {@code #Zeile} sat in
+     * {@link #H_MODEL_LEGACY} that way, in neither bundle, excusing nothing.
+     *
+     * <p>This is the same failure {@link #anIdenticallySpelledTerminalIsTrulyIdenticalInBothBundles} was
+     * written for — an excuse that outlives the fact it rests on — applied to the other three lists, which
+     * did not have it.
+     */
+    @Test
+    void everyDeclaredExclusionExcludesARealTerminal() {
+        Set<String> bundled = new TreeSet<>(kernelTerminals("EN"));
+        bundled.addAll(kernelTerminals("DE"));
+        Map<String, Set<String>> inert = new LinkedHashMap<>();
+        Map<String, Set<String>> lists = new LinkedHashMap<>();
+        lists.put("SAME_SPELLING_IN_BOTH_LANGUAGES", SAME_SPELLING_IN_BOTH_LANGUAGES);
+        lists.put("NOT_A_CONDITION_OPERATOR", NOT_A_CONDITION_OPERATOR);
+        lists.put("DEFERRED_OPERATOR", DEFERRED_OPERATOR);
+        lists.put("H_MODEL_LEGACY", H_MODEL_LEGACY);
+        lists.forEach((name, list) -> {
+            Set<String> dead = new TreeSet<>(list);
+            dead.removeAll(bundled);
+            if (!dead.isEmpty()) {
+                inert.put(name, dead);
+            }
+        });
+        assertEquals(Map.of(), inert,
+                "these names are excused from the interpreter's table but are terminals of neither bundle, so "
+                        + "they exclude nothing — delete them, or the list stops describing real decisions");
+    }
+
+    /**
+     * The sizes this guard rests on, pinned instead of stated in prose.
+     *
+     * <p>The class javadoc carried three of them ("106 rows against the kernel's 113 EN and 126 DE
+     * terminals") and all three were wrong — the row count by ten, and the terminal counts because they were
+     * the CHECKER's generated table rather than the bundles this test reads. A number in a comment is checked
+     * by nobody, which is exactly why it is asserted here and named nowhere else.
+     */
+    @Test
+    void theDenominatorsThisGuardComparesAreTheOnesItClaims() {
+        Map<String, Integer> actual = new LinkedHashMap<>();
+        actual.put("hand-written German→canonical rows", translationTable(uncommented()).size());
+        actual.put("EN terminals in the kernel bundle", kernelTerminals("EN").size());
+        actual.put("DE terminals in the kernel bundle", kernelTerminals("DE").size());
+
+        Map<String, Integer> expected = new LinkedHashMap<>();
+        expected.put("hand-written German→canonical rows", 96);
+        expected.put("EN terminals in the kernel bundle", 112);
+        expected.put("DE terminals in the kernel bundle", 125);
+        assertEquals(expected, actual,
+                "measured against kernel 30.8.1 on 2026-09-12 — a kernel bump moving these is a real signal, "
+                        + "so update the numbers deliberately rather than reading past a stale comment");
     }
 
     /**
