@@ -26,8 +26,9 @@ import org.opentest4j.TestAbortedException;
  * <em>exactly</em> the {@code MVK_*} codes the kernel can report — no missing codes (a kernel
  * upgrade adding diagnostics fails here, proactively) and no stale ones.
  *
- * <p><b>Five sources</b>, and the count is the point: three internal-tier enums (loaded reflectively from the
- * test classpath only — N8: tests may read internal tier), the parser's own MESSAGE BUNDLE, and the
+ * <p><b>Five sources</b>, and the count is the point: four internal-tier enums (loaded reflectively from the
+ * test classpath only — N8: tests may read internal tier), the parser's own MESSAGE BUNDLE — which is the
+ * same six codes as the fourth enum, read twice from independent artifacts so the two must agree — and the
  * {@code MM_Common} metamodel's rules (the deep source — structural laws <em>are</em> metamodel rules;
  * checked opt-in against the sibling {@code a12-kernel-mm} clone).
  *
@@ -77,11 +78,13 @@ class MvkLedgerTest {
     }
 
     /**
-     * The FOURTH source, and the one the ledger was blind to until 2026-09-12.
+     * The source the ledger was blind to until 2026-09-12, and a second reading of the fourth enum.
      *
-     * <p>The three enums above do not contain the codes {@code checkConsistency} actually returns for a
-     * stored condition that does not parse: those live in the parser's own message bundle, and all six of its
-     * keys were missing from the ledger while this test reported the ledger complete. Four of them are
+     * <p>The three enums originally listed here do not contain the codes {@code checkConsistency} actually
+     * returns for a stored condition that does not parse, and all six were missing from the ledger while this
+     * test reported it complete. They were then recorded as living in no enum at all, which was false —
+     * {@code CommonParserErrorTypesEnum} declares exactly these six and is now read above, so this arm is a
+     * cross-check on the same section rather than its only source. Four of them are
      * measured in {@code rulekit.validate.laws.RuleConditionSyntaxLawsTest}.
      *
      * <p>The bundle ships inside {@code kernel-core-parser}, so it is read from the test classpath like the
