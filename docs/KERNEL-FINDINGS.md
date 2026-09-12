@@ -5802,4 +5802,16 @@ A computation's `errorCodesToSuppress` is declared `List<String>` and is not a s
 
 **These six codes are not in any enum — they are a RESOURCE BUNDLE, and the ledger was blind to it.** They live in `kernel-core-parser`'s `internal/vk_parser_common_error_messages/error_messages_en.properties`, not in `ParserErrorTypesEnum` (176 constants, none of them these). `MvkLedgerTest` therefore reported the ledger complete while all six were missing, because its denominator was three enums plus the metamodel. The bundle ships inside the kernel jar, so it is now a fifth source read from the test classpath, and the six codes have ledger rows; the two that no authored input has been found to reach are classified **unmeasured** rather than by analogy.
 
+**Extended 2026-09-12 — the delimiter grid, which decides what a checker can report WITHOUT a grammar.** Only the shape that runs out of input draws `MVK_EXPECTED_TOKEN_NOT_FOUND`; every other imbalance draws `MVK_UNEXPECTED_TOKEN`, because the parser meets a token that is wrong where it stands before the input ends.
+
+| condition text | code |
+|---|---|
+| `FieldFilled(Tier` — everything still open at end of input | `MVK_EXPECTED_TOKEN_NOT_FOUND` |
+| `FieldFilled(Tier))` — an extra closing parenthesis | `MVK_UNEXPECTED_TOKEN` |
+| `FieldFilled([Tier)` — an unclosed value bracket | `MVK_UNEXPECTED_TOKEN` |
+| `FieldFilled(Tier]` — a bracket closing a parenthesis | `MVK_UNEXPECTED_TOKEN` |
+| `FieldFilled(Tier)]` — a stray closing bracket | `MVK_UNEXPECTED_TOKEN` |
+
+The consequence is a negative result worth as much as a positive one: **the distinction is positional, not arithmetic**, so counting delimiters detects an imbalance but cannot pick which of the two codes A12 gives — it would be wrong on three of these five. A planned checker increment that would have reported delimiter balance without a grammar was withdrawn on this grid.
+
 *Locked by:* `rulekit.validate.laws.RuleConditionSyntaxLawsTest` (the grid above, with a valid-condition liveness control) and `MvkLedgerTest.ledgerCoversTheParserMessageBundleExactly` (the source that was missing, with an empty-denominator control so a bundle that resolved but carried nothing could not pass vacuously).

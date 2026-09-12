@@ -394,8 +394,10 @@ The tokenizer's own two departures from a naive lexer stand, and each now has a 
 | increment | decidable from | over-rejection risk | state |
 |---|---|---|---|
 | **lexical** — the text tokenizes at all | the characters alone | none: a lexical failure does not depend on the grammar | **landed** (`CheckFamily.CONDITION_LEXICALITY`) |
-| **balanced structure** — delimiters pair up | token sequence, no grammar | low | open |
+| ~~**balanced structure** — delimiters pair up~~ | — | — | **WITHDRAWN, measured 2026-09-12** |
 | **grammatical** — the tokens form a condition A12 accepts | the full grammar | **high — this is the one that can reject a legal model** | open |
+
+**The middle increment was withdrawn the day it was planned, and the reason generalizes.** It assumed a delimiter imbalance could be reported without a grammar by counting. A12 does not partition the failures that way: only the shape where the input ENDS with something still open draws `MVK_EXPECTED_TOKEN_NOT_FOUND`, while an unclosed value bracket (`FieldFilled([Tier)`) and a bracket closing a parenthesis (`FieldFilled(Tier]`) both draw `MVK_UNEXPECTED_TOKEN` — the parser meets a token that is wrong where it stands before it ever runs out of input. The distinction is POSITIONAL, not arithmetic, so counting can detect an imbalance but never pick which of the two codes A12 gives, and a checker that guessed would report the wrong one on three of the five measured shapes. Two of the five predictions in that grid were wrong in exactly this way. The layer is therefore two phases, not three.
 
 **The first increment reports only the shape that was measured.** An unterminated string literal, which the checker's tokenizer already recognized and the report simply never surfaced. A12's own message text ("Character '%s' at position %d is incorrect") shows it also refuses illegal CHARACTERS, and which those are is unmeasured — `@@@` lexes cleanly and fails a phase later — so nothing is claimed about them and the report carries a gap saying exactly that.
 

@@ -77,6 +77,42 @@ class RuleConditionSyntaxLawsTest {
         assertEquals(expected, actual, "A12's verdict on condition text that does not parse");
     }
 
+    /**
+     * The DELIMITER grid, and it settles that a balanced-delimiter check CANNOT pick A12's code.
+     *
+     * <p>The question was whether a checker increment could report delimiter imbalance without a grammar, by
+     * counting. It cannot. Only the shape where the input ENDS with something still open draws
+     * {@code MVK_EXPECTED_TOKEN_NOT_FOUND}; every other imbalance draws {@code MVK_UNEXPECTED_TOKEN},
+     * because the parser meets a token that is wrong where it stands before it ever runs out of input. Two of
+     * the five predictions here were wrong in exactly that way — an unclosed value bracket and a bracket
+     * closing a parenthesis both LOOK like "something is missing" and are both reported as "this token is
+     * unexpected".
+     *
+     * <p>So the distinction A12 draws is positional, not arithmetic: counting tells you an imbalance exists,
+     * never which of the two codes it is. A middle increment between lexing and parsing was planned on the
+     * opposite assumption and was withdrawn on this grid.
+     */
+    @Test
+    void whichCodeEachDelimiterImbalanceDraws() {
+        Map<String, String> actual = new LinkedHashMap<>();
+        actual.put("an unclosed call — the control", verdict("FieldFilled(Tier"));
+        actual.put("an extra closing parenthesis", verdict("FieldFilled(Tier))"));
+        actual.put("an unclosed value bracket", verdict("FieldFilled([Tier)"));
+        actual.put("a bracket closing a parenthesis", verdict("FieldFilled(Tier]"));
+        actual.put("a stray closing bracket", verdict("FieldFilled(Tier)]"));
+
+        Map<String, String> expected = new LinkedHashMap<>();
+        // The ONLY row that runs out of input: everything opened is still open when the text ends.
+        expected.put("an unclosed call — the control", "MVK_EXPECTED_TOKEN_NOT_FOUND");
+        expected.put("an extra closing parenthesis", "MVK_UNEXPECTED_TOKEN");
+        // Both of these are delimiter imbalances that a counter would group with the control, and A12 does
+        // not: it meets `Tier` where it wanted `]`, and `]` where it wanted `)`, and reports the token.
+        expected.put("an unclosed value bracket", "MVK_UNEXPECTED_TOKEN");
+        expected.put("a bracket closing a parenthesis", "MVK_UNEXPECTED_TOKEN");
+        expected.put("a stray closing bracket", "MVK_UNEXPECTED_TOKEN");
+        assertEquals(expected, actual, "which parse code each delimiter imbalance draws");
+    }
+
     private static String verdict(String condition) {
         return KernelLaws.verdictOf(ModelWriter.addRule(Fixtures.subscriptionJson(), "/Subscription",
                 "SyntaxProbe", "../Tier", "PROBE", condition, "ERROR", List.of(en("x"), de("y"))));
