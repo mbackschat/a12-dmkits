@@ -101,8 +101,8 @@ final class AuthoredStateReader {
     /**
      * Whether a mount directive drops the included executables: the JSON literal {@code true} and nothing else.
      * A12 reads these two members with {@code JsonNode.booleanValue()}, which is false for every non-Boolean,
-     * whereas Jackson's {@code asBoolean(false)} coerces {@code "true"} and any non-zero number — so the
-     * coercion reported an exclusion the Kernel never applies (measured 2026-09-12,
+     * whereas Jackson's {@code asBoolean(false)} coerces {@code "true"} and {@code 1} — so the coercion
+     * reported an exclusion the Kernel never applies (measured 2026-09-12,
      * {@code WorkspaceIncludeStructureKernelTest}).
      */
     private static boolean excludes(ObjectNode body, String directive) {

@@ -171,9 +171,15 @@ ${sourceArms}
         else -> error("unknown workspace matrix case: \$caseId")
     }
 
-    /** The expanded element set the Kernel and the JVM reader agree on: path -> `{id, elementType, ...}`. */
-    fun preparedElements(caseId: String): String = when (caseId) {
-${arm { literal(groovy.json.JsonOutput.toJson(it.preparedElements)) }}
+    /**
+     * The expanded element set as `path -> {elementType, facts}`.
+     *
+     * This projection and not the sibling `preparedElements`: it is the one built from the surface whose
+     * equality with the real Kernel `assertEquivalent` asserts, where the other is derived from the JVM
+     * reader's emitted ids. The two agree today, and only this one is locked to say so.
+     */
+    fun preparedStructure(caseId: String): String = when (caseId) {
+${arm { literal(groovy.json.JsonOutput.toJson(it.preparedStructure)) }}
         else -> error("unknown workspace matrix case: \$caseId")
     }
 }

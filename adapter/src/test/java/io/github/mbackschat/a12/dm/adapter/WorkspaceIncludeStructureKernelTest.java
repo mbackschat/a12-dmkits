@@ -438,8 +438,12 @@ class WorkspaceIncludeStructureKernelTest {
      * <p>The row set exists to defeat the confound the earlier single-value version carried: it measured
      * {@code {}} alone, which is one of the shapes Jackson's {@code asBoolean} also reads as false, so a
      * reader coercing the member agreed with the Kernel on every row while diverging on {@code "true"} and
-     * {@code 1}. The spellings below sit on both sides of that coercion. {@code false} and {@code true} are
-     * the polarity controls, so a reader that dropped every executable would not pass either.
+     * {@code 1}. The spellings below sit on both sides of that coercion — measured on the pinned
+     * jackson-databind 2.18.2 (2026-09-12), {@code asBoolean} takes {@code "true"} and {@code " true "} but
+     * not {@code "True"} or {@code "1"}, and a number by its INT value, so {@code 1} coerces and {@code 0.5}
+     * does not. Without the near-misses the set would share one unnamed constant and would read as a claim
+     * about all strings and all non-zero numbers. {@code false} and {@code true} are the polarity controls,
+     * so a reader that dropped every executable would not pass either.
      */
     @Test
     void onlyTheJsonBooleanTrueExcludesAnIncludedExecutable() {
@@ -449,8 +453,12 @@ class WorkspaceIncludeStructureKernelTest {
                 MAPPER.getNodeFactory().booleanNode(true),
                 MAPPER.getNodeFactory().booleanNode(false),
                 MAPPER.getNodeFactory().textNode("true"),
+                MAPPER.getNodeFactory().textNode(" true "),
+                // The rows where the coercion AGREES with the Kernel, and the second diverging string.
+                MAPPER.getNodeFactory().textNode("True"),
                 MAPPER.getNodeFactory().textNode("yes"),
                 MAPPER.getNodeFactory().numberNode(1),
+                MAPPER.getNodeFactory().numberNode(new BigDecimal("0.5")),
                 MAPPER.getNodeFactory().numberNode(0),
                 MAPPER.getNodeFactory().nullNode(),
                 MAPPER.createObjectNode(),

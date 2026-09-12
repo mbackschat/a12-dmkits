@@ -8,7 +8,7 @@ import kotlin.test.assertTrue
 
 /**
  * Preparation reuses what it already holds — the parse-once half of the checker's snapshot contract
- * ([PORTABLE-CONSISTENCY-PROPOSAL §5.6](../../../../../../../docs/PORTABLE-CONSISTENCY-PROPOSAL.md)).
+ * (PORTABLE-CONSISTENCY-PROPOSAL §5.6).
  *
  * **Identity is the instrument, because it is the only honest counter available.** A reparse or a defensive
  * copy produces an equal tree, so equality cannot tell the two apart; a retained node is the SAME object and
@@ -18,7 +18,7 @@ import kotlin.test.assertTrue
  * The rows are the two halves of §5.6's sentence about a declaration mounted at several scopes: reuse its
  * syntax, resolve each mount separately. A checker that copied per mount would pay for every mount instance;
  * one that shared the binding would resolve a provider's reference against the wrong subtree — the defect the
- * mount-instance denominator already cost once ([KF287](../../../../../../../docs/KERNEL-FINDINGS.md#kf287)).
+ * mount-instance denominator already cost once (KERNEL-FINDINGS KF287).
  *
  * The workspace is the Kernel-locked `same-alias-mounted-twice` case rather than a fixture written here, so a
  * shape this claim depends on cannot be quietly simplified; [WorkspaceMatrixReconciliationTest] holds its

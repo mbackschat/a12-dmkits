@@ -123,7 +123,7 @@ class IncludeExcludeRulesTest {
 
     /**
      * A directive spelled as the JSON STRING {@code "true"} is not an exclusion — A12 reads these members with
-     * {@code JsonNode.booleanValue()}, measured across nine spellings by
+     * {@code JsonNode.booleanValue()}, measured across twelve spellings by
      * {@code WorkspaceIncludeStructureKernelTest} — so the authored state a consumer reads back must not claim
      * one. Jackson's {@code asBoolean} coerces the string, which made {@code authoredState()} (and the model
      * review built on it) report a mount as dropping rules the Kernel keeps.

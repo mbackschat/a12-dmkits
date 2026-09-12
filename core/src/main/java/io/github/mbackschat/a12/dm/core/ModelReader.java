@@ -403,8 +403,9 @@ public final class ModelReader {
      *
      *  <p>A12 reads these two members with {@code JsonNode.booleanValue()} (kernel serializer
      *  {@code ElementDeserializer}), which is false for every non-Boolean. Jackson's {@code asBoolean(false)}
-     *  instead coerces {@code "true"} and any non-zero number, so it would drop a rule the Kernel keeps —
-     *  measured 2026-09-12 across nine spellings by {@code WorkspaceIncludeStructureKernelTest}. */
+     *  instead coerces {@code "true"} and {@code 1}, so it would drop a rule the Kernel keeps — measured
+     *  2026-09-12 across twelve spellings by {@code WorkspaceIncludeStructureKernelTest}, which carries the
+     *  near-misses ({@code "True"}, {@code 0.5}) that the coercion happens to read the same way. */
     private static boolean excludes(ObjectNode mountBody, String directive) {
         return mountBody.path(directive).isBoolean() && mountBody.path(directive).booleanValue();
     }
