@@ -3,6 +3,7 @@ package io.github.mbackschat.a12.dm.consistency
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertIs
+import kotlin.test.assertTrue
 
 /**
  * A group's `indexFieldName` and `sortFields[].name` — the two members every earlier report named as
@@ -87,6 +88,38 @@ class GroupOrderingReferenceTest {
             "an absolute path" to unusable,
         )
         assertEquals(expected, actual, "a group's indexFieldName")
+    }
+
+    /**
+     * An absolute spelling is named for what it is, not for what it fails to find.
+     *
+     * It draws the same CODE as an unresolvable relative one — both leave the model unusable — so the code
+     * table above cannot tell the two apart, and without this the branch that recognises it is unobservable.
+     * The distinction is worth keeping because the corrective differs: an absolute path is not a spelling of
+     * this slot at all, where an unresolvable relative one asks the author to name an existing field.
+     */
+    @Test
+    fun anAbsoluteSpellingIsExplainedAsAnIllegalRelativePath() {
+        val explain = prepare(
+            assertIs<Admission.Admitted>(
+                admit(
+                    ModelSource(
+                        """
+                        {"header":{"id":"catalog","locales":[{"code":"en_US"}]},
+                         "content":{"modelRoot":{"rootGroups":[
+                          {"type":"Group","id":"g0","name":"Catalog","Group":{"elements":[
+                            {"type":"Group","id":"g1","name":"Items","Group":{
+                              "indexFieldName":"/Catalog/Items/Sku","elements":[
+                              {"type":"Field","id":"f1","name":"Sku","Field":{}}
+                            ]}}
+                          ]}}
+                         ]}}}
+                        """.trimIndent(),
+                    ),
+                ),
+            ),
+        ).groupOrderingFindings().single().explain
+        assertTrue("illegal relative path" in explain, explain)
     }
 
     /**
