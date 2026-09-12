@@ -335,3 +335,141 @@ tasks.register('verifyConditionKeywords') {
 }
 
 tasks.named('check') { dependsOn 'verifyConditionKeywords' }
+
+// ─────────────────────────────────────────────────────────────────────────────────────────────────────────
+// The condition CORPUS: the catalog's own DSL, as data, so a Kernel-free module can be held to it.
+//
+// Every text here is one the real Kernel accepts — the catalog's examples are CI-executed against it — which
+// makes the corpus an over-rejection gate rather than a restatement: a syntax family that reports anything
+// about any of these texts is rejecting a condition A12 admits, the one direction this checker must never
+// take. The `invalidExample` texts belong in it for the reason their name hides: they are grammatically
+// VALID and fail on MEANING (`[CustomerName] <= [ProductCode]` parses perfectly and is a type error), so
+// measured, 0 of them carries a parse code.
+//
+// Generated into `build/` rather than the committed tree, like the workspace matrix beside it: an artifact
+// that cannot drift from its source by construction needs no diff guard, and unlike the keyword table this
+// one is not read by humans or cited in findings.
+//
+// The German half is localized HERE, from the catalog's own bilingual keyword pairs, because the runtime
+// localizer lives in :adapter and this module may not depend on it. That makes the localization a second
+// implementation, so the corpus is built to police itself: `ConditionCorpusTest` tokenizes each German text
+// against its English original and requires the same token kinds in the same order with identical string
+// literals, which is what a substitution leaking into a literal or eating a delimiter would break.
+def generatedCorpusDir = layout.buildDirectory.dir('generated/conditionCorpus/commonTest/kotlin').get().asFile
+def generatedCorpus = new File(generatedCorpusDir,
+        'io/github/mbackschat/a12/dm/consistency/ConditionCorpus.kt')
+
+// Substitute English operator keywords for their German spellings outside string literals and quoted names.
+// `@From` is handled first because it is the one keyword whose first character is not a letter.
+def localizeGerman = { String english, Map<String, String> keywords, Set<String> used ->
+    def out = new StringBuilder(english.length())
+    int position = 0
+    boolean quoted = false
+    boolean pathQuoted = false
+    while (position < english.length()) {
+        char current = english.charAt(position)
+        if (current == '"' as char && !pathQuoted) {
+            quoted = !quoted
+            out.append(current)
+            position++
+        } else if (current == '\'' as char && !quoted) {
+            pathQuoted = !pathQuoted
+            out.append(current)
+            position++
+        } else if (!quoted && !pathQuoted && english.startsWith('@From', position)) {
+            out.append('@Von')
+            used.add('@From')
+            position += '@From'.length()
+        } else if (!quoted && !pathQuoted && (Character.isLetter(current) || current == '_' as char)) {
+            int end = position + 1
+            while (end < english.length() &&
+                    (Character.isLetterOrDigit(english.charAt(end)) || english.charAt(end) == '_' as char)) {
+                end++
+            }
+            def word = english.substring(position, end)
+            def german = keywords[word]
+            if (german != null) {
+                used.add(word)
+            }
+            out.append(german ?: word)
+            position = end
+        } else {
+            out.append(current)
+            position++
+        }
+    }
+    return out.toString()
+}
+
+def renderConditionCorpus = { File catalog ->
+    def operators = new groovy.json.JsonSlurper().parse(catalog).operators
+    def literal = { value -> groovy.json.JsonOutput.toJson(value).replace('$', '\\$') }
+    def keywords = [:]
+    operators.each { op ->
+        def english = op.keywords?.en
+        def german = op.keywords?.de
+        if (english && german && english ==~ /^[A-Za-z_][A-Za-z0-9_]*$/) {
+            keywords[english] = german
+        }
+    }
+    keywords['RuleGroup'] = 'RegelKontext'
+    def used = [] as Set
+    def rows = { String member, Closure<String> pick ->
+        operators.findResults { op ->
+            def text = pick(op)
+            text ? [id: op.id, member: member, en: text, de: localizeGerman(text, keywords, used)] : null
+        }
+    }
+    def conditions = rows('validExample', { it.validExample?.dsl }) +
+            rows('invalidExample', { it.invalidExample?.dsl })
+    def operations = rows('computationExample', { it.computationExample?.operation })
+    def render = { List entries ->
+        entries.collect {
+            "        Corpus(${literal(it.id + ':' + it.member)}, ${literal(it.en)}, ${literal(it.de)}),"
+        }.join('\n')
+    }
+    def unused = (keywords.keySet() - used).sort()
+    return """package io.github.mbackschat.a12.dm.consistency
+
+/**
+ * GENERATED by `:consistency:generateConditionCorpus` from `rulekit/src/main/resources/catalog/operators.json`.
+ *
+ * Every text is one the real Kernel accepts: the catalog's examples are executed against it in CI. That is
+ * what makes this an over-rejection gate — a syntax family reporting anything here is refusing a condition
+ * A12 admits. `invalidExample` texts are included deliberately: they are grammatically valid and fail on
+ * MEANING, so they belong in the accept population despite the name.
+ *
+ * @param de the English text with its operator keywords localized. `ConditionCorpusTest` holds the pair to
+ *     the same token shape, which is what keeps a build-time substitution from silently corrupting a text.
+ */
+internal data class Corpus(val id: String, val en: String, val de: String)
+
+internal object ConditionCorpus {
+    /** Rule conditions — the `validExample` and `invalidExample` texts. */
+    fun conditions(): List<Corpus> = listOf(
+${render(conditions)}
+    )
+
+    /** Computation operations, which A12 parses with the expression entry rather than the condition one. */
+    fun operations(): List<Corpus> = listOf(
+${render(operations)}
+    )
+
+    /** Bilingual keyword pairs no example exercises, so the German arm cannot silently cover nothing. */
+    fun keywordsNoExampleLocalizes(): List<String> = listOf(${unused.collect(literal).join(', ')})
+}
+"""
+}
+
+def generateConditionCorpus = tasks.register('generateConditionCorpus') {
+    description = 'Embeds the rulekit catalog\'s DSL examples, English and localized, for common tests.'
+    inputs.file(catalogFile)
+    outputs.file(generatedCorpus)
+    doLast {
+        generatedCorpus.parentFile.mkdirs()
+        generatedCorpus.text = renderConditionCorpus(catalogFile)
+    }
+}
+kotlin.sourceSets.commonTest.kotlin.srcDir(generatedCorpusDir)
+tasks.named('compileTestKotlinJvm') { dependsOn generateConditionCorpus }
+tasks.named('compileTestKotlinJs') { dependsOn generateConditionCorpus }
