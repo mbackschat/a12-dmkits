@@ -187,7 +187,7 @@ internal fun check(
         )
     }
     val declared = prepared.declaredReferences()
-    val findings = declared.mapNotNull { it.target.asFinding(it.role, it.declaredAt) } +
+    val judged = declared.mapNotNull { it.target.asFinding(it.role, it.declaredAt) } +
         prepared.conditionReferences().mapNotNull {
             it.target.asFinding(ReferenceRole.CONDITION_ENTITY, it.declaredAt, it.member)
         } + prepared.declarationSlotFindings() + prepared.computationAlternativeFindings() +
@@ -195,6 +195,7 @@ internal fun check(
         prepared.ruleConditionAndTargetFindings() + prepared.variantFilterFindings() +
         prepared.conditionLexicalFindings() + prepared.conditionCompletenessFindings() +
         prepared.elementNameFindings() + prepared.groupOrderingFindings()
+    val findings = judged.notSuppressedBy(prepared.variantFilterSuppressed())
     return ConsistencyReport(
         modelId = admitted.modelId,
         status = statusOf(findings),
@@ -210,6 +211,23 @@ internal fun check(
         gaps = prepared.gaps() + prepared.emptyFactBase() + findings.buildBlocked() +
             prepared.variantFilterGaps() + UNREAD_MEMBERS + UNIMPLEMENTED_FAMILIES,
     )
+}
+
+/**
+ * Drops the findings A12 never reaches, because a variant filter took the declaration out of its check.
+ *
+ * Reporting them would reject a model the Kernel ADMITS, which is the one direction this checker must never
+ * take — and it is a direction no family can see on its own, since each is correct about the declaration it
+ * read and wrong only about whether A12 read it too. Hence the filter applies once, to the composed list.
+ *
+ * **[CK_MODEL_NOT_BUILDABLE] survives deliberately**, on a measured row rather than on symmetry: an
+ * `ONLY`-filtered rule with an empty `errorCode` still refuses the model ([variantFilterSuppressed]). A filter
+ * hides what A12 would SAY ABOUT a declaration and cannot rescue a model that fails to load, so a finding of
+ * the second kind is not this filter's to hide. A model-level finding has no declaration to be filtered and
+ * is kept for the same reason.
+ */
+private fun List<Finding>.notSuppressedBy(suppressed: Set<String>): List<Finding> = filter {
+    it.code == CK_MODEL_NOT_BUILDABLE || it.at == null || it.at !in suppressed
 }
 
 /**
@@ -279,6 +297,12 @@ private val UNREAD_MEMBERS = listOf(
             "so `MVK_UNEXPECTED_TOKEN` and `MVK_EXPECTED_TOKEN_NOT_FOUND` are never reported, and the text " +
             "a checker cannot yet judge includes a dangling path operator and every wrong-token shape. " +
             "A12's illegal-CHARACTER class is unmeasured and also unreported",
+    ),
+    CoverageGap(
+        at = null,
+        reason = "a `variantFilter` on a FIELD is neither judged nor counted as excluding anything — the " +
+            "member rides field declarations too, and what A12 does with it there is unmeasured, so a rule " +
+            "measured on the rules-and-computations carrier is not transferred to it",
     ),
     CoverageGap(
         at = null,

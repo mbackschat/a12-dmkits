@@ -99,6 +99,69 @@ class RuleVariantFilterLawsTest {
         assertEquals(expected, actual, "whether a variant filter takes a rule out of A12's check");
     }
 
+    /**
+     * WHICH KINDS of break an {@code ONLY} filter hides — the scope question the checker has to answer.
+     *
+     * <p>The grid above measured one break: a condition naming an entity that does not exist. A checker that
+     * suppresses its whole report for an {@code ONLY}-filtered declaration is transferring that one row to
+     * every other family it runs, and the transfer is exactly the kind this repository has got wrong before —
+     * it needs no new branch, so nothing prompts the question. So each break is measured on its own, twice:
+     * unfiltered, which proves the break is detectable at all, and under {@code ONLY}.
+     *
+     * <p><b>The answer is that it hides every VERDICT, and the exception is what a checker must be built
+     * around.</b> Six of the seven breaks go silent — the condition's references, all three ways its text can
+     * fail to parse, the error target, and the error messages — so there is no surviving subset a checker
+     * could go on judging. The seventh does not: an empty {@code errorCode} still refuses the model, and it
+     * does so with NO {@code MVK_*} code at all, where unfiltered it reports {@code MVK_ERROR_CODE_MISSING}.
+     *
+     * <p>That row draws the line the fix rests on: a filter suppresses what A12 would SAY ABOUT a
+     * declaration, and cannot rescue a model that fails to BUILD. Three predictions were wrong here, all in
+     * the same direction — the declaration's own slots were expected to be judged regardless, on the theory
+     * that a consistency rule reading them never consults variants — which is why the scope was measured per
+     * break instead of transferred from the one reference row that was already in hand.
+     */
+    @Test
+    void whichKindsOfBreakAnOnlyFilterHides() {
+        Map<String, String> actual = new LinkedHashMap<>();
+        actual.put("a sound rule — the liveness control", verdict(Break.NOTHING, null));
+        actual.put("a sound rule under ONLY — the filter alone breaks nothing", verdict(Break.NOTHING, ONLY_PREMIUM));
+        for (Break broken : Break.values()) {
+            if (broken != Break.NOTHING) {
+                actual.put(broken.label + ", unfiltered", verdict(broken, null));
+                actual.put(broken.label + ", ONLY", verdict(broken, ONLY_PREMIUM));
+            }
+        }
+
+        Map<String, String> expected = new LinkedHashMap<>();
+        expected.put("a sound rule — the liveness control", KernelLaws.ADMITTED);
+        expected.put("a sound rule under ONLY — the filter alone breaks nothing", KernelLaws.ADMITTED);
+        // The anchor row, repeated from the grid above so this grid carries its own reference case.
+        expected.put("a condition naming no entity, unfiltered", "MVK_INVALID_ENTITY");
+        expected.put("a condition naming no entity, ONLY", KernelLaws.ADMITTED);
+        // The three condition-TEXT breaks: all three go silent, so the filter covers the whole syntax layer
+        // and not merely the reference family.
+        expected.put("a condition that cannot be parsed, unfiltered", "MVK_EXPECTED_TOKEN_NOT_FOUND");
+        expected.put("a condition that cannot be parsed, ONLY", KernelLaws.ADMITTED);
+        expected.put("a condition that ends early, unfiltered", "MVK_INCOMPLETE_INPUT");
+        expected.put("a condition that ends early, ONLY", KernelLaws.ADMITTED);
+        expected.put("a condition that cannot be tokenized, unfiltered", "MVK_LEXER_STANDARD_ERROR");
+        expected.put("a condition that cannot be tokenized, ONLY", KernelLaws.ADMITTED);
+        // The declaration's own slots go silent too — so the filter is not scoped to the condition, and a
+        // checker cannot keep judging "the parts A12 still looks at", because there are none.
+        expected.put("an error target naming no field, unfiltered", "MVK_ERROR_FIELD_MISSING,MVK_MISSING_ERROR_FIELD");
+        expected.put("an error target naming no field, ONLY", KernelLaws.ADMITTED);
+        expected.put("no error message at all, unfiltered", "MVK_ERROR_MESSAGE_MISSING");
+        expected.put("no error message at all, ONLY", KernelLaws.ADMITTED);
+        // THE EXCEPTION, and the row that shapes the fix: an empty error code still refuses the model, with
+        // no MVK code at all rather than the one it carries unfiltered. A filter suppresses A12's VERDICTS
+        // about a declaration; it cannot rescue a model that fails to BUILD. So a checker must go silent
+        // about what A12 would have judged while keeping the findings that say the model does not load —
+        // and it must not reproduce `MVK_ERROR_CODE_MISSING` here, which A12 stops reporting.
+        expected.put("an empty error code, unfiltered", "MVK_ERROR_CODE_MISSING");
+        expected.put("an empty error code, ONLY", KernelLaws.NOT_BUILDABLE);
+        assertEquals(expected, actual, "which kinds of break an ONLY variant filter hides");
+    }
+
     @Test
     void whatA12DoesWithEachVariantFilterShape() {
         Map<String, String> actual = new LinkedHashMap<>();
@@ -123,6 +186,54 @@ class RuleVariantFilterLawsTest {
         expected.put("an explicit null", KernelLaws.ADMITTED);
         expected.put("a string instead of an object", KernelLaws.UNREADABLE);
         assertEquals(expected, actual, "what A12 does with each shape of a rule's variantFilter");
+    }
+
+    /**
+     * One way of breaking the probe rule, each detectable on its own when the rule carries no filter.
+     *
+     * <p>An enum rather than four string parameters: the slots are all {@code String}, so a positional helper
+     * would be silently swap-prone, and each constant names the defect a reader has to hold in mind.
+     */
+    private enum Break {
+        NOTHING("a sound rule"),
+        CONDITION_ENTITY("a condition naming no entity"),
+        UNPARSEABLE_CONDITION("a condition that cannot be parsed"),
+        INCOMPLETE_CONDITION("a condition that ends early"),
+        UNLEXABLE_CONDITION("a condition that cannot be tokenized"),
+        ERROR_TARGET("an error target naming no field"),
+        ERROR_MESSAGES("no error message at all"),
+        // Last because it is the one break the filter does NOT hide, and the grid reads as its punchline.
+        ERROR_CODE("an empty error code");
+
+        private final String label;
+
+        Break(String label) {
+            this.label = label;
+        }
+
+        private void applyTo(ObjectNode rule) {
+            switch (this) {
+                case NOTHING -> { }
+                case CONDITION_ENTITY -> rule.put("errorCondition", BROKEN);
+                case UNPARSEABLE_CONDITION -> rule.put("errorCondition", "FieldFilled(Tier");
+                case INCOMPLETE_CONDITION -> rule.put("errorCondition", "FieldFilled(Tier) And");
+                case UNLEXABLE_CONDITION -> rule.put("errorCondition", "FieldFilled(\"Tier)");
+                case ERROR_TARGET -> rule.put("errorEntityRelPath", "../NoSuchFieldAnywhere");
+                case ERROR_CODE -> rule.put("errorCode", "");
+                case ERROR_MESSAGES -> rule.putArray("errorMessage");
+            }
+        }
+    }
+
+    /** What A12 says about the probe model whose rule is broken in one way and filtered (or not). */
+    private static String verdict(Break broken, String filterJson) {
+        try {
+            ObjectNode root = (ObjectNode) MAPPER.readTree(probe(SOUND, filterJson));
+            broken.applyTo(ruleBody(root));
+            return KernelLaws.verdictOf(root.toString());
+        } catch (IOException unreadable) {
+            throw new UncheckedIOException("the probe's own output must parse", unreadable);
+        }
     }
 
     /** What A12 says about the probe model whose rule carries [condition] and [filterJson] (absent when null). */

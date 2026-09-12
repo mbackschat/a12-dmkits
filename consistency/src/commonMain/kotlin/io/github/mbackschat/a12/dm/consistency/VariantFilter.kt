@@ -26,19 +26,37 @@ import kotlinx.serialization.json.JsonPrimitive
  * reintroduce exactly the account the measurement killed.
  */
 fun PreparedModel.variantFilterGaps(): List<CoverageGap> =
-    filterable().mapNotNull { element ->
-        val declared = element.body?.get("variantFilter")
-        if (declared is JsonObject && declared.filterType() == SUPPRESSING_FILTER) {
-            CoverageGap(
-                at = element.path,
-                reason = "this declaration carries a `$SUPPRESSING_FILTER` variant filter, and A12 excludes " +
-                    "such a declaration from `checkConsistency` altogether — it was not examined here either, " +
-                    "and a clean verdict about this model does not cover it",
-            )
-        } else {
-            null
-        }
+    suppressed().map { element ->
+        CoverageGap(
+            at = element.path,
+            reason = "this declaration carries a `$SUPPRESSING_FILTER` variant filter, and A12 excludes " +
+                "such a declaration from `checkConsistency` altogether — it was not examined here either, " +
+                "and a clean verdict about this model does not cover it",
+        )
     }
+
+/**
+ * The declarations A12 reaches no verdict about, so this checker reports none either.
+ *
+ * **Measured per break rather than transferred from the one reference row.** Seven ways of breaking a filtered
+ * rule were run against the Kernel, unfiltered and under `ONLY` ([KERNEL-FINDINGS KF299],
+ * `rulekit.validate.laws.RuleVariantFilterLawsTest`): an unresolvable condition reference, all three ways the
+ * condition text can fail to parse, an error target naming no field, and an absent error message are ALL
+ * admitted under the filter. There is no surviving subset to go on judging, which is why this suppresses the
+ * whole declaration instead of one family — three predictions that the declaration's own slots would still be
+ * judged were wrong, and a checker built on them would have reported six findings A12 does not make.
+ *
+ * **The seventh break is why [CK_MODEL_NOT_BUILDABLE] is exempt at the call site.** An empty `errorCode` still
+ * refuses the model under `ONLY`, carrying no `MVK_*` code at all. A filter suppresses what A12 SAYS ABOUT a
+ * declaration; it cannot rescue a model that fails to BUILD — so a finding that the model does not load is
+ * not a verdict this filter can hide, and dropping it would report a model A12 refuses as merely unexamined.
+ */
+fun PreparedModel.variantFilterSuppressed(): Set<String> = suppressed().map { it.path }.toSet()
+
+private fun PreparedModel.suppressed(): List<DeclaredElement> = filterable().filter { element ->
+    val declared = element.body?.get("variantFilter")
+    declared is JsonObject && declared.filterType() == SUPPRESSING_FILTER
+}
 
 /** The shapes A12's own reader refuses, where the model never loads and no verdict about it exists. */
 fun PreparedModel.variantFilterFindings(): List<Finding> =

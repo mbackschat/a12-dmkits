@@ -18,30 +18,41 @@ import kotlin.test.assertTrue
  */
 class VariantFilterTest {
 
-    /** [filterJson] is spliced raw into the named declaration, or omitted when null. */
-    private fun model(ruleFilter: String? = null, computationFilter: String? = null) = prepare(
-        assertIs<Admission.Admitted>(
-            admit(
-                ModelSource(
-                    """
-                    {"header":{"id":"catalog","locales":[{"code":"en_US"}]},
-                     "content":{"modelRoot":{"rootGroups":[
-                      {"type":"Group","id":"g0","name":"Catalog","Group":{"elements":[
-                        {"type":"Field","id":"f0","name":"Price","Field":{}},
-                        {"type":"Rule","id":"r0","name":"PriceRule","Rule":{
-                          "errorCondition":"FieldFilled(Price)","errorEntityRelPath":"../Price"${
-                        ruleFilter?.let { ""","variantFilter":$it""" } ?: ""
-                    }}},
-                        {"type":"Computation","id":"c0","name":"PriceCalc","Computation":{
-                          "computationAlternatives":[{"operation":"42.00"}]${
-                        computationFilter?.let { ""","variantFilter":$it""" } ?: ""
-                    }}}
-                      ]}}
-                     ]}}}
-                    """.trimIndent(),
-                ),
-            ),
-        ),
+    /** Each filter is spliced raw into its declaration, or omitted when null; [ruleCondition] defaults sound. */
+    private fun source(
+        ruleCondition: String = "FieldFilled(Price)",
+        ruleFilter: String? = null,
+        computationFilter: String? = null,
+        fieldFilter: String? = null,
+    ) = ModelSource(
+        """
+        {"header":{"id":"catalog","locales":[{"code":"en_US"}]},
+         "content":{"modelRoot":{"rootGroups":[
+          {"type":"Group","id":"g0","name":"Catalog","Group":{"elements":[
+            {"type":"Field","id":"f0","name":"Price","Field":{${
+            fieldFilter?.let { """"variantFilter":$it""" } ?: ""
+        }}},
+            {"type":"Rule","id":"r0","name":"PriceRule","Rule":{
+              "errorCondition":"$ruleCondition","errorEntityRelPath":"../Price",
+              "errorCode":"PROBE","errorMessage":[{"locale":"en_US","text":"x"}]${
+            ruleFilter?.let { ""","variantFilter":$it""" } ?: ""
+        }}},
+            {"type":"Computation","id":"c0","name":"PriceCalc","Computation":{
+              "computationAlternatives":[{"operation":"42.00"}]${
+            computationFilter?.let { ""","variantFilter":$it""" } ?: ""
+        }}}
+          ]}}
+         ]}}}
+        """.trimIndent(),
+    )
+
+    private fun model(
+        ruleCondition: String = "FieldFilled(Price)",
+        ruleFilter: String? = null,
+        computationFilter: String? = null,
+        fieldFilter: String? = null,
+    ) = prepare(
+        assertIs<Admission.Admitted>(admit(source(ruleCondition, ruleFilter, computationFilter, fieldFilter))),
     )
 
     private val only = """{"filterType":"ONLY","variants":["premium"]}"""
@@ -126,11 +137,101 @@ class VariantFilterTest {
         assertEquals(emptyList(), model(ruleFilter = "null").variantFilterGaps())
     }
 
-    /** A group or field carrying the member is not this family's subject, so it is left alone. */
+    /**
+     * A group or field carrying the member is not this family's subject, so it is left alone.
+     *
+     * The fixture gives the FIELD a filter on purpose. Without that the assertion is vacuous — widening the
+     * family to every declared kind would change nothing, because no other declaration carries the member at
+     * all, and the test would pass while claiming to exclude a carrier it never presented.
+     */
     @Test
     fun theFamilyJudgesOnlyRulesAndComputations() {
-        val gaps = model(ruleFilter = only, computationFilter = only).variantFilterGaps()
+        val gaps = model(ruleFilter = only, computationFilter = only, fieldFilter = only).variantFilterGaps()
         assertEquals(listOf("/Catalog/PriceRule", "/Catalog/PriceCalc"), gaps.map { it.at },
             "no field or group declaration may appear here")
+        assertEquals(emptyList(), model(fieldFilter = only).variantFilterFindings().map { it.code },
+            "a field's filter is unmeasured, so it draws no finding either")
     }
+
+    /**
+     * THE REPORT-LEVEL CONTRACT: an `ONLY`-filtered declaration draws no finding, whatever is wrong with it.
+     *
+     * <p>Each family is individually correct about the declaration it read and wrong only about whether A12
+     * read it too, so this is invisible to every per-family test — which is exactly how it shipped. The whole
+     * report is the unit under test here for that reason.
+     *
+     * <p><b>The breadth is measured, not assumed.</b> Seven ways of breaking a filtered rule were run against
+     * the Kernel unfiltered and under `ONLY` ([KERNEL-FINDINGS KF299],
+     * `rulekit.validate.laws.RuleVariantFilterLawsTest`): the reference, all three parse phases, the error
+     * target and the error message are all ADMITTED under the filter. So there is no surviving subset to keep
+     * judging, and suppressing one family rather than the declaration would still over-reject.
+     */
+    @Test
+    fun anOnlyFilteredDeclarationDrawsNoFindingWhateverIsWrongWithIt() {
+        val broken = mapOf(
+            "a condition naming no entity" to "FieldFilled(Nonexistent)",
+            "a condition that cannot be tokenized" to "FieldFilled(\\\"Price)",
+            "a condition that ends early" to "FieldFilled(Price) And",
+        )
+        val actual = mutableMapOf<String, List<String>>()
+        for ((label, condition) in broken) {
+            actual["$label, unfiltered — the positive control"] = codesFor(condition, filter = null)
+            actual["$label, ONLY"] = codesFor(condition, filter = only)
+            actual["$label, ALL_EXCEPT — still judged"] = codesFor(condition, filter = allExcept)
+        }
+
+        val expected = mutableMapOf<String, List<String>>()
+        expected["a condition naming no entity, unfiltered — the positive control"] = listOf("MVK_INVALID_ENTITY")
+        expected["a condition naming no entity, ONLY"] = emptyList()
+        expected["a condition naming no entity, ALL_EXCEPT — still judged"] = listOf("MVK_INVALID_ENTITY")
+        expected["a condition that cannot be tokenized, unfiltered — the positive control"] =
+            listOf("MVK_LEXER_STANDARD_ERROR")
+        expected["a condition that cannot be tokenized, ONLY"] = emptyList()
+        expected["a condition that cannot be tokenized, ALL_EXCEPT — still judged"] =
+            listOf("MVK_LEXER_STANDARD_ERROR")
+        expected["a condition that ends early, unfiltered — the positive control"] = listOf("MVK_INCOMPLETE_INPUT")
+        expected["a condition that ends early, ONLY"] = emptyList()
+        expected["a condition that ends early, ALL_EXCEPT — still judged"] = listOf("MVK_INCOMPLETE_INPUT")
+        assertEquals(expected, actual, "what the whole report says about a filtered declaration")
+    }
+
+    /**
+     * The exemption, and it rests on a measured row rather than on symmetry.
+     *
+     * An `ONLY`-filtered rule with an empty `errorCode` still refuses the model — so a filter suppresses what
+     * A12 would SAY ABOUT a declaration and cannot rescue a model that fails to BUILD. A checker that dropped
+     * every finding for a filtered declaration would report an unloadable model as merely unexamined.
+     */
+    @Test
+    fun aFindingThatTheModelWillNotBuildSurvivesTheFilter() {
+        val unbindable = """{"filterType":"SOMETIMES","variants":["premium"]}"""
+        assertEquals(listOf(CK_MODEL_NOT_BUILDABLE), codesFor("FieldFilled(Price)", filter = unbindable),
+            "an unbindable filter shape is not a verdict the filter can hide")
+    }
+
+    /**
+     * Suppression is per declaration, not per report.
+     *
+     * The unfiltered computation in the same model keeps its findings — without that row, a checker that
+     * silenced the whole report whenever any declaration carried a filter would pass this test while hiding
+     * every other defect in the model.
+     */
+    @Test
+    fun onlyTheFilteredDeclarationGoesUnjudged() {
+        val report = check(source(ruleCondition = "FieldFilled(Nonexistent)", ruleFilter = only))
+        assertEquals(emptyList(), report.findings.filter { it.at == "/Catalog/PriceRule" },
+            "the filtered rule's findings are gone")
+        assertTrue(
+            report.findings.any { it.at == "/Catalog/PriceCalc" },
+            "the unfiltered computation is still judged: ${report.findings}",
+        )
+        assertTrue(
+            report.gaps.any { it.at == "/Catalog/PriceRule" },
+            "and the gap says so, so a clean report is not read as coverage: ${report.gaps}",
+        )
+    }
+
+    private fun codesFor(condition: String, filter: String?) =
+        check(source(ruleCondition = condition, ruleFilter = filter)).findings
+            .filter { it.at == "/Catalog/PriceRule" }.map { it.code }
 }
