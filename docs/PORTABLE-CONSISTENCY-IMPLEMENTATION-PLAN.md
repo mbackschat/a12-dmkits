@@ -324,6 +324,10 @@ All four implement the same rule shape: candidate `base/name` first (declaring-g
 
 **Consequence for the checker's contract:** `declaredReferences()` answers "does this path name a declared element" and nothing more. A resolvable path is necessary and not sufficient for A12 admission, so this slice's findings must never be read as a rule-level verdict — the remaining gates belong to D.
 
+**The first public operation is `check(ModelSource): ConsistencyReport`.** It admits, prepares, resolves the structural references and reports — INVALID when one does not resolve, INCONCLUSIVE otherwise, never VALID, because `ConsistencyStatus` has no such arm and the coverage registry that would earn it does not exist. `findings` and `diagnostics` stay separate arrays on purpose: a finding is A12's verdict on a declaration, a diagnostic is the checker saying it could not read something, and folding them together is precisely the conflation `ModelLoader.loadAndCheck` makes on the Java side.
+
+**`checksCompleted` is evidence, and every report also states what it could NOT check.** `CheckFamily` has one constant today, so "the reference check completed" would read as "the analysis completed" if nothing said otherwise; each report therefore carries an explicit gap naming the unimplemented families, and each unreadable declaration becomes a gap of its own rather than a silent omission. An unreadable source reports at the SOURCE level with no check completed, instead of inventing a rule location for it.
+
 **The syntax layer is the next partition, and it is not small.** The Kernel's condition lexer resolves operator keywords *dynamically per language* (`ID` carries `setTypeInLexer`, driven by the multi-language handler), so a faithful checker-owned tokenizer needs the per-language keyword catalog rather than fixed literals — and the neutral-leaf record already rules out sharing the interpreter's parser. That is B0's remaining half and slice C's foundation, with its own acceptance matrix.
 
 ### Decisions to resolve during A
