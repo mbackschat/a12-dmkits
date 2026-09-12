@@ -228,6 +228,13 @@ private val UNREAD_MEMBERS = listOf(
             "type there (a `noValueValidation` string is refused, and the table-enum gate beside it is " +
             "unmeasured), so silence about one is not approval of it",
     ),
+    CoverageGap(
+        at = null,
+        reason = "a member holding a JSON container where A12 binds a string — a computation's `operation` " +
+            "or `precondition`, a rule's `errorCondition` or `errorEntityRelPath`, a group's " +
+            "`indexFieldName`, a non-array `sortFields` — is left unjudged rather than guessed at; each is " +
+            "unmeasured, and under-reporting is the only safe direction",
+    ),
 )
 
 private val UNIMPLEMENTED_FAMILIES = listOf(
