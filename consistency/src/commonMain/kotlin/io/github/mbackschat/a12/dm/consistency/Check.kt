@@ -78,6 +78,18 @@ enum class CheckFamily {
      * answers the same trailing operator with a different code, so this family reports nothing there.
      */
     CONDITION_COMPLETENESS,
+
+    /**
+     * That no DSL-bearing member mixes `And` with `Or` inside one bracket PAIR, which A12 refuses outright
+     * rather than resolving by precedence. Separate from the two families above because it is the only one of
+     * the three whose verdict does not depend on where A12's parser stands: the refusal is a semantic action
+     * on a region the token stream already delimits.
+     *
+     * A level is a pair and not a depth — two filters one parenthesis deep in different calls are
+     * independent — and a filter's condition gets its own frame, since the grammar gives it no delimiter of
+     * its own.
+     */
+    CONNECTIVE_AGREEMENT,
 }
 
 /**
@@ -198,6 +210,7 @@ internal fun check(
         prepared.computationRoundingFindings() + prepared.suppressedWarningFindings() +
         prepared.ruleConditionAndTargetFindings() + prepared.variantFilterFindings() +
         prepared.conditionLexicalFindings() + prepared.conditionCompletenessFindings() +
+        prepared.connectiveAgreementFindings() +
         prepared.elementNameFindings() + prepared.groupOrderingFindings()
     val findings = judged.notSuppressedBy(prepared.variantFilterSuppressed())
     return ConsistencyReport(
@@ -211,7 +224,7 @@ internal fun check(
             CheckFamily.GROUP_ORDERING_REFERENCES, CheckFamily.GROUP_ORDERING_FIELD_TYPE,
             CheckFamily.COMPUTATION_ROUNDING, CheckFamily.SUPPRESSED_WARNINGS,
             CheckFamily.VARIANT_FILTER, CheckFamily.CONDITION_LEXICALITY,
-            CheckFamily.CONDITION_COMPLETENESS),
+            CheckFamily.CONDITION_COMPLETENESS, CheckFamily.CONNECTIVE_AGREEMENT),
         gaps = prepared.gaps() + prepared.emptyFactBase() + findings.buildBlocked() +
             prepared.variantFilterGaps() + UNREAD_MEMBERS + UNIMPLEMENTED_FAMILIES,
     )
@@ -297,7 +310,8 @@ private val UNREAD_MEMBERS = listOf(
     ),
     CoverageGap(
         at = null,
-        reason = "DSL text is checked for LEXICAL readability and for ending too early, never for GRAMMAR, " +
+        reason = "DSL text is checked for LEXICAL readability, for ending too early, and for mixing `And` " +
+            "with `Or` inside one bracket pair, never for GRAMMAR, " +
             "so no wrong-token shape is judged on its grammar — including text that ends on an operator " +
             "with a delimiter still open, which A12 answers differently and this checker leaves alone. " +
             "A12's illegal-CHARACTER class is unmeasured and also unreported. (`MVK_UNEXPECTED_TOKEN` does " +
@@ -320,6 +334,15 @@ private val UNREAD_MEMBERS = listOf(
             "`ODER` — is not reported, though A12 answers it exactly as it answers `And`. The generated " +
             "keyword table classifies one canonical spelling per operator and files the kernel's other " +
             "terminals as uncataloged, so the miss is the table's shape rather than a judgement about the text",
+    ),
+    CoverageGap(
+        at = null,
+        reason = "a connective spelled in a case the catalog does not carry is invisible to the bracket " +
+            "check too, so a mix involving one is not reported; and two entity filters sharing ONE argument " +
+            "list are treated as separate levels without a measurement saying they are — `SumOfProducts` is " +
+            "the only operator whose argument list takes two entity specs and it refuses a filter on either " +
+            "for a reason of its own, so no oracle for that shape exists. Both are silence rather than a " +
+            "wrong verdict",
     ),
     CoverageGap(
         at = null,

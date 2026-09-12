@@ -164,9 +164,24 @@ class RuleConditionCompositionLawsTest {
         actual.put("…and the same pair with the outer level itself mixed",
                 verdict(carryingAnd + " Or " + carryingOr + " And " + A));
 
+        // The same claim with a COMPARISON between the two calls rather than a connective, so the pair is
+        // joined by something that opens no connective level of its own.
+        //
+        // Two filters inside ONE argument list would be the finer case — they would share a parenthesis pair
+        // as well as a depth — and it is deliberately absent: `SumOfProducts` is the only operator whose
+        // argument list takes two entity specs, and a `Having` filter on either of them draws
+        // `MVK_WILDCARD_AT_LOWEST_LEVEL_REQUIRED` whatever the filter says (the unfiltered call is ADMITTED,
+        // so that is the operator's own wildcard law and not a connective verdict). No oracle for that shape
+        // exists here, so the checker opens a frame at a filter too, which can only under-report.
+        actual.put("two filtered calls compared, one And and one Or",
+                verdict("NumberOfFilledFields(Addons*/Name Having [Addons/Name] == \"x\" "
+                        + "And [Addons/MonthlyFee] > 1) > NumberOfFilledFields(Addons*/MonthlyFee Having "
+                        + "[Addons/Name] == \"y\" Or [Addons/MonthlyFee] > 2) And " + A));
+
         Map<String, String> expected = new LinkedHashMap<>();
         expected.put("two sibling filters, one And and one Or, joined by Or", KernelLaws.ADMITTED);
         expected.put("…and the same pair with the outer level itself mixed", "MVK_BRACKET_MISSING");
+        expected.put("two filtered calls compared, one And and one Or", KernelLaws.ADMITTED);
         assertEquals(expected, actual, "whether two calls at one depth share a connective level");
     }
 

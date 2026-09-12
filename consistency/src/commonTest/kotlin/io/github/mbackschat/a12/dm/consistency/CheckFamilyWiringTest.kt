@@ -46,7 +46,11 @@ class CheckFamilyWiringTest {
             {"type":"Rule","id":"r6","name":"EndsEarly","Rule":{
               "errorCondition":"FieldFilled(Price) And","errorEntityRelPath":"../Price",
               "errorCode":"C6","errorMessage":[{"locale":"en_US","text":"x"}]}},
-            {"type":"Rule","id":"r7","name":"Filtered","Rule":{
+            {"type":"Rule","id":"r7","name":"MixedConnectives","Rule":{
+              "errorCondition":"FieldFilled(Price) And FieldFilled(Price) Or FieldFilled(Price)",
+              "errorEntityRelPath":"../Price",
+              "errorCode":"C8","errorMessage":[{"locale":"en_US","text":"x"}]}},
+            {"type":"Rule","id":"r8","name":"Filtered","Rule":{
               "errorCondition":"FieldFilled(NoSuchEntity)","errorEntityRelPath":"../Price",
               "errorCode":"C7","errorMessage":[{"locale":"en_US","text":"x"}],
               "variantFilter":{"filterType":"ONLY","variants":["premium"]}}},
@@ -88,6 +92,7 @@ class CheckFamilyWiringTest {
         CheckFamily.SUPPRESSED_WARNINGS to ("MVK_UNEXPECTED_TOKEN" to "/Catalog/BadSuppression"),
         CheckFamily.CONDITION_LEXICALITY to ("MVK_LEXER_STANDARD_ERROR" to "/Catalog/Unlexable"),
         CheckFamily.CONDITION_COMPLETENESS to ("MVK_INCOMPLETE_INPUT" to "/Catalog/EndsEarly"),
+        CheckFamily.CONNECTIVE_AGREEMENT to ("MVK_BRACKET_MISSING" to "/Catalog/MixedConnectives"),
     )
 
     @Test
