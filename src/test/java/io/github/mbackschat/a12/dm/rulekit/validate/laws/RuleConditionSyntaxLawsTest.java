@@ -113,6 +113,45 @@ class RuleConditionSyntaxLawsTest {
         assertEquals(expected, actual, "which parse code each delimiter imbalance draws");
     }
 
+    /**
+     * The TRAILING-OPERATOR grid: does "the text ends with an infix operator" always mean the same code?
+     *
+     * <p>One row of the first grid measured it for {@code And}, and a checker increment keyed on the
+     * generated keyword table's {@code OPERATOR} kind rests on that one row generalizing. It does — across
+     * word operators, a comparison, arithmetic, and a trailing comma.
+     *
+     * <p><b>And it stops exactly at the catalog's kind boundary, which is why the last two rows are here.</b>
+     * A dangling PATH operator ({@code ->}, {@code For}) is {@code MVK_UNEXPECTED_TOKEN}, not
+     * {@code MVK_INCOMPLETE_INPUT} — so "ends on an operator" is NOT one class, and a check that grouped them
+     * would emit the wrong code for both. The catalog's {@code OPERATOR}/{@code PATH_OP} split tracks A12's
+     * own parse behaviour here, which is what makes the kind column safe to key on.
+     */
+    @Test
+    void aConditionThatEndsWithAnInfixOperatorIsIncompleteWhateverTheOperator() {
+        Map<String, String> actual = new LinkedHashMap<>();
+        actual.put("ends with And — the control", verdict("FieldFilled(Tier) And"));
+        actual.put("ends with Or", verdict("FieldFilled(Tier) Or"));
+        actual.put("ends with a comparison", verdict("[Tier] >"));
+        actual.put("ends with arithmetic", verdict("[Tier] > 1 +"));
+        actual.put("ends with a comma inside a call", verdict("AllFieldsFilled(Tier,"));
+        // PATH operators are a different catalog kind, so grouping them with the infix ones would be a
+        // transfer rather than a measurement — these two rows are what make the keyword-kind key safe.
+        actual.put("ends with the category arrow", verdict("FieldFilled([Tier ->"));
+        actual.put("ends with the semantic-index keyword", verdict("FieldFilled([Tier For"));
+
+        Map<String, String> expected = new LinkedHashMap<>();
+        expected.put("ends with And — the control", "MVK_INCOMPLETE_INPUT");
+        expected.put("ends with Or", "MVK_INCOMPLETE_INPUT");
+        expected.put("ends with a comparison", "MVK_INCOMPLETE_INPUT");
+        expected.put("ends with arithmetic", "MVK_INCOMPLETE_INPUT");
+        expected.put("ends with a comma inside a call", "MVK_INCOMPLETE_INPUT");
+        // NOT the same class: a PATH operator left dangling is reported as an unexpected token, so grouping
+        // it with the infix ones would have made a checker emit the wrong code for both.
+        expected.put("ends with the category arrow", "MVK_UNEXPECTED_TOKEN");
+        expected.put("ends with the semantic-index keyword", "MVK_UNEXPECTED_TOKEN");
+        assertEquals(expected, actual, "whether ending on an infix operator is one class");
+    }
+
     private static String verdict(String condition) {
         return KernelLaws.verdictOf(ModelWriter.addRule(Fixtures.subscriptionJson(), "/Subscription",
                 "SyntaxProbe", "../Tier", "PROBE", condition, "ERROR", List.of(en("x"), de("y"))));

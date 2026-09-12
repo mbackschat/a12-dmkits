@@ -67,6 +67,13 @@ enum class CheckFamily {
      * separate question this family does not answer.
      */
     CONDITION_LEXICALITY,
+
+    /**
+     * That no DSL-bearing member ENDS before it is finished — a trailing infix operator, comparison,
+     * arithmetic symbol or comma. Its own constant rather than part of the lexical family because it is a
+     * grammar-adjacent claim about the last token, not a claim about the characters.
+     */
+    CONDITION_COMPLETENESS,
 }
 
 /**
@@ -186,7 +193,7 @@ internal fun check(
         } + prepared.declarationSlotFindings() + prepared.computationAlternativeFindings() +
         prepared.computationRoundingFindings() + prepared.suppressedWarningFindings() +
         prepared.ruleConditionAndTargetFindings() + prepared.variantFilterFindings() +
-        prepared.conditionLexicalFindings() +
+        prepared.conditionLexicalFindings() + prepared.conditionCompletenessFindings() +
         prepared.elementNameFindings() + prepared.groupOrderingFindings()
     return ConsistencyReport(
         modelId = admitted.modelId,
@@ -198,7 +205,8 @@ internal fun check(
             CheckFamily.RULE_CONDITION_AND_TARGET, CheckFamily.ELEMENT_NAME_UNIQUENESS,
             CheckFamily.GROUP_ORDERING_REFERENCES, CheckFamily.GROUP_ORDERING_FIELD_TYPE,
             CheckFamily.COMPUTATION_ROUNDING, CheckFamily.SUPPRESSED_WARNINGS,
-            CheckFamily.VARIANT_FILTER, CheckFamily.CONDITION_LEXICALITY),
+            CheckFamily.VARIANT_FILTER, CheckFamily.CONDITION_LEXICALITY,
+            CheckFamily.CONDITION_COMPLETENESS),
         gaps = prepared.gaps() + prepared.emptyFactBase() + findings.buildBlocked() +
             prepared.variantFilterGaps() + UNREAD_MEMBERS + UNIMPLEMENTED_FAMILIES,
     )
@@ -267,10 +275,10 @@ private val UNREAD_MEMBERS = listOf(
     ),
     CoverageGap(
         at = null,
-        reason = "DSL text is checked for LEXICAL readability only — an unterminated string literal, which " +
-            "A12 answers with `MVK_LEXER_STANDARD_ERROR`. Whether the tokens then form a condition A12's " +
-            "PARSER accepts is not decided here, so the three parser-phase codes are never reported; nor is " +
-            "A12's illegal-CHARACTER class, which its message text implies and no row measures",
+        reason = "DSL text is checked for LEXICAL readability and for ending too early, never for GRAMMAR — " +
+            "so `MVK_UNEXPECTED_TOKEN` and `MVK_EXPECTED_TOKEN_NOT_FOUND` are never reported, and the text " +
+            "a checker cannot yet judge includes a dangling path operator and every wrong-token shape. " +
+            "A12's illegal-CHARACTER class is unmeasured and also unreported",
     ),
     CoverageGap(
         at = null,
