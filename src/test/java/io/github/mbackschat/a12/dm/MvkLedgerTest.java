@@ -1,5 +1,6 @@
 package io.github.mbackschat.a12.dm;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assumptions.assumeTrue;
@@ -7,8 +8,10 @@ import static org.junit.jupiter.api.Assumptions.assumeTrue;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.Locale;
+import java.util.Map;
 import java.util.MissingResourceException;
 import java.util.ResourceBundle;
 import java.util.Set;
@@ -40,6 +43,10 @@ class MvkLedgerTest {
             "com.mgmtp.a12.kernel.core.parser.internal.error.ParserErrorTypesEnum",
             "com.mgmtp.a12.kernel.core.calc.internal.util.CalculationErrorType",
             "com.mgmtp.a12.kernel.core.service.internal.errortext.FehlertextErrorType",
+            // Added 2026-09-12. The parse-failure codes were first found in a resource bundle and recorded as
+            // living in no enum at all; they have an enum, one package over from the one already read here.
+            // The absence claim was an enumeration over ONE enum stated as an enumeration over all of them.
+            "com.mgmtp.a12.kernel.core.parser.internal.common.error.CommonParserErrorTypesEnum",
     };
 
     /** The parser's own message bundle — the source the three enums above do not cover. */
@@ -141,4 +148,81 @@ class MvkLedgerTest {
         assertTrue(missing.isEmpty(), () -> sourceName
                 + " codes missing from docs/MVK-LEDGER.md (new diagnostics? classify them): " + missing);
     }
+
+    /**
+     * The direction this instrument did not check, which is why a code nothing declares could sit here.
+     *
+     * <p>{@link #assertCovered} computes only {@code source − ledger}, so a row invented by hand — or left
+     * behind when a kernel upgrade removes a diagnostic — was invisible forever, while the ledger's own
+     * preamble advertised "exact two-way parity with its source". A row naming a code no kernel source
+     * declares is worse than a missing one: it reads as a classified constraint that a consumer may then
+     * build a refusal on.
+     *
+     * <p>It is checked per SECTION rather than against the union, because each section names its own source
+     * and a union check would let a code sit under the wrong heading. The metamodel section is excluded: its
+     * source is the opt-in sibling clone, so on a machine without it the rows would all read as stale.
+     */
+    @Test
+    void noLedgerRowNamesACodeItsSourceDoesNotDeclare() throws IOException {
+        Map<String, Set<String>> declared = new LinkedHashMap<>();
+        for (String className : ENUM_CLASSES) {
+            Class<?> enumClass;
+            try {
+                enumClass = Class.forName(className);
+            } catch (ClassNotFoundException e) {
+                throw new TestAbortedException("kernel enum not on test classpath: " + className);
+            }
+            String section = className.substring(className.lastIndexOf('.') + 1);
+            Set<String> codes = declared.computeIfAbsent(SECTION_OF.getOrDefault(section, section),
+                    unused -> new LinkedHashSet<>());
+            for (Object constant : enumClass.getEnumConstants()) {
+                String name = ((Enum<?>) constant).name();
+                if (name.startsWith("MVK_")) {
+                    codes.add(name);
+                }
+            }
+        }
+        Map<String, Set<String>> stale = new LinkedHashMap<>();
+        Map<String, Set<String>> inLedger = rowsBySection();
+        declared.forEach((section, codes) -> {
+            Set<String> extra = new LinkedHashSet<>(inLedger.getOrDefault(section, Set.of()));
+            extra.removeAll(codes);
+            if (!extra.isEmpty()) {
+                stale.put(section, extra);
+            }
+        });
+        assertEquals(Map.of(), stale,
+                "docs/MVK-LEDGER.md rows whose own source no longer declares the code — delete them, or move "
+                        + "them under the section of the source that does declare them");
+    }
+
+    /** Every `MVK_*` row of the ledger, grouped by the backticked source its `##` heading names. */
+    private static Map<String, Set<String>> rowsBySection() throws IOException {
+        Map<String, Set<String>> bySection = new LinkedHashMap<>();
+        Pattern heading = Pattern.compile("^## `([A-Za-z_0-9]+)`");
+        Pattern row = Pattern.compile("^\\| `(MVK_[A-Z_0-9]+)` \\|");
+        String section = "";
+        for (String line : Files.readAllLines(Path.of("docs/MVK-LEDGER.md"))) {
+            Matcher h = heading.matcher(line);
+            if (h.find()) {
+                section = h.group(1);
+                continue;
+            }
+            Matcher m = row.matcher(line);
+            if (m.find()) {
+                bySection.computeIfAbsent(section, unused -> new LinkedHashSet<>()).add(m.group(1));
+            }
+        }
+        return bySection;
+    }
+
+    /**
+     * Where a source's rows live when the section is not named after the class.
+     *
+     * <p>The parse-failure codes were found in the resource bundle first and the section is named after it;
+     * the enum that declares the same six was found later. Both are read, which makes the section a genuine
+     * cross-check — bundle keys, enum constants and ledger rows must agree.
+     */
+    private static final Map<String, String> SECTION_OF =
+            Map.of("CommonParserErrorTypesEnum", "vk_parser_common_error_messages");
 }
