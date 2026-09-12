@@ -64,14 +64,22 @@ enum class ReferenceRole {
  * than reporting a missing element: `../Code` is above the root for a rule declared in a root group and
  * perfectly ordinary one level down (measured through `ModelLoader.loadAndCheck`).
  */
-fun PreparedModel.resolveEntity(declaringGroup: String, written: String): Reference {
-    val steps = written.split('/').filter { it.isNotEmpty() }.map { it.withoutRepetitionSuffix() }
-    val absolute = written.startsWith("/")
+fun PreparedModel.resolveEntity(
+    declaringGroup: String,
+    written: String,
+    origin: DeclarationOrigin = DeclarationOrigin(""),
+): Reference {
+    // A mounted declaration still spells its provider's own root, which the mount replaced. Rehosting the
+    // written path is what the Kernel does before integration, so the reference names the element that
+    // moved with it rather than one the host happens to have (KF3).
+    val hosted = origin.rehost(written)
+    val steps = hosted.split('/').filter { it.isNotEmpty() }.map { it.withoutRepetitionSuffix() }
+    val absolute = hosted.startsWith("/")
     // The two-tier short-name treatment is for a single BARE LEAF. A starred segment names a repeatable
     // group's iteration rather than a leaf, and the Kernel gates its fallback per `idNameRef`, so `Lines*`
     // must not reach a model-wide field index that could resolve it to an unrelated field of that name.
-    if (!absolute && steps.size == 1 && steps.single() != UP && !written.contains('*')) {
-        return resolve(declaringGroup, steps.single())
+    if (!absolute && steps.size == 1 && steps.single() != UP && !hosted.contains('*')) {
+        return resolve(declaringGroup, steps.single(), origin)
     }
     val path = if (absolute) mutableListOf() else declaringGroup.split('/').filter { it.isNotEmpty() }.toMutableList()
     var aboveRoot = false
@@ -86,7 +94,7 @@ fun PreparedModel.resolveEntity(declaringGroup: String, written: String): Refere
     }
     val candidate = "/" + path.joinToString("/")
     return when {
-        aboveRoot -> Reference.AboveRoot(written)
+        aboveRoot -> Reference.AboveRoot(written)   // the AUTHORED text: that is what a reader has to edit
         elements.any { it.path == candidate } -> Reference.Resolved(candidate)
         else -> Reference.Undeclared(candidate)
     }
@@ -111,15 +119,28 @@ private fun String.withoutRepetitionSuffix(): String {
  * The fallback indexes **fields**, not every element, matching the Kernel's own `CheckIdNameRefImpl`
  * (KERNEL-FINDINGS §10; the tiers are locked by `ShortNameTierLawsTest`).
  */
-fun PreparedModel.resolve(declaringGroup: String, name: String): Reference {
+fun PreparedModel.resolve(
+    declaringGroup: String,
+    name: String,
+    origin: DeclarationOrigin = DeclarationOrigin(""),
+): Reference {
     val candidate = "$declaringGroup/$name"
     if (elements.any { it.path == candidate }) {
         return Reference.Resolved(candidate)
     }
-    if (!fieldRefByShortNameAllowed) {
+    // WHICH model's flag applies, and WHICH elements the fallback may see, are one question with two
+    // answers. A mounted declaration whose own model turns the flag on is bound INSIDE that model before
+    // integration and emerges fully qualified, so it searches its provider alone and a host reusing the name
+    // cannot retarget it. Every other reference — one in the entry model, or one from a provider that leaves
+    // the flag off, which travels bare — is bound over the whole EXPANDED tree under the entry model's flag,
+    // so a mounted field of the same name does make it ambiguous. Both halves measured; see
+    // `DeclarationOrigin.shortNameFallbackAllowed`.
+    val boundInProvider = origin.isMounted && origin.shortNameFallbackAllowed
+    if (!boundInProvider && !fieldRefByShortNameAllowed) {
         return Reference.Undeclared(candidate)
     }
-    val matches = elements.filter { it.kind == FIELD_KIND && it.path.substringAfterLast('/') == name }
+    val scope = if (boundInProvider) elements.filter { it.origin.modelId == origin.modelId } else elements
+    val matches = scope.filter { it.kind == FIELD_KIND && it.path.substringAfterLast('/') == name }
     return when (matches.size) {
         0 -> Reference.Undeclared(candidate)
         1 -> Reference.Resolved(matches.single().path)

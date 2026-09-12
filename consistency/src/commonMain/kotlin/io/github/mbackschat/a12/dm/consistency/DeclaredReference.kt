@@ -35,6 +35,10 @@ fun PreparedModel.declaredReferences(): List<DeclaredReference> = elements.mapNo
     val relative = (element.declaration[element.kind] as? JsonObject)
         ?.get(declared.first)?.let { (it as? JsonPrimitive)?.contentOrNull }
         ?: return@mapNotNull null
+    // No rehosting here, unlike a condition reference: `errorEntityRelPath` and `computedFieldRelPath` are
+    // strictly RELATIVE — an absolute spelling is "illegal relPath" at conversion and the model never builds
+    // (measured 2026-09-12) — and a relative path is move-invariant under mounting, because the provider's
+    // root group is REPLACED by the mount group rather than added above it.
     DeclaredReference(element.path, declared.first, declared.second, resolveRelative(element.path, relative))
 }
 

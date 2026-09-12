@@ -47,6 +47,18 @@ enum class DiagnosticCode {
     SOURCE_HAS_NO_MODEL_CONTENT,
 
     /**
+     * A workspace was asked about a model none of its sources declares. Separate from an unreadable source:
+     * every source here was read fine, and the id simply names none of them.
+     */
+    SOURCE_NOT_IN_WORKSPACE,
+
+    /**
+     * Two supplied sources declare the same `header.id`. An include resolves by that id, so a duplicate makes
+     * which model gets mounted a function of argument order — reported rather than silently resolved.
+     */
+    SOURCE_IDENTITY_NOT_UNIQUE,
+
+    /**
      * A single declaration lacks the `type`, `id` or `name` the kernel's own reader requires. Reported and
      * skipped rather than raised, because one broken element must not hide its siblings' real errors.
      */

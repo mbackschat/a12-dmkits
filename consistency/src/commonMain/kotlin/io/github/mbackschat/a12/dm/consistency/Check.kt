@@ -70,7 +70,22 @@ fun check(source: ModelSource): ConsistencyReport {
         )
         is Admission.Admitted -> admission
     }
-    val prepared = prepare(admitted)
+    return check(admitted, providers = emptyMap(), inherited = emptyList())
+}
+
+/**
+ * Check one already-admitted entry model against the [providers] its includes may name.
+ *
+ * [inherited] are diagnostics the caller already holds about the source set itself — a source that could not
+ * be admitted, an id supplied twice. They ride into the report because they are usually the CAUSE of a mount
+ * this analysis then reports as unexpanded, and a consumer shown only the consequence cannot act on it.
+ */
+internal fun check(
+    admitted: Admission.Admitted,
+    providers: Map<String, Admission.Admitted>,
+    inherited: List<Diagnostic>,
+): ConsistencyReport {
+    val prepared = prepare(admitted, providers)
     prepared.unsupportedConditionLanguage?.let { code ->
         // A12 refuses the model rather than falling back to a language, so there is no reading of its
         // conditions to have — every keyword question would be answered in a language A12 never applies.
@@ -85,12 +100,18 @@ fun check(source: ModelSource): ConsistencyReport {
                     "`$code` is not a condition language A12 supports, so the model cannot be used at all",
                 ),
             ),
-            diagnostics = prepared.diagnostics,
+            diagnostics = inherited + prepared.diagnostics,
             checksCompleted = emptySet(),
             gaps = prepared.gaps() + UNIMPLEMENTED_FAMILIES,
         )
     }
-    val unmounted = prepared.unmountedIncludes()
+    val unmounted = prepared.unexpandedMounts.map {
+        CoverageGap(
+            at = it.at,
+            reason = "this group mounts `${it.alias}` and the mount is not expanded here (${it.reason}), so " +
+                "the fact base is incomplete and no reference check can run over this source",
+        )
+    }
     if (unmounted.isNotEmpty()) {
         // The fact base is INCOMPLETE, so "no declared element matches" is not a verdict this checker may
         // reach: the elements are declared, in a model this source does not carry. Reporting the references
@@ -99,7 +120,7 @@ fun check(source: ModelSource): ConsistencyReport {
             modelId = admitted.modelId,
             status = ConsistencyStatus.Inconclusive,
             findings = emptyList(),
-            diagnostics = prepared.diagnostics,
+            diagnostics = inherited + prepared.diagnostics,
             checksCompleted = emptySet(),
             gaps = prepared.gaps() + unmounted + UNIMPLEMENTED_FAMILIES,
         )
@@ -113,7 +134,7 @@ fun check(source: ModelSource): ConsistencyReport {
         modelId = admitted.modelId,
         status = statusOf(findings),
         findings = findings,
-        diagnostics = prepared.diagnostics,
+        diagnostics = inherited + prepared.diagnostics,
         checksCompleted = setOf(CheckFamily.DECLARED_REFERENCES, CheckFamily.CONDITION_REFERENCES),
         gaps = prepared.gaps() + prepared.emptyFactBase() + declared.buildBlocked() + UNREAD_MEMBERS +
             UNIMPLEMENTED_FAMILIES,
@@ -140,21 +161,6 @@ private fun PreparedModel.emptyFactBase(): List<CoverageGap> = if (elements.isNo
         ),
     )
 }
-
-/**
- * Every group that mounts another model and has not been expanded — `modelAlias` set with no `elements`,
- * the same test `core.ModelReader` applies before mounting. Its subtree's declarations live in the
- * referenced model, which this source does not carry.
- */
-private fun PreparedModel.unmountedIncludes(): List<CoverageGap> = elements
-    .filter { it.kind == "Group" && it.mountsAnotherModel }
-    .map {
-        CoverageGap(
-            at = it.path,
-            reason = "this group mounts the model `${it.modelAlias}` and the mount is not expanded here, " +
-                "so the fact base is incomplete and no reference check can run over this source",
-        )
-    }
 
 /** A declaration the checker could not read was not checked either, so each one is also a coverage gap. */
 private fun PreparedModel.gaps(): List<CoverageGap> = diagnostics.map {

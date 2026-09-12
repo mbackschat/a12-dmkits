@@ -38,7 +38,12 @@ fun PreparedModel.conditionReferences(): List<ConditionReference> = elements.fla
     val group = element.path.substringBeforeLast('/', missingDelimiterValue = "")
     conditionTexts(element.kind, body).flatMap { (member, text) ->
         referencesIn(text, conditionLanguage).map { written ->
-            ConditionReference(element.path, member, written, resolveEntity(group, written))
+            ConditionReference(
+                element.path,
+                member,
+                written,
+                resolveEntity(group, written, element.origin),
+            )
         }
     }
 }

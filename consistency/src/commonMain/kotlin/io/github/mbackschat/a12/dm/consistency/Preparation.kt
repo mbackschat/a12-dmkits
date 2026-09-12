@@ -8,6 +8,57 @@ import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.contentOrNull
 
 /**
+ * The model a declaration was AUTHORED in, and how that model's own absolute paths read after mounting.
+ *
+ * A mounted declaration keeps naming the entities that moved with it, so its absolute references still spell
+ * the provider's own root group — which no longer exists in the host tree. [rehost] applies the one
+ * substitution that fixes that, and the Kernel does the same thing at expansion time rather than leaving the
+ * reference to fail (`DocumentModelExpandService.RuleAndComputationConditionUpdaterVisitor` with
+ * `EntityPathsRelativizer`, [KERNEL-FINDINGS KF3]). A relative downward reference needs no rehosting at all:
+ * mounting preserves depth within the fragment, because the provider's root group is replaced by the mount
+ * group rather than added above it.
+ *
+ * @param modelId the source that declares this element. It also scopes the model-wide short-name fallback:
+ *     the Kernel binds a provider's unique cross-group short name BEFORE integration, so a name the host
+ *     happens to reuse cannot retarget it.
+ * @param authoredPrefix the absolute prefix this model's own paths carried standalone — `""` for the entry
+ *     model, whose paths are already host paths.
+ * @param mountedPrefix the host path that prefix became.
+ * @param shortNameFallbackAllowed this model's OWN `fieldRefByShortNameAllowed`. For a provider it decides
+ *     whether its bare names are bound before integration at all: with the flag on, `FieldFilled(Zip)`
+ *     expands to `FieldFilled(/Order/ShipTo/Inner/Zip)` whatever the host declares, and with it off the name
+ *     travels bare and is resolved afterwards like any host reference (measured 2026-09-12, varying the two
+ *     models' flags independently). Meaningless for the entry model, whose own flag is
+ *     [PreparedModel.fieldRefByShortNameAllowed].
+ */
+data class DeclarationOrigin(
+    val modelId: String,
+    val authoredPrefix: String = "",
+    val mountedPrefix: String = "",
+    val shortNameFallbackAllowed: Boolean = false,
+) {
+    /**
+     * Whether this declaration ARRIVED through a mount rather than being written in the model being checked.
+     *
+     * It decides where the model-wide short-name fallback may look, and the two sides are measured. A
+     * provider's own reference is bound INSIDE the provider before integration and emerges fully qualified —
+     * `FieldFilled(Code)` in the provider expands to `FieldFilled(/Order/ShipTo/Inner/Code)` — so a host that
+     * reuses the name cannot make it ambiguous. A reference written in the entry model is bound over the
+     * whole EXPANDED tree, so a mounted field of the same name does make it ambiguous
+     * (`MVK_FIELDNAME_NOT_UNIQUE`, measured 2026-09-12 through `checkConsistency` on the expanded model).
+     */
+    val isMounted: Boolean get() = authoredPrefix.isNotEmpty()
+
+    /** [written] as it reads in the host tree. Any other spelling is returned unchanged. */
+    fun rehost(written: String): String = when {
+        authoredPrefix.isEmpty() -> written
+        written == authoredPrefix -> mountedPrefix
+        written.startsWith("$authoredPrefix/") -> mountedPrefix + written.removePrefix(authoredPrefix)
+        else -> written
+    }
+}
+
+/**
  * One declared element of a DocumentModel, as the model declares it.
  *
  * [path] is the element's canonical path — the join of the `name` segments from the root, which is the
@@ -22,6 +73,8 @@ import kotlinx.serialization.json.contentOrNull
  * @param declaration the whole authored element node, retained unchanged — envelope, annotations and
  *     descriptions alike. Keeping the node rather than projecting per-kind fields is what lets an invalid
  *     declaration stay inspectable without inventing a parallel A12 model.
+ * @param origin the model this declaration was authored in. For an element of a mounted provider that is not
+ *     the model being checked, and its references must be read in the provider's terms.
  */
 data class DeclaredElement(
     val path: String,
@@ -29,22 +82,21 @@ data class DeclaredElement(
     val kind: String,
     val id: String?,
     val declaration: JsonObject,
+    val origin: DeclarationOrigin,
 ) {
     /** The model this group mounts, when it declares one — `Group.modelAlias`. */
     val modelAlias: String?
         get() = ((declaration[kind] as? JsonObject)?.get("modelAlias") as? JsonPrimitive)?.contentOrNull
-
-    /**
-     * Whether this group mounts another model that has NOT been expanded into it. The test is
-     * `core.ModelReader`'s own — an alias with no `elements` — because an already-mounted group carries both
-     * and re-expanding it is what the Kernel's idempotency guard prevents.
-     */
-    val mountsAnotherModel: Boolean
-        get() = !modelAlias.isNullOrEmpty() &&
-            ((declaration[kind] as? JsonObject)?.get("elements") as? JsonArray).isNullOrEmpty()
 }
 
-private fun JsonArray?.isNullOrEmpty(): Boolean = this == null || this.isEmpty()
+/**
+ * A mount the checker could not expand, and the reason.
+ *
+ * The fact base is then INCOMPLETE below that group: the declarations are real and live in a model this
+ * analysis does not have, so reporting every reference into them as undeclared would reject a model A12
+ * accepts. Each one becomes a coverage gap and suspends the reference families instead.
+ */
+data class UnexpandedMount(val at: String, val alias: String, val reason: String)
 
 /**
  * An admitted source's declarations, in declaration order — the fact base every later phase reads.
@@ -57,6 +109,7 @@ private fun JsonArray?.isNullOrEmpty(): Boolean = this == null || this.isEmpty()
  * @param fieldRefByShortNameAllowed the model's `content.modelConfig.fieldRefByShortNameAllowed`. It decides
  *     whether a bare reference the declaring group does not have may resolve to a unique model-wide field
  *     short name, so reference resolution cannot be done without it.
+ * @param unexpandedMounts the mounts that left the fact base incomplete.
  * @param diagnostics what the checker could not read. Preparation reports and skips rather than failing, so
  *     one broken element cannot mask its siblings' findings — and no input makes [prepare] raise.
  */
@@ -65,6 +118,7 @@ data class PreparedModel(
     val fieldRefByShortNameAllowed: Boolean,
     val conditionLanguage: ConditionLanguage = ConditionLanguage.DEFAULT,
     val unsupportedConditionLanguage: String? = null,
+    val unexpandedMounts: List<UnexpandedMount> = emptyList(),
     val diagnostics: List<Diagnostic> = emptyList(),
 )
 
@@ -83,33 +137,69 @@ private enum class DeclaredKind(val wire: String) {
     }
 }
 
-/** Read [Admission.Admitted]'s retained tree into the declarations the checker works from. */
-fun prepare(admitted: Admission.Admitted): PreparedModel {
+/**
+ * Read [Admission.Admitted]'s retained tree into the declarations the checker works from, mounting any
+ * include it can resolve in [providers] (keyed by each source's own `header.id`).
+ *
+ * Mounting appends the provider's root-group CHILDREN onto the mount group and discards the provider's root
+ * group itself, so an included field lands at `/<mountGroupName>/<childName>` and the provider's own root
+ * name never appears in a path ([KERNEL-FINDINGS KF3], source-verified against
+ * `DocumentModelExpandService`). A provider is fully expanded before it is mounted, so a nested mount's
+ * children arrive already placed. Nothing is rewritten in the retained tree: descent simply continues with
+ * the mount's path as the parent, which is why each declaration is still the node its own author wrote.
+ */
+fun prepare(
+    admitted: Admission.Admitted,
+    providers: Map<String, Admission.Admitted> = emptyMap(),
+): PreparedModel {
     val content = (admitted.parsed as? JsonObject)?.get("content") as? JsonObject
     val declaredCode = content.conditionLanguageCode()?.takeIf { it.isNotBlank() }
     val declaredLanguage = declaredCode?.let { ConditionLanguage.of(it) }
-    val collector = Collector(admitted.modelId, admitted.source.diagnosticLabel)
+    val collector = Collector(admitted.modelId, admitted.source.diagnosticLabel, providers)
     val root = (content?.get("modelRoot") as? JsonObject)?.get("rootGroups")
-    collector.each(root, at = null, what = "content.modelRoot.rootGroups") { collector.collect(it, "", null) }
+    val entry = Scope(
+        header = (admitted.parsed as? JsonObject)?.get("header") as? JsonObject,
+        origin = DeclarationOrigin(admitted.modelId),
+        visiting = setOf(admitted.modelId),
+    )
+    collector.each(root, at = null, what = "content.modelRoot.rootGroups") {
+        collector.collect(it, "", null, entry)
+    }
     return PreparedModel(
         elements = collector.elements,
         fieldRefByShortNameAllowed = collector.flag(content),
         conditionLanguage = declaredLanguage ?: ConditionLanguage.DEFAULT,
         unsupportedConditionLanguage = declaredCode.takeIf { it != null && declaredLanguage == null },
+        unexpandedMounts = collector.unexpandedMounts,
         diagnostics = collector.diagnostics,
     )
 }
 
-private class Collector(private val modelId: String, private val diagnosticLabel: String?) {
+/**
+ * The model currently being descended: its own header (an alias resolves against the model that WROTE it,
+ * not against the entry model), the origin every element it declares carries, and the include chain so far.
+ */
+private data class Scope(
+    val header: JsonObject?,
+    val origin: DeclarationOrigin,
+    val visiting: Set<String>,
+)
+
+private class Collector(
+    private val modelId: String,
+    private val diagnosticLabel: String?,
+    private val providers: Map<String, Admission.Admitted>,
+) {
     val elements = mutableListOf<DeclaredElement>()
     val diagnostics = mutableListOf<Diagnostic>()
+    val unexpandedMounts = mutableListOf<UnexpandedMount>()
 
     /**
      * @param parentPath the enclosing element's canonical path, which this element's `name` extends.
      * @param enclosing the nearest path that could be derived, used to locate a declaration too broken to
      *     name itself.
      */
-    fun collect(node: JsonElement, parentPath: String, enclosing: String?) {
+    fun collect(node: JsonElement, parentPath: String, enclosing: String?, scope: Scope) {
         val element = node as? JsonObject ?: return malformed(enclosing, "a declaration must be a JSON object")
         val kind = element.text("type")
         val name = element.text("name")
@@ -123,7 +213,7 @@ private class Collector(private val modelId: String, private val diagnosticLabel
         if (id == null) {
             malformed(path, "a declaration must carry an `id`")
         }
-        elements += DeclaredElement(path, name, kind, id, element)
+        elements += DeclaredElement(path, name, kind, id, element, scope.origin)
         // The envelope is optional — the Kernel default-constructs the element when it is absent — but a
         // present one must be an object, since the Kernel binds it to the kind's type.
         val envelope = element[kind]
@@ -131,14 +221,90 @@ private class Collector(private val modelId: String, private val diagnosticLabel
             return malformed(path, "`$kind` must be a JSON object")
         }
         when (DeclaredKind.of(kind)) {
-            DeclaredKind.GROUP -> each(envelope?.get("elements"), path, "$path's `elements`") {
-                collect(it, path, path)
-            }
+            DeclaredKind.GROUP -> descendGroup(envelope as? JsonObject, path, scope)
             // An unrecognized `type` makes the whole source unreadable to the Kernel, so it is reported here
             // rather than passing as an inert declaration this build merely does not handle.
             null -> malformed(path, "`$kind` is not an A12 element type")
             DeclaredKind.FIELD, DeclaredKind.RULE, DeclaredKind.COMPUTATION -> Unit
         }
+    }
+
+    /**
+     * A group either mounts another model or holds its own elements — never both.
+     *
+     * The test is the Kernel's own idempotency guard: an alias with elements already beside it is an
+     * ALREADY-EXPANDED mount, and its local elements win while the reference is silently ignored (KF3's
+     * malformed-input matrix). So a group with elements is descended, whatever its alias says.
+     */
+    private fun descendGroup(body: JsonObject?, path: String, scope: Scope) {
+        val elements = body?.get("elements")
+        val alias = (body?.get("modelAlias") as? JsonPrimitive)?.contentOrNull
+        if (!alias.isNullOrEmpty() && (elements == null || (elements as? JsonArray).isNullOrEmpty())) {
+            return mount(alias, path, body, scope)
+        }
+        each(elements, path, "$path's `elements`") { collect(it, path, path, scope) }
+    }
+
+    /** Expand the model [alias] names into the mount group at [path], or state why it stayed unexpanded. */
+    private fun mount(alias: String, path: String, body: JsonObject, scope: Scope) {
+        // Everything the mount can carry BESIDES the plain SINGLE_RG case changes which declarations survive
+        // or where they land, so an unimplemented one suspends the analysis rather than producing a tree that
+        // is confidently wrong. Each is a named landing rather than an open question (KF3 has the semantics).
+        unsupportedMountOption(body)?.let { return unexpanded(path, alias, it) }
+        val reference = scope.header.referenceForAlias(alias)
+            ?: return unexpanded(path, alias, "no `header.modelReferences` entry declares this alias")
+        if (reference in scope.visiting) {
+            return unexpanded(path, alias, "`$reference` is already being included, so the mount is a cycle")
+        }
+        val provider = providers[reference]
+            ?: return unexpanded(path, alias, "no source with `header.id` `$reference` was supplied")
+        val providerContent = (provider.parsed as? JsonObject)?.get("content") as? JsonObject
+        val roots = ((providerContent?.get("modelRoot") as? JsonObject)?.get("rootGroups") as? JsonArray)
+            ?.filterIsInstance<JsonObject>()
+            .orEmpty()
+        // SINGLE_RG requires exactly one root group in the provider, and the Kernel refuses zero or several
+        // rather than choosing (KF3). Choosing here would mount a tree A12 would not have built.
+        val root = roots.singleOrNull()
+            ?: return unexpanded(path, alias, "a SINGLE_RG include needs exactly one root group in " +
+                "`$reference`, which declares ${roots.size}")
+        val rootName = root.text("name")
+            ?: return unexpanded(path, alias, "the root group of `$reference` carries no `name`")
+        val nested = Scope(
+            header = (provider.parsed as? JsonObject)?.get("header") as? JsonObject,
+            // The provider's root group DISAPPEARS into the mount, so its own absolute paths — which all
+            // begin with that root — now begin with the mount's path instead.
+            origin = DeclarationOrigin(
+                modelId = reference,
+                authoredPrefix = "/$rootName",
+                mountedPrefix = path,
+                shortNameFallbackAllowed = providerContent.declaresShortNameFallback(),
+            ),
+            visiting = scope.visiting + reference,
+        )
+        each((root["Group"] as? JsonObject)?.get("elements"), path, "`$reference`'s root group elements") {
+            collect(it, path, path, nested)
+        }
+    }
+
+    /**
+     * Why this mount is beyond the implemented include semantics, or null when it is the plain case.
+     *
+     * Each of these is measured Kernel behaviour ([KERNEL-FINDINGS KF3]) that this slice does not yet
+     * reproduce — not an unknown. Reading them as absent would place declarations A12 drops, or place them
+     * one level off, so the analysis is suspended instead.
+     */
+    private fun unsupportedMountOption(body: JsonObject): String? = when {
+        (body["includeLevel"] as? JsonPrimitive)?.contentOrNull == "MODEL_ROOT" ->
+            "a MODEL_ROOT include mounts every top-level group of the provider and is not expanded here"
+        body.flagIsOn("excludeRules") ->
+            "`excludeRules` drops the provider's rules before mounting and is not applied here"
+        body.flagIsOn("excludeComputations") ->
+            "`excludeComputations` drops the provider's computations before mounting and is not applied here"
+        else -> null
+    }
+
+    private fun unexpanded(path: String, alias: String, reason: String) {
+        unexpandedMounts += UnexpandedMount(path, alias, reason)
     }
 
     /** Iterate a member that must be an array, diagnosing rather than raising when it is not. */
@@ -171,12 +337,43 @@ private class Collector(private val modelId: String, private val diagnosticLabel
         }
     }
 
+
     private fun malformed(at: String?, explain: String) {
         // The caller's label rides along, the same way admission's diagnostics carry it: a consumer checking
         // several sources needs the FILE, not only the model id it happened to declare.
         diagnostics += Diagnostic(DiagnosticCode.DECLARATION_NOT_WELL_FORMED, modelId, explain, at, diagnosticLabel)
     }
 }
+
+private fun JsonArray?.isNullOrEmpty(): Boolean = this == null || this.isEmpty()
+
+/**
+ * A PROVIDER's own `fieldRefByShortNameAllowed`, read without diagnosing: an unreadable value in a model that
+ * is only being mounted is the entry model's problem to report if it is ever checked itself, and treating it
+ * as off matches [Collector.flag]'s own fallback.
+ */
+private fun JsonObject?.declaresShortNameFallback(): Boolean =
+    ((this?.get("modelConfig") as? JsonObject)?.get("fieldRefByShortNameAllowed") as? JsonPrimitive)
+        ?.contentOrNull == "true"
+
+/**
+ * The model reference an alias names. `modelAlias` is only a header lookup key — never a tree node — and the
+ * header it is looked up in is the one belonging to the model that WROTE the mount, which is what makes a
+ * nested include resolve against its own provider's references rather than the entry model's (KF3).
+ */
+private fun JsonObject?.referenceForAlias(alias: String): String? =
+    (this?.get("modelReferences") as? JsonArray)
+        ?.filterIsInstance<JsonObject>()
+        ?.firstOrNull { it.text("alias") == alias }
+        ?.text("reference")
+        ?.takeIf { it.isNotBlank() }
+
+/**
+ * Whether a mount flag is ON. Only a true spelling counts: the Kernel reads a non-Boolean
+ * `excludeRules`/`excludeComputations` as FALSE and lets the content survive (KF3's coercion matrix), so a
+ * malformed value must not suspend an include that A12 would expand in full.
+ */
+private fun JsonObject.flagIsOn(key: String): Boolean = (this[key] as? JsonPrimitive)?.contentOrNull == "true"
 
 /**
  * A member read the way the Kernel reads it: `ElementDeserializer` takes `type`, `id` and `name` through
