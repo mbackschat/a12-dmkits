@@ -66,6 +66,8 @@ class ConditionShapeTest {
         expected["a comparison — the control"] = ACCEPTS
         expected["a parenthesised condition — the control"] = ACCEPTS
         expected["a filtered aggregate — the control"] = ACCEPTS
+        expected["division — the symbol no corpus carries"] = ACCEPTS
+        expected["exponentiation — the symbol no corpus carries"] = ACCEPTS
         assertEquals(expected, actual, "the parser's verdict on the measured shapes")
     }
 
@@ -98,6 +100,14 @@ class ConditionShapeTest {
             "a parenthesised condition — the control" to "(FieldFilled(Tier) And FieldFilled(AutoRenew))",
             "a filtered aggregate — the control" to
                 "NumberOfFilledFields(Addons*/Name Having [Addons/Name] == \"x\") > 0",
+            // The two infix symbols NO population reaches — not the catalog corpus, not the real models.
+            // A mutation check removing `/` from the parser's arithmetic set left the whole estate green,
+            // so both rest here instead of on a reading of the grammar. Admission measured through
+            // `checkConsistency` by `rulekit.validate.laws.ConditionArithmeticSymbolLawsTest`, where `^`
+            // over a literal is ADMITTED and `^` over a field draws the SEMANTIC `MVK_INVALID_NUMBER_FOR_EXP`
+            // — a code that proves the text parsed, which is the only thing this parser decides.
+            "division — the symbol no corpus carries" to "[BaseFee] / [EffectiveFee] > 1",
+            "exponentiation — the symbol no corpus carries" to "[BaseFee] ^ 2 > 1",
         )
     }
 }

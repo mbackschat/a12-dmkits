@@ -5918,3 +5918,26 @@ The last row generalizes the string-literal result above rather than repeating i
 **What this buys the portable checker.** A same-level `And`/`Or` mix is reportable from tokens alone — a bracket-pair stack is something the tokenizer already supports — and it is the first condition-syntax rule measured here that is NOT defeated by parser state, unlike the delimiter and trailing-token grids of [KF300](#kf300), which both ended in negative results. The discriminating cases those two grids do not cover are the five level-separated admissions and the sibling-pair row: each rejects a plausible cheap implementation (both-spellings-anywhere, depth-counter) that neither earlier grid touches.
 
 *Locked by:* `rulekit.validate.laws.RuleConditionCompositionLawsTest` (four grids: arity with a one-part liveness control, mixing with the five level-separated admissions, a call's parentheses with a filter-parses control, and the sibling-pair row with a mixed-outer-level control). The portable side is `consistency`'s `ConnectiveAgreementTest`, which reproduces the admissions as well as the refusals and pins the four connective spellings against the generated keyword table.
+
+## §1 supplement — A12 admits five infix arithmetic symbols in a condition, and `^` refuses a FIELD exponent semantically rather than syntactically (measured, 2026-09-13) <a id="kf302"></a>
+
+> Fold: pending — belongs beside [KERNEL-SEMANTICS](KERNEL-SEMANTICS.md) §1's expression law, which names arithmetic without enumerating the symbols.
+
+**Why this was measured: a mutation check found a parser widening nothing in the estate reached.** The portable checker's parser admits `+ - * / ^` between two operands. Removing `/` from that set left every test green — the generated catalog corpus carries `+`, `-` and `*` and no population carries a division or an exponent, so two of the five rested on [GRAMMAR-LEDGER](GRAMMAR-LEDGER.md)'s `operation` row rather than on a measurement. Widening is the safe direction for a checker, but an unmeasured widening is a guess, and a guess nothing exercises cannot be told from dead code.
+
+| condition, on two NUMBER fields of one group | verdict |
+|---|---|
+| `[BaseFee] > 1` — the control | ADMITTED |
+| `[BaseFee] + [EffectiveFee] > 1` | ADMITTED |
+| `[BaseFee] - [EffectiveFee] > 1` | ADMITTED |
+| `[BaseFee] * [EffectiveFee] > 1` | ADMITTED |
+| `[BaseFee] / [EffectiveFee] > 1` | ADMITTED |
+| `[BaseFee] ^ [EffectiveFee] > 1` | `MVK_INVALID_NUMBER_FOR_EXP` |
+| `[BaseFee] ^ 2 > 1` | ADMITTED |
+| `[BaseFee] % [EffectiveFee] > 1` — the liveness control | `MVK_LEXER_STANDARD_ERROR` |
+
+**The `^` pair is the row that matters, and one row alone would have been read backwards.** `MVK_INVALID_NUMBER_FOR_EXP` is a SEMANTIC code, so the field-exponent text PARSED and was then refused for what its exponent is; taken alone it reads as "A12 rejects `^`" and would have argued for narrowing the parser. The literal row separates the two readings and settles it the other way: `^` is admitted, and only a non-literal exponent is not. A checker's parser therefore must accept both, because a parse-phase family that refused the field form would name the wrong defect for a text A12's own parser accepts.
+
+**`%` is not an operator at any layer.** It fails in the LEXER, not the grammar, which is what makes it the grid's liveness control: it shows the probe can still produce a rejection, without which seven admissions cannot be told from a probe that admits everything.
+
+*Locked by:* `rulekit.validate.laws.ConditionArithmeticSymbolLawsTest` (one grid, one symbol apart on one carrier, with both a no-arithmetic control and the `%` liveness control). The portable side is `consistency`'s `ConditionShapeTest`, whose division and exponentiation rows are the controls that were missing when the mutants survived.
