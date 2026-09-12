@@ -20,7 +20,10 @@ import org.junit.jupiter.api.Test;
  * an equivalent spelling.
  *
  * <p>Measured because a checker needs it: the portable consistency module resolves this member without a
- * condition parser, so this is the Kernel oracle its relative-path arithmetic answers to.
+ * condition parser, so this is the Kernel oracle its relative-path arithmetic answers to. Two rows carry an
+ * UNCODED verdict rather than an {@code MVK_*} one, and that is the finding rather than a gap in the fixture:
+ * both fail during CONVERSION, before any classified check runs, so the model never receives a consistency
+ * verdict at all and a portable report must not present its own reading of such a model as A12's.
  */
 class ErrorFieldRelativePathLawsTest {
 
@@ -45,6 +48,9 @@ class ErrorFieldRelativePathLawsTest {
         // above it.
         actual.put("up to the root, then down again", verdict("../../Order/Code", "FieldFilled(Code)"));
         actual.put("one step PAST the root", verdict("../../../Order/Code", "FieldFilled(Code)"));
+        // The member is strictly RELATIVE: an ABSOLUTE spelling that names the very field the legal row
+        // reaches is refused during conversion, so "relPath" is a contract and not just a naming convention.
+        actual.put("absolute, naming the same field", verdict("/Order/Code", "FieldFilled(Code)"));
 
         Map<String, String> expected = new LinkedHashMap<>();
         expected.put("sibling field, with the parent step", KernelLaws.ADMITTED);
@@ -54,6 +60,7 @@ class ErrorFieldRelativePathLawsTest {
         expected.put("field one level deeper", KernelLaws.ADMITTED);
         expected.put("up to the root, then down again", KernelLaws.ADMITTED);
         expected.put("one step PAST the root", UNCODED);
+        expected.put("absolute, naming the same field", UNCODED);
         assertEquals(expected, actual, "the relative path is resolved from the rule element itself");
     }
 
