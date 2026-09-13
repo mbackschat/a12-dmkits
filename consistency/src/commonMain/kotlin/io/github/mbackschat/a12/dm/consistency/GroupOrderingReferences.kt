@@ -150,10 +150,28 @@ private fun PreparedModel.orderingFinding(
  * field whose `fieldType` is absent, holds no `StringType` body, or carries no boolean there is left
  * unjudged: under-reporting is the only safe direction on a shape no row measures.
  */
+/**
+ * Whether this value SETS the flag, the way A12 binds it rather than the way JSON types it.
+ *
+ * A12 does not require a JSON boolean here, and a checker demanding one admits fields A12 refuses. Measured
+ * (`rulekit.validate.laws.GroupOrderingFieldTypeLawsTest.theShapesAroundTheRefusedTypeAreAdmitted`): `true`
+ * and the string `"true"` set it; `false`, the string `"false"` and the number `0` clear it; the numbers `1`
+ * and `2` set it, so any non-zero number does. A string that is neither boolean literal — `"yes"` — is not
+ * coerced at all but refuses A12's reader outright, which is a binding verdict this family does not own, so
+ * it is left to whoever reports unbindable members rather than silently read as false here.
+ */
+private fun JsonPrimitive.setsTheFlag(): Boolean {
+    booleanOrNull?.let { return it }
+    if (isString) {
+        return false
+    }
+    return content.toDoubleOrNull()?.let { it != 0.0 } ?: false
+}
+
 private fun noValueValidationFinding(field: DeclaredElement, member: String, code: String): Finding? {
     val string = (field.body?.get("fieldType") as? JsonObject)?.get("StringType") as? JsonObject
         ?: return null
-    if ((string["noValueValidation"] as? JsonPrimitive)?.booleanOrNull != true) {
+    if ((string["noValueValidation"] as? JsonPrimitive)?.setsTheFlag() != true) {
         return null
     }
     return Finding(

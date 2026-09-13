@@ -336,9 +336,10 @@ private val UNREAD_MEMBERS = listOf(
     ),
     CoverageGap(
         at = null,
-        reason = "a group's index/sort field is judged on its `StringType` body alone — a `fieldType` that " +
-            "carries the `noValueValidation` flag anywhere else is left unjudged, because A12 reads that " +
-            "flag only after deciding the type IS a string and no row measures the other shapes",
+        reason = "a `fieldType` whose shape A12's own reader REFUSES — an empty `fieldType` object, a " +
+            "non-string type carrying `noValueValidation`, or that flag spelled as a string that is " +
+            "neither boolean literal — draws nothing here, so a model that cannot load reads as clean on " +
+            "this member. The flag's own coercion is followed where A12 coerces",
     ),
     CoverageGap(
         at = null,

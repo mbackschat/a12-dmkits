@@ -6010,3 +6010,15 @@ The last row generalizes the string-literal result above rather than repeating i
 **So the portable rule is "any case the TABLE carries", never "case-insensitively".** The checker intersects a case-insensitive match with the generated terminal set, and the promotion reaches the connectives and nothing else — an enumeration, not a hope: of the spellings sharing a case-insensitive form, only `and`/`or` and `und`/`oder` have a member the operator catalog classifies, while `in` and `to` (`in`/`zu`) are uncataloged in all three cases.
 
 *Locked by:* `rulekit.validate.laws.ConnectiveCaseLawsTest` (three grids, each with a canonical control and the fourth-case row).
+
+## §10 supplement — the `noValueValidation` flag is COERCED, so a JSON boolean is not what A12 requires (measured, 2026-09-13) <a id="kf307"></a>
+
+> Fold: pending — belongs beside [KERNEL-SEMANTICS](KERNEL-SEMANTICS.md) §10, whose ordering-key material names the flag without saying how it binds.
+
+**A12 binds this flag through a coercion, and the complete admitted set is narrow rather than lenient.** `true` and the string `"true"` SET it; `false`, the string `"false"` and the number `0` clear it; the numbers `1` and `2` set it, so any non-zero number does; an explicit `null` leaves it unset. A string that is neither boolean literal — `"yes"` — is **not** coerced to false: it refuses A12's reader outright, which is a different tier again. A checker reading the member as a strict JSON boolean therefore admits an ordering key A12 refuses, and that is what this repository's did for the numeric spellings until this row.
+
+**The neighbouring TYPE shapes are settled at the same time, and two of them are unreadable rather than admitted.** An empty `fieldType` object carries no `type` discriminator, so the reader refuses. A `NumberType` carrying `noValueValidation` likewise refuses — the member is not declared on that binding at all, which raises the source reading of `isNoValueValidation()` being a `FormatDefinitionString` method into a measured fact: **there is no "same flag, other type" model for a checker to judge**, because such a model does not load. A plain `NumberType` as an ordering key is ADMITTED, so it is the flag that is refused and never the non-string type.
+
+**Every coerced row trips a SECOND law with it.** `noValueValidation` without `lineBreaksPermitted` draws `MVK_STRING_TYPE_NO_VAL_AND_NO_LINE_BREAK` beside the ordering gate's own code, which is why those rows carry a pair. The existing single-code control sets both members, so it does not show this and could not have.
+
+*Locked by:* `rulekit.validate.laws.GroupOrderingFieldTypeLawsTest.theShapesAroundTheRefusedTypeAreAdmitted`; the portable side is `consistency`'s `GroupOrderingFieldTypeTest`.

@@ -58,6 +58,83 @@ class GroupOrderingFieldTypeLawsTest {
     }
 
     /**
+     * The shapes AROUND the one refused type, which no row had measured.
+     *
+     * <p>The checker keys on a {@code StringType} body carrying the flag, mirroring
+     * {@code FieldUtils.isNoValueValidation} — which reads it only after {@code isString}, because
+     * {@code isNoValueValidation()} is declared on {@code FormatDefinitionString} and exists nowhere else.
+     * That made every NEIGHBOURING shape unjudged and the checker said so on its report: an absent
+     * {@code fieldType}, a non-string type carrying the same flag, and a non-boolean value in the string
+     * body. "Under-reporting is the safe direction" was true and left three cheap questions unasked.
+     *
+     * <p>The rows settle whether the gate is about the FLAG or about the flag ON A STRING, which the one
+     * existing row cannot: it varies both together.
+     */
+    @Test
+    void theShapesAroundTheRefusedTypeAreAdmitted() {
+        Map<String, String> actual = new LinkedHashMap<>();
+        actual.put("a plain string field — the control", verdictWith(null, "indexFieldName"));
+        actual.put("the refused shape — the other control",
+                verdictWith(NO_VALUE_VALIDATION, "indexFieldName"));
+        actual.put("an EMPTY fieldType object", verdictWith("{}", "indexFieldName"));
+        actual.put("a NUMBER type carrying the same flag",
+                verdictWith("{\"type\":\"NumberType\",\"NumberType\":{\"noValueValidation\":true}}",
+                        "indexFieldName"));
+        actual.put("a plain number type", verdictWith(
+                "{\"type\":\"NumberType\",\"NumberType\":{}}", "indexFieldName"));
+        // The coercion rows below are the point of this grid: A12 does NOT require a JSON boolean here, so a
+        // checker reading one strictly admits fields A12 refuses. Measured: `"true"` and any NON-ZERO number
+        // set the flag; `"false"` and `0` clear it; any other string refuses the reader.
+        actual.put("the flag as a STRING rather than a boolean",
+                verdictWith("{\"type\":\"StringType\",\"StringType\":{\"noValueValidation\":\"true\"}}",
+                        "indexFieldName"));
+        actual.put("the flag as the string \"false\"",
+                verdictWith("{\"type\":\"StringType\",\"StringType\":{\"noValueValidation\":\"false\"}}",
+                        "indexFieldName"));
+        actual.put("the flag as the number 1",
+                verdictWith("{\"type\":\"StringType\",\"StringType\":{\"noValueValidation\":1}}",
+                        "indexFieldName"));
+        actual.put("the flag as the number 0",
+                verdictWith("{\"type\":\"StringType\",\"StringType\":{\"noValueValidation\":0}}",
+                        "indexFieldName"));
+        actual.put("the flag as the number 2",
+                verdictWith("{\"type\":\"StringType\",\"StringType\":{\"noValueValidation\":2}}",
+                        "indexFieldName"));
+        actual.put("the flag as an arbitrary string",
+                verdictWith("{\"type\":\"StringType\",\"StringType\":{\"noValueValidation\":\"yes\"}}",
+                        "indexFieldName"));
+        actual.put("the flag explicitly null",
+                verdictWith("{\"type\":\"StringType\",\"StringType\":{\"noValueValidation\":null}}",
+                        "indexFieldName"));
+
+        Map<String, String> expected = new LinkedHashMap<>();
+        expected.put("a plain string field — the control", KernelLaws.ADMITTED);
+        expected.put("the refused shape — the other control", "MVK_INDEX_FIELD_NO_VALUE_VALIDATION");
+        // An empty object carries no `type` discriminator, so A12's reader refuses the source — a different
+        // tier from an absent member, and the reason those two shapes are separate rows.
+        expected.put("an EMPTY fieldType object", KernelLaws.UNREADABLE);
+        // The flag is structurally string-only rather than merely read string-only: `NumberType` declares no
+        // such member, so the reader refuses outright. That settles the source reading of
+        // `isNoValueValidation()` being declared on `FormatDefinitionString` — the same flag on another type
+        // is not a legal model at all, so there is no "same flag, other type" case for a checker to judge.
+        expected.put("a NUMBER type carrying the same flag", KernelLaws.UNREADABLE);
+        expected.put("a plain number type", KernelLaws.ADMITTED);
+        // COERCED: Jackson binds the string "true" into the boolean member, so the gate fires — and a second
+        // law fires with it, since `noValueValidation` without `lineBreaksPermitted` is its own refusal. A
+        // checker reading the member as a strict JSON boolean sees null here and under-reports.
+        expected.put("the flag as a STRING rather than a boolean", GATE_AND_LINE_BREAK_LAW);
+        expected.put("the flag as the string \"false\"", KernelLaws.ADMITTED);
+        expected.put("the flag as the number 1", GATE_AND_LINE_BREAK_LAW);
+        expected.put("the flag as the number 0", KernelLaws.ADMITTED);
+        expected.put("the flag as the number 2", GATE_AND_LINE_BREAK_LAW);
+        // NOT coerced to false: a string that is neither boolean literal refuses A12's reader outright, so
+        // the coercion is narrow rather than lenient — `"true"`/`"false"` and nothing else.
+        expected.put("the flag as an arbitrary string", KernelLaws.UNREADABLE);
+        expected.put("the flag explicitly null", KernelLaws.ADMITTED);
+        assertEquals(expected, actual, "the shapes around a no-value-validation string as an ordering field");
+    }
+
+    /**
      * The index member's THIRD gate, {@code MVK_INDEX_FIELD_NO_TABLE_ENUM}, cannot fire for a stored A12
      * model, because the shape it rejects cannot be authored: the reader refuses the table reference itself.
      *
@@ -103,6 +180,10 @@ class GroupOrderingFieldTypeLawsTest {
     }
 
     /** A no-value-validation string: both flags, because A12 refuses the first without the second. */
+    /** Both laws the flag trips when it is set without `lineBreaksPermitted`, which every coerced row is. */
+    private static final String GATE_AND_LINE_BREAK_LAW =
+            "MVK_INDEX_FIELD_NO_VALUE_VALIDATION,MVK_STRING_TYPE_NO_VAL_AND_NO_LINE_BREAK";
+
     private static final String NO_VALUE_VALIDATION =
             "{\"type\":\"StringType\",\"StringType\":{\"noValueValidation\":true,\"lineBreaksPermitted\":true}}";
 

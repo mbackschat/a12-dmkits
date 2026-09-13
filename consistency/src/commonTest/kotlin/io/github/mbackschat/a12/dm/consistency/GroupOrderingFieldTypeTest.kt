@@ -101,6 +101,30 @@ class GroupOrderingFieldTypeTest {
         )
         actual["a fieldType that is not an object"] = codesFor(""""fieldType":"StringType"""", index("Sku"))
         actual["no fieldType at all"] = codesFor("", index("Sku"))
+        // A12 COERCES a JSON string into the boolean member and the gate fires (measured —
+        // `GroupOrderingFieldTypeLawsTest.theShapesAroundTheRefusedTypeAreAdmitted`), so reading the member
+        // as a strict JSON boolean would silently admit a field A12 refuses.
+        actual["the flag as the STRING \"true\", which A12 coerces"] = codesFor(
+            """"fieldType":{"type":"StringType","StringType":{"noValueValidation":"true"}}""",
+            index("Sku"),
+        )
+        // The other side of the same coercion: a string A12 does not read as true must stay silent.
+        actual["the flag as the STRING \"false\""] = codesFor(
+            """"fieldType":{"type":"StringType","StringType":{"noValueValidation":"false"}}""",
+            index("Sku"),
+        )
+        actual["the flag as a NUMBER"] = codesFor(
+            """"fieldType":{"type":"StringType","StringType":{"noValueValidation":1}}""",
+            index("Sku"),
+        )
+        actual["the flag as the number 0"] = codesFor(
+            """"fieldType":{"type":"StringType","StringType":{"noValueValidation":0}}""",
+            index("Sku"),
+        )
+        actual["the flag as the number 2"] = codesFor(
+            """"fieldType":{"type":"StringType","StringType":{"noValueValidation":2}}""",
+            index("Sku"),
+        )
 
         val expected = mapOf(
             "the flag set — the control" to listOf("MVK_INDEX_FIELD_NO_VALUE_VALIDATION"),
@@ -109,6 +133,14 @@ class GroupOrderingFieldTypeTest {
             "the flag on a type that is not a string" to listOf(),
             "a fieldType that is not an object" to listOf(),
             "no fieldType at all" to listOf(),
+            "the flag as the STRING \"true\", which A12 coerces" to
+                listOf("MVK_INDEX_FIELD_NO_VALUE_VALIDATION"),
+            "the flag as the STRING \"false\"" to listOf(),
+            // A12 coerces any NON-ZERO number to true and `0` to false (measured, same laws grid), so a
+            // checker demanding a JSON boolean here admits a field A12 refuses.
+            "the flag as a NUMBER" to listOf("MVK_INDEX_FIELD_NO_VALUE_VALIDATION"),
+            "the flag as the number 0" to listOf(),
+            "the flag as the number 2" to listOf("MVK_INDEX_FIELD_NO_VALUE_VALIDATION"),
         )
         assertEquals(expected, actual, "what the no-value-validation predicate reads")
     }
