@@ -1,8 +1,8 @@
 package io.github.mbackschat.a12.dm.consistency
 
 import io.github.mbackschat.a12.dm.consistency.syntax.ConditionLanguage
-import io.github.mbackschat.a12.dm.consistency.syntax.conditionShapeFailure
-import io.github.mbackschat.a12.dm.consistency.syntax.operationShapeFailure
+import io.github.mbackschat.a12.dm.consistency.syntax.SyntaxEntry
+import io.github.mbackschat.a12.dm.consistency.syntax.shapeFailure
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
@@ -23,13 +23,16 @@ class ConditionShapeTest {
     @Test
     fun everyTextTheKernelAcceptsParses() {
         val rejected = mutableMapOf<String, String>()
+        fun reject(id: String, text: String, language: ConditionLanguage, entry: SyntaxEntry) {
+            shapeFailure(text, language, entry)?.let { rejected["$language $id"] = report(text, it) }
+        }
         for (row in ConditionCorpus.conditions()) {
-            conditionShapeFailure(row.en, ConditionLanguage.EN)?.let { rejected["EN ${row.id}"] = report(row.en, it) }
-            conditionShapeFailure(row.de, ConditionLanguage.DE)?.let { rejected["DE ${row.id}"] = report(row.de, it) }
+            reject(row.id, row.en, ConditionLanguage.EN, SyntaxEntry.CONDITION)
+            reject(row.id, row.de, ConditionLanguage.DE, SyntaxEntry.CONDITION)
         }
         for (row in ConditionCorpus.operations()) {
-            operationShapeFailure(row.en, ConditionLanguage.EN)?.let { rejected["EN ${row.id}"] = report(row.en, it) }
-            operationShapeFailure(row.de, ConditionLanguage.DE)?.let { rejected["DE ${row.id}"] = report(row.de, it) }
+            reject(row.id, row.en, ConditionLanguage.EN, SyntaxEntry.OPERATION)
+            reject(row.id, row.de, ConditionLanguage.DE, SyntaxEntry.OPERATION)
         }
         assertEquals(emptyMap(), rejected, "every one of these texts is DSL the Kernel accepts")
     }
@@ -141,7 +144,7 @@ class ConditionShapeTest {
     }
 
     private fun verdict(text: String, language: ConditionLanguage = ConditionLanguage.EN): String {
-        val failure = conditionShapeFailure(text, language) ?: return ACCEPTS
+        val failure = shapeFailure(text, language, SyntaxEntry.CONDITION) ?: return ACCEPTS
         return if (failure.ranOutWithDelimiterOpen) "MVK_EXPECTED_TOKEN_NOT_FOUND" else "MVK_UNEXPECTED_TOKEN"
     }
 

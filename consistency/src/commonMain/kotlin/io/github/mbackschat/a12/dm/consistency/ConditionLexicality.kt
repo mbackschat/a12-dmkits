@@ -3,6 +3,7 @@ package io.github.mbackschat.a12.dm.consistency
 import io.github.mbackschat.a12.dm.consistency.syntax.LexicalFailure
 import io.github.mbackschat.a12.dm.consistency.syntax.LexicalFailureKind
 import io.github.mbackschat.a12.dm.consistency.syntax.lexicalFailure
+import io.github.mbackschat.a12.dm.consistency.syntax.shapeFailureAhead
 
 /**
  * The first SYNTAX family: DSL text A12's lexer cannot tokenize.
@@ -15,19 +16,27 @@ import io.github.mbackschat.a12.dm.consistency.syntax.lexicalFailure
  *
  * It covers every DSL-bearing member, not only a rule's condition, by reusing the enumeration the reference
  * family already walks. A second copy of that list would be the member the two families disagreed about.
+ *
+ * **A lexical failure does not automatically win, and this family yields where A12 does.** The phase A12
+ * reports is the one whose failure sits EARLIEST in the text, so text carrying a token the grammar cannot use
+ * BEFORE the bad character belongs to the grammar family, which reports it with A12's own
+ * `MVK_UNEXPECTED_TOKEN`. [shapeFailureAhead] is the single arbiter both families consult, so exactly one of
+ * them speaks for any one text.
  */
 fun PreparedModel.conditionLexicalFindings(): List<Finding> = elements.flatMap { element ->
     val body = element.body ?: return@flatMap emptyList()
     conditionTexts(element.kind, body).mapNotNull { (member, text) ->
-        lexicalFailure(text)?.let { failure ->
-            Finding(
-                FindingCategory.A12_CONSTRAINT,
-                FindingSeverity.ERROR,
-                "MVK_LEXER_STANDARD_ERROR",
-                "`$member` ${failure.explain()}, so A12's lexer cannot read this text at all",
-                element.path,
-            )
+        val failure = lexicalFailure(text) ?: return@mapNotNull null
+        if (shapeFailureAhead(text, conditionLanguage, syntaxEntryOf(member), failure) != null) {
+            return@mapNotNull null
         }
+        Finding(
+            FindingCategory.A12_CONSTRAINT,
+            FindingSeverity.ERROR,
+            "MVK_LEXER_STANDARD_ERROR",
+            "`$member` ${failure.explain()}, so A12's lexer cannot read this text at all",
+            element.path,
+        )
     }
 }
 

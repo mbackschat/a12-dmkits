@@ -1,6 +1,7 @@
 package io.github.mbackschat.a12.dm.consistency
 
 import io.github.mbackschat.a12.dm.consistency.syntax.incompleteInput
+import io.github.mbackschat.a12.dm.consistency.syntax.lexicalFailure
 
 /**
  * DSL text that ends before it is finished — A12's `MVK_INCOMPLETE_INPUT`.
@@ -16,10 +17,21 @@ import io.github.mbackschat.a12.dm.consistency.syntax.incompleteInput
  * cannot tell from a path step; and every wrong-token shape, which needs the grammar. Naming a real defect
  * with the wrong code sends an author to the wrong fix, and the report's gap already says the parser phases
  * are not covered.
+ *
+ * **A text the lexer already choked on is never this family's**, and the ordering needs no position
+ * comparison: this phase fails at the LAST significant token, and a lexical failure further along would BE
+ * that token — which is not an operator, so nothing fires. So whenever both can speak the lexical failure is
+ * the earlier one, and A12 names it (measured, including the row where its lexer skips the character it could
+ * not take and the parser then runs out of input anyway: `rulekit.validate.laws.SyntaxPhasePrecedenceLawsTest`,
+ * [KERNEL-FINDINGS KF311]). Without this guard `FieldFilled('Tier) And` drew two findings with two codes, one
+ * of them a code A12 does not give for that text.
  */
 fun PreparedModel.conditionCompletenessFindings(): List<Finding> = elements.flatMap { element ->
     val body = element.body ?: return@flatMap emptyList()
     conditionTexts(element.kind, body).mapNotNull { (member, text) ->
+        if (lexicalFailure(text) != null) {
+            return@mapNotNull null
+        }
         incompleteInput(text, conditionLanguage)?.let { incomplete ->
             Finding(
                 FindingCategory.A12_CONSTRAINT,

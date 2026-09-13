@@ -1,5 +1,6 @@
 package io.github.mbackschat.a12.dm.consistency
 
+import io.github.mbackschat.a12.dm.consistency.syntax.SyntaxEntry
 import io.github.mbackschat.a12.dm.consistency.syntax.referencesIn
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonObject
@@ -67,6 +68,15 @@ internal fun conditionTexts(kind: String, body: JsonObject): List<Pair<String, S
     }
     else -> emptyList()
 }
+
+/**
+ * Which entry rule A12 parses a member of [conditionTexts] with.
+ *
+ * It sits beside that enumeration because it is the same knowledge — which member holds which kind of DSL
+ * text — and a second copy would be the member the syntax families disagreed about.
+ */
+internal fun syntaxEntryOf(member: String): SyntaxEntry =
+    if (member.endsWith("operation")) SyntaxEntry.OPERATION else SyntaxEntry.CONDITION
 
 private fun JsonArray?.orEmpty(): List<kotlinx.serialization.json.JsonElement> = this ?: emptyList()
 

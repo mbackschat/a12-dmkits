@@ -360,16 +360,6 @@ private val UNREAD_MEMBERS = listOf(
     ),
     CoverageGap(
         at = null,
-        reason = "an unpaired quote is reported as a LEXICAL failure even in the measured shapes where A12 " +
-            "answers `MVK_UNEXPECTED_TOKEN` instead — where a string literal runs on and swallows a " +
-            "delimiter the grammar was waiting for, and where a parse error sits earlier in the text than " +
-            "the bad quote. Both quoting forms are affected and both fail the same way: the parser gets " +
-            "there first. Which error wins depends on the parser's position, so the code is right for the " +
-            "shapes where the quote is the first failure and wrong for those two until the grammar is " +
-            "available",
-    ),
-    CoverageGap(
-        at = null,
         reason = "two entity filters sharing ONE argument list are treated as separate connective levels " +
             "without a measurement saying they are — `SumOfProducts` is the only operator whose argument " +
             "list takes two entity specs and it refuses a filter on either for a reason of its own, so no " +

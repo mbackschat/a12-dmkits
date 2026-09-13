@@ -6081,3 +6081,29 @@ The last row generalizes the string-literal result above rather than repeating i
 **Why this matters to a checker rather than being trivia.** A syntax layer reporting "a blank does not parse" under one code is right about one member and wrong about the rest, and the two that share `MVK_UNEXPECTED_TOKEN` are a condition member and a *common* condition member, while the operation — the one member that is an expression rather than a condition — is the one that parts. So the split follows the member's GRAMMAR ROLE and not its carrier, which is not what the names suggest.
 
 *Locked by:* `rulekit.validate.laws.ComputationAlternativeSlotLawsTest.aBlankSlotAnswersDifferentlyOnEachMemberOfThisCarrier` and `RuleConditionAndTargetSlotLawsTest`. The portable side is `consistency`'s `BlankDslSlotTest`.
+
+## §12 supplement — with TWO syntax failures in one text, A12 reports the EARLIER one, whichever phase owns it (measured, 2026-09-13) <a id="kf311"></a>
+
+> Fold: pending — belongs beside [KERNEL-SEMANTICS](KERNEL-SEMANTICS.md) §12, which gives each parse phase its code and says nothing about which phase speaks when two of them can.
+
+[KF300](#kf300) established four parse codes, one per phase, each measured on a text carrying one failure. It left open which code a text carrying TWO draws, and an earlier reading of the rows — that the lexer wins unless a literal *swallows a delimiter* — described two shapes rather than a rule. **The rule is positional: the failure sitting earliest in the text is the one A12 names.**
+
+| text | first failure | A12 says |
+|---|---|---|
+| `FieldFilled(Tier))` | the extra `)` | `MVK_UNEXPECTED_TOKEN` |
+| `FieldFilled(Tier) And "x` | the quote | `MVK_LEXER_STANDARD_ERROR` |
+| `FieldFilled(Tier)) And "x` | the extra `)` | `MVK_UNEXPECTED_TOKEN` |
+| `"x And FieldFilled(Tier))` | the quote | `MVK_LEXER_STANDARD_ERROR` |
+| `FieldFilled(Tier)) And %` | the extra `)` | `MVK_UNEXPECTED_TOKEN` |
+| `% And FieldFilled(Tier))` | the `%` | `MVK_LEXER_STANDARD_ERROR` |
+| `FieldFilled(Tier))"x` | the extra `)`, one character ahead | `MVK_UNEXPECTED_TOKEN` |
+| `FieldFilled('Tier) ]` | the quote | `MVK_LEXER_STANDARD_ERROR` |
+| `FieldFilled('Tier) And` | the quote | `MVK_LEXER_STANDARD_ERROR` |
+
+**The rows are ordered PAIRS of the same two defects**, because order is the only variable that can move without changing what the defects are; a grid that varied the defects instead cannot tell position from phase. The last three rows are the ones that defeat the rival readings: a parse error BEHIND the lexical failure loses, so this is not a fixed "the parser outranks the lexer"; and both lexical classes are measured in both orders, so an unterminated literal and an illegal character are not assumed to share precedence merely because they share a code.
+
+**`FieldFilled('Tier) And` is the row that separates first-wins from last-wins, and it is the only one that could.** ANTLR does not stop at a character it cannot take — it reports, skips the character, and lexes on — so that text raises the lexer's failure at the quote and then hands the parser `FieldFilled(Tier) And`, which runs out of input and raises a second failure; the control with the quote removed draws `MVK_INCOMPLETE_INPUT`. A12 reports the lexer. Every other row's failure is fatal to the token stream, so only this shape has two live candidates.
+
+*Mechanism (hypothesis, consistent with every row and not separately proved):* ANTLR's lexer is demand-driven, producing a token only when the parser asks for one, so it cannot report at a position the parser has not reached, and the parser cannot reach a position the lexer has refused to hand it.
+
+*Locked by:* `rulekit.validate.laws.SyntaxPhasePrecedenceLawsTest`. The portable side is `consistency`'s `SyntaxPhasePrecedenceTest`, which asserts the whole report's codes per row — the second mistake this closes was two families each reporting their own verdict for `FieldFilled('Tier) And`.

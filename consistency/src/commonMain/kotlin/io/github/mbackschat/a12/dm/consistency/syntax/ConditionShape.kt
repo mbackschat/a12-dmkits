@@ -26,27 +26,63 @@ package io.github.mbackschat.a12.dm.consistency.syntax
  * is `MVK_UNEXPECTED_TOKEN` too, which is why the end of the text is not by itself a "ran out".
  *
  * The earlier phases own their own shapes: text that cannot be tokenized is [lexicalFailure]'s, and text that
- * ends on a dangling operator is [incompleteInput]'s. A caller runs them first.
+ * ends on a dangling operator is [incompleteInput]'s. A caller runs them first — except where the parser gets
+ * there first, which [shapeFailureAhead] decides.
  */
-fun conditionShapeFailure(text: String, language: ConditionLanguage): ShapeFailure? =
-    ShapeParser(tokenize(text).filter { it.kind != TokenKind.COMMENT }, CONDITION_KEYWORDS.getValue(language))
-        .parseCondition()
+fun shapeFailure(text: String, language: ConditionLanguage, entry: SyntaxEntry): ShapeFailure? {
+    val parser = ShapeParser(
+        tokenize(text).filter { it.kind != TokenKind.COMMENT },
+        CONDITION_KEYWORDS.getValue(language),
+    )
+    return when (entry) {
+        SyntaxEntry.CONDITION -> parser.parseCondition()
+        SyntaxEntry.OPERATION -> parser.parseOperation()
+    }
+}
 
 /**
- * Whether text forms an OPERATION — a computation's `operation`, which A12 parses with its own entry rule.
+ * Which of A12's two entry rules parses a member's text.
  *
- * The two entry rules differ in what they accept at the top: a condition must be a condition, while an
- * operation is an expression. Everything below the entry is shared.
+ * The two differ in what they accept at the top and nowhere below it: a condition must be a condition, while
+ * an operation is an expression — a bare `42.00` is a legal operation and not a legal condition, so running
+ * one text through the other's entry reports a defect that is not there.
  */
-fun operationShapeFailure(text: String, language: ConditionLanguage): ShapeFailure? =
-    ShapeParser(tokenize(text).filter { it.kind != TokenKind.COMMENT }, CONDITION_KEYWORDS.getValue(language))
-        .parseOperation()
+enum class SyntaxEntry {
+    /** `bedingungSnippet` — a rule's `errorCondition` and a computation's preconditions. */
+    CONDITION,
+
+    /** `operationSnippet` — a computation alternative's `operation`. */
+    OPERATION,
+}
+
+/**
+ * The shape failure A12's parser meets BEFORE its lexer stops at [lexical] — null when the lexer speaks first.
+ *
+ * **A12 reports the failure that sits EARLIEST in the text, whichever phase owns it**, because ANTLR's lexer
+ * is demand-driven: it produces a token only when the parser asks for one, so it cannot report a failure at a
+ * position the parser has not reached, and the parser cannot reach a position the lexer has already refused.
+ * Measured in both orders, for both lexical classes, with the two defects held fixed and only their order
+ * moved ([KERNEL-FINDINGS KF311], `rulekit.validate.laws.SyntaxPhasePrecedenceLawsTest`) — including the row
+ * that separates first-wins from last-wins, where the lexer skips the character it could not take and the
+ * parser then fails on what is left, and A12 still names the lexer.
+ *
+ * So the parser is run over the text UP TO the lexical stop, which is exactly what A12's parser got to see.
+ * A failure that names a token there is one A12 reaches first; one that merely runs out of tokens is not a
+ * failure yet — the parser would ask for the next token, and that request is what raises the lexical failure.
+ * [ShapeFailure.found] is empty in precisely that case and carries the distinction.
+ */
+fun shapeFailureAhead(
+    text: String,
+    language: ConditionLanguage,
+    entry: SyntaxEntry,
+    lexical: LexicalFailure,
+): ShapeFailure? = shapeFailure(text.take(lexical.at), language, entry)?.takeIf { it.found.isNotEmpty() }
 
 /**
  * Where the parser stopped and what it was holding.
  *
  * @param at the offset of the token it could not use, or the end of the text when it ran out.
- * @param ranOutWithDelimiterOpen the half that picks the code — see the table on [conditionShapeFailure].
+ * @param ranOutWithDelimiterOpen the half that picks the code — see the table on [shapeFailure].
  * @param found the token's text, or an empty string at the end of the text, so a finding can quote it.
  */
 data class ShapeFailure(val at: Int, val ranOutWithDelimiterOpen: Boolean, val found: String)

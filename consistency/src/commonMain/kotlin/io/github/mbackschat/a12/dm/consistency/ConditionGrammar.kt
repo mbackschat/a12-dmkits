@@ -1,9 +1,9 @@
 package io.github.mbackschat.a12.dm.consistency
 
-import io.github.mbackschat.a12.dm.consistency.syntax.conditionShapeFailure
 import io.github.mbackschat.a12.dm.consistency.syntax.incompleteInput
 import io.github.mbackschat.a12.dm.consistency.syntax.lexicalFailure
-import io.github.mbackschat.a12.dm.consistency.syntax.operationShapeFailure
+import io.github.mbackschat.a12.dm.consistency.syntax.shapeFailure
+import io.github.mbackschat.a12.dm.consistency.syntax.shapeFailureAhead
 
 /**
  * DSL text that does not FORM a condition — A12's last two parse codes.
@@ -13,7 +13,13 @@ import io.github.mbackschat.a12.dm.consistency.syntax.operationShapeFailure
  * family's, and only what survives both reaches the grammar. Without that ordering the same defect would draw
  * two findings with two codes, and an author would have to guess which one names the fix.
  *
- * **The parser is deliberately looser than A12's grammar** and the reason is in `conditionShapeFailure`: it
+ * **"First" is measured by POSITION, not by phase**, which is why this family also owns text the lexer chokes
+ * on: where a token the grammar cannot use sits EARLIER than the bad character, A12's demand-driven lexer
+ * never reaches that character and answers `MVK_UNEXPECTED_TOKEN` instead ([KERNEL-FINDINGS KF311]).
+ * [shapeFailureAhead] is the arbiter, and it can only move a text between two families that both report it —
+ * so a wrong answer there costs a wrong code and never a missed or invented finding.
+ *
+ * **The parser is deliberately looser than A12's grammar** and the reason is in `shapeFailure`: it
  * checks the shape the productions share rather than each operator's own argument arity, because a
  * per-operator reproduction would be a second catalog and every disagreement would refuse a condition A12
  * admits. So this family is silent about a call with the wrong number of arguments, and says so in the
@@ -27,18 +33,21 @@ import io.github.mbackschat.a12.dm.consistency.syntax.operationShapeFailure
 fun PreparedModel.conditionGrammarFindings(): List<Finding> = elements.flatMap { element ->
     val body = element.body ?: return@flatMap emptyList()
     conditionTexts(element.kind, body).mapNotNull { (member, text) ->
-        // An earlier phase already speaks for this text, so the grammar stays quiet about it.
-        if (lexicalFailure(text) != null || incompleteInput(text, conditionLanguage) != null) {
-            return@mapNotNull null
-        }
-        if (text.isBlank()) {
-            return@mapNotNull blankSlotFinding(element, member)
-        }
-        val failure = if (member.endsWith("operation")) {
-            operationShapeFailure(text, conditionLanguage)
+        val entry = syntaxEntryOf(member)
+        val lexical = lexicalFailure(text)
+        val failure = if (lexical != null) {
+            // The lexer stopped somewhere. This family speaks only where the parser stopped EARLIER.
+            shapeFailureAhead(text, conditionLanguage, entry, lexical) ?: return@mapNotNull null
         } else {
-            conditionShapeFailure(text, conditionLanguage)
-        } ?: return@mapNotNull null
+            // The completeness phase already speaks for a text that ends unfinished.
+            if (incompleteInput(text, conditionLanguage) != null) {
+                return@mapNotNull null
+            }
+            if (text.isBlank()) {
+                return@mapNotNull blankSlotFinding(element, member)
+            }
+            shapeFailure(text, conditionLanguage, entry) ?: return@mapNotNull null
+        }
         Finding(
             FindingCategory.A12_CONSTRAINT,
             FindingSeverity.ERROR,
