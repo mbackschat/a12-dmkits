@@ -7129,6 +7129,24 @@ Reported by the portable checker, which did not emit `MVK_SORT_FIELD_DUPLICATE` 
 
 *Locked by:* `rulekit.validate.laws.GroupOrderingMultipleDefectLawsTest`, mirrored by `consistency … GroupOrderingMultipleDefectTest`.
 
+## §9 supplement — `MVK_NOT_IN_GROUP` needs the two groups to be INDEX-KEYED, which is why its reachability looked fixture-sensitive (measured, 2026-09-14) <a id="kf349"></a>
+
+> Fold: not-foldable — a diagnostic-class reachability law, not an evaluation behaviour.
+
+**[MVK-LEDGER](MVK-LEDGER.md) records this class's reachability as fixture-sensitive with the reason unmeasured. The reason is joint iteration.** A `RepetitionNotUnique` key outside its `@From` scope is a containment violation, but A12 only *asks* about containment once the operands iterate together. Two repeatable groups that share an index field iterate JOINTLY; two that do not are an unpaired repetition, and A12 refuses at the wildcard gate first. So the same violation draws `MVK_NO_WILDCARD` on an index-free model and `MVK_NOT_IN_GROUP` on an index-keyed one — measured on one shape built both ways:
+
+| the shape | index-free | index-keyed |
+|---|---|---|
+| key in a group PARALLEL to the `@From` scope | `MVK_NO_WILDCARD` | `MVK_NOT_IN_GROUP` |
+
+**A rival mechanism was measured and refuted first, and it is the one the prior evidence suggested.** The single cell that had ever drawn this class put the rule INSIDE the key's own repeatable group, so "the rule's position decides it" fits that cell exactly. Reproducing that position on an index-free model still draws `MVK_NO_WILDCARD`, so position is not the variable — the prior fixture was index-keyed for unrelated reasons, and nothing recorded that this was load-bearing.
+
+**What the scope admits, on the index-free carrier** (every violation there therefore reported as `MVK_NO_WILDCARD`, the gate in front of containment rather than a containment verdict): a key sitting directly in the scope is admitted, and so is a key in a DESCENDANT of it — confirming on a second carrier the boundary row that `@From`'s contribution covers the group and its subtree. A key ABOVE the scope, and a second key outside it, are both violations.
+
+**`@From` must name a REPEATABLE group** — naming the rule's own non-repeatable root draws `MVK_GROUP_NOT_REPEATABLE` and no containment class at all. Already held (§9, subscription carrier; pre-checked by `RepetitionNotUniqueCondition.from`); confirmed here on a second carrier rather than newly found.
+
+Locked: `validate.laws.RepetitionNotUniqueFromScopeLawsTest`. **Not reported by the portable checker**: the condition reader reduces no `@From` operand to a path by design, and the class's own reachability turns on parallel iteration, which no family models.
+
 ## §9 supplement — the root-only error-target iteration classes need THREE conditions, two of which were constants (measured, 2026-09-14) <a id="kf348"></a>
 
 > Fold: not-foldable — a diagnostic-class selection law, not an evaluation behaviour.
