@@ -6060,3 +6060,22 @@ The last row generalizes the string-literal result above rather than repeating i
 **Inside a string literal none of it applies.** `StringLiteral : '"' ( '""' | ~["] )* '"'` admits every character but a quote, and all eleven above are ADMITTED there — so a checker scanning raw text for a bad character refuses conditions A12 accepts.
 
 *Locked by:* `rulekit.validate.laws.ConditionCharacterLawsTest`. The portable side is `consistency`'s `ConditionLexicalityTest`, which reports the class with one deliberate exception: a lone `#` is left unreported, because `#Zeile`'s other language spellings are unknown there and refusing an unpaired `#` could reject text A12 accepts.
+
+## §12 supplement — a PRESENT-but-BLANK DSL slot parses, and answers differently on each member (measured, 2026-09-13) <a id="kf310"></a>
+
+> Fold: pending — belongs beside [KERNEL-SEMANTICS](KERNEL-SEMANTICS.md) §12, whose syntax material treats a slot as present or absent and never as present-and-empty.
+
+**A blank slot is not an unset one: A12 hands it to the parser like any other text.** That much was already recorded for one member. What nobody had put side by side is that the four DSL-bearing members do NOT agree on the code, and two of the three answers were each measured in a test written for some other question:
+
+| member | a blank draws |
+|---|---|
+| `errorCondition` | `MVK_CONDITION_MISSING` **and** `MVK_INCOMPLETE_INPUT` |
+| `commonPrecondition` | `MVK_UNEXPECTED_TOKEN` |
+| `computationAlternatives[].precondition` | `MVK_UNEXPECTED_TOKEN` |
+| `computationAlternatives[].operation` | `MVK_INCOMPLETE_INPUT` |
+
+**The `commonPrecondition` row is the one that completes the set, and it was predicted wrong.** It had never been measured, and the prediction — that a blank common precondition is simply unset and therefore ADMITTED — is false: a declared common precondition is a condition slot like any other and a blank one fails in the parser. Each row carries a FILLED control of the same shape, so the code is attributable to the blank rather than to the fixture built to carry it.
+
+**Why this matters to a checker rather than being trivia.** A syntax layer reporting "a blank does not parse" under one code is right about one member and wrong about the rest, and the two that share `MVK_UNEXPECTED_TOKEN` are a condition member and a *common* condition member, while the operation — the one member that is an expression rather than a condition — is the one that parts. So the split follows the member's GRAMMAR ROLE and not its carrier, which is not what the names suggest.
+
+*Locked by:* `rulekit.validate.laws.ComputationAlternativeSlotLawsTest.aBlankSlotAnswersDifferentlyOnEachMemberOfThisCarrier` and `RuleConditionAndTargetSlotLawsTest`. The portable side is `consistency`'s `BlankDslSlotTest`.

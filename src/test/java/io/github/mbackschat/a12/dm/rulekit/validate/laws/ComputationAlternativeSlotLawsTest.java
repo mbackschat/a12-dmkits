@@ -171,6 +171,43 @@ class ComputationAlternativeSlotLawsTest {
     }
 
     /**
+     * A BLANK slot on each DSL-bearing member of this carrier, which do NOT answer alike.
+     *
+     * <p>An alternative's blank {@code precondition} draws {@code MVK_UNEXPECTED_TOKEN} and its blank
+     * {@code operation} draws {@code MVK_INCOMPLETE_INPUT} — measured above, in two tests written for other
+     * questions, so the disagreement was never put side by side. It matters to a checker: a syntax layer
+     * reporting "a blank does not parse" with one code would be right about one member and wrong about the
+     * other, and the row that completes the set is the {@code commonPrecondition}, which nothing had
+     * measured at all.
+     *
+     * <p>The filled rows are the controls, so a code below is about the blank and not about the shape this
+     * fixture builds to carry it.
+     */
+    @Test
+    void aBlankSlotAnswersDifferentlyOnEachMemberOfThisCarrier() {
+        Map<String, String> actual = new LinkedHashMap<>();
+        actual.put("a filled common precondition — the control",
+                verdict("[" + ALTERNATIVE + "]", "FieldFilled(../Tier)"));
+        actual.put("a BLANK common precondition", verdict("[" + ALTERNATIVE + "]", ""));
+        actual.put("a filled precondition on both — the control",
+                verdict("[" + guarded("FieldFilled(../Tier)") + "," + guarded("FieldFilled(../Tier)") + "]",
+                        null));
+        actual.put("a BLANK precondition",
+                verdict("[" + guarded("FieldFilled(../Tier)") + "," + guarded("") + "]", null));
+        actual.put("a BLANK operation", verdict("[{\"operation\":\"\"}]", null));
+
+        Map<String, String> expected = new LinkedHashMap<>();
+        expected.put("a filled common precondition — the control", KernelLaws.ADMITTED);
+        // Not admitted: a declared common precondition is a condition slot like any other, so a blank one
+        // reaches the parser and fails there. Predicted ADMITTED and measured otherwise.
+        expected.put("a BLANK common precondition", "MVK_UNEXPECTED_TOKEN");
+        expected.put("a filled precondition on both — the control", KernelLaws.ADMITTED);
+        expected.put("a BLANK precondition", "MVK_UNEXPECTED_TOKEN");
+        expected.put("a BLANK operation", "MVK_INCOMPLETE_INPUT");
+        assertEquals(expected, actual, "what a blank draws on each DSL-bearing member of a computation");
+    }
+
+    /**
      * A shape whose ENVELOPE A12's reader refuses, which is a tier above any verdict about the slot.
      *
      * <p>It is measured because a checker reading `declaration["Computation"]` as an object gets `null` here

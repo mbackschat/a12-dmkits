@@ -31,6 +31,9 @@ fun PreparedModel.conditionGrammarFindings(): List<Finding> = elements.flatMap {
         if (lexicalFailure(text) != null || incompleteInput(text, conditionLanguage) != null) {
             return@mapNotNull null
         }
+        if (text.isBlank()) {
+            return@mapNotNull blankSlotFinding(element, member)
+        }
         val failure = if (member.endsWith("operation")) {
             operationShapeFailure(text, conditionLanguage)
         } else {
@@ -50,4 +53,40 @@ fun PreparedModel.conditionGrammarFindings(): List<Finding> = elements.flatMap {
             element.path,
         )
     }
+}
+
+/**
+ * What A12 says about a DSL slot that is PRESENT and blank — three different answers on four members.
+ *
+ * A blank slot reaches A12's parser like any other text and fails there, so this is a parse verdict and not
+ * an "empty member" one; the families that own presence deliberately stay out of it
+ * (`ComputationAlternativeTest.aBlankPreconditionIsLeftToTheSyntaxFamilyRatherThanCalledEmpty`). What no
+ * family could report until now is the parse verdict itself, because a blank text has no token to point at
+ * and every shape check returned nothing.
+ *
+ * **The code is per MEMBER and could not be generalised.** Measured
+ * (`rulekit.validate.laws.ComputationAlternativeSlotLawsTest.aBlankSlotAnswersDifferentlyOnEachMemberOfThisCarrier`
+ * and `RuleConditionAndTargetSlotLawsTest`): a blank `commonPrecondition` and a blank alternative
+ * `precondition` draw `MVK_UNEXPECTED_TOKEN`, a blank `operation` draws `MVK_INCOMPLETE_INPUT`, and a blank
+ * `errorCondition` draws `MVK_CONDITION_MISSING` AND `MVK_INCOMPLETE_INPUT`. One rule for "a blank does not
+ * parse" would be right about one member and wrong about the others.
+ *
+ * **`errorCondition` is deliberately not reported here.** Its own family already reports
+ * `MVK_CONDITION_MISSING` for the same declaration, so adding the second code A12 gives would hand a consumer
+ * two findings for one defect — a report-shape choice, not a coverage one: the defect is surfaced either way.
+ */
+private fun blankSlotFinding(element: DeclaredElement, member: String): Finding? {
+    val code = when {
+        member == "errorCondition" -> return null
+        member.endsWith("operation") -> "MVK_INCOMPLETE_INPUT"
+        else -> "MVK_UNEXPECTED_TOKEN"
+    }
+    return Finding(
+        FindingCategory.A12_CONSTRAINT,
+        FindingSeverity.ERROR,
+        code,
+        "`$member` is present but blank, and A12 parses it like any other text rather than treating it as " +
+            "unset — so the slot fails in the parser instead of being skipped",
+        element.path,
+    )
 }

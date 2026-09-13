@@ -341,11 +341,6 @@ private fun List<Finding>.buildBlocked(): List<CoverageGap> =
 private val UNREAD_MEMBERS = listOf(
     CoverageGap(
         at = null,
-        reason = "a computation alternative's precondition is checked for PRESENCE only — whether its text " +
-            "parses is the syntax family's question and is not decided here",
-    ),
-    CoverageGap(
-        at = null,
         reason = "a field type's body is judged only when it is EMPTY, which is the shape measured — a " +
             "body carrying some members but not the one its type constructs from (an `EnumerationType` " +
             "with `alphabeticalSorting` and no values) leaves a model A12 cannot build and draws nothing " +
