@@ -32,13 +32,29 @@ class ComputationLinterTest {
         return diagnostics.stream().map(d -> d.code().orElse("")).toList();
     }
 
+    /**
+     * {@code CustomCondition} is a BARE-NAME operator, which is the only form worth flagging.
+     *
+     * <p>{@code DslRenderer} emits {@code CustomCondition <name>} with no parentheses, and the operator
+     * catalog's own valid example is {@code … And CustomCondition NotReverse} — so a lint keyed on a call
+     * shape fires on nothing anyone can author. It was, until 2026-09-13, and this test said otherwise
+     * because it asserted against the implementation's pattern instead of the DSL.
+     */
     @Test
     void flagsCustomConditionInAPrecondition() {
         List<Diagnostic> out = LINTER.lint(computation(null,
-                alt("CustomCondition(SpecialCase)", "[Base] * 2"),
+                alt("FieldFilled(Tier) And CustomCondition SpecialCase", "[Base] * 2"),
                 alt("[Tier] == \"BASIC\"", "[Base]")));
         assertTrue(codes(out).contains("RK_COMPUTATION_FORBIDDEN_CONSTRUCT"),
                 () -> "CustomCondition must be flagged: " + out);
+    }
+
+    /** A quoted name is how an entity spelled like the keyword is referenced, so it is not a use of it. */
+    @Test
+    void doesNotFalsePositiveOnAQuotedEntityNamedAfterTheKeyword() {
+        List<Diagnostic> out = LINTER.lint(computation(null,
+                alt("FieldFilled('CustomCondition')", "[Base]")));
+        assertEquals(List.of(), out, () -> "a field quoted as 'CustomCondition' is not a use of it: " + out);
     }
 
     @Test

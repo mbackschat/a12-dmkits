@@ -35,9 +35,17 @@ import io.github.mbackschat.a12.dm.rulekit.validate.RkCode;
  */
 public final class ComputationLinter {
 
-    /** {@code CustomCondition(} in either language — matched as a call, not a substring of an identifier. */
+    /**
+     * {@code CustomCondition} in either language, as the BARE-NAME operator it is.
+     *
+     * <p>It takes no parentheses — {@code DslRenderer} emits {@code CustomCondition <name>} and the operator
+     * catalog's valid example is {@code … And CustomCondition NotReverse} — so the call shape this once
+     * required (`CustomCondition\s*\(`) matched nothing anyone could author, and the lint was dead from the
+     * day it shipped. The quote in each boundary class is what keeps a quoted entity deliberately named
+     * after the keyword from reading as a use of it.
+     */
     private static final Pattern CUSTOM_CONDITION =
-            Pattern.compile("(?<![A-Za-z0-9_])(CustomCondition|ApplikationsBedingung)\\s*\\(");
+            Pattern.compile("(?<![A-Za-z0-9_'])(CustomCondition|ApplikationsBedingung)(?![A-Za-z0-9_'])");
     /** {@code RepetitionNotUnique(} in either language. */
     private static final Pattern REPETITION_NOT_UNIQUE =
             Pattern.compile("(?<![A-Za-z0-9_])(RepetitionNotUnique|WiederholungNichtEindeutig)\\s*\\(");
