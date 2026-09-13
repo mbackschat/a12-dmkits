@@ -458,8 +458,11 @@ private fun List<Finding>.buildBlocked(): List<CoverageGap> =
     }
 
 /**
- * What this checker reads only PART of. Stated on every report rather than only in the plan, because a
- * consumer cannot otherwise tell a clean result from an unexamined one.
+ * What this checker reads only PART of, and the one law it reads fully and deliberately does not reproduce.
+ *
+ * Stated on every report rather than only in the plan, because a consumer cannot otherwise tell a clean
+ * result from an unexamined one. An entry earns its place by naming what would settle it, so a later session
+ * can close it rather than rediscover why it is open.
  */
 private val UNREAD_MEMBERS = listOf(
     CoverageGap(
@@ -489,6 +492,16 @@ private val UNREAD_MEMBERS = listOf(
             "without a measurement saying they are — `SumOfProducts` is the only operator whose argument " +
             "list takes two entity specs and it refuses a filter on either for a reason of its own, so no " +
             "oracle for that shape exists. This is silence rather than a wrong verdict",
+    ),
+    // A measured law deliberately not reproduced, and the reason is what a consumer needs rather than the
+    // omission: both of A12's pre-emptions here are decidable only with machinery this checker does not
+    // have, so reproducing the law would state a class A12 did not issue on two shapes out of three.
+    CoverageGap(
+        at = null,
+        reason = "a computation that READS its own computed field is refused by A12 and is not reported " +
+            "here: a projected read draws a different class than a plain one, and a derived-scale mismatch " +
+            "in the same operation pre-empts both — neither is decidable without inferring an operation's " +
+            "scale, which this checker does not do. Re-open when it can",
     ),
 )
 
