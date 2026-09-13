@@ -82,6 +82,33 @@ class FieldVariantFilterTest {
         """.trimIndent(),
     )
 
+    /**
+     * The model-wide SHORT-NAME fallback, which is a third resolver again and only runs under the flag.
+     *
+     * A bare name is tried in the declaring group first and wins outright there, so the fallback is reached
+     * only when the group does not have the field — here the rule sits in `Inner` and `Tier` lives in
+     * `Catalog`. Without this fixture, reverting the fallback's scope to the unfiltered element list survives:
+     * measured as a mutant, because every other row resolves before the fallback is consulted.
+     */
+    private fun mentioningByShortNameFallback(filter: String?) = ModelSource(
+        """
+        {"header":{"id":"catalog","locales":[{"code":"en_US"}]},
+         "content":{"modelConfig":{"fieldRefByShortNameAllowed":true},
+          "modelRoot":{"rootGroups":[
+           {"type":"Group","id":"g0","name":"Catalog","Group":{"elements":[
+             {"type":"Field","id":"f0","name":"Tier","Field":{${filter?.let { """"variantFilter":$it""" } ?: ""}}},
+             {"type":"Group","id":"g1","name":"Inner","Group":{"elements":[
+               {"type":"Field","id":"f1","name":"AutoRenew","Field":{}},
+               {"type":"Rule","id":"r0","name":"FallbackRule","Rule":{
+                 "errorCondition":"FieldNotFilled(AutoRenew) And FieldNotFilled(Tier)",
+                 "errorEntityRelPath":"../AutoRenew",
+                 "errorCode":"PROBE","errorMessage":[{"locale":"en_US","text":"x"}]}}
+             ]}}
+           ]}}
+          ]}}}
+        """.trimIndent(),
+    )
+
     private fun codes(source: ModelSource): List<String> = check(source).findings.map { it.code }.distinct()
 
     @Test
@@ -131,6 +158,22 @@ class FieldVariantFilterTest {
         expected["ALL_EXCEPT — the control"] = emptyList()
         expected["ONLY"] = listOf("MVK_INVALID_ENTITY")
         assertEquals(expected, actual, "what the checker says about a path naming a filtered field")
+    }
+
+    /** The short-name fallback is a third resolver and needs its own rows; see the fixture's note. */
+    @Test
+    fun theShortNameFallbackDoesNotFindAnOnlyFilteredFieldEither() {
+        val actual = mutableMapOf<String, List<String>>()
+        actual["unfiltered — the control, so the fallback demonstrably reaches it"] =
+            codes(mentioningByShortNameFallback(null))
+        actual["ALL_EXCEPT — the control"] = codes(mentioningByShortNameFallback(allExcept))
+        actual["ONLY"] = codes(mentioningByShortNameFallback(only))
+
+        val expected = mutableMapOf<String, List<String>>()
+        expected["unfiltered — the control, so the fallback demonstrably reaches it"] = emptyList()
+        expected["ALL_EXCEPT — the control"] = emptyList()
+        expected["ONLY"] = listOf("MVK_INVALID_ENTITY")
+        assertEquals(expected, actual, "what the short-name fallback says about a filtered field")
     }
 
     @Test
