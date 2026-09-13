@@ -331,7 +331,7 @@
         "source": "INVALID_EXAMPLE",
         "ordinal": 0
       },
-      "digest": "sha256:fbf43f1782f7da70bf8ff7d7d403875e4a7bfee142b2e6c9e5c9a089a0aacd5b",
+      "digest": "sha256:cff87a1d6c96c9c14d352d24496415a29b1b194c25c745d77f7ae03da45405aa",
       "fixture": "ORDER",
       "group": "/Order",
       "field": "../CustomerName",

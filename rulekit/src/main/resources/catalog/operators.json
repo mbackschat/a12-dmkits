@@ -2026,7 +2026,7 @@
           "kind": "SURPRISE"
         },
         {
-          "text": "authoring first requires valid Java Pattern syntax, then the kernel's additional admission gate; Java-valid lookbehind and uppercase \\P are known rejected examples, and acceptance is not a JavaScript-portability guarantee",
+          "text": "authoring first requires valid Java Pattern syntax, then the kernel's additional admission gate, which reads the pattern's SOURCE TEXT: Java-valid lookbehind, lowercase \\p (uppercase \\P is admitted) and even an ESCAPED metacharacter before a quantifier such as a\\*+ are rejected, and acceptance is not a JavaScript-portability guarantee",
           "kind": "AUTHORING"
         },
         {
@@ -2106,7 +2106,7 @@
           "kind": "SURPRISE"
         },
         {
-          "text": "authoring first requires valid Java Pattern syntax, then the kernel's additional admission gate; Java-valid lookbehind and uppercase \\P are known rejected examples, and acceptance is not a JavaScript-portability guarantee",
+          "text": "authoring first requires valid Java Pattern syntax, then the kernel's additional admission gate, which reads the pattern's SOURCE TEXT: Java-valid lookbehind, lowercase \\p (uppercase \\P is admitted) and even an ESCAPED metacharacter before a quantifier such as a\\*+ are rejected, and acceptance is not a JavaScript-portability guarantee",
           "kind": "AUTHORING"
         }
       ],
@@ -2115,9 +2115,9 @@
         "note": "fires when a present postal code is not exactly five digits"
       },
       "invalidExample": {
-        "dsl": "[CustomerName] PatternViolated \"\\P{L}+\"",
+        "dsl": "[CustomerName] PatternViolated \"\\p{L}+\"",
         "error": "MVK_INVALID_PATTERN",
-        "fix": "replace the blacklisted property escape with an explicit admitted class for the intended domain, or reformulate the validation without that escape"
+        "fix": "lowercase \\p is on the kernel's blacklist — replace it with an explicit admitted class for the intended domain, such as \"[A-Za-z]+\". Uppercase \\P is NOT blacklisted, so \\P{L}+ is refused for a different reason: it ends in } followed by +, which the gate reads as a possessive quantifier"
       },
       "correctives": [
         {

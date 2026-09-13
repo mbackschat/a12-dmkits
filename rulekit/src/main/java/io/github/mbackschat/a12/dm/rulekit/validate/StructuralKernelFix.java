@@ -68,13 +68,29 @@ public final class StructuralKernelFix {
             Map.entry("MVK_INVALID_PATTERN", new Hint(
                     "Use a Java-valid regular expression that also avoids the kernel 30.8.x admission restrictions: "
                             + "possessive quantifiers, lookbehind/named-capture `(?<…`, atomic `(?>…)`, "
-                            + "the A12K-30 escapes `\\A \\G \\Z \\z \\a \\e \\p \\Q \\E`, nested unescaped "
-                            + "`[` class syntax, and the typed/full-model `\\P` rejection. Passing this gate does "
-                            + "NOT prove JavaScript portability.",
-                    "The kernel first requires Java Pattern syntax, then applies an additional admission gate; "
-                            + "the typed/full-model oracle additionally rejects uppercase `\\P`. "
-                            + "MVK_INVALID_PATTERN can therefore mean invalid Java syntax or a Java-valid "
-                            + "kernel-rejected form; it is not a general cross-runtime portability check.")),
+                            + "the A12K-30 escapes `\\A \\G \\Z \\z \\a \\e \\p \\Q \\E` (lowercase `\\p` only — "
+                            + "uppercase `\\P` is admitted), and nested unescaped `[` class syntax. The gate reads "
+                            + "the pattern's SOURCE TEXT, so escaping buys no exemption: `a\\*+` is refused for "
+                            + "spelling `*` before `+`, though the pattern it means is ordinary. Passing this gate "
+                            + "does NOT prove JavaScript portability.",
+                    "The kernel first requires Java Pattern syntax, then applies an additional textual admission "
+                            + "gate. MVK_INVALID_PATTERN can therefore mean invalid Java syntax or a Java-valid "
+                            + "kernel-rejected form; it is not a general cross-runtime portability check. A "
+                            + "DECLARED field pattern raises MVK_PATTERN_INVALID instead — the same two words "
+                            + "swapped, and a different code.")),
+            Map.entry("MVK_PATTERN_INVALID", new Hint(
+                    "A DECLARED field pattern (`StringType.pattern`, and the same slot on a type definition) "
+                            + "goes through the identical gate as a condition's pattern literal: valid Java "
+                            + "Pattern syntax, then the kernel's A12K-30 admission blacklist read on the "
+                            + "pattern's SOURCE TEXT — possessive quantifiers, lookbehind/named-capture "
+                            + "`(?<…`, atomic `(?>…)`, the escapes `\\A \\G \\Z \\z \\a \\e \\p \\Q \\E` "
+                            + "(lowercase `\\p` only), and nested unescaped `[`. Because it reads text, "
+                            + "escaping buys no exemption: `a\\*+` is refused for spelling `*` before `+`.",
+                    "The DECLARED-field twin of MVK_INVALID_PATTERN, and a DIFFERENT code — the same two "
+                            + "words swapped, so a consumer keying on the condition's code sees nothing "
+                            + "here. Like it, it can mean invalid Java syntax or a Java-valid form the "
+                            + "admission gate refuses, and passing it does not prove JavaScript "
+                            + "portability.")),
             Map.entry("MVK_ADDITIONAL_CHECK_INVALID", new Hint(
                     "A DATE or DATEFRAGMENT field's opt-in pre-1900 check (`youngerThan1900Check`, our "
                             + "`dateField(…)`/`dateFragmentField(…).rejectBefore1900()`) requires the declared "

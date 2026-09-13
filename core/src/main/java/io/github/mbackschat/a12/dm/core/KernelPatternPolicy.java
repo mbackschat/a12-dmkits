@@ -39,24 +39,35 @@ public final class KernelPatternPolicy {
                     "invalid Java regular-expression syntax (MVK_INVALID_PATTERN): " + regex);
             case KERNEL_ADMISSION -> throw new IllegalArgumentException(
                     "Java-valid pattern is rejected by the kernel 30.8.x pattern-admission gate "
-                            + "(A12K-30 blacklist or the typed/full-model \\P rejection; MVK_INVALID_PATTERN): "
-                            + regex);
+                            + "(the A12K-30 source-text blacklist; MVK_INVALID_PATTERN in a condition, "
+                            + "MVK_PATTERN_INVALID on a declared field): " + regex);
             case null -> regex;
         };
     }
 
+    /**
+     * The kernel's A12K-30 blacklist, which decides on the pattern's SOURCE CHARACTERS and nothing else.
+     *
+     * <p>Every position is examined, escaped or not: the kernel applies one regular expression to the source
+     * text, so {@code \*+} is refused although the pattern it spells is an ordinary escaped star followed by
+     * a quantifier, and so is {@code \}+}. Consuming an escape while scanning — which this method did until
+     * 2026-09-13 — reads the pattern instead of the text and quietly admits both.
+     *
+     * <p>The escape set is exactly {@code A G Z z a e p Q E}. Uppercase {@code \P} is NOT in it and
+     * {@code \P{L}} is admitted by the kernel, measured at the declared-field locus
+     * ({@code rulekit.validate.laws.DeclaredPatternGateLawsTest}). This method rejected it until the same
+     * day, on a 2026-07-20 observation of {@code \P{L}+} being refused — a correct measurement with the
+     * wrong mechanism attached, since that pattern ends in {@code }} followed by {@code +} and is caught by
+     * the possessive alternative above with the escape playing no part.
+     */
     private static boolean rejectedByKernelAdmission(String regex) {
         for (int i = 0; i < regex.length(); i++) {
             char c = regex.charAt(i);
-            if (c == '\\' && i + 1 < regex.length()) {
-                char escaped = regex.charAt(++i);
-                if ("AGZzaepQE".indexOf(escaped) >= 0 || escaped == 'P') {
-                    return true;
-                }
-                continue;
-            }
             if (i + 1 < regex.length() && regex.charAt(i + 1) == '+'
                     && (c == '?' || c == '+' || c == '*' || c == '}')) {
+                return true;
+            }
+            if (c == '\\' && i + 1 < regex.length() && "AGZzaepQE".indexOf(regex.charAt(i + 1)) >= 0) {
                 return true;
             }
             if (c == '(' && i + 2 < regex.length() && regex.charAt(i + 1) == '?'

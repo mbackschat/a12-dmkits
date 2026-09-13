@@ -21,7 +21,7 @@
       "properties": {
         "minLength": { "type": "integer", "description": "minimum character length. seeAlso: the Length operator (`operators Length`)" },
         "maxLength": { "type": "integer", "description": "maximum character length" },
-        "pattern": { "type": "string", "description": "anchored Java Pattern; REQUIRES patternMessage. Authoring first requires Java syntax, then the kernel 30.8.x restrictions: the finite A12K-30 blacklist (possessive quantifiers, (?<… / (?>…), \\A \\G \\Z \\z \\a \\e \\p \\Q \\E, nested unescaped [) plus the typed/full-model \\P rejection. Passing them does not prove JavaScript portability. seeAlso: PatternViolated/PatternMatched" },
+        "pattern": { "type": "string", "description": "anchored Java Pattern; REQUIRES patternMessage. Authoring first requires Java syntax, then the kernel 30.8.x restrictions: the finite A12K-30 blacklist (possessive quantifiers, (?<… / (?>…), \\A \\G \\Z \\z \\a \\e \\p \\Q \\E — lowercase \\p only, uppercase \\P is admitted — and nested unescaped [), read on the pattern SOURCE TEXT so an escaped metacharacter before a quantifier (a\\*+) is refused too. Passing them does not prove JavaScript portability. seeAlso: PatternViolated/PatternMatched" },
         "patternMessage": { "type": "string", "description": "required base/fallback error text whenever pattern is set" },
         "patternMessages": { "type": "object", "additionalProperties": { "type": "string" }, "description": "optional per-locale overrides; patternMessage remains required" },
         "lineBreaks": { "type": "boolean", "description": "permit multi-line input" },
