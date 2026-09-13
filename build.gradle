@@ -164,6 +164,10 @@ tasks.named('test') {
     // lexer that decides it. The table lives in a module that must not see the kernel, so nothing else can
     // check it, and it is read as a repo file — undeclared, an edit to it leaves this lane UP-TO-DATE.
     dependsOn 'keywordProjectionGuardTest'
+    // Same tier and for the same reason: it binds the portable checker's corrective table to the Java owners
+    // it projects, and both sides are read as repo files, so an undeclared edit would leave this lane
+    // UP-TO-DATE with the projection stale.
+    dependsOn 'correctiveGuardTest'
     if (!project.hasProperty('fast')) {
         dependsOn 'docGuardTest'
         dependsOn 'interpreterReleaseGuardTest'
@@ -184,11 +188,13 @@ tasks.named('test') {
     routeExclusivelyHostedTests(it, ['docGuardTest', 'jsonConstructionGuardTest', 'apiGuardTest',
                                      'catalogProseReviewGuardTest', 'deliveryGuardTest', 'releaseGapGuardTest',
                                      'leakGuardTest', 'vocabularyGuardTest', 'focusedSelectionGuardTest',
-                                     'keywordProjectionGuardTest'],
+                                     'keywordProjectionGuardTest', 'correctiveGuardTest'],
             ['dumpKitApi'             : 'regenerator over apiGuardTest\'s class — writes the goldens instead of asserting',
              'syncDocSnippets'        : 'regenerator over docGuardTest\'s class — writes the snippets instead of asserting',
              'dumpTemporalVocabulary' : 'regenerator over vocabularyGuardTest\'s class — writes the derived '
-                     + 'vocabulary instead of asserting against it'])
+                     + 'vocabulary instead of asserting against it',
+             'dumpCheckerCorrectives' : 'regenerator over correctiveGuardTest\'s class — writes the projected '
+                     + 'corrective table instead of asserting against it'])
 }
 
 // A12 JSON construction is a ROLE boundary, not a module boundary (API-FINDINGS 103 / IF228): this guard reads
@@ -943,6 +949,44 @@ tasks.register('vocabularyGuardTest', Test) {
                     'cli/src/main/resources/schema/typedef-add.schema.json',
                     'rulekit/src/main/java/io/github/mbackschat/a12/dm/rulekit/validate/StructuralKernelFix.java'),
     ])
+}
+
+// The checker's corrective table is a PROJECTION of rulekit's diagnostic owners, and the checker cannot read
+// them (Kernel-free, no project dependency, consumed from Node). Its own task for the usual two reasons: an
+// edit to either owner or to the checker's emitted codes re-runs this guard alone, and the inputs are declared
+// so a cached green cannot leave the projection stale.
+tasks.register('correctiveGuardTest', Test) {
+    description = 'The portable checker\'s corrective table is the projection of its Java diagnostic owners.'
+    group = 'verification'
+    useJUnitPlatform()
+    testClassesDirs = sourceSets.test.output.classesDirs
+    classpath = sourceSets.test.runtimeClasspath
+    filter {
+        includeTestsMatching 'io.github.mbackschat.a12.dm.CheckerCorrectiveProjectionGuardTest'
+    }
+    guardInputs(it, [
+            'the diagnostic owners' : files(
+                    'rulekit/src/main/java/io/github/mbackschat/a12/dm/rulekit/validate/StructuralKernelFix.java',
+                    'rulekit/src/main/java/io/github/mbackschat/a12/dm/rulekit/validate/RkCode.java'),
+            // The checker's whole main tree, because its EMITTED codes are the projection's denominator: a
+            // family added anywhere in it can widen the table.
+            'the checker\'s sources'  : fileTree('consistency/src/commonMain') { include '**/*.kt' },
+    ])
+}
+
+// `dumpCheckerCorrectives` runs that guard with `correctives.fix=true`, so it writes the projection instead of
+// asserting against it — the same fixer shape as `dumpKitApi` and `:cli:dumpOperatorIndex`.
+tasks.register('dumpCheckerCorrectives', Test) {
+    group = 'documentation'
+    description = 'Regenerate the portable checker\'s corrective table from rulekit\'s diagnostic owners.'
+    useJUnitPlatform()
+    testClassesDirs = sourceSets.test.output.classesDirs
+    classpath = sourceSets.test.runtimeClasspath
+    systemProperty 'correctives.fix', 'true'
+    outputs.upToDateWhen { false }
+    filter {
+        includeTestsMatching 'io.github.mbackschat.a12.dm.CheckerCorrectiveProjectionGuardTest'
+    }
 }
 
 // The temporal format vocabulary is DERIVED from the kernel, never authored: `dumpTemporalVocabulary` runs the

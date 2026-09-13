@@ -65,6 +65,33 @@ data class Finding(
 }
 
 /**
+ * A12's own guidance for a finding's code — what the code MEANS and how to repair it.
+ *
+ * Both texts are A12-facing rather than this checker's: [Finding.explain] says what this checker observed in
+ * this declaration, while a corrective says what the code means wherever it is raised. They are separate
+ * because only the first is about the model in front of you.
+ *
+ * @param fix the repair, phrased as an instruction to the author.
+ * @param meaning what the code classifies, including the traps that make the fix non-obvious.
+ */
+data class Corrective(val fix: String, val meaning: String)
+
+/**
+ * The guidance A12's own diagnostic owners carry for this finding's code, absent when they carry none.
+ *
+ * **It is a projection, not a second copy.** `rulekit.validate.StructuralKernelFix` and
+ * `rulekit.validate.RkCode` are the single live statement of this prose on the Java side, and the table read
+ * here is generated from them over exactly the codes this checker emits
+ * (`CheckerCorrectiveProjectionGuardTest`). A Kernel-free module cannot read Java source, and restating the
+ * prose here would mint the second live statement the doc rules forbid.
+ *
+ * Absence is ordinary rather than a gap: most codes are explained by the operator catalog's own entries,
+ * which are keyed by operator and not by code, so there is nothing for a code-keyed lookup to return.
+ */
+val Finding.corrective: Corrective?
+    get() = KERNEL_CORRECTIVES[code]
+
+/**
  * A check's summary verdict.
  *
  * **There is deliberately no `Valid`.** No required check family is implemented, so nothing can establish

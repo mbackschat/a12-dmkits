@@ -58,7 +58,11 @@ All seven keys are always present. An empty array and an absent key would mean o
   "severity": "ERROR",
   "explain": "in `errorCondition`: no declared element matches `/Storefront/NoSuchField`, and no model-wide field short name resolved it",
   "at": "/Storefront/EmailRequiredForPaidOrder",
-  "justifiesRejection": true
+  "justifiesRejection": true,
+  "corrective": {
+    "fix": "The group or field name in the condition could not be resolved in the rule's scope. Use its ABSOLUTE path …",
+    "meaning": "MVK_INVALID_ENTITY (\"the group or field 'X' is not valid\") means the kernel could not resolve that name …"
+  }
 }
 ```
 
@@ -67,6 +71,8 @@ All seven keys are always present. An empty array and an absent key would mean o
 **Read `justifiesRejection`, not `severity`, to decide whether a model is rejected.** The two come apart on purpose: `category` is `A12_CONSTRAINT` for a measured Kernel verdict and `AUTHORING_POLICY` for a house rule that the Kernel accepts, and an `AUTHORING_POLICY` finding at `ERROR` deliberately does not make a model invalid. `justifiesRejection` is the conjunction, published because a consumer cannot derive it from the fields without knowing that rule.
 
 `at` is the declaration's model path, or `null` for a finding about the model as a whole.
+
+**`corrective` is A12's own guidance for the CODE, and it is `null` far more often than not.** Its `fix` says what to change and its `meaning` says what the code classifies wherever it is raised — neither is about the declaration in front of you, which is what `explain` is for. The texts are PROJECTED from the dmkits' Java diagnostic owners rather than restated here, over exactly the codes this checker emits, so there is one live statement of each and a build guard fails when they drift. A `null` is the ordinary case: most codes are explained by the operator catalog, whose entries are keyed by operator rather than by code, so a code-keyed lookup has nothing to return. The member is always present, because an omitted one and a `null` one would look identical to a consumer reading an older report.
 
 ### `diagnostics` — what the checker could not read
 
@@ -86,5 +92,5 @@ That test is also the only thing in the build that can catch an unconsumable art
 
 - **No `VALID`.** See the first section; this is the contract, not a temporary state.
 - **No stable Kotlin/TypeScript object model.** `checkModelJson` returns a string. The JSON shape above is the contract; the Kotlin types behind it are not exported and will change.
-- **No guidance text on findings.** A finding carries its code and an `explain` of what was observed, and no `fix`. The corrective prose has one owner on the JVM side (`StructuralKernelFix`), and restating it here would mint a second live copy; sharing it is part of the report contract still to be designed.
+- **No guidance for most codes.** A finding's `corrective` is present whenever an A12 diagnostic owner explains its code and `null` otherwise, which is the common case — see the `findings` section. What is deliberately NOT delivered is the operator catalog's own guidance, 293 KB of it: no finding here names an operator id, so there is nothing to join it against, and packaging it would ship data nothing reads. That changes when a finding carries an operator.
 - **No document validation.** This checker reads a DocumentModel and says whether A12 would accept the model. Evaluating a Document against a model is `:interpreter`, a different component with a different contract.

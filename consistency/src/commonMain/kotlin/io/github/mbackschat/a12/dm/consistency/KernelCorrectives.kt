@@ -1,0 +1,42 @@
+package io.github.mbackschat.a12.dm.consistency
+
+/**
+ * GENERATED — do not edit. Regenerate with `./build.sh :dumpCheckerCorrectives`.
+ *
+ * A12's own guidance for the codes this checker emits, projected from the single Java
+ * owners — `rulekit.validate.StructuralKernelFix` for the curated structural correctives
+ * and `rulekit.validate.RkCode` for the `RK_*` catalog. The projection carries exactly the
+ * codes the checker's own sources spell, so it cannot advertise guidance for a code that
+ * never reaches a consumer; `CheckerCorrectiveProjectionGuardTest` re-derives it and fails
+ * the build on any drift.
+ */
+internal val KERNEL_CORRECTIVES: Map<String, Corrective> = mapOf(
+    "MVK_ADDITIONAL_CHECK_INVALID" to Corrective(
+        fix = "A DATE or DATEFRAGMENT field's opt-in pre-1900 check (`youngerThan1900Check`, our `dateField(…)`/`dateFragmentField(…).rejectBefore1900()`) requires the declared FORMAT to carry a YEAR. Over the kernel's admitted format vocabulary it is accepted on `yyyy`, `yyyy-MM`, `yyyyMM`, `yyyy-MM-dd`, `dd.MM.yyyy`, `yyyyMMdd` and `yyyy-MM-dd'T'HH:mm:ss`, and refused on the year-free `MM`, `MM-dd`, `MMdd`, `ddMM`, `dd.MM.` and `HH:mm:ss` — identically on both kinds. So either declare a year-bearing format or drop the check — it is not admitted-and-inert on a year-free declaration, so there is no way to keep both. An INCOMPLETE format is not the trigger: `yyyy` and `yyyy-MM` carry no day and are accepted. A DATERANGE is EXEMPT from this gate — every admitted (format, separator) pair takes the check, the year-free ones included — so if a year-free period is what you need, declare it as a range.",
+        meaning = "The kernel gates the additional date check on the declared format's YEAR component rather than on the field's kind — except that the DATERANGE kind is not gated at all — so the code means the format and the check disagree, never that the check is unsupported for this field type.",
+    ),
+    "MVK_FIELDNAME_NOT_UNIQUE" to Corrective(
+        fix = "The bare name resolved through the model-wide fallback, which found MORE THAN ONE field with that short name and will not choose between them. Qualify the reference instead of declaring anything: give it the ABSOLUTE path of the field you mean (a leading `/`, e.g. `/Order/Warehouse/Code`). This is the OPPOSITE corrective to MVK_INVALID_ENTITY, which means no field carries the name at all — there the field is missing, here there are too many, and turning `fieldRefByShortNameAllowed` off converts this code into that one rather than fixing the reference.",
+        meaning = "MVK_FIELDNAME_NOT_UNIQUE means the rule's own group does not declare the name, so the kernel fell back to a model-wide lookup (which `fieldRefByShortNameAllowed` enables), and that lookup requires a UNIQUE match.",
+    ),
+    "MVK_INVALID_COMPARE_DEC_PLACES" to Corrective(
+        fix = "The kernel could not establish compatible DERIVED decimal scales here. Numeric == / != carries a known SIGNED scale or unknown plus an independent multiplicative-constant capability: when known scales differ, only a capable SMALLER-scale side may be padded; an unknown scale rejects. ORDERING (< <= > >=) is exempt. THREE contexts trigger this code: (1) a COMPUTED FIELD whose declared scale is incompatible with its expression (e.g. a field re-scaled to 2 places while the Sum-computed field stays scale 0) — re-scale the computed field or explicitly round the expression, doing both edits in ONE `apply` so the terminal gate sees a consistent model; expect a SECOND rejection to surface if the operation also reads its own computed field, because this scale comparison is decided ahead of that refusal; (2) numeric == / != with incompatible derived scales — round one side to a known compatible scale, or accept it with allowDifferingDecimals:true on the rule spec (the kernel's one suppressible warning — it prepends @SuppressWarning(MVK_INVALID_COMPARE_DEC_PLACES)); (3) a POWER, whose scale is DERIVED and is reported as '?' more often than authors expect — it is known (and 0) only for a scale-0 base under a nonnegative literal exponent, never the base's own scale, so a decimal-scale base, a non-literal exponent such as a field or aggregate, and a negative literal exponent all leave it unknown; ordering the power instead of comparing it for equality is usually the smallest repair.",
+        meaning = "MVK_INVALID_COMPARE_DEC_PLACES (\"the fractional digits of lhs and rhs are different\") fires when numeric == / != cannot reconcile the operands' derived signed-scale/capability summaries, OR when a computed field is incompatible with its expression. It is not specific to any one operator (Sum, Equal, …); the scale-coupling is the constraint, so the corrective is context-dependent.",
+    ),
+    "MVK_INVALID_ENTITY" to Corrective(
+        fix = "The group or field name in the condition could not be resolved in the rule's scope. Use its ABSOLUTE path (a leading `/`, e.g. `/Order/Items/Sku`) rather than a bare or relative name — a bare name binds against the rule's OWN group first, and reaches ANY other group (an ancestor's field included: there is no upward search) only through the model-wide fallback, which needs `fieldRefByShortNameAllowed` AND a unique match. If the name is already correct, check the rule's iteration scope contains it: a per-row field needs the rule to iterate over its repeatable group (set the rule group to that group's PARENT, error field inside).",
+        meaning = "MVK_INVALID_ENTITY (\"the group or field 'X' is not valid\") means the kernel could not resolve that name — almost always a bare/relative reference that does not bind across sibling groups, or a field outside the rule's iteration scope.",
+    ),
+    "MVK_OPTIONAL_DATE_TYPE_INVALID" to Corrective(
+        fix = "A partially known date (`datePrecision` DAY_OPTIONAL / MONTH_OPTIONAL / YEAR_OPTIONAL) requires the declared FORMAT to be a COMPLETE date and nothing further. Over the kernel's admitted format vocabulary that is exactly `yyyy-MM-dd`, `dd.MM.yyyy` and `yyyyMMdd`; every component-omitting format is refused, and so is the instant `yyyy-MM-dd'T'HH:mm:ss` despite carrying all three date components. Declare one of those three, or leave the precision at its FULL default — the precision is what lets the stored VALUE omit parts (`00.02.2024`), so the format must still be able to spell all of them. Do NOT copy the format out of this rejection: it echoes the spelling in GERMAN pattern letters (`JJJJ-MM` for `yyyy-MM`, `MM-TT` for `MM-dd`) in every locale, and those are not declarable.",
+        meaning = "The kernel requires a complete date format before it will accept a partial-precision marker, and reports the conflict against the format rather than against the precision — the verdict is the same for all three partial values, so the code identifies the mismatch and not which side to edit.",
+    ),
+    "MVK_UNEXPECTED_TOKEN" to Corrective(
+        fix = "The condition has a token the DSL parser did not expect (a syntax slip the kernel reports with no message of its own). The most common causes, in order: (1) a BOOLEAN literal must be CAPITALIZED — write `True` / `False`, not the JSON `true` / `false` (e.g. `[Flag] == True`); (2) a string value must be DOUBLE-QUOTED — `[Status] == \"OPEN\"`; (3) operator/keyword names are case-sensitive PascalCase — `FieldFilled`, `And`, `Or`, `Not`; (4) a FIELD used as a comparison VALUE must be BRACKETED — `[Approved] != True`, not `Approved != True` (bare names belong only inside a function/predicate's parentheses, like `FieldFilled(Approved)`). Re-check the token at the reported position against these.",
+        meaning = "MVK_UNEXPECTED_TOKEN is the kernel's generic parse error — a token appeared where the grammar did not allow it — and it is raised WITHOUT a message, so the likely cause has to be inferred from the DSL's literal/keyword conventions (capitalized booleans True/False, double-quoted strings, case-sensitive PascalCase operators).",
+    ),
+    "RK_UNDECLARED_MESSAGE_LOCALE" to Corrective(
+        fix = "supply the message for one of the model's declared locales, or declare the locale on the model first.",
+        meaning = "the candidate supplies an error message for a locale the model does not declare; the kernel's error-text checker runs per declared locale, so that text would be reported valid without ever being examined.",
+    ),
+)

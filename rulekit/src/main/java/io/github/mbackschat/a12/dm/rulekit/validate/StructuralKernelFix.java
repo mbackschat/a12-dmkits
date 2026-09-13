@@ -343,6 +343,19 @@ public final class StructuralKernelFix {
     }
 
     /**
+     * Every code {@link #forCode} serves, sorted.
+     *
+     * <p>Exists because a lookup-only surface cannot be PROJECTED. The Kernel-free portable checker carries
+     * no project dependency and so cannot read this class at build or run time; its guidance is therefore a
+     * generated projection, and a generator needs the denominator rather than a way to ask about one code at
+     * a time. Deliberately not the {@link #forMessage} class, which is keyed by message substring and has no
+     * code to project onto.
+     */
+    public static java.util.Set<String> codes() {
+        return new java.util.TreeSet<>(HINTS.keySet());
+    }
+
+    /**
      * A hint matched by a kernel MESSAGE substring — for content-free rejections the kernel raises with a
      * message but <b>no MVK_ code</b> (so {@link #forCode} can't reach them). Today: the date/time field
      * <em>format</em> rejection (probe 08 — "The date range format is invalid" / "The date format is

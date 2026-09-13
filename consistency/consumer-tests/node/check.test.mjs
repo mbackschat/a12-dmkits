@@ -42,6 +42,12 @@ test('a rule naming an undeclared field is INVALID, with the code A12 gives', ()
   assert.equal(finding.severity, 'ERROR');
   // Not derivable from severity alone: an AUTHORING_POLICY finding at ERROR is deliberately not a rejection.
   assert.equal(finding.justifiesRejection, true);
+  // A12's own guidance for the code, projected from its Java owners into the packaged library. Asserted
+  // HERE because the projection is generated on the JVM side: only a real Node consumer can show that it
+  // survives packaging, and reading the generator's output proves nothing about what ships.
+  assert.ok(finding.corrective, 'MVK_INVALID_ENTITY is a code A12 explains');
+  assert.ok(finding.corrective.fix.length > 0);
+  assert.ok(finding.corrective.meaning.length > 0);
 });
 
 test('an unreadable source returns a report rather than throwing', () => {

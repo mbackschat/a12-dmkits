@@ -68,7 +68,7 @@ class ReportJsonTest {
     fun aFindingCarriesItsFullKeySetAndItsDerivedVerdict() {
         val finding = parsed(broken)["findings"]!!.jsonArray.single().jsonObject
         assertEquals(
-            setOf("code", "category", "severity", "explain", "at", "justifiesRejection"),
+            setOf("code", "category", "severity", "explain", "at", "justifiesRejection", "corrective"),
             finding.keys,
         )
         assertEquals("MVK_INVALID_ENTITY", finding["code"]!!.jsonPrimitive.content)
@@ -78,7 +78,35 @@ class ReportJsonTest {
         // The field a consumer cannot derive from severity alone: an AUTHORING_POLICY finding at ERROR is
         // deliberately not a rejection, so publishing severity without this one invites the wrong reading.
         assertEquals("true", finding["justifiesRejection"]!!.jsonPrimitive.content)
+        // A12's own guidance for the code, projected from its Java owners rather than restated here. Its
+        // two members answer different questions, which is why the member is an object and not a string.
+        val corrective = finding["corrective"]!!.jsonObject
+        assertEquals(setOf("fix", "meaning"), corrective.keys)
+        assertTrue(corrective["fix"]!!.jsonPrimitive.content.isNotBlank())
     }
+
+    /**
+     * A code no A12 owner explains publishes `corrective: null` rather than omitting the member.
+     *
+     * Omission and absence would look identical to a consumer reading an older report, and the two mean
+     * opposite things — "nobody explains this code" against "this producer does not carry guidance at all".
+     */
+    @Test
+    fun aFindingWhoseCodeNoOwnerExplainsPublishesAnExplicitNull() {
+        val finding = parsed(unbuildable)["findings"]!!.jsonArray.first().jsonObject
+        assertEquals(CK_MODEL_NOT_BUILDABLE, finding["code"]!!.jsonPrimitive.content)
+        assertEquals(true, finding["corrective"] is kotlinx.serialization.json.JsonNull, finding.toString())
+    }
+
+    /** A field with no `fieldType` at all, which draws this checker's own code rather than one of A12's. */
+    private val unbuildable = """
+        {"header":{"id":"catalog","locales":[{"code":"en_US"}]},
+         "content":{"modelRoot":{"rootGroups":[
+          {"type":"Group","id":"g0","name":"Catalog","Group":{"elements":[
+            {"type":"Field","id":"f0","name":"Price","Field":{}}
+          ]}}
+         ]}}}
+    """.trimIndent()
 
     /** The status is a WORD and never a boolean, because a checker that cannot say VALID has three states. */
     @Test

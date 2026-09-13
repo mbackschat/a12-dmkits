@@ -53,6 +53,19 @@ private fun Finding.asJson(): JsonObject = buildJsonObject {
     // that the fields alone do not answer: an AUTHORING_POLICY finding at ERROR does NOT make a model
     // invalid, so severity cannot be read as the verdict on its own.
     put("justifiesRejection", justifiesRejection)
+    // A12's own guidance for the CODE, projected from its Java owners. Two members rather than one flat
+    // string because they answer different questions — what to change here, and what the code classifies
+    // wherever it is raised — and `null` rather than an omitted member so "no owner explains this code" and
+    // "this consumer is reading an older report" cannot look the same.
+    val guidance = corrective
+    if (guidance == null) {
+        put("corrective", JsonNull)
+    } else {
+        put("corrective", buildJsonObject {
+            put("fix", guidance.fix)
+            put("meaning", guidance.meaning)
+        })
+    }
 }
 
 private fun Diagnostic.asJson(): JsonObject = buildJsonObject {
