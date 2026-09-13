@@ -6763,3 +6763,41 @@ Reported by the portable checker as `CheckFamily.COMPUTATION_PRECONDITION_FEATUR
 Reported by the portable checker as `CheckFamily.COMPUTATION_CYCLE`, which drops the self-loop for the reason above.
 
 *Locked by:* `rulekit.validate.laws.ComputationDependencyCycleLawsTest`.
+
+## §13 supplement — which CLASS each message-parameter shape draws, and that a computation's message is gated by its own members (measured, 2026-09-13) <a id="kf335"></a>
+
+> Fold: not-foldable — the implementation boundary of the parameter membership gate, not a new parameter form.
+
+**[KF198](#kf198) and `RuleMessageParameterLawsTest` measure the parameter SURFACE; this measures what a reader of it may report.** Every shape below looks like a bad field reference, and only two of them are one — so a checker recognising the plain form and answering its class for everything else would over-reject, which is the one direction this project forbids.
+
+| the message says, with a condition that reads `Reference` only | A12 |
+|---|---|
+| `$Reference$` — the control | ADMITTED |
+| no parameter at all — the control | ADMITTED |
+| `$Premium$`, a sibling the condition does not read | **`INVALID_FIELD`** |
+| `$Premium.value$`, the same field with a suffix | **`INVALID_FIELD`** |
+| `$NoSuchField$`, which resolves to nothing | **`INVALID_ENTITY`** |
+| `$Claims$`, a GROUP the condition does not read | **`INVALID_FIELD`** |
+| `$Claims/Payout$`, a pathed field the condition does not read | **`INVALID_FIELD`** |
+| `cost 5$$` — an escaped dollar, no parameter | ADMITTED |
+| `cost 5$` — a lone dollar | **`WRONG_NUMBER_OF_DOLLARS`** |
+
+**Two of those are the rows an implementation would get wrong.** A name that resolves to NOTHING is `INVALID_ENTITY`, not the membership class — so answering every unknown parameter with `INVALID_FIELD` names a verdict A12 did not give. And a GROUP draws `INVALID_FIELD` too, not `INVALID_GROUP`: the membership gate does not care what kind it found, so keying the class on the resolved element's kind is wrong in the other direction.
+
+**A COMPUTATION's message is gated as well, by its own members.** This was the reverse of the first two readings taken of it, both of which came from a broken fixture:
+
+| a computation into `Premium`, operation `1` | A12 |
+|---|---|
+| `$Premium$` — the computed target | ADMITTED |
+| `$Adjuster$` — a field the computation never touches | **`INVALID_FIELD`** |
+| `$Bonus$` with operation `[Bonus] + 1` | ADMITTED |
+| `$NoSuchField$` | **`INVALID_ENTITY`** |
+| operation `[NoSuchField] + 1` — the vacuity control | `MVK_INVALID_ENTITY` |
+
+So the law belongs to the MESSAGE member rather than to the rule, and the membership set is whatever its own carrier reads: a rule's condition references, or a computation's target plus what its operation reads. A family skipping computations under-reports.
+
+**The vacuity control is in the grid and not beside it, because it caught the measurement twice.** The first version injected the computation with a regex that matched nothing, so every row read ADMITTED off an unmodified model and the table said computations are ungated. The second had the computation's operation read its own target, so its "control" drew `MVK_ERROR_REFERENCE_TO_CALCULATED_FIELD` — a different law. Neither is visible without a row that A12 must refuse.
+
+**On a rule the error target is necessarily inside the membership set, so there is no second term to find.** Trying to build the pair that separates "the condition reads it" from "it is the error target" produces a different refusal instead — `MVK_ERROR_FIELD_NOT_REFERENCED`, since A12 requires every rule's error field to appear among its condition's references ([KF35](#kf35), `ErrorFieldReferenceReachLawsTest`). The impossibility is the result.
+
+*Locked by:* `rulekit.validate.laws.MessageParameterMembershipLawsTest`.
