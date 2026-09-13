@@ -209,6 +209,11 @@ private fun DeclaredElement.unprefixedErrorTextFinding(
     authored: List<AuthoredMessage>,
     declaredLocales: List<String>,
 ): List<Finding> {
+    // NO MUTANT CAN KILL THIS BRANCH, and it stays because it states a different law from the one that
+    // happens to cover it: `all {}` over an empty list is vacuously true, so an undeclared locale set already
+    // falls out below. The two coincide only for as long as the whitespace rule is written as an `all`, and
+    // the law here — a model with no usable locale reaches no verdict, so neither class is A12's — is not
+    // that rule's to carry.
     if (declaredLocales.isEmpty()) {
         return emptyList()
     }
