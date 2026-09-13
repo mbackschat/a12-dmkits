@@ -21,11 +21,16 @@ import io.github.mbackschat.a12.dm.consistency.syntax.plainMessageParameters
  * that field (`RuleMessageParameterLawsTest.onlyTheValueSuffixNeedsANonStarredReference`). The `.value`
  * suffix over a starred reference is refused, but under a class of its own, so it is not this family's.
  *
- * **Three shapes that look exactly like this failure are left to A12**, each measured to draw a different
- * class: a name resolving to nothing (`INVALID_ENTITY`), an unterminated parameter
- * (`WRONG_NUMBER_OF_DOLLARS`), and every parameter form beyond the plain one — the category suffix, the
- * semantic-index key, the row specifier, the base-year terminal. What this reader takes, and why it takes so
- * little, is [plainMessageParameters].
+ * **A parameter that does not RESOLVE is reported too, under A12's own error-text vocabulary.** The address
+ * is asked before membership, and its four outcomes draw unprefixed `FehlertextErrorType` members rather
+ * than the `MVK_*` codes the same outcomes draw inside a condition ([KF336], [ReferenceRole.MESSAGE_PARAMETER]).
+ * The short-name fallback is what makes that worth reporting: it is LOCAL-FIRST and then model-wide, so a
+ * bare name the declaring group does not own can match several fields and A12 refuses the address itself —
+ * the shape a checker silently resolving to one candidate would judge for membership and report wrongly.
+ *
+ * **Two shapes are still left to A12**: an unterminated parameter (`WRONG_NUMBER_OF_DOLLARS`) and every
+ * parameter form beyond the plain one — the category suffix, the semantic-index key, the row specifier, the
+ * base-year terminal. What this reader takes, and why it takes so little, is [plainMessageParameters].
  */
 fun PreparedModel.messageParameterFindings(): List<Finding> {
     val readBy = entitiesReadByDeclaration()
@@ -36,8 +41,10 @@ fun PreparedModel.messageParameterFindings(): List<Finding> {
         val messages = body.authoredMessages() as? AuthoredMessages.Read ?: return@flatMap emptyList()
         messages.entries.flatMap { message ->
             plainMessageParameters(message.text).mapNotNull { name ->
-                val resolved = (resolveEntity(group, name, element.origin) as? Reference.Resolved)?.path
-                    ?: return@mapNotNull null
+                val address = resolveEntity(group, name, element.origin)
+                val resolved = (address as? Reference.Resolved)?.path
+                    ?: return@mapNotNull address.asFinding(ReferenceRole.MESSAGE_PARAMETER, element.path,
+                        "errorMessage")
                 if (resolved in membership) {
                     return@mapNotNull null
                 }

@@ -43,15 +43,18 @@ class MessageParameterReferenceTest {
         actual["a dollar pair inside a name"] = ruleSaying("see \$Prem\$\$ium\$")
         actual["a good parameter before an unterminated one"] = ruleSaying("see \$Premium\$ and \$Adjuster")
         actual["an ABSOLUTE path"] = ruleSaying("see \$/Policy/Premium\$")
+        actual["a step above the root group"] = ruleSaying("see \$../Premium\$")
+        actual["a non-local short name the model carries twice"] = ruleSaying("see \$Payout\$")
+        actual["a name at ROOT-GROUP level that resolves to nothing"] = ruleSaying("see \$/NoSuchRoot\$")
 
         val expected = mutableMapOf<String, List<String>>()
         expected["a field the condition reads — the control"] = emptyList()
         expected["no parameter at all — the control"] = emptyList()
         expected["a sibling the condition does not read"] = listOf(invalidField)
         expected["the same field with a value suffix"] = listOf(invalidField)
-        // A12 answers `INVALID_ENTITY` here, a different class this family does not carry — so silence,
-        // never the membership code, which would name a verdict A12 did not give.
-        expected["a name that resolves to nothing"] = emptyList()
+        // Reported under A12's own class rather than the membership one: the ADDRESS is asked first, and
+        // answering an unresolvable parameter with `INVALID_FIELD` would name a verdict A12 did not give.
+        expected["a name that resolves to nothing"] = listOf("INVALID_ENTITY")
         // A GROUP draws the membership class too: the gate does not care what kind it resolved to.
         expected["a GROUP the condition does not read"] = listOf(invalidField)
         expected["a pathed field the condition does not read"] = listOf(invalidField)
@@ -73,13 +76,21 @@ class MessageParameterReferenceTest {
         // TWO findings, because the pair closes one parameter and opens the next — a reader treating it as
         // an escape would see one unresolvable name and report nothing on a model A12 refuses twice.
         expected["two parameters sharing a dollar pair"] = listOf(invalidField, invalidField)
-        // …and the same pair mid-name leaves two names that resolve to nothing, which is A12's other class.
-        expected["a dollar pair inside a name"] = emptyList()
+        // …and the same pair mid-name leaves two names that resolve to nothing — reported under the address
+        // class A12 gives, one per parameter, which is the verdict it answered this very text with.
+        expected["a dollar pair inside a name"] = listOf("INVALID_ENTITY", "INVALID_ENTITY")
         // A12 refuses the whole text on the dollar count and never judges the parameter it DID close, so
         // keeping the names collected before the thread was lost would report on a model A12 admits for
         // this family's reason. The row exists because a mutant returning them survived every other one.
         expected["a good parameter before an unterminated one"] = emptyList()
         expected["an ABSOLUTE path"] = listOf(invalidField)
+        // Only the OVERSHOOT is refused: a `..` landing inside the root group is ordinary and judged for
+        // membership like any other address (measured from a rule in `Claims`).
+        expected["a step above the root group"] = listOf("ERROR_TEXT_PARAMETER_TOO_MANY_PARENT_GROUPS")
+        // The short-name fallback is local-first and then model-wide, so a name the declaring group does not
+        // own can match several fields — and A12 refuses the ADDRESS rather than choosing one.
+        expected["a non-local short name the model carries twice"] = listOf("ERROR_TEXT_FIELDNAME_NOT_UNIQUE")
+        expected["a name at ROOT-GROUP level that resolves to nothing"] = listOf("INVALID_ROOT_GROUP")
         assertEquals(expected, actual, "which parameter shapes this family reports")
     }
 
@@ -96,7 +107,7 @@ class MessageParameterReferenceTest {
         expected["the computed target — the control"] = emptyList()
         expected["a field the computation never touches"] = listOf(invalidField)
         expected["the field the operation reads"] = emptyList()
-        expected["a name that resolves to nothing"] = emptyList()
+        expected["a name that resolves to nothing"] = listOf("INVALID_ENTITY")
         assertEquals(expected, actual, "a computation's message answers to its own members")
     }
 
@@ -115,9 +126,7 @@ class MessageParameterReferenceTest {
         actual["a base-year terminal"] = ruleSaying("see \$BaseYear\$")
         actual["a base-year terminal with an offset"] = ruleSaying("see \$BaseYear+3\$")
         actual["a row specifier"] = ruleSaying("see \$#Zeile\$")
-        // A12 answers a step above the root group with a class of its own, and no measurement covers the
-        // same step from a DEEPER carrier — so this reader leaves every `..` alone rather than guess.
-        actual["a path stepping up"] = ruleSaying("see \$../Premium\$")
+
 
         assertEquals(actual.keys.associateWith { emptyList<String>() }, actual,
             "the parameter forms this family does not read")
@@ -152,7 +161,8 @@ class MessageParameterReferenceTest {
         }
         return """
             {"header":{"id":"policy","locales":[{"code":"en_US"}]},
-             "content":{"modelRoot":{"rootGroups":[
+             "content":{"modelConfig":{"fieldRefByShortNameAllowed":"True"},
+              "modelRoot":{"rootGroups":[
               {"type":"Group","id":"g0","name":"Policy","Group":{"elements":[
                 {"type":"Field","id":"f0","name":"Reference","Field":{"fieldType":{"type":"StringType"}}},
                 {"type":"Field","id":"f1","name":"Premium","Field":{"fieldType":{"type":"NumberType"}}},
@@ -160,6 +170,9 @@ class MessageParameterReferenceTest {
                 {"type":"Field","id":"f3","name":"Bonus","Field":{"fieldType":{"type":"NumberType"}}},
                 {"type":"Field","id":"f6","name":"index","Field":{"fieldType":{"type":"StringType"}}},
                 {"type":"Field","id":"f7","name":"Date","Field":{"fieldType":{"type":"StringType"}}},
+                {"type":"Group","id":"g2","name":"Endorsements","Group":{"elements":[
+                  {"type":"Field","id":"f8","name":"Payout","Field":{"fieldType":{"type":"StringType"}}}
+                ]}},
                 {"type":"Group","id":"g1","name":"Claims","Group":{"repeatability":20,"elements":[
                   {"type":"Field","id":"f4","name":"ClaimNo","Field":{"fieldType":{"type":"StringType"}}},
                   {"type":"Field","id":"f5","name":"Payout","Field":{"fieldType":{"type":"StringType"}}}

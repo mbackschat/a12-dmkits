@@ -79,6 +79,18 @@ private fun ReferenceRole.codeFor(outcome: Reference): String = when (this) {
             else "MVK_INVALID_ENTITY"
         else -> "MVK_INVALID_ENTITY"
     }
+    // The MESSAGE surface answers with A12's unprefixed error-text vocabulary rather than the condition's,
+    // outcome for outcome (measured, `MessageParameterShortNameLawsTest`). Two of the four spellings are the
+    // condition code's tail and two are not, so neither stripping `MVK_` nor reusing the arm above would
+    // produce this table — it has to be its own.
+    ReferenceRole.MESSAGE_PARAMETER -> when (outcome) {
+        is Reference.Ambiguous -> "ERROR_TEXT_FIELDNAME_NOT_UNIQUE"
+        is Reference.AboveRoot -> "ERROR_TEXT_PARAMETER_TOO_MANY_PARENT_GROUPS"
+        is Reference.Undeclared ->
+            if (outcome.candidate.count { character -> character == '/' } == 1) "INVALID_ROOT_GROUP"
+            else "INVALID_ENTITY"
+        else -> "INVALID_ENTITY"
+    }
 }
 
 private fun a12Error(code: String, at: String, explain: String) =

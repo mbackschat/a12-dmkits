@@ -44,6 +44,16 @@ enum class ReferenceRole {
 
     /** An entity named inside condition or operation text. */
     CONDITION_ENTITY,
+
+    /**
+     * An entity named by a `$Name$` parameter of an error message.
+     *
+     * A separate role because A12 answers this surface with its OWN vocabulary: the same four outcomes that
+     * draw `MVK_*` codes inside a condition draw unprefixed `FehlertextErrorType` members here, two of which
+     * share a tail with the condition-side code and one of which does not resemble it at all
+     * ([KERNEL-FINDINGS KF336]).
+     */
+    MESSAGE_PARAMETER,
 }
 
 /**

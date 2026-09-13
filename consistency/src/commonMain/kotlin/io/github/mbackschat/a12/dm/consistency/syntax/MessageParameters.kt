@@ -16,6 +16,21 @@ package io.github.mbackschat.a12.dm.consistency.syntax
  * would report on a text A12 answered otherwise. `$$` outside a parameter is A12's escape, and
  * [closingDollar] is why no branch here has to know that.
  */
+/**
+ * The message grammar's own TERMINALS, which are not entity names however plain they look.
+ *
+ * `$BaseYear$` is admitted on a model that declares a base year and draws `NO_BASE_YEAR` on one that does
+ * not (`RuleMessageParameterLawsTest.theBaseYearTerminalTakesAnUnboundedSignedOffset`) — never a reference
+ * class — so handing it to a reader that reports unresolvable addresses would over-reject outright. Every
+ * other form on this grammar's terminal list (`#Zeile`, a signed offset, a category suffix) carries a
+ * character no plain segment admits and is already refused below.
+ *
+ * **Both language spellings are excluded regardless of the model's own language**, because an exclusion can
+ * only under-report: only the English spelling is measured, and narrowing the set to the model's language
+ * would be a claim about the German message grammar that nothing here has run.
+ */
+private val MESSAGE_TERMINALS = setOf("BaseYear", "Referenzjahr")
+
 internal fun plainMessageParameters(text: String): List<String> {
     val names = mutableListOf<String>()
     var index = 0
@@ -78,10 +93,16 @@ private fun plainNameOrNull(parameter: String): String? {
     val name = parameter.removeSuffix(VALUE_SUFFIX)
     val absolute = name.startsWith('/')
     val segments = name.removePrefix("/").split('/')
-    if (segments.any { !it.isPlainSegment() }) {
+    // A `..` step is admitted, but only ahead of a name: A12 refuses the overshoot with a class of its own
+    // and admits a step that lands inside the root group (measured), which is exactly what resolution
+    // models. A path ENDING in `..` names no entity and no measurement covers it, so it stays unread.
+    if (segments.last() == UP || segments.any { it != UP && !it.isPlainSegment() }) {
         return null
     }
     val joined = segments.joinToString("/") { it.trim('\'') }
+    if (!absolute && joined in MESSAGE_TERMINALS) {
+        return null
+    }
     return if (absolute) "/$joined" else joined
 }
 
@@ -94,5 +115,7 @@ private fun String.isPlainSegment(): Boolean {
 }
 
 private fun Char.isNameStart(): Boolean = isLetter() || this == '_'
+
+private const val UP = ".."
 
 private const val VALUE_SUFFIX = ".value"

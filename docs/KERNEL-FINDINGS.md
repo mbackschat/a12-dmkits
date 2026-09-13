@@ -6823,3 +6823,38 @@ So the law belongs to the MESSAGE member rather than to the rule, and the member
 Reported by the portable checker as `CheckFamily.MESSAGE_PARAMETER_REFERENCE`, for the plain parameter form only.
 
 *Locked by:* `rulekit.validate.laws.MessageParameterMembershipLawsTest`.
+
+## §13 supplement — a message parameter's ADDRESS is answered in A12's own unprefixed vocabulary, outcome for outcome (measured, 2026-09-13) <a id="kf336"></a>
+
+> Fold: not-foldable — the error-text surface's diagnostic vocabulary, not an evaluation behaviour.
+
+**[KF335](#kf335) measures whether a parameter may name an entity; this measures what A12 says when it cannot FIND one.** The same four resolution outcomes that draw `MVK_*` codes inside a condition draw unprefixed `FehlertextErrorType` members in a message — and the spellings do not follow one rule, so neither stripping the prefix nor reusing the condition arm produces this table.
+
+| the address | inside a CONDITION | inside an error MESSAGE |
+|---|---|---|
+| resolves to nothing, below the declaring group | `MVK_INVALID_ENTITY` | **`INVALID_ENTITY`** |
+| resolves to nothing, at ROOT-GROUP level | `MVK_INVALID_ROOT_GROUP` | **`INVALID_ROOT_GROUP`** |
+| a short name several fields carry | `MVK_FIELDNAME_NOT_UNIQUE` | **`ERROR_TEXT_FIELDNAME_NOT_UNIQUE`** |
+| a `..` that climbs past the root group | `MVK_TOO_MANY_PARENT_GROUPS` | **`ERROR_TEXT_PARAMETER_TOO_MANY_PARENT_GROUPS`** |
+
+Two of the four are the condition code's tail and two are not, and the two that are (`INVALID_ENTITY`, `INVALID_ROOT_GROUP`) are among the five classes [KF323](#kf323) names as sharing a tail with an `MVK_` code — so a search for either spelling needs `(?<![A-Za-z0-9_])` to tell the surfaces apart.
+
+**The short-name fallback is LOCAL-FIRST and then model-wide, and only the second tier can be ambiguous.** This is what makes the uniqueness row reachable at all, and a fixture carrying only a duplicated name the declaring group OWNS cannot show it:
+
+| the parameter, with the condition reading the same entity | A12 |
+|---|---|
+| a bare name the declaring group owns, carried in another group too | ADMITTED |
+| the same bare name written from that OTHER group | ADMITTED |
+| a bare name the declaring group does NOT own, unique in the model | ADMITTED |
+| a bare name the declaring group does NOT own, carried by two groups | **`ERROR_TEXT_FIELDNAME_NOT_UNIQUE`** |
+| the same, written as a path | ADMITTED |
+
+The third row is the one that keeps the account honest: without it, the local hit explains every admission and a local-only rule fits the set exactly as well as the two-tier one. The fallback's second tier is gated on the model's `fieldRefByShortNameAllowed` — a checker whose fixture leaves it off measures the fallback as absent and reports the unresolvable class instead (caught here that way).
+
+**A `..` step is ordinary; only the OVERSHOOT is refused.** From a rule in a root group one `..` already leaves the outermost group, so the refusal measured there says nothing about the step itself — from a rule one level down, `$../Premium$` is ADMITTED and judged for membership like any other address.
+
+**And `$BaseYear$` is none of these.** It is a terminal of the message grammar, ADMITTED where the model declares a base year and `NO_BASE_YEAR` where it does not ([KF198](#kf198)) — so a reader reporting unresolvable addresses must exclude the grammar's own terminals first, or it over-rejects on a parameter A12 admits. Every other terminal form carries a character no plain name admits and is refused earlier.
+
+Reported by the portable checker as `ReferenceRole.MESSAGE_PARAMETER`, inside `CheckFamily.MESSAGE_PARAMETER_REFERENCE`.
+
+*Locked by:* `rulekit.validate.laws.MessageParameterShortNameLawsTest`.
