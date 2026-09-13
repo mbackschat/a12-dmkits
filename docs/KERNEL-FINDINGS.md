@@ -5006,7 +5006,7 @@ Two further edges, both measured: **"letters" is Unicode** (`Slöts` is admitted
 
 **Reported by a12-kernel-lean as `SPEC-2026-09-05-05`**, whose delta states the underscore-initial form as legal (quoting the kernel's own prose) and the lexer rule without the colon exception; both are corrected here.
 
-*(Locked: `validate.laws.GroupNameAlphabetLawsTest`.)*
+*(Locked: `validate.laws.GroupNameAlphabetLawsTest`.)* **Amended 2026-09-13:** both gates are the GROUP carrier's and neither transfers — a FIELD name answers to a different alphabet and a different code set, measured in [KF315](#kf315).
 
 ## §5 supplement — the power's derived scale needs a scale-0 BASE, and one waiver admits every unknown-scale operation into a known-scale target (kernel `checkConsistency`, 2026-09-06) <a id="kf269"></a>
 
@@ -6167,3 +6167,25 @@ The last row generalizes the string-literal result above rather than repeating i
 **An absent `format` is the declared DEFAULT and not "no format", on both gates.** `{"youngerThan1900Check":true}` and `{"datePrecision":"DAY_OPTIONAL"}` with no format member are both ADMITTED, because the builder fills `FieldTypeConstants.DEFAULT_DATE_FORMAT` — `yyyy-MM-dd`, which is year-bearing and a complete pure date, so it passes both. A checker reading the absent member as the default therefore gets A12's answer; reading it as nothing would produce findings A12 does not give.
 
 *Locked by:* `rulekit.validate.laws.TemporalConfigWireShapeLawsTest`. The portable side is `consistency`'s `TEMPORAL_CONFIG` family and `TemporalConfigTest`.
+
+## §13 supplement — the element-name alphabet is NOT one law: the FIELD carrier parts from the GROUP carrier on five of thirteen rows (measured, 2026-09-13) <a id="kf315"></a>
+
+> Fold: pending — belongs beside [KERNEL-SEMANTICS](KERNEL-SEMANTICS.md) §13, whose declaration material states the group-name alphabet and says nothing about a field's.
+
+[KF268](#kf268) established two gates on a GROUP's declared name: the path validator's alphabet, and a second gate reserving a leading underscore for `__meta` / `__attachment_meta*`. Run row for row on a FIELD, **five of thirteen rows differ, and one difference is in the direction a client-side refusal may never take.**
+
+| name | as a GROUP | as a FIELD |
+|---|---|---|
+| `Slöts` (a non-ASCII letter) | ADMITTED | `MVK_PATH_INVALID` |
+| `_Slots`, `__other` | `NAME_STARTS_WITH_UNDERSCORE_AND_WRONG_PATTERN` | **ADMITTED** |
+| `1Slots` | `MVK_PATH_INVALID` | `MVK_PATH_INVALID` **and** `MVK_NAME_STARTS_WITH_DIGIT_A12_DV` |
+| `Slot:List` | `MVK_PATH_INVALID` | `MVK_NAME_INVALID_DOT_COLON_A12_DV` **instead** |
+| 61 characters | refused, codeless | ADMITTED |
+
+**Neither carrier is simply the stricter one**, which is what makes the transfer unsafe in both directions: the group refuses the leading underscore a field takes, and admits the non-ASCII letter a field refuses. The 60-character limit is the group's alone. The `_A12_DV` codes name the mechanism — a field's name answers to a second validator the group's name does not reach.
+
+**On a field the CODE depends on the character, three ways**, which a checker naming A12's code has to reproduce rather than collapse: `.` and `:` draw `MVK_NAME_INVALID_DOT_COLON_A12_DV`; `/` draws `MVK_PATHS_INCONSISTENT`, because a name carrying the separator makes the element's own path disagree with the tree rather than being a bad name at all; `-`, space, `%`, `(`, `+`, `#`, `@`, `$`, `,`, `'` and `*` all draw `MVK_PATH_INVALID`. `_`, a digit in interior position, and both letter cases are the admitted controls.
+
+**Why it was measured rather than assumed.** Applying a measured law to an unmeasured carrier needs no new branch, so nothing prompts the question — the recurring scope-transfer shape. Here the assumption would have made a checker refuse a field named `_Slots`, which A12 admits.
+
+*Locked by:* `rulekit.validate.laws.FieldNameAlphabetLawsTest`, row for row against `GroupNameAlphabetLawsTest`.
