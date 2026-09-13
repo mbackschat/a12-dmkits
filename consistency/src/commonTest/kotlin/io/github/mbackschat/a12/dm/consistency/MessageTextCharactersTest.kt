@@ -75,6 +75,21 @@ class MessageTextCharactersTest {
         assertEquals(expected, actual, "a computation's message meets the same gate")
     }
 
+    /**
+     * A declaration whose CONDITION is unsound has no character verdict either.
+     *
+     * The same gate as the parameter family, because it is A12 declining to examine the message member at
+     * all — measured rather than carried over, since this check needs nothing from the condition and could
+     * as easily have run regardless.
+     */
+    @Test
+    fun aDeclarationWhoseConditionIsUnsoundHasNoCharacterVerdict() {
+        val text = "see" + 0x09.toChar() + "the reference"
+        assertEquals(emptyList(), check(ModelSource(model(text, condition = "FieldFilled(NoSuchField)")))
+            .findings.filter { it.at == "/Policy/Probe" && it.code == characters }.map { it.code })
+        assertEquals(listOf(characters), codes(text))
+    }
+
     /** The finding names the code point, since a control character is invisible in the text it came from. */
     @Test
     fun theFindingNamesTheCodePointBecauseTheCharacterCannotBeSeen() {
@@ -90,7 +105,8 @@ class MessageTextCharactersTest {
         check(ModelSource(model(text, computed = true))).findings
             .filter { it.at == "/Policy/Probe" }.map { it.code }
 
-    private fun model(text: String, computed: Boolean = false): String {
+    private fun model(text: String, computed: Boolean = false,
+                      condition: String = "FieldFilled(Reference)"): String {
         val escaped = text.map { character ->
             if (character.code < 0x20 || character.code == 0x7F) {
                 "\\u" + character.code.toString(16).padStart(4, '0')
@@ -105,7 +121,7 @@ class MessageTextCharactersTest {
                  "errorMessage":[{"locale":"en_US","text":"$escaped"}]}}"""
         } else {
             """{"type":"Rule","id":"r0","name":"Probe","Rule":{
-                 "errorCondition":"FieldFilled(Reference)","errorEntityRelPath":"../Reference",
+                 "errorCondition":"$condition","errorEntityRelPath":"../Reference",
                  "errorCode":"C1","errorMessage":[{"locale":"en_US","text":"$escaped"}]}}"""
         }
         return """

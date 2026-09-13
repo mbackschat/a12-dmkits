@@ -48,6 +48,13 @@ class MessageParameterConditionDependencyLawsTest {
                 verdict("FieldFilled(NoSuchField)", "../Reference", "see the reference"));
         actual.put("a condition that does not PARSE, a parameter beside it",
                 verdict("FieldFilled(", "../Reference", "see $Premium$"));
+        // The sweep the parameter rows demand: does a broken condition withhold the message's CHARACTER
+        // verdict too, or only the one that needs the condition's references? The two checks differ in
+        // whether they depend on the condition at all, so the answer cannot be carried over.
+        actual.put("a valid condition, a control character in the text — the control",
+                verdict("FieldFilled(Reference)", "../Reference", "see" + (char) 0x09 + "the reference"));
+        actual.put("a condition naming nothing, a control character in the text",
+                verdict("FieldFilled(NoSuchField)", "../Reference", "see" + (char) 0x09 + "the reference"));
 
         Map<String, String> expected = new LinkedHashMap<>();
         expected.put("a valid condition, a parameter it does not read — the control", "INVALID_FIELD");
@@ -59,6 +66,11 @@ class MessageParameterConditionDependencyLawsTest {
         expected.put("a condition naming nothing, a plain text — the control", "MVK_INVALID_ENTITY");
         // …and the same for a condition that does not parse, under that failure's own class.
         expected.put("a condition that does not PARSE, a parameter beside it", "MVK_INCOMPLETE_INPUT");
+        // The character verdict is withheld by the SAME broken condition, so this is A12 declining to
+        // examine the message member at all rather than a rule about parameters — which means every family
+        // reading that member answers to it, not only the one that needs the condition's references.
+        expected.put("a valid condition, a control character in the text — the control", "INVALID_CHARACTERS");
+        expected.put("a condition naming nothing, a control character in the text", "MVK_INVALID_ENTITY");
         assertEquals(expected, actual, "what a parameter draws when the condition beside it is invalid");
     }
 

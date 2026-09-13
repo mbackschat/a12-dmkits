@@ -6899,11 +6899,15 @@ Reported by the portable checker as `CheckFamily.MESSAGE_TEXT_CHARACTERS`.
 | `FieldFilled(NoSuchField)`, the same parameter beside it | **`MVK_INVALID_ENTITY`** only |
 | `FieldFilled(NoSuchField)`, a plain text — the control | `MVK_INVALID_ENTITY` |
 | `FieldFilled(`, the same parameter beside it | **`MVK_INCOMPLETE_INPUT`** only |
+| a valid condition, a TAB in the text — the control | **`INVALID_CHARACTERS`** |
+| `FieldFilled(NoSuchField)`, the same TAB in the text | **`MVK_INVALID_ENTITY`** only |
 
 The second row against the third is the measurement: the verdict is identical whether the message carries a parameter or not, so the parameter's class is WITHHELD rather than accompanied.
 
+**It withholds the WHOLE error-text checker, not the parameter law.** The last pair is the sweep that says so: a control character in the text draws `INVALID_CHARACTERS` beside a valid condition and nothing at all beside a broken one — and that check needs nothing from the condition, so it could as easily have run regardless. So A12 declines to examine the message member at all, and every family reading that member answers to it.
+
 **This is a cross-member dependency, which is the shape a family-per-member checker gets wrong by construction.** Each family reads its own member and reports what it finds, so one with a broken condition and a message beside it draws a parameter class A12 gave no sign of. The shape is not exotic: a half-typed condition is the ordinary state of a model being edited, and that is exactly when a checker is asked.
 
-Reported by the portable checker as a WITHHOLDING — `CheckFamily.MESSAGE_PARAMETER_REFERENCE` falls silent for such a declaration. Its stand-in for "does not parse" is an unbalanced delimiter, a necessary condition rather than a grammar, so balanced-but-refused text keeps its parameters judged — an under-report, which is the safe direction.
+Reported by the portable checker as a WITHHOLDING — `CheckFamily.MESSAGE_PARAMETER_REFERENCE` and `CheckFamily.MESSAGE_TEXT_CHARACTERS` both fall silent for such a declaration, through one shared gate. Its stand-in for "does not parse" is an unbalanced delimiter, a necessary condition rather than a grammar, so balanced-but-refused text keeps its parameters judged — an under-report, which is the safe direction.
 
 *Locked by:* `rulekit.validate.laws.MessageParameterConditionDependencyLawsTest`.

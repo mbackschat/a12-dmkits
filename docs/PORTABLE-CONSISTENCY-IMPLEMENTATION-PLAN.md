@@ -716,7 +716,9 @@ One cold adversarial review over the frozen range, as [§2](#2-execution-order-a
 
 **Found by reading the vocabulary rather than by a failing test.** `FehlertextErrorType.INVALID_CONDITION` says a parameter can only be checked where the condition is valid — so the question was whether the checker reports a parameter class on a model whose condition is broken. It did, and A12 withholds that class entirely ([KF338](KERNEL-FINDINGS.md#kf338)).
 
-**A family-per-member checker gets this wrong by construction.** Every family reads its own member and reports what it finds; nothing in that design expresses "A12 stops asking once a sibling member fails". The fix is a withholding rather than a new family, and it is the first cross-member dependency the estate carries — worth looking for elsewhere, since any family reading a member A12 checks CONDITIONALLY has the same exposure.
+**A family-per-member checker gets this wrong by construction.** Every family reads its own member and reports what it finds; nothing in that design expresses "A12 stops asking once a sibling member fails". The fix is a withholding rather than a new family, and it is the first cross-member dependency the estate carries.
+
+**The sweep found the family shipped an hour earlier carrying the same defect.** The character law needs nothing from the condition, so there was no reason to expect it to be gated — and it is. Declaring the parameter fix done without running that row would have left a live over-rejection in a family whose own commit message claimed the over-rejection direction was what it was built to avoid. One shared gate now serves both, and any future family reading `errorMessage` inherits it.
 
 **The shape is not exotic, which is what makes it worth the slice.** A half-typed condition is the ordinary state of a model being edited, and that is exactly when a checker runs. An over-rejection that only appears on malformed input is still an over-rejection on the input a checker most often sees.
 
