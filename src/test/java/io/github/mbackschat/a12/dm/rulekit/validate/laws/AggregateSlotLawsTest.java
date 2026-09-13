@@ -1,6 +1,10 @@
 package io.github.mbackschat.a12.dm.rulekit.validate.laws;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+
+import java.util.LinkedHashMap;
+import java.util.Map;
 
 import org.junit.jupiter.api.Test;
 
@@ -47,47 +51,55 @@ class AggregateSlotLawsTest {
         return cond(Dsl.fieldFilled(ORDER.field("/Order/Quantity")).and(aggregate.gt(0)));
     }
 
-    // ── the Having filter's forbidden-construct set, kernel-verified ─────────────────────────────────────
+    // ── the Having filter's three gates, and which of them REPORTS ───────────────────────────────────────
     //
     // Audited 2026-07-25: rulekit pre-checks CustomCondition in a filter, but FieldListRef's javadoc listed it
     // among the KERNEL-DELEGATED constructs — an internal contradiction that left the refusal's basis unclear.
     // The kernel really does reject it, so the pre-check stands; the javadoc was the stale half.
     //
-    // Getting here needed two other filter laws out of the way, both worth having locked: a filter operand must
-    // be UNSTARRED (a starred one is MVK_NO_WILDCARDS_ALLOWED), and a filter must reference the iterated level at
-    // all — a filter consisting only of a CustomCondition fails MVK_NO_ITERATION_FOR_WILDCARD first, which is why
-    // the sibling conjunct below is load-bearing rather than decoration.
+    // These four rows were four single-code assertions until 2026-09-14. That spelling is a CONTAINMENT check,
+    // so it could neither see a co-firing gate nor say which gate wins when two are violated at once — and the
+    // ordering is the part an author needs, because two of the three gates hide the third.
 
-    /** {@code CustomCondition} inside a filter: "not supported for filter conditions". */
+    /**
+     * Which of the filter's three gates reports, including the bodies that violate two at once.
+     *
+     * <p>Every row's filter is parenthesised, so the wrapper is constant across the grid and the body is the
+     * only variable; the admitted single-leaf row is the control proving the parentheses are inert.
+     */
     @Test
-    void aCustomConditionIsForbiddenInsideAHavingFilter() {
-        KernelLaws.rejectsOrder("/Order", "../Quantity",
-                "FieldFilled(Quantity) And Sum(Items*/Count Having ([Items/Sku] == \"X\""
-                        + " And CustomCondition SomeCheck)) > 0",
+    void whichFilterGateReports() {
+        Map<String, String> actual = new LinkedHashMap<>();
+        actual.put("a leaf naming the iterated level", filtered("[Items/Sku] == \"X\""));
+        actual.put("a bare CustomCondition", filtered("CustomCondition SomeCheck"));
+        actual.put("the iterated level AND a CustomCondition",
+                filtered("[Items/Sku] == \"X\" And CustomCondition SomeCheck"));
+        actual.put("a STARRED operand", filtered("[Items*/Sku] == \"X\""));
+        actual.put("an OUTER field and nothing iterated", filtered("[/Order/Quantity] > 0"));
+        actual.put("a STARRED operand AND a CustomCondition",
+                filtered("[Items*/Sku] == \"X\" And CustomCondition SomeCheck"));
+        actual.put("an OUTER field AND a CustomCondition",
+                filtered("[/Order/Quantity] > 0 And CustomCondition SomeCheck"));
+
+        Map<String, String> expected = new LinkedHashMap<>();
+        expected.put("a leaf naming the iterated level", KernelLaws.ADMITTED);
+        expected.put("a bare CustomCondition", "MVK_NO_ITERATION_FOR_WILDCARD");
+        expected.put("the iterated level AND a CustomCondition",
                 "MVK_DISALLOWED_CONSTRUCT_IN_FILTER_CONDITION");
+        expected.put("a STARRED operand", "MVK_NO_WILDCARDS_ALLOWED");
+        expected.put("an OUTER field and nothing iterated", "MVK_NO_ITERATION_FOR_WILDCARD");
+        // The two rows the single-code spelling could not hold: BOTH other gates pre-empt the construct gate,
+        // and neither co-fires with it. So the forbidden-construct refusal is only reachable from a filter that
+        // is already otherwise legal, which is why the sibling conjunct in row three is load-bearing.
+        expected.put("a STARRED operand AND a CustomCondition", "MVK_NO_WILDCARDS_ALLOWED");
+        expected.put("an OUTER field AND a CustomCondition", "MVK_NO_ITERATION_FOR_WILDCARD");
+        assertEquals(expected, actual, "Having filter gates");
     }
 
-    /** The control: the same filter without the custom condition is accepted, so the refusal isolates it. */
-    @Test
-    void theSameFilterWithoutTheCustomConditionIsAccepted() {
-        KernelLaws.acceptsOrder("/Order", "../Quantity",
-                "FieldFilled(Quantity) And Sum(Items*/Count Having [Items/Sku] == \"X\") > 0");
-    }
-
-    /** A filter must reference the iterated level; one that references nothing is rejected before anything else. */
-    @Test
-    void aFilterThatReferencesNoIteratedLevelIsRejected() {
-        KernelLaws.rejectsOrder("/Order", "../Quantity",
-                "FieldFilled(Quantity) And Sum(Items*/Count Having CustomCondition SomeCheck) > 0",
-                "MVK_NO_ITERATION_FOR_WILDCARD");
-    }
-
-    /** A STARRED operand inside the filter is rejected — the filter reads the current row, not the list. */
-    @Test
-    void aStarredOperandInsideAFilterIsRejected() {
-        KernelLaws.rejectsOrder("/Order", "../Quantity",
-                "FieldFilled(Quantity) And Sum(Items*/Count Having [Items*/Sku] == \"X\") > 0",
-                "MVK_NO_WILDCARDS_ALLOWED");
+    /** The COMPLETE class list for one {@code Having} filter body, the wrapper held constant. */
+    private static String filtered(String filter) {
+        return KernelLaws.orderVerdict("/Order", "../Quantity",
+                "FieldFilled(Quantity) And Sum(Items*/Count Having (" + filter + ")) > 0");
     }
 
     // ── a number TYPEDEF reaches the numeric aggregates on BOTH sides ────────────────────────────────────

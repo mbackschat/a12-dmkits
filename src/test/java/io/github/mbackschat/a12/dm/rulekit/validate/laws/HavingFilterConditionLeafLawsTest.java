@@ -48,7 +48,7 @@ import io.github.mbackschat.a12.dm.rulekit.validate.ValidationResult;
  *
  * <p><b>The gate that answers it is NOT new here, and this file does not claim it.</b> "A filter must reference
  * the iterated level" has been locked in this repository since 2026-07-25 as
- * {@link AggregateSlotLawsTest#aFilterThatReferencesNoIteratedLevelIsRejected} (a filter body consisting only of
+ * {@link AggregateSlotLawsTest#whichFilterGateReports} (a filter body consisting only of
  * a {@code CustomCondition}), and it is recorded in {@code docs/MVK-LEDGER.md} as this code's second measured
  * trigger, and in KERNEL-FINDINGS §9 as the rule that a filter must reference a <em>field</em> in a starred
  * level. The rows below are scoped to what they add on top of it.
