@@ -145,6 +145,12 @@ class StarredNonRepeatableReachLawsTest {
      *
      * <p>Each starred row carries its unstarred control, because a spelling that is refused for a reason
      * unrelated to the star would otherwise read as a wildcard verdict.
+     *
+     * <p><b>Two controls shared one row name until 2026-09-13</b>, so the nested carrier's control silently
+     * overwrote nothing and was itself overwritten by the root-level one — the grid asserted eight rows while
+     * reading as nine, and the promise in the paragraph above held for one row less than it claimed. It
+     * measures `admitted`, which is what the lost expectation had said; `GridRowKeyGuardTest` now refuses a
+     * repeated row name so a grid cannot quietly shrink again.
      */
     @Test
     void whatAStarOnANonNameSegmentDraws() {
@@ -153,10 +159,11 @@ class StarredNonRepeatableReachLawsTest {
         actual.put("…the same unstarred — the control", guarded("GroupFilled(RuleGroup)"));
         actual.put("a star on a leading up-step, from a rule one level down",
                 nested("GroupFilled(..*/Extras)"));
-        actual.put("…the same step unstarred — the control", nested("GroupFilled(../Extras)"));
+        actual.put("…the same step unstarred, one level down — the control",
+                nested("GroupFilled(../Extras)"));
         actual.put("a star on a leading up-step with nothing after it", nested("GroupFilled(..*)"));
         actual.put("a starred up-step from a ROOT-level rule", guarded("GroupFilled(..*/Extras)"));
-        actual.put("…the same step unstarred — the control", guarded("GroupFilled(../Extras)"));
+        actual.put("…the same step unstarred, from ROOT — the control", guarded("GroupFilled(../Extras)"));
         actual.put("a star on a MID-PATH up-step", guarded("GroupFilled(Guest/..*/Extras)"));
         actual.put("…the same mid-path step unstarred — the control",
                 guarded("GroupFilled(Guest/../Extras)"));
@@ -165,12 +172,12 @@ class StarredNonRepeatableReachLawsTest {
         expected.put("a star on the rule-context entity", "MVK_INVALID_WILDCARD_FOR_RULEGROUP");
         expected.put("…the same unstarred — the control", "admitted");
         expected.put("a star on a leading up-step, from a rule one level down", "MVK_INVALID_WILDCARD_REL");
-        expected.put("…the same step unstarred — the control", "admitted");
+        expected.put("…the same step unstarred, one level down — the control", "admitted");
         expected.put("a star on a leading up-step with nothing after it", "MVK_INVALID_WILDCARD_REL");
         // The depth check runs FIRST: from a root-level rule the step leaves the model before any wildcard
         // gate sees it, so this row says nothing about the star — which is why the nested carrier exists.
         expected.put("a starred up-step from a ROOT-level rule", "MVK_TOO_MANY_PARENT_GROUPS");
-        expected.put("…the same step unstarred — the control", "MVK_TOO_MANY_PARENT_GROUPS");
+        expected.put("…the same step unstarred, from ROOT — the control", "MVK_TOO_MANY_PARENT_GROUPS");
         // A `..` is only ever a LEADING run: both rows are refused by the parser, starred or not, so there is
         // no mid-path shape for a wildcard gate to judge. Recorded because a checker walking every segment
         // would otherwise look for one.

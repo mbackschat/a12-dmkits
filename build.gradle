@@ -267,6 +267,10 @@ tasks.register('leakGuardTest', Test) {
         // state is not something an authored list can hold — the pair that bites is the one nobody thought
         // of, which is how the `vk_vk` law sat in two of its three sites for three months.
         includeTestsMatching 'io.github.mbackschat.a12.dm.BuilderCheckerDivergenceGuardTest'
+        // Same derived-denominator reason: the subject is every tracked test source, and the grid that
+        // collapses is the one nobody thought to declare. A repeated row name passes every assertion it has,
+        // so only a scan that needs no list can see it.
+        includeTestsMatching 'io.github.mbackschat.a12.dm.GridRowKeyGuardTest'
     }
 }
 
