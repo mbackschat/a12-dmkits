@@ -195,12 +195,6 @@ public sealed interface FieldTypeSpec {
         static final int MAX_SCALE = 14;
 
         public NumberSpec {
-            if (minFractionalDigits != null && minFractionalDigits < 0) {
-                throw new IllegalArgumentException("minFractionalDigits must be ≥ 0: " + minFractionalDigits);
-            }
-            if (maxFractionalDigits != null && maxFractionalDigits < 0) {
-                throw new IllegalArgumentException("maxFractionalDigits must be ≥ 0: " + maxFractionalDigits);
-            }
             // The kernel caps the scale at 14 and reports an overrun as a plain, MVK-less model-check message
             // that names neither the property nor the cap — so refuse it here, correctively. Refusing min > 14 too
             // cannot over-reject: the kernel independently requires min ≤ max (MVK_FRACT_DIGITS_INVALID), so a
@@ -214,9 +208,15 @@ public sealed interface FieldTypeSpec {
                 throw new IllegalArgumentException("minFractionalDigits " + minFractionalDigits
                         + " is refused HERE, before the kernel is asked; the kernel's documented scale cap is " + MAX_SCALE);
             }
-            if (minFractionalDigits != null && maxFractionalDigits != null && minFractionalDigits > maxFractionalDigits) {
-                throw new IllegalArgumentException("minFractionalDigits " + minFractionalDigits
-                        + " > maxFractionalDigits " + maxFractionalDigits);
+            // A12's own law, measured: the pair is compared with an ABSENT member reading as 0 — which is
+            // what the emitter writes for one — and a NEGATIVE maximum takes the pair out of the check
+            // instead of being compared ([KERNEL-FINDINGS KF320]). Comparing only when both are set left a
+            // real trap: `minFractionalDigits(2)` with no maximum was accepted here and refused by A12.
+            int declaredMin = minFractionalDigits == null ? 0 : minFractionalDigits;
+            int declaredMax = maxFractionalDigits == null ? 0 : maxFractionalDigits;
+            if (declaredMax >= 0 && declaredMin > declaredMax) {
+                throw new IllegalArgumentException("minFractionalDigits " + declaredMin
+                        + " > maxFractionalDigits " + declaredMax);
             }
             if (minValue != null && maxValue != null && minValue.compareTo(maxValue) > 0) {
                 throw new IllegalArgumentException("minValue " + minValue + " > maxValue " + maxValue);

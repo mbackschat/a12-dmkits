@@ -6305,3 +6305,30 @@ Each of the three excluded members is measured ADMITTED on its own, so every row
 **The line-break flag's wire name is `lineBreaksPermitted`, taken from the serializer's Jackson mixin — `StringTypeImpl` spells its field `linebreaksPermitted`, one letter apart.** A row carrying the wrong spelling would measure nothing and read as a clean ADMITTED; the `noValueValidation` pair is the control that proves the flag arrives.
 
 *Locked by:* `rulekit.validate.laws.StringTypeParameterLawsTest` (three grids); the read-path half by `modelkit.StringLengthSentinelReadTest`.
+
+## §7 supplement — a number type's fractional-digit law is not `min > max`: an ABSENT member reads as 0 and a NEGATIVE maximum takes the pair out of the check (measured, 2026-09-13) <a id="kf320"></a>
+
+> Fold: pending — belongs beside [KERNEL-SEMANTICS](KERNEL-SEMANTICS.md) §7's number-declaration material, which covers the scale but not the pair's defaulting.
+
+| the number type declares | verdict |
+|---|---|
+| `maxFractionalDigits: 2` — the control | ADMITTED |
+| `minFractionalDigits: 3`, `maxFractionalDigits: 2` | `MVK_FRACT_DIGITS_INVALID` |
+| `minFractionalDigits: 2`, `maxFractionalDigits: 2` — the boundary | ADMITTED |
+| **`minFractionalDigits: 2`, no maximum** | **`MVK_FRACT_DIGITS_INVALID`** |
+| neither member | ADMITTED |
+| `maxFractionalDigits: -1` | ADMITTED |
+| `minFractionalDigits: -1`, `maxFractionalDigits: 2` | ADMITTED |
+| `minFractionalDigits: 0`, `maxFractionalDigits: -1` | ADMITTED |
+| **`minFractionalDigits: 1`, `maxFractionalDigits: -1`** | **ADMITTED** |
+| `maxFractionalDigits: 14` | ADMITTED |
+| `maxFractionalDigits: 15` | NOT BUILDABLE — A12 reads the model and cannot build it, with no `MVK_*` code |
+| `minFractionalDigits: 15`, `maxFractionalDigits: 15` | NOT BUILDABLE |
+
+**The last two bolded rows are the whole finding, and they pull in opposite directions.** A minimum with NO maximum is refused, so an absent maximum reads as `0` and the comparison runs; the same minimum beside an explicit `-1` is admitted, so a negative maximum takes the pair OUT of the comparison instead of being compared as a number. The observable law is therefore *`max >= 0` and `min > max`, with an absent member reading as 0* — and a checker comparing the members as declared is wrong on both rows, admitting one model A12 refuses and refusing one A12 takes. (Whether A12 normalizes the negative to an undefined marker or guards the rule is not observable through this code, so no mechanism is claimed.)
+
+**The value range beside it is the ordinary law** — both bounds declared, equal admitted, inverted refused, a single bound admitted, a wholly negative range admitted — and it is stated separately because nothing about the digit pair predicts it.
+
+**Two client-side refusals fell to this grid, one in each direction.** `FieldTypeSpec.NumberSpec` refused a negative digit count, which A12 admits, on the READ path as well as the authoring one; and it compared the pair only when both members were set, so `minFractionalDigits(2)` with no maximum was accepted and then refused by the kernel, because the emitter always writes `maxFractionalDigits`. The scale cap the same record enforces is confirmed rather than corrected: 14 builds, 15 does not, and the transitivity argument for refusing a minimum above 14 now has its second link measured.
+
+*Locked by:* `rulekit.validate.laws.NumberTypeDigitLawsTest` (two grids, 19 rows); the record's own half by `modelkit.NumberDigitPairReadTest`; the portable checker's mirror is `consistency.NumberTypeDigitTest`.

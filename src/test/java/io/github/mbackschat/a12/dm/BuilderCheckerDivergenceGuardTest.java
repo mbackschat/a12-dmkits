@@ -159,7 +159,14 @@ class BuilderCheckerDivergenceGuardTest {
             // booleans; the checker reads stored JSON, where the same pair can also be spelled with a
             // non-boolean member the typed slots cannot represent. Same law, and the kit's carrier cannot be
             // wrong about it — a boolean is a boolean ([KERNEL-FINDINGS KF319] is the basis for both).
-            Map.entry("MVK_STRING_TYPE_NO_VAL_AND_NO_LINE_BREAK", Disposition.SAME_LAW_SEPARATE_CARRIERS));
+            Map.entry("MVK_STRING_TYPE_NO_VAL_AND_NO_LINE_BREAK", Disposition.SAME_LAW_SEPARATE_CARRIERS),
+
+            // The fractional-digit pair. Both sides now state A12's actual law — an absent member reads as
+            // 0, a negative maximum takes the pair out of the check ([KERNEL-FINDINGS KF320]) — over two
+            // nullable Integers on one side and stored JSON on the other. The residue after each carrier's
+            // own reading is one comparison, which is not worth a module. They disagreed in BOTH directions
+            // until that grid was measured, which is why the pair is worth this row rather than a shrug.
+            Map.entry("MVK_FRACT_DIGITS_INVALID", Disposition.SAME_LAW_SEPARATE_CARRIERS));
 
     @Test
     void everyCodeStatedInBothEstatesCarriesADisposition() {

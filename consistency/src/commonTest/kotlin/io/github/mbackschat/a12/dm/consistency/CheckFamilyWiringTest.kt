@@ -44,6 +44,8 @@ class CheckFamilyWiringTest {
               "StringType":{"pattern":"[A-Z]+"}}}},
             {"type":"Field","id":"f9","name":"Opaque","Field":{"fieldType":{"type":"StringType",
               "StringType":{"noValueValidation":true}}}},
+            {"type":"Field","id":"f10","name":"Amount","Field":{"fieldType":{"type":"NumberType",
+              "NumberType":{"minFractionalDigits":3,"maxFractionalDigits":2}}}},
             {"type":"Rule","id":"r1","name":"BadTarget","Rule":{
               "errorCondition":"FieldFilled(Price)","errorEntityRelPath":"../NoSuchField",
               "errorCode":"C1","errorMessage":[{"locale":"en_US","text":"x"}]}},
@@ -134,6 +136,7 @@ class CheckFamilyWiringTest {
             ("MVK_ERROR_MESSAGE_AND_PATTERN_INVALID" to "/Catalog/Unexplained"),
         CheckFamily.STRING_TYPE_PARAMETERS to
             ("MVK_STRING_TYPE_NO_VAL_AND_NO_LINE_BREAK" to "/Catalog/Opaque"),
+        CheckFamily.NUMBER_TYPE_DIGITS to ("MVK_FRACT_DIGITS_INVALID" to "/Catalog/Amount"),
     )
 
     @Test

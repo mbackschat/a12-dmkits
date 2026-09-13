@@ -145,6 +145,14 @@ enum class CheckFamily {
     STRING_TYPE_PARAMETERS,
 
     /**
+     * That a declared number type's fractional-digit pair and its value range are ones A12 accepts. The
+     * digit law is not a plain comparison of the declared members: an absent one reads as 0 and a negative
+     * maximum takes the pair out of the check. The declared SCALE rides here too, as the build-tier verdict
+     * A12 has no code for.
+     */
+    NUMBER_TYPE_DIGITS,
+
+    /**
      * That every DSL-bearing member can be TOKENIZED — the syntax layer's first phase, and the only one
      * decidable without a grammar. Whether the tokens then form a condition A12's parser accepts is a
      * separate question this family does not answer.
@@ -312,7 +320,8 @@ internal fun check(
         prepared.fieldTypeBindingFindings() + prepared.temporalConfigFindings() +
         prepared.elementNameAlphabetFindings() + prepared.enumCategoryFindings() +
         prepared.supportedCharacterFindings() + prepared.declaredPatternFindings() +
-        prepared.stringTypeMessageFindings() + prepared.stringTypeParameterFindings()
+        prepared.stringTypeMessageFindings() + prepared.stringTypeParameterFindings() +
+        prepared.numberTypeDigitFindings()
     val findings = judged.notSuppressedBy(prepared.variantFilterSuppressed())
     return ConsistencyReport(
         modelId = admitted.modelId,
@@ -331,7 +340,7 @@ internal fun check(
             CheckFamily.TEMPORAL_CONFIG, CheckFamily.ELEMENT_NAME_ALPHABET,
             CheckFamily.ENUM_CATEGORY_ALIGNMENT, CheckFamily.ENUM_VALUE_CHARACTERS,
             CheckFamily.STRING_PATTERN_ADMISSION, CheckFamily.STRING_PATTERN_MESSAGE,
-            CheckFamily.STRING_TYPE_PARAMETERS),
+            CheckFamily.STRING_TYPE_PARAMETERS, CheckFamily.NUMBER_TYPE_DIGITS),
         gaps = prepared.gaps() + prepared.emptyFactBase() + findings.buildBlocked() +
             prepared.variantFilterGaps() + prepared.enumCategoryGaps() +
             prepared.supportedCharacterGaps() + prepared.fieldTypeBindingGaps() +
