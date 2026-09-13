@@ -182,6 +182,14 @@ enum class CheckFamily {
     GROUP_LIST_OPERANDS,
 
     /**
+     * …and that no group-list quantifier names a ROOT group its carrier does not admit. Its own constant
+     * because repeating an operand and naming a root are different claims about one list: three carriers
+     * refuse a root outright and three admit it as the sole operand, and a starred root — exempt from the
+     * duplicate comparison — is fully inside this one.
+     */
+    GROUP_LIST_ROOT_OPERAND,
+
+    /**
      * That every DSL-bearing member can be TOKENIZED — the syntax layer's first phase, and the only one
      * decidable without a grammar. Whether the tokens then form a condition A12's parser accepts is a
      * separate question this family does not answer.
@@ -373,7 +381,8 @@ internal fun check(
             CheckFamily.STRING_PATTERN_ADMISSION, CheckFamily.STRING_PATTERN_MESSAGE,
             CheckFamily.STRING_TYPE_PARAMETERS, CheckFamily.NUMBER_TYPE_DIGITS,
             CheckFamily.ENUM_VALUE_LABELS, CheckFamily.EMPTY_GROUP_OPERAND,
-            CheckFamily.ERROR_FIELD_REFERENCE, CheckFamily.GROUP_LIST_OPERANDS),
+            CheckFamily.ERROR_FIELD_REFERENCE, CheckFamily.GROUP_LIST_OPERANDS,
+            CheckFamily.GROUP_LIST_ROOT_OPERAND),
         gaps = prepared.gaps() + prepared.emptyFactBase() + findings.buildBlocked() +
             prepared.variantFilterGaps() + prepared.enumCategoryGaps() +
             prepared.supportedCharacterGaps() + prepared.fieldTypeBindingGaps() +

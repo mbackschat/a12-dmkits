@@ -77,6 +77,10 @@ class CheckFamilyWiringTest {
             {"type":"Rule","id":"r17","name":"Unreferenced","Rule":{
               "errorCondition":"FieldFilled(Price)","errorEntityRelPath":"../Amount",
               "errorCode":"C17","errorMessage":[{"locale":"en_US","text":"x"}]}},
+            {"type":"Rule","id":"r19","name":"RootOperand","Rule":{
+              "errorCondition":"FieldFilled(Price) And AllGroupsFilled(/Depot, /Catalog/Shelf)",
+              "errorEntityRelPath":"../Price",
+              "errorCode":"C19","errorMessage":[{"locale":"en_US","text":"x"}]}},
             {"type":"Rule","id":"r18","name":"RepeatedGroup","Rule":{
               "errorCondition":"FieldFilled(Price) And AllGroupsFilled(/Catalog/Shelf, /Catalog/Shelf)",
               "errorEntityRelPath":"../Price",
@@ -117,6 +121,9 @@ class CheckFamilyWiringTest {
                 {"type":"Field","id":"f4","name":"Key","Field":{
                   "fieldType":{"StringType":{"noValueValidation":true}}}}
               ]}}
+          ]}},
+          {"type":"Group","id":"g4","name":"Depot","Group":{"elements":[
+            {"type":"Field","id":"f13","name":"DepotCode","Field":{"fieldType":{"type":"StringType"}}}
           ]}}
          ]}}}
         """.trimIndent(),
@@ -162,6 +169,8 @@ class CheckFamilyWiringTest {
         CheckFamily.ERROR_FIELD_REFERENCE to
             ("MVK_ERROR_FIELD_NOT_REFERENCED" to "/Catalog/Unreferenced"),
         CheckFamily.GROUP_LIST_OPERANDS to ("MVK_DUPLICATE_PARAM1" to "/Catalog/RepeatedGroup"),
+        CheckFamily.GROUP_LIST_ROOT_OPERAND to
+            ("MVK_ROOT_GROUP_REFERENCED" to "/Catalog/RootOperand"),
     )
 
     @Test

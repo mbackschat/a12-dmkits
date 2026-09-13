@@ -6503,3 +6503,32 @@ Reported by the portable checker (`CheckFamily.ERROR_FIELD_REFERENCE`), which ad
 Reported by the portable checker (`CheckFamily.GROUP_LIST_OPERANDS`), which reports EVERY violating call where A12 stops at the first. That is not a divergence: each reported call is a violation A12 reaches once the earlier one is fixed.
 
 *Locked by:* `rulekit.validate.laws.GroupListDuplicateReachLawsTest` (six grids, 26 rows); the portable checker's mirror is `consistency.GroupListOperandsTest`.
+
+## §1 supplement — WHEN a group-list carrier admits a ROOT operand: three refuse one outright, three admit it alone, and a wildcard exempts it from nothing (measured, 2026-09-13) <a id="kf326"></a>
+
+> Fold: pending — belongs beside [KERNEL-SEMANTICS](KERNEL-SEMANTICS.md) §1's group-list quantifiers, next to [KF185](#kf185) and [KF325](#kf325).
+
+[KF185](#kf185) established that the root classes are real and not the overlap class renamed — the measurement a single-root fixture cannot make. What an implementation needs beyond that is the shape of the PERMISSION. Own domain (an e-commerce storefront), three roots, one of them repeatable, so "is a root" and "is repeatable" are separable; rule group `/Storefront`, error field `../OrderRef` outside every repeatable group unless a row says otherwise.
+
+| carrier | sole root | root beside another operand |
+|---|---|---|
+| `AllGroupsFilled` | `MVK_ROOT_GROUP_REFERENCED` | `MVK_ROOT_GROUP_REFERENCED` |
+| `NotAllGroupsFilled` | `MVK_ROOT_GROUP_REFERENCED` | `MVK_ROOT_GROUP_REFERENCED` |
+| `GroupsNotCollectivelyFilled` | `MVK_ROOT_GROUP_REFERENCED` | `MVK_ROOT_GROUP_REFERENCED` |
+| `AtLeastOneGroupFilled` | **ADMITTED** | `MVK_ROOT_GROUP_WITH_OTHER_PARAMETERS` |
+| `NoGroupFilled` | **ADMITTED** | `MVK_ROOT_GROUP_WITH_OTHER_PARAMETERS` |
+| `NumberOfFilledGroups` | `MVK_PARAMSIZE_INVALIDGN` fixed, **ADMITTED** starred | `MVK_ROOT_GROUP_WITH_OTHER_PARAMETERS` |
+
+The count's sole-root cell is not the root's doing: that carrier's own arity gate wants two fixed groups or one starred repeatable, so a sole FIXED operand draws the arity class whether or not it is a root. `NumberOfFilledGroups(/Batches*)` over a repeatable root is admitted, which is the permission's only reachable form there.
+
+**A STARRED root is exempt from nothing** — `AllGroupsFilled(/Batches*, Billing)` draws `MVK_ROOT_GROUP_REFERENCED` and `NumberOfFilledGroups(/Batches*, Billing)` draws `MVK_ROOT_GROUP_WITH_OTHER_PARAMETERS`. That is the asymmetry against the duplicate gate one finding over: there the wildcard takes an operand OUT of the comparison ([KF325](#kf325)), here it leaves it fully in.
+
+**Position and multiplicity do not matter.** The root named second draws the same class as the root named first, two disjoint roots draw one class, and the rule's OWN root beside a disjoint root does too. An implementation reading only the first operand passes every row of the first table and fails all three of these.
+
+**Three gates pre-empt the root classes, and one does not.** An operand that resolves to nothing draws `MVK_INVALID_ENTITY` alone; a root beside its own descendant draws `MVK_DUPLICATE_PARAM2`; an unstarred repeatable co-operand draws `MVK_NO_WILDCARD`. A FIELD where a group belongs does NOT pre-empt them — `AllGroupsFilled(/Warehouse, Billing/Payer)` is `MVK_ROOT_GROUP_REFERENCED`.
+
+**And the root classes are NOT locus-selected**, unlike the wildcard and arity classes on the same carrier. Moving the error field inside the repeatable group leaves every root verdict unchanged — including the pre-empted one: `AllGroupsFilled(/Warehouse, Lines)` is `MVK_NO_WILDCARD` from outside and `MVK_ROOT_GROUP_REFERENCED` from inside, so the root violation holds in both anchorings and only its REPORTING order moves. That is what lets a checker report the root class without any iteration analysis.
+
+Reported by the portable checker (`CheckFamily.GROUP_LIST_ROOT_OPERAND`), evaluated after both duplicate classes so their pre-emption is honoured.
+
+*Locked by:* `rulekit.validate.laws.GroupListRootOperandLawsTest` (four grids, 29 rows); the portable checker's mirror is `consistency.GroupListOperandsTest`.

@@ -105,6 +105,13 @@ class GroupListDuplicateReachLawsTest {
                 guarded("AllGroupsFilled(Claims*, Claims*)"));
         actual.put("an exact duplicate with the error field INSIDE the repeatable group",
                 verdict("/Policy", INSIDE, "FieldFilled(Claims/ClaimAmount) And AllGroupsFilled(Garage, Garage)"));
+        // A genuine duplicate beside an unstarred REPEATABLE co-operand: does the wildcard gate take the
+        // report? A checker that judges the operand list and not the wildcard has to know whether its
+        // finding is one A12 would reach after the wildcard is fixed, or one it would never issue.
+        actual.put("an exact duplicate beside an unstarred repeatable co-operand",
+                guarded("AllGroupsFilled(Garage, Garage, Claims)"));
+        actual.put("…and the same list with that co-operand STARRED",
+                guarded("AllGroupsFilled(Garage, Garage, Claims*)"));
         actual.put("an overlap with the error field INSIDE the repeatable group",
                 verdict("/Policy", INSIDE,
                         "FieldFilled(Claims/ClaimAmount) And AllGroupsFilled(Coverage, Coverage/Vehicle)"));
@@ -118,6 +125,8 @@ class GroupListDuplicateReachLawsTest {
         expected.put("the count carrier, starred beside its UNSTARRED spelling", "MVK_NO_WILDCARD");
         expected.put("the quantifier carrier, a starred repeatable twice", "MVK_NO_WILDCARDS_G_ALLOWED");
         expected.put("an exact duplicate with the error field INSIDE the repeatable group", EXACT);
+        expected.put("an exact duplicate beside an unstarred repeatable co-operand", "MVK_NO_WILDCARD");
+        expected.put("…and the same list with that co-operand STARRED", EXACT);
         expected.put("an overlap with the error field INSIDE the repeatable group", OVERLAP);
         assertEquals(expected, actual, "the wildcard and the error field's locus");
     }

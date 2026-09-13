@@ -211,6 +211,81 @@ class GroupListOperandsTest {
         assertEquals(true, finding.explain.contains("AlleKontexteAngegeben"), finding.explain)
     }
 
+    /**
+     * The ROOT-operand law over the same list — three carriers refuse a root outright, three admit a sole one.
+     *
+     * The fixture's second root `/Broker` is disjoint from `/Policy`, which is what lets a root operand be
+     * seen at all: beside the rule's own root every co-operand is also its descendant, and the overlap gate
+     * answers first.
+     */
+    private fun rootCodes(condition: String): List<String> = check(
+        ModelSource(
+            """
+            {"header":{"id":"policy","locales":[{"code":"en_US"}]},
+             "content":{"modelRoot":{"rootGroups":[
+              {"type":"Group","id":"g0","name":"Policy","Group":{"elements":[
+                {"type":"Field","id":"f0","name":"PolicyNumber","Field":{"fieldType":{"type":"StringType"}}},
+                {"type":"Group","id":"g1","name":"Garage","Group":{"elements":[
+                  {"type":"Field","id":"f1","name":"GarageName","Field":{"fieldType":{"type":"StringType"}}}
+                ]}},
+                {"type":"Group","id":"g3","name":"Workshop","Group":{"elements":[
+                  {"type":"Field","id":"f3","name":"Bench","Field":{"fieldType":{"type":"StringType"}}}
+                ]}},
+                {"type":"Rule","id":"r0","name":"Probe","Rule":{
+                  "errorCondition":"FieldFilled(PolicyNumber) And ${'$'}CONDITION",
+                  "errorEntityRelPath":"../PolicyNumber",
+                  "errorCode":"C1","errorMessage":[{"locale":"en_US","text":"x"}]}}
+              ]}},
+              {"type":"Group","id":"g2","name":"Broker","Group":{"repeatable":true,"maxRepetitions":4,
+                "elements":[
+                {"type":"Field","id":"f2","name":"BrokerName","Field":{"fieldType":{"type":"StringType"}}}
+              ]}}
+             ]}}}
+            """.trimIndent().replace("\$CONDITION", condition),
+        ),
+    ).findings.map { it.code }
+
+    @Test
+    fun whichCarriersRefuseARootOperandAndWhichAdmitASoleOne() {
+        val referenced = "MVK_ROOT_GROUP_REFERENCED"
+        val withOthers = "MVK_ROOT_GROUP_WITH_OTHER_PARAMETERS"
+        val actual = mutableMapOf<String, List<String>>()
+        actual["all | sole root"] = rootCodes("AllGroupsFilled(/Broker)")
+        actual["notAll | root + disjoint"] = rootCodes("NotAllGroupsFilled(/Broker, Garage)")
+        actual["notCollectively | root + disjoint"] = rootCodes("GroupsNotCollectivelyFilled(/Broker, Garage)")
+        actual["atLeastOne | sole root"] = rootCodes("AtLeastOneGroupFilled(/Broker)")
+        actual["noGroup | sole root"] = rootCodes("NoGroupFilled(/Broker)")
+        actual["atLeastOne | root + disjoint"] = rootCodes("AtLeastOneGroupFilled(/Broker, Garage)")
+        actual["count | root + disjoint"] = rootCodes("NumberOfFilledGroups(/Broker, Garage) > 0")
+        actual["all | root named SECOND"] = rootCodes("AllGroupsFilled(Garage, /Broker)")
+        actual["all | a STARRED root beside another operand"] = rootCodes("AllGroupsFilled(/Broker*, Garage)")
+        actual["all | two groups BELOW the root — the control"] =
+            rootCodes("AllGroupsFilled(Garage, /Policy/Workshop)")
+
+        val expected = mutableMapOf<String, List<String>>()
+        expected["all | sole root"] = listOf(referenced)
+        expected["notAll | root + disjoint"] = listOf(referenced)
+        expected["notCollectively | root + disjoint"] = listOf(referenced)
+        // The three carriers that admit a sole root. A12 answers the count's sole FIXED operand with its
+        // arity class instead, which this family does not report either way.
+        expected["atLeastOne | sole root"] = emptyList()
+        expected["noGroup | sole root"] = emptyList()
+        expected["atLeastOne | root + disjoint"] = listOf(withOthers)
+        expected["count | root + disjoint"] = listOf(withOthers)
+        expected["all | root named SECOND"] = listOf(referenced)
+        // The asymmetry against the duplicate gate: a wildcard takes an operand out of that comparison and
+        // leaves it fully inside this one.
+        expected["all | a STARRED root beside another operand"] = listOf(referenced)
+        expected["all | two groups BELOW the root — the control"] = emptyList()
+        assertEquals(expected, actual, "which carriers refuse a root operand")
+    }
+
+    /** An overlap pre-empts the root class in A12, so the finding for that list names the overlap. */
+    @Test
+    fun anOverlapPreEmptsTheRootClass() {
+        assertEquals(listOf(overlap), rootCodes("AllGroupsFilled(/Policy, Garage)"))
+    }
+
     /** The finding names both operands and the carrier, since a condition can hold several calls. */
     @Test
     fun theFindingNamesTheOperandsAndTheCarrier() {

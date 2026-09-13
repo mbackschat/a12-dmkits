@@ -211,7 +211,13 @@ class BuilderCheckerDivergenceGuardTest {
             // A12's own skip on each carrier (KF325 measures it on the group list). Neither refusal reaches
             // the other's shapes, so nothing here is inherited.
             Map.entry("MVK_DUPLICATE_PARAM1", Disposition.SAME_LAW_SEPARATE_CARRIERS),
-            Map.entry("MVK_DUPLICATE_PARAM2", Disposition.SAME_LAW_SEPARATE_CARRIERS));
+            Map.entry("MVK_DUPLICATE_PARAM2", Disposition.SAME_LAW_SEPARATE_CARRIERS),
+
+            // Again two carriers of one law. `BoundModel.firstFilledGroupScope` refuses a root group as a
+            // `FirstFilledValue` scope; the checker reports it on the six group-list quantifiers, where the
+            // class is per carrier — three refuse a root outright and three admit a SOLE one (KF326). Each
+            // side's rule is false of the other's operators, so neither can be the other's source.
+            Map.entry("MVK_ROOT_GROUP_REFERENCED", Disposition.SAME_LAW_SEPARATE_CARRIERS));
 
     @Test
     void everyCodeStatedInBothEstatesCarriesADisposition() {

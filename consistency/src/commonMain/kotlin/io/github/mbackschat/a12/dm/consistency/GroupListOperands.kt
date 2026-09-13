@@ -37,6 +37,25 @@ import io.github.mbackschat.a12.dm.consistency.syntax.callsIn
  *
  * **The boundary: only the group list.** A12 draws the same two codes on field lists and value lists, and
  * that is a different measurement on a different carrier; nothing here is claimed about them.
+ *
+ * ## …and a ROOT group where the carrier does not admit one
+ *
+ * The same operand list carries a second law with two more codes, and it is evaluated here because the two
+ * are ORDERED: a root beside its own descendant is an overlap, and A12 reports the overlap
+ * ([KERNEL-FINDINGS KF326], `rulekit.validate.laws.GroupListRootOperandLawsTest`).
+ *
+ * **The carriers split, and not the way their names suggest.** `AllGroupsFilled`, `NotAllGroupsFilled` and
+ * `GroupsNotCollectivelyFilled` refuse a root operand outright with `MVK_ROOT_GROUP_REFERENCED`, even as the
+ * sole operand; `AtLeastOneGroupFilled`, `NoGroupFilled` and `NumberOfFilledGroups` admit a SOLE root and
+ * refuse one beside any other operand with `MVK_ROOT_GROUP_WITH_OTHER_PARAMETERS`.
+ *
+ * **A STARRED root is NOT exempt**, which is the asymmetry against the duplicate gate above: the wildcard
+ * takes an operand out of the duplicate comparison and leaves it fully inside this one.
+ *
+ * **Neither the error field's locus nor a repeatable co-operand changes the verdict.** An unstarred
+ * repeatable co-operand makes A12 report its wildcard class first from the outside anchoring and the root
+ * class from the inside — so the root violation holds in both and only the reporting ORDER moves, which is
+ * why this family needs no iteration analysis to be truthful.
  */
 fun PreparedModel.groupListOperandFindings(): List<Finding> {
     val carriers = GROUP_LIST_OPERATORS.mapNotNull { CONDITION_OPERATOR_KEYWORDS[conditionLanguage]?.get(it) }.toSet()
@@ -95,8 +114,50 @@ private fun PreparedModel.duplicateFinding(
             element.path,
         )
     }
-    return null
+    // The root law runs LAST because both duplicate classes pre-empt it, measured on a root beside its own
+    // descendant. A starred root still counts here, unlike in the comparisons above.
+    return rootFinding(call, bound.mapNotNull { (_, reference) -> (reference as? Reference.Resolved)?.path },
+        member, element.path)
 }
+
+/**
+ * The root-operand finding for this call, or null when the carrier admits the root it names.
+ *
+ * The arity half counts the AUTHORED operands rather than the resolved ones: "a root beside another operand"
+ * is a fact about the list, and an operand this reader could not reduce to a path is still an operand.
+ */
+private fun PreparedModel.rootFinding(
+    call: ConditionCall,
+    resolved: List<String>,
+    member: String,
+    at: String,
+): Finding? {
+    val root = resolved.firstOrNull { path -> path.count { it == '/' } == 1 && isGroup(path) } ?: return null
+    return when {
+        call.operator in soleRootCarriers() && call.operands.size < 2 -> null
+        call.operator in soleRootCarriers() -> finding(
+            "MVK_ROOT_GROUP_WITH_OTHER_PARAMETERS",
+            "this $member names the root group `$root` beside another operand in one `${call.operator}` — " +
+                "A12 admits a root there only as the list's sole operand",
+            at,
+        )
+        else -> finding(
+            "MVK_ROOT_GROUP_REFERENCED",
+            "this $member names the root group `$root` in one `${call.operator}`, which takes no root " +
+                "operand at all — name the groups beneath it instead",
+            at,
+        )
+    }
+}
+
+/** The three carriers that admit a root as the list's SOLE operand, in this model's language. */
+private fun PreparedModel.soleRootCarriers(): Set<String> =
+    SOLE_ROOT_CARRIERS.mapNotNull { CONDITION_OPERATOR_KEYWORDS[conditionLanguage]?.get(it) }.toSet()
+
+private val SOLE_ROOT_CARRIERS = setOf("AtLeastOneGroupFilled", "NoGroupFilled", "NumberOfFilledGroups")
+
+private fun PreparedModel.isGroup(path: String): Boolean =
+    elements.any { it.path == path && it.declaredKind == DeclaredKind.GROUP }
 
 private fun CallOperand.resolvedBy(
     model: PreparedModel,
