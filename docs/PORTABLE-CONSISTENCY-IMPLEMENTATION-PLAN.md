@@ -712,6 +712,22 @@ One cold adversarial review over the frozen range, as [§2](#2-execution-order-a
 
 **The catalog half is deliberately not delivered, with its re-open trigger.** A2 ruled that `operators.json` ships as-is because it is already data; that remains right, and it is not yet USEFUL — no finding this checker produces names an operator id, so 293 KB would be packaged with nothing to join it against. It lands when a finding carries an operator.
 
+### C record — standing candidate: the single-code rejection claim, which cannot see a second gate (2026-09-14)
+
+**Three measurement defects in two days came from one place, and it has a denominator.** `KernelLaws.rejects*(…, code)` asserts the expected code is AMONG the diagnostics — `KernelLaws` says so itself, which is why the stricter `preemptedCode` spelling exists. A containment claim cannot see a co-firing second gate, cannot establish which gate reports FIRST, and cannot notice that the shape it measures satisfies a second condition nobody named. Re-derive rather than citing these: **203 `rejects*` calls, 223 `accepts*` calls, 28 strict/pre-empted spellings** (2026-09-14), so roughly 175 rejection claims stand on containment alone. `accepts*` carries no exposure — there is no code to hide.
+
+**The three that have already fallen, each found by replacing one file's single assertions with a grid asserting the COMPLETE class list:**
+
+| what was wrong | how the single assertion hid it |
+|---|---|
+| [KF340](KERNEL-FINDINGS.md#kf340)'s mechanism — "resolution wins" | every row put the bad name first, so text order and resolution order were one thing |
+| `SumOfProducts`' repeatable-level clause, short by a conjunct on FOUR surfaces | the one row exercising that arm gave both operands the same owning group |
+| [KF349](KERNEL-FINDINGS.md#kf349) — `MVK_NOT_IN_GROUP`'s reachability, which the ledger recorded as unexplained | the one cell sat on an index-keyed fixture, and nothing recorded that this was load-bearing |
+
+**The queue, ranked by single assertions in a grid-free file** — most room for an unmeasured precedence first: `RuleGroupIterationLawsTest` (42), `NumberLawsTest` (29), `AggregateSlotLawsTest` (28), `AggregateGroupOperandLawsTest` (22), `OperatorAdmissionLawsTest` (19), `DateExtractionLawsTest` (16), `IterationLawsTest` (15). Fifty-two files carry single assertions and no grid at all.
+
+**This is NOT a sweep to run to completion, and saying so is the point.** Converting 175 claims would be a large mechanical job with most of its cells confirming what is already believed; the yield lives where a shape can break TWO rules at once, which is judgment. So it is a standing candidate worked one file at a time, highest-count first, and each pass is cheap: build the grid with the complete class list, write the expectations as PREDICTIONS, and run once — a wrong prediction IS the finding. Every one of the three above was a wrong prediction on the first run.
+
 ### C record — the second relational family, where the CHECKER found the missing rows twice (2026-09-14)
 
 **Selected in one command, and the checklist made the landing cheap.** The residue script ranks candidates by how narrow their existing evidence is; three of the top six were already covered or need the per-operator catalog, and the root-only error-target pair had a six-cell grid plus machinery `ErrorFieldReference` already owns. Running the new seven-step checklist FIRST established that neither code carries a corrective and neither is named by the kits — so three of the seven steps dropped before a single build ran, where the previous family discovered the same facts one failing guard at a time.
