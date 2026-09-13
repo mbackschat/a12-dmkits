@@ -20,7 +20,7 @@ class ConditionBindingTest {
           "modelRoot":{"rootGroups":[
             {"type":"Group","id":"g0","name":"Order","Group":{"elements":[
               {"type":"Field","id":"f0","name":"Code","Field":{"fieldType":{"type":"StringType"}}},
-              {"type":"Group","id":"g1","name":"Lines","Group":{"elements":[
+              {"type":"Group","id":"g1","name":"Lines","Group":{"repeatability":20,"elements":[
                 {"type":"Field","id":"f1","name":"Amount","Field":{"fieldType":{"type":"StringType"}}},
                 {"type":"Rule","id":"r0","name":"Check","Rule":{"errorCode":"C",
                   "errorMessage":[{"locale":"en_US","text":"x"}],
@@ -159,7 +159,13 @@ class ConditionBindingTest {
         assertEquals(listOf("MVK_INVALID_ENTITY"), codes("FieldFilled(1Amount)"))
     }
 
-    /** A wildcard names the repetition, not the element, so a starred path binds to the declared group. */
+    /**
+     * A wildcard names the repetition, not the element, so a starred path binds to the declared group.
+     *
+     * `Lines` is declared with `repeatability` — A12's own member, an integer defaulting to 1 — because the
+     * star has to be a LEGITIMATE one for this row to be about binding. On a fixed group it is a wildcard
+     * defect, and the row would be asserting the absence of a finding that belongs there.
+     */
     @Test
     fun aStarredPathBindsToTheDeclaredElement() {
         assertEquals(emptyList(), codes("FieldFilled(Amount) And FieldFilled(../Lines*/Amount)"))

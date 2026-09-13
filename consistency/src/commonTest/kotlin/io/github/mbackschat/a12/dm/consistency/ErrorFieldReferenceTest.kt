@@ -26,7 +26,7 @@ class ErrorFieldReferenceTest {
                 {"type":"Group","id":"g1","name":"Customs","Group":{"elements":[
                   {"type":"Field","id":"f1","name":"Declaration","Field":{"fieldType":{"type":"StringType"}}}
                 ]}},
-                {"type":"Group","id":"g2","name":"Parcels","Group":{"repeatable":true,"maxRepetitions":9,
+                {"type":"Group","id":"g2","name":"Parcels","Group":{"repeatability":9,
                   "elements":[
                   {"type":"Field","id":"f2","name":"Weight","Field":{"fieldType":{"type":"NumberType"}}},
                   {"type":"Field","id":"f3","name":"Contents","Field":{"fieldType":{"type":"StringType"}}}

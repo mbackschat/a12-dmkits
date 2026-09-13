@@ -53,7 +53,7 @@ class StringSlotBindingTest {
         {"header":{"id":"catalog","locales":[{"code":"en_US"}]},
          "content":{"modelRoot":{"rootGroups":[
           {"type":"Group","id":"g0","name":"Catalog","Group":{"elements":[
-            {"type":"Group","id":"g1","name":"Lines","Group":{"repeatable":true,"elements":[
+            {"type":"Group","id":"g1","name":"Lines","Group":{"repeatability":20,"elements":[
               {"type":"Field","id":"f1","name":"Sku","Field":{"fieldType":{"type":"StringType"}}}
             ]$members}}
           ]}}

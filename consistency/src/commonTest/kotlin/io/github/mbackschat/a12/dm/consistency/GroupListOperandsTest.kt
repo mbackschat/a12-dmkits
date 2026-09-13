@@ -46,7 +46,7 @@ class GroupListOperandsTest {
                 {"type":"Group","id":"g5","name":"GarageBay","Group":{"elements":[
                   {"type":"Field","id":"f5","name":"BayNumber","Field":{"fieldType":{"type":"StringType"}}}
                 ]}},
-                {"type":"Group","id":"g6","name":"Claims","Group":{"repeatable":true,"maxRepetitions":12,
+                {"type":"Group","id":"g6","name":"Claims","Group":{"repeatability":12,
                   "elements":[
                   {"type":"Field","id":"f6","name":"ClaimAmount","Field":{"fieldType":{"type":"NumberType"}}}
                 ]}},
@@ -295,7 +295,7 @@ class GroupListOperandsTest {
                   "errorEntityRelPath":"../PolicyNumber",
                   "errorCode":"C1","errorMessage":[{"locale":"en_US","text":"x"}]}}
               ]}},
-              {"type":"Group","id":"g2","name":"Broker","Group":{"repeatable":true,"maxRepetitions":4,
+              {"type":"Group","id":"g2","name":"Broker","Group":{"repeatability":4,
                 "elements":[
                 {"type":"Field","id":"f2","name":"BrokerName","Field":{"fieldType":{"type":"StringType"}}}
               ]}}

@@ -6561,3 +6561,32 @@ The position does not matter — the field named second is admitted on the quant
 Reported by the portable checker (`CheckFamily.GROUP_LIST_OPERAND_KIND`) on the three carriers only.
 
 *Locked by:* `rulekit.validate.laws.GroupListOperandKindLawsTest` (four grids, 26 rows); the portable checker's mirror is `consistency.GroupListOperandsTest`.
+
+## §10 supplement — a repetition wildcard on anything but a repeatable group draws ONE class, in every position, ahead of both the slot's wildcard gate and the entity gate (measured, 2026-09-13) <a id="kf328"></a>
+
+> Fold: pending — belongs beside [KERNEL-SEMANTICS](KERNEL-SEMANTICS.md) §10's wildcard-path rules.
+
+`MVK_INVALID_WILDCARD` is pre-checked in the Java kits, and its basis was widened in 2026-08-12 from one carrier to two with the conclusion *"the star gate is carrier-independent after all"*. Carrier-independence is a scope-transfer claim and two carriers are two carriers, so the positions below were measured rather than inherited — a portable checker applies the law to EVERY starred reference it reads, and one position where A12 says something else turns that into a wrong class. Own domain (a hotel booking); every row is run twice, once over a FIXED group and once over a repeatable one.
+
+| position | starred FIXED group | the same star on a REPEATABLE group |
+|---|---|---|
+| scalar `GroupFilled` | `MVK_INVALID_WILDCARD` | `MVK_NO_WILDCARDS_ALLOWED` |
+| a quantifier's operand list | `MVK_INVALID_WILDCARD` | `MVK_NO_WILDCARDS_G_ALLOWED` |
+| `NumberOfFilledGroups`'s operand | `MVK_INVALID_WILDCARD` | ADMITTED |
+| a starred path PREFIX in a field list | `MVK_INVALID_WILDCARD` | ADMITTED |
+| a starred prefix in a scalar field slot | `MVK_INVALID_WILDCARD` | `MVK_NO_WILDCARDS_ALLOWED` |
+| an aggregate's operand | `MVK_INVALID_WILDCARD` | ADMITTED |
+| a computation's OPERATION | `MVK_INVALID_WILDCARD` | ADMITTED |
+| a computation's common PRECONDITION | `MVK_INVALID_WILDCARD` | — |
+
+**The control column is what makes the claim falsifiable.** The same star on a repeatable group is answered three different ways depending on where it stands — two slot classes and outright admission — and on a non-repeatable one every position collapses to this single class. So the law is about what the star LANDS ON, and it pre-empts the slot's own wildcard gate rather than sharing the field with it.
+
+**It outruns the entity gate too, which is the opposite order from every other pair measured this week.** `FieldFilled(Guest*/NoSuchField)` — a starred fixed group followed by a leaf that resolves to nothing — draws `MVK_INVALID_WILDCARD` and says nothing about the leaf.
+
+**And it is a law about each SEGMENT, not about the reference.** A star on a FIELD, on the model ROOT, and on a FIXED group nested UNDER a legitimately starred repeatable one (`Nights*/Rate*/Amount`) all draw it, while the same reference with only the legitimate star (`Nights*/Rate/Amount`) is admitted. A rule reading the reference as a whole answers one of those two wrongly whichever way it is written.
+
+**The member that decides it is `Group.repeatability`, an INTEGER whose default is 1 — there is no boolean `repeatable`.** Recorded here because the portable checker was written against the invented boolean for an hour and every one of its own tests passed: the fixtures beside it carried the same invented member, so implementation and evidence agreed with each other and not with A12. On a real model it would have refused every correctly starred group. `FixtureRepetitionMemberGuardTest` now derives the accepted spelling from the kits' own emitter and scans the checker's sources for any other.
+
+Reported by the portable checker (`CheckFamily.REPETITION_WILDCARD_TARGET`), which leaves two shapes alone: a starred segment whose own prefix does not resolve, and a starred up-step (`..*`), which has a class of its own in A12's ledger.
+
+*Locked by:* `rulekit.validate.laws.StarredNonRepeatableReachLawsTest` (three grids, 22 rows, two carriers); the portable checker's mirror is `consistency.RepetitionWildcardTest`.

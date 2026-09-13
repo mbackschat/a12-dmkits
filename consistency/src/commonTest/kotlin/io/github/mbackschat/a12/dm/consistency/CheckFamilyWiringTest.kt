@@ -77,6 +77,10 @@ class CheckFamilyWiringTest {
             {"type":"Rule","id":"r17","name":"Unreferenced","Rule":{
               "errorCondition":"FieldFilled(Price)","errorEntityRelPath":"../Amount",
               "errorCode":"C17","errorMessage":[{"locale":"en_US","text":"x"}]}},
+            {"type":"Rule","id":"r21","name":"StarOnAFixedGroup","Rule":{
+              "errorCondition":"FieldFilled(Price) And GroupFilled(/Catalog/Shelf*)",
+              "errorEntityRelPath":"../Price",
+              "errorCode":"C21","errorMessage":[{"locale":"en_US","text":"x"}]}},
             {"type":"Rule","id":"r20","name":"FieldWhereAGroupBelongs","Rule":{
               "errorCondition":"FieldFilled(Price) And GroupFilled(/Catalog/Shelf/ShelfCode)",
               "errorEntityRelPath":"../Price",
@@ -116,11 +120,11 @@ class CheckFamilyWiringTest {
               "errorCodesToSuppress":["NOT A CODE"]}},
             {"type":"Field","id":"f1","name":"Twin","Field":{"fieldType":{"type":"StringType"}}},
             {"type":"Field","id":"f2","name":"Twin","Field":{"fieldType":{"type":"StringType"}}},
-            {"type":"Group","id":"g1","name":"Ordered","Group":{"repeatable":true,
+            {"type":"Group","id":"g1","name":"Ordered","Group":{"repeatability":20,
               "indexFieldName":"NoSuchIndex","elements":[
                 {"type":"Field","id":"f3","name":"Label","Field":{"fieldType":{"type":"StringType"}}}
               ]}},
-            {"type":"Group","id":"g2","name":"BadKey","Group":{"repeatable":true,
+            {"type":"Group","id":"g2","name":"BadKey","Group":{"repeatability":20,
               "indexFieldName":"Key","elements":[
                 {"type":"Field","id":"f4","name":"Key","Field":{
                   "fieldType":{"StringType":{"noValueValidation":true}}}}
@@ -177,6 +181,8 @@ class CheckFamilyWiringTest {
             ("MVK_ROOT_GROUP_REFERENCED" to "/Catalog/RootOperand"),
         CheckFamily.GROUP_LIST_OPERAND_KIND to
             ("MVK_NO_FIELDS_ALLOWED" to "/Catalog/FieldWhereAGroupBelongs"),
+        CheckFamily.REPETITION_WILDCARD_TARGET to
+            ("MVK_INVALID_WILDCARD" to "/Catalog/StarOnAFixedGroup"),
     )
 
     @Test

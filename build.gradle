@@ -241,6 +241,10 @@ tasks.register('leakGuardTest', Test) {
     outputs.cacheIf { false }
     filter {
         includeTestsMatching 'io.github.mbackschat.a12.dm.PrivateMarkerLeakGuardTest'
+        // Derived denominator again: the accepted spelling is read off the EMITTER and the scan covers every
+        // tracked checker source, so neither half is a list someone remembered. It rides here rather than in
+        // an input-declared task because its subject is two whole source trees.
+        includeTestsMatching 'io.github.mbackschat.a12.dm.FixtureRepetitionMemberGuardTest'
         includeTestsMatching 'io.github.mbackschat.a12.dm.TrackedOutputGuardTest'
         // The PreToolUse long-run hook, driven end to end through its selftest. It belongs in an always-run
         // task rather than an input-declared one: its subject is a shell script plus a hook config in TWO

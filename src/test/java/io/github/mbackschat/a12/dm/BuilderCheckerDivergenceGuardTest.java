@@ -225,7 +225,19 @@ class BuilderCheckerDivergenceGuardTest {
             // code on the three carriers measured to draw it and stays silent on the five that do not. The
             // Java strictness stands because it bites on the authoring path alone, which is what makes it a
             // documented over-strictness rather than a defect.
-            Map.entry("MVK_NO_FIELDS_ALLOWED", Disposition.STRICTER_IN_JAVA));
+            Map.entry("MVK_NO_FIELDS_ALLOWED", Disposition.STRICTER_IN_JAVA),
+
+            // One law, two readings of a path. `BoundModel.flatten`/`flattenGroup` refuse a star on a
+            // non-repeatable group as the typed ref is built; the checker walks each SEGMENT of a stored
+            // reference and asks the same question of what the segment names. Neither is stricter than A12:
+            // the class is measured to fire in every position, ahead of each slot's own wildcard gate and
+            // ahead of the entity gate (KF328).
+            Map.entry("MVK_INVALID_WILDCARD", Disposition.SAME_LAW_SEPARATE_CARRIERS),
+
+            // Prose on the CHECKER side, which is the mirror of this disposition's usual direction: the kits
+            // erase the shape and the checker only NAMES the code, in the doc comment explaining why a
+            // starred repeatable group is answered by a slot gate this checker does not report.
+            Map.entry("MVK_NO_WILDCARDS_ALLOWED", Disposition.PROSE_ONLY));
 
     @Test
     void everyCodeStatedInBothEstatesCarriesADisposition() {
