@@ -116,11 +116,15 @@ private fun partialPrecisionFinding(field: DeclaredElement, body: JsonObject, fo
  * refusal may key on nothing wider), not a component predicate read off the strings — deriving them from a
  * predicate makes the checker agree with its own reading instead of with A12.
  */
+// VOCABULARY-GRID-START — `rulekit.validate.laws.TemporalFormatVocabularyGuardTest` reads only this
+// delimited region and requires every admitted format to appear in it, so a member the kernel gains cannot
+// silently go missing from the partition. A format named elsewhere in this file does not count as carried.
 private val YEAR_BEARING_FORMATS = setOf(
     "dd.MM.yyyy", "yyyy", "yyyy-MM", "yyyy-MM-dd", "yyyy-MM-dd'T'HH:mm:ss", "yyyyMM", "yyyyMMdd",
 )
 
 private val YEAR_FREE_FORMATS = setOf("HH:mm:ss", "MM", "MM-dd", "MMdd", "ddMM", "dd.MM.")
+// VOCABULARY-GRID-END
 
 private val ADMITTED_FORMATS = YEAR_BEARING_FORMATS + YEAR_FREE_FORMATS
 

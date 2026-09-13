@@ -538,7 +538,12 @@ class TemporalFormatVocabularyGuardTest {
                     + "TemporalAdditionalCheckCarrierLawsTest.java",
             "its FRAGMENT grid carries the same year gate on a second carrier, and the claim that the two "
                     + "carriers AGREE is only as strong as its axis — a short one would make the agreement a "
-                    + "coincidence of the formats that happened to be listed");
+                    + "coincidence of the formats that happened to be listed",
+            "consistency/src/commonMain/kotlin/io/github/mbackschat/a12/dm/consistency/TemporalConfig.kt",
+            "the portable checker PARTITIONS the admitted vocabulary into year-bearing and year-free halves "
+                    + "and judges nothing outside their union, so a format missing from the grid is one the "
+                    + "checker goes quiet on — the shipped half of the ddMM./KF313 incident, in a module that "
+                    + "cannot see the kernel and so has no other way to notice");
 
     private static final String REGION_START = "VOCABULARY-GRID-START";
     private static final String REGION_END = "VOCABULARY-GRID-END";
