@@ -121,6 +121,13 @@ class GroupOrderingFieldTypeTest {
             """"fieldType":{"type":"StringType","StringType":{"noValueValidation":0}}""",
             index("Sku"),
         )
+        // Neither boolean literal, so A12 does not coerce it — it refuses the reader outright. This family
+        // owns no binding verdict, so silence is right here; reading it as SET would report a gate A12 never
+        // reaches, and reading it as CLEAR would be right by accident.
+        actual["the flag as a string that is neither literal"] = codesFor(
+            """"fieldType":{"type":"StringType","StringType":{"noValueValidation":"yes"}}""",
+            index("Sku"),
+        )
         actual["the flag as the number 2"] = codesFor(
             """"fieldType":{"type":"StringType","StringType":{"noValueValidation":2}}""",
             index("Sku"),
@@ -141,6 +148,7 @@ class GroupOrderingFieldTypeTest {
             "the flag as a NUMBER" to listOf("MVK_INDEX_FIELD_NO_VALUE_VALIDATION"),
             "the flag as the number 0" to listOf(),
             "the flag as the number 2" to listOf("MVK_INDEX_FIELD_NO_VALUE_VALIDATION"),
+            "the flag as a string that is neither literal" to listOf(),
         )
         assertEquals(expected, actual, "what the no-value-validation predicate reads")
     }
