@@ -1,75 +1,140 @@
 package io.github.mbackschat.a12.dm.consistency
 
+import io.github.mbackschat.a12.dm.consistency.syntax.isRuleContext
 import io.github.mbackschat.a12.dm.consistency.syntax.referencesIn
+import io.github.mbackschat.a12.dm.consistency.syntax.starsRuleContext
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.intOrNull
 
 /**
- * A repetition wildcard on something that has no repetitions — a field, a fixed group, the model root.
+ * A repetition wildcard on something that cannot repeat — a field, a fixed group, the model root, a step.
  *
- * A12 answers every one of them with `MVK_INVALID_WILDCARD` ([KERNEL-FINDINGS KF328],
- * `rulekit.validate.laws.StarredNonRepeatableReachLawsTest`), and the family is unusual in judging a
- * REFERENCE rather than an operand: the class is the same in every position measured, so no operand identity
- * is needed and none is used.
+ * A star belongs only on a repeatable group, and A12 answers every other landing site with a refusal — but
+ * with THREE different codes, chosen by what the starred segment is rather than by where the reference stands
+ * ([KERNEL-FINDINGS KF328], `rulekit.validate.laws.StarredNonRepeatableReachLawsTest`). A NAME that names no
+ * repetition draws `MVK_INVALID_WILDCARD`; the rule-context entity draws `MVK_INVALID_WILDCARD_FOR_RULEGROUP`;
+ * a relative up-step draws `MVK_INVALID_WILDCARD_REL`. Naming the class this family knows for a segment A12
+ * answers with another would be a wrong finding on a correct rejection, which is why the split is measured
+ * rather than collapsed.
  *
  * **The law PRE-EMPTS the slot's own wildcard gate, which is what makes the reference-level reading safe.**
  * The same star on a REPEATABLE group draws three different answers depending on where it stands —
  * `MVK_NO_WILDCARDS_ALLOWED` in a scalar slot, `MVK_NO_WILDCARDS_G_ALLOWED` in a quantifier's operand list,
- * admitted in a count or an aggregate — and on a non-repeatable one every position collapses to this single
- * class. Measured across six positions on the rule carrier and two on the computation carrier, each beside
- * its repeatable control, because a per-position claim is exactly what a reference-level family assumes.
+ * admitted in a count or an aggregate — and on a non-repeatable one every position collapses to one class.
+ * Measured across six positions on the rule carrier and two on the computation carrier, each beside its
+ * repeatable control, because a per-position claim is exactly what a reference-level family assumes.
  *
  * **It outruns the entity gate too**, which is the opposite order from every other pair measured here: a
  * starred fixed group followed by a leaf that resolves to nothing draws this class and nothing about the
  * leaf. So this family does not wait for the whole reference to resolve — it resolves each starred SEGMENT's
  * own prefix and judges that.
  *
- * **Two shapes are left alone, each because A12's answer for them is unmeasured rather than absent.** A
- * starred segment whose own prefix does not resolve is left to the reference family; and a star on a relative
- * STEP has a class of its own in A12's ledger, so judging it here would risk naming the wrong one.
+ * **Two shapes are left alone, each because A12's answer for them is unmeasured or is another family's.** A
+ * starred segment whose own prefix does not resolve is left to the reference family — including an up-step
+ * that leaves the model, where A12 reports the DEPTH overflow and never reaches the wildcard gate. And a
+ * star on a named turning point (`..Ancestor*`) is unmeasured, so silence is the safe answer.
+ *
+ * **One measured refusal is deliberately not reported**: a reference that is nothing but starred up-steps
+ * (`..*`). A run naming no entity is not a reference at all to the reader this family uses, so the shape never
+ * arrives here. A12 does refuse it, so this under-reports — narrowly, since any name after the step brings the
+ * whole reference back into view, and in the direction this project requires when a reading is incomplete.
  */
 fun PreparedModel.repetitionWildcardFindings(): List<Finding> = elements.flatMap { element ->
     val body = element.body ?: return@flatMap emptyList()
     val group = element.path.substringBeforeLast('/', missingDelimiterValue = "")
     conditionTexts(element.kind, body).flatMap { (member, text) ->
-        referencesIn(text, conditionLanguage).mapNotNull { written ->
+        // The rule-context entity is a KEYWORD, so a starred one never reaches the reference list at all and
+        // needs its own question — the same reason its reach needs one in the error-field family.
+        val onTheRulesOwnGroup = if (starsRuleContext(text, conditionLanguage)) {
+            listOf(
+                Finding(
+                    FindingCategory.A12_CONSTRAINT,
+                    FindingSeverity.ERROR,
+                    "MVK_INVALID_WILDCARD_FOR_RULEGROUP",
+                    "this $member puts a repetition wildcard on the rule's own group — a `*` belongs only " +
+                        "on a repeatable group, and the rule context is not one",
+                    element.path,
+                ),
+            )
+        } else {
+            emptyList()
+        }
+        onTheRulesOwnGroup + referencesIn(text, conditionLanguage).mapNotNull { written ->
             val segments = written.split('/')
-            val offending = segments.indices.firstNotNullOfOrNull { at ->
-                starredPrefix(segments, at)
-                    ?.takeIf { prefix -> namesNoRepetition(group, prefix, element.origin) }
-            } ?: return@mapNotNull null
+            val offence = segments.indices
+                .firstNotNullOfOrNull { at -> offenceAt(segments, at, group, element.origin) }
+                ?: return@mapNotNull null
             Finding(
                 FindingCategory.A12_CONSTRAINT,
                 FindingSeverity.ERROR,
-                "MVK_INVALID_WILDCARD",
-                "this $member writes `$written` with a repetition wildcard on `$offending`, which has no " +
-                    "repetitions — a `*` belongs only on a repeatable group",
+                offence.code,
+                "this $member writes `$written` with a repetition wildcard on ${offence.why} — a `*` belongs " +
+                    "only on a repeatable group",
                 element.path,
             )
         }
     }
 }
 
+/** One starred segment A12 refuses, with the class it refuses it under. */
+private class Offence(val code: String, val why: String)
+
 /**
- * The path up to and including the segment at [at], when that segment carries a wildcard and is a NAME.
+ * What A12 answers for the segment at [at], or null when this family has nothing to say about it.
  *
- * **Every relative STEP form is excluded, not just the bare `..`.** A12 answers a starred up-navigation with
- * `MVK_INVALID_WILDCARD_REL`, a code of its own (`rulekit.validate.laws.PathLawsTest`), so resolving the step
- * and judging what it lands on would name this family's class for a shape A12 refuses on another ground. The
- * named turning point `..Ancestor*` is excluded with it: it is an up-navigation too, and which of the two
- * codes A12 gives it is unmeasured — silence is the safe answer where the class is in doubt.
+ * The order of the arms is the order the segment's own SPELLING decides — nothing here depends on position,
+ * because the measured grid shows the class does not either.
  */
-private fun starredPrefix(segments: List<String>, at: Int): String? {
+private fun PreparedModel.offenceAt(
+    segments: List<String>,
+    at: Int,
+    declaringGroup: String,
+    origin: DeclarationOrigin,
+): Offence? {
     val segment = segments[at]
     if (!segment.endsWith("*")) {
         return null
     }
     val stepped = segment.removeSuffix("*")
-    return if (stepped.isEmpty() || stepped.startsWith(".")) {
-        null
-    } else {
-        segments.take(at + 1).joinToString("/")
+    return when {
+        // A bare `*` names no segment at all; whether such a text is a condition is the grammar family's.
+        stepped.isEmpty() -> null
+        // Not the rule-context entity: it is a keyword, so it never arrives as a reference segment. It is
+        // judged on the TEXT above, and asserting its absence here keeps the two readings from drifting.
+        isRuleContext(stepped, conditionLanguage) -> null
+        stepped == ".." -> upStepOffence(segments, at, declaringGroup, origin)
+        // A `.` self-step, and the named turning point `..Ancestor`: A12's class for a star on either is
+        // unmeasured, and naming the wrong one is worse than saying nothing.
+        stepped.startsWith(".") -> null
+        namesNoRepetition(declaringGroup, segments.take(at + 1).joinToString("/"), origin) ->
+            Offence("MVK_INVALID_WILDCARD", "`${segments.take(at + 1).joinToString("/")}`, which has no repetitions")
+        else -> null
     }
+}
+
+/**
+ * A starred up-step, but only where A12 actually reaches its wildcard gate.
+ *
+ * Two shapes look like this one and are not it. A `..` that is not part of the LEADING run is not valid A12
+ * at all — `Guest/../Extras` is refused by the parser, starred or not — so there is no wildcard verdict to
+ * report and the grammar family owns the text. And an up-run that walks off the top of the model is answered
+ * with the DEPTH class before any star is considered, which is why the resolve has to succeed here rather
+ * than merely be attempted.
+ */
+private fun PreparedModel.upStepOffence(
+    segments: List<String>,
+    at: Int,
+    declaringGroup: String,
+    origin: DeclarationOrigin,
+): Offence? {
+    if (segments.take(at).any { it != ".." }) {
+        return null
+    }
+    val prefix = segments.take(at + 1).joinToString("/")
+    if (resolveEntity(declaringGroup, prefix, origin) !is Reference.Resolved) {
+        return null
+    }
+    return Offence("MVK_INVALID_WILDCARD_REL", "a relative up-step")
 }
 
 /** Whether [prefix] resolves to something other than a repeatable group — unresolvable counting as neither. */

@@ -157,6 +157,10 @@ private class ShapeParser(
 
     private fun take(): Token = tokens[index++]
 
+    /** The repetition wildcard, which the tokenizer files as an operator symbol because `*` is also a product. */
+    private fun atWildcard(): Boolean =
+        peek().let { it != null && it.kind == TokenKind.OPERATOR_SYMBOL && it.text == "*" }
+
     /** The failure for the token under the cursor, or for the end of the text when there is none. */
     private fun unexpected(): ShapeFailure {
         val token = peek()
@@ -456,7 +460,20 @@ private class ShapeParser(
                 // `entity`, `relativeUp`, `relUp` and `oneUp`, each with its own check about what the walk
                 // RESOLVES to — which is the reference family's question, not this one's. What they share is
                 // this shape, so one permissive loop reads all four and nothing about resolution is claimed.
-                textIs("/") || textIs("..") -> { take(); sawStep = true }
+                textIs("/") -> { take(); sawStep = true }
+                // An up-step may carry the repetition wildcard, and A12 parses it — `GroupFilled(..*)` is
+                // refused with the SEMANTIC class `MVK_INVALID_WILDCARD_REL`, not a syntax one
+                // (`rulekit.validate.laws.StarredNonRepeatableReachLawsTest`). Without taking the star here
+                // `..` and `*` read as an arithmetic product, which fails outright with nothing after it and
+                // — worse — succeeds with a path after it, leaving this reader and the reference reader
+                // disagreeing about the same text.
+                textIs("..") -> {
+                    take()
+                    if (atWildcard()) {
+                        take()
+                    }
+                    sawStep = true
+                }
                 startsSegment() -> { segment()?.let { return it }; sawStep = true }
                 else -> break
             }
@@ -511,14 +528,14 @@ private class ShapeParser(
                     next.kind == TokenKind.NUMBER)
             ) {
                 take()
-            } else if (next != null && next.kind == TokenKind.OPERATOR_SYMBOL && next.text == "*") {
+            } else if (atWildcard()) {
                 take()
             } else {
                 index = dot
                 break
             }
         }
-        if (peek()?.kind == TokenKind.OPERATOR_SYMBOL && peek()?.text == "*") {
+        if (atWildcard()) {
             take()
         }
         return null

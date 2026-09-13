@@ -38,12 +38,33 @@ fun referencesIn(text: String, language: ConditionLanguage): List<String> =
  * Settled per [language] like every other keyword question here: `RegelKontext` in an English model is an
  * ordinary field name, so a fixed pair of literals would silently claim a reach the model does not have.
  */
-internal fun namesRuleContext(text: String, language: ConditionLanguage): Boolean {
-    val keywords = CONDITION_KEYWORDS.getValue(language)
-    return tokenize(text).any {
-        it.kind == TokenKind.NAME && it.text in keywords && it.text in RULE_CONTEXT_SPELLINGS
+internal fun namesRuleContext(text: String, language: ConditionLanguage): Boolean =
+    tokenize(text).any { it.kind == TokenKind.NAME && isRuleContext(it.text, language) }
+
+/**
+ * Whether the text puts a repetition wildcard on the RULE-CONTEXT entity.
+ *
+ * A12 refuses that with a class of its own, `MVK_INVALID_WILDCARD_FOR_RULEGROUP`
+ * (`rulekit.validate.laws.StarredNonRepeatableReachLawsTest`). It needs its own question for the same reason
+ * [namesRuleContext] does — the spelling is a keyword, so it never reaches a consumer through [referencesIn],
+ * and a family judging starred references alone would stay silent on a shape A12 rejects.
+ */
+internal fun starsRuleContext(text: String, language: ConditionLanguage): Boolean {
+    val tokens = tokenize(text)
+    return tokens.indices.any { at ->
+        tokens[at].kind == TokenKind.NAME && isRuleContext(tokens[at].text, language) &&
+            tokens.getOrNull(at + 1)?.text == "*"
     }
 }
+
+/**
+ * Whether [name] spells the rule-context entity in [language].
+ *
+ * Both halves are load-bearing: the spelling must be one of the two A12 uses, AND it must be a keyword in
+ * THIS language, because each spelling is an ordinary field name in the other one.
+ */
+internal fun isRuleContext(name: String, language: ConditionLanguage): Boolean =
+    name in RULE_CONTEXT_SPELLINGS && name in CONDITION_KEYWORDS.getValue(language)
 
 /**
  * The catalog id of the one predicate spelled as a keyword followed by a BARE NAME rather than a call.

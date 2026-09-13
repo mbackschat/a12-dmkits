@@ -198,8 +198,9 @@ enum class CheckFamily {
 
     /**
      * That no reference puts a repetition wildcard on something with no repetitions. A reference-level law
-     * rather than an operand-level one, because A12 answers it with the same class in every position and
-     * ahead of both the slot's own wildcard gate and the entity gate.
+     * rather than an operand-level one, because A12 answers it ahead of both the slot's own wildcard gate and
+     * the entity gate, and with a class fixed by WHAT the star lands on rather than by where it stands: a
+     * name that names no repetition, the rule's own group, or a relative up-step.
      */
     REPETITION_WILDCARD_TARGET,
 

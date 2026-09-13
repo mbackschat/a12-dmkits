@@ -113,23 +113,86 @@ class RepetitionWildcardTest {
         val actual = mutableMapOf<String, List<String>>()
         actual["a starred segment whose own prefix does not resolve"] = codes("GroupFilled(Nowhere*)")
         actual["a starred fixed group with an unresolvable LEAF"] = codes("FieldFilled(Guest*/NoSuchField)")
-        actual["a star on an UP-STEP that lands on a fixed group"] = codes("GroupFilled(Stays/..*/Guest)")
+        actual["a star on a MID-PATH up-step"] = codes("GroupFilled(Stays/..*/Guest)")
         actual["a star on a NAMED turning point"] = codes("GroupFilled(Stays/..Stay*/Guest)")
-        actual["…the same step unstarred — the control"] = codes("GroupFilled(Stays/../Guest)")
+        actual["a starred up-step that leaves the model"] = codes("GroupFilled(..*/Guest)")
         actual["no star at all — the control"] = codes("GroupFilled(Guest)")
 
         val expected = mutableMapOf<String, List<String>>()
         expected["a starred segment whose own prefix does not resolve"] = listOf("MVK_INVALID_ENTITY")
         expected["a starred fixed group with an unresolvable LEAF"] = listOf("MVK_INVALID_ENTITY", invalid)
-        // A12 answers a starred up-navigation with `MVK_INVALID_WILDCARD_REL`, its own code
-        // (`validate.laws.PathLawsTest.aStarOnTheRelativeUpNavigationIsRejected_useAbsolute`), so naming this
-        // family's class here would report the wrong one for a shape A12 refuses on another ground.
-        expected["a star on an UP-STEP that lands on a fixed group"] = emptyList()
+        // A `..` outside the LEADING run is not valid A12 at all — the parser refuses it starred or not — so
+        // there is no wildcard verdict here and the grammar family owns the text.
+        expected["a star on a MID-PATH up-step"] = emptyList()
+        // A12's class for a star on a named turning point is unmeasured; naming the wrong one on a correct
+        // rejection is worse than saying nothing.
         expected["a star on a NAMED turning point"] = emptyList()
-        expected["…the same step unstarred — the control"] = emptyList()
+        // The DEPTH class pre-empts the wildcard gate, so A12 never reaches it and neither does this family;
+        // the reference family reports the overflow.
+        expected["a starred up-step that leaves the model"] = listOf("MVK_TOO_MANY_PARENT_GROUPS")
         expected["no star at all — the control"] = emptyList()
         assertEquals(expected, actual, "the shapes it leaves alone")
     }
+
+    /**
+     * The two segments that are not NAMES, each with the class A12 gives it rather than the one this family
+     * knows best.
+     *
+     * A starred rule-context entity and a starred up-step are both refusals, and both draw a code of their
+     * own (`rulekit.validate.laws.StarredNonRepeatableReachLawsTest`). Collapsing them into
+     * `MVK_INVALID_WILDCARD` would be a wrong finding on a correct rejection, which is the failure a reader
+     * cannot tell from a right one.
+     *
+     * The up-step rows need a rule one level DOWN, because from a root-level rule the step leaves the model
+     * and A12 reports the depth class before any star is considered.
+     */
+    @Test
+    fun aStarOnASegmentThatIsNotANameDrawsItsOwnClass() {
+        val actual = mutableMapOf<String, List<String>>()
+        actual["the rule-context entity"] = codes("GroupFilled(RuleGroup*)")
+        actual["…the same unstarred — the control"] = codes("GroupFilled(RuleGroup)")
+        actual["a leading up-step, from a rule one level down"] = nestedCodes("GroupFilled(..*/Guest)")
+        actual["…the same step unstarred — the control"] = nestedCodes("GroupFilled(../Guest)")
+        actual["a leading up-step with nothing after it"] = nestedCodes("GroupFilled(..*)")
+
+        val expected = mutableMapOf<String, List<String>>()
+        expected["the rule-context entity"] = listOf("MVK_INVALID_WILDCARD_FOR_RULEGROUP")
+        expected["…the same unstarred — the control"] = emptyList()
+        expected["a leading up-step, from a rule one level down"] = listOf("MVK_INVALID_WILDCARD_REL")
+        expected["…the same step unstarred — the control"] = emptyList()
+        // A12 refuses this too, and the checker does not: a run that names nothing is not reported as a
+        // reference at all, so the family never sees it. Narrow, disclosed, and in the safe direction — every
+        // up-step carrying a name after it IS judged, as the row above shows.
+        expected["a leading up-step with nothing after it"] = emptyList()
+        assertEquals(expected, actual, "a star on a segment that is not a name")
+    }
+
+    /**
+     * The same model with the rule moved into `Stays`, so a leading `..` resolves instead of overflowing.
+     *
+     * The rule reports on a field of its own group, so nothing but the row under test can draw a finding.
+     */
+    private fun nestedCodes(condition: String): List<String> = check(
+        ModelSource(
+            """
+            {"header":{"id":"stay","locales":[{"code":"en_US"}]},
+             "content":{"modelRoot":{"rootGroups":[
+              {"type":"Group","id":"g0","name":"Stay","Group":{"elements":[
+                {"type":"Group","id":"g1","name":"Guest","Group":{"elements":[
+                  {"type":"Field","id":"f1","name":"Nights","Field":{"fieldType":{"type":"NumberType"}}}
+                ]}},
+                {"type":"Group","id":"g2","name":"Stays","Group":{"repeatability":9,"elements":[
+                  {"type":"Field","id":"f2","name":"RoomRate","Field":{"fieldType":{"type":"NumberType"}}},
+                  {"type":"Rule","id":"r0","name":"Probe","Rule":{
+                    "errorCondition":"FieldFilled(RoomRate) And ${'$'}CONDITION",
+                    "errorEntityRelPath":"../RoomRate",
+                    "errorCode":"C1","errorMessage":[{"locale":"en_US","text":"x"}]}}
+                ]}}
+              ]}}
+             ]}}}
+            """.trimIndent().replace("\$CONDITION", condition),
+        ),
+    ).findings.map { it.code }
 
     /** A computation's operation is read with the same reader, and A12 answers it with the same class. */
     @Test

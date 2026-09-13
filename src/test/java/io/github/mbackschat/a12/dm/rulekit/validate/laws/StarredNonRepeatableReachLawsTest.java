@@ -134,6 +134,52 @@ class StarredNonRepeatableReachLawsTest {
     }
 
     /**
+     * The two segments the checker's wildcard family deliberately does NOT name, measured so it can.
+     *
+     * <p>A star is legal only on a repeatable group, and the grids above establish that everything else draws
+     * one class — but they only ever star a NAME. A path also has two non-name segments: the relative
+     * up-step, and the rule-context entity. A12 has a separate code for each in its own ledger
+     * ({@code MVK_INVALID_WILDCARD_REL}, {@code MVK_INVALID_WILDCARD_FOR_RULEGROUP}), which is exactly why
+     * the family stayed silent on them rather than assuming the class it knows — a wrong class is a wrong
+     * finding even when the rejection is right.
+     *
+     * <p>Each starred row carries its unstarred control, because a spelling that is refused for a reason
+     * unrelated to the star would otherwise read as a wildcard verdict.
+     */
+    @Test
+    void whatAStarOnANonNameSegmentDraws() {
+        Map<String, String> actual = new LinkedHashMap<>();
+        actual.put("a star on the rule-context entity", guarded("GroupFilled(RuleGroup*)"));
+        actual.put("…the same unstarred — the control", guarded("GroupFilled(RuleGroup)"));
+        actual.put("a star on a leading up-step, from a rule one level down",
+                nested("GroupFilled(..*/Extras)"));
+        actual.put("…the same step unstarred — the control", nested("GroupFilled(../Extras)"));
+        actual.put("a star on a leading up-step with nothing after it", nested("GroupFilled(..*)"));
+        actual.put("a starred up-step from a ROOT-level rule", guarded("GroupFilled(..*/Extras)"));
+        actual.put("…the same step unstarred — the control", guarded("GroupFilled(../Extras)"));
+        actual.put("a star on a MID-PATH up-step", guarded("GroupFilled(Guest/..*/Extras)"));
+        actual.put("…the same mid-path step unstarred — the control",
+                guarded("GroupFilled(Guest/../Extras)"));
+
+        Map<String, String> expected = new LinkedHashMap<>();
+        expected.put("a star on the rule-context entity", "MVK_INVALID_WILDCARD_FOR_RULEGROUP");
+        expected.put("…the same unstarred — the control", "admitted");
+        expected.put("a star on a leading up-step, from a rule one level down", "MVK_INVALID_WILDCARD_REL");
+        expected.put("…the same step unstarred — the control", "admitted");
+        expected.put("a star on a leading up-step with nothing after it", "MVK_INVALID_WILDCARD_REL");
+        // The depth check runs FIRST: from a root-level rule the step leaves the model before any wildcard
+        // gate sees it, so this row says nothing about the star — which is why the nested carrier exists.
+        expected.put("a starred up-step from a ROOT-level rule", "MVK_TOO_MANY_PARENT_GROUPS");
+        expected.put("…the same step unstarred — the control", "MVK_TOO_MANY_PARENT_GROUPS");
+        // A `..` is only ever a LEADING run: both rows are refused by the parser, starred or not, so there is
+        // no mid-path shape for a wildcard gate to judge. Recorded because a checker walking every segment
+        // would otherwise look for one.
+        expected.put("a star on a MID-PATH up-step", "MVK_UNEXPECTED_TOKEN");
+        expected.put("…the same mid-path step unstarred — the control", "MVK_UNEXPECTED_TOKEN");
+        assertEquals(expected, actual, "what a star on a non-name segment draws");
+    }
+
+    /**
      * …and the COMPUTATION carrier, which the rule rows above say nothing about.
      *
      * <p>A checker reads a computation's operation and its preconditions with the same reader it uses on a
@@ -188,6 +234,16 @@ class StarredNonRepeatableReachLawsTest {
     /** The model-level anchoring: the error field sits outside every repeatable group. */
     private static String guarded(String condition) {
         return verdict("/Booking", "../Reference", "FieldFilled(Reference) And " + condition);
+    }
+
+    /**
+     * The same rule one level down, so a LEADING {@code ..} resolves instead of leaving the model.
+     *
+     * <p>A depth overflow is checked before any wildcard gate, so the root-level anchoring cannot measure
+     * what a starred up-step draws — it only ever reports the overflow.
+     */
+    private static String nested(String condition) {
+        return verdict("/Booking/Guest", "../FullName", "FieldFilled(FullName) And " + condition);
     }
 
     /** {@code admitted}, or the COMPLETE emitted code list — a partial list would hide a co-firing gate. */

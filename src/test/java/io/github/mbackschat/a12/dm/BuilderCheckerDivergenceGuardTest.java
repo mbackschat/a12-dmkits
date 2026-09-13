@@ -234,6 +234,13 @@ class BuilderCheckerDivergenceGuardTest {
             // ahead of the entity gate (KF328).
             Map.entry("MVK_INVALID_WILDCARD", Disposition.SAME_LAW_SEPARATE_CARRIERS),
 
+            // The same law's other class for a NAME-like segment. `erased` on the Java side — a starred
+            // rule-group reference is unrepresentable once the rule group is a typed `GroupRef` — and
+            // authorable in stored DM-JSON, which is the estate the checker reads. Reporting it under the
+            // class above would be a wrong finding on a correct rejection. (Its sibling
+            // `MVK_INVALID_WILDCARD_REL` needs no row: no kit main source names it, so there is no pair.)
+            Map.entry("MVK_INVALID_WILDCARD_FOR_RULEGROUP", Disposition.SAME_LAW_SEPARATE_CARRIERS),
+
             // Prose on the CHECKER side, which is the mirror of this disposition's usual direction: the kits
             // erase the shape and the checker only NAMES the code, in the doc comment explaining why a
             // starred repeatable group is answered by a slot gate this checker does not report.

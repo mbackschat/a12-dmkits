@@ -6567,7 +6567,7 @@ Reported by the portable checker (`CheckFamily.GROUP_LIST_OPERAND_KIND`) on the 
 
 *Locked by:* `rulekit.validate.laws.GroupListOperandKindLawsTest` (four grids, 26 rows); the portable checker's mirror is `consistency.GroupListOperandsTest`.
 
-## §10 supplement — a repetition wildcard on anything but a repeatable group draws ONE class, in every position, ahead of both the slot's wildcard gate and the entity gate (measured, 2026-09-13) <a id="kf328"></a>
+## §10 supplement — a repetition wildcard on anything but a repeatable group is refused in every position, ahead of both the slot's wildcard gate and the entity gate, under a class fixed by WHAT it lands on (measured, 2026-09-13) <a id="kf328"></a>
 
 > Fold: pending — belongs beside [KERNEL-SEMANTICS](KERNEL-SEMANTICS.md) §10's wildcard-path rules.
 
@@ -6592,6 +6592,24 @@ Reported by the portable checker (`CheckFamily.GROUP_LIST_OPERAND_KIND`) on the 
 
 **The member that decides it is `Group.repeatability`, an INTEGER whose default is 1 — there is no boolean `repeatable`.** Recorded here because the portable checker was written against the invented boolean for an hour and every one of its own tests passed: the fixtures beside it carried the same invented member, so implementation and evidence agreed with each other and not with A12. On a real model it would have refused every correctly starred group. `FixtureRepetitionMemberGuardTest` now derives the accepted spelling from the kits' own emitter and scans the checker's sources for any other.
 
-Reported by the portable checker (`CheckFamily.REPETITION_WILDCARD_TARGET`), which leaves two shapes alone: a starred segment whose own prefix does not resolve, and a starred up-step (`..*`), which has a class of its own in A12's ledger.
+**Extended 2026-09-13 — the class is not one class. A star on a segment that is not a NAME draws a code of its own**, which the first pass here left unmeasured and the checker therefore left silent. Both were reachable in one grid:
 
-*Locked by:* `rulekit.validate.laws.StarredNonRepeatableReachLawsTest` (three grids, 22 rows, two carriers); the portable checker's mirror is `consistency.RepetitionWildcardTest`.
+| the star lands on… | anchoring | verdict |
+|---|---|---|
+| the rule-context entity (`RuleGroup*`) | any rule | `MVK_INVALID_WILDCARD_FOR_RULEGROUP` |
+| …the same unstarred — control | any rule | ADMITTED |
+| a LEADING up-step (`..*/Extras`) | a rule one level down | `MVK_INVALID_WILDCARD_REL` |
+| a leading up-step with nothing after it (`..*`) | a rule one level down | `MVK_INVALID_WILDCARD_REL` |
+| …the same step unstarred — control | a rule one level down | ADMITTED |
+| a starred up-step (`..*/Extras`) | a ROOT-level rule | `MVK_TOO_MANY_PARENT_GROUPS` |
+| …the same step unstarred — control | a ROOT-level rule | `MVK_TOO_MANY_PARENT_GROUPS` |
+| a MID-PATH up-step (`Guest/..*/Extras`) | any rule | `MVK_UNEXPECTED_TOKEN` |
+| …the same mid-path step unstarred — control | any rule | `MVK_UNEXPECTED_TOKEN` |
+
+**Two of those rows are pre-emptions rather than wildcard verdicts, and their controls are what say so.** From a root-level rule the up-step leaves the model and the DEPTH class answers before any star is considered; a `..` outside the leading run is not valid A12 at all, starred or not, so the parser answers first. Only the nested anchoring reaches the wildcard gate, which is why a grid anchored where the rest of this entry is anchored could not have found the class — the root-level row looks like a measurement and reports on a different gate.
+
+**A star on a leading up-step also PARSES.** `GroupFilled(..*)` is refused semantically, not syntactically, which is a fact about the grammar rather than about the gate: a reader treating `..` and `*` as a product accepts `..*/Extras` by accident (as division) and refuses `..*` outright, and is wrong both times.
+
+Reported by the portable checker (`CheckFamily.REPETITION_WILDCARD_TARGET`) under all three classes. It leaves alone: a starred segment whose own prefix does not resolve, a starred named turning point (`..Ancestor*`, unmeasured), and — a disclosed under-report — a reference that is nothing but starred up-steps, which its reference reader does not report as a reference at all.
+
+*Locked by:* `rulekit.validate.laws.StarredNonRepeatableReachLawsTest` (four grids, 31 rows, two carriers); the portable checker's mirror is `consistency.RepetitionWildcardTest`, and its agreement with the Kernel on real models is `adapter.laws.CheckerSilenceOnCleanModelsTest`.
