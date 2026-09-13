@@ -126,6 +126,34 @@ class ComputationCycleTest {
         assertEquals(listOf("/Depot/Crates/C", "/Depot/V"), findings.map { it.at })
     }
 
+    /**
+     * Two circles through ONE field are ordered by the circles, not by where their fields appear in the text.
+     *
+     * `Base` reads `Weight` before `Volume`, so the walk meets the `Weight` circle first — and both circles
+     * begin at `Base`, which is what makes their order a real choice rather than a consequence of it. Sorting
+     * on the first member alone would hand back the text order, so reversing two operands inside one
+     * operation would reorder a consumer's report without changing anything about the model.
+     */
+    @Test
+    fun twoCirclesThroughOneFieldAreOrderedByTheCircleNotByTheText() {
+        val findings = check(
+            ModelSource(
+                model(
+                    listOf(
+                        calc("B", "../Base", "[Weight] + [Volume]"),
+                        calc("W", "../Weight", "[Base] * 2"),
+                        calc("V", "../Volume", "[Base] - 1"),
+                    ),
+                ),
+            ),
+        ).findings.filter { it.code == cycle }
+        assertEquals(2, findings.size, findings.map { it.explain }.toString())
+        assertEquals(
+            listOf("/Depot/Base → /Depot/Volume", "/Depot/Base → /Depot/Weight"),
+            findings.map { it.explain.substringAfter("refuses the model: ").substringBefore(" → /Depot/Base.") },
+        )
+    }
+
     private data class Calc(
         val name: String,
         val target: String,
