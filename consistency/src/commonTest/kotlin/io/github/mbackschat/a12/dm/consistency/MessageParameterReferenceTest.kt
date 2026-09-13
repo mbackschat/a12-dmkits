@@ -41,6 +41,7 @@ class MessageParameterReferenceTest {
         actual["the same, single-quoted"] = ruleSaying("see \$'Date'\$")
         actual["two parameters sharing a dollar pair"] = ruleSaying("see \$Premium\$\$Adjuster\$")
         actual["a dollar pair inside a name"] = ruleSaying("see \$Prem\$\$ium\$")
+        actual["a good parameter before an unterminated one"] = ruleSaying("see \$Premium\$ and \$Adjuster")
 
         val expected = mutableMapOf<String, List<String>>()
         expected["a field the condition reads — the control"] = emptyList()
@@ -73,6 +74,10 @@ class MessageParameterReferenceTest {
         expected["two parameters sharing a dollar pair"] = listOf(invalidField, invalidField)
         // …and the same pair mid-name leaves two names that resolve to nothing, which is A12's other class.
         expected["a dollar pair inside a name"] = emptyList()
+        // A12 refuses the whole text on the dollar count and never judges the parameter it DID close, so
+        // keeping the names collected before the thread was lost would report on a model A12 admits for
+        // this family's reason. The row exists because a mutant returning them survived every other one.
+        expected["a good parameter before an unterminated one"] = emptyList()
         assertEquals(expected, actual, "which parameter shapes this family reports")
     }
 

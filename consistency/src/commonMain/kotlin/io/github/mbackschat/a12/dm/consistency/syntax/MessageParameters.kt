@@ -10,9 +10,11 @@ package io.github.mbackschat.a12.dm.consistency.syntax
  * an under-report, which is safe; handing a caller a name lifted out of a form whose gate it does not know
  * would make it report the wrong class.
  *
- * **`$$` is an escaped dollar and an odd count is A12's own refusal.** A text with an unterminated parameter
- * draws `WRONG_NUMBER_OF_DOLLARS` (measured), so this yields nothing there rather than guessing where the
- * parameter ended.
+ * **An unterminated parameter refuses the text WHOLE, so this yields nothing for any of it** — not even for
+ * the parameters it had already closed. `see $Premium$ and $Adjuster` draws `WRONG_NUMBER_OF_DOLLARS` and no
+ * membership class for `Premium` (measured), so returning the names collected before the thread was lost
+ * would report on a text A12 answered otherwise. `$$` outside a parameter is A12's escape, and
+ * [closingDollar] is why no branch here has to know that.
  */
 internal fun plainMessageParameters(text: String): List<String> {
     val names = mutableListOf<String>()
@@ -22,10 +24,9 @@ internal fun plainMessageParameters(text: String): List<String> {
             index++
             continue
         }
-        if (index + 1 < text.length && text[index + 1] == '$') {
-            index += 2
-            continue
-        }
+        // No branch for the `$$` escape: it needs none, because the next `$` closes the parameter, so an
+        // escaped dollar opens and closes an EMPTY one and [plainNameOrNull] yields nothing for it. Written
+        // as an explicit branch first; the mutant that disabled it could not be killed by any input.
         val close = closingDollar(text, index + 1) ?: return emptyList()
         plainNameOrNull(text.substring(index + 1, close))?.let { names += it }
         index = close + 1

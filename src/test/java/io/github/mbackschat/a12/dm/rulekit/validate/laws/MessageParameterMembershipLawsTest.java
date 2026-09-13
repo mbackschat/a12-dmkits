@@ -92,6 +92,10 @@ class MessageParameterMembershipLawsTest {
         actual.put("two parameters sharing a dollar pair", message("see $Premium$$Adjuster$"));
         // …and the same pair INSIDE what would otherwise be one name.
         actual.put("a dollar pair inside a name", message("see $Prem$$ium$"));
+        // A COMPLETE parameter, then an unterminated one: does A12 still judge the parameter it did close,
+        // or does the dollar count refuse the text whole? The two readings differ on whether a checker may
+        // keep what it collected before it lost the thread.
+        actual.put("a good parameter before an unterminated one", message("see $Premium$ and $Adjuster"));
 
         Map<String, String> expected = new LinkedHashMap<>();
         expected.put("a field the condition DOES read — the control", ADMITTED);
@@ -121,6 +125,10 @@ class MessageParameterMembershipLawsTest {
         // to judge. So `$$` is the escape only OUTSIDE a parameter; inside one, the first `$` ends it.
         expected.put("two parameters sharing a dollar pair", "INVALID_FIELD,INVALID_FIELD");
         expected.put("a dollar pair inside a name", "INVALID_ENTITY,INVALID_ENTITY");
+        // Only the dollar count — the parameter A12 DID close draws nothing, so the text is refused whole.
+        // A checker keeping what it collected before it lost the thread would report the membership class on
+        // a model A12 never gave that verdict for, which is the one direction this project forbids.
+        expected.put("a good parameter before an unterminated one", "WRONG_NUMBER_OF_DOLLARS");
         assertEquals(expected, actual, "which class each parameter shape draws");
     }
 
