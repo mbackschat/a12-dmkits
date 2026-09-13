@@ -1,7 +1,7 @@
 package io.github.mbackschat.a12.dm.consistency
 
 /**
- * Whether a declared GROUP or FIELD name is one A12 accepts — and it is two laws, not one.
+ * Whether a declared GROUP or FIELD name is one A12 accepts — and it is three laws, not one.
  *
  * **The carriers do not share their alphabet, measured row for row** ([KERNEL-FINDINGS KF315],
  * `rulekit.validate.laws.GroupNameAlphabetLawsTest` and `FieldNameAlphabetLawsTest`). A group below the root
@@ -31,34 +31,57 @@ package io.github.mbackschat.a12.dm.consistency
  *
  * **What it deliberately leaves to A12**, all of it under-reporting: a name longer than the group carrier's
  * 60 characters, which A12 refuses with no code at all and this checker has no shape for; a non-ASCII
- * character; the SECOND code a digit-initial field name draws beside the one reported here; and an `xml`
- * prefix, which A12 refuses on a field and on both group carriers under two different classes.
+ * character; and a name that breaks its alphabet AND a prefix gate at once, which is reported for the
+ * character alone because the pair has not been measured.
  */
-fun PreparedModel.elementNameAlphabetFindings(): List<Finding> = elements.mapNotNull { element ->
+fun PreparedModel.elementNameAlphabetFindings(): List<Finding> = elements.flatMap { element ->
     when (element.declaredKind) {
-        DeclaredKind.GROUP -> element.groupNameFinding()
-        DeclaredKind.FIELD -> element.fieldNameFinding()
-        else -> null
+        DeclaredKind.GROUP -> element.groupNameFindings()
+        DeclaredKind.FIELD -> element.fieldNameFindings()
+        else -> emptyList()
     }
 }
 
-private fun DeclaredElement.groupNameFinding(): Finding? {
+/**
+ * The prefix A12 reserves on every element carrier, case-insensitively.
+ *
+ * Measured on all three: a field, a group below the root and the root group each refuse `xml`, `XML`, `Xml`
+ * and the bare name `xml`, and each admits `xm` and a name merely containing `xml`. A name whose alphabet is
+ * already broken is reported for the character instead, which under-reports a name that breaks both.
+ */
+private fun DeclaredElement.reservedPrefixFinding(code: String, carrier: String): Finding? =
+    if (!name.lowercase().startsWith("xml")) {
+        null
+    } else {
+        nameFinding(
+            code,
+            "this $carrier's name begins with `xml`, which A12 reserves whatever its case — a name merely " +
+                "containing `xml` is admitted",
+        )
+    }
+
+private fun DeclaredElement.groupNameFindings(): List<Finding> {
     illegalCharacter()?.let { (at, character) ->
-        return nameFinding(
-            if (character == '/') "MVK_PATHS_INCONSISTENT" else "MVK_PATH_INVALID",
-            at,
-            character,
+        return listOf(
+            nameFinding(
+                if (character == '/') "MVK_PATHS_INCONSISTENT" else "MVK_PATH_INVALID",
+                at,
+                character,
+            ),
         )
     }
     if (name.firstOrNull()?.isDigit() == true) {
         // Which class this draws is the ROOT group's business: below the root A12 reports the path one and
         // no name one, and on the root group the reverse.
-        return nameFinding(
-            if (isRootGroup) "MVK_NAME_STARTS_WITH_DIGIT" else "MVK_PATH_INVALID",
-            "this group's name begins with a digit, and A12 requires a name to begin with a letter or an " +
-                "underscore",
+        return listOf(
+            nameFinding(
+                if (isRootGroup) "MVK_NAME_STARTS_WITH_DIGIT" else "MVK_PATH_INVALID",
+                "this group's name begins with a digit, and A12 requires a name to begin with a letter or " +
+                    "an underscore",
+            ),
         )
     }
+    reservedPrefixFinding("MVK_NAME_STARTS_WITH_XML", "group")?.let { return listOf(it) }
     // The gate A12's own message does not mention: its path validator's sentence says a leading underscore is
     // legal, and a second gate then reserves that prefix for A12's own declarations. It is a law of groups
     // BELOW the root — the root group takes `_Orders` and `__other` — so asking it of every group refused a
@@ -66,14 +89,16 @@ private fun DeclaredElement.groupNameFinding(): Finding? {
     if (!isRootGroup && name.startsWith("_") &&
         RESERVED_GROUP_NAMES.none { name == it || name.startsWith("${it}_") }
     ) {
-        return nameFinding(
-            "NAME_STARTS_WITH_UNDERSCORE_AND_WRONG_PATTERN",
-            "this group's name begins with an underscore, which A12 reserves for " +
-                "${RESERVED_GROUP_NAMES.joinToString(" and ") { "`$it`" }} — the path validator's own message " +
-                "says a leading underscore is legal and a second gate refuses it",
+        return listOf(
+            nameFinding(
+                "NAME_STARTS_WITH_UNDERSCORE_AND_WRONG_PATTERN",
+                "this group's name begins with an underscore, which A12 reserves for " +
+                    "${RESERVED_GROUP_NAMES.joinToString(" and ") { "`$it`" }} — the path validator's own " +
+                    "message says a leading underscore is legal and a second gate refuses it",
+            ),
         )
     }
-    return null
+    return emptyList()
 }
 
 /**
@@ -85,29 +110,40 @@ private fun DeclaredElement.groupNameFinding(): Finding? {
 private val DeclaredElement.isRootGroup: Boolean
     get() = path.count { it == '/' } == 1
 
-private fun DeclaredElement.fieldNameFinding(): Finding? {
+private fun DeclaredElement.fieldNameFindings(): List<Finding> {
     illegalCharacter()?.let { (at, character) ->
-        return nameFinding(
-            when (character) {
-                '/' -> "MVK_PATHS_INCONSISTENT"
-                '.', ':' -> "MVK_NAME_INVALID_DOT_COLON_A12_DV"
-                else -> "MVK_PATH_INVALID"
-            },
-            at,
-            character,
+        return listOf(
+            nameFinding(
+                when (character) {
+                    '/' -> "MVK_PATHS_INCONSISTENT"
+                    '.', ':' -> "MVK_NAME_INVALID_DOT_COLON_A12_DV"
+                    else -> "MVK_PATH_INVALID"
+                },
+                at,
+                character,
+            ),
         )
     }
     if (name.firstOrNull()?.isDigit() == true) {
-        return nameFinding(
-            "MVK_PATH_INVALID",
-            "this field's name begins with a digit, and A12 requires a name to begin with a letter or an " +
-                "underscore — it also reports `MVK_NAME_STARTS_WITH_DIGIT_A12_DV` for this shape, which this " +
-                "finding does not repeat",
+        // Two classes, because A12 reports two — the path one and the field carrier's own name one. Stating
+        // only the first would name one of the two fixes an author's report from A12 will carry.
+        return listOf(
+            nameFinding(
+                "MVK_PATH_INVALID",
+                "this field's name begins with a digit, and A12 requires a name to begin with a letter or " +
+                    "an underscore",
+            ),
+            nameFinding(
+                "MVK_NAME_STARTS_WITH_DIGIT_A12_DV",
+                "this field's name begins with a digit, which A12's field-name gate refuses beside the " +
+                    "path one",
+            ),
         )
     }
+    reservedPrefixFinding("MVK_NAME_STARTS_WITH_XML_A12_DV", "field")?.let { return listOf(it) }
     // A leading underscore is deliberately not reported here: it is ADMITTED on a field and refused on a
-    // group, measured, and this is the row that makes the two carriers separate laws rather than one.
-    return null
+    // group below the root, measured, and that row is what makes the carriers separate laws rather than one.
+    return emptyList()
 }
 
 /**

@@ -119,8 +119,82 @@ class ElementNameAlphabetTest {
         // no path one, a group below it with the path class and no name one.
         expected["a ROOT group beginning with a digit"] = listOf("MVK_NAME_STARTS_WITH_DIGIT")
         expected["a NESTED group beginning with a digit"] = pathInvalid
-        expected["a FIELD beginning with a digit"] = pathInvalid
+        // A12 reports BOTH classes for this shape on the field carrier, so both are stated.
+        expected["a FIELD beginning with a digit"] = pathInvalid + "MVK_NAME_STARTS_WITH_DIGIT_A12_DV"
         assertEquals(expected, actual, "which code each illegal character draws on each carrier")
+    }
+
+    /**
+     * The `xml` prefix, which A12 reserves on both kinds of element and spells differently on each.
+     *
+     * The mixed-case and bare-`xml` rows are measured on every carrier rather than transferred from the
+     * field: this law's neighbours part on the carrier twice over, so a case rule confirmed on one of them
+     * is not evidence about the others — and refusing `XmlPrice` on a carrier that admits it would be an
+     * over-rejection reached by analogy.
+     */
+    @Test
+    fun theReservedXmlPrefixOnEachCarrier() {
+        val actual = mutableMapOf<String, List<String>>()
+        actual["a FIELD starting with `xml`"] = codes("Catalog", "xmlPrice")
+        actual["a FIELD starting with `XML`"] = codes("Catalog", "XMLPrice")
+        actual["a FIELD starting with `Xml`"] = codes("Catalog", "XmlPrice")
+        actual["a FIELD named exactly `xml`"] = codes("Catalog", "xml")
+        actual["a FIELD starting with `xm`"] = codes("Catalog", "xmPrice")
+        actual["a FIELD merely CONTAINING xml"] = codes("Catalog", "PriceXmlId")
+        actual["a ROOT group starting with `xml`"] = codes("xmlCatalog")
+        actual["a ROOT group starting with `Xml`"] = codes("XmlCatalog")
+        actual["a NESTED group starting with `XML`"] = nestedCodes("XMLAddress")
+        actual["a NESTED group named exactly `xml`"] = nestedCodes("xml")
+        actual["a NESTED group merely CONTAINING xml"] = nestedCodes("AddressXmlId")
+
+        val expected = mutableMapOf<String, List<String>>()
+        // The field carrier's spelling of the class is the suffixed one; both group carriers' is the bare one.
+        expected["a FIELD starting with `xml`"] = listOf("MVK_NAME_STARTS_WITH_XML_A12_DV")
+        expected["a FIELD starting with `XML`"] = listOf("MVK_NAME_STARTS_WITH_XML_A12_DV")
+        expected["a FIELD starting with `Xml`"] = listOf("MVK_NAME_STARTS_WITH_XML_A12_DV")
+        expected["a FIELD named exactly `xml`"] = listOf("MVK_NAME_STARTS_WITH_XML_A12_DV")
+        expected["a FIELD starting with `xm`"] = emptyList()
+        expected["a FIELD merely CONTAINING xml"] = emptyList()
+        expected["a ROOT group starting with `xml`"] = listOf("MVK_NAME_STARTS_WITH_XML")
+        expected["a ROOT group starting with `Xml`"] = listOf("MVK_NAME_STARTS_WITH_XML")
+        expected["a NESTED group starting with `XML`"] = listOf("MVK_NAME_STARTS_WITH_XML")
+        expected["a NESTED group named exactly `xml`"] = listOf("MVK_NAME_STARTS_WITH_XML")
+        expected["a NESTED group merely CONTAINING xml"] = emptyList()
+        assertEquals(expected, actual, "the reserved `xml` prefix on each carrier")
+    }
+
+    /**
+     * A RULE's name is asked nothing, and that is measured rather than merely unimplemented.
+     *
+     * A digit-initial or dotted rule name leaves A12 unable to BUILD the model, so no class exists for this
+     * family to reproduce there, and an `xml` prefix on a rule is simply admitted.
+     */
+    @Test
+    fun aRulesOwnNameIsNotJudged() {
+        val actual = mutableMapOf<String, List<String>>()
+        for (name in listOf("Sound", "xmlRule", "1Rule", "Some.Rule")) {
+            actual["a RULE named `$name`"] = check(
+                ModelSource(
+                    """
+                    {"header":{"id":"catalog","locales":[{"code":"en_US"}]},
+                     "content":{"modelRoot":{"rootGroups":[
+                      {"type":"Group","id":"g0","name":"Catalog","Group":{"elements":[
+                        {"type":"Field","id":"f0","name":"Price","Field":{"fieldType":{"type":"StringType"}}},
+                        {"type":"Rule","id":"r0","name":"${'$'}NAME","Rule":{
+                          "errorCondition":"FieldFilled(Price)","errorEntityRelPath":"../Price",
+                          "errorCode":"C1","errorMessage":[{"locale":"en_US","text":"x"}]}}
+                      ]}}
+                     ]}}}
+                    """.trimIndent().replace("\$NAME", name),
+                ),
+            ).findings.map { it.code }
+        }
+
+        assertEquals(
+            listOf("Sound", "xmlRule", "1Rule", "Some.Rule").associate { "a RULE named `$it`" to emptyList<String>() },
+            actual,
+            "a rule's own name is not judged",
+        )
     }
 
     /** The finding locates the character, which is the only part an author cannot see in a long name. */

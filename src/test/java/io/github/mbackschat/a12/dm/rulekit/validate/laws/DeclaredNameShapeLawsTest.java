@@ -129,6 +129,9 @@ class DeclaredNameShapeLawsTest {
         rows.put("a name starting with a digit", withFieldNamed("1Customer"));
         rows.put("a name starting with `xml`", withFieldNamed("xmlCustomer"));
         rows.put("a name starting with `XML` in capitals", withFieldNamed("XMLCustomer"));
+        rows.put("a name starting with `Xml` in mixed case", withFieldNamed("XmlCustomer"));
+        rows.put("a name that IS `xml`", withFieldNamed("xml"));
+        rows.put("a name starting with `xm`", withFieldNamed("xmCustomer"));
         rows.put("a name merely CONTAINING xml", withFieldNamed("CustomerXmlId"));
 
         Map<String, String> actual = new LinkedHashMap<>();
@@ -144,6 +147,9 @@ class DeclaredNameShapeLawsTest {
                 "MVK_PATH_INVALID,MVK_NAME_STARTS_WITH_DIGIT_A12_DV");
         expected.put("a name starting with `xml`", "MVK_NAME_STARTS_WITH_XML_A12_DV");
         expected.put("a name starting with `XML` in capitals", "MVK_NAME_STARTS_WITH_XML_A12_DV");
+        expected.put("a name starting with `Xml` in mixed case", "MVK_NAME_STARTS_WITH_XML_A12_DV");
+        expected.put("a name that IS `xml`", "MVK_NAME_STARTS_WITH_XML_A12_DV");
+        expected.put("a name starting with `xm`", KernelLaws.ADMITTED);
         expected.put("a name merely CONTAINING xml", KernelLaws.ADMITTED);
         assertEquals(expected, actual, "what A12 says about a field's own name shape");
     }
@@ -176,12 +182,15 @@ class DeclaredNameShapeLawsTest {
         rows.put("a NESTED group starting with a digit", withNestedGroupNamed("1Address"));
         rows.put("a NESTED group starting with `xml`", withNestedGroupNamed("xmlAddress"));
         rows.put("a NESTED group starting with `XML` in capitals", withNestedGroupNamed("XMLAddress"));
+        rows.put("a NESTED group starting with `Xml` in mixed case", withNestedGroupNamed("XmlAddress"));
+        rows.put("a NESTED group named exactly `xml`", withNestedGroupNamed("xml"));
         rows.put("a NESTED group merely CONTAINING xml", withNestedGroupNamed("AddressXmlId"));
         rows.put("a ROOT group, ordinary name — the control", withRootGroupNamed("Purchase"));
         rows.put("a ROOT group with an EMPTY name", withRootGroupNamed(""));
         rows.put("a ROOT group starting with a digit", withRootGroupNamed("1Order"));
         rows.put("a ROOT group starting with `xml`", withRootGroupNamed("xmlOrder"));
         rows.put("a ROOT group starting with `XML` in capitals", withRootGroupNamed("XMLOrder"));
+        rows.put("a ROOT group starting with `Xml` in mixed case", withRootGroupNamed("XmlOrder"));
         rows.put("a RULE, ordinary name — the control", withRuleNamed("CustomerReferencePresent"));
         rows.put("a RULE starting with `xml`", withRuleNamed("xmlRule"));
         rows.put("a RULE with an EMPTY name", withRuleNamed(""));
@@ -200,6 +209,8 @@ class DeclaredNameShapeLawsTest {
         expected.put("a NESTED group starting with a digit", "MVK_PATH_INVALID");
         expected.put("a NESTED group starting with `xml`", "MVK_NAME_STARTS_WITH_XML");
         expected.put("a NESTED group starting with `XML` in capitals", "MVK_NAME_STARTS_WITH_XML");
+        expected.put("a NESTED group starting with `Xml` in mixed case", "MVK_NAME_STARTS_WITH_XML");
+        expected.put("a NESTED group named exactly `xml`", "MVK_NAME_STARTS_WITH_XML");
         expected.put("a NESTED group merely CONTAINING xml", KernelLaws.ADMITTED);
         expected.put("a ROOT group, ordinary name — the control", KernelLaws.ADMITTED);
         // A bare RuntimeException past every typed channel — not a verdict and not a refusal.
@@ -208,6 +219,7 @@ class DeclaredNameShapeLawsTest {
         expected.put("a ROOT group starting with a digit", "MVK_NAME_STARTS_WITH_DIGIT");
         expected.put("a ROOT group starting with `xml`", "MVK_NAME_STARTS_WITH_XML");
         expected.put("a ROOT group starting with `XML` in capitals", "MVK_NAME_STARTS_WITH_XML");
+        expected.put("a ROOT group starting with `Xml` in mixed case", "MVK_NAME_STARTS_WITH_XML");
         expected.put("a RULE, ordinary name — the control", KernelLaws.ADMITTED);
         expected.put("a RULE starting with `xml`", KernelLaws.ADMITTED);
         expected.put("a RULE with an EMPTY name", KernelLaws.NOT_BUILDABLE);

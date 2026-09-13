@@ -6385,7 +6385,8 @@ Each of the three excluded members is measured ADMITTED on its own, so every row
 | the name | on a FIELD | on a NESTED group | on the ROOT group | on a RULE |
 |---|---|---|---|---|
 | starts with `xml` | `MVK_NAME_STARTS_WITH_XML_A12_DV` | `MVK_NAME_STARTS_WITH_XML` | `MVK_NAME_STARTS_WITH_XML` | ADMITTED |
-| starts with `XML` | `MVK_NAME_STARTS_WITH_XML_A12_DV` | `MVK_NAME_STARTS_WITH_XML` | `MVK_NAME_STARTS_WITH_XML` | — |
+| starts with `XML` or `Xml`, or IS `xml` | `MVK_NAME_STARTS_WITH_XML_A12_DV` | `MVK_NAME_STARTS_WITH_XML` | `MVK_NAME_STARTS_WITH_XML` | — |
+| starts with `xm` | ADMITTED | — | — | — |
 | merely CONTAINS `xml` | ADMITTED | ADMITTED | — | — |
 | starts with a digit | `MVK_PATH_INVALID`, `MVK_NAME_STARTS_WITH_DIGIT_A12_DV` | `MVK_PATH_INVALID` | `MVK_NAME_STARTS_WITH_DIGIT` | NOT BUILDABLE |
 | is EMPTY or BLANK | NOT BUILDABLE | NOT BUILDABLE | RAISED (untyped) | NOT BUILDABLE |
