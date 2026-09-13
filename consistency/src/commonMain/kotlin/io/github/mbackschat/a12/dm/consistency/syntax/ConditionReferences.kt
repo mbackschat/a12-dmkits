@@ -48,6 +48,9 @@ internal fun namesRuleContext(text: String, language: ConditionLanguage): Boolea
  * (`rulekit.validate.laws.StarredNonRepeatableReachLawsTest`). It needs its own question for the same reason
  * [namesRuleContext] does — the spelling is a keyword, so it never reaches a consumer through [referencesIn],
  * and a family judging starred references alone would stay silent on a shape A12 rejects.
+ *
+ * The test is on the TOKEN, so a QUOTED `'RuleGroup'` is correctly not this: quoting is A12's escape for a
+ * name that collides with a keyword, so it names a declared group and is judged as one.
  */
 internal fun starsRuleContext(text: String, language: ConditionLanguage): Boolean {
     val tokens = tokenize(text)

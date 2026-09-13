@@ -1,6 +1,5 @@
 package io.github.mbackschat.a12.dm.consistency
 
-import io.github.mbackschat.a12.dm.consistency.syntax.isRuleContext
 import io.github.mbackschat.a12.dm.consistency.syntax.referencesIn
 import io.github.mbackschat.a12.dm.consistency.syntax.starsRuleContext
 import kotlinx.serialization.json.JsonPrimitive
@@ -99,9 +98,6 @@ private fun PreparedModel.offenceAt(
     return when {
         // A bare `*` names no segment at all; whether such a text is a condition is the grammar family's.
         stepped.isEmpty() -> null
-        // Not the rule-context entity: it is a keyword, so it never arrives as a reference segment. It is
-        // judged on the TEXT above, and asserting its absence here keeps the two readings from drifting.
-        isRuleContext(stepped, conditionLanguage) -> null
         stepped == ".." -> upStepOffence(segments, at, declaringGroup, origin)
         // A `.` self-step, and the named turning point `..Ancestor`: A12's class for a star on either is
         // unmeasured, and naming the wrong one is worse than saying nothing.
