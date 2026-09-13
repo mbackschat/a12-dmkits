@@ -44,6 +44,20 @@ class MessageSlotRawShapeLawsTest {
 
     private static final String UNREADABLE = KernelLaws.UNREADABLE;
 
+    /**
+     * The unprefixed class that co-fires with a message verdict, and the reason it is spelled out per row.
+     *
+     * <p>A12 reports the rule's own "no error text" class beside the message code in some of these rows and
+     * not in others — a whitespace-only text draws {@code MVK_ERROR_MESSAGE_MISSING} alone where a blank
+     * LATER duplicate draws both, and the rows that declare no locale at all draw neither. No mechanism is
+     * claimed for that split; the rows record which spelling each shape draws, because a checker mirroring
+     * one of them states a class A12 did not report for the other.
+     *
+     * <p>Every row here read {@code MVK_ERROR_MESSAGE_MISSING} alone until the harness stopped lifting
+     * classes by an {@code MVK_} prefix, which silently dropped this one — see {@link KernelLaws#verdictOf}.
+     */
+    private static final String AND_NO_ERROR_TEXT = ",RULE_HAS_NO_ERRORTEXT";
+
     private static final String EN = "{\"locale\":\"en_US\",\"text\":\"x\"}";
     private static final String DE = "{\"locale\":\"de_DE\",\"text\":\"y\"}";
     private static final String EN_ONLY = "[{\"code\":\"en_US\"}]";
@@ -70,7 +84,8 @@ class MessageSlotRawShapeLawsTest {
         expected.put("header en_US · message en-US", ADMITTED);
         expected.put("header en_us", UNREADABLE);
         expected.put("header as bare strings", ADMITTED);
-        expected.put("header as bare strings, one message", "MVK_ERROR_MESSAGE_FOR_LANGUAGE_MISSING");
+        expected.put("header as bare strings, one message",
+                "MVK_ERROR_MESSAGE_FOR_LANGUAGE_MISSING" + AND_NO_ERROR_TEXT);
         // A model declaring NO locale is invalid in its own right (MVK_SUPP_LANGUAGES_MISSING) AND collects
         // no message at all, so its rules are message-less whatever they carry. The pair is the row that
         // separates "this locale has no text" from "there is no text": a message for an undeclared locale is
@@ -143,7 +158,7 @@ class MessageSlotRawShapeLawsTest {
         // The empty code reads on this side too, and covers no declared language, so the rule is left with
         // no message at all rather than the model being unbuildable — the header's own empty-code row is
         // what makes a model unbuildable, and only there.
-        expected.put("(empty)", "MVK_ERROR_MESSAGE_MISSING");
+        expected.put("(empty)", "MVK_ERROR_MESSAGE_MISSING" + AND_NO_ERROR_TEXT);
         assertEquals(expected, actual, "which locale spellings a message entry accepts");
     }
 
@@ -197,7 +212,8 @@ class MessageSlotRawShapeLawsTest {
         // …and the matching cell, which answers with the OTHER code: a message whose locale is not declared
         // is never collected at all, so the rule has no message for any declared language rather than one
         // missing for a particular language. That is the rule the two codes actually split on.
-        assertEquals("MVK_ERROR_MESSAGE_MISSING", verdict("[{\"code\":\"en\"}]", "[" + EN + "]"),
+        assertEquals("MVK_ERROR_MESSAGE_MISSING" + AND_NO_ERROR_TEXT,
+                verdict("[{\"code\":\"en\"}]", "[" + EN + "]"),
                 "a bare declared locale is not matched by a full message code — they are different locales");
     }
 
@@ -222,8 +238,8 @@ class MessageSlotRawShapeLawsTest {
         // reader iterates the node's ELEMENTS, which for an object are its values, so an object-wrapped
         // entry is read exactly as an array-wrapped one. It is the entry's own members that must be strings.
         expected.put("errorMessage as an object", ADMITTED);
-        expected.put("errorMessage as a string", "MVK_ERROR_MESSAGE_MISSING");
-        expected.put("errorMessage as a number", "MVK_ERROR_MESSAGE_MISSING");
+        expected.put("errorMessage as a string", "MVK_ERROR_MESSAGE_MISSING" + AND_NO_ERROR_TEXT);
+        expected.put("errorMessage as a number", "MVK_ERROR_MESSAGE_MISSING" + AND_NO_ERROR_TEXT);
         assertEquals(expected, actual, "what A12 does with a message entry its reader cannot take");
     }
 
@@ -244,7 +260,7 @@ class MessageSlotRawShapeLawsTest {
 
         Map<String, String> expected = new LinkedHashMap<>();
         expected.put("duplicate, both filled", ADMITTED);
-        expected.put("duplicate, LATER blank", "MVK_ERROR_MESSAGE_MISSING");
+        expected.put("duplicate, LATER blank", "MVK_ERROR_MESSAGE_MISSING" + AND_NO_ERROR_TEXT);
         expected.put("duplicate, EARLIER blank", ADMITTED);
         expected.put("whitespace-only text", "MVK_ERROR_MESSAGE_MISSING");
         assertEquals(expected, actual, "which entry for one locale A12 keeps, and what counts as its text");

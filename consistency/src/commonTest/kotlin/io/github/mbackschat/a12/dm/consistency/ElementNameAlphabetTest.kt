@@ -10,9 +10,12 @@ import kotlin.test.assertEquals
  * `rulekit.validate.laws.GroupNameAlphabetLawsTest` and `FieldNameAlphabetLawsTest`, whose character sweeps
  * cover every printable ASCII character outside the admitted alphabet on both carriers.
  *
- * **The rows where the two carriers DISAGREE are the point.** A single alphabet would have refused a field
- * named `_Slots`, which A12 admits, and stayed silent about a group named `_Slots`, which A12 refuses. Both
- * appear here side by side so the divergence is locked rather than implied.
+ * **The rows where the carriers DISAGREE are the point.** A single alphabet would have refused a field
+ * named `_Slots`, which A12 admits, and stayed silent about a nested group named `_Slots`, which A12
+ * refuses. There are THREE carriers, not two: a group's own laws part again on whether it is the ROOT group
+ * ([KERNEL-FINDINGS KF322], `rulekit.validate.laws.DeclaredNameShapeLawsTest`), which admits a leading
+ * underscore and answers a digit-initial name with its own class. Every divergence is locked here rather
+ * than implied, because each one is a class A12 does not emit on the neighbouring carrier.
  */
 class ElementNameAlphabetTest {
 
@@ -30,6 +33,23 @@ class ElementNameAlphabetTest {
         ),
     ).findings.map { it.code }
 
+    /** …and the same pair with [groupName] a group NESTED inside the root one, which is a third carrier. */
+    private fun nestedCodes(groupName: String): List<String> = check(
+        ModelSource(
+            """
+            {"header":{"id":"catalog","locales":[{"code":"en_US"}]},
+             "content":{"modelRoot":{"rootGroups":[
+              {"type":"Group","id":"g0","name":"Catalog","Group":{"elements":[
+                {"type":"Group","id":"g1","name":"${'$'}GROUP","Group":{"elements":[
+                  {"type":"Field","id":"f0","name":"Price","Field":{"fieldType":{"type":"StringType"}}}
+                ]}}
+              ]}}
+             ]}}}
+            """.trimIndent().replace("\$GROUP", groupName),
+        ),
+    ).findings.map { it.code }
+
+    private val underscore = listOf("NAME_STARTS_WITH_UNDERSCORE_AND_WRONG_PATTERN")
     private val pathInvalid = listOf("MVK_PATH_INVALID")
     private val inconsistent = listOf("MVK_PATHS_INCONSISTENT")
 
@@ -37,22 +57,27 @@ class ElementNameAlphabetTest {
     fun theTwoCarriersAreAskedTheirOwnQuestion() {
         val actual = mutableMapOf<String, List<String>>()
         actual["a well-formed pair — the control"] = codes("Catalog")
-        actual["a GROUP with a leading underscore"] = codes("_Catalog")
+        actual["a NESTED group with a leading underscore"] = nestedCodes("_Address")
+        actual["a ROOT group with a leading underscore"] = codes("_Catalog")
         actual["a FIELD with a leading underscore"] = codes("Catalog", "_Price")
-        actual["a GROUP named __meta"] = codes("__meta")
-        actual["a GROUP named __attachment_meta_photo"] = codes("__attachment_meta_photo")
-        actual["a GROUP named __other"] = codes("__other")
+        actual["a NESTED group named __meta"] = nestedCodes("__meta")
+        actual["a NESTED group named __attachment_meta_photo"] = nestedCodes("__attachment_meta_photo")
+        actual["a NESTED group named __other"] = nestedCodes("__other")
+        actual["a ROOT group named __other"] = codes("__other")
         actual["a GROUP with a non-ASCII letter"] = codes("Katalög")
         actual["a FIELD with a non-ASCII letter"] = codes("Catalog", "Preis_ö")
 
         val expected = mutableMapOf<String, List<String>>()
         expected["a well-formed pair — the control"] = emptyList()
-        // The divergence, in both directions on one member.
-        expected["a GROUP with a leading underscore"] = listOf("NAME_STARTS_WITH_UNDERSCORE_AND_WRONG_PATTERN")
+        // The divergence, in three directions on one member: A12 reserves the prefix on a group BELOW the
+        // root, admits it on the root group, and admits it on a field.
+        expected["a NESTED group with a leading underscore"] = underscore
+        expected["a ROOT group with a leading underscore"] = emptyList()
         expected["a FIELD with a leading underscore"] = emptyList()
-        expected["a GROUP named __meta"] = emptyList()
-        expected["a GROUP named __attachment_meta_photo"] = emptyList()
-        expected["a GROUP named __other"] = listOf("NAME_STARTS_WITH_UNDERSCORE_AND_WRONG_PATTERN")
+        expected["a NESTED group named __meta"] = emptyList()
+        expected["a NESTED group named __attachment_meta_photo"] = emptyList()
+        expected["a NESTED group named __other"] = underscore
+        expected["a ROOT group named __other"] = emptyList()
         // Silent on BOTH carriers, and for different reasons: A12 admits it on a group, and on a field only
         // one such character has been measured — so refusing the class would rest a rejection on one row.
         expected["a GROUP with a non-ASCII letter"] = emptyList()
@@ -74,7 +99,8 @@ class ElementNameAlphabetTest {
         }
         actual["a GROUP with the separator"] = codes("Cata/log")
         actual["a FIELD with the separator"] = codes("Catalog", "Pri/ce")
-        actual["a GROUP beginning with a digit"] = codes("1Catalog")
+        actual["a ROOT group beginning with a digit"] = codes("1Catalog")
+        actual["a NESTED group beginning with a digit"] = nestedCodes("1Address")
         actual["a FIELD beginning with a digit"] = codes("Catalog", "1Price")
 
         val expected = mutableMapOf<String, List<String>>()
@@ -89,7 +115,10 @@ class ElementNameAlphabetTest {
         // Not a bad name at all: the element's own path stops agreeing with the tree it is declared in.
         expected["a GROUP with the separator"] = inconsistent
         expected["a FIELD with the separator"] = inconsistent
-        expected["a GROUP beginning with a digit"] = pathInvalid
+        // The digit row parts on depth rather than on kind: the root group answers with its own class and
+        // no path one, a group below it with the path class and no name one.
+        expected["a ROOT group beginning with a digit"] = listOf("MVK_NAME_STARTS_WITH_DIGIT")
+        expected["a NESTED group beginning with a digit"] = pathInvalid
         expected["a FIELD beginning with a digit"] = pathInvalid
         assertEquals(expected, actual, "which code each illegal character draws on each carrier")
     }

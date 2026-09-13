@@ -4,11 +4,20 @@ package io.github.mbackschat.a12.dm.consistency
  * Whether a declared GROUP or FIELD name is one A12 accepts — and it is two laws, not one.
  *
  * **The carriers do not share their alphabet, measured row for row** ([KERNEL-FINDINGS KF315],
- * `rulekit.validate.laws.GroupNameAlphabetLawsTest` and `FieldNameAlphabetLawsTest`). A group refuses a
- * leading underscore that a field ADMITS, and admits a non-ASCII letter that a field refuses; the 60-character
- * limit is the group's alone. Applying one carrier's law to the other would have refused a field named
- * `_Slots`, which is the direction this checker may not take — so the two are asked separately and a carrier
- * with no grid (a rule's or a computation's name) is not asked at all.
+ * `rulekit.validate.laws.GroupNameAlphabetLawsTest` and `FieldNameAlphabetLawsTest`). A group below the root
+ * refuses a leading underscore that a field ADMITS, and admits a non-ASCII letter that a field refuses; the
+ * 60-character limit is the group's alone. Applying one carrier's law to the other would have refused a
+ * field named `_Slots`, which is the direction this checker may not take — so the two are asked separately.
+ *
+ * **And "group" is two carriers, not one** ([KERNEL-FINDINGS KF322], `DeclaredNameShapeLawsTest`). The ROOT
+ * group admits the leading underscore that a group below it refuses, and answers a digit-initial name with
+ * `MVK_NAME_STARTS_WITH_DIGIT` where the nested one answers with the path class and no name class. This
+ * checker asked every group the nested law until that was measured, and so refused a legal model — the
+ * alphabet rows all transfer, which is why nothing here prompted the question.
+ *
+ * **A RULE's or a COMPUTATION's name is not asked at all**, and that is now measured rather than merely
+ * unmeasured: a digit-initial or dotted rule name leaves A12 unable to BUILD the model, so no class exists
+ * for this family to reproduce, and an `xml` prefix on a rule is simply admitted.
  *
  * **The character denominator is DERIVED and complete**: every printable ASCII character that is not a letter,
  * a digit or an underscore was put to the kernel on both carriers, and the code is written per outcome rather
@@ -22,7 +31,8 @@ package io.github.mbackschat.a12.dm.consistency
  *
  * **What it deliberately leaves to A12**, all of it under-reporting: a name longer than the group carrier's
  * 60 characters, which A12 refuses with no code at all and this checker has no shape for; a non-ASCII
- * character; and the SECOND code a digit-initial field name draws beside the one reported here.
+ * character; the SECOND code a digit-initial field name draws beside the one reported here; and an `xml`
+ * prefix, which A12 refuses on a field and on both group carriers under two different classes.
  */
 fun PreparedModel.elementNameAlphabetFindings(): List<Finding> = elements.mapNotNull { element ->
     when (element.declaredKind) {
@@ -41,15 +51,21 @@ private fun DeclaredElement.groupNameFinding(): Finding? {
         )
     }
     if (name.firstOrNull()?.isDigit() == true) {
+        // Which class this draws is the ROOT group's business: below the root A12 reports the path one and
+        // no name one, and on the root group the reverse.
         return nameFinding(
-            "MVK_PATH_INVALID",
+            if (isRootGroup) "MVK_NAME_STARTS_WITH_DIGIT" else "MVK_PATH_INVALID",
             "this group's name begins with a digit, and A12 requires a name to begin with a letter or an " +
                 "underscore",
         )
     }
     // The gate A12's own message does not mention: its path validator's sentence says a leading underscore is
-    // legal, and a second gate then reserves that prefix for A12's own declarations.
-    if (name.startsWith("_") && RESERVED_GROUP_NAMES.none { name == it || name.startsWith("${it}_") }) {
+    // legal, and a second gate then reserves that prefix for A12's own declarations. It is a law of groups
+    // BELOW the root — the root group takes `_Orders` and `__other` — so asking it of every group refused a
+    // legal model until the carrier was measured.
+    if (!isRootGroup && name.startsWith("_") &&
+        RESERVED_GROUP_NAMES.none { name == it || name.startsWith("${it}_") }
+    ) {
         return nameFinding(
             "NAME_STARTS_WITH_UNDERSCORE_AND_WRONG_PATTERN",
             "this group's name begins with an underscore, which A12 reserves for " +
@@ -59,6 +75,15 @@ private fun DeclaredElement.groupNameFinding(): Finding? {
     }
     return null
 }
+
+/**
+ * Whether this is a ROOT group of the model A12 builds, which its name laws part on.
+ *
+ * One path segment says it: a mounted provider's own root group DISAPPEARS into the mounting group, so an
+ * expanded include contributes no root group of its own and depth is what A12 sees.
+ */
+private val DeclaredElement.isRootGroup: Boolean
+    get() = path.count { it == '/' } == 1
 
 private fun DeclaredElement.fieldNameFinding(): Finding? {
     illegalCharacter()?.let { (at, character) ->

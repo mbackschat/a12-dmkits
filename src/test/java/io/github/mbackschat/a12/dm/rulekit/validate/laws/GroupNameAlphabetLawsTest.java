@@ -4,13 +4,10 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import java.util.LinkedHashMap;
 import java.util.Map;
-import java.util.stream.Collectors;
 
 import org.junit.jupiter.api.Test;
 
-import io.github.mbackschat.a12.dm.core.ModelConsistencyException;
 import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft;
-import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel;
 
 /**
  * KERNEL-FINDINGS §13 — <b>the group-declaration alphabet answers to TWO gates, and the kernel's own prose
@@ -66,39 +63,13 @@ class GroupNameAlphabetLawsTest {
                             .numberField("Qty", n -> n.fractionDigits(0))))
             .build().toJson();
 
-    /**
-     * ADMITTED, or the kernel CLASSES that refused the declaration — the terminal {@code [KEY]} of each
-     * notification that carries one.
-     *
-     * <p><b>Codeless prose is dropped deliberately, and that is the whole reason this helper exists.</b> One
-     * malformed name produces a coded notification plus the path validator's sentence re-reported, without a
-     * key, once per element beneath the offending path — so a raw collect returns three strings for `1Slots`
-     * and would grow if the fixture gained a field. The classes are the law; the multiplicity is a property of
-     * the fixture's shape. An earlier version mapped that prose ONTO {@code MVK_PATH_INVALID} by substring,
-     * which manufactured a label the notification did not carry — harmless here only because the real coded
-     * notification was already in the set, which is exactly why it was worth removing.
-     *
-     * <p>{@code (codeless)} is returned when a refusal carries no keyed notification at all, so that case can
-     * never read as an empty pass.
-     */
+    /** The bin sheet with its nested group named [groupName], as A12 judges it. */
     private static String declared(String groupName) {
-        String json = DocumentModelDraft.named("warehouse-bin").locale("en_US")
+        return KernelLaws.verdictOf(DocumentModelDraft.named("warehouse-bin").locale("en_US")
                 .rootGroup("Bin", b -> b
                         .stringField("Ref", s -> { })
                         .group(groupName, g -> g.numberField("Qty", n -> n.fractionDigits(0))))
-                .build().toJson();
-        try {
-            BoundModel.ofJson(json);
-            return KernelLaws.ADMITTED;
-        } catch (ModelConsistencyException rejected) {
-            String classes = rejected.notifications().stream()
-                    .map(n -> n.message().trim())
-                    .filter(m -> m.matches(".*\\[\\w+]$"))
-                    .map(m -> m.replaceAll(".*\\[(\\w+)]$", "$1"))
-                    .distinct()
-                    .collect(Collectors.joining(","));
-            return classes.isEmpty() ? "(codeless)" : classes;
-        }
+                .build().toJson());
     }
 
     private static String parameter(String messageText) {
@@ -165,7 +136,7 @@ class GroupNameAlphabetLawsTest {
         expected.put("Slot List — a space", "MVK_PATH_INVALID");
         expected.put("Slot:List — a colon", "MVK_PATH_INVALID");
         expected.put("60 characters — the stated limit", KernelLaws.ADMITTED);
-        expected.put("61 characters — one over", "(codeless)");
+        expected.put("61 characters — one over", KernelLaws.NOT_BUILDABLE);
         assertEquals(expected, actual, "a leading underscore is reserved, and 'letters' means Unicode letters");
     }
 

@@ -186,10 +186,12 @@ class StringTypeParameterLawsTest {
         expected.put("an ordinary custom type — the control", KernelLaws.ADMITTED);
         expected.put("a NEGATIVE minimum", KernelLaws.ADMITTED);
         expected.put("a real minimum with a NEGATIVE maximum", KernelLaws.ADMITTED);
-        // NOT the string type's coded verdict: on this carrier the inverted range stops A12 BUILDING the
-        // model, so there is no consistency finding to report at all. The sentinel rows agree; this one does
-        // not, which is why the carrier was measured instead of inheriting the sibling's rows.
-        expected.put("a minimum above the maximum", KernelLaws.NOT_BUILDABLE);
+        // The same law as the string type's, reported under a DIFFERENT class: this carrier's key carries no
+        // `MVK_` prefix. A checker naming the sibling's code for this carrier states one A12 never emits
+        // here, which is why the carrier was measured instead of inheriting the sibling's rows. (It read as
+        // NOT BUILDABLE until the harness stopped lifting classes by that prefix — a verdict A12 did reach,
+        // reported as no verdict at all.)
+        expected.put("a minimum above the maximum", "MIN_LENGTH_BIGGER_MAX_LENGTH");
         assertEquals(expected, actual, "the same two length members on a custom field type");
     }
 

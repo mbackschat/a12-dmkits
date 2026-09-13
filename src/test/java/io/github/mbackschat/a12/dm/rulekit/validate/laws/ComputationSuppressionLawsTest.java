@@ -79,10 +79,11 @@ class ComputationSuppressionLawsTest {
         expected.put("empty list", KernelLaws.ADMITTED);
         expected.put("the supported code", KernelLaws.ADMITTED);
         // The rows that decide whether our builder's single-member allowlist has a Kernel basis: it does.
-        // `verdictOf` lifts every MVK token out of the message, and the FIRST here is the offending code
-        // echoed back by the diagnostic — the verdict is `MVK_INVALID_SUPPRESSED_WARNING` in both rows.
-        expected.put("an unsupported but real MVK code", "MVK_ERROR_CODE_MISSING,MVK_INVALID_SUPPRESSED_WARNING");
-        expected.put("a code that does not exist at all", "MVK_TOTALLY_BOGUS,MVK_INVALID_SUPPRESSED_WARNING");
+        // Both rows read as the AUTHOR's own code followed by the verdict until the harness stopped scanning
+        // the message text for `MVK_` tokens — the diagnostic echoes the offending code back, so the second
+        // row's expectation once stated `MVK_TOTALLY_BOGUS`, a code A12 does not have, as A12's answer.
+        expected.put("an unsupported but real MVK code", "MVK_INVALID_SUPPRESSED_WARNING");
+        expected.put("a code that does not exist at all", "MVK_INVALID_SUPPRESSED_WARNING");
         // The law the LIST shape hides: two entries are comma-joined into one `@SuppressWarning(a,b)` pragma
         // and the grammar takes a single code, so a second entry is a PARSE error whatever it spells. This
         // control carries the supported code twice, so nothing about validity can explain it.

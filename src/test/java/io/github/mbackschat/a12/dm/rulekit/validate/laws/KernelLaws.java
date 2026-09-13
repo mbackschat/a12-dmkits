@@ -45,15 +45,25 @@ final class KernelLaws {
      */
     static final String RAISED_UNTYPED = "RAISED (untyped)";
 
-    /** The Kernel's own codes, lifted from the notification stream rather than matched against a guess. */
-    private static final java.util.regex.Pattern MVK = java.util.regex.Pattern.compile("MVK_[A-Z0-9_]+");
+    /**
+     * The Kernel's own class key, which every coded notification carries as the terminal {@code [KEY]}.
+     *
+     * <p><b>Matching {@code MVK_*} instead was a defect, and it published the wrong claim.</b> A12's keys are
+     * not all spelled that way — {@code NAME_STARTS_WITH_UNDERSCORE_AND_WRONG_PATTERN} and
+     * {@code INVALID_GROUP} carry no prefix — so a prefix match dropped them and the row fell through to
+     * {@link #NOT_BUILDABLE}, which says A12 reached no verdict about the declaration. It had reached one.
+     * Reading the key off the notification cannot miss a class this way, because it keys on the Kernel's
+     * format rather than on a family of names someone listed.
+     */
+    private static final java.util.regex.Pattern CLASS_KEY =
+            java.util.regex.Pattern.compile(".*\\[(\\w+)]$");
 
     private KernelLaws() {
     }
 
     /**
      * What A12 says about a whole stored model — {@link #ADMITTED}, {@link #UNREADABLE},
-     * {@link #NOT_BUILDABLE}, or its distinct {@code MVK_*} codes joined by commas in first-seen order.
+     * {@link #NOT_BUILDABLE}, or the distinct classes it reported, joined by commas in first-seen order.
      *
      * <p><b>Three verdicts, not two, and the third is the one that matters.</b> A shape A12's reader REFUSES
      * makes the model unreadable, so A12 never judges it at all. Reporting an {@code MVK_*} finding there
@@ -68,19 +78,20 @@ final class KernelLaws {
         } catch (io.github.mbackschat.a12.dm.core.ModelInputException unreadable) {
             return UNREADABLE;
         } catch (io.github.mbackschat.a12.dm.core.ModelConsistencyException rejected) {
-            String said = rejected.notifications().stream()
-                    .map(n -> n.message())
-                    .collect(Collectors.joining(" "));
-            java.util.regex.Matcher codes = MVK.matcher(said);
-            java.util.List<String> found = new java.util.ArrayList<>();
-            while (codes.find()) {
-                if (!found.contains(codes.group())) {
-                    found.add(codes.group());
-                }
-            }
-            // A rejection carrying no MVK_ code is the Kernel refusing to BUILD the model from inside
-            // checkConsistency — still not a verdict about its declarations, and still not an input refusal.
-            return found.isEmpty() ? NOT_BUILDABLE : String.join(",", found);
+            // Codeless prose is dropped deliberately: one malformed name also re-reports the path
+            // validator's sentence, unkeyed, once per element beneath the offending path, so the classes are
+            // the law and the multiplicity is a property of the fixture's shape.
+            String classes = rejected.notifications().stream()
+                    .map(n -> n.message().trim())
+                    .map(CLASS_KEY::matcher)
+                    .filter(java.util.regex.Matcher::matches)
+                    .map(m -> m.group(1))
+                    .distinct()
+                    .collect(Collectors.joining(","));
+            // A rejection carrying no keyed notification at all is the Kernel refusing to BUILD the model
+            // from inside checkConsistency — still not a verdict about its declarations, and not an input
+            // refusal either.
+            return classes.isEmpty() ? NOT_BUILDABLE : classes;
         } catch (RuntimeException raised) {
             // Last, so a typed refusal can never land here: only a throw that escaped every channel does.
             return RAISED_UNTYPED;

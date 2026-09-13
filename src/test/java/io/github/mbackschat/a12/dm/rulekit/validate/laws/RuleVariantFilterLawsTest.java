@@ -150,7 +150,8 @@ class RuleVariantFilterLawsTest {
         // checker cannot keep judging "the parts A12 still looks at", because there are none.
         expected.put("an error target naming no field, unfiltered", "MVK_ERROR_FIELD_MISSING,MVK_MISSING_ERROR_FIELD");
         expected.put("an error target naming no field, ONLY", KernelLaws.ADMITTED);
-        expected.put("no error message at all, unfiltered", "MVK_ERROR_MESSAGE_MISSING");
+        expected.put("no error message at all, unfiltered",
+                "MVK_ERROR_MESSAGE_MISSING,RULE_HAS_NO_ERRORTEXT");
         expected.put("no error message at all, ONLY", KernelLaws.ADMITTED);
         // THE EXCEPTION, and the row that shapes the fix: an empty error code still refuses the model, with
         // no MVK code at all rather than the one it carries unfiltered. A filter suppresses A12's VERDICTS

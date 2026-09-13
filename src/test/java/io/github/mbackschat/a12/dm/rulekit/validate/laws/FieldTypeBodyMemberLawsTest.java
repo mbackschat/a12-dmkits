@@ -126,7 +126,8 @@ class FieldTypeBodyMemberLawsTest {
         expected.put("EnumerationType with sorting only", KernelLaws.NOT_BUILDABLE);
         expected.put("EnumerationType with one value", KernelLaws.ADMITTED);
         expected.put("EnumerationType with both", KernelLaws.ADMITTED);
-        expected.put("CustomFieldType with a display name only", KernelLaws.NOT_BUILDABLE);
+        // The one row here that reaches a VERDICT rather than a build refusal — under an unprefixed class.
+        expected.put("CustomFieldType with a display name only", "CUSTOM_FIELD_TYPE_CODENAME_MISSING");
         expected.put("CustomFieldType with its name", KernelLaws.ADMITTED);
         expected.put("CustomFieldType with both", KernelLaws.ADMITTED);
         assertEquals(expected, actual, "which member each constructing field type requires");

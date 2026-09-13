@@ -6373,3 +6373,50 @@ Each of the three excluded members is measured ADMITTED on its own, so every row
 **modelkit's client-side refusal of a partially-labelled enumeration is CLEARED by this grid** rather than corrected: `DocumentModelDraft` throws when any value is labelled and any value lacks a label for a declared locale, which is exactly the pair of laws above, and it had only a comment for a basis.
 
 *Locked by:* `rulekit.validate.laws.EnumValueAndLabelLawsTest` (three grids, 20 rows); the portable checker's mirror is `consistency.EnumValueLabelTest`.
+
+## §13 supplement — a declared name's shape law is the CARRIER's, three ways: the code's spelling, whether a name code fires at all, and whether the name is judged (measured, 2026-09-13) <a id="kf322"></a>
+
+> Fold: pending — belongs beside [KERNEL-SEMANTICS](KERNEL-SEMANTICS.md) §13's declaration account, next to [KF315](#kf315)'s alphabet pair.
+
+[KF315](#kf315) measured which CHARACTERS a field and a group admit and left four questions open: the empty name, the SECOND code a digit-initial name draws, an `xml` prefix, and the rule carrier, which had no grid. Answering them on four carriers — a field, a group below the root, the root group, and a rule — shows the carrier moves the law in three independent ways, and no one of them predicts the others.
+
+**The code's SPELLING splits field-vs-group.** A field answers with the `_A12_DV`-suffixed class, both group carriers with the unsuffixed one:
+
+| the name | on a FIELD | on a NESTED group | on the ROOT group | on a RULE |
+|---|---|---|---|---|
+| starts with `xml` | `MVK_NAME_STARTS_WITH_XML_A12_DV` | `MVK_NAME_STARTS_WITH_XML` | `MVK_NAME_STARTS_WITH_XML` | ADMITTED |
+| starts with `XML` | `MVK_NAME_STARTS_WITH_XML_A12_DV` | `MVK_NAME_STARTS_WITH_XML` | `MVK_NAME_STARTS_WITH_XML` | — |
+| merely CONTAINS `xml` | ADMITTED | ADMITTED | — | — |
+| starts with a digit | `MVK_PATH_INVALID`, `MVK_NAME_STARTS_WITH_DIGIT_A12_DV` | `MVK_PATH_INVALID` | `MVK_NAME_STARTS_WITH_DIGIT` | NOT BUILDABLE |
+| is EMPTY or BLANK | NOT BUILDABLE | NOT BUILDABLE | RAISED (untyped) | NOT BUILDABLE |
+| carries a dot | `MVK_NAME_INVALID_DOT_COLON_A12_DV` | `MVK_PATH_INVALID` | — | NOT BUILDABLE |
+
+**Whether a name code fires at all splits root-vs-nested.** The digit row is the one to read: the root group draws the name class and no path class, the nested group draws the path class and no name class, and the field draws both. A checker that learned this row on one carrier names a class A12 does not emit on the other.
+
+**A RULE's name is not judged.** A digit-initial or dotted rule name leaves A12 unable to build the model, so no consistency verdict exists and there is no class to reproduce; an `xml` prefix is simply admitted. A name family extended to rules by analogy with fields would refuse on a class that cannot fire there.
+
+**And the leading-underscore gate is a law of groups BELOW the root.** [KF315](#kf315) measured `NAME_STARTS_WITH_UNDERSCORE_AND_WRONG_PATTERN` on one nested group, which was the constant its whole set held: the root group ADMITS `_Orders` and `__other`, a group two levels down refuses them like the one at depth two. The portable checker applied the nested measurement to every group and so refused a legal model — the one direction it may not take — until this grid was run. The alphabet rows transfer exactly (a hyphen, a space and a colon draw `MVK_PATH_INVALID` on both carriers, `/` draws `MVK_PATHS_INCONSISTENT`, a non-ASCII letter is admitted, and 61 characters is refused with no class), so which rows the carrier moves cannot be predicted from the ones it leaves alone.
+
+*Locked by:* `rulekit.validate.laws.DeclaredNameShapeLawsTest` (three grids, 33 rows).
+
+## §13 supplement — A12's refusal classes are not all `MVK_`-prefixed, and a diagnostic ECHOES the author's own code back (measured, 2026-09-13) <a id="kf323"></a>
+
+> Fold: pending — a fact about A12's reporting vocabulary rather than about one construct, so it belongs wherever the notification shape is described.
+
+Every coded notification ends with its class in brackets — `… [MVK_PATH_INVALID]`. **The class is not always spelled `MVK_*`**, and keying on that prefix silently drops the ones that are not:
+
+| class | what draws it | where it was measured |
+|---|---|---|
+| `NAME_STARTS_WITH_UNDERSCORE_AND_WRONG_PATTERN` | a non-root group whose name begins with `_` | [KF315](#kf315), [KF322](#kf322) |
+| `CUSTOM_FIELD_TYPE_CODENAME_MISSING` | a `CustomFieldType` with no `name` member | `FieldTypeBindingLawsTest`, `FieldTypeBodyMemberLawsTest` |
+| `MIN_LENGTH_BIGGER_MAX_LENGTH` | an inverted length range on a `CustomFieldType` — the same law the string carrier reports as `MVK_MIN_LENGTH_BIGGER_MAX_LENGTH` | `StringTypeParameterLawsTest` |
+| `RULE_HAS_NO_ERRORTEXT` | co-fires with `MVK_ERROR_MESSAGE_MISSING` and with `MVK_ERROR_MESSAGE_FOR_LANGUAGE_MISSING` on some shapes and not others | `MessageSlotRawShapeLawsTest`, `RuleVariantFilterLawsTest` |
+| `INVALID_GROUP` | a message parameter naming an undeclared group | [KF315](#kf315) |
+
+Two consequences, both measured here rather than reasoned:
+
+**A prefix-keyed reader reports a refusal A12 explained as one it could not explain.** Our own law harness lifted classes by scanning for `MVK_[A-Z0-9_]+`, so each row above fell through to "the Kernel could not BUILD the model" — a materially different claim, since it says A12 reached no verdict about the declaration when it had reached one. Eleven locked rows across seven law classes stated it, and the same misreading is available to any checker that keys on the prefix.
+
+**Scanning the message TEXT reports the author's own input as A12's verdict.** A diagnostic echoes the offending code back into its prose, so a text scan lifts it: a computation suppressing `MVK_TOTALLY_BOGUS` — a class A12 does not have — was locked as drawing `MVK_TOTALLY_BOGUS`, when A12 answers `MVK_INVALID_SUPPRESSED_WARNING`. Read the terminal `[KEY]` off each notification instead; it keys on A12's format rather than on a family of names someone listed, so it cannot miss a class this way.
+
+*Locked by:* `rulekit.validate.laws.KernelLaws.verdictOf` and the rows above; a mutant on the class lift is killed by `GroupNameAlphabetLawsTest` and `DeclaredNameShapeLawsTest`.

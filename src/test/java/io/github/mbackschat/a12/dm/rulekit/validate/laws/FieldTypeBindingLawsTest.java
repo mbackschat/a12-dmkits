@@ -136,8 +136,10 @@ class FieldTypeBindingLawsTest {
         expected.put("DateFragmentType", KernelLaws.NOT_BUILDABLE);
         expected.put("EnumerationType", KernelLaws.NOT_BUILDABLE);
         expected.put("TypeDefType", KernelLaws.NOT_BUILDABLE);
-        expected.put("CustomFieldType", KernelLaws.NOT_BUILDABLE);
-        // Bound, built, and then REFUSED by a consistency check — the one type that reaches a verdict at all.
+        // A verdict, not a build refusal: its own class key carries no `MVK_` prefix, which the harness
+        // dropped until it started reading the class off the notification.
+        expected.put("CustomFieldType", "CUSTOM_FIELD_TYPE_CODENAME_MISSING");
+        // Bound, built, and then REFUSED by a consistency check, like the row above.
         expected.put("UnspecifiedType", "MVK_UNSPECIFIED_TYPE_NO_CODEGEN");
         assertEquals(sortedByName(expected), sortedByName(actual),
                 "every declared field type with an empty body present");

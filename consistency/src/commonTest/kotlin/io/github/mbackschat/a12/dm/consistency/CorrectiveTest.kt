@@ -36,6 +36,9 @@ class CorrectiveTest {
               "DateType":{"format":"yyyy-MM","datePrecision":"DAY_OPTIONAL"}}}},
             {"type":"Field","id":"f5","name":"Reference","Field":{"fieldType":{"type":"StringType",
               "StringType":{"pattern":"a++"}}}},
+            {"type":"Field","id":"f6","name":"Tier","Field":{"fieldType":{"type":"EnumerationType",
+              "EnumerationType":{"values":[{"value":"BASIC","label":[{"locale":"en_US","text":"Basic"}]},
+                {"value":"PLUS","label":[{"locale":"en_US","text":""}]}]}}}},
             {"type":"Group","id":"g1","name":"Warehouse","Group":{"elements":[
               {"type":"Field","id":"f3","name":"Code","Field":{"fieldType":{"type":"StringType"}}}
             ]}},
