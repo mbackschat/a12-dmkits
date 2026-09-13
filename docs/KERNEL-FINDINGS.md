@@ -6789,8 +6789,14 @@ Reported by the portable checker as `CheckFamily.COMPUTATION_CYCLE`, which drops
 | `see $Premium$$Adjuster$`, two parameters sharing a dollar pair | **`INVALID_FIELD,INVALID_FIELD`** |
 | `see $Prem$$ium$`, the pair inside what would be one name | **`INVALID_ENTITY,INVALID_ENTITY`** |
 | `see $Premium$ and $Adjuster`, a closed parameter before an unterminated one | **`WRONG_NUMBER_OF_DOLLARS`** |
+| `$/Policy/Premium$`, an ABSOLUTE path | **`INVALID_FIELD`** |
+| `$../Premium$` from a rule in a ROOT group | **`ERROR_TEXT_PARAMETER_TOO_MANY_PARENT_GROUPS`** |
 
 **Two of those are the rows an implementation would get wrong.** A name that resolves to NOTHING is `INVALID_ENTITY`, not the membership class — so answering every unknown parameter with `INVALID_FIELD` names a verdict A12 did not give. And a GROUP draws `INVALID_FIELD` too, not `INVALID_GROUP`: the membership gate does not care what kind it found, so keying the class on the resolved element's kind is wrong in the other direction.
+
+**A parameter path is ordinary: absolute works, and `..` has its own class.** `ERROR_TEXT_PARAMETER_TOO_MANY_PARENT_GROUPS` is a second unprefixed class this family meets ([KF323](#kf323) counts the estate), and the row covers only a rule declared in a ROOT group — from there one `..` already leaves the outermost group, so nothing here says whether a legal `..` behaves like a condition's.
+
+**No non-plain segment can name a real field, because A12 refuses the NAME.** `$'Claim Total'$` is the shape a quoting rule seems to invite, and the field cannot exist: adding `Claim Total` to a model draws `MVK_PATH_INVALID` for the whole model. So a reader narrowing itself to plain segments loses nothing measurable — which is also why no mutant can kill that narrowing, and why it is kept deliberately rather than as untested defence.
 
 **An unterminated parameter refuses the text WHOLE.** The last row is the one that says so: the parameter A12 did close draws nothing at all, so a reader keeping what it collected before it lost the thread reports the membership class on a text A12 answered with the dollar count alone.
 

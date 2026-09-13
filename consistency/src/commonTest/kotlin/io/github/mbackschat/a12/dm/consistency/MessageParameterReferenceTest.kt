@@ -42,6 +42,7 @@ class MessageParameterReferenceTest {
         actual["two parameters sharing a dollar pair"] = ruleSaying("see \$Premium\$\$Adjuster\$")
         actual["a dollar pair inside a name"] = ruleSaying("see \$Prem\$\$ium\$")
         actual["a good parameter before an unterminated one"] = ruleSaying("see \$Premium\$ and \$Adjuster")
+        actual["an ABSOLUTE path"] = ruleSaying("see \$/Policy/Premium\$")
 
         val expected = mutableMapOf<String, List<String>>()
         expected["a field the condition reads — the control"] = emptyList()
@@ -78,6 +79,7 @@ class MessageParameterReferenceTest {
         // keeping the names collected before the thread was lost would report on a model A12 admits for
         // this family's reason. The row exists because a mutant returning them survived every other one.
         expected["a good parameter before an unterminated one"] = emptyList()
+        expected["an ABSOLUTE path"] = listOf(invalidField)
         assertEquals(expected, actual, "which parameter shapes this family reports")
     }
 
@@ -113,6 +115,9 @@ class MessageParameterReferenceTest {
         actual["a base-year terminal"] = ruleSaying("see \$BaseYear\$")
         actual["a base-year terminal with an offset"] = ruleSaying("see \$BaseYear+3\$")
         actual["a row specifier"] = ruleSaying("see \$#Zeile\$")
+        // A12 answers a step above the root group with a class of its own, and no measurement covers the
+        // same step from a DEEPER carrier — so this reader leaves every `..` alone rather than guess.
+        actual["a path stepping up"] = ruleSaying("see \$../Premium\$")
 
         assertEquals(actual.keys.associateWith { emptyList<String>() }, actual,
             "the parameter forms this family does not read")

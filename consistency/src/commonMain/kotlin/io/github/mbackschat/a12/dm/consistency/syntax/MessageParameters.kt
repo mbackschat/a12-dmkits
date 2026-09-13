@@ -52,7 +52,20 @@ private fun closingDollar(text: String, from: Int): Int? {
  *
  * The `.value` suffix is stripped because it is a suffix and never part of a name — A12's own exemption list
  * settles that, since `value` is not among the names a field may end with unquoted ([KF198]). Quotes are
- * stripped per segment, which is how a field whose name spells a terminal is written.
+ * stripped per segment, which is how a field whose name spells a terminal is written. A leading `/` is kept
+ * and the path stays ABSOLUTE: `$/Policy/Premium$` draws the membership class like any other parameter
+ * (measured), so admitting only relative ones would drop a real finding.
+ *
+ * **A `..` step is NOT admitted**, because A12 answers one with `ERROR_TEXT_PARAMETER_TOO_MANY_PARENT_GROUPS`
+ * from a rule in a root group and no measurement covers a deeper carrier — a checker guessing that a legal
+ * `..` resolves like a condition's would be reporting on a depth nobody has run.
+ *
+ * **No mutant can kill the plain-segment gate, and the reason is A12's name grammar rather than this code.**
+ * Every non-plain form — a category suffix, a semantic-index key, a row specifier — currently resolves to
+ * nothing anyway, and the one shape that could resolve, a quoted name carrying a space, cannot exist: A12
+ * refuses the FIELD with `MVK_PATH_INVALID` (`MessageParameterMembershipLawsTest.aFieldNameMayNotCarryASpace`).
+ * The gate stays because that is an external fact about A12, not a property of this reader, and without it
+ * the contract above would hold only for as long as the name grammar does.
  *
  * **A name that spells a CONDITION keyword is an ordinary reference here**, bare or quoted: `$Date$` and
  * `$'Date'$` over a field named `Date` both draw the membership class, so the message grammar does not
@@ -64,11 +77,13 @@ private fun plainNameOrNull(parameter: String): String? {
     if (name.isEmpty()) {
         return null
     }
-    val segments = name.split('/')
+    val absolute = name.startsWith('/')
+    val segments = name.removePrefix("/").split('/')
     if (segments.any { !it.isPlainSegment() }) {
         return null
     }
-    return segments.joinToString("/") { it.trim('\'') }
+    val joined = segments.joinToString("/") { it.trim('\'') }
+    return if (absolute) "/$joined" else joined
 }
 
 /** A bare or single-quoted name — anything else carries a form with a gate of its own. */

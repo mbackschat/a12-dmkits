@@ -96,6 +96,10 @@ class MessageParameterMembershipLawsTest {
         // or does the dollar count refuse the text whole? The two readings differ on whether a checker may
         // keep what it collected before it lost the thread.
         actual.put("a good parameter before an unterminated one", message("see $Premium$ and $Adjuster"));
+        // The two path shapes an author would reach for, and the only forms whose segments are NOT plain
+        // names yet could still resolve — so they decide whether a reader may hand such a name on at all.
+        actual.put("an ABSOLUTE path", message("see $/Policy/Premium$"));
+        actual.put("a path stepping UP", message("see $../Premium$"));
 
         Map<String, String> expected = new LinkedHashMap<>();
         expected.put("a field the condition DOES read — the control", ADMITTED);
@@ -129,6 +133,12 @@ class MessageParameterMembershipLawsTest {
         // A checker keeping what it collected before it lost the thread would report the membership class on
         // a model A12 never gave that verdict for, which is the one direction this project forbids.
         expected.put("a good parameter before an unterminated one", "WRONG_NUMBER_OF_DOLLARS");
+        // An ABSOLUTE path is an ordinary parameter and draws the membership class, so a reader admitting
+        // only relative ones silently drops a real finding.
+        expected.put("an ABSOLUTE path", "INVALID_FIELD");
+        // …and a step ABOVE the root group has a class of its own — measured from a rule in a root group,
+        // which is the only depth this row covers.
+        expected.put("a path stepping UP", "ERROR_TEXT_PARAMETER_TOO_MANY_PARENT_GROUPS");
         assertEquals(expected, actual, "which class each parameter shape draws");
     }
 
@@ -189,6 +199,22 @@ class MessageParameterMembershipLawsTest {
         } catch (IOException unreadable) {
             throw new UncheckedIOException("the fixture must parse", unreadable);
         }
+    }
+
+    /**
+     * A field name may not carry a space — which is the whole basis for reading only PLAIN segments.
+     *
+     * <p>The parameter grammar admits a quoted segment, so {@code $'Claim Total'$} looks like the shape that
+     * would force a reader to hand a spaced name on to resolution. No model can present one: A12 refuses the
+     * field itself, so every non-plain segment is unresolvable rather than merely unusual. Measured in its
+     * own fixture because the refusal is model-wide and contaminates every row of a shared one.
+     */
+    @Test
+    void aFieldNameMayNotCarryASpace() {
+        String spacedField = DocumentModelDraft.named("claims-policy").locale("en_US")
+                .rootGroup("Policy", policy -> policy.stringField("Claim Total", f -> { }))
+                .build().toJson();
+        assertEquals("MVK_PATH_INVALID", KernelLaws.verdictOf(spacedField));
     }
 
     private static String message(String text) {
