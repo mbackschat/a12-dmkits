@@ -253,6 +253,10 @@ tasks.register('leakGuardTest', Test) {
         // from Git as well, so neither tree can silently reintroduce a moving hosted-runner label.
         includeTestsMatching 'io.github.mbackschat.a12.dm.RunnerImagePinGuardTest'
         includeTestsMatching 'io.github.mbackschat.a12.dm.NodeRuntimePinGuardTest'
+        // Same derived-denominator reason again: the set of A12 codes the kits and the portable checker BOTH
+        // state is not something an authored list can hold — the pair that bites is the one nobody thought
+        // of, which is how the `vk_vk` law sat in two of its three sites for three months.
+        includeTestsMatching 'io.github.mbackschat.a12.dm.BuilderCheckerDivergenceGuardTest'
     }
 }
 
