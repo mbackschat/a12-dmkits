@@ -84,6 +84,11 @@ class TemporalConfigTest {
         actual["the FULL default written out"] = date("""{"format":"MM","datePrecision":"FULL"}""")
         actual["a precision with no format, so the default applies"] =
             date("""{"datePrecision":"DAY_OPTIONAL"}""")
+        // The row the vocabulary restriction exists for, and the only gate it is load-bearing on: this one
+        // reports every format that is not a complete pure date, so without the restriction an unrecognised
+        // format would draw a finding on the strength of a probe's limit. Measured as a surviving mutant.
+        actual["a precision on a format A12 does not admit"] =
+            date("""{"format":"MM.yyyy","datePrecision":"DAY_OPTIONAL"}""")
 
         val expected = mutableMapOf<String, List<String>>()
         expected["DAY_OPTIONAL on a complete date — the control"] = emptyList()
@@ -93,6 +98,7 @@ class TemporalConfigTest {
         expected["DAY_OPTIONAL on the instant format"] = partial
         expected["the FULL default written out"] = emptyList()
         expected["a precision with no format, so the default applies"] = emptyList()
+        expected["a precision on a format A12 does not admit"] = emptyList()
         assertEquals(expected, actual, "where the checker reports the precision gate")
     }
 
