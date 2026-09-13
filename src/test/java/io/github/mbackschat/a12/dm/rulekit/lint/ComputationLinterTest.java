@@ -3,10 +3,13 @@ package io.github.mbackschat.a12.dm.rulekit.lint;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 
 import org.junit.jupiter.api.Test;
 
+import io.github.mbackschat.a12.dm.rulekit.catalog.OperatorCatalog;
 import io.github.mbackschat.a12.dm.rulekit.validate.Diagnostic;
 import io.github.mbackschat.a12.dm.rulekit.validate.DraftComputation;
 
@@ -18,6 +21,8 @@ import io.github.mbackschat.a12.dm.rulekit.validate.DraftComputation;
 class ComputationLinterTest {
 
     private static final ComputationLinter LINTER = new ComputationLinter();
+
+    private static final String FORBIDDEN = "RK_COMPUTATION_FORBIDDEN_CONSTRUCT";
 
     private static DraftComputation computation(String commonPrecondition,
             DraftComputation.Alternative... alternatives) {
@@ -45,8 +50,31 @@ class ComputationLinterTest {
         List<Diagnostic> out = LINTER.lint(computation(null,
                 alt("FieldFilled(Tier) And CustomCondition SpecialCase", "[Base] * 2"),
                 alt("[Tier] == \"BASIC\"", "[Base]")));
-        assertTrue(codes(out).contains("RK_COMPUTATION_FORBIDDEN_CONSTRUCT"),
+        assertTrue(codes(out).contains(FORBIDDEN),
                 () -> "CustomCondition must be flagged: " + out);
+    }
+
+    /**
+     * Both forbidden operators, fed to the linter as the CATALOG spells them.
+     *
+     * <p>The fixture source is the point. This lint's {@code CustomCondition} arm shipped dead because its
+     * positive test fed it the matcher's own pattern — a call shape the operator does not take — so the test
+     * could not fail (API-FINDINGS AF148). Taking the DSL from {@code validExample} instead means the fixture
+     * is the surface an author reads, and a catalog spelling that ever stops matching fails here rather than
+     * passing silently.
+     */
+    @Test
+    void flagsTheCatalogsOwnValidUseOfEveryForbiddenOperator() {
+        OperatorCatalog catalog = OperatorCatalog.load();
+        Map<String, Boolean> actual = new LinkedHashMap<>();
+        for (String id : List.of("CustomCondition", "RepetitionNotUnique")) {
+            String dsl = catalog.byId(id).orElseThrow().validExample().dsl();
+            actual.put(id + ": " + dsl,
+                    codes(LINTER.lint(computation(null, alt(dsl, "[Base]")))).contains(FORBIDDEN));
+        }
+        assertEquals(Map.of("CustomCondition: FieldFilled(CustomerName) And CustomCondition NotReverse", true,
+                "RepetitionNotUnique: RepetitionNotUnique(Items/Sku) Or FieldFilled(Items/Count)", true),
+                actual, "every forbidden operator's cataloged spelling must be flagged in a precondition");
     }
 
     /** A quoted name is how an entity spelled like the keyword is referenced, so it is not a use of it. */
@@ -61,7 +89,7 @@ class ComputationLinterTest {
     void flagsRepetitionNotUniqueInTheCommonPrecondition() {
         List<Diagnostic> out = LINTER.lint(computation("RepetitionNotUnique(Id)",
                 alt("[Tier] == \"PRO\"", "[Base] * 2")));
-        assertTrue(codes(out).contains("RK_COMPUTATION_FORBIDDEN_CONSTRUCT"),
+        assertTrue(codes(out).contains(FORBIDDEN),
                 () -> "RepetitionNotUnique must be flagged: " + out);
     }
 
@@ -84,9 +112,9 @@ class ComputationLinterTest {
 
     @Test
     void doesNotFalsePositiveOnAFieldNameContainingTheKeyword() {
-        // a field reference is not a CustomCondition( call — the call-shape match must not fire on a path.
+        // the keyword is a prefix of this field's name, and a boundary class is what keeps the two apart.
         List<Diagnostic> out = LINTER.lint(computation(null,
                 alt("FieldFilled(CustomConditionFlag)", "[Base]")));
-        assertEquals(List.of(), out, () -> "a field named CustomConditionFlag is not a CustomCondition call: " + out);
+        assertEquals(List.of(), out, () -> "a field named CustomConditionFlag is not the operator: " + out);
     }
 }
