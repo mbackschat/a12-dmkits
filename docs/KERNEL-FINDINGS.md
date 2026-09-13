@@ -1987,8 +1987,11 @@ The aggregate combiners track whether their result *could still change if more f
 | `Milestones*/Budget, Milestones/Tasks*/Effort` — descendant list, outer level unwildcarded | **`MVK_NO_WILDCARD`** |
 | `Milestones*/Tasks/Effort` twice — star above the lowest repeatable level | **`MVK_NO_WILDCARD`** |
 | `Milestones*/Tasks*/Effort` twice — multi-star | `MVK_WILDCARD_ONLY_AT_LOWEST_LEVEL_ALLOWED` |
-| `Quantity, BackorderQuantity` — no repeatable level anywhere | `MVK_REPEATABLE_LEVEL_REQUIRED` |
+| `Quantity, BackorderQuantity` — no repeatable level anywhere, **one shared owning group** | `MVK_REPEATABLE_LEVEL_REQUIRED` |
+| `Total, Fees/Handling` — no repeatable level anywhere, **different owning groups** | `MVK_DIFFERENT_GROUPS` |
 | a `Having` on either operand | `MVK_WILDCARD_AT_LOWEST_LEVEL_REQUIRED` |
+
+**Corrected 2026-09-14 — the repeatable-level row needed a second condition.** It read "no repeatable level anywhere", and the pair that had been run gave both operands the same owning group, so that condition and "and a shared owning group" were one thing on the only row in the table. They are not: the owning-group class WINS, measured on the added row. The incomplete clause had reached three further surfaces — this table, the catalog's `SumOfProducts` gotcha, and `SumOfProducts`' own constructor, which quoted the wrong kernel code to an author for exactly that pair. Found by measuring the class precedence rather than by re-reading any of them.
 
 Two facts the one-probe reading could not see. **Sharing a starred group is not sharing an owning group** — row 3 stars `Lines*` on both sides and is still rejected, because `Weight` sits in `Lines/Packaging`; the check is on the field's parent, which is what `checkAllEntitiesInSameGroup` reads. And **`MVK_NO_WILDCARD` precedes the group check**: it fires whenever an operand sits below a repeatable level it does not wildcard (rows 6–8), which is the same gate that makes the BA's lowest-layer clause observable. `MVK_REPEATABLE_LEVEL_REQUIRED` is reached only when *neither* operand has a repeatable ancestor.
 

@@ -40,12 +40,19 @@ public record SumOfProducts(FieldOperand left, FieldOperand right) implements Ca
 
     /**
      * The kernel's code for a non-parallel pair, reproduced from the measured matrix: a pair with no repeatable
-     * level anywhere is {@code MVK_REPEATABLE_LEVEL_REQUIRED}; an operand sitting below a starred group it does
-     * not itself wildcard is {@code MVK_NO_WILDCARD}; everything else is {@code MVK_DIFFERENT_GROUPS}. Applying
-     * one code per operand instead got two of these three wrong.
+     * level anywhere <b>and one shared owning group</b> is {@code MVK_REPEATABLE_LEVEL_REQUIRED}; an operand
+     * sitting below a starred group it does not itself wildcard is {@code MVK_NO_WILDCARD}; everything else is
+     * {@code MVK_DIFFERENT_GROUPS}. Applying one code per operand instead got two of these three wrong.
+     *
+     * <p><b>The owning-group conjunct is not decoration</b> (corrected 2026-09-14): without it a pair of plain
+     * fields in DIFFERENT groups quoted the repeatable-level code, where the kernel draws the owning-group one.
+     * The row that had covered this arm gave both its operands the same owning group, so the two conditions
+     * were one thing on the only case ever run — on this side and in
+     * {@code validate.laws.SumOfProductsLawsTest} alike, which is why measuring the kernel pair is what found it.
      */
     private static String mismatchCode(FieldOperand left, FieldOperand right) {
-        if (left instanceof FieldRef && right instanceof FieldRef) {
+        if (left instanceof FieldRef && right instanceof FieldRef
+                && owningGroup(left).equals(owningGroup(right))) {
             return "MVK_REPEATABLE_LEVEL_REQUIRED";
         }
         if (unwildcardedBelowTheOthersStar(left, right) || unwildcardedBelowTheOthersStar(right, left)) {

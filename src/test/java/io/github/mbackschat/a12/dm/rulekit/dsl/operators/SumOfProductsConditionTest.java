@@ -49,7 +49,13 @@ class SumOfProductsConditionTest {
                         PROJECT.flatten("/Project/Milestones*/Budget"),
                         PROJECT.flatten("/Project/Milestones/Tasks*/Effort")),
                 reading("no repeatable level at all",
-                        ORDER.field("/Order/Quantity"), ORDER.field("/Order/BackorderQuantity")));
+                        ORDER.field("/Order/Quantity"), ORDER.field("/Order/BackorderQuantity")),
+                // Both operands plain AND in different owning groups. The row above cannot reach this: its
+                // two fields share `/Order`, so "no repeatable level" and "no repeatable level and the same
+                // owning group" are one thing on it — and the kernel draws the owning-group class here
+                // (`validate.laws.SumOfProductsLawsTest`, measured 2026-09-14).
+                reading("no repeatable level, different owning groups",
+                        BASKET.field("/Basket/Total"), BASKET.field("/Basket/Fees/Handling")));
 
         assertEquals(
                 List.of(
@@ -58,7 +64,8 @@ class SumOfProductsConditionTest {
                         "plain field inside the starred group -> MVK_NO_WILDCARD",
                         "plain field outside the starred group -> MVK_DIFFERENT_GROUPS",
                         "descendant list under an unwildcarded level -> MVK_NO_WILDCARD",
-                        "no repeatable level at all -> MVK_REPEATABLE_LEVEL_REQUIRED"),
+                        "no repeatable level at all -> MVK_REPEATABLE_LEVEL_REQUIRED",
+                        "no repeatable level, different owning groups -> MVK_DIFFERENT_GROUPS"),
                 readings,
                 "each refusal must quote the code the kernel emits for that exact pair");
     }
