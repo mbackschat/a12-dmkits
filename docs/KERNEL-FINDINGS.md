@@ -6276,3 +6276,32 @@ A consumer reading the restriction as "the model's text" would refuse four model
 **Where A12's reader stops is not where the member's shape suggests.** A scalar at `errorMessage` BINDS — A12 collects no message from it and answers with the ordinary consistency code — while a non-object ENTRY inside the list refuses the source outright, so the model never loads and no verdict about it exists. That is the same boundary [KF290](#kf290) source-located on the rule carrier, measured here rather than carried across; the agreement is what lets one reader serve both carriers in this repository's checker.
 
 *Locked by:* `rulekit.validate.laws.StringTypeMessageAndPatternLawsTest` (18 rows across the two grids); the portable checker's mirror is `consistency.StringTypeMessageTest`.
+
+## §7 supplement — a string type's own parameters: what `noValueValidation` excludes, and that `-1` is A12's "no bound" rather than an inverted one (measured, 2026-09-13) <a id="kf319"></a>
+
+> Fold: pending — belongs beside [KERNEL-SEMANTICS](KERNEL-SEMANTICS.md) §7's string-declaration material, which covers the pattern and none of the parameters around it.
+
+Five codes, one topic, measured as one grid because measuring a co-requirement's members separately produces a law that is false ([KF297](#kf297) already cost that lesson on the rounding pair).
+
+| the string type declares | verdict |
+|---|---|
+| an ordinary type — the control | ADMITTED |
+| `noValueValidation` alone | `MVK_STRING_TYPE_NO_VAL_AND_NO_LINE_BREAK` |
+| `noValueValidation` with `lineBreaksPermitted` | ADMITTED |
+| …and a `pattern` | `MVK_STRING_TYPE_PARAMS_INCONSISTENT` |
+| …and a `minLength` | `MVK_STRING_TYPE_PARAMS_INCONSISTENT` |
+| …and a `maxLength` | **ADMITTED** — the maximum is not one of the excluded parameters |
+| …and a `hintList` | `MVK_NO_VAL_AND_HINT_LISTS` |
+| `lineBreaksPermitted` with `maxLength: 1` | `MVK_LINE_BREAK_AND_MAX_LENGTH_1_INVALID` |
+| `minLength: 5`, `maxLength: 3` | `MVK_MIN_LENGTH_BIGGER_MAX_LENGTH` |
+| `minLength: 3`, `maxLength: 3` — the boundary | ADMITTED |
+
+Each of the three excluded members is measured ADMITTED on its own, so every row above is attributed to the pair rather than to the member; `maxLength: 1` and `lineBreaksPermitted` with `maxLength: 2` are the two controls that separate the line-break conjunct from the length one.
+
+**`-1` is A12's own encoding of "no bound", and reading it as a number makes a legal model unreadable.** `IFieldType.UNDEFINED` is `-1`, so a model may spell an unset length either by omitting the member or by writing the sentinel, and A12 admits `minLength: -1`, `maxLength: -1` and `minLength: 2, maxLength: -1` alike. This repository's `FieldTypeSpec.StringSpec` refused all three — `minLength must be ≥ 0` on the first two, and `minLength 2 > maxLength -1` on the third, an "inverted range" that is really a minimum with no maximum. Because `FieldTypeSpecReader` builds one of those records for every declared string field, the refusal fired on the READ path: a model A12 accepts could not be inspected through the kit. Same class as [KF216](#kf216), third occurrence, and again the sharper half was the read path rather than authoring.
+
+**The sibling carrier agrees on the sentinel and DIVERGES on the inverted range.** `CustomFieldType` carries the same two member names and the same client-side refusals, so it was measured rather than inherited: `-1` is admitted there too, but `minLength: 5, maxLength: 3` leaves A12 unable to BUILD the model — no `MVK_*` code, no consistency verdict — where the string type reports `MVK_MIN_LENGTH_BIGGER_MAX_LENGTH`. A checker or a kit that carried the string type's row across would state a code A12 never emits on that carrier.
+
+**The line-break flag's wire name is `lineBreaksPermitted`, taken from the serializer's Jackson mixin — `StringTypeImpl` spells its field `linebreaksPermitted`, one letter apart.** A row carrying the wrong spelling would measure nothing and read as a clean ADMITTED; the `noValueValidation` pair is the control that proves the flag arrives.
+
+*Locked by:* `rulekit.validate.laws.StringTypeParameterLawsTest` (three grids); the read-path half by `modelkit.StringLengthSentinelReadTest`.

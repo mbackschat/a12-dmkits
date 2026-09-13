@@ -21,6 +21,25 @@ public sealed interface FieldTypeSpec {
     String jsonType();
 
     /**
+     * A12's own encoding of "no bound": an absent member, or the sentinel {@code -1}.
+     *
+     * <p>{@code IFieldType.UNDEFINED} is {@code -1}, so a model may spell an unset length either way and A12
+     * admits both — measured on every combination by
+     * {@code rulekit.validate.laws.StringTypeParameterLawsTest}. Treating {@code -1} as a real bound reads
+     * "a minimum of 2 and no maximum" as an inverted range, which refused a model A12 accepts and, because
+     * the reader builds one of these records for every declared field, made that model impossible to
+     * inspect through the kit.
+     *
+     * <p>The sentinel is preserved rather than normalized to {@code null}: it is what the model declares, and
+     * re-encoding a value on the way in is the deviation {@code CLAUDE.md}'s JSON I/O rule names.
+     *
+     * <p>Private: it is an invariant of the records nested here, not a fact this kit publishes.
+     */
+    private static boolean declaresLength(Integer bound) {
+        return bound != null && bound >= 0;
+    }
+
+    /**
      * A date range with a constant format and a range separator (both required by the kernel, §6), plus the
      * {@code interpretationOfYear} that decides which endpoint of a <b>wrapping yearless</b> range keeps the
      * base year — see {@link RangeYearInterpretation}. The interpretation is never {@code null}: an absent
@@ -107,10 +126,7 @@ public sealed interface FieldTypeSpec {
             boolean lineBreaksPermitted, boolean alphabeticalSorting, Map<String, List<String>> suggestions,
             boolean noValueValidation, Map<String, String> patternMessages) implements FieldTypeSpec {
         public StringSpec {
-            if (minLength != null && minLength < 0) {
-                throw new IllegalArgumentException("minLength must be ≥ 0: " + minLength);
-            }
-            if (minLength != null && maxLength != null && minLength > maxLength) {
+            if (declaresLength(minLength) && declaresLength(maxLength) && minLength > maxLength) {
                 throw new IllegalArgumentException("minLength " + minLength + " > maxLength " + maxLength);
             }
             if ((pattern == null) != (patternMessage == null)) {
@@ -449,10 +465,7 @@ public sealed interface FieldTypeSpec {
             if (name == null || name.isBlank()) {
                 throw new IllegalArgumentException("a custom field type needs a non-blank type name");
             }
-            if (minLength != null && minLength < 0) {
-                throw new IllegalArgumentException("minLength must be ≥ 0: " + minLength);
-            }
-            if (minLength != null && maxLength != null && minLength > maxLength) {
+            if (declaresLength(minLength) && declaresLength(maxLength) && minLength > maxLength) {
                 throw new IllegalArgumentException("minLength " + minLength + " > maxLength " + maxLength);
             }
         }
