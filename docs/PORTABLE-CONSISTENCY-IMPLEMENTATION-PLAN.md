@@ -712,6 +712,16 @@ One cold adversarial review over the frozen range, as [§2](#2-execution-order-a
 
 **The catalog half is deliberately not delivered, with its re-open trigger.** A2 ruled that `operators.json` ships as-is because it is already data; that remains right, and it is not yet USEFUL — no finding this checker produces names an operator id, so 293 KB would be packaged with nothing to join it against. It lands when a finding carries an operator.
 
+### C record — the THIRD withholding, inside a single member, and what the class is really about (2026-09-13)
+
+**The two withholdings above were between members; this one is inside one.** A condition's unresolvable name withholds every syntax class over the same text ([KF340](KERNEL-FINDINGS.md#kf340)). So the pattern is not "A12 stops between members" but "A12 examines in a fixed order and reports the first thing it finds", at every granularity looked at so far.
+
+**Family-per-defect-kind is the design that meets this head on.** Four families read one condition text. The checker had no test at all for a text carrying two defects, so nothing was red — and the input is not exotic, it is what a half-written condition looks like.
+
+**Recorded as the codes to DROP, not the codes to keep.** A family added later that reports a new syntax class is then merely an under-report until its code is listed; a keep-list would silently start dropping it the day it landed. The error-target gate opposite is a keep-list for the mirror-image reason, and the asymmetry is deliberate.
+
+**What is still unexamined is the rest of the order.** Three withholdings have been found by asking, each time, "what else does A12 decline to say once this fails?" — and each was found by breaking two things at once, which no single-defect grid can see. The estate's grids are overwhelmingly single-defect.
+
 ### C record — the SECOND withholding, and a mirror that had contradicted its own laws test (2026-09-13)
 
 **The sweep the previous record asked for found a wider one.** A rule whose error TARGET does not resolve draws that pair and nothing else — the condition's class and both error-text classes are withheld ([KF339](KERNEL-FINDINGS.md#kf339)). So the first withholding was not a fact about error texts; A12 examines a declaration in ORDER and stops, and the error-text case was one instance.

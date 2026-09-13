@@ -6946,3 +6946,33 @@ Reported by the portable checker as a WITHHOLDING — `CheckFamily.MESSAGE_PARAM
 Reported by the portable checker as a WITHHOLDING applied where the report is assembled, not inside any family: it is A12 declining to examine the declaration, and a family-local version would have to be repeated into every family added later.
 
 *Locked by:* `rulekit.validate.laws.RuleMemberVerdictWithholdingLawsTest`.
+
+## §13 supplement — inside a condition, reference resolution runs FIRST and wins over every syntax class (measured, 2026-09-13) <a id="kf340"></a>
+
+> Fold: not-foldable — the checker's examination order, not an evaluation behaviour.
+
+**[KF339](#kf339) found A12 stopping between a rule's members; this is the same stop INSIDE one.** Each syntax class fires on its own and is withheld when the same text also carries a name that does not resolve:
+
+| the `errorCondition` | A12 |
+|---|---|
+| sound — the control | ADMITTED |
+| `FieldFilled(NoSuchField)` | **`MVK_INVALID_ENTITY`** |
+| `FieldFilled(NoSuchField) And FieldFilled(AlsoMissing)` — two bad names | **`MVK_INVALID_ENTITY`**, once |
+| `FieldFilled(Reference) And` — a trailing operator alone | **`MVK_INCOMPLETE_INPUT`** |
+| `FieldFilled(NoSuchField) And` — the same, with a bad name | **`MVK_INVALID_ENTITY`** |
+| `FieldFilled(Reference` — an unclosed delimiter alone | **`MVK_EXPECTED_TOKEN_NOT_FOUND`** |
+| `FieldFilled(NoSuchField` — the same, with a bad name | **`MVK_INVALID_ENTITY`** |
+| `… And And …` — an unexpected token alone | **`MVK_UNEXPECTED_TOKEN`** |
+| the same, with a bad name | **`MVK_INVALID_ENTITY`** |
+
+**Each withheld row sits directly under the row that fires it alone**, which is what makes "withheld" separable from "this text never draws that class".
+
+**It is NOT "parse, then resolve".** `FieldFilled(NoSuchField` cannot be parsed — the delimiter is unclosed, and that alone draws `MVK_EXPECTED_TOKEN_NOT_FOUND` — yet with a bad name inside it the entity class still wins. So resolution is not running on a parse tree the syntax check already approved.
+
+**Two bad names draw ONE class, not one per name.** A reader emitting a finding per reference says more than A12 did, though nothing A12 did not — a count divergence rather than a class one, and left as is because the per-reference finding is what tells an author which name to fix.
+
+**This is the shape a family-per-defect-kind checker gets wrong on ordinary input.** Four families read the same condition text and each reports what it finds, so any condition carrying two defects — the normal state of one being written — draws classes A12 withheld. Nothing in the portable checker's suite had covered a text with two defects at once.
+
+Reported by the portable checker as a WITHHOLDING applied where the report is assembled, listed as the syntax codes to DROP rather than the codes to keep: a family added later that reports a new syntax class is then an under-report until its code is listed, where a keep-list would silently start dropping it.
+
+*Locked by:* `rulekit.validate.laws.ConditionMultipleDefectLawsTest`.

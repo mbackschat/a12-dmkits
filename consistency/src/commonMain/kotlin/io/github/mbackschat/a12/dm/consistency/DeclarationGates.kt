@@ -76,3 +76,27 @@ internal fun PreparedModel.declarationsWithABrokenErrorTarget(
         .filter { declarationsPerPath[it] == 1 }
         .toSet()
 }
+
+/**
+ * The declarations whose condition names something that does not resolve — A12 answers with THAT and nothing
+ * else about the text.
+ *
+ * **Reference resolution runs first and wins over every syntax class.** `MVK_INCOMPLETE_INPUT`,
+ * `MVK_EXPECTED_TOKEN_NOT_FOUND` and `MVK_UNEXPECTED_TOKEN` each fire alone and each is withheld when the
+ * same text also carries an unresolvable name ([KERNEL-FINDINGS KF340],
+ * `rulekit.validate.laws.ConditionMultipleDefectLawsTest`). It is not "parse, then resolve": a text with an
+ * unclosed delimiter AND a bad name still answers with the entity class.
+ *
+ * **This is the shape a family-per-defect-kind checker gets wrong on ordinary input.** Four families read
+ * the same condition text and each reports what it finds, so any condition carrying two defects — the normal
+ * state of one being written — draws classes A12 withheld.
+ *
+ * Withheld per DECLARATION rather than per TEXT. A computation carries several, and whether a bad reference
+ * in its precondition withholds a syntax class in its operation is not measured; the broader reading can
+ * only drop findings, which is the safe direction.
+ */
+internal fun PreparedModel.declarationsWithAnUnresolvableConditionReference(): Set<String> =
+    conditionReferences()
+        .filter { it.target !is Reference.Resolved }
+        .map { it.declaredAt }
+        .toSet()

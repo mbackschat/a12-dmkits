@@ -420,6 +420,11 @@ internal fun check(
     // declaration, not a rule any one family owns; a family-local version would have to be repeated into
     // every family added later, and the one that forgot would over-reject silently.
     val stopped = prepared.declarationsWithABrokenErrorTarget(declared)
+    // …and inside a condition A12 resolves before it judges syntax, answering an unresolvable name with its
+    // own class and withholding every syntax one (KF340). Four families read that same text, so without this
+    // any condition carrying two defects — the normal state of one being written — draws a class A12
+    // withheld.
+    val resolvedFirst = prepared.declarationsWithAnUnresolvableConditionReference()
     val judged = (declared.mapNotNull { it.target.asFinding(it.role, it.declaredAt) } +
         prepared.conditionReferences().mapNotNull {
             it.target.asFinding(ReferenceRole.CONDITION_ENTITY, it.declaredAt, it.member)
@@ -443,6 +448,7 @@ internal fun check(
         prepared.stringTypeMessageFindings() + prepared.stringTypeParameterFindings() +
         prepared.numberTypeDigitFindings() + prepared.enumValueLabelFindings())
         .filterNot { it.at in stopped && it.code !in ERROR_TARGET_CODES }
+        .filterNot { it.at in resolvedFirst && it.code in CONDITION_SYNTAX_CODES }
     val findings = judged.notSuppressedBy(prepared.variantFilterSuppressed())
     return ConsistencyReport(
         modelId = admitted.modelId,
@@ -632,3 +638,14 @@ private val UNIMPLEMENTED_FAMILIES = listOf(
  * to BUILD, and that finding is anchored at the rule whose target may be the broken one.
  */
 private val ERROR_TARGET_CODES = setOf(ERROR_FIELD_MISSING, MISSING_ERROR_FIELD, CK_MODEL_NOT_BUILDABLE)
+
+/**
+ * The classes A12 withholds from a condition whose names do not all resolve.
+ *
+ * Listed as the codes to DROP rather than as the codes to keep, the mirror of [ERROR_TARGET_CODES] and for
+ * the opposite reason: a family added later that reports a new syntax class is an under-report until its
+ * code is added here, where a keep-list would silently start dropping it. Each is measured firing alone and
+ * withheld beside an unresolvable name (`ConditionMultipleDefectLawsTest`).
+ */
+private val CONDITION_SYNTAX_CODES =
+    setOf("MVK_INCOMPLETE_INPUT", "MVK_EXPECTED_TOKEN_NOT_FOUND", "MVK_UNEXPECTED_TOKEN")
