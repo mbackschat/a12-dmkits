@@ -72,14 +72,14 @@ fun PreparedModel.errorFieldReferenceFindings(): List<Finding> {
  * had the self-reference here carried it ALONE, so the two readings agreed on all of them; the reference
  * corpus supplied the row on the other side of that axis, on two models the Kernel builds.
  */
-private fun PreparedModel.namesTheRulesOwnGroup(declared: DeclaredReference): Boolean {
+internal fun PreparedModel.namesTheRulesOwnGroup(declared: DeclaredReference): Boolean {
     val element = elements.firstOrNull { it.path == declared.declaredAt } ?: return false
     val body = element.body ?: return false
     return conditionTexts(element.kind, body).any { (_, text) -> namesRuleContext(text, conditionLanguage) }
 }
 
 /** Whether this condition reference resolves to [target] or to a group containing it. */
-private fun ConditionReference.reaches(target: String): Boolean {
+internal fun ConditionReference.reaches(target: String): Boolean {
     val resolved = (this.target as? Reference.Resolved)?.path ?: return false
     return resolved == target || target.startsWith("$resolved/")
 }

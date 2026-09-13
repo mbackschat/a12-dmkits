@@ -246,6 +246,14 @@ enum class CheckFamily {
     REPETITION_KEY_PLACEMENT,
 
     /**
+     * That a rule reading a repetition does not reach its error field only from ABOVE its own group — A12
+     * cannot then say which repetition the error attaches to. Its own constant because the demand is on the
+     * CONDITION's reach rather than on the target's existence, which `ERROR_FIELD_REFERENCE` already owns,
+     * and because the carrier of the offending read picks between two classes.
+     */
+    ERROR_TARGET_ITERATION,
+
+    /**
      * That the model's computations do not depend on each other in a CIRCLE. A12 sorts the calculated fields
      * topologically and refuses a graph it cannot order. A read in a PRECONDITION builds an edge just as an
      * operation read does, and the two ends may sit in different groups. A one-node circle — a computation
@@ -453,6 +461,7 @@ internal fun check(
         prepared.rawTypeLengthFindings() + prepared.computationPreconditionFeatureFindings() +
         prepared.computationCycleFindings() +
         prepared.repetitionKeyPlacementFindings() +
+        prepared.errorTargetIterationFindings() +
         prepared.messageParameterFindings() +
         prepared.messageTextCharacterFindings() +
         prepared.stringTypeMessageFindings() + prepared.stringTypeParameterFindings() +
@@ -485,7 +494,7 @@ internal fun check(
             CheckFamily.REPETITION_WILDCARD_TARGET, CheckFamily.COMPUTED_TARGET_KIND,
             CheckFamily.RAW_TYPE_LENGTH, CheckFamily.COMPUTED_TARGET_INDEX_FIELD,
             CheckFamily.COMPUTATION_PRECONDITION_FEATURES, CheckFamily.COMPUTATION_CYCLE,
-            CheckFamily.REPETITION_KEY_PLACEMENT,
+            CheckFamily.REPETITION_KEY_PLACEMENT, CheckFamily.ERROR_TARGET_ITERATION,
             CheckFamily.MESSAGE_PARAMETER_REFERENCE, CheckFamily.MESSAGE_TEXT_CHARACTERS),
         gaps = prepared.gaps() + prepared.emptyFactBase() + findings.buildBlocked() +
             prepared.variantFilterGaps() + prepared.enumCategoryGaps() +

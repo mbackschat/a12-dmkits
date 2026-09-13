@@ -62,6 +62,8 @@ class RootOnlyErrorTargetIterationLawsTest {
                 verdict("GroupFilled(/Shipment/Received) And [Quantity] > 0"));
         actual.put("direct reference to the error field beside the root reference and a read",
                 verdict("FieldFilled(Note) And GroupFilled(/Shipment) And [Quantity] > 0"));
+        actual.put("NOTHING reaches the error field, with an iterating read",
+                verdict("[Quantity] > 0"));
 
         var expected = new java.util.LinkedHashMap<String, String>();
         expected.put("root reference, no iterating read", KernelLaws.ADMITTED);
@@ -80,7 +82,76 @@ class RootOnlyErrorTargetIterationLawsTest {
         expected.put("the RULE'S OWN group instead of the root, with an iterating read", KernelLaws.ADMITTED);
         expected.put("direct reference to the error field beside the root reference and a read",
                 KernelLaws.ADMITTED);
+        // The silence that is NOT this law's: with no reaching reference at all A12 draws the
+        // referenced-ness class alone. Every other row here carries one, so the two silences are
+        // indistinguishable without this cell — and a checker missing it reports where A12 reports
+        // something else entirely.
+        expected.put("NOTHING reaches the error field, with an iterating read",
+                "MVK_ERROR_FIELD_NOT_REFERENCED");
         assertEquals(expected, actual, "root-only error-target iteration");
+    }
+
+    /**
+     * The same shape with a NON-repeatable root — the one constant every row of the grid above shares.
+     *
+     * <p>`/Shipment` is repeatable in that fixture, so "the reaching reference is the ROOT" and "the reaching
+     * reference is itself a repetition the condition does not pin" are the same thing on all nine of its
+     * rows. A checker cannot tell from them whether the root's own repeatability is load-bearing, and
+     * guessing would decide a refusal — the one direction that is never safe.
+     */
+    private static final String FIXED_ROOT = DocumentModelDraft.named("shipment-fixed-root").locale("en_US")
+            .rootGroup("Shipment", root -> root
+                    .group("Received", rows -> rows.repeatable(10).indexField("LineNo")
+                            .stringField("LineNo", f -> { }).numberField("Quantity", f -> { })
+                            .stringField("Note", f -> { }))
+                    .group("Expected", rows -> rows.repeatable(10).indexField("LineNo")
+                            .stringField("LineNo", f -> { }).numberField("Quantity", f -> { })))
+            .build().toJson();
+
+    @Test
+    void theRootsOwnRepeatabilityIsNotWhatTheClassesKeyOn() {
+        var actual = new java.util.LinkedHashMap<String, String>();
+        actual.put("fixed root | no iterating read",
+                fixedRoot("GroupFilled(/Shipment)"));
+        actual.put("fixed root | read in the error field's OWN group",
+                fixedRoot("GroupFilled(/Shipment) And [Quantity] > 0"));
+        actual.put("fixed root | read in a PARALLEL repeatable group",
+                fixedRoot("GroupFilled(/Shipment) And [/Shipment/Expected/Quantity] > 0"));
+
+        var expected = new java.util.LinkedHashMap<String, String>();
+        expected.put("fixed root | no iterating read", KernelLaws.ADMITTED);
+        expected.put("fixed root | read in the error field's OWN group",
+                "MVK_ERROR_FIELDGROUP_ITERATION4_INVALID");
+        expected.put("fixed root | read in a PARALLEL repeatable group",
+                "MVK_ERROR_FIELDGROUP_ITERATION5_INVALID");
+        assertEquals(expected, actual, "the root's repeatability is not the variable");
+    }
+
+    /**
+     * A shape with NO repetition anywhere — the third constant the grids above share.
+     *
+     * <p>The error field's group repeats on every row of both, so "reached from above while reading a
+     * sibling" and "reached from above while reading a sibling OF A REPEATING GROUP" are the same thing
+     * throughout. They are not the same law, and a checker built without this cell refuses an ordinary
+     * two-field rule — measured, after exactly that happened against the variant-filter family's fixture.
+     */
+    private static final String FLAT = DocumentModelDraft.named("catalog-flat").locale("en_US")
+            .rootGroup("Catalog", root -> root
+                    .stringField("Tier", f -> { })
+                    .stringField("AutoRenew", f -> { })
+                    .group("Inner", inner -> inner.stringField("InnerNote", f -> { })))
+            .build().toJson();
+
+    @Test
+    void withNoRepetitionAnywhereThereIsNothingToDisambiguate() {
+        assertEquals(KernelLaws.ADMITTED,
+                KernelLaws.verdictModel(FLAT, "/Catalog/Inner", "../../AutoRenew",
+                        "FieldNotFilled(../AutoRenew) And FieldNotFilled(../Tier)"),
+                "a rule reaching its error field from above, reading a sibling, with nothing repeating");
+    }
+
+    private static String fixedRoot(String condition) {
+        return KernelLaws.verdictModel(FIXED_ROOT, "/Shipment/Received", "../Note", condition);
     }
 
     /** The kernel's verdict for one condition on {@link #SHIPMENT}, rule in `Received`, reporting on `Note`. */

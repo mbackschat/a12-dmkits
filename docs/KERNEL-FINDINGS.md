@@ -7126,6 +7126,26 @@ Reported by the portable checker, which did not emit `MVK_SORT_FIELD_DUPLICATE` 
 
 *Locked by:* `rulekit.validate.laws.GroupOrderingMultipleDefectLawsTest`, mirrored by `consistency … GroupOrderingMultipleDefectTest`.
 
+## §9 supplement — the root-only error-target iteration classes need THREE conditions, two of which were constants (measured, 2026-09-14) <a id="kf348"></a>
+
+> Fold: not-foldable — a diagnostic-class selection law, not an evaluation behaviour.
+
+**A12 has to know WHICH repetition a violation attaches to, and it refuses when the condition has not said.** A rule whose condition reaches its error field only from ABOVE its own group, while also reading a repeating field, draws one of two classes — `MVK_ERROR_FIELDGROUP_ITERATION4_INVALID` when the read is in the error field's OWN group, `MVK_ERROR_FIELDGROUP_ITERATION5_INVALID` when it is under a repeatable group parallel to it. With both present the parallel class wins, measured in BOTH text orders because one order cannot tell that from "the later read wins" ([KF340](#kf340) shipped exactly that confusion two days earlier).
+
+**PINNING is a conjunction, and neither half alone gives it**: a reference pins when it reaches the error field AND sits at or below the rule's own group. The root group reaches the target on every row and pins nothing; a sibling field sits below the rule's group and reaches nothing. Naming the rule's own group, or the error field itself, admits the rule however much else the condition reads.
+
+**Three conditions carry the law and TWO of them were constant across the first grid**, which is the part worth carrying forward — each was found by the checker refusing a model A12 admits, not by reading the grid again:
+
+| condition | how it was constant | the cell that exposed it |
+|---|---|---|
+| a reference must REACH the error field | every row carried `GroupFilled(/Shipment)` | a condition naming a SIBLING field instead draws `MVK_ERROR_FIELD_NOT_REFERENCED` alone — that family's territory, not this one |
+| the error field's group must REPEAT | both grids put the error field in a repeatable group | a flat model — nothing repeating anywhere — is ADMITTED, so there is no repetition to be unable to choose between |
+| the reaching reference must sit ABOVE the rule's group | — (this one was varied deliberately) | the rule's OWN group is admitted, so "reached via the ROOT" is not what matters |
+
+**The root's own repeatability is NOT the variable.** It was repeatable throughout the first grid, so "the reaching reference is the root" and "the reaching reference is itself an unpinned repetition" were indistinguishable; re-measured on a non-repeatable root, both classes fire exactly as before.
+
+Locked: `validate.laws.RootOnlyErrorTargetIterationLawsTest`, across three carriers (repeatable root, fixed root, flat). Reported by the portable checker as `CheckFamily.ERROR_TARGET_ITERATION`; four mutants planted on its three conditions and its class selection, all killed.
+
 ## §9 supplement — what pre-empts `MVK_REPEATABLE_GROUP_MISSING` is a key OUTSIDE the rule group, and its carrier picks the class (measured, 2026-09-14) <a id="kf347"></a>
 
 > Fold: not-foldable — a diagnostic-class selection law, not an evaluation behaviour.

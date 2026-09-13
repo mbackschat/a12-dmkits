@@ -77,6 +77,14 @@ class CheckFamilyWiringTest {
             {"type":"Rule","id":"r17","name":"Unreferenced","Rule":{
               "errorCondition":"FieldFilled(Price)","errorEntityRelPath":"../Amount",
               "errorCode":"C17","errorMessage":[{"locale":"en_US","text":"x"}]}},
+            {"type":"Group","id":"g6","name":"Pallets","Group":{"repeatability":7,"elements":[
+              {"type":"Field","id":"f20","name":"PalletNote","Field":{"fieldType":{"type":"StringType"}}},
+              {"type":"Field","id":"f21","name":"PalletQty","Field":{"fieldType":{"type":"NumberType"}}},
+              {"type":"Rule","id":"r23","name":"ReachedFromAbove","Rule":{
+                "errorCondition":"GroupFilled(/Catalog) And [PalletQty] > 0",
+                "errorEntityRelPath":"../PalletNote",
+                "errorCode":"C23","errorMessage":[{"locale":"en_US","text":"x"}]}}
+            ]}},
             {"type":"Rule","id":"r22","name":"KeyWithNoRepetition","Rule":{
               "errorCondition":"RepetitionNotUnique(Price)",
               "errorEntityRelPath":"../Price",
@@ -235,6 +243,10 @@ class CheckFamilyWiringTest {
         // shape the class collapses onto, and the one that needs no second group to express.
         CheckFamily.REPETITION_KEY_PLACEMENT to
             ("MVK_REPEATABLE_GROUP_MISSING" to "/Catalog/KeyWithNoRepetition"),
+        // The rule sits in a repeatable group and reaches its error field only through the root, while
+        // reading a sibling of that field — so A12 cannot say which pallet the error belongs to.
+        CheckFamily.ERROR_TARGET_ITERATION to
+            ("MVK_ERROR_FIELDGROUP_ITERATION4_INVALID" to "/Catalog/Pallets/ReachedFromAbove"),
     )
 
     @Test
