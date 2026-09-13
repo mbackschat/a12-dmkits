@@ -23,8 +23,8 @@ import kotlinx.serialization.json.JsonPrimitive
  * vocabulary by construction rather than by survey.
  *
  * **TWO tiers, and the family owns both, because they are one member's law.** A shape A12's reader refuses
- * never loads; a field with NO `fieldType` at all, and one whose body is empty where its type constructs
- * from a member, load and then fail as A12 builds the model. Splitting them would put one member's verdict in
+ * never loads; a field with NO `fieldType` at all, and one whose body lacks the member its type constructs
+ * from, load and then fail as A12 builds the model. Splitting them would put one member's verdict in
  * two families and give them two chances to disagree. The distinction survives in the message, which says
  * which tier the model died at, since only the first means A12 never saw the declaration.
  *
@@ -108,14 +108,15 @@ private fun unbindableFieldType(
     if (discriminator == "TypeDefType") {
         return unresolvedTypeDefinition(field, body as? JsonObject, declaredTypeDefinitionIds)
     }
-    // The second tier: A12 BOUND this and then could not construct from it. Keyed on an EMPTY body and
-    // nothing looser, because that is the shape measured — which member each of these five needs is not,
-    // so a body carrying anything at all is left to A12 rather than judged against a guess.
-    if (discriminator in TYPES_THAT_CONSTRUCT_FROM_THEIR_BODY && body is JsonObject && body.isEmpty()) {
+    // The second tier: A12 BOUND this and then could not construct from it. The member is NAMED rather than
+    // the body merely weighed, so a body carrying its optional members and not the one A12 builds from is
+    // caught — which an emptiness test missed. Absence only: a member present but null is a shape nobody has
+    // run, and leaving it to A12 under-reports where guessing could refuse a model A12 takes.
+    val required = REQUIRED_BODY_MEMBER[discriminator]
+    if (required != null && body is JsonObject && body[required] == null) {
         return unbuildable(
             field,
-            "`fieldType` names `$discriminator` with an empty body, and A12 constructs that type from a " +
-                "member the body does not supply",
+            "`fieldType` names `$discriminator` without the `$required` A12 constructs that type from",
         )
     }
     return null
@@ -156,14 +157,34 @@ private fun unresolvedTypeDefinition(
 }
 
 /**
- * The five types an EMPTY body leaves unbuildable, measured rather than derived.
+ * The one body member each constructing type needs — DERIVED, then measured row by row.
  *
- * The other eight bind and build from `{}` — three temporal types included, so a format is optional. This
- * list is the measured outcome of that grid and not a reading of which constructor argument is required;
- * treating it as the latter would invite widening it to non-empty bodies nobody has run.
+ * Each of these classes takes its arguments through a Lombok `@Builder` on a private constructor, and an
+ * argument is optional exactly where the hand-written `…Builder` class pre-initialises its field. So the
+ * required member is the `@NonNull` constructor parameter the builder leaves alone, and there is exactly one
+ * per type — a derivation rather than a survey, which is what makes naming the member safe where guessing it
+ * would refuse models A12 takes. Source-read of kernel `30.8.1`, 2026-09-13
+ * (`kernel-md-a12internal/…/fieldtypes/`), measured against its own grid in
+ * `rulekit.validate.laws.FieldTypeBodyMemberLawsTest` ([KERNEL-FINDINGS KF312]).
+ *
+ * `EnumerationType` is the entry a reading could get wrong: its `values` FIELD carries an initialiser, so it
+ * looks defaulted, and the builder — which is what decides — defaults every other `@NonNull` parameter and
+ * not that one. The measurement agrees with the builder.
+ *
+ * **The member is NECESSARY and not sufficient**, which is why its absence is what gets reported and its
+ * presence draws nothing. Two measured rows have the member and are still refused — a `DateRangeType` whose
+ * format is not admitted with the default separator, and a `DateFragmentType` asked for a 1900 check on a
+ * format with no year — and both are A12's to report, not this family's.
+ *
+ * `TypeDefType` is the fifth constructing type and is absent here: its member is a REFERENCE, which
+ * [unresolvedTypeDefinition] resolves rather than merely finds.
  */
-private val TYPES_THAT_CONSTRUCT_FROM_THEIR_BODY =
-    setOf("DateRangeType", "DateFragmentType", "EnumerationType", "TypeDefType", "CustomFieldType")
+private val REQUIRED_BODY_MEMBER = mapOf(
+    "DateRangeType" to "format",
+    "DateFragmentType" to "formatOfFragment",
+    "EnumerationType" to "values",
+    "CustomFieldType" to "name",
+)
 
 /**
  * The discriminator as A12 reads it — `JsonNode.asText()`, which stringifies any scalar rather than demanding

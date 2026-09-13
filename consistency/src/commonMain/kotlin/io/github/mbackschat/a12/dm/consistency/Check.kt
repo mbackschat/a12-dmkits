@@ -341,11 +341,10 @@ private fun List<Finding>.buildBlocked(): List<CoverageGap> =
 private val UNREAD_MEMBERS = listOf(
     CoverageGap(
         at = null,
-        reason = "a field type's body is judged only when it is EMPTY, which is the shape measured — a " +
-            "body carrying some members but not the one its type constructs from (an `EnumerationType` " +
-            "with `alphabeticalSorting` and no values) leaves a model A12 cannot build and draws nothing " +
-            "here. Which member each type requires is unmeasured, and guessing it would refuse models A12 " +
-            "accepts",
+        reason = "a field type's body is judged on the one member A12 constructs from and on nothing else, " +
+            "because that member is NECESSARY and not sufficient: a `DateRangeType` naming a format the " +
+            "separator is not admitted with, and a `DateFragmentType` asking for a 1900 check on a format " +
+            "with no year, are both measured unbuildable with the member present and draw nothing here",
     ),
     CoverageGap(
         at = null,

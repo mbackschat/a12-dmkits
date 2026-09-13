@@ -68,39 +68,44 @@ class FieldTypeBindingTest {
     }
 
     /**
-     * The types an EMPTY body defeats must stay silent once the body supplies what they need.
+     * A constructing type is judged on the MEMBER it builds from, not on whether its body is empty.
      *
-     * Without this, "an empty body is unbuildable" and "this TYPE is unbuildable" are indistinguishable from
-     * the checker's side, and widening the emptiness test to any body of those types goes unnoticed —
-     * measured as a surviving mutant. Every row is a body the real kernel ADMITS
-     * (`rulekit.validate.laws.FieldTypeBindingLawsTest`), so reporting one would refuse a model A12 takes.
+     * Each type appears three times: with its required member, with an optional member instead, and with an
+     * empty body. The middle row is what an emptiness test missed — a body carrying `alphabeticalSorting` and
+     * no `values` leaves a model A12 cannot build and used to draw nothing
+     * (`rulekit.validate.laws.FieldTypeBodyMemberLawsTest`, [KERNEL-FINDINGS KF312]).
      *
-     * `TypeDefType` has no row here because its body is not judged by emptiness at all: it carries a
+     * **The required-member rows carry the over-rejection risk and are all ADMITTED by the real kernel**, so
+     * reporting one would refuse a model A12 takes. They are also the live control for the other two: without
+     * them, a silent row would be indistinguishable from the check having stopped running.
+     *
+     * `TypeDefType` has no row here because its body is not judged by presence at all: it carries a
      * REFERENCE, resolved in its own test below against `content.typeDefinitions`.
      */
     @Test
-    fun aConstructingTypeWithARealBodyDrawsNothing() {
+    fun aConstructingTypeIsJudgedOnTheMemberItBuildsFrom() {
+        val bodies = mapOf(
+            "DateRangeType" to Triple("""{"format":"yyyy-MM-dd"}""", """{"rangeSeparator":"-"}""", "{}"),
+            "DateFragmentType" to Triple(
+                """{"formatOfFragment":"dd.MM."}""", """{"youngerThan1900Check":true}""", "{}",
+            ),
+            "EnumerationType" to Triple(
+                """{"values":[{"value":"A"}]}""", """{"alphabeticalSorting":true}""", "{}",
+            ),
+            "CustomFieldType" to Triple("""{"name":"Signature"}""", """{"displayName":"Sig"}""", "{}"),
+        )
         val actual = mutableMapOf<String, List<String>>()
-        actual["DateRangeType with a format and a separator"] =
-            codes("""{"type":"DateRangeType","DateRangeType":{"format":"dd.MM.yyyy","rangeSeparator":"-"}}""")
-        actual["EnumerationType with one value"] =
-            codes("""{"type":"EnumerationType","EnumerationType":{"values":[{"value":"A"}]}}""")
-        actual["DateFragmentType with a fragment format"] =
-            codes("""{"type":"DateFragmentType","DateFragmentType":{"formatOfFragment":"dd.MM."}}""")
-        actual["CustomFieldType with a name"] =
-            codes("""{"type":"CustomFieldType","CustomFieldType":{"name":"Signature"}}""")
-        // The live control for the pair: the same types with an empty body DO draw, so a green row above is
-        // silence about a body that supplies something and not the check having stopped running.
-        actual["EnumerationType with an empty body — the live control"] =
-            codes("""{"type":"EnumerationType","EnumerationType":{}}""")
-
         val expected = mutableMapOf<String, List<String>>()
-        expected["DateRangeType with a format and a separator"] = emptyList()
-        expected["EnumerationType with one value"] = emptyList()
-        expected["DateFragmentType with a fragment format"] = emptyList()
-        expected["CustomFieldType with a name"] = emptyList()
-        expected["EnumerationType with an empty body — the live control"] = unbuildable
-        assertEquals(expected, actual, "a constructing type whose body supplies what A12 builds from")
+        for ((type, row) in bodies) {
+            val (required, optional, empty) = row
+            actual["$type with the member it builds from"] = codes("""{"type":"$type","$type":$required}""")
+            actual["$type with an optional member only"] = codes("""{"type":"$type","$type":$optional}""")
+            actual["$type with an empty body"] = codes("""{"type":"$type","$type":$empty}""")
+            expected["$type with the member it builds from"] = emptyList()
+            expected["$type with an optional member only"] = unbuildable
+            expected["$type with an empty body"] = unbuildable
+        }
+        assertEquals(expected, actual, "a constructing type judged on the member A12 builds from")
     }
 
     @Test

@@ -6107,3 +6107,27 @@ The last row generalizes the string-literal result above rather than repeating i
 *Mechanism (hypothesis, consistent with every row and not separately proved):* ANTLR's lexer is demand-driven, producing a token only when the parser asks for one, so it cannot report at a position the parser has not reached, and the parser cannot reach a position the lexer has refused to hand it.
 
 *Locked by:* `rulekit.validate.laws.SyntaxPhasePrecedenceLawsTest`. The portable side is `consistency`'s `SyntaxPhasePrecedenceTest`, which asserts the whole report's codes per row — the second mistake this closes was two families each reporting their own verdict for `FieldFilled('Tier) And`.
+
+## §10 supplement — which member each constructing field type requires, derived from its BUILDER and necessary rather than sufficient (measured, 2026-09-13) <a id="kf312"></a>
+
+> Fold: pending — belongs beside [KERNEL-SEMANTICS](KERNEL-SEMANTICS.md) §10, whose field-type material names the types and not what each one's body must carry.
+
+[KF308](#kf308) measured that five of the thirteen types leave an unbuildable model when their body is `{}` and stopped there, so a body carrying a type's OPTIONAL members and not the one it builds from was outside every row. **The required member is derivable, and there is exactly one per type: the `@NonNull` constructor parameter the hand-written `…Builder` class does not pre-initialise.** Each of these classes takes its arguments through a Lombok `@Builder` on a private constructor and defaults the optional ones explicitly in the builder, with a comment saying why. *Source:* `kernel-md/kernel-md-a12internal/…/fieldtypes/`, kernel `30.8.1`, read 2026-09-13.
+
+| type | required | body with an optional member only | body with the required member |
+|---|---|---|---|
+| `DateRangeType` | `format` | `{"rangeSeparator":"-"}` → NOT BUILDABLE | `{"format":"yyyy-MM-dd"}` → ADMITTED |
+| `DateFragmentType` | `formatOfFragment` | `{"youngerThan1900Check":true}` → NOT BUILDABLE | `{"formatOfFragment":"dd.MM."}` → ADMITTED |
+| `EnumerationType` | `values` | `{"alphabeticalSorting":true}` → NOT BUILDABLE | `{"values":[{"value":"A"}]}` → ADMITTED |
+| `CustomFieldType` | `name` | `{"displayName":"Signature"}` → NOT BUILDABLE | `{"name":"Signature"}` → ADMITTED |
+
+**`EnumerationType` is the entry a source reading gets wrong, and the builder is what settles it.** Its `values` FIELD carries an initialiser (`= new EnumValues()`), so a reader skimming fields calls it defaulted; the initialiser is irrelevant, because the builder writes the field through the constructor and the builder class defaults `categories`, `errorMessage`, `alphabeticalSorting` and `annotations` — every other `@NonNull` parameter, and not that one. The measurement agrees with the builder, not with the fields.
+
+**The member is NECESSARY and not sufficient, and two rows say so** — which is why a checker may report its ABSENCE and must stay silent on its presence:
+
+- `DateRangeType` with `{"format":"dd.MM.yyyy"}` alone is NOT BUILDABLE even though the builder defaults `rangeSeparator`. A12 allowlists the format-and-separator PAIR, the default separator is `/` (`FieldTypeConstants.A12_DATE_RANGE_SEPARATOR`), and (`dd.MM.yyyy`, `/`) is not among the eight admitted pairs ([TEMPORAL-FORMAT-VOCABULARY](TEMPORAL-FORMAT-VOCABULARY.md)). The discriminator is `{"format":"yyyy-MM-dd"}`, whose pair with `/` IS admitted and which is ADMITTED — without it the row would read as "a format alone is never enough for this type".
+- `DateFragmentType` with `{"formatOfFragment":"dd.MM.","youngerThan1900Check":true}` draws `MVK_ADDITIONAL_CHECK_INVALID` — a consistency verdict rather than a build failure, because the check needs a year and that format has none. Its discriminator is the identical pair of members with `dd.MM.yyyy`, which is ADMITTED.
+
+**The control is a type that requires nothing carrying the SAME optional member.** `DateType` and `DateFragmentType` both declare `youngerThan1900Check`, and `DateType` with only that member is ADMITTED — so the unbuildable rows are about the type constructing from something, not about a body with exactly one member being refused.
+
+*Locked by:* `rulekit.validate.laws.FieldTypeBodyMemberLawsTest`. The portable side is `consistency`'s `FieldTypeBindingTest.aConstructingTypeIsJudgedOnTheMemberItBuildsFrom`.
