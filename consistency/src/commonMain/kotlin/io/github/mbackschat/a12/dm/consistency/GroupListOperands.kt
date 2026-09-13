@@ -56,16 +56,28 @@ import io.github.mbackschat.a12.dm.consistency.syntax.callsIn
  * repeatable co-operand makes A12 report its wildcard class first from the outside anchoring and the root
  * class from the inside — so the root violation holds in both and only the reporting ORDER moves, which is
  * why this family needs no iteration analysis to be truthful.
+ *
+ * ## …and a FIELD on the three carriers that refuse one
+ *
+ * A third law, on a different and SMALLER carrier set, which is the whole of its content: the five group-list
+ * QUANTIFIERS admit a field operand, and only `NumberOfFilledGroups` and the two scalars `GroupFilled` and
+ * `GroupNotFilled` refuse one with `MVK_NO_FIELDS_ALLOWED` ([KERNEL-FINDINGS KF327],
+ * `rulekit.validate.laws.GroupListOperandKindLawsTest`). A family assembled from the code's NAME — "group
+ * predicates take groups only" — would refuse five legal shapes, which is why the carrier set is measured
+ * rather than derived from what the operators are called.
+ *
+ * On those three carriers the kind gate runs LAST of the gates this file judges and outruns only the arity
+ * class, which is A12's order and is not reproduced by accident: the checks below are written in it.
  */
 fun PreparedModel.groupListOperandFindings(): List<Finding> {
-    val carriers = GROUP_LIST_OPERATORS.mapNotNull { CONDITION_OPERATOR_KEYWORDS[conditionLanguage]?.get(it) }.toSet()
+    val judged = spelled(GROUP_LIST_OPERATORS) + spelled(FIELD_REFUSING_OPERATORS)
     return elements.flatMap { element ->
         val body = element.body ?: return@flatMap emptyList()
         val group = element.path.substringBeforeLast('/', missingDelimiterValue = "")
         conditionTexts(element.kind, body).flatMap { (member, text) ->
             callsIn(text, conditionLanguage, syntaxEntryOf(member))
-                .filter { it.operator in carriers }
-                .mapNotNull { call -> duplicateFinding(call, group, element, member) }
+                .filter { it.operator in judged }
+                .mapNotNull { call -> operandFinding(call, group, element, member) }
         }
     }
 }
@@ -80,7 +92,17 @@ private val GROUP_LIST_OPERATORS = setOf(
     "NumberOfFilledGroups",
 )
 
-private fun PreparedModel.duplicateFinding(
+/** …and the three that refuse a FIELD operand, which is not the same set and not a subset of one law's. */
+private val FIELD_REFUSING_OPERATORS = setOf("NumberOfFilledGroups", "GroupFilled", "GroupNotFilled")
+
+/** The three carriers that admit a root as the list's SOLE operand. */
+private val SOLE_ROOT_CARRIERS = setOf("AtLeastOneGroupFilled", "NoGroupFilled", "NumberOfFilledGroups")
+
+/** How this model's language spells each of [ids]; an id the catalog does not carry contributes nothing. */
+private fun PreparedModel.spelled(ids: Set<String>): Set<String> =
+    ids.mapNotNull { CONDITION_OPERATOR_KEYWORDS[conditionLanguage]?.get(it) }.toSet()
+
+private fun PreparedModel.operandFinding(
     call: ConditionCall,
     declaringGroup: String,
     element: DeclaredElement,
@@ -90,6 +112,10 @@ private fun PreparedModel.duplicateFinding(
     // A12 reports the entity and says nothing about the duplicate, so this family has nothing to add.
     if (bound.any { (operand, reference) -> operand.path != null && reference !is Reference.Resolved }) {
         return null
+    }
+    val resolved = bound.mapNotNull { (_, reference) -> (reference as? Reference.Resolved)?.path }
+    if (call.operator !in spelled(GROUP_LIST_OPERATORS)) {
+        return kindFinding(call, resolved, member, element.path)
     }
     val comparable = bound.mapNotNull { (operand, reference) ->
         val path = (reference as? Reference.Resolved)?.path
@@ -114,10 +140,33 @@ private fun PreparedModel.duplicateFinding(
             element.path,
         )
     }
-    // The root law runs LAST because both duplicate classes pre-empt it, measured on a root beside its own
-    // descendant. A starred root still counts here, unlike in the comparisons above.
-    return rootFinding(call, bound.mapNotNull { (_, reference) -> (reference as? Reference.Resolved)?.path },
-        member, element.path)
+    // The root law runs after both duplicate classes because they pre-empt it, measured on a root beside its
+    // own descendant. A starred root still counts here, unlike in the comparisons above.
+    return rootFinding(call, resolved, member, element.path) ?: kindFinding(call, resolved, member, element.path)
+}
+
+/**
+ * The field-operand finding for this call, or null when the carrier takes a field.
+ *
+ * The carrier set is the whole law: five group-list quantifiers ADMIT a field operand and only these three
+ * refuse one, so widening it by analogy with the operators' names would refuse five shapes A12 takes.
+ */
+private fun PreparedModel.kindFinding(
+    call: ConditionCall,
+    resolved: List<String>,
+    member: String,
+    at: String,
+): Finding? {
+    if (call.operator !in spelled(FIELD_REFUSING_OPERATORS)) {
+        return null
+    }
+    val field = resolved.firstOrNull { isField(it) } ?: return null
+    return finding(
+        "MVK_NO_FIELDS_ALLOWED",
+        "this $member hands the field `$field` to `${call.operator}`, which takes groups — name the group " +
+            "it sits in, or use the field-shaped operator instead",
+        at,
+    )
 }
 
 /**
@@ -150,14 +199,14 @@ private fun PreparedModel.rootFinding(
     }
 }
 
-/** The three carriers that admit a root as the list's SOLE operand, in this model's language. */
-private fun PreparedModel.soleRootCarriers(): Set<String> =
-    SOLE_ROOT_CARRIERS.mapNotNull { CONDITION_OPERATOR_KEYWORDS[conditionLanguage]?.get(it) }.toSet()
+private fun PreparedModel.soleRootCarriers(): Set<String> = spelled(SOLE_ROOT_CARRIERS)
 
-private val SOLE_ROOT_CARRIERS = setOf("AtLeastOneGroupFilled", "NoGroupFilled", "NumberOfFilledGroups")
+private fun PreparedModel.isGroup(path: String): Boolean = declares(path, DeclaredKind.GROUP)
 
-private fun PreparedModel.isGroup(path: String): Boolean =
-    elements.any { it.path == path && it.declaredKind == DeclaredKind.GROUP }
+private fun PreparedModel.isField(path: String): Boolean = declares(path, DeclaredKind.FIELD)
+
+private fun PreparedModel.declares(path: String, kind: DeclaredKind): Boolean =
+    elements.any { it.path == path && it.declaredKind == kind }
 
 private fun CallOperand.resolvedBy(
     model: PreparedModel,

@@ -178,6 +178,65 @@ class GroupListOperandsTest {
     }
 
     /**
+     * The FIELD-operand law, whose content is which carriers do NOT have it.
+     *
+     * Five group-list quantifiers admit a field operand and only the count and the two scalars refuse one, so
+     * the five ADMITTED rows are the ones that carry the risk: a family built from the operators' names
+     * would refuse every one of them.
+     */
+    @Test
+    fun whichCarriersRefuseAFieldOperand() {
+        val noFields = "MVK_NO_FIELDS_ALLOWED"
+        val actual = mutableMapOf<String, List<String>>()
+        actual["all | a FIELD beside a group"] = codes("AllGroupsFilled(Garage/GarageName, Coverage)")
+        actual["notAll | a FIELD beside a group"] = codes("NotAllGroupsFilled(Garage/GarageName, Coverage)")
+        actual["notCollectively | a FIELD beside a group"] =
+            codes("GroupsNotCollectivelyFilled(Garage/GarageName, Coverage)")
+        actual["atLeastOne | a FIELD beside a group"] =
+            codes("AtLeastOneGroupFilled(Garage/GarageName, Coverage)")
+        actual["noGroup | a FIELD beside a group"] = codes("NoGroupFilled(Garage/GarageName, Coverage)")
+        actual["count | a FIELD beside a group"] =
+            codes("NumberOfFilledGroups(Garage/GarageName, Coverage) > 0")
+        actual["scalar GroupFilled | a FIELD"] = codes("GroupFilled(Garage/GarageName)")
+        actual["scalar GroupNotFilled | a FIELD"] = codes("GroupNotFilled(Garage/GarageName)")
+        actual["scalar GroupFilled | a group — the control"] = codes("GroupFilled(Garage)")
+        actual["scalar GroupFilled | the RuleGroup keyword — the control"] = codes("GroupFilled(RuleGroup)")
+
+        val expected = mutableMapOf<String, List<String>>()
+        expected["all | a FIELD beside a group"] = emptyList()
+        expected["notAll | a FIELD beside a group"] = emptyList()
+        expected["notCollectively | a FIELD beside a group"] = emptyList()
+        expected["atLeastOne | a FIELD beside a group"] = emptyList()
+        expected["noGroup | a FIELD beside a group"] = emptyList()
+        expected["count | a FIELD beside a group"] = listOf(noFields)
+        expected["scalar GroupFilled | a FIELD"] = listOf(noFields)
+        expected["scalar GroupNotFilled | a FIELD"] = listOf(noFields)
+        expected["scalar GroupFilled | a group — the control"] = emptyList()
+        // `RuleGroup` is a keyword rather than an entity, so the call names nothing to judge.
+        expected["scalar GroupFilled | the RuleGroup keyword — the control"] = emptyList()
+        assertEquals(expected, actual, "which carriers refuse a field operand")
+    }
+
+    /** The kind gate runs last of the gates on one list, and outruns only the arity class A12 owns alone. */
+    @Test
+    fun theKindGateRunsAfterEveryOtherGateOnTheSameList() {
+        val actual = mutableMapOf<String, List<String>>()
+        actual["count | the same field twice"] =
+            codes("NumberOfFilledGroups(Garage/GarageName, Garage/GarageName) > 0")
+        actual["count | a field beside its own enclosing group"] =
+            codes("NumberOfFilledGroups(Garage/GarageName, Garage) > 0")
+        actual["count | a field as the SOLE operand"] = codes("NumberOfFilledGroups(Garage/GarageName) > 0")
+
+        val expected = mutableMapOf<String, List<String>>()
+        expected["count | the same field twice"] = listOf(exact)
+        expected["count | a field beside its own enclosing group"] = listOf(overlap)
+        // A12 answers the sole FIXED operand with its arity class ordinarily and with the kind class here,
+        // so the kind gate outruns arity — the one gate it is ahead of.
+        expected["count | a field as the SOLE operand"] = listOf("MVK_NO_FIELDS_ALLOWED")
+        assertEquals(expected, actual, "the kind gate runs after every other gate on the same list")
+    }
+
+    /**
      * A GERMAN model draws the same finding, and the carrier is recognised by its German spelling.
      *
      * The family names its six carriers by catalog id and resolves each to the model's own language, so this

@@ -77,6 +77,10 @@ class CheckFamilyWiringTest {
             {"type":"Rule","id":"r17","name":"Unreferenced","Rule":{
               "errorCondition":"FieldFilled(Price)","errorEntityRelPath":"../Amount",
               "errorCode":"C17","errorMessage":[{"locale":"en_US","text":"x"}]}},
+            {"type":"Rule","id":"r20","name":"FieldWhereAGroupBelongs","Rule":{
+              "errorCondition":"FieldFilled(Price) And GroupFilled(/Catalog/Shelf/ShelfCode)",
+              "errorEntityRelPath":"../Price",
+              "errorCode":"C20","errorMessage":[{"locale":"en_US","text":"x"}]}},
             {"type":"Rule","id":"r19","name":"RootOperand","Rule":{
               "errorCondition":"FieldFilled(Price) And AllGroupsFilled(/Depot, /Catalog/Shelf)",
               "errorEntityRelPath":"../Price",
@@ -171,6 +175,8 @@ class CheckFamilyWiringTest {
         CheckFamily.GROUP_LIST_OPERANDS to ("MVK_DUPLICATE_PARAM1" to "/Catalog/RepeatedGroup"),
         CheckFamily.GROUP_LIST_ROOT_OPERAND to
             ("MVK_ROOT_GROUP_REFERENCED" to "/Catalog/RootOperand"),
+        CheckFamily.GROUP_LIST_OPERAND_KIND to
+            ("MVK_NO_FIELDS_ALLOWED" to "/Catalog/FieldWhereAGroupBelongs"),
     )
 
     @Test

@@ -217,7 +217,15 @@ class BuilderCheckerDivergenceGuardTest {
             // `FirstFilledValue` scope; the checker reports it on the six group-list quantifiers, where the
             // class is per carrier — three refuse a root outright and three admit a SOLE one (KF326). Each
             // side's rule is false of the other's operators, so neither can be the other's source.
-            Map.entry("MVK_ROOT_GROUP_REFERENCED", Disposition.SAME_LAW_SEPARATE_CARRIERS));
+            Map.entry("MVK_ROOT_GROUP_REFERENCED", Disposition.SAME_LAW_SEPARATE_CARRIERS),
+
+            // The row this guard exists for. The kits ERASE the shape — a group predicate's operand is a
+            // `GroupRef`, so a field cannot be handed to one — and A12 admits a field operand on FIVE of the
+            // eight carriers (KF327). The checker deliberately does NOT inherit that erasure: it reports the
+            // code on the three carriers measured to draw it and stays silent on the five that do not. The
+            // Java strictness stands because it bites on the authoring path alone, which is what makes it a
+            // documented over-strictness rather than a defect.
+            Map.entry("MVK_NO_FIELDS_ALLOWED", Disposition.STRICTER_IN_JAVA));
 
     @Test
     void everyCodeStatedInBothEstatesCarriesADisposition() {

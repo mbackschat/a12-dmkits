@@ -190,6 +190,13 @@ enum class CheckFamily {
     GROUP_LIST_ROOT_OPERAND,
 
     /**
+     * …and that no group predicate that refuses a FIELD is handed one. Its own constant because its carrier
+     * set is neither of the others': the five group-list quantifiers ADMIT a field operand, and only the
+     * count and the two scalar presence predicates refuse one.
+     */
+    GROUP_LIST_OPERAND_KIND,
+
+    /**
      * That every DSL-bearing member can be TOKENIZED — the syntax layer's first phase, and the only one
      * decidable without a grammar. Whether the tokens then form a condition A12's parser accepts is a
      * separate question this family does not answer.
@@ -382,7 +389,7 @@ internal fun check(
             CheckFamily.STRING_TYPE_PARAMETERS, CheckFamily.NUMBER_TYPE_DIGITS,
             CheckFamily.ENUM_VALUE_LABELS, CheckFamily.EMPTY_GROUP_OPERAND,
             CheckFamily.ERROR_FIELD_REFERENCE, CheckFamily.GROUP_LIST_OPERANDS,
-            CheckFamily.GROUP_LIST_ROOT_OPERAND),
+            CheckFamily.GROUP_LIST_ROOT_OPERAND, CheckFamily.GROUP_LIST_OPERAND_KIND),
         gaps = prepared.gaps() + prepared.emptyFactBase() + findings.buildBlocked() +
             prepared.variantFilterGaps() + prepared.enumCategoryGaps() +
             prepared.supportedCharacterGaps() + prepared.fieldTypeBindingGaps() +

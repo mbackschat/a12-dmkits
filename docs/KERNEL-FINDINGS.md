@@ -6532,3 +6532,32 @@ The count's sole-root cell is not the root's doing: that carrier's own arity gat
 Reported by the portable checker (`CheckFamily.GROUP_LIST_ROOT_OPERAND`), evaluated after both duplicate classes so their pre-emption is honoured.
 
 *Locked by:* `rulekit.validate.laws.GroupListRootOperandLawsTest` (four grids, 29 rows); the portable checker's mirror is `consistency.GroupListOperandsTest`.
+
+## §1 supplement — the group-list QUANTIFIERS admit a FIELD operand; only the count and the two scalars refuse one (measured, 2026-09-13) <a id="kf327"></a>
+
+> Fold: pending — belongs beside [KERNEL-SEMANTICS](KERNEL-SEMANTICS.md) §1's group-list quantifiers, next to [KF326](#kf326).
+
+`MVK_NO_FIELDS_ALLOWED` is `erased` in the Java kits, and the reason recorded for the erasure was *"group predicates take groups only"*. **That reason is false for five of the eight carriers.** Own domain (a lending library), rule group `/Loan`, error field `../Barcode` outside every repeatable group.
+
+| carrier | a FIELD operand beside a group |
+|---|---|
+| `AllGroupsFilled` | **ADMITTED** |
+| `NotAllGroupsFilled` | **ADMITTED** |
+| `GroupsNotCollectivelyFilled` | **ADMITTED** |
+| `AtLeastOneGroupFilled` | **ADMITTED** |
+| `NoGroupFilled` | **ADMITTED** |
+| `NumberOfFilledGroups` | `MVK_NO_FIELDS_ALLOWED` |
+| `GroupFilled` (scalar) | `MVK_NO_FIELDS_ALLOWED` |
+| `GroupNotFilled` (scalar) | `MVK_NO_FIELDS_ALLOWED` |
+
+The position does not matter — the field named second is admitted on the quantifiers too — and neither does the error field's locus: the same list is admitted with the error field inside the repeatable group.
+
+**On the five quantifiers there is no kind gate at all, so the other gates answer a list holding a field.** The same field operand beside a different second operand draws `MVK_INVALID_ENTITY` (unresolvable), `MVK_DUPLICATE_PARAM1` (the same field twice), `MVK_ROOT_GROUP_REFERENCED` (a root), `MVK_NO_WILDCARD` (an unstarred repeatable), `MVK_DUPLICATE_PARAM2` (its own enclosing GROUP — so **A12's containment relation crosses the field/group boundary**) and `MVK_PARAMSIZE_INVALID2` (as the sole operand). An unstarred field inside a repeatable group draws the wildcard class, and its starred spelling `MVK_NO_WILDCARDS_G_ALLOWED` — neither is a kind verdict.
+
+**On the three carriers that DO refuse a field, the kind gate runs after every other gate and ahead of exactly one.** Duplicate, overlap, unresolvable and root all pre-empt it; the arity class does not — `NumberOfFilledGroups(<field>)` as a sole operand draws `MVK_NO_FIELDS_ALLOWED` where a sole fixed GROUP draws `MVK_PARAMSIZE_INVALIDGN`.
+
+**Consequence for the Java kits, stated rather than left implicit.** The typed surface's `GroupRef`/`FieldRef` split is STRICTER than A12 on the five quantifiers. It stays: the erasure is on the AUTHORING path only — no read path in `rulekit` or `core` reconstructs typed operands from a stored condition (searched `rulekit/src/main/java` and `core/src/main/java` for a condition parser: no matches), so a model carrying the shape stays readable and only becomes unauthorable through the builder. The [MVK-LEDGER](MVK-LEDGER.md) row now carries the measurement as the erasure's basis instead of the false reason.
+
+Reported by the portable checker (`CheckFamily.GROUP_LIST_OPERAND_KIND`) on the three carriers only.
+
+*Locked by:* `rulekit.validate.laws.GroupListOperandKindLawsTest` (four grids, 26 rows); the portable checker's mirror is `consistency.GroupListOperandsTest`.
