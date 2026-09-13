@@ -211,6 +211,44 @@ class GroupIndexAndSortReferenceLawsTest {
         assertEquals(expected, actual, "whether the condition-side index lookup is reachable");
     }
 
+    /**
+     * What the two MULTIPLE-index codes need, and whether stored DM-JSON can reach them.
+     *
+     * <p>[MVK-LEDGER] framed both as declaration laws. They are thrown from {@code getIndexGroup}, which
+     * walks an entity's ancestor groups and is called from {@code checkParallelIteration} — so the locus is
+     * condition-side, not the declaration, and the kernel's own member is the plural
+     * {@code IGroup.getIndexFieldNames()} while DM-JSON writes the singular {@code indexFieldName}.
+     *
+     * <p>These rows measure what that leaves reachable, rather than reasoning from the source read.
+     */
+    @Test
+    void whatTheMultipleIndexCodesNeed() {
+        String semanticIndex = "AllFieldsFilled(Items For \"SKU-1\", CustomerName)";
+
+        Map<String, String> actual = new LinkedHashMap<>();
+        actual.put("one indexed group on the path — the control",
+                KernelLaws.verdictModel(Fixtures.orderJson(), "/Order", "../CustomerName", semanticIndex));
+        actual.put("an ancestor group ALSO declaring an index",
+                KernelLaws.verdictModel(probe("Order", "indexFieldName", "\"CustomerName\""),
+                        "/Order", "../CustomerName", semanticIndex));
+        actual.put("two indexed groups but NO semantic index",
+                KernelLaws.verdictOf(probe("Order", "indexFieldName", "\"CustomerName\"")));
+        actual.put("a PLURAL indexFieldNames member instead",
+                KernelLaws.verdictModel(probe(REPEATABLE, "indexFieldNames", "[\"Sku\",\"Count\"]"),
+                        "/Order", "../CustomerName", semanticIndex));
+
+        Map<String, String> expected = new LinkedHashMap<>();
+        expected.put("one indexed group on the path — the control", KernelLaws.ADMITTED);
+        expected.put("an ancestor group ALSO declaring an index", "MVK_MULTIPLE_INDEX_FIELDS");
+        // The row that settles whether a checker may report this from DECLARATIONS alone: it may not. Two
+        // indexed groups on one path are perfectly legal until a condition asks for the index.
+        expected.put("two indexed groups but NO semantic index", KernelLaws.ADMITTED);
+        // The DM-JSON reader does not honour a plural member, so the SECOND code — "one group declares
+        // several index fields" — has no stored spelling to reach it: `getIndexGroup` still sees one name.
+        expected.put("a PLURAL indexFieldNames member instead", KernelLaws.ADMITTED);
+        assertEquals(expected, actual, "what the multiple-index codes need");
+    }
+
     private static String verdict(String group, String member, String rawJson) {
         return verdict(group, member, rawJson, false);
     }

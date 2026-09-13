@@ -6686,3 +6686,22 @@ Reported by the portable checker (`CheckFamily.COMPUTED_TARGET_INDEX_FIELD`).
 **Not reported by the portable checker, deliberately.** It already names this defect through `MVK_INVALID_INDEX_FIELD` on the declaration itself (`CheckFamily.GROUP_ORDERING_REFERENCES`), so a consumer of the checker already learns the model is refused and why. Emitting the second class would add a code without adding reach, and would require the checker to recognise semantic-index usage in condition text — a capability it has no other use for today.
 
 *Locked by:* `rulekit.validate.laws.GroupIndexAndSortReferenceLawsTest.whetherTheConditionSideIndexLookupIsReachable`.
+
+## §10 supplement — the two MULTIPLE-index codes are CONDITION-side, one is reachable and the other has no stored spelling (source + measured, 2026-09-13) <a id="kf332"></a>
+
+> Fold: not-foldable — a model-structure law reached from a condition's index resolution.
+
+**Both were recorded as declaration laws and neither is.** They are thrown from `CheckEntityUtils.getIndexGroup`, which walks an entity's ancestor groups and is reached from `checkParallelIteration` — so the declaration alone never triggers them, and the framing mattered: it made them look like local structural families a Kernel-free checker could own.
+
+| stored shape | A12 |
+|---|---|
+| one indexed group on the path, with a semantic index over it | ADMITTED |
+| an ANCESTOR group also declaring an index, same condition | **`MVK_MULTIPLE_INDEX_FIELDS`** |
+| the same two indexed groups with NO semantic index | **ADMITTED** |
+| `indexFieldNames: ["Sku","Count"]` beside the singular member, same condition | ADMITTED |
+
+**Two indexed groups on one path are legal until a condition asks for the index**, which is the row that decides an implementation: a checker reporting this from the declarations alone would refuse a model A12 accepts. That is why it is not a local declaration family, and the reason is measured rather than argued from the call graph.
+
+**`MVK_MULTIPLE_INDEX_FIELDS2` has no stored spelling that reaches it.** `IGroup.getIndexFieldNames()` is a `Set`, so the kernel's own model admits several names per group and the code guards exactly that; DM-JSON writes the singular `indexFieldName`, and a plural `indexFieldNames` member sitting beside it is not read — `getIndexGroup` still sees one name and the model is admitted. Since the surrounding rows prove `getIndexGroup` runs on this condition, the admission is the member being ignored rather than the check being skipped. Reachable only through a model built in memory, not through stored DM-JSON.
+
+*Locked by:* `rulekit.validate.laws.GroupIndexAndSortReferenceLawsTest.whatTheMultipleIndexCodesNeed`.
