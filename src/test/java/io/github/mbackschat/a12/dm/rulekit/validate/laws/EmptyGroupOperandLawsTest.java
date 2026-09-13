@@ -102,6 +102,37 @@ class EmptyGroupOperandLawsTest {
         assertEquals(expected, actual, "emptiness is judged over the SUBTREE, and only naming one refuses");
     }
 
+    /**
+     * The same empty group in positions that are NOT a group operand — the boundary of the law's reach.
+     *
+     * <p>A checker reading a condition sees the entities it names without knowing which operand position
+     * each sits in, so "a condition naming an empty group is refused" is the claim it would have to act on.
+     * These rows test that claim where the grids above do not reach: a FIELD-list operator handed a group,
+     * an index position, and an iteration scope. A row that draws a DIFFERENT class is the boundary, and a
+     * checker stating the empty-group class there would name a class A12 did not report.
+     */
+    @Test
+    void theSameEmptyGroupInPositionsThatAreNotAGroupOperand() {
+        Map<String, String> actual = new LinkedHashMap<>();
+        actual.put("a FIELD-list operator handed an empty group", verdict("AtLeastOneFieldFilled(/Store/Empty)"));
+        actual.put("…handed a populated group — the control", verdict("AtLeastOneFieldFilled(/Store/Filled)"));
+        actual.put("an index position on an empty repeatable",
+                verdict("CurrentRepetition(/Store/EmptyRows*) > 0"));
+        actual.put("an index position on a populated repeatable — the control",
+                verdict("CurrentRepetition(/Store/FilledRows*) > 0"));
+
+        Map<String, String> expected = new LinkedHashMap<>();
+        // The law reaches every position measured, not only a group operand — and it PRE-EMPTS: the index
+        // row's populated control is refused for its wildcard, while the empty one is refused for its
+        // emptiness instead. So a checker may state this class wherever a condition names an empty group,
+        // and the class it would otherwise have to guess at never surfaces.
+        expected.put("a FIELD-list operator handed an empty group", GROUP_IS_EMPTY);
+        expected.put("…handed a populated group — the control", ADMITTED);
+        expected.put("an index position on an empty repeatable", GROUP_IS_EMPTY);
+        expected.put("an index position on a populated repeatable — the control", "MVK_NO_WILDCARDS_ALLOWED");
+        assertEquals(expected, actual, "the empty-group class reaches past the group-operand position");
+    }
+
     /** A root group has its own class for the same condition, which is why the two are not one row. */
     @Test
     void anEmptyROOTGroupCarriesItsOwnClass() {

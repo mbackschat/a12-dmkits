@@ -3802,9 +3802,13 @@ A group carrying no fields is **legal to declare**, and the model stays kernel-v
 | `AllGroupsFilled(G, …)` | `MVK_GROUP_IS_EMPTY` | **admitted** | — |
 | `GroupsNotCollectivelyFilled(G, …)` | `MVK_GROUP_IS_EMPTY` | **admitted** | — |
 
+**Extended 2026-09-13 — the law is not the group-operand position's.** The same empty group draws the same class in a FIELD-list operator (`AtLeastOneFieldFilled(G)`) and in an INDEX position (`CurrentRepetition(G*)`), and in the second it PRE-EMPTS: the populated control there is refused for its wildcard (`MVK_NO_WILDCARDS_ALLOWED`) while the empty one is refused for its emptiness. That is what lets a checker reading condition TEXT state this class for any reference resolving to an empty group — which operand position a name sits in is the one thing such a checker cannot recover.
+
 **The trap that eats the control rows.** The empty-group refusal reports *ahead of* `MVK_ERROR_FIELD_NOT_REFERENCED`, so a table whose conditions do not reference the error field reads correctly on every refusing row and reports the wrong code on every admitted one — measured here on the first attempt, which is why each condition carries a `FieldFilled(<error field>) And` conjunct.
 
 Consumer-visible consequence: this is the ordinary state of a model **mid-edit** — `group add` then `field add` — so refusing the declaration would make the obvious authoring order impossible. `dmtool` declares it, `model check` reports the model valid, and the refusal arrives only when a rule names the group; the group survives that refusal in the model. That separation is what the CLI lock asserts end to end.
+
+Reported by the portable checker (`CheckFamily.EMPTY_GROUP_OPERAND`), on the DECLARATION that names the group rather than on the group.
 
 *(Locked: `validate.laws.EmptyGroupOperandLawsTest` — the four-carrier table with its shell and populated controls, and the root class beside a populated-root control; `cli … EmptyGroupDeclarationCliTest` — declare, `model check` valid, name-and-refuse, over the CLI. Kernel 30.8.1, 2026-08-29.)*
 

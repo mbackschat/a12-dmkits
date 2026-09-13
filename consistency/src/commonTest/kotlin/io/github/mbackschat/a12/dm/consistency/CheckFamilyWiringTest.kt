@@ -48,6 +48,7 @@ class CheckFamilyWiringTest {
               "NumberType":{"minFractionalDigits":3,"maxFractionalDigits":2}}}},
             {"type":"Field","id":"f11","name":"RepeatedTier","Field":{"fieldType":{
               "type":"EnumerationType","EnumerationType":{"values":[{"value":"A"},{"value":"A"}]}}}},
+            {"type":"Group","id":"g1","name":"Hollow","Group":{"elements":[]}},
             {"type":"Rule","id":"r1","name":"BadTarget","Rule":{
               "errorCondition":"FieldFilled(Price)","errorEntityRelPath":"../NoSuchField",
               "errorCode":"C1","errorMessage":[{"locale":"en_US","text":"x"}]}},
@@ -70,6 +71,9 @@ class CheckFamilyWiringTest {
               "errorCondition":"FieldFilled(Price) And FieldFilled(Price) Or FieldFilled(Price)",
               "errorEntityRelPath":"../Price",
               "errorCode":"C8","errorMessage":[{"locale":"en_US","text":"x"}]}},
+            {"type":"Rule","id":"r16","name":"NamesHollow","Rule":{
+              "errorCondition":"GroupFilled(/Catalog/Hollow)","errorEntityRelPath":"../Price",
+              "errorCode":"C16","errorMessage":[{"locale":"en_US","text":"x"}]}},
             {"type":"Rule","id":"r11","name":"UnbindableSlot","Rule":{
               "errorCondition":{"value":"FieldFilled(Price)"},"errorEntityRelPath":"../Price",
               "errorCode":"C11","errorMessage":[{"locale":"en_US","text":"x"}]}},
@@ -141,6 +145,9 @@ class CheckFamilyWiringTest {
         CheckFamily.NUMBER_TYPE_DIGITS to ("MVK_FRACT_DIGITS_INVALID" to "/Catalog/Amount"),
         CheckFamily.ENUM_VALUE_LABELS to
             ("MVK_INTERNAL_VALUES_DUPLICATE" to "/Catalog/RepeatedTier"),
+        // The finding sits on the RULE that names the group, not on the group: declaring an empty group is
+        // legal and only naming one is refused.
+        CheckFamily.EMPTY_GROUP_OPERAND to ("MVK_GROUP_IS_EMPTY" to "/Catalog/NamesHollow"),
     )
 
     @Test
