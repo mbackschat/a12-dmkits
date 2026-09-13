@@ -113,11 +113,20 @@ class RepetitionWildcardTest {
         val actual = mutableMapOf<String, List<String>>()
         actual["a starred segment whose own prefix does not resolve"] = codes("GroupFilled(Nowhere*)")
         actual["a starred fixed group with an unresolvable LEAF"] = codes("FieldFilled(Guest*/NoSuchField)")
+        actual["a star on an UP-STEP that lands on a fixed group"] = codes("GroupFilled(Stays/..*/Guest)")
+        actual["a star on a NAMED turning point"] = codes("GroupFilled(Stays/..Stay*/Guest)")
+        actual["…the same step unstarred — the control"] = codes("GroupFilled(Stays/../Guest)")
         actual["no star at all — the control"] = codes("GroupFilled(Guest)")
 
         val expected = mutableMapOf<String, List<String>>()
         expected["a starred segment whose own prefix does not resolve"] = listOf("MVK_INVALID_ENTITY")
         expected["a starred fixed group with an unresolvable LEAF"] = listOf("MVK_INVALID_ENTITY", invalid)
+        // A12 answers a starred up-navigation with `MVK_INVALID_WILDCARD_REL`, its own code
+        // (`validate.laws.PathLawsTest.aStarOnTheRelativeUpNavigationIsRejected_useAbsolute`), so naming this
+        // family's class here would report the wrong one for a shape A12 refuses on another ground.
+        expected["a star on an UP-STEP that lands on a fixed group"] = emptyList()
+        expected["a star on a NAMED turning point"] = emptyList()
+        expected["…the same step unstarred — the control"] = emptyList()
         expected["no star at all — the control"] = emptyList()
         assertEquals(expected, actual, "the shapes it leaves alone")
     }

@@ -25,8 +25,8 @@ import kotlinx.serialization.json.intOrNull
  * own prefix and judges that.
  *
  * **Two shapes are left alone, each because A12's answer for them is unmeasured rather than absent.** A
- * starred segment whose own prefix does not resolve is left to the reference family; and a star on an
- * up-step (`..*`) has a class of its own in A12's ledger, so judging it here would risk naming the wrong one.
+ * starred segment whose own prefix does not resolve is left to the reference family; and a star on a relative
+ * STEP has a class of its own in A12's ledger, so judging it here would risk naming the wrong one.
  */
 fun PreparedModel.repetitionWildcardFindings(): List<Finding> = elements.flatMap { element ->
     val body = element.body ?: return@flatMap emptyList()
@@ -53,16 +53,23 @@ fun PreparedModel.repetitionWildcardFindings(): List<Finding> = elements.flatMap
 /**
  * The path up to and including the segment at [at], when that segment carries a wildcard and is a NAME.
  *
- * A `..*` is excluded: A12 gives a starred up-step its own class (`MVK_INVALID_WILDCARD_REL`), so resolving
- * the step and judging what it lands on would name this class for a shape A12 answers with another.
+ * **Every relative STEP form is excluded, not just the bare `..`.** A12 answers a starred up-navigation with
+ * `MVK_INVALID_WILDCARD_REL`, a code of its own (`rulekit.validate.laws.PathLawsTest`), so resolving the step
+ * and judging what it lands on would name this family's class for a shape A12 refuses on another ground. The
+ * named turning point `..Ancestor*` is excluded with it: it is an up-navigation too, and which of the two
+ * codes A12 gives it is unmeasured — silence is the safe answer where the class is in doubt.
  */
 private fun starredPrefix(segments: List<String>, at: Int): String? {
     val segment = segments[at]
     if (!segment.endsWith("*")) {
         return null
     }
-    val name = segment.removeSuffix("*").removeSuffix(".")
-    return if (name.isEmpty() || name == "..") null else segments.take(at + 1).joinToString("/")
+    val stepped = segment.removeSuffix("*")
+    return if (stepped.isEmpty() || stepped.startsWith(".")) {
+        null
+    } else {
+        segments.take(at + 1).joinToString("/")
+    }
 }
 
 /** Whether [prefix] resolves to something other than a repeatable group — unresolvable counting as neither. */
