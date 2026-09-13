@@ -137,6 +137,14 @@ enum class CheckFamily {
     STRING_PATTERN_MESSAGE,
 
     /**
+     * That a declared string type's own parameters agree with each other — what `noValueValidation`
+     * excludes, the hint list it forbids, the line-break flag it requires, and the two length laws beside
+     * them. The members are read the way A12 encodes them, so the sentinel `-1` is NO bound rather than a
+     * negative one, and the laws are reported independently because A12 reports them so.
+     */
+    STRING_TYPE_PARAMETERS,
+
+    /**
      * That every DSL-bearing member can be TOKENIZED — the syntax layer's first phase, and the only one
      * decidable without a grammar. Whether the tokens then form a condition A12's parser accepts is a
      * separate question this family does not answer.
@@ -304,7 +312,7 @@ internal fun check(
         prepared.fieldTypeBindingFindings() + prepared.temporalConfigFindings() +
         prepared.elementNameAlphabetFindings() + prepared.enumCategoryFindings() +
         prepared.supportedCharacterFindings() + prepared.declaredPatternFindings() +
-        prepared.stringTypeMessageFindings()
+        prepared.stringTypeMessageFindings() + prepared.stringTypeParameterFindings()
     val findings = judged.notSuppressedBy(prepared.variantFilterSuppressed())
     return ConsistencyReport(
         modelId = admitted.modelId,
@@ -322,7 +330,8 @@ internal fun check(
             CheckFamily.STRING_SLOT_BINDING, CheckFamily.FIELD_TYPE_BINDING,
             CheckFamily.TEMPORAL_CONFIG, CheckFamily.ELEMENT_NAME_ALPHABET,
             CheckFamily.ENUM_CATEGORY_ALIGNMENT, CheckFamily.ENUM_VALUE_CHARACTERS,
-            CheckFamily.STRING_PATTERN_ADMISSION, CheckFamily.STRING_PATTERN_MESSAGE),
+            CheckFamily.STRING_PATTERN_ADMISSION, CheckFamily.STRING_PATTERN_MESSAGE,
+            CheckFamily.STRING_TYPE_PARAMETERS),
         gaps = prepared.gaps() + prepared.emptyFactBase() + findings.buildBlocked() +
             prepared.variantFilterGaps() + prepared.enumCategoryGaps() +
             prepared.supportedCharacterGaps() + prepared.fieldTypeBindingGaps() +

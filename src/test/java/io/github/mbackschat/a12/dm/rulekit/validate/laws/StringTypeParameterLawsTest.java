@@ -108,6 +108,39 @@ class StringTypeParameterLawsTest {
         assertEquals(expected, actual, "what a string type may declare alongside no-value validation");
     }
 
+    /**
+     * The shapes a CHECKER has to decide and the grids above leave open.
+     *
+     * <p>Each row is a judgement an implementation must make anyway — whether the sentinel counts as a
+     * declared minimum for the exclusion law, whether an empty hint list is a hint list, and whether two
+     * violations on one type both surface — so each is measured rather than chosen.
+     */
+    @Test
+    void theShapesBetweenTheRows() {
+        Map<String, String> rows = new LinkedHashMap<>();
+        rows.put("no-value validation with line breaks and an UNDEFINED minimum",
+                "{\"noValueValidation\":true,\"lineBreaksPermitted\":true,\"minLength\":-1}");
+        rows.put("no-value validation with line breaks and an EMPTY hint list",
+                "{\"noValueValidation\":true,\"lineBreaksPermitted\":true,\"hintList\":[]}");
+        rows.put("line breaks with an UNDEFINED maximum",
+                "{\"lineBreaksPermitted\":true,\"maxLength\":-1}");
+        rows.put("no-value validation WITHOUT line breaks and with a pattern",
+                "{\"noValueValidation\":true," + PATTERN + "}");
+
+        Map<String, String> actual = new LinkedHashMap<>();
+        rows.forEach((row, json) -> actual.put(row, KernelLaws.verdictOf(storedModelWith(json))));
+
+        Map<String, String> expected = new LinkedHashMap<>();
+        expected.put("no-value validation with line breaks and an UNDEFINED minimum", KernelLaws.ADMITTED);
+        expected.put("no-value validation with line breaks and an EMPTY hint list", KernelLaws.ADMITTED);
+        expected.put("line breaks with an UNDEFINED maximum", KernelLaws.ADMITTED);
+        // Both fire: the exclusion law and the line-break requirement are independent, so a checker owes
+        // two findings for this one type rather than stopping at the first.
+        expected.put("no-value validation WITHOUT line breaks and with a pattern",
+                PARAMS_INCONSISTENT + "," + NO_VALUE_NEEDS_LINE_BREAKS);
+        assertEquals(expected, actual, "the string-type parameter shapes a checker has to decide");
+    }
+
     /** The order fixture with {@code CustomerName} carrying a {@code CustomFieldType} body. */
     private static String storedCustomTypeWith(String json) {
         try {

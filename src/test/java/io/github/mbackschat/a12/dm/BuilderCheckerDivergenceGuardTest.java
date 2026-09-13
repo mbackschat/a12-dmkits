@@ -153,7 +153,13 @@ class BuilderCheckerDivergenceGuardTest {
             // author the half-translated shape at all because `DocumentModelDraft` emits its single message
             // for every declared locale.
             Map.entry("MVK_ERROR_MESSAGE_AND_PATTERN_INVALID", Disposition.SAME_LAW_SEPARATE_CARRIERS),
-            Map.entry("MVK_ERROR_MESSAGE_AND_NO_PATTERN", Disposition.SAME_LAW_SEPARATE_CARRIERS));
+            Map.entry("MVK_ERROR_MESSAGE_AND_NO_PATTERN", Disposition.SAME_LAW_SEPARATE_CARRIERS),
+
+            // `StringSpec` refuses `noValueValidation` without line breaks in its constructor, over two
+            // booleans; the checker reads stored JSON, where the same pair can also be spelled with a
+            // non-boolean member the typed slots cannot represent. Same law, and the kit's carrier cannot be
+            // wrong about it — a boolean is a boolean ([KERNEL-FINDINGS KF319] is the basis for both).
+            Map.entry("MVK_STRING_TYPE_NO_VAL_AND_NO_LINE_BREAK", Disposition.SAME_LAW_SEPARATE_CARRIERS));
 
     @Test
     void everyCodeStatedInBothEstatesCarriesADisposition() {

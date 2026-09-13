@@ -42,6 +42,8 @@ class CheckFamilyWiringTest {
               "StringType":{"pattern":"a++","errorMessage":[{"locale":"en_US","text":"x"}]}}}},
             {"type":"Field","id":"f8","name":"Unexplained","Field":{"fieldType":{"type":"StringType",
               "StringType":{"pattern":"[A-Z]+"}}}},
+            {"type":"Field","id":"f9","name":"Opaque","Field":{"fieldType":{"type":"StringType",
+              "StringType":{"noValueValidation":true}}}},
             {"type":"Rule","id":"r1","name":"BadTarget","Rule":{
               "errorCondition":"FieldFilled(Price)","errorEntityRelPath":"../NoSuchField",
               "errorCode":"C1","errorMessage":[{"locale":"en_US","text":"x"}]}},
@@ -130,6 +132,8 @@ class CheckFamilyWiringTest {
         CheckFamily.STRING_PATTERN_ADMISSION to ("MVK_PATTERN_INVALID" to "/Catalog/Reference"),
         CheckFamily.STRING_PATTERN_MESSAGE to
             ("MVK_ERROR_MESSAGE_AND_PATTERN_INVALID" to "/Catalog/Unexplained"),
+        CheckFamily.STRING_TYPE_PARAMETERS to
+            ("MVK_STRING_TYPE_NO_VAL_AND_NO_LINE_BREAK" to "/Catalog/Opaque"),
     )
 
     @Test
