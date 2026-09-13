@@ -271,6 +271,11 @@ tasks.register('leakGuardTest', Test) {
         // collapses is the one nobody thought to declare. A repeated row name passes every assertion it has,
         // so only a scan that needs no list can see it.
         includeTestsMatching 'io.github.mbackschat.a12.dm.GridRowKeyGuardTest'
+        // Same derived-denominator reason on BOTH sides: the codes the checker reports and the codes the laws
+        // estate measures are each read off their own sources, so a new checker family and a new laws tier
+        // arrive in the denominator on their own. The code that would slip is one added beside siblings whose
+        // measurements already exist, which reads as covered from either side alone.
+        includeTestsMatching 'io.github.mbackschat.a12.dm.CheckerCodeBasisGuardTest'
     }
 }
 
