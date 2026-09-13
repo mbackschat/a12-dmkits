@@ -68,6 +68,13 @@ private fun List<Token>.constantOf(from: Int, until: Int): String? {
  *
  * Only a pair that spans the WHOLE run: `(a) > (b)` opens and closes with parentheses that are not each
  * other's match, and stripping them would read two different expressions as one.
+ *
+ * **No input distinguishes this from the loose test, and that is an argument rather than a gap** (a mutant
+ * relaxing it to "opens with `(` and ends with `)`" survives). Stripping a non-pair always leaves an
+ * UNBALANCED run — the first `(`'s partner keeps no opener and the last `)`'s opener keeps no closer — while
+ * both accepted forms need a matched pair around the argument and a run of digits, a point or a sign beside
+ * it, which no unbalanced stream is. The precision is kept because it states the intent and stays correct if
+ * the constant ever admits another token, not because a case reaches it today.
  */
 private fun List<Token>.stripRedundantParentheses(): List<Token> {
     var tokens = this
