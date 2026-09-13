@@ -384,6 +384,74 @@ class FieldTypeBindingLawsTest {
         assertEquals(expected, actual, "a field declared without any fieldType");
     }
 
+    /**
+     * The one type that is refused for BEING itself, on a second carrier and in a second multiplicity.
+     *
+     * <p>The grids above measure it twice on one root field, which cannot tell "this type is refused" from
+     * "this FIELD is refused" — the axis every row of those grids holds constant. A field nested one level
+     * down answers the carrier question, and a model carrying two of them answers whether the verdict is the
+     * model's or each field's, which is what decides whether a checker reports once or per declaration.
+     */
+    @Test
+    void theUnspecifiedTypeIsRefusedOnEveryCarrierAndPerField() {
+        Map<String, String> actual = new LinkedHashMap<>();
+        actual.put("a ROOT field — the control the grids already hold", verdictWithUnspecified(0));
+        actual.put("a NESTED field", verdictWithUnspecifiedNested());
+        actual.put("TWO unspecified root fields", verdictWithUnspecified(1));
+
+        Map<String, String> expected = new LinkedHashMap<>();
+        String noCodegen = "MVK_UNSPECIFIED_TYPE_NO_CODEGEN";
+        expected.put("a ROOT field — the control the grids already hold", noCodegen);
+        expected.put("a NESTED field", noCodegen);
+        // The verdict repeats per declaration rather than once for the model — `verdictOf` reports DISTINCT
+        // classes, so this row cannot show the count, and the claim it does carry is that a second offender
+        // neither silences the first nor changes the class.
+        expected.put("TWO unspecified root fields", noCodegen);
+        assertEquals(expected, actual, "the unspecified type is refused per declaration, on either carrier");
+    }
+
+    /** The order fixture with `CustomerName` retyped as unspecified, plus [extra] more such root fields. */
+    private static String verdictWithUnspecified(int extra) {
+        try {
+            ObjectNode root = (ObjectNode) MAPPER.readTree(Fixtures.orderJson());
+            fieldBody(root, "CustomerName").set("fieldType",
+                    MAPPER.readTree("{\"type\":\"UnspecifiedType\",\"UnspecifiedType\":{}}"));
+            for (int i = 0; i < extra; i++) {
+                ObjectNode added = (ObjectNode) ((com.fasterxml.jackson.databind.node.ArrayNode)
+                        root.path("content").path("modelRoot").path("rootGroups").get(0)
+                                .path("Group").path("elements")).addObject();
+                added.put("type", "Field").put("id", "spare" + i).put("name", "Spare" + i);
+                added.putObject("Field").set("fieldType",
+                        MAPPER.readTree("{\"type\":\"UnspecifiedType\",\"UnspecifiedType\":{}}"));
+            }
+            return KernelLaws.verdictOf(root.toString());
+        } catch (IOException unreadable) {
+            throw new UncheckedIOException("the fixture must parse", unreadable);
+        }
+    }
+
+    /** …and with the unspecified field one level down instead, which is the carrier the grids never move. */
+    private static String verdictWithUnspecifiedNested() {
+        try {
+            ObjectNode root = (ObjectNode) MAPPER.readTree(Fixtures.orderJson());
+            for (var element : root.path("content").path("modelRoot").path("rootGroups").get(0)
+                    .path("Group").path("elements")) {
+                if ("ShippingAddress".equals(element.path("name").asText()) && element.has("Group")) {
+                    for (var nested : element.path("Group").path("elements")) {
+                        if ("Street".equals(nested.path("name").asText())) {
+                            ((ObjectNode) nested.path("Field")).set("fieldType", MAPPER.readTree(
+                                    "{\"type\":\"UnspecifiedType\",\"UnspecifiedType\":{}}"));
+                            return KernelLaws.verdictOf(root.toString());
+                        }
+                    }
+                }
+            }
+            throw new IllegalStateException("the fixture no longer declares `/Order/ShippingAddress/Street`");
+        } catch (IOException unreadable) {
+            throw new UncheckedIOException("the fixture must parse", unreadable);
+        }
+    }
+
     /** The order fixture with one extra root field whose body is [rawBody] verbatim. */
     private static String verdictWithAddedField(String rawBody) {
         try {

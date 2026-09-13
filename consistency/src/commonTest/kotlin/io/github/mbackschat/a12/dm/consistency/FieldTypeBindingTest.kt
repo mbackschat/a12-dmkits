@@ -45,8 +45,11 @@ class FieldTypeBindingTest {
         for (type in listOf("StringType", "NumberType", "ConfirmType", "BooleanType", "UnspecifiedType")) {
             actual["$type, body present"] = codes("""{"type":"$type","$type":{}}""")
             actual["$type, body absent"] = codes("""{"type":"$type"}""")
-            expected["$type, body present"] = emptyList()
-            expected["$type, body absent"] = emptyList()
+            // `UnspecifiedType` binds like the other four and is then refused for BEING itself, in both
+            // spellings — the one type whose verdict is a property of the type rather than of its body.
+            val bound = if (type == "UnspecifiedType") listOf(noCodegen) else emptyList()
+            expected["$type, body present"] = bound
+            expected["$type, body absent"] = bound
         }
         // The three temporal types, which read their body but build from an empty one — a format is
         // optional. They are what keep "reads the body" and "needs something in it" apart.
@@ -88,6 +91,9 @@ class FieldTypeBindingTest {
      */
     /** A12's own class for a custom type with no usable `name` — unprefixed, like several of its siblings. */
     private val codenameMissing = "CUSTOM_FIELD_TYPE_CODENAME_MISSING"
+
+    /** …and for the type A12 can generate no code for, which it refuses per declaration on either carrier. */
+    private val noCodegen = "MVK_UNSPECIFIED_TYPE_NO_CODEGEN"
 
     @Test
     fun aConstructingTypeIsJudgedOnTheMemberItBuildsFrom() {

@@ -177,7 +177,16 @@ class BuilderCheckerDivergenceGuardTest {
 
             // …and its sibling, which rulekit only NAMES: `StructuralKernelFix` carries its corrective, and
             // the checker projects that very entry onto its own findings.
-            Map.entry("MVK_INTERNAL_VALUES_AND_DISPLAY_VALUES", Disposition.PROSE_ONLY));
+            Map.entry("MVK_INTERNAL_VALUES_AND_DISPLAY_VALUES", Disposition.PROSE_ONLY),
+
+            // modelkit's `FieldKind` simply has no UNSPECIFIED constant, and names this code in the javadoc
+            // saying why. That is a type-level erasure rather than a refusal, which is the harder shape to
+            // audit — no runtime error, just a missing factory — so it is worth stating that the erasure is
+            // now MEASURED and not merely reasoned: A12 refuses every `UnspecifiedType` declaration, with a
+            // body and without, on a root and a nested field, per declaration
+            // (`validate.laws.FieldTypeBindingLawsTest`). The checker reads stored JSON, where the shape is
+            // authorable by other tools, so it reports the code rather than erasing it.
+            Map.entry("MVK_UNSPECIFIED_TYPE_NO_CODEGEN", Disposition.PROSE_ONLY));
 
     @Test
     void everyCodeStatedInBothEstatesCarriesADisposition() {

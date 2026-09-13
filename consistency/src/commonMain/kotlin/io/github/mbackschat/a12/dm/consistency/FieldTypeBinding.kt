@@ -147,6 +147,21 @@ private fun unbindableFieldType(
     if (discriminator == "TypeDefType") {
         return unresolvedTypeDefinition(field, body as? JsonObject, declaredTypeDefinitionIds)
     }
+    // The one type refused for BEING itself: it binds like any other and A12 then has no code to generate
+    // for it, in both body spellings, on a root and a nested field, and once per declaration rather than
+    // once for the model (`FieldTypeBindingLawsTest`). So the verdict is the type's, not the body's, and
+    // nothing about the body can lift it.
+    if (discriminator == "UnspecifiedType") {
+        return Finding(
+            FindingCategory.A12_CONSTRAINT,
+            FindingSeverity.ERROR,
+            "MVK_UNSPECIFIED_TYPE_NO_CODEGEN",
+            "this field declares `UnspecifiedType`, which A12 reads and then refuses because it can " +
+                "generate no validation code for it — the declaration needs a real type, and no member of " +
+                "the body changes this",
+            field.path,
+        )
+    }
     // The second tier: A12 BOUND this and then could not construct from it. The member is NAMED rather than
     // the body merely weighed, so a body carrying its optional members and not the one A12 builds from is
     // caught — which an emptiness test missed. Absence only: a member present but null is a shape nobody has

@@ -220,6 +220,10 @@ private fun messageFindings(element: DeclaredElement, declaredLocales: List<Stri
             Finding(
                 FindingCategory.A12_CONSTRAINT,
                 FindingSeverity.ERROR,
+                // A12 reports the unprefixed `RULE_HAS_NO_ERRORTEXT` beside this class on SOME of these
+                // shapes and not others — a blank later duplicate draws both, a whitespace-only text draws
+                // this one alone ([KERNEL-FINDINGS KF323]). Which shapes split that way is not measured, so
+                // the second class is left to A12 rather than stated on a shape that may not draw it.
                 "MVK_ERROR_MESSAGE_MISSING",
                 "this declaration carries no error message text for any declared locale — A12 refuses it, " +
                     "and a blank `text` counts as no message at all",
