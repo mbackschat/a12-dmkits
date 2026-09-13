@@ -6976,3 +6976,22 @@ Reported by the portable checker as a WITHHOLDING applied where the report is as
 Reported by the portable checker as a WITHHOLDING applied where the report is assembled, listed as the syntax codes to DROP rather than the codes to keep: a family added later that reports a new syntax class is then an under-report until its code is listed, where a keep-list would silently start dropping it.
 
 *Locked by:* `rulekit.validate.laws.ConditionMultipleDefectLawsTest`.
+
+## §13 supplement — a FIELD TYPE reports every defect it carries, which bounds the withholding class (measured, 2026-09-13) <a id="kf341"></a>
+
+> Fold: not-foldable — the checker's examination order, not an evaluation behaviour.
+
+**[KF339](#kf339) and [KF340](#kf340) found A12 stopping at the first failure; this is the member where it does not.** The same question, asked of a field's type:
+
+| `Reference`'s `StringType` | A12 |
+|---|---|
+| `{}` — the control | ADMITTED |
+| `{"pattern":"a++"}` | **`MVK_PATTERN_INVALID,MVK_ERROR_MESSAGE_AND_PATTERN_INVALID`** |
+| `{"noValueValidation":true}` | **`MVK_STRING_TYPE_NO_VAL_AND_NO_LINE_BREAK`** |
+| **both on one field** | **all three of the above, plus `MVK_STRING_TYPE_PARAMS_INCONSISTENT`** |
+
+**So the stop is a property of particular members and must never be assumed from a neighbour.** Two members in this estate stop at their first failure and this one reports everything — measured in the same session, on the same kernel, hours apart. A checker generalising the withholding from a rule's members to a field's type would fall silent on input A12 answers in full.
+
+**A FOURTH class appears that neither defect produces alone**: `noValueValidation` beside a `pattern` is its own refusal. This matters beyond the row, because **every other grid in this estate varies one defect at a time**, and a combination-only class is structurally unreachable that way — it is not that such rows were tried and found empty, it is that the shape was never built. The portable checker already emits this one, so nothing was missing here; what the row establishes is that the method has a blind spot, not that this instance cost anything.
+
+*Locked by:* `rulekit.validate.laws.FieldTypeMultipleDefectLawsTest`, mirrored by `consistency … FieldTypeMultipleDefectTest`.
