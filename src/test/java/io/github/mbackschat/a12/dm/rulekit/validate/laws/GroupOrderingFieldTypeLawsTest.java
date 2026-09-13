@@ -103,6 +103,10 @@ class GroupOrderingFieldTypeLawsTest {
         actual.put("the flag as an arbitrary string",
                 verdictWith("{\"type\":\"StringType\",\"StringType\":{\"noValueValidation\":\"yes\"}}",
                         "indexFieldName"));
+        actual.put("a type name A12 does not have",
+                verdictWith("{\"type\":\"NotAType\",\"NotAType\":{}}", "indexFieldName"));
+        actual.put("a type discriminator naming a body that is absent",
+                verdictWith("{\"type\":\"StringType\"}", "indexFieldName"));
         actual.put("the flag explicitly null",
                 verdictWith("{\"type\":\"StringType\",\"StringType\":{\"noValueValidation\":null}}",
                         "indexFieldName"));
@@ -130,6 +134,8 @@ class GroupOrderingFieldTypeLawsTest {
         // NOT coerced to false: a string that is neither boolean literal refuses A12's reader outright, so
         // the coercion is narrow rather than lenient — `"true"`/`"false"` and nothing else.
         expected.put("the flag as an arbitrary string", KernelLaws.UNREADABLE);
+        expected.put("a type name A12 does not have", KernelLaws.UNREADABLE);
+        expected.put("a type discriminator naming a body that is absent", KernelLaws.ADMITTED);
         expected.put("the flag explicitly null", KernelLaws.ADMITTED);
         assertEquals(expected, actual, "the shapes around a no-value-validation string as an ordering field");
     }

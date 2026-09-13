@@ -78,6 +78,14 @@ enum class CheckFamily {
     STRING_SLOT_BINDING,
 
     /**
+     * That every field's `fieldType` names a type A12 declares and carries the body that type reads — the
+     * discriminated union's binding, never its contents. A `fieldType` A12's reader cannot bind makes the
+     * whole model unloadable; a body A12 binds but cannot construct from, and an absent member, fail one
+     * tier later and are not this family's.
+     */
+    FIELD_TYPE_BINDING,
+
+    /**
      * That every DSL-bearing member can be TOKENIZED — the syntax layer's first phase, and the only one
      * decidable without a grammar. Whether the tokens then form a condition A12's parser accepts is a
      * separate question this family does not answer.
@@ -241,7 +249,8 @@ internal fun check(
         prepared.conditionLexicalFindings() + prepared.conditionCompletenessFindings() +
         prepared.connectiveAgreementFindings() + prepared.conditionGrammarFindings() +
         prepared.elementNameFindings() + prepared.groupOrderingFindings() +
-        prepared.presentationMemberFindings() + prepared.stringSlotFindings()
+        prepared.presentationMemberFindings() + prepared.stringSlotFindings() +
+        prepared.fieldTypeBindingFindings()
     val findings = judged.notSuppressedBy(prepared.variantFilterSuppressed())
     return ConsistencyReport(
         modelId = admitted.modelId,
@@ -256,7 +265,7 @@ internal fun check(
             CheckFamily.VARIANT_FILTER, CheckFamily.CONDITION_LEXICALITY,
             CheckFamily.CONDITION_COMPLETENESS, CheckFamily.CONNECTIVE_AGREEMENT,
             CheckFamily.CONDITION_GRAMMAR, CheckFamily.RULE_PRESENTATION_MEMBERS,
-            CheckFamily.STRING_SLOT_BINDING),
+            CheckFamily.STRING_SLOT_BINDING, CheckFamily.FIELD_TYPE_BINDING),
         gaps = prepared.gaps() + prepared.emptyFactBase() + findings.buildBlocked() +
             prepared.variantFilterGaps() + UNREAD_MEMBERS + UNIMPLEMENTED_FAMILIES,
     )
@@ -336,10 +345,12 @@ private val UNREAD_MEMBERS = listOf(
     ),
     CoverageGap(
         at = null,
-        reason = "a `fieldType` whose shape A12's own reader REFUSES — an empty `fieldType` object, a " +
-            "non-string type carrying `noValueValidation`, or that flag spelled as a string that is " +
-            "neither boolean literal — draws nothing here, so a model that cannot load reads as clean on " +
-            "this member. The flag's own coercion is followed where A12 coerces",
+        reason = "a `fieldType` A12 READ but cannot BUILD FROM draws nothing here — a body missing the " +
+            "member its type constructs from (an `EnumerationType` with no values, a `TypeDefType` with no " +
+            "reference), and an ABSENT `fieldType` member, which A12 binds past and then fails on. Both " +
+            "leave a model that loads and never builds. The reader's own refusals ARE reported; these two " +
+            "sit one tier later and the absent-member case is true of most field declarations, so closing " +
+            "it changes what this checker says about nearly every model rather than adding a row",
     ),
     CoverageGap(
         at = null,

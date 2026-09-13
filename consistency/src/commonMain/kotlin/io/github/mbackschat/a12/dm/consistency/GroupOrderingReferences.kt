@@ -143,14 +143,6 @@ private fun PreparedModel.orderingFinding(
 }
 
 /**
- * Whether [field] is the one type A12 refuses as an ordering key: a string declared `noValueValidation`.
- *
- * The predicate keys on the STRING body carrying the flag, which is `FieldUtils.isNoValueValidation`'s own
- * shape — it reads the flag only after `isString`, so the same flag on any other type is not this law. A
- * field whose `fieldType` is absent, holds no `StringType` body, or carries no boolean there is left
- * unjudged: under-reporting is the only safe direction on a shape no row measures.
- */
-/**
  * Whether this value SETS the flag, the way A12 binds it rather than the way JSON types it.
  *
  * A12 does not require a JSON boolean here, and a checker demanding one admits fields A12 refuses. Measured
@@ -168,6 +160,14 @@ private fun JsonPrimitive.setsTheFlag(): Boolean {
     return content.toDoubleOrNull()?.let { it != 0.0 } ?: false
 }
 
+/**
+ * Whether [field] is the one type A12 refuses as an ordering key: a string declared `noValueValidation`.
+ *
+ * The predicate keys on the STRING body carrying the flag, which is `FieldUtils.isNoValueValidation`'s own
+ * shape — it reads the flag only after `isString`, so the same flag on any other type is not this law. A
+ * field whose `fieldType` A12 cannot BIND at all is not judged here either: that model never loads, and
+ * saying so is [fieldTypeBindingFindings]'s business rather than a second opinion from this family.
+ */
 private fun noValueValidationFinding(field: DeclaredElement, member: String, code: String): Finding? {
     val string = (field.body?.get("fieldType") as? JsonObject)?.get("StringType") as? JsonObject
         ?: return null

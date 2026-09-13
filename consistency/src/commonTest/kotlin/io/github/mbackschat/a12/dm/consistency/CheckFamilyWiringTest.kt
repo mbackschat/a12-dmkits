@@ -28,6 +28,8 @@ class CheckFamilyWiringTest {
          "content":{"modelRoot":{"rootGroups":[
           {"type":"Group","id":"g0","name":"Catalog","Group":{"elements":[
             {"type":"Field","id":"f0","name":"Price","Field":{}},
+            {"type":"Field","id":"f1","name":"Unbindable","Field":{
+              "fieldType":{"type":"NotAType","NotAType":{}}}},
             {"type":"Rule","id":"r1","name":"BadTarget","Rule":{
               "errorCondition":"FieldFilled(Price)","errorEntityRelPath":"../NoSuchField",
               "errorCode":"C1","errorMessage":[{"locale":"en_US","text":"x"}]}},
@@ -106,6 +108,7 @@ class CheckFamilyWiringTest {
         CheckFamily.CONDITION_GRAMMAR to ("MVK_UNEXPECTED_TOKEN" to "/Catalog/Ungrammatical"),
         CheckFamily.RULE_PRESENTATION_MEMBERS to (CK_MODEL_NOT_BUILDABLE to "/Catalog/UnbindablePatterns"),
         CheckFamily.STRING_SLOT_BINDING to (CK_MODEL_NOT_BUILDABLE to "/Catalog/UnbindableSlot"),
+        CheckFamily.FIELD_TYPE_BINDING to (CK_MODEL_NOT_BUILDABLE to "/Catalog/Unbindable"),
     )
 
     @Test
