@@ -35,6 +35,7 @@ class ComputedTargetKindTest {
         actual["computed field | a FIXED group"] = computingInto("../Station")
         actual["computed field | a REPEATABLE group"] = computingInto("../Hires")
         actual["computed field | a field inside a fixed group"] = computingInto("../Station/Deposit")
+        actual["computed field | a path that resolves to nothing"] = computingInto("../NoSuchField")
         actual["error target | a sibling FIELD — the control"] = reportingOn("../Total", "FieldFilled(Total)")
         actual["error target | a FIXED group"] = reportingOn("../Station", "GroupFilled(Station)")
         actual["error target | a REPEATABLE group"] =
@@ -45,6 +46,9 @@ class ComputedTargetKindTest {
         expected["computed field | a FIXED group"] = listOf(notBuildable)
         expected["computed field | a REPEATABLE group"] = listOf(notBuildable)
         expected["computed field | a field inside a fixed group"] = emptyList()
+        // ONE finding, not two: the target A12 also refuses on the build tier, already named by the
+        // reference family. This family adds nothing there, which is what keeps a single cause single.
+        expected["computed field | a path that resolves to nothing"] = listOf(notBuildable)
         expected["error target | a sibling FIELD — the control"] = emptyList()
         // The rows that keep the two slots apart. A12 admits a group error target, so a checker applying the
         // computation's law to both would refuse a legal model — twice, once per group kind.
