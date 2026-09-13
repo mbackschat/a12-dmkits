@@ -75,8 +75,8 @@ class FieldTypeBindingTest {
      * measured as a surviving mutant. Every row is a body the real kernel ADMITS
      * (`rulekit.validate.laws.FieldTypeBindingLawsTest`), so reporting one would refuse a model A12 takes.
      *
-     * `TypeDefType` has no row: a buildable one needs a type definition the model declares, and an `id`
-     * naming nothing refuses A12's reader outright — a class this checker does not cover, named in the gap.
+     * `TypeDefType` has no row here because its body is not judged by emptiness at all: it carries a
+     * REFERENCE, resolved in its own test below against `content.typeDefinitions`.
      */
     @Test
     fun aConstructingTypeWithARealBodyDrawsNothing() {
@@ -161,6 +161,51 @@ class FieldTypeBindingTest {
         )
         assertEquals(emptyList(), check(withGroup).findings.map { it.code },
             "a group's stray fieldType is A12's to ignore, so reporting it would refuse a model A12 loads")
+    }
+
+    /**
+     * A `TypeDefType`'s reference resolves against `content.typeDefinitions`, not against the element tree.
+     *
+     * The wire member is `typeDefinitionId`; the kernel's Java field is called `id`, and taking that for the
+     * wire name is what made an earlier probe measure an unknown member and mistake the result for a
+     * dangling-reference law ([KERNEL-FINDINGS KF308], corrected). The declared row is the live control: it
+     * must draw nothing, or a green dangling row would only mean the check never ran.
+     */
+    @Test
+    fun aTypeDefTypeReferenceResolvesAgainstTheModelsTypeDefinitions() {
+        fun typed(fieldType: String, typeDefinitions: String?) = ModelSource(
+            """
+            {"header":{"id":"catalog","locales":[{"code":"en_US"}]},
+             "content":{${typeDefinitions?.let { """"typeDefinitions":$it,""" } ?: ""}
+              "modelRoot":{"rootGroups":[
+               {"type":"Group","id":"g0","name":"Catalog","Group":{"elements":[
+                 {"type":"Field","id":"f0","name":"Tier","Field":{"fieldType":$fieldType}}
+               ]}}
+              ]}}}
+            """.trimIndent(),
+        )
+
+        val money = """[{"id":"Money","name":"Money","fieldType":{"type":"StringType"}}]"""
+        val actual = mutableMapOf<String, List<String>>()
+        actual["naming a DECLARED type definition — the control"] = check(
+            typed("""{"type":"TypeDefType","TypeDefType":{"typeDefinitionId":"Money"}}""", money),
+        ).findings.map { it.code }
+        actual["naming nothing, with one declared"] = check(
+            typed("""{"type":"TypeDefType","TypeDefType":{"typeDefinitionId":"NoSuch"}}""", money),
+        ).findings.map { it.code }
+        actual["naming nothing, with none declared"] = check(
+            typed("""{"type":"TypeDefType","TypeDefType":{"typeDefinitionId":"NoSuch"}}""", null),
+        ).findings.map { it.code }
+        actual["no typeDefinitionId at all"] = check(
+            typed("""{"type":"TypeDefType","TypeDefType":{}}""", money),
+        ).findings.map { it.code }
+
+        val expected = mutableMapOf<String, List<String>>()
+        expected["naming a DECLARED type definition — the control"] = emptyList()
+        expected["naming nothing, with one declared"] = unbuildable
+        expected["naming nothing, with none declared"] = unbuildable
+        expected["no typeDefinitionId at all"] = unbuildable
+        assertEquals(expected, actual, "what a TypeDefType's reference must name")
     }
 
     /**

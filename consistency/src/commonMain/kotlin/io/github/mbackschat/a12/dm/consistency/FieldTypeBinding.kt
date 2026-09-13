@@ -41,7 +41,7 @@ fun PreparedModel.fieldTypeBindingFindings(): List<Finding> =
                 field,
                 "this field declares no `fieldType`, which A12 binds as non-null with no default",
             )
-        unbindableFieldType(field, declared)
+        unbindableFieldType(field, declared, declaredTypeDefinitionIds)
     }
 
 /**
@@ -75,7 +75,11 @@ private val DECLARED_FIELD_TYPES = mapOf(
  * The order mirrors the reader's own: the member must be an object, that object must carry a `type` the
  * deserializer switches on, and a case that does not guard its body must find one.
  */
-private fun unbindableFieldType(field: DeclaredElement, declared: JsonElement): Finding? {
+private fun unbindableFieldType(
+    field: DeclaredElement,
+    declared: JsonElement,
+    declaredTypeDefinitionIds: Set<String>,
+): Finding? {
     // An explicit `null` is not an absent member: Jackson reaches `Field.fieldType`'s Lombok `@NonNull`
     // setter with it and the reader raises, where an omitted member never calls the setter at all. The two
     // land in different tiers, which is why this arm cannot simply treat null as nothing declared.
@@ -101,6 +105,9 @@ private fun unbindableFieldType(field: DeclaredElement, declared: JsonElement): 
                 "reads without checking",
         )
     }
+    if (discriminator == "TypeDefType") {
+        return unresolvedTypeDefinition(field, body as? JsonObject, declaredTypeDefinitionIds)
+    }
     // The second tier: A12 BOUND this and then could not construct from it. Keyed on an EMPTY body and
     // nothing looser, because that is the shape measured — which member each of these five needs is not,
     // so a body carrying anything at all is left to A12 rather than judged against a guess.
@@ -112,6 +119,40 @@ private fun unbindableFieldType(field: DeclaredElement, declared: JsonElement): 
         )
     }
     return null
+}
+
+/**
+ * A `TypeDefType`'s reference — the one reference in this checker whose referent is not an element.
+ *
+ * A field typed by a type definition names it through **`typeDefinitionId`**, resolved against
+ * `content.typeDefinitions`. The wire name is worth stating because the Java field is called `id` and taking
+ * that for the wire name is what made an earlier probe measure an unknown member and read the result as a
+ * dangling-reference law ([KERNEL-FINDINGS KF308], corrected). It was settled against a shipped model, which
+ * is the only oracle for a wire name.
+ *
+ * Both failures are the BUILD tier rather than the reader's: `EntityReferenceResolverVisitor.visitField`
+ * resolves the id and deliberately sets the reference to null when it cannot, so the source loads and the
+ * model then fails to build — measured for a dangling reference, for an absent member, and against a
+ * declared-definition control that is ADMITTED.
+ */
+private fun unresolvedTypeDefinition(
+    field: DeclaredElement,
+    body: JsonObject?,
+    declaredTypeDefinitionIds: Set<String>,
+): Finding? {
+    val named = (body?.get("typeDefinitionId") as? JsonPrimitive)?.takeIf { it.isString }?.content
+        ?: return unbuildable(
+            field,
+            "`fieldType` names `TypeDefType` without a `typeDefinitionId`, so A12 has no type definition to " +
+                "resolve",
+        )
+    if (named in declaredTypeDefinitionIds) {
+        return null
+    }
+    return unbuildable(
+        field,
+        "`fieldType` names the type definition `$named`, which `content.typeDefinitions` does not declare",
+    )
 }
 
 /**

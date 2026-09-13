@@ -345,8 +345,7 @@ private val UNREAD_MEMBERS = listOf(
             "body carrying some members but not the one its type constructs from (an `EnumerationType` " +
             "with `alphabeticalSorting` and no values) leaves a model A12 cannot build and draws nothing " +
             "here. Which member each type requires is unmeasured, and guessing it would refuse models A12 " +
-            "accepts. A `TypeDefType` whose `id` names no declared type definition is the measured case of " +
-            "this: A12's reader refuses it and nothing here says so",
+            "accepts",
     ),
     CoverageGap(
         at = null,

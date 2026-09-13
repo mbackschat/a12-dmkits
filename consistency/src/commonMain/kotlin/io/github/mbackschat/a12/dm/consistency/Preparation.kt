@@ -162,6 +162,14 @@ data class PreparedModel(
     val unreadableLocaleCodes: List<String> = emptyList(),
     val unexpandedMounts: List<UnexpandedMount> = emptyList(),
     val diagnostics: List<Diagnostic> = emptyList(),
+    /**
+     * The ids `content.typeDefinitions` declares, which a field's `TypeDefType` reference must name.
+     *
+     * Carried on the model rather than resolved per field because the list lives OUTSIDE `modelRoot` and so
+     * outside the element walk every other reference uses — the one reference in this checker whose
+     * referents are not elements at all.
+     */
+    val declaredTypeDefinitionIds: Set<String> = emptySet(),
 ) {
     /**
      * The elements a reference may resolve to — [elements] minus everything A12 deletes at the default
@@ -254,8 +262,23 @@ fun prepare(
         unreadableLocaleCodes = locales.unreadable,
         unexpandedMounts = collector.unexpandedMounts,
         diagnostics = collector.diagnostics,
+        declaredTypeDefinitionIds = content.declaredTypeDefinitionIds(),
     )
 }
+
+/**
+ * The ids under `content.typeDefinitions`, read as A12 reads them and no more strictly.
+ *
+ * A non-list member, an entry that is not an object, and an entry whose `id` is not text each contribute
+ * nothing rather than being reported: this function answers "which ids exist", and a reference is only
+ * refused when the id it names is absent from that set. Judging the DECLARATIONS' own shape is a separate
+ * question nobody has measured, and guessing at it here would refuse models A12 loads.
+ */
+private fun JsonObject?.declaredTypeDefinitionIds(): Set<String> =
+    (this?.get("typeDefinitions") as? JsonArray)
+        ?.mapNotNull { ((it as? JsonObject)?.get("id") as? JsonPrimitive)?.takeIf { id -> id.isString }?.content }
+        ?.toSet()
+        ?: emptySet()
 
 /**
  * The model currently being descended: its own header (an alias resolves against the model that WROTE it,

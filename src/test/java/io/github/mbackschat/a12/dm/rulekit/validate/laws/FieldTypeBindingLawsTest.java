@@ -285,6 +285,82 @@ class FieldTypeBindingLawsTest {
     }
 
     /**
+     * What a {@code TypeDefType}'s {@code id} must name, and which of two readings the refusal belongs to.
+     *
+     * <p><b>The earlier probe measured something else entirely.</b> It wrote {@code {"id":"NoSuchTypeDef"}}
+     * and read the UNREADABLE result as "a dangling reference refuses the reader". Both halves were wrong:
+     * the wire member is {@code typeDefinitionId} — {@code id} is only what the Java field is called — so
+     * that probe was measuring an UNKNOWN member on a field body, which this carrier refuses whatever it
+     * spells. The member name came from the kernel's Java class; the one that settles it came from a real
+     * model ({@code a12-kernel-mm}'s selection model), which is the oracle for a wire name.
+     *
+     * <p>With the right member, a dangling reference is read and fails to BUILD, matching the source:
+     * {@code EntityReferenceResolverVisitor.visitField} resolves the id against {@code content.typeDefinitions}
+     * and deliberately sets the reference to null when it cannot, rather than raising. The declared-definition
+     * row is the control that makes the rest attributable.
+     */
+    @Test
+    void aTypeDefTypeIdIsResolvedAgainstTheModelsOwnTypeDefinitions() {
+        Map<String, String> actual = new LinkedHashMap<>();
+        actual.put("naming a DECLARED type definition", verdictWithTypeDef("Money", "Money"));
+        actual.put("naming nothing, with a type definition declared",
+                verdictWithTypeDef("Money", "NoSuchTypeDef"));
+        actual.put("naming nothing, with none declared", verdictWithTypeDef(null, "NoSuchTypeDef"));
+        // The member is `typeDefinitionId`; `id` is what the Java field is called and is NOT the wire name.
+        actual.put("the reference written as `id` instead", KernelLaws.verdictOf(withRawTypeDef(
+                "{\"type\":\"TypeDefType\",\"TypeDefType\":{\"id\":\"Money\"}}", "Money")));
+        actual.put("no reference member at all", KernelLaws.verdictOf(withRawTypeDef(
+                "{\"type\":\"TypeDefType\",\"TypeDefType\":{}}", "Money")));
+
+        Map<String, String> expected = new LinkedHashMap<>();
+        expected.put("naming a DECLARED type definition", KernelLaws.ADMITTED);
+        // A dangling reference is read and then fails to BUILD — not the reader refusal an earlier probe
+        // recorded. That probe wrote the member as `id`, so what it measured was an unknown member.
+        expected.put("naming nothing, with a type definition declared", KernelLaws.NOT_BUILDABLE);
+        expected.put("naming nothing, with none declared", KernelLaws.NOT_BUILDABLE);
+        // An unknown member on a fieldType body refuses the reader, which is the field carrier's strictness
+        // measured elsewhere in this class and not anything about type definitions.
+        expected.put("the reference written as `id` instead", KernelLaws.UNREADABLE);
+        expected.put("no reference member at all", KernelLaws.NOT_BUILDABLE);
+        assertEquals(expected, actual, "what a TypeDefType's typeDefinitionId must name");
+    }
+
+    /**
+     * The order fixture with {@code CustomerName} typed as a {@code TypeDefType} naming [referencedId], and
+     * optionally a {@code content.typeDefinitions} entry declaring [declaredId].
+     */
+    private static String verdictWithTypeDef(String declaredId, String referencedId) {
+        try {
+            ObjectNode root = (ObjectNode) MAPPER.readTree(Fixtures.orderJson());
+            fieldBody(root, "CustomerName").set("fieldType", MAPPER.readTree(
+                    "{\"type\":\"TypeDefType\",\"TypeDefType\":{\"typeDefinitionId\":\""
+                            + referencedId + "\"}}"));
+            if (declaredId != null) {
+                ((ObjectNode) root.path("content")).set("typeDefinitions", MAPPER.readTree(
+                        "[{\"id\":\"" + declaredId + "\",\"name\":\"" + declaredId
+                                + "\",\"fieldType\":{\"type\":\"StringType\"}}]"));
+            }
+            return KernelLaws.verdictOf(root.toString());
+        } catch (IOException unreadable) {
+            throw new UncheckedIOException("the fixture and the raw fragments must parse", unreadable);
+        }
+    }
+
+    /** The order fixture with a raw {@code fieldType} fragment and one declared type definition. */
+    private static String withRawTypeDef(String rawFieldType, String declaredId) {
+        try {
+            ObjectNode root = (ObjectNode) MAPPER.readTree(Fixtures.orderJson());
+            fieldBody(root, "CustomerName").set("fieldType", MAPPER.readTree(rawFieldType));
+            ((ObjectNode) root.path("content")).set("typeDefinitions", MAPPER.readTree(
+                    "[{\"id\":\"" + declaredId + "\",\"name\":\"" + declaredId
+                            + "\",\"fieldType\":{\"type\":\"StringType\"}}]"));
+            return root.toString();
+        } catch (IOException unreadable) {
+            throw new UncheckedIOException("the fixture and the raw fragments must parse", unreadable);
+        }
+    }
+
+    /**
      * A field declared with NO {@code fieldType} leaves a model A12 cannot build — the within-model control.
      *
      * <p>The envelope grid already has this row by REMOVING the member from a fixture field, which varies one
