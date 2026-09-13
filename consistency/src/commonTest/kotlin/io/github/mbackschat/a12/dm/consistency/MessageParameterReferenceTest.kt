@@ -34,6 +34,7 @@ class MessageParameterReferenceTest {
         actual["a pathed field the condition does not read"] = ruleSaying("see \$Claims/Payout\$")
         actual["an escaped dollar"] = ruleSaying("cost 5\$\$")
         actual["a lone dollar"] = ruleSaying("cost 5\$")
+        actual["an unterminated parameter around a real unread field"] = ruleSaying("see \$Premium")
 
         val expected = mutableMapOf<String, List<String>>()
         expected["a field the condition reads — the control"] = emptyList()
@@ -49,6 +50,9 @@ class MessageParameterReferenceTest {
         expected["an escaped dollar"] = emptyList()
         // `WRONG_NUMBER_OF_DOLLARS` is A12's, and an unterminated parameter is not a reference at all.
         expected["a lone dollar"] = emptyList()
+        // The row with teeth: the name IS a real unread field, so guessing where the parameter ended would
+        // report the membership class on a text A12 refuses for a different reason entirely.
+        expected["an unterminated parameter around a real unread field"] = emptyList()
         assertEquals(expected, actual, "which parameter shapes this family reports")
     }
 

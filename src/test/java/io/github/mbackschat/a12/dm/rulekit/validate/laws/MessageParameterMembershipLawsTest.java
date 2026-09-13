@@ -72,6 +72,10 @@ class MessageParameterMembershipLawsTest {
         actual.put("a pathed field the condition does not read", message("see $Claims/Payout$"));
         actual.put("an escaped dollar, which is no parameter", message("cost 5$$"));
         actual.put("a lone dollar", message("cost 5$"));
+        // The row that separates "unterminated" from "a bad reference": the NAME here is a real field the
+        // condition does not read, so a reader that guessed where the parameter ended would report the
+        // membership class on a text A12 refuses for an entirely different reason.
+        actual.put("an unterminated parameter around a real unread field", message("see $Premium"));
 
         Map<String, String> expected = new LinkedHashMap<>();
         expected.put("a field the condition DOES read — the control", ADMITTED);
@@ -87,6 +91,7 @@ class MessageParameterMembershipLawsTest {
         expected.put("a pathed field the condition does not read", "INVALID_FIELD");
         expected.put("an escaped dollar, which is no parameter", ADMITTED);
         expected.put("a lone dollar", "WRONG_NUMBER_OF_DOLLARS");
+        expected.put("an unterminated parameter around a real unread field", "WRONG_NUMBER_OF_DOLLARS");
         assertEquals(expected, actual, "which class each parameter shape draws");
     }
 
