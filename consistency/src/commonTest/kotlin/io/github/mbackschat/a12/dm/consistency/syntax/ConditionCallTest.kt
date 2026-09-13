@@ -68,6 +68,8 @@ class ConditionCallTest {
             calls("Sum(Claims*/Amount Having [Claims/Paid] == \"Y\") > 0").single().operands.map { it.path }
         actual["a scoped reference (`@From`)"] =
             calls("AllGroupsFilled(Garage @From 2, Coverage)").single().operands.map { it.path }
+        actual["a clause keyword that is a BARE NAME (`For`)"] =
+            calls("AllGroupsFilled(Garage For 2, Coverage)").single().operands.map { it.path }
         actual["a category selector (`->`)"] =
             calls("AllGroupsFilled(Garage -> Band, Coverage)").single().operands.map { it.path }
         actual["a bracketed field value"] =
@@ -79,6 +81,11 @@ class ConditionCallTest {
         val expected = mutableMapOf<String, List<String?>>()
         expected["a filtered reference (`Having`)"] = listOf(null)
         expected["a scoped reference (`@From`)"] = listOf(null, "Coverage")
+        // The row the keyword table is FOR. Every other arm here is disqualified by punctuation the path
+        // grammar does not use; `For` arrives as an ordinary NAME between two path-shaped tokens, so without
+        // the table this argument reduces to the path `GarageFor2` — a spelling that resolves to nothing and
+        // therefore reads to a caller as "this operand is undeclared" rather than "I did not read it".
+        expected["a clause keyword that is a BARE NAME (`For`)"] = listOf(null, "Coverage")
         expected["a category selector (`->`)"] = listOf(null, "Coverage")
         expected["a bracketed field value"] = listOf(null, "Plate")
         // A quoted NAME is a path segment and a quoted STRING is a literal; the tokenizer tells them apart,
