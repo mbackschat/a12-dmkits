@@ -15,6 +15,7 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 
 import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft;
 import io.github.mbackschat.a12.dm.modelkit.FieldKind;
+import io.github.mbackschat.a12.dm.modelkit.SortOrder;
 
 /**
  * What a computation may compute INTO, and the rule-side mirror that says the answer is not the same.
@@ -43,7 +44,14 @@ class ComputedFieldTargetKindLawsTest {
                     .group("Station", s -> s.field("Name", FieldKind.STRING).field("Deposit", FieldKind.NUMBER))
                     .group("Hires", h -> h.repeatable(12)
                             .field("Fee", FieldKind.NUMBER)
-                            .field("Bicycle", FieldKind.STRING)))
+                            .field("Bicycle", FieldKind.STRING)
+                            .field("Slot", FieldKind.NUMBER)
+                            .field("Mileage", FieldKind.NUMBER)
+                            .field("ReturnHour", FieldKind.NUMBER)
+                            // NUMBER on purpose: the operation below writes a number, so a STRING target
+                            // would draw the type class and measure the field's TYPE instead of its role.
+                            .indexField("Slot")
+                            .sortField("ReturnHour", SortOrder.ASC)))
             .build().toJson();
 
     /** Where a computation may put its result. */
@@ -86,6 +94,72 @@ class ComputedFieldTargetKindLawsTest {
         expected.put("a FIXED group", KernelLaws.ADMITTED);
         expected.put("a REPEATABLE group", KernelLaws.ADMITTED);
         assertEquals(expected, actual, "the same targets on a rule instead");
+    }
+
+    /**
+     * …and what the same slot may compute into once the group it sits in DECLARES an index.
+     *
+     * <p>A12 has a key for this — {@code MVK_ERROR_INDEX_AS_CALCULATED_FIELD} — and it had never been put to
+     * the Kernel: the ledger carried the law as prose and no lock named the code. The same reader resolves
+     * this slot as the rows above, so an implementation that judged only the target's KIND would admit a
+     * computation writing into the field that identifies a row.
+     *
+     * <p>The SORT field is the control that separates "a field the group names" from "the index field": both
+     * are direct children named by a group member, and only one of them is refused.
+     */
+    @Test
+    void whatAComputationMayComputeIntoInsideAnIndexedGroup() {
+        Map<String, String> actual = new LinkedHashMap<>();
+        actual.put("an ordinary sibling — the control", computingInsideHires("../Fee"));
+        actual.put("the group's INDEX field", computingInsideHires("../Slot"));
+        actual.put("the group's SORT field", computingInsideHires("../ReturnHour"));
+        actual.put("a rule reporting on the index field — the control",
+                KernelLaws.verdictModel(RENTAL, "/Rental/Hires", "../Slot", "FieldFilled(Slot)"));
+        // Whether the law follows the TARGET or only the computation's own group — a checker keying on the
+        // resolved field alone would apply it from anywhere, which is a transfer these two rows measure.
+        actual.put("the index field, from OUTSIDE its group", computingInto("../Hires/Slot"));
+        // NOT `Fee`: the helper's own operation sums it, so computing into it is a SELF-READ and draws
+        // `MVK_ERROR_REFERENCE_TO_CALCULATED_FIELD` — a control moving two variables rather than one.
+        actual.put("an ordinary field of that group, from OUTSIDE — the control",
+                computingInto("../Hires/Mileage"));
+
+        Map<String, String> expected = new LinkedHashMap<>();
+        expected.put("an ordinary sibling — the control", KernelLaws.ADMITTED);
+        expected.put("the group's INDEX field", "MVK_ERROR_INDEX_AS_CALCULATED_FIELD");
+        // The control that makes the row above about the INDEX and not about "a field the group names":
+        // a sort field is declared by the same kind of group member and is computed into freely.
+        expected.put("the group's SORT field", KernelLaws.ADMITTED);
+        expected.put("a rule reporting on the index field — the control", KernelLaws.ADMITTED);
+        // The law follows the TARGET, not the computation's own group — so a checker may key on the
+        // resolved field alone, which is a transfer measured here rather than assumed from the row above.
+        expected.put("the index field, from OUTSIDE its group", "MVK_ERROR_INDEX_AS_CALCULATED_FIELD");
+        expected.put("an ordinary field of that group, from OUTSIDE — the control", KernelLaws.ADMITTED);
+        assertEquals(expected, actual, "what a computation may compute into inside an indexed group");
+    }
+
+    /** One computation declared INSIDE the repeatable {@code Hires} group, computing into [target]. */
+    private static String computingInsideHires(String target) {
+        try {
+            ObjectNode root = (ObjectNode) MAPPER.readTree(RENTAL);
+            ArrayNode rentalElements = (ArrayNode) root.path("content").path("modelRoot")
+                    .path("rootGroups").get(0).path("Group").path("elements");
+            ObjectNode hires = null;
+            for (var element : rentalElements) {
+                if ("Hires".equals(element.path("name").asText())) {
+                    hires = (ObjectNode) element;
+                }
+            }
+            ObjectNode computation = (ObjectNode) ((ArrayNode) hires.path("Group").path("elements"))
+                    .addObject();
+            computation.put("type", "Computation").put("id", "cidx").put("name", "RowTotal");
+            ObjectNode body = computation.putObject("Computation");
+            body.put("computedFieldRelPath", target);
+            body.putArray("computationAlternatives").addObject().put("operation", "1");
+            body.putArray("errorMessage").addObject().put("locale", "en_US").put("text", "the row total");
+            return KernelLaws.verdictOf(root.toString());
+        } catch (IOException unreadable) {
+            throw new UncheckedIOException("the fixture must parse", unreadable);
+        }
     }
 
     /**

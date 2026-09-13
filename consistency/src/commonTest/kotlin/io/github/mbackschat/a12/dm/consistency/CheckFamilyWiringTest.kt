@@ -118,6 +118,13 @@ class CheckFamilyWiringTest {
             {"type":"Computation","id":"c3","name":"BadSuppression","Computation":{
               "computationAlternatives":[{"operation":"1.00"}],
               "errorCodesToSuppress":["NOT A CODE"]}},
+            {"type":"Group","id":"g4","name":"Bins","Group":{"repeatability":9,"indexFieldName":"Slot",
+              "elements":[
+                {"type":"Field","id":"f13","name":"Slot","Field":{"fieldType":{"type":"NumberType"}}}
+              ]}},
+            {"type":"Computation","id":"c5","name":"IntoAnIndex","Computation":{
+              "computedFieldRelPath":"../Bins/Slot",
+              "computationAlternatives":[{"operation":"1"}]}},
             {"type":"Computation","id":"c4","name":"IntoAGroup","Computation":{
               "computedFieldRelPath":"../Shelf",
               "computationAlternatives":[{"operation":"1.00"}]}},
@@ -184,6 +191,8 @@ class CheckFamilyWiringTest {
             ("MVK_ERROR_FIELD_NOT_REFERENCED" to "/Catalog/Unreferenced"),
         CheckFamily.COMPUTED_TARGET_KIND to (CK_MODEL_NOT_BUILDABLE to "/Catalog/IntoAGroup"),
         CheckFamily.RAW_TYPE_LENGTH to ("MVK_INVALID_LENGTH_OF_RAW_TYPE" to "/Catalog/RawLength"),
+        CheckFamily.COMPUTED_TARGET_INDEX_FIELD to
+            ("MVK_ERROR_INDEX_AS_CALCULATED_FIELD" to "/Catalog/IntoAnIndex"),
         CheckFamily.GROUP_LIST_OPERANDS to ("MVK_DUPLICATE_PARAM1" to "/Catalog/RepeatedGroup"),
         CheckFamily.GROUP_LIST_ROOT_OPERAND to
             ("MVK_ROOT_GROUP_REFERENCED" to "/Catalog/RootOperand"),

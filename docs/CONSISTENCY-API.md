@@ -15,7 +15,7 @@ Two statuses exist today:
 
 `complete` is `false` on every report today and is published anyway, so that a consumer switching on it keeps working when it starts carrying information. `VALID` arrives with the coverage evidence that earns it, not with the next family.
 
-**Every report also says what it did NOT check.** `checksCompleted` names the families that ran and `gaps` names what nobody examined — a measured storefront model returns 35 families and 5 gaps (2026-09-13). A consumer that shows a user "no problems found" without surfacing the gaps is reporting a verdict the checker did not give.
+**Every report also says what it did NOT check.** `checksCompleted` names the families that ran and `gaps` names what nobody examined — a measured storefront model returns 36 families and 5 gaps (2026-09-13). A consumer that shows a user "no problems found" without surfacing the gaps is reporting a verdict the checker did not give.
 
 ## The entry point
 

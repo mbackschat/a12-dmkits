@@ -67,6 +67,31 @@ class ComputedTargetKindTest {
     }
 
     /**
+     * …and the index field, which A12 answers with a key of its own rather than refusing to build.
+     *
+     * The SORT row is the control that keeps this about the index: both are direct children named by a group
+     * member, and only one is refused. The outside-the-group row measures that the law follows the TARGET,
+     * so keying on the resolved field alone is correct rather than a transfer.
+     */
+    @Test
+    fun aComputationMayNotComputeIntoTheFieldARepeatableGroupIsIndexedBy() {
+        val indexed = "MVK_ERROR_INDEX_AS_CALCULATED_FIELD"
+        val actual = mutableMapOf<String, List<String>>()
+        actual["an ordinary field in the indexed group — the control"] = computingInto("../Hires/Mileage")
+        actual["the group's INDEX field"] = computingInto("../Hires/Slot")
+        actual["the group's SORT field"] = computingInto("../Hires/ReturnHour")
+        actual["a rule reporting on the index field — the control"] =
+            reportingOn("../Hires/Slot", "AtLeastOneGroupFilled(Hires)")
+
+        val expected = mutableMapOf<String, List<String>>()
+        expected["an ordinary field in the indexed group — the control"] = emptyList()
+        expected["the group's INDEX field"] = listOf(indexed)
+        expected["the group's SORT field"] = emptyList()
+        expected["a rule reporting on the index field — the control"] = emptyList()
+        assertEquals(expected, actual, "a computation may not compute into a group's index field")
+    }
+
+    /**
      * The bicycle-rental model, carrying either a computation or a rule.
      *
      * One builder for both because the two slots are the comparison: a second fixture could differ in
@@ -96,8 +121,12 @@ class ComputedTargetKindTest {
                 {"type":"Group","id":"g1","name":"Station","Group":{"elements":[
                   {"type":"Field","id":"f1","name":"Deposit","Field":{"fieldType":{"type":"NumberType"}}}
                 ]}},
-                {"type":"Group","id":"g2","name":"Hires","Group":{"repeatability":12,"elements":[
-                  {"type":"Field","id":"f2","name":"Fee","Field":{"fieldType":{"type":"NumberType"}}}
+                {"type":"Group","id":"g2","name":"Hires","Group":{"repeatability":12,
+                  "indexFieldName":"Slot","sortFields":[{"name":"ReturnHour","order":"ASC"}],"elements":[
+                  {"type":"Field","id":"f2","name":"Fee","Field":{"fieldType":{"type":"NumberType"}}},
+                  {"type":"Field","id":"f3","name":"Slot","Field":{"fieldType":{"type":"NumberType"}}},
+                  {"type":"Field","id":"f4","name":"ReturnHour","Field":{"fieldType":{"type":"NumberType"}}},
+                  {"type":"Field","id":"f5","name":"Mileage","Field":{"fieldType":{"type":"NumberType"}}}
                 ]}},
                 $declaration
               ]}}

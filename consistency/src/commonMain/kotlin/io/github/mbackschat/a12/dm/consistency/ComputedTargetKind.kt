@@ -1,5 +1,8 @@
 package io.github.mbackschat.a12.dm.consistency
 
+import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.contentOrNull
+
 /**
  * That a computation computes into a FIELD.
  *
@@ -36,3 +39,47 @@ fun PreparedModel.computedTargetKindFindings(): List<Finding> = declaredReferenc
             declared.declaredAt,
         )
     }
+
+/**
+ * …and that it does not compute into the field a repeatable group is INDEXED by.
+ *
+ * A12 answers this one with a key of its own — `MVK_ERROR_INDEX_AS_CALCULATED_FIELD` — rather than refusing
+ * to build, so it is a verdict a consumer receives and this family reports it verbatim
+ * ([KERNEL-FINDINGS KF330], `rulekit.validate.laws.ComputedFieldTargetKindLawsTest`). The index field
+ * identifies a row so two lists can be iterated in lockstep; a computed one would be decided by the very
+ * evaluation the identity has to survive.
+ *
+ * **The SORT field is what makes this about the index and not about "a field the group names".** Both are
+ * direct children named by a group member, read by the same code and resolved the same way, and a
+ * computation writes into a sort field freely — measured, because a family reading `indexFieldName` and
+ * `sortFields[].name` through one helper is one edit away from judging them alike.
+ *
+ * **The law follows the TARGET, not the computation's own group.** A computation declared outside the
+ * repeatable group draws the same class, so keying on the resolved field alone is correct — measured rather
+ * than transferred from the inside-the-group row, which is where this family would otherwise have inherited
+ * a scope it never tested.
+ */
+fun PreparedModel.computedTargetIndexFieldFindings(): List<Finding> = declaredReferences()
+    .filter { it.role == ReferenceRole.COMPUTED_TARGET }
+    .mapNotNull { declared ->
+        val path = (declared.target as? Reference.Resolved)?.path ?: return@mapNotNull null
+        val group = path.substringBeforeLast('/', missingDelimiterValue = "")
+        if (indexFieldOf(group) != path.substringAfterLast('/')) {
+            return@mapNotNull null
+        }
+        Finding(
+            FindingCategory.A12_CONSTRAINT,
+            FindingSeverity.ERROR,
+            "MVK_ERROR_INDEX_AS_CALCULATED_FIELD",
+            "in `computedFieldRelPath`: `$path` is the field `$group` declares as its `indexFieldName`, " +
+                "which identifies a row so two repetitions can be read in lockstep — A12 refuses to let a " +
+                "computation decide it. A `sortFields` entry carries no such restriction",
+            declared.declaredAt,
+        )
+    }
+
+/** The short name [group] declares as its index field, when it declares one. */
+private fun PreparedModel.indexFieldOf(group: String): String? = elements
+    .firstOrNull { it.path == group && it.declaredKind == DeclaredKind.GROUP }
+    ?.body
+    ?.let { (it["indexFieldName"] as? JsonPrimitive)?.contentOrNull }

@@ -222,6 +222,14 @@ enum class CheckFamily {
     RAW_TYPE_LENGTH,
 
     /**
+     * That a computation does not compute into the field a repeatable group is INDEXED by. A12 answers with
+     * a key of its own rather than refusing to build, and the law follows the resolved TARGET rather than
+     * the computation's own group. A `sortFields` entry is named by the same kind of member and carries no
+     * such restriction, which is the control that keeps the two apart.
+     */
+    COMPUTED_TARGET_INDEX_FIELD,
+
+    /**
      * That every DSL-bearing member can be TOKENIZED — the syntax layer's first phase, and the only one
      * decidable without a grammar. Whether the tokens then form a condition A12's parser accepts is a
      * separate question this family does not answer.
@@ -391,7 +399,8 @@ internal fun check(
         prepared.supportedCharacterFindings() + prepared.declaredPatternFindings() +
         prepared.emptyGroupOperandFindings() + prepared.errorFieldReferenceFindings() +
         prepared.groupListOperandFindings() + prepared.repetitionWildcardFindings() +
-        prepared.computedTargetKindFindings() + prepared.rawTypeLengthFindings() +
+        prepared.computedTargetKindFindings() + prepared.computedTargetIndexFieldFindings() +
+        prepared.rawTypeLengthFindings() +
         prepared.stringTypeMessageFindings() + prepared.stringTypeParameterFindings() +
         prepared.numberTypeDigitFindings() + prepared.enumValueLabelFindings()
     val findings = judged.notSuppressedBy(prepared.variantFilterSuppressed())
@@ -417,7 +426,7 @@ internal fun check(
             CheckFamily.ERROR_FIELD_REFERENCE, CheckFamily.GROUP_LIST_OPERANDS,
             CheckFamily.GROUP_LIST_ROOT_OPERAND, CheckFamily.GROUP_LIST_OPERAND_KIND,
             CheckFamily.REPETITION_WILDCARD_TARGET, CheckFamily.COMPUTED_TARGET_KIND,
-            CheckFamily.RAW_TYPE_LENGTH),
+            CheckFamily.RAW_TYPE_LENGTH, CheckFamily.COMPUTED_TARGET_INDEX_FIELD),
         gaps = prepared.gaps() + prepared.emptyFactBase() + findings.buildBlocked() +
             prepared.variantFilterGaps() + prepared.enumCategoryGaps() +
             prepared.supportedCharacterGaps() + prepared.fieldTypeBindingGaps() +

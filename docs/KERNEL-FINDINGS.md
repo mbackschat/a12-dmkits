@@ -6641,3 +6641,28 @@ A rule's `errorEntityRelPath` and a computation's `computedFieldRelPath` are the
 Reported by the portable checker (`CheckFamily.COMPUTED_TARGET_KIND`). The shape exists only in stored DM-JSON: the kits' computed-field slot is a typed field handle, which is why `MVK_GROUP_AS_CALCULATED_FIELD` sits in the ledger's `erased` bucket.
 
 *Locked by:* `rulekit.validate.laws.ComputedFieldTargetKindLawsTest` (two grids, 8 rows); the portable checker's mirror is `consistency.ComputedTargetKindTest`.
+
+## §11 supplement — a computation may not compute into a group's INDEX field, and the sort field beside it may be computed freely (measured, 2026-09-13) <a id="kf330"></a>
+
+> Fold: not-foldable — a model-structure law on the computation's target slot, outside the evaluation scope.
+
+**A12 has a key for this and reaches it**, unlike the group-valued target next door: computing into the field a repeatable group declares as its `indexFieldName` draws `MVK_ERROR_INDEX_AS_CALCULATED_FIELD` from `checkConsistency`, a verdict a consumer receives rather than a refusal to build. The law had never been put to the Kernel before — [MVK-LEDGER](MVK-LEDGER.md) carried it as prose and no lock named the code.
+
+| stored shape | A12 |
+|---|---|
+| a computation writing into an ordinary sibling in the indexed group | ADMITTED |
+| …into the group's `indexFieldName` field | **`MVK_ERROR_INDEX_AS_CALCULATED_FIELD`** |
+| …into a field named by the group's `sortFields` | ADMITTED |
+| …into the index field, declared OUTSIDE the repeatable group | **`MVK_ERROR_INDEX_AS_CALCULATED_FIELD`** |
+| …into an ordinary field of that group, declared outside it | ADMITTED |
+| a RULE reporting on the index field | ADMITTED |
+
+**The SORT field is the row that makes this about the INDEX.** `indexFieldName` and `sortFields[].name` are both direct-child field references declared by the group, read by the same code and resolved the same way — our own checker reaches them through one shared helper — so "a field the group names" and "the field the group is identified by" are indistinguishable without this row. Only the second is refused.
+
+**The law follows the TARGET, not the computation's own group.** A computation declared outside the repeatable group draws the same class, so an implementation may key on the resolved field alone. Measured rather than transferred from the inside-the-group row: the reuse would have needed no new branch, which is the tell the scope-transfer rule names.
+
+**Its control needed a control.** The first outside-the-group row used a computation whose own operation sums `Fee` and wrote into `Fee`, so it drew `MVK_ERROR_REFERENCE_TO_CALCULATED_FIELD` — a self-read, not the locus under test. A field the operation does not read is admitted, which is what makes the index row above about the index.
+
+Reported by the portable checker (`CheckFamily.COMPUTED_TARGET_INDEX_FIELD`).
+
+*Locked by:* `rulekit.validate.laws.ComputedFieldTargetKindLawsTest` (three grids, 14 rows); the portable checker's mirror is `consistency.ComputedTargetKindTest`.
