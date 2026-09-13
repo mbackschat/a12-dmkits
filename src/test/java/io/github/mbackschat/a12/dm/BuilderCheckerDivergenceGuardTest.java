@@ -186,7 +186,16 @@ class BuilderCheckerDivergenceGuardTest {
             // body and without, on a root and a nested field, per declaration
             // (`validate.laws.FieldTypeBindingLawsTest`). The checker reads stored JSON, where the shape is
             // authorable by other tools, so it reports the code rather than erasing it.
-            Map.entry("MVK_UNSPECIFIED_TYPE_NO_CODEGEN", Disposition.PROSE_ONLY));
+            Map.entry("MVK_UNSPECIFIED_TYPE_NO_CODEGEN", Disposition.PROSE_ONLY),
+
+            // Both estates enforce the same measured law and reached it independently: `covers` is an exact
+            // field match OR strictly-inside a referenced group, and the checker's is the target or an
+            // ancestor of it. The carriers are a typed `Condition` tree and scanned condition TEXT, which is
+            // also why they part on what they can see — rulekit recognises the `RuleGroup` self-reference as
+            // satisfying the gate, the checker reaches the same silence because `RuleGroup` is a keyword
+            // there and names no entity. rulekit's is ADVISORY (a PRECHECK warning, never a refusal) and the
+            // checker's is a finding; both under-report the `Having` row rather than guessing (KF324).
+            Map.entry("MVK_ERROR_FIELD_NOT_REFERENCED", Disposition.SAME_LAW_SEPARATE_CARRIERS));
 
     @Test
     void everyCodeStatedInBothEstatesCarriesADisposition() {

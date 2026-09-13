@@ -54,6 +54,9 @@ class CorrectiveTest {
             {"type":"Rule","id":"r2","name":"Ungrammatical","Rule":{
               "errorCondition":"FieldFilled(Note))","errorEntityRelPath":"../Note",
               "errorCode":"C3","errorMessage":[{"locale":"en_US","text":"x"}]}},
+            {"type":"Rule","id":"r4","name":"Unreferenced","Rule":{
+              "errorCondition":"FieldFilled(Note)","errorEntityRelPath":"../Season",
+              "errorCode":"C5","errorMessage":[{"locale":"en_US","text":"x"}]}},
             {"type":"Rule","id":"r3","name":"ForeignLocale","Rule":{
               "errorCondition":"FieldFilled(Note)","errorEntityRelPath":"../Note",
               "errorCode":"C4","errorMessage":[{"locale":"en_US","text":"x"},{"locale":"fr_FR","text":"y"}]}}

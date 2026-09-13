@@ -71,8 +71,12 @@ class CheckFamilyWiringTest {
               "errorCondition":"FieldFilled(Price) And FieldFilled(Price) Or FieldFilled(Price)",
               "errorEntityRelPath":"../Price",
               "errorCode":"C8","errorMessage":[{"locale":"en_US","text":"x"}]}},
+            {"type":"Rule","id":"r17","name":"Unreferenced","Rule":{
+              "errorCondition":"FieldFilled(Price)","errorEntityRelPath":"../Amount",
+              "errorCode":"C17","errorMessage":[{"locale":"en_US","text":"x"}]}},
             {"type":"Rule","id":"r16","name":"NamesHollow","Rule":{
-              "errorCondition":"GroupFilled(/Catalog/Hollow)","errorEntityRelPath":"../Price",
+              "errorCondition":"FieldFilled(Price) And GroupFilled(/Catalog/Hollow)",
+              "errorEntityRelPath":"../Price",
               "errorCode":"C16","errorMessage":[{"locale":"en_US","text":"x"}]}},
             {"type":"Rule","id":"r11","name":"UnbindableSlot","Rule":{
               "errorCondition":{"value":"FieldFilled(Price)"},"errorEntityRelPath":"../Price",
@@ -148,6 +152,8 @@ class CheckFamilyWiringTest {
         // The finding sits on the RULE that names the group, not on the group: declaring an empty group is
         // legal and only naming one is refused.
         CheckFamily.EMPTY_GROUP_OPERAND to ("MVK_GROUP_IS_EMPTY" to "/Catalog/NamesHollow"),
+        CheckFamily.ERROR_FIELD_REFERENCE to
+            ("MVK_ERROR_FIELD_NOT_REFERENCED" to "/Catalog/Unreferenced"),
     )
 
     @Test

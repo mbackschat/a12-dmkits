@@ -6427,3 +6427,36 @@ Two consequences, both measured here rather than reasoned:
 **Scanning the message TEXT reports the author's own input as A12's verdict.** A diagnostic echoes the offending code back into its prose, so a text scan lifts it: a computation suppressing `MVK_TOTALLY_BOGUS` — a class A12 does not have — was locked as drawing `MVK_TOTALLY_BOGUS`, when A12 answers `MVK_INVALID_SUPPRESSED_WARNING`. Read the terminal `[KEY]` off each notification instead; it keys on A12's format rather than on a family of names someone listed, so it cannot miss a class this way.
 
 *Locked by:* `rulekit.validate.laws.KernelLaws.verdictOf` and the rows above; a mutant on the class lift is killed by `GroupNameAlphabetLawsTest` and `DeclaredNameShapeLawsTest`.
+
+## §12 supplement — WHAT counts as a condition referencing its error field: an ancestor reaches it, a descendant does not, and a filter's mention does not count (measured, 2026-09-13) <a id="kf324"></a>
+
+> Fold: pending — belongs beside [KERNEL-SEMANTICS](KERNEL-SEMANTICS.md) §12's rule-shape account, next to the error-target path arithmetic in [KF289](#kf289).
+
+A rule's `errorEntityRelPath` must resolve AND its condition must name the target, else `MVK_ERROR_FIELD_NOT_REFERENCED`. That gate was already locked on one row — a condition naming a sibling is refused — which says the gate exists and nothing about what satisfies it. A checker has to answer the second question for every condition it reads, and **every spelling it fails to recognise as a reference becomes a refusal of a model A12 admits**, so the reach was measured rather than assumed.
+
+| the condition names… | target | verdict |
+|---|---|---|
+| the bare name — control | `../Carrier` | ADMITTED |
+| an ABSOLUTE path to the same field | `../Carrier` | ADMITTED |
+| the target in the second arm of an `Or` | `../Carrier` | ADMITTED |
+| the target under a negated operator (`FieldNotFilled`) | `../Carrier` | ADMITTED |
+| the target as a comparison operand (`[…] == "DHL"`) | `../Carrier` | ADMITTED |
+| a STARRED path to the target | `../Parcels/Weight` | ADMITTED |
+| the rule's own group via the `RuleGroup` self-reference | `../Carrier` | ADMITTED |
+| a sibling field | `../Carrier` | `MVK_ERROR_FIELD_NOT_REFERENCED` |
+| **the GROUP the target sits in** | `../Parcels/Weight` | **ADMITTED** |
+| **a FIELD inside the target group** | `../Parcels` | **`MVK_ERROR_FIELD_NOT_REFERENCED`** |
+| **the target inside a `Having` filter only** | `../Parcels/Weight` | **`MVK_ERROR_FIELD_NOT_REFERENCED`** |
+| an operand that resolves to nothing | `../Carrier` | `MVK_INVALID_ENTITY` — this gate is PRE-EMPTED |
+
+**The containment relation runs one way, and both directions are load-bearing.** Naming the group a target field sits in reaches it, so comparing the target's own path is too strict; naming a field inside a target group does not, so treating containment as symmetric is too loose. The law is *the reference is the target or an ancestor of it*.
+
+**A `Having` filter's own reference does not satisfy the gate**, which is the row an implementation reading condition TEXT cannot act on: once the text is scanned, the names a filter contributed are indistinguishable from an operand's. Treating them as references is the direction that stays silent, so that is what the portable checker does — a disclosed under-report rather than a guessed refusal.
+
+**The `RuleGroup` self-reference satisfies it**, since the error field must lie under the rule's own group. rulekit's builder already treated it so, citing the kernel; the row above is this repository's own measurement of that claim rather than a citation of it. The portable checker reaches the same silence by a different route — `RuleGroup` is a keyword there, so such a condition names no entity and there is nothing to compare.
+
+**An unresolvable operand pre-empts the gate**, so a condition naming nothing that resolves draws `MVK_INVALID_ENTITY` alone. A checker reporting both would name a second fix for one mistake.
+
+Reported by the portable checker (`CheckFamily.ERROR_FIELD_REFERENCE`), which additionally stays silent whenever the target's own name appears in the condition text at all other than as a path prefix — so a gap in its reference extractor cannot become a refusal.
+
+*Locked by:* `rulekit.validate.laws.ErrorFieldReferenceReachLawsTest` (two grids, 14 rows); the portable checker's mirror is `consistency.ErrorFieldReferenceTest`.

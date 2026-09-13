@@ -21,6 +21,10 @@ class EmptyGroupOperandTest {
      *
      * `Empty` has nothing, `Shell` has a populated subgroup and no direct field, `Deep` reaches its field
      * three levels down, `Filled` carries one directly, and `Vacant` is a second root with nothing at all.
+     *
+     * Every condition is conjoined with a reference to the rule's own error field, exactly as the kernel grid
+     * does it: without that conjunct each row would ALSO be unreferenced, and the control rows would report a
+     * finding that has nothing to do with emptiness.
      */
     private fun codes(condition: String): List<String> = check(
         ModelSource(
@@ -55,17 +59,20 @@ class EmptyGroupOperandTest {
         ),
     ).findings.map { it.code }
 
+    /** The conjunct that keeps every row about emptiness — see [codes]. */
+    private fun referencing(condition: String) = "FieldFilled(/Store/Reference) And $condition"
+
     @Test
     fun namingAnEmptyGroupIsRefusedAndNamingAShellIsNot() {
         val actual = mutableMapOf<String, List<String>>()
-        actual["a populated group — the control"] = codes("GroupFilled(/Store/Filled)")
-        actual["an EMPTY group"] = codes("GroupFilled(/Store/Empty)")
-        actual["a SHELL — no direct field, a populated descendant"] = codes("GroupFilled(/Store/Shell)")
-        actual["a group whose field is three levels down"] = codes("GroupFilled(/Store/Deep)")
+        actual["a populated group — the control"] = codes(referencing("GroupFilled(/Store/Filled)"))
+        actual["an EMPTY group"] = codes(referencing("GroupFilled(/Store/Empty)"))
+        actual["a SHELL — no direct field, a populated descendant"] = codes(referencing("GroupFilled(/Store/Shell)"))
+        actual["a group whose field is three levels down"] = codes(referencing("GroupFilled(/Store/Deep)"))
         actual["an empty group beside a populated one"] =
-            codes("AllGroupsFilled(/Store/Empty, /Store/Filled)")
-        actual["an empty ROOT group"] = codes("AtLeastOneGroupFilled(/Vacant)")
-        actual["the populated root — the control"] = codes("AtLeastOneGroupFilled(/Store)")
+            codes(referencing("AllGroupsFilled(/Store/Empty, /Store/Filled)"))
+        actual["an empty ROOT group"] = codes(referencing("AtLeastOneGroupFilled(/Vacant)"))
+        actual["the populated root — the control"] = codes(referencing("AtLeastOneGroupFilled(/Store)"))
 
         val expected = mutableMapOf<String, List<String>>()
         expected["a populated group — the control"] = emptyList()
@@ -93,7 +100,8 @@ class EmptyGroupOperandTest {
                     {"type":"Field","id":"f0","name":"Reference","Field":{"fieldType":{"type":"StringType"}}},
                     {"type":"Group","id":"g1","name":"Empty","Group":{"elements":[]}},
                     {"type":"Rule","id":"r0","name":"Probe","Rule":{
-                      "errorCondition":"GroupFilled(/Store/Empty)","errorEntityRelPath":"../Reference",
+                      "errorCondition":"FieldFilled(/Store/Reference) And GroupFilled(/Store/Empty)",
+                      "errorEntityRelPath":"../Reference",
                       "errorCode":"C1","errorMessage":[{"locale":"en_US","text":"x"}]}}
                   ]}}
                  ]}}}

@@ -168,6 +168,13 @@ enum class CheckFamily {
     EMPTY_GROUP_OPERAND,
 
     /**
+     * That a rule's condition NAMES the field its error is attached to. A resolvable target is necessary and
+     * not sufficient; naming a group the target sits in counts, and naming a field inside a target group
+     * does not.
+     */
+    ERROR_FIELD_REFERENCE,
+
+    /**
      * That every DSL-bearing member can be TOKENIZED — the syntax layer's first phase, and the only one
      * decidable without a grammar. Whether the tokens then form a condition A12's parser accepts is a
      * separate question this family does not answer.
@@ -335,7 +342,7 @@ internal fun check(
         prepared.fieldTypeBindingFindings() + prepared.temporalConfigFindings() +
         prepared.elementNameAlphabetFindings() + prepared.enumCategoryFindings() +
         prepared.supportedCharacterFindings() + prepared.declaredPatternFindings() +
-        prepared.emptyGroupOperandFindings() +
+        prepared.emptyGroupOperandFindings() + prepared.errorFieldReferenceFindings() +
         prepared.stringTypeMessageFindings() + prepared.stringTypeParameterFindings() +
         prepared.numberTypeDigitFindings() + prepared.enumValueLabelFindings()
     val findings = judged.notSuppressedBy(prepared.variantFilterSuppressed())
@@ -357,7 +364,8 @@ internal fun check(
             CheckFamily.ENUM_CATEGORY_ALIGNMENT, CheckFamily.ENUM_VALUE_CHARACTERS,
             CheckFamily.STRING_PATTERN_ADMISSION, CheckFamily.STRING_PATTERN_MESSAGE,
             CheckFamily.STRING_TYPE_PARAMETERS, CheckFamily.NUMBER_TYPE_DIGITS,
-            CheckFamily.ENUM_VALUE_LABELS, CheckFamily.EMPTY_GROUP_OPERAND),
+            CheckFamily.ENUM_VALUE_LABELS, CheckFamily.EMPTY_GROUP_OPERAND,
+            CheckFamily.ERROR_FIELD_REFERENCE),
         gaps = prepared.gaps() + prepared.emptyFactBase() + findings.buildBlocked() +
             prepared.variantFilterGaps() + prepared.enumCategoryGaps() +
             prepared.supportedCharacterGaps() + prepared.fieldTypeBindingGaps() +
