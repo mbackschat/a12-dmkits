@@ -39,6 +39,45 @@ class ConditionMultipleDefectTest {
         assertEquals(expected, actual, "which class a condition with two defects reports")
     }
 
+    /**
+     * …and the withholding spans a COMPUTATION's two members, which is why the gate is per declaration.
+     *
+     * The unresolvable name sits in the precondition and the syntax failure in the operation, so a gate
+     * applied one text at a time would report the syntax class A12 withheld.
+     */
+    @Test
+    fun anUnresolvableNameInOneMemberWithholdsTheSyntaxClassOfTheOther() {
+        val actual = mutableMapOf<String, List<String>>()
+        actual["a sound precondition, an operation that does not parse"] =
+            computing("FieldFilled(Base)", "[Base] +")
+        actual["a precondition naming nothing, an operation that does not parse"] =
+            computing("FieldFilled(NoSuchField)", "[Base] +")
+
+        val expected = mutableMapOf<String, List<String>>()
+        expected["a sound precondition, an operation that does not parse"] = listOf("MVK_INCOMPLETE_INPUT")
+        expected["a precondition naming nothing, an operation that does not parse"] =
+            listOf("MVK_INVALID_ENTITY")
+        assertEquals(expected, actual, "an unresolvable name withholds the other member's syntax class")
+    }
+
+    private fun computing(precondition: String, operation: String): List<String> =
+        check(ModelSource(computationModel(precondition, operation))).findings
+            .filter { it.at == "/Depot/WeightCalc" }.map { it.code }.distinct().sorted()
+
+    private fun computationModel(precondition: String, operation: String): String = """
+        {"header":{"id":"depot","locales":[{"code":"en_US"}]},
+         "content":{"modelRoot":{"rootGroups":[
+          {"type":"Group","id":"g0","name":"Depot","Group":{"elements":[
+            {"type":"Field","id":"f0","name":"Weight","Field":{"fieldType":{"type":"NumberType"}}},
+            {"type":"Field","id":"f1","name":"Base","Field":{"fieldType":{"type":"NumberType"}}},
+            {"type":"Computation","id":"c0","name":"WeightCalc","Computation":{
+              "computedFieldRelPath":"../Weight",
+              "computationAlternatives":[{"precondition":"$precondition","operation":"$operation"}],
+              "errorMessage":[{"locale":"en_US","text":"see it"}]}}
+          ]}}
+         ]}}}
+    """.trimIndent()
+
     private fun model(condition: String): String = """
         {"header":{"id":"policy","locales":[{"code":"en_US"}]},
          "content":{"modelRoot":{"rootGroups":[

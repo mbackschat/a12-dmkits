@@ -91,9 +91,10 @@ internal fun PreparedModel.declarationsWithABrokenErrorTarget(
  * the same condition text and each reports what it finds, so any condition carrying two defects — the normal
  * state of one being written — draws classes A12 withheld.
  *
- * Withheld per DECLARATION rather than per TEXT. A computation carries several, and whether a bad reference
- * in its precondition withholds a syntax class in its operation is not measured; the broader reading can
- * only drop findings, which is the safe direction.
+ * **Withheld per DECLARATION rather than per TEXT, which is measured and not merely the safe reading.** A
+ * computation carries several texts, and a name that does not resolve in its PRECONDITION withholds the
+ * syntax class of its OPERATION (`ComputationMemberVerdictLawsTest`). A gate applied one text at a time
+ * would report that syntax class.
  */
 internal fun PreparedModel.declarationsWithAnUnresolvableConditionReference(): Set<String> =
     conditionReferences()

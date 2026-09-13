@@ -6975,7 +6975,9 @@ Reported by the portable checker as a WITHHOLDING applied where the report is as
 
 Reported by the portable checker as a WITHHOLDING applied where the report is assembled, listed as the syntax codes to DROP rather than the codes to keep: a family added later that reports a new syntax class is then an under-report until its code is listed, where a keep-list would silently start dropping it.
 
-*Locked by:* `rulekit.validate.laws.ConditionMultipleDefectLawsTest`.
+**And it is per DECLARATION, not per text.** On a computation, a name that does not resolve in the PRECONDITION withholds the syntax class of the OPERATION beside it, and two bad names in the two members still draw one class — so the ordering spans a declaration's whole DSL rather than each text separately (`ComputationMemberVerdictLawsTest`).
+
+*Locked by:* `rulekit.validate.laws.ConditionMultipleDefectLawsTest` and `…ComputationMemberVerdictLawsTest`.
 
 ## §13 supplement — a FIELD TYPE reports every defect it carries, which bounds the withholding class (measured, 2026-09-13) <a id="kf341"></a>
 
