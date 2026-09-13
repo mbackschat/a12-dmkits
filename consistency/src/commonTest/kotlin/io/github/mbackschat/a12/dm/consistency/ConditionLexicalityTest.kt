@@ -14,10 +14,16 @@ import kotlin.test.assertTrue
  * 2026-09-12) — and the checker's tokenizer already recognizes the shape, so reporting it needs no grammar
  * and cannot over-reject: a lexical failure is decided by the text alone.
  *
- * **What this deliberately does NOT claim.** The bundle's message is "Character '%s' at position %d is
- * incorrect", so A12 has a notion of an illegal CHARACTER too, and which characters those are is unmeasured —
- * `@@@` is lexically fine and fails one phase later as `MVK_UNEXPECTED_TOKEN`. Only the measured shape is
- * reported here, and the report carries a gap for the rest.
+ * **The illegal-CHARACTER class is reported too, since 2026-09-13.** The bundle's message is "Character
+ * '%s' at position %d is incorrect", and which characters draw it is now derived from
+ * `Base_ConditionLexer.g4` — which has no catch-all rule, so anything outside its terminals fails to
+ * tokenize — and measured against that reading row by row ([KERNEL-FINDINGS KF309]). That earlier `@@@`
+ * probe was not a counterexample but a positive control: `@` IS a terminal, so it lexes and fails one phase
+ * later, exactly as `$`, `,` and `ß` do here.
+ *
+ * **`#` is the one measured-illegal character deliberately NOT reported.** A lone one draws the lexer error,
+ * but it is legal inside `#Zeile`, whose other language spellings this checker does not know — so refusing a
+ * `#` it could not pair would reject text A12 may accept, and under-reporting is the only safe direction.
  */
 class ConditionLexicalityTest {
 
@@ -113,6 +119,89 @@ class ConditionLexicalityTest {
         expected["a digit-leading quoted name"] = listOf("MVK_LEXER_STANDARD_ERROR")
         assertEquals(expected, actual, "which quoted names the checker reports as lexically unreadable")
     }
+
+    /**
+     * The illegal-CHARACTER class, with the characters A12's terminals DO spell as the live control.
+     *
+     * Every row puts one character in the same operand slot, so the control rows are what keep the reported
+     * ones from being about the slot: a character the lexer takes lands as a token the grammar refuses one
+     * phase later, and draws nothing from THIS family. The kernel measures the same grid
+     * (`rulekit.validate.laws.ConditionCharacterLawsTest`, [KERNEL-FINDINGS KF309]).
+     */
+    @Test
+    fun aCharacterNoTerminalCanBeginIsReportedAndOneTheTerminalsSpellIsNot() {
+        val actual = mutableMapOf<String, List<String>>()
+        for (legal in listOf("$", "@", ",", "ß")) {
+            actual["`$legal`, a character the terminals spell — the control"] = codesFor(legal)
+        }
+        for (illegal in listOf("%", "&", "|", ";", "?", "~", "é", "€")) {
+            actual["`$illegal`"] = codesFor(illegal)
+        }
+        // `!` is spelled only as `!=`, so a lone one reaches the fallback and is illegal — the paired row
+        // proves the two-character terminal is still taken whole.
+        actual["`!` alone"] = codesFor("!")
+        actual["`!=` whole — the control for the row above"] = codesFor("!=")
+        // `#` is measured illegal alone and deliberately NOT reported; see the class note.
+        actual["`#`, measured illegal and deliberately unreported"] = codesFor("#")
+
+        val expected = mutableMapOf<String, List<String>>()
+        for (legal in listOf("$", "@", ",", "ß")) {
+            expected["`$legal`, a character the terminals spell — the control"] = emptyList()
+        }
+        for (illegal in listOf("%", "&", "|", ";", "?", "~", "é", "€")) {
+            expected["`$illegal`"] = listOf("MVK_LEXER_STANDARD_ERROR")
+        }
+        expected["`!` alone"] = listOf("MVK_LEXER_STANDARD_ERROR")
+        expected["`!=` whole — the control for the row above"] = emptyList()
+        expected["`#`, measured illegal and deliberately unreported"] = emptyList()
+        assertEquals(expected, actual, "which characters the checker reports as untokenizable")
+    }
+
+    /**
+     * The same characters inside a STRING LITERAL draw nothing, because A12 admits them there.
+     *
+     * This is the over-rejection guard for the rows above: a checker scanning raw text for a bad character
+     * refuses conditions the kernel accepts, and that direction cannot be caught downstream. Measured on the
+     * kernel for every one of these characters.
+     */
+    @Test
+    fun thoseCharactersAreOrdinaryInsideALiteral() {
+        val actual = mutableMapOf<String, List<String>>()
+        val expected = mutableMapOf<String, List<String>>()
+        for (character in listOf("%", "&", "|", ";", "?", "~", "é", "€", "!", "#")) {
+            actual[character] = model("""[Price] == \"a${character}b\"""").conditionLexicalFindings()
+                .map { it.code }
+            expected[character] = emptyList()
+        }
+        assertEquals(expected, actual, "the same characters inside a string literal")
+    }
+
+    /** One illegal character draws ONE finding across the whole report, not one per syntax family. */
+    @Test
+    fun anIllegalCharacterIsReportedOnceAcrossTheWholeReport() {
+        val codes = check(
+            ModelSource(
+                """
+                {"header":{"id":"catalog","locales":[{"code":"en_US"}]},
+                 "content":{"modelRoot":{"rootGroups":[
+                  {"type":"Group","id":"g0","name":"Catalog","Group":{"elements":[
+                    {"type":"Field","id":"f0","name":"Price","Field":{"fieldType":{"type":"StringType"}}},
+                    {"type":"Rule","id":"r0","name":"PriceRule","Rule":{
+                      "errorCondition":"FieldFilled(Price) And % FieldFilled(Price)",
+                      "errorEntityRelPath":"../Price",
+                      "errorCode":"P","errorMessage":[{"locale":"en_US","text":"x"}]}}
+                  ]}}
+                 ]}}}
+                """.trimIndent(),
+            ),
+        ).findings.map { it.code }
+        assertEquals(listOf("MVK_LEXER_STANDARD_ERROR"), codes,
+            "a later syntax family must defer to the lexical one rather than add a second verdict")
+    }
+
+    private fun codesFor(character: String): List<String> =
+        model("FieldFilled(Price) And $character FieldFilled(Price)")
+            .conditionLexicalFindings().map { it.code }
 
     /** The finding names the offset, so an author can find the quote in a long condition. */
     @Test

@@ -359,7 +359,10 @@ private val UNREAD_MEMBERS = listOf(
             "and a parenthesised argument list — and not each operator's own argument arity or operand " +
             "kinds, so a call with the wrong number or kind of arguments is left to A12. Reproducing those " +
             "per operator would be a second copy of the catalog, and every place the copy disagreed would " +
-            "refuse a condition A12 admits. A12's illegal-CHARACTER class is unmeasured and unreported too",
+            "refuse a condition A12 admits. A12's illegal-CHARACTER class IS reported, derived from the " +
+            "lexer's terminals, with one exception: a lone `#` is measured illegal and left alone, because " +
+            "`#Zeile`'s other language spellings are unknown here and refusing an unpaired `#` could " +
+            "reject text A12 accepts",
     ),
     CoverageGap(
         at = null,

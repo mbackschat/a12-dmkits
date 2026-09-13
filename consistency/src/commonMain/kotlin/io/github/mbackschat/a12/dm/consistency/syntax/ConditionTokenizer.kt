@@ -36,6 +36,13 @@ enum class TokenKind {
 
     /** Structure: brackets, parentheses, separators, path steps. */
     PUNCTUATION,
+
+    /**
+     * A character no terminal of the lexer can begin — A12 answers `MVK_LEXER_STANDARD_ERROR`, naming the
+     * character and its position. Its own kind rather than [PUNCTUATION], which is what it used to become:
+     * read as structure, a stray `%` travelled into every later analysis as though A12 had accepted it.
+     */
+    ILLEGAL_CHARACTER,
 }
 
 /**
@@ -135,12 +142,46 @@ fun tokenize(text: String): List<Token> {
             else -> {
                 val symbol = SYMBOLS.firstOrNull { text.startsWith(it, index) } ?: char.toString()
                 index += symbol.length
-                tokens += Token(symbol.kindOfSymbol(), symbol, start, index)
+                val illegal = symbol.length == 1 && symbol[0].beginsNoTerminal()
+                tokens += Token(
+                    if (illegal) TokenKind.ILLEGAL_CHARACTER else symbol.kindOfSymbol(),
+                    symbol,
+                    start,
+                    index,
+                )
             }
         }
     }
     return tokens
 }
+
+/**
+ * Whether NO terminal of the lexer can begin with this character.
+ *
+ * Stated over all characters rather than only the ones the fallback reaches, so it can be read against the
+ * grammar on its own. The earlier branches of [tokenize] already consume whitespace, digits, name characters
+ * and both quotes, so those arms are unreachable from its one call site and are kept because dropping them
+ * would make the predicate true of characters that plainly do begin a terminal.
+ *
+ * Derived from `Base_ConditionLexer.g4` rather than assembled: the grammar has no catch-all rule, so a
+ * character outside its terminals is a token-recognition failure. [STANDALONE_PUNCTUATION] is the set the
+ * terminals spell on their own, and three characters are deliberately excluded from the judgement instead of
+ * added to it, each for its own reason:
+ *
+ * - `!` and `;` reach this point only when the multi-character terminal they belong to did NOT match — `!=`
+ *   is tried before the fallback and `;;` is consumed as a comment earlier — so a lone one is illegal and is
+ *   reported. Both measured ([KERNEL-FINDINGS KF309]).
+ * - `#` is NOT reported, though a lone one is equally measured as illegal. It is legal inside `#Zeile`, whose
+ *   other language spellings this checker does not know, so reporting a `#` this tokenizer failed to pair
+ *   would refuse a condition A12 may well accept. Under-reporting is the only safe direction and this is the
+ *   one place the derived set is deliberately widened.
+ */
+private fun Char.beginsNoTerminal(): Boolean =
+    this !in STANDALONE_PUNCTUATION && this != '#' && !isWhitespace() && !isDigit() &&
+        !isNameStart() && this != '"' && this != '\''
+
+/** The punctuation A12's terminals spell as a complete token, `#` excepted — see [beginsNoTerminal]. */
+private const val STANDALONE_PUNCTUATION = "+-*/^><=()[]{},.@$"
 
 /**
  * Scan past a `"…"` literal, where `""` is an escaped quote rather than an empty literal then a new one.

@@ -8,12 +8,24 @@ package io.github.mbackschat.a12.dm.consistency.syntax
  * an author which half of the text is wrong: a lexical failure is decided by the characters alone, so it is
  * reportable without a grammar and without any risk of rejecting something A12 accepts.
  *
- * **Only measured shapes are reported, and there are two.** An unterminated string literal, and a `'…'` name
+ * **Only measured shapes are reported, and there are three.** An unterminated string literal; a `'…'` name
  * that does not match its terminal (`'` STR (STR|DIGIT)* `'`) — unclosed, empty, or starting with a digit,
- * all three measured as `MVK_LEXER_STANDARD_ERROR`, so they need no finer distinction. A12's message text
- * ("Character '%s' at position %d is incorrect") shows it also refuses illegal CHARACTERS, but which
- * characters those are is unmeasured — `@@@` lexes cleanly and fails a phase later — so nothing is claimed
- * about them here and the report says so.
+ * all three measured as `MVK_LEXER_STANDARD_ERROR`, so they need no finer distinction; and a CHARACTER no
+ * terminal can begin, which is the class A12's own message names ("Character '%s' at position %d is
+ * incorrect").
+ *
+ * **The character class is DERIVED from the grammar, which is what makes reporting it safe.**
+ * `Base_ConditionLexer.g4` has no catch-all rule, so anything outside its terminals is a token-recognition
+ * failure; the admitted set is the `STR` fragment, `DIGIT`, whitespace, the quotes, and the punctuation the
+ * operator and bracket terminals spell. Measured against that reading and agreeing with it on every row
+ * ([KERNEL-FINDINGS KF309]): `%`, `&`, `|`, `;`, `?`, `~`, a backslash, `é` and `€` all draw
+ * `MVK_LEXER_STANDARD_ERROR`, while `$`, `@`, `,` and `ß` — characters the terminals DO spell — lex and are
+ * refused a phase later with `MVK_UNEXPECTED_TOKEN`. Those four are the control: without them the grid would
+ * be measuring the slot rather than the character.
+ *
+ * **A character is judged only OUTSIDE a literal**, since `StringLiteral` admits everything but a quote — so
+ * a checker scanning the raw text would refuse conditions A12 accepts, and [tokenize] is what keeps the
+ * question in the right place. A comment is the same case and is consumed before the fallback is reached.
  *
  * **And an unterminated literal is not ONE class — one measured shape draws a different code, and this family
  * still reports it.** `MVK_LEXER_STANDARD_ERROR` is what A12 says when the lexer's failure is the first thing
@@ -39,9 +51,13 @@ package io.github.mbackschat.a12.dm.consistency.syntax
  * have.
  */
 fun lexicalFailure(text: String): LexicalFailure? =
-    tokenize(text)
-        .firstOrNull { it.kind == TokenKind.UNTERMINATED_STRING || it.kind == TokenKind.UNTERMINATED_QUOTED_NAME }
-        ?.let { LexicalFailure(it.start) }
+    tokenize(text).firstOrNull { it.kind in LEXICAL_FAILURES }?.let { LexicalFailure(it.start) }
+
+private val LEXICAL_FAILURES = setOf(
+    TokenKind.UNTERMINATED_STRING,
+    TokenKind.UNTERMINATED_QUOTED_NAME,
+    TokenKind.ILLEGAL_CHARACTER,
+)
 
 /**
  * A quote the lexer cannot pair, at [at].
