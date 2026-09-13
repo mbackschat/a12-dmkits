@@ -83,6 +83,41 @@ class ConditionCompletenessTest {
      * `MVK_INCOMPLETE_INPUT` for text A12 answers with `MVK_UNEXPECTED_TOKEN`, sending an author to the wrong
      * fix. Silence there is correct; silence on the `For` rows under-reports and is the safe direction.
      */
+    /**
+     * A trailing connective is unfinished in every case the lexer resolves — and only those.
+     *
+     * A12 answers `… And`, `… AND` and `… and` with the same `MVK_INCOMPLETE_INPUT`, while a fourth case is
+     * not a terminal at all: read as an entity name it leaves a COMPLETE condition followed by a stray name,
+     * which A12 answers `MVK_UNEXPECTED_TOKEN` instead. Measured, both halves, in
+     * `rulekit.validate.laws.ConnectiveCaseLawsTest` — the second half being why this family consults the
+     * generated terminal table rather than folding case.
+     *
+     * **The promotion reaches the connectives and nothing else, which is enumerable rather than hoped.** Of
+     * the keyword spellings sharing a case-insensitive form, only `and`/`or` (and `und`/`oder`) have a member
+     * the catalog classifies; `in` and `to` are uncataloged in all three cases, so no other family moves.
+     */
+    @Test
+    fun aTrailingConnectiveIsUnfinishedInEveryCaseTheLexerResolves() {
+        val actual = mutableMapOf<String, List<String>>()
+        actual["ends on And — the canonical control"] = codesFor("FieldFilled(Price) And")
+        actual["ends on AND"] = codesFor("FieldFilled(Price) AND")
+        actual["ends on and"] = codesFor("FieldFilled(Price) and")
+        actual["ends on Or"] = codesFor("FieldFilled(Price) Or")
+        actual["ends on OR"] = codesFor("FieldFilled(Price) OR")
+        // Not a terminal, so A12 reads it as a name and answers a different code entirely. This family must
+        // stay silent rather than claim the text is unfinished.
+        actual["ends on aNd — a case the bundle does not carry"] = codesFor("FieldFilled(Price) aNd")
+
+        val expected = mutableMapOf<String, List<String>>()
+        expected["ends on And — the canonical control"] = listOf("MVK_INCOMPLETE_INPUT")
+        expected["ends on AND"] = listOf("MVK_INCOMPLETE_INPUT")
+        expected["ends on and"] = listOf("MVK_INCOMPLETE_INPUT")
+        expected["ends on Or"] = listOf("MVK_INCOMPLETE_INPUT")
+        expected["ends on OR"] = listOf("MVK_INCOMPLETE_INPUT")
+        expected["ends on aNd — a case the bundle does not carry"] = emptyList()
+        assertEquals(expected, actual, "which cases of a trailing connective this family reports")
+    }
+
     @Test
     fun textWithAnUnclosedDelimiterIsNotThisFamilysBusiness() {
         assertEquals(emptyList(), codesFor("FieldFilled([Price ->"), "the category arrow")

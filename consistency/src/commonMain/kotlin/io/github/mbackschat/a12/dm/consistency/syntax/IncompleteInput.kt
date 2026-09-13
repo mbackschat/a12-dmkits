@@ -28,7 +28,8 @@ fun incompleteInput(text: String, language: ConditionLanguage): IncompleteInput?
     val significant = tokenize(text).filter { it.kind != TokenKind.COMMENT }
     val last = significant.lastOrNull() ?: return null
     val dangling = when (last.kind) {
-        TokenKind.NAME -> keywords[last.text] == KeywordKind.OPERATOR && significant.everyDelimiterClosed()
+        TokenKind.NAME -> keywords.classifies(last.text, KeywordKind.OPERATOR)
+                && significant.everyDelimiterClosed()
         TokenKind.OPERATOR_SYMBOL -> significant.everyDelimiterClosed()
         // A trailing comma is measured on its own and is never balanced by nature — it can only sit inside an
         // argument list that is still open, so requiring closure here would delete the case rather than scope it.
@@ -48,6 +49,31 @@ fun incompleteInput(text: String, language: ConditionLanguage): IncompleteInput?
  * followed by a member name, or a `..` climb — and which are arithmetic operators everywhere else.
  */
 private val PATH_AMBIGUOUS_OPERATORS = setOf("-", "/")
+
+/**
+ * Whether the table classifies [text] as [kind], in any CASE the lexer resolves.
+ *
+ * A12's lexer admits three spellings of each connective — `And`, `AND`, `and` — and answers a text ending on
+ * any of them with the same `MVK_INCOMPLETE_INPUT` (measured: `rulekit.validate.laws.ConnectiveCaseLawsTest`).
+ * The catalog stores one canonical spelling per operator and the rest arrive as `UNCATALOGED`, so keying on
+ * the kind alone saw only the canonical one and left the other two unreported.
+ *
+ * **The membership test is what keeps this from becoming an over-rejection.** A fourth case is not a terminal
+ * at all: A12 reads `aNd` as an entity name, which leaves a COMPLETE condition followed by a stray name and
+ * draws `MVK_UNEXPECTED_TOKEN` rather than an incompleteness. Folding case without consulting the table would
+ * report an unfinished text where A12 reports something else entirely, so the variants are looked up in the
+ * measured terminal set instead.
+ *
+ * **It reaches the connectives and nothing else**, which is an enumeration rather than a hope: of the
+ * spellings sharing a case-insensitive form, only `and`/`or` — `und`/`oder` in German — have a member the
+ * catalog classifies. `in` and `to` are `UNCATALOGED` in all three cases, so no other family moves.
+ */
+private fun Map<String, KeywordKind>.classifies(text: String, kind: KeywordKind): Boolean {
+    val exact = this[text] ?: return false
+    return exact == kind || any { (spelling, classified) ->
+        classified == kind && spelling.equals(text, ignoreCase = true)
+    }
+}
 
 /**
  * Whether every `(` and `[` in these tokens is closed by its own kind.

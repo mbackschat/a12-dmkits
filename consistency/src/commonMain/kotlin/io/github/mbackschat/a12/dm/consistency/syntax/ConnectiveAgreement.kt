@@ -87,10 +87,33 @@ private enum class Connective { AND, OR }
  * conditions. `ConnectiveAgreementTest` pins each spelling against the table, so a regeneration that renamed
  * one fails rather than silently switching this family off.
  */
+/**
+ * Every spelling of each connective the lexer resolves, DERIVED from the generated keyword table.
+ *
+ * A12 admits three cases per connective — `And`, `AND`, `and` — and a mix written in any of them draws the
+ * same `MVK_BRACKET_MISSING`. Listing them here by hand would be a second live statement of a set
+ * `consistency/build.gradle` already declares and `ConditionKeywordProjectionTest` already measures against
+ * the Kernel's own terminal bundle, so the canonical spelling is named once and the rest are looked up.
+ *
+ * **The intersection with the table is load-bearing, not a formality.** A bare case-insensitive comparison
+ * would also match `aNd`, which the lexer does NOT resolve — there it is an ordinary field name, and calling
+ * it a connective would invent a rejection A12 never makes. Restricting to spellings the table carries keeps
+ * the match inside the measured terminal set.
+ */
 private val CONNECTIVES: Map<ConditionLanguage, Map<String, Connective>> = mapOf(
-    ConditionLanguage.EN to mapOf("And" to Connective.AND, "Or" to Connective.OR),
-    ConditionLanguage.DE to mapOf("Und" to Connective.AND, "Oder" to Connective.OR),
+    ConditionLanguage.EN to spellingsOf(ConditionLanguage.EN, "And" to Connective.AND, "Or" to Connective.OR),
+    ConditionLanguage.DE to spellingsOf(ConditionLanguage.DE, "Und" to Connective.AND, "Oder" to Connective.OR),
 )
+
+private fun spellingsOf(
+    language: ConditionLanguage,
+    vararg canonical: Pair<String, Connective>,
+): Map<String, Connective> {
+    val terminals = CONDITION_KEYWORDS.getValue(language).keys
+    return canonical.flatMap { (spelling, connective) ->
+        terminals.filter { it.equals(spelling, ignoreCase = true) }.map { it to connective }
+    }.toMap()
+}
 
 /** The entity filter keyword, the third production that opens a `bedingung`. */
 private val FILTER_KEYWORDS: Map<ConditionLanguage, String> = mapOf(

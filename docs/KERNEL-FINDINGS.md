@@ -5998,3 +5998,15 @@ The last row generalizes the string-literal result above rather than repeating i
 **Consequence for a portable checker:** resolving a reference against every declared field, filtered or not, UNDER-reports here — A12 rejects models it admits. That is the safe direction, so this is a capability gap rather than a defect; closing it means treating an `ONLY`-filtered field as undeclared during resolution, after which the existing role→code mapping already yields A12's own codes on both paths.
 
 *Locked by:* `rulekit.validate.laws.FieldVariantFilterLawsTest` (two grids, each with an unfiltered and an `ALL_EXCEPT` control).
+
+## §13 supplement — a connective's THREE lexer cases are judged alike, and a fourth case is a NAME (measured, 2026-09-13) <a id="kf306"></a>
+
+> Fold: pending — belongs beside [KERNEL-SEMANTICS](KERNEL-SEMANTICS.md) §13, whose connective material assumes the canonical spelling throughout.
+
+**A12's terminal bundle carries three spellings of each connective and treats them identically.** `And`, `AND` and `and` all join a condition (ADMITTED); all three refuse a mix with `Or` in any of ITS three cases (`MVK_BRACKET_MISSING`); and a text ending on any of them is unfinished (`MVK_INCOMPLETE_INPUT`). German is the same for `Und`/`UND`/`und` and `Oder`/`ODER`/`oder`. Which spellings exist was already settled by `ConditionKeywordProjectionTest`, which measures the generated table against the Kernel's bundle in both directions; what this adds is that A12 then JUDGES them alike, which no row had asked.
+
+**The fourth case is the finding, and it lands on a different code on every grid.** `aNd` is not a terminal, so A12 reads it as an ordinary entity name: joining two conditions with it draws `MVK_UNEXPECTED_TOKEN`, mixing with it draws `MVK_UNEXPECTED_TOKEN`, and ending on it draws `MVK_UNEXPECTED_TOKEN` rather than the incompleteness — because a trailing name leaves a COMPLETE condition followed by a stray token, not an unfinished one. A checker folding case would report an incompleteness where A12 reports a parse error, which is a wrong verdict rather than a safe silence.
+
+**So the portable rule is "any case the TABLE carries", never "case-insensitively".** The checker intersects a case-insensitive match with the generated terminal set, and the promotion reaches the connectives and nothing else — an enumeration, not a hope: of the spellings sharing a case-insensitive form, only `and`/`or` and `und`/`oder` have a member the operator catalog classifies, while `in` and `to` (`in`/`zu`) are uncataloged in all three cases.
+
+*Locked by:* `rulekit.validate.laws.ConnectiveCaseLawsTest` (three grids, each with a canonical control and the fourth-case row).

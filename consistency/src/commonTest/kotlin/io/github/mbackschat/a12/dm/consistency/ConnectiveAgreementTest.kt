@@ -160,6 +160,44 @@ class ConnectiveAgreementTest {
     }
 
     /**
+     * Every CASE the lexer admits counts, and no other case does.
+     *
+     * A12's lexer resolves three spellings per connective — `And`, `AND`, `and` — so a mix written in any of
+     * them is the same `MVK_BRACKET_MISSING` to A12. This family used to carry the canonical spelling alone
+     * and missed the other two, which was under-reporting and was on the report as a coverage gap.
+     *
+     * **The last row is the one that decides the mechanism.** Matching case-insensitively on its own would
+     * also catch `aNd`, which A12's lexer does NOT resolve — it is an ordinary field name there, so treating
+     * it as a connective would invent a rejection A12 does not make. The spellings are therefore derived by
+     * intersecting a case-insensitive match with the generated keyword table, which is the measured terminal
+     * set, and that row is what separates the two readings.
+     */
+    @Test
+    fun everyCaseTheLexerAdmitsIsAConnectiveAndNoOtherCaseIs() {
+        val actual = mutableMapOf<String, List<String>>()
+        actual["the canonical mix — the control"] = codesFor("(FieldFilled(A) And FieldFilled(B) Or FieldFilled(A))")
+        actual["upper-case AND"] = codesFor("(FieldFilled(A) AND FieldFilled(B) Or FieldFilled(A))")
+        actual["lower-case and"] = codesFor("(FieldFilled(A) and FieldFilled(B) Or FieldFilled(A))")
+        actual["upper-case OR as the second"] = codesFor("(FieldFilled(A) And FieldFilled(B) OR FieldFilled(A))")
+        actual["both in non-canonical case"] = codesFor("(FieldFilled(A) and FieldFilled(B) OR FieldFilled(A))")
+        actual["a case the lexer does NOT resolve"] =
+            codesFor("(FieldFilled(A) aNd FieldFilled(B) Or FieldFilled(A))")
+        actual["German ODER against Und"] =
+            codesFor("(FeldGefuellt(A) Und FeldGefuellt(B) ODER FeldGefuellt(A))", "de_DE")
+
+        val expected = mutableMapOf<String, List<String>>()
+        expected["the canonical mix — the control"] = listOf("MVK_BRACKET_MISSING")
+        expected["upper-case AND"] = listOf("MVK_BRACKET_MISSING")
+        expected["lower-case and"] = listOf("MVK_BRACKET_MISSING")
+        expected["upper-case OR as the second"] = listOf("MVK_BRACKET_MISSING")
+        expected["both in non-canonical case"] = listOf("MVK_BRACKET_MISSING")
+        // Not a terminal, so A12 reads it as a field name and this family must say nothing about the text.
+        expected["a case the lexer does NOT resolve"] = emptyList()
+        expected["German ODER against Und"] = listOf("MVK_BRACKET_MISSING")
+        assertEquals(expected, actual, "which connective spellings this family sees")
+    }
+
+    /**
      * The four spellings this family hard-codes are pinned against the GENERATED keyword table.
      *
      * The table carries a [KeywordKind] and nothing finer, so it cannot say which operators JOIN two

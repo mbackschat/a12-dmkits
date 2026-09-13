@@ -360,19 +360,10 @@ private val UNREAD_MEMBERS = listOf(
     ),
     CoverageGap(
         at = null,
-        reason = "text ending on an operator spelled in a case the catalog does not carry — `AND`, `and`, " +
-            "`ODER` — is not reported, though A12 answers it exactly as it answers `And`. The generated " +
-            "keyword table classifies one canonical spelling per operator and files the kernel's other " +
-            "terminals as uncataloged, so the miss is the table's shape rather than a judgement about the text",
-    ),
-    CoverageGap(
-        at = null,
-        reason = "a connective spelled in a case the catalog does not carry is invisible to the bracket " +
-            "check too, so a mix involving one is not reported; and two entity filters sharing ONE argument " +
-            "list are treated as separate levels without a measurement saying they are — `SumOfProducts` is " +
-            "the only operator whose argument list takes two entity specs and it refuses a filter on either " +
-            "for a reason of its own, so no oracle for that shape exists. Both are silence rather than a " +
-            "wrong verdict",
+        reason = "two entity filters sharing ONE argument list are treated as separate connective levels " +
+            "without a measurement saying they are — `SumOfProducts` is the only operator whose argument " +
+            "list takes two entity specs and it refuses a filter on either for a reason of its own, so no " +
+            "oracle for that shape exists. This is silence rather than a wrong verdict",
     ),
     CoverageGap(
         at = null,
