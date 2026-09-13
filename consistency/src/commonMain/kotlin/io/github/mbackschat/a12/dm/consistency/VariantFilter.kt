@@ -5,7 +5,12 @@ import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 
 /**
- * A rule's or computation's `variantFilter` — the family whose main output is a COVERAGE GAP, not a finding.
+ * The `variantFilter` member — the family whose main output is a COVERAGE GAP, not a finding.
+ *
+ * **Two scopes, because the member's two questions have different denominators.** Whether A12 can BIND a
+ * filter is asked of every carrier that declares one (rule, computation, field); whether an `ONLY` filter
+ * SUPPRESSES the declaration is asked of rules and computations alone, since on a field that spelling
+ * deletes the field instead. Each function below names the scope it uses and why.
  *
  * **An `ONLY` filter removes the declaration from A12's check entirely** ([KERNEL-FINDINGS KF299]). The same
  * declaration with a deliberately unresolvable reference is refused with `MVK_INVALID_ENTITY` unfiltered and
@@ -52,14 +57,24 @@ fun PreparedModel.variantFilterGaps(): List<CoverageGap> =
  */
 fun PreparedModel.variantFilterSuppressed(): Set<String> = suppressed().map { it.path }.toSet()
 
-private fun PreparedModel.suppressed(): List<DeclaredElement> = filterable().filter { element ->
+private fun PreparedModel.suppressed(): List<DeclaredElement> = suppressible().filter { element ->
     val declared = element.body?.get("variantFilter")
     declared is JsonObject && declared.filterType() == FilterType.Spelled(SUPPRESSING_FILTER)
 }
 
-/** The shapes A12's own reader refuses, where the model never loads and no verdict about it exists. */
+/**
+ * The shapes A12's own reader refuses, where the model never loads and no verdict about it exists.
+ *
+ * **This runs on all THREE carriers, where suppression runs on two** — and the split is the point. What an
+ * `ONLY` filter MEANS differs by carrier: on a rule or computation it suppresses the declaration, on a field
+ * it deletes the field ([KERNEL-FINDINGS KF305]), which is why [suppressed] stays narrow and the deletion is
+ * handled at resolution instead. What a filter BINDS does not differ: every shape below answers alike on the
+ * field carrier and on the rule carrier — measured on each rather than transferred, precisely because the
+ * member's semantic law already proved carrier-specific, so nothing about it is uniform by default
+ * (`rulekit.validate.laws.FieldVariantFilterLawsTest`, `RuleVariantFilterLawsTest`).
+ */
 fun PreparedModel.variantFilterFindings(): List<Finding> =
-    filterable().mapNotNull { element ->
+    bindable().mapNotNull { element ->
         when (val declared = element.body?.get("variantFilter")) {
             // Absent, and an explicit `null`, are both ADMITTED: the member is reached through an `Optional`
             // accessor, unlike `errorCodesToSuppress` beside it, which is bound `@NonNull` and refuses null.
@@ -118,14 +133,28 @@ private sealed interface FilterType {
 }
 
 /**
- * The declarations this family judges.
+ * The declarations whose filter A12 SUPPRESSES the checking of — rules and computations, and not fields.
  *
- * `variantFilter` also rides FIELD elements (`serializer.FieldSerializer` writes it), a carrier outside this
- * checker's rules-and-computations subject matter and unmeasured — so it is left alone rather than judged by
- * analogy.
+ * A field's `ONLY` filter does something else entirely: `ValidationModelConverter` drops the field, so A12
+ * says MORE about such a model rather than less, and that is handled where references resolve rather than by
+ * suppressing anything. Including fields here would silence findings A12 actually makes.
  */
-private fun PreparedModel.filterable(): List<DeclaredElement> = elements.filter {
+private fun PreparedModel.suppressible(): List<DeclaredElement> = elements.filter {
     it.declaredKind == DeclaredKind.RULE || it.declaredKind == DeclaredKind.COMPUTATION
+}
+
+/**
+ * Every carrier that DECLARES the member, which is the scope of the binding question.
+ *
+ * The three are enumerated from A12's own serializers: `variantFilter` is written by `FieldSerializer`,
+ * `RuleSerializer` and `ComputationSerializer` and by no other. *Searched:*
+ * `grep -rln variantFilter ../a12-kernel/kernel-md/kernel-md-serializer --include='*Serializer.java'` —
+ * three files, all three read; there is no group carrier, which is why a group's stray `variantFilter` is
+ * left alone here exactly as its stray `fieldType` is.
+ */
+private fun PreparedModel.bindable(): List<DeclaredElement> = elements.filter {
+    it.declaredKind == DeclaredKind.RULE || it.declaredKind == DeclaredKind.COMPUTATION ||
+        it.declaredKind == DeclaredKind.FIELD
 }
 
 private fun JsonObject.filterType(): FilterType = when (val declared = this["filterType"]) {

@@ -124,10 +124,16 @@ class FieldVariantFilterTest {
         actual["ONLY with an empty variants list"] =
             codes(mentioning("""{"filterType":"ONLY","variants":[]}"""))
         actual["ONLY with no variants member"] = codes(mentioning("""{"filterType":"ONLY"}"""))
-        // An unknown spelling is NOT `ONLY`, so the field stays visible and this checker under-reports a
-        // model A12 cannot build at all. Silence is the safe direction and this row pins it deliberately.
+        // An unknown spelling is NOT `ONLY`, so the field stays VISIBLE — and the model is nonetheless
+        // unloadable, which the binding family now says. Two different questions about one member: the
+        // field is not deleted (no `MVK_INVALID_ENTITY`) and the source does not load.
         actual["an unknown filterType"] =
             codes(mentioning("""{"filterType":"SOMETIMES","variants":[]}"""))
+        actual["no filterType at all"] = codes(mentioning("""{"variants":[]}"""))
+        actual["a filterType that is not a string"] = codes(mentioning("""{"filterType":9}"""))
+        actual["a variantFilter that is not an object"] = codes(mentioning(""""ONLY""""))
+        // An explicit null is ADMITTED on this carrier as on the others — the accessor is an `Optional`.
+        actual["an explicit null — the control that keeps the arm above honest"] = codes(mentioning("null"))
 
         val expected = mutableMapOf<String, List<String>>()
         expected["unfiltered — the control"] = emptyList()
@@ -136,7 +142,11 @@ class FieldVariantFilterTest {
         expected["ONLY naming the default variant"] = listOf("MVK_INVALID_ENTITY")
         expected["ONLY with an empty variants list"] = listOf("MVK_INVALID_ENTITY")
         expected["ONLY with no variants member"] = listOf("MVK_INVALID_ENTITY")
-        expected["an unknown filterType"] = emptyList()
+        expected["an unknown filterType"] = listOf(CK_MODEL_NOT_BUILDABLE)
+        expected["no filterType at all"] = listOf(CK_MODEL_NOT_BUILDABLE)
+        expected["a filterType that is not a string"] = listOf(CK_MODEL_NOT_BUILDABLE)
+        expected["a variantFilter that is not an object"] = listOf(CK_MODEL_NOT_BUILDABLE)
+        expected["an explicit null — the control that keeps the arm above honest"] = emptyList()
         assertEquals(expected, actual, "what the checker says about a condition naming a filtered field")
     }
 

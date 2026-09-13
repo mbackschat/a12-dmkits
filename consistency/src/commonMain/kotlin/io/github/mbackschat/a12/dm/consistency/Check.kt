@@ -55,9 +55,10 @@ enum class CheckFamily {
     SUPPRESSED_WARNINGS,
 
     /**
-     * A rule's or computation's `variantFilter` — that A12 can bind it, and WHICH declarations it takes out
-     * of A12's check. The family is unusual in that its main output is a coverage gap rather than a finding,
-     * because A12 accepts the models it concerns.
+     * A `variantFilter` — that A12 can bind it, on every carrier that declares one, and WHICH declarations
+     * it takes out of A12's check, which is a rules-and-computations question because on a field the same
+     * spelling deletes the field instead. The family is unusual in that its main output is a coverage gap
+     * rather than a finding, because A12 accepts the models that second half concerns.
      */
     VARIANT_FILTER,
 
@@ -376,12 +377,6 @@ private val UNREAD_MEMBERS = listOf(
             "without a measurement saying they are — `SumOfProducts` is the only operator whose argument " +
             "list takes two entity specs and it refuses a filter on either for a reason of its own, so no " +
             "oracle for that shape exists. This is silence rather than a wrong verdict",
-    ),
-    CoverageGap(
-        at = null,
-        reason = "a `variantFilter` on a FIELD is read only for the `ONLY` type, which A12 answers by " +
-            "DELETING the field — an unknown or unbindable `filterType` there leaves the field visible " +
-            "here, so a model A12 cannot build at all draws no finding from this member",
     ),
 )
 

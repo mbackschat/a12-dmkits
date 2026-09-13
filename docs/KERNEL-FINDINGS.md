@@ -5997,6 +5997,8 @@ The last row generalizes the string-literal result above rather than repeating i
 
 **Consequence for a portable checker:** resolving a reference against every declared field, filtered or not, UNDER-reports here — A12 rejects models it admits. That is the safe direction, so this is a capability gap rather than a defect; closing it means treating an `ONLY`-filtered field as undeclared during resolution, after which the existing role→code mapping already yields A12's own codes on both paths.
 
+**The BINDING tier is uniform across carriers, and that is measured on each rather than inferred from one (added 2026-09-13).** An unknown `filterType`, a `filterType` that is JSON null, an object or a number, and a `variantFilter` that is not an object at all are UNREADABLE on a field exactly as on a rule; an absent member and an explicit `null` are ADMITTED on both, the member being reached through an `Optional` accessor. This is worth stating because the member's SEMANTIC law is carrier-specific — a rule's `ONLY` suppresses, a field's deletes — so uniformity anywhere else about `variantFilter` is a claim needing its own rows, and the field carrier's five binding rows are those rows.
+
 *Locked by:* `rulekit.validate.laws.FieldVariantFilterLawsTest` (two grids, each with an unfiltered and an `ALL_EXCEPT` control).
 
 ## §13 supplement — a connective's THREE lexer cases are judged alike, and a fourth case is a NAME (measured, 2026-09-13) <a id="kf306"></a>

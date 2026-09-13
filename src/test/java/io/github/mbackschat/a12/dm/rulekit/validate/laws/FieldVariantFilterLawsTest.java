@@ -63,6 +63,18 @@ class FieldVariantFilterLawsTest {
         actual.put("an unknown filterType",
                 KernelLaws.verdictOf(filtered("Tier", "{\"filterType\":\"SOMETIMES\",\"variants\":[]}", false)));
         actual.put("no filterType at all", KernelLaws.verdictOf(filtered("Tier", "{\"variants\":[]}", false)));
+        // The rest of the binding tier, measured on THIS carrier rather than transferred from the rule one.
+        // The two carriers agreeing is what a checker sharing one binding arm across them needs, and it is a
+        // measurement here and not an inference: the same member's SEMANTIC law already differs by carrier
+        // (a rule's `ONLY` suppresses, a field's deletes), so nothing about the member is uniform by default.
+        actual.put("an explicit null", KernelLaws.verdictOf(filtered("Tier", "null", false)));
+        actual.put("a string instead of an object", KernelLaws.verdictOf(filtered("Tier", "\"ONLY\"", false)));
+        actual.put("a filterType that is JSON null",
+                KernelLaws.verdictOf(filtered("Tier", "{\"filterType\":null}", false)));
+        actual.put("a filterType that is an object",
+                KernelLaws.verdictOf(filtered("Tier", "{\"filterType\":{}}", false)));
+        actual.put("a filterType that is a number",
+                KernelLaws.verdictOf(filtered("Tier", "{\"filterType\":9}", false)));
 
         Map<String, String> expected = new LinkedHashMap<>();
         expected.put("absent — the control", KernelLaws.ADMITTED);
@@ -73,6 +85,11 @@ class FieldVariantFilterLawsTest {
         // name fails while the reader binds the string, while the absent member fails one step later, as A12
         // constructs the model from what it read. Both leave a model nobody can use; neither is an `MVK_*`.
         expected.put("no filterType at all", KernelLaws.NOT_BUILDABLE);
+        expected.put("an explicit null", KernelLaws.ADMITTED);
+        expected.put("a string instead of an object", KernelLaws.UNREADABLE);
+        expected.put("a filterType that is JSON null", KernelLaws.UNREADABLE);
+        expected.put("a filterType that is an object", KernelLaws.UNREADABLE);
+        expected.put("a filterType that is a number", KernelLaws.UNREADABLE);
         assertEquals(expected, actual, "what a field's variantFilter does when nothing references the field");
     }
 
