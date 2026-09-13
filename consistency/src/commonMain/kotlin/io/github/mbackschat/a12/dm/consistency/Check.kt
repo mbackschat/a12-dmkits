@@ -70,6 +70,14 @@ enum class CheckFamily {
     RULE_PRESENTATION_MEMBERS,
 
     /**
+     * That every member A12 binds to TEXT actually holds text — one law across all three carriers that own
+     * such a member. A container there refuses A12's reader outright, so the model never loads; a non-text
+     * scalar is coerced and is not this family's business, nor is a blank or absent member, which the
+     * families owning those members already judge.
+     */
+    STRING_SLOT_BINDING,
+
+    /**
      * That every DSL-bearing member can be TOKENIZED — the syntax layer's first phase, and the only one
      * decidable without a grammar. Whether the tokens then form a condition A12's parser accepts is a
      * separate question this family does not answer.
@@ -233,7 +241,7 @@ internal fun check(
         prepared.conditionLexicalFindings() + prepared.conditionCompletenessFindings() +
         prepared.connectiveAgreementFindings() + prepared.conditionGrammarFindings() +
         prepared.elementNameFindings() + prepared.groupOrderingFindings() +
-        prepared.presentationMemberFindings()
+        prepared.presentationMemberFindings() + prepared.stringSlotFindings()
     val findings = judged.notSuppressedBy(prepared.variantFilterSuppressed())
     return ConsistencyReport(
         modelId = admitted.modelId,
@@ -247,7 +255,8 @@ internal fun check(
             CheckFamily.COMPUTATION_ROUNDING, CheckFamily.SUPPRESSED_WARNINGS,
             CheckFamily.VARIANT_FILTER, CheckFamily.CONDITION_LEXICALITY,
             CheckFamily.CONDITION_COMPLETENESS, CheckFamily.CONNECTIVE_AGREEMENT,
-            CheckFamily.CONDITION_GRAMMAR, CheckFamily.RULE_PRESENTATION_MEMBERS),
+            CheckFamily.CONDITION_GRAMMAR, CheckFamily.RULE_PRESENTATION_MEMBERS,
+            CheckFamily.STRING_SLOT_BINDING),
         gaps = prepared.gaps() + prepared.emptyFactBase() + findings.buildBlocked() +
             prepared.variantFilterGaps() + UNREAD_MEMBERS + UNIMPLEMENTED_FAMILIES,
     )
@@ -370,13 +379,6 @@ private val UNREAD_MEMBERS = listOf(
         reason = "a `variantFilter` on a FIELD is neither judged nor counted as excluding anything — the " +
             "member rides field declarations too, and what A12 does with it there is unmeasured, so a rule " +
             "measured on the rules-and-computations carrier is not transferred to it",
-    ),
-    CoverageGap(
-        at = null,
-        reason = "a member holding a JSON container where A12 binds a string — a computation's `operation` " +
-            "or `precondition`, a rule's `errorCondition` or `errorEntityRelPath`, a group's " +
-            "`indexFieldName`, a non-array `sortFields` — is left unjudged rather than guessed at; each is " +
-            "unmeasured, and under-reporting is the only safe direction",
     ),
 )
 

@@ -50,6 +50,9 @@ class CheckFamilyWiringTest {
               "errorCondition":"FieldFilled(Price) And FieldFilled(Price) Or FieldFilled(Price)",
               "errorEntityRelPath":"../Price",
               "errorCode":"C8","errorMessage":[{"locale":"en_US","text":"x"}]}},
+            {"type":"Rule","id":"r11","name":"UnbindableSlot","Rule":{
+              "errorCondition":{"value":"FieldFilled(Price)"},"errorEntityRelPath":"../Price",
+              "errorCode":"C11","errorMessage":[{"locale":"en_US","text":"x"}]}},
             {"type":"Rule","id":"r10","name":"UnbindablePatterns","Rule":{
               "errorCondition":"FieldFilled(Price)","errorEntityRelPath":"../Price",
               "errorCode":"C10","errorMessage":[{"locale":"en_US","text":"x"}],
@@ -102,6 +105,7 @@ class CheckFamilyWiringTest {
         CheckFamily.CONNECTIVE_AGREEMENT to ("MVK_BRACKET_MISSING" to "/Catalog/MixedConnectives"),
         CheckFamily.CONDITION_GRAMMAR to ("MVK_UNEXPECTED_TOKEN" to "/Catalog/Ungrammatical"),
         CheckFamily.RULE_PRESENTATION_MEMBERS to (CK_MODEL_NOT_BUILDABLE to "/Catalog/UnbindablePatterns"),
+        CheckFamily.STRING_SLOT_BINDING to (CK_MODEL_NOT_BUILDABLE to "/Catalog/UnbindableSlot"),
     )
 
     @Test
