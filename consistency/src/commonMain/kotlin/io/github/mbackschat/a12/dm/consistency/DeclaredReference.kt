@@ -67,7 +67,7 @@ private fun PreparedModel.resolveRelative(from: String, relative: String): Refer
         // Climbing past the root is a DIFFERENT outcome from naming nothing, and worse: the Kernel raises
         // inside `ElementPathUtils.absPath` while deserializing, so the model never loads and no check runs.
         climbedPastRoot -> Reference.AboveRoot(relative)
-        elements.any { it.path == path } -> Reference.Resolved(path)
+        resolvableElements.any { it.path == path } -> Reference.Resolved(path)
         else -> Reference.Undeclared(path)
     }
 }

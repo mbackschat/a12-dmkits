@@ -95,7 +95,7 @@ fun PreparedModel.resolveEntity(
     val candidate = "/" + path.joinToString("/")
     return when {
         aboveRoot -> Reference.AboveRoot(written)   // the AUTHORED text: that is what a reader has to edit
-        elements.any { it.path == candidate } -> Reference.Resolved(candidate)
+        resolvableElements.any { it.path == candidate } -> Reference.Resolved(candidate)
         else -> Reference.Undeclared(candidate)
     }
 }
@@ -125,7 +125,7 @@ fun PreparedModel.resolve(
     origin: DeclarationOrigin = DeclarationOrigin(""),
 ): Reference {
     val candidate = "$declaringGroup/$name"
-    if (elements.any { it.path == candidate }) {
+    if (resolvableElements.any { it.path == candidate }) {
         return Reference.Resolved(candidate)
     }
     // WHICH model's flag applies, and WHICH elements the fallback may see, are one question with two
@@ -144,9 +144,9 @@ fun PreparedModel.resolve(
     // the first ambiguous. Keying on the authoring model instead got both cases wrong, in the direction that
     // rejects a model A12 accepts — measured 2026-09-12 through `ModelLoader.loadAndCheck` on both shapes.
     val scope = if (boundInProvider) {
-        elements.filter { it.path.startsWith(origin.mountedPrefix + "/") }
+        resolvableElements.filter { it.path.startsWith(origin.mountedPrefix + "/") }
     } else {
-        elements
+        resolvableElements
     }
     val matches = scope.filter { it.declaredKind == DeclaredKind.FIELD && it.path.substringAfterLast('/') == name }
     return when (matches.size) {

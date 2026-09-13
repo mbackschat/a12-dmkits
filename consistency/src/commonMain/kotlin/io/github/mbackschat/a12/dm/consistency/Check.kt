@@ -376,9 +376,9 @@ private val UNREAD_MEMBERS = listOf(
     ),
     CoverageGap(
         at = null,
-        reason = "a `variantFilter` on a FIELD is neither judged nor counted as excluding anything — the " +
-            "member rides field declarations too, and what A12 does with it there is unmeasured, so a rule " +
-            "measured on the rules-and-computations carrier is not transferred to it",
+        reason = "a `variantFilter` on a FIELD is read only for the `ONLY` type, which A12 answers by " +
+            "DELETING the field — an unknown or unbindable `filterType` there leaves the field visible " +
+            "here, so a model A12 cannot build at all draws no finding from this member",
     ),
 )
 
