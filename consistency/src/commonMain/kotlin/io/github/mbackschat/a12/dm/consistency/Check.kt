@@ -62,6 +62,14 @@ enum class CheckFamily {
     VARIANT_FILTER,
 
     /**
+     * A rule's `guiPatterns` and `variantErrorMessages` — that A12's reader can BIND them, and nothing else.
+     * A12 checks neither member's CONTENT, so an undocumented `guiPatterns` key and a variant name no filter
+     * mentions are both admitted; the family exists because the shapes their readers refuse make the whole
+     * model unloadable, and a clean report for one of those would be read as a verdict.
+     */
+    RULE_PRESENTATION_MEMBERS,
+
+    /**
      * That every DSL-bearing member can be TOKENIZED — the syntax layer's first phase, and the only one
      * decidable without a grammar. Whether the tokens then form a condition A12's parser accepts is a
      * separate question this family does not answer.
@@ -224,7 +232,8 @@ internal fun check(
         prepared.ruleConditionAndTargetFindings() + prepared.variantFilterFindings() +
         prepared.conditionLexicalFindings() + prepared.conditionCompletenessFindings() +
         prepared.connectiveAgreementFindings() + prepared.conditionGrammarFindings() +
-        prepared.elementNameFindings() + prepared.groupOrderingFindings()
+        prepared.elementNameFindings() + prepared.groupOrderingFindings() +
+        prepared.presentationMemberFindings()
     val findings = judged.notSuppressedBy(prepared.variantFilterSuppressed())
     return ConsistencyReport(
         modelId = admitted.modelId,
@@ -238,7 +247,7 @@ internal fun check(
             CheckFamily.COMPUTATION_ROUNDING, CheckFamily.SUPPRESSED_WARNINGS,
             CheckFamily.VARIANT_FILTER, CheckFamily.CONDITION_LEXICALITY,
             CheckFamily.CONDITION_COMPLETENESS, CheckFamily.CONNECTIVE_AGREEMENT,
-            CheckFamily.CONDITION_GRAMMAR),
+            CheckFamily.CONDITION_GRAMMAR, CheckFamily.RULE_PRESENTATION_MEMBERS),
         gaps = prepared.gaps() + prepared.emptyFactBase() + findings.buildBlocked() +
             prepared.variantFilterGaps() + UNREAD_MEMBERS + UNIMPLEMENTED_FAMILIES,
     )

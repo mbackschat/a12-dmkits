@@ -5941,3 +5941,32 @@ The last row generalizes the string-literal result above rather than repeating i
 **`%` is not an operator at any layer.** It fails in the LEXER, not the grammar, which is what makes it the grid's liveness control: it shows the probe can still produce a rejection, without which seven admissions cannot be told from a probe that admits everything.
 
 *Locked by:* `rulekit.validate.laws.ConditionArithmeticSymbolLawsTest` (one grid, one symbol apart on one carrier, with both a no-arithmetic control and the `%` liveness control). The portable side is `consistency`'s `ConditionShapeTest`, whose division and exponentiation rows are the controls that were missing when the mutants survived.
+
+## §13 supplement — a rule's `guiPatterns` and `variantErrorMessages` are stored but never judged, and their two binding laws differ on exactly one row (measured, 2026-09-13) <a id="kf303"></a>
+
+> Fold: pending — belongs beside [KERNEL-SEMANTICS](KERNEL-SEMANTICS.md) §13, which covers message interpolation and says nothing about the variant-specific map.
+
+**These were the last two stored `Rule` members the portable checker did not read**, and both look from the outside like constrained vocabularies a checker ought to police. `Rule.guiPatterns` even documents its own closed vocabulary — "At the moment only following patterns are possible: key=`dynamicEnumeration`, value=`true`|`false`". **A12 enforces none of it.**
+
+| stored shape | `guiPatterns` | `variantErrorMessages` |
+|---|---|---|
+| absent — the control | ADMITTED | ADMITTED |
+| an empty map | ADMITTED | ADMITTED |
+| a well-formed entry | ADMITTED | ADMITTED |
+| a key outside the documented vocabulary | ADMITTED | ADMITTED (any variant name, the default's `""` included) |
+| a value outside the documented vocabulary | ADMITTED | — |
+| a scalar where the value type is richer | ADMITTED (boolean) | ADMITTED (string, number) |
+| **a null VALUE** | **ADMITTED** | **RAISED (untyped)** |
+| an object value | UNREADABLE | UNREADABLE |
+| a list value | UNREADABLE | ADMITTED when its entries are well formed |
+| an entry missing `locale`, or missing `text` | — | UNREADABLE |
+| the member as an explicit null | UNREADABLE | UNREADABLE |
+| the member as a list | UNREADABLE | UNREADABLE |
+
+**The null-value row is why measuring one member would have shipped the other's law wrong.** The shapes are identical and the tiers are not even adjacent: `Map<String, String>` takes a null value, while `Map<String, ILocalizedTextMap>` is `@NonNull`-bound on its value and raises past every typed Kernel channel. A checker sharing one predicate between two members that look this alike is wrong on that row whichever direction it picks — the same trap the rounding pair set, one record earlier, and the reason the D denominator schedules members by topic rather than one at a time.
+
+**`guiPatterns` has exactly one reader in the Kernel and it is the serializer.** *Searched:* `grep -rn 'getGuiPatterns' ../a12-kernel --include='*.java' | grep -v delombok` — six matches (`RuleSerializer` ×2, the delegating `RuleWrapper` ×2, the `Rule` javadoc, the `IRule` declaration), all six read. The dynamic-enumeration machinery that the documented key names does NOT consult it: `CodeGenMetaRulesBuilder` and `NoMetaModelChecks.checkDynamicEnumerations` both take their information from `data.getParams().getDynamicEnumerationInformation()`, a codegen parameter. The grid is what settles it, because who calls an accessor is a reachability claim and a source read alone does not settle those here.
+
+**So the useful result is a NON-finding.** Translating that javadoc into a refusal is the obvious move and would reject models A12 admits, in the one direction a checker must never take. What remains checkable is only whether the reader can BIND the member, which is this checker's own `CK_MODEL_NOT_BUILDABLE` tier: an unloadable model that draws a clean report reads as a verdict.
+
+*Locked by:* `rulekit.validate.laws.RuleVariantPresentationLawsTest` (both grids, each with an absent control and the vocabulary rows that would be refused by a javadoc-faithful checker). The portable side is `consistency`'s `PresentationMembersTest` and `CheckFamily.RULE_PRESENTATION_MEMBERS`.
