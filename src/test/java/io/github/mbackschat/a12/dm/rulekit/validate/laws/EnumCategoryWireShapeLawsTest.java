@@ -67,7 +67,18 @@ class EnumCategoryWireShapeLawsTest {
         actual.put("two values, two tokens — the control", verdictFor(withTokens("[\"STANDARD\",\"HIGH\"]")));
         actual.put("one token short", verdictFor(withTokens("[\"STANDARD\"]")));
         actual.put("one token too many", verdictFor(withTokens("[\"STANDARD\",\"HIGH\",\"TOP\"]")));
+        // TWO too many: the surplus direction's multiplicity, which the row above cannot show. Without it a
+        // consumer emitting one finding per surplus token would be transferring the shortfall direction's
+        // measured multiplicity onto a direction nobody had measured.
+        actual.put("two tokens too many",
+                verdictFor(withTokens("[\"STANDARD\",\"HIGH\",\"TOP\",\"MAX\"]")));
         actual.put("no tokens at all", verdictFor(withTokens("[]")));
+        // The mirror of "no tokens at all": nothing on the LEFT of the pairing, tokens on the right. The
+        // second row separates the pairing from the enum itself — an empty `values` may be refused on its
+        // own account, in which case the pairing never gets asked and a checker reporting it is inventing.
+        actual.put("no values at all, with tokens",
+                verdictFor("{\"values\":[],\"categories\":[{\"name\":\"Band\",\"values\":[\"X\",\"Y\"]}]}"));
+        actual.put("no values at all, no categories", verdictFor("{\"values\":[]}"));
         // The four names, each written nearly right — the rows that turn the names from a reading into a
         // measurement. A12's reader names the six members it knows in its own refusal message.
         actual.put("the enum's own list member misspelled",
@@ -94,7 +105,10 @@ class EnumCategoryWireShapeLawsTest {
         expected.put("two values, two tokens — the control", KernelLaws.ADMITTED);
         expected.put("one token short", MISSING_CATEGORY);
         expected.put("one token too many", MISSING_INTERNAL);
+        expected.put("two tokens too many", MISSING_INTERNAL + "," + MISSING_INTERNAL);
         expected.put("no tokens at all", MISSING_CATEGORY + "," + MISSING_CATEGORY);
+        expected.put("no values at all, with tokens", KernelLaws.NOT_BUILDABLE);
+        expected.put("no values at all, no categories", KernelLaws.NOT_BUILDABLE);
         // All four near-misses die in A12's READER, which is the stronger answer: an unknown member is
         // refused outright rather than ignored, so a model that loads at all carries only names A12 knows.
         expected.put("the enum's own list member misspelled", KernelLaws.UNREADABLE);

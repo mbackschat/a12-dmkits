@@ -3819,9 +3819,14 @@ Both facts are the measured basis for a `modelkit` constructor refusal, taken be
 | `[HIGH, STANDARD]` — same length, reordered | admitted |
 | `[STANDARD]` — one short | `MVK_MISSING_CATEGORY_VALUE` |
 | `[STANDARD, HIGH, TOP]` — one too many | `MVK_MISSING_INTERNAL_VALUE` |
+| `[STANDARD, HIGH, TOP, MAX]` — two too many | `MVK_MISSING_INTERNAL_VALUE` ×2 *(added 2026-09-13)* |
 | `[]` | `MVK_MISSING_CATEGORY_VALUE`, once per unclassified value |
 
 So `FieldTypeSpec.EnumSpec`'s cardinality check is **exactly** the kernel's rule rather than a conservative one, and its single message collapses a pair of per-element kernel diagnostics — under-reporting, never over-rejecting.
+
+**Amended 2026-09-13 — the multiplicity was measured in ONE direction only.** The per-element count was taken on the shortfall side (`[]` → one diagnostic per unclassified value) and reused on the surplus side, which had a single row and so could not distinguish "one per surplus token" from "one per misaligned category". Two surplus tokens draw two diagnostics, so the reuse was right — but it was a transfer until the row was run, and it needed no new branch, which is why nothing prompted the question.
+
+**Amended 2026-09-13 — an EMPTY `values` never reaches the pairing.** An `EnumerationType` whose `values` is `[]` makes the model **NOT BUILDABLE**, with categories and without them alike, so a checker that pairs an empty left side against declared tokens reports codes A12 does not raise on that model. This repository's portable checker did exactly that (two `MVK_MISSING_INTERNAL_VALUE`) until the row was measured. **Not reported by the checker**, deliberately: a dynamic enumeration takes its values from a rule (`Regel_t.dynamicEnumerationRule`), so whether that shape makes an empty list legal is unmeasured, and widening a refusal on two rows that share a constant is the direction a client-side check may never take. *Re-open trigger:* a measurement of an empty `values` on a field carrying a dynamic-enumeration rule.
 
 **The fractional-digit cap is a real kernel gate reported with NO code.** `maxFractionalDigits: 15` and `minFractionalDigits: 15` each draw one diagnostic reading *"Field with path '/Store/Scale14': Only values smaller than or equal to 14 are allowed."* — no `MVK_*` class, no property name, and **one** diagnostic even when both keys breach. Stated precisely, and the precision is [KF75](#kf75)'s lesson rather than pedantry: the kernel's MESSAGE carries no class key, so there is nothing for `Diagnostic.kernelClass` to lift — every code we report is our extraction from the message's terminal bracket, so "no code" is always a statement about the message and never about a field the kernel declined to fill. The quoted text above is what makes that checkable here. That code-lessness is the reason `modelkit` refuses it correctively rather than delegating, which the code comment already said and can now cite.
 

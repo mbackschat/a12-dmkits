@@ -27,11 +27,16 @@ import kotlinx.serialization.json.JsonPrimitive
  * **What it leaves alone**, all of it under-reporting: a body whose `values` or `categories` is not an array
  * of the shape measured here, and a value entry that does not spell a string `value` — each is a shape
  * nobody has put to A12, and refusing one would rest a rejection on a reading.
+ *
+ * **An EMPTY `values` is left alone for a different reason**: A12 does not reach the pairing at all, because
+ * an enumeration declaring no values makes the model unbuildable with or without categories (measured). This
+ * family reported two `MVK_MISSING_INTERNAL_VALUE` there until the row was run — a code A12 never raises on
+ * that model, which is the pairing law transferred onto a shape the pairing never sees.
  */
 fun PreparedModel.enumCategoryFindings(): List<Finding> =
     elements.filter { it.declaredKind == DeclaredKind.FIELD }.flatMap { field ->
         val body = field.enumerationBody() ?: return@flatMap emptyList()
-        val values = body.declaredValues() ?: return@flatMap emptyList()
+        val values = body.declaredValues()?.takeIf { it.isNotEmpty() } ?: return@flatMap emptyList()
         val categories = body["categories"] as? JsonArray ?: return@flatMap emptyList()
         categories.flatMap { category -> field.misalignment(values, category) }
     }
@@ -69,9 +74,14 @@ internal fun DeclaredElement.enumerationBody(): JsonObject? {
  * A12 has nothing to say about it either, so reporting a gap there would describe every ordinary enum.
  */
 private fun JsonObject.unreadableHalf(): String? {
-    if (declaredValues() == null) {
-        return "its `values` carries an entry this checker cannot read as a string `value`, and refusing a " +
-            "shape nobody has put to A12 would rest a rejection on a reading"
+    val values = declaredValues()
+        ?: return "its `values` carries an entry this checker cannot read as a string `value`, and " +
+            "refusing a shape nobody has put to A12 would rest a rejection on a reading"
+    if (values.isEmpty()) {
+        return "it declares NO values, which A12 refuses to build the model from with or without " +
+            "categories, so the pairing is never reached — the refusal itself is left to A12 because a " +
+            "dynamic enumeration takes its values from a rule, and whether that makes an empty list legal " +
+            "is unmeasured"
     }
     val categories = this["categories"] ?: return null
     val entries = categories as? JsonArray ?: return "its `categories` is present and is not an array"
@@ -102,7 +112,8 @@ private fun DeclaredElement.misalignment(values: List<String>, category: JsonEle
     val named = (declared["name"] as? JsonPrimitive)?.takeIf { it.isString }?.content ?: return emptyList()
     return when {
         tokens.size < values.size -> values.drop(tokens.size).map { unclassified(named, it, tokens.size) }
-        tokens.size > values.size -> tokens.drop(values.size).map { unmatched(named, values.size) }
+        tokens.size > values.size ->
+            tokens.drop(values.size).map { token -> unmatched(named, token.tokenText(), values.size) }
         else -> emptyList()
     }
 }
@@ -117,11 +128,20 @@ private fun DeclaredElement.unclassified(category: String, value: String, tokens
     path,
 )
 
-private fun DeclaredElement.unmatched(category: String, values: Int) = Finding(
+/**
+ * The surplus token NAMES itself, because A12 raises one diagnostic per surplus token (measured, two of
+ * them draw two). Findings identical in code, path and text would be folded by any consumer deduplicating
+ * on those three, which would silently discard the multiplicity this family exists to reproduce.
+ */
+private fun DeclaredElement.unmatched(category: String, token: String, values: Int) = Finding(
     FindingCategory.A12_CONSTRAINT,
     FindingSeverity.ERROR,
     "MVK_MISSING_INTERNAL_VALUE",
-    "the category `$category` declares more tokens than the enum has values ($values) — the pairing is " +
-        "positional, so a trailing token classifies nothing and A12 refuses it",
+    "the token `$token` in the category `$category` classifies nothing: the category declares more tokens " +
+        "than the enum has values ($values), and the pairing is positional, so a trailing token has no " +
+        "value to pair with and A12 refuses it",
     path,
 )
+
+/** A token as declared — non-string entries are rendered rather than refused, since A12 reads the list. */
+private fun JsonElement.tokenText(): String = (this as? JsonPrimitive)?.content ?: toString()

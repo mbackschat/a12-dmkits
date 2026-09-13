@@ -110,6 +110,11 @@ class EnumCategoriesTest {
         actual["a category with no `name`"] = codes(
             """{"values":[{"value":"BASIC"}],"categories":[{"values":[]}]}""",
         )
+        // An enumeration with NO values is refused a tier earlier — A12 cannot build the model, with or
+        // without categories — so the pairing is never asked and reporting it would invent A12's verdict.
+        actual["no values at all, with tokens"] = codes(
+            """{"values":[],"categories":[{"name":"Band","values":["X","Y"]}]}""",
+        )
         actual["a category whose tokens are not an array"] = codes(
             """{"values":[{"value":"BASIC"}],"categories":[{"name":"Band","values":"STANDARD"}]}""",
         )
@@ -139,6 +144,9 @@ class EnumCategoriesTest {
         actual["a category with no `name`"] = gapPaths(
             """{"values":[{"value":"BASIC"}],"categories":[{"values":[]}]}""",
         )
+        actual["no values at all, with tokens"] = gapPaths(
+            """{"values":[],"categories":[{"name":"Band","values":["X","Y"]}]}""",
+        )
         // The controls: a judged pairing and an enum with no categories at all say nothing. The second
         // matters most — categories are optional, so a gap there would describe every ordinary enum.
         actual["an aligned pairing — the control"] = gapPaths(withTokens("""["S","P"]"""))
@@ -149,9 +157,27 @@ class EnumCategoriesTest {
         expected["a value entry with no `value`"] = listOf("/Catalog/Tier")
         expected["a category that is not an object"] = listOf("/Catalog/Tier")
         expected["a category with no `name`"] = listOf("/Catalog/Tier")
+        expected["no values at all, with tokens"] = listOf("/Catalog/Tier")
         expected["an aligned pairing — the control"] = emptyList()
         expected["no categories at all — the control"] = emptyList()
         assertEquals(expected, actual, "a shape this family could not pair is disclosed, not simply dropped")
+    }
+
+    /**
+     * Two surplus tokens draw two findings that a consumer can tell apart.
+     *
+     * A12 raises one per surplus token, so the multiplicity is the law — and findings identical in code,
+     * path and text would be folded by any consumer deduplicating on those three, losing exactly what this
+     * family reproduces. The offending token is what makes them distinct, as it already does on the other
+     * side of the pairing.
+     */
+    @Test
+    fun eachSurplusTokenNamesItself() {
+        val findings = report(withTokens("""["S","P","TOP","MAX"]""")).findings
+        assertEquals(missingInternal + missingInternal, findings.map { it.code })
+        assertEquals(2, findings.map { it.explain }.distinct().size, findings.joinToString("\n") { it.explain })
+        assertEquals(true, findings.any { it.explain.contains("`TOP`") }, findings.first().explain)
+        assertEquals(true, findings.any { it.explain.contains("`MAX`") }, findings.last().explain)
     }
 
     private fun gapPaths(body: String): List<String?> =
