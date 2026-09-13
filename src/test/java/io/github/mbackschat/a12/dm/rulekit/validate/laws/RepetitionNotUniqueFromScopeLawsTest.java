@@ -110,6 +110,31 @@ class RepetitionNotUniqueFromScopeLawsTest {
         assertEquals(expected, actual, "RepetitionNotUnique @From scope containment");
     }
 
+    /**
+     * …and the SIBLING class {@code MVK_NOT_IN_SAME_PATH} turns on the same thing, which is a transfer.
+     *
+     * <p>[MVK-LEDGER] records that class's reachability as fixture-sensitive with the reason unmeasured, in
+     * the same words it used for {@code MVK_NOT_IN_GROUP}. The mechanism found for that one — two repeatable
+     * groups iterate jointly only when they share an index field, so an index-free pair is refused at the
+     * wildcard gate before any path question is asked — PREDICTS the same split here. It is a different
+     * class reported by a different check, so predicting is not measuring: both halves are built on the one
+     * model shape, index-free and index-keyed.
+     */
+    @Test
+    void theSamePathClassTurnsOnIndexKeyingToo() {
+        Map<String, String> actual = new LinkedHashMap<>();
+        actual.put("two keys in parallel repeatable groups | index-free",
+                verdict("../Crates/CrateRef", "RepetitionNotUnique(Crates/CrateRef, Pallets/PalletRef)"));
+        actual.put("two keys in parallel repeatable groups | INDEX-KEYED",
+                KernelLaws.verdictModel(INDEXED, "/Depot", "../Crates/CrateRef",
+                        "RepetitionNotUnique(Crates/CrateRef, Pallets/PalletRef)"));
+
+        Map<String, String> expected = new LinkedHashMap<>();
+        expected.put("two keys in parallel repeatable groups | index-free", "MVK_NO_WILDCARD");
+        expected.put("two keys in parallel repeatable groups | INDEX-KEYED", "MVK_NOT_IN_SAME_PATH");
+        assertEquals(expected, actual, "the same-path class turns on index keying");
+    }
+
     /** The COMPLETE class list, so a co-firing gate cannot pass for the one under test. */
     private static String verdict(String errorField, String condition) {
         return verdictIn("/Depot", errorField, condition);

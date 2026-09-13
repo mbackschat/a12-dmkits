@@ -7145,6 +7145,8 @@ Reported by the portable checker, which did not emit `MVK_SORT_FIELD_DUPLICATE` 
 
 **`@From` must name a REPEATABLE group** — naming the rule's own non-repeatable root draws `MVK_GROUP_NOT_REPEATABLE` and no containment class at all. Already held (§9, subscription carrier; pre-checked by `RepetitionNotUniqueCondition.from`); confirmed here on a second carrier rather than newly found.
 
+**The mechanism transfers to `MVK_NOT_IN_SAME_PATH`, measured rather than assumed.** The ledger carried the identical "fixture-sensitive, reason unmeasured" note for that class — two `RepetitionNotUnique` keys in parallel repeatable groups, no `@From` involved. It is a different class from a different check, so the transfer was predicted and then built on the same model both ways: index-free draws `MVK_NO_WILDCARD`, index-keyed draws `MVK_NOT_IN_SAME_PATH`. One mechanism therefore closes both of the ledger's unexplained-reachability notes.
+
 Locked: `validate.laws.RepetitionNotUniqueFromScopeLawsTest`. **Not reported by the portable checker**: the condition reader reduces no `@From` operand to a path by design, and the class's own reachability turns on parallel iteration, which no family models.
 
 ## §9 supplement — the root-only error-target iteration classes need THREE conditions, two of which were constants (measured, 2026-09-14) <a id="kf348"></a>
