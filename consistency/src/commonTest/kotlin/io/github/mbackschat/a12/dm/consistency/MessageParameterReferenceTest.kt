@@ -35,6 +35,12 @@ class MessageParameterReferenceTest {
         actual["an escaped dollar"] = ruleSaying("cost 5\$\$")
         actual["a lone dollar"] = ruleSaying("cost 5\$")
         actual["an unterminated parameter around a real unread field"] = ruleSaying("see \$Premium")
+        actual["an escaped dollar running into a name"] = ruleSaying("\$\$Premium\$ x")
+        actual["a field named after a keyword"] = ruleSaying("see \$index\$")
+        actual["a field named after a CATALOGED keyword"] = ruleSaying("see \$Date\$")
+        actual["the same, single-quoted"] = ruleSaying("see \$'Date'\$")
+        actual["two parameters sharing a dollar pair"] = ruleSaying("see \$Premium\$\$Adjuster\$")
+        actual["a dollar pair inside a name"] = ruleSaying("see \$Prem\$\$ium\$")
 
         val expected = mutableMapOf<String, List<String>>()
         expected["a field the condition reads — the control"] = emptyList()
@@ -53,6 +59,20 @@ class MessageParameterReferenceTest {
         // The row with teeth: the name IS a real unread field, so guessing where the parameter ended would
         // report the membership class on a text A12 refuses for a different reason entirely.
         expected["an unterminated parameter around a real unread field"] = emptyList()
+        // `$$` is a literal dollar, so what follows is not a parameter — reading it as two delimiters would
+        // lift `Premium` out of a text A12 answers with `WRONG_NUMBER_OF_DOLLARS`.
+        expected["an escaped dollar running into a name"] = emptyList()
+        // The message grammar does not resolve a parameter against the CONDITION lexer's terminals, so a
+        // name spelling a keyword is an ordinary reference — cataloged or not, quoted or not. Exempting such
+        // names would drop real findings silently, which is the one thing silence is not free for.
+        expected["a field named after a keyword"] = listOf(invalidField)
+        expected["a field named after a CATALOGED keyword"] = listOf(invalidField)
+        expected["the same, single-quoted"] = listOf(invalidField)
+        // TWO findings, because the pair closes one parameter and opens the next — a reader treating it as
+        // an escape would see one unresolvable name and report nothing on a model A12 refuses twice.
+        expected["two parameters sharing a dollar pair"] = listOf(invalidField, invalidField)
+        // …and the same pair mid-name leaves two names that resolve to nothing, which is A12's other class.
+        expected["a dollar pair inside a name"] = emptyList()
         assertEquals(expected, actual, "which parameter shapes this family reports")
     }
 
@@ -128,6 +148,8 @@ class MessageParameterReferenceTest {
                 {"type":"Field","id":"f1","name":"Premium","Field":{"fieldType":{"type":"NumberType"}}},
                 {"type":"Field","id":"f2","name":"Adjuster","Field":{"fieldType":{"type":"StringType"}}},
                 {"type":"Field","id":"f3","name":"Bonus","Field":{"fieldType":{"type":"NumberType"}}},
+                {"type":"Field","id":"f6","name":"index","Field":{"fieldType":{"type":"StringType"}}},
+                {"type":"Field","id":"f7","name":"Date","Field":{"fieldType":{"type":"StringType"}}},
                 {"type":"Group","id":"g1","name":"Claims","Group":{"repeatability":20,"elements":[
                   {"type":"Field","id":"f4","name":"ClaimNo","Field":{"fieldType":{"type":"StringType"}}},
                   {"type":"Field","id":"f5","name":"Payout","Field":{"fieldType":{"type":"StringType"}}}

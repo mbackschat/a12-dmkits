@@ -1,6 +1,5 @@
 package io.github.mbackschat.a12.dm.consistency
 
-import io.github.mbackschat.a12.dm.consistency.syntax.CONDITION_KEYWORDS
 import io.github.mbackschat.a12.dm.consistency.syntax.plainMessageParameters
 
 /**
@@ -29,7 +28,6 @@ import io.github.mbackschat.a12.dm.consistency.syntax.plainMessageParameters
  * little, is [plainMessageParameters].
  */
 fun PreparedModel.messageParameterFindings(): List<Finding> {
-    val keywords = CONDITION_KEYWORDS.getValue(conditionLanguage).keys
     val readBy = entitiesReadByDeclaration()
     return elements.flatMap { element ->
         val body = element.body ?: return@flatMap emptyList()
@@ -37,7 +35,7 @@ fun PreparedModel.messageParameterFindings(): List<Finding> {
         val group = element.path.substringBeforeLast('/', missingDelimiterValue = "")
         val messages = body.authoredMessages() as? AuthoredMessages.Read ?: return@flatMap emptyList()
         messages.entries.flatMap { message ->
-            plainMessageParameters(message.text, keywords).mapNotNull { name ->
+            plainMessageParameters(message.text).mapNotNull { name ->
                 val resolved = (resolveEntity(group, name, element.origin) as? Reference.Resolved)?.path
                     ?: return@mapNotNull null
                 if (resolved in membership) {

@@ -53,6 +53,8 @@ class MessageParameterMembershipLawsTest {
                     .stringField("Reference", f -> { })
                     .numberField("Premium", f -> f.fractionDigits(0, 2))
                     .stringField("Adjuster", f -> { })
+                    .stringField("index", f -> { })
+                    .stringField("Date", f -> { })
                     .numberField("Bonus", f -> f.fractionDigits(0, 2))
                     .group("Claims", claims -> claims.repeatable(20)
                             .stringField("ClaimNo", f -> { })
@@ -76,6 +78,20 @@ class MessageParameterMembershipLawsTest {
         // condition does not read, so a reader that guessed where the parameter ended would report the
         // membership class on a text A12 refuses for an entirely different reason.
         actual.put("an unterminated parameter around a real unread field", message("see $Premium"));
+        // A literal dollar immediately followed by something that LOOKS like a parameter — the shape that
+        // separates "$$ is an escape" from "$$ is two delimiters".
+        actual.put("an escaped dollar running into a name", message("$$Premium$ x"));
+        // A field whose name spells a condition keyword: is a plain parameter naming it a reference at all?
+        actual.put("a field named after a keyword, unread", message("see $index$"));
+        // …and one that spells a CATALOGED operator, which is the half a checker holding the condition
+        // lexer's terminal table would be tempted to exempt.
+        actual.put("a field named after a CATALOGED keyword, unread", message("see $Date$"));
+        actual.put("the same, single-quoted", message("see $'Date'$"));
+        // Two parameters back to back: does the pair of dollars between them CLOSE one and open the next, or
+        // is it the escape? The two readings differ on what is even a reference, so a checker has to know.
+        actual.put("two parameters sharing a dollar pair", message("see $Premium$$Adjuster$"));
+        // …and the same pair INSIDE what would otherwise be one name.
+        actual.put("a dollar pair inside a name", message("see $Prem$$ium$"));
 
         Map<String, String> expected = new LinkedHashMap<>();
         expected.put("a field the condition DOES read — the control", ADMITTED);
@@ -92,6 +108,19 @@ class MessageParameterMembershipLawsTest {
         expected.put("an escaped dollar, which is no parameter", ADMITTED);
         expected.put("a lone dollar", "WRONG_NUMBER_OF_DOLLARS");
         expected.put("an unterminated parameter around a real unread field", "WRONG_NUMBER_OF_DOLLARS");
+        expected.put("an escaped dollar running into a name", "WRONG_NUMBER_OF_DOLLARS");
+        // The three rows that settle whether a checker may resolve a parameter against the CONDITION lexer's
+        // terminals: it may not. `Date` is a cataloged operator keyword and `index` is not, quoted and bare
+        // behave alike, and all three draw the membership class — so the message grammar reads a parameter as
+        // a name regardless. A reader excluding keyword-spelled names would silently drop real findings.
+        expected.put("a field named after a keyword, unread", "INVALID_FIELD");
+        expected.put("a field named after a CATALOGED keyword, unread", "INVALID_FIELD");
+        expected.put("the same, single-quoted", "INVALID_FIELD");
+        // The pair between two parameters CLOSES one and OPENS the next: A12 answers each row with TWO
+        // classes, one per parameter, which the escape reading cannot produce at all — it has only one name
+        // to judge. So `$$` is the escape only OUTSIDE a parameter; inside one, the first `$` ends it.
+        expected.put("two parameters sharing a dollar pair", "INVALID_FIELD,INVALID_FIELD");
+        expected.put("a dollar pair inside a name", "INVALID_ENTITY,INVALID_ENTITY");
         assertEquals(expected, actual, "which class each parameter shape draws");
     }
 

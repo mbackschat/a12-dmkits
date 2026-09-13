@@ -6781,8 +6781,19 @@ Reported by the portable checker as `CheckFamily.COMPUTATION_CYCLE`, which drops
 | `$Claims/Payout$`, a pathed field the condition does not read | **`INVALID_FIELD`** |
 | `cost 5$$` — an escaped dollar, no parameter | ADMITTED |
 | `cost 5$` — a lone dollar | **`WRONG_NUMBER_OF_DOLLARS`** |
+| `see $Premium`, unterminated around a real unread field | **`WRONG_NUMBER_OF_DOLLARS`** |
+| `$$Premium$ x`, an escaped dollar running into a name | **`WRONG_NUMBER_OF_DOLLARS`** |
+| `$index$`, a field named after an uncataloged keyword | **`INVALID_FIELD`** |
+| `$Date$`, a field named after a CATALOGED operator | **`INVALID_FIELD`** |
+| `$'Date'$`, the same single-quoted | **`INVALID_FIELD`** |
+| `see $Premium$$Adjuster$`, two parameters sharing a dollar pair | **`INVALID_FIELD,INVALID_FIELD`** |
+| `see $Prem$$ium$`, the pair inside what would be one name | **`INVALID_ENTITY,INVALID_ENTITY`** |
 
 **Two of those are the rows an implementation would get wrong.** A name that resolves to NOTHING is `INVALID_ENTITY`, not the membership class — so answering every unknown parameter with `INVALID_FIELD` names a verdict A12 did not give. And a GROUP draws `INVALID_FIELD` too, not `INVALID_GROUP`: the membership gate does not care what kind it found, so keying the class on the resolved element's kind is wrong in the other direction.
+
+**`$$` is the escape only OUTSIDE a parameter — inside one, the first `$` closes it.** The two readings are not distinguishable on a single-class verdict, which is why the last two rows are there: A12 answers each with TWO classes, one per parameter, and the escape reading has only one name to judge. So `$Premium$$Adjuster$` is two parameters, both refused for membership, and a reader treating the pair as a literal dollar stays silent on a model A12 refuses twice.
+
+**A parameter is NOT resolved against the condition lexer's terminals.** A field named after a keyword is an ordinary reference here, cataloged (`Date`) or not (`index`), bare or single-quoted — all draw the membership class. A checker holding the condition language's terminal table is tempted to exempt such names for safety; the exemption only hides real findings, and this repository shipped one until the mutant that removed it survived every row.
 
 **A COMPUTATION's message is gated as well, by its own members.** This was the reverse of the first two readings taken of it, both of which came from a broken fixture:
 

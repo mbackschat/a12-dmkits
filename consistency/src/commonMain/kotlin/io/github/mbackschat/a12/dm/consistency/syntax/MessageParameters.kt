@@ -14,7 +14,7 @@ package io.github.mbackschat.a12.dm.consistency.syntax
  * draws `WRONG_NUMBER_OF_DOLLARS` (measured), so this yields nothing there rather than guessing where the
  * parameter ended.
  */
-internal fun plainMessageParameters(text: String, keywords: Set<String>): List<String> {
+internal fun plainMessageParameters(text: String): List<String> {
     val names = mutableListOf<String>()
     var index = 0
     while (index < text.length) {
@@ -27,26 +27,23 @@ internal fun plainMessageParameters(text: String, keywords: Set<String>): List<S
             continue
         }
         val close = closingDollar(text, index + 1) ?: return emptyList()
-        plainNameOrNull(text.substring(index + 1, close), keywords)?.let { names += it }
+        plainNameOrNull(text.substring(index + 1, close))?.let { names += it }
         index = close + 1
     }
     return names
 }
 
-/** The next unescaped `$` at or after [from], or null when the parameter is never closed. */
+/**
+ * The `$` that closes the parameter opened before [from], or null when it is never closed.
+ *
+ * **The escape does not reach in here: inside a parameter the first `$` ends it**, so two parameters may sit
+ * back to back sharing a dollar pair. Measured — `see $Premium$$Adjuster$` draws the membership class for
+ * BOTH names, which reading the pair as an escape could not produce, since `Premium$$Adjuster` resolves to
+ * nothing and would have drawn `INVALID_ENTITY` instead.
+ */
 private fun closingDollar(text: String, from: Int): Int? {
-    var index = from
-    while (index < text.length) {
-        if (text[index] == '$') {
-            if (index + 1 < text.length && text[index + 1] == '$') {
-                index += 2
-                continue
-            }
-            return index
-        }
-        index++
-    }
-    return null
+    val close = text.indexOf('$', from)
+    return if (close < 0) null else close
 }
 
 /**
@@ -54,12 +51,14 @@ private fun closingDollar(text: String, from: Int): Int? {
  *
  * The `.value` suffix is stripped because it is a suffix and never part of a name — A12's own exemption list
  * settles that, since `value` is not among the names a field may end with unquoted ([KF198]). Quotes are
- * stripped per segment, which is how a field whose name spells a terminal is written. A single-segment name
- * that is a keyword of the model's condition language is left alone: the message grammar's terminal set is
- * NARROWER than the condition's, so a name in that set may be a terminal here, and this reader has no
- * measurement telling the two apart.
+ * stripped per segment, which is how a field whose name spells a terminal is written.
+ *
+ * **A name that spells a CONDITION keyword is an ordinary reference here**, bare or quoted: `$Date$` and
+ * `$'Date'$` over a field named `Date` both draw the membership class, so the message grammar does not
+ * resolve a parameter against the condition lexer's terminals. An earlier version excluded such names to be
+ * safe; the measurement shows the exclusion only hid real findings, so it is gone.
  */
-private fun plainNameOrNull(parameter: String, keywords: Set<String>): String? {
+private fun plainNameOrNull(parameter: String): String? {
     val name = parameter.removeSuffix(VALUE_SUFFIX)
     if (name.isEmpty()) {
         return null
@@ -68,11 +67,7 @@ private fun plainNameOrNull(parameter: String, keywords: Set<String>): String? {
     if (segments.any { !it.isPlainSegment() }) {
         return null
     }
-    val unquoted = segments.joinToString("/") { it.trim('\'') }
-    if (segments.size == 1 && unquoted in keywords) {
-        return null
-    }
-    return unquoted
+    return segments.joinToString("/") { it.trim('\'') }
 }
 
 /** A bare or single-quoted name — anything else carries a form with a gate of its own. */
