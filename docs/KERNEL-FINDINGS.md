@@ -6613,3 +6613,27 @@ Reported by the portable checker (`CheckFamily.GROUP_LIST_OPERAND_KIND`) on the 
 Reported by the portable checker (`CheckFamily.REPETITION_WILDCARD_TARGET`) under all three classes. It leaves alone: a starred segment whose own prefix does not resolve, a starred named turning point (`..Ancestor*`, unmeasured), and — a disclosed under-report — a reference that is nothing but starred up-steps, which its reference reader does not report as a reference at all.
 
 *Locked by:* `rulekit.validate.laws.StarredNonRepeatableReachLawsTest` (four grids, 31 rows, two carriers); the portable checker's mirror is `consistency.RepetitionWildcardTest`, and its agreement with the Kernel on real models is `adapter.laws.CheckerSilenceOnCleanModelsTest`.
+
+## §11 supplement — a computation may not compute into a GROUP, and the rule slot that resolves identically ADMITS one (measured, 2026-09-13) <a id="kf329"></a>
+
+> Fold: pending — belongs beside [KERNEL-SEMANTICS](KERNEL-SEMANTICS.md) §11's computation account, next to the computed-field rules.
+
+A rule's `errorEntityRelPath` and a computation's `computedFieldRelPath` are the same kind of member — a relative path to a declared element, read by the same reader, resolving the same way — so an implementation judges them alike unless something says not to. A12 says not to, in one direction only.
+
+| the target resolves to… | as a computation's computed field | as a rule's error target |
+|---|---|---|
+| a sibling FIELD — control | ADMITTED | ADMITTED |
+| a **FIXED group** | **NOT BUILDABLE** | **ADMITTED** |
+| a **REPEATABLE group** | **NOT BUILDABLE** | **ADMITTED** |
+| a field inside a fixed group | ADMITTED | — |
+| nothing | NOT BUILDABLE | `MVK_ERROR_FIELD_MISSING` ([KF289](#kf289)) |
+
+**A12 has a key for this and never reaches it.** `MVK_GROUP_AS_CALCULATED_FIELD` is in the vocabulary, but the Kernel's BUILDER refuses a group-valued computed field before `checkConsistency` runs, so no consumer ever sees that key from this shape — the same tier, and for the same reason, as a computed field naming nothing. A checker reporting the `MVK_*` key here would claim a verdict A12 does not issue; the portable checker reports `CK_MODEL_NOT_BUILDABLE`, the code it owns for exactly this tier.
+
+**The group KIND does not enter it**, which is the row worth having rather than assuming: fixed and repeatable are refused alike, so no repetition reasoning is involved and a checker needs none.
+
+**The rule column is not extra coverage — it is the control that keeps the two slots apart.** Without it an implementation refusing a group in both slots looks correct and refuses a legal model on every rule that reports on a group; with only the rule column, the computation's law is invisible. Neither slot's row implies the other's, and the members are similar enough that nothing but a measurement separates them.
+
+Reported by the portable checker (`CheckFamily.COMPUTED_TARGET_KIND`). The shape exists only in stored DM-JSON: the kits' computed-field slot is a typed field handle, which is why `MVK_GROUP_AS_CALCULATED_FIELD` sits in the ledger's `erased` bucket.
+
+*Locked by:* `rulekit.validate.laws.ComputedFieldTargetKindLawsTest` (two grids, 8 rows); the portable checker's mirror is `consistency.ComputedTargetKindTest`.

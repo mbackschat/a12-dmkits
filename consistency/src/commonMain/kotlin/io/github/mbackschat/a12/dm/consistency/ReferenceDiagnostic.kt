@@ -45,13 +45,14 @@ fun Reference.asFinding(role: ReferenceRole, at: String, member: String? = null)
 /**
  * A rejection A12 issues with no code of its own, because it never reaches a verdict about the model.
  *
- * Four measured inputs reach it, on two different tiers, and the code deliberately covers both because a
- * consumer acts on them identically — the model is unusable, and nothing else in the report is A12's word
- * about it. The model **is not built**: a computation whose computed field is missing (the Kernel reports
- * the bare text "The computed field \"…\" was not found." from
- * `ValidationModelConverter.getComputationStatement`, with no error type), or a rule whose error target
- * climbs past the root (`ElementPathUtils.absPath` raises an `IndexOutOfBoundsException` during
- * deserialization). Or the source **is not read at all**: an `errorMessage` entry without a string `locale`
+ * Five measured inputs reach it (2026-09-13), on two different tiers, and the code deliberately covers both
+ * because a consumer acts on them identically — the model is unusable, and nothing else in the report is
+ * A12's word about it. The model **is not built**: a computation whose computed field is missing (the Kernel
+ * reports the bare text "The computed field \"…\" was not found." from
+ * `ValidationModelConverter.getComputationStatement`, with no error type), a computation whose computed field
+ * names a GROUP — A12 has a key for that one and never reaches it, the builder refusing first
+ * ([KERNEL-FINDINGS KF329]) — or a rule whose error target climbs past the root
+ * (`ElementPathUtils.absPath` raises an `IndexOutOfBoundsException` during deserialization). Or the source **is not read at all**: an `errorMessage` entry without a string `locale`
  * and `text`, or a locale code A12's parser refuses on either the header or the message side — each raises
  * `ModelInputException` before any rule is examined (measured 2026-09-12, `MessageSlotRawShapeLawsTest`).
  *

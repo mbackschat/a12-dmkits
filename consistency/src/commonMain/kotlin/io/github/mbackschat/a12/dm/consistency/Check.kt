@@ -205,6 +205,14 @@ enum class CheckFamily {
     REPETITION_WILDCARD_TARGET,
 
     /**
+     * That a computation computes into a FIELD. A rule's error target resolves the same way and ADMITS a
+     * group, so the two slots are measured apart rather than sharing a rule; the Kernel refuses a
+     * group-valued computed field at the BUILD tier, so the report says the model is not buildable rather
+     * than naming A12's key for it.
+     */
+    COMPUTED_TARGET_KIND,
+
+    /**
      * That every DSL-bearing member can be TOKENIZED — the syntax layer's first phase, and the only one
      * decidable without a grammar. Whether the tokens then form a condition A12's parser accepts is a
      * separate question this family does not answer.
@@ -374,6 +382,7 @@ internal fun check(
         prepared.supportedCharacterFindings() + prepared.declaredPatternFindings() +
         prepared.emptyGroupOperandFindings() + prepared.errorFieldReferenceFindings() +
         prepared.groupListOperandFindings() + prepared.repetitionWildcardFindings() +
+        prepared.computedTargetKindFindings() +
         prepared.stringTypeMessageFindings() + prepared.stringTypeParameterFindings() +
         prepared.numberTypeDigitFindings() + prepared.enumValueLabelFindings()
     val findings = judged.notSuppressedBy(prepared.variantFilterSuppressed())
@@ -398,7 +407,7 @@ internal fun check(
             CheckFamily.ENUM_VALUE_LABELS, CheckFamily.EMPTY_GROUP_OPERAND,
             CheckFamily.ERROR_FIELD_REFERENCE, CheckFamily.GROUP_LIST_OPERANDS,
             CheckFamily.GROUP_LIST_ROOT_OPERAND, CheckFamily.GROUP_LIST_OPERAND_KIND,
-            CheckFamily.REPETITION_WILDCARD_TARGET),
+            CheckFamily.REPETITION_WILDCARD_TARGET, CheckFamily.COMPUTED_TARGET_KIND),
         gaps = prepared.gaps() + prepared.emptyFactBase() + findings.buildBlocked() +
             prepared.variantFilterGaps() + prepared.enumCategoryGaps() +
             prepared.supportedCharacterGaps() + prepared.fieldTypeBindingGaps() +

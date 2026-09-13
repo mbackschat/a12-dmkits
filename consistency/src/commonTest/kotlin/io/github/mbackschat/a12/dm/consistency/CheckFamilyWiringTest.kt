@@ -118,6 +118,9 @@ class CheckFamilyWiringTest {
             {"type":"Computation","id":"c3","name":"BadSuppression","Computation":{
               "computationAlternatives":[{"operation":"1.00"}],
               "errorCodesToSuppress":["NOT A CODE"]}},
+            {"type":"Computation","id":"c4","name":"IntoAGroup","Computation":{
+              "computedFieldRelPath":"../Shelf",
+              "computationAlternatives":[{"operation":"1.00"}]}},
             {"type":"Field","id":"f1","name":"Twin","Field":{"fieldType":{"type":"StringType"}}},
             {"type":"Field","id":"f2","name":"Twin","Field":{"fieldType":{"type":"StringType"}}},
             {"type":"Group","id":"g1","name":"Ordered","Group":{"repeatability":20,
@@ -176,6 +179,7 @@ class CheckFamilyWiringTest {
         CheckFamily.EMPTY_GROUP_OPERAND to ("MVK_GROUP_IS_EMPTY" to "/Catalog/NamesHollow"),
         CheckFamily.ERROR_FIELD_REFERENCE to
             ("MVK_ERROR_FIELD_NOT_REFERENCED" to "/Catalog/Unreferenced"),
+        CheckFamily.COMPUTED_TARGET_KIND to (CK_MODEL_NOT_BUILDABLE to "/Catalog/IntoAGroup"),
         CheckFamily.GROUP_LIST_OPERANDS to ("MVK_DUPLICATE_PARAM1" to "/Catalog/RepeatedGroup"),
         CheckFamily.GROUP_LIST_ROOT_OPERAND to
             ("MVK_ROOT_GROUP_REFERENCED" to "/Catalog/RootOperand"),
