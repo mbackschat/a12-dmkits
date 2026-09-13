@@ -2,9 +2,11 @@ package io.github.mbackschat.a12.dm.adapter.laws
 
 import io.github.mbackschat.a12.dm.consistency.ModelSource
 import io.github.mbackschat.a12.dm.consistency.check
+import io.github.mbackschat.a12.dm.core.ReferenceResolvers
 import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertTrue
+import org.junit.jupiter.api.Assumptions.assumeTrue
 import org.junit.jupiter.api.Test
 import java.nio.file.Files
 import java.nio.file.Path
@@ -72,6 +74,68 @@ class CheckerSilenceOnCleanModelsTest {
                     "  ${path.name}: " + findings.joinToString { "${it.code} at ${it.at}" }
                 },
         )
+    }
+
+    /**
+     * The same law over the reference corpus — models nobody here wrote, which the committed trees cannot be.
+     *
+     * Our own fixtures were authored against the checker's own reading of A12; that shared origin is the
+     * confound the committed arm cannot remove, however many models it holds. These were written by A12's own
+     * team for A12's own kernel. Each is expanded by the Kernel first, so includes and imported typedefs are
+     * folded in and the checker sees the self-contained form the Kernel itself validated.
+     *
+     * Never committed, EUPL, and skipped when the sibling clone is absent — the estate's standing rule for
+     * both real corpora.
+     */
+    @Test
+    fun noFamilyReportsOnTheReferenceCorpus() {
+        val root = ParserCorpora.kernelMm()
+        assumeTrue(root != null, "a12-kernel-mm not present — skipping the checker's corpus silence sweep")
+        sweepCorpus("kernel-mm", root!!, CorpusShrinkSupport.canonicalKernelMmModels(root))
+    }
+
+    /** The same, over the A12 Tools workspaces, whose mount path is machine-local and so supplied as a property. */
+    @Test
+    fun noFamilyReportsOnTheWorkspacesCorpus() {
+        val root = ParserCorpora.workspaces()
+        assumeTrue(root != null, "a12.corpus1.dir not set / absent — skipping the workspaces silence sweep")
+        sweepCorpus("workspaces", root!!, CorpusShrinkSupport.documentModels(root))
+    }
+
+    /**
+     * Expand each model through the Kernel, keep the ones it then BUILDS, and require the checker's silence.
+     *
+     * A model that fails to expand or to build is not measured and not counted: the population is "models the
+     * Kernel accepts", and a preparation failure says nothing about the checker. `swept` rather than the file
+     * count carries the vacuity assertion for exactly that reason — every exclusion above it drains the
+     * population silently, and an empty corpus directory looks identical to a corpus that passes.
+     */
+    private fun sweepCorpus(label: String, root: Path, files: List<Path>) {
+        val resolver = ReferenceResolvers.directory(root)
+        val offenders = mutableListOf<String>()
+        var swept = 0
+        for (file in files) {
+            val expanded = runCatching {
+                CorpusModelPreparer.prepareKernelJson(file.readText(), resolver)
+            }.getOrNull() ?: continue
+            if (runCatching { BoundModel.ofJson(expanded) }.isFailure) continue
+            swept++
+            check(ModelSource(expanded, diagnosticLabel = file.name)).findings
+                .filter { it.justifiesRejection }
+                .forEach { offenders += "${file.name}: ${it.code} at ${it.at} — ${it.explain.take(160)}" }
+        }
+        println(
+            "[checker-silence-sweep] $label: ${files.size} models, $swept Kernel-accepted, " +
+                "${offenders.size} constraint finding(s)",
+        )
+        assertTrue(swept > 0) {
+            "$label put no model through the checker at all — the sweep would pass vacuously"
+        }
+        assertTrue(offenders.isEmpty()) {
+            "$label: the checker reported ${offenders.size} A12 constraint(s) violated on models the Kernel " +
+                "BUILDS, which is the over-rejection direction this project forbids:\n" +
+                offenders.take(25).joinToString("\n") { "  $it" }
+        }
     }
 
     /** Whether the Kernel builds this model — `BoundModel.ofJson` is `checkConsistency` with no ERROR. */

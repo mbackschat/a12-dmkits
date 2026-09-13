@@ -139,4 +139,39 @@ class ErrorFieldReferenceReachLawsTest {
         expected.put("the target inside a HAVING filter only", NOT_REFERENCED);
         assertEquals(expected, actual, "which spellings reach an error field inside a repeatable group");
     }
+
+    /**
+     * What the SELF-REFERENCE reaches — the rows the grid above could not separate.
+     *
+     * <p>Its one self-reference row stands alone in its condition, so "the self-reference satisfies the gate"
+     * and "a condition naming no entity at all is not judged" predict the same ADMITTED and nothing in the
+     * set tells them apart. A portable checker built on the second reading refuses every rule that pairs the
+     * self-reference with an ordinary operand — which two models in the reference corpus do, and the Kernel
+     * builds both (`adapter.laws.CheckerSilenceOnCleanModelsTest`, 2026-09-13).
+     *
+     * <p>So the first row puts the self-reference BESIDE the exact operand the grid above measured as NOT
+     * reaching, changing one thing from that row. The second asks how far its reach extends: the rule's own
+     * group is an ancestor of everything below it, so a target two levels down decides whether the reach is
+     * the subtree or only the group's own fields.
+     */
+    @Test
+    void whatTheRulesOwnGroupReferenceReaches() {
+        Map<String, String> actual = new LinkedHashMap<>();
+        actual.put("a non-reaching operand ALONE — the control from the grid above",
+                verdict("../Carrier", "FieldFilled(Customs/Declaration)"));
+        actual.put("the same operand WITH the self-reference beside it",
+                verdict("../Carrier", "GroupFilled(RuleGroup) And FieldFilled(Customs/Declaration)"));
+        actual.put("the self-reference alone, target two levels down",
+                verdict("../Customs/Declaration", "GroupFilled(RuleGroup)"));
+        actual.put("the self-reference beside a non-reaching operand, target two levels down",
+                verdict("../Customs/Declaration", "GroupFilled(RuleGroup) And FieldFilled(Carrier)"));
+
+        Map<String, String> expected = new LinkedHashMap<>();
+        expected.put("a non-reaching operand ALONE — the control from the grid above", NOT_REFERENCED);
+        expected.put("the same operand WITH the self-reference beside it", KernelLaws.ADMITTED);
+        expected.put("the self-reference alone, target two levels down", KernelLaws.ADMITTED);
+        expected.put("the self-reference beside a non-reaching operand, target two levels down",
+                KernelLaws.ADMITTED);
+        assertEquals(expected, actual, "what the rule's own group reference reaches");
+    }
 }

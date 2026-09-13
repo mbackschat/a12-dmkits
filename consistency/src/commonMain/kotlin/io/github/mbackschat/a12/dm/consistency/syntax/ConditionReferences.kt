@@ -22,7 +22,38 @@ package io.github.mbackschat.a12.dm.consistency.syntax
  * And nothing here decides whether the text parses; a malformed condition yields whatever names it contains.
  */
 fun referencesIn(text: String, language: ConditionLanguage): List<String> =
-    ReferenceScan(tokenize(text), CONDITION_KEYWORDS.getValue(language)).references()
+    ReferenceScan(
+        tokenize(text),
+        CONDITION_KEYWORDS.getValue(language),
+        CONDITION_OPERATOR_KEYWORDS.getValue(language)[CUSTOM_CONDITION],
+    ).references()
+
+/**
+ * Whether the text names the RULE-CONTEXT entity — A12's `RuleGroup` / `RegelKontext`.
+ *
+ * [referencesIn] cannot report it, because it names no path: what it resolves to is the declaring element's
+ * own group, which only the caller knows. So a consumer whose law turns on reach asks this and resolves the
+ * spelling itself.
+ *
+ * Settled per [language] like every other keyword question here: `RegelKontext` in an English model is an
+ * ordinary field name, so a fixed pair of literals would silently claim a reach the model does not have.
+ */
+internal fun namesRuleContext(text: String, language: ConditionLanguage): Boolean {
+    val keywords = CONDITION_KEYWORDS.getValue(language)
+    return tokenize(text).any {
+        it.kind == TokenKind.NAME && it.text in keywords && it.text in RULE_CONTEXT_SPELLINGS
+    }
+}
+
+/**
+ * The catalog id of the one predicate spelled as a keyword followed by a BARE NAME rather than a call.
+ *
+ * Resolved to the model's own language through [CONDITION_OPERATOR_KEYWORDS] rather than written as a literal,
+ * because the German spelling is a different word (`ApplikationsBedingung`).
+ * `ConditionReferenceTest.theNameAfterTheCustomConditionKeywordIsNotAReference` fails in both languages if the
+ * catalog ever stops carrying it, so the lookup cannot degrade silently back into the over-rejection.
+ */
+private const val CUSTOM_CONDITION = "CustomCondition"
 
 /** Path syntax that continues a reference: the separator, the two step forms, and the repetition wildcard. */
 internal val PATH_PUNCTUATION = setOf("/", "..", ".", "*")
@@ -30,7 +61,11 @@ internal val PATH_PUNCTUATION = setOf("/", "..", ".", "*")
 /** What a reference may end with — a trailing separator is a malformed tail, never part of the name. */
 private val PATH_SEPARATORS = setOf("/", ".")
 
-private class ReferenceScan(private val tokens: List<Token>, private val keywords: Map<String, KeywordKind>) {
+private class ReferenceScan(
+    private val tokens: List<Token>,
+    private val keywords: Map<String, KeywordKind>,
+    private val customCondition: String?,
+) {
 
     private var at = 0
     private val found = LinkedHashSet<String>()
@@ -67,21 +102,23 @@ private class ReferenceScan(private val tokens: List<Token>, private val keyword
     }
 
     /**
-     * One more token when this keyword takes a BARE NAME instead of a call — the `CustomCondition` form.
+     * One more token when this keyword is `CustomCondition`, which takes a BARE NAME instead of a call.
      *
      * `CustomCondition <Name>` names host code the consuming system registered, not an element
      * (KERNEL-SEMANTICS §14), so resolving that name reports an undeclared field on every model using the
      * escape hatch — measured on three committed models the Kernel builds
      * (`adapter.laws.CheckerSilenceOnCleanModelsTest`).
      *
-     * The test is the SHAPE parser's own: a callable-condition keyword not followed by `(` takes the name
-     * behind it (`conditionPart`). Reading the grammar the same way in both places is deliberate — a narrower
-     * rule here would report a reference the parser has already consumed as part of the keyword, and the
-     * broader arm only ever drops a name, which is the safe direction.
+     * **Only this one operator, matched by its own spelling.** The SHAPE parser reaches the same conclusion
+     * from a broader test — any callable-condition keyword not followed by `(` — and copying that test here
+     * was wrong and measured wrong: the parser applies it only where a condition is expected positionally,
+     * while this is a flat token walk, so the broad form swallowed the operand after the UNCATALOGED infix
+     * `In` — leaving the starred group's own name eaten and the rest of the path read as an absolute
+     * reference to its trailing segment. The reference corpus reported it on nine rules across five models
+     * within minutes.
      */
     private fun boundNameLength(keywordLength: Int): Int {
-        val kind = keywords[tokens[at].text]
-        if (kind != KeywordKind.PREDICATE && kind != KeywordKind.UNCATALOGED) {
+        if (tokens[at].text != customCondition) {
             return 0
         }
         val following = tokens.getOrNull(at + keywordLength) ?: return 0

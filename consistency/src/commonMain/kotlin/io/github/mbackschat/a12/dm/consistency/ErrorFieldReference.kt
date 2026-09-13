@@ -1,5 +1,7 @@
 package io.github.mbackschat.a12.dm.consistency
 
+import io.github.mbackschat.a12.dm.consistency.syntax.namesRuleContext
+
 /**
  * That a rule's condition REFERENCES the field its error is attached to.
  *
@@ -13,6 +15,11 @@ package io.github.mbackschat.a12.dm.consistency
  * group a target field sits in reaches it — so comparing the target's own path is too strict — while naming a
  * field inside a target group does not, so treating containment as symmetric is too loose. Both directions
  * are measured; either row alone licenses the wrong implementation.
+ *
+ * **And the RULE-CONTEXT entity satisfies the gate outright** — it names the rule's own group, which every
+ * possible target lies under. It carries no path, so it is a separate question from the reference list rather
+ * than a member of it; [namesTheRulesOwnGroup] says why that distinction was invisible until a real model
+ * paired the spelling with an ordinary operand.
  *
  * **Two deliberate under-reports, each stated rather than discovered later.** A reference inside a `Having`
  * filter does NOT satisfy A12's gate, but the names a filter contributes are indistinguishable from an
@@ -35,6 +42,7 @@ fun PreparedModel.errorFieldReferenceFindings(): List<Finding> {
             if (references.isEmpty() ||
                 references.any { it.target !is Reference.Resolved } ||
                 references.any { it.reaches(target) } ||
+                namesTheRulesOwnGroup(declared) ||
                 mentions(declared, target)
             ) {
                 return@mapNotNull null
@@ -49,6 +57,25 @@ fun PreparedModel.errorFieldReferenceFindings(): List<Finding> {
                 declared.declaredAt,
             )
         }
+}
+
+/**
+ * Whether the condition names the RULE-CONTEXT entity, which satisfies the gate on its own.
+ *
+ * The error field must lie under the rule's own group, so naming that group reaches every possible target —
+ * and A12 admits the rule whatever else the condition names and however deep the target sits
+ * (`rulekit.validate.laws.ErrorFieldReferenceReachLawsTest`, measured 2026-09-13).
+ *
+ * **It is a separate question from [reaches] because the spelling has no path.** `referencesIn` drops it with
+ * the other keywords, so an implementation reading only the reference list sees a condition that either names
+ * nothing — silent for the wrong reason — or names an ordinary operand beside it and reports. Every row that
+ * had the self-reference here carried it ALONE, so the two readings agreed on all of them; the reference
+ * corpus supplied the row on the other side of that axis, on two models the Kernel builds.
+ */
+private fun PreparedModel.namesTheRulesOwnGroup(declared: DeclaredReference): Boolean {
+    val element = elements.firstOrNull { it.path == declared.declaredAt } ?: return false
+    val body = element.body ?: return false
+    return conditionTexts(element.kind, body).any { (_, text) -> namesRuleContext(text, conditionLanguage) }
 }
 
 /** Whether this condition reference resolves to [target] or to a group containing it. */

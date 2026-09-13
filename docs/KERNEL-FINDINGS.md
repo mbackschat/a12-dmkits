@@ -6443,6 +6443,9 @@ A rule's `errorEntityRelPath` must resolve AND its condition must name the targe
 | the target as a comparison operand (`[…] == "DHL"`) | `../Carrier` | ADMITTED |
 | a STARRED path to the target | `../Parcels/Weight` | ADMITTED |
 | the rule's own group via the `RuleGroup` self-reference | `../Carrier` | ADMITTED |
+| **the self-reference BESIDE an operand that does not reach** | `../Carrier` | **ADMITTED** |
+| **the self-reference alone, target two levels down** | `../Customs/Declaration` | **ADMITTED** |
+| **the self-reference beside a non-reaching operand, target two levels down** | `../Customs/Declaration` | **ADMITTED** |
 | a sibling field | `../Carrier` | `MVK_ERROR_FIELD_NOT_REFERENCED` |
 | **the GROUP the target sits in** | `../Parcels/Weight` | **ADMITTED** |
 | **a FIELD inside the target group** | `../Parcels` | **`MVK_ERROR_FIELD_NOT_REFERENCED`** |
@@ -6453,13 +6456,15 @@ A rule's `errorEntityRelPath` must resolve AND its condition must name the targe
 
 **A `Having` filter's own reference does not satisfy the gate**, which is the row an implementation reading condition TEXT cannot act on: once the text is scanned, the names a filter contributed are indistinguishable from an operand's. Treating them as references is the direction that stays silent, so that is what the portable checker does — a disclosed under-report rather than a guessed refusal.
 
-**The `RuleGroup` self-reference satisfies it**, since the error field must lie under the rule's own group. rulekit's builder already treated it so, citing the kernel; the row above is this repository's own measurement of that claim rather than a citation of it. The portable checker reaches the same silence by a different route — `RuleGroup` is a keyword there, so such a condition names no entity and there is nothing to compare.
+**The `RuleGroup` self-reference satisfies the gate OUTRIGHT** — whatever else the condition names, and however deep the target sits. The error field must lie under the rule's own group, so naming that group reaches every possible target. rulekit's builder already treated it so, citing the kernel; the rows above are this repository's own measurement of that claim rather than a citation of it.
+
+**Corrected 2026-09-13 — this entry's one self-reference row carried the spelling ALONE, and that hid a live over-rejection.** This entry previously recorded that the portable checker "reaches the same silence by a different route: `RuleGroup` is a keyword there, so such a condition names no entity and the family has nothing to compare". That route agrees with A12 on every row a sole self-reference produces and disagrees the moment an ordinary operand stands beside it — the checker then has something to compare, nothing reaches, and it refuses a rule A12 admits. Two models in the reference corpus are exactly that shape (`GroupFilled(RuleGroup) And NoFieldFilled(FieldMappings*)` reporting on a sibling field) and the Kernel builds both. The three bolded rows above are the measurement on the other side of that axis, and the checker now asks the self-reference question separately from the reference list rather than inheriting an answer from it. **The confound is the one no control inside the set can catch**: the single row held an unnamed constant — the self-reference was the only thing its condition named — so two mechanisms predicted the same verdict everywhere the set could look. The corpus, not the grid, is what produced the discriminating row.
 
 **An unresolvable operand pre-empts the gate**, so a condition naming nothing that resolves draws `MVK_INVALID_ENTITY` alone. A checker reporting both would name a second fix for one mistake.
 
 Reported by the portable checker (`CheckFamily.ERROR_FIELD_REFERENCE`), which additionally stays silent whenever the target's own name appears in the condition text at all other than as a path prefix — so a gap in its reference extractor cannot become a refusal.
 
-*Locked by:* `rulekit.validate.laws.ErrorFieldReferenceReachLawsTest` (two grids, 14 rows); the portable checker's mirror is `consistency.ErrorFieldReferenceTest`.
+*Locked by:* `rulekit.validate.laws.ErrorFieldReferenceReachLawsTest` (three grids, 19 rows); the portable checker's mirror is `consistency.ErrorFieldReferenceTest`, and its agreement with the Kernel on real models is `adapter.laws.CheckerSilenceOnCleanModelsTest`.
 
 ## §1 supplement — WHEN two group-list operands are the same operand twice: identity is the resolved element, containment is by path step, and a starred operand is outside the gate (measured, 2026-09-13) <a id="kf325"></a>
 

@@ -88,6 +88,10 @@ class ErrorFieldReferenceTest {
             codes("../Carrier", "FieldFilled(NoSuchField)")
         actual["the rule's own group via the self-reference"] =
             codes("../Carrier", "GroupFilled(RuleGroup)")
+        actual["the self-reference BESIDE an operand that does not reach"] =
+            codes("../Carrier", "GroupFilled(RuleGroup) And FieldFilled(Customs/Declaration)")
+        actual["the self-reference beside one that does not reach, target two levels down"] =
+            codes("../Customs/Declaration", "GroupFilled(RuleGroup) And FieldFilled(Carrier)")
 
         val expected = mutableMapOf<String, List<String>>()
         expected["the target inside a HAVING filter only"] = emptyList()
@@ -96,6 +100,13 @@ class ErrorFieldReferenceTest {
         // nothing to compare. A12 admits the rule — the error field must lie under the rule's group — so a
         // checker treating the spelling as an unresolved entity would refuse a legal model twice over.
         expected["the rule's own group via the self-reference"] = emptyList()
+        // The rows the sole-self-reference one above cannot separate, and the reason this family reported on
+        // two reference-corpus models the Kernel builds: with an ordinary operand beside it the condition
+        // names something, so "nothing to compare" no longer explains the silence — only the self-reference's
+        // own reach does. A12 admits both, at any depth
+        // (`rulekit.validate.laws.ErrorFieldReferenceReachLawsTest`, measured 2026-09-13).
+        expected["the self-reference BESIDE an operand that does not reach"] = emptyList()
+        expected["the self-reference beside one that does not reach, target two levels down"] = emptyList()
         assertEquals(expected, actual, "the shapes the error-field gate deliberately does not report")
     }
 

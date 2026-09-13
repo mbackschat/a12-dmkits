@@ -550,16 +550,17 @@ private class ShapeParser(
         /** `-` and `/` are filed as punctuation because each is also a path shape. */
         val PATH_SHAPED_ARITHMETIC = setOf("-", "/")
 
-        /**
-         * The rule-context entity, the one keyword that is a REFERENCE rather than an operator.
-         *
-         * `regelKontextEntity` is its own production and the table files it as uncataloged, because the
-         * operator catalog does not carry it. Without this it would be excluded from a path along with the
-         * genuine keywords and `GroupFilled(RuleGroup)` would be refused.
-         */
-        val RULE_CONTEXT_SPELLINGS = setOf("RuleGroup", "RegelKontext")
-
         /** `In` and `To` join an operand to a value list; both languages, every case the lexer admits. */
         val LIST_KEYWORDS = setOf("In", "IN", "in", "To", "TO", "to", "Zu", "ZU", "zu")
     }
 }
+
+/**
+ * The rule-context entity, the one keyword that is a REFERENCE rather than an operator.
+ *
+ * `regelKontextEntity` is its own production and the table files it as uncataloged, because the operator
+ * catalog does not carry it. The parser needs it so `GroupFilled(RuleGroup)` is not refused; a consumer needs
+ * it because the spelling names the declaring element's own group, which is a reach no path comparison sees.
+ * File-level rather than parser-local so both read one set (see [namesRuleContext]).
+ */
+internal val RULE_CONTEXT_SPELLINGS = setOf("RuleGroup", "RegelKontext")

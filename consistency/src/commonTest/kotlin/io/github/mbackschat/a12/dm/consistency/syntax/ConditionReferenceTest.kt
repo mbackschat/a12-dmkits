@@ -178,6 +178,45 @@ class ConditionReferenceTest {
         )
     }
 
+    /**
+     * …and ONLY that keyword takes a bare name — the row that says why the parser's broader test is not reused.
+     *
+     * The shape parser lets ANY callable-condition keyword not followed by `(` consume the name behind it,
+     * which is right there because it applies only where a condition is expected positionally. This is a flat
+     * token walk, so the same test swallows the right operand of the UNCATALOGED infix `In` and then reads the
+     * remainder of the path as an absolute reference to its last segment. Measured on the reference corpus
+     * (nine rules, five models) minutes after the broad form was written; this is its own-domain repro,
+     * because a corpus that skips when absent cannot be the regression guard.
+     */
+    @Test
+    fun anInfixListKeywordDoesNotSwallowItsRightOperand() {
+        assertEquals(
+            listOf("Chosen/code", "Rejected*/code"),
+            referencesIn(
+                "AtLeastOneFieldValueIncludedInValueList(Chosen/code In Rejected*/code)",
+                ConditionLanguage.EN,
+            ),
+        )
+    }
+
+    /**
+     * The rule-context entity is not a reference, and it is settled per language like every other keyword.
+     *
+     * It names the declaring element's own group rather than a path, so [referencesIn] cannot report it and a
+     * consumer whose law turns on reach asks [namesRuleContext] instead. The cross-language rows are the
+     * discriminating ones: each spelling is an ordinary field name in the other language, so a fixed pair of
+     * literals would claim a reach an English model naming a field `RegelKontext` does not have.
+     */
+    @Test
+    fun theRuleContextEntityIsAKeywordInItsOwnLanguageOnly() {
+        assertEquals(emptyList(), referencesIn("GroupFilled(RuleGroup)", ConditionLanguage.EN))
+        assertEquals(listOf("RegelKontext"), referencesIn("FieldFilled(RegelKontext)", ConditionLanguage.EN))
+        assertEquals(true, namesRuleContext("GroupFilled(RuleGroup)", ConditionLanguage.EN))
+        assertEquals(false, namesRuleContext("FieldFilled(RegelKontext)", ConditionLanguage.EN))
+        assertEquals(true, namesRuleContext("KontextAngegeben(RegelKontext)", ConditionLanguage.DE))
+        assertEquals(false, namesRuleContext("FeldAngegeben(RuleGroup)", ConditionLanguage.DE))
+    }
+
     /** The same name twice is one reference: it names one element, and the consumer resolves names. */
     @Test
     fun aRepeatedNameIsReportedOnce() {
