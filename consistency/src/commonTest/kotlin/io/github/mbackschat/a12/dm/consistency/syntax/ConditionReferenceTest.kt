@@ -157,6 +157,27 @@ class ConditionReferenceTest {
         )
     }
 
+    /**
+     * `CustomCondition <Name>` names host code the consuming system registered, not an element.
+     *
+     * This is the one predicate spelled as a keyword followed by a BARE NAME rather than a call
+     * (`applikationsBedingung`), so nothing about its shape separates the name from a field reference — and
+     * reading it as one reports an undeclared field on every model that uses the escape hatch. Three
+     * committed models do, and the Kernel builds all three
+     * (`adapter.laws.CheckerSilenceOnCleanModelsTest`); KERNEL-SEMANTICS §14 is the canonical account.
+     */
+    @Test
+    fun theNameAfterTheCustomConditionKeywordIsNotAReference() {
+        assertEquals(
+            listOf("CustomerName"),
+            referencesIn("FieldFilled(CustomerName) And CustomCondition ExternalEligibility", ConditionLanguage.EN),
+        )
+        assertEquals(
+            listOf("Name"),
+            referencesIn("FeldAngegeben(Name) Und ApplikationsBedingung ExterneEignung", ConditionLanguage.DE),
+        )
+    }
+
     /** The same name twice is one reference: it names one element, and the consumer resolves names. */
     @Test
     fun aRepeatedNameIsReportedOnce() {

@@ -310,6 +310,7 @@ tasks.named('test') {
     dependsOn 'performanceFixtureGuardTest'
     dependsOn 'retainedComputationFixtureGuardTest'
     dependsOn 'workspacePreparationFixtureGuardTest'
+    dependsOn 'checkerSilenceGuardTest'
     if (!project.hasProperty('fast')) {
         dependsOn 'corpusReplayTest'
         dependsOn 'profileFixtureGuardTest'
@@ -342,6 +343,7 @@ tasks.named('test') {
         excludeTestsMatching 'io.github.mbackschat.a12.dm.adapter.profile.ProfileFixtureGuardTest'
         excludeTestsMatching 'io.github.mbackschat.a12.dm.adapter.laws.RetainedComputationFixtureGuardTest'
         excludeTestsMatching 'io.github.mbackschat.a12.dm.adapter.WorkspacePreparationFixtureGuardTest'
+        excludeTestsMatching 'io.github.mbackschat.a12.dm.adapter.laws.CheckerSilenceOnCleanModelsTest'
     }
 }
 
@@ -491,6 +493,25 @@ tasks.register('perfGateTest', Test) {
     // Measurements are observations, never reusable task outputs. Persist compilation/dependencies, not results.
     outputs.upToDateWhen { false }
     outputs.cacheIf { false }
+}
+
+// The checker's standing over-rejection control reads the three committed model trees as FILES, so they are
+// this task's inputs and it is scoped to that one class — never to `test`, whose perf lanes want the machine
+// to itself and whose ~900 tests would re-run on any fixture edit.
+tasks.register('checkerSilenceGuardTest', Test) {
+    description = 'Verify the Kernel-free checker stays silent on every committed model the Kernel builds.'
+    group = 'verification'
+    testClassesDirs = sourceSets.test.output.classesDirs
+    classpath = sourceSets.test.runtimeClasspath
+    useJUnitPlatform()
+    filter {
+        includeTestsMatching(
+            'io.github.mbackschat.a12.dm.adapter.laws.CheckerSilenceOnCleanModelsTest')
+    }
+    rootProject.guardInputs(it, [
+        'conformance corpus models': rootProject.fileTree('corpus/models') { include '**/*.json' },
+        'cli fixture models'       : rootProject.fileTree('cli/src/test/resources/models') { include '**/*.json' },
+        'kit fixture models'       : rootProject.fileTree('src/test/resources/models') { include '**/*.json' }])
 }
 
 def workspacePreparationFixtureDirectory =
@@ -937,6 +958,7 @@ tasks.register('corpusReplayTest', Test) {
 def exclusivelyOwningLanes = [
         'corpusReplayTest', 'footprintFixtureGuardTest', 'performanceFixtureGuardTest', 'perfScriptGuardTest',
         'profileFixtureGuardTest', 'retainedComputationFixtureGuardTest', 'workspacePreparationFixtureGuardTest',
+        'checkerSilenceGuardTest',
 ]
 gradle.projectsEvaluated {
     def broad = tasks.named('test', Test).get()

@@ -39,7 +39,7 @@ private class ReferenceScan(private val tokens: List<Token>, private val keyword
         while (at < tokens.size) {
             val keyword = keywordLength()
             when {
-                keyword > 0 -> at += keyword
+                keyword > 0 -> at += keyword + boundNameLength(keyword)
                 tokens[at].text == "->" -> skipCategoryName()
                 startsReference(at) -> readReference()
                 else -> at++
@@ -64,6 +64,28 @@ private class ReferenceScan(private val tokens: List<Token>, private val keyword
             return 2
         }
         return if (token.kind == TokenKind.NAME && token.text in keywords) 1 else 0
+    }
+
+    /**
+     * One more token when this keyword takes a BARE NAME instead of a call — the `CustomCondition` form.
+     *
+     * `CustomCondition <Name>` names host code the consuming system registered, not an element
+     * (KERNEL-SEMANTICS §14), so resolving that name reports an undeclared field on every model using the
+     * escape hatch — measured on three committed models the Kernel builds
+     * (`adapter.laws.CheckerSilenceOnCleanModelsTest`).
+     *
+     * The test is the SHAPE parser's own: a callable-condition keyword not followed by `(` takes the name
+     * behind it (`conditionPart`). Reading the grammar the same way in both places is deliberate — a narrower
+     * rule here would report a reference the parser has already consumed as part of the keyword, and the
+     * broader arm only ever drops a name, which is the safe direction.
+     */
+    private fun boundNameLength(keywordLength: Int): Int {
+        val kind = keywords[tokens[at].text]
+        if (kind != KeywordKind.PREDICATE && kind != KeywordKind.UNCATALOGED) {
+            return 0
+        }
+        val following = tokens.getOrNull(at + keywordLength) ?: return 0
+        return if (following.isName()) 1 else 0
     }
 
     /**
