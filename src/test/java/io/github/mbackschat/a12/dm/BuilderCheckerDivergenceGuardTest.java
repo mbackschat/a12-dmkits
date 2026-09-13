@@ -166,7 +166,18 @@ class BuilderCheckerDivergenceGuardTest {
             // nullable Integers on one side and stored JSON on the other. The residue after each carrier's
             // own reading is one comparison, which is not worth a module. They disagreed in BOTH directions
             // until that grid was measured, which is why the pair is worth this row rather than a shrug.
-            Map.entry("MVK_FRACT_DIGITS_INVALID", Disposition.SAME_LAW_SEPARATE_CARRIERS));
+            Map.entry("MVK_FRACT_DIGITS_INVALID", Disposition.SAME_LAW_SEPARATE_CARRIERS),
+
+            // The enum's label laws. `DocumentModelDraft` refuses a partially-labelled enumeration at
+            // author time, over a typed `Map<locale, text>` per value; the checker reads stored JSON, where
+            // the same defect can also be spelled with a blank text or an empty label array that a typed map
+            // cannot hold. Same pair of laws, and the grid that measured them ([KERNEL-FINDINGS KF321])
+            // CLEARED the kit's refusal rather than correcting it.
+            Map.entry("MVK_COUNT_OF_VALUES_INVALID", Disposition.SAME_LAW_SEPARATE_CARRIERS),
+
+            // …and its sibling, which rulekit only NAMES: `StructuralKernelFix` carries its corrective, and
+            // the checker projects that very entry onto its own findings.
+            Map.entry("MVK_INTERNAL_VALUES_AND_DISPLAY_VALUES", Disposition.PROSE_ONLY));
 
     @Test
     void everyCodeStatedInBothEstatesCarriesADisposition() {

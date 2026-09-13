@@ -48,8 +48,16 @@ class SupportedCharactersTest {
         ),
     )
 
+    /**
+     * This family's codes only.
+     *
+     * A fixture here declares the SAME offending value twice to measure the character fold's multiplicity,
+     * and that model is separately refused for the repeat (`MVK_INTERNAL_VALUES_DUPLICATE`, its own family).
+     * Counting every code would make this test's subject depend on which unrelated family lands next.
+     */
     private fun codes(definition: String?, vararg values: String): List<String> =
         report(definition, *values).findings.map { it.code }
+            .filter { it == "MVK_ENUM_VALUE_WITH_INVALID_CHARACTER" }
 
     private val invalid = listOf("MVK_ENUM_VALUE_WITH_INVALID_CHARACTER")
 

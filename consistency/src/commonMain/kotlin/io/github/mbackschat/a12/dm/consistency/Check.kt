@@ -153,6 +153,14 @@ enum class CheckFamily {
     NUMBER_TYPE_DIGITS,
 
     /**
+     * That an enumeration's VALUE tokens are distinct and that its per-locale labels are finished. Almost
+     * nothing about a token's spelling is A12's business here — an empty one, a spaced one and a very long
+     * one are all admitted — and the label law is that once ANY value carries an entry for a DECLARED
+     * locale, every value owes a non-blank text for every declared locale.
+     */
+    ENUM_VALUE_LABELS,
+
+    /**
      * That every DSL-bearing member can be TOKENIZED — the syntax layer's first phase, and the only one
      * decidable without a grammar. Whether the tokens then form a condition A12's parser accepts is a
      * separate question this family does not answer.
@@ -321,7 +329,7 @@ internal fun check(
         prepared.elementNameAlphabetFindings() + prepared.enumCategoryFindings() +
         prepared.supportedCharacterFindings() + prepared.declaredPatternFindings() +
         prepared.stringTypeMessageFindings() + prepared.stringTypeParameterFindings() +
-        prepared.numberTypeDigitFindings()
+        prepared.numberTypeDigitFindings() + prepared.enumValueLabelFindings()
     val findings = judged.notSuppressedBy(prepared.variantFilterSuppressed())
     return ConsistencyReport(
         modelId = admitted.modelId,
@@ -340,7 +348,8 @@ internal fun check(
             CheckFamily.TEMPORAL_CONFIG, CheckFamily.ELEMENT_NAME_ALPHABET,
             CheckFamily.ENUM_CATEGORY_ALIGNMENT, CheckFamily.ENUM_VALUE_CHARACTERS,
             CheckFamily.STRING_PATTERN_ADMISSION, CheckFamily.STRING_PATTERN_MESSAGE,
-            CheckFamily.STRING_TYPE_PARAMETERS, CheckFamily.NUMBER_TYPE_DIGITS),
+            CheckFamily.STRING_TYPE_PARAMETERS, CheckFamily.NUMBER_TYPE_DIGITS,
+            CheckFamily.ENUM_VALUE_LABELS),
         gaps = prepared.gaps() + prepared.emptyFactBase() + findings.buildBlocked() +
             prepared.variantFilterGaps() + prepared.enumCategoryGaps() +
             prepared.supportedCharacterGaps() + prepared.fieldTypeBindingGaps() +

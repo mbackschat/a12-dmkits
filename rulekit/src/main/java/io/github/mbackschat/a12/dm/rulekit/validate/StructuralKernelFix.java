@@ -270,16 +270,19 @@ public final class StructuralKernelFix {
                             + "kernel fell back to a model-wide lookup (which `fieldRefByShortNameAllowed` "
                             + "enables), and that lookup requires a UNIQUE match.")),
             Map.entry("MVK_INTERNAL_VALUES_AND_DISPLAY_VALUES", new Hint(
-                    "An enum value's display label (`labels`) covers some of the model's declared locales but not "
-                            + "all — the kernel requires every enum value to carry a display label for EVERY declared "
-                            + "locale (or none at all). This most often surfaces right after adding a locale "
-                            + "(`config modify --add-locale`): top up each enum value's `labels` to cover the new "
-                            + "locale, and do the `--add-locale` plus the per-value label top-ups in ONE `apply` so the "
-                            + "single terminal gate sees a consistent model.",
+                    "An enum's display labels are STARTED and not finished: top each value's `labels` up so every "
+                            + "value carries a NONBLANK text for every declared locale, or remove the label entries "
+                            + "altogether — an unlabelled enum is accepted. Blanking a text does not remove it. This "
+                            + "most often surfaces right after adding a locale (`config modify --add-locale`): do the "
+                            + "`--add-locale` and the per-value label top-ups in ONE `apply` so the single terminal "
+                            + "gate sees a consistent model.",
                     "MVK_INTERNAL_VALUES_AND_DISPLAY_VALUES (\"the display value and the XML value were not specified "
-                            + "together\") fires when an enum value's internal (XML) value and its per-locale display "
-                            + "labels are not specified together across the declared locales — a label-coverage gap on "
-                            + "the enum, not a condition error.")),
+                            + "together\") is armed by the PRESENCE of a label entry for a declared locale, not by "
+                            + "coverage: once any value carries one, every value owes a nonblank text for every "
+                            + "declared locale. Labels written only for an UNDECLARED locale are accepted, and every "
+                            + "text blank is refused, so neither \"is the locale covered\" nor \"is any label there\" "
+                            + "describes it (measured 2026-09-13, KERNEL-FINDINGS KF321). A value that carries no "
+                            + "`labels` at all while a sibling does is a different code, MVK_COUNT_OF_VALUES_INVALID.")),
             Map.entry("MVK_INVALID_TIME_ZONE", new Hint(
                     "Set modelConfig.timeZone to a nonblank Java time-zone id. Exact UTC, GMT, and Europe/Berlin "
                             + "are accepted by both the kernel and the interpreter-backed evaluator; another known "

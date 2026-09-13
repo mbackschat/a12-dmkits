@@ -46,6 +46,8 @@ class CheckFamilyWiringTest {
               "StringType":{"noValueValidation":true}}}},
             {"type":"Field","id":"f10","name":"Amount","Field":{"fieldType":{"type":"NumberType",
               "NumberType":{"minFractionalDigits":3,"maxFractionalDigits":2}}}},
+            {"type":"Field","id":"f11","name":"RepeatedTier","Field":{"fieldType":{
+              "type":"EnumerationType","EnumerationType":{"values":[{"value":"A"},{"value":"A"}]}}}},
             {"type":"Rule","id":"r1","name":"BadTarget","Rule":{
               "errorCondition":"FieldFilled(Price)","errorEntityRelPath":"../NoSuchField",
               "errorCode":"C1","errorMessage":[{"locale":"en_US","text":"x"}]}},
@@ -137,6 +139,8 @@ class CheckFamilyWiringTest {
         CheckFamily.STRING_TYPE_PARAMETERS to
             ("MVK_STRING_TYPE_NO_VAL_AND_NO_LINE_BREAK" to "/Catalog/Opaque"),
         CheckFamily.NUMBER_TYPE_DIGITS to ("MVK_FRACT_DIGITS_INVALID" to "/Catalog/Amount"),
+        CheckFamily.ENUM_VALUE_LABELS to
+            ("MVK_INTERNAL_VALUES_DUPLICATE" to "/Catalog/RepeatedTier"),
     )
 
     @Test

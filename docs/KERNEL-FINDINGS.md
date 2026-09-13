@@ -6332,3 +6332,44 @@ Each of the three excluded members is measured ADMITTED on its own, so every row
 **Two client-side refusals fell to this grid, one in each direction.** `FieldTypeSpec.NumberSpec` refused a negative digit count, which A12 admits, on the READ path as well as the authoring one; and it compared the pair only when both members were set, so `minFractionalDigits(2)` with no maximum was accepted and then refused by the kernel, because the emitter always writes `maxFractionalDigits`. The scale cap the same record enforces is confirmed rather than corrected: 14 builds, 15 does not, and the transitivity argument for refusing a minimum above 14 now has its second link measured.
 
 *Locked by:* `rulekit.validate.laws.NumberTypeDigitLawsTest` (two grids, 19 rows); the record's own half by `modelkit.NumberDigitPairReadTest`; the portable checker's mirror is `consistency.NumberTypeDigitTest`.
+
+## §8 supplement — an enumeration's value TOKEN is almost unchecked, and its label law is "started and not finished" (measured, 2026-09-13) <a id="kf321"></a>
+
+> Fold: pending — belongs beside [KERNEL-SEMANTICS](KERNEL-SEMANTICS.md) §8's Enumeration account, which covers the values' runtime meaning and not their declaration.
+
+**Almost nothing about a value TOKEN is A12's business at this tier**, which is the half that matters for a checker, because four `MVK_VALUE_*` codes read as though it were:
+
+| the enumeration declares | verdict |
+|---|---|
+| two ordinary values — the control | ADMITTED |
+| the same token twice | `MVK_INTERNAL_VALUES_DUPLICATE` |
+| a single value | ADMITTED |
+| an EMPTY token | ADMITTED |
+| a token containing a space | ADMITTED |
+| a 300-character token | ADMITTED |
+
+`MVK_VALUE_INVALID`, `MVK_VALUE_TOO_LONG`, `MVK_VALUE_TOO_SHORT` and `MVK_VALUES_DUPLICATE` all fire for none of these; the duplicate is reported under the INTERNAL name instead. Reproducing any of the four would refuse a model A12 takes. (The tokens' ALPHABET is a separate gate that fires only under a `supportedCharacters` restriction — [KF317](#kf317).)
+
+**The label law is neither "every value has a label" nor "every declared locale is answered".** Measured: *once ANY value carries an entry for ANY DECLARED locale, every value must carry a non-blank text for every declared locale.*
+
+| the enumeration declares | verdict |
+|---|---|
+| no labels at all | ADMITTED |
+| every value labelled for the declared locale | ADMITTED |
+| only ONE value labelled | `MVK_COUNT_OF_VALUES_INVALID` |
+| an EMPTY `label` array on one value | `MVK_COUNT_OF_VALUES_INVALID` |
+| labels only for an UNDECLARED locale | **ADMITTED** |
+| one value's text BLANK | `MVK_INTERNAL_VALUES_AND_DISPLAY_VALUES` |
+| EVERY text blank | **`MVK_INTERNAL_VALUES_AND_DISPLAY_VALUES`** |
+| two labels for one locale on one value | ADMITTED |
+| (bilingual) both locales answered | ADMITTED |
+| (bilingual) only one locale answered | `MVK_INTERNAL_VALUES_AND_DISPLAY_VALUES` |
+| (bilingual) one value bilingual, the other English only | `MVK_INTERNAL_VALUES_AND_DISPLAY_VALUES` |
+
+**The two bolded rows are what pin the law, and neither follows from the other.** Labels written only for an undeclared locale are ADMITTED although no declared locale is answered — so a checker asking "is this locale answered" gets that row wrong. Labels present for the declared locale with every text blank are REFUSED although, again, no locale is answered — so a checker asking "is any label present" gets that one wrong. The entries' presence for a declared locale is what arms the law; the texts are what satisfy it. No mechanism is claimed for the split: both halves are stated as observed.
+
+**The two codes are separated by WHOSE disagreement it is.** Values that disagree on carrying a label at all — an empty `label` array counts as carrying none — draw `MVK_COUNT_OF_VALUES_INVALID`, and A12 reports that INSTEAD of the locale code rather than beside it.
+
+**modelkit's client-side refusal of a partially-labelled enumeration is CLEARED by this grid** rather than corrected: `DocumentModelDraft` throws when any value is labelled and any value lacks a label for a declared locale, which is exactly the pair of laws above, and it had only a comment for a basis.
+
+*Locked by:* `rulekit.validate.laws.EnumValueAndLabelLawsTest` (three grids, 20 rows); the portable checker's mirror is `consistency.EnumValueLabelTest`.
