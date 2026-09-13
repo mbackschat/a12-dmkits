@@ -50,19 +50,35 @@ package io.github.mbackschat.a12.dm.consistency.syntax
  * closes the same way in both. Threading a language here would suggest a dependency the tokenizer does not
  * have.
  */
-fun lexicalFailure(text: String): LexicalFailure? =
-    tokenize(text).firstOrNull { it.kind in LEXICAL_FAILURES }?.let { LexicalFailure(it.start) }
+fun lexicalFailure(text: String): LexicalFailure? = tokenize(text)
+    .firstNotNullOfOrNull { token -> token.lexicalKind()?.let { LexicalFailure(token.start, it, token.text) } }
 
-private val LEXICAL_FAILURES = setOf(
-    TokenKind.UNTERMINATED_STRING,
-    TokenKind.UNTERMINATED_QUOTED_NAME,
-    TokenKind.ILLEGAL_CHARACTER,
-)
+private fun Token.lexicalKind(): LexicalFailureKind? = when (kind) {
+    TokenKind.UNTERMINATED_STRING, TokenKind.UNTERMINATED_QUOTED_NAME -> LexicalFailureKind.UNPAIRED_QUOTE
+    TokenKind.ILLEGAL_CHARACTER -> LexicalFailureKind.ILLEGAL_CHARACTER
+    else -> null
+}
 
 /**
- * A quote the lexer cannot pair, at [at].
+ * Why the lexer stopped — the two classes draw ONE code from A12 and need two different sentences.
+ *
+ * They are kept apart only for the message. Telling an author their quote is unclosed when what they wrote
+ * was a stray `%` sends them to the wrong end of the text, and a confidently wrong explanation costs more
+ * than a vague one.
+ */
+enum class LexicalFailureKind {
+    /** A `"` or `'` the lexer cannot pair. */
+    UNPAIRED_QUOTE,
+
+    /** A character no terminal of the lexer can begin. */
+    ILLEGAL_CHARACTER,
+}
+
+/**
+ * Where the lexer stopped, and on what.
  *
  * The offset is carried because it is the only part an author cannot re-derive by eye in a long condition,
- * and because the Kernel's own message for this failure names a position.
+ * and because the Kernel's own message for this failure names a position. [text] is the offending slice, so
+ * a message can quote the character rather than only locate it.
  */
-data class LexicalFailure(val at: Int)
+data class LexicalFailure(val at: Int, val kind: LexicalFailureKind, val text: String)

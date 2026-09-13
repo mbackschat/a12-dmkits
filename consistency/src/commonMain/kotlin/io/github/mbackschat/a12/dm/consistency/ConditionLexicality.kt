@@ -1,5 +1,7 @@
 package io.github.mbackschat.a12.dm.consistency
 
+import io.github.mbackschat.a12.dm.consistency.syntax.LexicalFailure
+import io.github.mbackschat.a12.dm.consistency.syntax.LexicalFailureKind
 import io.github.mbackschat.a12.dm.consistency.syntax.lexicalFailure
 
 /**
@@ -22,11 +24,25 @@ fun PreparedModel.conditionLexicalFindings(): List<Finding> = elements.flatMap {
                 FindingCategory.A12_CONSTRAINT,
                 FindingSeverity.ERROR,
                 "MVK_LEXER_STANDARD_ERROR",
-                "`$member` opens a string literal at offset ${failure.at} that is never closed, so A12's " +
-                    "lexer cannot read this text at all. A12 escapes a quote inside a literal by DOUBLING " +
-                    "it (`\"\"`), not with a backslash",
+                "`$member` ${failure.explain()}, so A12's lexer cannot read this text at all",
                 element.path,
             )
         }
     }
+}
+
+/**
+ * The sentence for this failure, chosen by its kind rather than shared.
+ *
+ * Both kinds draw the same `MVK_LEXER_STANDARD_ERROR` from A12, so the code cannot tell an author which one
+ * they hit. One wording for both was wrong the moment the character class was added — it sent a reader
+ * hunting for an unclosed quote that was not there.
+ */
+private fun LexicalFailure.explain(): String = when (kind) {
+    LexicalFailureKind.UNPAIRED_QUOTE ->
+        "opens a quote at offset $at that is never closed. A12 escapes a quote inside a string literal by " +
+            "DOUBLING it (`\"\"`), not with a backslash"
+    LexicalFailureKind.ILLEGAL_CHARACTER ->
+        "holds `$text` at offset $at, a character no part of A12's condition syntax can begin with — " +
+            "inside a `\"…\"` literal it would be ordinary text"
 }

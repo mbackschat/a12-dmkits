@@ -203,6 +203,30 @@ class ConditionLexicalityTest {
         model("FieldFilled(Price) And $character FieldFilled(Price)")
             .conditionLexicalFindings().map { it.code }
 
+    /**
+     * The two lexical classes get DIFFERENT sentences, because A12's one code cannot tell them apart.
+     *
+     * The split exists only for this message, so nothing else would notice if it regressed: an illegal
+     * character reported as an unclosed quote sends an author to the wrong end of the text, and it is
+     * confidently wrong rather than merely vague.
+     */
+    @Test
+    fun eachLexicalClassExplainsItself() {
+        val quote = model("""FieldFilled(\"Price)""").conditionLexicalFindings().single().explain
+        val character = codesForExplain("%")
+        assertTrue(quote.contains("never closed"), "the quote class must name the quote: $quote")
+        assertTrue(!quote.contains("no part of A12"), "the quote class must not borrow the other: $quote")
+        assertTrue(character.contains("`%`"), "the character class must quote the character: $character")
+        assertTrue(
+            !character.contains("never closed"),
+            "an illegal character is not an unclosed quote: $character",
+        )
+    }
+
+    private fun codesForExplain(character: String): String =
+        model("FieldFilled(Price) And $character FieldFilled(Price)")
+            .conditionLexicalFindings().single().explain
+
     /** The finding names the offset, so an author can find the quote in a long condition. */
     @Test
     fun theFindingLocatesTheUnterminatedQuote() {
