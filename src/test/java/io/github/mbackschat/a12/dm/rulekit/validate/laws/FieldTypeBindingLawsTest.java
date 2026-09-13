@@ -185,6 +185,14 @@ class FieldTypeBindingLawsTest {
      * A12 reads it on every carrier — and if A12 ignores it there, such a checker reports a model that loads
      * as unloadable, which is the one direction that cannot be caught downstream. The rows use the type name
      * A12 does NOT have, so a carrier that DID read the member would be unreadable and unmistakable.
+     *
+     * <p><b>What this measures turns out to be a law about CARRIERS, not about this member.</b> A group
+     * silently drops a member it does not declare while a field and a rule refuse one, and the
+     * {@code notAMemberA12Declares} rows are what separate those two readings: a spelling that is nonsense
+     * everywhere parts the carriers exactly as {@code fieldType} does. Two undeclared member names per
+     * carrier, because one could not tell "refuses undeclared members" from "refuses that one spelling".
+     * The denominator is three of the element kinds — the computation carrier is not measured here, so the
+     * law is stated for Group, Field and Rule and claims nothing beyond them.
      */
     @Test
     void aFieldTypeOnAnElementThatIsNotAFieldIsIgnored() {
@@ -198,19 +206,31 @@ class FieldTypeBindingLawsTest {
         // members at all, these part the same way — which is what they do.
         actual.put("a nonsense member on a group", verdictOnElementBody("ShippingAddress", "Group", "1"));
         actual.put("a nonsense member on a rule", verdictOnElementBody("TotalGate", "Rule", "1"));
+        // A SECOND nonsense name on each carrier, so the answer is about the carrier and not about one
+        // spelling — one name per carrier could not tell "refuses unknown members" from "refuses this one".
+        actual.put("a second nonsense member on a group",
+                verdictOnElementBody("ShippingAddress", "Group", "\"x\""));
+        actual.put("a second nonsense member on a rule", verdictOnElementBody("TotalGate", "Rule", "\"x\""));
+        // And the FIELD carrier, which the family reads and whose strictness therefore matters most here.
+        actual.put("a nonsense member on a field", verdictOnFieldBody("CustomerName", "1"));
+        actual.put("a second nonsense member on a field", verdictOnFieldBody("CustomerName", "\"x\""));
 
         Map<String, String> expected = new LinkedHashMap<>();
         expected.put("on a FIELD — the control that proves the fragment is refusable", KernelLaws.UNREADABLE);
         // A GROUP drops a member it does not declare, so `fieldType` means nothing there and a checker
         // scanning every element would refuse a model A12 loads.
         expected.put("on a group", KernelLaws.ADMITTED);
-        // A RULE refuses one — and the nonsense rows below show that is about the CARRIER's strictness and
-        // not about this member, so the checker's silence here is an under-report of a general law rather
-        // than of anything `fieldType`-shaped. Recorded, not closed: the member-strictness law spans every
-        // rule member and belongs to whoever measures that class.
+        // A RULE refuses one — and the nonsense rows below show that is the CARRIER's strictness rather than
+        // anything about this member, so the checker's silence here under-reports a general law and not a
+        // `fieldType` one. Measured on three of the element kinds with two undeclared member names each;
+        // the computation carrier is NOT measured, so the law as stated covers Group, Field and Rule.
         expected.put("on a rule", KernelLaws.UNREADABLE);
         expected.put("a nonsense member on a group", KernelLaws.ADMITTED);
         expected.put("a nonsense member on a rule", KernelLaws.UNREADABLE);
+        expected.put("a second nonsense member on a group", KernelLaws.ADMITTED);
+        expected.put("a second nonsense member on a rule", KernelLaws.UNREADABLE);
+        expected.put("a nonsense member on a field", KernelLaws.UNREADABLE);
+        expected.put("a second nonsense member on a field", KernelLaws.UNREADABLE);
         assertEquals(expected, actual, "a fieldType written on an element that is not a field");
     }
 
@@ -263,6 +283,17 @@ class FieldTypeBindingLawsTest {
             throw new IllegalStateException("the fixture no longer declares a " + kind + " named " + name);
         } catch (IOException unreadable) {
             throw new UncheckedIOException("the fixture and the raw type fragment must parse", unreadable);
+        }
+    }
+
+    /** The order fixture with an undeclared member written onto the named root field's own body. */
+    private static String verdictOnFieldBody(String name, String rawMember) {
+        try {
+            ObjectNode root = (ObjectNode) MAPPER.readTree(Fixtures.orderJson());
+            fieldBody(root, name).set("notAMemberA12Declares", MAPPER.readTree(rawMember));
+            return KernelLaws.verdictOf(root.toString());
+        } catch (IOException unreadable) {
+            throw new UncheckedIOException("the fixture and the raw fragment must parse", unreadable);
         }
     }
 
