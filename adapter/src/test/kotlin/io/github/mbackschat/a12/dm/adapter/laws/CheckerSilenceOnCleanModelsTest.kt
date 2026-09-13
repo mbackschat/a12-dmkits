@@ -1,5 +1,7 @@
 package io.github.mbackschat.a12.dm.adapter.laws
 
+import com.fasterxml.jackson.databind.ObjectMapper
+import io.github.mbackschat.a12.dm.consistency.ConsistencyWorkspace
 import io.github.mbackschat.a12.dm.consistency.ModelSource
 import io.github.mbackschat.a12.dm.consistency.check
 import io.github.mbackschat.a12.dm.core.ReferenceResolvers
@@ -33,6 +35,10 @@ import kotlin.io.path.readText
  * broken fixture, or one whose includes need a resolver this test does not supply, simply drops out instead
  * of needing a hand-maintained exclusion list. The floor below is what keeps that from draining silently.
  *
+ * **Both resolution paths are swept, because only one of them is the checker's own.** Three arms hand it a
+ * model the KERNEL expanded, which removes the step a Kernel-free consumer cannot remove; the fourth hands it
+ * the unexpanded model plus its sibling sources and makes it mount them itself.
+ *
  * **Over-rejection is the only direction measured.** Silence proves nothing about a family's reach, and is
  * not meant to: an under-reporting checker is safe by this project's rules and is what the per-family grids
  * are for.
@@ -46,6 +52,10 @@ class CheckerSilenceOnCleanModelsTest {
      * models does the estate hold", so it does not move when the estate grows.
      */
     private val floor = 15
+
+    private companion object {
+        private val MAPPER = ObjectMapper()
+    }
 
     @Test
     fun noFamilyReportsOnAModelTheKernelAccepts() {
@@ -143,8 +153,96 @@ class CheckerSilenceOnCleanModelsTest {
         }
     }
 
+    /**
+     * The same demand with the CHECKER resolving the includes, which no other arm reaches.
+     *
+     * Every sweep above hands the checker a model the KERNEL already expanded, so `ConsistencyWorkspace` —
+     * the checker's own mount resolution, the path a TypeScript or browser consumer has no Kernel to stand in
+     * for — had never met a real model at all. A defect there is invisible to the other arms by construction,
+     * because they remove the very step it owns.
+     *
+     * **The vacuity trap here is specific and sharp: an unexpanded mount returns a report with NO findings**,
+     * which is indistinguishable from silence — and the status cannot tell them apart, since a clean report
+     * is `Inconclusive` as well. `checksCompleted` can: it is empty on that early return alone. So it is
+     * asserted before the findings are, and a `purpose: "include"` entry is required in the population,
+     * because a typedef import on its own exercises no group mount.
+     */
+    @Test
+    fun noFamilyReportsWhenTheCheckerMountsTheIncludesItself() {
+        val providersById = committedModels().groupBy { modelIdOf(it) }
+        val offenders = mutableListOf<String>()
+        val unresolved = mutableListOf<String>()
+        var swept = 0
+        var mounts = 0
+        for (entry in committedModels()) {
+            val references = includeReferences(entry)
+            if (references.isEmpty()) {
+                continue
+            }
+            // An ambiguous or absent provider is not a checker defect, so such an entry leaves the
+            // population rather than being asserted about — the same rule the Kernel-picked arms use.
+            val providers = references.mapNotNull { providersById[it.reference]?.singleOrNull() }
+            val entryId = modelIdOf(entry)
+            if (providers.size != references.size || entryId == null) {
+                continue
+            }
+            val expanded = runCatching {
+                CorpusModelPreparer.prepareKernelJson(entry.readText(), ReferenceResolvers.directory(entry.parent))
+            }.getOrNull() ?: continue
+            if (runCatching { BoundModel.ofJson(expanded) }.isFailure) {
+                continue
+            }
+            swept++
+            mounts += references.count { it.purpose == "include" }
+            val report = ConsistencyWorkspace
+                .fromSources((listOf(entry) + providers).map { ModelSource(it.readText(), diagnosticLabel = it.name) })
+                .check(entryId)
+            // An unexpanded mount returns before any family runs, so `checksCompleted` is empty there and
+            // non-empty on every other path. The STATUS cannot tell them apart — a clean report is
+            // `Inconclusive` too, because coverage is incomplete until every required family exists.
+            if (report.checksCompleted.isEmpty()) {
+                unresolved += "${entry.name}: " +
+                    report.gaps.filter { "not expanded here" in it.reason }.joinToString { "${it.at}: ${it.reason}" }
+                continue
+            }
+            report.findings.filter { it.justifiesRejection }.forEach {
+                offenders += "${entry.name}: ${it.code} at ${it.at} — ${it.explain.take(160)}"
+            }
+        }
+        println("[checker-silence-workspace] $swept including models, $mounts group mount(s), ${offenders.size} finding(s)")
+
+        assertTrue(swept > 0) {
+            "no committed model with an include reached the workspace path, so this sweep is vacuous"
+        }
+        assertTrue(mounts > 0) {
+            "every including model swept imports typedefs only, so no group mount was expanded and the " +
+                "workspace's own resolution went unexercised"
+        }
+        assertTrue(unresolved.isEmpty()) {
+            "the checker could not mount an include the Kernel resolves, so it completed no family at all — " +
+                "a report with no findings, which would otherwise read as silence:\n" +
+                unresolved.joinToString("\n") { "  $it" }
+        }
+        assertTrue(offenders.isEmpty()) {
+            "the checker reported an A12 constraint as violated on a model the Kernel BUILDS, reached through " +
+                "its OWN include resolution rather than the Kernel's expansion:\n" +
+                offenders.joinToString("\n") { "  $it" }
+        }
+    }
+
     /** Whether the Kernel builds this model — `BoundModel.ofJson` is `checkConsistency` with no ERROR. */
     private fun kernelBuilds(path: Path): Boolean = runCatching { BoundModel.ofJson(path.readText()) }.isSuccess
+
+    /** One `header.modelReferences` entry — the id it names and why the model names it. */
+    private data class Included(val reference: String, val purpose: String)
+
+    private fun includeReferences(path: Path): List<Included> =
+        MAPPER.readTree(path.readText()).path("header").path("modelReferences")
+            .mapNotNull { reference ->
+                reference.path("reference").asText(null)?.let { Included(it, reference.path("purpose").asText("")) }
+            }
+
+    private fun modelIdOf(path: Path): String? = MAPPER.readTree(path.readText()).path("header").path("id").asText(null)
 
     /**
      * Every committed DM-JSON model, from the three trees that hold one.
