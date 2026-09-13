@@ -177,6 +177,60 @@ private val SEVERITIES = setOf("ERROR", "WARNING", "INFO")
  *
  * Nothing is reported for a computation, for [errorCodeFindings]'s reason: the member does not exist there.
  */
+/**
+ * A12's second, UNPREFIXED class for a declaration with no usable message — and the one shape that omits it.
+ *
+ * `RULE_HAS_NO_ERRORTEXT` rides beside `MVK_ERROR_MESSAGE_MISSING` on every shape that leaves a declared
+ * locale uncovered — no member at all, an empty array, an empty text, a text only for an undeclared locale,
+ * a filled entry replaced by a blank one — **except a text that is whitespace rather than empty**, which
+ * draws the prefixed class alone ([KERNEL-FINDINGS KF346],
+ * `rulekit.validate.laws.RuleSlotMultipleDefectLawsTest`).
+ *
+ * [KF323] had measured two of those shapes, one on each side of the split, and this family therefore left
+ * the second class to A12 on the stated ground that the split was unmeasured. It is enumerated now, so the
+ * class is emitted — leaving it out was an under-report on every shape but one.
+ *
+ * **The whitespace exception is stated as an observation, not explained.** "A12 trims for one check and not
+ * the other" fits it, and so does "the second check asks only whether the string is empty"; the two cannot
+ * be told apart, because a non-empty string that still counts as blank IS a whitespace-only one.
+ *
+ * **The exception is over the DECLARED LOCALES, not over the texts present**, which took the two-locale rows
+ * to settle: whitespace beside an EMPTY text draws both, whitespace beside an ABSENT entry draws both, and
+ * only whitespace for every declared locale omits the class. So a rule keyed on "every collected text is
+ * whitespace" fits every one-locale row and is false on the row that has an unanswered locale.
+ *
+ * **And a model with NO usable declared locale draws no class at all.** Every such shape — an empty
+ * `header.locales`, a code A12's reader refuses, the empty code — leaves the model unbuildable or unreadable,
+ * so A12 reaches no verdict about the message and reporting one here would state this checker's reading as
+ * A12's. The split above was measured on a model declaring one good locale, and that carrier is the
+ * condition for applying it.
+ */
+private fun DeclaredElement.unprefixedErrorTextFinding(
+    authored: List<AuthoredMessage>,
+    declaredLocales: List<String>,
+): List<Finding> {
+    if (declaredLocales.isEmpty()) {
+        return emptyList()
+    }
+    val collected = authored.collectedTexts(declaredLocales)
+    val everyLocaleAnsweredWithWhitespace = declaredLocales.all { locale ->
+        collected[locale]?.let { it.isNotEmpty() && it.isBlank() } == true
+    }
+    if (everyLocaleAnsweredWithWhitespace) {
+        return emptyList()
+    }
+    return listOf(
+        Finding(
+            FindingCategory.A12_CONSTRAINT,
+            FindingSeverity.ERROR,
+            "RULE_HAS_NO_ERRORTEXT",
+            "…and A12 says so a second time under its own error-text vocabulary, which is unprefixed: a " +
+                "declaration with no text for a declared locale has no error text at all",
+            path,
+        ),
+    )
+}
+
 private fun severityFindings(element: DeclaredElement): List<Finding> {
     if (element.kind != "Rule") {
         return emptyList()
@@ -220,16 +274,12 @@ private fun messageFindings(element: DeclaredElement, declaredLocales: List<Stri
             Finding(
                 FindingCategory.A12_CONSTRAINT,
                 FindingSeverity.ERROR,
-                // A12 reports the unprefixed `RULE_HAS_NO_ERRORTEXT` beside this class on SOME of these
-                // shapes and not others — a blank later duplicate draws both, a whitespace-only text draws
-                // this one alone ([KERNEL-FINDINGS KF323]). Which shapes split that way is not measured, so
-                // the second class is left to A12 rather than stated on a shape that may not draw it.
                 "MVK_ERROR_MESSAGE_MISSING",
                 "this declaration carries no error message text for any declared locale — A12 refuses it, " +
                     "and a blank `text` counts as no message at all",
                 element.path,
             ),
-        )
+        ) + element.unprefixedErrorTextFinding(authored, declaredLocales)
     } else {
         declaredLocales.filterNot { it in covered }.map { uncovered ->
             Finding(

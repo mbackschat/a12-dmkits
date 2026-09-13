@@ -66,13 +66,23 @@ internal fun JsonObject.authoredMessages(): AuthoredMessages {
  * the model does not declare is never collected at all, a LATER entry for one locale replaces an earlier one
  * whether or not it has a text, and a BLANK text is no message rather than an empty one.
  */
-internal fun List<AuthoredMessage>.coveredLocales(declaredLocales: List<String>): Set<String> {
+internal fun List<AuthoredMessage>.coveredLocales(declaredLocales: List<String>): Set<String> =
+    collectedTexts(declaredLocales).filterValues { it.isNotBlank() }.keys
+
+/**
+ * The text A12 ends up holding for each declared locale — the last entry for one wins, undeclared ones drop.
+ *
+ * Split out of [coveredLocales] so the last-wins rule has ONE statement: a second caller needs the texts
+ * themselves rather than which locales are covered, and restating the collection there would put a measured
+ * rule in two places.
+ */
+internal fun List<AuthoredMessage>.collectedTexts(declaredLocales: List<String>): Map<String, String> {
     val collected = mutableMapOf<String, String>()
     for (entry in this) {
         val key = entry.localeKey?.takeIf { it in declaredLocales } ?: continue
         collected[key] = entry.text
     }
-    return collected.filterValues { it.isNotBlank() }.keys
+    return collected
 }
 
 /** A member A12 binds to a `String`, absent when it is missing or is not a JSON string. */

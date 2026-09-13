@@ -7125,3 +7125,38 @@ The control is what makes the fourth row a stop rather than an unread entry. The
 Reported by the portable checker, which did not emit `MVK_SORT_FIELD_DUPLICATE` at all. Its per-entry type findings are deliberately kept where A12 gives one: that is the count divergence [KF340](#kf340) already settled, since a finding per entry names the field to fix and says nothing A12 did not.
 
 *Locked by:* `rulekit.validate.laws.GroupOrderingMultipleDefectLawsTest`, mirrored by `consistency … GroupOrderingMultipleDefectTest`.
+
+## §13 supplement — a rule reports every SLOT defect, and `RULE_HAS_NO_ERRORTEXT`'s split is enumerated (measured, 2026-09-13) <a id="kf346"></a>
+
+> Fold: not-foldable — the checker's examination order, not an evaluation behaviour.
+
+**The sixth and last member of the defect-pairing pass.** A rule's own slots are separate members with no order between them, so the only question is whether one withholds another — and none does:
+
+| the rule's slots | A12 |
+|---|---|
+| all sound — the control | ADMITTED |
+| a reserved `vk_vk` name | `MVK_RULE_NAME_INVALID` |
+| a blank `errorCode` | `MVK_ERROR_CODE_MISSING` |
+| no `errorMessage` | `MVK_ERROR_MESSAGE_MISSING` + `RULE_HAS_NO_ERRORTEXT` |
+| any pair of those | both classes |
+| all three | **all four classes** |
+
+**`severity` is not in that grid, because an unknown spelling is a TIER and not a class.** It makes the source UNREADABLE, and takes every other slot's verdict with it — so a row pairing it with another defect would be varying buildability rather than the member.
+
+**The `RULE_HAS_NO_ERRORTEXT` split is now enumerated, and it has exactly one exception.** [KF323](#kf323) had measured two shapes, one on each side, and left the rule unknown. Every shape that leaves a declared locale uncovered draws BOTH classes — no `errorMessage` member, an empty array, an empty text, a text only for an undeclared locale, an empty message locale code, a filled entry replaced by a blank one — **except** a text that is whitespace rather than empty, which draws the prefixed class alone.
+
+**The exception is over the DECLARED LOCALES, not over the texts present**, which only a two-locale model can show:
+
+| two declared locales | A12 |
+|---|---|
+| one empty text, one whitespace | both classes |
+| **both texts whitespace** | **`MVK_ERROR_MESSAGE_MISSING` alone** |
+| one whitespace, the other locale ABSENT | both classes |
+
+So "every collected text is whitespace" fits every single-locale row and is false on the last one. Measured on the computation carrier too, because the class is spelled `RULE_HAS_NO_ERRORTEXT` and reads as a rule's: a computation behaves identically.
+
+**And a model with no usable declared locale draws neither class**: an empty `header.locales`, a code A12's reader refuses, and the empty code all leave it unbuildable or unreadable, so no verdict about the message exists at all.
+
+Reported by the portable checker, which emitted the prefixed class alone on the stated ground that the split was unmeasured — an under-report on every shape but one.
+
+*Locked by:* `rulekit.validate.laws.RuleSlotMultipleDefectLawsTest`, mirrored by `consistency … DeclarationSlotTest`.

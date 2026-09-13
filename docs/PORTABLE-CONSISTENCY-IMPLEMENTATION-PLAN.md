@@ -726,7 +726,11 @@ One cold adversarial review over the frozen range, as [§2](#2-execution-order-a
 
 **The tier trap is real and the grid has to be built around it.** An unresolvable ordering name stops the model BUILDING, so a row putting one opposite a type defect varies buildability rather than the member; those rows live in a test of their own and say so. That is the same "a control that moves two variables is not a control" rule, met in a member where it is easy to miss because both defects are spelled the same way.
 
-**What remains unpaired**: a declaration's own slots. Same shape of grid.
+**Amended 2026-09-13 — the sixth member closes the list, and the pass ends where it started: on a gap someone had disclosed rather than closed.** A rule's slots report in full ([KF346](KERNEL-FINDINGS.md#kf346)), and the pairing grid ran into `RULE_HAS_NO_ERRORTEXT` — a class the checker deliberately withheld because "which shapes split that way is not measured", written as an honest disclosure and left standing. Enumerating the shapes took six rows and turned the disclosure into a rule with exactly one exception; the class is emitted now, and leaving it out had been an under-report on every shape but one.
+
+**Two traps this member sprang that the earlier five had not.** The rule derived on a ONE-locale model is false on a two-locale one — whitespace suppresses the class only when every declared locale is answered that way — so the first implementation was measured wrong within minutes of being written. And the first version emitted the class wherever no locale was covered, including models with no usable declared locale at all, where A12 reaches no verdict; that is the checker stating its own reading as A12's, caught only because four existing mirror rows went red.
+
+**The pass is complete: six members, six grids.** Three report everything (field type, enum values, group ordering, rule slots), one reports the first defect in its text (a condition), one layers a gate over a full report (a message). No member's answer could be predicted from another's, and every one of the six turned up something live.
 
 ### C record — the withholding's mechanism was WRONG, and the set that hid it was my own (2026-09-13)
 
