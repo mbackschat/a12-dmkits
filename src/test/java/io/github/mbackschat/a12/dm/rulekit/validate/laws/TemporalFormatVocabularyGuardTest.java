@@ -836,6 +836,34 @@ class TemporalFormatVocabularyGuardTest {
         return out;
     }
 
+    private static final String PROBE_REGION_START = "RANGE-PROBE-GRID-START";
+    private static final String PROBE_REGION_END = "RANGE-PROBE-GRID-END";
+
+    /**
+     * The checker's probed-separator axis is this sweep's own.
+     *
+     * <p><b>Why the silence boundary needs a guard of its own.</b> The pair table below says which pairs are
+     * admitted; the probed set says which pairs the checker is entitled to speak about at all, and the checker
+     * reports exactly the difference. So narrowing this sweep's axis without narrowing the checker's leaves it
+     * reporting pairs that were never put to the kernel — the same over-rejection the pair table is guarded
+     * against, reached through the half nothing was reading.
+     */
+    @Test
+    void theCheckersProbedSeparatorSetIsThisSweepsOwnAxis() throws IOException {
+        String region = enumerationRegion(Path.of(RANGE_PAIR_CLAIMANT),
+                Files.readString(Path.of(RANGE_PAIR_CLAIMANT)), PROBE_REGION_START, PROBE_REGION_END);
+        Set<String> carried = new TreeSet<>();
+        java.util.regex.Matcher quoted = QUOTED.matcher(region);
+        while (quoted.find()) {
+            carried.add(quoted.group(1));
+        }
+        assertEquals(new TreeSet<>(RANGE_SEPARATORS), carried,
+                "the portable checker probes a different separator axis from the sweep that derived its pair "
+                        + "table. A separator it keeps after this sweep drops it is reported on a pair nobody "
+                        + "measured — edit " + RANGE_PAIR_CLAIMANT + " between " + PROBE_REGION_START + " and "
+                        + PROBE_REGION_END);
+    }
+
     /**
      * The checker's range table is the kernel's, entry for entry.
      *

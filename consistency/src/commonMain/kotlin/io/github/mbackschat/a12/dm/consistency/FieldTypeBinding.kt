@@ -245,8 +245,16 @@ private const val DEFAULT_RANGE_SEPARATOR = "/"
 /**
  * The separators the derived sweep put to the kernel beside every candidate format. A pair naming any other
  * separator was never measured, so this checker leaves it alone.
+ *
+ * **It is one fact with [ADMITTED_RANGE_SEPARATORS], and the guard binds them together.** This set is the
+ * silence boundary and that one is the verdict, so they go stale in opposite directions: a member lost here
+ * only silences a pair, while a member this set keeps after the sweep drops it turns an UNMEASURED pair into
+ * a reported one — the over-rejection the pair table is guarded against, arriving through the other half.
  */
+// RANGE-PROBE-GRID-START — the guard reads only this delimited region and requires it to be the sweep's own
+// separator axis; a separator named elsewhere in this file does not count as probed.
 private val PROBED_RANGE_SEPARATORS = setOf("/", "-", ".", "", " - ", ":", "_")
+// RANGE-PROBE-GRID-END
 
 /**
  * Which separators A12 admits each range format with — the DERIVED pair domain, restricted to the formats
