@@ -698,6 +698,18 @@ One cold adversarial review over the frozen range, as [§2](#2-execution-order-a
 
 **The real-model corpus is silent on this, and that is worth recording rather than reading as support.** No `variantFilter` appears in any of the 59 `a12-kernel-mm` models — `grep -rho '"filterType"…'` returns nothing — so the corpus cannot regress on this change and equally offers it no evidence. There is no checker-versus-Kernel full-report differential over real models yet; that is order 7's F2 lane, and until it exists a change to resolution rests on its own grid and the checker's suite.
 
+### A field type's body — the member A12 builds from, derived from the BUILDER rather than the fields (2026-09-13)
+
+**The gap named a shape and an example, which made it a to-do rather than a limit — the fourth this session.** "A body carrying some members but not the one its type constructs from (an `EnumerationType` with `alphabeticalSorting` and no values)" is a sentence that describes a test nobody had run. It is now run, and the emptiness test it justified is gone.
+
+**The denominator is derivable, which is the whole reason a refusal may name a member at all.** These classes take their arguments through a Lombok `@Builder` on a private constructor, and an argument is optional exactly where the hand-written `…Builder` class pre-initialises its field — explicitly, with a comment saying why. So the required member is the `@NonNull` constructor parameter the builder leaves alone, and there is exactly one per type ([KF312](KERNEL-FINDINGS.md#kf312)). A survey of members someone happened to try would have been the wrong instrument for a check that refuses.
+
+**`EnumerationType` is where reading the FIELDS instead of the builder gets it wrong.** `values` carries an initialiser, so it looks defaulted; the builder writes the field through the constructor and defaults every other `@NonNull` parameter and not that one. The measurement follows the builder. Worth recording because the two readings are both "source-verified" and only one of them is about the construction path the deserializer actually takes.
+
+**Two rows show the member is NECESSARY and not sufficient, and that is what fixes the check's shape.** A `DateRangeType` naming `dd.MM.yyyy` is unbuildable with its required member present, because A12 allowlists the format-and-separator PAIR and the default separator is `/`; a `DateFragmentType` asking for a 1900 check on `dd.MM.` draws `MVK_ADDITIONAL_CHECK_INVALID`, the check needing a year the format has not. Each has a discriminator that ADMITS with the identical member set, so neither row is read as the member failing. The checker therefore reports ABSENCE and stays silent on presence, and the gap is re-aimed at exactly that remainder rather than deleted.
+
+**Two predictions were wrong and both were about a SECOND gate past the one under test.** That is the recurring shape when a required-member reading is turned into a sufficiency claim: the reading is right about what it names and silent about what else stands between a bound object and a built model.
+
 ### Two syntax failures in one text — the gap whose own deferral had gone stale (2026-09-13)
 
 **The gap said the fix needed "the grammar", and the grammar had arrived two slices earlier.** It described the shapes where an unpaired quote is reported as a lexical failure while A12 answers `MVK_UNEXPECTED_TOKEN`, and deferred them until a parser existed. `ConditionShape.kt` had been that parser since the shape slice; nothing re-read the deferral. This is the third gap this session whose text named measured shapes and was therefore a to-do rather than a limit — worth recording as a pattern, because a deferral's premise is exactly the sentence nobody re-derives.
