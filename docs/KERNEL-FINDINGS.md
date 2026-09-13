@@ -6130,7 +6130,7 @@ The last row generalizes the string-literal result above rather than repeating i
 | `DateRangeType` | `format` | `{"rangeSeparator":"-"}` → NOT BUILDABLE | `{"format":"yyyy-MM-dd"}` → ADMITTED |
 | `DateFragmentType` | `formatOfFragment` | `{"youngerThan1900Check":true}` → NOT BUILDABLE | `{"formatOfFragment":"dd.MM."}` → ADMITTED |
 | `EnumerationType` | `values` | `{"alphabeticalSorting":true}` → NOT BUILDABLE | `{"values":[{"value":"A"}]}` → ADMITTED |
-| `CustomFieldType` | `name` | `{"displayName":"Signature"}` → NOT BUILDABLE | `{"name":"Signature"}` → ADMITTED |
+| `CustomFieldType` | `name` | `{"displayName":"Signature"}` → `CUSTOM_FIELD_TYPE_CODENAME_MISSING` | `{"name":"Signature"}` → ADMITTED |
 
 **`EnumerationType` is the entry a source reading gets wrong, and the builder is what settles it.** Its `values` FIELD carries an initialiser (`= new EnumValues()`), so a reader skimming fields calls it defaulted; the initialiser is irrelevant, because the builder writes the field through the constructor and the builder class defaults `categories`, `errorMessage`, `alphabeticalSorting` and `annotations` — every other `@NonNull` parameter, and not that one. The measurement agrees with the builder, not with the fields.
 
@@ -6138,6 +6138,8 @@ The last row generalizes the string-literal result above rather than repeating i
 
 - `DateRangeType` with `{"format":"dd.MM.yyyy"}` alone is NOT BUILDABLE even though the builder defaults `rangeSeparator`. A12 allowlists the format-and-separator PAIR, the default separator is `/` (`FieldTypeConstants.A12_DATE_RANGE_SEPARATOR`), and (`dd.MM.yyyy`, `/`) is not among the eight admitted pairs ([TEMPORAL-FORMAT-VOCABULARY](TEMPORAL-FORMAT-VOCABULARY.md)). The discriminator is `{"format":"yyyy-MM-dd"}`, whose pair with `/` IS admitted and which is ADMITTED — without it the row would read as "a format alone is never enough for this type". **Amended 2026-09-13:** the pair is measured in its own right in [KF316](#kf316), which settles the tier and the omitted-separator reading, so this row is no longer the only thing a consumer can key on.
 - `DateFragmentType` with `{"formatOfFragment":"dd.MM.","youngerThan1900Check":true}` draws `MVK_ADDITIONAL_CHECK_INVALID` — a consistency verdict rather than a build failure, because the check needs a year and that format has none. Its discriminator is the identical pair of members with `dd.MM.yyyy`, which is ADMITTED.
+
+**Corrected 2026-09-13** ([KF323](#kf323)): the `CustomFieldType` row is not a silent build refusal but a VERDICT, under a class carrying no `MVK_` prefix — it read as NOT BUILDABLE only because the harness lifted classes by that prefix. It is the one of the four that reaches a verdict, and the member is judged on its CONTENT there: `{"name":""}` and `{"name":"   "}` draw the same class as no `name` at all.
 
 **The control is a type that requires nothing carrying the SAME optional member.** `DateType` and `DateFragmentType` both declare `youngerThan1900Check`, and `DateType` with only that member is ADMITTED — so the unbuildable rows are about the type constructing from something, not about a body with exactly one member being refused.
 

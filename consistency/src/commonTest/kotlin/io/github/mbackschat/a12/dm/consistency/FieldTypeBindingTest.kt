@@ -61,7 +61,11 @@ class FieldTypeBindingTest {
             "CustomFieldType")) {
             actual["$type, body present"] = codes("""{"type":"$type","$type":{}}""")
             actual["$type, body absent"] = codes("""{"type":"$type"}""")
-            expected["$type, body present"] = unbuildable
+            // With a body PRESENT the custom type parts from the other four: A12 reads it, finds no usable
+            // `name` and says so under its own class, where the rest die with nothing to report. With the
+            // body ABSENT all five are alike — A12's reader refuses the declaration before any of it.
+            expected["$type, body present"] =
+                if (type == "CustomFieldType") listOf(codenameMissing) else unbuildable
             expected["$type, body absent"] = unbuildable
         }
         assertEquals(expected, actual, "what the checker says about each type A12 declares")
@@ -82,6 +86,9 @@ class FieldTypeBindingTest {
      * `TypeDefType` has no row here because its body is not judged by presence at all: it carries a
      * REFERENCE, resolved in its own test below against `content.typeDefinitions`.
      */
+    /** A12's own class for a custom type with no usable `name` — unprefixed, like several of its siblings. */
+    private val codenameMissing = "CUSTOM_FIELD_TYPE_CODENAME_MISSING"
+
     @Test
     fun aConstructingTypeIsJudgedOnTheMemberItBuildsFrom() {
         val bodies = mapOf(
@@ -102,10 +109,34 @@ class FieldTypeBindingTest {
             actual["$type with an optional member only"] = codes("""{"type":"$type","$type":$optional}""")
             actual["$type with an empty body"] = codes("""{"type":"$type","$type":$empty}""")
             expected["$type with the member it builds from"] = emptyList()
-            expected["$type with an optional member only"] = unbuildable
-            expected["$type with an empty body"] = unbuildable
+            // Three of the four die at the BUILD tier with no class of A12's own; the custom type is the one
+            // that reaches a verdict, so it is reported under the class A12 answers with rather than under
+            // this checker's own "not buildable".
+            val absent = if (type == "CustomFieldType") listOf(codenameMissing) else unbuildable
+            expected["$type with an optional member only"] = absent
+            expected["$type with an empty body"] = absent
         }
         assertEquals(expected, actual, "a constructing type judged on the member A12 builds from")
+    }
+
+    /**
+     * The custom type's `name`, which is judged on its CONTENT and not on the key's presence.
+     *
+     * An empty and a blank `name` both draw the same class as no `name` at all, measured — so a checker
+     * testing for the key alone stays silent on two models A12 refuses.
+     */
+    @Test
+    fun aCustomTypesNameIsJudgedOnWhatItCarries() {
+        val actual = mutableMapOf<String, List<String>>()
+        actual["a name — the control"] = codes("""{"type":"CustomFieldType","CustomFieldType":{"name":"Sig"}}""")
+        actual["an EMPTY name"] = codes("""{"type":"CustomFieldType","CustomFieldType":{"name":""}}""")
+        actual["a BLANK name"] = codes("""{"type":"CustomFieldType","CustomFieldType":{"name":"   "}}""")
+
+        val expected = mutableMapOf<String, List<String>>()
+        expected["a name — the control"] = emptyList()
+        expected["an EMPTY name"] = listOf(codenameMissing)
+        expected["a BLANK name"] = listOf(codenameMissing)
+        assertEquals(expected, actual, "a custom type's name judged on what it carries")
     }
 
     /**

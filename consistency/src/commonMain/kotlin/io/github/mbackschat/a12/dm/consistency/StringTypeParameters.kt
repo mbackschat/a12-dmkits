@@ -26,11 +26,22 @@ import kotlinx.serialization.json.intOrNull
  * **`maxLength` is NOT excluded by `noValueValidation`**, though its two siblings are — the row that keeps
  * this family from refusing a model A12 admits, and the reason the exclusion set is enumerated from the
  * grid rather than from the code's name.
+ *
+ * **The length ordering has a second carrier**: a `CustomFieldType` declares the same two members under the
+ * same law and A12 answers with a class of its own, unprefixed. Only that law is asked there — the rest of
+ * this family has never been put to A12 on a custom type, and reusing it across the carrier would be a
+ * refusal by analogy.
  */
 fun PreparedModel.stringTypeParameterFindings(): List<Finding> =
     elements.filter { it.declaredKind == DeclaredKind.FIELD }.flatMap { field ->
-        val body = field.stringTypeBody() ?: return@flatMap emptyList()
-        noValueValidationFindings(field, body) + lengthFindings(field, body)
+        field.stringTypeBody()?.let { body ->
+            return@flatMap noValueValidationFindings(field, body) + lengthFindings(field, body)
+        }
+        // The custom type carries the same two length members under the same law and answers with a class of
+        // its own — measured, not transferred. Its OTHER parameters are not judged here: nothing else on this
+        // carrier has been put to A12, and a law reused across it would be a refusal by analogy.
+        field.customTypeBody()?.let { body -> lengthFindings(field, body, MIN_ABOVE_MAX_ON_A_CUSTOM_TYPE) }
+            ?: emptyList()
     }
 
 /** The four laws that hold only when the type declares `noValueValidation`. */
@@ -69,15 +80,26 @@ private fun noValueValidationFindings(field: DeclaredElement, body: JsonObject):
     return findings
 }
 
-/** The ordering law, and the line-break law that shares its members. */
-private fun lengthFindings(field: DeclaredElement, body: JsonObject): List<Finding> {
+/**
+ * The ordering law, and the line-break law that shares its members.
+ *
+ * [orderingCode] is the carrier's, because A12 spells this one law two ways: a string type draws
+ * `MVK_MIN_LENGTH_BIGGER_MAX_LENGTH` and a custom type the unprefixed `MIN_LENGTH_BIGGER_MAX_LENGTH`.
+ * The line-break law is the string carrier's alone — it has not been put to A12 on a custom type — so it is
+ * asked only where a line-break flag is a member A12 reads.
+ */
+private fun lengthFindings(
+    field: DeclaredElement,
+    body: JsonObject,
+    orderingCode: String = "MVK_MIN_LENGTH_BIGGER_MAX_LENGTH",
+): List<Finding> {
     val min = body.declaredLength("minLength")
     val max = body.declaredLength("maxLength")
     val findings = mutableListOf<Finding>()
     if (min != null && max != null && min > max) {
         findings += finding(
             field,
-            "MVK_MIN_LENGTH_BIGGER_MAX_LENGTH",
+            orderingCode,
             "this field declares `minLength` $min above its `maxLength` $max, which A12 refuses; equal " +
                 "bounds are admitted",
         )
@@ -100,6 +122,18 @@ private fun lengthFindings(field: DeclaredElement, body: JsonObject): List<Findi
  * that does not exist on this carrier; and `maxLength`, which reads as the obvious third, is ADMITTED.
  */
 private val EXCLUDED_BY_NO_VALUE_VALIDATION = listOf("pattern", "minLength")
+
+/** A12's class for the same ordering law on the custom carrier, which carries no `MVK_` prefix. */
+private const val MIN_ABOVE_MAX_ON_A_CUSTOM_TYPE = "MIN_LENGTH_BIGGER_MAX_LENGTH"
+
+/** The custom type's body, or null when this field declares another type. */
+private fun DeclaredElement.customTypeBody(): JsonObject? {
+    val declared = body?.get("fieldType") as? JsonObject ?: return null
+    if ((declared["type"] as? JsonPrimitive)?.content != "CustomFieldType") {
+        return null
+    }
+    return declared["CustomFieldType"] as? JsonObject
+}
 
 /** Whether the member is declared as something A12 reads as set — the sentinel counts as unset. */
 private fun JsonObject.declares(member: String): Boolean = when (member) {

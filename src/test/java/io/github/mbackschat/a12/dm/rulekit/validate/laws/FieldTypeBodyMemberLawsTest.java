@@ -104,6 +104,10 @@ class FieldTypeBodyMemberLawsTest {
                 "{\"name\":\"Signature\"}"));
         actual.put("CustomFieldType with both", verdictFor("CustomFieldType",
                 "{\"name\":\"Signature\",\"displayName\":\"Handwritten\"}"));
+        // The member is PRESENT and carries nothing — the row that says whether "declares it" means the key
+        // or a usable value, which absence alone cannot answer.
+        actual.put("CustomFieldType with an EMPTY name", verdictFor("CustomFieldType", "{\"name\":\"\"}"));
+        actual.put("CustomFieldType with a BLANK name", verdictFor("CustomFieldType", "{\"name\":\"   \"}"));
 
         Map<String, String> expected = new LinkedHashMap<>();
         expected.put("DateType with an optional member only — the control", KernelLaws.ADMITTED);
@@ -130,6 +134,8 @@ class FieldTypeBodyMemberLawsTest {
         expected.put("CustomFieldType with a display name only", "CUSTOM_FIELD_TYPE_CODENAME_MISSING");
         expected.put("CustomFieldType with its name", KernelLaws.ADMITTED);
         expected.put("CustomFieldType with both", KernelLaws.ADMITTED);
+        expected.put("CustomFieldType with an EMPTY name", "CUSTOM_FIELD_TYPE_CODENAME_MISSING");
+        expected.put("CustomFieldType with a BLANK name", "CUSTOM_FIELD_TYPE_CODENAME_MISSING");
         assertEquals(expected, actual, "which member each constructing field type requires");
     }
 

@@ -178,6 +178,8 @@ class StringTypeParameterLawsTest {
         rows.put("a real minimum with a NEGATIVE maximum",
                 "{\"name\":\"iban\",\"minLength\":2,\"maxLength\":-1}");
         rows.put("a minimum above the maximum", "{\"name\":\"iban\",\"minLength\":5,\"maxLength\":3}");
+        rows.put("a minimum EQUAL to the maximum — the boundary of that predicate",
+                "{\"name\":\"iban\",\"minLength\":3,\"maxLength\":3}");
 
         Map<String, String> actual = new LinkedHashMap<>();
         rows.forEach((row, json) -> actual.put(row, KernelLaws.verdictOf(storedCustomTypeWith(json))));
@@ -192,6 +194,7 @@ class StringTypeParameterLawsTest {
         // NOT BUILDABLE until the harness stopped lifting classes by that prefix — a verdict A12 did reach,
         // reported as no verdict at all.)
         expected.put("a minimum above the maximum", "MIN_LENGTH_BIGGER_MAX_LENGTH");
+        expected.put("a minimum EQUAL to the maximum — the boundary of that predicate", KernelLaws.ADMITTED);
         assertEquals(expected, actual, "the same two length members on a custom field type");
     }
 

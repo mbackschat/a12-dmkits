@@ -38,6 +38,47 @@ class StringTypeParameterTest {
         ),
     ).findings.map { it.code }
 
+    /** …and the same, on the CUSTOM type that carries the identical two length members. */
+    private fun customCodes(customType: String): List<String> = check(
+        ModelSource(
+            """
+            {"header":{"id":"catalog","locales":[{"code":"en_US"}]},
+             "content":{"modelRoot":{"rootGroups":[
+              {"type":"Group","id":"g0","name":"Catalog","Group":{"elements":[
+                {"type":"Field","id":"f0","name":"Reference","Field":{"fieldType":{"type":"CustomFieldType",
+                  "CustomFieldType":{$customType}}}}
+              ]}}
+             ]}}}
+            """.trimIndent(),
+        ),
+    ).findings.map { it.code }
+
+    /**
+     * The length ordering on the CUSTOM carrier, which answers under a class of its own.
+     *
+     * A12 reports the same law here without the `MVK_` prefix its string sibling carries, so a checker
+     * reusing the sibling's code would name one A12 never emits on this carrier. The sentinel and boundary
+     * rows are measured here too rather than carried over: this pair's neighbours have already parted on the
+     * carrier once.
+     */
+    @Test
+    fun theLengthOrderingOnACustomType() {
+        val actual = mutableMapOf<String, List<String>>()
+        actual["an ordinary custom type — the control"] = customCodes(""""name":"iban","minLength":2,"maxLength":34""")
+        actual["a minimum above the maximum"] = customCodes(""""name":"iban","minLength":5,"maxLength":3""")
+        actual["a minimum EQUAL to the maximum"] = customCodes(""""name":"iban","minLength":3,"maxLength":3""")
+        actual["a NEGATIVE minimum"] = customCodes(""""name":"iban","minLength":-1,"maxLength":34""")
+        actual["a real minimum with a NEGATIVE maximum"] = customCodes(""""name":"iban","minLength":2,"maxLength":-1""")
+
+        val expected = mutableMapOf<String, List<String>>()
+        expected["an ordinary custom type — the control"] = emptyList()
+        expected["a minimum above the maximum"] = listOf("MIN_LENGTH_BIGGER_MAX_LENGTH")
+        expected["a minimum EQUAL to the maximum"] = emptyList()
+        expected["a NEGATIVE minimum"] = emptyList()
+        expected["a real minimum with a NEGATIVE maximum"] = emptyList()
+        assertEquals(expected, actual, "the length ordering on a custom field type")
+    }
+
     @Test
     fun whatAStringTypeMayDeclareAlongsideNoValueValidation() {
         val actual = mutableMapOf<String, List<String>>()

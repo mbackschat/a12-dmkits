@@ -152,11 +152,14 @@ private fun unbindableFieldType(
     // caught — which an emptiness test missed. Absence only: a member present but null is a shape nobody has
     // run, and leaving it to A12 under-reports where guessing could refuse a model A12 takes.
     val required = REQUIRED_BODY_MEMBER[discriminator]
-    if (required != null && body is JsonObject && body[required] == null) {
-        return unbuildable(
-            field,
-            "`fieldType` names `$discriminator` without the `$required` A12 constructs that type from",
-        )
+    if (required != null && body is JsonObject && body.lacks(required)) {
+        val explain = "`fieldType` names `$discriminator` without the `$required` A12 constructs that " +
+            "type from"
+        // The custom type is the one of the four that reaches a VERDICT rather than dying silently at the
+        // build tier, so it carries A12's own class and the others carry this checker's.
+        return VERDICT_FOR_ABSENT_MEMBER[discriminator]
+            ?.let { Finding(FindingCategory.A12_CONSTRAINT, FindingSeverity.ERROR, it, explain, field.path) }
+            ?: unbuildable(field, explain)
     }
     if (discriminator == "DateRangeType" && body is JsonObject) {
         return inadmissibleRangePair(field, body)
@@ -277,6 +280,30 @@ private val REQUIRED_BODY_MEMBER = mapOf(
     "EnumerationType" to "values",
     "CustomFieldType" to "name",
 )
+
+/**
+ * The types whose absent member A12 answers with a CLASS rather than a silent build refusal.
+ *
+ * One of the four does, measured ([KERNEL-FINDINGS KF323], `FieldTypeBodyMemberLawsTest`), and its class
+ * carries no `MVK_` prefix — which is why a checker keying on that prefix would have read it as no verdict
+ * at all. The other three are absent on purpose: reporting A12's class where A12 issues none would put a
+ * label on a refusal it did not make.
+ */
+private val VERDICT_FOR_ABSENT_MEMBER = mapOf("CustomFieldType" to "CUSTOM_FIELD_TYPE_CODENAME_MISSING")
+
+/**
+ * Whether this body leaves the member A12 builds from unusable, which is not the same as absent.
+ *
+ * A string member is judged on its CONTENT: an empty and a blank `name` both draw the custom type's class
+ * exactly as no `name` does, so testing for the key alone stays silent on two models A12 refuses. Any other
+ * shape — a number, an array, an object — is judged on presence only, because a member present but not a
+ * string is a shape nobody has run and guessing could refuse a model A12 takes.
+ */
+private fun JsonObject.lacks(member: String): Boolean = when (val declared = this[member]) {
+    null -> true
+    is JsonPrimitive -> declared.isString && declared.content.isBlank()
+    else -> false
+}
 
 /** The kernel's `FieldTypeConstants.A12_DATE_RANGE_SEPARATOR`, source-read of `30.8.1` and measured. */
 private const val DEFAULT_RANGE_SEPARATOR = "/"
