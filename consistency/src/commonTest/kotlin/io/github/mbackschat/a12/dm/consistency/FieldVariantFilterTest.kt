@@ -186,6 +186,41 @@ class FieldVariantFilterTest {
         assertEquals(expected, actual, "what the short-name fallback says about a filtered field")
     }
 
+    /**
+     * A filtered FIELD draws no suppression gap, because A12 does not suppress anything on this carrier.
+     *
+     * The gap text says A12 "excludes such a declaration from `checkConsistency` altogether" — true of a rule
+     * and false of a field, where the field is DELETED and A12 goes on to say more about the model, not less.
+     * Emitting it here would disclose the opposite of what happened.
+     *
+     * The rule row is the live control: the same spelling on a rule MUST still produce that gap, so a failure
+     * here cannot be the gap machinery having stopped working. Measured through the report rather than the
+     * family, because a scope that wrongly includes fields also SUPPRESSES findings at a field's path, and
+     * that half is invisible today only because no finding happens to attach there.
+     */
+    @Test
+    fun anOnlyFilteredFieldIsNotReportedAsASuppressedDeclaration() {
+        val fieldGaps = check(mentioning(only)).gaps.filter { it.at != null }
+        assertEquals(emptyList(), fieldGaps, "a deleted field is not an unexamined declaration")
+
+        val ruleFiltered = ModelSource(
+            """
+            {"header":{"id":"catalog","locales":[{"code":"en_US"}]},
+             "content":{"modelRoot":{"rootGroups":[
+              {"type":"Group","id":"g0","name":"Catalog","Group":{"elements":[
+                {"type":"Field","id":"f0","name":"Tier","Field":{}},
+                {"type":"Rule","id":"r0","name":"FilteredRule","Rule":{
+                  "variantFilter":$only,
+                  "errorCondition":"FieldNotFilled(Tier)","errorEntityRelPath":"../Tier",
+                  "errorCode":"PROBE","errorMessage":[{"locale":"en_US","text":"x"}]}}
+              ]}}
+             ]}}}
+            """.trimIndent(),
+        )
+        assertEquals(listOf("/Catalog/FilteredRule"), check(ruleFiltered).gaps.mapNotNull { it.at },
+            "the control: the same spelling on a rule IS a suppression and must still say so")
+    }
+
     @Test
     fun aRuleTargetingAnOnlyFilteredFieldDrawsTheTargetsOwnCode() {
         val actual = mutableMapOf<String, List<String>>()
