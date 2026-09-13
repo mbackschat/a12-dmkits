@@ -104,6 +104,8 @@ class TemporalFormatVocabularyGuardTest {
         Set<String> all = new LinkedHashSet<>(FROM_EXISTING_PROBES);
         all.addAll(permutations(DATE_COMPONENTS, DATE_SEPARATORS));
         all.addAll(permutations(TIME_COMPONENTS, TIME_SEPARATORS));
+        all.addAll(trailing(permutations(DATE_COMPONENTS, DATE_SEPARATORS), DATE_SEPARATORS));
+        all.addAll(trailing(permutations(TIME_COMPONENTS, TIME_SEPARATORS), TIME_SEPARATORS));
         for (String date : List.of("yyyy-MM-dd", "dd.MM.yyyy")) {
             for (String time : List.of("HH:mm:ss", "HH:mm")) {
                 all.add(date + "'T'" + time);
@@ -136,6 +138,28 @@ class TemporalFormatVocabularyGuardTest {
         }
         variants.removeAll(base);
         return variants;
+    }
+
+    /**
+     * The TRAILING-separator axis, which every generator above holds fixed by joining components and stopping.
+     *
+     * <p>It is here because a witness turned up outside the universe: {@code dd.MM.} — the German short date
+     * without a year — is ADMITTED as a {@code formatOfFragment}, measured 2026-09-13 while checking what
+     * member a {@code DateFragmentType} requires ({@link FieldTypeBodyMemberLawsTest}). No permutation can
+     * produce it, so the doc's admitted count was short by whatever this axis holds, and its "outside the
+     * universe is undiscovered, not refused" caveat had no witness. Generated rather than adding the one
+     * member, per this file's own rule: a hand-written list cannot miss what it does not think of.
+     */
+    private static Set<String> trailing(Set<String> formats, List<String> separators) {
+        Set<String> out = new LinkedHashSet<>();
+        for (String format : formats) {
+            for (String separator : separators) {
+                if (!separator.isEmpty()) {
+                    out.add(format + separator);
+                }
+            }
+        }
+        return out;
     }
 
     /** Every ordered non-empty selection of [components], joined by each separator (singles joined by none). */

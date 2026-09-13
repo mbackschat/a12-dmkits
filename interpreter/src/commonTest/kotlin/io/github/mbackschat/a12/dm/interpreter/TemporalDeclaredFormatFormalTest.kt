@@ -91,6 +91,12 @@ class TemporalDeclaredFormatFormalTest {
         ),
         "MMdd" to listOf(Cell("0615", null), Cell("0229", null), Cell("0230", FMT), Cell("0431", FMT)),
         "ddMM" to listOf(Cell("1506", null), Cell("2902", null), Cell("3002", FMT), Cell("3104", FMT)),
+        // The trailing separator is part of the format string, so the value carries it too — `15.06` without
+        // the closing dot is a format error against this declaration (KF313).
+        "dd.MM." to listOf(
+            Cell("15.06.", null), Cell("29.02.", null), Cell("30.02.", FMT), Cell("31.04.", FMT),
+            Cell("15.06", FMT),
+        ),
     )
     // VOCABULARY-GRID-END
 

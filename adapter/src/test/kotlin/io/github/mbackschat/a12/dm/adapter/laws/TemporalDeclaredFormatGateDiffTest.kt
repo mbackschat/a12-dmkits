@@ -109,6 +109,11 @@ class TemporalDeclaredFormatGateDiffTest {
                 listOf("20240615", "15831016", "15831015", "00000615", "20240231", "10:30:00", "")),
             Vocab("MonthDayCompact", "MMdd", listOf("0615", "0229", "0230", "0431", "06-15", "")),
             Vocab("DayMonthCompact", "ddMM", listOf("1506", "2902", "3002", "3104", "15-06", "")),
+            // The TRAILING-separator form, the German short date without a year. It is admitted where the
+            // same components without the closing dot (`dd.MM`) are refused, so the separator axis runs past
+            // the end of the string too — found 2026-09-13 once the vocabulary's candidate universe varied
+            // it (KF313). Its last value is the same date spelled without the trailing dot.
+            Vocab("DayMonthDotted", "dd.MM.", listOf("15.06.", "29.02.", "30.02.", "31.04.", "15.06", "")),
         )
         // VOCABULARY-GRID-END
 

@@ -6131,3 +6131,17 @@ The last row generalizes the string-literal result above rather than repeating i
 **The control is a type that requires nothing carrying the SAME optional member.** `DateType` and `DateFragmentType` both declare `youngerThan1900Check`, and `DateType` with only that member is ADMITTED — so the unbuildable rows are about the type constructing from something, not about a body with exactly one member being refused.
 
 *Locked by:* `rulekit.validate.laws.FieldTypeBodyMemberLawsTest`. The portable side is `consistency`'s `FieldTypeBindingTest.aConstructingTypeIsJudgedOnTheMemberItBuildsFrom`.
+
+## §10 supplement — a TRAILING separator is part of the format string: `dd.MM.` is admitted where `dd.MM` is not (measured, 2026-09-13) <a id="kf313"></a>
+
+> Fold: pending — belongs beside [KERNEL-SEMANTICS](KERNEL-SEMANTICS.md) §10's temporal-format material, which states the vocabulary by citing the derived artifact.
+
+**The admitted temporal vocabulary is thirteen formats, not twelve, and the thirteenth is `dd.MM.` — the German short date without a year.** It is admitted on DATE, TIME and DATETIME alike and as a `formatOfFragment`, while `dd.MM` without the closing dot stays refused on all of them. So the separator axis [KF196](#kf196) established runs past the END of the string too, which no candidate the vocabulary generator produced could show: every generated candidate joined components and stopped.
+
+**How it was found is the point, and it was not by probing.** It turned up as a fixture value while measuring which body member a `DateFragmentType` requires ([KF312](#kf312)) — a format someone had written into a test years' worth of probes had never put to the kernel. The generator now varies the trailing-separator axis (306 new candidates, 1223 in total), and of them exactly one is admitted: this one. A low-yield axis that nonetheless held a real member is the argument for generating an axis rather than sampling it.
+
+**The consequence was four shipped surfaces advertising a legal declaration as illegal**, and the guard named them rather than a reader having to: three published JSON schema descriptions (`field add`, `field modify`, `typedef add`) and the diagnostic enricher's `MVK_INVALID_DATE_FORMAT` corrective, each quantifying the set as TWELVE and enumerating it. This is the fifth measured shortfall of this one domain — after `MM-dd` (2026-08-19), `yyyyMM` (2026-08-29), the compact trio the first derivation exposed, and the DATEFRAGMENT four-of-twelve (2026-09-05) — and the first the estate caught mechanically, because the denominator is derived and the claimants are registered.
+
+**What it does NOT change.** The DATERANGE pair vocabulary stays at eight: no trailing-separator format is admitted with any separator. And `dd.MM.` is year-free, so `youngerThan1900Check` is refused on it with `MVK_ADDITIONAL_CHECK_INVALID`, identically on the DATE and DATEFRAGMENT carriers — it joins `MM`, `MM-dd`, `MMdd`, `ddMM` and `HH:mm:ss` there rather than parting from them.
+
+*Locked by:* the derived artifact itself ([TEMPORAL-FORMAT-VOCABULARY](TEMPORAL-FORMAT-VOCABULARY.md), regenerated) and its guard, plus the four vocabulary grids the guard holds to the admitted set — `rulekit.validate.laws.TemporalDeclarationConfigAdmissionLawsTest`, `TemporalAdditionalCheckCarrierLawsTest`, `TemporalEqualSetPairDenominatorLawsTest` (a fourth `{MONTH, DAY}` spelling, so ten equal-set pairs rather than seven), `adapter.laws.TemporalDeclaredFormatGateDiffTest` (the kernel differential) and `interpreter.TemporalDeclaredFormatFormalTest`.

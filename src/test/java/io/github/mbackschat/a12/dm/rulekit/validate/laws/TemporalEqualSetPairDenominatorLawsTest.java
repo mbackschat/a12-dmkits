@@ -41,7 +41,7 @@ import io.github.mbackschat.a12.dm.rulekit.validate.ValidationResult;
  */
 class TemporalEqualSetPairDenominatorLawsTest {
 
-    static final int PAIR_COUNT = 7;
+    static final int PAIR_COUNT = 10;
 
     private static final String GROUP = "/Claim";
     private static final String ADMITTED = KernelLaws.ADMITTED;
@@ -64,7 +64,10 @@ class TemporalEqualSetPairDenominatorLawsTest {
             new Family("{MONTH, DAY}", "MdAnchor", List.of(
                     new Spelling("Anniversary", "AnniversaryAlt", "MM-dd"),
                     new Spelling("RenewalCompact", "RenewalCompactAlt", "MMdd"),
-                    new Spelling("RenewalReversed", "RenewalReversedAlt", "ddMM"))),
+                    new Spelling("RenewalReversed", "RenewalReversedAlt", "ddMM"),
+                    // The fourth spelling of this set, and the one that shows the family is about COMPONENTS
+                    // and not about length: a trailing separator is part of the format string.
+                    new Spelling("RenewalDotted", "RenewalDottedAlt", "dd.MM."))),
             new Family("{YEAR, MONTH, DAY}", "FullAnchor", List.of(
                     new Spelling("FiledOn", "FiledOnAlt", "yyyy-MM-dd"),
                     new Spelling("ClosedOn", "ClosedOnAlt", "dd.MM.yyyy"),

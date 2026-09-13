@@ -48,7 +48,7 @@ class TemporalAdditionalCheckCarrierLawsTest {
     // VOCABULARY-GRID-START — the complete admitted temporal format vocabulary (docs/TEMPORAL-FORMAT-VOCABULARY.md).
     /** Every format the kernel admits on a date-bearing field; the denominator of the fragment grid below. */
     private static final List<String> FORMATS = List.of(
-            "HH:mm:ss", "MM", "MM-dd", "MMdd", "dd.MM.yyyy", "ddMM",
+            "HH:mm:ss", "MM", "MM-dd", "MMdd", "dd.MM.", "dd.MM.yyyy", "ddMM",
             "yyyy", "yyyy-MM", "yyyy-MM-dd", "yyyy-MM-dd'T'HH:mm:ss", "yyyyMM", "yyyyMMdd");
     // VOCABULARY-GRID-END
 
