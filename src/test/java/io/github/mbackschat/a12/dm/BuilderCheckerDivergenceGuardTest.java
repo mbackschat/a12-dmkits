@@ -292,10 +292,12 @@ class BuilderCheckerDivergenceGuardTest {
             // `MVK_INVALID_WILDCARD_REL` needs no row: no kit main source names it, so there is no pair.)
             Map.entry("MVK_INVALID_WILDCARD_FOR_RULEGROUP", Disposition.SAME_LAW_SEPARATE_CARRIERS),
 
-            // Prose on the CHECKER side, which is the mirror of this disposition's usual direction: the kits
-            // erase the shape and the checker only NAMES the code, in the doc comment explaining why a
-            // starred repeatable group is answered by a slot gate this checker does not report.
-            Map.entry("MVK_NO_WILDCARDS_ALLOWED", Disposition.PROSE_ONLY),
+            // The kits erase the shape at type level — a scalar slot takes `FieldRef`, never a starred list —
+            // and the checker reports the code off stored DM-JSON in the one position it has measured: inside
+            // a `Having` filter (`FILTER_WILDCARD`). *(Amended 2026-09-14: this row read PROSE_ONLY while the
+            // checker only NAMED the code. The erasure and the family are not the same law restated — the
+            // filter is a fourth position, and position is what picks the class there.)*
+            Map.entry("MVK_NO_WILDCARDS_ALLOWED", Disposition.SAME_LAW_SEPARATE_CARRIERS),
 
             // Prose on the CHECKER side again: `Computation.build()` genuinely pre-checks a self-read, while
             // the checker only NAMES the code, in the cycle family's doc comment explaining why a one-node

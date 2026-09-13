@@ -1,8 +1,6 @@
 package io.github.mbackschat.a12.dm.consistency
 
-import io.github.mbackschat.a12.dm.consistency.syntax.CONDITION_KEYWORDS
 import io.github.mbackschat.a12.dm.consistency.syntax.CONDITION_OPERATOR_KEYWORDS
-import io.github.mbackschat.a12.dm.consistency.syntax.KeywordKind
 import io.github.mbackschat.a12.dm.consistency.syntax.callsIn
 
 /**
@@ -30,10 +28,12 @@ import io.github.mbackschat.a12.dm.consistency.syntax.callsIn
  * has a different defect entirely.
  */
 fun PreparedModel.repetitionScopeGroupFindings(): List<Finding> {
-    val spelling = CONDITION_OPERATOR_KEYWORDS[conditionLanguage]?.get(REPETITION_NOT_UNIQUE)
-        ?: return emptyList()
-    val scopeKeywords = CONDITION_KEYWORDS.getValue(conditionLanguage)
-        .filterValues { it == KeywordKind.PATH_OP }.keys.filter { it.startsWith("@") }
+    val keywords = CONDITION_OPERATOR_KEYWORDS[conditionLanguage] ?: return emptyList()
+    val spelling = keywords[REPETITION_NOT_UNIQUE] ?: return emptyList()
+    // Resolved by CATALOG ID rather than by a literal or by "the PATH_OP that starts with @", because the
+    // German spelling is a different word and the clause set will grow: `For`/`Fuer` is a PATH_OP too and
+    // means something else entirely.
+    val scopeKeyword = keywords[FROM_SCOPE] ?: return emptyList()
     return elements.filter { it.kind == "Rule" }.flatMap { element ->
         val body = element.body ?: return@flatMap emptyList()
         val declaringGroup = element.path.substringBeforeLast('/', missingDelimiterValue = "")
@@ -42,7 +42,7 @@ fun PreparedModel.repetitionScopeGroupFindings(): List<Finding> {
                 .filter { it.operator == spelling }
                 .flatMap { call -> call.operands }
                 .mapNotNull { operand ->
-                    operand.clauses.firstOrNull { it.keyword in scopeKeywords }?.path
+                    operand.clauses.firstOrNull { it.keyword == scopeKeyword }?.path
                 }
                 .distinct()
                 .mapNotNull { scope -> scopeFinding(scope, declaringGroup, element, member) }
@@ -51,6 +51,8 @@ fun PreparedModel.repetitionScopeGroupFindings(): List<Finding> {
 }
 
 private const val REPETITION_NOT_UNIQUE = "RepetitionNotUnique"
+
+private const val FROM_SCOPE = "FromScope"
 
 /**
  * The finding one scope draws, or null for every shape A12 answers with another class.

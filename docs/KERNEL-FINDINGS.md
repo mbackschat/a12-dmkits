@@ -1510,6 +1510,15 @@ This is an authoring-admission distinction only; it does not touch resolved chro
 `CustomCondition <Name>` (DE `ApplikationsBedingung`; grammar `applikationsBedingung: 'ApplikationsBedingung' nameOhnePunkt`) is a bare predicate — a host-registered name, no operands. KERNEL-SEMANTICS §14 names two bans; both verified and now **pre-checked** (the constructs are representable):
 
 - **Inside a `Having` filter** → **`MVK_DISALLOWED_CONSTRUCT_IN_FILTER_CONDITION`** ("The language feature 'CustomCondition' is not supported for filter conditions"). *(Isolating it needs a filter that is already otherwise legal. **Measured as a complete class list 2026-09-14** — `validate.laws.AggregateSlotLawsTest.whichFilterGateReports`: **both** of the filter's other gates pre-empt this one and neither co-fires with it, so a body that is simultaneously wildcarded and custom reports `MVK_NO_WILDCARDS_ALLOWED` alone, and one that names no iterated level reports `MVK_NO_ITERATION_FOR_WILDCARD` alone. The grid holds the wrapper constant and carries the admitted single-leaf row as its positive control; until then these four rows were single-code containment assertions, which cannot see a co-firing gate.)*
+
+**What the wildcard gate in that position is scoped by, measured 2026-09-14 for the portable checker's `FILTER_WILDCARD` family** — the grid grew four rows and one of them refuted its prediction:
+
+| the filter body | class |
+|---|---|
+| a star on a repeatable group, under the `$` outer marker | `MVK_NO_WILDCARDS_ALLOWED` — the marker does not move the gate |
+| the same star, on `MaxValue` rather than `Sum` | `MVK_NO_WILDCARDS_ALLOWED` — the gate is the entity-list family's, not one operator's |
+| a star on a NON-repeatable group | `MVK_INVALID_WILDCARD` — the landing-site class, which outruns every slot gate ([KF328](#kf328)) |
+| a star on a repeatable group whose LEAF resolves to nothing | **`MVK_INVALID_ENTITY`** — predicted `MVK_NO_WILDCARDS_ALLOWED` and refuted. The wildcard class outruns the entity gate at the NON-repeatable landing site and does not outrun it here, so that ordering is a property of the landing site rather than of the wildcard check |
 - **In computation rules** (§14) — pre-checked in `Computation.build()` by walking preconditions for a `CustomConditionRef`.
 - It does **not** satisfy the error-field rule on its own (a bare `CustomCondition X` → `MVK_ERROR_FIELD_NOT_REFERENCED`); pair it with a field reference — rulekit's generic `Rule.build()` error-field pre-check already covers this.
 

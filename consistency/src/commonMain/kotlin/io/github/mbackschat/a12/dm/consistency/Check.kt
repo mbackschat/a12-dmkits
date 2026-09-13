@@ -253,6 +253,13 @@ enum class CheckFamily {
     REPETITION_SCOPE_GROUP,
 
     /**
+     * That a `Having` filter carries no repetition wildcard. Its own constant rather than part of
+     * [REPETITION_WILDCARD_TARGET] because the filter is a fourth POSITION and position picks the class
+     * there: the same star on the same repeatable group is admitted in the aggregate's own operand.
+     */
+    FILTER_WILDCARD,
+
+    /**
      * That a rule reading a repetition does not reach its error field only from ABOVE its own group — A12
      * cannot then say which repetition the error attaches to. Its own constant because the demand is on the
      * CONDITION's reach rather than on the target's existence, which `ERROR_FIELD_REFERENCE` already owns,
@@ -469,6 +476,7 @@ internal fun check(
         prepared.computationCycleFindings() +
         prepared.repetitionKeyPlacementFindings() +
         prepared.repetitionScopeGroupFindings() +
+        prepared.filterWildcardFindings() +
         prepared.errorTargetIterationFindings() +
         prepared.messageParameterFindings() +
         prepared.messageTextCharacterFindings() +
@@ -503,6 +511,7 @@ internal fun check(
             CheckFamily.RAW_TYPE_LENGTH, CheckFamily.COMPUTED_TARGET_INDEX_FIELD,
             CheckFamily.COMPUTATION_PRECONDITION_FEATURES, CheckFamily.COMPUTATION_CYCLE,
             CheckFamily.REPETITION_KEY_PLACEMENT, CheckFamily.REPETITION_SCOPE_GROUP,
+            CheckFamily.FILTER_WILDCARD,
             CheckFamily.ERROR_TARGET_ITERATION,
             CheckFamily.MESSAGE_PARAMETER_REFERENCE, CheckFamily.MESSAGE_TEXT_CHARACTERS),
         gaps = prepared.gaps() + prepared.emptyFactBase() + findings.buildBlocked() +

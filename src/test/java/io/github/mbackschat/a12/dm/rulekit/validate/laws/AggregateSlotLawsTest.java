@@ -80,6 +80,12 @@ class AggregateSlotLawsTest {
                 filtered("[Items*/Sku] == \"X\" And CustomCondition SomeCheck"));
         actual.put("an OUTER field AND a CustomCondition",
                 filtered("[/Order/Quantity] > 0 And CustomCondition SomeCheck"));
+        actual.put("a star on a NON-repeatable group", filtered("[ShippingAddress*/City] == \"X\""));
+        actual.put("a STARRED operand whose LEAF resolves to nothing", filtered("[Items*/Nowhere] == \"X\""));
+        actual.put("a STARRED operand under the outer marker", filtered("[$Items*/Sku] == \"X\""));
+        actual.put("a STARRED operand on another aggregate of the family",
+                KernelLaws.orderVerdict("/Order", "../Quantity",
+                        "FieldFilled(Quantity) And MaxValue(Items*/Count Having ([Items*/Sku] == \"X\")) > 0"));
 
         Map<String, String> expected = new LinkedHashMap<>();
         expected.put("a leaf naming the iterated level", KernelLaws.ADMITTED);
@@ -93,6 +99,18 @@ class AggregateSlotLawsTest {
         // is already otherwise legal, which is why the sibling conjunct in row three is load-bearing.
         expected.put("a STARRED operand AND a CustomCondition", "MVK_NO_WILDCARDS_ALLOWED");
         expected.put("an OUTER field AND a CustomCondition", "MVK_NO_ITERATION_FOR_WILDCARD");
+        // The three rows a CHECKER needs before it may report the wildcard class from this position. A star
+        // on a non-repeatable group is answered by the landing-site class instead ([KF328]), which outruns
+        // every slot gate; the outer marker does not change the answer; and the gate is the entity-list
+        // family's rather than `Sum`'s alone, so a second aggregate carries it too.
+        expected.put("a star on a NON-repeatable group", "MVK_INVALID_WILDCARD");
+        // The ENTITY gate wins here, and the prediction that it would not was a transfer: the wildcard class
+        // outruns it where the star lands on something NON-repeatable (KF328), and that does not carry to a
+        // legal star in an illegal position. So a checker may not judge this star before the whole reference
+        // resolves — which is the row that stopped `FILTER_WILDCARD` from reporting on every unresolvable leaf.
+        expected.put("a STARRED operand whose LEAF resolves to nothing", "MVK_INVALID_ENTITY");
+        expected.put("a STARRED operand under the outer marker", "MVK_NO_WILDCARDS_ALLOWED");
+        expected.put("a STARRED operand on another aggregate of the family", "MVK_NO_WILDCARDS_ALLOWED");
         assertEquals(expected, actual, "Having filter gates");
     }
 

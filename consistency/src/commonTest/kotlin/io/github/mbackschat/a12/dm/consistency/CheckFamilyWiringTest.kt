@@ -85,6 +85,10 @@ class CheckFamilyWiringTest {
                 "errorEntityRelPath":"../PalletNote",
                 "errorCode":"C23","errorMessage":[{"locale":"en_US","text":"x"}]}}
             ]}},
+            {"type":"Rule","id":"r25","name":"StarInsideAFilter","Rule":{
+              "errorCondition":"FieldFilled(Price) And Sum(Pallets*/PalletQty Having [Pallets*/PalletNote] == \"x\") > 0",
+              "errorEntityRelPath":"../Price",
+              "errorCode":"C25","errorMessage":[{"locale":"en_US","text":"x"}]}},
             {"type":"Rule","id":"r24","name":"ScopeDoesNotRepeat","Rule":{
               "errorCondition":"RepetitionNotUnique(Shelf/ShelfCode @From Shelf)",
               "errorEntityRelPath":"../Shelf/ShelfCode",
@@ -252,6 +256,10 @@ class CheckFamilyWiringTest {
         // is not one it reduces.
         CheckFamily.REPETITION_SCOPE_GROUP to
             ("MVK_GROUP_NOT_REPEATABLE" to "/Catalog/ScopeDoesNotRepeat"),
+        // The aggregate's own operand stars `Pallets` legally; the filter's copy of the same star is the
+        // defect, which is what makes this row a position claim rather than a wildcard one.
+        CheckFamily.FILTER_WILDCARD to
+            ("MVK_NO_WILDCARDS_ALLOWED" to "/Catalog/StarInsideAFilter"),
         // The rule sits in a repeatable group and reaches its error field only through the root, while
         // reading a sibling of that field — so A12 cannot say which pallet the error belongs to.
         CheckFamily.ERROR_TARGET_ITERATION to
