@@ -6666,3 +6666,23 @@ Reported by the portable checker (`CheckFamily.COMPUTED_TARGET_KIND`). The shape
 Reported by the portable checker (`CheckFamily.COMPUTED_TARGET_INDEX_FIELD`).
 
 *Locked by:* `rulekit.validate.laws.ComputedFieldTargetKindLawsTest` (three grids, 14 rows); the portable checker's mirror is `consistency.ComputedTargetKindTest`.
+
+## §10 supplement — `MVK_INDEX_FIELD_INVALID` is the CONDITION-side index lookup, and it is reachable (source + measured, 2026-09-13) <a id="kf331"></a>
+
+> Fold: not-foldable — a model-structure reference law reached from a condition's semantic index.
+
+**The ledger described this code's locus wrongly, and the description is what made it look like unfinished work.** It read "a group's declared index field must exist in that group" — a shape [KF295](#kf295) measures **NOT BUILDABLE with no code at all**, so no consumer could ever have seen this key from it. The firing site is `CheckEntityUtils.getIndexField` (`kernel-core-parser`), whose message is *"For '%s' the used index field '%s' does not exist."* — reached when a CONDITION uses a semantic index over a group and that group's declared index field cannot be resolved as a field of it.
+
+**That leaves exactly one shape where the two can meet, and it is the shape [KF295](#kf295) already isolated.** An `indexFieldName` that RESOLVES but lands outside its own group does not stop the build — it draws `MVK_INVALID_INDEX_FIELD` as a verdict — so the model reaches the condition phase carrying an index declaration the lookup cannot use.
+
+| stored shape | A12 |
+|---|---|
+| a usable index field, with a semantic index over that group | ADMITTED |
+| an index field resolving OUTSIDE its group, with a semantic index over that group | **`MVK_INVALID_INDEX_FIELD`, `MVK_INDEX_FIELD_INVALID`** |
+| the same unusable index field, with NO semantic index | `MVK_INVALID_INDEX_FIELD` |
+
+**The pair of controls is what makes the attribution, and each moves one variable.** The same condition over a usable index is admitted, so the class is not the semantic index's; the same unusable index without a semantic index draws only the declaration's own class, so the second class is not the declaration's. Both rows are the same model differing in one builder input.
+
+**Not reported by the portable checker, deliberately.** It already names this defect through `MVK_INVALID_INDEX_FIELD` on the declaration itself (`CheckFamily.GROUP_ORDERING_REFERENCES`), so a consumer of the checker already learns the model is refused and why. Emitting the second class would add a code without adding reach, and would require the checker to recognise semantic-index usage in condition text — a capability it has no other use for today.
+
+*Locked by:* `rulekit.validate.laws.GroupIndexAndSortReferenceLawsTest.whetherTheConditionSideIndexLookupIsReachable`.

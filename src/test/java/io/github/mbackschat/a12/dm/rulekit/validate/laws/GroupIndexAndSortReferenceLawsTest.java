@@ -174,6 +174,43 @@ class GroupIndexAndSortReferenceLawsTest {
     }
 
     /** What A12 says about the order fixture with one member of [group]'s body replaced, or removed. */
+    /**
+     * Whether {@code MVK_INDEX_FIELD_INVALID} is reachable, and from where.
+     *
+     * <p>[MVK-LEDGER] described it as "a group's declared index field must exist in that group" — but the
+     * grid above measures that shape NOT BUILDABLE with no code at all, so the description names a locus the
+     * code cannot have. Its firing site is {@code CheckEntityUtils.getIndexField}, reached from a CONDITION
+     * that uses a semantic index, with the message "For '%s' the used index field '%s' does not exist".
+     *
+     * <p>That gives one discriminating shape: an {@code indexFieldName} that RESOLVES but lands outside its
+     * own group builds and draws a verdict rather than stopping the build, so a semantic index over that
+     * group is the only way the condition-side lookup can meet an unusable declaration.
+     */
+    @Test
+    void whetherTheConditionSideIndexLookupIsReachable() {
+        String outsideItsGroup = probe(REPEATABLE, "indexFieldName", "\"../CustomerName\"");
+        String valid = probe(REPEATABLE, "indexFieldName", "\"Sku\"");
+        String semanticIndex = "AllFieldsFilled(Items For \"SKU-1\", CustomerName)";
+
+        Map<String, String> actual = new LinkedHashMap<>();
+        actual.put("a usable index, with the semantic index — the control",
+                KernelLaws.verdictModel(valid, "/Order", "../CustomerName", semanticIndex));
+        actual.put("an index resolving OUTSIDE its group, with the semantic index",
+                KernelLaws.verdictModel(outsideItsGroup, "/Order", "../CustomerName", semanticIndex));
+        actual.put("the same model with NO semantic index — the control",
+                KernelLaws.verdictOf(outsideItsGroup));
+
+        Map<String, String> expected = new LinkedHashMap<>();
+        expected.put("a usable index, with the semantic index — the control", KernelLaws.ADMITTED);
+        // BOTH classes: the declaration draws its own, and the condition-side lookup adds this one. The two
+        // controls bracket it — the same condition over a usable index is admitted, and the same unusable
+        // index without a semantic index draws only the declaration class. One variable moves per pair.
+        expected.put("an index resolving OUTSIDE its group, with the semantic index",
+                "MVK_INVALID_INDEX_FIELD,MVK_INDEX_FIELD_INVALID");
+        expected.put("the same model with NO semantic index — the control", "MVK_INVALID_INDEX_FIELD");
+        assertEquals(expected, actual, "whether the condition-side index lookup is reachable");
+    }
+
     private static String verdict(String group, String member, String rawJson) {
         return verdict(group, member, rawJson, false);
     }
