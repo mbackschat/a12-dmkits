@@ -7063,3 +7063,32 @@ Reported by the portable checker as two gates where the report is assembled. The
 Reported by the portable checker as a per-message gate inside the parameter family rather than at the report, which is the first gate here that is family-local — a finding carries its declaration's path and not its locale, so nothing assembled at the report could tell a sibling message's finding from this one's. The codeless whole-value refusal is not reported: it carries no class, and a checker inventing one would be naming a verdict A12 did not give.
 
 *Locked by:* `rulekit.validate.laws.MessageMultipleDefectLawsTest`, mirrored by `consistency … MessageMultipleDefectTest`.
+
+## §13 supplement — an enumeration's values report EVERY defect, and `MVK_CATEGORY_VALUE_DUPLICATE` is not what its name says (measured, 2026-09-13) <a id="kf344"></a>
+
+> Fold: not-foldable — the checker's examination order, not an evaluation behaviour.
+
+**The third member put through the defect-pairing pass, and it answers like a field type rather than like a condition or a message.** Three checks read one `values` array — the tokens' identity, their alphabet, and the categories paired with them — and none withholds anything:
+
+| the enum's `values` (alphabet restricted to `A-Z`) | A12 |
+|---|---|
+| `BASIC`, `PLUS` under a two-token category — the control | ADMITTED |
+| `BASIC`, `BASIC` | `MVK_CATEGORY_VALUE_DUPLICATE`, `MVK_INTERNAL_VALUES_DUPLICATE`, + a codeless refusal |
+| `BASIC`, `plus` | `MVK_ENUM_VALUE_WITH_INVALID_CHARACTER` ×4 — one per distinct offending CHARACTER |
+| a category one token short | `MVK_MISSING_CATEGORY_VALUE` |
+| `BASIC`, `BASIC`, `plus` | the union of rows 2 and 3 |
+| `plus`, `BASIC`, `BASIC` — reversed | **the same string**, so the report's order is fixed by the CHECK, not by position |
+| `BASIC`, `BASIC` under a short category | the union of rows 2 and 4 |
+
+**`MVK_CATEGORY_VALUE_DUPLICATE` is drawn by a repeated INTERNAL value, not by a repeated category token.** Read off the name, a checker would be wrong in both directions — and both directions are measured:
+
+| shape | A12 |
+|---|---|
+| `BASIC`, `BASIC` with **no** `categories` member | `MVK_INTERNAL_VALUES_DUPLICATE` + the codeless one, and **no** category class |
+| `BASIC`, `PLUS` under a category whose own tokens are `STANDARD`, `STANDARD` | **ADMITTED** |
+
+So the class means "this duplicate leaves the positional pairing ambiguous", and it is counted as the **cross product of duplicated values and categories** — 1×2 → two, 2×1 → two, and **2×2 → four**, which is the cell that separates a cross product from a maximum or a sum. It counts duplicated VALUES rather than extra occurrences: a token declared three times draws one.
+
+Reported by the portable checker, which emitted the value class alone until this entry — an under-report of a class A12 draws on every enum that both repeats a value and declares a category.
+
+*Locked by:* `rulekit.validate.laws.EnumValueMultipleDefectLawsTest`, mirrored by `consistency … EnumValueMultipleDefectTest`.

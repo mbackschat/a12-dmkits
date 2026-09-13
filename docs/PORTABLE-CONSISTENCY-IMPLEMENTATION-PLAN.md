@@ -718,9 +718,11 @@ One cold adversarial review over the frozen range, as [§2](#2-execution-order-a
 
 **Each pass cost one grid and found one live over-report.** The message pass found the checker naming a parameter class beside a control character, where A12 names the character class alone — the forbidden direction, and invisible to every test the three families had, because each family only ever saw a text defective in its own way.
 
+**Amended 2026-09-13 — the fourth member, and the first pass to find a MISSING class rather than an extra one.** An enumeration's value list reports every defect, like a field type ([KF344](KERNEL-FINDINGS.md#kf344)) — but the pairing rows turned up `MVK_CATEGORY_VALUE_DUPLICATE`, which A12 draws for a repeated INTERNAL value while a category exists and which the checker did not emit at all. Read off its name it would have been implemented backwards: a category whose own tokens repeat is ADMITTED. So the pass finds over-reports and under-reports alike, and a class named for the member it is reported against is not evidence about what triggers it.
+
 **Two things the passes have taught that are cheaper than the grid itself.** Measure the pair in BOTH orders: the reversed row is what separates "this class wins" from "the earlier defect wins", and its absence is what made [KF340](KERNEL-FINDINGS.md#kf340) wrong. And measure the GRANULARITY rather than carrying it over: the condition gate is per declaration and the message gate is per message, so a checker that assumed either would have been wrong about the other — one row each, and both were nearly assumed.
 
-**What remains unpaired**, in the order their families would over-report: a group's ordering members (`indexFieldName` beside `sortFields`), an enum's values (labels, categories and characters are three families over one list), and a declaration's own slots. Same shape of grid each time.
+**What remains unpaired**, in the order their families would over-report: a group's ordering members (`indexFieldName` beside `sortFields`), and a declaration's own slots. Same shape of grid each time.
 
 ### C record — the withholding's mechanism was WRONG, and the set that hid it was my own (2026-09-13)
 

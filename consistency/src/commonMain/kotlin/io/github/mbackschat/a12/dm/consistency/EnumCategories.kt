@@ -38,7 +38,9 @@ fun PreparedModel.enumCategoryFindings(): List<Finding> =
         val body = field.enumerationBody() ?: return@flatMap emptyList()
         val values = body.declaredValues()?.takeIf { it.isNotEmpty() } ?: return@flatMap emptyList()
         val categories = body["categories"] as? JsonArray ?: return@flatMap emptyList()
-        categories.flatMap { category -> field.misalignment(values, category) }
+        categories.flatMap { category ->
+            field.misalignment(values, category) + field.spoiltPairing(values, category)
+        }
     }
 
 /**
@@ -115,6 +117,35 @@ private fun DeclaredElement.misalignment(values: List<String>, category: JsonEle
         tokens.size > values.size ->
             tokens.drop(values.size).map { token -> unmatched(named, token.tokenText(), values.size) }
         else -> emptyList()
+    }
+}
+
+/**
+ * The pairings a value declared twice makes ambiguous — one finding per duplicated value, per category.
+ *
+ * **`MVK_CATEGORY_VALUE_DUPLICATE` is not what its name suggests.** A category whose own tokens repeat is
+ * ADMITTED; the class is drawn when an INTERNAL value repeats, and only while a category exists to be paired
+ * with it — the same enum with no `categories` draws the value class alone ([KERNEL-FINDINGS KF344],
+ * `rulekit.validate.laws.EnumValueMultipleDefectLawsTest`). So the duplicate is reported twice over, once
+ * against the value list's own identity rule and once for every pairing it spoils.
+ *
+ * **The multiplicity is the cross product, measured at the one cell that settles it.** Two duplicated values
+ * under two categories draw FOUR; 1×2 and 2×1 each draw two, which a maximum and a sum predict as well. And
+ * it counts duplicated VALUES rather than extra occurrences: a token declared three times draws one.
+ */
+private fun DeclaredElement.spoiltPairing(values: List<String>, category: JsonElement): List<Finding> {
+    val declared = category as? JsonObject ?: return emptyList()
+    val named = (declared["name"] as? JsonPrimitive)?.takeIf { it.isString }?.content ?: return emptyList()
+    return values.groupingBy { it }.eachCount().filterValues { it > 1 }.keys.map { token ->
+        Finding(
+            FindingCategory.A12_CONSTRAINT,
+            FindingSeverity.ERROR,
+            "MVK_CATEGORY_VALUE_DUPLICATE",
+            "the value `$token` is declared more than once, so the category `$named` cannot say which " +
+                "token classifies it — the tokens pair with the values BY POSITION, and a repeated value " +
+                "leaves that pairing ambiguous wherever a category exists",
+            path,
+        )
     }
 }
 
