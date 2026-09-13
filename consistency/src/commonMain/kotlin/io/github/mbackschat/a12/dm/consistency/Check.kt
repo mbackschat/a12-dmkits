@@ -104,6 +104,13 @@ enum class CheckFamily {
     ELEMENT_NAME_ALPHABET,
 
     /**
+     * That an Enumeration's categories pair with its values. The pairing is POSITIONAL, so the law is equal
+     * cardinality rather than set membership, and A12 names each unpaired element separately — a value with
+     * no token and a token with no value are different codes, and both are reported once per element.
+     */
+    ENUM_CATEGORY_ALIGNMENT,
+
+    /**
      * That every DSL-bearing member can be TOKENIZED — the syntax layer's first phase, and the only one
      * decidable without a grammar. Whether the tokens then form a condition A12's parser accepts is a
      * separate question this family does not answer.
@@ -269,7 +276,7 @@ internal fun check(
         prepared.elementNameFindings() + prepared.groupOrderingFindings() +
         prepared.presentationMemberFindings() + prepared.stringSlotFindings() +
         prepared.fieldTypeBindingFindings() + prepared.temporalConfigFindings() +
-        prepared.elementNameAlphabetFindings()
+        prepared.elementNameAlphabetFindings() + prepared.enumCategoryFindings()
     val findings = judged.notSuppressedBy(prepared.variantFilterSuppressed())
     return ConsistencyReport(
         modelId = admitted.modelId,
@@ -285,7 +292,8 @@ internal fun check(
             CheckFamily.CONDITION_COMPLETENESS, CheckFamily.CONNECTIVE_AGREEMENT,
             CheckFamily.CONDITION_GRAMMAR, CheckFamily.RULE_PRESENTATION_MEMBERS,
             CheckFamily.STRING_SLOT_BINDING, CheckFamily.FIELD_TYPE_BINDING,
-            CheckFamily.TEMPORAL_CONFIG, CheckFamily.ELEMENT_NAME_ALPHABET),
+            CheckFamily.TEMPORAL_CONFIG, CheckFamily.ELEMENT_NAME_ALPHABET,
+            CheckFamily.ENUM_CATEGORY_ALIGNMENT),
         gaps = prepared.gaps() + prepared.emptyFactBase() + findings.buildBlocked() +
             prepared.variantFilterGaps() + UNREAD_MEMBERS + UNIMPLEMENTED_FAMILIES,
     )
@@ -360,12 +368,13 @@ private fun List<Finding>.buildBlocked(): List<CoverageGap> =
 private val UNREAD_MEMBERS = listOf(
     CoverageGap(
         at = null,
-        reason = "a field type's body is judged on the member A12 constructs from and on the one CONTENT " +
-            "law measured beyond it, a `DateRangeType`'s (format, separator) pair. What a member otherwise " +
-            "holds is left to A12: a declared `format` outside the admitted vocabulary is refused there and " +
-            "cannot be reported here, since the admitted set is explicitly not closed and the refused one " +
-            "is a probe's universe rather than a law; an `EnumerationType`'s `values` and a " +
-            "`CustomFieldType`'s `name` have no measured content law at all",
+        reason = "a field type's body is judged on the member A12 constructs from and on the two CONTENT " +
+            "laws measured beyond it — a `DateRangeType`'s (format, separator) pair, and an " +
+            "`EnumerationType`'s values against its categories. What a member otherwise holds is left to " +
+            "A12: a declared `format` outside the admitted vocabulary is refused there and cannot be " +
+            "reported here, since the admitted set is explicitly not closed and the refused one is a " +
+            "probe's universe rather than a law; a `CustomFieldType`'s `name` has no measured content law " +
+            "at all",
     ),
     CoverageGap(
         at = null,

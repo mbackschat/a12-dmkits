@@ -127,7 +127,14 @@ class BuilderCheckerDivergenceGuardTest {
             // read path to spoil — it reports on stored JSON — so it reproduces both codes, restricted to the
             // formats A12 is measured to admit.
             Map.entry("MVK_ADDITIONAL_CHECK_INVALID", Disposition.PROSE_ONLY),
-            Map.entry("MVK_OPTIONAL_DATE_TYPE_INVALID", Disposition.PROSE_ONLY));
+            Map.entry("MVK_OPTIONAL_DATE_TYPE_INVALID", Disposition.PROSE_ONLY),
+
+            // The enum-category pairing. `FieldTypeSpec.EnumSpec` refuses a misaligned category in its
+            // constructor, over typed `EnumCategory` records, and collapses A12's two per-element codes into
+            // one message; the checker reads stored JSON and reproduces both, once per unpaired element. Same
+            // law, carriers too different to share — and the builder cannot express the multiplicity at all.
+            Map.entry("MVK_MISSING_CATEGORY_VALUE", Disposition.SAME_LAW_SEPARATE_CARRIERS),
+            Map.entry("MVK_MISSING_INTERNAL_VALUE", Disposition.SAME_LAW_SEPARATE_CARRIERS));
 
     @Test
     void everyCodeStatedInBothEstatesCarriesADisposition() {
