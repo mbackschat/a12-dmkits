@@ -712,6 +712,16 @@ One cold adversarial review over the frozen range, as [§2](#2-execution-order-a
 
 **The catalog half is deliberately not delivered, with its re-open trigger.** A2 ruled that `operators.json` ships as-is because it is already data; that remains right, and it is not yet USEFUL — no finding this checker produces names an operator id, so 293 KB would be packaged with nothing to join it against. It lands when a finding carries an operator.
 
+### The candidate ENUMERATION had a blind spot, and it is the selection method rather than any one family (2026-09-13)
+
+**Families 36–38 were all chosen from one diff: the ledger's `kernel-delegated` rows minus the codes the checker's main source emits.** That diff is a good instrument and it has a denominator bug — every ledger row is keyed by an `MVK_*` code, so a class A12 reports under any OTHER spelling can never appear in the residue, however reachable or valuable it is. It is not a small omission: the kernel declares **65 unprefixed classes** across its nine error-type enums, **49 of them the error-text parameter surface** that every rule's stored `errorMessage` meets ([KF323](KERNEL-FINDINGS.md#kf323), derived and corrected in place the same day).
+
+**That surface is measured on the kernel side and has no checker family.** `RuleMessageParameterLawsTest`, `RuleMessageParameterLanguageLawsTest` and `RuleMessageAdmissionGateLawsTest` already hold grids over it — the membership gate that answers `INVALID_FIELD`, the quoting rule, the suffix forms, the semantic-index key. So it sits in the same bucket family 35 came from, which was the cheapest family so far: the kernel law already locked, only the portable half missing.
+
+**It is deliberately NOT started here, and the reason is the convergence gate rather than its value.** A message parameter has many forms — a category suffix, a base-year terminal with a signed offset, a semantic-index key, an escaped `$$`, an exempt-terminal quoting rule — and each form this checker did not recognise would be reported as a bad field reference, which is an over-rejection, the one direction this project forbids. The safe slice is the plain `$Name$` / `$Name.value$` form with every other shape falling through to silence, and that slice needs its own acceptance matrix before it is opened rather than at the end of a long session.
+
+**Re-derive the residue against BOTH vocabularies before picking the next family**, and read the tail-collision note in KF323 first: five unprefixed classes share their tail with an `MVK_` code, so a diff that strips prefixes merges laws that are not the same.
+
 ### C record — the thirty-eighth family: the circle a model's computations may not form (2026-09-13)
 
 **This is the first family whose law is a GRAPH over the whole model rather than a property of one declaration**, and it was worth reaching for precisely because it looked relational and is not: the topological sort A12 runs reads only which field each computation writes and which fields its own members read, both of which a stored model spells out. Nothing about it needs a document, which is what moved it out of Order 6 and into reach ([KF334](KERNEL-FINDINGS.md#kf334)).
