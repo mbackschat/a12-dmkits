@@ -6485,6 +6485,8 @@ Reported by the portable checker (`CheckFamily.ERROR_FIELD_REFERENCE`), which ad
 | **the same group once in EACH of two calls** | **ADMITTED** |
 | an exact duplicate and an overlap in ONE call | `MVK_DUPLICATE_PARAM1` — exact wins whatever the authored order |
 | an overlap in one call and an exact duplicate in another | `MVK_DUPLICATE_PARAM2` alone — A12 stops at the first |
+| **a duplicate in an UNGRAMMATICAL condition** (`AllGroupsFilled(Garage, Garage))`) | **`MVK_DUPLICATE_PARAM1`** — the same text with a distinct second operand is `MVK_UNEXPECTED_TOKEN` |
+| **a duplicate in an UNLEXABLE condition** (an unterminated quote later in the text) | **`MVK_DUPLICATE_PARAM1`** — the same text without the duplicate is `MVK_LEXER_STANDARD_ERROR` |
 
 **Identity is the RESOLVED element and containment is by path STEP.** The two bolded rows at the top run against each other on purpose: comparing authored text misses the relative-beside-absolute pair, and comparing text prefixes refuses the `Garage`/`GarageBay` pair A12 admits. Neither row alone licenses the right implementation.
 
@@ -6494,8 +6496,10 @@ Reported by the portable checker (`CheckFamily.ERROR_FIELD_REFERENCE`), which ad
 
 **The duplicate gate runs before the operand-KIND gate**: `AllGroupsFilled(PolicyNumber, PolicyNumber)` over a FIELD draws the duplicate class, not `MVK_INVALID_ENTITY`. So the law is about the operand list and not about groups.
 
+**And it runs before BOTH SYNTAX PHASES**, which is the row a parse-based implementation has to know. The same text with a distinct second operand draws the parser's `MVK_UNEXPECTED_TOKEN`, and the same text with an unterminated quote draws the lexer's `MVK_LEXER_STANDARD_ERROR` — so both are genuinely broken and the duplicate is what A12 chooses to report about them. The portable checker recovers operand lists by parsing and therefore stays SILENT there, a stated under-report: the author is told about the syntax defect by the families that own it, and reading an argument list out of text whose tokens are not the ones A12's lexer saw is the one thing worse than silence.
+
 **Both gates hold on all six group-list carriers** — `AllGroupsFilled`, `NotAllGroupsFilled`, `GroupsNotCollectivelyFilled`, `AtLeastOneGroupFilled`, `NoGroupFilled`, `NumberOfFilledGroups`; KF185 exercised four of them, and the other two are measured here. **And the class is not locus-selected**, unlike the wildcard and arity classes beside it ([KF185](#kf185)): moving the error field INSIDE the repeatable group leaves both classes unchanged — measured on `AllGroupsFilled`, which is the carrier the locus grid showed switching classes for its wildcard gate, and not re-measured on the other five.
 
 Reported by the portable checker (`CheckFamily.GROUP_LIST_OPERANDS`), which reports EVERY violating call where A12 stops at the first. That is not a divergence: each reported call is a violation A12 reaches once the earlier one is fixed.
 
-*Locked by:* `rulekit.validate.laws.GroupListDuplicateReachLawsTest` (five grids, 22 rows); the portable checker's mirror is `consistency.GroupListOperandsTest`.
+*Locked by:* `rulekit.validate.laws.GroupListDuplicateReachLawsTest` (six grids, 26 rows); the portable checker's mirror is `consistency.GroupListOperandsTest`.

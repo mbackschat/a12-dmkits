@@ -184,6 +184,8 @@ class GroupListDuplicateReachLawsTest {
         actual.put("a FIELD where a group belongs, named twice",
                 guarded("AllGroupsFilled(PolicyNumber, PolicyNumber)"));
         actual.put("a ROOT group named twice", guarded("AllGroupsFilled(/Broker, /Broker)"));
+        // A condition A12's PARSER cannot read: does the duplicate still get a verdict, or does the parse
+        // error stand alone? A checker that recovers calls from a partial parse has to know.
 
         Map<String, String> expected = new LinkedHashMap<>();
         expected.put("an UNRESOLVABLE operand beside an exact duplicate", "MVK_INVALID_ENTITY");
@@ -193,6 +195,36 @@ class GroupListDuplicateReachLawsTest {
         expected.put("a FIELD where a group belongs, named twice", EXACT);
         expected.put("a ROOT group named twice", EXACT);
         assertEquals(expected, actual, "what pre-empts the duplicate gates");
+    }
+
+    /**
+     * The SYNTAX phases do not pre-empt the duplicate gate — A12 reports the duplicate instead of the
+     * parse or lexer error it would otherwise report for the same text.
+     *
+     * <p>Measured because a checker that recovers an operand list by PARSING has to know what A12 does with
+     * text its own parser refuses. The two control rows carry the weight: the identical shape with a
+     * distinct second operand draws {@code MVK_UNEXPECTED_TOKEN}, and the identical shape with an
+     * unterminated quote draws {@code MVK_LEXER_STANDARD_ERROR}, so both texts really are broken and the
+     * duplicate is what A12 chooses to say about them.
+     */
+    @Test
+    void theSyntaxPhasesDoNotPreEmptTheDuplicateGate() {
+        Map<String, String> actual = new LinkedHashMap<>();
+        actual.put("an UNGRAMMATICAL condition, no duplicate — the control",
+                guarded("AllGroupsFilled(Garage, Coverage))"));
+        actual.put("an UNLEXABLE condition, no duplicate — the control",
+                guarded("AllGroupsFilled(Garage, Coverage) And FieldFilled(\"PolicyNumber)"));
+        actual.put("the same ungrammatical condition WITH a duplicate",
+                guarded("AllGroupsFilled(Garage, Garage))"));
+        actual.put("the same unlexable condition WITH a duplicate",
+                guarded("AllGroupsFilled(Garage, Garage) And FieldFilled(\"PolicyNumber)"));
+
+        Map<String, String> expected = new LinkedHashMap<>();
+        expected.put("an UNGRAMMATICAL condition, no duplicate — the control", "MVK_UNEXPECTED_TOKEN");
+        expected.put("an UNLEXABLE condition, no duplicate — the control", "MVK_LEXER_STANDARD_ERROR");
+        expected.put("the same ungrammatical condition WITH a duplicate", EXACT);
+        expected.put("the same unlexable condition WITH a duplicate", EXACT);
+        assertEquals(expected, actual, "the syntax phases do not pre-empt the duplicate gate");
     }
 
     /** The model-level anchoring: the error field sits outside every repeatable group. */

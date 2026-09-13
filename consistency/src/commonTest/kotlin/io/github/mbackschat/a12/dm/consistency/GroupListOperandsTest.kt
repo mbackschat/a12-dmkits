@@ -113,6 +113,28 @@ class GroupListOperandsTest {
         assertEquals(expected, actual, "the shapes the group-list operand gates deliberately do not report")
     }
 
+    /**
+     * A text this checker's PARSER refuses yields no operand list, so the duplicate in it is not reported.
+     *
+     * A12 does report it — the duplicate gate pre-empts both syntax phases there, measured — so this is a
+     * stated UNDER-report and the only one the parse-based recovery costs. It is bounded: the author is
+     * already told about the syntax defect by the two families that own it, and the duplicate surfaces as
+     * soon as that is fixed. Reporting it instead would mean reading an argument list out of text whose
+     * tokens are not the ones A12's own lexer saw.
+     */
+    @Test
+    fun aDuplicateInsideTextTheParserRefusesIsNotReported() {
+        val actual = mutableMapOf<String, List<String>>()
+        actual["an UNGRAMMATICAL condition with a duplicate"] = codes("AllGroupsFilled(Garage, Garage))")
+        actual["an UNLEXABLE condition with a duplicate"] =
+            codes("""AllGroupsFilled(Garage, Garage) And FieldFilled(\"GarageName)""")
+
+        val expected = mutableMapOf<String, List<String>>()
+        expected["an UNGRAMMATICAL condition with a duplicate"] = listOf("MVK_UNEXPECTED_TOKEN")
+        expected["an UNLEXABLE condition with a duplicate"] = listOf("MVK_LEXER_STANDARD_ERROR")
+        assertEquals(expected, actual, "a duplicate inside text the parser refuses is not reported")
+    }
+
     /** The gates hold on every carrier that takes a group list, including the count's `> 0` tail. */
     @Test
     fun everyCarrierThatTakesAGroupList() {

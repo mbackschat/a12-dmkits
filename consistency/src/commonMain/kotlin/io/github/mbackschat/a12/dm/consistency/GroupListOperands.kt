@@ -29,6 +29,12 @@ import io.github.mbackschat.a12.dm.consistency.syntax.callsIn
  * reader cannot reduce to one path — a nested call, an expression, a filtered reference — is compared
  * against nothing.
  *
+ * **One more silence, and it is the price of parsing.** A12's duplicate gate runs before BOTH syntax phases:
+ * a duplicate inside an ungrammatical or unlexable condition draws the duplicate class where the same text
+ * without the duplicate draws the parse or lexer code. [callsIn] yields nothing for text it cannot parse, so
+ * this family says nothing there — an under-report, bounded by the two families that already report the
+ * syntax defect, and the alternative is reading an argument list out of tokens A12's own lexer never saw.
+ *
  * **The boundary: only the group list.** A12 draws the same two codes on field lists and value lists, and
  * that is a different measurement on a different carrier; nothing here is claimed about them.
  */
@@ -73,10 +79,10 @@ private fun PreparedModel.duplicateFinding(
         if (path == null || operand.path?.contains('*') == true) null else path
     }
     // The exact duplicate wins over an overlap in the same call whatever the authored order, as A12 does.
-    exactDuplicate(comparable)?.let { (first, second) ->
+    exactDuplicate(comparable)?.let { repeated ->
         return finding(
             "MVK_DUPLICATE_PARAM1",
-            "this $member names `$first` twice in one `${call.operator}` — A12 refuses a group list that " +
+            "this $member names `$repeated` twice in one `${call.operator}` — A12 refuses a group list that " +
                 "repeats an operand, whichever way each occurrence is spelled",
             element.path,
         )
@@ -101,8 +107,8 @@ private fun CallOperand.resolvedBy(
 private fun finding(code: String, explain: String, at: String) =
     Finding(FindingCategory.A12_CONSTRAINT, FindingSeverity.ERROR, code, explain, at)
 
-/** The first pair naming one element, in authored order. */
-private fun exactDuplicate(paths: List<String>): Pair<String, String>? = paths.firstPair { a, b -> a == b }
+/** The element the list names twice, in authored order — one name, since both occurrences resolve to it. */
+private fun exactDuplicate(paths: List<String>): String? = paths.firstPair { a, b -> a == b }?.first
 
 /** The first pair where one operand lies under the other, outer first — by path STEP, never by text. */
 private fun overlap(paths: List<String>): Pair<String, String>? =
