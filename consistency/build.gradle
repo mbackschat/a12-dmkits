@@ -492,3 +492,100 @@ def generateConditionCorpus = tasks.register('generateConditionCorpus') {
 kotlin.sourceSets.commonTest.kotlin.srcDir(generatedCorpusDir)
 tasks.named('compileTestKotlinJvm') { dependsOn generateConditionCorpus }
 tasks.named('compileTestKotlinJs') { dependsOn generateConditionCorpus }
+
+// ─────────────────────────────────────────────────────────────────────────────────────────────────────────
+// The Node consumer test: the first end-to-end proof that the checker is CONSUMABLE, not only correct.
+//
+// Everything else in this module tests the checker from inside Kotlin, where the code under test is on the
+// compile classpath by construction. That says nothing about whether a Node developer can install and call
+// it — and the two failed independently here: the JS target compiled green for the module's whole life while
+// emitting nothing importable, because `binaries.library()` was missing. A test that imported a relative
+// path into `build/` would not have caught it either. So this packs a real npm tarball, installs it into a
+// fresh project, and imports BY PACKAGE NAME, which is the only arrangement that exercises the resolution a
+// consumer actually performs.
+//
+// It is deliberately NOT on `check`, matching `:interpreter`'s own consumer tests: it needs node and npm,
+// and a JVM lane that silently requires them would fail on machines where the rest of the build is fine.
+// Run it by name. It never reaches the network — the packed package declares no runtime dependency, and the
+// consumer project declares none either, so `npm install <tarball>` resolves entirely from disk.
+def nodeConsumerSourceDir = file('consumer-tests/node')
+def nodeConsumerBuildDir = layout.buildDirectory.dir('consumer-tests/node')
+def consistencyNpmPackDir = layout.buildDirectory.dir('consumer-tests/pack')
+
+// node and npm are commonly installed per-user (nvm) rather than on the system PATH, so a bare `commandLine
+// 'npm'` fails on a machine where Node is present and merely not exported. This resolves the bin directory
+// once and fails with what to do about it, instead of a bare "command not found" from Exec.
+def resolveNodeBinDir = {
+    def onPath = System.getenv('PATH')?.split(File.pathSeparator)?.find { new File(it, 'npm').canExecute() }
+    if (onPath) {
+        return new File(onPath)
+    }
+    def nvm = new File(System.getProperty('user.home'), '.nvm/versions/node')
+    def newest = nvm.isDirectory() ? nvm.listFiles()?.findAll { new File(it, 'bin/npm').canExecute() }
+            ?.toSorted { a, b -> a.name <=> b.name }?.last() : null
+    if (newest) {
+        return new File(newest, 'bin')
+    }
+    throw new GradleException('node and npm are required for the consumer test and were found neither on ' +
+            'PATH nor under ~/.nvm/versions/node — install Node, or export its bin directory on PATH.')
+}
+
+def packConsistencyNpmPackage = tasks.register('packConsistencyNpmPackage', Exec) {
+    group = 'verification'
+    description = 'Pack the compiled JS library into a real npm tarball, as a consumer would receive it.'
+    dependsOn 'jsNodeProductionLibraryDistribution'
+    def distDir = layout.buildDirectory.dir('dist/js/productionLibrary')
+    workingDir distDir
+    doFirst {
+        consistencyNpmPackDir.get().asFile.mkdirs()
+        commandLine new File(resolveNodeBinDir(), 'npm').absolutePath, 'pack',
+                '--pack-destination', consistencyNpmPackDir.get().asFile.absolutePath
+    }
+    outputs.upToDateWhen { false }
+}
+
+def prepareNodeConsumer = tasks.register('prepareNodeConsumer', Sync) {
+    group = 'verification'
+    description = 'Stage a disposable copy of the Node consumer project, with no node_modules carried over.'
+    from nodeConsumerSourceDir
+    into nodeConsumerBuildDir
+    outputs.upToDateWhen { false }
+    doFirst {
+        // A previous run leaves an installed tree; Sync would otherwise walk it, and a stale package would
+        // let the test pass against code the current build did not produce.
+        project.delete(nodeConsumerBuildDir)
+    }
+}
+
+def installPackedConsistencyInNodeConsumer = tasks.register('installPackedConsistencyInNodeConsumer', Exec) {
+    group = 'verification'
+    description = 'Install the packed tarball into the staged consumer — a clean install, entirely from disk.'
+    dependsOn packConsistencyNpmPackage, prepareNodeConsumer
+    workingDir nodeConsumerBuildDir
+    doFirst {
+        def tarballs = consistencyNpmPackDir.get().asFile.listFiles()?.findAll { it.name.endsWith('.tgz') }
+        if (!tarballs) {
+            throw new GradleException("npm pack produced no tarball in ${consistencyNpmPackDir.get().asFile}")
+        }
+        if (tarballs.size() > 1) {
+            // Two tarballs means a stale one from an earlier version, and `npm install` would take whichever
+            // this code named first — a green run against code the current build did not produce.
+            throw new GradleException("several packed tarballs in ${consistencyNpmPackDir.get().asFile}: " +
+                    "${tarballs*.name.toSorted()} — delete the directory and re-run")
+        }
+        commandLine new File(resolveNodeBinDir(), 'npm').absolutePath, 'install',
+                '--no-audit', '--no-fund', tarballs.first().absolutePath
+    }
+    outputs.upToDateWhen { false }
+}
+
+tasks.register('nodeConsumerTest', Exec) {
+    group = 'verification'
+    description = 'Check a model end to end from a plain Node project against the packed npm package.'
+    dependsOn installPackedConsistencyInNodeConsumer
+    workingDir nodeConsumerBuildDir
+    doFirst {
+        commandLine new File(resolveNodeBinDir(), 'npm').absolutePath, 'test'
+    }
+    outputs.upToDateWhen { false }
+}

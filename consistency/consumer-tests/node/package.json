@@ -1,0 +1,9 @@
+{
+  "name": "a12-consistency-node-consumer",
+  "private": true,
+  "type": "module",
+  "description": "Proves the packed :consistency npm package can be installed and called from a plain Node project.",
+  "scripts": {
+    "test": "node --test"
+  }
+}
