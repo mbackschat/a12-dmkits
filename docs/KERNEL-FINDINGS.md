@@ -6460,3 +6460,42 @@ A rule's `errorEntityRelPath` must resolve AND its condition must name the targe
 Reported by the portable checker (`CheckFamily.ERROR_FIELD_REFERENCE`), which additionally stays silent whenever the target's own name appears in the condition text at all other than as a path prefix — so a gap in its reference extractor cannot become a refusal.
 
 *Locked by:* `rulekit.validate.laws.ErrorFieldReferenceReachLawsTest` (two grids, 14 rows); the portable checker's mirror is `consistency.ErrorFieldReferenceTest`.
+
+## §1 supplement — WHEN two group-list operands are the same operand twice: identity is the resolved element, containment is by path step, and a starred operand is outside the gate (measured, 2026-09-13) <a id="kf325"></a>
+
+> Fold: pending — belongs beside [KERNEL-SEMANTICS](KERNEL-SEMANTICS.md) §1's group-list quantifiers, next to the diagnostic identities in [KF185](#kf185).
+
+[KF185](#kf185) measured that the duplicate and overlap gates are two classes rather than one, on four carriers, with every operand written in the same relative spelling. That says a duplicate is refused and says nothing about what counts as one — the half an implementation needs, because **every pair it wrongly calls a duplicate is a refusal of a model A12 admits**. Rule group `/Policy`, error field `../PolicyNumber` outside every repeatable group unless a row says otherwise.
+
+| the operand list holds… | verdict |
+|---|---|
+| two distinct groups — control | ADMITTED |
+| the same group twice, both relative — control | `MVK_DUPLICATE_PARAM1` |
+| **a relative path beside the ABSOLUTE spelling of the same group** | **`MVK_DUPLICATE_PARAM1`** |
+| **two groups whose NAMES share a prefix (`Garage`, `GarageBay`)** | **ADMITTED** |
+| an ancestor and its child | `MVK_DUPLICATE_PARAM2` |
+| an ancestor and its GRANDCHILD | `MVK_DUPLICATE_PARAM2` |
+| the descendant named FIRST | `MVK_DUPLICATE_PARAM2` |
+| **one repeatable group named twice, both STARRED (`NumberOfFilledGroups(Claims*, Claims*)`)** | **ADMITTED** |
+| a starred operand beside its unstarred spelling (count carrier) | `MVK_NO_WILDCARD` — the wildcard gate speaks first |
+| both starred, on `AllGroupsFilled`, where stars are barred | `MVK_NO_WILDCARDS_G_ALLOWED` |
+| an UNRESOLVABLE operand beside an exact duplicate | `MVK_INVALID_ENTITY` — this gate is PRE-EMPTED |
+| **one FIELD named twice where groups belong** | **`MVK_DUPLICATE_PARAM1`** — before the operand-KIND gate |
+| a ROOT group named twice | `MVK_DUPLICATE_PARAM1` |
+| **the same group once in EACH of two calls** | **ADMITTED** |
+| an exact duplicate and an overlap in ONE call | `MVK_DUPLICATE_PARAM1` — exact wins whatever the authored order |
+| an overlap in one call and an exact duplicate in another | `MVK_DUPLICATE_PARAM2` alone — A12 stops at the first |
+
+**Identity is the RESOLVED element and containment is by path STEP.** The two bolded rows at the top run against each other on purpose: comparing authored text misses the relative-beside-absolute pair, and comparing text prefixes refuses the `Garage`/`GarageBay` pair A12 admits. Neither row alone licenses the right implementation.
+
+**A STARRED operand is outside the gate entirely** — `NumberOfFilledGroups(Claims*, Claims*)` names one repeatable group twice and is ADMITTED. This is the same skip the field-list carriers make ([MVK-LEDGER](MVK-LEDGER.md) `MVK_DUPLICATE_PARAM1`), now measured on the group list, and it is the row an implementation comparing every operand gets wrong.
+
+**The gate reads ONE CALL's operand list.** A group named once in each of two calls is admitted, so no reading of a condition's flat set of names can decide this law — the argument list has to be recovered per call. That is why the portable checker parses the condition rather than scanning it for names.
+
+**The duplicate gate runs before the operand-KIND gate**: `AllGroupsFilled(PolicyNumber, PolicyNumber)` over a FIELD draws the duplicate class, not `MVK_INVALID_ENTITY`. So the law is about the operand list and not about groups.
+
+**Both gates hold on all six group-list carriers** — `AllGroupsFilled`, `NotAllGroupsFilled`, `GroupsNotCollectivelyFilled`, `AtLeastOneGroupFilled`, `NoGroupFilled`, `NumberOfFilledGroups`; KF185 exercised four of them, and the other two are measured here. **And the class is not locus-selected**, unlike the wildcard and arity classes beside it ([KF185](#kf185)): moving the error field INSIDE the repeatable group leaves both classes unchanged — measured on `AllGroupsFilled`, which is the carrier the locus grid showed switching classes for its wildcard gate, and not re-measured on the other five.
+
+Reported by the portable checker (`CheckFamily.GROUP_LIST_OPERANDS`), which reports EVERY violating call where A12 stops at the first. That is not a divergence: each reported call is a violation A12 reaches once the earlier one is fixed.
+
+*Locked by:* `rulekit.validate.laws.GroupListDuplicateReachLawsTest` (five grids, 22 rows); the portable checker's mirror is `consistency.GroupListOperandsTest`.

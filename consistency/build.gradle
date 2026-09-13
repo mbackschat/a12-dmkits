@@ -301,11 +301,30 @@ def renderConditionKeywords = { File catalog ->
         }
         [language, rows]
     }
+    // …and how each OPERATOR is spelled, keyed by the catalog's own id, so a family can name an operator once
+    // and still read a model written in either language. Keyed by id rather than by keyword because only
+    // that direction is a function: `Valid` and `ValidType` share the spelling `Valid` (and `Gueltig`), being
+    // one operator's two signatures, so a keyword-keyed table would have to drop them or carry a list.
+    def spellingsPerLanguage = ['en', 'de'].collectEntries { language ->
+        def rows = [:]
+        operators.each { op ->
+            def keyword = op.keywords?."$language"
+            if (keyword && keyword ==~ /^[@A-Za-z].*/) {
+                rows[op.id] = keyword
+            }
+        }
+        [language, rows]
+    }
     def kinds = ((operators.collect { kindOf(it.kind) } as Set) + 'UNCATALOGED').sort()
             .collect { "    $it," }.join('\n')
     def table = perLanguage.collect { language, rows ->
         def body = rows.keySet().sort()
                 .collect { "        \"${it}\" to KeywordKind.${rows[it]}," }.join('\n')
+        "    ConditionLanguage.${language.toUpperCase()} to mapOf(\n${body}\n    ),"
+    }.join('\n')
+    def idTable = spellingsPerLanguage.collect { language, rows ->
+        def body = rows.keySet().sort()
+                .collect { "        \"${it}\" to \"${rows[it]}\"," }.join('\n')
         "    ConditionLanguage.${language.toUpperCase()} to mapOf(\n${body}\n    ),"
     }.join('\n')
     return """package io.github.mbackschat.a12.dm.consistency.syntax
@@ -333,6 +352,20 @@ ${kinds}
  */
 val CONDITION_KEYWORDS: Map<ConditionLanguage, Map<String, KeywordKind>> = mapOf(
 ${table}
+)
+
+/**
+ * How each cataloged operator is SPELLED in one language, keyed by the catalog's own id.
+ *
+ * A family that cares about one operator's operands names the id once and reads a model in either language
+ * through this, instead of carrying a second copy of the spellings. Only cataloged operators appear: the
+ * uncataloged terminals beside them in [CONDITION_KEYWORDS] have no operator identity to give.
+ *
+ * Keyed by id and not by keyword because only that direction is a function — `Valid` and `ValidType` are one
+ * operator's two signatures and share the spelling `Valid` (and `Gueltig`), so a keyword names no single id.
+ */
+val CONDITION_OPERATOR_KEYWORDS: Map<ConditionLanguage, Map<String, String>> = mapOf(
+${idTable}
 )
 """
 }

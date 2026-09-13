@@ -47,8 +47,14 @@ class BuilderCheckerDivergenceGuardTest {
 
     private static final Checkout CHECKOUT = Checkout.locate();
 
-    /** The A12 diagnostic codes; the checker and the kits both spell them as bare tokens. */
-    private static final Pattern A12_CODE = Pattern.compile("MVK_[A-Z_]+");
+    /**
+     * The A12 diagnostic codes; the checker and the kits both spell them as bare tokens.
+     *
+     * <p>The trailing digits are part of the code and not a suffix to strip: {@code MVK_DUPLICATE_PARAM1}
+     * and {@code MVK_DUPLICATE_PARAM2} are two different laws, and a pattern that stopped at the underscore
+     * run collapsed them into one key that names no A12 code at all.
+     */
+    private static final Pattern A12_CODE = Pattern.compile("MVK_[A-Z_]+[0-9]*");
 
     /** The published, kernel-free kits — every module whose builders may pre-check an A12 law. */
     private static final List<String> KIT_MAIN_SOURCES = List.of(
@@ -195,7 +201,17 @@ class BuilderCheckerDivergenceGuardTest {
             // satisfying the gate, the checker reaches the same silence because `RuleGroup` is a keyword
             // there and names no entity. rulekit's is ADVISORY (a PRECHECK warning, never a refusal) and the
             // checker's is a finding; both under-report the `Having` row rather than guessing (KF324).
-            Map.entry("MVK_ERROR_FIELD_NOT_REFERENCED", Disposition.SAME_LAW_SEPARATE_CARRIERS));
+            Map.entry("MVK_ERROR_FIELD_NOT_REFERENCED", Disposition.SAME_LAW_SEPARATE_CARRIERS),
+
+            // Different CARRIERS of one law, and the split is in the operators rather than in the code.
+            // `FirstFilledValue.checkOwnerDuplicates` pre-checks its own typed operand list — identity
+            // includes the category and semantic-index modifiers, which only a typed operand carries — while
+            // the checker reads the six GROUP-LIST quantifiers out of stored condition TEXT, where those
+            // modifiers make an operand it declines to compare. Both skip a wildcarded operand, which is
+            // A12's own skip on each carrier (KF325 measures it on the group list). Neither refusal reaches
+            // the other's shapes, so nothing here is inherited.
+            Map.entry("MVK_DUPLICATE_PARAM1", Disposition.SAME_LAW_SEPARATE_CARRIERS),
+            Map.entry("MVK_DUPLICATE_PARAM2", Disposition.SAME_LAW_SEPARATE_CARRIERS));
 
     @Test
     void everyCodeStatedInBothEstatesCarriesADisposition() {

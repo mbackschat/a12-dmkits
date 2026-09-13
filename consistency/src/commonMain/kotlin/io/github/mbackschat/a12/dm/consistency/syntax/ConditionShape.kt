@@ -88,13 +88,50 @@ fun shapeFailureAhead(
 data class ShapeFailure(val at: Int, val ranOutWithDelimiterOpen: Boolean, val found: String)
 
 /**
+ * One operator call the parser read, with the token run each of its top-level arguments spanned.
+ *
+ * Raw tokens rather than interpreted operands, because what an argument MEANS is not this file's question:
+ * the grammar knows where one argument ends and the next begins, and [callsIn] decides which of them name an
+ * entity. Nested calls are recorded too, each with its own arguments, innermost first.
+ *
+ * @param at the offset of the operator name, so a finding can point at the call rather than at the rule.
+ */
+internal data class CallShape(val operator: String, val at: Int, val operands: List<List<Token>>)
+
+/**
+ * Every call in [text], or none when the text does not parse.
+ *
+ * Nothing partial is returned: a text the grammar family is already reporting has no argument list worth
+ * reading, and a half-read list would be a shorter list, which is exactly the shape that makes an operand
+ * law look satisfied.
+ */
+internal fun callShapes(text: String, language: ConditionLanguage, entry: SyntaxEntry): List<CallShape> {
+    val calls = mutableListOf<CallShape>()
+    val parser = ShapeParser(
+        tokenize(text).filter { it.kind != TokenKind.COMMENT },
+        CONDITION_KEYWORDS.getValue(language),
+        calls,
+    )
+    val failure = when (entry) {
+        SyntaxEntry.CONDITION -> parser.parseCondition()
+        SyntaxEntry.OPERATION -> parser.parseOperation()
+    }
+    return if (failure == null) calls else emptyList()
+}
+
+/**
  * A recursive-descent reader over the token stream.
  *
  * It reports the FIRST position it cannot use, which is what A12 does too — its parser raises on the first
  * error rather than collecting. Every `parse…` returns a failure or null, so a caller never has to look at
  * the parser's position to know whether it succeeded.
  */
-private class ShapeParser(private val tokens: List<Token>, private val keywords: Map<String, KeywordKind>) {
+private class ShapeParser(
+    private val tokens: List<Token>,
+    private val keywords: Map<String, KeywordKind>,
+    /** Where completed calls are recorded, for [callsIn]; null when only the failure is wanted. */
+    private val calls: MutableList<CallShape>? = null,
+) {
 
     private var index = 0
 
@@ -269,21 +306,37 @@ private class ShapeParser(private val tokens: List<Token>, private val keywords:
     }
 
     private fun call(): ShapeFailure? {
-        take()
-        return grouped { arguments() }
+        val operator = take()
+        val operands = mutableListOf<List<Token>>()
+        val failure = grouped { arguments(operands) }
+        // Recorded only on success, so a caller never reads an argument list the parser abandoned half-way.
+        if (failure == null) {
+            calls?.add(CallShape(operator.text, operator.start, operands))
+        }
+        return failure
     }
 
     /** An empty argument list is legal for at least one operator (`Zeit()`), so it is not required here. */
-    private fun arguments(): ShapeFailure? {
+    private fun arguments(operands: MutableList<List<Token>>?): ShapeFailure? {
         if (textIs(")")) {
             return null
         }
-        argument()?.let { return it }
+        argument(operands)?.let { return it }
         while (textIs(",")) {
             take()
-            argument()?.let { return it }
+            argument(operands)?.let { return it }
         }
         return null
+    }
+
+    /** One argument, with the token run it spanned handed to [operands] once it parsed. */
+    private fun argument(operands: MutableList<List<Token>>?): ShapeFailure? {
+        val from = index
+        val failure = argument()
+        if (failure == null && operands != null && index > from) {
+            operands += tokens.subList(from, index)
+        }
+        return failure
     }
 
     /**

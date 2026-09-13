@@ -90,12 +90,26 @@ class ConditionKeywordProjectionTest {
     private static final Pattern LANGUAGE = Pattern.compile("ConditionLanguage\\.(EN|DE) to mapOf\\(");
     private static final Pattern ENTRY = Pattern.compile("^\\s+\"(.+)\" to KeywordKind\\.");
 
-    /** The generated table as source text — the shipped artifact, not the catalog it was generated from. */
+    /**
+     * The generated table as source text — the shipped artifact, not the catalog it was generated from.
+     *
+     * <p>Scoped to the {@code CONDITION_KEYWORDS} declaration because the same file carries a second
+     * per-language table ({@code CONDITION_OPERATOR_KEYWORDS}, the operator spellings). Its headers are
+     * spelled identically, so an unscoped scan read it as a continuation and ended with two empty sets.
+     */
     private static Map<String, Set<String>> shippedTable() {
         Map<String, Set<String>> table = new LinkedHashMap<>();
         String language = null;
+        boolean inside = false;
         try {
             for (String line : Files.readAllLines(TABLE)) {
+                if (line.startsWith("val ")) {
+                    inside = line.startsWith("val CONDITION_KEYWORDS");
+                    language = null;
+                }
+                if (!inside) {
+                    continue;
+                }
                 Matcher header = LANGUAGE.matcher(line);
                 Matcher entry = ENTRY.matcher(line);
                 if (header.find()) {

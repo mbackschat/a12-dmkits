@@ -25,7 +25,7 @@ fun referencesIn(text: String, language: ConditionLanguage): List<String> =
     ReferenceScan(tokenize(text), CONDITION_KEYWORDS.getValue(language)).references()
 
 /** Path syntax that continues a reference: the separator, the two step forms, and the repetition wildcard. */
-private val PATH_PUNCTUATION = setOf("/", "..", ".", "*")
+internal val PATH_PUNCTUATION = setOf("/", "..", ".", "*")
 
 /** What a reference may end with — a trailing separator is a malformed tail, never part of the name. */
 private val PATH_SEPARATORS = setOf("/", ".")
@@ -109,14 +109,14 @@ private class ReferenceScan(private val tokens: List<Token>, private val keyword
         }
         while (end > begin && tokens[end - 1].text in PATH_SEPARATORS) end--
         if (names > 0) {
-            found += normalized(tokens.subList(begin, end))
+            found += normalizedPath(tokens.subList(begin, end))
         }
         // Even a run that named nothing consumed its first token, so the scan always advances.
         at = maxOf(end, begin + 1)
     }
 }
 
-private fun Token.isName(): Boolean = kind == TokenKind.NAME || kind == TokenKind.QUOTED_NAME
+internal fun Token.isName(): Boolean = kind == TokenKind.NAME || kind == TokenKind.QUOTED_NAME
 
 /**
  * Render the run as one path.
@@ -124,7 +124,7 @@ private fun Token.isName(): Boolean = kind == TokenKind.NAME || kind == TokenKin
  * The one insertion is a separator between two consecutive `..`: whitespace inside an up-run is insignificant
  * too (`.. ..` is `....`, KF76), and concatenating them would produce a dot-run no path split can read back.
  */
-private fun normalized(run: List<Token>): String {
+internal fun normalizedPath(run: List<Token>): String {
     val text = StringBuilder()
     var previousWasUp = false
     run.forEach { token ->
