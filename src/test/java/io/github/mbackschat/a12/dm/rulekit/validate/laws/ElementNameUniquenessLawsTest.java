@@ -92,6 +92,38 @@ class ElementNameUniquenessLawsTest {
     }
 
     /**
+     * …and the two kinds no row above carries: a GROUP taking a sibling's name, and a COMPUTATION.
+     *
+     * <p>The portable checker keys this family by path alone and applies it to every kind, so a pairing A12
+     * in fact ADMITTED would make it refuse a legal model — the one direction a checker may not take. The
+     * grids above leave three pairings unmeasured, and {@code Computation} appears in none of them, so the
+     * kind-agnostic reading rested on four of its seven cells. Each added kind brings its own
+     * non-colliding control, because a group or a computation can also be refused on its own merits.
+     */
+    @Test
+    void theSameCollisionWhenTheNewChildIsAGroupOrAComputation() {
+        Map<String, String> actual = new LinkedHashMap<>();
+        actual.put("a group of a fresh name — the control", verdict(group(Fixtures.subscriptionJson(), "Notes")));
+        actual.put("two GROUPS of one name", verdict(group(Fixtures.subscriptionJson(), "Addons")));
+        actual.put("a group named after a sibling FIELD", verdict(group(Fixtures.subscriptionJson(), "Tier")));
+        actual.put("a computation of a fresh name — the control",
+                verdict(computation(Fixtures.subscriptionJson(), "FeeTotal")));
+        actual.put("a computation named after a sibling GROUP",
+                verdict(computation(Fixtures.subscriptionJson(), "Addons")));
+        actual.put("a computation named after a sibling FIELD",
+                verdict(computation(Fixtures.subscriptionJson(), "Tier")));
+
+        Map<String, String> expected = new LinkedHashMap<>();
+        expected.put("a group of a fresh name — the control", KernelLaws.ADMITTED);
+        expected.put("two GROUPS of one name", KernelLaws.NOT_BUILDABLE);
+        expected.put("a group named after a sibling FIELD", KernelLaws.NOT_BUILDABLE);
+        expected.put("a computation of a fresh name — the control", KernelLaws.ADMITTED);
+        expected.put("a computation named after a sibling GROUP", KernelLaws.NOT_BUILDABLE);
+        expected.put("a computation named after a sibling FIELD", KernelLaws.NOT_BUILDABLE);
+        assertEquals(expected, actual, "the collision when the new child is a group or a computation");
+    }
+
+    /**
      * A second field of [name] added to the ROOT group, so the collision carries no rule at all.
      *
      * <p>Parsed rather than string-spliced: the fixture is pretty-printed, and a literal splice on
@@ -99,15 +131,40 @@ class ElementNameUniquenessLawsTest {
      * own control, which is what a silent no-op looks like from inside a table.
      */
     private static String field(String modelJson, String name) {
+        return atRoot(modelJson, "{\"type\":\"Field\",\"id\":\"probe\",\"name\":\"" + name
+                + "\",\"Field\":{\"fieldType\":{\"type\":\"StringType\"}}}");
+    }
+
+    /** A group of [name] added beside the root group's own children, carrying one field of its own. */
+    private static String group(String modelJson, String name) {
+        return atRoot(modelJson, "{\"type\":\"Group\",\"id\":\"probeGroup\",\"name\":\"" + name
+                + "\",\"Group\":{\"elements\":[{\"type\":\"Field\",\"id\":\"probeGroupNote\",\"name\":\"Note\","
+                + "\"Field\":{\"fieldType\":{\"type\":\"StringType\"}}}]}}");
+    }
+
+    /**
+     * A computation of [name] writing the add-on total into the billing group's own fee field.
+     *
+     * <p>Its target and operation stay fixed across the rows so the only thing varying is the name — a
+     * computation refused for its own shape would otherwise read as a collision.
+     */
+    private static String computation(String modelJson, String name) {
+        return atRoot(modelJson, "{\"type\":\"Computation\",\"id\":\"probeComp\",\"name\":\"" + name
+                + "\",\"Computation\":{\"computedFieldRelPath\":\"../Billing/EffectiveFee\","
+                + "\"computationAlternatives\":[{\"operation\":\"Sum(Addons*/MonthlyFee)\"}],"
+                + "\"errorMessage\":[{\"locale\":\"en_US\",\"text\":\"the effective fee\"},"
+                + "{\"locale\":\"de_DE\",\"text\":\"das effektive Entgelt\"}]}}");
+    }
+
+    /** Inserts one declaration at the head of the ROOT group's children. */
+    private static String atRoot(String modelJson, String declarationJson) {
         try {
             ObjectNode root = (ObjectNode) MAPPER.readTree(modelJson);
-            ArrayNode elements = (ArrayNode) root.path("content").path("modelRoot").path("rootGroups").get(0)
-                    .path("Group").path("elements");
-            elements.insert(0, MAPPER.readTree("{\"type\":\"Field\",\"id\":\"probe\",\"name\":\"" + name
-                    + "\",\"Field\":{\"fieldType\":{\"type\":\"StringType\"}}}"));
+            ((ArrayNode) root.path("content").path("modelRoot").path("rootGroups").get(0)
+                    .path("Group").path("elements")).insert(0, MAPPER.readTree(declarationJson));
             return root.toString();
         } catch (IOException unreadable) {
-            throw new UncheckedIOException("the fixture and the added field must parse", unreadable);
+            throw new UncheckedIOException("the fixture and the added declaration must parse", unreadable);
         }
     }
 

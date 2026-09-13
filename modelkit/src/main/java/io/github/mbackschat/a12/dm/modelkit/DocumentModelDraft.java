@@ -1109,6 +1109,21 @@ public final class DocumentModelDraft {
         }
 
         private ElementDraft.Group toDraft() {
+            // A12 refuses a model in which one group holds two children of one name, whatever kinds they
+            // are, and refuses it while BUILDING — so it reports no code and judges nothing else in the
+            // model (`rulekit.validate.laws.ElementNameUniquenessLawsTest`, kernel 30.8.1, measured
+            // 2026-09-13 across field/group/rule/computation pairings). Emitting one anyway hands the
+            // author a codeless refusal naming neither the group nor the name. Deliberately on the
+            // AUTHORING path only: reading such a model must keep working, since reporting on it is what
+            // the consistency checker is for.
+            Set<String> declared = new HashSet<>();
+            for (ElementDraft element : elements) {
+                if (!declared.add(element.name())) {
+                    throw new IllegalStateException("group '" + name + "' declares '" + element.name()
+                            + "' twice; A12 cannot build a model in which one group holds two children of"
+                            + " the same name, whatever kinds they are");
+                }
+            }
             if (indexFieldName != null) {
                 boolean present = elements.stream()
                         .anyMatch(e -> e instanceof ElementDraft.Field f && f.name().equals(indexFieldName));

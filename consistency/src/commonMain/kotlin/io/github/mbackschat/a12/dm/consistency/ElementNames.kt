@@ -7,7 +7,10 @@ package io.github.mbackschat.a12.dm.consistency
  * a sibling FIELD, and a rule named after a sibling GROUP are all refused; the same name in two different
  * groups is fine, and so is a rule named after a field in another group. A "rule names must be unique"
  * reading passes two of those three refusals, which is why the kinds are measured rather than assumed
- * (`ElementNameUniquenessLawsTest`, kernel 30.8.1, 2026-09-12).
+ * (`ElementNameUniquenessLawsTest`, kernel 30.8.1, 2026-09-12; extended 2026-09-13 to a GROUP and a
+ * COMPUTATION taking a sibling's name, each against a fresh-name control). This function keys on the path
+ * alone and so applies to every kind, which is sound only because every kind was measured: one pairing A12
+ * admitted would turn it into an over-rejection.
  *
  * **And it is case-SENSITIVE**, unlike the `vk_vk` prefix law on the same member, which the Kernel matches in
  * any letter case. Two laws on one slot with opposite case rules is exactly the pair a checker unifies by

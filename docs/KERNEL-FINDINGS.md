@@ -5650,9 +5650,11 @@ The two members a stored rule cannot work without, measured because `Rule.Builde
 
 **Every row of the original set added a RULE, so "two children of one name" and "a rule taking a name" were one observation.** Measured without a rule anywhere in the collision: two FIELDS of one name, and a FIELD named after a sibling group, are refused the same way; a field added to a different group is admitted. The carrier does not matter, which is what lets a checker key on the path alone.
 
+**Extended 2026-09-13 to the two kinds no row above carried.** A GROUP taking a sibling group's or a sibling field's name, and a COMPUTATION taking a sibling group's or a sibling field's name, are all **NOT BUILDABLE**; a group and a computation of fresh names are both ADMITTED, so the refusal is the collision and not the added declaration. `Computation` had appeared in no row at all, which left the kind-agnostic reading resting on four of its cells while a checker keyed on the path alone applied it to every kind — and a pairing A12 in fact admitted would have made that checker refuse a legal model.
+
 **And it is case-SENSITIVE, where the `vk_vk` prefix law on the same member is case-INSENSITIVE** ([KF160](#kf160)). Two laws reading one slot with opposite case rules is exactly the pair that gets unified by accident, so `Probe` beside `probe` in one group is admitted and must draw nothing.
 
-*(Locked: `rulekit.validate.laws.ElementNameUniquenessLawsTest` — one assertion over the six boundaries.)*
+*(Locked: `rulekit.validate.laws.ElementNameUniquenessLawsTest` — three grids, each with its own control.)*
 
 ## §10 supplement — a group's `indexFieldName` and `sortFields[].name`: resolved from the group, judged by what they land on (`checkConsistency`, measured, 2026-09-12) <a id="kf295"></a>
 
