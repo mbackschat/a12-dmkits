@@ -333,8 +333,8 @@ private class ShapeParser(
     private fun argument(operands: MutableList<List<Token>>?): ShapeFailure? {
         val from = index
         val failure = argument()
-        if (failure == null && operands != null && index > from) {
-            operands += tokens.subList(from, index)
+        if (failure == null) {
+            operands?.add(tokens.subList(from, index))
         }
         return failure
     }

@@ -177,6 +177,40 @@ class GroupListOperandsTest {
         )
     }
 
+    /**
+     * A GERMAN model draws the same finding, and the carrier is recognised by its German spelling.
+     *
+     * The family names its six carriers by catalog id and resolves each to the model's own language, so this
+     * row is what stops that resolution from being an English-only lookup dressed as a general one. The
+     * Kernel binds a name against exactly one language's terminals, so `AlleKontexteAngegeben` is an
+     * operator here and would be an ordinary field name in the English model above.
+     */
+    @Test
+    fun aGermanModelDrawsTheSameFinding() {
+        val finding = check(
+            ModelSource(
+                """
+                {"header":{"id":"police","locales":[{"code":"de_DE"}]},
+                 "content":{"modelConfig":{"conditionLanguage":{"code":"de_DE"}},"modelRoot":{"rootGroups":[
+                  {"type":"Group","id":"g0","name":"Police","Group":{"elements":[
+                    {"type":"Field","id":"f0","name":"Nummer","Field":{"fieldType":{"type":"StringType"}}},
+                    {"type":"Group","id":"g1","name":"Werkstatt","Group":{"elements":[
+                      {"type":"Field","id":"f1","name":"Ort","Field":{"fieldType":{"type":"StringType"}}}
+                    ]}},
+                    {"type":"Rule","id":"r0","name":"Probe","Rule":{
+                      "errorCondition":"FeldAngegeben(Nummer) Und AlleKontexteAngegeben(Werkstatt, Werkstatt)",
+                      "errorEntityRelPath":"../Nummer",
+                      "errorCode":"C1","errorMessage":[{"locale":"de_DE","text":"x"}]}}
+                  ]}}
+                 ]}}}
+                """.trimIndent(),
+            ),
+        ).findings.single()
+        assertEquals(exact, finding.code)
+        assertEquals("/Police/Probe", finding.at)
+        assertEquals(true, finding.explain.contains("AlleKontexteAngegeben"), finding.explain)
+    }
+
     /** The finding names both operands and the carrier, since a condition can hold several calls. */
     @Test
     fun theFindingNamesTheOperandsAndTheCarrier() {
