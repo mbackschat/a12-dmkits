@@ -90,8 +90,10 @@ class RepetitionKeyPlacementTest {
         // whether it still wins without one is unmeasured — the one silence here resting on that rather than
         // on a measured row.
         expected["a key repeated in the list"] = emptyList()
-        // The scope form changes what the keys are read against, and the law was measured without it; the
-        // condition reader declines the operand, so the silence needs no branch of its own.
+        // The scope form changes what the keys are read against, and the law was measured without it. The
+        // reader now reduces a clause-carrying operand — `RepetitionScopeGroupTest` is built on that — but
+        // `CallOperand.path` deliberately keeps its narrower "a bare spec and nothing else" contract, so the
+        // silence still needs no branch of its own.
         expected["the @From scope form"] = emptyList()
         assertEquals(expected, actual, "the shapes another class owns")
     }

@@ -7143,11 +7143,16 @@ Reported by the portable checker, which did not emit `MVK_SORT_FIELD_DUPLICATE` 
 
 **What the scope admits, on the index-free carrier** (every violation there therefore reported as `MVK_NO_WILDCARD`, the gate in front of containment rather than a containment verdict): a key sitting directly in the scope is admitted, and so is a key in a DESCENDANT of it — confirming on a second carrier the boundary row that `@From`'s contribution covers the group and its subtree. A key ABOVE the scope, and a second key outside it, are both violations.
 
-**`@From` must name a REPEATABLE group** — naming the rule's own non-repeatable root draws `MVK_GROUP_NOT_REPEATABLE` and no containment class at all. Already held (§9, subscription carrier; pre-checked by `RepetitionNotUniqueCondition.from`); confirmed here on a second carrier rather than newly found.
+**`@From` must name a GROUP before it must name a REPEATABLE one, and the ordering is what a checker needs** *(extended 2026-09-14)*. Naming the rule's own non-repeatable root draws `MVK_GROUP_NOT_REPEATABLE` and no containment class at all — already held (§9, subscription carrier; pre-checked by `RepetitionNotUniqueCondition.from`), so that row confirms it on a second carrier rather than finding it. The two rows measured for the checker are the ones that fix what may be reported from:
+
+| the scope names | class |
+|---|---|
+| a non-repeatable group that is **not** the root | `MVK_GROUP_NOT_REPEATABLE` — the repeatability class had only ever been measured on a root scope, so reporting it from `isRepeatable` alone was a transfer to an unrun carrier |
+| a **FIELD** | `MVK_NO_FIELDS_ALLOWED` — the KIND gate runs first. Predicted `MVK_GROUP_NOT_REPEATABLE` and refuted: "not a repeatable group" is true of every field, so a family testing repeatability alone would have handed the author a fix for a different gate |
 
 **The mechanism transfers to `MVK_NOT_IN_SAME_PATH`, measured rather than assumed.** The ledger carried the identical "fixture-sensitive, reason unmeasured" note for that class — two `RepetitionNotUnique` keys in parallel repeatable groups, no `@From` involved. It is a different class from a different check, so the transfer was predicted and then built on the same model both ways: index-free draws `MVK_NO_WILDCARD`, index-keyed draws `MVK_NOT_IN_SAME_PATH`. One mechanism therefore closes both of the ledger's unexplained-reachability notes.
 
-Locked: `validate.laws.RepetitionNotUniqueFromScopeLawsTest`. **Not reported by the portable checker**: the condition reader reduces no `@From` operand to a path by design, and the class's own reachability turns on parallel iteration, which no family models.
+Locked: `validate.laws.RepetitionNotUniqueFromScopeLawsTest`. **The containment classes stay unreported by the portable checker** — their reachability turns on parallel iteration, which no family models. **The scope's own demand is reported since 2026-09-14** as `REPETITION_SCOPE_GROUP` (`consistency.RepetitionScopeGroupTest`), which the condition reader had to be taught first: `CallOperand` now carries the clause-reduced `base` and `clauses` beside the deliberately narrow `path`, so a family can see a scope at all.
 
 ## §9 supplement — the root-only error-target iteration classes need THREE conditions, two of which were constants (measured, 2026-09-14) <a id="kf348"></a>
 

@@ -155,8 +155,22 @@ class BuilderCheckerDivergenceGuardTest {
             // class "position-dependent — kernel-delegated", `StructuralKernelFix` carries its corrective,
             // and `CurrentRepetition`/`AggregateOperand` name the wildcard class the same way. The builder's
             // one throw nearby is about the `@From` reference group, a different demand, and the checker
-            // declines the `@From` form outright — so the two never judge one shape.
+            // declines the `@From` form outright — so the two never judge one shape. *(Amended 2026-09-14:
+            // the checker no longer declines that form, but the separation stands for a sharper reason — the
+            // `@From` demand is now `REPETITION_SCOPE_GROUP`, which reports a different code, the row below.)*
             Map.entry("MVK_REPEATABLE_GROUP_MISSING", Disposition.PROSE_ONLY),
+
+            // The `@From` demand itself, enforced on BOTH sides now: `RepetitionNotUniqueCondition.from`
+            // throws on a non-repeating `GroupRef` it holds typed, and `REPETITION_SCOPE_GROUP` reports the
+            // same law off stored DM-JSON. Nothing thinner than "is this group repeatable" is left to share,
+            // and each side asks it of a different representation.
+            Map.entry("MVK_GROUP_NOT_REPEATABLE", Disposition.SAME_LAW_SEPARATE_CARRIERS),
+
+            // Prose on BOTH sides, which the enum's wording does not anticipate and this row states rather
+            // than glosses: rulekit carries only a `StructuralKernelFix` corrective for A12's own verdict,
+            // and the checker only names the class in a KDoc saying it is one of the containment classes
+            // `REPETITION_SCOPE_GROUP` stays silent on. Neither estate decides it.
+            Map.entry("MVK_NOT_IN_SAME_PATH", Disposition.PROSE_ONLY),
 
             // …and the checker's own mention of this one is a KDoc naming what it deliberately does NOT
             // report: it is the class A12 draws where a key outside the rule group pre-empts the placement

@@ -119,6 +119,55 @@ class ConditionCallTest {
         assertEquals(emptyList(), calls("AllGroupsFilled(Garage, Garage"))
     }
 
+    /**
+     * A clause-carrying operand keeps `path` absent and says what it is about through `base` and `clauses`.
+     *
+     * Both halves are the contract. `path` stays as narrow as it has always been, so no family already
+     * reading it shifts; the reduction rides beside it, which is what let `REPETITION_SCOPE_GROUP` see an
+     * `@From` scope the reader used to throw away.
+     */
+    @Test
+    fun aClauseCarryingOperandIsSplitIntoItsBaseAndItsClauses() {
+        val operand = calls("RepetitionNotUnique(Crates/CrateRef @From Crates)").single().operands.single()
+        assertEquals(null, operand.path)
+        assertEquals("Crates/CrateRef", operand.base)
+        assertEquals(listOf(OperandClause("@From", "Crates", "Crates")), operand.clauses)
+    }
+
+    /** A bare operand carries no clause and its base is its path, so a consumer needs no special case. */
+    @Test
+    fun aBareOperandsBaseIsItsPath() {
+        val operand = calls("RepetitionNotUnique(Crates/CrateRef)").single().operands.single()
+        assertEquals("Crates/CrateRef", operand.path)
+        assertEquals("Crates/CrateRef", operand.base)
+        assertEquals(emptyList(), operand.clauses)
+    }
+
+    /**
+     * A filter's operand is a whole condition, so its clause reduces to no path — and its authored text is
+     * carried instead, which is the only form a consumer could read further.
+     */
+    @Test
+    fun aFilterClauseCarriesItsTextRatherThanAPath() {
+        val operand = calls("Sum(Items*/Count Having [Items/Sku] == \"X\") > 0").first().operands.single()
+        assertEquals("Items*/Count", operand.base)
+        assertEquals(listOf(OperandClause("Having", null, "[Items/Sku] == \"X\"")), operand.clauses)
+    }
+
+    /**
+     * A clause INSIDE a filter belongs to the spec that carries it, not to the outer operand.
+     *
+     * This is the whole reason the scan tracks delimiter depth: without it the inner `For` would be cut as a
+     * second clause of the outer operand, and a family reading `clauses` would attribute a key to a spec
+     * that does not carry one.
+     */
+    @Test
+    fun aClauseNestedInsideAFilterStaysWithItsOwnSpec() {
+        val operand = calls("Sum(Items*/Count Having [Lines/Sku For \"K-1\"] == \"X\") > 0")
+            .first().operands.single()
+        assertEquals(listOf("Having"), operand.clauses.map { it.keyword })
+    }
+
     /** An operation's entry rule reads the same calls — a computation's text is not a second dialect. */
     @Test
     fun anOperationsCallsAreReadTheSameWay() {

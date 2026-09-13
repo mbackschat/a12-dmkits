@@ -246,6 +246,13 @@ enum class CheckFamily {
     REPETITION_KEY_PLACEMENT,
 
     /**
+     * That a `RepetitionNotUnique` `@From` scope names a REPEATABLE group. Its own constant rather than part
+     * of [REPETITION_KEY_PLACEMENT] because the demand is on the SCOPE rather than on where the keys sit,
+     * and the two are independent: a legal scope admits an illegal key placement and the reverse.
+     */
+    REPETITION_SCOPE_GROUP,
+
+    /**
      * That a rule reading a repetition does not reach its error field only from ABOVE its own group — A12
      * cannot then say which repetition the error attaches to. Its own constant because the demand is on the
      * CONDITION's reach rather than on the target's existence, which `ERROR_FIELD_REFERENCE` already owns,
@@ -461,6 +468,7 @@ internal fun check(
         prepared.rawTypeLengthFindings() + prepared.computationPreconditionFeatureFindings() +
         prepared.computationCycleFindings() +
         prepared.repetitionKeyPlacementFindings() +
+        prepared.repetitionScopeGroupFindings() +
         prepared.errorTargetIterationFindings() +
         prepared.messageParameterFindings() +
         prepared.messageTextCharacterFindings() +
@@ -494,7 +502,8 @@ internal fun check(
             CheckFamily.REPETITION_WILDCARD_TARGET, CheckFamily.COMPUTED_TARGET_KIND,
             CheckFamily.RAW_TYPE_LENGTH, CheckFamily.COMPUTED_TARGET_INDEX_FIELD,
             CheckFamily.COMPUTATION_PRECONDITION_FEATURES, CheckFamily.COMPUTATION_CYCLE,
-            CheckFamily.REPETITION_KEY_PLACEMENT, CheckFamily.ERROR_TARGET_ITERATION,
+            CheckFamily.REPETITION_KEY_PLACEMENT, CheckFamily.REPETITION_SCOPE_GROUP,
+            CheckFamily.ERROR_TARGET_ITERATION,
             CheckFamily.MESSAGE_PARAMETER_REFERENCE, CheckFamily.MESSAGE_TEXT_CHARACTERS),
         gaps = prepared.gaps() + prepared.emptyFactBase() + findings.buildBlocked() +
             prepared.variantFilterGaps() + prepared.enumCategoryGaps() +

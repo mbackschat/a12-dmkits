@@ -25,11 +25,14 @@ import io.github.mbackschat.a12.dm.modelkit.FieldKind;
  * the previous cell having put the rule inside the key's own repeatable group. Reproducing that position on
  * an index-free model still draws {@code MVK_NO_WILDCARD}, so position is not the variable.
  *
- * <p><b>And the scope has a demand of its own that containment does not describe:</b> {@code @From} must name
- * a REPEATABLE group, so naming the rule's own non-repeatable root draws {@code MVK_GROUP_NOT_REPEATABLE}
- * rather than any containment class. That law is already held — KERNEL-FINDINGS §9 measured it on a
- * subscription carrier and {@code RepetitionNotUniqueCondition.from} pre-checks it — so this row CONFIRMS it
- * on a second carrier; it is not a new class.
+ * <p><b>And the scope has demands of its own that containment does not describe, in a fixed order:</b>
+ * {@code @From} must name a GROUP before it must name a REPEATABLE one. Naming the rule's own non-repeatable
+ * root draws {@code MVK_GROUP_NOT_REPEATABLE} rather than any containment class — a law already held, since
+ * KERNEL-FINDINGS §9 measured it on a subscription carrier and {@code RepetitionNotUniqueCondition.from}
+ * pre-checks it, so that row CONFIRMS it on a second carrier. Naming a FIELD draws
+ * {@code MVK_NO_FIELDS_ALLOWED} instead, which is the new class here and the one a checker needs: it fixes
+ * what {@code REPETITION_SCOPE_GROUP} may report from, since "not a repeatable group" is true of a field and
+ * would have attached the wrong defect to every one of them.
  *
  * <p>One cell of this law had been measured — a key in a group PARALLEL to the {@code @From} group draws
  * {@code MVK_NOT_IN_GROUP} ({@link IterationLawsTest}) — and the source note beside it reads "each key's
@@ -57,7 +60,8 @@ class RepetitionNotUniqueFromScopeLawsTest {
                     .group("Crates", c -> c.repeatable(20)
                             .field("CrateRef", FieldKind.STRING)
                             .group("Items", i -> i.repeatable(50).field("Sku", FieldKind.STRING)))
-                    .group("Pallets", p -> p.repeatable(10).field("PalletRef", FieldKind.STRING)))
+                    .group("Pallets", p -> p.repeatable(10).field("PalletRef", FieldKind.STRING))
+                    .group("Office", o -> o.field("OfficeRef", FieldKind.STRING)))
             .build().toJson();
 
     /** The same shape with the two repeatable groups INDEX-KEYED on one name, so they iterate jointly. */
@@ -91,6 +95,10 @@ class RepetitionNotUniqueFromScopeLawsTest {
         actual.put("the key outside the scope, on an INDEX-KEYED pair that iterates jointly",
                 KernelLaws.verdictModel(INDEXED, "/Depot", "../Crates/CrateRef",
                         "RepetitionNotUnique(Crates/CrateRef @From Pallets)"));
+        actual.put("the scope names a FIELD rather than a group",
+                verdict("../Crates/CrateRef", "RepetitionNotUnique(Crates/CrateRef @From Crates/CrateRef)"));
+        actual.put("the scope is a non-repeatable group that is not the root",
+                verdict("../Crates/CrateRef", "RepetitionNotUnique(Crates/CrateRef @From Office)"));
 
         Map<String, String> expected = new LinkedHashMap<>();
         expected.put("the key sits directly in the scope", KernelLaws.ADMITTED);
@@ -107,6 +115,15 @@ class RepetitionNotUniqueFromScopeLawsTest {
         // and A12 gets as far as asking about containment.
         expected.put("the key outside the scope, on an INDEX-KEYED pair that iterates jointly",
                 "MVK_NOT_IN_GROUP");
+        // A FOURTH class, and it settles what a checker may report from: the scope's KIND is gated before its
+        // repeatability, so a field draws `MVK_NO_FIELDS_ALLOWED` and never the repeatability class. A family
+        // reading "the scope is not a repeatable group" would therefore have named the wrong defect on every
+        // field scope — the prediction here was `MVK_GROUP_NOT_REPEATABLE` and the row refuted it.
+        expected.put("the scope names a FIELD rather than a group", "MVK_NO_FIELDS_ALLOWED");
+        // The repeatability class was measured only where the scope was the ROOT, so a checker reporting it
+        // from `isRepeatable` alone would be transferring it to a carrier nobody had run. This is that
+        // carrier: an ordinary non-repeatable group, neither the root nor an ancestor of the keys.
+        expected.put("the scope is a non-repeatable group that is not the root", "MVK_GROUP_NOT_REPEATABLE");
         assertEquals(expected, actual, "RepetitionNotUnique @From scope containment");
     }
 

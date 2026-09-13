@@ -85,6 +85,10 @@ class CheckFamilyWiringTest {
                 "errorEntityRelPath":"../PalletNote",
                 "errorCode":"C23","errorMessage":[{"locale":"en_US","text":"x"}]}}
             ]}},
+            {"type":"Rule","id":"r24","name":"ScopeDoesNotRepeat","Rule":{
+              "errorCondition":"RepetitionNotUnique(Shelf/ShelfCode @From Shelf)",
+              "errorEntityRelPath":"../Shelf/ShelfCode",
+              "errorCode":"C24","errorMessage":[{"locale":"en_US","text":"x"}]}},
             {"type":"Rule","id":"r22","name":"KeyWithNoRepetition","Rule":{
               "errorCondition":"RepetitionNotUnique(Price)",
               "errorEntityRelPath":"../Price",
@@ -243,6 +247,11 @@ class CheckFamilyWiringTest {
         // shape the class collapses onto, and the one that needs no second group to express.
         CheckFamily.REPETITION_KEY_PLACEMENT to
             ("MVK_REPEATABLE_GROUP_MISSING" to "/Catalog/KeyWithNoRepetition"),
+        // `Shelf` is the fixture's non-repeatable group, so scoping the operator to it gives it no
+        // repetition to scan — and the key placement family stays silent because a clause-carrying operand
+        // is not one it reduces.
+        CheckFamily.REPETITION_SCOPE_GROUP to
+            ("MVK_GROUP_NOT_REPEATABLE" to "/Catalog/ScopeDoesNotRepeat"),
         // The rule sits in a repeatable group and reaches its error field only through the root, while
         // reading a sibling of that field — so A12 cannot say which pallet the error belongs to.
         CheckFamily.ERROR_TARGET_ITERATION to

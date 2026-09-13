@@ -13,14 +13,12 @@ package io.github.mbackschat.a12.dm.consistency.syntax
  * family already reports such a text, and a truncated argument list is a SHORTER list — the shape that makes
  * an operand law look satisfied.
  */
-fun callsIn(text: String, language: ConditionLanguage, entry: SyntaxEntry): List<ConditionCall> =
-    callShapes(text, language, entry).map { shape ->
-        ConditionCall(
-            shape.operator,
-            shape.at,
-            shape.operands.map { CallOperand(it.asPath(CONDITION_KEYWORDS.getValue(language))) },
-        )
+fun callsIn(text: String, language: ConditionLanguage, entry: SyntaxEntry): List<ConditionCall> {
+    val keywords = CONDITION_KEYWORDS.getValue(language)
+    return callShapes(text, language, entry).map { shape ->
+        ConditionCall(shape.operator, shape.at, shape.operands.map { it.asOperand(keywords, text) })
     }
+}
 
 /**
  * One call: the operator as it was SPELLED, and its top-level arguments in authored order.
@@ -40,8 +38,95 @@ data class ConditionCall(val operator: String, val at: Int, val operands: List<C
  *     expression, a nested call, or a reference carrying a filter, a scope or a category selector. Absent is
  *     never "names nothing"; it is "this reader did not reduce it to one path", so a law over operands must
  *     treat it as an operand it cannot compare rather than one that is not there.
+ * @param base the same reduction applied to the entity spec BEFORE the first clause, so an operand carrying
+ *     one still says which element it is about. Equal to [path] on a clause-free operand, and absent on the
+ *     same shapes [path] is absent for.
+ * @param clauses what the spec carries, in authored order — empty on a bare operand.
  */
-data class CallOperand(val path: String?)
+data class CallOperand(
+    val path: String?,
+    val base: String? = path,
+    val clauses: List<OperandClause> = emptyList(),
+)
+
+/**
+ * One clause hanging off an entity spec: a filter, a scope, or a semantic-index key.
+ *
+ * **Reading a clause is what lets a family see a shape it would otherwise have to stay silent on.** Until
+ * this existed every clause-carrying operand reduced to nothing at all, so a law about the `@From` scope or
+ * the `Having` filter had no operand to judge — [repetitionScopeGroupFindings] is the first consumer and
+ * the reason this landed.
+ *
+ * @param keyword the clause keyword AS SPELLED, so a consumer matches it through [CONDITION_KEYWORDS] for
+ *     the model's own language rather than against a literal that is a field name in the other one.
+ * @param path the clause's own operand reduced by the same bare-spec rule as [CallOperand.path] — present
+ *     for a scope, absent for a filter, whose operand is a whole condition rather than a path.
+ * @param text the authored text of the clause's operand, for a consumer that needs to read it further.
+ */
+data class OperandClause(val keyword: String, val path: String?, val text: String)
+
+/**
+ * The operand this token run describes, split at its top-level clause keywords.
+ *
+ * Depth matters and is the whole subtlety: a `Having` filter's body may carry its own bracketed spec with
+ * its own clause, and cutting there would attribute an inner clause to the outer operand. So the scan cuts
+ * only where no delimiter is open.
+ */
+private fun List<Token>.asOperand(keywords: Map<String, KeywordKind>, source: String): CallOperand {
+    val cuts = clauseCuts(keywords)
+    if (cuts.isEmpty()) {
+        return CallOperand(asPath(keywords))
+    }
+    val clauses = cuts.mapIndexed { position, cut ->
+        val body = subList(cut.at + cut.width, cuts.getOrNull(position + 1)?.at ?: size)
+        OperandClause(
+            cut.keyword,
+            body.asPath(keywords),
+            if (body.isEmpty()) "" else source.substring(body.first().start, body.last().end),
+        )
+    }
+    // `path` keeps its narrower contract deliberately: it has always meant "a bare spec and nothing else",
+    // and widening it here would silently change every family already reading it.
+    return CallOperand(null, subList(0, cuts.first().at).asPath(keywords), clauses)
+}
+
+/** Where one clause keyword sits, and how many tokens it spans. */
+private class ClauseCut(val keyword: String, val at: Int, val width: Int)
+
+/**
+ * The top-level clause keywords in this run, in order.
+ *
+ * `@From` / `@Von` is the one that does not arrive as a single token — the tokenizer files `@` as
+ * punctuation because it is also the `@*` marker — so it is matched as the adjacent pair, exactly as the
+ * shape parser and the reference scan both do.
+ */
+private fun List<Token>.clauseCuts(keywords: Map<String, KeywordKind>): List<ClauseCut> {
+    val cuts = mutableListOf<ClauseCut>()
+    var depth = 0
+    indices.forEach { at ->
+        val token = this[at]
+        when {
+            token.kind == TokenKind.PUNCTUATION && token.text in OPENING_DELIMITERS -> depth++
+            token.kind == TokenKind.PUNCTUATION && token.text in CLOSING_DELIMITERS -> depth--
+            depth > 0 -> Unit
+            token.kind == TokenKind.NAME && keywords[token.text] == KeywordKind.PATH_OP ->
+                cuts += ClauseCut(token.text, at, 1)
+            token.kind == TokenKind.PUNCTUATION && token.text == "@" -> {
+                val name = getOrNull(at + 1)
+                if (name != null && name.kind == TokenKind.NAME &&
+                    keywords["@" + name.text] == KeywordKind.PATH_OP
+                ) {
+                    cuts += ClauseCut("@" + name.text, at, 2)
+                }
+            }
+        }
+    }
+    return cuts
+}
+
+private val OPENING_DELIMITERS = setOf("(", "[")
+
+private val CLOSING_DELIMITERS = setOf(")", "]")
 
 /**
  * The path this token run names, or null when the run is not a bare entity spec.
