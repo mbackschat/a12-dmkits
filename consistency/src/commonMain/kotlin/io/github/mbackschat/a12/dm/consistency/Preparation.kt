@@ -149,6 +149,11 @@ data class UnexpandedMount(val at: String, val alias: String, val reason: String
  *     unusable rather than narrowing the set — A12's reader refuses the spelling outright, or, for the empty
  *     code, reads it and then cannot build the model (measured 2026-09-12, `MessageSlotRawShapeLawsTest`) —
  *     so they are carried rather than dropped, and the declaration-slot family reports them.
+ * @param supportedCharacters the ENTRY model's `content.modelConfig.supportedCharacters`, verbatim and in
+ *     declaration order, empty when the model declares none. The entry model's list is the one in play for
+ *     the whole EXPANDED tree — a mounted model's enum values answer to the host's restriction, measured
+ *     2026-09-13 (`SupportedCharactersDeclarationGateLawsTest`) — which is why it is carried on the model
+ *     rather than looked up per declaration.
  * @param unexpandedMounts the mounts that left the fact base incomplete.
  * @param diagnostics what the checker could not read. Preparation reports and skips rather than failing, so
  *     one broken element cannot mask its siblings' findings — and no input makes [prepare] raise.
@@ -160,6 +165,7 @@ data class PreparedModel(
     val unsupportedConditionLanguage: String? = null,
     val declaredLocales: List<String> = emptyList(),
     val unreadableLocaleCodes: List<String> = emptyList(),
+    val supportedCharacters: List<String> = emptyList(),
     val unexpandedMounts: List<UnexpandedMount> = emptyList(),
     val diagnostics: List<Diagnostic> = emptyList(),
     /**
@@ -260,11 +266,26 @@ fun prepare(
         unsupportedConditionLanguage = declaredCode.takeIf { it != null && declaredLanguage == null },
         declaredLocales = locales.keys,
         unreadableLocaleCodes = locales.unreadable,
+        supportedCharacters = content.declaredSupportedCharacters(),
         unexpandedMounts = collector.unexpandedMounts,
         diagnostics = collector.diagnostics,
         declaredTypeDefinitionIds = content.declaredTypeDefinitionIds(),
     )
 }
+
+/**
+ * `content.modelConfig.supportedCharacters`, as declared.
+ *
+ * Entries are returned verbatim, including any this checker cannot interpret: deciding what an entry MEANS
+ * belongs to the family that judges characters, and dropping an unreadable one here would turn a restriction
+ * the checker cannot read into a narrower one it can. An entry that is not a string becomes the empty string
+ * for the same reason — it is a place in the list, and no reading admits it, so the restriction as a whole
+ * stays unreadable rather than quietly losing a member.
+ */
+private fun JsonObject?.declaredSupportedCharacters(): List<String> =
+    ((this?.get("modelConfig") as? JsonObject)?.get("supportedCharacters") as? JsonArray)
+        ?.map { (it as? JsonPrimitive)?.takeIf { entry -> entry.isString }?.content ?: "" }
+        ?: emptyList()
 
 /**
  * The ids under `content.typeDefinitions`, read as A12 reads them and no more strictly.

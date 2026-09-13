@@ -25,7 +25,7 @@ class CheckFamilyWiringTest {
     private val source = ModelSource(
         """
         {"header":{"id":"wiring","locales":[{"code":"en_US"}]},
-         "content":{"modelRoot":{"rootGroups":[
+         "content":{"modelConfig":{"supportedCharacters":["A-Z"]},"modelRoot":{"rootGroups":[
           {"type":"Group","id":"g0","name":"Catalog","Group":{"elements":[
             {"type":"Field","id":"f0","name":"Price","Field":{"fieldType":{"type":"StringType"}}},
             {"type":"Field","id":"f1","name":"Unbindable","Field":{
@@ -36,6 +36,8 @@ class CheckFamilyWiringTest {
             {"type":"Field","id":"f5","name":"MiscategorisedTier","Field":{"fieldType":{
               "type":"EnumerationType","EnumerationType":{"values":[{"value":"BASIC"},{"value":"PLUS"}],
               "categories":[{"name":"Band","values":["STANDARD"]}]}}}},
+            {"type":"Field","id":"f6","name":"LowercaseTier","Field":{"fieldType":{
+              "type":"EnumerationType","EnumerationType":{"values":[{"value":"q"}]}}}},
             {"type":"Rule","id":"r1","name":"BadTarget","Rule":{
               "errorCondition":"FieldFilled(Price)","errorEntityRelPath":"../NoSuchField",
               "errorCode":"C1","errorMessage":[{"locale":"en_US","text":"x"}]}},
@@ -119,6 +121,8 @@ class CheckFamilyWiringTest {
         CheckFamily.ELEMENT_NAME_ALPHABET to ("MVK_PATH_INVALID" to "/Catalog/Bad-Name"),
         CheckFamily.ENUM_CATEGORY_ALIGNMENT to
             ("MVK_MISSING_CATEGORY_VALUE" to "/Catalog/MiscategorisedTier"),
+        CheckFamily.ENUM_VALUE_CHARACTERS to
+            ("MVK_ENUM_VALUE_WITH_INVALID_CHARACTER" to "/Catalog/LowercaseTier"),
     )
 
     @Test

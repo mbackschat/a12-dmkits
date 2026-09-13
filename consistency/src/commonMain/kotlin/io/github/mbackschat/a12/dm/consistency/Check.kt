@@ -111,6 +111,14 @@ enum class CheckFamily {
     ENUM_CATEGORY_ALIGNMENT,
 
     /**
+     * That every declared ENUM VALUE is spelled in the characters `content.modelConfig.supportedCharacters`
+     * admits. The restriction is a runtime constraint A12 bakes into generated code, and `checkConsistency`
+     * re-runs the generator — so it is an authoring gate too. Enum values are the only declared strings it
+     * judges, measured against a name, a message and a category token that are all admitted.
+     */
+    ENUM_VALUE_CHARACTERS,
+
+    /**
      * That every DSL-bearing member can be TOKENIZED — the syntax layer's first phase, and the only one
      * decidable without a grammar. Whether the tokens then form a condition A12's parser accepts is a
      * separate question this family does not answer.
@@ -276,7 +284,8 @@ internal fun check(
         prepared.elementNameFindings() + prepared.groupOrderingFindings() +
         prepared.presentationMemberFindings() + prepared.stringSlotFindings() +
         prepared.fieldTypeBindingFindings() + prepared.temporalConfigFindings() +
-        prepared.elementNameAlphabetFindings() + prepared.enumCategoryFindings()
+        prepared.elementNameAlphabetFindings() + prepared.enumCategoryFindings() +
+        prepared.supportedCharacterFindings()
     val findings = judged.notSuppressedBy(prepared.variantFilterSuppressed())
     return ConsistencyReport(
         modelId = admitted.modelId,
@@ -293,7 +302,7 @@ internal fun check(
             CheckFamily.CONDITION_GRAMMAR, CheckFamily.RULE_PRESENTATION_MEMBERS,
             CheckFamily.STRING_SLOT_BINDING, CheckFamily.FIELD_TYPE_BINDING,
             CheckFamily.TEMPORAL_CONFIG, CheckFamily.ELEMENT_NAME_ALPHABET,
-            CheckFamily.ENUM_CATEGORY_ALIGNMENT),
+            CheckFamily.ENUM_CATEGORY_ALIGNMENT, CheckFamily.ENUM_VALUE_CHARACTERS),
         gaps = prepared.gaps() + prepared.emptyFactBase() + findings.buildBlocked() +
             prepared.variantFilterGaps() + UNREAD_MEMBERS + UNIMPLEMENTED_FAMILIES,
     )

@@ -6214,3 +6214,28 @@ Every member of the two refused rows appears in an admitted row, so the allowlis
 **The range domain is not a projection of the field-format vocabulary, in both directions.** `yyyyMM` is an admitted field format and is refused on a range at every probed separator; `dd.MM` is refused as a field format and admitted on a range with `-`. Reusing the thirteen-member field vocabulary here would refuse a legal model and miss an illegal one.
 
 *Locked by:* `rulekit.validate.laws.DateRangePairAdmissionLawsTest`; the pair set itself is derived by `TemporalFormatVocabularyGuardTest` and published in [TEMPORAL-FORMAT-VOCABULARY](TEMPORAL-FORMAT-VOCABULARY.md).
+
+## §8 supplement — the `supportedCharacters` restriction judges declared ENUM VALUES and nothing else, per distinct character per value (measured, 2026-09-13) <a id="kf317"></a>
+
+> Fold: pending — belongs beside [KERNEL-SEMANTICS](KERNEL-SEMANTICS.md) §8's Enumeration account, whose declaration material does not mention the model-level character restriction.
+
+[MVK-LEDGER](MVK-LEDGER.md)'s scope-boundary note established that `checkConsistency` re-runs the validation code generator, so `MVK_ENUM_VALUE_WITH_INVALID_CHARACTER` reaches an ordinary authoring gate: `supportedCharacters: ["A-Z"]` with an enum value `beta` draws four diagnostics. That settles REACHABILITY and leaves the two questions a consumer reproducing the gate has to answer — which declared strings it judges, and what a definition entry means.
+
+**It judges enum VALUES and nothing else.** The identical refused spelling, under the identical restriction, in three other declared strings of the same model:
+
+| the offending spelling sits in | verdict |
+|---|---|
+| an enum `values[].value` | 4 × `MVK_ENUM_VALUE_WITH_INVALID_CHARACTER` |
+| an element NAME | ADMITTED |
+| an error MESSAGE text | ADMITTED |
+| an enum CATEGORY token | ADMITTED |
+
+A consumer reading the restriction as "the model's text" would refuse three models A12 takes. The transfer needs no new branch, which is why it prompts no question.
+
+**A definition is a LIST of independent entries, each a singleton or an inclusive range.** `["A-Z"]` admits both boundary characters; `["B-Y"]` refuses `A` and `Z`; `["A-Z", "b"]` takes `beta` from four offenders down to three, so the entries union rather than compose.
+
+**The multiplicity is per DISTINCT character, scoped to the VALUE.** `aa` draws ONE diagnostic, not two — the repeat is folded — while the same two offenders spelled into two values (`ab`, `ba`) draw four. Neither row is inferable from the other, and a consumer keyed on occurrences or on model-wide distinctness disagrees with A12 on both.
+
+**The restriction belongs to the EXPANDED model, not to the file that declares the enum.** A provider declaring no restriction of its own is clean when checked alone and draws the host's four diagnostics once mounted into a model that declares `A-Z`. So it is applied to mounted declarations as much as to local ones.
+
+*Locked by:* `rulekit.validate.laws.SupportedCharactersDeclarationGateLawsTest` (the scope, the definition grammar, the multiplicity, and the two-model mount fixture); the reachability half stays with `CodegenErrorClassReachesConsistencyLawsTest`.
