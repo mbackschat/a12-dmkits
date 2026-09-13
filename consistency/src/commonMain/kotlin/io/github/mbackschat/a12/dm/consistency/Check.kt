@@ -253,6 +253,13 @@ enum class CheckFamily {
     MESSAGE_PARAMETER_REFERENCE,
 
     /**
+     * That an error message's TEXT carries no control character. A12 splits the law in two — a line break
+     * has its own class — and runs them in ORDER, so a text carrying both draws only the line-break one.
+     * A repertoire restriction is a different law and is not this family's.
+     */
+    MESSAGE_TEXT_CHARACTERS,
+
+    /**
      * That every DSL-bearing member can be TOKENIZED — the syntax layer's first phase, and the only one
      * decidable without a grammar. Whether the tokens then form a condition A12's parser accepts is a
      * separate question this family does not answer.
@@ -426,6 +433,7 @@ internal fun check(
         prepared.rawTypeLengthFindings() + prepared.computationPreconditionFeatureFindings() +
         prepared.computationCycleFindings() +
         prepared.messageParameterFindings() +
+        prepared.messageTextCharacterFindings() +
         prepared.stringTypeMessageFindings() + prepared.stringTypeParameterFindings() +
         prepared.numberTypeDigitFindings() + prepared.enumValueLabelFindings()
     val findings = judged.notSuppressedBy(prepared.variantFilterSuppressed())
@@ -453,7 +461,7 @@ internal fun check(
             CheckFamily.REPETITION_WILDCARD_TARGET, CheckFamily.COMPUTED_TARGET_KIND,
             CheckFamily.RAW_TYPE_LENGTH, CheckFamily.COMPUTED_TARGET_INDEX_FIELD,
             CheckFamily.COMPUTATION_PRECONDITION_FEATURES, CheckFamily.COMPUTATION_CYCLE,
-            CheckFamily.MESSAGE_PARAMETER_REFERENCE),
+            CheckFamily.MESSAGE_PARAMETER_REFERENCE, CheckFamily.MESSAGE_TEXT_CHARACTERS),
         gaps = prepared.gaps() + prepared.emptyFactBase() + findings.buildBlocked() +
             prepared.variantFilterGaps() + prepared.enumCategoryGaps() +
             prepared.supportedCharacterGaps() + prepared.fieldTypeBindingGaps() +

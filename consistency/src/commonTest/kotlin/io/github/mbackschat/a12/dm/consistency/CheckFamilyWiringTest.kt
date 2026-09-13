@@ -121,6 +121,9 @@ class CheckFamilyWiringTest {
             {"type":"Rule","id":"r22","name":"MessageNamesUnread","Rule":{
               "errorCondition":"FieldFilled(Price)","errorEntityRelPath":"../Price",
               "errorCode":"C22","errorMessage":[{"locale":"en_US","text":"see ${'$'}Amount${'$'}"}]}},
+            {"type":"Rule","id":"r23","name":"MessageCarriesATab","Rule":{
+              "errorCondition":"FieldFilled(Price)","errorEntityRelPath":"../Price",
+              "errorCode":"C23","errorMessage":[{"locale":"en_US","text":"see\u0009the price"}]}},
             {"type":"Field","id":"f14","name":"Tare","Field":{"fieldType":{"type":"NumberType"}}},
             {"type":"Field","id":"f15","name":"Gross","Field":{"fieldType":{"type":"NumberType"}}},
             {"type":"Computation","id":"c7","name":"GrossCalc","Computation":{
@@ -215,6 +218,8 @@ class CheckFamilyWiringTest {
         CheckFamily.COMPUTATION_CYCLE to ("MVK_ERROR_CALC_CYCLE" to "/Catalog/GrossCalc"),
         CheckFamily.MESSAGE_PARAMETER_REFERENCE to
             ("INVALID_FIELD" to "/Catalog/MessageNamesUnread"),
+        CheckFamily.MESSAGE_TEXT_CHARACTERS to
+            ("INVALID_CHARACTERS" to "/Catalog/MessageCarriesATab"),
         CheckFamily.GROUP_LIST_OPERANDS to ("MVK_DUPLICATE_PARAM1" to "/Catalog/RepeatedGroup"),
         CheckFamily.GROUP_LIST_ROOT_OPERAND to
             ("MVK_ROOT_GROUP_REFERENCED" to "/Catalog/RootOperand"),

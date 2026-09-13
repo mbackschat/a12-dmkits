@@ -6858,3 +6858,30 @@ The third row is the one that keeps the account honest: without it, the local hi
 Reported by the portable checker as `ReferenceRole.MESSAGE_PARAMETER`, inside `CheckFamily.MESSAGE_PARAMETER_REFERENCE`.
 
 *Locked by:* `rulekit.validate.laws.MessageParameterShortNameLawsTest`.
+
+## §13 supplement — an error message's control characters draw two classes, and the gates are ORDERED (measured, 2026-09-13) <a id="kf337"></a>
+
+> Fold: not-foldable — the error-text surface's character law, outside KERNEL-SEMANTICS's evaluation scope.
+
+**The whole law is a character predicate, which makes this the cheapest check the error-text surface has** — and it splits in two, where a reader would expect one.
+
+| the message text carries | A12 |
+|---|---|
+| printable text — the control | ADMITTED |
+| a line feed, a carriage return, or a CRLF pair | **`INVALID_LINEBREAK`**, beside a CODELESS runtime diagnostic ("Only values without line breaks are allowed.") |
+| a tab, NUL, BEL or DEL | **`INVALID_CHARACTERS`** |
+| U+001F, the last C0 control | **`INVALID_CHARACTERS`** |
+| U+0080 and U+009F, both ends of C1 | **`INVALID_CHARACTERS`** |
+| U+0020, a plain space | ADMITTED |
+| U+00A0, a non-breaking space | ADMITTED |
+| **a line break AND a tab** | **`INVALID_LINEBREAK`** only |
+
+**The last row is the one an implementation turns on.** The gates run in ORDER rather than independently: the tab beside a line break draws nothing, so a reader reporting each kind it finds names a verdict A12 did not give — on exactly the text an author produces by pasting, which is the likeliest real input here.
+
+**The refused set is the ISO control blocks**, both ends measured — `U+0000`–`U+001F` and `U+007F`–`U+009F`, with the space and the non-breaking space outside them. A repertoire restriction is a *different* law: the charset refusal for a supplementary-plane code point carries no class at all ([KF279](#kf279)), so a family keying on the charset would answer a different question with the wrong code.
+
+**A COMPUTATION's message meets the same two classes**, and without the codeless runtime diagnostic the rule rows carry beside them — that one belongs to the rule member rather than to the text. So the law is the message member's, as [KF335](#kf335) found for membership.
+
+Reported by the portable checker as `CheckFamily.MESSAGE_TEXT_CHARACTERS`.
+
+*Locked by:* `rulekit.validate.laws.MessageTextControlCharacterLawsTest`.
