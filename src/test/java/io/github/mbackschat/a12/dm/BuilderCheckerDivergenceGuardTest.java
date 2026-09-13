@@ -150,6 +150,19 @@ class BuilderCheckerDivergenceGuardTest {
             Map.entry("MVK_MISSING_ERROR_FIELD", Disposition.PROSE_ONLY),
             Map.entry("MVK_INVALID_ROOT_GROUP", Disposition.PROSE_ONLY),
 
+            // The RepetitionNotUnique key-placement pair, added 2026-09-14 with that family. rulekit names
+            // both to EXPLAIN a kernel verdict and refuses neither: the javadoc on the condition marks the
+            // class "position-dependent — kernel-delegated", `StructuralKernelFix` carries its corrective,
+            // and `CurrentRepetition`/`AggregateOperand` name the wildcard class the same way. The builder's
+            // one throw nearby is about the `@From` reference group, a different demand, and the checker
+            // declines the `@From` form outright — so the two never judge one shape.
+            Map.entry("MVK_REPEATABLE_GROUP_MISSING", Disposition.PROSE_ONLY),
+
+            // …and the checker's own mention of this one is a KDoc naming what it deliberately does NOT
+            // report: it is the class A12 draws where a key outside the rule group pre-empts the placement
+            // class, and no family owns the pinning law that decides it ([KF347]).
+            Map.entry("MVK_NO_WILDCARD", Disposition.PROSE_ONLY),
+
             // The two DateType config gates. rulekit names them only in `StructuralKernelFix`'s correctives,
             // deliberately: a client-side refusal was measured and DECLINED there, because `FieldTypeSpecReader`
             // builds `DateSpec` on the READ path and a constructor check would make an inconsistent kernel

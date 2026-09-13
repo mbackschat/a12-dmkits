@@ -7126,6 +7126,33 @@ Reported by the portable checker, which did not emit `MVK_SORT_FIELD_DUPLICATE` 
 
 *Locked by:* `rulekit.validate.laws.GroupOrderingMultipleDefectLawsTest`, mirrored by `consistency … GroupOrderingMultipleDefectTest`.
 
+## §9 supplement — what pre-empts `MVK_REPEATABLE_GROUP_MISSING` is a key OUTSIDE the rule group, and its carrier picks the class (measured, 2026-09-14) <a id="kf347"></a>
+
+> Fold: not-foldable — a diagnostic-class selection law, not an evaluation behaviour.
+
+**The law A12 enforces is a boundary, not a property of the key.** `RepetitionNotUnique` asks whether a repeating element takes the same key twice, so every key needs a repeatable group strictly BETWEEN the rule's own group and itself. Three structurally different shapes collapse onto the one class — a sole key in a non-repeatable group, a second key beside a good one, and the rule group sitting AT the repeated group rather than above it (both key spellings). [KF295](#kf295)'s row and the kernel's own corrective for the code both state the boundary; what had never been measured is what happens when it is violated *and* something else is wrong too.
+
+**An OUTSIDE key pre-empts the class, and which class replaces it depends on the outsider's carrier.** Two readings fitted every row that existed — "a second key of any carrier pre-empts" and "only a key outside the rule group does" — and they disagree at exactly one cell, which is why it was built rather than inferred. Measured on one cart model, varying the rule group's position against the second key's carrier and holding the error field on the repeated group's own field (`rulekit.validate.laws.RepetitionNotUniqueKeyPathLawsTest`, kernel 30.8.1):
+
+| rule group | second key's carrier | A12 |
+|---|---|---|
+| above the repeated group | none (sole key) | ADMITTED |
+| above | the same repeated group | ADMITTED |
+| above | a non-repeatable group, inside the rule group | `MVK_REPEATABLE_GROUP_MISSING` |
+| above | a parallel REPEATABLE group, inside the rule group | `MVK_NO_WILDCARD` |
+| AT the repeated group | none (sole key) | `MVK_REPEATABLE_GROUP_MISSING` |
+| AT | the same repeated group | `MVK_REPEATABLE_GROUP_MISSING` |
+| AT | a non-repeatable group, OUTSIDE the rule group | `MVK_NOT_IN_RULEGROUP` |
+| AT | a parallel repeatable group, OUTSIDE the rule group | `MVK_NO_WILDCARD` |
+
+**`MVK_NOT_IN_RULEGROUP` is the discriminating cell and had no evidence anywhere in the estate before it.** It is what makes the second reading the right one: being a second key is not what pre-empts, being outside the rule group is — and the outsider's own carrier then decides between the two replacement classes. A checker built from the collapse alone reports `MVK_REPEATABLE_GROUP_MISSING` on both outside rows, where A12 draws neither.
+
+**DEPTH does not enter it, and one of the two depth rows is the one a naive implementation passes.** A repeatable group two levels above the key suppresses the class exactly as a direct parent does, and a non-repeatable group at any depth draws it — so the test is "a repeatable group anywhere on the path between", never "the key's own parent is repeatable". The two-level row exists because the one-level row cannot tell those apart: it was added after a mutant reading only the parent survived the grid.
+
+**The multiplicity is ONE finding per call.** Two keys each lacking a repetition draw a single class, so it is a verdict on the call rather than on a key.
+
+Locked: `validate.laws.RepetitionNotUniqueKeyPathLawsTest` (23 rows, the twelve pre-existing ones re-run unchanged after the fixture gained its depth carriers, which is what makes them evidence the extension is inert). Reported by the portable checker as `CheckFamily.REPETITION_KEY_PLACEMENT`, which stays silent on every pre-empted row.
+
 ## §13 supplement — a rule reports every SLOT defect, and `RULE_HAS_NO_ERRORTEXT`'s split is enumerated (measured, 2026-09-13) <a id="kf346"></a>
 
 > Fold: not-foldable — the checker's examination order, not an evaluation behaviour.

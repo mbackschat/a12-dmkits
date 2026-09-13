@@ -1,0 +1,117 @@
+package io.github.mbackschat.a12.dm.consistency
+
+import io.github.mbackschat.a12.dm.consistency.syntax.CONDITION_OPERATOR_KEYWORDS
+import io.github.mbackschat.a12.dm.consistency.syntax.ConditionCall
+import io.github.mbackschat.a12.dm.consistency.syntax.callsIn
+
+/**
+ * Where a `RepetitionNotUnique` KEY has to sit relative to the rule that names it.
+ *
+ * The operator asks whether a repeating element takes the same key twice, so A12 demands a repetition to ask
+ * it about: every key must have a repeatable group strictly BETWEEN the rule's own group and itself, and
+ * `MVK_REPEATABLE_GROUP_MISSING` is what A12 draws when one does not ([KERNEL-FINDINGS KF347],
+ * `rulekit.validate.laws.RepetitionNotUniqueKeyPathLawsTest`).
+ *
+ * **The class COLLAPSES shapes that read as different defects**, which is why the family keys on the
+ * relation and not on any of them: a sole key in a non-repeatable group, a second key in one, and the rule
+ * group sitting AT the repeated group rather than above it all draw it, the last in both the absolute and
+ * the relative key spelling.
+ *
+ * **An OUTSIDE key pre-empts it, and that is the half a reading gets wrong.** With the rule group at
+ * `/Basket/Lines`, the key `Sku` has no repetition between it and the rule group and draws the class — but
+ * add a second key outside that group and A12 reports the outside key instead, never this class. Which class
+ * it reports then depends on the outsider's own carrier, measured at both cells: a parallel REPEATABLE group
+ * draws `MVK_NO_WILDCARD`, a non-repeatable one draws `MVK_NOT_IN_RULEGROUP`. Two readings fitted every row
+ * that existed before those cells — "a second key of any carrier pre-empts" and "only an outside one does" —
+ * and they disagree exactly here, so the grid was built to separate them rather than to add rows to the
+ * account it already had. This family therefore says nothing at all once any key lies outside the rule
+ * group: both classes belong to families that do not exist yet, and guessing between them would attach one
+ * fix to a defect that has another.
+ *
+ * **DEPTH does not matter, measured rather than assumed.** A repeatable group two levels down suppresses the
+ * class as a direct child does, and a non-repeatable group two levels down draws it just the same — so the
+ * test is "is there a repeatable group on the path between", never "is the key's own parent repeatable".
+ *
+ * **The multiplicity is ONE finding per call, whatever the keys do.** Two keys each lacking a repetition draw
+ * a single class from A12, so this is a verdict on the call rather than on a key, and the message names every
+ * key that fails rather than being emitted once per key.
+ *
+ * **Rules only, and not as a scope limit.** A12's calculation module refuses `RepetitionNotUnique` in a
+ * computation's precondition outright ([KERNEL-FINDINGS KF333], reported by [computationPreconditionFeatureFindings]
+ * as `MVK_ERROR_INVALID_LANGUAGE_FEATURE`), so a computation carrying one has a different defect and this
+ * family would be a second opinion about a condition A12 never reaches.
+ */
+fun PreparedModel.repetitionKeyPlacementFindings(): List<Finding> {
+    val spelling = CONDITION_OPERATOR_KEYWORDS[conditionLanguage]?.get(REPETITION_NOT_UNIQUE)
+        ?: return emptyList()
+    return elements.filter { it.kind == "Rule" }.flatMap { element ->
+        val body = element.body ?: return@flatMap emptyList()
+        val declaringGroup = element.path.substringBeforeLast('/', missingDelimiterValue = "")
+        conditionTexts(element.kind, body).flatMap { (member, text) ->
+            callsIn(text, conditionLanguage, syntaxEntryOf(member))
+                .filter { it.operator == spelling }
+                .mapNotNull { call -> placementFinding(call, declaringGroup, element, member) }
+        }
+    }
+}
+
+private const val REPETITION_NOT_UNIQUE = "RepetitionNotUnique"
+
+/**
+ * The one finding this call draws, or null for every shape the grid left to A12.
+ *
+ * Four silences, each a shape A12 answers with a class of its own rather than this one: an operand this
+ * reader cannot reduce to a path (a nested call, an expression, or the `@From` scope form, which the reader
+ * already declines), an operand that does not RESOLVE (`MVK_INVALID_ENTITY`), a STARRED key
+ * (`MVK_NO_WILDCARDS_ALLOWED`), and a key repeated in the list (`MVK_DUPLICATE_PARAM1`). The duplicate case
+ * is the one that is silent on an UNMEASURED basis rather than a measured one: the repeated key was measured
+ * only where it also had its repetition, so whether the duplicate class still wins when the key lacks one is
+ * unknown, and emitting here would be a rejection resting on a reading.
+ */
+private fun PreparedModel.placementFinding(
+    call: ConditionCall,
+    declaringGroup: String,
+    element: DeclaredElement,
+    member: String,
+): Finding? {
+    if (call.operands.isEmpty() || call.operands.any { it.path == null || it.path.contains('*') }) {
+        return null
+    }
+    val keys = call.operands.mapNotNull { operand ->
+        (operand.path?.let { resolveEntity(declaringGroup, it, element.origin) } as? Reference.Resolved)?.path
+    }
+    if (keys.size != call.operands.size || keys.size != keys.distinct().size) {
+        return null
+    }
+    // MEASURED: a key outside the rule group hands the verdict to the outsider's own class, never this one.
+    if (keys.any { !it.startsWith("$declaringGroup/") }) {
+        return null
+    }
+    val unrepeated = keys.filterNot { key -> repeatableLiesBetween(declaringGroup, key) }
+    if (unrepeated.isEmpty()) {
+        return null
+    }
+    return Finding(
+        FindingCategory.A12_CONSTRAINT,
+        FindingSeverity.ERROR,
+        "MVK_REPEATABLE_GROUP_MISSING",
+        "this $member asks `${call.operator}` about ${unrepeated.joinToString(", ") { "`$it`" }}, which " +
+            "no repeatable group separates from `$declaringGroup` — the operator compares one repetition " +
+            "against another, so each key needs a repeating group between the rule's own group and itself",
+        element.path,
+    )
+}
+
+/**
+ * Whether a repeatable group sits strictly between [declaringGroup] and [key].
+ *
+ * Strictly on both ends: the declaring group itself does not count however repeatable it is — that is the
+ * measured "rule group is the repeated group" row — and neither does anything at or below the key.
+ */
+private fun PreparedModel.repeatableLiesBetween(declaringGroup: String, key: String): Boolean =
+    elements.any { candidate ->
+        candidate.declaredKind == DeclaredKind.GROUP &&
+            candidate.isRepeatable &&
+            candidate.path.startsWith("$declaringGroup/") &&
+            key.startsWith("${candidate.path}/")
+    }

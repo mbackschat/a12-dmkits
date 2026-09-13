@@ -163,5 +163,5 @@ private fun PreparedModel.namesNoRepetition(
  * A non-numeric or absent member reads as 1, which is A12's default, so the absence is a positive answer
  * here rather than an unknown.
  */
-private val DeclaredElement.isRepeatable: Boolean
+internal val DeclaredElement.isRepeatable: Boolean
     get() = ((body?.get("repeatability") as? JsonPrimitive)?.intOrNull ?: 1) > 1

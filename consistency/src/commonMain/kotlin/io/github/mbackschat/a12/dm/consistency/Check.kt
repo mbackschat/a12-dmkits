@@ -237,6 +237,15 @@ enum class CheckFamily {
     COMPUTATION_PRECONDITION_FEATURES,
 
     /**
+     * That a `RepetitionNotUnique` key has a repetition to be asked about — a repeatable group strictly
+     * between the rule's own group and the key. Its own constant rather than part of the wildcard family
+     * because the demand is on the KEY's placement rather than on a spelling: the class collapses three
+     * shapes that read as different defects, and a key outside the rule group hands the verdict to a
+     * different class entirely, where this family stays silent.
+     */
+    REPETITION_KEY_PLACEMENT,
+
+    /**
      * That the model's computations do not depend on each other in a CIRCLE. A12 sorts the calculated fields
      * topologically and refuses a graph it cannot order. A read in a PRECONDITION builds an edge just as an
      * operation read does, and the two ends may sit in different groups. A one-node circle — a computation
@@ -443,6 +452,7 @@ internal fun check(
         prepared.computedTargetKindFindings() + prepared.computedTargetIndexFieldFindings() +
         prepared.rawTypeLengthFindings() + prepared.computationPreconditionFeatureFindings() +
         prepared.computationCycleFindings() +
+        prepared.repetitionKeyPlacementFindings() +
         prepared.messageParameterFindings() +
         prepared.messageTextCharacterFindings() +
         prepared.stringTypeMessageFindings() + prepared.stringTypeParameterFindings() +
@@ -475,6 +485,7 @@ internal fun check(
             CheckFamily.REPETITION_WILDCARD_TARGET, CheckFamily.COMPUTED_TARGET_KIND,
             CheckFamily.RAW_TYPE_LENGTH, CheckFamily.COMPUTED_TARGET_INDEX_FIELD,
             CheckFamily.COMPUTATION_PRECONDITION_FEATURES, CheckFamily.COMPUTATION_CYCLE,
+            CheckFamily.REPETITION_KEY_PLACEMENT,
             CheckFamily.MESSAGE_PARAMETER_REFERENCE, CheckFamily.MESSAGE_TEXT_CHARACTERS),
         gaps = prepared.gaps() + prepared.emptyFactBase() + findings.buildBlocked() +
             prepared.variantFilterGaps() + prepared.enumCategoryGaps() +

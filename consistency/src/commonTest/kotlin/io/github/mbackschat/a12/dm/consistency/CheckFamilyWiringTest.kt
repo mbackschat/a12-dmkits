@@ -77,6 +77,10 @@ class CheckFamilyWiringTest {
             {"type":"Rule","id":"r17","name":"Unreferenced","Rule":{
               "errorCondition":"FieldFilled(Price)","errorEntityRelPath":"../Amount",
               "errorCode":"C17","errorMessage":[{"locale":"en_US","text":"x"}]}},
+            {"type":"Rule","id":"r22","name":"KeyWithNoRepetition","Rule":{
+              "errorCondition":"RepetitionNotUnique(Price)",
+              "errorEntityRelPath":"../Price",
+              "errorCode":"C22","errorMessage":[{"locale":"en_US","text":"x"}]}},
             {"type":"Rule","id":"r21","name":"StarOnAFixedGroup","Rule":{
               "errorCondition":"FieldFilled(Price) And GroupFilled(/Catalog/Shelf*)",
               "errorEntityRelPath":"../Price",
@@ -227,6 +231,10 @@ class CheckFamilyWiringTest {
             ("MVK_NO_FIELDS_ALLOWED" to "/Catalog/FieldWhereAGroupBelongs"),
         CheckFamily.REPETITION_WILDCARD_TARGET to
             ("MVK_INVALID_WILDCARD" to "/Catalog/StarOnAFixedGroup"),
+        // `Price` sits directly in the rule's own group, so no repeatable group separates the two — the
+        // shape the class collapses onto, and the one that needs no second group to express.
+        CheckFamily.REPETITION_KEY_PLACEMENT to
+            ("MVK_REPEATABLE_GROUP_MISSING" to "/Catalog/KeyWithNoRepetition"),
     )
 
     @Test

@@ -46,7 +46,11 @@ class RepetitionNotUniqueKeyPathLawsTest {
                             // twelve rows of the table below were re-run unchanged after they were added, so
                             // they are inert to every shape that does not name them.
                             .group("Parts", parts -> parts.repeatable(5)
-                                    .field("PartCode", FieldKind.STRING))
+                                    .field("PartCode", FieldKind.STRING)
+                                    // A non-repeatable level BELOW the repeatable one, so a key can sit two
+                                    // steps under it — the only shape that separates "a repeatable group
+                                    // anywhere between" from "the key's own parent is repeatable".
+                                    .group("Detail", d -> d.field("DetailNote", FieldKind.STRING)))
                             .group("Meta", meta -> meta.field("MetaNote", FieldKind.STRING)))
                     .group("Coupons", c -> c.repeatable(10)
                             .field("CouponCode", FieldKind.STRING)))
@@ -135,6 +139,11 @@ class RepetitionNotUniqueKeyPathLawsTest {
                 verdict("/Basket/Lines", "../Parts/PartCode", "RepetitionNotUnique(Parts/PartCode)"));
         actual.put("at | key in a NESTED non-repeatable group",
                 verdict("/Basket/Lines", "../Meta/MetaNote", "RepetitionNotUnique(Meta/MetaNote)"));
+        actual.put("at | key TWO levels below a nested repeatable group",
+                verdict("/Basket/Lines", "../Parts/Detail/DetailNote",
+                        "RepetitionNotUnique(Parts/Detail/DetailNote)"));
+        actual.put("above | TWO keys each lacking a repetition",
+                verdict("/Basket", "../Buyer/BuyerEmail", "RepetitionNotUnique(Buyer/BuyerEmail, BasketRef)"));
 
         Map<String, String> expected = new LinkedHashMap<>();
         expected.put("above | sole key in the repeated group", "admitted");
@@ -147,6 +156,8 @@ class RepetitionNotUniqueKeyPathLawsTest {
         expected.put("at | second key in a parallel repeatable group", "MVK_NO_WILDCARD");
         expected.put("at | key below a NESTED repeatable group", "admitted");
         expected.put("at | key in a NESTED non-repeatable group", "MVK_REPEATABLE_GROUP_MISSING");
+        expected.put("at | key TWO levels below a nested repeatable group", "admitted");
+        expected.put("above | TWO keys each lacking a repetition", "MVK_REPEATABLE_GROUP_MISSING");
         assertEquals(expected, actual, "RepetitionNotUnique key gate order");
     }
 
