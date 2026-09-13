@@ -80,11 +80,17 @@ private fun PreparedModel.namesNoRepetition(
 ): Boolean {
     val path = (resolveEntity(declaringGroup, prefix, origin) as? Reference.Resolved)?.path ?: return false
     val element = elements.firstOrNull { it.path == path } ?: return false
-    return element.declaredKind != DeclaredKind.GROUP || !element.isRepeatable
+    return !element.isRepeatable
 }
 
 /**
- * Whether A12 will give this group repetitions: `Group.repeatability` above 1.
+ * Whether A12 will give this element repetitions: `Group.repeatability` above 1.
+ *
+ * **No kind test guards this read, because only a group can carry the member.** `getRepeatability()` is
+ * declared on `IGroup` alone in the kernel's model API — `IField`, `IRule` and `IComputation` declare none —
+ * so a field, a rule or a computation reads as the default and is answered correctly by that default. A kind
+ * test here would be a branch no model can take, and an invented fixture is the only thing that could cover
+ * it, which is the defect below wearing a different hat.
  *
  * **The member is `repeatability`, an INTEGER whose default is 1 — there is no boolean `repeatable`.** That
  * is `ModelDocument.isRepeatable`'s own test and `AuthoredStateReader`'s own default, and no model under
