@@ -1,9 +1,9 @@
 package io.github.mbackschat.a12.dm.adapter.laws
 
 import io.github.mbackschat.a12.dm.consistency.syntax.ConditionLanguage
-import io.github.mbackschat.a12.dm.consistency.syntax.conditionShapeFailure
+import io.github.mbackschat.a12.dm.consistency.syntax.SyntaxEntry
 import io.github.mbackschat.a12.dm.consistency.syntax.lexicalFailure
-import io.github.mbackschat.a12.dm.consistency.syntax.operationShapeFailure
+import io.github.mbackschat.a12.dm.consistency.syntax.shapeFailure
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Assumptions.assumeTrue
 import org.junit.jupiter.api.Test
@@ -65,7 +65,7 @@ class CheckerParserCorpusSweepTest {
                 continue
             }
             swept++
-            conditionShapeFailure(text, language)?.let {
+            shapeFailure(text, language, SyntaxEntry.CONDITION)?.let {
                 refused += "[$code] at ${it.at} found '${it.found}' in: $text"
             }
         }
@@ -80,7 +80,7 @@ class CheckerParserCorpusSweepTest {
                 continue
             }
             swept++
-            operationShapeFailure(text, language)?.let {
+            shapeFailure(text, language, SyntaxEntry.OPERATION)?.let {
                 refused += "[$code] at ${it.at} found '${it.found}' in: $text"
             }
         }
