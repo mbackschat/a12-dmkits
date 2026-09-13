@@ -45,6 +45,45 @@ fun PreparedModel.fieldTypeBindingFindings(): List<Finding> =
     }
 
 /**
+ * The range pairs this family stayed silent about, so silence is never read as agreement.
+ *
+ * The pair table is a probe's universe rather than a law, so a format or a separator outside it is
+ * UNDISCOVERED rather than admitted — under-reporting, and safe. What is not safe is leaving that unsaid
+ * while the same report's `checksCompleted` names this family: a consumer would read "examined, nothing
+ * found" for a declaration the family declined to judge.
+ */
+fun PreparedModel.fieldTypeBindingGaps(): List<CoverageGap> =
+    elements.filter { it.declaredKind == DeclaredKind.FIELD }.mapNotNull { field ->
+        val declared = field.body?.get("fieldType") as? JsonObject ?: return@mapNotNull null
+        if ((declared["type"] as? JsonPrimitive)?.content != "DateRangeType") {
+            return@mapNotNull null
+        }
+        val body = declared["DateRangeType"] as? JsonObject ?: return@mapNotNull null
+        val unmeasured = body.unmeasuredRangePair() ?: return@mapNotNull null
+        CoverageGap(field.path, "this range's (format, separator) pair was left to A12: $unmeasured")
+    }
+
+/** Why a declared pair falls outside what the sweep measured, or null when the pair was judged. */
+private fun JsonObject.unmeasuredRangePair(): String? {
+    val format = (this["format"] as? JsonPrimitive)?.takeIf { it.isString }?.content
+        ?: return "its `format` is present and is not a string"
+    val declared = this["rangeSeparator"]
+    val separator = when {
+        declared == null -> DEFAULT_RANGE_SEPARATOR
+        declared is JsonPrimitive && declared.isString -> declared.content
+        else -> return "its `rangeSeparator` is present and is not a string"
+    }
+    return when {
+        format !in ADMITTED_RANGE_SEPARATORS ->
+            "the format `$format` was never put to the kernel as a RANGE format, so its admission there is " +
+                "undiscovered rather than refused"
+        separator !in PROBED_RANGE_SEPARATORS ->
+            "the separator `$separator` was never put to the kernel beside `$format`"
+        else -> null
+    }
+}
+
+/**
  * The thirteen names `FieldtypeDeserializer.deriveFieldtype` switches on, paired with whether that case
  * guards a missing body.
  *

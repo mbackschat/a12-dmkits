@@ -30,15 +30,61 @@ import kotlinx.serialization.json.JsonPrimitive
  */
 fun PreparedModel.enumCategoryFindings(): List<Finding> =
     elements.filter { it.declaredKind == DeclaredKind.FIELD }.flatMap { field ->
-        val declared = field.body?.get("fieldType") as? JsonObject ?: return@flatMap emptyList()
-        if ((declared["type"] as? JsonPrimitive)?.content != "EnumerationType") {
-            return@flatMap emptyList()
-        }
-        val body = declared["EnumerationType"] as? JsonObject ?: return@flatMap emptyList()
+        val body = field.enumerationBody() ?: return@flatMap emptyList()
         val values = body.declaredValues() ?: return@flatMap emptyList()
         val categories = body["categories"] as? JsonArray ?: return@flatMap emptyList()
         categories.flatMap { category -> field.misalignment(values, category) }
     }
+
+/**
+ * The declarations this family stayed silent about, so silence is never read as agreement.
+ *
+ * Every arm above that returns early is under-reporting and therefore safe — but `checksCompleted` names
+ * this family on the same report, and a consumer reading both would take "ran, found nothing" for a
+ * declaration the family never paired. The gap is per DECLARATION rather than per model because that is
+ * what the consumer needs: which enumeration was left to A12, not that some were.
+ */
+fun PreparedModel.enumCategoryGaps(): List<CoverageGap> =
+    elements.filter { it.declaredKind == DeclaredKind.FIELD }.mapNotNull { field ->
+        val unread = field.enumerationBody()?.unreadableHalf() ?: return@mapNotNull null
+        CoverageGap(
+            field.path,
+            "this Enumeration's categories were not paired with its values, so A12 alone judges them: $unread",
+        )
+    }
+
+/** The `EnumerationType` body this field declares, or null when it declares another kind or none at all. */
+internal fun DeclaredElement.enumerationBody(): JsonObject? {
+    val declared = body?.get("fieldType") as? JsonObject ?: return null
+    if ((declared["type"] as? JsonPrimitive)?.content != "EnumerationType") {
+        return null
+    }
+    return declared["EnumerationType"] as? JsonObject
+}
+
+/**
+ * Which half of the body this family could not read, or null when it read both.
+ *
+ * An ABSENT `categories` is not one of them: a declaration with no categories has no pairing to judge, and
+ * A12 has nothing to say about it either, so reporting a gap there would describe every ordinary enum.
+ */
+private fun JsonObject.unreadableHalf(): String? {
+    if (declaredValues() == null) {
+        return "its `values` carries an entry this checker cannot read as a string `value`, and refusing a " +
+            "shape nobody has put to A12 would rest a rejection on a reading"
+    }
+    val categories = this["categories"] ?: return null
+    val entries = categories as? JsonArray ?: return "its `categories` is present and is not an array"
+    return entries.firstNotNullOfOrNull { entry ->
+        val declared = entry as? JsonObject ?: return@firstNotNullOfOrNull "a `categories` entry is not an object"
+        when {
+            declared["values"] !is JsonArray -> "a category's own `values` is missing or is not an array"
+            (declared["name"] as? JsonPrimitive)?.takeIf { it.isString } == null ->
+                "a category spells no string `name`, and A12 names the category in both of its codes"
+            else -> null
+        }
+    }
+}
 
 /** The enum's own value spellings, in declaration order, or null when the list is not the measured shape. */
 private fun JsonObject.declaredValues(): List<String>? {

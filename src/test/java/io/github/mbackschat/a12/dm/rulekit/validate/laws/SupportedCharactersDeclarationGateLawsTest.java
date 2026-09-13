@@ -76,6 +76,8 @@ class SupportedCharactersDeclarationGateLawsTest {
                 refusals(tiers(new String[] {"A-Z"}, "BASIC", "ab")));
         actual.put("two values sharing the same two offenders",
                 refusals(tiers(new String[] {"A-Z"}, "ab", "ba")));
+        actual.put("the same offending value declared twice",
+                refusals(tiers(new String[] {"A-Z"}, "ab", "ab")));
 
         Map<String, Integer> expected = new LinkedHashMap<>();
         expected.put("no restriction — the control", 0);
@@ -94,27 +96,46 @@ class SupportedCharactersDeclarationGateLawsTest {
         // …and distinctness is per VALUE, not per model: the same two offenders in a second value are
         // reported again. Without this row "distinct" would be ambiguous between the two scopes.
         expected.put("two values sharing the same two offenders", 4);
+        // The scope is the value's SPELLING rather than its position: A12 reports per (field, value,
+        // character), so re-declaring the same offending value adds nothing. The row above cannot say this,
+        // because its two values differ.
+        expected.put("the same offending value declared twice", 2);
         assertEquals(expected, actual, "the definition's grammar and the gate's multiplicity");
     }
 
     /**
      * WHICH declared strings the restriction reaches — the scope question, measured rather than transferred.
      *
-     * <p>All three models declare the identical restriction and spell the identical refused characters in a
-     * different declared string. A consumer that read the restriction as "the model's text" would refuse two
-     * models A12 accepts, which is the direction a client-side check may never take.
+     * <p>All four models declare the identical restriction and spell the identical refused characters in a
+     * different declared string. A consumer that read the restriction as "the model's text" would refuse
+     * three models A12 accepts, which is the direction a client-side check may never take.
+     *
+     * <p><b>The verdict, not a count of one code.</b> Counting {@code MVK_ENUM_VALUE_WITH_INVALID_CHARACTER}
+     * returns zero both for a model A12 takes and for one it refuses for some other reason, so a zero row
+     * would read as ADMITTED while proving only "not this code". The whole-model verdict separates them.
+     *
+     * <p><b>The HINT LIST row is the carrier that reads as in-scope from the kernel's source.</b>
+     * {@code NoMetaModelChecks.checkEnumValues} runs the same {@code LegalCharTester} over
+     * {@code IStringType.getHintList} — but only when {@code isExtensibleEnum()} holds, and on kernel 30.8.1
+     * nothing sets it: the interface default returns {@code false}, and an anchored search of the checkout
+     * (excluding {@code build/} and delombok output) finds eleven mentions, ten of them calls and the
+     * eleventh that default, with no {@code extensibleEnum} member on {@code md.model}'s {@code StringType}.
+     * So the arm is dead for a DM-JSON document model, which is the carrier this gate is reproduced for —
+     * and a source read alone could not have said so, which is why the row is measured.
      */
     @Test
     void theRestrictionReachesTheEnumValueAndNotEveryDeclaredString() {
-        Map<String, Integer> actual = new LinkedHashMap<>();
-        actual.put("an enum VALUE", refusals(tiers(new String[] {"A-Z"}, "beta")));
-        actual.put("an element NAME", refusals(namedField("beta")));
-        actual.put("an enum CATEGORY token", refusals(categorised("beta")));
+        Map<String, String> actual = new LinkedHashMap<>();
+        actual.put("an enum VALUE", KernelLaws.verdictOf(tiers(new String[] {"A-Z"}, "beta")));
+        actual.put("an element NAME", KernelLaws.verdictOf(namedField("beta")));
+        actual.put("an enum CATEGORY token", KernelLaws.verdictOf(categorised("beta")));
+        actual.put("an extensible-enum HINT LIST", KernelLaws.verdictOf(suggested("beta")));
 
-        Map<String, Integer> expected = new LinkedHashMap<>();
-        expected.put("an enum VALUE", 4);
-        expected.put("an element NAME", 0);
-        expected.put("an enum CATEGORY token", 0);
+        Map<String, String> expected = new LinkedHashMap<>();
+        expected.put("an enum VALUE", INVALID_CHARACTER);
+        expected.put("an element NAME", KernelLaws.ADMITTED);
+        expected.put("an enum CATEGORY token", KernelLaws.ADMITTED);
+        expected.put("an extensible-enum HINT LIST", KernelLaws.ADMITTED);
         assertEquals(expected, actual, "the restriction is judged on enum values and not on every string");
 
         // The fourth carrier answers on the rule surface rather than the model one, so it is asserted
@@ -137,15 +158,22 @@ class SupportedCharactersDeclarationGateLawsTest {
      * host that declares one, its values are judged by it. So the restriction is a property of the EXPANDED
      * model rather than of the file that declares the enum — and a consumer applying it only to the entry
      * model's own declarations would report a model A12 refuses as clean.
+     *
+     * <p><b>The middle row is the control that keeps the instrument fixed.</b> The provider alone is read
+     * through {@code BoundModel.ofJson} and the mount through {@code ModelLoader.loadAndCheck}, so those two
+     * rows move the mount AND the instrument together. Mounting into an UNRESTRICTED host varies only the
+     * host's restriction, on the same instrument as the treatment.
      */
     @Test
     void aMountedModelsEnumValuesAnswerToTheHostsRestriction() {
         Map<String, Integer> actual = new LinkedHashMap<>();
         actual.put("the provider alone — the control", refusals(deliveryProvider()));
-        actual.put("the provider mounted into a restricted host", mountedRefusals());
+        actual.put("the provider mounted into an unrestricted host", mountedRefusals(null));
+        actual.put("the provider mounted into a restricted host", mountedRefusals("A-Z"));
 
         Map<String, Integer> expected = new LinkedHashMap<>();
         expected.put("the provider alone — the control", 0);
+        expected.put("the provider mounted into an unrestricted host", 0);
         expected.put("the provider mounted into a restricted host", 4);
         assertEquals(expected, actual, "the restriction belongs to the expanded model, not to the declaring file");
     }
@@ -159,10 +187,13 @@ class SupportedCharactersDeclarationGateLawsTest {
                 .build().toJson();
     }
 
-    /** How many character refusals the host raises once the provider is mounted into it. */
-    private static int mountedRefusals() {
-        String host = DocumentModelDraft.named("shop").locale("en_US")
-                .supportedCharacters("A-Z")
+    /** How many character refusals a host declaring [restriction] raises once the provider is mounted. */
+    private static int mountedRefusals(String restriction) {
+        DocumentModelDraft.Builder builder = DocumentModelDraft.named("shop").locale("en_US");
+        if (restriction != null) {
+            builder.supportedCharacters(restriction);
+        }
+        String host = builder
                 .include("dlv", "delivery")
                 .rootGroup("Shop", s -> {
                     s.field("Reference", FieldKind.STRING);
@@ -192,6 +223,15 @@ class SupportedCharactersDeclarationGateLawsTest {
                 .rootGroup("Shop", s -> s
                         .stringField("Reference", f -> { })
                         .stringField(name, f -> { }))
+                .build().toJson();
+    }
+
+    /** The same restriction, with the offending spelling in a string field's HINT LIST. */
+    private static String suggested(String suggestion) {
+        return DocumentModelDraft.named("shop").locale("en_US")
+                .supportedCharacters("A-Z")
+                .rootGroup("Shop", s -> s
+                        .stringField("Reference", f -> f.suggestions("en_US", suggestion)))
                 .build().toJson();
     }
 

@@ -17,7 +17,7 @@ import kotlin.test.assertEquals
 class EnumCategoriesTest {
 
     /** A model whose single field is an Enumeration carrying [body] verbatim. */
-    private fun codes(body: String): List<String> = check(
+    private fun report(body: String) = check(
         ModelSource(
             """
             {"header":{"id":"catalog","locales":[{"code":"en_US"}]},
@@ -29,7 +29,9 @@ class EnumCategoriesTest {
              ]}}}
             """.trimIndent(),
         ),
-    ).findings.map { it.code }
+    )
+
+    private fun codes(body: String): List<String> = report(body).findings.map { it.code }
 
     private fun withTokens(tokens: String) =
         """{"values":[{"value":"BASIC"},{"value":"PLUS"}],"categories":[{"name":"Band","values":$tokens}]}"""
@@ -118,4 +120,40 @@ class EnumCategoriesTest {
         val expected = actual.keys.associateWith { emptyList<String>() }
         assertEquals(expected, actual, "an unmeasured shape draws nothing")
     }
+
+    /**
+     * Each of those silences is PUBLISHED against the declaration it concerns.
+     *
+     * The report names this family in `checksCompleted` whether or not it could read the body, so without
+     * the gap a consumer reads "paired, aligned" for an enumeration that was never paired at all.
+     */
+    @Test
+    fun anUnmeasuredShapeIsPublishedAsACoverageGap() {
+        val actual = mutableMapOf<String, List<String?>>()
+        actual["a value entry with no `value`"] = gapPaths(
+            """{"values":[{}],"categories":[{"name":"Band","values":["A","B"]}]}""",
+        )
+        actual["a category that is not an object"] = gapPaths(
+            """{"values":[{"value":"BASIC"}],"categories":["Band"]}""",
+        )
+        actual["a category with no `name`"] = gapPaths(
+            """{"values":[{"value":"BASIC"}],"categories":[{"values":[]}]}""",
+        )
+        // The controls: a judged pairing and an enum with no categories at all say nothing. The second
+        // matters most — categories are optional, so a gap there would describe every ordinary enum.
+        actual["an aligned pairing — the control"] = gapPaths(withTokens("""["S","P"]"""))
+        actual["no categories at all — the control"] =
+            gapPaths("""{"values":[{"value":"BASIC"}]}""")
+
+        val expected = mutableMapOf<String, List<String?>>()
+        expected["a value entry with no `value`"] = listOf("/Catalog/Tier")
+        expected["a category that is not an object"] = listOf("/Catalog/Tier")
+        expected["a category with no `name`"] = listOf("/Catalog/Tier")
+        expected["an aligned pairing — the control"] = emptyList()
+        expected["no categories at all — the control"] = emptyList()
+        assertEquals(expected, actual, "a shape this family could not pair is disclosed, not simply dropped")
+    }
+
+    private fun gapPaths(body: String): List<String?> =
+        report(body).gaps.filter { it.reason.contains("were not paired with its values") }.map { it.at }
 }

@@ -6221,7 +6221,7 @@ Every member of the two refused rows appears in an admitted row, so the allowlis
 
 [MVK-LEDGER](MVK-LEDGER.md)'s scope-boundary note established that `checkConsistency` re-runs the validation code generator, so `MVK_ENUM_VALUE_WITH_INVALID_CHARACTER` reaches an ordinary authoring gate: `supportedCharacters: ["A-Z"]` with an enum value `beta` draws four diagnostics. That settles REACHABILITY and leaves the two questions a consumer reproducing the gate has to answer — which declared strings it judges, and what a definition entry means.
 
-**It judges enum VALUES and nothing else.** The identical refused spelling, under the identical restriction, in three other declared strings of the same model:
+**It judges enum VALUES and nothing else.** The identical refused spelling, under the identical restriction, in four other declared strings of the same model:
 
 | the offending spelling sits in | verdict |
 |---|---|
@@ -6229,13 +6229,20 @@ Every member of the two refused rows appears in an admitted row, so the allowlis
 | an element NAME | ADMITTED |
 | an error MESSAGE text | ADMITTED |
 | an enum CATEGORY token | ADMITTED |
+| a string field's HINT LIST | ADMITTED |
 
-A consumer reading the restriction as "the model's text" would refuse three models A12 takes. The transfer needs no new branch, which is why it prompts no question.
+A consumer reading the restriction as "the model's text" would refuse four models A12 takes. The transfer needs no new branch, which is why it prompts no question.
+
+**Amended 2026-09-13 — the hint-list row, and why source reading would have got it wrong.** `NoMetaModelChecks.checkEnumValues` runs the same `LegalCharTester` over `IStringType.getHintList(language)` as over an enumeration's values, so the arm reads as in scope; it is guarded by `type.isExtensibleEnum()`, and on kernel `30.8.1` **nothing sets that flag**. An anchored search of the checkout (excluding `build/` and delombok output) returns eleven mentions of `isExtensibleEnum`: ten calls and one declaration, the interface default on `IStringType` returning `false`; `md.model.a12internal.fieldtypes.StringType` carries a `hintList` but no `extensibleEnum` member and overrides nothing. So the arm is dead for a DM-JSON document model, the row measures ADMITTED, and a family widened onto the hint list by reading the source alone would refuse models A12 takes. The three non-value rows above are asserted on the whole-model VERDICT rather than on a count of this one code, which zero cannot distinguish from a refusal for another reason.
+
+**Also asserted about the scope of that assertion:** the other four carriers are each measured, not transferred from one another. Display values are excluded by the kernel's own comment (`//no check for display values, they can have any characters`) and are not separately measured here.
 
 **A definition is a LIST of independent entries, each a singleton or an inclusive range.** `["A-Z"]` admits both boundary characters; `["B-Y"]` refuses `A` and `Z`; `["A-Z", "b"]` takes `beta` from four offenders down to three, so the entries union rather than compose.
 
 **The multiplicity is per DISTINCT character, scoped to the VALUE.** `aa` draws ONE diagnostic, not two — the repeat is folded — while the same two offenders spelled into two values (`ab`, `ba`) draw four. Neither row is inferable from the other, and a consumer keyed on occurrences or on model-wide distinctness disagrees with A12 on both.
 
-**The restriction belongs to the EXPANDED model, not to the file that declares the enum.** A provider declaring no restriction of its own is clean when checked alone and draws the host's four diagnostics once mounted into a model that declares `A-Z`. So it is applied to mounted declarations as much as to local ones.
+**Amended 2026-09-13 — the scope is the value's SPELLING, not its position.** Declaring the SAME offending value twice (`ab`, `ab`) draws **two**, not four: A12 reports on the triple (field, value, character) and folds the repeat, which the `ab`/`ba` row above cannot say because its two values differ. A checker pairing per declared ENTRY over-counts exactly here, and this repository's did until the row was run.
+
+**The restriction belongs to the EXPANDED model, not to the file that declares the enum.** A provider declaring no restriction of its own is clean when checked alone and draws the host's four diagnostics once mounted into a model that declares `A-Z`. So it is applied to mounted declarations as much as to local ones. The middle control is on the same instrument as the treatment — the same provider mounted into an UNRESTRICTED host draws none through `ModelLoader.loadAndCheck` — so the two-row form, which read the control through `BoundModel.ofJson`, is not moving the mount and the instrument together.
 
 *Locked by:* `rulekit.validate.laws.SupportedCharactersDeclarationGateLawsTest` (the scope, the definition grammar, the multiplicity, and the two-model mount fixture); the reachability half stays with `CodegenErrorClassReachesConsistencyLawsTest`.

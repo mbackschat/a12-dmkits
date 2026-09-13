@@ -152,6 +152,39 @@ class FieldTypeBindingTest {
         assertEquals(expected, actual, "a DATERANGE's format and separator are allowlisted as a pair")
     }
 
+    /**
+     * The three silent tail rows above are PUBLISHED, because the report names this family as completed.
+     *
+     * Their silence is the right verdict and the wrong report on its own: a pair outside the sweep is
+     * undiscovered, not admitted, and a consumer cannot tell the two apart from an empty finding list.
+     */
+    @Test
+    fun aPairOutsideTheSweepIsPublishedAsACoverageGap() {
+        fun gapsFor(body: String) = check(typed("""{"type":"DateRangeType","DateRangeType":$body}"""))
+            .gaps.filter { it.reason.contains("was left to A12") }.map { it.at }
+
+        val actual = mutableMapOf<String, List<String?>>()
+        actual["a format the sweep never put to the kernel"] =
+            gapsFor("""{"format":"MM.yyyy","rangeSeparator":"/"}""")
+        actual["a separator the sweep never put to the kernel"] =
+            gapsFor("""{"format":"yyyy-MM-dd","rangeSeparator":"~"}""")
+        actual["a separator that is not a string at all"] =
+            gapsFor("""{"format":"yyyy-MM-dd","rangeSeparator":7}""")
+        // The controls: a judged pair says nothing either way, whether it was admitted or refused.
+        actual["an admitted pair — the control"] =
+            gapsFor("""{"format":"yyyy-MM-dd","rangeSeparator":"/"}""")
+        actual["a refused pair — the control"] =
+            gapsFor("""{"format":"yyyy-MM-dd","rangeSeparator":"-"}""")
+
+        val expected = mutableMapOf<String, List<String?>>()
+        expected["a format the sweep never put to the kernel"] = listOf("/Catalog/Tier")
+        expected["a separator the sweep never put to the kernel"] = listOf("/Catalog/Tier")
+        expected["a separator that is not a string at all"] = listOf("/Catalog/Tier")
+        expected["an admitted pair — the control"] = emptyList()
+        expected["a refused pair — the control"] = emptyList()
+        assertEquals(expected, actual, "an unmeasured pair is disclosed rather than silently dropped")
+    }
+
     @Test
     fun aFieldTypeThatIsNotAUsableTypedObjectIsUnbindable() {
         val actual = mutableMapOf<String, List<String>>()
@@ -255,6 +288,21 @@ class FieldTypeBindingTest {
         expected["naming nothing, with none declared"] = unbuildable
         expected["no typeDefinitionId at all"] = unbuildable
         assertEquals(expected, actual, "what a TypeDefType's reference must name")
+
+        // The definitions themselves are read for their IDS alone, so every content law this checker
+        // applies to an inline `fieldType` skips whatever they declare. That carrier is visibly in scope in
+        // the same report — the rows above resolve against it — which is why its absence has to be said.
+        assertEquals(
+            listOf<String?>(null),
+            check(typed("""{"type":"TypeDefType","TypeDefType":{"typeDefinitionId":"Money"}}""", money))
+                .gaps.filter { it.reason.contains("type definition") }.map { it.at },
+        )
+        assertEquals(
+            emptyList(),
+            check(typed("""{"type":"StringType"}""", null))
+                .gaps.filter { it.reason.contains("type definition") },
+            "a model declaring none must not carry the gap",
+        )
     }
 
     /**

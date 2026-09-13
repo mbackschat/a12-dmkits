@@ -13,11 +13,25 @@ import kotlin.test.assertEquals
  * singletons and ranges, a declared string that is not an enum value, and a value carrying a surrogate: each
  * is a model A12 accepts or has never been asked about, so a finding on one would be this checker's own
  * reading presented as A12's.
+ *
+ * **The grapheme rows name their code points rather than spelling them.** Written as literal accented
+ * characters they would pass or fail on how this FILE happens to be normalized — a row that reads as a
+ * grapheme test while measuring the source encoding proves nothing about the branch it points at, and the
+ * first draft of the combined row did exactly that.
  */
 class SupportedCharactersTest {
 
+    /** `e` followed by U+0301 COMBINING ACUTE ACCENT — one grapheme, two code points. */
+    private val combined = "e" + Char(0x0301)
+
+    /** U+00E9 LATIN SMALL LETTER E WITH ACUTE — the same grapheme as one code point. */
+    private val precomposed = Char(0x00e9).toString()
+
+    /** U+1F600, which JSON and Kotlin both carry as a surrogate PAIR. */
+    private val supplementary = "" + Char(0xd83d) + Char(0xde00)
+
     /** A model restricted to [definition], whose one enum field declares [values]. */
-    private fun codes(definition: String?, vararg values: String): List<String> = check(
+    private fun report(definition: String?, vararg values: String) = check(
         ModelSource(
             """
             {"header":{"id":"shop","locales":[{"code":"en_US"}]},
@@ -32,7 +46,10 @@ class SupportedCharactersTest {
              ]}}}
             """.trimIndent(),
         ),
-    ).findings.map { it.code }
+    )
+
+    private fun codes(definition: String?, vararg values: String): List<String> =
+        report(definition, *values).findings.map { it.code }
 
     private val invalid = listOf("MVK_ENUM_VALUE_WITH_INVALID_CHARACTER")
 
@@ -46,7 +63,13 @@ class SupportedCharactersTest {
         // scoped to the value, which the two rows measure separately because neither implies the other.
         actual["the same character twice"] = codes("""["A-Z"]""", "aa")
         actual["two values sharing the same two offenders"] = codes("""["A-Z"]""", "ab", "ba")
+        // …and the scope is the value's SPELLING rather than its position, because A12 reports on the
+        // triple (field, value, character) and folds the repeat.
+        actual["the same offending value declared twice"] = codes("""["A-Z"]""", "ab", "ab")
         actual["a singleton entry beside the range"] = codes("""["A-Z","b"]""", "beta")
+        // A PRECOMPOSED accented letter is ONE code point, which A12 parses as a range of length 1 — so it
+        // is read here, and the silent row below is about the COMBINED spelling rather than about accents.
+        actual["a precomposed single-character entry"] = codes("""["A-Z","$precomposed"]""", "beta")
         actual["both range ends"] = codes("""["A-Z"]""", "AZ")
         actual["one below a range's start"] = codes("""["B-Y"]""", "A")
 
@@ -56,7 +79,9 @@ class SupportedCharactersTest {
         expected["four offending characters"] = invalid + invalid + invalid + invalid
         expected["the same character twice"] = invalid
         expected["two values sharing the same two offenders"] = invalid + invalid + invalid + invalid
+        expected["the same offending value declared twice"] = invalid + invalid
         expected["a singleton entry beside the range"] = invalid + invalid + invalid
+        expected["a precomposed single-character entry"] = invalid + invalid + invalid + invalid
         expected["both range ends"] = emptyList()
         expected["one below a range's start"] = invalid
         assertEquals(expected, actual, "one finding per distinct offending character of each value")
@@ -88,13 +113,50 @@ class SupportedCharactersTest {
     @Test
     fun anUnreadableRestrictionOrAnUnmeasuredCarrierIsLeftToA12() {
         val actual = mutableMapOf<String, List<String>>()
-        // A grapheme entry is legal and its membership test is a trie walk over code-point SEQUENCES, so a
-        // per-character reading of the whole restriction would refuse values A12 admits.
-        actual["a restriction carrying a grapheme entry"] = codes("""["A-Z","é"]""", "beta")
+        // A COMBINED grapheme — more than one code point — is a legal entry that A12 tests by walking
+        // code-point SEQUENCES, so a per-character reading of it would refuse values A12 admits. The
+        // precomposed row above pins the other side of that boundary, where one code point IS read.
+        actual["a restriction carrying a combined grapheme"] = codes("""["A-Z","$combined"]""", "beta")
         actual["a reversed range"] = codes("""["Z-A"]""", "beta")
         actual["an empty restriction list"] = codes("""[]""", "beta")
         actual["a non-string entry"] = codes("""[7]""", "beta")
+        actual["a value carrying a surrogate pair"] = codes("""["A-Z"]""", supplementary)
         val expected = actual.keys.associateWith { emptyList<String>() }
         assertEquals(expected, actual, "an unreadable restriction leaves the whole model unjudged")
+    }
+
+    /**
+     * The silence is PUBLISHED, because the same report names this family as completed.
+     *
+     * Without the gap a consumer reads "examined, nothing found" for a model the family declined to judge —
+     * the one direction an under-reporting checker can still mislead in. The unreadable restriction is a
+     * MODEL-level gap because it silences every declaration at once; a skipped value is declaration-level.
+     */
+    @Test
+    fun theSilenceIsPublishedAsACoverageGap() {
+        val unreadable = report("""["A-Z","$combined"]""", "beta").gaps
+        assertEquals(
+            listOf<String?>(null),
+            unreadable.filter { it.reason.contains("NO enum value was judged") }.map { it.at },
+            unreadable.joinToString("\n") { "${it.at}: ${it.reason}" },
+        )
+
+        val skipped = report("""["A-Z"]""", supplementary).gaps
+        assertEquals(
+            listOf<String?>("/Shop/Delivery"),
+            skipped.filter { it.reason.contains("supplementary-plane") }.map { it.at },
+            skipped.joinToString("\n") { "${it.at}: ${it.reason}" },
+        )
+
+        // The control: a model this family fully judged publishes neither, so the rows above are answering
+        // to the declaration rather than to a gap the report always carries.
+        val judged = report("""["A-Z"]""", "beta").gaps
+        assertEquals(
+            emptyList(),
+            judged.filter {
+                it.reason.contains("NO enum value was judged") || it.reason.contains("supplementary-plane")
+            },
+            judged.joinToString("\n") { "${it.at}: ${it.reason}" },
+        )
     }
 }

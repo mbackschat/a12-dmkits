@@ -304,7 +304,9 @@ internal fun check(
             CheckFamily.TEMPORAL_CONFIG, CheckFamily.ELEMENT_NAME_ALPHABET,
             CheckFamily.ENUM_CATEGORY_ALIGNMENT, CheckFamily.ENUM_VALUE_CHARACTERS),
         gaps = prepared.gaps() + prepared.emptyFactBase() + findings.buildBlocked() +
-            prepared.variantFilterGaps() + UNREAD_MEMBERS + UNIMPLEMENTED_FAMILIES,
+            prepared.variantFilterGaps() + prepared.enumCategoryGaps() +
+            prepared.supportedCharacterGaps() + prepared.fieldTypeBindingGaps() +
+            prepared.typeDefinitionBodyGaps() + UNREAD_MEMBERS + UNIMPLEMENTED_FAMILIES,
     )
 }
 
@@ -342,6 +344,28 @@ private fun PreparedModel.emptyFactBase(): List<CoverageGap> = if (elements.isNo
             at = null,
             reason = "this source declares no elements, so no rule or computation was examined — a report " +
                 "with no findings here means nothing was found to check, not that nothing was wrong",
+        ),
+    )
+}
+
+/**
+ * A model's `content.typeDefinitions` declare field types that no family examines.
+ *
+ * Preparation reads them for their IDS alone, so a `TypeDefType` reference can be resolved — but the type
+ * each definition declares produces no element, and the enum, character and range-pair families are all
+ * keyed on a field's inline `fieldType`. The carrier is visibly in scope elsewhere in the same report, which
+ * is exactly why its absence here has to be said rather than inferred.
+ */
+private fun PreparedModel.typeDefinitionBodyGaps(): List<CoverageGap> = if (declaredTypeDefinitionIds.isEmpty()) {
+    emptyList()
+} else {
+    listOf(
+        CoverageGap(
+            at = null,
+            reason = "this model declares ${declaredTypeDefinitionIds.size} type definition(s) under " +
+                "`content.typeDefinitions`, read here for their ids alone — the field type each one " +
+                "declares was examined by no family, so a law this checker applies to an inline `fieldType` " +
+                "was not applied inside them",
         ),
     )
 }
