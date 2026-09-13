@@ -78,8 +78,19 @@ private fun PreparedModel.dependencyEdges(writtenBy: Map<String, String>): Map<S
  * Every circle in [dependsOn], each as one rotation starting at its smallest member.
  *
  * Rotating to the smallest member is what makes a circle's identity independent of where the walk entered
- * it, so the same circle reached from two starting points is reported once. Disjoint circles stay separate
- * because they are separate causes, and a reader fixing one must still see the other.
+ * it, so the same circle reached from two starting points is reported once and always from the same place.
+ * Disjoint circles stay separate because they are separate causes, and a reader fixing one must still see
+ * the other.
+ *
+ * **[settled] is a memo, not part of the answer**, and that is measured rather than assumed: a mutant
+ * disabling it survives every control here, because a node is settled only after its whole subtree has been
+ * walked, so any back edge into it was already recorded. It bounds the walk on a model with many
+ * computations; it changes no report.
+ *
+ * **Circles that share an edge are reported by their back edges rather than enumerated exhaustively.** A
+ * depth-first walk finds every cycle — each contains a back edge — but a family of overlapping cycles
+ * collapses onto the ones its back edges name. That direction under-reports, which is safe, and a reader
+ * shown one circle through a shared node still has to break it.
  */
 private fun circlesIn(dependsOn: Map<String, Set<String>>): List<List<String>> {
     val found = mutableSetOf<List<String>>()
@@ -96,13 +107,13 @@ private fun circlesIn(dependsOn: Map<String, Set<String>>): List<List<String>> {
             return
         }
         onPath += node
-        dependsOn[node].orEmpty().sorted().forEach { walk(it) }
+        dependsOn[node].orEmpty().forEach { walk(it) }
         onPath.removeAt(onPath.size - 1)
         settled += node
     }
 
     dependsOn.keys.sorted().forEach { walk(it) }
-    return found.sortedBy { it.first() }
+    return found.sortedBy { it.joinToString("/") }
 }
 
 /** [circle] rotated to begin at its smallest member. */

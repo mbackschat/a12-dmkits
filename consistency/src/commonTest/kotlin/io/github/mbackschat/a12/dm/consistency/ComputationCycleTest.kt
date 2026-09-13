@@ -79,6 +79,32 @@ class ComputationCycleTest {
         assertEquals(true, finding.explain.contains("/Depot/Weight"), finding.explain)
     }
 
+    /**
+     * A circle ENTERED at one member is still reported from the same place, whichever member that was.
+     *
+     * Here the walk reaches the circle through `Base`, so it meets `Weight` first and `Volume` second — and
+     * the report must still start at `Volume`, the smaller of the two. Without that, a circle's anchor and
+     * its printed order would depend on which unrelated computation happened to point into it, so two
+     * reports of one model could disagree about where the problem is.
+     */
+    @Test
+    fun aCircleIsReportedFromItsSmallestMemberWhicheverOneTheWalkMeetsFirst() {
+        val finding = check(
+            ModelSource(
+                model(
+                    listOf(
+                        calc("B", "../Base", "[Weight] + 1"),
+                        calc("W", "../Weight", "[Volume] + 1"),
+                        calc("V", "../Volume", "[Weight] * 2"),
+                    ),
+                ),
+            ),
+        ).findings.single { it.code == cycle }
+        assertEquals("/Depot/V", finding.at, finding.explain)
+        assertEquals(true, finding.explain.contains("/Depot/Volume → /Depot/Weight → /Depot/Volume"),
+            finding.explain)
+    }
+
     /** Two disjoint circles are two causes, so they are two findings rather than one merged report. */
     @Test
     fun twoDisjointCirclesAreTwoFindings() {
@@ -95,6 +121,9 @@ class ComputationCycleTest {
             ),
         ).findings.filter { it.code == cycle }
         assertEquals(2, findings.size, findings.map { it.explain }.toString())
+        // Ordered by the circle itself, not by which one the walk reached first, so two runs over one model
+        // produce the same report even when both circles start at the same field.
+        assertEquals(listOf("/Depot/Crates/C", "/Depot/V"), findings.map { it.at })
     }
 
     private data class Calc(
