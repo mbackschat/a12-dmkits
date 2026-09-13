@@ -143,10 +143,12 @@ fun PreparedModel.resolve(
     // index; and one provider mounted at two points is two separate indexes, so the second copy must not make
     // the first ambiguous. Keying on the authoring model instead got both cases wrong, in the direction that
     // rejects a model A12 accepts — measured 2026-09-12 through `ModelLoader.loadAndCheck` on both shapes.
-    val scope = if (boundInProvider) {
-        resolvableElements.filter { it.path.startsWith(origin.mountedPrefix + "/") }
-    } else {
-        resolvableElements
+    // Named ONCE and then narrowed, rather than as two arms each naming the list: written as a two-arm `if`,
+    // one arm can silently stop honouring the variant deletion while the other keeps it, and a mutant doing
+    // exactly that survived every control here (2026-09-13) because the provider-bound arm needs a mounted
+    // model with its own flag on to be reached at all. One expression cannot diverge from itself.
+    val scope = resolvableElements.let { visible ->
+        if (boundInProvider) visible.filter { it.path.startsWith(origin.mountedPrefix + "/") } else visible
     }
     val matches = scope.filter { it.declaredKind == DeclaredKind.FIELD && it.path.substringAfterLast('/') == name }
     return when (matches.size) {
