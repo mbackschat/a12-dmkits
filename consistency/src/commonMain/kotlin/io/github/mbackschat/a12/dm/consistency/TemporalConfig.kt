@@ -29,8 +29,8 @@ import kotlinx.serialization.json.booleanOrNull
  * silent: reporting one would rest the refusal on the limit of a probe.
  *
  * **An absent `format` is the declared DEFAULT rather than nothing**, measured on both gates: the builder
- * fills `yyyy-MM-dd`, which is year-bearing and complete, so both rows are admitted and a checker reading the
- * default gets A12's answer rather than a guess.
+ * fills `yyyy-MM-dd`, which is year-bearing and complete, so both rows are ADMITTED — which is why
+ * [declaredFormat] can treat the absent member as nothing to judge and still give A12's answer.
  */
 fun PreparedModel.temporalConfigFindings(): List<Finding> =
     elements.filter { it.declaredKind == DeclaredKind.FIELD }.flatMap { field ->
@@ -52,15 +52,19 @@ fun PreparedModel.temporalConfigFindings(): List<Finding> =
     }
 
 /**
- * The format this body declares, or null when the checker has nothing to judge it against.
+ * The format this body declares and this family may judge — null when there is nothing to judge.
  *
- * Null covers three different shapes deliberately: the member holds something other than a string, the string
- * is a format the derived vocabulary does not carry, or — for a body with no format member — the default,
- * which is returned rather than nulled because A12 applies it.
+ * Three shapes give null and they are deliberately one answer: the member is absent, it holds something other
+ * than a string, or it holds a format the derived vocabulary does not carry.
+ *
+ * **The absent case is silence rather than ignorance.** A body with no format gets the builder's
+ * `yyyy-MM-dd`, which is year-bearing AND a complete pure date, so A12 admits it on both gates (measured:
+ * [KERNEL-FINDINGS KF314]). Reading the absent member AS that default was written first and produced the
+ * identical verdict on every input — a verdict-equivalent branch, removed rather than kept. A gate that
+ * refused the default would have to read it, and that is the trigger for putting it back.
  */
 private fun JsonObject.declaredFormat(member: String): String? {
-    val declared = this[member] ?: return DEFAULT_DATE_FORMAT
-    val text = (declared as? JsonPrimitive)?.takeIf { it.isString }?.content ?: return null
+    val text = (this[member] as? JsonPrimitive)?.takeIf { it.isString }?.content ?: return null
     return text.takeIf { it in ADMITTED_FORMATS }
 }
 
@@ -103,9 +107,6 @@ private fun partialPrecisionFinding(field: DeclaredElement, body: JsonObject, fo
         field.path,
     )
 }
-
-/** `FieldTypeConstants.DEFAULT_DATE_FORMAT`, which the builder applies when a body declares no format. */
-private const val DEFAULT_DATE_FORMAT = "yyyy-MM-dd"
 
 /**
  * The thirteen formats the kernel admits, split by whether they carry a year.

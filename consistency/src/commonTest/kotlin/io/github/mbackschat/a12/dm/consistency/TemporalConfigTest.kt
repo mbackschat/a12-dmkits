@@ -59,8 +59,9 @@ class TemporalConfigTest {
         expected["the check on a year-bearing format"] = emptyList()
         // The gate is on the VALUE: `false` on a year-free format is a declaration A12 accepts.
         expected["the check written FALSE"] = emptyList()
-        // The builder's default is `yyyy-MM-dd`, which carries a year — so reading the absent member as the
-        // default gives A12's answer, and reading it as "no format" would give a finding A12 does not.
+        // The builder's default is `yyyy-MM-dd`, which carries a year and is a complete pure date, so A12
+        // admits a body with no format on BOTH gates — the two rows lock that A12 answer, not the branch the
+        // checker takes to reach it (reading the default and reading nothing are verdict-equivalent here).
         expected["the check with no format, so the default applies"] = emptyList()
         // Silent by design: the admitted set is a probe's result rather than a closed one, so a format
         // outside it is undiscovered and refusing it would rest on the limit of that probe.
