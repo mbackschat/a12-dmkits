@@ -65,6 +65,10 @@ class MessageTextControlCharacterLawsTest {
         // first and hides the other — the difference decides what a checker is allowed to emit.
         actual.put("a line break AND a control character",
                 verdict("see" + (char) 0x0A + "the" + (char) 0x09 + "reference"));
+        // …and the same pair in the OTHER ORDER, which is what separates "the line-break gate runs first"
+        // from "the first offending character decides". Both rows read alike when the break comes first.
+        actual.put("a control character BEFORE a line break",
+                verdict("see" + (char) 0x09 + "the" + (char) 0x0A + "reference"));
 
         Map<String, String> expected = new LinkedHashMap<>();
         expected.put("printable text — the control", ADMITTED);
@@ -87,6 +91,11 @@ class MessageTextControlCharacterLawsTest {
         // than independent, and a reader reporting both names a verdict A12 did not give.
         expected.put("a line break AND a control character",
                 "(no code: Rule with path '/Policy/ProbeRule': Only values without line breaks are allowed.),INVALID_LINEBREAK");
+        // Still the line-break class, so the gate is keyed on the KIND present rather than on which
+        // character comes first — the distinction a reader taking "the first offending character" gets
+        // wrong, and one no row with the break in front can see.
+        expected.put("a control character BEFORE a line break",
+                "(no code: Rule with path \'/Policy/ProbeRule\': Only values without line breaks are allowed.),INVALID_LINEBREAK");
         assertEquals(expected, actual, "which control characters a message may carry");
     }
 

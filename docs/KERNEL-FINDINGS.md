@@ -6875,8 +6875,9 @@ Reported by the portable checker as `ReferenceRole.MESSAGE_PARAMETER`, inside `C
 | U+0020, a plain space | ADMITTED |
 | U+00A0, a non-breaking space | ADMITTED |
 | **a line break AND a tab** | **`INVALID_LINEBREAK`** only |
+| **a tab BEFORE a line break** | **`INVALID_LINEBREAK`** only |
 
-**The last row is the one an implementation turns on.** The gates run in ORDER rather than independently: the tab beside a line break draws nothing, so a reader reporting each kind it finds names a verdict A12 did not give — on exactly the text an author produces by pasting, which is the likeliest real input here.
+**The last two rows are what an implementation turns on.** The gates run in ORDER rather than independently: the tab beside a line break draws nothing, so a reader reporting each kind it finds names a verdict A12 did not give — on exactly the text an author produces by pasting, which is the likeliest real input here. And the order is keyed on the KIND present, not on position: reversing the pair changes nothing, which is what separates "the line-break gate runs first" from "the first offending character decides". Both readings agree on every text where the break comes first, so a grid without the reversed row cannot tell them apart — measured here because a mutant swapping the two tests survived the row that had them in that order.
 
 **The refused set is the ISO control blocks**, both ends measured — `U+0000`–`U+001F` and `U+007F`–`U+009F`, with the space and the non-breaking space outside them. A repertoire restriction is a *different* law: the charset refusal for a supplementary-plane code point carries no class at all ([KF279](#kf279)), so a family keying on the charset would answer a different question with the wrong code.
 

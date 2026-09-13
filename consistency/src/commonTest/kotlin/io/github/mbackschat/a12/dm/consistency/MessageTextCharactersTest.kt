@@ -34,6 +34,8 @@ class MessageTextCharactersTest {
         actual["a non-breaking space"] = around(0xA0)
         actual["a line break AND a control character"] =
             codes("see" + 0x0A.toChar() + "the" + 0x09.toChar() + "reference")
+        actual["a control character BEFORE a line break"] =
+            codes("see" + 0x09.toChar() + "the" + 0x0A.toChar() + "reference")
 
         val expected = mutableMapOf<String, List<String>>()
         expected["printable text — the control"] = emptyList()
@@ -51,6 +53,10 @@ class MessageTextCharactersTest {
         expected["a non-breaking space"] = emptyList()
         // ONE finding, and the line-break one: the gates are ordered, so the tab beside it draws nothing.
         expected["a line break AND a control character"] = listOf(lineBreak)
+        // The same pair reversed, which is the row that discriminates: the gate is keyed on the KIND
+        // present, not on which character comes first, so taking the first offending one would report the
+        // wrong class here while agreeing on every row where the break comes first.
+        expected["a control character BEFORE a line break"] = listOf(lineBreak)
         assertEquals(expected, actual, "which control characters this family reports")
     }
 
