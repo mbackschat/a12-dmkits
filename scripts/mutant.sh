@@ -105,12 +105,16 @@ if old == new:
 p.write_text(t.replace(old, new, 1))
 PY
 
-# Prove it landed rather than trusting the write, because that is the failure this guards.
-if git diff --quiet -- "$FILE"; then
+# Prove it landed rather than trusting the write, because that is the failure this guards. The proof compares
+# BYTES against the backup, never `git diff`: git diff is silent for an UNTRACKED file, so the git form
+# reported "unchanged after the edit" for every mutant planted in a file that had just been created — the new
+# guard class being the case that found it (2026-09-13). The byte comparison needs no index and is the same
+# copy `restore` puts back, so it cannot disagree with what will be undone.
+if cmp -s "$BACKUP" "$FILE"; then
   echo "mutant: the file is unchanged after the edit — refusing to report a verdict" >&2
   exit 2
 fi
-echo "mutant applied: $(git diff --shortstat -- "$FILE" | sed 's/^ *//')"
+echo "mutant applied: $(git diff --shortstat -- "$FILE" | sed 's/^ *//' | grep . || echo 'untracked file, 1 replacement')"
 
 LOG=$(mktemp)
 # `-Pfast` drops the guard prerequisites, which is the whole speed win — but it SKIPS docGuardTest,
