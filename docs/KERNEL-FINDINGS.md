@@ -6851,7 +6851,7 @@ Two of the four are the condition code's tail and two are not, and the two that 
 
 The third row is the one that keeps the account honest: without it, the local hit explains every admission and a local-only rule fits the set exactly as well as the two-tier one. The fallback's second tier is gated on the model's `fieldRefByShortNameAllowed` — a checker whose fixture leaves it off measures the fallback as absent and reports the unresolvable class instead (caught here that way).
 
-**A `..` step is ordinary; only the OVERSHOOT is refused.** From a rule in a root group one `..` already leaves the outermost group, so the refusal measured there says nothing about the step itself — from a rule one level down, `$../Premium$` is ADMITTED and judged for membership like any other address.
+**A `..` step is ordinary; only the OVERSHOOT is refused.** From a rule in a root group one `..` already leaves the outermost group, so the refusal measured there says nothing about the step itself — from a rule one level down, `$../Premium$` is ADMITTED and judged for membership like any other address. A path ENDING in the step is an address too: `$..$` names the group it lands on and draws `INVALID_FIELD` there, so the step is not restricted to a prefix position.
 
 **And `$BaseYear$` is none of these.** It is a terminal of the message grammar, ADMITTED where the model declares a base year and `NO_BASE_YEAR` where it does not ([KF198](#kf198)) — so a reader reporting unresolvable addresses must exclude the grammar's own terminals first, or it over-rejects on a parameter A12 admits. Every other terminal form carries a character no plain name admits and is refused earlier.
 

@@ -92,12 +92,20 @@ class MessageParameterShortNameLawsTest {
         actual.put("a step up that lands inside the root group", fromClaims("see $../Premium$"));
         actual.put("the same entity addressed absolutely — the control",
                 fromClaims("see $/Policy/Premium$"));
+        // A path that ENDS in the step, naming the ancestor group itself rather than a field in it.
+        actual.put("a bare step up, naming the group it lands on", fromClaims("see $..$"));
+        actual.put("the same from a ROOT group, where it overshoots", verdict(GROUP, "Reference", "see $..$"));
 
         Map<String, String> expected = new LinkedHashMap<>();
         // Only the OVERSHOOT is refused, not the step: a `..` landing inside the root group is ordinary, so
         // a checker may judge such a parameter and must report the overshoot under its own class instead.
         expected.put("a step up that lands inside the root group", ADMITTED);
         expected.put("the same entity addressed absolutely — the control", ADMITTED);
+        // A path ending in the step is an ORDINARY address naming the group it lands on — an ordinary
+        // membership refusal, not a grammar one — so a reader refusing that shape only loses findings.
+        expected.put("a bare step up, naming the group it lands on", "INVALID_FIELD");
+        expected.put("the same from a ROOT group, where it overshoots",
+                "ERROR_TEXT_PARAMETER_TOO_MANY_PARENT_GROUPS");
         assertEquals(expected, actual, "whether a step up is legal below the root group");
     }
 

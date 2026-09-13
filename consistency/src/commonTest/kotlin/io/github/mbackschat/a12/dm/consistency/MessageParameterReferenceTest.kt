@@ -44,6 +44,7 @@ class MessageParameterReferenceTest {
         actual["a good parameter before an unterminated one"] = ruleSaying("see \$Premium\$ and \$Adjuster")
         actual["an ABSOLUTE path"] = ruleSaying("see \$/Policy/Premium\$")
         actual["a step above the root group"] = ruleSaying("see \$../Premium\$")
+        actual["a bare step up, which here overshoots"] = ruleSaying("see \$..\$")
         actual["a non-local short name the model carries twice"] = ruleSaying("see \$Payout\$")
         actual["a name at ROOT-GROUP level that resolves to nothing"] = ruleSaying("see \$/NoSuchRoot\$")
 
@@ -87,6 +88,9 @@ class MessageParameterReferenceTest {
         // Only the OVERSHOOT is refused: a `..` landing inside the root group is ordinary and judged for
         // membership like any other address (measured from a rule in `Claims`).
         expected["a step above the root group"] = listOf("ERROR_TEXT_PARAMETER_TOO_MANY_PARENT_GROUPS")
+        // A path ending in the step is an address too — from a deeper carrier it names the group it lands
+        // on; from this root group it overshoots, so the same class answers it.
+        expected["a bare step up, which here overshoots"] = listOf("ERROR_TEXT_PARAMETER_TOO_MANY_PARENT_GROUPS")
         // The short-name fallback is local-first and then model-wide, so a name the declaring group does not
         // own can match several fields — and A12 refuses the ADDRESS rather than choosing one.
         expected["a non-local short name the model carries twice"] = listOf("ERROR_TEXT_FIELDNAME_NOT_UNIQUE")

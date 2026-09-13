@@ -93,10 +93,10 @@ private fun plainNameOrNull(parameter: String): String? {
     val name = parameter.removeSuffix(VALUE_SUFFIX)
     val absolute = name.startsWith('/')
     val segments = name.removePrefix("/").split('/')
-    // A `..` step is admitted, but only ahead of a name: A12 refuses the overshoot with a class of its own
-    // and admits a step that lands inside the root group (measured), which is exactly what resolution
-    // models. A path ENDING in `..` names no entity and no measurement covers it, so it stays unread.
-    if (segments.last() == UP || segments.any { it != UP && !it.isPlainSegment() }) {
+    // A `..` step is admitted anywhere, the last position included: a path ending in one names the GROUP it
+    // lands on and draws an ordinary membership refusal there, while one that climbs past the root group
+    // draws a class of its own — exactly the split resolution already models (measured).
+    if (segments.any { it != UP && !it.isPlainSegment() }) {
         return null
     }
     val joined = segments.joinToString("/") { it.trim('\'') }
