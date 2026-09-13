@@ -6125,7 +6125,7 @@ The last row generalizes the string-literal result above rather than repeating i
 
 **The member is NECESSARY and not sufficient, and two rows say so** — which is why a checker may report its ABSENCE and must stay silent on its presence:
 
-- `DateRangeType` with `{"format":"dd.MM.yyyy"}` alone is NOT BUILDABLE even though the builder defaults `rangeSeparator`. A12 allowlists the format-and-separator PAIR, the default separator is `/` (`FieldTypeConstants.A12_DATE_RANGE_SEPARATOR`), and (`dd.MM.yyyy`, `/`) is not among the eight admitted pairs ([TEMPORAL-FORMAT-VOCABULARY](TEMPORAL-FORMAT-VOCABULARY.md)). The discriminator is `{"format":"yyyy-MM-dd"}`, whose pair with `/` IS admitted and which is ADMITTED — without it the row would read as "a format alone is never enough for this type".
+- `DateRangeType` with `{"format":"dd.MM.yyyy"}` alone is NOT BUILDABLE even though the builder defaults `rangeSeparator`. A12 allowlists the format-and-separator PAIR, the default separator is `/` (`FieldTypeConstants.A12_DATE_RANGE_SEPARATOR`), and (`dd.MM.yyyy`, `/`) is not among the eight admitted pairs ([TEMPORAL-FORMAT-VOCABULARY](TEMPORAL-FORMAT-VOCABULARY.md)). The discriminator is `{"format":"yyyy-MM-dd"}`, whose pair with `/` IS admitted and which is ADMITTED — without it the row would read as "a format alone is never enough for this type". **Amended 2026-09-13:** the pair is measured in its own right in [KF316](#kf316), which settles the tier and the omitted-separator reading, so this row is no longer the only thing a consumer can key on.
 - `DateFragmentType` with `{"formatOfFragment":"dd.MM.","youngerThan1900Check":true}` draws `MVK_ADDITIONAL_CHECK_INVALID` — a consistency verdict rather than a build failure, because the check needs a year and that format has none. Its discriminator is the identical pair of members with `dd.MM.yyyy`, which is ADMITTED.
 
 **The control is a type that requires nothing carrying the SAME optional member.** `DateType` and `DateFragmentType` both declare `youngerThan1900Check`, and `DateType` with only that member is ADMITTED — so the unbuildable rows are about the type constructing from something, not about a body with exactly one member being refused.
@@ -6189,3 +6189,26 @@ The last row generalizes the string-literal result above rather than repeating i
 **Why it was measured rather than assumed.** Applying a measured law to an unmeasured carrier needs no new branch, so nothing prompts the question — the recurring scope-transfer shape. Here the assumption would have made a checker refuse a field named `_Slots`, which A12 admits.
 
 *Locked by:* `rulekit.validate.laws.FieldNameAlphabetLawsTest`, row for row against `GroupNameAlphabetLawsTest`.
+
+## §10 supplement — a DATERANGE's `(format, rangeSeparator)` pair is refused at the BUILD tier, and an omitted separator is the kernel's `/` (measured, 2026-09-13) <a id="kf316"></a>
+
+> Fold: pending — belongs beside [KERNEL-SEMANTICS](KERNEL-SEMANTICS.md) §10, whose field-type material names `DateRangeType` without saying that its two members are allowlisted together.
+
+[TEMPORAL-FORMAT-VOCABULARY](TEMPORAL-FORMAT-VOCABULARY.md) derives the eight admitted `(format, separator)` pairs, but it asks the kernel a boolean. A consumer that wants to SAY something about a refused pair needs the TIER as well, because a reader refusal, a build failure and an `MVK_*` code are three different claims about whether A12 examined the declaration at all. **It is the build tier: A12 reads the model, cannot construct the type, and issues no consistency code** — so a refused pair leaves a consumer with no verdict rather than a wrong one, exactly like an absent required member ([KF312](#kf312)).
+
+**Neither half can be judged alone, measured in both directions on one carrier:**
+
+| `format` | `rangeSeparator` | verdict |
+|---|---|---|
+| `yyyy-MM-dd` | `/` | ADMITTED |
+| `dd.MM.yyyy` | `-` | ADMITTED |
+| `yyyy-MM-dd` | `-` | NOT BUILDABLE |
+| `dd.MM.yyyy` | `/` | NOT BUILDABLE |
+
+Every member of the two refused rows appears in an admitted row, so the allowlist reads the combination rather than either half. The two controls differ from their refused partner in exactly one member, which is what makes each refusal attributable.
+
+**An omitted `rangeSeparator` is `/`, not "no separator"** — the kernel's `FieldTypeConstants.A12_DATE_RANGE_SEPARATOR`, pre-initialised by `DateRangeTypeBuilder` (source-read, kernel `30.8.1`). Only stored JSON can ask: the typed builder always writes one. Omission is ADMITTED on `yyyy-MM-dd` and NOT BUILDABLE on `dd.MM.yyyy`, which is the discriminating pair; an explicit `""` is a different declaration with admitted pairs of its own (`MM` takes it, `yyyy-MM-dd` does not), so a reader treating omission as the empty string gets both rows backwards.
+
+**The range domain is not a projection of the field-format vocabulary, in both directions.** `yyyyMM` is an admitted field format and is refused on a range at every probed separator; `dd.MM` is refused as a field format and admitted on a range with `-`. Reusing the thirteen-member field vocabulary here would refuse a legal model and miss an illegal one.
+
+*Locked by:* `rulekit.validate.laws.DateRangePairAdmissionLawsTest`; the pair set itself is derived by `TemporalFormatVocabularyGuardTest` and published in [TEMPORAL-FORMAT-VOCABULARY](TEMPORAL-FORMAT-VOCABULARY.md).
