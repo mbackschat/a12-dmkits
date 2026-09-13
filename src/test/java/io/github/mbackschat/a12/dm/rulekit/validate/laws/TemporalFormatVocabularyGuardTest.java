@@ -561,14 +561,18 @@ class TemporalFormatVocabularyGuardTest {
      * the comment-out variant, without parsing either language's collection literals.
      */
     private static String enumerationRegion(Path source, String text) {
-        int start = text.indexOf(REGION_START);
+        return enumerationRegion(source, text, REGION_START, REGION_END);
+    }
+
+    private static String enumerationRegion(Path source, String text, String regionStart, String regionEnd) {
+        int start = text.indexOf(regionStart);
         // Searched AFTER the opening marker: the first version scanned from position zero, so a start-marker
         // comment that merely NAMED the closing one ended the region before the list began, and every format
         // read as missing. Written down because the failure looked like a broken claimant, not a broken guard.
-        int end = start < 0 ? -1 : text.indexOf(REGION_END, start + REGION_START.length());
+        int end = start < 0 ? -1 : text.indexOf(regionEnd, start + regionStart.length());
         assertTrue(start >= 0 && end > start,
-                () -> "a registered claimant must delimit its enumeration with " + REGION_START + " … "
-                        + REGION_END + " comments so the check binds the grid rather than the file: " + source);
+                () -> "a registered claimant must delimit its enumeration with " + regionStart + " … "
+                        + regionEnd + " comments so the check binds the grid rather than the file: " + source);
         return text.substring(start, end).lines()
                 .filter(line -> !line.strip().startsWith("//"))
                 .reduce("", (a, b) -> a + "\n" + b);
@@ -772,6 +776,82 @@ class TemporalFormatVocabularyGuardTest {
     }
 
     /**
+     * The one consumer that carries the PAIR domain, which needs an exact re-derivation rather than
+     * containment.
+     *
+     * <p>{@link #COMPLETENESS_CLAIMANTS} asks whether every admitted format is NAMED, which is the right
+     * question for a grid that must not be short. It is the wrong question here: the portable checker reports
+     * a pair outside this table as unbuildable, so a table that is short REFUSES A MODEL A12 TAKES — the one
+     * direction the checker may never take — and containment cannot see an entry that is present and wrong.
+     * So this arm compares entry for entry, in both directions.
+     */
+    private static final String RANGE_PAIR_CLAIMANT =
+            "consistency/src/commonMain/kotlin/io/github/mbackschat/a12/dm/consistency/FieldTypeBinding.kt";
+
+    private static final String RANGE_REGION_START = "RANGE-PAIR-GRID-START";
+    private static final String RANGE_REGION_END = "RANGE-PAIR-GRID-END";
+
+    /** {@code "<format>" to setOf("a", "b")} or {@code "<format>" to emptySet()}, one entry per line. */
+    private static final java.util.regex.Pattern RANGE_ENTRY = java.util.regex.Pattern.compile(
+            "\"([^\"]*)\"\\s+to\\s+(?:setOf\\((.*)\\)|emptySet\\(\\))");
+
+    private static final java.util.regex.Pattern QUOTED = java.util.regex.Pattern.compile("\"([^\"]*)\"");
+
+    /**
+     * The kernel's own answer, shaped like the claimant's table: every admitted FIELD format plus every
+     * format appearing in an admitted pair, each mapped to the separators it is admitted with.
+     *
+     * <p><b>The empty entries are measurements, not padding.</b> A field format with no admitted pair was put
+     * to the kernel at all seven probed separators and refused at every one, so the checker may report it —
+     * which is exactly why it has to appear here rather than being left out as "nothing to say".
+     */
+    private static Map<String, Set<String>> derivedRangeTable() {
+        Map<String, Set<String>> out = new java.util.TreeMap<>();
+        for (String format : admittedFormats(partition())) {
+            out.put(format, new TreeSet<>());
+        }
+        for (String pair : admittedRangePairs()) {
+            int split = pair.lastIndexOf('|');
+            out.computeIfAbsent(pair.substring(0, split), f -> new TreeSet<>()).add(pair.substring(split + 1));
+        }
+        return out;
+    }
+
+    /** The claimant's own table, read out of its delimited region. */
+    private static Map<String, Set<String>> carriedRangeTable() throws IOException {
+        String region = enumerationRegion(Path.of(RANGE_PAIR_CLAIMANT),
+                Files.readString(Path.of(RANGE_PAIR_CLAIMANT)), RANGE_REGION_START, RANGE_REGION_END);
+        Map<String, Set<String>> out = new java.util.TreeMap<>();
+        java.util.regex.Matcher entries = RANGE_ENTRY.matcher(region);
+        while (entries.find()) {
+            Set<String> separators = new TreeSet<>();
+            if (entries.group(2) != null) {
+                java.util.regex.Matcher quoted = QUOTED.matcher(entries.group(2));
+                while (quoted.find()) {
+                    separators.add(quoted.group(1));
+                }
+            }
+            out.put(entries.group(1), separators);
+        }
+        return out;
+    }
+
+    /**
+     * The checker's range table is the kernel's, entry for entry.
+     *
+     * <p>Its failure message has to carry the remedy, because the table is not regenerable by
+     * {@code dumpTemporalVocabulary}: that fixer owns the published artifact, not a consumer's source.
+     */
+    @Test
+    void theCheckersRangePairTableAgreesWithTheKernel() throws IOException {
+        assertEquals(derivedRangeTable(), carriedRangeTable(),
+                "the portable checker's ADMITTED_RANGE_SEPARATORS disagrees with the kernel. It REPORTS a "
+                        + "pair outside its table, so a stale entry refuses a model A12 accepts — edit "
+                        + RANGE_PAIR_CLAIMANT + " between " + RANGE_REGION_START + " and " + RANGE_REGION_END
+                        + " to the expected map above");
+    }
+
+    /**
      * Every claimant is a declared Gradle input of the task that hosts this guard.
      *
      * <p>The registry above and {@code build.gradle}'s {@code vocabulary consumers} list are two copies of one
@@ -784,6 +864,7 @@ class TemporalFormatVocabularyGuardTest {
         String build = Files.readString(Path.of("build.gradle"));
         Set<String> registered = new LinkedHashSet<>(COMPLETENESS_CLAIMANTS.keySet());
         registered.addAll(PROSE_CLAIMANTS.keySet());
+        registered.add(RANGE_PAIR_CLAIMANT);
         List<String> undeclared = registered.stream()
                 .filter(path -> !build.contains("'" + path + "'"))
                 .toList();

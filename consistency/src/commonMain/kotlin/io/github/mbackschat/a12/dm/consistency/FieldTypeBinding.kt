@@ -119,7 +119,59 @@ private fun unbindableFieldType(
             "`fieldType` names `$discriminator` without the `$required` A12 constructs that type from",
         )
     }
+    if (discriminator == "DateRangeType" && body is JsonObject) {
+        return inadmissibleRangePair(field, body)
+    }
     return null
+}
+
+/**
+ * A `DateRangeType`'s `format` and `rangeSeparator` judged TOGETHER, because A12 allowlists the pair.
+ *
+ * The member above is necessary and not sufficient, and this is the measured case that says so
+ * ([KERNEL-FINDINGS KF316], `rulekit.validate.laws.DateRangePairAdmissionLawsTest`): every half of a refused
+ * pair appears in an admitted pair, so neither half can be judged alone. It is the same BUILD tier as an
+ * absent member — A12 reads the model, cannot construct the type, and issues no consistency code — which is
+ * why it belongs to this family rather than to the date-config one, whose findings are A12's own verdicts.
+ *
+ * **An ABSENT `rangeSeparator` is `/`**, the kernel's `FieldTypeConstants.A12_DATE_RANGE_SEPARATOR`
+ * pre-initialised by `DateRangeTypeBuilder`, and measured as such on a format `/` admits and one it does
+ * not. An explicit `""` is a different declaration with admitted pairs of its own, so the two cannot be
+ * folded.
+ */
+private fun inadmissibleRangePair(field: DeclaredElement, body: JsonObject): Finding? {
+    val format = (body["format"] as? JsonPrimitive)?.takeIf { it.isString }?.content ?: return null
+    val admitted = ADMITTED_RANGE_SEPARATORS[format] ?: return null
+    val declared = body["rangeSeparator"]
+    // Three readings, and only the first two are measured: the member is absent, or it holds a string. A
+    // separator that is present and not a string is a shape nobody has run.
+    val separator = when {
+        declared == null -> DEFAULT_RANGE_SEPARATOR
+        declared is JsonPrimitive && declared.isString -> declared.content
+        else -> return null
+    }
+    // A separator outside the probed set was never put to the kernel beside this format, so its pair is
+    // undiscovered rather than refused — the same limit the format vocabulary states about itself.
+    if (separator in admitted || separator !in PROBED_RANGE_SEPARATORS) {
+        return null
+    }
+    val declaredAs = if (declared == null) {
+        "no `rangeSeparator`, so A12 uses its default `/`"
+    } else {
+        "the range separator `$separator`"
+    }
+    val admits = if (admitted.isEmpty()) {
+        "A12 admits `$format` on a range with none of the separators it has been measured with"
+    } else {
+        "A12 admits `$format` on a range only with " + admitted.sorted().joinToString(" and ") {
+            if (it.isEmpty()) "no separator at all" else "`$it`"
+        }
+    }
+    return unbuildable(
+        field,
+        "`fieldType` names `DateRangeType` with the format `$format` and $declaredAs, and A12 allowlists " +
+            "the PAIR rather than either half — $admits",
+    )
 }
 
 /**
@@ -172,9 +224,10 @@ private fun unresolvedTypeDefinition(
  * not that one. The measurement agrees with the builder.
  *
  * **The member is NECESSARY and not sufficient**, which is why its absence is what gets reported and its
- * presence draws nothing. Two measured rows have the member and are still refused — a `DateRangeType` whose
- * format is not admitted with the default separator, and a `DateFragmentType` asked for a 1900 check on a
- * format with no year — and both are A12's to report, not this family's.
+ * presence, on its own, draws nothing. Two measured rows have the member and are still refused. The
+ * `DateRangeType` one — a format not admitted with the separator beside it — is this family's, judged by
+ * [inadmissibleRangePair], because it dies at the same build tier. The `DateFragmentType` one — a 1900 check
+ * on a format with no year — is A12's own consistency verdict and belongs to [temporalConfigFindings].
  *
  * `TypeDefType` is the fifth constructing type and is absent here: its member is a REFERENCE, which
  * [unresolvedTypeDefinition] resolves rather than merely finds.
@@ -185,6 +238,50 @@ private val REQUIRED_BODY_MEMBER = mapOf(
     "EnumerationType" to "values",
     "CustomFieldType" to "name",
 )
+
+/** The kernel's `FieldTypeConstants.A12_DATE_RANGE_SEPARATOR`, source-read of `30.8.1` and measured. */
+private const val DEFAULT_RANGE_SEPARATOR = "/"
+
+/**
+ * The separators the derived sweep put to the kernel beside every candidate format. A pair naming any other
+ * separator was never measured, so this checker leaves it alone.
+ */
+private val PROBED_RANGE_SEPARATORS = setOf("/", "-", ".", "", " - ", ":", "_")
+
+/**
+ * Which separators A12 admits each range format with — the DERIVED pair domain, restricted to the formats
+ * this checker may name.
+ *
+ * **Two measured sources, and the empty entries are as measured as the others.** The non-empty entries are
+ * the admitted `(format, separator)` pairs of [TEMPORAL-FORMAT-VOCABULARY]; the empty ones are the admitted
+ * FIELD formats that appear in no admitted pair, which means the sweep put each of them to the kernel at
+ * every probed separator and the kernel refused all seven. A format outside this table is one whose range
+ * admission is undiscovered rather than refused, so it draws nothing.
+ *
+ * **It is guard-registered, and it has to be**: this is the one table in the checker whose going stale
+ * produces an OVER-rejection — a pair the kernel gains would be reported as unbuildable — so
+ * `rulekit.validate.laws.TemporalFormatVocabularyGuardTest` re-derives it from the kernel and fails on any
+ * disagreement, in either direction.
+ */
+// RANGE-PAIR-GRID-START — the guard reads only this delimited region and compares it to the kernel's own
+// answer, entry for entry. A pair named elsewhere in this file does not count as carried.
+private val ADMITTED_RANGE_SEPARATORS = mapOf(
+    "MM" to setOf("", "/"),
+    "MM-dd" to setOf("/"),
+    "dd.MM" to setOf("-"),
+    "dd.MM.yyyy" to setOf("-"),
+    "yyyy" to setOf("/"),
+    "yyyy-MM" to setOf("/"),
+    "yyyy-MM-dd" to setOf("/"),
+    "HH:mm:ss" to emptySet(),
+    "MMdd" to emptySet(),
+    "ddMM" to emptySet(),
+    "dd.MM." to emptySet(),
+    "yyyy-MM-dd'T'HH:mm:ss" to emptySet(),
+    "yyyyMM" to emptySet(),
+    "yyyyMMdd" to emptySet(),
+)
+// RANGE-PAIR-GRID-END
 
 /**
  * The discriminator as A12 reads it — `JsonNode.asText()`, which stringifies any scalar rather than demanding

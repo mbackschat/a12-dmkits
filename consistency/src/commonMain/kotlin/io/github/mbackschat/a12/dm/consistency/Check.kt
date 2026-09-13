@@ -360,10 +360,12 @@ private fun List<Finding>.buildBlocked(): List<CoverageGap> =
 private val UNREAD_MEMBERS = listOf(
     CoverageGap(
         at = null,
-        reason = "a field type's body is judged on the one member A12 constructs from and on nothing else, " +
-            "because that member is NECESSARY and not sufficient: a `DateRangeType` naming a format the " +
-            "separator is not admitted with, and a `DateFragmentType` asking for a 1900 check on a format " +
-            "with no year, are both measured unbuildable with the member present and draw nothing here",
+        reason = "a field type's body is judged on the member A12 constructs from and on the one CONTENT " +
+            "law measured beyond it, a `DateRangeType`'s (format, separator) pair. What a member otherwise " +
+            "holds is left to A12: a declared `format` outside the admitted vocabulary is refused there and " +
+            "cannot be reported here, since the admitted set is explicitly not closed and the refused one " +
+            "is a probe's universe rather than a law; an `EnumerationType`'s `values` and a " +
+            "`CustomFieldType`'s `name` have no measured content law at all",
     ),
     CoverageGap(
         at = null,

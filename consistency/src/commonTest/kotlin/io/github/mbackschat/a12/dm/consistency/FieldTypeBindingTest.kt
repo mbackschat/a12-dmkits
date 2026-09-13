@@ -108,6 +108,50 @@ class FieldTypeBindingTest {
         assertEquals(expected, actual, "a constructing type judged on the member A12 builds from")
     }
 
+    /**
+     * The `DateRangeType` pair, which is the measured case saying the required member is not sufficient.
+     *
+     * Every row mirrors one in `rulekit.validate.laws.DateRangePairAdmissionLawsTest`
+     * ([KERNEL-FINDINGS KF316]). The two silent tail rows carry the over-rejection risk: a format or a
+     * separator the sweep never put to the kernel is undiscovered rather than refused, so reporting one
+     * would rest a refusal on the limit of a probe.
+     */
+    @Test
+    fun aDateRangeIsJudgedOnItsFormatAndSeparatorTogether() {
+        val actual = mutableMapOf<String, List<String>>()
+        val expected = mutableMapOf<String, List<String>>()
+        fun row(name: String, body: String, verdict: List<String>) {
+            actual[name] = codes("""{"type":"DateRangeType","DateRangeType":$body}""")
+            expected[name] = verdict
+        }
+        row("ISO with its separator — a control", """{"format":"yyyy-MM-dd","rangeSeparator":"/"}""", emptyList())
+        row("German with its separator — a control",
+            """{"format":"dd.MM.yyyy","rangeSeparator":"-"}""", emptyList())
+        // Each half of these two appears in a control above, which is what makes the pair the subject.
+        row("ISO with the German pair's separator",
+            """{"format":"yyyy-MM-dd","rangeSeparator":"-"}""", unbuildable)
+        row("German with the ISO pair's separator",
+            """{"format":"dd.MM.yyyy","rangeSeparator":"/"}""", unbuildable)
+        row("ISO, separator omitted", """{"format":"yyyy-MM-dd"}""", emptyList())
+        row("German, separator omitted", """{"format":"dd.MM.yyyy"}""", unbuildable)
+        // The empty separator is a declaration of its own, so omission cannot be read as it.
+        row("ISO with an explicit empty separator",
+            """{"format":"yyyy-MM-dd","rangeSeparator":""}""", unbuildable)
+        row("month with an explicit empty separator", """{"format":"MM","rangeSeparator":""}""", emptyList())
+        // The two directions in which the range domain is not the field vocabulary.
+        row("a field-admitted format with no admitted pair", """{"format":"yyyyMM","rangeSeparator":"/"}""",
+            unbuildable)
+        row("a field-REFUSED format admitted on a range", """{"format":"dd.MM","rangeSeparator":"-"}""",
+            emptyList())
+        row("a format the sweep never put to the kernel",
+            """{"format":"MM.yyyy","rangeSeparator":"/"}""", emptyList())
+        row("a separator the sweep never put to the kernel",
+            """{"format":"yyyy-MM-dd","rangeSeparator":"~"}""", emptyList())
+        row("a separator that is not a string at all",
+            """{"format":"yyyy-MM-dd","rangeSeparator":7}""", emptyList())
+        assertEquals(expected, actual, "a DATERANGE's format and separator are allowlisted as a pair")
+    }
+
     @Test
     fun aFieldTypeThatIsNotAUsableTypedObjectIsUnbindable() {
         val actual = mutableMapOf<String, List<String>>()

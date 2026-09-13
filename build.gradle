@@ -937,6 +937,7 @@ tasks.register('vocabularyGuardTest', Test) {
                     'src/test/java/io/github/mbackschat/a12/dm/rulekit/validate/laws/TemporalDeclarationConfigAdmissionLawsTest.java',
                     'src/test/java/io/github/mbackschat/a12/dm/rulekit/validate/laws/TemporalAdditionalCheckCarrierLawsTest.java',
                     'consistency/src/commonMain/kotlin/io/github/mbackschat/a12/dm/consistency/TemporalConfig.kt',
+                    'consistency/src/commonMain/kotlin/io/github/mbackschat/a12/dm/consistency/FieldTypeBinding.kt',
                     'cli/src/main/resources/schema/field-add.schema.json',
                     'cli/src/main/resources/schema/field-modify.schema.json',
                     'cli/src/main/resources/schema/typedef-add.schema.json',
