@@ -73,10 +73,9 @@ private fun closingDollar(text: String, from: Int): Int? {
  * safe; the measurement shows the exclusion only hid real findings, so it is gone.
  */
 private fun plainNameOrNull(parameter: String): String? {
+    // No guard for an empty name: [isPlainSegment] refuses an empty segment, so `$$` and `$.value$` fall
+    // out below. Written as its own branch first; the mutant that disabled it could not be killed.
     val name = parameter.removeSuffix(VALUE_SUFFIX)
-    if (name.isEmpty()) {
-        return null
-    }
     val absolute = name.startsWith('/')
     val segments = name.removePrefix("/").split('/')
     if (segments.any { !it.isPlainSegment() }) {
