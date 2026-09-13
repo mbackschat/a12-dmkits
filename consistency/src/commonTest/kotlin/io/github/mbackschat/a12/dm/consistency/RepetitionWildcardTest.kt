@@ -104,9 +104,16 @@ class RepetitionWildcardTest {
     /**
      * What it stays silent on, and the one pre-emption that runs the other way.
      *
-     * A starred fixed group with an unresolvable LEAF draws this class in A12 and the entity class here too,
-     * which is the reverse of every other pair: A12 stops at the wildcard. Both findings are real — fixing
-     * the star leaves the leaf missing — so the second is a truth about the model rather than a divergence.
+     * A starred fixed group with an unresolvable LEAF draws the WILDCARD class in A12, because A12 stops at
+     * the first defect in the text and the star comes first ([KERNEL-FINDINGS KF342]). This file used to
+     * report both classes and called the extra one "a truth about the model rather than a divergence";
+     * `ConsistencyReport` says a finding is A12's verdict on a declaration, so a class A12 did not draw is a
+     * divergence however true it is, and the withholding gate now leaves one class here.
+     *
+     * **The one it leaves is the entity class, not A12's wildcard class**, because the gate is position-blind
+     * — it cannot see that the star came first. Both name a real defect of this text and the author reaches
+     * the same fixed reference either way; the substitution and its price are recorded on
+     * `CONDITION_TEXT_CODES`.
      */
     @Test
     fun theShapesItLeavesAlone() {
@@ -120,7 +127,7 @@ class RepetitionWildcardTest {
 
         val expected = mutableMapOf<String, List<String>>()
         expected["a starred segment whose own prefix does not resolve"] = listOf("MVK_INVALID_ENTITY")
-        expected["a starred fixed group with an unresolvable LEAF"] = listOf("MVK_INVALID_ENTITY", invalid)
+        expected["a starred fixed group with an unresolvable LEAF"] = listOf("MVK_INVALID_ENTITY")
         // A `..` outside the LEADING run is not valid A12 at all — the parser refuses it starred or not — so
         // there is no wildcard verdict here and the grammar family owns the text.
         expected["a star on a MID-PATH up-step"] = emptyList()

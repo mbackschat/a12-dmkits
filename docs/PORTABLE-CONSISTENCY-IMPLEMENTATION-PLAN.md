@@ -712,6 +712,16 @@ One cold adversarial review over the frozen range, as [§2](#2-execution-order-a
 
 **The catalog half is deliberately not delivered, with its re-open trigger.** A2 ruled that `operators.json` ships as-is because it is already data; that remains right, and it is not yet USEFUL — no finding this checker produces names an operator id, so 293 KB would be packaged with nothing to join it against. It lands when a finding carries an operator.
 
+### C record — the withholding's mechanism was WRONG, and the set that hid it was my own (2026-09-13)
+
+**The previous record read the order as "reference resolution runs first and wins". It does not — it wins when it comes FIRST in the text** ([KF342](KERNEL-FINDINGS.md#kf342)). Every pair the earlier grid held put the bad name at the head of the condition, so both accounts predicted all of them identically; one row with the position reversed separates them. This is the estate's own named confound — one constant across every row, invisible from inside the set — and it reached a shipped gate and three documents before the next slice's denominator work turned it up.
+
+**The correction cost was small; the miss was not.** Naming only three syntax codes left EIGHT more condition-text classes live, each an over-rejection on a condition that also carries a bad name — the forbidden direction, shipped. They were found by enumerating what reads the condition text rather than by reasoning about the mechanism, which is why the denominator question is worth asking even when the account feels settled.
+
+**A second gate came out of it, and it is shaped differently from every other one here.** `MVK_ERROR_FIELD_NOT_REFERENCED` and `MVK_ERROR_INVALID_LANGUAGE_FEATURE` are withheld by ANY other defect in the same text, wherever it sits, so their trigger is not a property of the model but of what the other families already said. That gate therefore reads the FINDINGS, not the model — the first one here that does.
+
+**The under-report is deliberate and disclosed.** The gate is position-blind because a finding carries no offset into the condition text; threading one through eleven families is a larger change than the over-rejection it buys back, and the cost is naming the bad name where A12 names the other defect — one true thing either way. Recorded here rather than as a gap row because it is a bounded, stated divergence, not open work.
+
 ### C record — where the withholding STOPS, and the method blind spot it exposed (2026-09-13)
 
 **A field type reports every defect it carries** ([KF341](KERNEL-FINDINGS.md#kf341)) — the opposite of the two members above, measured hours apart on the same kernel. The stop is a property of particular members, so it is never assumed from a neighbour; the row exists so a later reader cannot generalise the withholding into silence on input A12 answers in full. Nothing needed changing in the checker, which is the point of measuring it.
@@ -722,9 +732,9 @@ One cold adversarial review over the frozen range, as [§2](#2-execution-order-a
 
 ### C record — the THIRD withholding, inside a single member, and what the class is really about (2026-09-13)
 
-**The two withholdings above were between members; this one is inside one.** A condition's unresolvable name withholds every syntax class over the same text ([KF340](KERNEL-FINDINGS.md#kf340)). So the pattern is not "A12 stops between members" but "A12 examines in a fixed order and reports the first thing it finds", at every granularity looked at so far.
+**The two withholdings above were between members; this one is inside one.** A condition's unresolvable name withholds every syntax class over the same text ([KF340](KERNEL-FINDINGS.md#kf340)). So the pattern is not "A12 stops between members" but "A12 examines in a fixed order and reports the first thing it finds", at every granularity looked at so far. *(Corrected 2026-09-13 by the record above: the order inside a condition is the TEXT's, not resolution-before-syntax, and the gate this record describes named three of the eleven codes it needed.)*
 
-**Family-per-defect-kind is the design that meets this head on.** Four families read one condition text. The checker had no test at all for a text carrying two defects, so nothing was red — and the input is not exotic, it is what a half-written condition looks like.
+**Family-per-defect-kind is the design that meets this head on.** Eleven families read one condition text. The checker had no test at all for a text carrying two defects, so nothing was red — and the input is not exotic, it is what a half-written condition looks like.
 
 **Recorded as the codes to DROP, not the codes to keep.** A family added later that reports a new syntax class is then merely an under-report until its code is listed; a keep-list would silently start dropping it the day it landed. The error-target gate opposite is a keep-list for the mirror-image reason, and the asymmetry is deliberate.
 

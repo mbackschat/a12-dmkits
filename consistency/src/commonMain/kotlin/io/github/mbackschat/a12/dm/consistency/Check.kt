@@ -420,10 +420,10 @@ internal fun check(
     // declaration, not a rule any one family owns; a family-local version would have to be repeated into
     // every family added later, and the one that forgot would over-reject silently.
     val stopped = prepared.declarationsWithABrokenErrorTarget(declared)
-    // …and inside a condition A12 resolves before it judges syntax, answering an unresolvable name with its
-    // own class and withholding every syntax one (KF340). Four families read that same text, so without this
-    // any condition carrying two defects — the normal state of one being written — draws a class A12
-    // withheld.
+    // …and inside a condition A12 reports the FIRST defect in the text and nothing after it, so an
+    // unresolvable name withholds every class that would have been drawn later in the same text (KF340).
+    // Eleven families read that text, so without this any condition carrying two defects — the normal state
+    // of one being written — draws a class A12 withheld.
     val resolvedFirst = prepared.declarationsWithAnUnresolvableConditionReference()
     val judged = (declared.mapNotNull { it.target.asFinding(it.role, it.declaredAt) } +
         prepared.conditionReferences().mapNotNull {
@@ -448,7 +448,8 @@ internal fun check(
         prepared.stringTypeMessageFindings() + prepared.stringTypeParameterFindings() +
         prepared.numberTypeDigitFindings() + prepared.enumValueLabelFindings())
         .filterNot { it.at in stopped && it.code !in ERROR_TARGET_CODES }
-        .filterNot { it.at in resolvedFirst && it.code in CONDITION_SYNTAX_CODES }
+        .filterNot { it.at in resolvedFirst && it.code in CONDITION_TEXT_CODES }
+        .withoutRelationsBehindAPositionedDefect()
     val findings = judged.notSuppressedBy(prepared.variantFilterSuppressed())
     return ConsistencyReport(
         modelId = admitted.modelId,
@@ -640,12 +641,57 @@ private val UNIMPLEMENTED_FAMILIES = listOf(
 private val ERROR_TARGET_CODES = setOf(ERROR_FIELD_MISSING, MISSING_ERROR_FIELD, CK_MODEL_NOT_BUILDABLE)
 
 /**
- * The classes A12 withholds from a condition whose names do not all resolve.
+ * Drops a relational class at any declaration whose condition text already draws a positioned one.
+ *
+ * Unlike the two gates above this one reads the findings rather than the model, because it is not the model
+ * that decides it: the same unreferenced error target is reported on a sound condition and withheld on a
+ * defective one, so the trigger is precisely whether another family already spoke about that text.
+ */
+private fun List<Finding>.withoutRelationsBehindAPositionedDefect(): List<Finding> {
+    val defective = filter { it.code in POSITIONED_CONDITION_CODES }.mapTo(mutableSetOf()) { it.at }
+    return filterNot { it.at in defective && it.code in CONDITION_RELATION_CODES }
+}
+
+/**
+ * The classes a defect at some OFFSET in the condition text draws — the ones that compete for first place.
+ *
+ * A12 reports the first defect in the text and nothing after it, so which of two survives depends on which
+ * comes first (`ConditionClassWithholdingLawsTest`).
  *
  * Listed as the codes to DROP rather than as the codes to keep, the mirror of [ERROR_TARGET_CODES] and for
- * the opposite reason: a family added later that reports a new syntax class is an under-report until its
- * code is added here, where a keep-list would silently start dropping it. Each is measured firing alone and
- * withheld beside an unresolvable name (`ConditionMultipleDefectLawsTest`).
+ * the opposite reason: a family added later that reads the condition text is an under-report until its code
+ * is added here, where a keep-list would silently start dropping it.
  */
-private val CONDITION_SYNTAX_CODES =
-    setOf("MVK_INCOMPLETE_INPUT", "MVK_EXPECTED_TOKEN_NOT_FOUND", "MVK_UNEXPECTED_TOKEN")
+private val POSITIONED_CONDITION_CODES = setOf(
+    "MVK_INCOMPLETE_INPUT", "MVK_EXPECTED_TOKEN_NOT_FOUND", "MVK_UNEXPECTED_TOKEN",
+    "MVK_LEXER_STANDARD_ERROR", "MVK_BRACKET_MISSING", "MVK_GROUP_IS_EMPTY", "MVK_DUPLICATE_PARAM1",
+    "MVK_ROOT_GROUP_REFERENCED", "MVK_NO_FIELDS_ALLOWED", "MVK_INVALID_WILDCARD",
+)
+
+/**
+ * The two classes that judge the condition as a WHOLE rather than at a point in it, and lose to everything.
+ *
+ * Both are relations over the condition's resolved references — whether the error target is among them,
+ * whether an app condition may appear beside them — and both are withheld by any other condition-text defect
+ * wherever it sits, the bad name included. Measured in both orders and on both carriers
+ * (`ConditionClassWithholdingLawsTest`); the reason they behave alike is a hypothesis, the behaviour is not.
+ */
+private val CONDITION_RELATION_CODES =
+    setOf("MVK_ERROR_FIELD_NOT_REFERENCED", "MVK_ERROR_INVALID_LANGUAGE_FEATURE")
+
+/**
+ * Every class read out of the condition text, all of which an unresolvable name in it can withhold.
+ *
+ * **This gate is deliberately position-BLIND, and the price is a SUBSTITUTION, not an under-report.** A
+ * finding carries no offset into the condition text, so the faithful rule — drop a class only when an
+ * unresolvable name precedes it — would need one threaded through eleven families. Dropping unconditionally
+ * matches A12 exactly when the bad name comes first, and when it does not we name the bad name where A12
+ * names the other defect: one class either way, both true of the text, and the author reaches the same fixed
+ * condition. What it never does is reject a model A12 admits, or report two classes where A12 reports one.
+ *
+ * `RepetitionWildcardTest.theShapesItLeavesAlone` is the row where the substitution is visible, and it used
+ * to assert both classes on the reasoning that the extra one was still true. [ConsistencyReport] settles
+ * that: a finding is A12's verdict on a declaration, so a class A12 did not draw is a divergence however
+ * true it is.
+ */
+private val CONDITION_TEXT_CODES = POSITIONED_CONDITION_CODES + CONDITION_RELATION_CODES

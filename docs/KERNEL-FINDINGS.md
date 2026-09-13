@@ -6947,11 +6947,13 @@ Reported by the portable checker as a WITHHOLDING applied where the report is as
 
 *Locked by:* `rulekit.validate.laws.RuleMemberVerdictWithholdingLawsTest`.
 
-## §13 supplement — inside a condition, reference resolution runs FIRST and wins over every syntax class (measured, 2026-09-13) <a id="kf340"></a>
+## §13 supplement — inside a condition, a name that does not resolve withholds the syntax classes beside it (measured, 2026-09-13) <a id="kf340"></a>
 
 > Fold: not-foldable — the checker's examination order, not an evaluation behaviour.
 
-**[KF339](#kf339) found A12 stopping between a rule's members; this is the same stop INSIDE one.** Each syntax class fires on its own and is withheld when the same text also carries a name that does not resolve:
+**Corrected 2026-09-13: this entry first read these rows as "reference resolution runs FIRST and wins over every syntax class", and that account is false.** Every row below puts the bad name FIRST in the text, so "resolution wins" and "the earlier defect in the text wins" predict all of them identically — the constant no control inside the set can catch. Reversing the pair brings the syntax class back, and the true account with its grid is [KF342](#kf342). The measurements here stand; only the mechanism was wrong.
+
+**[KF339](#kf339) found A12 stopping between a rule's members; this is the same stop INSIDE one.** Each syntax class fires on its own and is withheld when the same text also carries a name that does not resolve *ahead of it*:
 
 | the `errorCondition` | A12 |
 |---|---|
@@ -6967,13 +6969,13 @@ Reported by the portable checker as a WITHHOLDING applied where the report is as
 
 **Each withheld row sits directly under the row that fires it alone**, which is what makes "withheld" separable from "this text never draws that class".
 
-**It is NOT "parse, then resolve".** `FieldFilled(NoSuchField` cannot be parsed — the delimiter is unclosed, and that alone draws `MVK_EXPECTED_TOKEN_NOT_FOUND` — yet with a bad name inside it the entity class still wins. So resolution is not running on a parse tree the syntax check already approved.
+**It is NOT "parse, then resolve".** `FieldFilled(NoSuchField` cannot be parsed — the delimiter is unclosed, and that alone draws `MVK_EXPECTED_TOKEN_NOT_FOUND` — yet with a bad name inside it the entity class still wins. So resolution is not running on a parse tree the syntax check already approved. (This row survives the correction above: resolution reaching an unparseable text is what makes text order, rather than a phase order, the surviving account.)
 
 **Two bad names draw ONE class, not one per name.** A reader emitting a finding per reference says more than A12 did, though nothing A12 did not — a count divergence rather than a class one, and left as is because the per-reference finding is what tells an author which name to fix.
 
-**This is the shape a family-per-defect-kind checker gets wrong on ordinary input.** Four families read the same condition text and each reports what it finds, so any condition carrying two defects — the normal state of one being written — draws classes A12 withheld. Nothing in the portable checker's suite had covered a text with two defects at once.
+**This is the shape a family-per-defect-kind checker gets wrong on ordinary input.** ELEVEN families read the same condition text and each reports what it finds, so any condition carrying two defects — the normal state of one being written — draws classes A12 withheld. Nothing in the portable checker's suite had covered a text with two defects at once.
 
-Reported by the portable checker as a WITHHOLDING applied where the report is assembled, listed as the syntax codes to DROP rather than the codes to keep: a family added later that reports a new syntax class is then an under-report until its code is listed, where a keep-list would silently start dropping it.
+Reported by the portable checker as a WITHHOLDING applied where the report is assembled, listed as the condition-text codes to DROP rather than the codes to keep: a family added later that reads that text is then an under-report until its code is listed, where a keep-list would silently start dropping it.
 
 **And it is per DECLARATION, not per text.** On a computation, a name that does not resolve in the PRECONDITION withholds the syntax class of the OPERATION beside it, and two bad names in the two members still draw one class — so the ordering spans a declaration's whole DSL rather than each text separately (`ComputationMemberVerdictLawsTest`).
 
@@ -6997,3 +6999,37 @@ Reported by the portable checker as a WITHHOLDING applied where the report is as
 **A FOURTH class appears that neither defect produces alone**: `noValueValidation` beside a `pattern` is its own refusal. This matters beyond the row, because **every other grid in this estate varies one defect at a time**, and a combination-only class is structurally unreachable that way — it is not that such rows were tried and found empty, it is that the shape was never built. The portable checker already emits this one, so nothing was missing here; what the row establishes is that the method has a blind spot, not that this instance cost anything.
 
 *Locked by:* `rulekit.validate.laws.FieldTypeMultipleDefectLawsTest`, mirrored by `consistency … FieldTypeMultipleDefectTest`.
+
+## §13 supplement — inside a condition A12 reports the FIRST defect in the text, and two relational classes lose to all of them (measured, 2026-09-13) <a id="kf342"></a>
+
+> Fold: not-foldable — the checker's examination order, not an evaluation behaviour.
+
+**[KF340](#kf340) said reference resolution runs first and wins. It does not — it wins when it comes first, and loses when it does not.** Every pair KF340 held put the bad name at the head of the text, so its account and this one made identical predictions on all of them; reversing the position separates them in one row. Each class below is measured three times — alone, with a bad name after it, and with the same bad name ahead of it:
+
+| the defect beside `FieldFilled(NoSuchField)` | alone | bad name AFTER it | bad name BEFORE it |
+|---|---|---|---|
+| `FieldFilled("Reference)` — an unclosed literal | `MVK_LEXER_STANDARD_ERROR` | — (the literal swallows it) | **`MVK_INVALID_ENTITY`** |
+| `A And B Or C` — mixed connectives | `MVK_BRACKET_MISSING` | `MVK_BRACKET_MISSING` | **`MVK_INVALID_ENTITY`** |
+| `GroupFilled(/Policy/Archive)` — an empty group | `MVK_GROUP_IS_EMPTY` | `MVK_GROUP_IS_EMPTY` | **`MVK_INVALID_ENTITY`** |
+| `AllGroupsFilled(X, X)` — one group twice | `MVK_DUPLICATE_PARAM1` | `MVK_DUPLICATE_PARAM1` | **`MVK_INVALID_ENTITY`** |
+| `AllGroupsFilled(/Registry, X)` — a root group | `MVK_ROOT_GROUP_REFERENCED` | `MVK_ROOT_GROUP_REFERENCED` | **`MVK_INVALID_ENTITY`** |
+| `GroupFilled(X/Notes)` — a field where a group belongs | `MVK_NO_FIELDS_ALLOWED` | `MVK_NO_FIELDS_ALLOWED` | **`MVK_INVALID_ENTITY`** |
+| `GroupFilled(X*)` — a star on a fixed group | `MVK_INVALID_WILDCARD` | `MVK_INVALID_WILDCARD` | **`MVK_INVALID_ENTITY`** |
+| `… And And …` — an unexpected token | `MVK_UNEXPECTED_TOKEN` | `MVK_UNEXPECTED_TOKEN` | **`MVK_INVALID_ENTITY`** (KF340) |
+
+**The middle column is the whole finding.** KF340 had no middle column, and without it "resolution runs first" was untestable.
+
+**Two classes are not in that competition at all — they lose wherever the bad name sits:**
+
+| the relational class | alone | bad name AFTER it | ahead of an empty group |
+|---|---|---|---|
+| `MVK_ERROR_FIELD_NOT_REFERENCED` — the error target is not among the condition's references | fires | **`MVK_INVALID_ENTITY`** | **`MVK_GROUP_IS_EMPTY`** |
+| `MVK_ERROR_INVALID_LANGUAGE_FEATURE` — an app condition in a computation's precondition | fires | **`MVK_INVALID_ENTITY`** | **`MVK_GROUP_IS_EMPTY`** |
+
+**The third column shows the bad name is not special.** Any other condition-text defect withholds these two, so the trigger is "something else spoke about this text", not "a name did not resolve". Both are relations over the condition's *resolved references* rather than a defect at an offset in it, which is a plausible reason they behave alike and is **not** measured — what is measured is that their position does not matter and the positioned classes' does.
+
+**`MVK_INCOMPLETE_INPUT` has no reversed row and cannot have one**: the class says the text ended early, so no second defect can sit after it.
+
+Reported by the portable checker as two gates where the report is assembled. The first drops every condition-text code at a declaration with an unresolvable name and is deliberately **position-blind**, because a finding carries no offset into the text and threading one through eleven families is a larger change than it buys; the price is a SUBSTITUTION rather than an under-report — where the other defect comes first A12 names it and the checker names the bad name, one class either way and both true of the text. That cost is visible in `consistency.RepetitionWildcardTest`, which asserted BOTH classes on `FieldFilled(Guest*/NoSuchField)` until this entry: A12 stops at the star, and a class A12 did not draw is a divergence however true it is. The second gate drops the two relational codes wherever another family already reported on the same text, and reads the FINDINGS rather than the model, because the same unreferenced error target is reported on a sound condition and withheld on a defective one.
+
+*Locked by:* `rulekit.validate.laws.ConditionClassWithholdingLawsTest`, mirrored by `consistency … ConditionMultipleDefectTest`.

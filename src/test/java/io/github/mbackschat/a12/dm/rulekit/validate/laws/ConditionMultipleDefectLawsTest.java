@@ -64,9 +64,10 @@ class ConditionMultipleDefectLawsTest {
         // reference says more than A12 did, though it says nothing A12 did not.
         expected.put("TWO unresolvable references", "MVK_INVALID_ENTITY");
         // The three rows that matter, each against the "alone" row below it: every syntax class fires on its
-        // own and is WITHHELD when the same text also carries an unresolvable reference. Reference
-        // resolution runs first and wins, so a checker running a family per defect kind over one text
-        // reports classes A12 withheld on any condition carrying two.
+        // own and is WITHHELD when the same text also carries an unresolvable reference AHEAD of it. Every
+        // pair here places the bad name first, which is a constant across the whole set and made this file
+        // read as "resolution runs first and wins" — ConditionClassWithholdingLawsTest reverses the position
+        // and shows the account is text order instead.
         expected.put("one unresolvable reference and a trailing operator", "MVK_INVALID_ENTITY");
         expected.put("a trailing operator alone", "MVK_INCOMPLETE_INPUT");
         // …and resolution is not merely surviving a parse: this text cannot be parsed at all and the entity

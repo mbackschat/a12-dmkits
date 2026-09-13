@@ -81,13 +81,16 @@ internal fun PreparedModel.declarationsWithABrokenErrorTarget(
  * The declarations whose condition names something that does not resolve — A12 answers with THAT and nothing
  * else about the text.
  *
- * **Reference resolution runs first and wins over every syntax class.** `MVK_INCOMPLETE_INPUT`,
- * `MVK_EXPECTED_TOKEN_NOT_FOUND` and `MVK_UNEXPECTED_TOKEN` each fire alone and each is withheld when the
- * same text also carries an unresolvable name ([KERNEL-FINDINGS KF340],
- * `rulekit.validate.laws.ConditionMultipleDefectLawsTest`). It is not "parse, then resolve": a text with an
- * unclosed delimiter AND a bad name still answers with the entity class.
+ * **A12 reports the FIRST defect in the text and nothing after it**, so an unresolvable name withholds every
+ * class that would have been drawn later in the same text — the syntax ones and the operand ones alike
+ * ([KERNEL-FINDINGS KF342], `rulekit.validate.laws.ConditionClassWithholdingLawsTest`). It is not "parse,
+ * then resolve": a text with an unclosed delimiter AND a bad name ahead of it still answers with the entity
+ * class, so resolution reaches text the parser never approved.
  *
- * **This is the shape a family-per-defect-kind checker gets wrong on ordinary input.** Four families read
+ * **The caller uses this set position-BLIND, which under-reports** where the other defect comes first — the
+ * disclosed cost recorded with `CONDITION_TEXT_CODES`, since a finding carries no offset into the text.
+ *
+ * **This is the shape a family-per-defect-kind checker gets wrong on ordinary input.** Eleven families read
  * the same condition text and each reports what it finds, so any condition carrying two defects — the normal
  * state of one being written — draws classes A12 withheld.
  *
