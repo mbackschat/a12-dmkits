@@ -84,6 +84,11 @@ class CheckerSilenceOnCleanModelsTest {
      * team for A12's own kernel. Each is expanded by the Kernel first, so includes and imported typedefs are
      * folded in and the checker sees the self-contained form the Kernel itself validated.
      *
+     * **Every stored model, not one canonical pick per directory.** The seeding sweeps take the canonical one
+     * because an instance run over a near-duplicate costs minutes for nothing; this one is structural and the
+     * whole tree costs seconds, so it holds the same population the parser sweep does — 59 models — rather
+     * than a quarter of it that could drift from it silently.
+     *
      * Never committed, EUPL, and skipped when the sibling clone is absent — the estate's standing rule for
      * both real corpora.
      */
@@ -91,7 +96,7 @@ class CheckerSilenceOnCleanModelsTest {
     fun noFamilyReportsOnTheReferenceCorpus() {
         val root = ParserCorpora.kernelMm()
         assumeTrue(root != null, "a12-kernel-mm not present — skipping the checker's corpus silence sweep")
-        sweepCorpus("kernel-mm", root!!, CorpusShrinkSupport.canonicalKernelMmModels(root))
+        sweepCorpus("kernel-mm", root!!, CorpusShrinkSupport.documentModels(root))
     }
 
     /** The same, over the A12 Tools workspaces, whose mount path is machine-local and so supplied as a property. */
