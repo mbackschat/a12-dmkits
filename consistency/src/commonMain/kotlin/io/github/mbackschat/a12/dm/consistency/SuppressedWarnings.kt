@@ -31,8 +31,14 @@ import kotlinx.serialization.json.JsonPrimitive
 fun PreparedModel.suppressedWarningFindings(): List<Finding> =
     elements.filter { it.declaredKind == DeclaredKind.COMPUTATION }.flatMap { suppressionFindings(it) }
 
-/** The single code A12's `@SuppressWarning` pragma accepts — the static assignment-scale gate. */
-private const val SUPPRESSIBLE = "MVK_INVALID_COMPARE_DEC_PLACES"
+/**
+ * The single code A12's `@SuppressWarning` pragma accepts — the static assignment-scale gate.
+ *
+ * The checker compares an authored code against this one; it never reports it, because no family measures
+ * decimal-place agreement. `CorrectiveTest` names it for that reason: it is the one code the corrective
+ * projection carries that no report can deliver.
+ */
+internal const val SUPPRESSIBLE = "MVK_INVALID_COMPARE_DEC_PLACES"
 
 private fun suppressionFindings(element: DeclaredElement): List<Finding> {
     // An envelope A12 cannot bind is the alternatives family's finding; naming it again would report one

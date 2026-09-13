@@ -6,9 +6,11 @@ package io.github.mbackschat.a12.dm.consistency
  * A12's own guidance for the codes this checker emits, projected from the single Java
  * owners — `rulekit.validate.StructuralKernelFix` for the curated structural correctives
  * and `rulekit.validate.RkCode` for the `RK_*` catalog. The projection carries exactly the
- * codes the checker's own sources spell, so it cannot advertise guidance for a code that
- * never reaches a consumer; `CheckerCorrectiveProjectionGuardTest` re-derives it and fails
- * the build on any drift.
+ * codes the checker's own sources SPELL, which bounds it to this checker's vocabulary but
+ * is a superset of what it can emit: a code held to compare an authored value against is
+ * spelled too. That every entry is reachable from a real report is `CorrectiveTest`'s
+ * measurement, and it names the residue; `CheckerCorrectiveProjectionGuardTest` re-derives
+ * this file and fails the build on any drift.
  */
 internal val KERNEL_CORRECTIVES: Map<String, Corrective> = mapOf(
     "MVK_ADDITIONAL_CHECK_INVALID" to Corrective(

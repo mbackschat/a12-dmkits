@@ -8,6 +8,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
@@ -29,12 +30,22 @@ import io.github.mbackschat.a12.dm.rulekit.validate.StructuralKernelFix;
  * cannot read Java source from Node, so restating that prose in Kotlin would mint the second live statement
  * the doc rules forbid. Generating it keeps one owner and makes drift a build failure.
  *
- * <p><b>The denominator is DERIVED from the consumer, not chosen.</b> The projection carries exactly the
- * codes the checker can actually emit, read out of its own sources — which is also the answer to the
- * applicable-{@code RkCode}-subset question the plan left open: a field predicate over
- * {@code Severity}/{@code DiagnosticSource} over- and under-matches in both directions (measured), while the
- * consumer's own emitted set needs no judgement and cannot go stale. A code the checker gains whose owner
- * has guidance fails this guard until the projection is regenerated.
+ * <p><b>The denominator is DERIVED from the consumer, not chosen.</b> The projection is bounded by the codes
+ * the checker's own sources SPELL — which is also the answer to the applicable-{@code RkCode}-subset question
+ * the plan left open: a field predicate over {@code Severity}/{@code DiagnosticSource} over- and under-matches
+ * in both directions (measured), while the consumer's own sources need no judgement and cannot go stale. A
+ * code the checker gains whose owner has guidance fails this guard until the projection is regenerated.
+ *
+ * <p><b>Spelled is a SUPERSET of emitted, and this guard cannot narrow it.</b> A textual scan sees every
+ * literal, including one the checker holds to compare an authored value against rather than to report —
+ * {@code SuppressedWarnings.SUPPRESSIBLE} is exactly that, and no textual rule separates it from an emitted
+ * code without being false of {@code CK_MODEL_NOT_BUILDABLE}, which is a module constant the checker does
+ * report. So the bound is all this guard claims; that every projected entry is reachable from a real report
+ * is measured on the Kotlin side, by {@code consistency.CorrectiveTest}, which names the residue.
+ *
+ * <p><b>The scan skips its own output.</b> Walking the whole of {@code commonMain} would read
+ * {@code KernelCorrectives.kt} too, and a denominator that contains the generated file's own keys can never
+ * shrink: dropping the last real use of a code would leave its entry standing forever, green.
  *
  * <p><b>Regenerate with {@code ./build.sh :dumpCheckerCorrectives}</b>, which runs this class with
  * {@code correctives.fix=true} so it writes the file instead of asserting against it — the same fixer shape
@@ -52,15 +63,21 @@ class CheckerCorrectiveProjectionGuardTest {
 
     private static final Pattern EMITTED = Pattern.compile("\"((?:MVK|RK)_[A-Z0-9_]+)\"");
 
+    /** The checker's own Kotlin sources, minus the file this guard generates. */
+    private static List<Path> scannedSources() throws IOException {
+        Path generated = CHECKOUT.resolve(PROJECTION);
+        try (var paths = Files.walk(CHECKOUT.resolve(CHECKER_MAIN))) {
+            return paths.filter(p -> p.toString().endsWith(".kt") && !p.equals(generated)).sorted().toList();
+        }
+    }
+
     /** Every A12 code the checker's own sources spell as a literal, sorted. */
     private static Set<String> emittedCodes() throws IOException {
         Set<String> codes = new TreeSet<>();
-        try (var paths = Files.walk(CHECKOUT.resolve(CHECKER_MAIN))) {
-            for (Path source : paths.filter(p -> p.toString().endsWith(".kt")).toList()) {
-                Matcher matcher = EMITTED.matcher(Files.readString(source));
-                while (matcher.find()) {
-                    codes.add(matcher.group(1));
-                }
+        for (Path source : scannedSources()) {
+            Matcher matcher = EMITTED.matcher(Files.readString(source));
+            while (matcher.find()) {
+                codes.add(matcher.group(1));
             }
         }
         return codes;
@@ -117,6 +134,23 @@ class CheckerCorrectiveProjectionGuardTest {
                         + "fewer than the two this guard was written against");
     }
 
+    /**
+     * The scan reads the checker, never the file it writes.
+     *
+     * <p>The generated file lives inside the scanned tree and spells every key it carries, so including it
+     * would make the denominator contain its own output — a table that can grow and never shrink. The
+     * assertion is on the file list rather than on the codes, because the two sets coincide today and a
+     * code-level check would pass whether or not the exclusion is live.
+     */
+    @Test
+    void theScanExcludesTheFileItGenerates() throws IOException {
+        Path generated = CHECKOUT.resolve(PROJECTION);
+        assertTrue(generated.startsWith(CHECKOUT.resolve(CHECKER_MAIN)),
+                "the projection no longer sits inside the scanned tree, so this exclusion guards nothing");
+        assertFalse(scannedSources().contains(generated),
+                "the scan is reading its own output: the denominator can then never lose a code");
+    }
+
     /** The generated file, byte for byte. Keys are sorted, so the output is a function of the owners alone. */
     private static String render(Map<String, String[]> guidance) {
         StringBuilder out = new StringBuilder();
@@ -127,9 +161,11 @@ class CheckerCorrectiveProjectionGuardTest {
         out.append(" * A12's own guidance for the codes this checker emits, projected from the single Java\n");
         out.append(" * owners — `rulekit.validate.StructuralKernelFix` for the curated structural correctives\n");
         out.append(" * and `rulekit.validate.RkCode` for the `RK_*` catalog. The projection carries exactly the\n");
-        out.append(" * codes the checker's own sources spell, so it cannot advertise guidance for a code that\n");
-        out.append(" * never reaches a consumer; `CheckerCorrectiveProjectionGuardTest` re-derives it and fails\n");
-        out.append(" * the build on any drift.\n");
+        out.append(" * codes the checker's own sources SPELL, which bounds it to this checker's vocabulary but\n");
+        out.append(" * is a superset of what it can emit: a code held to compare an authored value against is\n");
+        out.append(" * spelled too. That every entry is reachable from a real report is `CorrectiveTest`'s\n");
+        out.append(" * measurement, and it names the residue; `CheckerCorrectiveProjectionGuardTest` re-derives\n");
+        out.append(" * this file and fails the build on any drift.\n");
         out.append(" */\n");
         out.append("internal val KERNEL_CORRECTIVES: Map<String, Corrective> = mapOf(\n");
         guidance.forEach((code, texts) -> {
