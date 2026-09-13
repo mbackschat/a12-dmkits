@@ -50,6 +50,22 @@ private fun DeclaredElement.messageTextFinding(message: AuthoredMessage): Findin
     )
 }
 
+/**
+ * Whether A12's character gate refuses this text, which withholds every other class read out of it.
+ *
+ * Exposed because the gate is not this family's business alone: a message carrying a control character draws
+ * that class and NOTHING about its parameters, wherever in the text the character sits ([KF343],
+ * `rulekit.validate.laws.MessageMultipleDefectLawsTest`). It reads the same two predicates the finding above
+ * does, so the gate and the class it stands for cannot drift apart.
+ *
+ * **It answers about one MESSAGE, not one declaration**, which is measured rather than assumed: a rule whose
+ * English text carries a tab and whose German text names an unread field draws BOTH classes, so a gate at
+ * declaration scope would delete a finding A12 gives. That is the opposite of the condition member's gate,
+ * where a defect in one text withholds the class of another ([KF340]) — which is exactly why neither one is
+ * carried over to the other.
+ */
+internal fun String.carriesAnOffendingCharacter(): Boolean = any { it.isLineBreak() || it.isIsoControl() }
+
 private fun Char.isLineBreak(): Boolean = code == 0x0A || code == 0x0D
 
 /** The ISO control blocks, both ends measured: U+0020 and the non-breaking space U+00A0 are outside them. */

@@ -44,6 +44,13 @@ fun PreparedModel.messageParameterFindings(): List<Finding> {
         val group = element.path.substringBeforeLast('/', missingDelimiterValue = "")
         val messages = body.authoredMessages() as? AuthoredMessages.Read ?: return@flatMap emptyList()
         messages.entries.flatMap { message ->
+            // A12 gates the text on its CHARACTERS before it reads a parameter out of it, so a message
+            // carrying a control character draws that class and nothing about its parameters — wherever the
+            // character sits, which is what makes this a gate rather than a race (KF343). Applied per
+            // message, because a sibling locale's text is judged on its own.
+            if (message.text.carriesAnOffendingCharacter()) {
+                return@flatMap emptyList()
+            }
             plainMessageParameters(message.text).mapNotNull { name ->
                 val address = resolveEntity(group, name, element.origin)
                 val resolved = (address as? Reference.Resolved)?.path

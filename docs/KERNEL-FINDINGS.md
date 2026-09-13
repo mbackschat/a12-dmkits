@@ -7033,3 +7033,33 @@ Reported by the portable checker as a WITHHOLDING applied where the report is as
 Reported by the portable checker as two gates where the report is assembled. The first drops every condition-text code at a declaration with an unresolvable name and is deliberately **position-blind**, because a finding carries no offset into the text and threading one through eleven families is a larger change than it buys; the price is a SUBSTITUTION rather than an under-report — where the other defect comes first A12 names it and the checker names the bad name, one class either way and both true of the text. That cost is visible in `consistency.RepetitionWildcardTest`, which asserted BOTH classes on `FieldFilled(Guest*/NoSuchField)` until this entry: A12 stops at the star, and a class A12 did not draw is a divergence however true it is. The second gate drops the two relational codes wherever another family already reported on the same text, and reads the FINDINGS rather than the model, because the same unreferenced error target is reported on a sound condition and withheld on a defective one.
 
 *Locked by:* `rulekit.validate.laws.ConditionClassWithholdingLawsTest`, mirrored by `consistency … ConditionMultipleDefectTest`.
+
+## §13 supplement — an error message LAYERS its checks: a character gate, then every parameter defect (measured, 2026-09-13) <a id="kf343"></a>
+
+> Fold: not-foldable — the checker's examination order, not an evaluation behaviour.
+
+**The member beside the condition answers the multiple-defect question a third way.** [KF342](#kf342) found a condition reporting the first defect in its text; [KF341](#kf341) found a field type reporting all of them. A message does both, in two layers:
+
+| the `errorMessage` text | A12 |
+|---|---|
+| `see it` — the control | ADMITTED |
+| `see⇥it` — a tab | `MVK_INVALID_CHARACTERS` |
+| `see $Adjuster$` — a parameter the condition does not read | `INVALID_FIELD` |
+| `see $NoSuchField$` — a parameter that does not resolve | `INVALID_ENTITY` |
+| `see $Adjuster` — unterminated | `WRONG_NUMBER_OF_DOLLARS` |
+| a tab **before** an unread parameter | **`MVK_INVALID_CHARACTERS`** |
+| an unread parameter **before** a tab | **`MVK_INVALID_CHARACTERS`** |
+| a tab before / after an unresolvable parameter | **`MVK_INVALID_CHARACTERS`**, both |
+| a tab before an unterminated parameter | **`MVK_INVALID_CHARACTERS`** |
+| `see $Adjuster$ and $NoSuchField$` | **`INVALID_FIELD`, `INVALID_ENTITY`** |
+| the same two reversed | **`INVALID_ENTITY`, `INVALID_FIELD`** |
+
+**The character check is a GATE, not a competitor for first place.** It wins wherever the character sits, which is the row a position-blind reading and a first-defect reading both get right and only the reversed pair separates — the control [KF340](#kf340) did not have. Past it, both parameter defects are reported, ordered by where the parameter appears.
+
+**The gate covers ONE MESSAGE, not the declaration.** A rule whose English text carries a tab and whose German text names an unread field draws both classes, in locale order. That is the opposite of the condition member, where a defect in one text withholds the class of another, so neither granularity may be carried to the other member.
+
+**An INTERIOR line break draws a second, codeless refusal** — "Only values without line breaks are allowed" — beside `MVK_INVALID_LINEBREAK`. A leading or trailing break draws only the class, and so does a break with whitespace on one side and nothing beyond it, so the second check reads the TRIMMED value. A tab is the negative control: interior or trailing, it draws one refusal, so this is about line breaks rather than about where a control character sits.
+
+Reported by the portable checker as a per-message gate inside the parameter family rather than at the report, which is the first gate here that is family-local — a finding carries its declaration's path and not its locale, so nothing assembled at the report could tell a sibling message's finding from this one's. The codeless whole-value refusal is not reported: it carries no class, and a checker inventing one would be naming a verdict A12 did not give.
+
+*Locked by:* `rulekit.validate.laws.MessageMultipleDefectLawsTest`, mirrored by `consistency … MessageMultipleDefectTest`.

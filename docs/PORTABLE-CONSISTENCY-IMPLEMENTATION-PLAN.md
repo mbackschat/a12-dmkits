@@ -712,6 +712,16 @@ One cold adversarial review over the frozen range, as [§2](#2-execution-order-a
 
 **The catalog half is deliberately not delivered, with its re-open trigger.** A2 ruled that `operators.json` ships as-is because it is already data; that remains right, and it is not yet USEFUL — no finding this checker produces names an operator id, so 293 KB would be packaged with nothing to join it against. It lands when a finding carries an operator.
 
+### C record — the defect-pairing pass, priced and started: three members, three different shapes (2026-09-13)
+
+**The standing candidate below is no longer a candidate — it is paying, and the price is one grid per member.** Pairing defects within a member has now been run on three of them and produced three genuinely different answers, none of which could be guessed from another: a condition reports the FIRST defect in its text ([KF342](KERNEL-FINDINGS.md#kf342)), a field type reports ALL of them ([KF341](KERNEL-FINDINGS.md#kf341)), and a message LAYERS them — a character gate that wins wherever the character sits, and past it every parameter defect in order ([KF343](KERNEL-FINDINGS.md#kf343)). Three members, three shapes, so the fourth cannot be inferred either.
+
+**Each pass cost one grid and found one live over-report.** The message pass found the checker naming a parameter class beside a control character, where A12 names the character class alone — the forbidden direction, and invisible to every test the three families had, because each family only ever saw a text defective in its own way.
+
+**Two things the passes have taught that are cheaper than the grid itself.** Measure the pair in BOTH orders: the reversed row is what separates "this class wins" from "the earlier defect wins", and its absence is what made [KF340](KERNEL-FINDINGS.md#kf340) wrong. And measure the GRANULARITY rather than carrying it over: the condition gate is per declaration and the message gate is per message, so a checker that assumed either would have been wrong about the other — one row each, and both were nearly assumed.
+
+**What remains unpaired**, in the order their families would over-report: a group's ordering members (`indexFieldName` beside `sortFields`), an enum's values (labels, categories and characters are three families over one list), and a declaration's own slots. Same shape of grid each time.
+
 ### C record — the withholding's mechanism was WRONG, and the set that hid it was my own (2026-09-13)
 
 **The previous record read the order as "reference resolution runs first and wins". It does not — it wins when it comes FIRST in the text** ([KF342](KERNEL-FINDINGS.md#kf342)). Every pair the earlier grid held put the bad name at the head of the condition, so both accounts predicted all of them identically; one row with the position reversed separates them. This is the estate's own named confound — one constant across every row, invisible from inside the set — and it reached a shipped gate and three documents before the next slice's denominator work turned it up.
