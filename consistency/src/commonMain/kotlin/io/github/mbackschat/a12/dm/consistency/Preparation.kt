@@ -164,20 +164,28 @@ data class PreparedModel(
     val diagnostics: List<Diagnostic> = emptyList(),
 ) {
     /**
-     * The elements a reference may resolve to — [elements] minus the FIELDS A12 deletes at the default
+     * The elements a reference may resolve to — [elements] minus everything A12 deletes at the default
      * variant.
      *
-     * **A field's `ONLY` variant filter is a deletion, not a suppression, and that is the opposite of the
-     * member's other two carriers.** A filtered rule or computation is merely left unjudged, so the faithful
-     * response there is silence; a field is dropped by `ValidationModelConverter` before checking, so every
-     * declaration naming it is naming something that does not exist and A12 says MORE about the model rather
-     * than less ([KERNEL-FINDINGS] KF305, `rulekit.validate.laws.FieldVariantFilterLawsTest`).
+     * **`ONLY` is a DELETION, and the deletion is uniform across all three carriers even though what it
+     * costs is not.** `ValidationModelConverter` walks one loop asking `fieldIsAcceptedByVariantFilter`,
+     * `computationIsAcceptedByVariantFilter` and `ruleIsAcceptedByVariantFilter` of the elements in turn, and
+     * keeps only those accepted. Deleting a rule or computation removes its own verdicts, which is why that
+     * reads from the outside as a suppression ([KF299]); deleting a FIELD removes a referent other
+     * declarations need, so A12 then says MORE about the model rather than less ([KERNEL-FINDINGS] KF305,
+     * `rulekit.validate.laws.FieldVariantFilterLawsTest`). One mechanism, two consequences — so this list
+     * models the mechanism and lets each consequence fall out.
      *
-     * **It keys on the filter TYPE alone**, measured on this carrier rather than inherited: naming the
-     * default variant, an empty list and an absent `variants` member all leave the field deleted, because
-     * `filterAcceptsVariant` computes its match under a `variant != null` guard that is false at the default
-     * variant for every list. Any OTHER spelling — an unknown type, a non-string, an absent one — leaves the
-     * field visible here, which under-reports a model A12 cannot build and is the safe direction.
+     * Narrowing this to fields would be modelling the consequence instead, and it is unobservable either way:
+     * a reference targets a field or a group, never a rule, and a group carries no `variantFilter` at all.
+     * The uniform rule is kept because it is the one that is true.
+     *
+     * **It keys on the filter TYPE alone**, measured on the field carrier rather than inherited from the
+     * rule's: naming the default variant, an empty list and an absent `variants` member all leave the element
+     * deleted, because `filterAcceptsVariant` computes its match under a `variant != null` guard that is
+     * false at the default variant for every list. Any OTHER spelling — an unknown type, a non-string, an
+     * absent one — leaves the element visible here, which under-reports a model A12 cannot build and is the
+     * safe direction.
      *
      * Derived, so it is deliberately outside `equals`/`copy`, and computed once because the resolvers call it
      * per reference.
@@ -185,11 +193,8 @@ data class PreparedModel(
     val resolvableElements: List<DeclaredElement> = elements.filterNot { it.isDeletedAtDefaultVariant() }
 }
 
-/** Whether A12 drops this element before checking — only a FIELD under `ONLY`; see [PreparedModel.resolvableElements]. */
+/** Whether A12 drops this element before checking — see [PreparedModel.resolvableElements]. */
 private fun DeclaredElement.isDeletedAtDefaultVariant(): Boolean {
-    if (declaredKind != DeclaredKind.FIELD) {
-        return false
-    }
     val filter = body?.get("variantFilter") as? JsonObject ?: return false
     val type = filter["filterType"] as? JsonPrimitive ?: return false
     return type.isString && type.content == "ONLY"

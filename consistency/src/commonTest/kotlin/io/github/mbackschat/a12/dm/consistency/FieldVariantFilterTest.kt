@@ -57,6 +57,31 @@ class FieldVariantFilterTest {
         """.trimIndent(),
     )
 
+    /**
+     * The same question asked with a PATH-shaped reference rather than a bare name.
+     *
+     * The two spellings take different resolvers — a bare name goes through the declaring-group-first tier
+     * and its short-name fallback, a path through the step walker — so a row in one proves nothing about the
+     * other. Written as `../Tier`, which walks up out of the rule's own group and back down.
+     */
+    private fun mentioningByPath(filter: String?) = ModelSource(
+        """
+        {"header":{"id":"catalog","locales":[{"code":"en_US"}]},
+         "content":{"modelRoot":{"rootGroups":[
+          {"type":"Group","id":"g0","name":"Catalog","Group":{"elements":[
+            {"type":"Field","id":"f0","name":"Tier","Field":{${filter?.let { """"variantFilter":$it""" } ?: ""}}},
+            {"type":"Field","id":"f1","name":"AutoRenew","Field":{}},
+            {"type":"Group","id":"g1","name":"Inner","Group":{"elements":[
+              {"type":"Rule","id":"r0","name":"PathRule","Rule":{
+                "errorCondition":"FieldNotFilled(../AutoRenew) And FieldNotFilled(../Tier)",
+                "errorEntityRelPath":"../../AutoRenew",
+                "errorCode":"PROBE","errorMessage":[{"locale":"en_US","text":"x"}]}}
+            ]}}
+          ]}}
+         ]}}}
+        """.trimIndent(),
+    )
+
     private fun codes(source: ModelSource): List<String> = check(source).findings.map { it.code }.distinct()
 
     @Test
@@ -86,6 +111,26 @@ class FieldVariantFilterTest {
         expected["ONLY with no variants member"] = listOf("MVK_INVALID_ENTITY")
         expected["an unknown filterType"] = emptyList()
         assertEquals(expected, actual, "what the checker says about a condition naming a filtered field")
+    }
+
+    /**
+     * The path-shaped resolver needs its own rows: it is a different function from the bare-name one.
+     *
+     * Without this, reverting the path walker alone to the unfiltered element list goes unnoticed — measured,
+     * as a surviving mutant, because every row above spells its reference as a bare name.
+     */
+    @Test
+    fun aPathShapedReferenceToAnOnlyFilteredFieldNamesNothingEither() {
+        val actual = mutableMapOf<String, List<String>>()
+        actual["unfiltered — the control"] = codes(mentioningByPath(null))
+        actual["ALL_EXCEPT — the control"] = codes(mentioningByPath(allExcept))
+        actual["ONLY"] = codes(mentioningByPath(only))
+
+        val expected = mutableMapOf<String, List<String>>()
+        expected["unfiltered — the control"] = emptyList()
+        expected["ALL_EXCEPT — the control"] = emptyList()
+        expected["ONLY"] = listOf("MVK_INVALID_ENTITY")
+        assertEquals(expected, actual, "what the checker says about a path naming a filtered field")
     }
 
     @Test
