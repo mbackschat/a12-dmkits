@@ -35,6 +35,14 @@ class GateTierWiringTest {
         assertTrue(ci.contains(":interpreter:allTests"),
                 "CI must run :interpreter:allTests on every push — it is the only lane that executes the JS/Node "
                         + "target, and :interpreter:check would pull the release machinery in with it");
+        // The checker's JS artifact is CONSUMABLE on no other lane. `:consistency:check` runs its correctness
+        // tests with the module on the compile classpath, which is exactly the arrangement that cannot see an
+        // artifact nobody can import — and for the module's whole life that is what the JS target emitted,
+        // because `binaries.library()` was absent. The consumer test is off `check` (it needs node and npm),
+        // so being named here is the only thing that runs it.
+        assertTrue(ci.contains(":consistency:nodeConsumerTest"),
+                "CI must run :consistency:nodeConsumerTest — it is the only lane that packs the checker's npm "
+                        + "package and imports it by name, and it hangs off no lifecycle task");
         assertFalse(ci.contains("schedule:"),
                 "main-push correctness CI must not rerun on the nightly schedule");
         assertTrue(ci.contains("uses: gradle/actions/setup-gradle@v6"),
