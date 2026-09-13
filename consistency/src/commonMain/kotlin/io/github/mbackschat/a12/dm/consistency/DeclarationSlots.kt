@@ -214,10 +214,24 @@ private sealed interface AuthoredMessages {
 
     /** @param explain what A12's reader refused, in its own terms. */
     data class Refused(val explain: String) : AuthoredMessages
+
+    /**
+     * The declaration's ENVELOPE is unbindable, so this slot has nothing to say about it either way.
+     *
+     * It is neither [Read] nor [Refused] and both mistakes were made in turn. Reporting it as a refusal
+     * duplicates the finding the envelope's owner already makes — a rule's comes from
+     * `ruleConditionAndTargetFindings` and a computation's from `alternativeFindings`, covering both kinds
+     * this family reads — so one defect arrived as two near-identical findings at one path. Reporting it as
+     * an empty read is worse: `MVK_ERROR_MESSAGE_MISSING` is a verdict about a model A12 never examined,
+     * exactly what `DeclaredElement.body` warns a reader of `null` not to publish. Silence is what the six
+     * other families reading `body` already do, and `UnreadableEnvelopeTest` counts it.
+     */
+    data object Unbindable : AuthoredMessages
 }
 
 private fun messageFindings(element: DeclaredElement, declaredLocales: List<String>): List<Finding> {
     val authored = when (val read = element.authoredMessages()) {
+        is AuthoredMessages.Unbindable -> return emptyList()
         is AuthoredMessages.Refused -> return listOf(
             Finding(
                 FindingCategory.A12_CONSTRAINT,
@@ -314,7 +328,7 @@ private fun authoredLocalePolicyFindings(
  * it stops the read instead of contributing an unusable entry.
  */
 private fun DeclaredElement.authoredMessages(): AuthoredMessages {
-    val payload = body ?: return AuthoredMessages.Refused("`$kind` is present and is not a JSON object")
+    val payload = body ?: return AuthoredMessages.Unbindable
     val entries = when (val member = payload["errorMessage"]) {
         is JsonArray -> member.toList()
         is JsonObject -> member.values.toList()
