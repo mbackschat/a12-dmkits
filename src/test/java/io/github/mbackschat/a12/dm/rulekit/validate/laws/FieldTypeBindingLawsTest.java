@@ -235,6 +235,56 @@ class FieldTypeBindingLawsTest {
     }
 
     /**
+     * The POSITIVE control for the five types an empty body defeats: a body that supplies what they need.
+     *
+     * <p>Without these rows "an empty body leaves the model unbuildable" and "a body of this type leaves the
+     * model unbuildable" are the same measurement, and a checker keying on the latter refuses every field
+     * using one of these types — an over-rejection, the one direction that cannot be caught downstream.
+     * Measured as a mutant: widening the checker's test from an empty body to any body survives until these
+     * rows exist.
+     *
+     * <p>The bodies are minimal rather than realistic, and the members come from the kernel's own
+     * declarations — each of these five carries a {@code @NonNull} member with no default
+     * ({@code format}, {@code formatOfFragment}, {@code id}, {@code name}), except {@code EnumerationType},
+     * whose {@code values} DOES default and which therefore fails for some other reason. That asymmetry is
+     * why the checker keys on the measured outcome and never on a read of which member is required.
+     */
+    @Test
+    void theTypesAnEmptyBodyDefeatsAreFineWithABodyThatSuppliesWhatTheyNeed() {
+        Map<String, String> actual = new LinkedHashMap<>();
+        actual.put("DateRangeType with a format only",
+                verdictWith("{\"type\":\"DateRangeType\",\"DateRangeType\":{\"format\":\"dd.MM.yyyy\"}}"));
+        actual.put("DateRangeType with a format and a separator", verdictWith(
+                "{\"type\":\"DateRangeType\",\"DateRangeType\":"
+                        + "{\"format\":\"dd.MM.yyyy\",\"rangeSeparator\":\"-\"}}"));
+        actual.put("EnumerationType with one value", verdictWith(
+                "{\"type\":\"EnumerationType\",\"EnumerationType\":{\"values\":[{\"value\":\"A\"}]}}"));
+        actual.put("DateFragmentType with a fragment format", verdictWith(
+                "{\"type\":\"DateFragmentType\",\"DateFragmentType\":{\"formatOfFragment\":\"dd.MM.\"}}"));
+        actual.put("CustomFieldType with a name",
+                verdictWith("{\"type\":\"CustomFieldType\",\"CustomFieldType\":{\"name\":\"Signature\"}}"));
+        actual.put("TypeDefType with an id",
+                verdictWith("{\"type\":\"TypeDefType\",\"TypeDefType\":{\"id\":\"NoSuchTypeDef\"}}"));
+
+        Map<String, String> expected = new LinkedHashMap<>();
+        // The separator's field carries a default in the kernel's own declaration and the default does NOT
+        // survive this path, so a format alone is still not a buildable range. A source reading of the
+        // defaults would have predicted the opposite, which is why these rows are measured.
+        expected.put("DateRangeType with a format only", KernelLaws.NOT_BUILDABLE);
+        expected.put("DateRangeType with a format and a separator", KernelLaws.ADMITTED);
+        expected.put("EnumerationType with one value", KernelLaws.ADMITTED);
+        expected.put("DateFragmentType with a fragment format", KernelLaws.ADMITTED);
+        expected.put("CustomFieldType with a name", KernelLaws.ADMITTED);
+        // NOT a positive control, and kept because it names a class this checker does not cover: an `id`
+        // naming no declared type definition refuses A12's READER. A buildable `TypeDefType` needs a type
+        // definition the model declares, so this type has no positive row here and the checker's silence
+        // about a dangling id is an under-report the report's gap now names. Why the reader refuses rather
+        // than failing to build is unmeasured.
+        expected.put("TypeDefType with an id", KernelLaws.UNREADABLE);
+        assertEquals(expected, actual, "the five types with a body supplying what they construct from");
+    }
+
+    /**
      * A field declared with NO {@code fieldType} leaves a model A12 cannot build — the within-model control.
      *
      * <p>The envelope grid already has this row by REMOVING the member from a fixture field, which varies one

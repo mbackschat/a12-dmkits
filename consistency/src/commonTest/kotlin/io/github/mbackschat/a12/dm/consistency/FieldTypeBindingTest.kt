@@ -67,6 +67,42 @@ class FieldTypeBindingTest {
         assertEquals(expected, actual, "what the checker says about each type A12 declares")
     }
 
+    /**
+     * The types an EMPTY body defeats must stay silent once the body supplies what they need.
+     *
+     * Without this, "an empty body is unbuildable" and "this TYPE is unbuildable" are indistinguishable from
+     * the checker's side, and widening the emptiness test to any body of those types goes unnoticed —
+     * measured as a surviving mutant. Every row is a body the real kernel ADMITS
+     * (`rulekit.validate.laws.FieldTypeBindingLawsTest`), so reporting one would refuse a model A12 takes.
+     *
+     * `TypeDefType` has no row: a buildable one needs a type definition the model declares, and an `id`
+     * naming nothing refuses A12's reader outright — a class this checker does not cover, named in the gap.
+     */
+    @Test
+    fun aConstructingTypeWithARealBodyDrawsNothing() {
+        val actual = mutableMapOf<String, List<String>>()
+        actual["DateRangeType with a format and a separator"] =
+            codes("""{"type":"DateRangeType","DateRangeType":{"format":"dd.MM.yyyy","rangeSeparator":"-"}}""")
+        actual["EnumerationType with one value"] =
+            codes("""{"type":"EnumerationType","EnumerationType":{"values":[{"value":"A"}]}}""")
+        actual["DateFragmentType with a fragment format"] =
+            codes("""{"type":"DateFragmentType","DateFragmentType":{"formatOfFragment":"dd.MM."}}""")
+        actual["CustomFieldType with a name"] =
+            codes("""{"type":"CustomFieldType","CustomFieldType":{"name":"Signature"}}""")
+        // The live control for the pair: the same types with an empty body DO draw, so a green row above is
+        // silence about a body that supplies something and not the check having stopped running.
+        actual["EnumerationType with an empty body — the live control"] =
+            codes("""{"type":"EnumerationType","EnumerationType":{}}""")
+
+        val expected = mutableMapOf<String, List<String>>()
+        expected["DateRangeType with a format and a separator"] = emptyList()
+        expected["EnumerationType with one value"] = emptyList()
+        expected["DateFragmentType with a fragment format"] = emptyList()
+        expected["CustomFieldType with a name"] = emptyList()
+        expected["EnumerationType with an empty body — the live control"] = unbuildable
+        assertEquals(expected, actual, "a constructing type whose body supplies what A12 builds from")
+    }
+
     @Test
     fun aFieldTypeThatIsNotAUsableTypedObjectIsUnbindable() {
         val actual = mutableMapOf<String, List<String>>()
