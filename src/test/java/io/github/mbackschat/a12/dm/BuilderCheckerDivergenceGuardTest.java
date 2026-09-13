@@ -94,6 +94,22 @@ class BuilderCheckerDivergenceGuardTest {
             // `isReservedElementName`, reached by Rule.Builder, Computation.Builder and the checker.
             Map.entry("MVK_RULE_NAME_INVALID", Disposition.SHARED_LEAF),
 
+            // Both sides read the raw-type `Length` SHAPE, over carriers that cannot share a reader:
+            // `RawLengthDiagnostic` matches a regex against the authored condition string to decide whether
+            // to attach the integer-domain corrective, while the checker matches a token stream to decide
+            // whether the model is legal at all. They agreed on every layout but one — the regex refused the
+            // redundant parentheses A12 admits, so a parenthesised condition silently lost its corrective;
+            // fixed 2026-09-13 in the same change that measured the row. Neither refuses anything A12 admits.
+            Map.entry("MVK_INTERNAL_ERROR", Disposition.SAME_LAW_SEPARATE_CARRIERS),
+
+            // `StructuralKernelFix` carries a Hint keyed on the code — prose for a verdict the Kernel
+            // reached, enforcing nothing. The checker owns the only enforcement of either law.
+            Map.entry("MVK_INVALID_LENGTH_OF_RAW_TYPE", Disposition.PROSE_ONLY),
+
+            // The same, and the checker's mention is a KDoc naming what it deliberately does NOT report:
+            // deciding a value POSITION needs the per-operator catalog this checker does not reproduce.
+            Map.entry("MVK_INVALID_RAW_TYPE", Disposition.PROSE_ONLY),
+
             // Computation.Builder reads List<Alternative> with Optional<Condition>; the checker reads a
             // JsonArray where an ABSENT or null member is the empty precondition. They agree on all four
             // shapes (one unguarded, two mixed, two both-unguarded, three with the middle unguarded); the

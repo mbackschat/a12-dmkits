@@ -67,6 +67,7 @@ final class RawLengthDiagnostic {
         if (condition == null) {
             return Optional.empty();
         }
+        condition = withoutRedundantParentheses(condition);
         Matcher left = LENGTH_LEFT.matcher(condition);
         if (left.matches()) {
             return Optional.of(new RawLength(left.group(1), left.group(2)));
@@ -76,6 +77,36 @@ final class RawLengthDiagnostic {
             return Optional.of(new RawLength(right.group(2), right.group(1)));
         }
         return Optional.empty();
+    }
+
+    /**
+     * The condition with each fully-enclosing parenthesis pair removed.
+     *
+     * <p>A12's shape gate treats redundant parentheses as transparent — {@code (Length(f) > 5)} is ADMITTED,
+     * measured 2026-09-13 by {@link laws.NvvRawTypeLawsTest} — so a parenthesised condition reaches the
+     * constant gate like any other and must get the same focused corrective. Only a pair that spans the
+     * whole text: {@code (a) > (b)} opens and closes with parentheses that are not each other's match.
+     */
+    private static String withoutRedundantParentheses(String condition) {
+        String trimmed = condition.trim();
+        while (trimmed.startsWith("(") && trimmed.endsWith(")") && enclosingPair(trimmed)) {
+            trimmed = trimmed.substring(1, trimmed.length() - 1).trim();
+        }
+        return trimmed;
+    }
+
+    /** Whether the leading {@code (} of [text] is closed by its trailing {@code )}. */
+    private static boolean enclosingPair(String text) {
+        int depth = 0;
+        for (int at = 0; at < text.length(); at++) {
+            char character = text.charAt(at);
+            if (character == '(') {
+                depth++;
+            } else if (character == ')' && --depth == 0) {
+                return at == text.length() - 1;
+            }
+        }
+        return false;
     }
 
     private static boolean validSignedInt(String lexical) {

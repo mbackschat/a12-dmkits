@@ -45,6 +45,11 @@ class CorrectiveTest {
             {"type":"Group","id":"g2","name":"Store","Group":{"elements":[
               {"type":"Field","id":"f4","name":"Code","Field":{"fieldType":{"type":"StringType"}}}
             ]}},
+            {"type":"Field","id":"f7","name":"Blob","Field":{"fieldType":{"type":"StringType",
+              "StringType":{"noValueValidation":true,"lineBreaksPermitted":true}}}},
+            {"type":"Rule","id":"r9","name":"RawLength","Rule":{
+              "errorCondition":"Length(Blob) >= 1","errorEntityRelPath":"../Blob",
+              "errorCode":"C9","errorMessage":[{"locale":"en_US","text":"x"}]}},
             {"type":"Rule","id":"r0","name":"Absent","Rule":{
               "errorCondition":"FieldFilled(NoSuchField)","errorEntityRelPath":"../Note",
               "errorCode":"C1","errorMessage":[{"locale":"en_US","text":"x"}]}},

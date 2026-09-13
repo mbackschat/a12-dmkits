@@ -213,6 +213,15 @@ enum class CheckFamily {
     COMPUTED_TARGET_KIND,
 
     /**
+     * What `Length` over a RAW-TYPE field may look like. A STRING declaring `noValueValidation` admits its
+     * length only as the whole rule condition `Length(f) > c` or the mirror — the max-length declaration A12
+     * lifts out of the generated validation — and a computation may not take it in any member. The other
+     * value windows A12 closes on such a field are NOT reported: deciding them needs per-operator value
+     * positions, which this checker does not reproduce.
+     */
+    RAW_TYPE_LENGTH,
+
+    /**
      * That every DSL-bearing member can be TOKENIZED — the syntax layer's first phase, and the only one
      * decidable without a grammar. Whether the tokens then form a condition A12's parser accepts is a
      * separate question this family does not answer.
@@ -382,7 +391,7 @@ internal fun check(
         prepared.supportedCharacterFindings() + prepared.declaredPatternFindings() +
         prepared.emptyGroupOperandFindings() + prepared.errorFieldReferenceFindings() +
         prepared.groupListOperandFindings() + prepared.repetitionWildcardFindings() +
-        prepared.computedTargetKindFindings() +
+        prepared.computedTargetKindFindings() + prepared.rawTypeLengthFindings() +
         prepared.stringTypeMessageFindings() + prepared.stringTypeParameterFindings() +
         prepared.numberTypeDigitFindings() + prepared.enumValueLabelFindings()
     val findings = judged.notSuppressedBy(prepared.variantFilterSuppressed())
@@ -407,7 +416,8 @@ internal fun check(
             CheckFamily.ENUM_VALUE_LABELS, CheckFamily.EMPTY_GROUP_OPERAND,
             CheckFamily.ERROR_FIELD_REFERENCE, CheckFamily.GROUP_LIST_OPERANDS,
             CheckFamily.GROUP_LIST_ROOT_OPERAND, CheckFamily.GROUP_LIST_OPERAND_KIND,
-            CheckFamily.REPETITION_WILDCARD_TARGET, CheckFamily.COMPUTED_TARGET_KIND),
+            CheckFamily.REPETITION_WILDCARD_TARGET, CheckFamily.COMPUTED_TARGET_KIND,
+            CheckFamily.RAW_TYPE_LENGTH),
         gaps = prepared.gaps() + prepared.emptyFactBase() + findings.buildBlocked() +
             prepared.variantFilterGaps() + prepared.enumCategoryGaps() +
             prepared.supportedCharacterGaps() + prepared.fieldTypeBindingGaps() +

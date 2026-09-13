@@ -80,7 +80,10 @@ class NvvRawTypeLawsTest {
     void strictRawLengthConstantFailuresGetAFocusedCorrective() {
         for (String condition : List.of(
                 "Length(IncidentNote) > 5.0",
-                "2147483648 < Length(IncidentNote)")) {
+                "2147483648 < Length(IncidentNote)",
+                // Parenthesised: A12 admits the parentheses and still reaches the constant gate, so the
+                // corrective must reach it too — measured 2026-09-13, and the regex shape reader missed it.
+                "(Length(IncidentNote) > 5.0)")) {
             ValidationResult result = KernelLaws.checkModel(CLAIM, "/Claim", "../IncidentNote", condition);
             String fix = result.diagnostics().stream()
                     .filter(d -> d.code().filter("MVK_INTERNAL_ERROR"::equals).isPresent())
@@ -156,6 +159,54 @@ class NvvRawTypeLawsTest {
     void aComputationPreconditionOverNvvLengthIsRejected() {
         // even the rule-side allowed comparison shape is NOT allowed as a computation precondition
         rejectsComputation("1", "Length(IncidentNote) > 5", "MVK_INVALID_LENGTH_OF_RAW_TYPE");
+    }
+
+    /**
+     * The complement of the accepted shape, as a grid — what a CHECKER has to decide.
+     *
+     * <p>The rows above establish the two accepted layouts and two refusals. A portable checker keying on
+     * "the whole condition is `Length(f) > c` or mirrored, else report" is asserting something stronger: that
+     * every OTHER layout is refused. Each row here is a layout a real author writes and the rows above do not
+     * reach, so the complement is measured rather than inferred from the accepted set — and the ordinary-field
+     * control carries the same surrounding shapes, which is what separates "this layout" from "this field".
+     */
+    @Test
+    void whatTheComplementOfTheAcceptedShapeDraws() {
+        java.util.Map<String, String> actual = new java.util.LinkedHashMap<>();
+        actual.put("parenthesised whole condition", verdict("../IncidentNote", "(Length(IncidentNote) > 5)"));
+        actual.put("the comparison reversed", verdict("../IncidentNote", "Length(IncidentNote) < 5"));
+        actual.put("mirrored, reversed", verdict("../IncidentNote", "5 > Length(IncidentNote)"));
+        actual.put("inside an Or", verdict("../IncidentNote", "Length(IncidentNote) > 5 Or FieldFilled(Other)"));
+        actual.put("negated", verdict("../IncidentNote", "Not(Length(IncidentNote) > 5)"));
+        actual.put("on a nested path", nestedVerdict("Length(Blob) > 5"));
+        actual.put("ordinary field, inside an Or — the control",
+                verdict("../Other", "Length(Other) > 5 Or FieldFilled(Other)"));
+        actual.put("ordinary field, parenthesised — the control", verdict("../Other", "(Length(Other) > 5)"));
+
+        java.util.Map<String, String> expected = new java.util.LinkedHashMap<>();
+        // The row that decides an implementation: redundant parentheses are TRANSPARENT to the gate, so a
+        // checker matching the accepted shape against the raw token stream would refuse a model A12 admits.
+        expected.put("parenthesised whole condition", KernelLaws.ADMITTED);
+        // GT with Length on the left, or LT with Length on the right. Reversing either is not a max-length
+        // declaration, so both orientations of the wrong comparison are refused by the shape gate.
+        expected.put("the comparison reversed", "MVK_INVALID_LENGTH_OF_RAW_TYPE");
+        expected.put("mirrored, reversed", "MVK_INVALID_LENGTH_OF_RAW_TYPE");
+        // `And` above, `Or` here: the gate is "the WHOLE condition", not one connective.
+        expected.put("inside an Or", "MVK_INVALID_LENGTH_OF_RAW_TYPE");
+        // A GRAMMAR refusal, one tier earlier, so this row belongs to no raw-type gate at all.
+        expected.put("negated", "MVK_UNEXPECTED_TOKEN");
+        expected.put("on a nested path", KernelLaws.ADMITTED);
+        expected.put("ordinary field, inside an Or — the control", KernelLaws.ADMITTED);
+        expected.put("ordinary field, parenthesised — the control", KernelLaws.ADMITTED);
+        assertEquals(expected, actual, "the complement of the accepted raw-type Length shape");
+    }
+
+    private static String verdict(String errorField, String condition) {
+        return KernelLaws.verdictModel(CLAIM, "/Claim", errorField, condition);
+    }
+
+    private static String nestedVerdict(String condition) {
+        return KernelLaws.verdictModel(CLAIM, "/Claim/Attachments", "../Blob", condition);
     }
 
     private static void rejectsComputation(String operation, String precondition, String code) {
