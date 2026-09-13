@@ -15,8 +15,19 @@ kotlin {
     jvmToolchain(21)
 
     jvm()
+    // The JS target is a consumable LIBRARY, not only a test lane. `binaries.library()` plus `useEsModules`
+    // is what makes the compiled output importable at all — without them the target compiles and produces
+    // nothing a Node project can `import`, which is exactly how a green build can coexist with an
+    // unconsumable artifact. The settings mirror `:interpreter`, the module that already ships to Node.
     js {
+        outputModuleName = 'a12-consistency'
         nodejs()
+        useEsModules()
+        binaries.library()
+        generateTypeScriptDefinitions()
+        compilerOptions {
+            target.set('es2015')
+        }
     }
 
     sourceSets {
@@ -54,11 +65,19 @@ def verifyConsistencyPurity = tasks.register('verifyConsistencyPurity') {
     description = 'Fail on a compiled kernel, interpreter or Groovy edge out of the checker, in main and test scope.'
     dependsOn 'jvmMainClasses', 'jvmTestClasses'
     def srcRoot = file('src')
-    // Only the source sets that compile INTO the JVM target are covered — `common*` does, which today is all
-    // of them, so the JVM class output is the whole module. A `jsMain` or `nativeMain` would not compile into
-    // it and jdeps would never see it, so the guard derives what exists and refuses what it cannot reach,
-    // rather than remembering a list that silently stops matching the tree.
-    def coveredSourceSets = ['commonMain', 'commonTest', 'jvmMain', 'jvmTest']
+    // Only the source sets that compile INTO the JVM target are covered by jdeps — `common*` and `jvm*` do,
+    // so the JVM class output is what this instrument can read. The guard derives what exists and refuses
+    // what NEITHER instrument reaches, rather than remembering a list that silently stops matching the tree.
+    def jdepsCoveredSourceSets = ['commonMain', 'commonTest', 'jvmMain', 'jvmTest']
+    // `js*` compiles to `.mjs`, which jdeps cannot read — and does not need to, because the forbidden set is
+    // unreachable there by construction rather than by inspection. The kernel, `:interpreter` and Groovy are
+    // JVM artifacts: none can sit on a Kotlin/JS compile classpath, so JS code naming one does not compile at
+    // all, and `verifyConsistencyDependencies` independently allowlists `jsRuntimeClasspath` and
+    // `jsTestRuntimeClasspath` so a declared edge fails on arrival. Listing these here claims the second
+    // instrument covers them, NOT that this one does — a `nativeMain` would still be refused, because no
+    // instrument reaches it.
+    def classpathCoveredSourceSets = ['jsMain', 'jsTest']
+    def coveredSourceSets = jdepsCoveredSourceSets + classpathCoveredSourceSets
     def classRoots = providers.provider {
         kotlin.targets.getByName('jvm').compilations.collectMany { it.output.classesDirs.files }
     }
