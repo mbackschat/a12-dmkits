@@ -118,6 +118,14 @@ class CheckFamilyWiringTest {
             {"type":"Computation","id":"c3","name":"BadSuppression","Computation":{
               "computationAlternatives":[{"operation":"1.00"}],
               "errorCodesToSuppress":["NOT A CODE"]}},
+            {"type":"Field","id":"f14","name":"Tare","Field":{"fieldType":{"type":"NumberType"}}},
+            {"type":"Field","id":"f15","name":"Gross","Field":{"fieldType":{"type":"NumberType"}}},
+            {"type":"Computation","id":"c7","name":"GrossCalc","Computation":{
+              "computedFieldRelPath":"../Gross",
+              "computationAlternatives":[{"operation":"[Tare] + 1"}]}},
+            {"type":"Computation","id":"c8","name":"TareCalc","Computation":{
+              "computedFieldRelPath":"../Tare",
+              "computationAlternatives":[{"operation":"[Gross] * 2"}]}},
             {"type":"Computation","id":"c6","name":"GuardedByAnAppCondition","Computation":{
               "computationAlternatives":[
                 {"precondition":"FieldFilled(Price) And CustomCondition NotReverse",
@@ -199,6 +207,9 @@ class CheckFamilyWiringTest {
             ("MVK_ERROR_INDEX_AS_CALCULATED_FIELD" to "/Catalog/IntoAnIndex"),
         CheckFamily.COMPUTATION_PRECONDITION_FEATURES to
             ("MVK_ERROR_INVALID_LANGUAGE_FEATURE" to "/Catalog/GuardedByAnAppCondition"),
+        // The circle's report is anchored at the computation writing its smallest member, so the path here
+        // is `Gross`'s writer rather than either declaration's position in the file.
+        CheckFamily.COMPUTATION_CYCLE to ("MVK_ERROR_CALC_CYCLE" to "/Catalog/GrossCalc"),
         CheckFamily.GROUP_LIST_OPERANDS to ("MVK_DUPLICATE_PARAM1" to "/Catalog/RepeatedGroup"),
         CheckFamily.GROUP_LIST_ROOT_OPERAND to
             ("MVK_ROOT_GROUP_REFERENCED" to "/Catalog/RootOperand"),

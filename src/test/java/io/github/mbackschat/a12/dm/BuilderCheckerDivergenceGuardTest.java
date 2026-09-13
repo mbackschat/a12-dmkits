@@ -80,7 +80,11 @@ class BuilderCheckerDivergenceGuardTest {
          */
         STRICTER_IN_JAVA,
 
-        /** The kit only NAMES the code — a javadoc, a comment, or a diagnostic hint for a kernel verdict. */
+        /**
+         * One estate only NAMES the code — a javadoc, a comment, or a diagnostic hint for a kernel verdict —
+         * while the other enforces it. Usually that is the kit naming and the checker reporting; the mirror
+         * happens too, and each row says which way round it is, because the scan cannot.
+         */
         PROSE_ONLY,
     }
 
@@ -264,7 +268,13 @@ class BuilderCheckerDivergenceGuardTest {
             // Prose on the CHECKER side, which is the mirror of this disposition's usual direction: the kits
             // erase the shape and the checker only NAMES the code, in the doc comment explaining why a
             // starred repeatable group is answered by a slot gate this checker does not report.
-            Map.entry("MVK_NO_WILDCARDS_ALLOWED", Disposition.PROSE_ONLY));
+            Map.entry("MVK_NO_WILDCARDS_ALLOWED", Disposition.PROSE_ONLY),
+
+            // Prose on the CHECKER side again: `Computation.build()` genuinely pre-checks a self-read, while
+            // the checker only NAMES the code, in the cycle family's doc comment explaining why a one-node
+            // circle is left to A12. The checker deliberately does not carry the law — its two pre-emptions
+            // need derived-scale inference — so there is nothing here for the kit's refusal to leak into.
+            Map.entry("MVK_ERROR_REFERENCE_TO_CALCULATED_FIELD", Disposition.PROSE_ONLY));
 
     @Test
     void everyCodeStatedInBothEstatesCarriesADisposition() {

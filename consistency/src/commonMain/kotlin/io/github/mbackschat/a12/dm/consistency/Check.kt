@@ -237,6 +237,14 @@ enum class CheckFamily {
     COMPUTATION_PRECONDITION_FEATURES,
 
     /**
+     * That the model's computations do not depend on each other in a CIRCLE. A12 sorts the calculated fields
+     * topologically and refuses a graph it cannot order. A read in a PRECONDITION builds an edge just as an
+     * operation read does, and the two ends may sit in different groups. A one-node circle — a computation
+     * reading its own target — is A12's other law and is deliberately not reported here.
+     */
+    COMPUTATION_CYCLE,
+
+    /**
      * That every DSL-bearing member can be TOKENIZED — the syntax layer's first phase, and the only one
      * decidable without a grammar. Whether the tokens then form a condition A12's parser accepts is a
      * separate question this family does not answer.
@@ -408,6 +416,7 @@ internal fun check(
         prepared.groupListOperandFindings() + prepared.repetitionWildcardFindings() +
         prepared.computedTargetKindFindings() + prepared.computedTargetIndexFieldFindings() +
         prepared.rawTypeLengthFindings() + prepared.computationPreconditionFeatureFindings() +
+        prepared.computationCycleFindings() +
         prepared.stringTypeMessageFindings() + prepared.stringTypeParameterFindings() +
         prepared.numberTypeDigitFindings() + prepared.enumValueLabelFindings()
     val findings = judged.notSuppressedBy(prepared.variantFilterSuppressed())
@@ -434,7 +443,7 @@ internal fun check(
             CheckFamily.GROUP_LIST_ROOT_OPERAND, CheckFamily.GROUP_LIST_OPERAND_KIND,
             CheckFamily.REPETITION_WILDCARD_TARGET, CheckFamily.COMPUTED_TARGET_KIND,
             CheckFamily.RAW_TYPE_LENGTH, CheckFamily.COMPUTED_TARGET_INDEX_FIELD,
-            CheckFamily.COMPUTATION_PRECONDITION_FEATURES),
+            CheckFamily.COMPUTATION_PRECONDITION_FEATURES, CheckFamily.COMPUTATION_CYCLE),
         gaps = prepared.gaps() + prepared.emptyFactBase() + findings.buildBlocked() +
             prepared.variantFilterGaps() + prepared.enumCategoryGaps() +
             prepared.supportedCharacterGaps() + prepared.fieldTypeBindingGaps() +

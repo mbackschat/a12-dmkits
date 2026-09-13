@@ -6733,3 +6733,29 @@ Reported by the portable checker (`CheckFamily.COMPUTED_TARGET_INDEX_FIELD`).
 Reported by the portable checker as `CheckFamily.COMPUTATION_PRECONDITION_FEATURES`, for the two English-spellable features only.
 
 *Locked by:* `rulekit.validate.laws.ComputationPreconditionLanguageFeatureLawsTest`.
+
+## §11 supplement — computations may not depend on each other in a CIRCLE, a precondition read builds that circle, and a one-node circle is a different code (measured, 2026-09-13) <a id="kf334"></a>
+
+> Fold: not-foldable — a whole-model graph law over the computation declarations.
+
+**A12 sorts the calculated fields topologically before it generates anything** (`CodeGenCalcBuilder.getCalculatedFields`) and refuses a graph it cannot order, reporting `MVK_ERROR_CALC_CYCLE` with the cycle spelled out. The law reads only declarations — which field each computation writes, which fields its own members read — so it is decidable without a document.
+
+| stored shape | A12 |
+|---|---|
+| an acyclic chain (`Weight ← Base`, `Volume ← Weight`) — the control | ADMITTED |
+| two computations reading each other | **`MVK_ERROR_CALC_CYCLE`** |
+| a three-step circle | **`MVK_ERROR_CALC_CYCLE`** |
+| one computation reading its own target | **`MVK_ERROR_REFERENCE_TO_CALCULATED_FIELD`** |
+| the back edge carried by an alternative's `precondition`, not by an operation | **`MVK_ERROR_CALC_CYCLE`** |
+| the back edge through a field no computation writes — the control | ADMITTED |
+| a circle whose two ends sit in different groups (an aggregate over a repeatable group's field, and an absolute read back out of it) | **`MVK_ERROR_CALC_CYCLE`** |
+
+**A PRECONDITION read is an edge.** The row matters because the two members look nothing alike — one is a condition, the other an operation, and a field read is spelled `FieldFilled(Volume)` in the first and `[Volume]` in the second — so an implementation reading only `operation` is the natural one to write, and it would admit a model A12 refuses.
+
+**A one-node circle is NOT this code, which is the pre-emption an implementation cannot infer.** A computation reading its own target is a cycle of length one in any graph, and A12 answers it with `MVK_ERROR_REFERENCE_TO_CALCULATED_FIELD` ([KF181](#kf181), [KF182](#kf182) for its projected variant). Reporting the cycle class there would name a verdict A12 never reached.
+
+**The graph is over RESOLVED fields, not over declaration sites.** The cross-group row is measured rather than transferred from the same-group rows: it closes its circle through `Sum(Crates*/Cost)` in one direction and an absolute `[/Depot/Weight]` read in the other, and is refused exactly like two sibling reads — so keying on the resolved path alone is correct.
+
+Reported by the portable checker as `CheckFamily.COMPUTATION_CYCLE`, which drops the self-loop for the reason above.
+
+*Locked by:* `rulekit.validate.laws.ComputationDependencyCycleLawsTest`.
