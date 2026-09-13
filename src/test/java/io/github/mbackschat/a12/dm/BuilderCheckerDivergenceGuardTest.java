@@ -118,7 +118,16 @@ class BuilderCheckerDivergenceGuardTest {
             Map.entry("MVK_UNEXPECTED_TOKEN", Disposition.PROSE_ONLY),
             Map.entry("MVK_ERROR_FIELD_MISSING", Disposition.PROSE_ONLY),
             Map.entry("MVK_MISSING_ERROR_FIELD", Disposition.PROSE_ONLY),
-            Map.entry("MVK_INVALID_ROOT_GROUP", Disposition.PROSE_ONLY));
+            Map.entry("MVK_INVALID_ROOT_GROUP", Disposition.PROSE_ONLY),
+
+            // The two DateType config gates. rulekit names them only in `StructuralKernelFix`'s correctives,
+            // deliberately: a client-side refusal was measured and DECLINED there, because `FieldTypeSpecReader`
+            // builds `DateSpec` on the READ path and a constructor check would make an inconsistent kernel
+            // model unreadable rather than merely unauthorable ([KERNEL-FINDINGS KF251]). The checker has no
+            // read path to spoil — it reports on stored JSON — so it reproduces both codes, restricted to the
+            // formats A12 is measured to admit.
+            Map.entry("MVK_ADDITIONAL_CHECK_INVALID", Disposition.PROSE_ONLY),
+            Map.entry("MVK_OPTIONAL_DATE_TYPE_INVALID", Disposition.PROSE_ONLY));
 
     @Test
     void everyCodeStatedInBothEstatesCarriesADisposition() {

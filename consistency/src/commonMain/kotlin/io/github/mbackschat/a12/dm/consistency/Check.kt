@@ -87,6 +87,15 @@ enum class CheckFamily {
     FIELD_TYPE_BINDING,
 
     /**
+     * That a date field's declared CONFIG agrees with its declared FORMAT — the pre-1900 check needs a
+     * year-bearing format and a partial `datePrecision` needs a complete pure date. Both are A12's own
+     * consistency codes rather than reader refusals, and both are asked only over the format vocabulary A12
+     * is measured to admit: an unrecognised format leaves this family silent, since the admitted set is a
+     * probe's result and not a closed one.
+     */
+    TEMPORAL_CONFIG,
+
+    /**
      * That every DSL-bearing member can be TOKENIZED — the syntax layer's first phase, and the only one
      * decidable without a grammar. Whether the tokens then form a condition A12's parser accepts is a
      * separate question this family does not answer.
@@ -251,7 +260,7 @@ internal fun check(
         prepared.connectiveAgreementFindings() + prepared.conditionGrammarFindings() +
         prepared.elementNameFindings() + prepared.groupOrderingFindings() +
         prepared.presentationMemberFindings() + prepared.stringSlotFindings() +
-        prepared.fieldTypeBindingFindings()
+        prepared.fieldTypeBindingFindings() + prepared.temporalConfigFindings()
     val findings = judged.notSuppressedBy(prepared.variantFilterSuppressed())
     return ConsistencyReport(
         modelId = admitted.modelId,
@@ -266,7 +275,8 @@ internal fun check(
             CheckFamily.VARIANT_FILTER, CheckFamily.CONDITION_LEXICALITY,
             CheckFamily.CONDITION_COMPLETENESS, CheckFamily.CONNECTIVE_AGREEMENT,
             CheckFamily.CONDITION_GRAMMAR, CheckFamily.RULE_PRESENTATION_MEMBERS,
-            CheckFamily.STRING_SLOT_BINDING, CheckFamily.FIELD_TYPE_BINDING),
+            CheckFamily.STRING_SLOT_BINDING, CheckFamily.FIELD_TYPE_BINDING,
+            CheckFamily.TEMPORAL_CONFIG),
         gaps = prepared.gaps() + prepared.emptyFactBase() + findings.buildBlocked() +
             prepared.variantFilterGaps() + UNREAD_MEMBERS + UNIMPLEMENTED_FAMILIES,
     )
