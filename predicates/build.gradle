@@ -57,10 +57,17 @@ def verifyPredicatesPurity = tasks.register('verifyPredicatesPurity') {
             def resolved = configurations.getByName(name).incoming.resolutionResult.allComponents
                     .collect { it.moduleVersion }
                     .findAll { it != null && it.group != '' && it.group != project.group }
+                    // EXACT group, never `startsWith` — measured 2026-09-13, when this line read
+                    // `startsWith('org.jetbrains.kotlin')` and a planted `kotlinx-serialization-json`
+                    // SURVIVED: `org.jetbrains.kotlinx` starts with `org.jetbrains.kotlin`, so one missing
+                    // boundary character silently exempted the whole kotlinx namespace — serialization,
+                    // coroutines, datetime — which is precisely the class of dependency this leaf refuses.
+                    // The clean set is three artifacts in this one group (`kotlin-stdlib`, `-stdlib-js`,
+                    // `kotlin-dom-api-compat`), so an exact match costs nothing.
+                    .findAll { it.group != 'org.jetbrains.kotlin' }
                     // The stdlib's OWN closure, not an edge this module declares: `kotlin-stdlib` depends on
                     // `org.jetbrains:annotations`, so excluding it keeps the guard about what the leaf adds.
                     // Named exactly rather than excluding all of `org.jetbrains`, which is a large namespace.
-                    .findAll { !it.group.startsWith('org.jetbrains.kotlin') }
                     .findAll { !(it.group == 'org.jetbrains' && it.name == 'annotations') }
             if (resolved) {
                 throw new GradleException(
@@ -72,7 +79,7 @@ def verifyPredicatesPurity = tasks.register('verifyPredicatesPurity') {
         // Non-vacuity: a typo in a configuration name would resolve nothing and report clean. The stdlib is
         // always there, so its absence means the query broke rather than that the module is pure.
         def stdlib = configurations.getByName('jvmRuntimeClasspath').incoming.resolutionResult.allComponents
-                .any { it.moduleVersion?.group?.startsWith('org.jetbrains.kotlin') }
+                .any { it.moduleVersion?.group == 'org.jetbrains.kotlin' }
         if (!stdlib) {
             throw new GradleException('resolved no Kotlin stdlib on jvmRuntimeClasspath, so the purity ' +
                     'query found nothing and a green result here proves nothing')
