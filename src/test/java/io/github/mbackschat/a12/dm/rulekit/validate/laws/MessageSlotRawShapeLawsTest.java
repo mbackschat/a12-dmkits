@@ -47,11 +47,13 @@ class MessageSlotRawShapeLawsTest {
     /**
      * The unprefixed class that co-fires with a message verdict, and the reason it is spelled out per row.
      *
-     * <p>A12 reports the rule's own "no error text" class beside the message code in some of these rows and
-     * not in others — a whitespace-only text draws {@code MVK_ERROR_MESSAGE_MISSING} alone where a blank
-     * LATER duplicate draws both, and the rows that declare no locale at all draw neither. No mechanism is
-     * claimed for that split; the rows record which spelling each shape draws, because a checker mirroring
-     * one of them states a class A12 did not report for the other.
+     * <p>A12 reports the rule's own "no error text" class beside the message code on some of these rows and
+     * not on others, and the split is measured rather than left open: it co-fires exactly when the locale has
+     * NO TEXT AT ALL — an absent row, or an empty string — and not when a text exists but is whitespace only.
+     * {@link #whenTheUnprefixedNoErrorTextClassCoFiresWithAPerLocaleVerdict} holds the three-way comparison
+     * that establishes it, on the carrier where the message class is the per-locale one, so the rule is not a
+     * property of either message class. The rows that declare no locale at all are outside it: they draw
+     * neither, because nothing is collected for them at all.
      *
      * <p>Every row here read {@code MVK_ERROR_MESSAGE_MISSING} alone until the harness stopped lifting
      * classes by an {@code MVK_} prefix, which silently dropped this one — see {@link KernelLaws#verdictOf}.
@@ -61,6 +63,8 @@ class MessageSlotRawShapeLawsTest {
     private static final String EN = "{\"locale\":\"en_US\",\"text\":\"x\"}";
     private static final String DE = "{\"locale\":\"de_DE\",\"text\":\"y\"}";
     private static final String EN_ONLY = "[{\"code\":\"en_US\"}]";
+
+    private static final String BOTH_LOCALES = "[{\"code\":\"en_US\"},{\"code\":\"de_DE\"}]";
 
     /**
      * The LOCALE-SPELLING rows. A12 reads a locale code through `LocaleUtils.toLocale` on both sides, so the
@@ -267,6 +271,40 @@ class MessageSlotRawShapeLawsTest {
     }
 
     /** What A12 says about the probe model with the given raw `header.locales` and rule `errorMessage`. */
+    /**
+     * WHEN the unprefixed no-error-text class co-fires, on the carrier where a SECOND locale is answered.
+     *
+     * <p>The rows above leave the split unexplained because they all sit on a one-locale header, where the
+     * verdict is {@code MVK_ERROR_MESSAGE_MISSING}. Declaring a second locale moves the class to
+     * {@code MVK_ERROR_MESSAGE_FOR_LANGUAGE_MISSING} and the co-fire travels with it, so the two carriers
+     * together say the split is not a property of either message class.
+     *
+     * <p><b>It keys on whether the locale has any text at all.</b> An absent row and an empty string both
+     * draw the second class; a whitespace-only text does not, and that row is the discriminator — a reading
+     * that keyed on "the row is missing" predicts the blank row draws the class alone, and it draws both. The
+     * absent-row cell is also measured on the bare-string header above; it earns its place here because the
+     * mechanism needs all three cells side by side on one carrier, not because the verdict is new.
+     */
+    @Test
+    void whenTheUnprefixedNoErrorTextClassCoFiresWithAPerLocaleVerdict() {
+        Map<String, String> actual = new LinkedHashMap<>();
+        actual.put("both locales answered — the control", verdict(BOTH_LOCALES, "[" + EN + "," + DE + "]"));
+        actual.put("the second locale's text is BLANK",
+                verdict(BOTH_LOCALES, "[" + EN + ",{\"locale\":\"de_DE\",\"text\":\"\"}]"));
+        actual.put("the second locale's text is WHITESPACE",
+                verdict(BOTH_LOCALES, "[" + EN + ",{\"locale\":\"de_DE\",\"text\":\"   \"}]"));
+        actual.put("the second locale's ROW is absent", verdict(BOTH_LOCALES, "[" + EN + "]"));
+
+        String perLocale = "MVK_ERROR_MESSAGE_FOR_LANGUAGE_MISSING";
+        Map<String, String> expected = new LinkedHashMap<>();
+        expected.put("both locales answered — the control", ADMITTED);
+        expected.put("the second locale's text is BLANK", perLocale + AND_NO_ERROR_TEXT);
+        // The discriminator: a text exists, so the rule is not textless — only the locale is unanswered.
+        expected.put("the second locale's text is WHITESPACE", perLocale);
+        expected.put("the second locale's ROW is absent", perLocale + AND_NO_ERROR_TEXT);
+        assertEquals(expected, actual, "when the unprefixed no-error-text class co-fires");
+    }
+
     private static String verdict(String localesJson, String errorMessageJson) {
         return KernelLaws.verdictOf(probe(localesJson, errorMessageJson));
     }

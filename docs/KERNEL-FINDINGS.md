@@ -6423,7 +6423,7 @@ Every coded notification ends with its class in brackets — `… [MVK_PATH_INVA
 | `NAME_STARTS_WITH_UNDERSCORE_AND_WRONG_PATTERN` | a non-root group whose name begins with `_` | [KF315](#kf315), [KF322](#kf322) |
 | `CUSTOM_FIELD_TYPE_CODENAME_MISSING` | a `CustomFieldType` with no `name` member | `FieldTypeBindingLawsTest`, `FieldTypeBodyMemberLawsTest` |
 | `MIN_LENGTH_BIGGER_MAX_LENGTH` | an inverted length range on a `CustomFieldType` — the same law the string carrier reports as `MVK_MIN_LENGTH_BIGGER_MAX_LENGTH` | `StringTypeParameterLawsTest` |
-| `RULE_HAS_NO_ERRORTEXT` | co-fires with `MVK_ERROR_MESSAGE_MISSING` and with `MVK_ERROR_MESSAGE_FOR_LANGUAGE_MISSING` on some shapes and not others | `MessageSlotRawShapeLawsTest`, `RuleVariantFilterLawsTest` |
+| `RULE_HAS_NO_ERRORTEXT` | co-fires with `MVK_ERROR_MESSAGE_MISSING` and with `MVK_ERROR_MESSAGE_FOR_LANGUAGE_MISSING` — **measured 2026-09-13**: exactly when the locale has NO TEXT AT ALL (an absent row, or an empty string), never when a text exists but is whitespace only, so it is a property of the declaration rather than of either message class | `MessageSlotRawShapeLawsTest`, `RuleVariantFilterLawsTest` |
 | `INVALID_GROUP` | a message parameter naming an undeclared group | [KF315](#kf315) |
 
 Two consequences, both measured here rather than reasoned:
