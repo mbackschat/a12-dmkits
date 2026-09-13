@@ -32,7 +32,7 @@ class GroupOrderingFieldTypeTest {
                       {"type":"Group","id":"g0","name":"Catalog","Group":{"elements":[
                         {"type":"Group","id":"g1","name":"Items","Group":{$ordering"elements":[
                           {"type":"Field","id":"f1","name":"Sku","Field":{$skuBody}},
-                          {"type":"Field","id":"f2","name":"Count","Field":{}}
+                          {"type":"Field","id":"f2","name":"Count","Field":{"fieldType":{"type":"StringType"}}}
                         ]}}
                       ]}}
                      ]}}}

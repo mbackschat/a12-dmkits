@@ -27,7 +27,7 @@ class ElementNameTest {
                       {"type":"Group","id":"g0","name":"Catalog","Group":{"elements":[
                         $children,
                         {"type":"Group","id":"g1","name":"Archive","Group":{"elements":[
-                          {"type":"Field","id":"a0","name":"Filler","Field":{}}$nested
+                          {"type":"Field","id":"a0","name":"Filler","Field":{"fieldType":{"type":"StringType"}}}$nested
                         ]}}
                       ]}}
                      ]}}}
@@ -37,7 +37,7 @@ class ElementNameTest {
         ),
     ).elementNameFindings().map { it.code }
 
-    private fun field(id: String, name: String) = """{"type":"Field","id":"$id","name":"$name","Field":{}}"""
+    private fun field(id: String, name: String) = """{"type":"Field","id":"$id","name":"$name","Field":{"fieldType":{"type":"StringType"}}}"""
 
     private fun rule(id: String, name: String) =
         """{"type":"Rule","id":"$id","name":"$name","Rule":{"errorCode":"E1"}}"""

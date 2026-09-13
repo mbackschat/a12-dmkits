@@ -30,9 +30,9 @@ class PreparationTest {
     private val twoLevel = model(
         """
         {"type":"Group","id":"/Order","name":"Order","Group":{"repeatability":1,"elements":[
-          {"type":"Field","id":"/Order/Code","name":"Code","Field":{}},
+          {"type":"Field","id":"/Order/Code","name":"Code","Field":{"fieldType":{"type":"StringType"}}},
           {"type":"Group","id":"/Order/Lines","name":"Lines","Group":{"repeatability":9,"elements":[
-            {"type":"Field","id":"/Order/Lines/Qty","name":"Qty","Field":{}}
+            {"type":"Field","id":"/Order/Lines/Qty","name":"Qty","Field":{"fieldType":{"type":"StringType"}}}
           ]}}
         ]}}
         """,
@@ -66,9 +66,9 @@ class PreparationTest {
             model(
                 """
                 {"type":"Group","id":"3b16e188fc65d64190ea4482a0336341","name":"Catalog","Group":{"elements":[
-                  {"type":"Field","id":"b4c8890281890d66c079e5ccb2ae0b7a","name":"Sku","Field":{}},
+                  {"type":"Field","id":"b4c8890281890d66c079e5ccb2ae0b7a","name":"Sku","Field":{"fieldType":{"type":"StringType"}}},
                   {"type":"Group","id":"914eee50e04ba99a659a9ffa3661433d","name":"Warehouse","Group":{"elements":[
-                    {"type":"Field","id":"5f0d1c2b3a49586778695a4b3c2d1e0f","name":"OnHand","Field":{}}
+                    {"type":"Field","id":"5f0d1c2b3a49586778695a4b3c2d1e0f","name":"OnHand","Field":{"fieldType":{"type":"StringType"}}}
                   ]}}
                 ]}}
                 """,
@@ -88,10 +88,10 @@ class PreparationTest {
         val prepared = preparedRoots(
             """
             {"type":"Group","id":"/Header","name":"Header","Group":{"elements":[
-              {"type":"Field","id":"/Header/Ref","name":"Ref","Field":{}}
+              {"type":"Field","id":"/Header/Ref","name":"Ref","Field":{"fieldType":{"type":"StringType"}}}
             ]}},
             {"type":"Group","id":"/Body","name":"Body","Group":{"elements":[
-              {"type":"Field","id":"/Body/Total","name":"Total","Field":{}}
+              {"type":"Field","id":"/Body/Total","name":"Total","Field":{"fieldType":{"type":"StringType"}}}
             ]}}
             """,
         )
@@ -153,8 +153,8 @@ class PreparationTest {
     fun aDeclarationMissingItsIdIsDiagnosedYetStillPlaced() {
         val prepared = preparedRoots(
             """{"type":"Group","id":"/Order","name":"Order","Group":{"elements":[
-              {"type":"Field","name":"Nameless","Field":{}},
-              {"type":"Field","id":"/Order/Code","name":"Code","Field":{}}
+              {"type":"Field","name":"Nameless","Field":{"fieldType":{"type":"StringType"}}},
+              {"type":"Field","id":"/Order/Code","name":"Code","Field":{"fieldType":{"type":"StringType"}}}
             ]}}""",
         )
 
@@ -171,9 +171,9 @@ class PreparationTest {
     fun aDeclarationMissingItsTypeOrNameCannotBeDescendedInto() {
         listOf(
             """{"id":"/Order","name":"Order","Group":{"elements":[
-              {"type":"Field","id":"/Order/Code","name":"Code","Field":{}}]}}""",
+              {"type":"Field","id":"/Order/Code","name":"Code","Field":{"fieldType":{"type":"StringType"}}}]}}""",
             """{"type":"Group","id":"/Order","Group":{"elements":[
-              {"type":"Field","id":"/Order/Code","name":"Code","Field":{}}]}}""",
+              {"type":"Field","id":"/Order/Code","name":"Code","Field":{"fieldType":{"type":"StringType"}}}]}}""",
         ).forEach { rootGroup ->
             val prepared = preparedRoots(rootGroup)
             assertEquals(emptyList(), prepared.elements.map { it.path }, rootGroup)
@@ -206,7 +206,7 @@ class PreparationTest {
         val prepared = preparedRoots(
             """{"type":"Group","id":"/Order","name":"Order","Group":{"elements":[
               {"type":"Field","id":"/Order/Code","name":"Code","Field":{"elements":[
-                {"type":"Field","id":"/Order/Code/Nested","name":"Nested","Field":{}}
+                {"type":"Field","id":"/Order/Code/Nested","name":"Nested","Field":{"fieldType":{"type":"StringType"}}}
               ]}}
             ]}}""",
         )
@@ -243,7 +243,7 @@ class PreparationTest {
     fun aNonStringIdentityIsCoercedTheWayTheKernelCoercesIt() {
         val prepared = preparedRoots(
             """{"type":"Group","id":5,"name":"Order","Group":{"elements":[
-              {"type":"Field","id":"/Order/Code","name":"Code","Field":{}}
+              {"type":"Field","id":"/Order/Code","name":"Code","Field":{"fieldType":{"type":"StringType"}}}
             ]}}""",
         )
 

@@ -41,19 +41,27 @@ class FieldTypeBindingTest {
     fun everyTypeA12DeclaresBindsAndDrawsNothing() {
         val actual = mutableMapOf<String, List<String>>()
         val expected = mutableMapOf<String, List<String>>()
-        // The five whose reader guards a missing body: both spellings bind.
+        // The five whose reader guards a missing body: both spellings bind, and an empty body builds.
         for (type in listOf("StringType", "NumberType", "ConfirmType", "BooleanType", "UnspecifiedType")) {
             actual["$type, body present"] = codes("""{"type":"$type","$type":{}}""")
             actual["$type, body absent"] = codes("""{"type":"$type"}""")
             expected["$type, body present"] = emptyList()
             expected["$type, body absent"] = emptyList()
         }
-        // The eight that read the body without checking: bound only with one written.
-        for (type in listOf("DateType", "DateTimeType", "DateRangeType", "DateFragmentType",
-            "EnumerationType", "TimeType", "TypeDefType", "CustomFieldType")) {
+        // The three temporal types, which read their body but build from an empty one — a format is
+        // optional. They are what keep "reads the body" and "needs something in it" apart.
+        for (type in listOf("DateType", "DateTimeType", "TimeType")) {
             actual["$type, body present"] = codes("""{"type":"$type","$type":{}}""")
             actual["$type, body absent"] = codes("""{"type":"$type"}""")
             expected["$type, body present"] = emptyList()
+            expected["$type, body absent"] = unbuildable
+        }
+        // The five that read the body AND construct from a member of it: neither spelling gives a model.
+        for (type in listOf("DateRangeType", "DateFragmentType", "EnumerationType", "TypeDefType",
+            "CustomFieldType")) {
+            actual["$type, body present"] = codes("""{"type":"$type","$type":{}}""")
+            actual["$type, body absent"] = codes("""{"type":"$type"}""")
+            expected["$type, body present"] = unbuildable
             expected["$type, body absent"] = unbuildable
         }
         assertEquals(expected, actual, "what the checker says about each type A12 declares")
@@ -63,8 +71,6 @@ class FieldTypeBindingTest {
     fun aFieldTypeThatIsNotAUsableTypedObjectIsUnbindable() {
         val actual = mutableMapOf<String, List<String>>()
         actual["a plain string type — the control"] = codes("""{"type":"StringType"}""")
-        // The control that keeps this family off the later tier: A12 READS this and fails to build it, so
-        // silence here is the measured answer and not an oversight.
         actual["no fieldType member at all"] = codes(null)
         actual["an EMPTY fieldType object"] = codes("{}")
         actual["a body with no discriminator"] = codes("""{"StringType":{}}""")
@@ -78,7 +84,9 @@ class FieldTypeBindingTest {
 
         val expected = mutableMapOf<String, List<String>>()
         expected["a plain string type — the control"] = emptyList()
-        expected["no fieldType member at all"] = emptyList()
+        // Not an untyped field: A12 binds `fieldType` as non-null with no default, so a field without one
+        // leaves a model that reads and never builds. The control above is what makes this attributable.
+        expected["no fieldType member at all"] = unbuildable
         expected["an EMPTY fieldType object"] = unbuildable
         expected["a body with no discriminator"] = unbuildable
         expected["a type name A12 does not have"] = unbuildable

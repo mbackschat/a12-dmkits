@@ -46,7 +46,7 @@ class DeclarationSlotTest {
                     {"header":{"id":"catalog","locales":[$locales]},
                      "content":{"modelRoot":{"rootGroups":[
                       {"type":"Group","id":"g0","name":"Catalog","Group":{"elements":[
-                        {"type":"Field","id":"f0","name":"Price","Field":{}},
+                        {"type":"Field","id":"f0","name":"Price","Field":{"fieldType":{"type":"StringType"}}},
                         {"type":"$kind","id":"x0","name":"$name","$kind":{${
                         listOfNotNull(messages?.let { """"errorMessage":$it""" }, slots.ifEmpty { null })
                             .joinToString(",")

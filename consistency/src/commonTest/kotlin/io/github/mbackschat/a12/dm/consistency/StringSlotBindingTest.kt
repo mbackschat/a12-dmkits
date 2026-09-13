@@ -24,7 +24,7 @@ class StringSlotBindingTest {
         {"header":{"id":"catalog","locales":[{"code":"en_US"}]},
          "content":{"modelRoot":{"rootGroups":[
           {"type":"Group","id":"g0","name":"Catalog","Group":{"elements":[
-            {"type":"Field","id":"f0","name":"Price","Field":{}},
+            {"type":"Field","id":"f0","name":"Price","Field":{"fieldType":{"type":"StringType"}}},
             {"type":"Rule","id":"r0","name":"PriceRule","Rule":{
               "errorCondition":"FieldFilled(Price)","errorEntityRelPath":"../Price",
               "errorCode":"PROBE","errorMessage":[{"locale":"en_US","text":"x"}]$members}}
@@ -38,7 +38,7 @@ class StringSlotBindingTest {
         {"header":{"id":"catalog","locales":[{"code":"en_US"}]},
          "content":{"modelRoot":{"rootGroups":[
           {"type":"Group","id":"g0","name":"Catalog","Group":{"elements":[
-            {"type":"Field","id":"f0","name":"Price","Field":{}},
+            {"type":"Field","id":"f0","name":"Price","Field":{"fieldType":{"type":"StringType"}}},
             {"type":"Computation","id":"c0","name":"PriceCalc","Computation":{
               "computedFieldRelPath":"../Price",
               "computationAlternatives":[$alternative],
@@ -54,7 +54,7 @@ class StringSlotBindingTest {
          "content":{"modelRoot":{"rootGroups":[
           {"type":"Group","id":"g0","name":"Catalog","Group":{"elements":[
             {"type":"Group","id":"g1","name":"Lines","Group":{"repeatable":true,"elements":[
-              {"type":"Field","id":"f1","name":"Sku","Field":{}}
+              {"type":"Field","id":"f1","name":"Sku","Field":{"fieldType":{"type":"StringType"}}}
             ]$members}}
           ]}}
          ]}}}

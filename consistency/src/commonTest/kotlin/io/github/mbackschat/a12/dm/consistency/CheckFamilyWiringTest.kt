@@ -27,7 +27,7 @@ class CheckFamilyWiringTest {
         {"header":{"id":"wiring","locales":[{"code":"en_US"}]},
          "content":{"modelRoot":{"rootGroups":[
           {"type":"Group","id":"g0","name":"Catalog","Group":{"elements":[
-            {"type":"Field","id":"f0","name":"Price","Field":{}},
+            {"type":"Field","id":"f0","name":"Price","Field":{"fieldType":{"type":"StringType"}}},
             {"type":"Field","id":"f1","name":"Unbindable","Field":{
               "fieldType":{"type":"NotAType","NotAType":{}}}},
             {"type":"Rule","id":"r1","name":"BadTarget","Rule":{
@@ -73,11 +73,11 @@ class CheckFamilyWiringTest {
             {"type":"Computation","id":"c3","name":"BadSuppression","Computation":{
               "computationAlternatives":[{"operation":"1.00"}],
               "errorCodesToSuppress":["NOT A CODE"]}},
-            {"type":"Field","id":"f1","name":"Twin","Field":{}},
-            {"type":"Field","id":"f2","name":"Twin","Field":{}},
+            {"type":"Field","id":"f1","name":"Twin","Field":{"fieldType":{"type":"StringType"}}},
+            {"type":"Field","id":"f2","name":"Twin","Field":{"fieldType":{"type":"StringType"}}},
             {"type":"Group","id":"g1","name":"Ordered","Group":{"repeatable":true,
               "indexFieldName":"NoSuchIndex","elements":[
-                {"type":"Field","id":"f3","name":"Label","Field":{}}
+                {"type":"Field","id":"f3","name":"Label","Field":{"fieldType":{"type":"StringType"}}}
               ]}},
             {"type":"Group","id":"g2","name":"BadKey","Group":{"repeatable":true,
               "indexFieldName":"Key","elements":[

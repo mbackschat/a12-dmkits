@@ -23,9 +23,9 @@ class DeclarationReferenceTest {
                     """
                     {"header":{"id":"order","locales":[{"code":"en_US"}]},"content":{"modelRoot":{"rootGroups":[
                       {"type":"Group","id":"g0","name":"Order","Group":{"elements":[
-                        {"type":"Field","id":"f0","name":"Code","Field":{}},
+                        {"type":"Field","id":"f0","name":"Code","Field":{"fieldType":{"type":"StringType"}}},
                         {"type":"Group","id":"g1","name":"Lines","Group":{"elements":[
-                          {"type":"Field","id":"f1","name":"Qty","Field":{}}
+                          {"type":"Field","id":"f1","name":"Qty","Field":{"fieldType":{"type":"StringType"}}}
                         ]}},
                         $rule
                       ]}}

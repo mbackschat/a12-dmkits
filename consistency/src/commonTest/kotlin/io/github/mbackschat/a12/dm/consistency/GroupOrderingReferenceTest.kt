@@ -19,7 +19,7 @@ import kotlin.test.assertTrue
 class GroupOrderingReferenceTest {
 
     /** A second field carrying the short name `Sku`, so that name exists at two levels. */
-    private val SKU = """,{"type":"Field","id":"f3","name":"Sku","Field":{}}"""
+    private val SKU = """,{"type":"Field","id":"f3","name":"Sku","Field":{"fieldType":{"type":"StringType"}}}"""
 
     private fun codesFor(itemsBody: String = "", catalogBody: String = "", catalogExtra: String = "") = prepare(
         assertIs<Admission.Admitted>(
@@ -29,10 +29,10 @@ class GroupOrderingReferenceTest {
                     {"header":{"id":"catalog","locales":[{"code":"en_US"}]},
                      "content":{"modelRoot":{"rootGroups":[
                       {"type":"Group","id":"g0","name":"Catalog","Group":{$catalogBody"elements":[
-                        {"type":"Field","id":"f0","name":"Label","Field":{}}$catalogExtra,
+                        {"type":"Field","id":"f0","name":"Label","Field":{"fieldType":{"type":"StringType"}}}$catalogExtra,
                         {"type":"Group","id":"g1","name":"Items","Group":{$itemsBody"elements":[
-                          {"type":"Field","id":"f1","name":"Sku","Field":{}},
-                          {"type":"Field","id":"f2","name":"Count","Field":{}}
+                          {"type":"Field","id":"f1","name":"Sku","Field":{"fieldType":{"type":"StringType"}}},
+                          {"type":"Field","id":"f2","name":"Count","Field":{"fieldType":{"type":"StringType"}}}
                         ]}}
                       ]}}
                      ]}}}
@@ -113,7 +113,7 @@ class GroupOrderingReferenceTest {
                           {"type":"Group","id":"g0","name":"Catalog","Group":{"elements":[
                             {"type":"Group","id":"g1","name":"Items","Group":{
                               "indexFieldName":"/Catalog/Items/Sku","elements":[
-                              {"type":"Field","id":"f1","name":"Sku","Field":{}}
+                              {"type":"Field","id":"f1","name":"Sku","Field":{"fieldType":{"type":"StringType"}}}
                             ]}}
                           ]}}
                          ]}}}
@@ -170,7 +170,7 @@ class GroupOrderingReferenceTest {
                          "content":{"modelRoot":{"rootGroups":[
                           {"type":"Group","id":"g0","name":"Catalog","Group":{
                             "sortFields":[{"name":5}],"elements":[
-                            {"type":"Field","id":"f0","name":"Label","Field":{}}
+                            {"type":"Field","id":"f0","name":"Label","Field":{"fieldType":{"type":"StringType"}}}
                           ]}}
                          ]}}}
                         """.trimIndent(),

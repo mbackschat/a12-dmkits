@@ -79,10 +79,10 @@ enum class CheckFamily {
     STRING_SLOT_BINDING,
 
     /**
-     * That every field's `fieldType` names a type A12 declares and carries the body that type reads — the
-     * discriminated union's binding, never its contents. A `fieldType` A12's reader cannot bind makes the
-     * whole model unloadable; a body A12 binds but cannot construct from, and an absent member, fail one
-     * tier later and are not this family's.
+     * That every field HAS a `fieldType`, that it names a type A12 declares, and that it carries the body
+     * that type reads and constructs from — the discriminated union, never its contents. Two tiers ride one
+     * constant because they are one member's law: a shape A12's reader refuses never loads, while a missing
+     * member or an empty body loads and then fails as A12 builds. The message says which.
      */
     FIELD_TYPE_BINDING,
 
@@ -346,12 +346,11 @@ private val UNREAD_MEMBERS = listOf(
     ),
     CoverageGap(
         at = null,
-        reason = "a `fieldType` A12 READ but cannot BUILD FROM draws nothing here — a body missing the " +
-            "member its type constructs from (an `EnumerationType` with no values, a `TypeDefType` with no " +
-            "reference), and an ABSENT `fieldType` member, which A12 binds past and then fails on. Both " +
-            "leave a model that loads and never builds. The reader's own refusals ARE reported; these two " +
-            "sit one tier later and the absent-member case is true of most field declarations, so closing " +
-            "it changes what this checker says about nearly every model rather than adding a row",
+        reason = "a field type's body is judged only when it is EMPTY, which is the shape measured — a " +
+            "body carrying some members but not the one its type constructs from (an `EnumerationType` " +
+            "with `alphabeticalSorting` and no values) leaves a model A12 cannot build and draws nothing " +
+            "here. Which member each type requires is unmeasured, and guessing it would refuse models A12 " +
+            "accepts",
     ),
     CoverageGap(
         at = null,

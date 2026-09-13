@@ -31,8 +31,8 @@ class FieldVariantFilterTest {
         {"header":{"id":"catalog","locales":[{"code":"en_US"}]},
          "content":{"modelRoot":{"rootGroups":[
           {"type":"Group","id":"g0","name":"Catalog","Group":{"elements":[
-            {"type":"Field","id":"f0","name":"Tier","Field":{${filter?.let { """"variantFilter":$it""" } ?: ""}}},
-            {"type":"Field","id":"f1","name":"AutoRenew","Field":{}},
+            {"type":"Field","id":"f0","name":"Tier","Field":{"fieldType":{"type":"StringType"}${filter?.let { ""","variantFilter":$it""" } ?: ""}}},
+            {"type":"Field","id":"f1","name":"AutoRenew","Field":{"fieldType":{"type":"StringType"}}},
             {"type":"Rule","id":"r0","name":"MentionRule","Rule":{
               "errorCondition":"FieldNotFilled(AutoRenew) And FieldNotFilled(Tier)",
               "errorEntityRelPath":"../AutoRenew",
@@ -48,7 +48,7 @@ class FieldVariantFilterTest {
         {"header":{"id":"catalog","locales":[{"code":"en_US"}]},
          "content":{"modelRoot":{"rootGroups":[
           {"type":"Group","id":"g0","name":"Catalog","Group":{"elements":[
-            {"type":"Field","id":"f0","name":"Tier","Field":{${filter?.let { """"variantFilter":$it""" } ?: ""}}},
+            {"type":"Field","id":"f0","name":"Tier","Field":{"fieldType":{"type":"StringType"}${filter?.let { ""","variantFilter":$it""" } ?: ""}}},
             {"type":"Rule","id":"r0","name":"TargetRule","Rule":{
               "errorCondition":"FieldNotFilled(Tier)","errorEntityRelPath":"../Tier",
               "errorCode":"PROBE","errorMessage":[{"locale":"en_US","text":"x"}]}}
@@ -69,8 +69,8 @@ class FieldVariantFilterTest {
         {"header":{"id":"catalog","locales":[{"code":"en_US"}]},
          "content":{"modelRoot":{"rootGroups":[
           {"type":"Group","id":"g0","name":"Catalog","Group":{"elements":[
-            {"type":"Field","id":"f0","name":"Tier","Field":{${filter?.let { """"variantFilter":$it""" } ?: ""}}},
-            {"type":"Field","id":"f1","name":"AutoRenew","Field":{}},
+            {"type":"Field","id":"f0","name":"Tier","Field":{"fieldType":{"type":"StringType"}${filter?.let { ""","variantFilter":$it""" } ?: ""}}},
+            {"type":"Field","id":"f1","name":"AutoRenew","Field":{"fieldType":{"type":"StringType"}}},
             {"type":"Group","id":"g1","name":"Inner","Group":{"elements":[
               {"type":"Rule","id":"r0","name":"PathRule","Rule":{
                 "errorCondition":"FieldNotFilled(../AutoRenew) And FieldNotFilled(../Tier)",
@@ -96,9 +96,9 @@ class FieldVariantFilterTest {
          "content":{"modelConfig":{"fieldRefByShortNameAllowed":true},
           "modelRoot":{"rootGroups":[
            {"type":"Group","id":"g0","name":"Catalog","Group":{"elements":[
-             {"type":"Field","id":"f0","name":"Tier","Field":{${filter?.let { """"variantFilter":$it""" } ?: ""}}},
+             {"type":"Field","id":"f0","name":"Tier","Field":{"fieldType":{"type":"StringType"}${filter?.let { ""","variantFilter":$it""" } ?: ""}}},
              {"type":"Group","id":"g1","name":"Inner","Group":{"elements":[
-               {"type":"Field","id":"f1","name":"AutoRenew","Field":{}},
+               {"type":"Field","id":"f1","name":"AutoRenew","Field":{"fieldType":{"type":"StringType"}}},
                {"type":"Rule","id":"r0","name":"FallbackRule","Rule":{
                  "errorCondition":"FieldNotFilled(AutoRenew) And FieldNotFilled(Tier)",
                  "errorEntityRelPath":"../AutoRenew",
@@ -208,7 +208,7 @@ class FieldVariantFilterTest {
             {"header":{"id":"catalog","locales":[{"code":"en_US"}]},
              "content":{"modelRoot":{"rootGroups":[
               {"type":"Group","id":"g0","name":"Catalog","Group":{"elements":[
-                {"type":"Field","id":"f0","name":"Tier","Field":{}},
+                {"type":"Field","id":"f0","name":"Tier","Field":{"fieldType":{"type":"StringType"}}},
                 {"type":"Rule","id":"r0","name":"FilteredRule","Rule":{
                   "variantFilter":$only,
                   "errorCondition":"FieldNotFilled(Tier)","errorEntityRelPath":"../Tier",

@@ -19,9 +19,9 @@ class ConditionBindingTest {
           "modelConfig":{"conditionLanguage":{"code":"$language"},"fieldRefByShortNameAllowed":false},
           "modelRoot":{"rootGroups":[
             {"type":"Group","id":"g0","name":"Order","Group":{"elements":[
-              {"type":"Field","id":"f0","name":"Code","Field":{}},
+              {"type":"Field","id":"f0","name":"Code","Field":{"fieldType":{"type":"StringType"}}},
               {"type":"Group","id":"g1","name":"Lines","Group":{"elements":[
-                {"type":"Field","id":"f1","name":"Amount","Field":{}},
+                {"type":"Field","id":"f1","name":"Amount","Field":{"fieldType":{"type":"StringType"}}},
                 {"type":"Rule","id":"r0","name":"Check","Rule":{"errorCode":"C",
                   "errorMessage":[{"locale":"en_US","text":"x"}],
                   "errorEntityRelPath":"../Amount","errorCondition":"$condition"}}
@@ -172,7 +172,7 @@ class ConditionBindingTest {
             """
             {"header":{"id":"order","locales":[{"code":"en_US"}]},"content":{"modelRoot":{"rootGroups":[
               {"type":"Group","id":"g0","name":"Order","Group":{"elements":[
-                {"type":"Field","id":"f0","name":"Total","Field":{}},
+                {"type":"Field","id":"f0","name":"Total","Field":{"fieldType":{"type":"StringType"}}},
                 {"type":"Computation","id":"c0","name":"Comp","Computation":{
                   "errorMessage":[{"locale":"en_US","text":"x"}],
                   "computedFieldRelPath":"../Total",

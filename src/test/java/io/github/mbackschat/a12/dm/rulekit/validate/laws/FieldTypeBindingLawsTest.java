@@ -234,6 +234,45 @@ class FieldTypeBindingLawsTest {
         assertEquals(expected, actual, "a fieldType written on an element that is not a field");
     }
 
+    /**
+     * A field declared with NO {@code fieldType} leaves a model A12 cannot build — the within-model control.
+     *
+     * <p>The envelope grid already has this row by REMOVING the member from a fixture field, which varies one
+     * thing but only on a field the fixture had already shaped. This adds a field that did not exist and
+     * varies only whether it is given a type, so the verdict cannot be about anything the fixture did to
+     * {@code CustomerName}. It is the row a corpus-wide consequence rests on: if it holds, every model whose
+     * fields omit the member is one A12 refuses to build, test fixtures included.
+     */
+    @Test
+    void aFieldWithNoDeclaredTypeLeavesAModelA12CannotBuild() {
+        Map<String, String> actual = new LinkedHashMap<>();
+        actual.put("an added field WITH a type — the control",
+                verdictWithAddedField("{\"fieldType\":{\"type\":\"StringType\"}}"));
+        actual.put("the same field with no fieldType member", verdictWithAddedField("{}"));
+
+        Map<String, String> expected = new LinkedHashMap<>();
+        expected.put("an added field WITH a type — the control", KernelLaws.ADMITTED);
+        expected.put("the same field with no fieldType member", KernelLaws.NOT_BUILDABLE);
+        assertEquals(expected, actual, "a field declared without any fieldType");
+    }
+
+    /** The order fixture with one extra root field whose body is [rawBody] verbatim. */
+    private static String verdictWithAddedField(String rawBody) {
+        try {
+            ObjectNode root = (ObjectNode) MAPPER.readTree(Fixtures.orderJson());
+            ObjectNode added = MAPPER.createObjectNode();
+            added.put("type", "Field");
+            added.put("id", "/Order/SpareNote");
+            added.put("name", "SpareNote");
+            added.set("Field", MAPPER.readTree(rawBody));
+            ((com.fasterxml.jackson.databind.node.ArrayNode) root.path("content").path("modelRoot")
+                    .path("rootGroups").get(0).path("Group").path("elements")).add(added);
+            return KernelLaws.verdictOf(root.toString());
+        } catch (IOException unreadable) {
+            throw new UncheckedIOException("the fixture and the raw body must parse", unreadable);
+        }
+    }
+
     /** Compared name-ordered, because the expectations are grouped by the split rather than by source order. */
     private static Map<String, String> sortedByName(Map<String, String> rows) {
         return new java.util.TreeMap<>(rows);

@@ -22,15 +22,25 @@ import kotlinx.serialization.json.JsonPrimitive
  * `switch` in `FieldtypeDeserializer.deriveFieldtype`, whose `default` raises, so the thirteen names are the
  * vocabulary by construction rather than by survey.
  *
- * **Two tiers, and only the reader's is this family's.** A body a type cannot construct from
- * (`"EnumerationType":{}`) and an ABSENT `fieldType` member both leave a model A12 read perfectly well and
- * then failed to build. Those belong to a separate slice, tracked as its own coverage gap, because the
- * absent-member case is true of most field declarations anywhere and reporting it is a change of
- * denominator rather than an added row. What this family reports is only what A12's READER refuses.
+ * **TWO tiers, and the family owns both, because they are one member's law.** A shape A12's reader refuses
+ * never loads; a field with NO `fieldType` at all, and one whose body is empty where its type constructs
+ * from a member, load and then fail as A12 builds the model. Splitting them would put one member's verdict in
+ * two families and give them two chances to disagree. The distinction survives in the message, which says
+ * which tier the model died at, since only the first means A12 never saw the declaration.
+ *
+ * **The absent-member half changed this checker's answer about nearly every model, and that was the cost.**
+ * A field with no declared type is not an untyped field — A12 refuses to build the model
+ * ([KERNEL-FINDINGS KF308], measured as a within-model pair on a field added for the purpose). It landed
+ * only after the checker's own fixtures were given types, because 73 of 74 field declarations in them
+ * carried none, which means those fixtures had been models A12 could not have built.
  */
 fun PreparedModel.fieldTypeBindingFindings(): List<Finding> =
     elements.filter { it.declaredKind == DeclaredKind.FIELD }.mapNotNull { field ->
-        val declared = field.body?.get("fieldType") ?: return@mapNotNull null
+        val declared = field.body?.get("fieldType")
+            ?: return@mapNotNull unbuildable(
+                field,
+                "this field declares no `fieldType`, which A12 binds as non-null with no default",
+            )
         unbindableFieldType(field, declared)
     }
 
@@ -83,15 +93,36 @@ private fun unbindableFieldType(field: DeclaredElement, declared: JsonElement): 
             "`fieldType` names the type `$discriminator`, which A12 does not declare — the vocabulary is " +
                 "case-sensitive and holds exactly: ${DECLARED_FIELD_TYPES.keys.sorted().joinToString(", ")}",
         )
-    if (!guardsItsBody && declared[discriminator] == null) {
+    val body = declared[discriminator]
+    if (!guardsItsBody && body == null) {
         return unbindable(
             field,
             "`fieldType` names `$discriminator` but carries no `$discriminator` body, which that type " +
                 "reads without checking",
         )
     }
+    // The second tier: A12 BOUND this and then could not construct from it. Keyed on an EMPTY body and
+    // nothing looser, because that is the shape measured — which member each of these five needs is not,
+    // so a body carrying anything at all is left to A12 rather than judged against a guess.
+    if (discriminator in TYPES_THAT_CONSTRUCT_FROM_THEIR_BODY && body is JsonObject && body.isEmpty()) {
+        return unbuildable(
+            field,
+            "`fieldType` names `$discriminator` with an empty body, and A12 constructs that type from a " +
+                "member the body does not supply",
+        )
+    }
     return null
 }
+
+/**
+ * The five types an EMPTY body leaves unbuildable, measured rather than derived.
+ *
+ * The other eight bind and build from `{}` — three temporal types included, so a format is optional. This
+ * list is the measured outcome of that grid and not a reading of which constructor argument is required;
+ * treating it as the latter would invite widening it to non-empty bodies nobody has run.
+ */
+private val TYPES_THAT_CONSTRUCT_FROM_THEIR_BODY =
+    setOf("DateRangeType", "DateFragmentType", "EnumerationType", "TypeDefType", "CustomFieldType")
 
 /**
  * The discriminator as A12 reads it — `JsonNode.asText()`, which stringifies any scalar rather than demanding
@@ -101,11 +132,28 @@ private fun unbindableFieldType(field: DeclaredElement, declared: JsonElement): 
  */
 private fun JsonElement.asBoundText(): String? = (this as? JsonPrimitive)?.content
 
-private fun unbindable(field: DeclaredElement, complaint: String) = Finding(
+/** Tier one: A12's reader never got past the bytes, so no declaration was examined at all. */
+private fun unbindable(field: DeclaredElement, complaint: String) = finding(
+    field,
+    "$complaint — A12's own reader refuses the source outright, so the model never loads and no " +
+        "consistency verdict about it exists.",
+)
+
+/**
+ * Tier two: A12 READ this and then could not build the model from it.
+ *
+ * The same code, deliberately — both leave a consumer with no verdict — and a different sentence, because a
+ * model that loads and fails to build has told A12 something, where one the reader refused has not.
+ */
+private fun unbuildable(field: DeclaredElement, complaint: String) = finding(
+    field,
+    "$complaint, so A12 reads the model and then fails to build it — no consistency verdict about it exists.",
+)
+
+private fun finding(field: DeclaredElement, explain: String) = Finding(
     FindingCategory.A12_CONSTRAINT,
     FindingSeverity.ERROR,
     CK_MODEL_NOT_BUILDABLE,
-    "$complaint — A12's own reader refuses the source outright, so the model never loads and no " +
-        "consistency verdict about it exists.",
+    explain,
     field.path,
 )

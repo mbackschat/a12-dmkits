@@ -39,11 +39,11 @@ class ConnectiveAgreementTest {
                         language?.let { """"modelConfig":{"conditionLanguage":{"code":"$it"}},""" } ?: ""
                     }"modelRoot":{"rootGroups":[
                       {"type":"Group","id":"g0","name":"Catalog","Group":{"elements":[
-                        {"type":"Field","id":"f0","name":"Price","Field":{}},
-                        {"type":"Field","id":"f1","name":"Sku","Field":{}},
+                        {"type":"Field","id":"f0","name":"Price","Field":{"fieldType":{"type":"StringType"}}},
+                        {"type":"Field","id":"f1","name":"Sku","Field":{"fieldType":{"type":"StringType"}}},
                         {"type":"Group","id":"g1","name":"Lines","Group":{"repeatability":20,"elements":[
-                          {"type":"Field","id":"f2","name":"Name","Field":{}},
-                          {"type":"Field","id":"f3","name":"Amount","Field":{}}
+                          {"type":"Field","id":"f2","name":"Name","Field":{"fieldType":{"type":"StringType"}}},
+                          {"type":"Field","id":"f3","name":"Amount","Field":{"fieldType":{"type":"StringType"}}}
                         ]}},
                         {"type":"Rule","id":"r0","name":"PriceRule","Rule":{
                           "errorCondition":${'"'}$condition${'"'},"errorEntityRelPath":"../Price"}}

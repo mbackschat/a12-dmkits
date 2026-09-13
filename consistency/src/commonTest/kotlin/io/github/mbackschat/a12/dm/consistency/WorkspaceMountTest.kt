@@ -29,7 +29,7 @@ class WorkspaceMountTest {
         """,
     )
 
-    private fun field(name: String) = """{"type":"Field","id":"f-$name","name":"$name","Field":{}}"""
+    private fun field(name: String) = """{"type":"Field","id":"f-$name","name":"$name","Field":{"fieldType":{"type":"StringType"}}}"""
 
     /**
      * A rule carrying an `en_US` text only — which is what makes it findings-free under [host] and NOT under
@@ -566,7 +566,7 @@ class WorkspaceMountTest {
             """
             {"header":{"id":"address","locales":[{"code":"en_US"}]},"content":{"modelRoot":{"rootGroups":[
               {"type":"Group","id":"g","name":"Address","Group":{"elements":[
-                {"type":"Field","name":"Street","Field":{}}
+                {"type":"Field","name":"Street","Field":{"fieldType":{"type":"StringType"}}}
               ]}}
             ]}}}
             """.trimIndent(),

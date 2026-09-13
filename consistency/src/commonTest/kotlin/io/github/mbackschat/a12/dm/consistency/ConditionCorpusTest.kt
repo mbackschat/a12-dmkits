@@ -39,7 +39,7 @@ class ConditionCorpusTest {
                 language?.let { """"modelConfig":{"conditionLanguage":{"code":"$it"}},""" } ?: ""
             }"modelRoot":{"rootGroups":[
               {"type":"Group","id":"g0","name":"Catalog","Group":{"elements":[
-                {"type":"Field","id":"f0","name":"Anchor","Field":{}},
+                {"type":"Field","id":"f0","name":"Anchor","Field":{"fieldType":{"type":"StringType"}}},
                 ${declaration(text, member)}
               ]}}
              ]}}}

@@ -26,7 +26,7 @@ class ConditionCompletenessTest {
                     {"header":{"id":"catalog","locales":[{"code":"en_US"}]},
                      "content":{"modelRoot":{"rootGroups":[
                       {"type":"Group","id":"g0","name":"Catalog","Group":{"elements":[
-                        {"type":"Field","id":"f0","name":"Price","Field":{}},
+                        {"type":"Field","id":"f0","name":"Price","Field":{"fieldType":{"type":"StringType"}}},
                         {"type":"Rule","id":"r0","name":"PriceRule","Rule":{
                           "errorCondition":${'"'}$condition${'"'},"errorEntityRelPath":"../Price"}}
                       ]}}
@@ -150,7 +150,7 @@ class ConditionCompletenessTest {
                          "content":{"modelConfig":{"conditionLanguage":{"code":"de_DE"}},
                           "modelRoot":{"rootGroups":[
                           {"type":"Group","id":"g0","name":"Katalog","Group":{"elements":[
-                            {"type":"Field","id":"f0","name":"Preis","Field":{}},
+                            {"type":"Field","id":"f0","name":"Preis","Field":{"fieldType":{"type":"StringType"}}},
                             {"type":"Rule","id":"r0","name":"PreisRegel","Rule":{
                               "errorCondition":"FeldAngegeben(Preis) Und","errorEntityRelPath":"../Preis"}}
                           ]}}

@@ -32,7 +32,7 @@ class ComputationRoundingTest {
                     {"header":{"id":"catalog","locales":[{"code":"en_US"}]},
                      "content":{"modelRoot":{"rootGroups":[
                       {"type":"Group","id":"g0","name":"Catalog","Group":{"elements":[
-                        {"type":"Field","id":"f0","name":"Price","Field":{}},
+                        {"type":"Field","id":"f0","name":"Price","Field":{"fieldType":{"type":"StringType"}}},
                         {"type":"Computation","id":"c0","name":"PriceCalc","Computation":{
                           "computationAlternatives":$alternatives${
                         mode?.let { ""","roundingMode":$it""" } ?: ""
