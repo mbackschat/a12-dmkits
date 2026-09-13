@@ -71,7 +71,7 @@ private fun PreparedModel.indexFindings(group: DeclaredElement, body: JsonObject
 
 private fun PreparedModel.sortFindings(group: DeclaredElement, body: JsonObject?): List<Finding> {
     val entries = body?.get("sortFields") as? JsonArray ?: return emptyList()
-    return entries.flatMap { entry ->
+    return group.repeatedSortField(entries) + entries.flatMap { entry ->
         // A non-string primitive is COERCED to the String member, as a rule's `errorCode` is, so `5` is the
         // name "5" and resolves like any other — measured, because reporting it as a reader refusal was
         // this family's one emission with no basis. Only a MISSING `name`, or an entry that is not an
@@ -88,6 +88,36 @@ private fun PreparedModel.sortFindings(group: DeclaredElement, body: JsonObject?
             )
         }
     }
+}
+
+/**
+ * The one finding a `sortFields` list repeating a name draws — ONCE, whatever repeats and however often.
+ *
+ * A12's own multiplicity, measured at the two cells that could have made it larger: a name appearing three
+ * times draws one, and two names each appearing twice draw one ([KERNEL-FINDINGS KF345],
+ * `rulekit.validate.laws.GroupOrderingMultipleDefectLawsTest`). So it is a verdict on the LIST rather than on
+ * an entry, which is why it is emitted here and not inside the per-entry walk below.
+ *
+ * It rides beside whatever the entries themselves draw — the duplicate does not withhold the type class, and
+ * the type class does not withhold it.
+ */
+private fun DeclaredElement.repeatedSortField(entries: JsonArray): List<Finding> {
+    val names = entries.mapNotNull { entry ->
+        ((entry as? JsonObject)?.get("name") as? JsonPrimitive)?.contentOrNull
+    }
+    if (names.size == names.distinct().size) {
+        return emptyList()
+    }
+    return listOf(
+        Finding(
+            FindingCategory.A12_CONSTRAINT,
+            FindingSeverity.ERROR,
+            "MVK_SORT_FIELD_DUPLICATE",
+            "this group's `sortFields` names the same field more than once, which A12 refuses — a sort " +
+                "order lists each field once, and the repeat says nothing a single entry does not",
+            path,
+        ),
+    )
 }
 
 /**

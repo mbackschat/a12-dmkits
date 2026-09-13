@@ -722,7 +722,11 @@ One cold adversarial review over the frozen range, as [§2](#2-execution-order-a
 
 **Two things the passes have taught that are cheaper than the grid itself.** Measure the pair in BOTH orders: the reversed row is what separates "this class wins" from "the earlier defect wins", and its absence is what made [KF340](KERNEL-FINDINGS.md#kf340) wrong. And measure the GRANULARITY rather than carrying it over: the condition gate is per declaration and the message gate is per message, so a checker that assumed either would have been wrong about the other — one row each, and both were nearly assumed.
 
-**What remains unpaired**, in the order their families would over-report: a group's ordering members (`indexFieldName` beside `sortFields`), and a declaration's own slots. Same shape of grid each time.
+**Amended 2026-09-13 — the fifth member, and a second missing class.** A group's two ordering members both report ([KF345](KERNEL-FINDINGS.md#kf345)), and the pairing rows turned up `MVK_SORT_FIELD_DUPLICATE`, which the checker did not emit. The sort list also draws its type class ONCE however many entries are opaque, which the checker does not match — kept deliberately, because it is the count divergence [KF340](KERNEL-FINDINGS.md#kf340) already settled rather than a class one, and a finding per entry names the field to fix.
+
+**The tier trap is real and the grid has to be built around it.** An unresolvable ordering name stops the model BUILDING, so a row putting one opposite a type defect varies buildability rather than the member; those rows live in a test of their own and say so. That is the same "a control that moves two variables is not a control" rule, met in a member where it is easy to miss because both defects are spelled the same way.
+
+**What remains unpaired**: a declaration's own slots. Same shape of grid.
 
 ### C record — the withholding's mechanism was WRONG, and the set that hid it was my own (2026-09-13)
 

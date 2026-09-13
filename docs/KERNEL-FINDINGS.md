@@ -7092,3 +7092,36 @@ So the class means "this duplicate leaves the positional pairing ambiguous", and
 Reported by the portable checker, which emitted the value class alone until this entry — an under-report of a class A12 draws on every enum that both repeats a value and declares a category.
 
 *Locked by:* `rulekit.validate.laws.EnumValueMultipleDefectLawsTest`, mirrored by `consistency … EnumValueMultipleDefectTest`.
+
+## §13 supplement — a group's two ordering members both report, and the sort LIST has two verdicts of its own (measured, 2026-09-13) <a id="kf345"></a>
+
+> Fold: not-foldable — the checker's examination order, not an evaluation behaviour.
+
+**The fifth member put through the defect-pairing pass.** [KF216](#kf216) and the type-gate grid beside it measure `indexFieldName` and `sortFields[].name` one at a time, and the latter's fixture deletes the index member before setting the sort one precisely so the two cannot fire together. That row:
+
+| `/Order/Items` with `Sku` declared `noValueValidation` | A12 |
+|---|---|
+| both members on a plain field — the control | ADMITTED |
+| an opaque `indexFieldName` alone | `MVK_INDEX_FIELD_NO_VALUE_VALIDATION` |
+| an opaque sort field alone | `MVK_SORT_FIELD_NO_VALUE_VALIDATION` |
+| **both members on the opaque field** | **both classes** |
+
+So neither member withholds the other, which makes this member the field type's shape rather than the condition's.
+
+**The sort list carries two verdicts about ITSELF rather than about an entry, and both are once.**
+
+| the `sortFields` list | A12 |
+|---|---|
+| one field named twice | `MVK_SORT_FIELD_DUPLICATE`, once |
+| the same field named three times | the same, **once** |
+| two fields each named twice | the same, **once** |
+| two DIFFERENT opaque fields sorted | `MVK_SORT_FIELD_NO_VALUE_VALIDATION`, **once** |
+| only the second of them opaque — the control | the same class, so the second entry IS judged |
+
+The control is what makes the fourth row a stop rather than an unread entry. The duplicate and the type class ride together — the opaque field sorted twice draws both.
+
+**An unresolvable ordering name is a different TIER and cannot be paired across.** It stops the model being built, in either member, and no member code survives beside it — so a grid putting an unresolvable name opposite a type defect would be varying buildability rather than the member.
+
+Reported by the portable checker, which did not emit `MVK_SORT_FIELD_DUPLICATE` at all. Its per-entry type findings are deliberately kept where A12 gives one: that is the count divergence [KF340](#kf340) already settled, since a finding per entry names the field to fix and says nothing A12 did not.
+
+*Locked by:* `rulekit.validate.laws.GroupOrderingMultipleDefectLawsTest`, mirrored by `consistency … GroupOrderingMultipleDefectTest`.
