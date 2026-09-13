@@ -118,6 +118,9 @@ class CheckFamilyWiringTest {
             {"type":"Computation","id":"c3","name":"BadSuppression","Computation":{
               "computationAlternatives":[{"operation":"1.00"}],
               "errorCodesToSuppress":["NOT A CODE"]}},
+            {"type":"Rule","id":"r22","name":"MessageNamesUnread","Rule":{
+              "errorCondition":"FieldFilled(Price)","errorEntityRelPath":"../Price",
+              "errorCode":"C22","errorMessage":[{"locale":"en_US","text":"see ${'$'}Amount${'$'}"}]}},
             {"type":"Field","id":"f14","name":"Tare","Field":{"fieldType":{"type":"NumberType"}}},
             {"type":"Field","id":"f15","name":"Gross","Field":{"fieldType":{"type":"NumberType"}}},
             {"type":"Computation","id":"c7","name":"GrossCalc","Computation":{
@@ -210,6 +213,8 @@ class CheckFamilyWiringTest {
         // The circle's report is anchored at the computation writing its smallest member, so the path here
         // is `Gross`'s writer rather than either declaration's position in the file.
         CheckFamily.COMPUTATION_CYCLE to ("MVK_ERROR_CALC_CYCLE" to "/Catalog/GrossCalc"),
+        CheckFamily.MESSAGE_PARAMETER_REFERENCE to
+            ("INVALID_FIELD" to "/Catalog/MessageNamesUnread"),
         CheckFamily.GROUP_LIST_OPERANDS to ("MVK_DUPLICATE_PARAM1" to "/Catalog/RepeatedGroup"),
         CheckFamily.GROUP_LIST_ROOT_OPERAND to
             ("MVK_ROOT_GROUP_REFERENCED" to "/Catalog/RootOperand"),

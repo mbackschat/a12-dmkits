@@ -6800,4 +6800,6 @@ So the law belongs to the MESSAGE member rather than to the rule, and the member
 
 **On a rule the error target is necessarily inside the membership set, so there is no second term to find.** Trying to build the pair that separates "the condition reads it" from "it is the error target" produces a different refusal instead — `MVK_ERROR_FIELD_NOT_REFERENCED`, since A12 requires every rule's error field to appear among its condition's references ([KF35](#kf35), `ErrorFieldReferenceReachLawsTest`). The impossibility is the result.
 
+Reported by the portable checker as `CheckFamily.MESSAGE_PARAMETER_REFERENCE`, for the plain parameter form only.
+
 *Locked by:* `rulekit.validate.laws.MessageParameterMembershipLawsTest`.
