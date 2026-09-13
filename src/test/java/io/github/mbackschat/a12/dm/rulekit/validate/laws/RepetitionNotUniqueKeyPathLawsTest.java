@@ -41,7 +41,13 @@ class RepetitionNotUniqueKeyPathLawsTest {
                             .field("Sku", FieldKind.STRING)
                             .field("Variant", FieldKind.STRING)
                             .field("Quantity", FieldKind.NUMBER)
-                            .field("LineNote", FieldKind.STRING))
+                            .field("LineNote", FieldKind.STRING)
+                            // Two DEPTH carriers, added 2026-09-13 for the gate-order grid's nested rows. The
+                            // twelve rows of the table below were re-run unchanged after they were added, so
+                            // they are inert to every shape that does not name them.
+                            .group("Parts", parts -> parts.repeatable(5)
+                                    .field("PartCode", FieldKind.STRING))
+                            .group("Meta", meta -> meta.field("MetaNote", FieldKind.STRING)))
                     .group("Coupons", c -> c.repeatable(10)
                             .field("CouponCode", FieldKind.STRING)))
             .build().toJson();
@@ -89,6 +95,59 @@ class RepetitionNotUniqueKeyPathLawsTest {
         expected.put("a second key in a parallel repeatable group | from inside one of them", "MVK_NO_WILDCARD");
         expected.put("keys naming a sibling rather than the error field", "MVK_ERROR_FIELD_NOT_REFERENCED");
         assertEquals(expected, actual, "RepetitionNotUnique key-path admission");
+    }
+
+    /**
+     * WHICH second key pre-empts the collapse — the carrier, or merely being a second key.
+     *
+     * <p>The table above leaves one link unmeasured, and a checker turns on exactly that link. The rule group
+     * sitting AT the repeated group draws {@code MVK_REPEATABLE_GROUP_MISSING} with a sole key, and the same
+     * position draws {@code MVK_NO_WILDCARD} once a second key sits in a parallel repeatable group — so
+     * something pre-empts it, and two readings fit every row that exists: a second key of ANY carrier
+     * pre-empts, or only a second REPEATABLE carrier does. Both grids agree wherever they overlap, which is
+     * why this needs its own rows rather than a re-reading of those.
+     *
+     * <p>It is a 2x4 within one model, varying the rule group's position against the second key's carrier and
+     * holding the error field on the repeated group's own field, so no cell moves a variable the cell beside
+     * it does not. The four cells that repeat the table above are kept as controls: they prove this grid
+     * reproduces it rather than measuring something adjacent.
+     */
+    @Test
+    void whatPreEmptsTheCollapseIsTheSecondKeysCarrierRatherThanItsExistence() {
+        Map<String, String> actual = new LinkedHashMap<>();
+        actual.put("above | sole key in the repeated group",
+                verdict("/Basket", "../Lines/Sku", "RepetitionNotUnique(Lines/Sku)"));
+        actual.put("above | second key in the same repeated group",
+                verdict("/Basket", "../Lines/Sku", "RepetitionNotUnique(Lines/Sku, Lines/Variant)"));
+        actual.put("above | second key in a non-repeatable group",
+                verdict("/Basket", "../Lines/Sku", "RepetitionNotUnique(Lines/Sku, Buyer/BuyerEmail)"));
+        actual.put("above | second key in a parallel repeatable group",
+                verdict("/Basket", "../Lines/Sku", "RepetitionNotUnique(Lines/Sku, Coupons/CouponCode)"));
+        actual.put("at | sole key in the repeated group",
+                verdict("/Basket/Lines", "../Sku", "RepetitionNotUnique(Sku)"));
+        actual.put("at | second key in the same repeated group",
+                verdict("/Basket/Lines", "../Sku", "RepetitionNotUnique(Sku, Variant)"));
+        actual.put("at | second key in a non-repeatable group",
+                verdict("/Basket/Lines", "../Sku", "RepetitionNotUnique(Sku, /Basket/Buyer/BuyerEmail)"));
+        actual.put("at | second key in a parallel repeatable group",
+                verdict("/Basket/Lines", "../Sku", "RepetitionNotUnique(Sku, /Basket/Coupons/CouponCode)"));
+        actual.put("at | key below a NESTED repeatable group",
+                verdict("/Basket/Lines", "../Parts/PartCode", "RepetitionNotUnique(Parts/PartCode)"));
+        actual.put("at | key in a NESTED non-repeatable group",
+                verdict("/Basket/Lines", "../Meta/MetaNote", "RepetitionNotUnique(Meta/MetaNote)"));
+
+        Map<String, String> expected = new LinkedHashMap<>();
+        expected.put("above | sole key in the repeated group", "admitted");
+        expected.put("above | second key in the same repeated group", "admitted");
+        expected.put("above | second key in a non-repeatable group", "MVK_REPEATABLE_GROUP_MISSING");
+        expected.put("above | second key in a parallel repeatable group", "MVK_NO_WILDCARD");
+        expected.put("at | sole key in the repeated group", "MVK_REPEATABLE_GROUP_MISSING");
+        expected.put("at | second key in the same repeated group", "MVK_REPEATABLE_GROUP_MISSING");
+        expected.put("at | second key in a non-repeatable group", "MVK_NOT_IN_RULEGROUP");
+        expected.put("at | second key in a parallel repeatable group", "MVK_NO_WILDCARD");
+        expected.put("at | key below a NESTED repeatable group", "admitted");
+        expected.put("at | key in a NESTED non-repeatable group", "MVK_REPEATABLE_GROUP_MISSING");
+        assertEquals(expected, actual, "RepetitionNotUnique key gate order");
     }
 
     /** {@code admitted}, or the COMPLETE emitted code list — a partial list would hide a co-firing gate. */
