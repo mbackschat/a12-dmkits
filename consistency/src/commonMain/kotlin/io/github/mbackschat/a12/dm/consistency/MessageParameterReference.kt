@@ -34,7 +34,7 @@ import io.github.mbackschat.a12.dm.consistency.syntax.plainMessageParameters
  */
 fun PreparedModel.messageParameterFindings(): List<Finding> {
     val readBy = entitiesReadByDeclaration()
-    val unsound = declarationsWithAnUnsoundCondition()
+    val unsound = declarationsWithUnsoundDsl()
     return elements.flatMap { element ->
         val body = element.body ?: return@flatMap emptyList()
         if (element.path in unsound) {

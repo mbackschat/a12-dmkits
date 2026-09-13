@@ -3,10 +3,14 @@ package io.github.mbackschat.a12.dm.consistency
 import io.github.mbackschat.a12.dm.consistency.syntax.delimitersBalanced
 
 /**
- * The declarations whose own condition text is not sound, and whose parameters are therefore not this
- * family's to judge.
+ * The declarations whose own DSL is not sound, and whose error text is therefore not ours to judge.
  *
- * **A12 withholds the parameter verdict entirely when the condition is broken** — it has a class saying so
+ * **Named for the DSL rather than the condition, because a COMPUTATION has none and behaves identically** —
+ * its broken member is an operation, and both error-text verdicts give way to that operation's class exactly
+ * as a rule's give way to its condition's. Calling this a condition gate would have been the rule carrier's
+ * accident.
+ *
+ * **A12 withholds the error-text verdict entirely when the declaration's DSL is broken** — it has a class saying so
  * (`FehlertextErrorType.INVALID_CONDITION`) and, measured, simply reports the condition's own class and
  * nothing about the message ([KERNEL-FINDINGS KF338],
  * `rulekit.validate.laws.MessageParameterConditionDependencyLawsTest`). Both kinds of unsoundness withhold
@@ -28,7 +32,7 @@ import io.github.mbackschat.a12.dm.consistency.syntax.delimitersBalanced
  * which is not a rare shape: a half-typed condition is the ordinary state of a model being edited, and it is
  * exactly when a checker is asked.
  */
-internal fun PreparedModel.declarationsWithAnUnsoundCondition(): Set<String> {
+internal fun PreparedModel.declarationsWithUnsoundDsl(): Set<String> {
     val unresolved = conditionReferences()
         .filter { it.target !is Reference.Resolved }
         .map { it.declaredAt }

@@ -6901,10 +6901,14 @@ Reported by the portable checker as `CheckFamily.MESSAGE_TEXT_CHARACTERS`.
 | `FieldFilled(`, the same parameter beside it | **`MVK_INCOMPLETE_INPUT`** only |
 | a valid condition, a TAB in the text — the control | **`INVALID_CHARACTERS`** |
 | `FieldFilled(NoSuchField)`, the same TAB in the text | **`MVK_INVALID_ENTITY`** only |
+| a COMPUTATION with operation `[NoSuchField] + 1`, a TAB in the text | **`MVK_INVALID_ENTITY`** only |
+| the same computation, a parameter it does not read | **`MVK_INVALID_ENTITY`** only |
 
 The second row against the third is the measurement: the verdict is identical whether the message carries a parameter or not, so the parameter's class is WITHHELD rather than accompanied.
 
 **It withholds the WHOLE error-text checker, not the parameter law.** The last pair is the sweep that says so: a control character in the text draws `INVALID_CHARACTERS` beside a valid condition and nothing at all beside a broken one — and that check needs nothing from the condition, so it could as easily have run regardless. So A12 declines to examine the message member at all, and every family reading that member answers to it.
+
+**The gate is "this declaration's own DSL is sound", not anything about conditions.** The computation rows say so: that carrier has no condition, its broken member is an OPERATION, and both error-text verdicts give way to its class exactly as a rule's do. Naming the law after conditions would have been the carrier's accident.
 
 **This is a cross-member dependency, which is the shape a family-per-member checker gets wrong by construction.** Each family reads its own member and reports what it finds, so one with a broken condition and a message beside it draws a parameter class A12 gave no sign of. The shape is not exotic: a half-typed condition is the ordinary state of a model being edited, and that is exactly when a checker is asked.
 

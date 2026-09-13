@@ -74,6 +74,56 @@ class MessageParameterConditionDependencyLawsTest {
         assertEquals(expected, actual, "what a parameter draws when the condition beside it is invalid");
     }
 
+    /**
+     * …and the same question on a COMPUTATION, whose unsound member is an operation rather than a condition.
+     *
+     * <p>The gate this file justifies reads a computation's members too, so those rows are a claim the rule
+     * rows cannot support: a computation has no condition, and nothing says A12 stops examining its message
+     * when its operation fails. Measured rather than carried across the carrier boundary.
+     */
+    @Test
+    void whetherAComputationsMessageIsWithheldByItsOwnBrokenMember() {
+        Map<String, String> actual = new LinkedHashMap<>();
+        actual.put("a valid operation, a control character in the text — the control",
+                computing("1", "see" + (char) 0x09 + "the total"));
+        actual.put("an operation naming nothing, a control character in the text",
+                computing("[NoSuchField] + 1", "see" + (char) 0x09 + "the total"));
+        actual.put("an operation naming nothing, a plain text — the control",
+                computing("[NoSuchField] + 1", "see the total"));
+        actual.put("a valid operation, a parameter it does not read — the control",
+                computing("1", "see $Reference$"));
+        actual.put("an operation naming nothing, a parameter beside it",
+                computing("[NoSuchField] + 1", "see $Reference$"));
+
+        Map<String, String> expected = new LinkedHashMap<>();
+        expected.put("a valid operation, a control character in the text — the control", "INVALID_CHARACTERS");
+        // The same withholding, on a carrier with no condition at all: the broken member is an OPERATION,
+        // and both error-text verdicts give way to its class exactly as a rule's do. So the gate is "the
+        // declaration's own DSL is sound", not anything about conditions.
+        expected.put("an operation naming nothing, a control character in the text", "MVK_INVALID_ENTITY");
+        expected.put("an operation naming nothing, a plain text — the control", "MVK_INVALID_ENTITY");
+        expected.put("a valid operation, a parameter it does not read — the control", "INVALID_FIELD");
+        expected.put("an operation naming nothing, a parameter beside it", "MVK_INVALID_ENTITY");
+        assertEquals(expected, actual, "whether a computation's message is withheld by its own broken member");
+    }
+
+    /** The drafted policy with one computation into `Premium`, carrying [operation] and [text]. */
+    private static String computing(String operation, String text) {
+        try {
+            ObjectNode root = (ObjectNode) MAPPER.readTree(POLICY);
+            ObjectNode node = (ObjectNode) ((ArrayNode) root.path("content").path("modelRoot")
+                    .path("rootGroups").get(0).path("Group").path("elements")).addObject();
+            node.put("type", "Computation").put("id", "cprobe").put("name", "PremiumCalc");
+            ObjectNode body = node.putObject("Computation");
+            body.put("computedFieldRelPath", "../Premium");
+            body.putArray("computationAlternatives").addObject().put("operation", operation);
+            body.putArray("errorMessage").addObject().put("locale", "en_US").put("text", text);
+            return KernelLaws.verdictOf(root.toString());
+        } catch (IOException unreadable) {
+            throw new UncheckedIOException("the fixture must parse", unreadable);
+        }
+    }
+
     /** The drafted policy with one rule injected, so the model is whole in every way but the condition. */
     private static String verdict(String condition, String errorField, String text) {
         try {

@@ -19,10 +19,10 @@ package io.github.mbackschat.a12.dm.consistency
  * (`RuleMessageAdmissionGateLawsTest`) — so this family stays inside the control blocks.
  *
  * **A broken CONDITION withholds this verdict too**, which is A12 declining to examine the message member
- * at all rather than a rule about parameters ([declarationsWithAnUnsoundCondition], [KF338]).
+ * at all rather than a rule about parameters ([declarationsWithUnsoundDsl], [KF338]).
  */
 fun PreparedModel.messageTextCharacterFindings(): List<Finding> {
-    val unsound = declarationsWithAnUnsoundCondition()
+    val unsound = declarationsWithUnsoundDsl()
     return elements.filter { it.kind == "Rule" || it.kind == "Computation" }.flatMap { element ->
         val body = element.body ?: return@flatMap emptyList()
         if (element.path in unsound) {
