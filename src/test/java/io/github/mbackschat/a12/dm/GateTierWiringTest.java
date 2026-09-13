@@ -24,15 +24,21 @@ class GateTierWiringTest {
     @Test
     void pushCiOwnsCorrectnessAndPersistsTheGradleCache() throws IOException {
         String ci = Files.readString(locate(".github/workflows/ci.yml"));
+        // Anything naming a TASK or a FLAG is asserted on the invocation, never on the file: the comment above
+        // that line exists to explain why each gate is named there, so a file-wide `contains` is satisfied by
+        // the prose. Measured twice — deleting `:schemakit:check` once left the sibling test below green, and
+        // `:consistency:nodeConsumerTest` survived the same mutant here on 2026-09-13, against a comment this
+        // very test's author had just written.
+        String invocation = pushCiInvocation(ci);
 
-        assertTrue(ci.contains("-PrunFuzz"),
+        assertTrue(invocation.contains("-PrunFuzz"),
                 "CI must run the fuzz lane (-PrunFuzz) on every push — else the differential fuzzers are dropped");
         // The JS/Node target is tested NOWHERE else. `test`, `:adapter:test` and `:noBackendTest` select no
         // interpreter task, so before this was wired the module ran only on a developer's machine and Node
         // coverage was a matter of who happened to run `:interpreter:check` locally (IF295, measured 2026-08-13).
         // `allTests` deliberately, not `check`: `check` additionally drags release packaging, API generation,
         // Maven/npm publication verification and runtime-closure work into every push.
-        assertTrue(ci.contains(":interpreter:allTests"),
+        assertTrue(invocation.contains(":interpreter:allTests"),
                 "CI must run :interpreter:allTests on every push — it is the only lane that executes the JS/Node "
                         + "target, and :interpreter:check would pull the release machinery in with it");
         // The checker's JS artifact is CONSUMABLE on no other lane. `:consistency:check` runs its correctness
@@ -40,7 +46,7 @@ class GateTierWiringTest {
         // artifact nobody can import — and for the module's whole life that is what the JS target emitted,
         // because `binaries.library()` was absent. The consumer test is off `check` (it needs node and npm),
         // so being named here is the only thing that runs it.
-        assertTrue(ci.contains(":consistency:nodeConsumerTest"),
+        assertTrue(invocation.contains(":consistency:nodeConsumerTest"),
                 "CI must run :consistency:nodeConsumerTest — it is the only lane that packs the checker's npm "
                         + "package and imports it by name, and it hangs off no lifecycle task");
         assertFalse(ci.contains("schedule:"),
@@ -74,14 +80,7 @@ class GateTierWiringTest {
      */
     @Test
     void pushCiNamesEveryCheckOnlyGuardHoldingTheKernelFreeClaim() throws IOException {
-        String invocation = Files.readString(locate(".github/workflows/ci.yml")).lines()
-                .map(String::strip)
-                .filter(line -> line.startsWith("run: ./gradlew"))
-                .reduce((a, b) -> {
-                    throw new AssertionError("more than one gradlew invocation in ci.yml — say which one holds "
-                            + "the kernel-free gates before asserting on it");
-                })
-                .orElseThrow(() -> new AssertionError("ci.yml runs no gradlew invocation at all"));
+        String invocation = pushCiInvocation(Files.readString(locate(".github/workflows/ci.yml")));
 
         var unreached = new java.util.ArrayList<String>();
         int derived = 0;
@@ -107,6 +106,23 @@ class GateTierWiringTest {
                 "these gates hang off a `check` that ci.yml never runs, so they execute NOWHERE — name each in "
                         + "the run line, or give it a reason in NOT_A_PUSH_CI_GATE:\n" + String.join("\n", unreached)
                         + "\nInvocation was: " + invocation);
+    }
+
+    /**
+     * The one gradlew command push CI runs, which is the only text that can satisfy a claim about a gate.
+     *
+     * <p>Refusing a second invocation is not tidiness: with two, `contains` would pass for a gate named in
+     * either, and the question this file asks — does THIS lane run that gate — would stop having one answer.
+     */
+    private static String pushCiInvocation(String ci) {
+        return ci.lines()
+                .map(String::strip)
+                .filter(line -> line.startsWith("run: ./gradlew"))
+                .reduce((a, b) -> {
+                    throw new AssertionError("more than one gradlew invocation in ci.yml — say which one holds "
+                            + "the kernel-free gates before asserting on it");
+                })
+                .orElseThrow(() -> new AssertionError("ci.yml runs no gradlew invocation at all"));
     }
 
     /** Every build script that wires something onto `check`, keyed by the task prefix CI would have to name. */
