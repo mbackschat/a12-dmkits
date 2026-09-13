@@ -38,6 +38,8 @@ class CheckFamilyWiringTest {
               "categories":[{"name":"Band","values":["STANDARD"]}]}}}},
             {"type":"Field","id":"f6","name":"LowercaseTier","Field":{"fieldType":{
               "type":"EnumerationType","EnumerationType":{"values":[{"value":"q"}]}}}},
+            {"type":"Field","id":"f7","name":"Reference","Field":{"fieldType":{"type":"StringType",
+              "StringType":{"pattern":"a++","errorMessage":[{"locale":"en_US","text":"x"}]}}}},
             {"type":"Rule","id":"r1","name":"BadTarget","Rule":{
               "errorCondition":"FieldFilled(Price)","errorEntityRelPath":"../NoSuchField",
               "errorCode":"C1","errorMessage":[{"locale":"en_US","text":"x"}]}},
@@ -123,6 +125,7 @@ class CheckFamilyWiringTest {
             ("MVK_MISSING_CATEGORY_VALUE" to "/Catalog/MiscategorisedTier"),
         CheckFamily.ENUM_VALUE_CHARACTERS to
             ("MVK_ENUM_VALUE_WITH_INVALID_CHARACTER" to "/Catalog/LowercaseTier"),
+        CheckFamily.STRING_PATTERN_ADMISSION to ("MVK_PATTERN_INVALID" to "/Catalog/Reference"),
     )
 
     @Test

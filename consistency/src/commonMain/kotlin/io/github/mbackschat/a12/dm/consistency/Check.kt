@@ -114,9 +114,18 @@ enum class CheckFamily {
      * That every declared ENUM VALUE is spelled in the characters `content.modelConfig.supportedCharacters`
      * admits. The restriction is a runtime constraint A12 bakes into generated code, and `checkConsistency`
      * re-runs the generator — so it is an authoring gate too. Enum values are the only declared strings it
-     * judges, measured against a name, a message and a category token that are all admitted.
+     * judges, measured against a name, a message, a category token and a string field's hint list that are
+     * all admitted — the last of those reads as in scope from A12's source and is dead on `30.8.1`.
      */
     ENUM_VALUE_CHARACTERS,
+
+    /**
+     * That a declared string `pattern` passes A12's admission gate — its TEXTUAL half. The gate blacklists
+     * source-character adjacencies rather than the expression they spell, so an escaped metacharacter
+     * before a quantifier is refused like an unescaped one. Its other half, Java regex compilability,
+     * belongs to one engine and is left to A12 with a gap saying so.
+     */
+    STRING_PATTERN_ADMISSION,
 
     /**
      * That every DSL-bearing member can be TOKENIZED — the syntax layer's first phase, and the only one
@@ -285,7 +294,7 @@ internal fun check(
         prepared.presentationMemberFindings() + prepared.stringSlotFindings() +
         prepared.fieldTypeBindingFindings() + prepared.temporalConfigFindings() +
         prepared.elementNameAlphabetFindings() + prepared.enumCategoryFindings() +
-        prepared.supportedCharacterFindings()
+        prepared.supportedCharacterFindings() + prepared.declaredPatternFindings()
     val findings = judged.notSuppressedBy(prepared.variantFilterSuppressed())
     return ConsistencyReport(
         modelId = admitted.modelId,
@@ -302,11 +311,12 @@ internal fun check(
             CheckFamily.CONDITION_GRAMMAR, CheckFamily.RULE_PRESENTATION_MEMBERS,
             CheckFamily.STRING_SLOT_BINDING, CheckFamily.FIELD_TYPE_BINDING,
             CheckFamily.TEMPORAL_CONFIG, CheckFamily.ELEMENT_NAME_ALPHABET,
-            CheckFamily.ENUM_CATEGORY_ALIGNMENT, CheckFamily.ENUM_VALUE_CHARACTERS),
+            CheckFamily.ENUM_CATEGORY_ALIGNMENT, CheckFamily.ENUM_VALUE_CHARACTERS,
+            CheckFamily.STRING_PATTERN_ADMISSION),
         gaps = prepared.gaps() + prepared.emptyFactBase() + findings.buildBlocked() +
             prepared.variantFilterGaps() + prepared.enumCategoryGaps() +
             prepared.supportedCharacterGaps() + prepared.fieldTypeBindingGaps() +
-            prepared.typeDefinitionBodyGaps() + UNREAD_MEMBERS + UNIMPLEMENTED_FAMILIES,
+            prepared.typeDefinitionBodyGaps() + prepared.declaredPatternGaps() + UNREAD_MEMBERS + UNIMPLEMENTED_FAMILIES,
     )
 }
 

@@ -34,6 +34,8 @@ class CorrectiveTest {
               "DateType":{"format":"MM","youngerThan1900Check":true}}}},
             {"type":"Field","id":"f2","name":"Delivery","Field":{"fieldType":{"type":"DateType",
               "DateType":{"format":"yyyy-MM","datePrecision":"DAY_OPTIONAL"}}}},
+            {"type":"Field","id":"f5","name":"Reference","Field":{"fieldType":{"type":"StringType",
+              "StringType":{"pattern":"a++"}}}},
             {"type":"Group","id":"g1","name":"Warehouse","Group":{"elements":[
               {"type":"Field","id":"f3","name":"Code","Field":{"fieldType":{"type":"StringType"}}}
             ]}},

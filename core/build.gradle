@@ -26,6 +26,11 @@ dependencies {
     // views (ModelIndex), never a JsonNode across a public signature, so consumers don't inherit Jackson —
     // enforced for every published kit by PublicApiGuardTest.noThirdPartyTypeOnAnyPublishedSignature (Set W).
     implementation 'com.fasterxml.jackson.core:jackson-databind:2.18.2'
+
+    // The one live statement of A12's pattern-admission blacklist, shared with the portable checker so the
+    // two estates cannot drift — they did, in both directions, until the kernel grid measured them apart.
+    // `implementation` for the same reason as Jackson: no predicate type crosses a published signature.
+    implementation project(':predicates')
 }
 
 // Publishing (Stage 4, Package B): io.github.mbackschat.a12.dm:dmkits-core — MIT, kernel-free.

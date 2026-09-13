@@ -5,6 +5,8 @@ import java.util.Optional;
 import java.util.regex.Pattern;
 import java.util.regex.PatternSyntaxException;
 
+import io.github.mbackschat.a12.dm.predicates.PatternPredicatesKt;
+
 /**
  * The kernel 30.8.x pattern-admission policy shared by rulekit and modelkit.
  *
@@ -46,46 +48,17 @@ public final class KernelPatternPolicy {
     }
 
     /**
-     * The kernel's A12K-30 blacklist, which decides on the pattern's SOURCE CHARACTERS and nothing else.
+     * The kernel's A12K-30 blacklist — one live statement, in {@code :predicates}, shared with the portable
+     * checker.
      *
-     * <p>Every position is examined, escaped or not: the kernel applies one regular expression to the source
-     * text, so {@code \*+} is refused although the pattern it spells is an ordinary escaped star followed by
-     * a quantifier, and so is {@code \}+}. Consuming an escape while scanning — which this method did until
-     * 2026-09-13 — reads the pattern instead of the text and quietly admits both.
-     *
-     * <p>The escape set is exactly {@code A G Z z a e p Q E}. Uppercase {@code \P} is NOT in it and
-     * {@code \P{L}} is admitted by the kernel, measured at the declared-field locus
-     * ({@code rulekit.validate.laws.DeclaredPatternGateLawsTest}). This method rejected it until the same
-     * day, on a 2026-07-20 observation of {@code \P{L}+} being refused — a correct measurement with the
-     * wrong mechanism attached, since that pattern ends in {@code }} followed by {@code +} and is caught by
-     * the possessive alternative above with the escape playing no part.
+     * <p>This method carried its own copy until 2026-09-13 and the copy was wrong in both directions: it
+     * consumed escapes while scanning, so it read the pattern instead of the source text and admitted
+     * {@code a\*+}, which the kernel refuses; and it rejected {@code \P{L}}, which the kernel admits, on a
+     * 2026-07-20 observation of {@code \P{L}+} whose mechanism was misread (the {@code }} before {@code +}
+     * is what the gate matches). The kernel grid that settles both is
+     * {@code rulekit.validate.laws.DeclaredPatternGateLawsTest}, which holds this policy to it row for row.
      */
     private static boolean rejectedByKernelAdmission(String regex) {
-        for (int i = 0; i < regex.length(); i++) {
-            char c = regex.charAt(i);
-            if (i + 1 < regex.length() && regex.charAt(i + 1) == '+'
-                    && (c == '?' || c == '+' || c == '*' || c == '}')) {
-                return true;
-            }
-            if (c == '\\' && i + 1 < regex.length() && "AGZzaepQE".indexOf(regex.charAt(i + 1)) >= 0) {
-                return true;
-            }
-            if (c == '(' && i + 2 < regex.length() && regex.charAt(i + 1) == '?'
-                    && (regex.charAt(i + 2) == '<' || regex.charAt(i + 2) == '>')) {
-                return true;
-            }
-            if (c == '[' && !immediatelyEscaped(regex, i)) {
-                for (int j = i + 1; j < regex.length() && regex.charAt(j) != ']'; j++) {
-                    if (regex.charAt(j) == '[' && !immediatelyEscaped(regex, j)) {
-                        return true;
-                    }
-                }
-            }
-        }
-        return false;
-    }
-
-    private static boolean immediatelyEscaped(String regex, int index) {
-        return index > 0 && regex.charAt(index - 1) == '\\';
+        return PatternPredicatesKt.kernelPatternBlacklist(regex) != null;
     }
 }

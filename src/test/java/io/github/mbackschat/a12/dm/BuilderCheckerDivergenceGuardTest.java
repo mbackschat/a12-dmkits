@@ -134,7 +134,15 @@ class BuilderCheckerDivergenceGuardTest {
             // one message; the checker reads stored JSON and reproduces both, once per unpaired element. Same
             // law, carriers too different to share — and the builder cannot express the multiplicity at all.
             Map.entry("MVK_MISSING_CATEGORY_VALUE", Disposition.SAME_LAW_SEPARATE_CARRIERS),
-            Map.entry("MVK_MISSING_INTERNAL_VALUE", Disposition.SAME_LAW_SEPARATE_CARRIERS));
+            Map.entry("MVK_MISSING_INTERNAL_VALUE", Disposition.SAME_LAW_SEPARATE_CARRIERS),
+
+            // A12's pattern-admission blacklist, at its two loci. One law, two codes: a condition literal
+            // draws `MVK_INVALID_PATTERN` and a declared field `MVK_PATTERN_INVALID` (measured — the two
+            // words swapped). `KernelPatternPolicy` refuses the first and the checker reports the second,
+            // and both now call `predicates.kernelPatternBlacklist`. They had two copies until 2026-09-13
+            // and the copies disagreed in BOTH directions, which is exactly what this guard exists to stop.
+            Map.entry("MVK_INVALID_PATTERN", Disposition.SHARED_LEAF),
+            Map.entry("MVK_PATTERN_INVALID", Disposition.SHARED_LEAF));
 
     @Test
     void everyCodeStatedInBothEstatesCarriesADisposition() {
