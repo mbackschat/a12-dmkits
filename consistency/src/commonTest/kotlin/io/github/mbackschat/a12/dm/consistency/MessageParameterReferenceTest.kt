@@ -136,6 +136,28 @@ class MessageParameterReferenceTest {
             "the parameter forms this family does not read")
     }
 
+    /**
+     * A declaration whose CONDITION is unsound has no parameter verdict at all — A12 withholds it.
+     *
+     * Both kinds of unsoundness, because they reach this family by different routes: a reference naming
+     * nothing leaves the membership set short, and a text that does not parse leaves it EMPTY, so every
+     * parameter would look unread. The second is the ordinary state of a model being edited.
+     */
+    @Test
+    fun aDeclarationWhoseConditionIsUnsoundHasNoParameterVerdict() {
+        val actual = mutableMapOf<String, List<String>>()
+        actual["a condition naming nothing"] =
+            check(ModelSource(model(message = "see \$Premium\$", condition = "FieldFilled(NoSuchField)")))
+                .findings.filter { it.at == "/Policy/Probe" }.map { it.code }
+        actual["a condition that does not parse"] =
+            check(ModelSource(model(message = "see \$Premium\$", condition = "FieldFilled(")))
+                .findings.filter { it.at == "/Policy/Probe" && it.code == invalidField }.map { it.code }
+
+        assertEquals(true, actual.getValue("a condition naming nothing").none { it == invalidField },
+            actual.toString())
+        assertEquals(emptyList(), actual.getValue("a condition that does not parse"))
+    }
+
     /** The finding names the parameter and says what would satisfy it, since the fix is in one of two places. */
     @Test
     fun theFindingNamesTheParameterAndTheMemberItMustBeReadIn() {
@@ -152,7 +174,8 @@ class MessageParameterReferenceTest {
      * One builder for both because the carrier IS the comparison: the same message text is judged against a
      * condition's references in one and against a computation's own members in the other.
      */
-    private fun model(message: String, operation: String? = null): String {
+    private fun model(message: String, operation: String? = null,
+                      condition: String = "FieldFilled(Reference)"): String {
         val declaration = if (operation != null) {
             """{"type":"Computation","id":"c0","name":"Probe","Computation":{
                  "computedFieldRelPath":"../Premium",
@@ -160,7 +183,7 @@ class MessageParameterReferenceTest {
                  "errorMessage":[{"locale":"en_US","text":"$message"}]}}"""
         } else {
             """{"type":"Rule","id":"r0","name":"Probe","Rule":{
-                 "errorCondition":"FieldFilled(Reference)","errorEntityRelPath":"../Reference",
+                 "errorCondition":"$condition","errorEntityRelPath":"../Reference",
                  "errorCode":"C1","errorMessage":[{"locale":"en_US","text":"$message"}]}}"""
         }
         return """

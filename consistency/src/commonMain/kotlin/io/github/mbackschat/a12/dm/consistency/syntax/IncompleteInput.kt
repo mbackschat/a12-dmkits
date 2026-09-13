@@ -82,6 +82,16 @@ private fun Map<String, KeywordKind>.classifies(text: String, kind: KeywordKind)
  * answers the mismatch with `MVK_UNEXPECTED_TOKEN` — so counting would put a row A12 reports differently back
  * inside the region this function exists to draw.
  */
+/**
+ * Whether [text] closes every delimiter it opens — a NECESSARY condition for the grammar to accept it.
+ *
+ * Not a syntax check: balanced text can still be refused for a dozen reasons. It earns its place as the
+ * cheapest sound test for "this condition is definitely broken", which is what a reader has to know before
+ * judging a member A12 stops judging once the condition fails ([MessageParameterReference]).
+ */
+internal fun delimitersBalanced(text: String): Boolean =
+    tokenize(text).filter { it.kind != TokenKind.COMMENT }.everyDelimiterClosed()
+
 private fun List<Token>.everyDelimiterClosed(): Boolean {
     val open = ArrayDeque<String>()
     for (token in this) {

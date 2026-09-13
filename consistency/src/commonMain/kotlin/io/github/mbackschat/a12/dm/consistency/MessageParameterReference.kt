@@ -1,5 +1,6 @@
 package io.github.mbackschat.a12.dm.consistency
 
+import io.github.mbackschat.a12.dm.consistency.syntax.delimitersBalanced
 import io.github.mbackschat.a12.dm.consistency.syntax.plainMessageParameters
 
 /**
@@ -34,8 +35,12 @@ import io.github.mbackschat.a12.dm.consistency.syntax.plainMessageParameters
  */
 fun PreparedModel.messageParameterFindings(): List<Finding> {
     val readBy = entitiesReadByDeclaration()
+    val unsound = declarationsWithAnUnsoundCondition()
     return elements.flatMap { element ->
         val body = element.body ?: return@flatMap emptyList()
+        if (element.path in unsound) {
+            return@flatMap emptyList()
+        }
         val membership = readBy[element.path] ?: return@flatMap emptyList()
         val group = element.path.substringBeforeLast('/', missingDelimiterValue = "")
         val messages = body.authoredMessages() as? AuthoredMessages.Read ?: return@flatMap emptyList()
@@ -60,6 +65,39 @@ fun PreparedModel.messageParameterFindings(): List<Finding> {
             }
         }
     }
+}
+
+/**
+ * The declarations whose own condition text is not sound, and whose parameters are therefore not this
+ * family's to judge.
+ *
+ * **A12 withholds the parameter verdict entirely when the condition is broken** — it has a class saying so
+ * (`FehlertextErrorType.INVALID_CONDITION`) and, measured, simply reports the condition's own class and
+ * nothing about the message ([KERNEL-FINDINGS KF338],
+ * `rulekit.validate.laws.MessageParameterConditionDependencyLawsTest`). Both kinds of unsoundness withhold
+ * it: a reference naming nothing draws `MVK_INVALID_ENTITY` alone, and a text that does not parse draws
+ * `MVK_INCOMPLETE_INPUT` alone.
+ *
+ * **Unbalanced delimiters stand in for "does not parse", deliberately under-covering it.** This layer holds
+ * no grammar, so the only sound test available is a NECESSARY condition; text that balances and is still
+ * refused keeps its parameters judged, which is the direction that can only miss a finding. Withholding is
+ * safe in every case here, because the verdict A12 gives is the condition's and saying nothing about the
+ * message is exactly what A12 does.
+ *
+ * Without this the family reports on every model that has a broken condition and a message beside it, which
+ * is not a rare shape — a half-typed condition is the ordinary state of a model being edited, and it is
+ * exactly when a checker is asked.
+ */
+private fun PreparedModel.declarationsWithAnUnsoundCondition(): Set<String> {
+    val unresolved = conditionReferences()
+        .filter { it.target !is Reference.Resolved }
+        .map { it.declaredAt }
+    val unparseable = elements.mapNotNull { element ->
+        val body = element.body ?: return@mapNotNull null
+        val broken = conditionTexts(element.kind, body).any { (_, text) -> !delimitersBalanced(text) }
+        element.path.takeIf { broken }
+    }
+    return (unresolved + unparseable).toSet()
 }
 
 /**

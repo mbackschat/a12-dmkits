@@ -6886,3 +6886,24 @@ Reported by the portable checker as `ReferenceRole.MESSAGE_PARAMETER`, inside `C
 Reported by the portable checker as `CheckFamily.MESSAGE_TEXT_CHARACTERS`.
 
 *Locked by:* `rulekit.validate.laws.MessageTextControlCharacterLawsTest`.
+
+## §13 supplement — a broken CONDITION withholds the message parameter's verdict entirely (measured, 2026-09-13) <a id="kf338"></a>
+
+> Fold: not-foldable — the error-text checker's dependence on a sibling member, not an evaluation behaviour.
+
+**A12 does not judge a message parameter on a rule whose condition is unsound — it reports the condition's class and nothing about the message.** `FehlertextErrorType` even carries a class saying so (`INVALID_CONDITION`, "a text with a parameter can only be checked on rules with valid conditions"), and what is actually emitted is just the condition's own verdict:
+
+| the rule | A12 |
+|---|---|
+| a valid condition, a parameter it does not read — the control | **`INVALID_FIELD`** |
+| `FieldFilled(NoSuchField)`, the same parameter beside it | **`MVK_INVALID_ENTITY`** only |
+| `FieldFilled(NoSuchField)`, a plain text — the control | `MVK_INVALID_ENTITY` |
+| `FieldFilled(`, the same parameter beside it | **`MVK_INCOMPLETE_INPUT`** only |
+
+The second row against the third is the measurement: the verdict is identical whether the message carries a parameter or not, so the parameter's class is WITHHELD rather than accompanied.
+
+**This is a cross-member dependency, which is the shape a family-per-member checker gets wrong by construction.** Each family reads its own member and reports what it finds, so one with a broken condition and a message beside it draws a parameter class A12 gave no sign of. The shape is not exotic: a half-typed condition is the ordinary state of a model being edited, and that is exactly when a checker is asked.
+
+Reported by the portable checker as a WITHHOLDING — `CheckFamily.MESSAGE_PARAMETER_REFERENCE` falls silent for such a declaration. Its stand-in for "does not parse" is an unbalanced delimiter, a necessary condition rather than a grammar, so balanced-but-refused text keeps its parameters judged — an under-report, which is the safe direction.
+
+*Locked by:* `rulekit.validate.laws.MessageParameterConditionDependencyLawsTest`.

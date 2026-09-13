@@ -712,6 +712,16 @@ One cold adversarial review over the frozen range, as [§2](#2-execution-order-a
 
 **The catalog half is deliberately not delivered, with its re-open trigger.** A2 ruled that `operators.json` ships as-is because it is already data; that remains right, and it is not yet USEFUL — no finding this checker produces names an operator id, so 293 KB would be packaged with nothing to join it against. It lands when a finding carries an operator.
 
+### C record — the cross-member withholding, and the over-rejection three families had been shipping (2026-09-13)
+
+**Found by reading the vocabulary rather than by a failing test.** `FehlertextErrorType.INVALID_CONDITION` says a parameter can only be checked where the condition is valid — so the question was whether the checker reports a parameter class on a model whose condition is broken. It did, and A12 withholds that class entirely ([KF338](KERNEL-FINDINGS.md#kf338)).
+
+**A family-per-member checker gets this wrong by construction.** Every family reads its own member and reports what it finds; nothing in that design expresses "A12 stops asking once a sibling member fails". The fix is a withholding rather than a new family, and it is the first cross-member dependency the estate carries — worth looking for elsewhere, since any family reading a member A12 checks CONDITIONALLY has the same exposure.
+
+**The shape is not exotic, which is what makes it worth the slice.** A half-typed condition is the ordinary state of a model being edited, and that is exactly when a checker runs. An over-rejection that only appears on malformed input is still an over-rejection on the input a checker most often sees.
+
+**The parse half is deliberately under-covered.** This layer holds no grammar, so "does not parse" is stood in for by an unbalanced delimiter — a necessary condition. Balanced-but-refused text keeps its parameters judged, which can only miss a finding. `incompleteInput` was the first instrument reached for and is the wrong one: it fires only where delimiters ARE balanced, by its own design.
+
 ### C record — the forty-first family: the message text's control characters, the cheapest law on the surface (2026-09-13)
 
 **The second pick off the unprefixed re-derivation, and it cost one run.** `INVALID_LINEBREAK` and `INVALID_CHARACTERS` are a character predicate over one string — no resolution, no model walk — and nine rows measured the whole law including both ends of the boundary. It is the cheapest family the checker has, and it was invisible for the same reason the rest of `FehlertextErrorType` was.
