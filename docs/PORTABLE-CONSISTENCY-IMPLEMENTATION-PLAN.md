@@ -712,6 +712,16 @@ One cold adversarial review over the frozen range, as [§2](#2-execution-order-a
 
 **The catalog half is deliberately not delivered, with its re-open trigger.** A2 ruled that `operators.json` ships as-is because it is already data; that remains right, and it is not yet USEFUL — no finding this checker produces names an operator id, so 293 KB would be packaged with nothing to join it against. It lands when a finding carries an operator.
 
+### C record — the SECOND withholding, and a mirror that had contradicted its own laws test (2026-09-13)
+
+**The sweep the previous record asked for found a wider one.** A rule whose error TARGET does not resolve draws that pair and nothing else — the condition's class and both error-text classes are withheld ([KF339](KERNEL-FINDINGS.md#kf339)). So the first withholding was not a fact about error texts; A12 examines a declaration in ORDER and stops, and the error-text case was one instance.
+
+**It is applied where the report is assembled, not inside a family.** A family-local version would have to be repeated into every family added later, and the one that forgot would over-reject silently — which is exactly how this defect survived. The trade is a blunt instrument: every finding on such a declaration is withheld but the target's own, which is conservative where the measurement stops.
+
+**A checker mirror had asserted the union of both codes and sat green, contradicting its own laws test.** `FieldVariantFilterTest` expected `MVK_ERROR_FIELD_MISSING` **and** `MVK_INVALID_ENTITY` with the comment "which is what A12 does"; [KF305](KERNEL-FINDINGS.md#kf305)'s grid had measured that very row as the target pair alone and said so in ITS comment. Nothing in the estate compares a mirror against the laws test it mirrors, so two contradictory claims about one input were both green for as long as the mirror existed. That gap is worth a guard and is not one this slice adds.
+
+**The scope question stayed open on purpose.** Whether the withholding reaches non-member defects was probed with an illegal rule name, which makes the model unbuildable — two variables — so it decides nothing and is recorded as a probe rather than a row.
+
 ### C record — the cross-member withholding, and the over-rejection three families had been shipping (2026-09-13)
 
 **Found by reading the vocabulary rather than by a failing test.** `FehlertextErrorType.INVALID_CONDITION` says a parameter can only be checked where the condition is valid — so the question was whether the checker reports a parameter class on a model whose condition is broken. It did, and A12 withholds that class entirely ([KF338](KERNEL-FINDINGS.md#kf338)).

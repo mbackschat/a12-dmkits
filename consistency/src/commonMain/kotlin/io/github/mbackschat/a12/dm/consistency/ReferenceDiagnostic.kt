@@ -62,12 +62,23 @@ fun Reference.asFinding(role: ReferenceRole, at: String, member: String? = null)
  */
 const val CK_MODEL_NOT_BUILDABLE = "CK_MODEL_NOT_BUILDABLE"
 
+/**
+ * A12's class for a rule whose error target does not resolve, and the metamodel law restating it.
+ *
+ * Named once because three live sites spell them — this mapping, the blank-member emitter, and the gate that
+ * decides what survives at a stopped declaration. A literal changed in one and missed in the gate would
+ * delete the very finding the gate exists to preserve, with no compiler signal.
+ */
+internal const val ERROR_FIELD_MISSING = "MVK_ERROR_FIELD_MISSING"
+
+internal const val MISSING_ERROR_FIELD = "MVK_MISSING_ERROR_FIELD"
+
 private fun ReferenceRole.codeFor(outcome: Reference): String = when (this) {
     // An unresolvable error target reports `MVK_ERROR_FIELD_MISSING` together with `MVK_MISSING_ERROR_FIELD`;
     // the checker reports the first, the second being the metamodel law restating it rather than a
     // second defect. An above-root one never reaches a check at all.
     ReferenceRole.ERROR_TARGET ->
-        if (outcome is Reference.AboveRoot) CK_MODEL_NOT_BUILDABLE else "MVK_ERROR_FIELD_MISSING"
+        if (outcome is Reference.AboveRoot) CK_MODEL_NOT_BUILDABLE else ERROR_FIELD_MISSING
     ReferenceRole.COMPUTED_TARGET -> CK_MODEL_NOT_BUILDABLE
     ReferenceRole.CONDITION_ENTITY -> when (outcome) {
         is Reference.Ambiguous -> "MVK_FIELDNAME_NOT_UNIQUE"

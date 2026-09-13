@@ -414,7 +414,13 @@ internal fun check(
         )
     }
     val declared = prepared.declaredReferences()
-    val judged = declared.mapNotNull { it.target.asFinding(it.role, it.declaredAt) } +
+    // A12 examines a rule's error TARGET first and stops the whole declaration when it does not resolve —
+    // the condition's own class and both error-text classes are withheld, leaving the target's two codes
+    // alone (KF339). Applied here rather than inside each family because it is A12 declining to examine the
+    // declaration, not a rule any one family owns; a family-local version would have to be repeated into
+    // every family added later, and the one that forgot would over-reject silently.
+    val stopped = prepared.declarationsWithABrokenErrorTarget(declared)
+    val judged = (declared.mapNotNull { it.target.asFinding(it.role, it.declaredAt) } +
         prepared.conditionReferences().mapNotNull {
             it.target.asFinding(ReferenceRole.CONDITION_ENTITY, it.declaredAt, it.member)
         } + prepared.declarationSlotFindings() + prepared.computationAlternativeFindings() +
@@ -435,7 +441,8 @@ internal fun check(
         prepared.messageParameterFindings() +
         prepared.messageTextCharacterFindings() +
         prepared.stringTypeMessageFindings() + prepared.stringTypeParameterFindings() +
-        prepared.numberTypeDigitFindings() + prepared.enumValueLabelFindings()
+        prepared.numberTypeDigitFindings() + prepared.enumValueLabelFindings())
+        .filterNot { it.at in stopped && it.code !in ERROR_TARGET_CODES }
     val findings = judged.notSuppressedBy(prepared.variantFilterSuppressed())
     return ConsistencyReport(
         modelId = admitted.modelId,
@@ -608,3 +615,20 @@ private val UNIMPLEMENTED_FAMILIES = listOf(
             "the pinned profile was not examined",
     ),
 )
+
+/**
+ * What survives at a declaration A12 stopped examining — the codes it still reports about the target itself.
+ *
+ * Both error-target codes are named because both are A12's verdict for that input: the checker emits the
+ * pair for a BLANK target (`RuleConditionAndTarget`) and the first alone for an unresolvable one.
+ *
+ * **`CK_MODEL_NOT_BUILDABLE` belongs here or the gate erases its own trigger.** An error target climbing
+ * above the root group is unresolved like any other, so it enters the withheld set — and it reports under
+ * that code rather than [ERROR_FIELD_MISSING], so leaving it out silenced the rule completely, the target's
+ * own finding included. Nothing in the suite drove an above-root target through the report, so nothing went
+ * red (`RuleMemberWithholdingTest.anAboveRootErrorTargetStillReportsItsOwnFinding` now does).
+ *
+ * It also keeps the measured variant-filter exemption reachable: a filter cannot rescue a model that fails
+ * to BUILD, and that finding is anchored at the rule whose target may be the broken one.
+ */
+private val ERROR_TARGET_CODES = setOf(ERROR_FIELD_MISSING, MISSING_ERROR_FIELD, CK_MODEL_NOT_BUILDABLE)

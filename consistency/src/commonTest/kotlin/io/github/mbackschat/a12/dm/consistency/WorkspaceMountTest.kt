@@ -80,8 +80,13 @@ class WorkspaceMountTest {
         val nests = host(extra = rule("R", "../Address/Street", "FieldFilled(Address/Street)"))
 
         assertEquals(emptyList(), check(reaches, address).findings)
+        // The target's code alone: both members fail here, and A12 stops a rule at its error target rather
+        // than reporting each member. That law is measured on an UNMOUNTED carrier
+        // (`RuleMemberVerdictWithholdingLawsTest`) and assumed to hold across the mount, which nothing here
+        // measures — an assumption worth naming, and a safe one in direction, since it only drops a finding.
+        // What this row locks is that the nested path does not bind at all, which the single code says.
         assertEquals(
-            listOf("MVK_ERROR_FIELD_MISSING", "MVK_INVALID_ENTITY"),
+            listOf("MVK_ERROR_FIELD_MISSING"),
             check(nests, address).findings.map { it.code },
         )
     }

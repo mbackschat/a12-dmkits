@@ -6915,3 +6915,34 @@ The second row against the third is the measurement: the verdict is identical wh
 Reported by the portable checker as a WITHHOLDING — `CheckFamily.MESSAGE_PARAMETER_REFERENCE` and `CheckFamily.MESSAGE_TEXT_CHARACTERS` both fall silent for such a declaration, through one shared gate. Its stand-in for "does not parse" is an unbalanced delimiter, a necessary condition rather than a grammar, so balanced-but-refused text keeps its parameters judged — an under-report, which is the safe direction.
 
 *Locked by:* `rulekit.validate.laws.MessageParameterConditionDependencyLawsTest`.
+
+## §13 supplement — a rule's error TARGET is examined first, and its failure ends the rule (measured, 2026-09-13) <a id="kf339"></a>
+
+> Fold: not-foldable — the checker's examination order, not an evaluation behaviour.
+
+**[KF338](#kf338) found one withholding; this is the second, and it is wider.** A rule whose `errorEntityRelPath` does not resolve draws its two target codes and NOTHING else — not the condition's class, not either error-text class:
+
+| the rule | A12 |
+|---|---|
+| both members sound — the control | ADMITTED |
+| the error TARGET names nothing | **`MVK_ERROR_FIELD_MISSING,MVK_MISSING_ERROR_FIELD`** |
+| the CONDITION names nothing | **`MVK_INVALID_ENTITY`** |
+| **BOTH name nothing** | **`MVK_ERROR_FIELD_MISSING,MVK_MISSING_ERROR_FIELD`** |
+| the target names nothing, a control character in the text | the same pair |
+| the target names nothing, a parameter the condition does not read | the same pair |
+| a SOUND target, the same control character — the twin | **`INVALID_CHARACTERS`** |
+| a SOUND target, the same parameter — the twin | **`INVALID_FIELD`** |
+
+**The two twins are what make the withheld rows mean anything.** Without them, "the error-text class was withheld" and "this fixture never draws that class" are indistinguishable — those classes are measured elsewhere, on other fixtures, which is exactly the instrument a constant hides behind.
+
+**Row four against rows two and three is the measurement.** Each member alone produces its own class; together they produce only the target's. So the target is examined first and its failure ends the rule, rather than the two members being judged independently and their classes unioned.
+
+**An independent corroboration was already in the estate and had been read the other way.** [KF305](#kf305) measured a rule targeting a field a `variantFilter` removes and recorded `MVK_ERROR_FIELD_MISSING,MVK_MISSING_ERROR_FIELD` with the comment "A12 answers with the error-target pair rather than the entity code" — the same law, on a different cause for the target's failure. The checker's MIRROR of that row nevertheless asserted the union of both codes and sat green, because nothing compares a mirror against the laws test it mirrors.
+
+**How far past the DSL members the withholding reaches is NOT settled.** The discriminator tried for it — an illegal rule name, to see whether a non-member defect still reports — makes the model unbuildable and therefore moves two variables, so it is recorded here as a probe that could not decide rather than as a row. The portable checker takes the conservative reading and withholds every finding at such a declaration's path except those A12 gives about the target itself.
+
+**A PATH does not identify a declaration, which bounds what a checker may do with this.** An element's path is its parent plus its NAME with no kind, so a rule and a field sharing a name in one group share a path — a model A12 refuses and a checker reports, so the shape is reachable. A withholding keyed on the path would delete the FIELD's findings, which A12 withheld nothing about, so a shared path is left alone.
+
+Reported by the portable checker as a WITHHOLDING applied where the report is assembled, not inside any family: it is A12 declining to examine the declaration, and a family-local version would have to be repeated into every family added later.
+
+*Locked by:* `rulekit.validate.laws.RuleMemberVerdictWithholdingLawsTest`.

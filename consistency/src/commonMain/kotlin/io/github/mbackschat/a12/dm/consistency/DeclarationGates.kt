@@ -43,3 +43,36 @@ internal fun PreparedModel.declarationsWithUnsoundDsl(): Set<String> {
     }
     return (unresolved + unparseable).toSet()
 }
+
+/**
+ * The rules whose error TARGET does not resolve — A12 reports that and stops examining the rule.
+ *
+ * **It terminates the whole declaration, not one member.** With a broken target the condition's own
+ * `MVK_INVALID_ENTITY` is gone, and so are both error-text classes, leaving A12 reporting only about the
+ * target ([KERNEL-FINDINGS KF339], `rulekit.validate.laws.RuleMemberVerdictWithholdingLawsTest`). So every
+ * family that would report on such a declaration is naming a verdict A12 withheld.
+ *
+ * **A PATH does not identify a declaration, which is why the result is narrowed here.** [PreparedModel]
+ * builds an element's path from its parent and its NAME with no kind in it, so a rule and a field sharing a
+ * name in one group share a path — a model A12 refuses and this checker reports, so the shape is reachable
+ * rather than theoretical. Withholding on that path would delete the FIELD's own findings, which A12
+ * withheld nothing about, so a shared path is left alone and the rule's own over-report stays. Narrowing
+ * rather than widening because the caller matches findings by path and cannot tell the two apart either.
+ *
+ * **How far past the DSL members the withholding reaches is not settled**: the discriminator tried for it,
+ * an illegal rule name, makes the model unbuildable and so moves two variables. The caller therefore
+ * withholds every finding at such a path except those A12 gives about the target itself.
+ *
+ * @param declared the model's declared references, passed in rather than recomputed — the caller already
+ *     holds them, and two expressions of one query can drift apart while both stay green.
+ */
+internal fun PreparedModel.declarationsWithABrokenErrorTarget(
+    declared: List<DeclaredReference>,
+): Set<String> {
+    val declarationsPerPath = elements.groupingBy { it.path }.eachCount()
+    return declared
+        .filter { it.role == ReferenceRole.ERROR_TARGET && it.target !is Reference.Resolved }
+        .map { it.declaredAt }
+        .filter { declarationsPerPath[it] == 1 }
+        .toSet()
+}

@@ -54,7 +54,7 @@ private val CONDITION = RequiredMember(
 
 private val ERROR_TARGET = RequiredMember(
     "errorEntityRelPath",
-    listOf("MVK_ERROR_FIELD_MISSING", "MVK_MISSING_ERROR_FIELD"),
+    listOf(ERROR_FIELD_MISSING, MISSING_ERROR_FIELD),
     "A12's own reader refuses the source",
 )
 

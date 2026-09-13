@@ -231,9 +231,11 @@ class FieldVariantFilterTest {
         val expected = mutableMapOf<String, List<String>>()
         expected["unfiltered — the control"] = emptyList()
         expected["ALL_EXCEPT — the control"] = emptyList()
-        // Both roles fire here, because this rule's condition names the field too — which is what A12 does,
-        // and the reason the mentioning grid above keeps the target elsewhere.
-        expected["ONLY"] = listOf("MVK_ERROR_FIELD_MISSING", "MVK_INVALID_ENTITY").sorted()
+        // The TARGET's code alone, though this rule's condition names the field too: A12 examines the error
+        // target first and stops the rule there, so the entity code is withheld. `FieldVariantFilterLawsTest`
+        // measured exactly this row and says so in its own comment — this mirror had asserted the union of
+        // both roles and sat green, because nothing compares a mirror against its laws test.
+        expected["ONLY"] = listOf("MVK_ERROR_FIELD_MISSING")
         assertEquals(expected, actual, "what the checker says about a rule targeting a filtered field")
     }
 }
