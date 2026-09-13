@@ -230,6 +230,13 @@ enum class CheckFamily {
     COMPUTED_TARGET_INDEX_FIELD,
 
     /**
+     * The predicates a COMPUTATION's precondition may not use. A12 normalizes a calculation rule's condition
+     * and refuses an application condition or `RepetitionNotUnique` there, while a RULE condition uses both
+     * freely. Its third prohibited feature has no English spelling, so this family does not report it.
+     */
+    COMPUTATION_PRECONDITION_FEATURES,
+
+    /**
      * That every DSL-bearing member can be TOKENIZED — the syntax layer's first phase, and the only one
      * decidable without a grammar. Whether the tokens then form a condition A12's parser accepts is a
      * separate question this family does not answer.
@@ -400,7 +407,7 @@ internal fun check(
         prepared.emptyGroupOperandFindings() + prepared.errorFieldReferenceFindings() +
         prepared.groupListOperandFindings() + prepared.repetitionWildcardFindings() +
         prepared.computedTargetKindFindings() + prepared.computedTargetIndexFieldFindings() +
-        prepared.rawTypeLengthFindings() +
+        prepared.rawTypeLengthFindings() + prepared.computationPreconditionFeatureFindings() +
         prepared.stringTypeMessageFindings() + prepared.stringTypeParameterFindings() +
         prepared.numberTypeDigitFindings() + prepared.enumValueLabelFindings()
     val findings = judged.notSuppressedBy(prepared.variantFilterSuppressed())
@@ -426,7 +433,8 @@ internal fun check(
             CheckFamily.ERROR_FIELD_REFERENCE, CheckFamily.GROUP_LIST_OPERANDS,
             CheckFamily.GROUP_LIST_ROOT_OPERAND, CheckFamily.GROUP_LIST_OPERAND_KIND,
             CheckFamily.REPETITION_WILDCARD_TARGET, CheckFamily.COMPUTED_TARGET_KIND,
-            CheckFamily.RAW_TYPE_LENGTH, CheckFamily.COMPUTED_TARGET_INDEX_FIELD),
+            CheckFamily.RAW_TYPE_LENGTH, CheckFamily.COMPUTED_TARGET_INDEX_FIELD,
+            CheckFamily.COMPUTATION_PRECONDITION_FEATURES),
         gaps = prepared.gaps() + prepared.emptyFactBase() + findings.buildBlocked() +
             prepared.variantFilterGaps() + prepared.enumCategoryGaps() +
             prepared.supportedCharacterGaps() + prepared.fieldTypeBindingGaps() +

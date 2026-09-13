@@ -6705,3 +6705,29 @@ Reported by the portable checker (`CheckFamily.COMPUTED_TARGET_INDEX_FIELD`).
 **`MVK_MULTIPLE_INDEX_FIELDS2` has no stored spelling that reaches it.** `IGroup.getIndexFieldNames()` is a `Set`, so the kernel's own model admits several names per group and the code guards exactly that; DM-JSON writes the singular `indexFieldName`, and a plural `indexFieldNames` member sitting beside it is not read — `getIndexGroup` still sees one name and the model is admitted. Since the surrounding rows prove `getIndexGroup` runs on this condition, the admission is the member being ignored rather than the check being skipped. Reachable only through a model built in memory, not through stored DM-JSON.
 
 *Locked by:* `rulekit.validate.laws.GroupIndexAndSortReferenceLawsTest.whatTheMultipleIndexCodesNeed`.
+
+## §11 supplement — three predicates are prohibited in a computation's PRECONDITION, ordinary in a rule, and a grammar error in the operation beside it (source + measured, 2026-09-13) <a id="kf333"></a>
+
+> Fold: not-foldable — a slot-scoped language restriction, not a property of the operators themselves.
+
+**The denominator comes from the source, because naming a subset is the failure this estate keeps repeating.** `NormalisierteBerechnungsFormHelper` (kernel `30.8.1`) refuses exactly three language features in a normalized calculation condition, in an `if / else if / else if` chain, each reporting `MVK_ERROR_INVALID_LANGUAGE_FEATURE` with the offending terminal's own spelling interpolated: the legacy count-given op (`ANZAHL_ANGEGEBENE_USB`), an application condition (`APPLIKATIONS_BEDINGUNG`, spelled `CustomCondition`), then `WIEDERHOLUNG_NICHT_EINDEUTIG` (`RepetitionNotUnique`).
+
+| stored shape | A12 |
+|---|---|
+| an ordinary precondition on the alternative — the control | ADMITTED |
+| `CustomCondition` in the alternative's `precondition` | **`MVK_ERROR_INVALID_LANGUAGE_FEATURE`** |
+| `RepetitionNotUnique` in the alternative's `precondition` | **`MVK_ERROR_INVALID_LANGUAGE_FEATURE`** |
+| `CustomCondition` in the computation's `commonPrecondition` | **`MVK_ERROR_INVALID_LANGUAGE_FEATURE`** |
+| `CustomCondition` in a RULE's `errorCondition` | ADMITTED |
+| `RepetitionNotUnique` in a RULE's `errorCondition` | ADMITTED |
+| `RepetitionNotUnique` in the alternative's `operation` | **`MVK_UNEXPECTED_TOKEN`** |
+
+**The restriction is on the SLOT, not on the operator.** Both predicates are ordinary in a rule condition, so a consumer that refused them wherever it met them would refuse a legal model. And the operation row says the slot distinction is sharper than "reported more often": the same text one member along draws A12's *grammar* vocabulary instead, because an operation is not a condition — so a reader that judged both string members of an alternative alike would answer with the wrong class, not merely too eagerly.
+
+**Both precondition carriers reach it**, which follows from the mechanism rather than being assumed from one of them: the helper judges the NORMALIZED condition, into which the common precondition and the alternative's own guard are both folded, and each carrier is measured.
+
+**Only two of the three are authorable from an `en_US` model.** The count-given op has no English spelling — it is a DE-only terminal with no catalog id — so the first arm of the chain is a stated boundary here, not a measurement, and nothing above claims anything about it.
+
+Reported by the portable checker as `CheckFamily.COMPUTATION_PRECONDITION_FEATURES`, for the two English-spellable features only.
+
+*Locked by:* `rulekit.validate.laws.ComputationPreconditionLanguageFeatureLawsTest`.

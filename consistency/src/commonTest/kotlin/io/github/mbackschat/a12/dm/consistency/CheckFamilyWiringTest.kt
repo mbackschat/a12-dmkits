@@ -118,6 +118,10 @@ class CheckFamilyWiringTest {
             {"type":"Computation","id":"c3","name":"BadSuppression","Computation":{
               "computationAlternatives":[{"operation":"1.00"}],
               "errorCodesToSuppress":["NOT A CODE"]}},
+            {"type":"Computation","id":"c6","name":"GuardedByAnAppCondition","Computation":{
+              "computationAlternatives":[
+                {"precondition":"FieldFilled(Price) And CustomCondition NotReverse",
+                 "operation":"1.00"}]}},
             {"type":"Group","id":"g4","name":"Bins","Group":{"repeatability":9,"indexFieldName":"Slot",
               "elements":[
                 {"type":"Field","id":"f13","name":"Slot","Field":{"fieldType":{"type":"NumberType"}}}
@@ -193,6 +197,8 @@ class CheckFamilyWiringTest {
         CheckFamily.RAW_TYPE_LENGTH to ("MVK_INVALID_LENGTH_OF_RAW_TYPE" to "/Catalog/RawLength"),
         CheckFamily.COMPUTED_TARGET_INDEX_FIELD to
             ("MVK_ERROR_INDEX_AS_CALCULATED_FIELD" to "/Catalog/IntoAnIndex"),
+        CheckFamily.COMPUTATION_PRECONDITION_FEATURES to
+            ("MVK_ERROR_INVALID_LANGUAGE_FEATURE" to "/Catalog/GuardedByAnAppCondition"),
         CheckFamily.GROUP_LIST_OPERANDS to ("MVK_DUPLICATE_PARAM1" to "/Catalog/RepeatedGroup"),
         CheckFamily.GROUP_LIST_ROOT_OPERAND to
             ("MVK_ROOT_GROUP_REFERENCED" to "/Catalog/RootOperand"),

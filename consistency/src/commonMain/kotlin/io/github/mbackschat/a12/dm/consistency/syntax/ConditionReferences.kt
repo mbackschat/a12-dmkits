@@ -221,3 +221,15 @@ internal fun normalizedPath(run: List<Token>): String {
 
 private const val UP_STEP = ".."
 
+
+/**
+ * The first of [spellings] that [text] uses as a KEYWORD, or null.
+ *
+ * A quoted name is a different token kind, so an entity deliberately called `RepetitionNotUnique` is not a
+ * use of the predicate — which is the whole reason this goes through the tokenizer instead of scanning for a
+ * substring. [spellings] arrive already resolved for the model's condition language, since that is where the
+ * id-to-spelling table lives; re-testing them against [CONDITION_KEYWORDS] here would add a branch no model
+ * can take, because every spelling in [CONDITION_OPERATOR_KEYWORDS] is a keyword of that same language.
+ */
+internal fun namesKeyword(text: String, spellings: Set<String>): String? =
+    tokenize(text).firstOrNull { it.kind == TokenKind.NAME && it.text in spellings }?.text

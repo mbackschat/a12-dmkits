@@ -114,6 +114,10 @@ class BuilderCheckerDivergenceGuardTest {
             // JsonArray where an ABSENT or null member is the empty precondition. They agree on all four
             // shapes (one unguarded, two mixed, two both-unguarded, three with the middle unguarded); the
             // residue after the carrier-specific reading is `count >= 2`, which is not worth a module.
+            // `Computation.Builder.requireNoCustomCondition` walks the typed condition AST and `ComputationLinter`
+            // scans a draft's precondition strings; the checker tokenizes a stored precondition member. Same law,
+            // three carriers with nothing in common to extract.
+            Map.entry("MVK_ERROR_INVALID_LANGUAGE_FEATURE", Disposition.SAME_LAW_SEPARATE_CARRIERS),
             Map.entry("MVK_ERROR_EMPTY_PRECONDITION", Disposition.SAME_LAW_SEPARATE_CARRIERS),
 
             // The builders require a non-empty typed message list. The checker models what A12 actually
