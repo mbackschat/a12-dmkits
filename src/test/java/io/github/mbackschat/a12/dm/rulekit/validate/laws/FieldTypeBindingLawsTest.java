@@ -1,5 +1,7 @@
 package io.github.mbackschat.a12.dm.rulekit.validate.laws;
 
+import static io.github.mbackschat.a12.dm.rulekit.dsl.Dsl.de;
+import static io.github.mbackschat.a12.dm.rulekit.dsl.Dsl.en;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import java.io.IOException;
@@ -14,6 +16,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 
 import io.github.mbackschat.a12.dm.Fixtures;
+import io.github.mbackschat.a12.dm.rulekit.write.ModelWriter;
 
 /**
  * Which {@code fieldType} shapes A12's reader BINDS, measured on a field nothing else references.
@@ -46,6 +49,9 @@ import io.github.mbackschat.a12.dm.Fixtures;
 class FieldTypeBindingLawsTest {
 
     private static final ObjectMapper MAPPER = new ObjectMapper();
+
+    /** A type name the kernel does not declare, so any carrier that READS the member is refused. */
+    private static final String UNBINDABLE_TYPE = "{\"type\":\"NotAType\",\"NotAType\":{}}";
 
     /** The thirteen names {@code deriveFieldtype} switches on, in source order. */
     private static final List<String> DECLARED_TYPES = List.of(
@@ -172,6 +178,42 @@ class FieldTypeBindingLawsTest {
                 "every declared field type with its body member absent");
     }
 
+    /**
+     * The member is a FIELD's, and a spurious one elsewhere does not make the model unreadable.
+     *
+     * <p>Written because a checker scanning every element for `fieldType` rather than every field is claiming
+     * A12 reads it on every carrier — and if A12 ignores it there, such a checker reports a model that loads
+     * as unloadable, which is the one direction that cannot be caught downstream. The rows use the type name
+     * A12 does NOT have, so a carrier that DID read the member would be unreadable and unmistakable.
+     */
+    @Test
+    void aFieldTypeOnAnElementThatIsNotAFieldIsIgnored() {
+        Map<String, String> actual = new LinkedHashMap<>();
+        actual.put("on a FIELD — the control that proves the fragment is refusable",
+                verdictWith("{\"type\":\"NotAType\",\"NotAType\":{}}"));
+        actual.put("on a group", verdictOnElementBody("ShippingAddress", "Group", UNBINDABLE_TYPE));
+        actual.put("on a rule", verdictOnElementBody("TotalGate", "Rule", UNBINDABLE_TYPE));
+        // The discriminator: a member name that is nonsense on EVERY carrier. If the two rows above part
+        // because of `fieldType` itself, these agree; if they part because the carriers differ on unknown
+        // members at all, these part the same way — which is what they do.
+        actual.put("a nonsense member on a group", verdictOnElementBody("ShippingAddress", "Group", "1"));
+        actual.put("a nonsense member on a rule", verdictOnElementBody("TotalGate", "Rule", "1"));
+
+        Map<String, String> expected = new LinkedHashMap<>();
+        expected.put("on a FIELD — the control that proves the fragment is refusable", KernelLaws.UNREADABLE);
+        // A GROUP drops a member it does not declare, so `fieldType` means nothing there and a checker
+        // scanning every element would refuse a model A12 loads.
+        expected.put("on a group", KernelLaws.ADMITTED);
+        // A RULE refuses one — and the nonsense rows below show that is about the CARRIER's strictness and
+        // not about this member, so the checker's silence here is an under-report of a general law rather
+        // than of anything `fieldType`-shaped. Recorded, not closed: the member-strictness law spans every
+        // rule member and belongs to whoever measures that class.
+        expected.put("on a rule", KernelLaws.UNREADABLE);
+        expected.put("a nonsense member on a group", KernelLaws.ADMITTED);
+        expected.put("a nonsense member on a rule", KernelLaws.UNREADABLE);
+        assertEquals(expected, actual, "a fieldType written on an element that is not a field");
+    }
+
     /** Compared name-ordered, because the expectations are grouped by the split rather than by source order. */
     private static Map<String, String> sortedByName(Map<String, String> rows) {
         return new java.util.TreeMap<>(rows);
@@ -191,6 +233,34 @@ class FieldTypeBindingLawsTest {
                 field.set("fieldType", MAPPER.readTree(rawFieldType));
             }
             return KernelLaws.verdictOf(root.toString());
+        } catch (IOException unreadable) {
+            throw new UncheckedIOException("the fixture and the raw type fragment must parse", unreadable);
+        }
+    }
+
+    /**
+     * The order fixture with an unbindable {@code fieldType} written onto a non-field element of [kind].
+     *
+     * <p>The rule carrier is ADDED by the writer rather than found, so the model stays one A12 accepts apart
+     * from the member under test.
+     */
+    private static String verdictOnElementBody(String name, String kind, String rawMember) {
+        String base = "Rule".equals(kind)
+                ? ModelWriter.addRule(Fixtures.orderJson(), "/Order", name, "../CustomerName", "PROBE",
+                        "FieldNotFilled(CustomerName)", "ERROR", List.of(en("x"), de("y")))
+                : Fixtures.orderJson();
+        try {
+            ObjectNode root = (ObjectNode) MAPPER.readTree(base);
+            for (var element : root.path("content").path("modelRoot").path("rootGroups").get(0)
+                    .path("Group").path("elements")) {
+                if (name.equals(element.path("name").asText()) && element.has(kind)) {
+                    ((ObjectNode) element.path(kind)).set(
+                            UNBINDABLE_TYPE.equals(rawMember) ? "fieldType" : "notAMemberA12Declares",
+                            MAPPER.readTree(rawMember));
+                    return KernelLaws.verdictOf(root.toString());
+                }
+            }
+            throw new IllegalStateException("the fixture no longer declares a " + kind + " named " + name);
         } catch (IOException unreadable) {
             throw new UncheckedIOException("the fixture and the raw type fragment must parse", unreadable);
         }

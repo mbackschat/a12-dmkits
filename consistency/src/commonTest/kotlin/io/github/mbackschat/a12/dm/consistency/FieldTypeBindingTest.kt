@@ -92,6 +92,34 @@ class FieldTypeBindingTest {
     }
 
     /**
+     * The member is read on FIELDS only, because A12 reads it on fields only.
+     *
+     * A group DROPS a member it does not declare, so the identical fragment that makes a field unreadable is
+     * ignored there and the model loads — measured, with a live field control on the same model. A checker
+     * scanning every element would refuse it, which is the one direction nothing downstream can catch.
+     *
+     * The rule carrier deliberately has no row: A12 refuses ANY member it does not declare on a rule, so
+     * that fragment is unreadable there too — but for the carrier's strictness rather than for anything
+     * `fieldType`-shaped, and a row here would read as this family covering a law it does not own.
+     */
+    @Test
+    fun aFieldTypeOnAGroupIsIgnoredTheWayA12IgnoresIt() {
+        val withGroup = ModelSource(
+            """
+            {"header":{"id":"catalog","locales":[{"code":"en_US"}]},
+             "content":{"modelRoot":{"rootGroups":[
+              {"type":"Group","id":"g0","name":"Catalog","Group":{
+                "fieldType":{"type":"NotAType","NotAType":{}},
+                "elements":[{"type":"Field","id":"f0","name":"Tier","Field":{
+                  "fieldType":{"type":"StringType"}}}]}}
+             ]}}}
+            """.trimIndent(),
+        )
+        assertEquals(emptyList(), check(withGroup).findings.map { it.code },
+            "a group's stray fieldType is A12's to ignore, so reporting it would refuse a model A12 loads")
+    }
+
+    /**
      * One unbindable field draws ONE finding across the whole report, not one per family that reads it.
      *
      * Counted through `check()` rather than off this family, because the mistake it guards against is a

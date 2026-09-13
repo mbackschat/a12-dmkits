@@ -94,12 +94,12 @@ private fun unbindableFieldType(field: DeclaredElement, declared: JsonElement): 
 }
 
 /**
- * The discriminator as A12 reads it — `JsonNode.asText()`, which stringifies a scalar rather than demanding
- * a JSON string, so a numeric `type` becomes a name that simply is not in the vocabulary. A container has no
- * such reading and is reported as the missing discriminator it is.
+ * The discriminator as A12 reads it — `JsonNode.asText()`, which stringifies any scalar rather than demanding
+ * a JSON string, so a numeric or null `type` becomes a name that simply is not in the vocabulary and falls to
+ * the same raising default. A container has no such reading and is reported as the missing discriminator it
+ * is. Excluding null here would be a branch with no verdict of its own, since both paths end unbindable.
  */
-private fun JsonElement.asBoundText(): String? =
-    (this as? JsonPrimitive)?.takeIf { it !is JsonNull }?.content
+private fun JsonElement.asBoundText(): String? = (this as? JsonPrimitive)?.content
 
 private fun unbindable(field: DeclaredElement, complaint: String) = Finding(
     FindingCategory.A12_CONSTRAINT,
