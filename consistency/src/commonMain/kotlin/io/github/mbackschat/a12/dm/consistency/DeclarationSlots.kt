@@ -200,44 +200,8 @@ private fun severityFindings(element: DeclaredElement): List<Finding> {
 }
 
 
-/**
- * One authored error-message entry, reduced to what A12 collects from it.
- *
- * @param localeKey the entry's `locale` as a parsed locale key, absent when it is the empty "any locale"
- *     code — which reads, and then covers no declared language.
- * @param text the entry's `text`, blank included. A BLANK text is not a message: A12 reads it as absent
- *     rather than as an empty one, so it draws the same refusal an omitted entry does — measured on both
- *     carriers, and separated from "this locale has no entry" by the row that leaves the other locale's
- *     text intact.
- */
-private data class AuthoredMessage(val localeKey: String?, val text: String)
-
-/**
- * The element's `errorMessage`, either as A12 collects it or as the reason A12 refuses to read the source.
- */
-private sealed interface AuthoredMessages {
-    data class Read(val entries: List<AuthoredMessage>) : AuthoredMessages
-
-    /** @param explain what A12's reader refused, in its own terms. */
-    data class Refused(val explain: String) : AuthoredMessages
-
-    /**
-     * The declaration's ENVELOPE is unbindable, so this slot has nothing to say about it either way.
-     *
-     * It is neither [Read] nor [Refused] and both mistakes were made in turn. Reporting it as a refusal
-     * duplicates the finding the envelope's owner already makes — a rule's comes from
-     * `ruleConditionAndTargetFindings` and a computation's from `alternativeFindings`, covering both kinds
-     * this family reads — so one defect arrived as two near-identical findings at one path. Reporting it as
-     * an empty read is worse: `MVK_ERROR_MESSAGE_MISSING` is a verdict about a model A12 never examined,
-     * exactly what `DeclaredElement.body` warns a reader of `null` not to publish. Silence is what the six
-     * other families reading `body` already do, and `UnreadableEnvelopeTest` counts it.
-     */
-    data object Unbindable : AuthoredMessages
-}
-
 private fun messageFindings(element: DeclaredElement, declaredLocales: List<String>): List<Finding> {
-    val authored = when (val read = element.authoredMessages()) {
-        is AuthoredMessages.Unbindable -> return emptyList()
+    val authored = when (val read = element.authoredMessages() ?: return emptyList()) {
         is AuthoredMessages.Refused -> return listOf(
             Finding(
                 FindingCategory.A12_CONSTRAINT,
@@ -250,15 +214,7 @@ private fun messageFindings(element: DeclaredElement, declaredLocales: List<Stri
         )
         is AuthoredMessages.Read -> read.entries
     }
-    // What A12 ends up holding: only DECLARED locales are collected, and a later entry replaces an earlier
-    // one for the same locale whether or not it has a text. A reader that kept the first usable entry would
-    // see a message where A12 finds none.
-    val collected = mutableMapOf<String, String>()
-    for (entry in authored) {
-        val key = entry.localeKey?.takeIf { it in declaredLocales } ?: continue
-        collected[key] = entry.text
-    }
-    val covered = collected.filterValues { it.isNotBlank() }.keys
+    val covered = authored.coveredLocales(declaredLocales)
     val missing = if (covered.isEmpty()) {
         listOf(
             Finding(
@@ -333,32 +289,4 @@ private fun authoredLocalePolicyFindings(
  * reader refuses, and a refusal there is about the SOURCE rather than about this declaration, which is why
  * it stops the read instead of contributing an unusable entry.
  */
-private fun DeclaredElement.authoredMessages(): AuthoredMessages {
-    val payload = body ?: return AuthoredMessages.Unbindable
-    val entries = when (val member = payload["errorMessage"]) {
-        is JsonArray -> member.toList()
-        is JsonObject -> member.values.toList()
-        else -> emptyList<JsonElement>()
-    }
-    val read = mutableListOf<AuthoredMessage>()
-    for (entry in entries) {
-        val body = entry as? JsonObject
-            ?: return AuthoredMessages.Refused("an `errorMessage` entry here is not a JSON object")
-        val locale = body.string("locale")
-            ?: return AuthoredMessages.Refused("an `errorMessage` entry here carries no string `locale`")
-        val text = body.string("text")
-            ?: return AuthoredMessages.Refused("an `errorMessage` entry here carries no string `text`")
-        // The empty code is the one A12 READS without producing a locale, so it is an entry that covers
-        // nothing rather than a spelling the reader refuses.
-        val key = localeKeyOrNull(locale)
-        if (key == null && locale.isNotEmpty()) {
-            return AuthoredMessages.Refused("`$locale` is not a locale code A12's parser accepts")
-        }
-        read += AuthoredMessage(key, text)
-    }
-    return AuthoredMessages.Read(read)
-}
-
-/** A member A12 binds to a `String`, absent when it is missing or is not a JSON string. */
-private fun JsonObject.string(key: String): String? =
-    (this[key] as? JsonPrimitive)?.takeIf { it.isString }?.contentOrNull
+private fun DeclaredElement.authoredMessages(): AuthoredMessages? = body?.authoredMessages()

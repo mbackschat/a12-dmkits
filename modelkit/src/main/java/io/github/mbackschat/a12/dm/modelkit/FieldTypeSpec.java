@@ -91,9 +91,17 @@ public sealed interface FieldTypeSpec {
     }
 
     /**
-     * A string field: optional length bounds and an anchored pattern (KERNEL-SEMANTICS §7). A pattern
-     * is inseparable from its {@code patternMessage} — the kernel rejects a pattern with no error text
-     * ({@code MVK_ERROR_MESSAGE_AND_PATTERN_INVALID}), so the two are set or unset together.
+     * A string field: optional length bounds and an anchored pattern (KERNEL-SEMANTICS §7).
+     *
+     * <p>A pattern is inseparable from its {@code patternMessage}, and the refusal below is measured in BOTH
+     * directions rather than only the obvious one ([KERNEL-FINDINGS KF318], locked by
+     * {@code rulekit.validate.laws.StringTypeMessageAndPatternLawsTest}): a pattern with no error text draws
+     * {@code MVK_ERROR_MESSAGE_AND_PATTERN_INVALID} and a type-level message with no pattern draws
+     * {@code MVK_ERROR_MESSAGE_AND_NO_PATTERN}, so the two are set or unset together.
+     *
+     * <p>Where this check is WEAKER than A12 it under-rejects, which is the safe direction: A12 asks whether
+     * the message reaches a declared locale with a non-blank text, and a blank {@code patternMessage} passes
+     * here and is refused there.
      */
     record StringSpec(Integer minLength, Integer maxLength, String pattern, String patternMessage,
             boolean lineBreaksPermitted, boolean alphabeticalSorting, Map<String, List<String>> suggestions,

@@ -6255,3 +6255,24 @@ A consumer reading the restriction as "the model's text" would refuse four model
 **The restriction belongs to the EXPANDED model, not to the file that declares the enum.** A provider declaring no restriction of its own is clean when checked alone and draws the host's four diagnostics once mounted into a model that declares `A-Z`. So it is applied to mounted declarations as much as to local ones. The middle control is on the same instrument as the treatment — the same provider mounted into an UNRESTRICTED host draws none through `ModelLoader.loadAndCheck` — so the two-row form, which read the control through `BoundModel.ofJson`, is not moving the mount and the instrument together.
 
 *Locked by:* `rulekit.validate.laws.SupportedCharactersDeclarationGateLawsTest` (the scope, the definition grammar, the multiplicity, and the two-model mount fixture); the reachability half stays with `CodegenErrorClassReachesConsistencyLawsTest`.
+
+## §7 supplement — a declared string type's `pattern` and its own `errorMessage` require each other, and a message counts only where it REACHES a declared locale (measured, 2026-09-13) <a id="kf318"></a>
+
+> Fold: pending — belongs beside [KERNEL-SEMANTICS](KERNEL-SEMANTICS.md) §7's string-declaration material, which covers the pattern and neither of the members that must accompany it.
+
+[KF165](#kf165) settles WHICH declared patterns A12 admits; this settles what a pattern must be declared WITH. The two members look like independent slots and are one law with two directions, and a third code rides beside them. The fixture that measured KF165 already supplied a message with every pattern, on a comment asserting one was required — a claim no row of that grid could test, because none of them varied the message. These do.
+
+| the string type declares | verdict |
+|---|---|
+| neither member — the control | ADMITTED |
+| a `pattern` and an `errorMessage` for the declared locale | ADMITTED |
+| a `pattern` and no `errorMessage` | `MVK_ERROR_MESSAGE_AND_PATTERN_INVALID` |
+| an `errorMessage` and no `pattern` | `MVK_ERROR_MESSAGE_AND_NO_PATTERN` |
+
+**A message "exists" only where it reaches a DECLARED locale with a non-blank text, and both directions read it that way.** Three weakenings, each leaving the member present, each measured on both arms: an empty `errorMessage` list, a blank `text`, and a text for a locale `header.locales` does not declare. All three refuse a pattern beside them with the pattern's own code, and all three are ADMITTED with no pattern — so one predicate serves both directions and a checker needs no branch for them. The undeclared-locale row is the one that separates *counted* from *collected*, and it corrected this repository's first prediction.
+
+**The locale tier is a THIRD code and it belongs to the message alone.** Once some declared locale is answered and another is not, A12 reports `MVK_ERROR_MESSAGE_FOR_LANGUAGE_MISSING` — the same code a rule's own `errorMessage` draws — and it reports it whether or not the pattern that makes the member legal is there: a half-translated message with no pattern draws `MVK_ERROR_MESSAGE_FOR_LANGUAGE_MISSING` and `MVK_ERROR_MESSAGE_AND_NO_PATTERN` together. This is only visible on a two-locale header; on a one-locale model "every declared locale answered" and "some declared locale answered" are the same claim, which is the constant every row of the first grid holds fixed.
+
+**Where A12's reader stops is not where the member's shape suggests.** A scalar at `errorMessage` BINDS — A12 collects no message from it and answers with the ordinary consistency code — while a non-object ENTRY inside the list refuses the source outright, so the model never loads and no verdict about it exists. That is the same boundary [KF290](#kf290) source-located on the rule carrier, measured here rather than carried across; the agreement is what lets one reader serve both carriers in this repository's checker.
+
+*Locked by:* `rulekit.validate.laws.StringTypeMessageAndPatternLawsTest` (18 rows across the two grids); the portable checker's mirror is `consistency.StringTypeMessageTest`.

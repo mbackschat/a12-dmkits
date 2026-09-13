@@ -128,6 +128,15 @@ enum class CheckFamily {
     STRING_PATTERN_ADMISSION,
 
     /**
+     * That a declared string type's `pattern` and its own `errorMessage` answer for each other — A12 refuses
+     * either alone. A message counts only where it gives A12 a non-blank text for a DECLARED locale, so an
+     * empty list, a blank text and a text for an undeclared locale are all no message at all; once some
+     * declared locale is answered and another is not, the untranslated half is reported separately and
+     * independently of the pattern.
+     */
+    STRING_PATTERN_MESSAGE,
+
+    /**
      * That every DSL-bearing member can be TOKENIZED — the syntax layer's first phase, and the only one
      * decidable without a grammar. Whether the tokens then form a condition A12's parser accepts is a
      * separate question this family does not answer.
@@ -294,7 +303,8 @@ internal fun check(
         prepared.presentationMemberFindings() + prepared.stringSlotFindings() +
         prepared.fieldTypeBindingFindings() + prepared.temporalConfigFindings() +
         prepared.elementNameAlphabetFindings() + prepared.enumCategoryFindings() +
-        prepared.supportedCharacterFindings() + prepared.declaredPatternFindings()
+        prepared.supportedCharacterFindings() + prepared.declaredPatternFindings() +
+        prepared.stringTypeMessageFindings()
     val findings = judged.notSuppressedBy(prepared.variantFilterSuppressed())
     return ConsistencyReport(
         modelId = admitted.modelId,
@@ -312,7 +322,7 @@ internal fun check(
             CheckFamily.STRING_SLOT_BINDING, CheckFamily.FIELD_TYPE_BINDING,
             CheckFamily.TEMPORAL_CONFIG, CheckFamily.ELEMENT_NAME_ALPHABET,
             CheckFamily.ENUM_CATEGORY_ALIGNMENT, CheckFamily.ENUM_VALUE_CHARACTERS,
-            CheckFamily.STRING_PATTERN_ADMISSION),
+            CheckFamily.STRING_PATTERN_ADMISSION, CheckFamily.STRING_PATTERN_MESSAGE),
         gaps = prepared.gaps() + prepared.emptyFactBase() + findings.buildBlocked() +
             prepared.variantFilterGaps() + prepared.enumCategoryGaps() +
             prepared.supportedCharacterGaps() + prepared.fieldTypeBindingGaps() +

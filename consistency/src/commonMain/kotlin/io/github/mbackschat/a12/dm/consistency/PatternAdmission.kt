@@ -1,8 +1,6 @@
 package io.github.mbackschat.a12.dm.consistency
 
 import io.github.mbackschat.a12.dm.predicates.kernelPatternBlacklist
-import kotlinx.serialization.json.JsonObject
-import kotlinx.serialization.json.JsonPrimitive
 
 /**
  * A declared string field's `pattern` against A12's admission gate.
@@ -62,11 +60,4 @@ fun PreparedModel.declaredPatternGaps(): List<CoverageGap> =
     }
 
 /** The `pattern` this field declares on its `StringType`, or null when it declares none. */
-private fun DeclaredElement.declaredPattern(): String? {
-    val declared = body?.get("fieldType") as? JsonObject ?: return null
-    if ((declared["type"] as? JsonPrimitive)?.content != "StringType") {
-        return null
-    }
-    val body = declared["StringType"] as? JsonObject ?: return null
-    return (body["pattern"] as? JsonPrimitive)?.takeIf { it.isString }?.content
-}
+private fun DeclaredElement.declaredPattern(): String? = stringTypeBody()?.string("pattern")

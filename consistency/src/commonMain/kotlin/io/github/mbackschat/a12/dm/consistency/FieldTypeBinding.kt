@@ -363,3 +363,18 @@ private fun finding(field: DeclaredElement, explain: String) = Finding(
     explain,
     field.path,
 )
+
+/**
+ * The `StringType` body this field declares, or null when it declares another type or none.
+ *
+ * Lives here because this file owns the `fieldType` union; two families past this one read INTO one arm of
+ * it ([declaredPatternFindings], [stringTypeMessageFindings]) and a second copy of the unwrapping is how the
+ * arms would drift apart.
+ */
+internal fun DeclaredElement.stringTypeBody(): JsonObject? {
+    val declared = body?.get("fieldType") as? JsonObject ?: return null
+    if (declared.string("type") != "StringType") {
+        return null
+    }
+    return declared["StringType"] as? JsonObject
+}

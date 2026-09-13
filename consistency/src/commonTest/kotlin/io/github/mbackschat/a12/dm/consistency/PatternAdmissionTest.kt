@@ -16,7 +16,16 @@ import kotlin.test.assertEquals
  */
 class PatternAdmissionTest {
 
-    /** A model whose one string field declares [pattern], or declares none when it is null. */
+    /** The message A12 requires beside any declared pattern, so no fixture here measures two laws at once. */
+    private val patternMessage = """"errorMessage":[{"locale":"en_US","text":"the reference is malformed"}]"""
+
+    /**
+     * A model whose one string field declares [pattern], or declares none when it is null.
+     *
+     * The error message rides along with every pattern because A12 requires the pair — a pattern without one
+     * draws `MVK_ERROR_MESSAGE_AND_PATTERN_INVALID` from [stringTypeMessageFindings], and a fixture missing
+     * it would measure that law here instead of this one.
+     */
     private fun codes(pattern: String?): List<String> = check(
         ModelSource(
             """
@@ -24,7 +33,7 @@ class PatternAdmissionTest {
              "content":{"modelRoot":{"rootGroups":[
               {"type":"Group","id":"g0","name":"Catalog","Group":{"elements":[
                 {"type":"Field","id":"f0","name":"Reference","Field":{"fieldType":{"type":"StringType"${
-                pattern?.let { ""","StringType":{"pattern":"${it.replace("\\", "\\\\")}"}""" } ?: ""
+                pattern?.let { ""","StringType":{"pattern":"${it.replace("\\", "\\\\")}",$patternMessage}""" } ?: ""
             }}}}
               ]}}
              ]}}}
@@ -88,7 +97,7 @@ class PatternAdmissionTest {
                  "content":{"modelRoot":{"rootGroups":[
                   {"type":"Group","id":"g0","name":"Catalog","Group":{"elements":[
                     {"type":"Field","id":"f0","name":"Reference","Field":{"fieldType":{"type":"StringType",
-                      "StringType":{"pattern":"a\\*+"}}}}
+                      "StringType":{"pattern":"a\\*+",$patternMessage}}}}
                   ]}}
                  ]}}}
                 """.trimIndent(),
@@ -117,7 +126,7 @@ class PatternAdmissionTest {
                      "content":{"modelRoot":{"rootGroups":[
                       {"type":"Group","id":"g0","name":"Catalog","Group":{"elements":[
                         {"type":"Field","id":"f0","name":"Reference","Field":{"fieldType":{"type":"StringType"${
-                        pattern?.let { ""","StringType":{"pattern":"$it"}""" } ?: ""
+                        pattern?.let { ""","StringType":{"pattern":"$it",$patternMessage}""" } ?: ""
                     }}}}
                       ]}}
                      ]}}}

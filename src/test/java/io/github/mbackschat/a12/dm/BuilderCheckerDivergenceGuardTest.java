@@ -142,7 +142,18 @@ class BuilderCheckerDivergenceGuardTest {
             // and both now call `predicates.kernelPatternBlacklist`. They had two copies until 2026-09-13
             // and the copies disagreed in BOTH directions, which is exactly what this guard exists to stop.
             Map.entry("MVK_INVALID_PATTERN", Disposition.SHARED_LEAF),
-            Map.entry("MVK_PATTERN_INVALID", Disposition.SHARED_LEAF));
+            Map.entry("MVK_PATTERN_INVALID", Disposition.SHARED_LEAF),
+
+            // The pattern/message co-requirement, whose two directions are two codes. One check states both
+            // in each estate: `FieldTypeSpec.StringSpec` refuses either member alone in its constructor,
+            // over two typed slots, and the checker reads stored JSON — where "carries a message" is a REACH
+            // question the typed slots cannot pose, since an empty list, a blank text and a text for an
+            // undeclared locale all leave the member present and give A12 nothing ([KERNEL-FINDINGS KF318]).
+            // The kit is the weaker claim on every one of those, so it can only under-reject, and it cannot
+            // author the half-translated shape at all because `DocumentModelDraft` emits its single message
+            // for every declared locale.
+            Map.entry("MVK_ERROR_MESSAGE_AND_PATTERN_INVALID", Disposition.SAME_LAW_SEPARATE_CARRIERS),
+            Map.entry("MVK_ERROR_MESSAGE_AND_NO_PATTERN", Disposition.SAME_LAW_SEPARATE_CARRIERS));
 
     @Test
     void everyCodeStatedInBothEstatesCarriesADisposition() {
