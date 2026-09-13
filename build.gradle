@@ -1109,6 +1109,13 @@ tasks.named('check') { dependsOn verifyKitPurity }
 // compiled-linkage lint behind it, which cannot see a declared-but-unimported dependency, so the guarantee a
 // consumer actually cares about was the one nothing checked. Six modules rather than the one gap that named
 // it: the claim, the POM mechanism and the blind spot are identical across them.
+//
+// The published MULTIPLATFORM artifacts are deliberately absent, and not by oversight: `dm-interpreter`,
+// `a12-consistency` and `dm-predicates` register no `compileClasspath`/`runtimeClasspath` to hand this guard,
+// and each is already held to a STRICTER bar by its own lint — `verifyInterpreterPurity` holds commonMain to
+// an import allowlist, `verifyConsistencyPurity` reads compiled edges with `verifyConsistencyDependencies`
+// allowlisting what each target may resolve, and `verifyPredicatesPurity` fails on any resolved dependency at
+// all. Adding one here would weaken its claim, not widen the net.
 def verifyPublishedClasspathsAreKernelFree = tasks.register('verifyPublishedClasspathsAreKernelFree') {
     group = 'verification'
     description = 'Fail if a published kernel-free artifact resolves a raw kernel module onto a consumer classpath.'
@@ -1125,6 +1132,43 @@ def verifyPublishedClasspathsAreKernelFree = tasks.register('verifyPublishedClas
     }
 }
 tasks.named('check') { dependsOn verifyPublishedClasspathsAreKernelFree }
+
+// --- A `publishing` block without `maven-publish` silently configures ROOT (measured 2026-09-13) ----------
+// Groovy's DSL resolves an unknown method against the parent project rather than failing, so a subproject
+// that writes `publishing { }` without applying the plugin configures the ROOT extension. It is invisible:
+// the build stays green, the subproject's own publications are never created, and root's are silently
+// rewritten. Measured when `:predicates` was added — its `publications.withType(...).configureEach` renamed
+// root's `dmkits` aggregator to `dm-predicates-aggregator` and gave it the leaf's description, while
+// `:rulekit`'s POM pointed at a `predicates` coordinate nothing published. Only reading the POMs showed it,
+// which is why this is a build guard and not a convention.
+def verifyPublishingIsDeclaredLocally = tasks.register('verifyPublishingIsDeclaredLocally') {
+    group = 'verification'
+    description = 'Fail if a subproject configures publishing without applying maven-publish to itself.'
+    def buildFiles = subprojects.collectEntries { [(it.path): it.buildFile] }
+    inputs.files(buildFiles.values().findAll { it.isFile() })
+    doLast {
+        def offenders = buildFiles.findAll { path, buildFile ->
+            if (!buildFile.isFile()) {
+                return false
+            }
+            def text = buildFile.text
+            text =~ /(?m)^\s*publishing\s*\{/ && !(text =~ /maven-publish/)
+        }
+        if (offenders) {
+            throw new GradleException(
+                    "these projects configure `publishing { }` without applying `maven-publish`, so the block " +
+                    "binds to the ROOT project's extension and their own publications are never created: " +
+                    "${offenders.keySet().toSorted()}")
+        }
+        // Non-vacuity: the estate does publish, so finding no `publishing` block at all means the scan broke.
+        def declaring = buildFiles.values().findAll { it.isFile() && it.text =~ /(?m)^\s*publishing\s*\{/ }
+        if (declaring.size() < 3) {
+            throw new GradleException("found only ${declaring.size()} subprojects declaring publishing, so " +
+                    'the scan broke and a green result here proves nothing')
+        }
+    }
+}
+tasks.named('check') { dependsOn verifyPublishingIsDeclaredLocally }
 
 // --- The no-backend lane (kernel-decoupling §2c; the Stage-3 acceptance bar) -----------------------------
 // Run the kits with NO backend on the classpath — a Maven-Central consumer's posture — and prove the §2c

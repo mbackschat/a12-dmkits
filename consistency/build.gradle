@@ -34,6 +34,10 @@ kotlin {
         commonMain {
             dependencies {
                 implementation 'org.jetbrains.kotlinx:kotlinx-serialization-json:1.9.0'
+                // The shared-predicate leaf, and the ONE intra-repo edge this module may have: it is
+                // dependency-free by its own guard and exists so a law the Java kits also enforce has a
+                // single live statement rather than a copy here (plan row 5a; C1's re-open trigger).
+                api project(':predicates')
             }
         }
         commonTest {
@@ -114,7 +118,12 @@ def verifyConsistencyDependencies = tasks.register('verifyConsistencyDependencie
                     .collect { configurations.getByName(it) },
             ['com.mgmtp.'],
             'org.jetbrains.kotlin',
-            ['org.jetbrains', 'org.jetbrains.kotlin', 'org.jetbrains.kotlinx', 'junit', 'org.hamcrest'])
+            ['org.jetbrains', 'org.jetbrains.kotlin', 'org.jetbrains.kotlinx', 'junit', 'org.hamcrest',
+             // The shared-predicate leaf. It is admitted as a GROUP like the others, and what keeps that from
+             // being a hole is the leaf's own `verifyPredicatesPurity`: it resolves nothing but the Kotlin
+             // stdlib, so nothing can arrive here THROUGH it. An intra-repo module that grew dependencies
+             // would fail on its own lane before reaching this allowlist.
+             'io.github.mbackschat.a12.dm'])
     }
 }
 

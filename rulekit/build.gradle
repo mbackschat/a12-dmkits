@@ -29,6 +29,12 @@ dependencies {
 
     // The catalog is a bundled JSON resource parsed at load time; the DSL renderer + validators read JSON.
     implementation 'com.fasterxml.jackson.core:jackson-databind:2.18.2'
+
+    // The shared-predicate leaf: A12 laws this kit's builders enforce and the portable checker also reports,
+    // stated once. `implementation` rather than `api` on purpose — the predicates decide what a builder
+    // refuses, they are not part of what a consumer of dmkits-rulekit calls, and exporting them would make a
+    // deliberately tiny leaf a permanent piece of this kit's surface.
+    implementation project(':predicates')
 }
 
 // Publishing (Stage 4, Package B): io.github.mbackschat.a12.dm:dmkits-rulekit — MIT, kernel-free (its POM

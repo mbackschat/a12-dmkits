@@ -1,5 +1,6 @@
 package io.github.mbackschat.a12.dm.consistency
 
+import io.github.mbackschat.a12.dm.predicates.isReservedElementName
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonNull
@@ -50,9 +51,6 @@ fun PreparedModel.declarationSlotFindings(): List<Finding> =
 /** The two element kinds that carry these slots: A12's executables, the checker's whole subject matter. */
 private val EXECUTABLE_KINDS = setOf(DeclaredKind.RULE, DeclaredKind.COMPUTATION)
 
-/** The namespace A12 reserves for itself, matched case-INSENSITIVELY as the Kernel matches it. */
-private const val RESERVED_NAME_PREFIX = "vk_vk"
-
 /**
  * What the model's own `header.locales` costs it, before any declaration is read.
  *
@@ -84,8 +82,16 @@ private fun PreparedModel.declaredLocaleFindings(): List<Finding> = when {
     else -> emptyList()
 }
 
+/**
+ * The reserved-namespace law lives in the shared leaf, not here.
+ *
+ * `Rule.Builder` and `Computation.Builder` enforce the same law on the Java side, and before the leaf all
+ * three stated it separately — which is how the computation copy came to be missing entirely until
+ * 2026-09-12, the code reading as a rule's law. The finding's WORDING is this checker's own; the predicate
+ * that decides it is not.
+ */
 private fun reservedNameFinding(element: DeclaredElement): List<Finding> =
-    if (!element.name.startsWith(RESERVED_NAME_PREFIX, ignoreCase = true)) {
+    if (!isReservedElementName(element.name)) {
         emptyList()
     } else {
         listOf(
@@ -93,7 +99,7 @@ private fun reservedNameFinding(element: DeclaredElement): List<Finding> =
                 FindingCategory.A12_CONSTRAINT,
                 FindingSeverity.ERROR,
                 "MVK_RULE_NAME_INVALID",
-                "`$RESERVED_NAME_PREFIX` is reserved by A12 — in any letter case — so this name is refused; " +
+                "`vk_vk` is reserved by A12 — in any letter case — so this name is refused; " +
                     "rename the declaration",
                 element.path,
             ),

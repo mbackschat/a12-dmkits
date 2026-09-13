@@ -1,0 +1,101 @@
+// The shared-predicate LEAF (PORTABLE-CONSISTENCY-IMPLEMENTATION-PLAN row 5a; C1's re-open trigger).
+//
+// One A12 law, one live statement. Before this module the reserved-namespace law existed three times — in
+// `Rule.Builder`, in `Computation.Builder` and in the portable checker — and had already drifted: the
+// computation copy was missing entirely until 2026-09-12, because `MVK_RULE_NAME_INVALID` reads as a rule's
+// law, and when it arrived it came as a bare `require` without the code its sibling carries. Three copies of
+// one comparison is the duplication C1 exists to collapse, and this is the mechanism.
+//
+// It is Kotlin Multiplatform because both consumers must reach it: `:consistency` compiles to JVM and JS, so
+// a JVM-only leaf would serve the Java kits and not the checker — which is the whole reason C1 was blocked on
+// publication order rather than on the extraction being hard.
+//
+// WHAT MAY LIVE HERE, and it is deliberately narrow: a side-effect-free predicate over a stored A12
+// declaration, with no dependency of any kind. The module declares NO dependencies at all — not the kernel,
+// not kotlinx, not the interpreter — and `verifyPredicatesPurity` holds that, because a leaf that grows
+// dependencies stops being a leaf and starts being a second checker. A predicate earns a place here by
+// having at least two consumers that would otherwise state the same law twice.
+plugins {
+    id 'org.jetbrains.kotlin.multiplatform'
+    // Applied HERE, not inherited. Without it this project has no `publishing` extension, and the Groovy DSL
+    // then resolves `publishing { }` against the ROOT project instead of failing — which silently renamed
+    // root's `dmkits` aggregator publication to `dm-predicates-aggregator` and gave it this module's POM.
+    // A green build published the wrong coordinate; only reading the POM showed it.
+    id 'maven-publish'
+}
+
+kotlin {
+    jvmToolchain(21)
+
+    jvm()
+    js {
+        nodejs()
+        useEsModules()
+        binaries.library()
+        compilerOptions {
+            target.set('es2015')
+        }
+    }
+
+    sourceSets {
+        commonTest {
+            dependencies {
+                implementation kotlin('test')
+            }
+        }
+    }
+}
+
+// The leaf's defining property is that it depends on NOTHING, so the guard asserts exactly that rather than
+// naming forbidden groups. An allowlist of permitted dependencies would already be a concession: the moment
+// this module needs one, the question is whether the predicate belongs here at all.
+def verifyPredicatesPurity = tasks.register('verifyPredicatesPurity') {
+    group = 'verification'
+    description = 'Fail if the shared predicate leaf resolves any dependency at all beyond the Kotlin stdlib.'
+    doLast {
+        ['jvmRuntimeClasspath', 'jsRuntimeClasspath'].each { name ->
+            def resolved = configurations.getByName(name).incoming.resolutionResult.allComponents
+                    .collect { it.moduleVersion }
+                    .findAll { it != null && it.group != '' && it.group != project.group }
+                    // The stdlib's OWN closure, not an edge this module declares: `kotlin-stdlib` depends on
+                    // `org.jetbrains:annotations`, so excluding it keeps the guard about what the leaf adds.
+                    // Named exactly rather than excluding all of `org.jetbrains`, which is a large namespace.
+                    .findAll { !it.group.startsWith('org.jetbrains.kotlin') }
+                    .findAll { !(it.group == 'org.jetbrains' && it.name == 'annotations') }
+            if (resolved) {
+                throw new GradleException(
+                        "the shared predicate leaf must depend on nothing but the Kotlin stdlib; ${name} " +
+                        "resolves ${resolved*.toString().toSorted()}. A predicate needing a dependency does " +
+                        'not belong in the leaf.')
+            }
+        }
+        // Non-vacuity: a typo in a configuration name would resolve nothing and report clean. The stdlib is
+        // always there, so its absence means the query broke rather than that the module is pure.
+        def stdlib = configurations.getByName('jvmRuntimeClasspath').incoming.resolutionResult.allComponents
+                .any { it.moduleVersion?.group?.startsWith('org.jetbrains.kotlin') }
+        if (!stdlib) {
+            throw new GradleException('resolved no Kotlin stdlib on jvmRuntimeClasspath, so the purity ' +
+                    'query found nothing and a green result here proves nothing')
+        }
+    }
+}
+
+tasks.named('check') { dependsOn verifyPredicatesPurity }
+
+// Published so `:rulekit` can depend on it without an unresolvable coordinate in a shipped POM — which is
+// precisely the constraint that blocked C1's extraction (see the plan's C1 record). Coordinates follow
+// `:interpreter`'s `dm-*` convention rather than the Java kits' `dmkits-*`: this is a multiplatform artifact
+// with per-target variants, not one of the five kits the `dmkits` aggregator POM enumerates.
+publishing {
+    publications.withType(MavenPublication).configureEach { publication ->
+        artifactId = publication.name == 'kotlinMultiplatform'
+                ? 'dm-predicates'
+                : "dm-predicates-${publication.name}"
+        pom {
+            name = artifactId
+            description = 'Shared, dependency-free predicates over stored A12 model declarations, so one ' +
+                    'law has one live statement across the Java kits and the portable checker.'
+            rootProject.dmkitsPom(delegate)
+        }
+    }
+}

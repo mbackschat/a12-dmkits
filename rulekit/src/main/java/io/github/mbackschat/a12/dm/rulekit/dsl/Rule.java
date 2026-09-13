@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
+import io.github.mbackschat.a12.dm.predicates.ElementNamePredicatesKt;
 import io.github.mbackschat.a12.dm.rulekit.validate.Diagnostic;
 import io.github.mbackschat.a12.dm.rulekit.validate.DraftRule;
 import io.github.mbackschat.a12.dm.rulekit.validate.PrecheckException;
@@ -261,7 +262,10 @@ public record Rule(
         public Rule build() {
             check(name != null && !name.isBlank(), "RK_INCOMPLETE_RULE",
                     "a rule needs a name (the element name in its group)", null);
-            check(!name.regionMatches(true, 0, "vk_vk", 0, 5), "MVK_RULE_NAME_INVALID",
+            // The law itself is in the shared leaf, so this builder, Computation.Builder and the portable
+            // checker cannot drift apart — which they already had: the computation copy was missing until
+            // 2026-09-12, because the code reads as a rule's law.
+            check(!ElementNamePredicatesKt.isReservedElementName(name), "MVK_RULE_NAME_INVALID",
                     "rule names beginning with vk_vk (any letter case) are reserved by the kernel"
                             + " (it rejects them with MVK_RULE_NAME_INVALID) — pick a different name",
                     "name(...) without the vk_vk prefix");

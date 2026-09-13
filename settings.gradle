@@ -60,3 +60,10 @@ include 'schemakit'
 // differentials live in :adapter so its own test source sets stay Kernel-free.
 include 'consistency'
 
+// The shared-predicate LEAF (PORTABLE-CONSISTENCY-IMPLEMENTATION-PLAN row 5a): one A12 law, one live
+// statement, reachable from BOTH the Java kits and the multiplatform checker. It exists because those two
+// could otherwise only share a law by restating it — the reserved-namespace law had three copies and had
+// already drifted. Kotlin Multiplatform and dependency-free by contract; `verifyPredicatesPurity` fails on
+// any resolved dependency at all, because a leaf that grows one stops being a leaf.
+include 'predicates'
+

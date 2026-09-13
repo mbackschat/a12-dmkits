@@ -8,6 +8,7 @@ import java.util.regex.Pattern;
 
 import io.github.mbackschat.a12.dm.core.EntityPath;
 import io.github.mbackschat.a12.dm.core.ValueKind;
+import io.github.mbackschat.a12.dm.predicates.ElementNamePredicatesKt;
 import io.github.mbackschat.a12.dm.rulekit.validate.Diagnostic;
 import io.github.mbackschat.a12.dm.rulekit.validate.DraftComputation;
 import io.github.mbackschat.a12.dm.rulekit.validate.PrecheckException;
@@ -258,7 +259,7 @@ public record Computation(
             // rejects a computation called vk_vk_* with exactly this code (measured 2026-09-12 on both
             // carriers, locked by validate.laws.ComputationSlotLawsTest). Rule.Builder has pre-checked it
             // since 2026-06-10; this side was missed because the code reads as a rule's law.
-            require(!name.regionMatches(true, 0, "vk_vk", 0, 5),
+            require(!ElementNamePredicatesKt.isReservedElementName(name),
                     "computation names beginning with vk_vk (any letter case) are reserved by the kernel"
                             + " (it rejects them with MVK_RULE_NAME_INVALID) — pick a different name");
             require(!alternatives.isEmpty(), "a computation needs at least one alternative — calc(...) or when(...).calc(...)");
