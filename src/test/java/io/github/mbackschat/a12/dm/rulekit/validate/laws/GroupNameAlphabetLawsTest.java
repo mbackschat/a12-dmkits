@@ -42,6 +42,17 @@ import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel;
  */
 class GroupNameAlphabetLawsTest {
 
+    /**
+     * Every ASCII character outside the admitted alphabet, so the denominator is DERIVED rather than sampled.
+     *
+     * <p>A checker naming A12's code for a bad name may key on nothing wider than what has been measured, and
+     * a hand-picked list of punctuation cannot miss what it does not think of — the same argument the temporal
+     * format vocabulary's generator makes. So the sweep is every printable ASCII character that is not a
+     * letter, a digit or an underscore, and the expectation is written per OUTCOME rather than per character.
+     */
+    private static final String ILLEGAL_ASCII =
+            " !\"#$%&'()*+,-./:;<=>?@[\\]^`{|}~";
+
     private static final String GROUP = "/Bin";
     private static final String ERROR_REL = "../Qty";
     private static final String CONDITION = "[/Bin/Slots/Qty] > 0";
@@ -92,6 +103,32 @@ class GroupNameAlphabetLawsTest {
 
     private static String parameter(String messageText) {
         return KernelLaws.messageVerdict(BIN, "/Bin/Slots", ERROR_REL, CONDITION, "en_US", messageText);
+    }
+
+    /**
+     * WHICH code each interior character draws, the group half of the pair.
+     *
+     * <p>{@link FieldNameAlphabetLawsTest} measures the same characters on a field and gets THREE answers;
+     * this grid says what the group carrier does with them, because a checker naming A12's code has to pick
+     * per carrier and per character rather than once. The admitted rows are the control and the
+     * over-rejection guard at the same time: a checker refusing one of them rejects a legal model.
+     */
+    @Test
+    void whichCodeEachInteriorCharacterDrawsOnAGroupName() {
+        Map<String, String> actual = new LinkedHashMap<>();
+        Map<String, String> expected = new LinkedHashMap<>();
+        for (String admitted : new String[] {"_", "0", "Z", "z"}) {
+            actual.put("`" + admitted + "` — the control", declared("Slot" + admitted + "List"));
+            expected.put("`" + admitted + "` — the control", KernelLaws.ADMITTED);
+        }
+        for (char c : ILLEGAL_ASCII.toCharArray()) {
+            String key = "`" + c + "`";
+            actual.put(key, declared("Slot" + c + "List"));
+            // On THIS carrier the split is two-way, not the field's three: the separator makes the element's
+            // own path disagree with the tree, and every other character is the path validator's alphabet.
+            expected.put(key, c == '/' ? "MVK_PATHS_INCONSISTENT" : "MVK_PATH_INVALID");
+        }
+        assertEquals(expected, actual, "which code each interior character draws on a group name");
     }
 
     /** The declaration gate, and the second gate the kernel's own wording does not mention. */

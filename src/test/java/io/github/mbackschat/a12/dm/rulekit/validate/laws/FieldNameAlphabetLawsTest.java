@@ -45,6 +45,17 @@ import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel;
  */
 class FieldNameAlphabetLawsTest {
 
+    /**
+     * Every ASCII character outside the admitted alphabet, so the denominator is DERIVED rather than sampled.
+     *
+     * <p>A checker naming A12's code for a bad name may key on nothing wider than what has been measured, and
+     * a hand-picked list of punctuation cannot miss what it does not think of — the same argument the temporal
+     * format vocabulary's generator makes. So the sweep is every printable ASCII character that is not a
+     * letter, a digit or an underscore, and the expectation is written per OUTCOME rather than per character.
+     */
+    private static final String ILLEGAL_ASCII =
+            " !\"#$%&'()*+,-./:;<=>?@[\\]^`{|}~";
+
     @Test
     void theFieldNameAlphabetIsNotTheGroupCarriersAndFiveRowsSayWhere() {
         Map<String, String> actual = new LinkedHashMap<>();
@@ -107,18 +118,18 @@ class FieldNameAlphabetLawsTest {
             actual.put("`" + admitted + "` — the control", declared("Slot" + admitted + "List"));
             expected.put("`" + admitted + "` — the control", KernelLaws.ADMITTED);
         }
-        for (String dotted : new String[] {".", ":"}) {
-            actual.put("`" + dotted + "`", declared("Slot" + dotted + "List"));
-            expected.put("`" + dotted + "`", "MVK_NAME_INVALID_DOT_COLON_A12_DV");
+        for (char c : ILLEGAL_ASCII.toCharArray()) {
+            String key = "`" + c + "`";
+            actual.put(key, declared("Slot" + c + "List"));
+            // The dot and the colon answer to their own validator; the separator makes the element's own path
+            // disagree with the tree rather than being a bad name at all; everything else is the path
+            // validator's alphabet.
+            expected.put(key, switch (c) {
+                case '.', ':' -> "MVK_NAME_INVALID_DOT_COLON_A12_DV";
+                case '/' -> "MVK_PATHS_INCONSISTENT";
+                default -> "MVK_PATH_INVALID";
+            });
         }
-        for (String path : new String[] {"-", " ", "%", "(", "+", "#", "@", "$", ",", "\'", "*"}) {
-            actual.put("`" + path + "`", declared("Slot" + path + "List"));
-            expected.put("`" + path + "`", "MVK_PATH_INVALID");
-        }
-        // The separator itself is a third answer: a name carrying `/` makes the element's own path disagree
-        // with the tree it sits in, which A12 reports as an inconsistency rather than as a bad name.
-        actual.put("`/`, the path separator", declared("Slot/List"));
-        expected.put("`/`, the path separator", "MVK_PATHS_INCONSISTENT");
         assertEquals(expected, actual, "which code each interior character draws on a field name");
     }
 

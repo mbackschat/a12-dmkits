@@ -96,6 +96,14 @@ enum class CheckFamily {
     TEMPORAL_CONFIG,
 
     /**
+     * That a declared GROUP or FIELD name is one A12's own alphabet takes. Two laws rather than one: a group
+     * refuses a leading underscore a field admits and admits a non-ASCII letter a field refuses, so each
+     * carrier is asked its own question and a carrier with no measurement is not asked. Non-ASCII characters
+     * and the group's 60-character limit are left to A12.
+     */
+    ELEMENT_NAME_ALPHABET,
+
+    /**
      * That every DSL-bearing member can be TOKENIZED — the syntax layer's first phase, and the only one
      * decidable without a grammar. Whether the tokens then form a condition A12's parser accepts is a
      * separate question this family does not answer.
@@ -260,7 +268,8 @@ internal fun check(
         prepared.connectiveAgreementFindings() + prepared.conditionGrammarFindings() +
         prepared.elementNameFindings() + prepared.groupOrderingFindings() +
         prepared.presentationMemberFindings() + prepared.stringSlotFindings() +
-        prepared.fieldTypeBindingFindings() + prepared.temporalConfigFindings()
+        prepared.fieldTypeBindingFindings() + prepared.temporalConfigFindings() +
+        prepared.elementNameAlphabetFindings()
     val findings = judged.notSuppressedBy(prepared.variantFilterSuppressed())
     return ConsistencyReport(
         modelId = admitted.modelId,
@@ -276,7 +285,7 @@ internal fun check(
             CheckFamily.CONDITION_COMPLETENESS, CheckFamily.CONNECTIVE_AGREEMENT,
             CheckFamily.CONDITION_GRAMMAR, CheckFamily.RULE_PRESENTATION_MEMBERS,
             CheckFamily.STRING_SLOT_BINDING, CheckFamily.FIELD_TYPE_BINDING,
-            CheckFamily.TEMPORAL_CONFIG),
+            CheckFamily.TEMPORAL_CONFIG, CheckFamily.ELEMENT_NAME_ALPHABET),
         gaps = prepared.gaps() + prepared.emptyFactBase() + findings.buildBlocked() +
             prepared.variantFilterGaps() + UNREAD_MEMBERS + UNIMPLEMENTED_FAMILIES,
     )
