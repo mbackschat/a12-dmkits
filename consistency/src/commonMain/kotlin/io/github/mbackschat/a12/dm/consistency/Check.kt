@@ -274,6 +274,13 @@ enum class CheckFamily {
     REPETITION_NOT_UNIQUE_COMBINATION,
 
     /**
+     * That `RepetitionNotUnique` does not sit in a condition that PARALLEL-iterates. Its own constant rather
+     * than part of [REPETITION_NOT_UNIQUE_COMBINATION] because the demand is on the condition's ITERATION
+     * shape rather than on how many calls it carries, and the two gates are independent.
+     */
+    PARALLEL_ITERATION_UNIQUENESS,
+
+    /**
      * That a rule reading a repetition does not reach its error field only from ABOVE its own group — A12
      * cannot then say which repetition the error attaches to. Its own constant because the demand is on the
      * CONDITION's reach rather than on the target's existence, which `ERROR_FIELD_REFERENCE` already owns,
@@ -493,6 +500,7 @@ internal fun check(
         prepared.filterWildcardFindings() +
         prepared.semanticIndexKeyFindings() +
         prepared.repetitionNotUniqueCombinationFindings() +
+        prepared.parallelIterationUniquenessFindings() +
         prepared.errorTargetIterationFindings() +
         prepared.messageParameterFindings() +
         prepared.messageTextCharacterFindings() +
@@ -529,6 +537,7 @@ internal fun check(
             CheckFamily.REPETITION_KEY_PLACEMENT, CheckFamily.REPETITION_SCOPE_GROUP,
             CheckFamily.FILTER_WILDCARD, CheckFamily.SEMANTIC_INDEX_KEY,
             CheckFamily.REPETITION_NOT_UNIQUE_COMBINATION,
+            CheckFamily.PARALLEL_ITERATION_UNIQUENESS,
             CheckFamily.ERROR_TARGET_ITERATION,
             CheckFamily.MESSAGE_PARAMETER_REFERENCE, CheckFamily.MESSAGE_TEXT_CHARACTERS),
         gaps = prepared.gaps() + prepared.emptyFactBase() + findings.buildBlocked() +

@@ -7159,7 +7159,7 @@ Reported by the portable checker, which did not emit `MVK_SORT_FIELD_DUPLICATE` 
 
 **The load-bearing correction: the index fields' TYPE is not a detail of the joint iteration, it selects a different class.** Every row above and every earlier row in this estate pairs two STRING keys, so "same name" and "same name and type" were one thing across the whole set. With the two `LineRef` fields declared STRING and NUMBER, the same condition draws **`MVK_ERROR_FIELD_INVALID_INDEX_TYPE`** — ahead of the uniqueness gate, not instead of the iteration. A client-side check keying on the index field's NAME alone would therefore name the parallel class where A12 names this one: a wrong class on a correct rejection, which is what any family reading this area has to avoid.
 
-Locked: `validate.laws.ParallelIterationGateLawsTest`. **No portable-checker family yet**: deciding that a condition parallel-iterates needs the index-field NAME and TYPE of two repeatable groups compared against each other, which no family here carries — and the type row above says what it would get wrong without it.
+Locked: `validate.laws.ParallelIterationGateLawsTest`. **Reported by the portable checker since 2026-09-14** (`PARALLEL_ITERATION_UNIQUENESS`), which pairs two repeatable groups only when their index fields share a NAME and a declared TYPE and neither read is starred — the intersection of what is measured rather than A12's own `matchBaseType`, so it under-reports rather than guessing.
 
 ## §9 supplement — one `RepetitionNotUnique` per condition, counted as CALLS over the whole tree (measured, 2026-09-14) <a id="kf352"></a>
 

@@ -31,8 +31,16 @@ class ParallelIterationGateLawsTest {
         return KernelLaws.verdictModel(LOGISTICS, "/Shipment/Lines", "../OrderedQty", condition);
     }
 
+    /**
+     * The rule one level up, with its error field on the uniqueness KEY.
+     *
+     * <p>Targeting the key is what holds the error-field reference gate constant across these rows: every
+     * condition here calls {@code RepetitionNotUnique(Lines/LineRef)} and so names it, where targeting
+     * {@code OrderedQty} left the starred row measuring {@code MVK_ERROR_FIELD_NOT_REFERENCED} instead of
+     * the gate it is about.
+     */
     private static String inShipment(String condition) {
-        return KernelLaws.verdictModel(LOGISTICS, "/Shipment", "../Lines/OrderedQty", condition);
+        return KernelLaws.verdictModel(LOGISTICS, "/Shipment", "../Lines/LineRef", condition);
     }
 
     @Test
@@ -47,6 +55,8 @@ class ParallelIterationGateLawsTest {
         actual.put("RepetitionNotUnique beside a pure negative over both groups",
                 inShipment("RepetitionNotUnique(Lines/LineRef) "
                         + "And NoFieldFilled(/Shipment/Lines/OrderedQty, /Shipment/Picks/PickedQty)"));
+        actual.put("RepetitionNotUnique beside a STARRED read of the other group",
+                inShipment("RepetitionNotUnique(Lines/LineRef) And Sum(/Shipment/Picks*/PickedQty) > 0"));
         actual.put("a FILTER on an unstarred cross-group operand",
                 inLines("Sum(/Shipment/Picks/PickedQty Having [/Shipment/Picks/LineRef] == \"x\") > 0"));
 
@@ -57,6 +67,10 @@ class ParallelIterationGateLawsTest {
         // The precedence row: both gates are violated and the uniqueness one is checked first, so the
         // negative-condition class is pre-empted rather than co-reported.
         expected.put("RepetitionNotUnique beside a pure negative over both groups", NOT_ALLOWED);
+        // A star puts a WILDCARD at that level, not the parallel-iteration marker, so the second group is
+        // read as a list rather than iterated jointly — the row that keeps a checker from reporting on
+        // every condition that happens to name two index-keyed groups.
+        expected.put("RepetitionNotUnique beside a STARRED read of the other group", KernelLaws.ADMITTED);
         // The aggregate's own arity gate comes first: an unstarred operand is refused before any
         // parallel-iteration gate is reached, which is why the filtered-entity class needs a nested model.
         expected.put("a FILTER on an unstarred cross-group operand", "MVK_WILDCARDS_REQUIRED");
@@ -131,7 +145,7 @@ class ParallelIterationGateLawsTest {
 
         Map<String, String> actual = new LinkedHashMap<>();
         actual.put("RepetitionNotUnique beside a cross-group read, keys of DIFFERENT type",
-                KernelLaws.verdictModel(mismatched, "/Depot", "../Lines/OrderedQty",
+                KernelLaws.verdictModel(mismatched, "/Depot", "../Lines/LineRef",
                         "RepetitionNotUnique(Lines/LineRef) And FieldFilled(/Depot/Picks/PickedQty)"));
 
         Map<String, String> expected = new LinkedHashMap<>();

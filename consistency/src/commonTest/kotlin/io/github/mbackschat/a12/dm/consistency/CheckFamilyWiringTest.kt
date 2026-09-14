@@ -89,6 +89,20 @@ class CheckFamilyWiringTest {
               "errorCondition":"FieldFilled(Price) And Sum(Pallets*/PalletQty Having [Pallets*/PalletNote] == \"x\") > 0",
               "errorEntityRelPath":"../Price",
               "errorCode":"C25","errorMessage":[{"locale":"en_US","text":"x"}]}},
+            {"type":"Group","id":"g7","name":"Crates","Group":{"repeatability":5,
+              "indexFieldName":"CrateRef","elements":[
+              {"type":"Field","id":"f30","name":"CrateRef","Field":{"fieldType":{"type":"StringType"}}},
+              {"type":"Field","id":"f31","name":"CrateQty","Field":{"fieldType":{"type":"NumberType"}}}
+            ]}},
+            {"type":"Group","id":"g8","name":"Totes","Group":{"repeatability":5,
+              "indexFieldName":"CrateRef","elements":[
+              {"type":"Field","id":"f32","name":"CrateRef","Field":{"fieldType":{"type":"StringType"}}},
+              {"type":"Field","id":"f33","name":"ToteQty","Field":{"fieldType":{"type":"NumberType"}}}
+            ]}},
+            {"type":"Rule","id":"r28","name":"UniquenessUnderParallelIteration","Rule":{
+              "errorCondition":"RepetitionNotUnique(Crates/CrateRef) And FieldFilled(Totes/ToteQty)",
+              "errorEntityRelPath":"../Crates/CrateRef",
+              "errorCode":"C28","errorMessage":[{"locale":"en_US","text":"x"}]}},
             {"type":"Rule","id":"r27","name":"TwoUniquenessCalls","Rule":{
               "errorCondition":"RepetitionNotUnique(Pallets/PalletNote) And RepetitionNotUnique(Pallets/PalletQty)",
               "errorEntityRelPath":"../Pallets/PalletNote",
@@ -276,6 +290,10 @@ class CheckFamilyWiringTest {
         // its own, which is what makes this row about the COUNT rather than about either call.
         CheckFamily.REPETITION_NOT_UNIQUE_COMBINATION to
             ("MVK_INVALID_COMBINATION_OF_REPETITON_NOT_UNIQUE" to "/Catalog/TwoUniquenessCalls"),
+        // `Crates` and `Bins` both key on `CrateRef` of the same declared type, so reading one field from
+        // each makes the rule iterate them jointly — the shape no other row in this fixture produces.
+        CheckFamily.PARALLEL_ITERATION_UNIQUENESS to
+            ("MVK_PARALLEL_ITERATION_NOT_ALLOWED" to "/Catalog/UniquenessUnderParallelIteration"),
         // The rule sits in a repeatable group and reaches its error field only through the root, while
         // reading a sibling of that field — so A12 cannot say which pallet the error belongs to.
         CheckFamily.ERROR_TARGET_ITERATION to
