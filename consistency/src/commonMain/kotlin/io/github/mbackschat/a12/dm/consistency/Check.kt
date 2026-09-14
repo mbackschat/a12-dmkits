@@ -403,6 +403,13 @@ enum class CheckFamily {
     ENTITY_LIST_PRE_GATES,
 
     /**
+     * What KIND of field `FieldValuesNotUnique` admits, and how the temporal ones must be spelled. One
+     * constant because both questions are one gate in A12 under one class — the kind arm and the spelling
+     * arm are the same `checkOnlyStringEnumNumberOrDateWithSameFormat` walk.
+     */
+    FIELD_VALUES_NOT_UNIQUE_OPERAND_KIND,
+
+    /**
      * What each comparison OPERATOR demands of the two sides it joins. One constant for the three classes
      * because `CheckVergleichsBedingungImpl.check` asks them in a fixed order ahead of every agreement
      * gate, so which answers depends on where that walk stops.
@@ -735,6 +742,7 @@ internal fun check(
         prepared.valueListQuantifierOperandKindFindings() +
         prepared.entityListArityFindings() +
         prepared.entityListPreGateFindings() +
+        prepared.fieldValuesNotUniqueOperandKindFindings() +
         prepared.comparisonOperatorOperandFindings() +
         prepared.booleanComparisonAgreementFindings() +
         prepared.stringEnumComparisonAgreementFindings() +
@@ -797,6 +805,7 @@ internal fun check(
             CheckFamily.CALCULATION_OPERATOR_ARITY, CheckFamily.VALUE_IN_FIELDS_CONSTANT_KIND,
             CheckFamily.VALUE_LIST_QUANTIFIER_OPERAND_KIND, CheckFamily.ENTITY_LIST_ARITY,
             CheckFamily.ENTITY_LIST_PRE_GATES,
+            CheckFamily.FIELD_VALUES_NOT_UNIQUE_OPERAND_KIND,
             CheckFamily.COMPARISON_OPERATOR_OPERANDS, CheckFamily.BOOLEAN_COMPARISON_AGREEMENT,
             CheckFamily.STRING_ENUM_COMPARISON_AGREEMENT, CheckFamily.NUMBER_COMPARISON_SCALE,
             CheckFamily.TEMPORAL_COMPARISON_AGREEMENT, CheckFamily.PATTERN_COMPARISON_OPERANDS,

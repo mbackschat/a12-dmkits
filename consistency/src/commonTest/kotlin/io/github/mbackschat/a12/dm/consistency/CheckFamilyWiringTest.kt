@@ -61,6 +61,8 @@ class CheckFamilyWiringTest {
             {"type":"Group","id":"g12","name":"Overstock","Group":{"repeatability":2000000000,"elements":[
               {"type":"Field","id":"f35","name":"OverstockCode","Field":{"fieldType":{"type":"StringType"}}}
             ]}},
+            {"type":"Field","id":"f30","name":"Window","Field":{"fieldType":{"type":"DateRangeType",
+              "DateRangeType":{"format":"yyyy-MM-dd","rangeSeparator":"/"}}}},
             {"type":"Group","id":"g3","name":"Shelf","Group":{"elements":[
               {"type":"Field","id":"f12","name":"ShelfCode","Field":{"fieldType":{"type":"StringType"}}}
             ]}},
@@ -199,6 +201,10 @@ class CheckFamilyWiringTest {
               "errorCondition":"FieldFilled(Price) And [Price] < [Reference]",
               "errorEntityRelPath":"../Price",
               "errorCode":"C47","errorMessage":[{"locale":"en_US","text":"x"}]}},
+            {"type":"Rule","id":"r49","name":"UniquenessOverADateRange","Rule":{
+              "errorCondition":"FieldFilled(Price) And FieldValuesNotUnique(Window, Price)",
+              "errorEntityRelPath":"../Price",
+              "errorCode":"C49","errorMessage":[{"locale":"en_US","text":"x"}]}},
             {"type":"Rule","id":"r48","name":"FieldListOverAGroupAndItsField","Rule":{
               "errorCondition":"FieldFilled(Price) And AllFieldsFilled(Shelf, Shelf/ShelfCode)",
               "errorEntityRelPath":"../Price",
@@ -460,6 +466,10 @@ class CheckFamilyWiringTest {
         // group-list family does not own, so the row fails if this family is narrowed back to group lists.
         CheckFamily.ENTITY_LIST_PRE_GATES to
             ("MVK_DUPLICATE_PARAM2" to "/Catalog/FieldListOverAGroupAndItsField"),
+        // A date RANGE in a uniqueness list — the one declared type this gate refuses, so the row fails if
+        // the refusal set is ever widened to the clock and stamp kinds a later gate owns.
+        CheckFamily.FIELD_VALUES_NOT_UNIQUE_OPERAND_KIND to
+            ("MVK_ONLY_STRING_ENUM_NUMBER_DATE_ALLOWED" to "/Catalog/UniquenessOverADateRange"),
         // Two text declarations under an ordering operator — the one comparison in this fixture whose
         // operator demands more of its sides than they are.
         CheckFamily.COMPARISON_OPERATOR_OPERANDS to

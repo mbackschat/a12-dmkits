@@ -390,3 +390,19 @@ internal fun numberLiteralScale(tokens: List<Token>): Int? {
     }
     return unsigned[2].text.length
 }
+
+/**
+ * The fields A12's `expandToFieldList` would take for one operand — the field itself, or every field under a
+ * group, in declaration order.
+ *
+ * Null where the operand names a group with no field beneath it, which A12 refuses under its own class.
+ */
+internal fun PreparedModel.expandToFields(path: String): List<DeclaredElement>? {
+    val target = elements.firstOrNull { it.path == path } ?: return null
+    if (target.declaredKind == DeclaredKind.FIELD) {
+        return listOf(target)
+    }
+    return elements
+        .filter { it.declaredKind == DeclaredKind.FIELD && it.path.startsWith("${target.path}/") }
+        .takeIf { it.isNotEmpty() }
+}

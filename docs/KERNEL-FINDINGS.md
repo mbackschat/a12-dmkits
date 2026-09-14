@@ -7142,6 +7142,27 @@ Reported by the portable checker, which did not emit `MVK_SORT_FIELD_DUPLICATE` 
 
 *Locked by:* `rulekit.validate.laws.GroupOrderingMultipleDefectLawsTest`, mirrored by `consistency … GroupOrderingMultipleDefectTest`.
 
+## §9 supplement — `FieldValuesNotUnique`'s kind gate admits the CLOCK and STAMP kinds, and its date test is the SPELLING (source-verified + measured, 2026-09-14) <a id="kf390"></a>
+
+> Fold: not-foldable — a diagnostic-class law about one operator's operand kinds, not an evaluation behaviour.
+
+`CheckFeldListenBedingungImpl`'s `FELD_WERTE_NICHT_EINDEUTIG` arm runs four gates in a fixed order, and the grid measures all four so the second one's position is fixed rather than assumed:
+
+| # | gate | class |
+|---|---|---|
+| 1 | `checkIsMoreThanOneFieldOrIsAGroup` | `MVK_PARAMSIZE_INVALIDN` |
+| 2 | `checkOnlyStringEnumNumberOrDateWithSameFormat` | `MVK_ONLY_STRING_ENUM_NUMBER_DATE_ALLOWED` |
+| 3 | `checkSameBaseType` | `MVK_VARYING_TYPES_NOT_ALLOWED` |
+| 4 | `checkAllAreValueValidation` | `MVK_INVALID_RAW_TYPE` |
+
+**Gate 2's admitted KIND set cannot be read off its class name, and four shapes turn on it.** "String, enum, number or date" reads as a closed list, but `FieldUtils.isDate` accepts the clock and stamp kinds too: a `TimeType`, a `DateTimeType` and a `DateFragmentType` beside a text field all CLEAR this gate and are refused by gate 3 instead — as is an `EnumerationType`, which clears it as string-like. A `DateRangeType` is the only measured refusal. Naming gate 2's class on any of the other four would be the wrong class on a correct rejection.
+
+**Gate 2's date test is the declared format STRING, and it spans KINDS.** `yyyy-MM-dd` beside `dd.MM.yyyy` is refused although the two are one component set — the contrast that separates this gate from the aggregates' component-set gate ([KF193](#kf193)) — and a `DateType` spelled `yyyy-MM-dd` beside a `DateTimeType` spelled `yyyy-MM-dd'T'HH:mm:ss` draws this class rather than gate 3's, the kind gate running first.
+
+Reported by the portable checker (`CheckFamily.FIELD_VALUES_NOT_UNIQUE_OPERAND_KIND`), whose refusal set is an allow-list of what was measured rather than the complement of the admitted one.
+
+*Locked by:* `rulekit.validate.laws.FieldValuesNotUniqueKindGateLawsTest`, mirrored by `consistency.FieldValuesNotUniqueOperandKindTest`.
+
 ## §6 supplement — a date operand list's three gates are ONE walk, so two defects answer by POSITION (source-verified + measured, 2026-09-14) <a id="kf389"></a>
 
 > Fold: not-foldable — a diagnostic-class law about aggregate operand types, not an evaluation behaviour.

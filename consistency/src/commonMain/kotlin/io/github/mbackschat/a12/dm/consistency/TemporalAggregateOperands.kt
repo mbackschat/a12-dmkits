@@ -140,21 +140,6 @@ private const val PARTIAL_REFUSED = "MVK_PARTIAL_DATE_NOT_ALLOWED"
 
 private const val INCOMPATIBLE = "MVK_DATEFORMATS_NOT_COMPATIBLE"
 
-/**
- * The fields A12's `expandToFieldList` would take for one operand — the field itself, or every field under a
- * group, in declaration order.
- *
- * Null where the operand names a group with no field beneath it, which A12 refuses under its own class.
- */
-private fun PreparedModel.expandToFields(path: String): List<DeclaredElement>? {
-    val target = elements.firstOrNull { it.path == path } ?: return null
-    if (target.declaredKind == DeclaredKind.FIELD) {
-        return listOf(target)
-    }
-    return elements
-        .filter { it.declaredKind == DeclaredKind.FIELD && it.path.startsWith("${target.path}/") }
-        .takeIf { it.isNotEmpty() }
-}
 
 private fun declaresAPartialPrecision(field: DeclaredElement): Boolean {
     val declared = field.body?.get("fieldType") as? JsonObject ?: return false
