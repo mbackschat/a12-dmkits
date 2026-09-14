@@ -48,6 +48,7 @@ class CheckFamilyWiringTest {
               "NumberType":{"minFractionalDigits":3,"maxFractionalDigits":2}}}},
             {"type":"Field","id":"f11","name":"RepeatedTier","Field":{"fieldType":{
               "type":"EnumerationType","EnumerationType":{"values":[{"value":"A"},{"value":"A"}]}}}},
+            {"type":"Field","id":"f45","name":"Signed","Field":{"fieldType":{"type":"ConfirmType"}}},
             {"type":"Field","id":"f36","name":"StrandedSpecialValue","Field":{"fieldType":{
               "type":"EnumerationType","EnumerationType":{"values":[{"value":"P"},{"value":"Q"}],
               "sValue":"R"}}}},
@@ -172,6 +173,10 @@ class CheckFamilyWiringTest {
               "errorCondition":"FieldFilled(Price) And Sum(Pallets.*/PalletQty) > 0",
               "errorEntityRelPath":"../Price",
               "errorCode":"C29","errorMessage":[{"locale":"en_US","text":"x"}]}},
+            {"type":"Rule","id":"r48","name":"ConfirmAgainstFalse","Rule":{
+              "errorCondition":"FieldFilled(Price) And [Signed] == False",
+              "errorEntityRelPath":"../Price",
+              "errorCode":"C48","errorMessage":[{"locale":"en_US","text":"x"}]}},
             {"type":"Rule","id":"r47","name":"OrderedTextComparison","Rule":{
               "errorCondition":"FieldFilled(Price) And [Price] < [Reference]",
               "errorEntityRelPath":"../Price",
@@ -433,6 +438,10 @@ class CheckFamilyWiringTest {
         // operator demands more of its sides than they are.
         CheckFamily.COMPARISON_OPERATOR_OPERANDS to
             ("MVK_INVALID_TYPE_FOR_COMPARISON" to "/Catalog/OrderedTextComparison"),
+        // A confirm against `False` — the asymmetry itself, and the one partner a boolean would admit, so
+        // the row fails the moment the two kinds are collapsed.
+        CheckFamily.BOOLEAN_COMPARISON_AGREEMENT to
+            ("MVK_INVALID_COMPARE_TO_YES" to "/Catalog/ConfirmAgainstFalse"),
         // A repeatable group read without a star into an error field the root holds: the target's own
         // coordinates cannot pick a repetition of `Crates`, and nothing about the operator is at fault —
         // which is what makes the row about the LEVEL rather than about the predicate reading it.

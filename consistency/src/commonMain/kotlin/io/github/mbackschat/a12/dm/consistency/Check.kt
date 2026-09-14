@@ -402,6 +402,14 @@ enum class CheckFamily {
     COMPARISON_OPERATOR_OPERANDS,
 
     /**
+     * What a confirm or boolean declaration may be compared to, and with which equality operator. One
+     * constant for the two classes because `CheckVergleichsBedingungImpl.checkYesAndYesNoOperations` is one
+     * method whose arms are the two kinds themselves, so the declaration decides the class and nothing else
+     * could.
+     */
+    BOOLEAN_COMPARISON_AGREEMENT,
+
+    /**
      * That every repetition an operand crosses unstarred is one the target's own coordinates address — or,
      * where it is not, that the two branches iterate JOINTLY on a shared index field. One constant for the
      * five classes of that walk because A12 asks them as one gate chain per level, and because which class
@@ -688,6 +696,7 @@ internal fun check(
         prepared.valueListQuantifierOperandKindFindings() +
         prepared.entityListArityFindings() +
         prepared.comparisonOperatorOperandFindings() +
+        prepared.booleanComparisonAgreementFindings() +
         prepared.operandRepetitionScopeFindings() +
         prepared.dateConstructionSlotFindings() +
         prepared.hModelPathSuffixFindings() +
@@ -743,7 +752,7 @@ internal fun check(
             CheckFamily.PARALLEL_ITERATION_UNIQUENESS, CheckFamily.FILTERED_ENTITY_ITERATION,
             CheckFamily.CALCULATION_OPERATOR_ARITY, CheckFamily.VALUE_IN_FIELDS_CONSTANT_KIND,
             CheckFamily.VALUE_LIST_QUANTIFIER_OPERAND_KIND, CheckFamily.ENTITY_LIST_ARITY,
-            CheckFamily.COMPARISON_OPERATOR_OPERANDS,
+            CheckFamily.COMPARISON_OPERATOR_OPERANDS, CheckFamily.BOOLEAN_COMPARISON_AGREEMENT,
             CheckFamily.OPERAND_REPETITION_SCOPE, CheckFamily.DATE_CONSTRUCTION_SLOT,
             CheckFamily.H_MODEL_PATH_SUFFIX, CheckFamily.FIELD_OPERAND_KIND,
             CheckFamily.FILTERED_OPERAND_KIND, CheckFamily.CATEGORY_REFERENCE,

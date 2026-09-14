@@ -166,7 +166,7 @@ The kernel measures string length in **UTF-16 code units** in every length-beari
 
 > Fold: folded → §1.
 
-The Boolean≠Confirm split is enforced at parse time with distinct codes: a Boolean compares only to `True`/`False` or another Boolean — anything else (e.g. a string) is **`MVK_INVALID_COMPARE_TO_YESNO`**; a Confirm compares only to `True` or another Confirm — `[Confirm] == False` and Boolean↔Confirm cross-comparisons are **`MVK_INVALID_COMPARE_TO_YES`**. "Not confirmed" is written `[Confirm] != True` (an unset confirm counts as not confirmed). *(Locked: `validate.laws.BooleanConfirmLawsTest`.)*
+The Boolean≠Confirm split is enforced at parse time with distinct codes: a Boolean compares only to `True`/`False` or another Boolean — anything else (e.g. a string) is **`MVK_INVALID_COMPARE_TO_YESNO`**; a Confirm compares only to `True` or — under `!=` alone, see [KF383](#kf383) — another Confirm; `[Confirm] == False` and Boolean↔Confirm cross-comparisons are **`MVK_INVALID_COMPARE_TO_YES`**. "Not confirmed" is written `[Confirm] != True` (an unset confirm counts as not confirmed). *(Locked: `validate.laws.BooleanConfirmLawsTest`.)*
 
 ## §1 supplement — Boolean three-state matrix (runtime, 2026-06-06) <a id="kf10"></a>
 
@@ -4993,7 +4993,7 @@ Five non-scalar forms are refused `MVK_INVALID_PARAMETER_FOR_DATE_RANGE_COMPARIS
 
 **The discriminator is a field compared with ITSELF**, which no rival account survives: `[Boolean] > [Boolean]` is refused and `[Boolean] == [Boolean]` is ADMITTED. Identical operands, identical kinds, identical carrier and order — the operator is the only variable and the verdict moves with it. Two rivals die on the rows above: *"ordering always reports the orderability class"* (a DATE ordered against a numeric literal does not), and *"the LEFT operand decides"* (an orderable NUMBER left of a CONFIRM still reports it, as does a bare literal on the left).
 
-**CONFIRM is the one kind whose self-equality is refused, for an unrelated reason: its comparand domain is the `True` constant ALONE.** It refuses every field on the right, including another CONFIRM — where BOOLEAN, which renders alike, admits one. So `MVK_INVALID_COMPARE_TO_YES` names a concept and not a token; `Yes` is not DSL text (`MVK_UNEXPECTED_TOKEN`). This was found by the self-comparison cell failing on one of six kinds, having been *predicted* rather than read — recorded because a mechanism-derived expectation is what the cell exists to catch.
+**CONFIRM is the one kind whose self-equality is refused, for an unrelated reason: its comparand domain is the `True` constant ALONE.** It refuses every field on the right, including another CONFIRM — where BOOLEAN, which renders alike, admits one. *(Corrected 2026-09-14: under EQUALITY. This grid holds the operator at `==`, and `!=` admits a confirm partner — [KF383](#kf383) separates the two axes.)* So `MVK_INVALID_COMPARE_TO_YES` names a concept and not a token; `Yes` is not DSL text (`MVK_UNEXPECTED_TOKEN`). This was found by the self-comparison cell failing on one of six kinds, having been *predicted* rather than read — recorded because a mechanism-derived expectation is what the cell exists to catch.
 
 **This resolves the `SPEC-2026-09-06-04` divergence, and neither estate was wrong.** a12-kernel-lean measured ordering with a numeric literal against equality with a String literal — two variables moving together — and read the split as the literal's family; we measured both literal families under equality alone and reported their code unreachable. Their retained ops (`882148ce…`) showed bracketed leaves, refuting the leaf-spelling hypothesis, and their own quarantined hypothesis — that the operator is the axis — is the one confirmed here. **They queued the discharging cell; it was free on our fixture and is answered above**, so the run is theirs to skip.
 
@@ -7142,6 +7142,27 @@ Reported by the portable checker, which did not emit `MVK_SORT_FIELD_DUPLICATE` 
 
 *Locked by:* `rulekit.validate.laws.GroupOrderingMultipleDefectLawsTest`, mirrored by `consistency … GroupOrderingMultipleDefectTest`.
 
+## §1 supplement — the two boolean KINDS answer with different classes, and the confirm arm narrows again under EQUALITY (source-verified + measured, 2026-09-14) <a id="kf383"></a>
+
+> Fold: not-foldable — a diagnostic-class law about comparison operands, not an evaluation behaviour.
+
+`CheckVergleichsBedingungImpl.checkYesAndYesNoOperations` runs after the operator gates of [KF382](#kf382) and asks a different question: whether a side that is one of A12's two boolean kinds has a partner it can mean anything against. Locked: `rulekit.validate.laws.BooleanComparisonAgreementLawsTest` (27 rows), mirrored by `consistency.BooleanComparisonAgreementTest`.
+
+| the declaration | what it stands against | otherwise |
+|---|---|---|
+| `ConfirmType` | `True`; another confirm under `!=` ALONE | `MVK_INVALID_COMPARE_TO_YES` |
+| `BooleanType` | `True`, `False`, another boolean, under either operator | `MVK_INVALID_COMPARE_TO_YESNO` |
+
+**The EQUALITY OPERATOR is a second axis inside the confirm arm, and [KF270](#kf270) held it fixed.** That entry measured the confirm arm under `==` alone and read it as refusing every field on the right; `[TermsAccepted] != [NewsletterOptIn]` is ADMITTED, and so is a confirm against itself under `!=`. The source says why — `isTypeAYes(rt1) && isTypeAYes(rt2) && eq.ne == null` is its own throw, separate from the comparability test — and two controls separate the readings the rows could otherwise carry: `!=` does **not** lift the arm (a confirm against a boolean, a text constant or `False` is refused under `!=` exactly as under `==`), and two DISTINCT confirms under `==` are refused like the self-comparison, so the pairing is what `==` refuses rather than the identity.
+
+**The confirm arm is asked FIRST**, so a confirm compared with a boolean is `MVK_INVALID_COMPARE_TO_YES` and not the boolean class — measured, because the two predicates alone read just as naturally in the other order.
+
+**The class is invariant under operand order and under the partner's kind.** Both spellings of every refused pair were measured, and the partner was varied across text, number, date and enumeration declarations as well as text constants and `Today`: the declaration's own kind picks the class and nothing about the partner moves it.
+
+**The operator gates answer ahead of this walk on every spelling a measurement reaches** — a confirm under `<` is `MVK_INVALID_TYPE_FOR_COMPARISON`, two written-out constants are `MVK_INVALID_COMPARE_TO_CONST` — so the reachable population of these two classes is equality alone.
+
+**The two VALUE-equality branches of the same method are unreachable through a consistency check**, for the mechanism [KF379](#kf379) records: A12's model conversion substitutes the literals `true`/`false` for whatever either declaration spelled, so two declarations never disagree about their representation and the mismatch branches are never taken.
+
 ## §1 supplement — a comparison's first three questions are about its OPERATOR, and are answered before any type agreement (source-verified + measured, 2026-09-14) <a id="kf382"></a>
 
 > Fold: not-foldable — a diagnostic-class law about comparison operands, not an evaluation behaviour.
@@ -7161,6 +7182,8 @@ Reported by the portable checker, which did not emit `MVK_SORT_FIELD_DUPLICATE` 
 **Ordering admits dates and nothing else beyond numbers.** Two text fields under `<` are refused; the same two under `==` are admitted, which is the control that attributes the refusal to the operator rather than to the declarations.
 
 **A field reference inside a comparison must be BRACKETED** — `[Quantity] == 1`, not `Quantity == 1`, which is `MVK_UNEXPECTED_TOKEN`. The same trap as an operation's operands, and it silently turns a type measurement into a grammar one.
+
+**Extended 2026-09-14: `True` and `False` are written-out values to all three gates, like any literal.** The original grid used number and string literals only, which left the one constant family an author actually writes beside a boolean field unmeasured. `True == False` and `True == 1` are `MVK_INVALID_COMPARE_TO_CONST`; `[Quantity] > True` is `MVK_INVALID_TYPE_FOR_COMPARISON`; `[Quantity] DiffersWithToleranceRange1 True` is `MVK_INVALID_TYPE_FOR_TOLERANCE_OP`. A12 spells these two as bare NAMES rather than as literals, so a reader that recognised only literals left them outside every gate. Under `==` the same pairing clears all three and reaches the type-agreement walk instead, as `MVK_INCONSISTENT_TYPES_COMPARED`.
 
 ## §9 supplement — six arity gates, one per operator, and two classes that differ only in an underscore (source-verified + measured, 2026-09-14) <a id="kf381"></a>
 

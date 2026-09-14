@@ -114,6 +114,17 @@ class BuilderCheckerDivergenceGuardTest {
             Map.entry("MVK_INVALID_COMPARE_TO_CONST", Disposition.PROSE_ONLY),
             Map.entry("MVK_INVALID_TYPE_FOR_COMPARISON", Disposition.PROSE_ONLY),
 
+            // Both estates enforce A12's boolean-kind law, on carriers that cannot share a reader:
+            // `Computation` refuses `False` into a CONFIRM computed field and the wrong constant into a
+            // BOOLEAN one, each measured (`ConfirmComputationSourceKindLawsTest`), while
+            // `BooleanComparisonAgreement` reads the COMPARISON carrier out of stored DM-JSON. The kit's
+            // comparison side is a type-level erasure rather than a refusal — `ConfirmRef` offers only
+            // `confirmed`/`notConfirmed` — and the checker deliberately does NOT inherit it: A12 admits two
+            // confirms under `!=`, which the erasure cannot author, so a checker mirroring the handle's
+            // shape would refuse a model A12 accepts.
+            Map.entry("MVK_INVALID_COMPARE_TO_YES", Disposition.SAME_LAW_SEPARATE_CARRIERS),
+            Map.entry("MVK_INVALID_COMPARE_TO_YESNO", Disposition.SAME_LAW_SEPARATE_CARRIERS),
+
             // Both enforce A12's group-count law over carriers that cannot share a reader: `CountAggregate`
             // refuses the count from its own typed operands, `EntityListArity` from stored paths and the
             // declared kind each resolves to. Neither refuses what A12 admits.

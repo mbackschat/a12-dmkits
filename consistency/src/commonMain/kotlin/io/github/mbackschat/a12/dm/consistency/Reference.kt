@@ -1,5 +1,9 @@
 package io.github.mbackschat.a12.dm.consistency
 
+import io.github.mbackschat.a12.dm.consistency.syntax.Token
+import io.github.mbackschat.a12.dm.consistency.syntax.TokenKind
+import io.github.mbackschat.a12.dm.consistency.syntax.referencesIn
+import io.github.mbackschat.a12.dm.consistency.syntax.tokenize
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.contentOrNull
@@ -292,3 +296,60 @@ private val BASE_TYPE_OF = mapOf(
  * rather than guessing at it.
  */
 internal fun DeclaredElement.baseTypeClass(): BaseTypeClass? = BASE_TYPE_OF[declaredFieldType()]
+
+/** The token kinds one entity spec may be made of; anything else makes the text an expression. */
+private val REFERENCE_TOKENS = setOf(TokenKind.NAME, TokenKind.QUOTED_NAME, TokenKind.PUNCTUATION)
+
+/** The punctuation an entity spec may carry: its brackets, its path steps, and a repetition star. */
+private val SPEC_PUNCTUATION = setOf("[", "]", "/", "*", ".")
+
+/**
+ * The field declaration [text] names on its own, or null wherever this reader will not say.
+ *
+ * Null is the common answer and the safe one, and it covers three different reasons to stay quiet. **A text
+ * that is not ONE entity spec** — arithmetic, a nested call, an aggregate — carries a result type A12
+ * computes from the whole expression, so typing it from its most visible operand would be a claim with
+ * nothing behind it; the test is that every token belongs to a spec, because reducing by "it names exactly
+ * one entity" instead types `{[Qty] + 1}` from the `Qty` in it. **A name that does not resolve** belongs to
+ * the reference family. And **a repetition the reference crosses that neither its own star nor the declaring
+ * group's iteration addresses** is `MVK_NO_WILDCARD` or `MVK_WILDCARDS_REQUIRED` from the reference reader
+ * before any later gate is asked — a family typing such a side would name its own class on a model A12
+ * refuses for something else, which is the defect corpus mutation found in the arity gates
+ * ([KERNEL-FINDINGS KF381]).
+ */
+internal fun PreparedModel.bareReferenceField(
+    text: String,
+    declaringGroup: String,
+    element: DeclaredElement,
+): DeclaredElement? {
+    val tokens = tokenize(text)
+    val outsideASpec = tokens.any {
+        it.kind !in REFERENCE_TOKENS || (it.kind == TokenKind.PUNCTUATION && it.text !in SPEC_PUNCTUATION)
+    }
+    if (tokens.isEmpty() || outsideASpec) {
+        return null
+    }
+    val reference = referencesIn(text, conditionLanguage).singleOrNull() ?: return null
+    val target = (resolveEntity(declaringGroup, reference.replace("*", ""), element.origin)
+        as? Reference.Resolved)?.path ?: return null
+    val starred = starredLevelsOf(reference, declaringGroup, element) ?: return null
+    val unaddressed = iteratedLevels(target).any {
+        it !in starred && !(declaringGroup == it || declaringGroup.startsWith("$it/"))
+    }
+    if (unaddressed) {
+        return null
+    }
+    return elements.firstOrNull { it.path == target && it.declaredKind == DeclaredKind.FIELD }
+}
+
+/**
+ * Whether [tokens] spell one written-out number.
+ *
+ * A decimal arrives as three tokens because the tokenizer's number terminal is a digit RUN, and a negative
+ * one carries a leading sign, so a single-token test alone would leave `-1.5` unread.
+ */
+internal fun isNumberLiteral(tokens: List<Token>): Boolean {
+    val digits = tokens.filter { it.kind == TokenKind.NUMBER }
+    val separators = tokens.filterNot { it.kind == TokenKind.NUMBER }
+    return digits.isNotEmpty() && tokens.size <= 3 && separators.all { it.text == "." || it.text == "-" }
+}

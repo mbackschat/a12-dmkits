@@ -2,7 +2,6 @@ package io.github.mbackschat.a12.dm.consistency
 
 import io.github.mbackschat.a12.dm.consistency.syntax.CONDITION_OPERATOR_KEYWORDS
 import io.github.mbackschat.a12.dm.consistency.syntax.ConditionCall
-import io.github.mbackschat.a12.dm.consistency.syntax.Token
 import io.github.mbackschat.a12.dm.consistency.syntax.TokenKind
 import io.github.mbackschat.a12.dm.consistency.syntax.callsIn
 import io.github.mbackschat.a12.dm.consistency.syntax.referencesIn
@@ -186,26 +185,13 @@ private fun armOf(constantText: String, spellings: ConstantSpellings): ConstantA
     val tokens = tokenize(constantText)
     val single = tokens.singleOrNull()
     return when {
-        single == null -> numericArm(tokens)
+        single == null -> if (isNumberLiteral(tokens)) ConstantArm.NUMBER else null
         single.text == spellings.yes -> ConstantArm.YES
         single.text == spellings.no -> ConstantArm.YES_NO
         single.kind == TokenKind.STRING -> ConstantArm.TEXT
         single.kind == TokenKind.NUMBER -> ConstantArm.NUMBER
         else -> null
     }
-}
-
-/**
- * The NUMBER arm for a constant the tokenizer hands over in several pieces, or null.
- *
- * A decimal arrives as three tokens because the tokenizer's number terminal is a digit RUN, and a negative
- * one carries a leading sign, so a single-token test alone would leave `-1.5` unjudged.
- */
-private fun numericArm(tokens: List<Token>): ConstantArm? {
-    val digits = tokens.filter { it.kind == TokenKind.NUMBER }
-    val punctuation = tokens.filterNot { it.kind == TokenKind.NUMBER }
-    val decimal = punctuation.all { it.text == "." || it.text == "-" }
-    return if (digits.isNotEmpty() && decimal && tokens.size <= 3) ConstantArm.NUMBER else null
 }
 
 /** The string constant this text is, or null when it is anything else. */

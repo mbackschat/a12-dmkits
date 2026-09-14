@@ -61,6 +61,35 @@ class ComparisonOperatorOperandLawsTest {
         assertEquals(expected, actual, "the gate that refuses two constants");
     }
 
+    /**
+     * The two BOOLEAN constants are written-out values to these three gates as much as a number is.
+     *
+     * <p>The grid above uses only number and string literals, which leaves {@code True} and {@code False}
+     * — the two constants A12 spells as bare names rather than as literals — on the wrong side of a
+     * distinction nothing here had measured.
+     */
+    @Test
+    void theBooleanConstantsAreWrittenOutValuesToo() {
+        Map<String, String> actual = new LinkedHashMap<>();
+        actual.put("two boolean constants", verdict("True == False"));
+        actual.put("a boolean constant against a number constant", verdict("True == 1"));
+        actual.put("a number field ordered against a boolean constant", verdict("[Quantity] > True"));
+        actual.put("a number field within tolerance of a boolean constant",
+                verdict("[Quantity] DiffersWithToleranceRange1 True"));
+        actual.put("a number field equal to a boolean constant", verdict("[Quantity] == True"));
+
+        Map<String, String> expected = new LinkedHashMap<>();
+        expected.put("two boolean constants", "MVK_INVALID_COMPARE_TO_CONST");
+        expected.put("a boolean constant against a number constant", "MVK_INVALID_COMPARE_TO_CONST");
+        expected.put("a number field ordered against a boolean constant", "MVK_INVALID_TYPE_FOR_COMPARISON");
+        expected.put("a number field within tolerance of a boolean constant",
+                "MVK_INVALID_TYPE_FOR_TOLERANCE_OP");
+        // Equality clears all three gates and reaches the type-agreement walk, whose class is the one
+        // partition of `CheckVergleichsBedingungImpl` this family does not own.
+        expected.put("a number field equal to a boolean constant", "MVK_INCONSISTENT_TYPES_COMPARED");
+        assertEquals(expected, actual, "the boolean constants are written-out values too");
+    }
+
     /** A tolerance operator wants numbers on both sides and returns the moment it has them. */
     @Test
     void whatAToleranceOperatorDemands() {
