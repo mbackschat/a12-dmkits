@@ -33,9 +33,12 @@ import kotlin.io.path.readText
  * **The population is mutants A12 rejects WITH a keyed class.** A12 answers some invalid models by refusing
  * to build them at all, reporting no class — the comparison is undefined there, so those are excluded rather
  * than counted as agreement. The mutations are chosen to reach the CONDITION gates, because damaging a
- * declaration mostly makes a model unbuildable and lands in that excluded tier.
+ * declaration mostly makes a model unbuildable and lands in that excluded tier — measured, not assumed: a
+ * kind that removes a group's repetitions drew a keyed class from A12 **zero** times over the whole
+ * estate and was dropped, which is what the per-kind assertion exists to catch. 32 mutants compare as
+ * of 2026-09-14, 22 from the repoint and 10 from the unstar.
  *
- * **A12 masking one class behind another is not automatically a defect, which is why [MASKED] exists.** A12
+ * **A12 masking one class behind another is not automatically a defect, which is why [masked] exists.** A12
  * stops at the first gate that answers; the checker accumulates. A class the checker reports and A12 does not
  * may be a true second defect A12 has not reached — or a wrong class. Only measurement separates them, so a
  * new pair fails this test and is dispositioned by hand rather than allowed through.
@@ -58,6 +61,7 @@ class CheckerClassAgreementTest {
     fun everyClassTheCheckerNamesOnARejectedModelIsOneTheKernelNames() {
         var compared = 0
         var noKeyedClass = 0
+        val perKind = MUTATIONS.associate { it.label to 0 }.toMutableMap()
         val disagreements = mutableListOf<String>()
         for (model in committedModels()) {
             val text = model.readText()
@@ -69,6 +73,7 @@ class CheckerClassAgreementTest {
                     continue
                 }
                 compared++
+                perKind[mutation.label] = perKind.getValue(mutation.label) + 1
                 val ours = check(ModelSource(mutated, diagnosticLabel = model.name)).findings
                     .filter { it.justifiesRejection && it.category == FindingCategory.A12_CONSTRAINT }
                     .map { it.code }.toSet()
@@ -83,6 +88,11 @@ class CheckerClassAgreementTest {
             compared >= floor,
             "only $compared mutants drew a keyed class from A12 (floor $floor; $noKeyedClass were refused " +
                 "without one), so a green here would be an empty comparison rather than an agreeing one",
+        )
+        assertEquals(
+            emptyList<String>(), perKind.filterValues { it == 0 }.keys.toList(),
+            "a mutation kind drew no keyed class from A12, so it compares nothing and contributes only " +
+                "runtime — fix the mutation rather than leaving it in: $perKind",
         )
         assertEquals(
             emptyList<String>(), disagreements,
@@ -153,12 +163,25 @@ class CheckerClassAgreementTest {
                     .put("errorEntityRelPath", "../MutantTarget")
                 true
             },
-            // Take the repetitions away from a group the conditions read. What was a legal per-row read
-            // becomes a flat one and several iteration gates change their answer — a shape no author writes.
-            Mutation("unrepeat-a-group") { root ->
-                val group = groupBodies(root).firstOrNull { it["repeatability"]?.isInt == true }
-                    ?: return@Mutation false
-                group.remove("repeatability")
+            // Remove one star from a rule's condition. A legal aggregate read becomes an iterating per-row
+            // read, which is precisely the gate KF350 turned on — so this is the mutation aimed at the class
+            // of defect this test exists for, rather than at models in general.
+            Mutation("unstar-a-condition") { root ->
+                val group = groupBodies(root).firstOrNull { body ->
+                    (body["elements"] as? ArrayNode)?.any { element ->
+                        element["type"]?.asText() == "Rule" &&
+                            (element["Rule"] as? ObjectNode)?.get("errorCondition")?.asText()
+                                ?.contains('*') == true
+                    } == true
+                } ?: return@Mutation false
+                val elements = group["elements"] as ArrayNode
+                val at = (0 until elements.size()).first { position ->
+                    elements[position]["type"]?.asText() == "Rule" &&
+                        (elements[position]["Rule"] as? ObjectNode)?.get("errorCondition")?.asText()
+                            ?.contains('*') == true
+                }
+                val rule = elements[at]["Rule"] as ObjectNode
+                rule.put("errorCondition", rule["errorCondition"].asText().replaceFirst("*", ""))
                 true
             },
         )
