@@ -7138,6 +7138,29 @@ Reported by the portable checker, which did not emit `MVK_SORT_FIELD_DUPLICATE` 
 
 *Locked by:* `rulekit.validate.laws.GroupOrderingMultipleDefectLawsTest`, mirrored by `consistency … GroupOrderingMultipleDefectTest`.
 
+## §9 supplement — the four whole-RULE gates over a PARALLEL iteration, and the type half nobody had varied (measured, 2026-09-14) <a id="kf353"></a>
+
+> Fold: not-foldable — a diagnostic-class selection law, not an evaluation behaviour.
+
+**Two index-keyed repeatable groups iterate jointly with no construct to say so, and A12 then runs four whole-rule gates over the finished parse tree in a fixed order** (`ParserService.checkNormalRule`). Three of their classes had no measurement anywhere in this estate.
+
+| the condition | A12 |
+|---|---|
+| a parallel iteration alone (`FieldsNotCollectivelyFilled` over both groups) | ADMITTED |
+| a pure NEGATIVE over both groups | `MVK_PARALLEL_ITERATION_INVALID` ([KF123](#kf123)) |
+| `RepetitionNotUnique` beside a cross-group read | `MVK_PARALLEL_ITERATION_NOT_ALLOWED` |
+| both at once | `MVK_PARALLEL_ITERATION_NOT_ALLOWED` — the uniqueness gate runs first |
+| a `Having` filter on an operand whose OUTER level is parallel-iterated | `MVK_PARALLEL_ITERATION_FOR_FILTERED_ENTITY_NOT_ALLOWED` |
+| a filter whose own BODY reads the parallel group | `MVK_INVALID_ITERATION_IN_FILTER_CONDITION` |
+
+**The filtered-entity class needs a repetition INSIDE a parallel-iterated group, which is why it had never been drawn here.** A star puts a WILDCARD at its own level, so the parallel-iterated level has to be an outer one — a flat two-group fixture cannot express it, and an unstarred filter operand is refused by the aggregate's own arity gate (`MVK_WILDCARDS_REQUIRED`) long before any parallel-iteration gate is reached. Both of those were measured on the way.
+
+**`MVK_PARALLEL_ITERATION_NOT_ALLOWED`'s second firing site is not reached by a filter that parallel-iterates**, because a filter body may not ITERATE at all and that broader class answers first. One shape is not an unreachability proof and none is claimed.
+
+**The load-bearing correction: the index fields' TYPE is not a detail of the joint iteration, it selects a different class.** Every row above and every earlier row in this estate pairs two STRING keys, so "same name" and "same name and type" were one thing across the whole set. With the two `LineRef` fields declared STRING and NUMBER, the same condition draws **`MVK_ERROR_FIELD_INVALID_INDEX_TYPE`** — ahead of the uniqueness gate, not instead of the iteration. A client-side check keying on the index field's NAME alone would therefore name the parallel class where A12 names this one: a wrong class on a correct rejection, which is what any family reading this area has to avoid.
+
+Locked: `validate.laws.ParallelIterationGateLawsTest`. **No portable-checker family yet**: deciding that a condition parallel-iterates needs the index-field NAME and TYPE of two repeatable groups compared against each other, which no family here carries — and the type row above says what it would get wrong without it.
+
 ## §9 supplement — one `RepetitionNotUnique` per condition, counted as CALLS over the whole tree (measured, 2026-09-14) <a id="kf352"></a>
 
 > Fold: not-foldable — a diagnostic-class selection law, not an evaluation behaviour.
