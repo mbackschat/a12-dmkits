@@ -123,6 +123,31 @@ class OperatorIndexGuardTest {
                 + "whole-span equality passes every test while thinning the real page by five rows");
     }
 
+    /**
+     * Does-fire proof for the heading rule: a code span in the HEADING reaches the index.
+     *
+     * <p>It did not until 2026-09-14, because the entry's text began after the heading — measured at 21
+     * (operator, entry) pairs lost across KERNEL-FINDINGS, {@code Having} losing six on its own. Locked on
+     * fabricated markdown rather than on the real docs, so editing a record's body cannot make it pass for
+     * the wrong reason.
+     */
+    @Test
+    void aHeadingMentionReachesTheIndex() {
+        OperatorIndex parsed = new OperatorIndex(OperatorIndex.findingsEntries("""
+                ## §9 supplement — what `Having` filters (measured) <a id="kf1"></a>
+
+                The filter reads the current row rather than the list.
+
+                ## §9 supplement — an unrelated record <a id="kf2"></a>
+
+                Nothing here names an operator.
+                """));
+
+        assertEquals(List.of("kf1"),
+                parsed.mentioning("Having").stream().map(OperatorIndex.Entry::address).toList(),
+                "a heading is part of the entry a reader lands on, so an operator named in one is a citation");
+    }
+
     private static Path docs() {
         return Files.isDirectory(Path.of("../docs")) ? Path.of("../docs") : Path.of("docs");
     }

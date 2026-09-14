@@ -25,8 +25,15 @@ import com.fasterxml.jackson.databind.ObjectMapper;
  */
 record OperatorIndex(List<OperatorIndex.Entry> entries) {
 
-    /** One addressable entry in a kernel doc: a KERNEL-FINDINGS record, or a KERNEL-SEMANTICS section. */
-    record Entry(String doc, String address, String label, String body) {}
+    /**
+     * One addressable entry in a kernel doc: a KERNEL-FINDINGS record, or a KERNEL-SEMANTICS section.
+     *
+     * <p>{@code text} is the WHOLE entry, its heading included. Matching used to start after the heading, and
+     * that silently cost 21 (operator, entry) pairs on 2026-09-14 — {@code Having} alone lost six records
+     * whose heading names it and whose body writes only the construct behind it. A heading is part of the
+     * entry a reader lands on, so a code span in it is a citation like any other.
+     */
+    record Entry(String doc, String address, String label, String text) {}
 
     private static final ObjectMapper MAPPER = new ObjectMapper();
 
@@ -90,7 +97,7 @@ record OperatorIndex(List<OperatorIndex.Entry> entries) {
 
     /** The entries that name {@code operator} inside a code span, in document order. */
     List<Entry> mentioning(String operator) {
-        return entries.stream().filter(entry -> namesInCode(entry.body(), operator)).toList();
+        return entries.stream().filter(entry -> namesInCode(entry.text(), operator)).toList();
     }
 
     private static boolean namesInCode(String markdown, String operator) {
@@ -106,7 +113,8 @@ record OperatorIndex(List<OperatorIndex.Entry> entries) {
         return false;
     }
 
-    private static List<Entry> findingsEntries(String markdown) {
+    /** Package-private so the heading rule can be locked on fabricated markdown rather than on the real docs. */
+    static List<Entry> findingsEntries(String markdown) {
         List<Entry> entries = new ArrayList<>();
         Matcher heading = KF_HEADING.matcher(markdown);
         List<int[]> spans = new ArrayList<>();
@@ -123,7 +131,7 @@ record OperatorIndex(List<OperatorIndex.Entry> entries) {
             }
             int end = i + 1 < spans.size() ? spans.get(i + 1)[0] : markdown.length();
             entries.add(new Entry("KERNEL-FINDINGS.md", anchor.group(1), label(title),
-                    markdown.substring(spans.get(i)[1], end)));
+                    markdown.substring(spans.get(i)[0], end)));
         }
         return entries;
     }
@@ -142,7 +150,7 @@ record OperatorIndex(List<OperatorIndex.Entry> entries) {
         for (int i = 0; i < spans.size(); i++) {
             int end = i + 1 < spans.size() ? spans.get(i + 1)[0] : markdown.length();
             entries.add(new Entry("KERNEL-SEMANTICS.md", slug(numbers.get(i) + ". " + titles.get(i)),
-                    "§" + numbers.get(i), markdown.substring(spans.get(i)[1], end)));
+                    "§" + numbers.get(i), markdown.substring(spans.get(i)[0], end)));
         }
         return entries;
     }
@@ -192,7 +200,8 @@ record OperatorIndex(List<OperatorIndex.Entry> entries) {
                 **Why it exists.** The retrieval manual's first step is a grep over headings, and it does not work
                 for operators here: the headings in these docs are written as *claims*, not *subjects*, so most
                 operators appear only in bodies. An entry is listed below when it names the operator **inside a code
-                span**, which is how this estate writes an operator name — prose that happens to contain the English
+                span**, anywhere in the entry INCLUDING its heading, which is how this estate writes an operator
+                name — prose that happens to contain the English
                 words "sum" or "true" is not a citation and is not indexed. An operator these docs write only as a
                 symbol (`>=`, `<=`) is listed as unindexed below rather than matched, because a symbol cannot be
                 told apart from ordinary comparison syntax. One further shape escapes indexing: where a family is
