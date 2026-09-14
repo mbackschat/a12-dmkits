@@ -7138,6 +7138,28 @@ Reported by the portable checker, which did not emit `MVK_SORT_FIELD_DUPLICATE` 
 
 *Locked by:* `rulekit.validate.laws.GroupOrderingMultipleDefectLawsTest`, mirrored by `consistency … GroupOrderingMultipleDefectTest`.
 
+## §13 supplement — none of the four YES/NO declaration laws is reachable from a stored A12 model (measured, 2026-09-14) <a id="kf362"></a>
+
+> Fold: not-foldable — a reachability result.
+
+**[MVK-LEDGER] carries four yes/no laws as `n/a-structural`** — the yes and no representations must each be declared, must differ, and must form a sanctioned pair. A12's DM-JSON `BooleanType` carries them as `notInDCustomTrueValue` / `notInDCustomFalseValue`. Locked by `rulekit.validate.laws.BooleanCustomValueLawsTest`.
+
+| the `BooleanType` body | A12 |
+|---|---|
+| neither custom value — the control | ADMITTED |
+| both, and distinct | ADMITTED |
+| both, and IDENTICAL | ADMITTED |
+| only the TRUE value | ADMITTED |
+| only the FALSE value | ADMITTED |
+| both, and BLANK | ADMITTED |
+| the same patch with an unknown `fieldType.type` — the POSITIVE CONTROL | UNREADABLE |
+
+**Every row is admitted, which is why the control is the load-bearing one.** A patch that silently failed to land produces exactly this table, so the grid says nothing without a row proving the mechanism reaches A12. It does, and one tier earlier than a build failure: an unknown type name is refused by the deserializer.
+
+**The mechanism, consistent with the rows.** `TypeConverter.convertBoolean` reads each member through `orElse("true")` / `orElse("false")`, so an absent one is indistinguishable from the default downstream and "missing" never reaches a check. The pair laws do not fire on a stored model either. *(Why the pair laws are silent is a HYPOTHESIS — presumably the `considerNotInD` gate — and nothing rests on it: the rows are the finding.)*
+
+**Two collateral facts worth carrying.** A hand-written model is NOT a substitute for a draft here: the header has laws of its own (`MVK_MAX_DIGITS_MISSING`, `MVK_PROGRAMMING_LANGUAGE_MISSING`), so every row of a hand-written grid reads NOT BUILDABLE for unrelated reasons — measured, on the first attempt. And modelkit's `BooleanSpec` is an empty record, so neither member is authorable through the typed surface at all.
+
 ## §13 supplement — a sort list needs a REPEATABLE carrier, and the four PRIORITY laws beside it cannot be expressed in DM-JSON (measured, 2026-09-14) <a id="kf361"></a>
 
 > Fold: not-foldable — a declaration-admission law plus a reachability result.

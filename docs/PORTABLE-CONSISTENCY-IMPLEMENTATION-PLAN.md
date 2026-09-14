@@ -759,6 +759,16 @@ One cold adversarial review over the frozen range, as [§2](#2-execution-order-a
 
 **The method correction to carry forward: rank by evidence, then READ the ledger row before predicting anything.** The row carries a disposition the count cannot, exactly as the earlier record found that the laws-file ranking measures where containment assertions live rather than where knowledge is missing. Both are the same mistake — trusting a derived score over the prose that owns the fact.
 
+### C record — the second declaration block measured, and it yields NO family at all (2026-09-14)
+
+**Four yes/no laws, four unreachable.** A `BooleanType` carrying an identical true/false pair, only one of them, or two blanks is ADMITTED in every combination ([KF362](KERNEL-FINDINGS.md#kf362)): `TypeConverter.convertBoolean` defaults each member, so "missing" never reaches a check, and the pair laws do not fire on a stored model either. Eight ledger rows are now re-dispositioned across the two blocks — four here, four in the sort block — against two families.
+
+**That ratio is the seam's real shape and is worth stating plainly, because it changes how to spend on it.** The `n/a-structural` bucket's rows come from A12's own metamodel document models, which validate a model-under-edit; a stored DM-JSON model reaches only some of them. So the enumeration's output is roughly one family per BLOCK and a majority of closed-forever rows — still worth working, and not at the rate the raw count of 69 suggests.
+
+**The grid needed a POSITIVE CONTROL to mean anything, and it nearly shipped without one.** Every row was ADMITTED, which is exactly what a patch that failed to land would produce. The control — the same patch with an unknown `fieldType.type` — came back UNREADABLE, proving the bytes reach A12's deserializer. Two rounds were also lost to a hand-written model whose header omitted members that are themselves laws, so every row read NOT BUILDABLE for unrelated reasons; the fixtures build through `DocumentModelDraft` for that reason and a grid that patches one should start from a built model.
+
+**One incidental defect, recorded rather than fixed here.** Modelkit's `BooleanSpec` and `ConfirmSpec` are empty records and the reader drops A12's custom true/false members, so a read→modify→write silently rewrites a declared encoding — the same class the Enumeration S-value work closed once already. It blocks nothing in this plan, since the codes are unreachable, so it is a `DEV-API-GAPS` row with the established fix pattern named rather than an interruption to the loop.
+
 ### C record — the thirteenth family, and the first block of the declaration seam, measured (2026-09-14)
 
 **A group that cannot repeat cannot be sorted, and A12 says so with `MVK_INVALID_SORTINFO`.** The family is one predicate and rides the existing ordering file, because it is the same member read for a third claim — `GROUP_ORDERING_REFERENCES` resolves the entries, `GROUP_ORDERING_FIELD_TYPE` judges what they landed on, and this judges the CARRIER. Its own constant for the usual reason: a report merging them would let a group that cannot be sorted read as a group whose sort fields are wrong.
