@@ -203,6 +203,10 @@ class CheckFamilyWiringTest {
               "errorCondition":"FieldFilled(Price) And [Price] < [Reference]",
               "errorEntityRelPath":"../Price",
               "errorCode":"C47","errorMessage":[{"locale":"en_US","text":"x"}]}},
+            {"type":"Rule","id":"r56","name":"CodeValidityOnANumber","Rule":{
+              "errorCondition":"FieldFilled(Price) And Valid(UnitCount, \"EMail\")",
+              "errorEntityRelPath":"../Price",
+              "errorCode":"C56","errorMessage":[{"locale":"en_US","text":"x"}]}},
             {"type":"Rule","id":"r55","name":"RangesAgainstAText","Rule":{
               "errorCondition":"FieldFilled(Price) And DateRangesOverlap(Window, Reference)",
               "errorEntityRelPath":"../Price",
@@ -520,6 +524,10 @@ class CheckFamilyWiringTest {
         // row pins: the agreement walk cannot reach a list this one already refuses.
         CheckFamily.DATE_RANGE_OPERAND_LIST to
             ("MVK_NO_DATE_RANGE" to "/Catalog/RangesAgainstAText"),
+        // A number under the predefined-type arm — the kind gate, whose admitted set is narrower than the
+        // code's name, so the row fails if a custom or extensible reading is ever folded into it.
+        CheckFamily.VALIDITY_CONDITION_OPERANDS to
+            ("MVK_NO_STRING_OR_ENUM_OR_EXT_ENUM" to "/Catalog/CodeValidityOnANumber"),
         // Two text declarations under an ordering operator — the one comparison in this fixture whose
         // operator demands more of its sides than they are.
         CheckFamily.COMPARISON_OPERATOR_OPERANDS to

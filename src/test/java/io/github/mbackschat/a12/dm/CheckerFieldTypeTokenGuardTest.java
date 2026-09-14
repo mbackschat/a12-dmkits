@@ -40,7 +40,10 @@ import org.junit.jupiter.api.Test;
  * adds a field type widens this guard by editing the checker rather than this test. The scanned side is every
  * checker source outside the {@code syntax} package — excluded because its subject is the CONDITION
  * vocabulary, where {@code ValidType} and {@code InvalidType} are operator ids and name no declaration at
- * all; no file there mentions a field-type discriminator (verified by this test).
+ * all; no file there mentions a field-type discriminator (verified by this test). A family OUTSIDE that
+ * package may legitimately name such an id too — one carries {@code "ValidType"} to look its keyword up —
+ * so the operator ids themselves are subtracted, read from the vocabulary's own table rather than listed
+ * here, and a positive control keeps that subtraction from quietly emptying the scan.
  *
  * <p><b>What it proves, and what it does not.</b> It proves that a token a family matches on CAN match a
  * stored model — never that matching it is the right law. A discriminator listed in the wrong set passes
@@ -61,14 +64,21 @@ class CheckerFieldTypeTokenGuardTest {
 
     private static final Pattern DECLARED_ENTRY = Pattern.compile("\"([A-Za-z]+)\" to ");
 
+    /** The condition vocabulary's own table, the only authority on which capitalized names are operator ids. */
+    private static final Path VOCABULARY = CHECKER.resolve(SYNTAX_PACKAGE).resolve("ConditionKeywords.kt");
+
+    /** An {@code "Id" to "Keyword"} entry of that table; the left-hand side is the catalog operator id. */
+    private static final Pattern OPERATOR_ID = Pattern.compile("\"([A-Z][A-Za-z]*)\" to \"");
+
     @Test
     void everyFieldTypeTokenTheCheckerMatchesIsOneA12Stores() {
         Set<String> declared = declaredFieldTypes();
+        Set<String> operatorIds = operatorIds();
         Map<String, Set<String>> undeclared = new TreeMap<>();
         for (Path source : checkerSources()) {
             Matcher m = TYPE_LITERAL.matcher(read(source));
             while (m.find()) {
-                if (!declared.contains(m.group(1))) {
+                if (!declared.contains(m.group(1)) && !operatorIds.contains(m.group(1))) {
                     undeclared.computeIfAbsent(CHECKER.relativize(source).toString(), k -> new TreeSet<>())
                             .add(m.group(1));
                 }
@@ -95,6 +105,11 @@ class CheckerFieldTypeTokenGuardTest {
                 .count();
         assertTrue(literals > 50, "the scan found only " + literals + " type literals, so it is not reading "
                 + "the checker's type sets any more");
+        Set<String> operatorIds = operatorIds();
+        assertTrue(operatorIds.size() > 50 && operatorIds.contains("ValidType")
+                        && !operatorIds.contains("StringType"),
+                "the operator-id subtraction no longer reads the vocabulary table, so it either hides every "
+                        + "dead token or none: " + operatorIds.size() + " ids parsed");
     }
 
     /**
@@ -129,6 +144,16 @@ class CheckerFieldTypeTokenGuardTest {
             declared.add(m.group(1));
         }
         return declared;
+    }
+
+    /** Every catalog operator id the condition vocabulary spells, whatever language column it appears in. */
+    private static Set<String> operatorIds() {
+        Set<String> ids = new TreeSet<>();
+        Matcher m = OPERATOR_ID.matcher(read(VOCABULARY));
+        while (m.find()) {
+            ids.add(m.group(1));
+        }
+        return ids;
     }
 
     private static List<Path> checkerSources() {

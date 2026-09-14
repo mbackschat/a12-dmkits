@@ -554,6 +554,14 @@ enum class CheckFamily {
     DATE_RANGE_OPERAND_LIST,
 
     /**
+     * That each of the two validity conditions holds what it takes — a text or enumeration field with a
+     * non-empty predefined-type name, or a date construction naming at least one entity. Its own constant
+     * because one keyword spells two grammar rules with two checker classes, and the operand shape rather
+     * than the operator is what decides which law applies.
+     */
+    VALIDITY_CONDITION_OPERANDS,
+
+    /**
      * That a rule reading a repetition does not reach its error field only from ABOVE its own group — A12
      * cannot then say which repetition the error attaches to. Its own constant because the demand is on the
      * CONDITION's reach rather than on the target's existence, which `ERROR_FIELD_REFERENCE` already owns,
@@ -808,6 +816,7 @@ internal fun check(
         prepared.scalarValueListGateFindings() +
         prepared.dateArgumentSlotFindings() +
         prepared.dateRangeOperandListFindings() +
+        prepared.validityConditionOperandFindings() +
         prepared.errorTargetIterationFindings() +
         prepared.messageParameterFindings() +
         prepared.messageTextCharacterFindings() +
@@ -868,7 +877,7 @@ internal fun check(
             CheckFamily.H_MODEL_PATH_SUFFIX, CheckFamily.FIELD_OPERAND_KIND,
             CheckFamily.FILTERED_OPERAND_KIND, CheckFamily.CATEGORY_REFERENCE,
             CheckFamily.SCALAR_VALUE_LIST_GATES, CheckFamily.DATE_ARGUMENT_SLOT,
-            CheckFamily.DATE_RANGE_OPERAND_LIST,
+            CheckFamily.DATE_RANGE_OPERAND_LIST, CheckFamily.VALIDITY_CONDITION_OPERANDS,
             CheckFamily.ERROR_TARGET_ITERATION,
             CheckFamily.MESSAGE_PARAMETER_REFERENCE, CheckFamily.MESSAGE_TEXT_CHARACTERS),
         gaps = prepared.gaps() + prepared.emptyFactBase() + findings.buildBlocked() +

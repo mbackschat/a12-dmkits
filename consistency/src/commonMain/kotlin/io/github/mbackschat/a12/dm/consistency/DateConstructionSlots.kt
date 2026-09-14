@@ -73,6 +73,37 @@ fun PreparedModel.dateConstructionSlotFindings(): List<Finding> {
 }
 
 /**
+ * What a `Date` construction's slots say to a reader whose own question comes AFTER the slot gates.
+ *
+ * The date-validity condition asks one thing of a construction and A12 asks it last, so its family must
+ * decline wherever a slot gate answers and must use the same reading of "this slot names an entity" that
+ * the gates use. Both are read off the walk here rather than restated there — one live statement of the
+ * slot demands, per [validityConditionOperandFindings]' only caller.
+ *
+ * @property aSlotAnswersFirst whether some slot already fails its own gate.
+ * @property namesAnEntity whether some slot is a bare entity path — A12's `entitySpec() != null`, which an
+ *     EXTRACT operator does NOT satisfy even though it reads a field inside itself.
+ */
+internal data class DateConstructionReading(val aSlotAnswersFirst: Boolean, val namesAnEntity: Boolean)
+
+/** Read the `Date` construction written at [operands]; null where this reader does not judge that shape. */
+internal fun PreparedModel.readDateConstruction(
+    operands: List<List<Token>>,
+    element: DeclaredElement,
+): DateConstructionReading? {
+    val keywords = CONDITION_OPERATOR_KEYWORDS[conditionLanguage] ?: return null
+    val extractOps = EXTRACT_OPS.mapNotNull { (id, op) -> keywords[id]?.let { it to op } }.toMap()
+    val construction = TemporalConstruction.DATE
+    if (!construction.admitsArity(operands.size)) {
+        return null
+    }
+    return DateConstructionReading(
+        aSlotAnswersFirst = construction.firstDefectiveSlot(this, element, operands, extractOps) != null,
+        namesAnEntity = operands.any { armOf(it, extractOps) is SlotArm.Entity },
+    )
+}
+
+/**
  * One slot's demands, split the way A12 splits them: the two arms are asked different questions.
  *
  * Keeping [constant] and [entity] apart is what stops the complete year from carrying one number for both:

@@ -107,6 +107,18 @@ class CorrectiveTest {
             {"type":"Rule","id":"r10","name":"KeyWithNoRepetition","Rule":{
               "errorCondition":"RepetitionNotUnique(Note)","errorEntityRelPath":"../Note",
               "errorCode":"C10","errorMessage":[{"locale":"en_US","text":"x"}]}},
+            {"type":"Rule","id":"r31","name":"ValidityOverConstantsOnly","Rule":{
+              "errorCondition":"FieldFilled(Note) And Valid(Date(\"01\", \"02\", \"2024\"))",
+              "errorEntityRelPath":"../Note",
+              "errorCode":"C31","errorMessage":[{"locale":"en_US","text":"x"}]}},
+            {"type":"Rule","id":"r30","name":"ValidityWithoutATypeName","Rule":{
+              "errorCondition":"FieldFilled(Note) And Valid(Note, \"\")",
+              "errorEntityRelPath":"../Note",
+              "errorCode":"C30","errorMessage":[{"locale":"en_US","text":"x"}]}},
+            {"type":"Rule","id":"r29","name":"ValidityOnANumber","Rule":{
+              "errorCondition":"FieldFilled(Note) And Valid(Amount, \"EMail\")",
+              "errorEntityRelPath":"../Note",
+              "errorCode":"C29","errorMessage":[{"locale":"en_US","text":"x"}]}},
             {"type":"Rule","id":"r28","name":"MixedYearRanges","Rule":{
               "errorCondition":"FieldFilled(Note) And DateRangesOverlap(CoverFrom, CoverTo)",
               "errorEntityRelPath":"../Note",

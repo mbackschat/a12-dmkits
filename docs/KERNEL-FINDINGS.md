@@ -7142,6 +7142,33 @@ Reported by the portable checker, which did not emit `MVK_SORT_FIELD_DUPLICATE` 
 
 *Locked by:* `rulekit.validate.laws.GroupOrderingMultipleDefectLawsTest`, mirrored by `consistency … GroupOrderingMultipleDefectTest`.
 
+## §8 supplement — one keyword spells two validity conditions, and the kind gate admits less than its code's name (source-verified + measured, 2026-09-14) <a id="kf402"></a>
+
+> Fold: not-foldable — a diagnostic-class law about two constructs' operands, not an evaluation behaviour.
+
+`Valid` and `Invalid` spell two different grammar rules, and the OPERAND SHAPE is what tells them apart: `Valid(Field, "Type")` is `predefinedTypeValidityCondition` and `Valid(Date(…))` is `dateValidityCondition`. Two checker classes that share nothing ask them.
+
+| the arm | the gate, in order | class |
+|---|---|---|
+| `Valid(Field, "Type")` | the subject names a group | `MVK_NO_GROUPS_ALLOWED` |
+| | it carries a repetition star | `MVK_NO_WILDCARDS_ALLOWED` |
+| | it waives value validation | `MVK_INVALID_RAW_TYPE` |
+| | it is neither text nor enumeration | `MVK_NO_STRING_OR_ENUM_OR_EXT_ENUM` |
+| | the type name is empty | `MVK_NO_EMPTY` |
+| `Valid(Date(…))` | no slot names an entity | `MVK_ONLY_CONSTANTS_USED` |
+
+**The kind gate's admitted set is narrower than its code's name.** `FieldUtils.isStringEnumOrExtensibleEnum` is `isString || isEnum || isExtensibleEnum`, and `isExtensibleEnum` is `t instanceof IStringType && ((IStringType) t).isExtensibleEnum()` — a FLAG on a string declaration rather than a kind of its own. So the third disjunct adds nothing to the first, a `CustomFieldType` is refused, and no predefined-type declaration enters the gate at all. Measured member by member rather than read off the name.
+
+**The type name is opaque at model-check time.** Predefined types are a runtime client SPI, not a model-time registry, so A12 stores whatever was written and admits a name nothing registers; only the EMPTY one is refused, and only after the subject has passed all four gates above it. Both orderings are measured — a wrong kind with an empty name draws the kind class, a waived value validation with an empty name draws the raw class — because a reader checking the cheap string first would name it on a model A12 refuses for its field.
+
+**The date arm's test is `entitySpec() != null` PER SLOT**, so what it asks is not "does this construction mention a field". An EXTRACT operator is a different grammar alternative, and `Valid(Date(DayFromDate(X), "02", "2024"))` plainly reads a field and is still constants-only to A12 — measured, and the row a reader gets backwards.
+
+**The construction's own slot gates answer before the date arm's question**, measured on `Valid(Date("32", "02", "2024"))`, which draws `MVK_WRONG_DATE_FORMAT_FOR_OP` rather than this arm's class although every slot is a constant.
+
+Reported by the portable checker (`CheckFamily.VALIDITY_CONDITION_OPERANDS`), which owns all five gates of the first arm — nothing else reads that carrier, so deferring the first three would leave a model A12 refuses with no finding at all — and reads the construction through the slot family's own walk rather than restating what a slot demands. Silent on a `TypeDefType` or `UnspecifiedType` subject, whose effective type this reader does not resolve, and on a subject shape it cannot reduce to one bare path.
+
+*Locked by:* `rulekit.validate.laws.ValidityConditionOperandLawsTest`, mirrored by `consistency.ValidityConditionOperandsTest`.
+
 ## §6 supplement — the range-overlap operators ask two walks of their list, and only the second has a base-year escape (source-verified + measured, 2026-09-14) <a id="kf401"></a>
 
 > Fold: not-foldable — a diagnostic-class law about one operand list, not an evaluation behaviour.
