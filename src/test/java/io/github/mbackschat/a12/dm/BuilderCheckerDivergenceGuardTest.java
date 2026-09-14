@@ -233,6 +233,12 @@ class BuilderCheckerDivergenceGuardTest {
             // and each side asks it of a different representation.
             Map.entry("MVK_GROUP_NOT_REPEATABLE", Disposition.SAME_LAW_SEPARATE_CARRIERS),
 
+            // The REVERSE direction and a code neither estate disputes: `FieldListRef.having` refuses a
+            // semantic-index filter with this code named in the message, while the checker names it only in
+            // the post-parse phase list — the set of classes a parse-time defect erases. Membership of that
+            // list is a fact about A12's ORDER, not a report, which is why it is prose here.
+            Map.entry("MVK_SEMANTIC_INDEX_NOT_ALLOWED", Disposition.PROSE_ONLY),
+
             // The usual direction: `StructuralKernelFix` carries a corrective for A12's verdict and refuses
             // nothing, while `REPETITION_KEY_CONTAINMENT` reports the class off stored DM-JSON. *(Amended
             // 2026-09-14: the checker's mention was a KDoc naming what it did NOT report until that family

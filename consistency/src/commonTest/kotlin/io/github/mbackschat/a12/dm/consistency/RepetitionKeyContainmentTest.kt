@@ -126,6 +126,21 @@ class RepetitionKeyContainmentTest {
             codes(CRATES, "../CrateRef", "RepetitionNotUnique(CrateRef, /Depot/Office/OfficeRef)")
         actual["a key outside the rule group, in a parallel REPEATABLE one"] =
             codes(CRATES, "../CrateRef", "RepetitionNotUnique(CrateRef, /Depot/Pallets/PalletRef)")
+        actual["a containment defect beside a SECOND RepetitionNotUnique — INDEX-KEYED"] =
+            codes(
+                DEPOT,
+                "../Crates/CrateRef",
+                "RepetitionNotUnique(Crates/CrateRef, Pallets/PalletRef) " +
+                    "And RepetitionNotUnique(Crates/CrateRef)",
+                true,
+            )
+        actual["TWO clean RepetitionNotUnique calls — INDEX-KEYED"] =
+            codes(
+                DEPOT,
+                "../Crates/CrateRef",
+                "RepetitionNotUnique(Crates/CrateRef) And RepetitionNotUnique(Crates/SlotRef)",
+                true,
+            )
         actual["a CLEAN key list beside a parallel read — INDEX-KEYED"] =
             codes(
                 DEPOT,
@@ -141,6 +156,12 @@ class RepetitionKeyContainmentTest {
         // The outsider's own repetition is what the wildcard gate answers about, so this class never appears
         // and the reference family names the one A12 draws.
         expected["a key outside the rule group, in a parallel REPEATABLE one"] = listOf(noWildcard)
+        // The second post-parse class, and the reason the suppression is the PHASE's rather than one gate's:
+        // A12 draws the containment class alone here too.
+        expected["a containment defect beside a SECOND RepetitionNotUnique — INDEX-KEYED"] =
+            listOf(notInSamePath)
+        expected["TWO clean RepetitionNotUnique calls — INDEX-KEYED"] =
+            listOf("MVK_INVALID_COMBINATION_OF_REPETITON_NOT_UNIQUE")
         // The control for the whole-rule suppression: this model parallel-iterates, and A12 says so the
         // moment the key list stops offending — so the silence in the rows above is phase order, not a
         // checker that stopped reporting the class ([KERNEL-FINDINGS KF375]).

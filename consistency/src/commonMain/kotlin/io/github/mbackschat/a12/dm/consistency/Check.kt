@@ -652,8 +652,7 @@ internal fun check(
         prepared.enumSpecialValueFindings())
         .filterNot { it.at in stopped && it.code !in ERROR_TARGET_CODES }
         .filterNot { it.at in resolvedFirst && it.code in CONDITION_TEXT_CODES }
-        .withoutRelationsBehindAPositionedDefect()
-        .withoutWholeRuleGatesBehindAParseTimeDefect()
+                .withoutPostParseClassesBehindAPositionedDefect()
     val findings = judged.notSuppressedBy(prepared.variantFilterSuppressed())
     return ConsistencyReport(
         modelId = admitted.modelId,
@@ -862,40 +861,20 @@ private val UNIMPLEMENTED_FAMILIES = listOf(
 private val ERROR_TARGET_CODES = setOf(ERROR_FIELD_MISSING, MISSING_ERROR_FIELD, CK_MODEL_NOT_BUILDABLE)
 
 /**
- * Drops a WHOLE-RULE class at any declaration whose condition already draws a parse-time one.
- *
- * A12 runs `ParserService.checkNormalRule` over the FINISHED parse tree, so it is reached only when every
- * per-construct check has passed. A class drawn during the parse therefore pre-empts every class drawn there,
- * and a report naming both says A12 found two defects where it stopped at one.
- *
- * Measured on the shape that exposed it: two index-keyed parallel groups under `RepetitionNotUnique` draw
- * `MVK_NOT_IN_SAME_PATH` from the construct's own check, and the whole-rule parallel-iteration gate was
- * naming its own class beside it (`rulekit.validate.laws.RepetitionNotUniqueFromScopeLawsTest`, whose verdict
- * is the COMPLETE class list rather than one code, which is what made the extra class visible at all).
- */
-private fun List<Finding>.withoutWholeRuleGatesBehindAParseTimeDefect(): List<Finding> {
-    val defective = filter { it.code in POSITIONED_CONDITION_CODES }.mapTo(mutableSetOf()) { it.at }
-    return filterNot { it.at in defective && it.code in WHOLE_RULE_CONDITION_CODES }
-}
-
-/**
- * The classes `checkNormalRule` draws after the parse, which every parse-time class outranks.
- *
- * Listed by code rather than by family because the two families that own them also report classes A12 draws
- * during the parse, and it is the CLASS that says which phase answered.
- */
-private val WHOLE_RULE_CONDITION_CODES = setOf("MVK_PARALLEL_ITERATION_NOT_ALLOWED")
-
-/**
- * Drops a relational class at any declaration whose condition text already draws a positioned one.
+ * Drops a POST-PARSE class at any declaration whose condition text already draws a positioned one.
  *
  * Unlike the two model-reading gates above, this one reads the findings, because it is not the model that
  * decides it: the same unreferenced error target is reported on a sound condition and withheld on a defective
  * one, so the trigger is precisely whether another family already spoke about that text.
+ *
+ * This was two functions with two code sets until 2026-09-14, one for the relational classes and one for the
+ * whole-rule ones, written as separate laws because they were measured separately. They are one law, and
+ * splitting it is what left the whole-rule half a single member while three more classes of the same phase
+ * were live ([KERNEL-FINDINGS KF375]).
  */
-private fun List<Finding>.withoutRelationsBehindAPositionedDefect(): List<Finding> {
+private fun List<Finding>.withoutPostParseClassesBehindAPositionedDefect(): List<Finding> {
     val defective = filter { it.code in POSITIONED_CONDITION_CODES }.mapTo(mutableSetOf()) { it.at }
-    return filterNot { it.at in defective && it.code in CONDITION_RELATION_CODES }
+    return filterNot { it.at in defective && it.code in POST_PARSE_CONDITION_CODES }
 }
 
 /**
@@ -922,15 +901,30 @@ private val POSITIONED_CONDITION_CODES = setOf(
 )
 
 /**
- * The two classes that judge the condition as a WHOLE rather than at a point in it, and lose to everything.
+ * Every class drawn only once the condition PARSED, which a defect at any point in the text outranks.
  *
- * Both are relations over the condition's resolved references — whether the error target is among them,
- * whether an app condition may appear beside them — and both are withheld by any other condition-text defect
- * wherever it sits, the bad name included. Measured in both orders and on both carriers
- * (`ConditionClassWithholdingLawsTest`); the reason they behave alike is a hypothesis, the behaviour is not.
+ * The members come from two post-parse phases and what they share is the precondition, not the caller. Seven
+ * are the `throwError` calls in `ParserService.checkNormalRule`'s own body, read off kernel `30.8.1` in source
+ * order; the last two are relations over the resolved references, one of them drawn by the calculation
+ * module's normalisation rather than by that method. All of them need a finished parse, and a parse-time
+ * class ends the parse ([KERNEL-FINDINGS KF375]).
+ *
+ * Listed by code rather than by family, because the families that own them also report classes A12 draws
+ * DURING the parse and it is the class that says which phase answered. Two members are inert today — no
+ * family reports them — and are listed anyway: a family added later would otherwise start over-reporting
+ * silently, which is the failure this list exists to prevent.
+ *
+ * Measured: `MVK_PARALLEL_ITERATION_NOT_ALLOWED` and `MVK_INVALID_COMBINATION_OF_REPETITON_NOT_UNIQUE` both
+ * vanish behind a containment class on one model (`RepetitionNotUniqueFromScopeLawsTest`, whose verdict is
+ * the COMPLETE class list); the two relational members were measured in both orders and on both carriers
+ * (`ConditionClassWithholdingLawsTest`).
  */
-private val CONDITION_RELATION_CODES =
-    setOf("MVK_ERROR_FIELD_NOT_REFERENCED", "MVK_ERROR_INVALID_LANGUAGE_FEATURE")
+private val POST_PARSE_CONDITION_CODES = setOf(
+    "MVK_PARALLEL_ITERATION_NOT_ALLOWED", "MVK_PARALLEL_ITERATION_FOR_FILTERED_ENTITY_NOT_ALLOWED",
+    "MVK_SEMANTIC_INDEX_NOT_ALLOWED", "MVK_INVALID_COMBINATION_OF_REPETITON_NOT_UNIQUE",
+    "MVK_INVALID_LENGTH_OF_RAW_TYPE", "MVK_PARALLEL_ITERATION_INVALID",
+    "MVK_ERROR_FIELD_NOT_REFERENCED", "MVK_ERROR_INVALID_LANGUAGE_FEATURE",
+)
 
 /**
  * Every class read out of the condition text, all of which an unresolvable name in it can withhold.
@@ -947,4 +941,4 @@ private val CONDITION_RELATION_CODES =
  * that: a finding is A12's verdict on a declaration, so a class A12 did not draw is a divergence however
  * true it is.
  */
-private val CONDITION_TEXT_CODES = POSITIONED_CONDITION_CODES + CONDITION_RELATION_CODES
+private val CONDITION_TEXT_CODES = POSITIONED_CONDITION_CODES + POST_PARSE_CONDITION_CODES

@@ -151,6 +151,13 @@ class RepetitionNotUniqueFromScopeLawsTest {
         actual.put("two keys in parallel repeatable groups | INDEX-KEYED",
                 KernelLaws.verdictModel(INDEXED, "/Depot", "../Crates/CrateRef",
                         "RepetitionNotUnique(Crates/CrateRef, Pallets/PalletRef)"));
+        actual.put("a containment defect beside a SECOND RepetitionNotUnique | INDEX-KEYED",
+                KernelLaws.verdictModel(INDEXED, "/Depot", "../Crates/CrateRef",
+                        "RepetitionNotUnique(Crates/CrateRef, Pallets/PalletRef) "
+                                + "And RepetitionNotUnique(Crates/CrateRef)"));
+        actual.put("TWO clean RepetitionNotUnique calls | INDEX-KEYED",
+                KernelLaws.verdictModel(INDEXED, "/Depot", "../Crates/CrateRef",
+                        "RepetitionNotUnique(Crates/CrateRef) And RepetitionNotUnique(Crates/SlotRef)"));
         actual.put("a CLEAN key list beside a parallel read | INDEX-KEYED",
                 KernelLaws.verdictModel(INDEXED, "/Depot", "../Crates/CrateRef",
                         "RepetitionNotUnique(Crates/CrateRef) And FieldFilled(Pallets/PalletRef)"));
@@ -165,6 +172,15 @@ class RepetitionNotUniqueFromScopeLawsTest {
         // The within-model control for the row above, and the reason the containment classes may be reported
         // alone: this model DOES parallel-iterate, and A12 says so the moment the key list stops offending.
         // The whole-rule gate runs only on a completed parse ([KF375]), so a parse-time throw removes it.
+        // The second member of the whole-rule phase, measured the same way: `checkNormalRule` also refuses
+        // two `RepetitionNotUnique` calls in one condition, and that class does not appear either. So the
+        // pre-emption is the PHASE's and not one gate's ([KF375]).
+        expected.put("a containment defect beside a SECOND RepetitionNotUnique | INDEX-KEYED",
+                "MVK_NOT_IN_SAME_PATH");
+        // …and the control that keeps the row above about the PHASE: the combination gate is live on this
+        // model and says so the moment the key lists stop offending.
+        expected.put("TWO clean RepetitionNotUnique calls | INDEX-KEYED",
+                "MVK_INVALID_COMBINATION_OF_REPETITON_NOT_UNIQUE");
         expected.put("a CLEAN key list beside a parallel read | INDEX-KEYED", "MVK_PARALLEL_ITERATION_NOT_ALLOWED");
         assertEquals(expected, actual, "the same-path class turns on index keying");
     }

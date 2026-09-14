@@ -7152,7 +7152,23 @@ A12 checks a condition in two phases and the estate had only ever measured insid
 
 **The discriminating control, within one model** (`RepetitionNotUniqueFromScopeLawsTest`, two index-keyed parallel groups): a `RepetitionNotUnique` whose key list straddles both branches reports `MVK_NOT_IN_SAME_PATH` and nothing else, while the same model with a CLEAN key list beside a parallel read reports `MVK_PARALLEL_ITERATION_NOT_ALLOWED`. The gate is live on this shape; it disappears only behind the parse-time throw.
 
-**What it means for a reproduction**: a checker that reports both classes over-reports, and the fix is one rule over the whole finding list rather than per family — a whole-rule class is dropped wherever a positioned class already speaks for the same rule. `MVK_PARALLEL_ITERATION_NOT_ALLOWED` is the only member of that set measured so far; a second-phase gate is recognizable in kernel source by taking a built `ICondition` rather than a parser context.
+**The phase's own membership, read off `checkNormalRule`'s body in source order** (kernel `30.8.1`), because a reproduction that holds one member is the same defect one size smaller:
+
+| what it asks | class |
+|---|---|
+| `RepetitionNotUnique` beside a parallel iteration | `MVK_PARALLEL_ITERATION_NOT_ALLOWED` |
+| a filter condition on a parallel-iterated entity | `MVK_PARALLEL_ITERATION_FOR_FILTERED_ENTITY_NOT_ALLOWED` |
+| a filter condition that parallel-iterates | `MVK_PARALLEL_ITERATION_NOT_ALLOWED` again |
+| a filter condition using a semantic index | `MVK_SEMANTIC_INDEX_NOT_ALLOWED` |
+| two `RepetitionNotUnique` (or two row-uniqueness) calls in one condition | `MVK_INVALID_COMBINATION_OF_REPETITON_NOT_UNIQUE` |
+| a raw-type `Length` whose constant is out of domain | `MVK_INVALID_LENGTH_OF_RAW_TYPE` |
+| `IterationNotValidVisitor.testParallelIteration` | `MVK_PARALLEL_ITERATION_INVALID` |
+
+`IterationChecker.checkIteration` and `checkSimpleIteration` run after those and draw their own classes, `MVK_ERROR_FIELD_NOT_REFERENCED` included — which is why that class, measured separately as losing to every condition-text defect, turns out to be the same law rather than a neighbouring one.
+
+**The second member was measured the same way, on the same model**: a `RepetitionNotUnique` with a containment defect beside a SECOND `RepetitionNotUnique` reports `MVK_NOT_IN_SAME_PATH` alone, while two CLEAN calls on that model report `MVK_INVALID_COMBINATION_OF_REPETITON_NOT_UNIQUE`. Two gates of the phase, one pre-emption — so it is the phase and not a property of either gate.
+
+**What it means for a reproduction**: a checker that reports both classes over-reports, and the fix is one rule over the whole finding list rather than per family — a post-parse class is dropped wherever a positioned class already speaks for the same rule. A second-phase gate is recognizable in kernel source by taking a built `ICondition` rather than a parser context.
 
 *Locked by:* `rulekit.validate.laws.RepetitionNotUniqueFromScopeLawsTest`; mirrored by `consistency … RepetitionKeyContainmentTest`.
 
