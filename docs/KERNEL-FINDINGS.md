@@ -7142,6 +7142,25 @@ Reported by the portable checker, which did not emit `MVK_SORT_FIELD_DUPLICATE` 
 
 *Locked by:* `rulekit.validate.laws.GroupOrderingMultipleDefectLawsTest`, mirrored by `consistency … GroupOrderingMultipleDefectTest`.
 
+## §9 supplement — an index field on the ROOT withholds the error-target iteration class (source-verified + measured, 2026-09-14) <a id="kf410"></a>
+
+> Fold: not-foldable — a diagnostic-class precedence law, not an evaluation behaviour.
+
+[KF348](#kf348) locks the two classes `IterationChecker` draws when a rule reaches its error field only through a root-group reference, and [KF372](#kf372) the containment gate that outruns them. A third pre-emption was missed by both, and it is a DECLARATION rather than a condition shape.
+
+| the model declares | the same condition draws |
+|---|---|
+| a repeatable root with NO index field | `MVK_ERROR_FIELDGROUP_ITERATION5_INVALID` |
+| the same root carrying `indexFieldName` | `MVK_MULTIPLE_INDEX_FIELDS` |
+
+The two models differ in that one member and nothing else. `MVK_MULTIPLE_INDEX_FIELDS` is thrown during the parse and `IterationChecker.checkIteration` runs after it, so the iteration class is never reached — the general rule [KF375](#kf375) already states, on a pair no grid had built.
+
+**The portable checker reported BOTH until this measurement**, which is naming a class A12 did not draw on a model it correctly refuses. The cause was in the phase list rather than in the family: `POST_PARSE_CONDITION_CODES` was assembled by enumerating `ParserService.checkNormalRule`'s own `throwError` sites, and `IterationChecker`'s three classes arrive through a CALL in that same body — so only `MVK_ERROR_FIELD_NOT_REFERENCED`, which the checker already reported, made the list. A phase list read off one syntactic form misses everything the method delegates.
+
+**`MVK_ERROR_FIELD_AND_ITERATION_INVALID` is the class `checkVRefs` guards at level 0, and seven spellings failed to reach it.** Starring the root leaves the repeating group beneath it bare (`MVK_NO_WILDCARD`); the scalar group predicates refuse a star outright (`MVK_NO_WILDCARDS_ALLOWED`); a group LIST predicate accepts the starred root and the level-1 sibling class answers anyway; and carrying the star all the way down is simply ADMITTED, on both models and into either group. That is an enumeration of attempts and NOT a proof of unreachability — the code stays kernel-delegated with its attempts recorded, rather than being claimed unauthorable.
+
+*Locked by:* `rulekit.validate.laws.RootLevelIterationPinningLawsTest`, mirrored by `consistency.RootLevelIterationPinningTest`.
+
 ## §9 supplement — the two gates `NumberOfValueInFields` runs after its string arm's type walk (source-verified + measured, 2026-09-14) <a id="kf409"></a>
 
 > Fold: not-foldable — a diagnostic-class law about an operator's operands, not an evaluation behaviour.

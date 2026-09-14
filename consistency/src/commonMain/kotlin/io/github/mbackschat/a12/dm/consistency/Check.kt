@@ -1133,9 +1133,18 @@ private val POSITIONED_CONDITION_CODES = setOf(
  * class ends the parse ([KERNEL-FINDINGS KF375]).
  *
  * Listed by code rather than by family, because the families that own them also report classes A12 draws
- * DURING the parse and it is the class that says which phase answered. Two members are inert today — no
+ * DURING the parse and it is the class that says which phase answered. Some members are inert today — no
  * family reports them — and are listed anyway: a family added later would otherwise start over-reporting
  * silently, which is the failure this list exists to prevent.
+ *
+ * **Three members joined on 2026-09-14, and how they were missed is the lesson.** `IterationChecker`'s whole
+ * output — the two error-target iteration classes and `MVK_ERROR_FIELD_AND_ITERATION_INVALID` — is drawn from
+ * that same method body, but through a CALL rather than a `throwError`, so a reading that enumerated the
+ * method's `throwError` sites found only `MVK_ERROR_FIELD_NOT_REFERENCED`, which the checker happened to
+ * report already. The cost was live: an index field on the ROOT group makes a parallel read a parse-time
+ * `MVK_MULTIPLE_INDEX_FIELDS`, and this checker named `MVK_ERROR_FIELDGROUP_ITERATION5_INVALID` beside it —
+ * two classes where A12 draws one ([KERNEL-FINDINGS KF410], `consistency.RootLevelIterationPinningTest`).
+ * A phase list read off one syntactic form misses everything the method DELEGATES.
  *
  * **One member moved OUT on 2026-09-14: `MVK_SEMANTIC_INDEX_NOT_ALLOWED`.** The method draws it, but the
  * code has three sites and the other two are parse-time — `CheckEntitySpecImpl.checkIndicesInFilterCondition`
@@ -1156,6 +1165,8 @@ private val POST_PARSE_CONDITION_CODES = setOf(
     "MVK_INVALID_COMBINATION_OF_REPETITON_NOT_UNIQUE",
     "MVK_INVALID_LENGTH_OF_RAW_TYPE", "MVK_PARALLEL_ITERATION_INVALID",
     "MVK_ERROR_FIELD_NOT_REFERENCED", "MVK_ERROR_INVALID_LANGUAGE_FEATURE",
+    "MVK_ERROR_FIELDGROUP_ITERATION4_INVALID", "MVK_ERROR_FIELDGROUP_ITERATION5_INVALID",
+    "MVK_ERROR_FIELD_AND_ITERATION_INVALID",
 )
 
 /**

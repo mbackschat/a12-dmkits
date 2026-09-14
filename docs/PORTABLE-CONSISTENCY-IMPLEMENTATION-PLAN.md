@@ -739,6 +739,16 @@ One cold adversarial review over the frozen range, as [§2](#2-execution-order-a
 
 **The catalog half is deliberately not delivered, with its re-open trigger.** A2 ruled that `operators.json` ships as-is because it is already data; that remains right, and it is not yet USEFUL — no finding this checker produces names an operator id, so 293 KB would be packaged with nothing to join it against. It lands when a finding carries an operator.
 
+### C record — the slice that went looking for a code and found an over-report (2026-09-14)
+
+**Frozen change: `IterationChecker`'s phase, not its classes.** [KF410](KERNEL-FINDINGS.md#kf410); no code drained and one OVER-REPORT removed — the checker named `MVK_ERROR_FIELDGROUP_ITERATION5_INVALID` beside the parse-time `MVK_MULTIPLE_INDEX_FIELDS` on any model whose repeatable ROOT carries an index field. No family changed; the three `IterationChecker` classes joined `POST_PARSE_CONDITION_CODES`. The count stays 88 at **124 of 142 reported**.
+
+**The phase list had been read off ONE syntactic form, and that is the transferable defect.** Its own comment says the members are "the `throwError` calls in `ParserService.checkNormalRule`'s own body, read off kernel `30.8.1` in source order" — a careful, citable enumeration that misses everything the method DELEGATES. `IterationChecker.checkIteration(parser)` sits in that body between two listed members and carries three classes; only the one the checker already reported made the list, so nothing went red. A denominator assembled by grepping a keyword is bounded by the keyword, not by the question.
+
+**The target code was not drained, and saying so is the result.** `MVK_ERROR_FIELD_AND_ITERATION_INVALID` guards level 0 — the level its two siblings' loop explicitly skips — and seven spellings failed to reach it, each for a different reason. That is an enumeration of attempts, not a proof of unreachability, so the ledger row records the attempts and stays delegated. Claiming the class unauthorable from seven failures is exactly the reachability claim the standing rule forbids.
+
+**An exploratory grid asserting an EMPTY map is the cheapest instrument for an unpredictable chain.** The level model here could not be predicted from source — `getMax`, the index sizing, and the wildcard pre-emptions all interact — so the accelerator's "predict the whole grid" does not apply. Asserting `Map.of()` turns one run into a complete measurement of fourteen cells, and the round-two probes cost one more. Two runs bought a finding, a fix and a bounded negative result; predicting would have bought a wrong prediction.
+
 ### C record — the slice written whole before it was measured (2026-09-14)
 
 **Frozen change: `CheckAnzahlWertOpImpl`'s string arm past its type walk.** [KF409](KERNEL-FINDINGS.md#kf409); one code drained — `MVK_NO_DATE_CONSTANT`, whose single caller in the estate this is — plus a further carrier for `MVK_INVALID_RAW_TYPE`. An EXTENSION of `VALUE_IN_FIELDS_CONSTANT_KIND` rather than a family: same kernel method, same switch, two more statements of the same arm. The count stays 88; the measured denominator now stands at **142 A12-reachable kernel codes, 124 reported**.
