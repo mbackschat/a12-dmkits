@@ -48,6 +48,10 @@ class CheckFamilyWiringTest {
               "NumberType":{"minFractionalDigits":3,"maxFractionalDigits":2}}}},
             {"type":"Field","id":"f11","name":"RepeatedTier","Field":{"fieldType":{
               "type":"EnumerationType","EnumerationType":{"values":[{"value":"A"},{"value":"A"}]}}}},
+            {"type":"Field","id":"f49","name":"TargetGrade","Field":{"fieldType":{
+              "type":"EnumerationType","EnumerationType":{"values":[{"value":"P"}]}}}},
+            {"type":"Field","id":"f50","name":"SourceGrade","Field":{"fieldType":{
+              "type":"EnumerationType","EnumerationType":{"values":[{"value":"P"},{"value":"Q"}]}}}},
             {"type":"Field","id":"f48","name":"LabelledTier","Field":{"fieldType":{
               "type":"EnumerationType","EnumerationType":{"values":[
                 {"value":"A","label":[{"locale":"en_US","text":"Alpha"}]},
@@ -333,6 +337,10 @@ class CheckFamilyWiringTest {
               "errorCondition":"FieldFilled(NoSuchEntity)","errorEntityRelPath":"../Price",
               "errorCode":"C7","errorMessage":[{"locale":"en_US","text":"x"}],
               "variantFilter":{"filterType":"ONLY","variants":["premium"]}}},
+            {"type":"Computation","id":"c61","name":"NarrowedGrade","Computation":{
+              "computedFieldRelPath":"../TargetGrade",
+              "computationAlternatives":[{"operation":"[SourceGrade]"}],
+              "errorMessage":[{"locale":"en_US","text":"x"}]}},
             {"type":"Computation","id":"c1","name":"NoWork","Computation":{
               "computationAlternatives":[]}},
             {"type":"Computation","id":"c2","name":"BadRounding","Computation":{
@@ -565,6 +573,10 @@ class CheckFamilyWiringTest {
         // a time field carries.
         CheckFamily.VALUE_AS_DATE_OPERAND to
             ("MVK_INVALID_DATE_TYPE_FOR_OP" to "/Catalog/PartialDateFromATime"),
+        // A computation assigning a two-value enumeration into a one-value one — coverage runs one way, so
+        // the row fails the moment the family tests equality or reverses the direction.
+        CheckFamily.ENUM_COMPUTATION_SOURCE to
+            ("MVK_ERROR_INVALID_ENUM_CALCULATION" to "/Catalog/NarrowedGrade"),
         // Two text declarations under an ordering operator — the one comparison in this fixture whose
         // operator demands more of its sides than they are.
         CheckFamily.COMPARISON_OPERATOR_OPERANDS to

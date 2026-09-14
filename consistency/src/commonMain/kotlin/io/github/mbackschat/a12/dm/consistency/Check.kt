@@ -593,6 +593,14 @@ enum class CheckFamily {
     VALUE_AS_DATE_OPERAND,
 
     /**
+     * That a computation writing into an ENUMERATION reads a source the target can show. Its own constant
+     * because the law is about the TARGET's declared kind rather than about any operand — the identical
+     * operation is admitted into a text field — and because it is the only family reproducing a gate from
+     * A12's CALCULATION module rather than its parser.
+     */
+    ENUM_COMPUTATION_SOURCE,
+
+    /**
      * That a rule reading a repetition does not reach its error field only from ABOVE its own group — A12
      * cannot then say which repetition the error attaches to. Its own constant because the demand is on the
      * CONDITION's reach rather than on the target's existence, which `ERROR_FIELD_REFERENCE` already owns,
@@ -852,6 +860,7 @@ internal fun check(
         prepared.rangeOperandGateFindings() +
         prepared.enumDisplayComparabilityFindings() +
         prepared.valueAsDateOperandFindings() +
+        prepared.enumComputationSourceFindings() +
         prepared.errorTargetIterationFindings() +
         prepared.messageParameterFindings() +
         prepared.messageTextCharacterFindings() +
@@ -916,6 +925,7 @@ internal fun check(
             CheckFamily.BASE_YEAR_REQUIREMENT, CheckFamily.RANGE_OPERAND_GATES,
             CheckFamily.ENUM_DISPLAY_COMPARABILITY,
             CheckFamily.VALUE_AS_DATE_OPERAND,
+            CheckFamily.ENUM_COMPUTATION_SOURCE,
             CheckFamily.ERROR_TARGET_ITERATION,
             CheckFamily.MESSAGE_PARAMETER_REFERENCE, CheckFamily.MESSAGE_TEXT_CHARACTERS),
         gaps = prepared.gaps() + prepared.emptyFactBase() + findings.buildBlocked() +

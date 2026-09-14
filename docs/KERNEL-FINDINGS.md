@@ -7142,6 +7142,35 @@ Reported by the portable checker, which did not emit `MVK_SORT_FIELD_DUPLICATE` 
 
 *Locked by:* `rulekit.validate.laws.GroupOrderingMultipleDefectLawsTest`, mirrored by `consistency … GroupOrderingMultipleDefectTest`.
 
+## §11 supplement — what an enum-valued computation may compute FROM (source-verified + measured, 2026-09-14) <a id="kf411"></a>
+
+> Fold: not-foldable — a diagnostic-class law about a computation's source, not an evaluation behaviour.
+
+`NormalisierteBerechnungsFormHelper.checkBerechnungsFunktion` adds one gate an enumeration TARGET carries and no other kind does: the operation must be a string constant the target declares, a `FieldValue` read of an enumeration the target COVERS, or a `FirstFilledValue` over such reads — nothing else. The kernel's own note gives the reason: a computed value outside the domain has no display value to show.
+
+| the source, assigned into a two-value enumeration | verdict |
+|---|---|
+| a declared value of the target | ADMITTED |
+| an enumeration declaring exactly those values | ADMITTED |
+| an enumeration declaring FEWER | ADMITTED |
+| an enumeration declaring MORE | `MVK_ERROR_INVALID_ENUM_CALCULATION` |
+| a category whose tokens the target covers | ADMITTED |
+| a category whose tokens it does not | `MVK_ERROR_INVALID_ENUM_CALCULATION` |
+| a TEXT field | `MVK_ERROR_INVALID_ENUM_CALCULATION` |
+| `FirstFilledValue` over two covered enumerations | ADMITTED |
+| `FirstFilledValue` where one is not covered | `MVK_ERROR_INVALID_ENUM_CALCULATION` |
+| a concatenation of the target's own declared value | `MVK_ERROR_INVALID_ENUM_CALCULATION` |
+
+**Coverage runs ONE way, and a CATEGORY substitutes its own tokens.** A narrower source is admitted and a wider one refused, so the law is subset containment rather than equality — and projecting the wide source through a category whose tokens the target covers rescues it, which is the one repair that does not touch either declaration's value list.
+
+**The gate sits in the CALCULATION module and runs after the parse, so three shapes never reach it.** A computation is lowered to a comparison against its target, so the comparison walk answers first wherever it has a class: a constant outside the domain draws `MVK_INVALID_STRING_CONSTANT_FOR_ENUM_COMPARISON`, a display-bearing source against an unlabelled target draws `MVK_INVALID_COMPARE_ENUM_TO_STRING` ([KF407](#kf407)), and a NUMBER source draws `MVK_INVALID_COMPARE_TO_ENUM_OR_STRING`. The TEXT source is the discriminating case, and it is why this gate is not redundant with that walk: a plain text against a TEXTLESS enumeration is ADMITTED there, so only the calculation gate catches it.
+
+**Every row is ADMITTED into a TEXT target**, which is the control that makes the table a law about the target's declared kind rather than about the operations.
+
+Reported by the portable checker (`CheckFamily.ENUM_COMPUTATION_SOURCE`), which stays silent on the three pre-empted shapes and on any operation it will not reduce to a read or a `FirstFilledValue` — a disclosed under-report rather than a guess at which class the walk would answer with.
+
+*Locked by:* `rulekit.validate.laws.EnumComputationSourceLawsTest`, mirrored by `consistency.EnumComputationSourceTest`.
+
 ## §9 supplement — an index field on the ROOT withholds the error-target iteration class (source-verified + measured, 2026-09-14) <a id="kf410"></a>
 
 > Fold: not-foldable — a diagnostic-class precedence law, not an evaluation behaviour.
