@@ -568,7 +568,7 @@ class CheckFamilyWiringTest {
             ("MVK_CATEGORY_UNKOWN" to "/Catalog/UndeclaredCategory"),
         // `LowercaseTier` declares exactly one value, so the list carries one constant A12 admits and one it
         // does not — which keeps the row about the CONSTANT rather than about an empty or unreadable domain.
-        CheckFamily.ENUM_CONSTANT_DOMAIN to
+        CheckFamily.SCALAR_VALUE_LIST_GATES to
             ("MVK_INVALID_STRING_CONSTANT_FOR_ENUMERATION" to "/Catalog/ConstantOutsideTheEnum"),
         // `Aisle` carries a sort entry naming a field it really has, so the reference and type gates both
         // pass and only the CARRIER is wrong — which is what makes this row about repeatability alone.

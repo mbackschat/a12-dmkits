@@ -75,10 +75,3 @@ private fun PreparedModel.groupFinding(
         element.path,
     )
 }
-
-/** How many groups on the path to [path], itself included, repeat — one star each is what A12 wants. */
-private fun PreparedModel.repeatingLevelsOnThePathTo(path: String): Int =
-    elements.count {
-        it.declaredKind == DeclaredKind.GROUP && it.isRepeatable &&
-            (it.path == path || path.startsWith("${it.path}/"))
-    }

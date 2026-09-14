@@ -7142,6 +7142,42 @@ Reported by the portable checker, which did not emit `MVK_SORT_FIELD_DUPLICATE` 
 
 *Locked by:* `rulekit.validate.laws.GroupOrderingMultipleDefectLawsTest`, mirrored by `consistency … GroupOrderingMultipleDefectTest`.
 
+## §8 supplement — the SCALAR value list judges its subject completely first, and a CUSTOM declaration rides with text on both gates that group them (source-verified + measured, 2026-09-14) <a id="kf398"></a>
+
+> Fold: not-foldable — a diagnostic-class law about one construct's operand gates, not an evaluation behaviour.
+
+`CheckFeldUndWerteListenBedingungImpl.check` judges the SUBJECT field completely before looking at the list, and the list is then two different questions depending on which of its two spellings it takes:
+
+| the gate, in order | class |
+|---|---|
+| the subject is a group | `MVK_NO_GROUPS_ALLOWED` |
+| the subject carries a repetition star | `MVK_NO_WILDCARDS_ALLOWED` |
+| the subject is neither text, custom, enumeration nor number | `MVK_ONLY_STRING_ENUM_NUMBER_ALLOWED` |
+| the subject waives value validation | `MVK_INVALID_RAW_TYPE` |
+| `[field]` entries: one named twice, the subject included | `MVK_DUPLICATE_PARAM1` |
+| `[field]` entries: one of another base type | `MVK_VARYING_TYPES_NOT_ALLOWED` |
+| `[field]` entries: one waiving value validation | `MVK_INVALID_RAW_TYPE` |
+| a written-out list whose KIND is not the subject's | `MVK_INVALID_TYPES_FOR_COMPARISON` |
+| a written-out value outside a plain enumeration's domain | `MVK_INVALID_STRING_CONSTANT_FOR_ENUMERATION` |
+| …outside the CATEGORY's classifications | `MVK_INVALID_STRING_CONSTANT_FOR_ENUMERATION_CATEGORY` |
+
+**The subject gates run on BOTH list spellings**, which is what makes the two one construct rather than two: a boolean subject draws `MVK_ONLY_STRING_ENUM_NUMBER_ALLOWED` whether the list is `"x"` or `[Other]`.
+
+**A CUSTOM declaration rides with text on both gates that group declarations, and its name says otherwise on each.** `isLikeString` admits `IPredefinedType` beside `IStringType`, so a custom subject passes a gate spelled `…STRING_ENUM_NUMBER…`; and `matchBaseType` gives the two the same base type, so a custom `[field]` entry matches a STRING subject where an enumeration entry does not. Both cells measured rather than transferred — the second is the one that would be got wrong in both directions by a reader expecting the gate's own name.
+
+**The kind gate is asked before the domain one**, so a NUMBER list under a categorized enumeration draws `MVK_INVALID_TYPES_FOR_COMPARISON` and never reaches the category at all.
+
+**…and a `->` CATEGORY access SWAPS the domain rather than widening it**, the same asymmetry [KF397](#kf397) measured on the quantifier carrier, here on the scalar one and with the scalar's own class.
+
+**The seven refused subject kinds are measured one by one rather than transferred from each other.** A12 asks three POSITIVE predicates, so what the gate refuses is their complement — and a complement is exactly what a checker may not infer: the grid puts Boolean, Confirm, Date, Time, DateTime, DateFragment and DateRange to the kernel separately.
+
+**The duplicate walk takes the SUBJECT together with the entries**, so naming the subject inside its own list is `MVK_DUPLICATE_PARAM1` rather than a self-comparison A12 admits.
+
+Reported by the portable checker (`CheckFamily.SCALAR_VALUE_LIST_GATES`, renamed from `ENUM_CONSTANT_DOMAIN` when the rest of the method's gates landed beside the one it had), silent on a `TypeDefType` or `UnspecifiedType` subject, on an enumeration declaring a `tableName`, and on a subject whose repetition stars do not match its repeating levels, where a wildcard-validity class answers ahead of every gate here.
+
+*Locked by:* `rulekit.validate.laws.ScalarValueListGateLawsTest` and `rulekit.validate.laws.EnumConstantDomainLawsTest`, mirrored by `consistency.ScalarValueListGatesTest`.
+
+
 ## §8 supplement — the value-list condition judges its FIELD list before the list it is compared with, and one of its four operators is a different construct (source-verified + measured, 2026-09-14) <a id="kf397"></a>
 
 > Fold: not-foldable — a diagnostic-class law about one construct's two operand lists, not an evaluation behaviour.
@@ -8107,7 +8143,7 @@ The match is the WHOLE name and case-insensitive, and it is the root carrier's l
 
 **The NUMBER row was PREDICTED WRONG from that same loop**, which falls through to `MVK_NO_STRING_OR_ENUM`: a comparison gate answers ahead of it, so the loop's kind class is not reachable by this shape. That is the second source-order prediction refuted here in one day ([KF358](#kf358) is the first).
 
-**The portable family (`CheckFamily.ENUM_CONSTANT_DOMAIN`) takes the two SCALAR value lists and stops there**, three under-reports stated in its KDoc: the comparison and the quantifiers need operand shapes the shared call reader does not reduce, and a categorized operand is not a bare entity spec, so widening by analogy would name the scalars' class on all three.
+**The portable family (`CheckFamily.SCALAR_VALUE_LIST_GATES`, then named `ENUM_CONSTANT_DOMAIN`) takes the two SCALAR value lists and stops there**, and that carrier boundary still holds: the comparison and the quantifiers answer with two OTHER classes, so widening by analogy would name the scalars' class on them. **Two of the three under-reports its KDoc stated are closed** ([KF397](#kf397) gave the quantifiers their own family, [KF398](#kf398) gave this one the CATEGORIZED operand, which the category reader reduces); the comparison carrier remains another method's.
 
 ## §8 supplement — the gate chain over a `->` CATEGORY reference, and the three classes around it (measured, 2026-09-14) <a id="kf359"></a>
 

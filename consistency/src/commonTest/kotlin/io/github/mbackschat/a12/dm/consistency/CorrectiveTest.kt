@@ -100,6 +100,9 @@ class CorrectiveTest {
             {"type":"Rule","id":"r10","name":"KeyWithNoRepetition","Rule":{
               "errorCondition":"RepetitionNotUnique(Note)","errorEntityRelPath":"../Note",
               "errorCode":"C10","errorMessage":[{"locale":"en_US","text":"x"}]}},
+            {"type":"Rule","id":"r19","name":"RawInAValueList","Rule":{
+              "errorCondition":"FieldValueIncludedInValueList(Blob, \"x\")","errorEntityRelPath":"../Blob",
+              "errorCode":"C19","errorMessage":[{"locale":"en_US","text":"x"}]}},
             {"type":"Rule","id":"r9","name":"RawLength","Rule":{
               "errorCondition":"Length(Blob) >= 1","errorEntityRelPath":"../Blob",
               "errorCode":"C9","errorMessage":[{"locale":"en_US","text":"x"}]}},

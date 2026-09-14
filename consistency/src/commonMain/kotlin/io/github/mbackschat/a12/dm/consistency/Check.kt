@@ -530,11 +530,12 @@ enum class CheckFamily {
     CATEGORY_REFERENCE,
 
     /**
-     * That a value LIST's string constants name declared values of the Enumeration they are compared to.
-     * Its own constant rather than part of [ENUM_VALUE_CHARACTERS] because that family judges a declared
-     * value's spelling and this judges a REFERENCE to one from a condition.
+     * Everything the two SCALAR value-list predicates demand of their subject field and of the list it is
+     * compared against — `CheckFeldUndWerteListenBedingungImpl.check`, whose gates run in one order. Its own
+     * constant rather than part of [ENUM_VALUE_CHARACTERS] because that family judges a declared value's
+     * spelling and this judges a condition's REFERENCE to one, among the other demands of the same method.
      */
-    ENUM_CONSTANT_DOMAIN,
+    SCALAR_VALUE_LIST_GATES,
 
     /**
      * That a rule reading a repetition does not reach its error field only from ABOVE its own group — A12
@@ -788,7 +789,7 @@ internal fun check(
         prepared.fieldOperandKindFindings() +
         prepared.filteredOperandKindFindings() +
         prepared.categoryReferenceFindings() +
-        prepared.enumConstantDomainFindings() +
+        prepared.scalarValueListGateFindings() +
         prepared.errorTargetIterationFindings() +
         prepared.messageParameterFindings() +
         prepared.messageTextCharacterFindings() +
@@ -848,7 +849,7 @@ internal fun check(
             CheckFamily.OPERAND_REPETITION_SCOPE, CheckFamily.DATE_CONSTRUCTION_SLOT,
             CheckFamily.H_MODEL_PATH_SUFFIX, CheckFamily.FIELD_OPERAND_KIND,
             CheckFamily.FILTERED_OPERAND_KIND, CheckFamily.CATEGORY_REFERENCE,
-            CheckFamily.ENUM_CONSTANT_DOMAIN,
+            CheckFamily.SCALAR_VALUE_LIST_GATES,
             CheckFamily.ERROR_TARGET_ITERATION,
             CheckFamily.MESSAGE_PARAMETER_REFERENCE, CheckFamily.MESSAGE_TEXT_CHARACTERS),
         gaps = prepared.gaps() + prepared.emptyFactBase() + findings.buildBlocked() +

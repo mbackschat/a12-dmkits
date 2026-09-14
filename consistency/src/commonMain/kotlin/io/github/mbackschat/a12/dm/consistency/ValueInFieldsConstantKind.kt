@@ -43,7 +43,8 @@ import kotlinx.serialization.json.contentOrNull
  * **The string arm yields to enumeration membership for the same reason.** A12 walks the list field by field
  * and a non-member constant on an Enumeration draws `MVK_INVALID_STRING_CONSTANT_FOR_ENUMERATION` there and
  * then, so the walk stops at such a field instead of continuing to a later one it could refuse. That class
- * belongs to [enumConstantDomainFindings], which does not yet read this carrier.
+ * belongs to [scalarValueListGateFindings], whose own carriers are a different kernel method's — so this
+ * construct's domain class is nobody's yet.
  *
  * **Two classes of this construct are deliberately unreported because they cannot be reached through a
  * consistency check at all.** `MVK_DIFFERENT_YES_VALUE` and `MVK_DIFFERENT_NO_VALUE` compare the two

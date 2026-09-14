@@ -395,6 +395,20 @@ internal fun PreparedModel.addressedTargetOf(
     return if (unaddressed) null else target
 }
 
+/**
+ * How many groups on the path to [path], itself included, repeat — one star each is what A12 wants.
+ *
+ * Two families need it to decide whether an operand's STARRING is already right, because both of A12's
+ * wildcard-validity classes outrun the gate they are about to report: a repetition read without a star is
+ * `MVK_NO_WILDCARD` and a star on a level that does not repeat is `MVK_INVALID_WILDCARD`, so naming any
+ * later class on such an operand would send the author to the wrong repair.
+ */
+internal fun PreparedModel.repeatingLevelsOnThePathTo(path: String): Int =
+    elements.count {
+        it.declaredKind == DeclaredKind.GROUP && it.isRepeatable &&
+            (it.path == path || path.startsWith("${it.path}/"))
+    }
+
 /** Whether [tokens] spell one written-out number. */
 internal fun isNumberLiteral(tokens: List<Token>): Boolean = numberLiteralScale(tokens) != null
 
