@@ -60,8 +60,11 @@ class ParallelIterationUniquenessTest {
         val expected = mutableMapOf<String, List<String>>()
         expected["a uniqueness check alone — the control"] = emptyList()
         expected["a uniqueness check beside a read of the JOINT group"] = listOf(notAllowed)
-        // `Bays` keys on a different field, so nothing pairs it with `Lines` and no joint iteration exists.
-        expected["a uniqueness check beside a read of a DIFFERENTLY keyed group"] = emptyList()
+        // `Bays` keys on a different field, so nothing pairs it with `Lines` and NO joint iteration exists —
+        // this family is silent. A12 refuses the read for the opposite reason and
+        // [operandRepetitionScopeFindings] names that class, which is why the row is not empty.
+        expected["a uniqueness check beside a read of a DIFFERENTLY keyed group"] =
+            listOf("MVK_ERROR_FIELD_INVALID_INDEX")
         assertEquals(expected, actual, "when a uniqueness check sits in a joint iteration")
     }
 
@@ -70,8 +73,9 @@ class ParallelIterationUniquenessTest {
      *
      * A STARRED read is admitted outright — the star puts a wildcard at that level rather than the joint
      * iteration marker — so reporting there would refuse a legal model. Index fields of different declared
-     * types draw `MVK_ERROR_FIELD_INVALID_INDEX_TYPE`, ahead of this gate, so reporting there would name the
-     * wrong class on a correct rejection.
+     * types draw `MVK_ERROR_FIELD_INVALID_INDEX_TYPE`, ahead of this gate, so reporting THIS class there
+     * would be the wrong class on a correct rejection; [operandRepetitionScopeFindings] owns that one and
+     * names it, which is what the second row now shows.
      */
     @Test
     fun theShapesItDeliberatelyDoesNotReport() {
@@ -83,7 +87,7 @@ class ParallelIterationUniquenessTest {
 
         val expected = mutableMapOf<String, List<String>>()
         expected["the joint group read with a STAR"] = emptyList()
-        expected["index fields of different declared TYPES"] = emptyList()
+        expected["index fields of different declared TYPES"] = listOf("MVK_ERROR_FIELD_INVALID_INDEX_TYPE")
         assertEquals(expected, actual, "the joint-iteration shapes deliberately not reported")
     }
 

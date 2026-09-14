@@ -7138,6 +7138,36 @@ Reported by the portable checker, which did not emit `MVK_SORT_FIELD_DUPLICATE` 
 
 *Locked by:* `rulekit.validate.laws.GroupOrderingMultipleDefectLawsTest`, mirrored by `consistency … GroupOrderingMultipleDefectTest`.
 
+## §11 supplement — the operand-scope walk is PER LEVEL, and the level reached outranks the order of the gates inside it (measured, 2026-09-14) <a id="kf371"></a>
+
+> Fold: not-foldable — an operand-admission law plus a walk-order result; it completes §11's scope account rather than restating it.
+
+**One construct, one method, one chain.** `CheckEntityUtils.checkIndicesForA12Model` walks every level of every reference a rule or computation makes and asks, for each level it ITERATES, whether the target's coordinates address that repetition. [KF295](#kf295) and [KF332](#kf332) read pieces of this chain from the semantic-index side; this is the whole of it from the operand side, and it is what turns eight separately-recorded ledger rows into one family.
+
+| the iterated level, relative to the target's group | class |
+|---|---|
+| sits below a level the SAME reference stars | `MVK_NO_WILDCARD` |
+| sits strictly below the target's group | `MVK_NO_WILDCARD` |
+| is the target's group, or an ancestor of it | ADMITTED |
+| is PARALLEL and declares no index field | `MVK_NO_WILDCARD` |
+| is PARALLEL, and two groups on its OWN chain declare one | `MVK_MULTIPLE_INDEX_FIELDS` |
+| is PARALLEL, and nothing on the TARGET's chain declares one | `MVK_ERROR_FIELD_NO_INDEX` |
+| is PARALLEL, and the two index fields differ in NAME | `MVK_ERROR_FIELD_INVALID_INDEX` |
+| is PARALLEL, same name, different base TYPE | `MVK_ERROR_FIELD_INVALID_INDEX_TYPE` |
+| is PARALLEL, same name and base type | ADMITTED — a legal parallel iteration |
+
+**The result the chain alone gets wrong: the WALK outranks the gates.** Reading `checkParallelIteration` gives the order above, in which the operand's own index chain resolves before the target's — so a doubly-keyed operand should draw `MVK_MULTIPLE_INDEX_FIELDS` whatever the target looks like. It does not. The same operand (`/Fulfilment/Credits/Lines/LineAmount`, keyed under a keyed parent) draws `MVK_MULTIPLE_INDEX_FIELDS` into a keyed target and **`MVK_ERROR_FIELD_NO_INDEX`** into an unkeyed one, because the OUTER level is refused first and the inner level is never asked. The two rows differ in the TARGET and in nothing else, which is what identifies the walk rather than the gate as what decides it — predicted wrong here before it was measured.
+
+**The index demand falls on BOTH ends, and the target end had never been measured.** [KF347](#kf347)-era rows and `RuleOperandScopeLawsTest` varied the OPERAND's declaration against a keyed target; with the target in a group that declares no index and the operand keyed, A12 answers `MVK_ERROR_FIELD_NO_INDEX` — the mirror row of `MVK_ERROR_FIELD_INVALID_INDEX`, and the reason the family reads two chains rather than one.
+
+**Every level is asked on its own declaration, not once per reference.** An operand crossing an admitted keyed parallel level and then an UNKEYED one below it is refused at the lower level with that level's own class (`MVK_NO_WILDCARD`) — so "the reference is parallel" is not a property of the reference.
+
+**A star collapses its own level and nothing beneath it.** `Sum(Shipments*/Parcels/ParcelWeight)` is `MVK_NO_WILDCARD` on `Parcels`; starring both levels is admitted. This closes the residue `ErrorFieldReference`'s own note left open — a reference starring an outer level while crossing an inner repeatable group unstarred.
+
+**Which class the SIBLING cells draw was re-measured on one fixture rather than carried.** `RuleOperandScopeLawsTest` (motor claims), `ComputationOperandScopeLawsTest` (the same model, computation carrier) and `ParallelIterationGateLawsTest` (depot) each pinned some of them, and a checker implementing this chain reads ONE model — so a table mixing cells from three fixtures cannot say whether a verdict belongs to the chain or to a fixture. All four re-measure unchanged, the type row included, whose two index fields here differ in declared type and in nothing else.
+
+*Locked by:* `rulekit.validate.laws.ParallelIterationRouteLawsTest` (this chain) beside `…RuleOperandScopeLawsTest` and `…ComputationOperandScopeLawsTest` (the carrier pair); mirrored by `consistency … OperandRepetitionScopeTest`.
+
 ## §9 supplement — `SumOfProducts`' four operand laws are ONE gate chain, and the order is what a reproduction gets wrong (measured, 2026-09-14) <a id="kf370"></a>
 
 > Fold: not-foldable — an operand-admission law plus a gate-order result.

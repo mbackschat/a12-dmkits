@@ -110,6 +110,10 @@ class CheckFamilyWiringTest {
               "errorCondition":"FieldFilled(Price) And Min([Amount], 1, 2) > 0",
               "errorEntityRelPath":"../Price",
               "errorCode":"C36","errorMessage":[{"locale":"en_US","text":"x"}]}},
+            {"type":"Rule","id":"r38","name":"UnstarredRepetitionRead","Rule":{
+              "errorCondition":"FieldFilled(Price) And FieldFilled(Crates/CrateQty)",
+              "errorEntityRelPath":"../Price",
+              "errorCode":"C38","errorMessage":[{"locale":"en_US","text":"x"}]}},
             {"type":"Rule","id":"r37","name":"StarredIndexKey","Rule":{
               "errorCondition":"FieldFilled(Price) And [Crates/CrateQty For Pallets*/PalletNote] > 0",
               "errorEntityRelPath":"../Price",
@@ -355,6 +359,11 @@ class CheckFamilyWiringTest {
         // each makes the rule iterate them jointly — the shape no other row in this fixture produces.
         CheckFamily.PARALLEL_ITERATION_UNIQUENESS to
             ("MVK_PARALLEL_ITERATION_NOT_ALLOWED" to "/Catalog/UniquenessUnderParallelIteration"),
+        // A repeatable group read without a star into an error field the root holds: the target's own
+        // coordinates cannot pick a repetition of `Crates`, and nothing about the operator is at fault —
+        // which is what makes the row about the LEVEL rather than about the predicate reading it.
+        CheckFamily.OPERAND_REPETITION_SCOPE to
+            ("MVK_NO_WILDCARD" to "/Catalog/UnstarredRepetitionRead"),
         // The suffix rides a group that DOES repeat, so the star itself is legal and this row cannot borrow
         // a wildcard family's finding: the `.` in front of it is the whole defect.
         CheckFamily.H_MODEL_PATH_SUFFIX to

@@ -333,6 +333,14 @@ enum class CheckFamily {
     PARALLEL_ITERATION_UNIQUENESS,
 
     /**
+     * That every repetition an operand crosses unstarred is one the target's own coordinates address — or,
+     * where it is not, that the two branches iterate JOINTLY on a shared index field. One constant for the
+     * five classes of that walk because A12 asks them as one gate chain per level, and because which class
+     * answers depends on the level reached rather than on anything a family could split by.
+     */
+    OPERAND_REPETITION_SCOPE,
+
+    /**
      * That no path segment carries the H-model `.*` repetition suffix. Its own constant rather than part of
      * [REPETITION_WILDCARD_TARGET] because the demand is on the SPELLING rather than on where a star lands,
      * and A12 gates it between resolution and the landing site rather than alongside it.
@@ -593,6 +601,7 @@ internal fun check(
         prepared.semanticIndexKeyFindings() +
         prepared.repetitionNotUniqueCombinationFindings() +
         prepared.parallelIterationUniquenessFindings() +
+        prepared.operandRepetitionScopeFindings() +
         prepared.hModelPathSuffixFindings() +
         prepared.fieldOperandKindFindings() +
         prepared.filteredOperandKindFindings() +
@@ -641,6 +650,7 @@ internal fun check(
             CheckFamily.SEMANTIC_INDEX_KEY,
             CheckFamily.REPETITION_NOT_UNIQUE_COMBINATION,
             CheckFamily.PARALLEL_ITERATION_UNIQUENESS,
+            CheckFamily.OPERAND_REPETITION_SCOPE,
             CheckFamily.H_MODEL_PATH_SUFFIX, CheckFamily.FIELD_OPERAND_KIND,
             CheckFamily.FILTERED_OPERAND_KIND, CheckFamily.CATEGORY_REFERENCE,
             CheckFamily.ENUM_CONSTANT_DOMAIN,
@@ -836,6 +846,8 @@ private val POSITIONED_CONDITION_CODES = setOf(
     "MVK_INCOMPLETE_INPUT", "MVK_EXPECTED_TOKEN_NOT_FOUND", "MVK_UNEXPECTED_TOKEN",
     "MVK_LEXER_STANDARD_ERROR", "MVK_BRACKET_MISSING", "MVK_GROUP_IS_EMPTY", "MVK_DUPLICATE_PARAM1",
     "MVK_ROOT_GROUP_REFERENCED", "MVK_NO_FIELDS_ALLOWED", "MVK_INVALID_WILDCARD",
+    "MVK_NO_WILDCARD", "MVK_MULTIPLE_INDEX_FIELDS", "MVK_ERROR_FIELD_NO_INDEX",
+    "MVK_ERROR_FIELD_INVALID_INDEX", "MVK_ERROR_FIELD_INVALID_INDEX_TYPE",
 )
 
 /**

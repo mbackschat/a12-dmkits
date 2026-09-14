@@ -15,6 +15,8 @@ class ErrorFieldReferenceTest {
 
     private val notReferenced = "MVK_ERROR_FIELD_NOT_REFERENCED"
 
+    private val noWildcard = "MVK_NO_WILDCARD"
+
     /** A shipment model whose one rule carries [condition] and points at [errorFieldRelPath]. */
     private fun codes(errorFieldRelPath: String, condition: String): List<String> = check(
         ModelSource(
@@ -121,6 +123,11 @@ class ErrorFieldReferenceTest {
      * **This was a live wrong-class defect until 2026-09-14**, found by the mutation differential rather than
      * by this grid: every other row here holds the condition flat, so "the target is unreferenced" and
      * "nothing iterates" were one thing across all of them.
+     *
+     * **And the class A12 draws is now NAMED rather than merely yielded to**: [operandRepetitionScopeFindings]
+     * owns `MVK_NO_WILDCARD`, so the two unstarred rows carry it instead of reporting nothing. The pre-emption
+     * this test locks is unchanged — what moved is that the report no longer goes silent on a model A12
+     * refuses.
      */
     @Test
     fun anUnstarredRepetitionReadPreEmptsTheClass() {
@@ -132,11 +139,11 @@ class ErrorFieldReferenceTest {
             codes("../Carrier", "Sum(Parcels*/Weight) > 0 And FieldFilled(Parcels/Weight)")
 
         val expected = mutableMapOf<String, List<String>>()
-        expected["UNSTARRED read, target outside the repetition"] = emptyList()
+        expected["UNSTARRED read, target outside the repetition"] = listOf(noWildcard)
         expected["STARRED read of the same list"] = listOf(notReferenced)
         // Per REFERENCE, not per condition: one unstarred read is enough to hand the verdict to A12's
         // iteration class, however many starred reads sit beside it.
-        expected["UNSTARRED read beside a starred one"] = emptyList()
+        expected["UNSTARRED read beside a starred one"] = listOf(noWildcard)
         assertEquals(expected, actual, "an unstarred repetition read pre-empts the class")
     }
 

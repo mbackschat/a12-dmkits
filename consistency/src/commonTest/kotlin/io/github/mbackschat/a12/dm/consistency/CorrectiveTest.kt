@@ -59,6 +59,10 @@ class CorrectiveTest {
               "errorCondition":"RepetitionNotUnique(Shelves/ShelfCode) And RepetitionNotUnique(Shelves/ShelfQty)",
               "errorEntityRelPath":"../Shelves/ShelfCode",
               "errorCode":"C11","errorMessage":[{"locale":"en_US","text":"x"}]}},
+            {"type":"Rule","id":"r13","name":"UnstarredRepetitionRead","Rule":{
+              "errorCondition":"FieldFilled(Note) And FieldFilled(Shelves/ShelfQty)",
+              "errorEntityRelPath":"../Note",
+              "errorCode":"C13","errorMessage":[{"locale":"en_US","text":"x"}]}},
             {"type":"Rule","id":"r10","name":"KeyWithNoRepetition","Rule":{
               "errorCondition":"RepetitionNotUnique(Note)","errorEntityRelPath":"../Note",
               "errorCode":"C10","errorMessage":[{"locale":"en_US","text":"x"}]}},
