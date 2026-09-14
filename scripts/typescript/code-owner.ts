@@ -168,6 +168,11 @@ function report(code: string, files: readonly string[], ledger: string): Report 
   return { code, owners: ownersOf(code, files), ...ledgerRow(code, ledger) };
 }
 
+/** Whether anything already reports this code — the ledger's claim, or a report this scan could see. */
+function covered(item: Report): boolean {
+  return item.reportedClaim || item.owners.length > 0;
+}
+
 function render(item: Report): string {
   const lines: string[] = [];
   const owners = item.owners.length === 0
@@ -207,13 +212,19 @@ function main(argv: readonly string[]): void {
       continue;
     }
     const items = codes.map((code) => report(code, files, ledger));
-    const open = items.filter((item) => item.owners.length === 0);
-    blocks.push(`${argument}: ${codes.length} classes, ${open.length} reported by no family\n`
-      + items.map((item) => `  ${item.owners.length > 0 ? "covered " : "OPEN    "} ${item.code}`).join("\n"));
+    // Coverage is read from the LEDGER, not from this file's source scan. The scan cannot follow every
+    // indirection — a code parked in an enum constructor and reached as `law.code` is invisible to it — and
+    // in file mode a false OPEN is the expensive direction: it sends a session to redo a finished family.
+    // The ledger's cell is guard-locked in the reporting direction (`CheckerLedgerDispositionGuardTest`).
+    const open = items.filter((item) => !covered(item));
+    blocks.push(`${argument}: ${codes.length} classes, ${open.length} not yet reported\n`
+      + items.map((item) => `  ${covered(item) ? "covered " : "OPEN    "} ${item.code}`
+        + (covered(item) && item.owners.length > 0 ? `  (${item.owners[0].file.split("/").pop()})` : ""))
+        .join("\n"));
   }
   console.log(blocks.join("\n\n"));
 }
 
 if (require.main === module) main(process.argv.slice(2));
 
-module.exports = { ownersOf, ledgerRow, codesThrownBy, render, sources, withoutComments };
+module.exports = { ownersOf, ledgerRow, codesThrownBy, render, sources, withoutComments, covered };

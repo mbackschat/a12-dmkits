@@ -4,7 +4,7 @@ const fs = require("node:fs");
 const os = require("node:os");
 const path = require("node:path");
 
-const { ownersOf, ledgerRow, render, withoutComments } = require("./code-owner.ts");
+const { ownersOf, ledgerRow, render, withoutComments, covered } = require("./code-owner.ts");
 
 function fixture(name: string, body: string): string {
   const dir: string = fs.mkdtempSync(path.join(os.tmpdir(), "code-owner-"));
@@ -78,4 +78,11 @@ test("the reverse direction is offered as a lead, never as drift", () => {
   });
   assert.match(rendered, /lead:/);
   assert.doesNotMatch(rendered, /DRIFT/);
+});
+
+test("coverage in file mode believes the ledger over this scan", () => {
+  // The enum-constructor case: `ArityLaw.EXACTLY_ONE("MVK_X")` reached as `law.code` never appears in a
+  // finding's argument list, so the scan sees no owner and the ledger is the only side that knows.
+  assert.equal(covered({ code: "MVK_X", owners: [], reportedClaim: true, disposition: "erased / checker-reported", locks: [] }), true);
+  assert.equal(covered({ code: "MVK_Y", owners: [], reportedClaim: false, disposition: "kernel-delegated", locks: [] }), false);
 });

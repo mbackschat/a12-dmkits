@@ -357,6 +357,10 @@ class BuilderCheckerDivergenceGuardTest {
             Map.entry("MVK_DATEFORMATS_NOT_COMPATIBLE", Disposition.PROSE_ONLY),
             Map.entry("MVK_DATE_AND_NONDATE", Disposition.PROSE_ONLY),
             Map.entry("MVK_NOT_SORTABLE", Disposition.PROSE_ONLY),
+            // Named by the temporal family only to say which class a NON-temporal leading operand draws on
+            // the count carrier, where the extrema draw MVK_NOT_SORTABLE. Naming the neighbouring class is
+            // what keeps the family's own class off a list A12 refuses for a different reason.
+            Map.entry("MVK_STRING_ENUM_AND_NON_STRING_ENUM", Disposition.PROSE_ONLY),
             Map.entry("MVK_NO_NUMBER", Disposition.PROSE_ONLY),
 
             // The enum-category pairing. `FieldTypeSpec.EnumSpec` refuses a misaligned category in its

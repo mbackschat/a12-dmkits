@@ -55,6 +55,21 @@ private val TEMPORAL_FORMAT_MEMBERS = mapOf(
 internal fun declaredTemporalFormatOf(field: DeclaredElement): String? =
     field.declaredFormat(TEMPORAL_FORMAT_MEMBERS)
 
+/**
+ * The declared field types this reader is CERTAIN A12 gives a non-DATETIME base type.
+ *
+ * An allow-list rather than the complement of the temporal one, because the complement would include
+ * `CustomType`, `TypeDefType`, `UnspecifiedType` and `DateRangeType` — types whose effective base type this
+ * reader does not resolve — and refusing on those would be an over-rejection on a model A12 may admit.
+ */
+internal val PLAINLY_NON_TEMPORAL_TYPES = setOf(
+    "StringType",
+    "NumberType",
+    "BooleanType",
+    "ConfirmType",
+    "EnumerationType",
+)
+
 /** The format a `DateRangeType` declares, or null when this field is not one. */
 internal fun declaredDateRangeFormatOf(field: DeclaredElement): String? =
     field.declaredFormat(mapOf("DateRangeType" to "format"))

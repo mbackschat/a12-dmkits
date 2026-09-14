@@ -759,6 +759,18 @@ One cold adversarial review over the frozen range, as [§2](#2-execution-order-a
 
 **Only one direction is locked, and that is the honest limit.** A row claiming a report the checker no longer emits would need a scan that follows every helper, and the same over-counting returns. The drift that actually happens is one-way — the family lands and the row lags — so the guard covers the direction with the evidence.
 
+### C record — an EXTENSION rather than a family, and the instrument that decided that (2026-09-14)
+
+**Frozen change: the date-aggregate base-type gate.** [KF389](KERNEL-FINDINGS.md#kf389); `MVK_DATE_AND_NONDATE` drained into the existing `TEMPORAL_AGGREGATE_OPERANDS`, whose KDoc had carried it as a deliberate silence — "which the builders pre-check". No new family, so the count stays at 76.
+
+**The silence was justified by the wrong fact, and the ledger's own semantics say why.** `pre-checked` classifies the TYPED LIBRARY surface; whether the portable checker reports a code is a third, orthogonal fact. A stored DM-JSON model carries whatever it carries regardless of what a builder would have refused, so "the builders pre-check it" is never on its own a reason for the checker to stay quiet. Any other family's silence resting on that phrase is worth re-reading.
+
+**The slice was chosen and sized by `scripts/typescript/code-owner.ts` rather than by grep**, which is the first slice to have been. Its file mode over `CheckEntityListenUtils` returned 15 open classes; three of them clustered on one method, and the per-code mode then showed that two of the three were already reported and only this one was not. That turned what looked like a three-code slice into a one-code extension of an existing family — the same judgement the previous slice got wrong by hand, reached in two commands.
+
+**The instrument had to be corrected twice first, and both corrections are the same defect one layer down.** Its source scan could not see a code reached through a file-local `finding(…)` helper, nor one parked in an enum constructor and read as `law.code`. The first gap was real and shared with `CheckerLedgerDispositionGuardTest`, which had been green while fourteen reported codes carried rows that did not say so; the second is unfixable by scanning, so file mode now reads coverage from the guard-locked ledger instead. **A tool that under-reports coverage is the expensive direction here** — it sends a session to redo finished work, which is exactly what the count in this plan's stage-5 row was doing.
+
+**One over-rejection was avoided by a check worth repeating.** `declaredTemporalFormatOf` returns null both for a non-temporal field and for a temporal one declaring no format, and a `DateTimeType` may legitimately declare none. Refusing on that null would have rejected a model A12 admits, so the gate refuses only on an allow-list of types it is certain about — `CustomType`, `TypeDefType`, `UnspecifiedType` and `DateRangeType` are all left alone.
+
 ### C record — the seventy-sixth family: the decider was the CALLER, and the prior art was one carrier wide (2026-09-14)
 
 **Frozen family: the duplicate and root-group gates an entity list meets before its operator asks anything.** [KF388](KERNEL-FINDINGS.md#kf388); `MVK_DUPLICATE_PARAM1`, `MVK_DUPLICATE_PARAM2` and `MVK_ROOT_GROUP_REFERENCED` now reported on the field and value lists, which is the carrier boundary the ledger had carried as unaudited since 2026-09-13 and the group-list families' own KDoc named as out of scope.

@@ -7142,6 +7142,24 @@ Reported by the portable checker, which did not emit `MVK_SORT_FIELD_DUPLICATE` 
 
 *Locked by:* `rulekit.validate.laws.GroupOrderingMultipleDefectLawsTest`, mirrored by `consistency … GroupOrderingMultipleDefectTest`.
 
+## §6 supplement — a date operand list's three gates are ONE walk, so two defects answer by POSITION (source-verified + measured, 2026-09-14) <a id="kf389"></a>
+
+> Fold: not-foldable — a diagnostic-class law about aggregate operand types, not an evaluation behaviour.
+
+`CheckEntityListenUtils.checkOpTypesAreComparableDatetimeType` walks a date-typed operand list ONCE and asks three questions of each operand in turn, in this order: is its base type DATETIME (`MVK_DATE_AND_NONDATE`), is its date fully known (`MVK_PARTIAL_DATE_NOT_ALLOWED`), and do its declared components match the FIRST operand's (`MVK_DATEFORMATS_NOT_COMPATIBLE`). [KF260](#kf260) and [KF193](#kf193) measured the second and third; the first was recorded as pre-checked by the typed builders and so had never been measured on a STORED model, where nothing prevents the shape.
+
+**A later operand of any plainly non-temporal kind draws `MVK_DATE_AND_NONDATE`** — measured on a text and on a number operand, across all three carriers that type their list from its leading field (`MaxValue`, `MinValue`, `NumberOfDifferentValues`).
+
+**The LEADING operand is a different question, and the row that shows it is the control.** It decides which arm types the list at all, so a non-temporal leader never reaches this gate: `MaxValue` and `MinValue` answer `MVK_NOT_SORTABLE`, and `NumberOfDifferentValues` answers `MVK_STRING_ENUM_AND_NON_STRING_ENUM` — three carriers, two classes, neither of them this one.
+
+**Two defects in one list answer by OPERAND POSITION, not by a precedence among the classes.** `MaxValue(FiledOn, Adjuster, CoverFrom)` is `MVK_DATE_AND_NONDATE` and `MaxValue(FiledOn, CoverFrom, Adjuster)` is `MVK_DATEFORMATS_NOT_COMPATIBLE` — the same two defects, swapped, each answered by whichever operand comes first. A fixed class precedence would give both rows one code, so this pair is what makes the three questions one walk rather than three passes.
+
+**The boundary: two carriers take a different arm entirely.** `FieldValuesNotUnique` and `FirstFilledValue` route through `matchBaseType` / `checkAllFieldsMatchingOperationType`, which compares each operand against its PREDECESSOR under a single class — both answer `MVK_VARYING_TYPES_NOT_ALLOWED` on the same list, so this file's class is not "any date list".
+
+Reported by the portable checker (`CheckFamily.TEMPORAL_AGGREGATE_OPERANDS`), which refuses only on a declared type it is CERTAIN is non-temporal: a `DateTimeType` declaring no format takes its default and is still a date, so absence of a format is never read as absence of a date.
+
+*Locked by:* `rulekit.validate.laws.DateAggregateBaseTypeGateLawsTest`, mirrored by `consistency.TemporalAggregateOperandsTest`.
+
 ## §9 supplement — an entity list's DUPLICATE and ROOT-GROUP gates are the CALLER's, not the list's (source-verified + measured, 2026-09-14) <a id="kf388"></a>
 
 > Fold: not-foldable — a diagnostic-class law about which gate answers an entity list, not an evaluation behaviour.

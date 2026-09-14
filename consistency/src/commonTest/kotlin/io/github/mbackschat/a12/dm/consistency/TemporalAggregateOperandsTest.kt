@@ -193,8 +193,9 @@ class TemporalAggregateOperandsTest {
         val actual = mutableMapOf<String, List<String>>()
         actual["a group whose expansion agrees"] = codes("MaxValue(Window) == [AuditOn]")
         actual["a group whose expansion disagrees"] = codes("MaxValue(Spread) == [AuditOn]")
-        actual["a NUMBER after a date leader — A12's own class"] =
-            codes("MaxValue(StartOn, Premium) == [AuditOn]")
+        actual["a NUMBER after a date leader"] = codes("MaxValue(StartOn, Premium) == [AuditOn]")
+        actual["a NUMBER as the LEADER, which another arm types"] =
+            codes("MaxValue(Premium, StartOn) == [AuditOn]")
         actual["the operand-list Min, which carries the gate over OPERATIONS"] =
             codes("Min(StartOn, PeriodFrom) == [AuditOn]")
         actual["a complete date beside a year-month — the positive control"] =
@@ -203,9 +204,10 @@ class TemporalAggregateOperandsTest {
         val expected = mutableMapOf<String, List<String>>()
         expected["a group whose expansion agrees"] = emptyList()
         expected["a group whose expansion disagrees"] = listOf(incompatible)
-        // `MVK_DATE_AND_NONDATE` is A12's here and the builders pre-check it; this family stays silent rather
-        // than naming the class the leader's arm draws.
-        expected["a NUMBER after a date leader — A12's own class"] = emptyList()
+        expected["a NUMBER after a date leader"] = listOf("MVK_DATE_AND_NONDATE")
+        // The LEADER decides which arm types the list at all, so a non-temporal one is never this gate's —
+        // A12 answers `MVK_NOT_SORTABLE` there, and naming this class would be the wrong one.
+        expected["a NUMBER as the LEADER, which another arm types"] = emptyList()
         // The operand-list carriers take OPERATIONS, whose types this reader does not infer.
         expected["the operand-list Min, which carries the gate over OPERATIONS"] = emptyList()
         expected["a complete date beside a year-month — the positive control"] = listOf(incompatible)

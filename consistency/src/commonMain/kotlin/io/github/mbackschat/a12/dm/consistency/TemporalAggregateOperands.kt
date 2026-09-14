@@ -32,8 +32,15 @@ import kotlinx.serialization.json.contentOrNull
  * | the operand list | who answers |
  * |---|---|
  * | a leading operand that is not temporal | the numeric arm — `MVK_NOT_SORTABLE` / `MVK_NO_NUMBER` |
- * | a later operand that is not temporal | `MVK_DATE_AND_NONDATE`, which the builders pre-check |
  * | a format outside the derived vocabulary | nobody — an undiscovered format is not a defect |
+ *
+ * **A LATER operand that is not temporal is the chain's first class**, `MVK_DATE_AND_NONDATE`, asked of each
+ * operand before that operand's precision and components ([KERNEL-FINDINGS KF389],
+ * `rulekit.validate.laws.DateAggregateBaseTypeGateLawsTest`). It is reported only where the declared type is
+ * one this reader is certain is not temporal, never merely where a temporal format is absent — a
+ * `DateTimeType` declaring no format takes its default and is a date. The LEADING operand is a different
+ * question entirely: it decides which arm types the list at all, and a non-temporal leader is answered by
+ * that arm — `MVK_NOT_SORTABLE` on the extrema, `MVK_STRING_ENUM_AND_NON_STRING_ENUM` on the count.
  *
  * **A PARTIALLY KNOWN date is the chain's other reported class**, and it is independent of the components:
  * the three carriers here compare a DECODED date, which a partial has not, so every precision is refused
@@ -100,6 +107,14 @@ private fun PreparedModel.operandDefect(
     var first: TemporalOperand? = null
     var comparable = true
     fields.forEach { field ->
+        // A12 asks the BASE TYPE first, of each operand in turn, before that operand's precision or its
+        // components — so a non-temporal operand answers here whenever it comes before the defect that would
+        // otherwise be reported, and is out-ranked whenever it comes after.
+        if (first != null && field.declaredFieldType() in PLAINLY_NON_TEMPORAL_TYPES) {
+            return OperandDefect(NOT_TEMPORAL, first, TemporalOperand(field.path, "", emptySet()))
+        }
+        // Absence of a declared format is NOT absence of a temporal type: a `DateTimeType` may declare none
+        // and take its default, so this bail is "nothing to compare", never "this operand is not a date".
         val format = declaredTemporalFormatOf(field) ?: return null
         if (declaresAPartialPrecision(field)) {
             return OperandDefect(PARTIAL_REFUSED, null, TemporalOperand(field.path, format, emptySet()))
@@ -118,6 +133,8 @@ private fun PreparedModel.operandDefect(
     }
     return null
 }
+
+private const val NOT_TEMPORAL = "MVK_DATE_AND_NONDATE"
 
 private const val PARTIAL_REFUSED = "MVK_PARTIAL_DATE_NOT_ALLOWED"
 
