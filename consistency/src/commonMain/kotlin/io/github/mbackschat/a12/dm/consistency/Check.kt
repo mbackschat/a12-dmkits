@@ -134,6 +134,13 @@ enum class CheckFamily {
     ENUM_VALUE_CHARACTERS,
 
     /**
+     * An enumeration's `sValue` names one of the values it declares. Its own constant because it is a claim
+     * about a single distinguished member rather than about the value list, and a report merging it would
+     * let a special value pointing nowhere read as a defect in the values themselves.
+     */
+    ENUM_S_VALUE_DOMAIN,
+
+    /**
      * That a declared string `pattern` passes A12's admission gate — its TEXTUAL half. The gate blacklists
      * source-character adjacencies rather than the expression they spell, so an escaped metacharacter
      * before a quantifier is refused like an unescaped one. Its other half, Java regex compilability,
@@ -560,7 +567,8 @@ internal fun check(
         prepared.messageParameterFindings() +
         prepared.messageTextCharacterFindings() +
         prepared.stringTypeMessageFindings() + prepared.stringTypeParameterFindings() +
-        prepared.numberTypeDigitFindings() + prepared.enumValueLabelFindings())
+        prepared.numberTypeDigitFindings() + prepared.enumValueLabelFindings() +
+        prepared.enumSpecialValueFindings())
         .filterNot { it.at in stopped && it.code !in ERROR_TARGET_CODES }
         .filterNot { it.at in resolvedFirst && it.code in CONDITION_TEXT_CODES }
         .withoutRelationsBehindAPositionedDefect()
@@ -584,7 +592,8 @@ internal fun check(
             CheckFamily.ENUM_CATEGORY_ALIGNMENT, CheckFamily.ENUM_VALUE_CHARACTERS,
             CheckFamily.STRING_PATTERN_ADMISSION, CheckFamily.STRING_PATTERN_MESSAGE,
             CheckFamily.STRING_TYPE_PARAMETERS, CheckFamily.NUMBER_TYPE_DIGITS,
-            CheckFamily.ENUM_VALUE_LABELS, CheckFamily.EMPTY_GROUP_OPERAND,
+            CheckFamily.ENUM_VALUE_LABELS, CheckFamily.ENUM_S_VALUE_DOMAIN,
+            CheckFamily.EMPTY_GROUP_OPERAND,
             CheckFamily.ERROR_FIELD_REFERENCE, CheckFamily.GROUP_LIST_OPERANDS,
             CheckFamily.GROUP_LIST_ROOT_OPERAND, CheckFamily.GROUP_LIST_OPERAND_KIND,
             CheckFamily.REPETITION_WILDCARD_TARGET, CheckFamily.COMPUTED_TARGET_KIND,

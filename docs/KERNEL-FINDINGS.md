@@ -7138,6 +7138,35 @@ Reported by the portable checker, which did not emit `MVK_SORT_FIELD_DUPLICATE` 
 
 *Locked by:* `rulekit.validate.laws.GroupOrderingMultipleDefectLawsTest`, mirrored by `consistency … GroupOrderingMultipleDefectTest`.
 
+## §8 supplement — the Enumeration's declaration laws: one live class, a table axis the reader refuses, and two custom conditions nothing reaches (measured, 2026-09-14) <a id="kf366"></a>
+
+> Fold: not-foldable — declaration-admission laws plus a reachability result.
+
+**[MVK-LEDGER] carries fifteen Enumeration shape laws as `n/a-structural`, and one of them is a class a stored model draws.** Locked by `rulekit.validate.laws.EnumDeclarationShapeLawsTest`.
+
+| the declared `EnumerationType` | A12 |
+|---|---|
+| two values — the control | ADMITTED |
+| an EMPTY `values` list, or none | NOT BUILDABLE |
+| `sValue` naming a declared value | ADMITTED |
+| `sValue` naming no declared value | `MVK_S_VALUE_INVALID` |
+| a BLANK `sValue` | ADMITTED |
+| a `tableName`, with or without a `columnName` | UNREADABLE |
+| two categories sharing a name | NOT BUILDABLE |
+| a repeated value with a category declared | `MVK_CATEGORY_VALUE_DUPLICATE` + `MVK_INTERNAL_VALUES_DUPLICATE` |
+| the same repeat with no category | `MVK_INTERNAL_VALUES_DUPLICATE` |
+| a repeated category TOKEN over distinct values | ADMITTED |
+| a category one token short | `MVK_MISSING_CATEGORY_VALUE` |
+| a value or token carrying `<`, or a control character | ADMITTED |
+
+**`MVK_S_VALUE_INVALID` is the kernel basis modelkit's one documented over-strictness never had.** `EnumSpec` refuses a special value outside the declared domain and API-FINDINGS 96 records that as deliberate; the row above is A12 agreeing. A BLANK member is read as unset, so the law is not asked there — the boundary that keeps a checker from refusing a model A12 admits.
+
+**The whole TABLE axis is refused one tier further out than expected.** A12's stored `EnumerationType` declares `values`, `categories`, `errorMessage`, `alphabeticalSorting` and `sValue`; writing a `tableName` beside them makes the source UNREADABLE rather than being ignored. So the five "not allowed beside a table" laws, the table/column co-requirement and the four dependent-column laws have no stored shape at all — ten codes closed on one measured row plus a member list.
+
+**Two of the fifteen stay UNMEASURED rather than unreachable**, and the distinction is the point: `MVK_INTERNAL_VALUE_INVALID` and `MVK_CATEGORY_VALUE_INVALID` are metamodel CUSTOM CONDITIONS (`ungueltigerXMLWert`, `ungueltigerKategorieWert`), and neither markup nor a control character reaches either. What they refuse is unknown, so nothing reproduces them — a checker guessing a predicate it has not seen fire would refuse values A12 takes.
+
+**And `MVK_CATEGORY_NAME_DUPLICATE` and `MVK_MISSING_VALUE_FOR_CATEGORY` fail on the COLLECTOR's shape rather than on the law.** The categories arrive as a `Map` keyed by name, so a repeated name is a conversion failure and never a verdict; and the collector writes the enum's values and the category's tokens into one repeating group, so that group's count is the larger of the two and can never fall short of the value count.
+
 ## §13 supplement — a group's repetition cap depends on the CARRIER, and the three laws beside it are unreachable (measured, 2026-09-14) <a id="kf365"></a>
 
 > Fold: not-foldable — a declaration-admission law plus a reachability result.

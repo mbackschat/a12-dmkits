@@ -48,6 +48,9 @@ class CheckFamilyWiringTest {
               "NumberType":{"minFractionalDigits":3,"maxFractionalDigits":2}}}},
             {"type":"Field","id":"f11","name":"RepeatedTier","Field":{"fieldType":{
               "type":"EnumerationType","EnumerationType":{"values":[{"value":"A"},{"value":"A"}]}}}},
+            {"type":"Field","id":"f36","name":"StrandedSpecialValue","Field":{"fieldType":{
+              "type":"EnumerationType","EnumerationType":{"values":[{"value":"P"},{"value":"Q"}],
+              "sValue":"R"}}}},
             {"type":"Group","id":"g1","name":"Hollow","Group":{"elements":[]}},
             {"type":"Group","id":"g9","name":"Aisle","Group":{"sortFields":[{"name":"AisleCode"}],"elements":[
               {"type":"Field","id":"f34","name":"AisleCode","Field":{"fieldType":{"type":"StringType"}}}
@@ -349,6 +352,10 @@ class CheckFamilyWiringTest {
         // row also fails if the family ever collapses the two carriers onto a single bound.
         CheckFamily.GROUP_REPETITION_COUNT to
             ("MVK_MAX_TOO_BIG" to "/Catalog/Overstock"),
+        // The enumeration declares two values and points its special one at a third, so the row is about
+        // the `sValue` alone — the value list itself is sound.
+        CheckFamily.ENUM_S_VALUE_DOMAIN to
+            ("MVK_S_VALUE_INVALID" to "/Catalog/StrandedSpecialValue"),
         // The rule sits in a repeatable group and reaches its error field only through the root, while
         // reading a sibling of that field — so A12 cannot say which pallet the error belongs to.
         CheckFamily.ERROR_TARGET_ITERATION to
