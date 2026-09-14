@@ -203,6 +203,10 @@ class CheckFamilyWiringTest {
               "errorCondition":"FieldFilled(Price) And [Price] < [Reference]",
               "errorEntityRelPath":"../Price",
               "errorCode":"C47","errorMessage":[{"locale":"en_US","text":"x"}]}},
+            {"type":"Rule","id":"r57","name":"DateWithoutItsYear","Rule":{
+              "errorCondition":"FieldFilled(Price) And [TravelDate] == Date(\"01\", \"02\")",
+              "errorEntityRelPath":"../Price",
+              "errorCode":"C57","errorMessage":[{"locale":"en_US","text":"x"}]}},
             {"type":"Rule","id":"r56","name":"CodeValidityOnANumber","Rule":{
               "errorCondition":"FieldFilled(Price) And Valid(UnitCount, \"EMail\")",
               "errorEntityRelPath":"../Price",
@@ -528,6 +532,10 @@ class CheckFamilyWiringTest {
         // code's name, so the row fails if a custom or extensible reading is ever folded into it.
         CheckFamily.VALIDITY_CONDITION_OPERANDS to
             ("MVK_NO_STRING_OR_ENUM_OR_EXT_ENUM" to "/Catalog/CodeValidityOnANumber"),
+        // A date built from a day and a month in a model declaring no reference year — the row fails if the
+        // family ever starts reading the declaration as optional.
+        CheckFamily.BASE_YEAR_REQUIREMENT to
+            ("MVK_MISSING_YEAR" to "/Catalog/DateWithoutItsYear"),
         // Two text declarations under an ordering operator — the one comparison in this fixture whose
         // operator demands more of its sides than they are.
         CheckFamily.COMPARISON_OPERATOR_OPERANDS to

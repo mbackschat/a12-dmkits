@@ -86,6 +86,22 @@ fun PreparedModel.dateConstructionSlotFindings(): List<Finding> {
  */
 internal data class DateConstructionReading(val aSlotAnswersFirst: Boolean, val namesAnEntity: Boolean)
 
+/**
+ * Whether a `Date` construction's PRESENT slots already fail a gate of their own, whatever its arity.
+ *
+ * The year law of a two-parameter construction is asked after the day and month gates, so its family has to
+ * know whether those answered — and the three-slot arity gate that [readDateConstruction] applies would hide
+ * exactly the shape that law is about.
+ */
+internal fun PreparedModel.aDateSlotAnswersFirst(
+    operands: List<List<Token>>,
+    element: DeclaredElement,
+): Boolean {
+    val keywords = CONDITION_OPERATOR_KEYWORDS[conditionLanguage] ?: return false
+    val extractOps = EXTRACT_OPS.mapNotNull { (id, op) -> keywords[id]?.let { it to op } }.toMap()
+    return TemporalConstruction.DATE.defectAmongSlots(this, element, operands, extractOps) != null
+}
+
 /** Read the `Date` construction written at [operands]; null where this reader does not judge that shape. */
 internal fun PreparedModel.readDateConstruction(
     operands: List<List<Token>>,
@@ -94,7 +110,10 @@ internal fun PreparedModel.readDateConstruction(
     val keywords = CONDITION_OPERATOR_KEYWORDS[conditionLanguage] ?: return null
     val extractOps = EXTRACT_OPS.mapNotNull { (id, op) -> keywords[id]?.let { it to op } }.toMap()
     val construction = TemporalConstruction.DATE
-    if (!construction.admitsArity(operands.size)) {
+    // The COMPLETE shape only. A year-less construction's own law is `MVK_MISSING_YEAR`, asked before the
+    // validity question and owned by [baseYearRequirementFindings]; reading it here would put a second
+    // finding — and the wrong class — on a model A12 refuses once.
+    if (operands.size != construction.slots.size) {
         return null
     }
     return DateConstructionReading(
@@ -144,8 +163,8 @@ private fun boundedBy(maxValue: Int) = EntityDemand(maxLength = 2, maxValue = ma
 /**
  * The two constructions, each with its slot list and the extract-operator family its own slots draw from.
  *
- * `Date` is listed with its three-component shape alone; the other two arities are other laws' and the
- * walk refuses to judge them.
+ * `Date` is listed with the three slots it can have; a two-parameter construction is judged on the two it
+ * wrote, its missing year being a law of its own, and the four-parameter split-year shape is H-model.
  */
 private enum class TemporalConstruction(val id: String, val slots: List<Slot>, val ownFamily: Set<String>) {
     DATE(
@@ -175,8 +194,15 @@ private enum class TemporalConstruction(val id: String, val slots: List<Slot>, v
     ),
     ;
 
+    /**
+     * Which written arities this walk judges.
+     *
+     * A12 runs the day and month gates whatever the arity, so the two-parameter `Date` is judged here too —
+     * its MISSING year is a law of its own ([baseYearRequirementFindings]) and its present slots are still
+     * this walk's. The four-parameter split-year shape is an H-model form and is left alone.
+     */
     fun admitsArity(count: Int): Boolean = when (this) {
-        DATE -> count == slots.size
+        DATE -> count in 2..slots.size
         TIME -> count in 1..slots.size
     }
 
@@ -185,11 +211,23 @@ private enum class TemporalConstruction(val id: String, val slots: List<Slot>, v
         element: DeclaredElement,
         operands: List<List<Token>>,
         extractOps: Map<String, String>,
+    ): SlotDefect? =
+        if (admitsArity(operands.size)) defectAmongSlots(model, element, operands, extractOps) else null
+
+    /**
+     * The same walk over whatever slots were written, arity unjudged.
+     *
+     * A12 runs the day and month gates before it asks about the year at all, so a shape this construction
+     * does not admit still has those two gates answered — which is what the base-year law needs to know
+     * ([baseYearRequirementFindings]) and what [firstDefectiveSlot] deliberately declines to look at.
+     */
+    fun defectAmongSlots(
+        model: PreparedModel,
+        element: DeclaredElement,
+        operands: List<List<Token>>,
+        extractOps: Map<String, String>,
     ): SlotDefect? {
-        if (!admitsArity(operands.size)) {
-            return null
-        }
-        operands.forEachIndexed { at, operand ->
+        operands.take(slots.size).forEachIndexed { at, operand ->
             val slot = slots[at]
             val defect = when (val arm = armOf(operand, extractOps)) {
                 is SlotArm.Constant -> slot.constantDefect(arm.digits)

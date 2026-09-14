@@ -107,6 +107,14 @@ class CorrectiveTest {
             {"type":"Rule","id":"r10","name":"KeyWithNoRepetition","Rule":{
               "errorCondition":"RepetitionNotUnique(Note)","errorEntityRelPath":"../Note",
               "errorCode":"C10","errorMessage":[{"locale":"en_US","text":"x"}]}},
+            {"type":"Rule","id":"r33","name":"DateWithoutItsYear","Rule":{
+              "errorCondition":"FieldFilled(Note) And [Season] == Date(\"01\", \"02\")",
+              "errorEntityRelPath":"../Note",
+              "errorCode":"C33","errorMessage":[{"locale":"en_US","text":"x"}]}},
+            {"type":"Rule","id":"r32","name":"ReferenceYearWithoutOne","Rule":{
+              "errorCondition":"FieldFilled(Note) And [Season] > BaseYear",
+              "errorEntityRelPath":"../Note",
+              "errorCode":"C32","errorMessage":[{"locale":"en_US","text":"x"}]}},
             {"type":"Rule","id":"r31","name":"ValidityOverConstantsOnly","Rule":{
               "errorCondition":"FieldFilled(Note) And Valid(Date(\"01\", \"02\", \"2024\"))",
               "errorEntityRelPath":"../Note",

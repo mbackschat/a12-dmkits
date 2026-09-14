@@ -257,7 +257,11 @@ class DateConstructionSlotsTest {
 
         val expected = mutableMapOf<String, List<String>>()
         expected["a component of an unjudged declared type"] = emptyList()
-        expected["a two-part Date"] = emptyList()
+        // This family still leaves the two-part shape's YEAR alone — the code is `BASE_YEAR_REQUIREMENT`'s,
+        // measured 2026-09-14 by `rulekit.validate.laws.BaseYearRequirementLawsTest` after this row had
+        // assumed A12 was silent here. Its two written slots ARE judged by this family, which is what the
+        // day-out-of-range row of that same grid shows.
+        expected["a two-part Date"] = listOf("MVK_MISSING_YEAR")
         expected["a four-part Date"] = emptyList()
         expected["a bad constant in the same model — the positive control"] = listOf(wrongFormat)
         assertEquals(expected, actual, "the shapes it leaves alone")

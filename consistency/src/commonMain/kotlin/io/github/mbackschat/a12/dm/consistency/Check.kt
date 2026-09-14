@@ -562,6 +562,14 @@ enum class CheckFamily {
     VALIDITY_CONDITION_OPERANDS,
 
     /**
+     * That a condition asking the model for its reference year is written in a model that declares one —
+     * the `BaseYear` constant and the year-less `Date` construction. Its own constant because the two
+     * shapes are checked by unrelated kernel classes and share only the model-level declaration, which is
+     * what makes the law a property of the MODEL rather than of either construct.
+     */
+    BASE_YEAR_REQUIREMENT,
+
+    /**
      * That a rule reading a repetition does not reach its error field only from ABOVE its own group — A12
      * cannot then say which repetition the error attaches to. Its own constant because the demand is on the
      * CONDITION's reach rather than on the target's existence, which `ERROR_FIELD_REFERENCE` already owns,
@@ -817,6 +825,7 @@ internal fun check(
         prepared.dateArgumentSlotFindings() +
         prepared.dateRangeOperandListFindings() +
         prepared.validityConditionOperandFindings() +
+        prepared.baseYearRequirementFindings() +
         prepared.errorTargetIterationFindings() +
         prepared.messageParameterFindings() +
         prepared.messageTextCharacterFindings() +
@@ -878,6 +887,7 @@ internal fun check(
             CheckFamily.FILTERED_OPERAND_KIND, CheckFamily.CATEGORY_REFERENCE,
             CheckFamily.SCALAR_VALUE_LIST_GATES, CheckFamily.DATE_ARGUMENT_SLOT,
             CheckFamily.DATE_RANGE_OPERAND_LIST, CheckFamily.VALIDITY_CONDITION_OPERANDS,
+            CheckFamily.BASE_YEAR_REQUIREMENT,
             CheckFamily.ERROR_TARGET_ITERATION,
             CheckFamily.MESSAGE_PARAMETER_REFERENCE, CheckFamily.MESSAGE_TEXT_CHARACTERS),
         gaps = prepared.gaps() + prepared.emptyFactBase() + findings.buildBlocked() +

@@ -167,6 +167,13 @@ class BuilderCheckerDivergenceGuardTest {
             // kernel-arbitrated. Their REACH differs and is meant to: the kit gates the two extraction
             // carriers it can see from a bare `Calculation`, the checker gates every operator that takes the
             // slot (KF400).
+            // The kits only NAME it, and say whose call it is: `BaseYear`'s javadoc cites the code and
+            // states outright that the declaration is "the kernel's call", `Dsl.startOfDateRange` and
+            // `DocumentModelDraft.baseYear` repeat the requirement in prose, and `KernelMessageOperands`
+            // cites it only as a message template with no `%s`. Nothing on that side refuses; the checker
+            // owns the only enforcement (KF403).
+            Map.entry("MVK_NO_BASE_YEAR", Disposition.PROSE_ONLY),
+
             Map.entry("MVK_NO_DATE", Disposition.SAME_LAW_SEPARATE_CARRIERS),
 
             Map.entry("MVK_NUMBER_AND_NON_NUMBER", Disposition.SAME_LAW_SEPARATE_CARRIERS),

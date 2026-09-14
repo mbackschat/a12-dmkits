@@ -7142,6 +7142,30 @@ Reported by the portable checker, which did not emit `MVK_SORT_FIELD_DUPLICATE` 
 
 *Locked by:* `rulekit.validate.laws.GroupOrderingMultipleDefectLawsTest`, mirrored by `consistency … GroupOrderingMultipleDefectTest`.
 
+## §6 supplement — the two shapes that need a declared BASE YEAR, and the third that is disabled by it (source-verified + measured, 2026-09-14) <a id="kf403"></a>
+
+> Fold: not-foldable — a diagnostic-class law about a model-level declaration, not an evaluation behaviour.
+
+Two unrelated kernel checkers ask the same one-line question of the model, and a third construct asks its opposite:
+
+| the shape | what a declared base year does |
+|---|---|
+| the `BaseYear` constant (`CheckKonstanteReferenzjahrImpl`) | REQUIRED; without one, `MVK_NO_BASE_YEAR` |
+| a `Date` construction with no year parameter (`CheckDatumKonstruktImpl.checkJahresParam`) | REQUIRED; without one, `MVK_MISSING_YEAR` |
+| the year-agreement walk of the range-overlap operators ([KF401](#kf401)) | DISABLES it — the walk returns on `hasBaseYear` as its first statement |
+
+**So the declaration is not one switch in one direction**, which is the reading a family would reach for: it enables two shapes and turns a third gate off. All three are measured with and without it.
+
+**The constant is refused by its own checker wherever it stands.** `CheckKonstanteReferenzjahrImpl` hangs off the `konstanteReferenzjahr` grammar rule rather than off any operator, so the carrier does not matter — measured on a comparison, an extraction and a shift, because a single carrier could not be told apart from that carrier's own operand gate.
+
+**The day and month parameters are checked BEFORE the year one.** `check` calls `checkDayParam`, `checkMonatParam`, then `checkJahresParam`, so a two-parameter construction whose day is also out of range answers `MVK_WRONG_DATE_FORMAT_FOR_OP`. The corollary is that a two-parameter `Date`'s written slots ARE judged by the ordinary slot gates ([KF373](#kf373)) — which the portable checker had been declining as an unjudged arity, a silence this measurement closed.
+
+**The `Time` construction has no year to omit.** It admits any prefix of its three slots, so the same two-argument shape is admitted there — the discriminator against the tempting reading "a short construction needs a base year".
+
+Reported by the portable checker (`CheckFamily.BASE_YEAR_REQUIREMENT`, which looks for the constant's TOKEN rather than for a carrier that admits it, and reads the construction's earlier slots through the slot family's own walk). Silent on everything when the model declares a base year, which is the family's precondition. The kits only NAME `MVK_NO_BASE_YEAR`, in four javadocs that each state the requirement is the kernel's call; nothing there refuses.
+
+*Locked by:* `rulekit.validate.laws.BaseYearRequirementLawsTest`, mirrored by `consistency.BaseYearRequirementTest`.
+
 ## §8 supplement — one keyword spells two validity conditions, and the kind gate admits less than its code's name (source-verified + measured, 2026-09-14) <a id="kf402"></a>
 
 > Fold: not-foldable — a diagnostic-class law about two constructs' operands, not an evaluation behaviour.
