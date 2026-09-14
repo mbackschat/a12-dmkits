@@ -414,6 +414,20 @@ internal val PLAINLY_NON_STRING_TYPES = setOf(
 ) + TEMPORAL_DECLARED_TYPES
 
 /**
+ * The declared types this reader is CERTAIN are not TEMPORAL at all, every member measured.
+ *
+ * An allow-list rather than the complement of [TEMPORAL_DECLARED_TYPES], so a `TypeDefType` or
+ * `UnspecifiedType` — whose effective type this checker does not resolve — is left unjudged rather than
+ * refused, which would be the one direction this checker may not take. Two families ask it: the shared date
+ * ARGUMENT slot, whose kind gate stops here, and `ValueAsDate`, which adds the temporal kinds back because
+ * its own gate wants one precision rather than one interface.
+ */
+internal val PLAINLY_NON_DATE_TYPES = setOf(
+    "StringType", "NumberType", "BooleanType", "ConfirmType", "EnumerationType",
+    "CustomFieldType", "DateRangeType",
+)
+
+/**
  * The operand reduced to its written spec and the category it names, or null where neither can be read.
  *
  * A category access is not a path with a suffix — the reader that finds one returns the path and the category

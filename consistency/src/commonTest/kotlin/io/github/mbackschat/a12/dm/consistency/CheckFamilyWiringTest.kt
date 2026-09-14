@@ -207,6 +207,10 @@ class CheckFamilyWiringTest {
               "errorCondition":"FieldFilled(Price) And [Price] < [Reference]",
               "errorEntityRelPath":"../Price",
               "errorCode":"C47","errorMessage":[{"locale":"en_US","text":"x"}]}},
+            {"type":"Rule","id":"r60","name":"PartialDateFromATime","Rule":{
+              "errorCondition":"FieldFilled(Price) And ValueAsDate(ShiftStart, FirstDay) > [TravelDate]",
+              "errorEntityRelPath":"../Price",
+              "errorCode":"C60","errorMessage":[{"locale":"en_US","text":"x"}]}},
             {"type":"Rule","id":"r59","name":"LabelledAgainstPlain","Rule":{
               "errorCondition":"FieldFilled(Price) And [LabelledTier] == [RepeatedTier]",
               "errorEntityRelPath":"../Price",
@@ -556,6 +560,11 @@ class CheckFamilyWiringTest {
         // fails the moment the family starts deciding from one side alone.
         CheckFamily.ENUM_DISPLAY_COMPARABILITY to
             ("MVK_INVALID_COMPARE_ENUM_TO_STRING" to "/Catalog/LabelledAgainstPlain"),
+        // A TIME field handed to the operator that resolves a partially known date — the kind gate reads
+        // the declared precision, so the row fails the moment the family keys on A12's date INTERFACE, which
+        // a time field carries.
+        CheckFamily.VALUE_AS_DATE_OPERAND to
+            ("MVK_INVALID_DATE_TYPE_FOR_OP" to "/Catalog/PartialDateFromATime"),
         // Two text declarations under an ordering operator — the one comparison in this fixture whose
         // operator demands more of its sides than they are.
         CheckFamily.COMPARISON_OPERATOR_OPERANDS to

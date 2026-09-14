@@ -98,18 +98,6 @@ private val DATE_SLOTS_OF: Map<String, List<Int>> = buildMap {
     (NUMERIC_EXTRACTIONS + TEMPORAL_EXTRACTIONS).forEach { put(it, listOf(0)) }
 }
 
-/**
- * The declarations this reader is CERTAIN the slot's kind gate refuses, every member measured.
- *
- * An allow-list rather than the complement of the four temporal kinds, so a `TypeDefType` or
- * `UnspecifiedType` — whose effective type this checker does not resolve — is left unjudged rather than
- * refused, which would be the one direction this checker may not take.
- */
-private val PLAINLY_NON_DATE_TYPES = setOf(
-    "StringType", "NumberType", "BooleanType", "ConfirmType", "EnumerationType",
-    "CustomFieldType", "DateRangeType",
-)
-
 private class DateArgumentDefect(val code: String, val said: String)
 
 /** The gate this slot fails, or null where it fails none and where this reader may not judge. */

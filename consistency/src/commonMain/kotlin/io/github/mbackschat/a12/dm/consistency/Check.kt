@@ -585,6 +585,14 @@ enum class CheckFamily {
     ENUM_DISPLAY_COMPARABILITY,
 
     /**
+     * That `ValueAsDate` resolves a field A12 can resolve — one operand, four gates, one chain. Its own
+     * constant because the operator's whole law is about the OPERAND's declaration, and the class it draws
+     * is the same for every declaration it refuses, so a report merging it into a kind family would lose
+     * which of the four gates answered.
+     */
+    VALUE_AS_DATE_OPERAND,
+
+    /**
      * That a rule reading a repetition does not reach its error field only from ABOVE its own group — A12
      * cannot then say which repetition the error attaches to. Its own constant because the demand is on the
      * CONDITION's reach rather than on the target's existence, which `ERROR_FIELD_REFERENCE` already owns,
@@ -843,6 +851,7 @@ internal fun check(
         prepared.baseYearRequirementFindings() +
         prepared.rangeOperandGateFindings() +
         prepared.enumDisplayComparabilityFindings() +
+        prepared.valueAsDateOperandFindings() +
         prepared.errorTargetIterationFindings() +
         prepared.messageParameterFindings() +
         prepared.messageTextCharacterFindings() +
@@ -906,6 +915,7 @@ internal fun check(
             CheckFamily.DATE_RANGE_OPERAND_LIST, CheckFamily.VALIDITY_CONDITION_OPERANDS,
             CheckFamily.BASE_YEAR_REQUIREMENT, CheckFamily.RANGE_OPERAND_GATES,
             CheckFamily.ENUM_DISPLAY_COMPARABILITY,
+            CheckFamily.VALUE_AS_DATE_OPERAND,
             CheckFamily.ERROR_TARGET_ITERATION,
             CheckFamily.MESSAGE_PARAMETER_REFERENCE, CheckFamily.MESSAGE_TEXT_CHARACTERS),
         gaps = prepared.gaps() + prepared.emptyFactBase() + findings.buildBlocked() +

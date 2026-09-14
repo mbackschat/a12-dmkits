@@ -7142,6 +7142,29 @@ Reported by the portable checker, which did not emit `MVK_SORT_FIELD_DUPLICATE` 
 
 *Locked by:* `rulekit.validate.laws.GroupOrderingMultipleDefectLawsTest`, mirrored by `consistency … GroupOrderingMultipleDefectTest`.
 
+## §6 supplement — what `ValueAsDate` demands of the field it resolves (source-verified + measured, 2026-09-14) <a id="kf408"></a>
+
+> Fold: not-foldable — a diagnostic-class law about an operator's operand, not an evaluation behaviour.
+
+`CheckFeldOpMitDatumSpecialImpl.check` runs four gates over one operand and each of them throws, so the classes form a chain rather than a set: a group draws `MVK_NO_GROUPS_ALLOWED`, a repetition star `MVK_NO_WILDCARDS_ALLOWED`, a category access `MVK_CATEGORY_NOT_ALLOWED`, and anything that is not a partially known date `MVK_INVALID_DATE_TYPE_FOR_OP`. Every pairing that can be written at all was measured, the star against the category included.
+
+**The kind gate draws ONE class for eleven different declarations.** `FieldUtils.isDatePartialKnown` asks two questions — the declaration is an `IDateType`, and its `partlyKnownDate()` is not `BEKANNT` — and the operator has no second class to tell them apart:
+
+| the operand declares | verdict |
+|---|---|
+| a `DateType` with `datePrecision` DAY_OPTIONAL / MONTH_OPTIONAL / YEAR_OPTIONAL | ADMITTED |
+| a `DateType` at the FULL default | `MVK_INVALID_DATE_TYPE_FOR_OP` |
+| `DateFragmentType`, `TimeType`, `DateTimeType` | `MVK_INVALID_DATE_TYPE_FOR_OP` |
+| `DateRangeType`, `StringType`, `NumberType`, `EnumerationType`, `BooleanType`, `ConfirmType`, `CustomFieldType` | `MVK_INVALID_DATE_TYPE_FOR_OP` |
+
+The three middle rows are the ones a reading of the operator's name gets wrong: A12's ADO layer gives time, datetime and fragment declarations the SAME `IDateType` interface a plain date carries, so all three clear the first question and fail on the precision. A checker keyed on the date interface would admit them.
+
+**The group gate answers even on the ROOT group** — predicted `MVK_ROOT_GROUP_REFERENCED` and refuted. That class belongs to the operators that ACCEPT a group and exclude the root one; a method with no group arm at all never reaches it. The one class that does outrun the whole chain from inside the reference reader is `MVK_INVALID_ENTITY` on a name nothing declares, and `MVK_NO_WILDCARD` on an unstarred read into a repetition the reading rule does not sit inside — the same read from the row's OWN rule reaches the gates, which is what makes that a pre-emption rather than a property of the operand's spelling ([KF88](#kf88) and the locus law own the placement half).
+
+Reported by the portable checker (`CheckFamily.VALUE_AS_DATE_OPERAND`), which reads `datePrecision` off the stored declaration and stays silent on a `TypeDefType` or `UnspecifiedType`, whose effective type it does not resolve.
+
+*Locked by:* `rulekit.validate.laws.ValueAsDateOperandGateLawsTest`, mirrored by `consistency.ValueAsDateOperandGatesTest`.
+
 ## §8 supplement — when two declarations may be compared once their LABELS count (source-verified + measured, 2026-09-14) <a id="kf407"></a>
 
 > Fold: not-foldable — a diagnostic-class law about a comparison's operands, not an evaluation behaviour.
