@@ -327,6 +327,8 @@ tasks.named('test') {
     // as its inputs) so a case edit re-runs ONLY them (not the whole kernel-heavy suite) and can't go up-to-date /
     // restore from the build cache into a FALSE GREEN. `test` dependsOn it, so CI + local always drive it.
     filter {
+        excludeTestsMatching 'io.github.mbackschat.a12.dm.adapter.laws.CheckerSilenceOnMutatedModelsTest'
+        excludeTestsMatching 'io.github.mbackschat.a12.dm.adapter.laws.CheckerClassAgreementTest'
         excludeTestsMatching 'io.github.mbackschat.a12.dm.adapter.laws.CorpusReplayTest'
         excludeTestsMatching 'io.github.mbackschat.a12.dm.adapter.laws.CorpusSchemaGuardTest'
         excludeTestsMatching 'io.github.mbackschat.a12.dm.adapter.perf.FootprintScenarioFixtureGuardTest'
@@ -499,14 +501,22 @@ tasks.register('perfGateTest', Test) {
 // this task's inputs and it is scoped to that one class — never to `test`, whose perf lanes want the machine
 // to itself and whose ~900 tests would re-run on any fixture edit.
 tasks.register('checkerSilenceGuardTest', Test) {
-    description = 'Verify the Kernel-free checker stays silent on every committed model the Kernel builds.'
+    description = 'Verify the Kernel-free checker agrees with the Kernel on the committed models and on ' +
+            'mechanical perturbations of them.'
     group = 'verification'
     testClassesDirs = sourceSets.test.output.classesDirs
     classpath = sourceSets.test.runtimeClasspath
     useJUnitPlatform()
+    // All three read the model trees below at RUNTIME, so they belong to the task that declares those files as
+    // inputs. Left in the broad lane they would go up-to-date or restore from the build cache after a model
+    // edit — a false green of exactly the kind the input declaration exists to prevent.
     filter {
         includeTestsMatching(
             'io.github.mbackschat.a12.dm.adapter.laws.CheckerSilenceOnCleanModelsTest')
+        includeTestsMatching(
+            'io.github.mbackschat.a12.dm.adapter.laws.CheckerSilenceOnMutatedModelsTest')
+        includeTestsMatching(
+            'io.github.mbackschat.a12.dm.adapter.laws.CheckerClassAgreementTest')
     }
     rootProject.guardInputs(it, [
         'conformance corpus models': rootProject.fileTree('corpus/models') { include '**/*.json' },
