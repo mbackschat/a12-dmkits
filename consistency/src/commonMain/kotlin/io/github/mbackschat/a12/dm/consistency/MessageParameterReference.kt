@@ -79,7 +79,7 @@ fun PreparedModel.messageParameterFindings(): List<Finding> {
  * Built once for the whole model rather than per declaration, because [conditionReferences] walks every
  * element's texts and asking it per declaration would rescan the model for each message.
  */
-private fun PreparedModel.entitiesReadByDeclaration(): Map<String, Membership> {
+internal fun PreparedModel.entitiesReadByDeclaration(): Map<String, Membership> {
     val computedTarget = declaredReferences()
         .filter { it.role == ReferenceRole.COMPUTED_TARGET }
         .mapNotNull { d -> (d.target as? Reference.Resolved)?.path?.let { d.declaredAt to it } }
@@ -103,6 +103,6 @@ private fun PreparedModel.entitiesReadByDeclaration(): Map<String, Membership> {
  * The member name travels with the set because the fix differs by carrier and a finding that said only
  * "this declaration never reads it" would leave an author looking through three members of a computation.
  */
-private data class Membership(private val paths: Set<String>, val memberName: String) {
+internal data class Membership(private val paths: Set<String>, val memberName: String) {
     operator fun contains(path: String): Boolean = path in paths
 }

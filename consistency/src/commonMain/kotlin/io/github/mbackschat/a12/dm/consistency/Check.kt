@@ -633,6 +633,14 @@ enum class CheckFamily {
     ERROR_TEXT_SEMANTIC_INDEX,
 
     /**
+     * That an error message parameter's CATEGORY suffix names a category the field's own enumeration
+     * declares. Its own constant because the three classes are the message grammar's, not the condition's:
+     * the same projection inside a condition draws `MVK_CATEGORY_NOT_ALLOWED` and its siblings, and this
+     * surface answers with A12's unprefixed error-text vocabulary instead.
+     */
+    ERROR_TEXT_CATEGORY_SUFFIX,
+
+    /**
      * That an error message's TEXT carries no control character. A12 splits the law in two — a line break
      * has its own class — and runs them in ORDER, so a text carrying both draws only the line-break one.
      * A repertoire restriction is a different law and is not this family's.
@@ -872,6 +880,7 @@ internal fun check(
         prepared.errorTargetIterationFindings() +
         prepared.messageParameterFindings() +
         prepared.errorTextSemanticIndexFindings() +
+        prepared.errorTextCategorySuffixFindings() +
         prepared.messageTextCharacterFindings() +
         prepared.stringTypeMessageFindings() + prepared.stringTypeParameterFindings() +
         prepared.numberTypeDigitFindings() + prepared.enumValueLabelFindings() +
@@ -937,7 +946,7 @@ internal fun check(
             CheckFamily.ENUM_COMPUTATION_SOURCE,
             CheckFamily.ERROR_TARGET_ITERATION,
             CheckFamily.MESSAGE_PARAMETER_REFERENCE, CheckFamily.MESSAGE_TEXT_CHARACTERS,
-            CheckFamily.ERROR_TEXT_SEMANTIC_INDEX),
+            CheckFamily.ERROR_TEXT_SEMANTIC_INDEX, CheckFamily.ERROR_TEXT_CATEGORY_SUFFIX),
         gaps = prepared.gaps() + prepared.emptyFactBase() + findings.buildBlocked() +
             prepared.variantFilterGaps() + prepared.enumCategoryGaps() +
             prepared.supportedCharacterGaps() + prepared.fieldTypeBindingGaps() +

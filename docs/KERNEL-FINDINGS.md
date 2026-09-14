@@ -7142,6 +7142,27 @@ Reported by the portable checker, which did not emit `MVK_SORT_FIELD_DUPLICATE` 
 
 *Locked by:* `rulekit.validate.laws.GroupOrderingMultipleDefectLawsTest`, mirrored by `consistency … GroupOrderingMultipleDefectTest`.
 
+## §13 supplement — the category suffix an error-text parameter may carry (source-verified + measured, 2026-09-15) <a id="kf413"></a>
+
+> Fold: not-foldable — a diagnostic-class law about an error text's parameters, not an evaluation behaviour.
+
+A message parameter may project a field through an enum CATEGORY, written `$Field -> Band$`. `FullChecks_ErrorTextParameterParser` checks it in two steps: `checkAndGetCategoryName` answers `NO_CATEGORY` when the arrow carries no name, and `checkAccessToCategoryValue` then answers `FIELD_NO_ENUM` for a field that is not an enumeration and `INVALID_CATEGORY` for one whose type declares no such category. Measured on an own-domain catalogue desk whose condition reads every field but one (`validate.laws.ErrorTextCategorySuffixLawsTest`, mirrored by `consistency.ErrorTextCategorySuffixTest`).
+
+| the parameter | verdict |
+|---|---|
+| `$Reference$` — plain, no suffix | ADMITTED |
+| `$Grade -> Band$` — a category the enumeration declares | ADMITTED |
+| `$Grade -> NoSuch$` — a category it does not | `INVALID_CATEGORY` |
+| `$Plain -> Band$` — an enumeration declaring NO categories at all | `INVALID_CATEGORY` |
+| `$Amount -> Band$` — a number field | `FIELD_NO_ENUM` |
+| `$Note -> Band$` — a text field | `FIELD_NO_ENUM` |
+| `$Grade ->$` — the arrow with no name after it | `NO_CATEGORY` |
+| `$Unread -> Band$` — a valid suffix on a field the condition never reads | `INVALID_FIELD` |
+
+**An enumeration with NO categories draws the containment class, not one of its own.** "Declares no categories" and "declares other categories" feel like different failures and A12 answers both with `INVALID_CATEGORY` — the row a reader would most likely split.
+
+**MEMBERSHIP runs first**, because `checkFieldRef` resolves the field against the condition to obtain the id it then hands to the category check. So the last row is `INVALID_FIELD` whatever the suffix says, and a family reporting a category class there would name a class A12 never reached.
+
 ## §13 supplement — the semantic index an error-text parameter may carry (source-verified + measured, 2026-09-15) <a id="kf412"></a>
 
 > Fold: not-foldable — a diagnostic-class law about an error text's parameters, not an evaluation behaviour.

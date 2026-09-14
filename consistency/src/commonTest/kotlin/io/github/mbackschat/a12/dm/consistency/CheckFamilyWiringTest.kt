@@ -370,6 +370,10 @@ class CheckFamilyWiringTest {
               "elements":[
                 {"type":"Field","id":"f13","name":"Slot","Field":{"fieldType":{"type":"NumberType"}}}
               ]}},
+            {"type":"Rule","id":"r62","name":"MessageProjectsANonEnum","Rule":{
+              "errorCondition":"FieldFilled(Price)","errorEntityRelPath":"../Price",
+              "errorCode":"C62","errorMessage":[{"locale":"en_US",
+                "text":"the band ${'$'}Price -> Band${'$'} is not an enum"}]}},
             {"type":"Rule","id":"r61","name":"MessageIndexesAnUnreadPair","Rule":{
               "errorCondition":"FieldFilled(Price)","errorEntityRelPath":"../Price",
               "errorCode":"C61","errorMessage":[{"locale":"en_US",
@@ -454,6 +458,8 @@ class CheckFamilyWiringTest {
             ("INVALID_FIELD" to "/Catalog/MessageNamesUnread"),
         CheckFamily.ERROR_TEXT_SEMANTIC_INDEX to
             ("MVK_INDEX_FOR_ERROR_TEXT_INVALID" to "/Catalog/MessageIndexesAnUnreadPair"),
+        CheckFamily.ERROR_TEXT_CATEGORY_SUFFIX to
+            ("FIELD_NO_ENUM" to "/Catalog/MessageProjectsANonEnum"),
         CheckFamily.MESSAGE_TEXT_CHARACTERS to
             ("INVALID_CHARACTERS" to "/Catalog/MessageCarriesATab"),
         CheckFamily.GROUP_LIST_OPERANDS to ("MVK_DUPLICATE_PARAM1" to "/Catalog/RepeatedGroup"),
