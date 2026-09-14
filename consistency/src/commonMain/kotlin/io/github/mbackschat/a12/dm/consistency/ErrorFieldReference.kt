@@ -42,6 +42,7 @@ fun PreparedModel.errorFieldReferenceFindings(): List<Finding> {
             if (references.isEmpty() ||
                 references.any { it.target !is Reference.Resolved } ||
                 references.any { it.reaches(target) } ||
+                references.any { iteratesPastTheTarget(it, target) } ||
                 namesTheRulesOwnGroup(declared) ||
                 mentions(declared, target)
             ) {
@@ -57,6 +58,40 @@ fun PreparedModel.errorFieldReferenceFindings(): List<Finding> {
                 declared.declaredAt,
             )
         }
+}
+
+/**
+ * Whether this reference ITERATES a repetition the target does not sit in, which A12 answers with a class of
+ * its own.
+ *
+ * An UNSTARRED read into a repeatable group iterates it, so A12 cannot say which repetition an error attached
+ * to a field OUTSIDE that group belongs to, and it reports `MVK_NO_WILDCARD` — whether or not the condition
+ * also names the target (`rulekit.validate.laws.ErrorFieldReferenceReachLawsTest`). A STAR on the same list
+ * collapses it to one value and no iteration remains, which is why this family's own class answers there
+ * instead. So the two conditions are independent gates and the iteration one reports first.
+ *
+ * **Found by a differential, not by reading the grid.** The mutation sweep repointed each committed model's
+ * first rule at an unreferenced field; seven models answered `MVK_NO_WILDCARD` while this family said its own
+ * class. Every row of its grid held the condition flat, so "the target is unreferenced" and "nothing
+ * iterates" were one thing across all of them.
+ *
+ * **One residue, stated rather than left to be discovered.** The star is tested on the WHOLE written
+ * reference, so a single reference that stars an outer level while crossing an inner repeatable group
+ * unstarred is not pre-empted here. A condition mixing a starred and an unstarred read is handled, because
+ * the test is per reference; the nested single-reference case has no measured row and would name this
+ * family's class where A12 may name the iteration one — a wrong class on a correct rejection, never an
+ * over-rejection.
+ */
+private fun PreparedModel.iteratesPastTheTarget(reference: ConditionReference, target: String): Boolean {
+    if ('*' in reference.written) {
+        return false
+    }
+    val resolved = (reference.target as? Reference.Resolved)?.path ?: return false
+    return elements.any { candidate ->
+        candidate.declaredKind == DeclaredKind.GROUP && candidate.isRepeatable &&
+            resolved.startsWith("${candidate.path}/") &&
+            !(target == candidate.path || target.startsWith("${candidate.path}/"))
+    }
 }
 
 /**

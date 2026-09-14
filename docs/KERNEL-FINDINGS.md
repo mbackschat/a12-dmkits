@@ -7138,6 +7138,25 @@ Reported by the portable checker, which did not emit `MVK_SORT_FIELD_DUPLICATE` 
 
 *Locked by:* `rulekit.validate.laws.GroupOrderingMultipleDefectLawsTest`, mirrored by `consistency … GroupOrderingMultipleDefectTest`.
 
+## §9 supplement — an UNSTARRED repetition read decides the class a flat error target draws, and referencedness does not enter it (measured, 2026-09-14) <a id="kf350"></a>
+
+> Fold: not-foldable — a diagnostic-class selection law, not an evaluation behaviour.
+
+**A12 reports `MVK_NO_WILDCARD` on a rule whose condition reads a repeatable group UNSTARRED while its error target sits outside that repetition — whether or not the condition also names the target.** A STAR over the same list collapses it to one value, no iteration remains, and the error-field gate answers instead. So the two gates are independent and the iteration one reports first.
+
+| the condition reads | flat target UNREFERENCED | flat target REFERENCED |
+|---|---|---|
+| `FieldFilled(Parcels/Weight)` — unstarred | `MVK_NO_WILDCARD` | `MVK_NO_WILDCARD` |
+| `Sum(Parcels*/Weight) > 0` — starred | `MVK_ERROR_FIELD_NOT_REFERENCED` | **ADMITTED** |
+| `FieldFilled(Customs/Declaration)` — nothing repeating | `MVK_ERROR_FIELD_NOT_REFERENCED` | ADMITTED (the grid above) |
+
+**Found by a DIFFERENTIAL, and no grid in the estate could have found it.** `adapter.laws.CheckerSilenceOnMutatedModelsTest`'s sibling probe repointed each committed model's first rule at a newly added, unreferenced field; seven models answered `MVK_NO_WILDCARD` where the portable checker's reference family named its own class. Every row of `ErrorFieldReferenceReachLawsTest` had held the condition flat, so "the target is unreferenced" and "nothing iterates" were one thing across all of them — the constant no control inside a set can catch, and here the set was the whole file.
+
+**The first transfer from those seven models was WRONG and is worth recording as the trap.** Reproducing them as "the condition reads a repetition" on our own carrier drew `MVK_ERROR_FIELD_NOT_REFERENCED`, not the wildcard class: the seven models all read their repetition UNSTARRED, and the reproduction used a starred aggregate. A differential names a shape, never a mechanism.
+
+Locked: `validate.laws.ErrorFieldReferenceReachLawsTest.aRepetitionReadPreEmptsTheUnreferencedTargetClass`. **Reported correctly by the portable checker since 2026-09-14** — `ERROR_FIELD_REFERENCE` now stays silent on an unstarred read past the target (`consistency.ErrorFieldReferenceTest.anUnstarredRepetitionReadPreEmptsTheClass`), which was a live wrong-class defect until the differential found it.
+
+
 ## §9 supplement — `MVK_NOT_IN_GROUP` needs the two groups to be INDEX-KEYED, which is why its reachability looked fixture-sensitive (measured, 2026-09-14) <a id="kf349"></a>
 
 > Fold: not-foldable — a diagnostic-class reachability law, not an evaluation behaviour.

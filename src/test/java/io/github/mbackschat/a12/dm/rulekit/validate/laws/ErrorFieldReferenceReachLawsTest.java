@@ -174,4 +174,42 @@ class ErrorFieldReferenceReachLawsTest {
                 KernelLaws.ADMITTED);
         assertEquals(expected, actual, "what the rule's own group reference reaches");
     }
+
+    /**
+     * A condition that READS A REPETITION pre-empts this gate entirely — {@code MVK_NO_WILDCARD} is reported
+     * instead, and this class does not co-fire with it.
+     *
+     * <p><b>Found by a differential rather than by reading, which is why it is here.</b> The mutation sweep
+     * repointed each committed model's first rule at an unreferenced field; seven models answered
+     * {@code MVK_NO_WILDCARD} where the checker's reference family said this class, and every one of the seven
+     * had a rule aggregating over a repeatable group. No grid in this file could have shown it: every row
+     * above holds the condition flat, so "the error field is unreferenced" and "the condition reads no
+     * repetition" were one thing across all of them — the constant no control inside the set can catch.
+     *
+     * <p>The two controls are what make it a precedence claim rather than an observation: remove the
+     * repetition read and this class returns, restore the reference and the model is admitted. So the
+     * variable is the repetition, not the spelling.
+     */
+    @Test
+    void aRepetitionReadPreEmptsTheUnreferencedTargetClass() {
+        Map<String, String> actual = new LinkedHashMap<>();
+        actual.put("flat unreferenced target | UNSTARRED repetition read",
+                verdict("../Carrier", "FieldFilled(Parcels/Weight)"));
+        actual.put("flat unreferenced target | STARRED aggregate over the same list",
+                verdict("../Carrier", "Sum(Parcels*/Weight) > 0"));
+        actual.put("flat unreferenced target | nothing repeating",
+                verdict("../Carrier", "FieldFilled(Customs/Declaration)"));
+        actual.put("flat REFERENCED target | UNSTARRED repetition read",
+                verdict("../Carrier", "FieldFilled(Carrier) And FieldFilled(Parcels/Weight)"));
+        actual.put("flat REFERENCED target | STARRED aggregate",
+                verdict("../Carrier", "FieldFilled(Carrier) And Sum(Parcels*/Weight) > 0"));
+
+        Map<String, String> expected = new LinkedHashMap<>();
+        expected.put("flat unreferenced target | UNSTARRED repetition read", "MVK_NO_WILDCARD");
+        expected.put("flat unreferenced target | STARRED aggregate over the same list", NOT_REFERENCED);
+        expected.put("flat unreferenced target | nothing repeating", NOT_REFERENCED);
+        expected.put("flat REFERENCED target | UNSTARRED repetition read", "MVK_NO_WILDCARD");
+        expected.put("flat REFERENCED target | STARRED aggregate", KernelLaws.ADMITTED);
+        assertEquals(expected, actual, "which class an unpinned flat target draws");
+    }
 }

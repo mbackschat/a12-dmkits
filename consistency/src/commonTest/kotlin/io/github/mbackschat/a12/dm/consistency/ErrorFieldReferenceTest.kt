@@ -110,6 +110,36 @@ class ErrorFieldReferenceTest {
         assertEquals(expected, actual, "the shapes the error-field gate deliberately does not report")
     }
 
+    /**
+     * An UNSTARRED read into a repetition the target does not sit in pre-empts this class.
+     *
+     * A12 answers that shape with `MVK_NO_WILDCARD` — it cannot say which repetition the error belongs to —
+     * and a STAR on the same list collapses the iteration, so this family's own class answers there instead.
+     * The pair is the discriminator: the target, the operand and the list are identical in both rows and only
+     * the star moves.
+     *
+     * **This was a live wrong-class defect until 2026-09-14**, found by the mutation differential rather than
+     * by this grid: every other row here holds the condition flat, so "the target is unreferenced" and
+     * "nothing iterates" were one thing across all of them.
+     */
+    @Test
+    fun anUnstarredRepetitionReadPreEmptsTheClass() {
+        val actual = mutableMapOf<String, List<String>>()
+        actual["UNSTARRED read, target outside the repetition"] =
+            codes("../Carrier", "FieldFilled(Parcels/Weight)")
+        actual["STARRED read of the same list"] = codes("../Carrier", "Sum(Parcels*/Weight) > 0")
+        actual["UNSTARRED read beside a starred one"] =
+            codes("../Carrier", "Sum(Parcels*/Weight) > 0 And FieldFilled(Parcels/Weight)")
+
+        val expected = mutableMapOf<String, List<String>>()
+        expected["UNSTARRED read, target outside the repetition"] = emptyList()
+        expected["STARRED read of the same list"] = listOf(notReferenced)
+        // Per REFERENCE, not per condition: one unstarred read is enough to hand the verdict to A12's
+        // iteration class, however many starred reads sit beside it.
+        expected["UNSTARRED read beside a starred one"] = emptyList()
+        assertEquals(expected, actual, "an unstarred repetition read pre-empts the class")
+    }
+
     /** The finding names the target, since the fix is to reference it or to point the rule elsewhere. */
     @Test
     fun theFindingNamesTheTargetItCouldNotFind() {
