@@ -54,7 +54,7 @@ class BuilderCheckerDivergenceGuardTest {
      * and {@code MVK_DUPLICATE_PARAM2} are two different laws, and a pattern that stopped at the underscore
      * run collapsed them into one key that names no A12 code at all.
      */
-    private static final Pattern A12_CODE = Pattern.compile("MVK_[A-Z_]+[0-9]*");
+    private static final Pattern A12_CODE = Pattern.compile("MVK_[A-Z0-9_]+");
 
     /** The published, kernel-free kits — every module whose builders may pre-check an A12 law. */
     private static final List<String> KIT_MAIN_SOURCES = List.of(

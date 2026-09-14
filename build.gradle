@@ -279,6 +279,11 @@ tasks.register('leakGuardTest', Test) {
         // Same derived-denominator reason, on the column that STEERS the work: an authored list of "codes the
         // checker now reports" is exactly the list that goes stale, and 33 rows had when this was added.
         includeTestsMatching 'io.github.mbackschat.a12.dm.CheckerLedgerDispositionGuardTest'
+        // The reader those two now share, whose own controls include a FLOOR over the live checker tree — so
+        // it reads the same two source trees they do and belongs in the same task. Its fabricated-source rows
+        // would pass on a reader that returned nothing; only the floor refuses that, and only here does a
+        // checker-source edit reach it.
+        includeTestsMatching 'io.github.mbackschat.a12.dm.CheckerReportedCodesTest'
         // Same derived-denominator reason, on the checker's TYPE vocabulary: a set that spells a `fieldType`
         // discriminator A12 never stores matches nothing and reports nothing, so no mirror and no laws grid
         // can see it. Both sides are read off source, so a new family's set arrives in the scan on its own.

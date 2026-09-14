@@ -7,12 +7,10 @@ import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeMap;
 import java.util.TreeSet;
-import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import org.junit.jupiter.api.Test;
@@ -46,13 +44,13 @@ import org.junit.jupiter.api.Test;
  * measured set off every {@code laws} directory git tracks, so a new checker family and a new laws tier both
  * arrive on their own. An authored list would only ever hold the codes someone remembered.
  *
- * <p><b>Only a string LITERAL counts as reported.</b> Prose naming a code is a different claim and usually
- * the opposite one — this estate's KDoc routinely names codes the checker deliberately does NOT emit (a dead
- * gate, a code that fires for no reachable shape), and all 13 such mentions are measured anyway. Scanning
- * prose also needs a heuristic for what is a code: {@code MVK_VALUE_*} in {@code EnumValueLabels.kt} is a
- * wildcard over a code family and names no code at all, and a guard that fails honest content gets disabled.
- * The checker builds no code by concatenation (verified 2026-09-13), so the literal scan misses nothing it
- * reports.
+ * <p><b>What counts as reported is {@link CheckerReportedCodes}', not this guard's.</b> It used to be a local
+ * scan taking every string literal, on the argument that over-counting is harmless for this question. It is
+ * not: the four codes this checker holds only as members of {@code Check.kt}'s phase and suppression lists
+ * read as reported, and {@code MVK_ITERATION_RESTRICTION_IN_A12_MODEL} — a member no family emits, and
+ * {@code erased} in the ledger for a shape rulekit cannot render — has no laws measurement and could not
+ * honestly be given one. This guard passed only because its pattern could not match that code's interior
+ * digits; correcting the pattern alone would have turned it red on honest content (measured 2026-09-15).
  *
  * <p>{@code RK_*} and {@code CK_*} are out of scope by construction: those are this project's own corrective
  * and checker-verdict vocabularies, not A12 verdicts, so no laws test could carry them.
@@ -62,29 +60,23 @@ class CheckerCodeBasisGuardTest {
     private static final Checkout CHECKOUT = Checkout.locate();
 
     /**
-     * A code the checker REPORTS — the trailing digits belong to it, since {@code MVK_DUPLICATE_PARAM1} and
-     * {@code MVK_DUPLICATE_PARAM2} are two different laws.
+     * A code a laws test NAMES, in an expectation or in the javadoc recording what the grid measured.
+     *
+     * <p>Digits belong to the code wherever they fall: the trailing run separates
+     * {@code MVK_DUPLICATE_PARAM1} from {@code MVK_DUPLICATE_PARAM2}, and an interior one is the whole
+     * difference between {@code MVK_NAME_STARTS_WITH_XML} and the {@code _A12_DV} carrier of the same law.
      */
-    private static final Pattern REPORTED = Pattern.compile("\"(MVK_[A-Z_]+[0-9]*)\"");
-
-    /** A code a laws test NAMES, in an expectation or in the javadoc recording what the grid measured. */
-    private static final Pattern MEASURED = Pattern.compile("MVK_[A-Z_]+[0-9]*");
-
-    private static final String CHECKER_MAIN_SOURCE = "consistency/src/commonMain";
+    private static final Pattern MEASURED = Pattern.compile("MVK_[A-Z0-9_]+");
 
     @Test
     void everyA12CodeTheCheckerReportsWasMeasuredAgainstTheKernel() {
         Set<String> measured = measuredCodes();
         Map<String, Set<String>> unmeasured = new TreeMap<>();
-        for (Path source : checkerSources()) {
-            Matcher matcher = REPORTED.matcher(read(source));
-            while (matcher.find()) {
-                if (!measured.contains(matcher.group(1))) {
-                    unmeasured.computeIfAbsent(matcher.group(1), code -> new TreeSet<>())
-                            .add(CHECKOUT.relative(source));
-                }
+        CheckerReportedCodes.bySource().forEach((code, sources) -> {
+            if (!measured.contains(code)) {
+                unmeasured.put(code, sources);
             }
-        }
+        });
         assertEquals(Map.of(), unmeasured,
                 "the portable checker reports an A12 code that no laws test measures, so it states a kernel "
                         + "verdict nothing ever put to the kernel. Measure the shape first — a laws test "
@@ -93,20 +85,15 @@ class CheckerCodeBasisGuardTest {
     }
 
     /**
-     * …and both halves of the scan reach their estate, so an empty result above means clean rather than
+     * …and the LAWS half of the scan reaches its estate, so an empty result above means clean rather than
      * broken.
      *
-     * <p>The floors answer "did the scan happen", not "how big is each set", so they sit well below the live
-     * counts (66 reported, 181 measured at 2026-09-13) on purpose.
+     * <p>The floor answers "did the scan happen", not "how big is the set", so it sits well below the live
+     * count (243 measured at 2026-09-15) on purpose. The reported half is {@link CheckerReportedCodesTest}'s
+     * floor, which is where that reader's own controls live.
      */
     @Test
-    void theScanReachesBothEstates() {
-        long reported = checkerSources().stream()
-                .flatMap(source -> REPORTED.matcher(read(source)).results())
-                .map(result -> result.group(1))
-                .distinct()
-                .count();
-        assertTrue(reported >= 40, "the scan found only " + reported + " reported codes in the checker");
+    void theScanReachesTheLawsEstate() {
         assertTrue(measuredCodes().size() >= 120,
                 "the scan found only " + measuredCodes().size() + " measured codes in the laws estate");
     }
@@ -120,12 +107,6 @@ class CheckerCodeBasisGuardTest {
             }
         }
         return measured;
-    }
-
-    private static List<Path> checkerSources() {
-        return CHECKOUT.tracked(CHECKER_MAIN_SOURCE).stream()
-                .filter(path -> path.getFileName().toString().endsWith(".kt"))
-                .toList();
     }
 
     private static String read(Path path) {
