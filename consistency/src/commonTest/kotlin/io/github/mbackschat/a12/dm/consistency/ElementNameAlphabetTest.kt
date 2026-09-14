@@ -49,6 +49,38 @@ class ElementNameAlphabetTest {
         ),
     ).findings.map { it.code }
 
+    /**
+     * The one whole name A12 reserves, on the root carrier alone.
+     *
+     * Every row mirrors one measured by `rulekit.validate.laws.GroupNameAlphabetLawsTest`. The three
+     * ADMITTED rows are the family's bound: the match is the whole name and the carrier is the root, so a
+     * checker generalising either would refuse a model A12 takes.
+     */
+    @Test
+    fun theReservedRootGroupName() {
+        val reserved = listOf("MVK_ROOT_GROUP_NAME_INVALID")
+        val actual = mutableMapOf<String, List<String>>()
+        actual["Catalog — the control"] = codes("Catalog")
+        actual["Id"] = codes("Id")
+        actual["ID"] = codes("ID")
+        actual["id"] = codes("id")
+        actual["Identity — the name as a prefix"] = codes("Identity")
+        actual["CatalogId — the name as a suffix"] = codes("CatalogId")
+        actual["a NESTED group of that name"] = nestedCodes("Id")
+        actual["a FIELD of that name"] = codes("Catalog", fieldName = "Id")
+
+        val expected = mutableMapOf<String, List<String>>()
+        expected["Catalog — the control"] = emptyList()
+        expected["Id"] = reserved
+        expected["ID"] = reserved
+        expected["id"] = reserved
+        expected["Identity — the name as a prefix"] = emptyList()
+        expected["CatalogId — the name as a suffix"] = emptyList()
+        expected["a NESTED group of that name"] = emptyList()
+        expected["a FIELD of that name"] = emptyList()
+        assertEquals(expected, actual, "the root-group name A12 reserves")
+    }
+
     private val underscore = listOf("NAME_STARTS_WITH_UNDERSCORE_AND_WRONG_PATTERN")
     private val pathInvalid = listOf("MVK_PATH_INVALID")
     private val inconsistent = listOf("MVK_PATHS_INCONSISTENT")

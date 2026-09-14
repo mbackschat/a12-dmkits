@@ -25,10 +25,10 @@ import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft;
  * ({@code GroupIndexAndSortReferenceLawsTest}).
  *
  * <p><b>The model is a DRAFT with the field's type PATCHED</b>, because modelkit's {@code BooleanSpec} is an
- * empty record and cannot author either member — recorded as a gap. Writing the whole model by hand is not
- * the alternative: the header carries laws of its own ({@code MVK_MAX_DIGITS_MISSING},
- * {@code MVK_PROGRAMMING_LANGUAGE_MISSING}), so a hand-written one is unbuildable for unrelated reasons and
- * every row reads NOT BUILDABLE — measured, on the first attempt at this grid.
+ * empty record and cannot author either member — recorded as a gap. A hand-written model was tried first and
+ * every row read NOT BUILDABLE; the reason recorded then — that the header carries laws of its own — was
+ * wrong, and {@code ModelHeaderSlotLawsTest} has since measured it: one absent member, {@code modelVersion},
+ * refuses the build with no class at all, while {@code id} and {@code modelType} may both be omitted.
  *
  * <p>Own domain (insurance).
  */

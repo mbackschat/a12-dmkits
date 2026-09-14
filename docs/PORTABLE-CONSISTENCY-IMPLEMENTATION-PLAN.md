@@ -759,6 +759,16 @@ One cold adversarial review over the frozen range, as [§2](#2-execution-order-a
 
 **The method correction to carry forward: rank by evidence, then READ the ledger row before predicting anything.** The row carries a disposition the count cannot, exactly as the earlier record found that the laws-file ranking measures where containment assertions live rather than where knowledge is missing. Both are the same mistake — trusting a derived score over the prose that owns the fact.
 
+### C record — the collector sweep run at scale: sixteen rows closed, one class gained, one published claim corrected (2026-09-14)
+
+**The accelerator from the previous record was applied to the whole remaining residue in one pass, and it holds** ([KF367](KERNEL-FINDINGS.md#kf367)). Sixteen `n/a-structural` rows are now re-dispositioned on a collector read — the four `*_H_DV` name laws and `MVK_ROW_TOO_BIG` all gate on an `oldWorld` flag only an H model sets; the two header laws are the collector's own constants; the date-format laws, `MVK_NAME_MISSING` and `MVK_TYPE_MISSING` all test members written unconditionally. **No fixture was needed for any of them**, which is the whole point: the reachability question is decided one layer above the grid.
+
+**One class came out of it, and it is the estate's only whole-name reservation.** A ROOT group called `Id` in any case draws `MVK_ROOT_GROUP_NAME_INVALID`; `Identity`, `BinId`, a nested group and a field of that name are all admitted. It rides `ELEMENT_NAME_ALPHABET` as its first gate, since a reservation and a bad character want different fixes and the codes already differ.
+
+**And the sweep corrected a claim this session had been acting on.** [KF362](KERNEL-FINDINGS.md#kf362) recorded that a hand-written model draws `MVK_MAX_DIGITS_MISSING` and `MVK_PROGRAMMING_LANGUAGE_MISSING` — both unreachable, as the collector shows. `ModelHeaderSlotLawsTest` now measures what actually refuses one: a single absent `header.modelVersion`, with no class, while `id` and `modelType` may both be left out. The correction cost one small grid and removes a fixture rule that had been slowing every declaration block since.
+
+**The method note to carry: the collector answers WHETHER, never WHICH TIER.** Three of this stretch's surprises were all of that shape — an empty enum value list, a duplicated header locale and a table member are refused at the build or reader tier rather than by the law that names them. So a collector read is enough to close a row as unreachable, and never enough to predict a verdict.
+
 ### C record — the enum-declaration block, and the accelerator that found it: read the COLLECTOR, not the rule (2026-09-14)
 
 **Fifteen Enumeration shape laws yield one family, ten codes closed on a single member list, and two that stay honestly unmeasured** ([KF366](KERNEL-FINDINGS.md#kf366)). `ENUM_S_VALUE_DOMAIN` reports `MVK_S_VALUE_INVALID` — the kernel basis modelkit's one documented over-strictness (API-FINDINGS 96) had only prose for, now measured on the stored carrier too, where another tool may have written the declaration.

@@ -72,6 +72,24 @@ class GroupNameAlphabetLawsTest {
                 .build().toJson());
     }
 
+    /** The same sheet with its ROOT group named [rootName], every other declaration held constant. */
+    private static String declaredRoot(String rootName) {
+        return KernelLaws.verdictOf(DocumentModelDraft.named("warehouse-bin").locale("en_US")
+                .rootGroup(rootName, b -> b
+                        .stringField("Ref", s -> { })
+                        .group("Slots", g -> g.numberField("Qty", n -> n.fractionDigits(0))))
+                .build().toJson());
+    }
+
+    /** …and with a FIELD of the nested group named [fieldName]. */
+    private static String declaredField(String fieldName) {
+        return KernelLaws.verdictOf(DocumentModelDraft.named("warehouse-bin").locale("en_US")
+                .rootGroup("Bin", b -> b
+                        .stringField("Ref", s -> { })
+                        .group("Slots", g -> g.stringField(fieldName, n -> { })))
+                .build().toJson());
+    }
+
     private static String parameter(String messageText) {
         return KernelLaws.messageVerdict(BIN, "/Bin/Slots", ERROR_REL, CONDITION, "en_US", messageText);
     }
@@ -100,6 +118,41 @@ class GroupNameAlphabetLawsTest {
             expected.put(key, c == '/' ? "MVK_PATHS_INCONSISTENT" : "MVK_PATH_INVALID");
         }
         assertEquals(expected, actual, "which code each interior character draws on a group name");
+    }
+
+    /**
+     * The one NAME A12 reserves outright, and the carrier it reserves it on.
+     *
+     * <p>[MVK-LEDGER] carries {@code MVK_ROOT_GROUP_NAME_INVALID} as a structural law with no measurement.
+     * It is the metamodel's only whole-name reservation — every other name law is about an alphabet — and it
+     * sits on the ROOT-group carrier alone, which is the half a checker would get wrong by generalising.
+     */
+    @Test
+    void theRootGroupNameThatA12Reserves() {
+        Map<String, String> actual = new LinkedHashMap<>();
+        actual.put("Bin — the control", declaredRoot("Bin"));
+        actual.put("Id", declaredRoot("Id"));
+        actual.put("ID", declaredRoot("ID"));
+        actual.put("id", declaredRoot("id"));
+        actual.put("iD", declaredRoot("iD"));
+        actual.put("Identity — the reserved name as a PREFIX", declaredRoot("Identity"));
+        actual.put("BinId — the reserved name as a SUFFIX", declaredRoot("BinId"));
+        actual.put("a NESTED group of that name", declared("Id"));
+        actual.put("a FIELD of that name", declaredField("Id"));
+
+        Map<String, String> expected = new LinkedHashMap<>();
+        expected.put("Bin — the control", KernelLaws.ADMITTED);
+        expected.put("Id", "MVK_ROOT_GROUP_NAME_INVALID");
+        expected.put("ID", "MVK_ROOT_GROUP_NAME_INVALID");
+        expected.put("id", "MVK_ROOT_GROUP_NAME_INVALID");
+        expected.put("iD", "MVK_ROOT_GROUP_NAME_INVALID");
+        // The match is WHOLE-name, so the reservation costs a modeller nothing but the two characters alone.
+        expected.put("Identity — the reserved name as a PREFIX", KernelLaws.ADMITTED);
+        expected.put("BinId — the reserved name as a SUFFIX", KernelLaws.ADMITTED);
+        // …and it is the ROOT carrier's law alone: the same name one level down, and on a field, is fine.
+        expected.put("a NESTED group of that name", KernelLaws.ADMITTED);
+        expected.put("a FIELD of that name", KernelLaws.ADMITTED);
+        assertEquals(expected, actual, "the root-group name A12 reserves");
     }
 
     /** The declaration gate, and the second gate the kernel's own wording does not mention. */

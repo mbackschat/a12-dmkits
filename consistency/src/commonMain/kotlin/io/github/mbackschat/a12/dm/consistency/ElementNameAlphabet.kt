@@ -1,7 +1,7 @@
 package io.github.mbackschat.a12.dm.consistency
 
 /**
- * Whether a declared GROUP or FIELD name is one A12 accepts — and it is three laws, not one.
+ * Whether a declared GROUP or FIELD name is one A12 accepts — its alphabet, and the one name it reserves.
  *
  * **The carriers do not share their alphabet, measured row for row** ([KERNEL-FINDINGS KF315],
  * `rulekit.validate.laws.GroupNameAlphabetLawsTest` and `FieldNameAlphabetLawsTest`). A group below the root
@@ -49,6 +49,29 @@ fun PreparedModel.elementNameAlphabetFindings(): List<Finding> = elements.flatMa
  * and the bare name `xml`, and each admits `xm` and a name merely containing `xml`. A name whose alphabet is
  * already broken is reported for the character instead, which under-reports a name that breaks both.
  */
+/**
+ * The one WHOLE name A12 reserves, and it is the root group's law alone.
+ *
+ * A root group called `Id` in any case draws `MVK_ROOT_GROUP_NAME_INVALID`; the match is the whole name, so
+ * `Identity` and `BinId` are admitted, and a nested group or a field of that name is admitted too
+ * ([KERNEL-FINDINGS KF367], `rulekit.validate.laws.GroupNameAlphabetLawsTest`). Every other name law in this
+ * family is about an alphabet, which is why this one is asked first and separately: a reservation and a bad
+ * character want different fixes.
+ */
+private fun DeclaredElement.reservedRootNameFinding(): Finding? =
+    if (path.count { it == '/' } != 1 || !name.equals(RESERVED_ROOT_GROUP_NAME, ignoreCase = true)) {
+        null
+    } else {
+        nameFinding(
+            "MVK_ROOT_GROUP_NAME_INVALID",
+            "A12 reserves `$RESERVED_ROOT_GROUP_NAME` as a root group's name, whatever its case — the whole " +
+                "name is what it reserves, so a name merely beginning or ending with it is admitted",
+        )
+    }
+
+/** The reserved name itself, matched case-insensitively and in full. */
+private const val RESERVED_ROOT_GROUP_NAME = "Id"
+
 private fun DeclaredElement.reservedPrefixFinding(code: String, carrier: String): Finding? =
     if (!name.lowercase().startsWith("xml")) {
         null
@@ -61,6 +84,7 @@ private fun DeclaredElement.reservedPrefixFinding(code: String, carrier: String)
     }
 
 private fun DeclaredElement.groupNameFindings(): List<Finding> {
+    reservedRootNameFinding()?.let { return listOf(it) }
     illegalCharacter()?.let { (at, character) ->
         return listOf(
             nameFinding(

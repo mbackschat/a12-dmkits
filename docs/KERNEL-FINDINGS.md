@@ -7138,6 +7138,48 @@ Reported by the portable checker, which did not emit `MVK_SORT_FIELD_DUPLICATE` 
 
 *Locked by:* `rulekit.validate.laws.GroupOrderingMultipleDefectLawsTest`, mirrored by `consistency … GroupOrderingMultipleDefectTest`.
 
+## §13 supplement — A12 reserves ONE whole name, and the sweep that closed sixteen structural rows around it (measured, 2026-09-14) <a id="kf367"></a>
+
+> Fold: not-foldable — a declaration-admission law plus a reachability sweep.
+
+**`Id` is the one name A12 refuses outright, and only as a ROOT group's.** Locked by `rulekit.validate.laws.GroupNameAlphabetLawsTest`.
+
+| the root group is named | A12 |
+|---|---|
+| `Bin` — the control | ADMITTED |
+| `Id`, `ID`, `id`, `iD` | `MVK_ROOT_GROUP_NAME_INVALID` |
+| `Identity`, `BinId` | ADMITTED |
+| a NESTED group or a FIELD called `Id` | ADMITTED |
+
+The match is the WHOLE name and case-insensitive, and it is the root carrier's law alone — every other name law in the estate is about an alphabet. Reported by the portable checker under `CheckFamily.ELEMENT_NAME_ALPHABET`.
+
+**The MODEL HEADER's own laws, measured because two published claims disagreed with the collector** (`ModelHeaderSlotLawsTest`):
+
+| the header | A12 |
+|---|---|
+| the built fixture — the control | ADMITTED |
+| no `modelConfig` at all | ADMITTED |
+| no `id`, no `modelType` | ADMITTED |
+| no `modelVersion` | NOT BUILDABLE |
+| no `locales` | NOT BUILDABLE |
+| the same locale declared twice | NOT BUILDABLE |
+| a model written by hand | NOT BUILDABLE |
+
+**One header member is load-bearing and it is not the one a reader expects.** A model builds with no `id` and no `modelType`; it does not build without `modelVersion`, and the refusal carries no class. That corrects [KF362](#kf362)'s collateral note, which attributed a hand-written model's failure to `MVK_MAX_DIGITS_MISSING` and `MVK_PROGRAMMING_LANGUAGE_MISSING` — both of which name members `DataCollectorUtils` fills from a constant and the codegen parameter, so neither can ever be missing. A repeated locale is likewise a classless build refusal, which takes `MVK_SUPP_LANGUAGES_DUPLICATE` with it.
+
+**And the sweep behind those rows is the transferable part: the COLLECTOR decides reachability.** Every `n/a-structural` code comes from a rule in A12's metamodel document model, and exactly two files build that document from a stored model — `CodeGenValidationDataCollector` and `FieldDataCollector`. Reading the collector line for the member a rule tests answers the reachability question before any fixture is written: a member written unconditionally kills every `FieldNotFilled` law over it, one never written kills every `FieldFilled` gate. Applied across the residue it closed, in one pass:
+
+| the block | why no stored model reaches it |
+|---|---|
+| the four `*_H_DV` name laws, and `MVK_ROW_TOO_BIG` | all gated on `ModelProperties/oldWorld`, which `addIsOldWorld` writes only for an H model |
+| `MVK_MAX_DIGITS_MISSING`, `MVK_PROGRAMMING_LANGUAGE_MISSING` | written from `IProjectSpecificSettings.MAXDIGITS_IN_NUMBERS` and the codegen parameter — constants, always present |
+| `MVK_NAME_MISSING` (five carriers), `MVK_TYPE_MISSING` | the collector writes a name and a type for every element it emits |
+| `MVK_FORMAT_MISSING`, `MVK_FORMAT_DATE_RANGE_MISSING` | `addDateType` and `addDateRangeType` write the format unconditionally, the builder having filled a default |
+| `MVK_DATE_RANGE_FORMAT_INVALID_CODEGEN` | its trigger values carry a `…vonReferenzjahr` suffix the collector never writes: it composes `format + separator + format` and puts the year interpretation in a member of its own |
+| `MVK_ROW_INVALID` | `maxRows` is a field's row count, and an A12 document model's field has no row dimension |
+
+**Two of the sweep's rows are UNMEASURED rather than unreachable, and the distinction is deliberate.** `MVK_NAME_INVALID_A12_DV` and `MVK_NAME_INVALID_H_DV` are metamodel CUSTOM CONDITIONS over a field name (`ungueltigerFeldName`, `ungueltigerFeldNameHDV`), and the complete printable-ASCII sweep in `FieldNameAlphabetLawsTest` draws other classes for every character. What they refuse is unknown, so nothing reproduces them.
+
 ## §8 supplement — the Enumeration's declaration laws: one live class, a table axis the reader refuses, and two custom conditions nothing reaches (measured, 2026-09-14) <a id="kf366"></a>
 
 > Fold: not-foldable — declaration-admission laws plus a reachability result.
@@ -7280,7 +7322,7 @@ Reported by the portable checker, which did not emit `MVK_SORT_FIELD_DUPLICATE` 
 
 **The mechanism, consistent with the rows.** `TypeConverter.convertBoolean` reads each member through `orElse("true")` / `orElse("false")`, so an absent one is indistinguishable from the default downstream and "missing" never reaches a check. The pair laws do not fire on a stored model either. *(Why the pair laws are silent is a HYPOTHESIS — presumably the `considerNotInD` gate — and nothing rests on it: the rows are the finding.)*
 
-**Two collateral facts worth carrying.** A hand-written model is NOT a substitute for a draft here: the header has laws of its own (`MVK_MAX_DIGITS_MISSING`, `MVK_PROGRAMMING_LANGUAGE_MISSING`), so every row of a hand-written grid reads NOT BUILDABLE for unrelated reasons — measured, on the first attempt. And modelkit's `BooleanSpec` is an empty record, so neither member is authorable through the typed surface at all.
+**Two collateral facts worth carrying.** A hand-written model is NOT a substitute for a draft here: every row of a hand-written grid read NOT BUILDABLE for unrelated reasons — measured, on the first attempt. *(Corrected 2026-09-14, [KF367](#kf367): the reason given here was the header's own laws, `MVK_MAX_DIGITS_MISSING` and `MVK_PROGRAMMING_LANGUAGE_MISSING`, and it is wrong in both halves — both codes name members A12's collector fills from constants and neither is reachable at all. What refuses a hand-written model is a single missing `header.modelVersion`, with no class; `id` and `modelType` may both be left out. So hand-writing a fixture is fine as long as it carries that member — `ModelHeaderSlotLawsTest`.)* And modelkit's `BooleanSpec` is an empty record, so neither member is authorable through the typed surface at all.
 
 ## §13 supplement — a sort list needs a REPEATABLE carrier, and the four PRIORITY laws beside it cannot be expressed in DM-JSON (measured, 2026-09-14) <a id="kf361"></a>
 
