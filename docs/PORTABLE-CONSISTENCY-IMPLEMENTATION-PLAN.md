@@ -739,6 +739,16 @@ One cold adversarial review over the frozen range, as [§2](#2-execution-order-a
 
 **The catalog half is deliberately not delivered, with its re-open trigger.** A2 ruled that `operators.json` ships as-is because it is already data; that remains right, and it is not yet USEFUL — no finding this checker produces names an operator id, so 293 KB would be packaged with nothing to join it against. It lands when a finding carries an operator.
 
+### C record — the selection method's own input had drifted, and now a guard holds it (2026-09-14)
+
+**33 MVK-LEDGER rows said the checker did not report a code it had been reporting for days or weeks.** Several of those rows' own prose already said the checker reported them, beside a disposition cell that did not — the two-copies-of-one-fact smell, in a registry whose column is read mechanically.
+
+**This is not a tidiness finding; the column STEERS the work.** Family selection ranks `| kernel-delegated |` rows by how much measurement already sits against them, so a stale row puts a finished code at the top of the list. It happened twice in this session before the sweep: `MVK_DATEFORMATS_NOT_COMPATIBLE` was selected as delegated and was only half-true, and `MVK_UNEXPECTED_TOKEN` sat at the top of the next ranking while the checker had been reporting it all along. The cost of a stale row is a session spent re-deriving finished work.
+
+**The guard is `CheckerLedgerDispositionGuardTest`, and its denominator is derived on both sides**: every A12 code appearing in a `Finding(...)` construction in the checker's own sources must have `checker-reported` in its ledger cell. The scan is deliberately NARROWER than the neighbouring `CheckerCodeBasisGuardTest`'s, which takes every string literal: over-counting is harmless when asking *was this measured* and is not harmless here, because the checker holds codes it never reports and demanding a row for those would fail honest content. Two exclusions have their reasons in the class — comments, where this estate's KDoc routinely names the neighbouring class a family stays silent on, and string interpolation, where a message tells an author which code the reported one is not.
+
+**Only one direction is locked, and that is the honest limit.** A row claiming a report the checker no longer emits would need a scan that follows every helper, and the same over-counting returns. The drift that actually happens is one-way — the family lands and the row lags — so the guard covers the direction with the evidence.
+
 ### C record — the sixty-fourth family: the top of the ranking, and a gate that was pure transcription (2026-09-14)
 
 **Frozen family: the two gates an entity-list aggregate asks of each temporal operand, its PRECISION and its COMPONENTS.** [KF193](KERNEL-FINDINGS.md#kf193), amended with the gate's own mechanism, and [KF260](KERNEL-FINDINGS.md#kf260). Two residue codes drained — `MVK_DATEFORMATS_NOT_COMPATIBLE`, which the ranking put at the top with three lock classes against it, more than any other delegated row, and `MVK_PARTIAL_DATE_NOT_ALLOWED`, which cost a second expectation in the same walk because A12 asks both of one operand before moving to the next.
