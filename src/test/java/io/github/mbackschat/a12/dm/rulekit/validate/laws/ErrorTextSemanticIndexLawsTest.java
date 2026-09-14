@@ -64,7 +64,15 @@ class ErrorTextSemanticIndexLawsTest {
         actual.put("a field of a group the condition never reads, with a key",
                 reporting("$Parcels/Volume For \"P-1\"$"));
         actual.put("a key on a field that does not repeat", reporting("$Total For \"T-1\"$"));
+        actual.put("a NESTED key on a field the condition reads",
+                reporting("$Shipments/Weight For Shipments/TrackingNo For \"T-1\"$"));
+        actual.put("a NESTED key on a field the condition does NOT read",
+                reporting("$Parcels/Volume For Parcels/ParcelNo For \"P-1\"$"));
         actual.put("the GERMAN keyword in an en_US model", reporting("$Shipments/Weight Fuer \"T-1\"$"));
+        actual.put("a plain parameter, on a condition with NO semantic index — the control",
+                onAPlainCondition("$Reference$"));
+        actual.put("a NESTED key, on a condition with NO semantic index",
+                onAPlainCondition("$Shipments/Weight For Shipments/TrackingNo For \"T-1\"$"));
 
         Map<String, String> expected = new LinkedHashMap<>();
         expected.put("a plain parameter the condition reads — the control", KernelLaws.ADMITTED);
@@ -79,12 +87,29 @@ class ErrorTextSemanticIndexLawsTest {
         expected.put("a PLAIN sibling of the indexed group, the condition's key", REFUSED);
         expected.put("a field of a group the condition never reads, with a key", REFUSED);
         expected.put("a key on a field that does not repeat", REFUSED);
+        // `checkSemanticIndex` runs as the KEY sub-rule completes, so it answers before `checkFieldRef`
+        // reaches membership at all — which is what lets a checker report the nested shape without first
+        // establishing that the field is read.
+        expected.put("a NESTED key on a field the condition reads", "ILLEGAL_SEMANTIC_INDEX");
+        expected.put("a NESTED key on a field the condition does NOT read", "ILLEGAL_SEMANTIC_INDEX");
         expected.put("the GERMAN keyword in an en_US model", "MVK_UNEXPECTED_TOKEN");
+        // The axis every other nested row holds CONSTANT: those all sit on a condition that itself carries a
+        // semantic index, so "chaining is refused" and "the condition's own index is what refuses it" are
+        // indistinguishable across them. This row sits on the other side and settles which one holds.
+        expected.put("a plain parameter, on a condition with NO semantic index — the control",
+                KernelLaws.ADMITTED);
+        expected.put("a NESTED key, on a condition with NO semantic index", "ILLEGAL_SEMANTIC_INDEX");
         assertEquals(expected, actual, "which semantic index an error-text parameter may carry");
     }
 
     private static String reporting(String text) {
         return KernelLaws.messageVerdict(FULFILMENT, "/Fulfilment", "../Reference",
                 READS_AN_INDEXED_SHIPMENT, "en_US", text);
+    }
+
+    /** The same desk on a condition carrying no semantic index, so the parameter's key stands alone. */
+    private static String onAPlainCondition(String text) {
+        return KernelLaws.messageVerdict(FULFILMENT, "/Fulfilment", "../Reference",
+                "FieldFilled(Reference)", "en_US", text);
     }
 }

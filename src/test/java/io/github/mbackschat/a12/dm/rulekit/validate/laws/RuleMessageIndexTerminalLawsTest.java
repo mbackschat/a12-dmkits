@@ -65,6 +65,23 @@ class RuleMessageIndexTerminalLawsTest {
                             .stringField("Payout", f -> { })))
             .build().toJson();
 
+    /**
+     * Two groups on ONE path, each declaring an index field of the same SHORT NAME.
+     *
+     * <p>The match in {@code checkIndexFieldRef} is by short name over every index field on the error
+     * entity's path, so this is the shape where it finds two — the second of the terminal's five gates, and
+     * the one no grid had reached.
+     */
+    private static final String AMBIGUOUS = DocumentModelDraft.named("claims-ambiguous-index").locale("en_US")
+            .rootGroup("Policy", policy -> policy
+                    .stringField("Reference", f -> { })
+                    .group("Claims", claims -> claims.repeatable(20).indexField("Ref")
+                            .stringField("Ref", f -> { })
+                            .group("Items", items -> items.repeatable(9).indexField("Ref")
+                                    .stringField("Ref", f -> { })
+                                    .stringField("Payout", f -> { }))))
+            .build().toJson();
+
     private static final BoundModel M = BoundModel.ofJson(POLICY);
 
     /** A plain per-row read of the indexed group, from inside it — no semantic index anywhere. */
@@ -86,6 +103,31 @@ class RuleMessageIndexTerminalLawsTest {
     /** At the root: rule group {@code /Policy}, error field a root field. */
     private static String atRoot(String message) {
         return KernelLaws.messageVerdict(POLICY, ROOT_GROUP, "../Reference", READS_ROOT, "en_US", message);
+    }
+
+    /**
+     * The SECOND gate: a short name matching two index fields on the error entity's path.
+     *
+     * <p>Its own fixture, because the ambiguity is a property of the whole path and would change every other
+     * row of the shared one. The control is the same parameter naming the UNambiguous index field.
+     */
+    @Test
+    void aShortNameMatchingTwoIndexFieldsOnThePathIsAmbiguous() {
+        Map<String, String> actual = new LinkedHashMap<>();
+        actual.put("no parameter at all — control", inAmbiguousRow("row"));
+        actual.put("the short name both groups declare", inAmbiguousRow("row $index(Ref).value$"));
+
+        Map<String, String> expected = new LinkedHashMap<>();
+        expected.put("no parameter at all — control", ADMITTED);
+        expected.put("the short name both groups declare", "INVALID_INDEX_FIELD_AMBIGUOUS");
+        assertEquals(expected, actual, "a short name matching two index fields on the path is ambiguous");
+    }
+
+    /** In the inner repeating group, whose path carries BOTH index fields named `Ref`. */
+    private static String inAmbiguousRow(String message) {
+        BoundModel ambiguous = BoundModel.ofJson(AMBIGUOUS);
+        return KernelLaws.messageVerdict(AMBIGUOUS, "/Policy/Claims/Items", "../Payout",
+                render(Dsl.fieldFilled(ambiguous.field("/Policy/Claims/Items/Payout"))), "en_US", message);
     }
 
     @Test

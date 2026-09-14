@@ -47,6 +47,24 @@ class ErrorTextIndexTerminalTest {
         assertEquals(expected, actual, "which argument the index terminal takes")
     }
 
+    /**
+     * The SECOND gate, on its own fixture: two groups on one path declaring an index field of the same name.
+     *
+     * The control is the same terminal on the shape where only ONE group declares the name, which is the
+     * unambiguous row above — so what moves between them is the path's second declaration, nothing else.
+     */
+    @Test
+    fun aShortNameTwoGroupsOnThePathDeclareIsAmbiguous() {
+        val actual = mutableMapOf<String, List<String>>()
+        actual["the short name both groups declare"] = ambiguityIn("row \$index(Ref).value\$")
+        actual["no parameter at all — the control"] = ambiguityIn("row")
+
+        val expected = mutableMapOf<String, List<String>>()
+        expected["the short name both groups declare"] = listOf("INVALID_INDEX_FIELD_AMBIGUOUS")
+        expected["no parameter at all — the control"] = emptyList()
+        assertEquals(expected, actual, "a short name two groups on the path declare is ambiguous")
+    }
+
     /** The finding names what the error entity's path DOES offer, since that is the repair. */
     @Test
     fun theFindingNamesTheIndexFieldsThatPathOffers() {
@@ -60,6 +78,9 @@ class ErrorTextIndexTerminalTest {
     private fun reporting(text: String): List<String> =
         check(ModelSource(model(text))).findings.filter { it.code == "INVALID_INDEX_FIELD" }.map { it.code }
 
+    private fun ambiguityIn(text: String): List<String> = check(ModelSource(ambiguousModel(text)))
+        .findings.filter { it.code == "INVALID_INDEX_FIELD_AMBIGUOUS" }.map { it.code }
+
     private fun model(text: String): String = """
         {"header":{"id":"policy-index-terminal","locales":[{"code":"en_US"}]},
          "content":{"modelRoot":{"rootGroups":[
@@ -72,6 +93,28 @@ class ErrorTextIndexTerminalTest {
               {"type":"Rule","id":"r0","name":"ClaimRule","Rule":{
                 "errorCondition":"FieldFilled(Payout)","errorEntityRelPath":"../Payout",
                 "errorCode":"PROBE","errorMessage":[{"locale":"en_US","text":"$text"}]}}
+            ]}}
+          ]}}
+         ]}}}
+    """.trimIndent()
+
+    /** The same desk with the inner group re-declaring its parent's index-field NAME. */
+    private fun ambiguousModel(text: String): String = """
+        {"header":{"id":"policy-ambiguous-index","locales":[{"code":"en_US"}]},
+         "content":{"modelRoot":{"rootGroups":[
+          {"type":"Group","id":"g0","name":"Policy","Group":{"elements":[
+            {"type":"Field","id":"f0","name":"Reference","Field":{"fieldType":{"type":"StringType"}}},
+            {"type":"Group","id":"g1","name":"Claims","Group":{"repeatability":20,
+              "indexFieldName":"Ref","elements":[
+              {"type":"Field","id":"f1","name":"Ref","Field":{"fieldType":{"type":"StringType"}}},
+              {"type":"Group","id":"g2","name":"Items","Group":{"repeatability":9,
+                "indexFieldName":"Ref","elements":[
+                {"type":"Field","id":"f2","name":"Ref","Field":{"fieldType":{"type":"StringType"}}},
+                {"type":"Field","id":"f3","name":"Payout","Field":{"fieldType":{"type":"StringType"}}},
+                {"type":"Rule","id":"r0","name":"ItemRule","Rule":{
+                  "errorCondition":"FieldFilled(Payout)","errorEntityRelPath":"../Payout",
+                  "errorCode":"PROBE","errorMessage":[{"locale":"en_US","text":"$text"}]}}
+              ]}}
             ]}}
           ]}}
          ]}}}

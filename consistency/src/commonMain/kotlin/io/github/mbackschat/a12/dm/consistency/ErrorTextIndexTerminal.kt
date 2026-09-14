@@ -11,17 +11,20 @@ import io.github.mbackschat.a12.dm.consistency.syntax.messageParameterBodies
  * `INVALID_INDEX_FIELD` when nothing matches
  * ([KERNEL-FINDINGS KF198], `rulekit.validate.laws.RuleMessageIndexTerminalLawsTest`).
  *
- * **Five gates run in this terminal and only the FIRST is reproduced here, which is what makes the family
- * safe rather than what limits it.** The argument gate is first, so nothing pre-empts it; after it come
- * ambiguity, a composed index, two repeatability classes computed from the CONDITION's own references to the
- * same index field, and finally the missing-suffix class. Reporting any of those would mean reproducing the
- * repeatability machinery to know it was reached — and the measured ordering proves the hazard is real: an
- * unknown name with NO suffix draws this class and not `INVALID_INDEX_FIELD_PARAMETER`, because the last gate
- * never runs. So the later classes are a disclosed under-report, not a judgement.
+ * **Five gates run in this terminal and the first TWO are reproduced here, which is what makes the family safe
+ * rather than what limits it.** The argument gate is first, so nothing pre-empts it; ambiguity is second, so
+ * reproducing the argument gate is the whole precondition for reporting it — `INVALID_INDEX_FIELD_AMBIGUOUS`
+ * when the short name matches the index field of more than one group on the path, measured on a `/Policy`
+ * shape whose `Claims` and `Items` both declare `Ref`. After those come a composed index, two repeatability
+ * classes computed from the CONDITION's own references to the same index field, and finally the
+ * missing-suffix class. Reporting any of THOSE would mean reproducing the repeatability machinery to know it
+ * was reached — and the measured ordering proves the hazard is real: an unknown name with NO suffix draws the
+ * argument class and not `INVALID_INDEX_FIELD_PARAMETER`, because the last gate never runs. So the three
+ * later classes are a disclosed under-report, not a judgement.
  *
- * **A non-repeatable indexed group still passes the argument gate** (its index field is on the path and A12
- * answers `INVALID_INDEX_FIELD_NONREP_ENUM` from the repeatability gate instead), and so does an AMBIGUOUS
- * name matching two index fields. Both are silence here for the same reason: the argument matched.
+ * **A non-repeatable indexed group still passes both gates** — its index field is on the path and matches
+ * once, and A12 answers `INVALID_INDEX_FIELD_NONREP_ENUM` from the repeatability gate instead. That is
+ * silence here for the reason the gate order gives: the argument matched, exactly once.
  */
 fun PreparedModel.errorTextIndexTerminalFindings(): List<Finding> {
     val targets = declaredReferences()
@@ -42,10 +45,13 @@ fun PreparedModel.errorTextIndexTerminalFindings(): List<Finding> {
             }
             messageParameterBodies(message.text).mapNotNull { parameter ->
                 val argument = indexTerminalArgument(parameter) ?: return@mapNotNull null
-                if (argument in reachable) {
-                    return@mapNotNull null
+                when (reachable.count { it == argument }) {
+                    0 -> finding(argument, reachable.toSet(), element)
+                    1 -> null
+                    // The SECOND gate, and the argument gate is the only one before it — so reporting this
+                    // class needs no more of the terminal's machinery than the first one did.
+                    else -> ambiguousFinding(argument, element)
                 }
-                finding(argument, reachable, element)
             }
         }
     }
@@ -77,8 +83,8 @@ private fun indexTerminalArgument(parameter: String): String? {
  * Every ancestor group counts, repeatable or not: a non-repeatable indexed group's field is on the path and
  * passes this gate, which is why the class it eventually draws belongs to the repeatability gate instead.
  */
-private fun PreparedModel.indexFieldNamesOnThePathTo(fieldPath: String): Set<String> {
-    val names = mutableSetOf<String>()
+private fun PreparedModel.indexFieldNamesOnThePathTo(fieldPath: String): List<String> {
+    val names = mutableListOf<String>()
     var group = fieldPath.substringBeforeLast('/', missingDelimiterValue = "")
     while (group.isNotEmpty()) {
         elements.firstOrNull { it.path == group }
@@ -88,6 +94,16 @@ private fun PreparedModel.indexFieldNamesOnThePathTo(fieldPath: String): Set<Str
     }
     return names
 }
+
+private fun ambiguousFinding(argument: String, element: DeclaredElement): Finding = Finding(
+    FindingCategory.A12_CONSTRAINT,
+    FindingSeverity.ERROR,
+    "INVALID_INDEX_FIELD_AMBIGUOUS",
+    "in `errorMessage`: `index($argument)` matches the index field of more than one group on the error " +
+        "entity's path — the argument is matched by SHORT NAME, so A12 cannot say which repetition to pin " +
+        "the message to",
+    element.path,
+)
 
 private fun finding(argument: String, reachable: Set<String>, element: DeclaredElement): Finding = Finding(
     FindingCategory.A12_CONSTRAINT,

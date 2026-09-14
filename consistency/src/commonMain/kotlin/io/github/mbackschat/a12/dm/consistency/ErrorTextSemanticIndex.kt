@@ -26,6 +26,11 @@ import io.github.mbackschat.a12.dm.consistency.syntax.semanticIndexUsesIn
  * sibling in the same group at the same key — is REFUSED. So the key does not bind the whole repetition for
  * a message to read from; it binds the pair the condition wrote, plus the field that names the key itself.
  *
+ * **A key that is itself keyed is a separate class, and it answers FIRST.** `$Shipments/Weight For
+ * Shipments/TrackingNo For "T-1"$` draws `ILLEGAL_SEMANTIC_INDEX`, measured both on a field the condition
+ * reads and on one it does not — so this shape is reported without establishing membership, because A12's
+ * `checkSemanticIndex` runs as the KEY sub-rule completes and `checkFieldRef` never reaches the condition.
+ *
  * **Silent wherever the parameter is not this form**, which is the family's boundary rather than a choice:
  * the message grammar carries a category suffix, a row specifier and a base-year terminal, each with its own
  * gate, and [messageParameterBodies] hands them over unrecognised. Silent too on a text A12 refuses for its
@@ -56,8 +61,14 @@ fun PreparedModel.errorTextSemanticIndexFindings(): List<Finding> {
                 if (parameter.contains("->") || parameter.trimStart().startsWith("index(")) {
                     return@mapNotNull null
                 }
-                val use = semanticIndexUsesIn(parameter, conditionLanguage, keyword).singleOrNull()
-                    ?: return@mapNotNull null
+                val uses = semanticIndexUsesIn(parameter, conditionLanguage, keyword)
+                // A key that is itself keyed is refused outright, and BEFORE membership: A12's check runs as
+                // the key SUB-RULE completes, so `checkFieldRef` never reaches the condition. Measured on a
+                // field the condition reads and on one it does not, both `ILLEGAL_SEMANTIC_INDEX`.
+                if (uses.any { it.nested }) {
+                    return@mapNotNull nestedFinding(element)
+                }
+                val use = uses.singleOrNull() ?: return@mapNotNull null
                 val asked = boundPair(use, group, element) ?: return@mapNotNull null
                 if (asked in written || ridesAlong(asked, written)) {
                     return@mapNotNull null
@@ -126,6 +137,15 @@ private fun PreparedModel.resolvedPath(
     declaringGroup: String,
     element: DeclaredElement,
 ): String? = (resolveEntity(declaringGroup, written, element.origin) as? Reference.Resolved)?.path
+
+private fun nestedFinding(element: DeclaredElement): Finding = Finding(
+    FindingCategory.A12_CONSTRAINT,
+    FindingSeverity.ERROR,
+    "ILLEGAL_SEMANTIC_INDEX",
+    "in `errorMessage`: a parameter's semantic-index key is itself keyed, and A12 takes one key per " +
+        "parameter — one index selects one repetition, and they do not chain",
+    element.path,
+)
 
 private fun finding(asked: BoundPair, keyword: String, element: DeclaredElement): Finding = Finding(
     FindingCategory.A12_CONSTRAINT,

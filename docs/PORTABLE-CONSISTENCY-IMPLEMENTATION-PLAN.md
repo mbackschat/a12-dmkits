@@ -739,7 +739,19 @@ One cold adversarial review over the frozen range, as [§2](#2-execution-order-a
 
 **The catalog half is deliberately not delivered, with its re-open trigger.** A2 ruled that `operators.json` ships as-is because it is already data; that remains right, and it is not yet USEFUL — no finding this checker produces names an operator id, so 293 KB would be packaged with nothing to join it against. It lands when a finding carries an operator.
 
+### C record — two gate-order measurements cashed in the same lane (2026-09-15)
+
+**Frozen change: one more gate in each of two families already landed.** `ILLEGAL_SEMANTIC_INDEX` for a message parameter whose semantic-index key is itself keyed ([KF412](KERNEL-FINDINGS.md#kf412)), and `INVALID_INDEX_FIELD_AMBIGUOUS` for an `$index(…)$` argument matching the index field of more than one group on the error entity's path ([KF414](KERNEL-FINDINGS.md#kf414)). No new family, so the count stays at 92; two more classes of A12's unprefixed error-text vocabulary are now reported.
+
+**Both were licensed by an ordering measured for a DIFFERENT purpose, which is what made them cheap.** The two slices before this one each measured a gate order to justify what they would NOT report; the same two orderings then said exactly which further class each family could report for free. `INVALID_INDEX_FIELD_AMBIGUOUS` is the second gate and the argument gate is the only one before it — already reproduced — so it needs no machinery the family did not already have. `ILLEGAL_SEMANTIC_INDEX` is thrown by `checkSemanticIndex` as the KEY sub-rule completes, before `checkFieldRef` consults the condition at all, so it needs *less*: no membership work whatsoever. **The transferable move is to ask, of every ordering measured to bound a family, which gate it also unlocks** — a measurement taken to justify silence is the same measurement that licenses the next class, and reading it only in the direction it was taken leaves that free.
+
+**The membership row is the discriminator, and this is the one place a nested key could have been reported wrongly.** A chained key on a group the condition never reads draws `ILLEGAL_SEMANTIC_INDEX`, not `MVK_INDEX_FOR_ERROR_TEXT_INVALID` — a membership-first reading predicts the wrong class there, and the checker would have named it on every unread field. Predicting both rows and measuring them together is what settled it.
+
+**The condition-side reduction deliberately kept refusing a nested use.** Only the MESSAGE side was measured, and the same helper reduces both surfaces — so widening it for the message would have silently changed what counts as a pairing the condition wrote, on a carrier with no measurement behind it. The nested class is answered before that helper is reached instead, which is the scope-transfer rule applied to a shared reader rather than to a fixture.
+
 ### C record — a family built from a grid that already existed (2026-09-15)
+
+*(Superseded in part 2026-09-15 by the record above: this family now reproduces the first TWO gates, not one. Its argument for the three it still leaves alone is unchanged.)*
 
 **Frozen change: the `$index(…)$` terminal's ARGUMENT gate.** [KF414](KERNEL-FINDINGS.md#kf414); one class of A12's unprefixed error-text vocabulary newly reported — `INVALID_INDEX_FIELD`. New family `ERROR_TEXT_INDEX_TERMINAL`; the count goes 91 → 92.
 

@@ -29,6 +29,10 @@ class ErrorTextSemanticIndexTest {
         actual["a field of a group the condition never reads, with a key"] =
             reporting("\$Parcels/Volume For \\\"P-1\\\"\$")
         actual["a key on a field that does not repeat"] = reporting("\$Total For \\\"T-1\\\"\$")
+        actual["a NESTED key on a field the condition reads"] =
+            reporting("\$Shipments/Weight For Shipments/TrackingNo For \\\"T-1\\\"\$")
+        actual["a NESTED key on a field the condition does NOT read"] =
+            reporting("\$Parcels/Volume For Parcels/ParcelNo For \\\"P-1\\\"\$")
 
         val refused = listOf("MVK_INDEX_FOR_ERROR_TEXT_INVALID")
         val expected = mutableMapOf<String, List<String>>()
@@ -44,6 +48,11 @@ class ErrorTextSemanticIndexTest {
         expected["a PLAIN sibling of the indexed group, the condition's key"] = refused
         expected["a field of a group the condition never reads, with a key"] = refused
         expected["a key on a field that does not repeat"] = refused
+        // Chaining is refused outright, and BEFORE membership — which the second row is what proves: an
+        // unread field draws this class too, so the check answers without ever consulting the condition.
+        val chained = listOf("ILLEGAL_SEMANTIC_INDEX")
+        expected["a NESTED key on a field the condition reads"] = chained
+        expected["a NESTED key on a field the condition does NOT read"] = chained
         assertEquals(expected, actual, "which semantic index an error-text parameter may carry")
     }
 
@@ -88,6 +97,6 @@ class ErrorTextSemanticIndexTest {
     """.trimIndent()
 
     private companion object {
-        val OWNED = setOf("MVK_INDEX_FOR_ERROR_TEXT_INVALID")
+        val OWNED = setOf("MVK_INDEX_FOR_ERROR_TEXT_INVALID", "ILLEGAL_SEMANTIC_INDEX")
     }
 }

@@ -116,11 +116,13 @@ class MessageParameterReferenceTest {
     }
 
     /**
-     * The parameter forms this family deliberately does not read, every one of them SILENT.
+     * The parameter forms this family deliberately does not read, and what the checker as a whole says.
      *
-     * Each has its own gate in A12 with its own class, and none of them is the membership one — so reporting
-     * here would be an over-rejection on a model A12 may well admit. The list is the family's disclosed
-     * scope, not a backlog: a form is added only once its own class has been measured.
+     * Each has its own gate in A12 with its own class, and none of them is the membership one — so a
+     * membership class here would be an over-rejection on a model A12 may well admit. The grid reads EVERY
+     * finding at the declaration, not just this family's, which is what makes it the tier's cross-family
+     * silence check: when a sibling family lands a form, the row stops being empty and says whose class it
+     * now carries.
      */
     @Test
     fun theFormsThisFamilyDoesNotRead() {
@@ -131,9 +133,13 @@ class MessageParameterReferenceTest {
         actual["a base-year terminal with an offset"] = ruleSaying("see \$BaseYear+3\$")
         actual["a row specifier"] = ruleSaying("see \$#Zeile\$")
 
-
-        assertEquals(actual.keys.associateWith { emptyList<String>() }, actual,
-            "the parameter forms this family does not read")
+        val expected = actual.keys.associateWith { emptyList<String>() }.toMutableMap()
+        // Landed 2026-09-15 by `ERROR_TEXT_SEMANTIC_INDEX`, which owns the chained key: A12 refuses it with
+        // this class before membership is consulted at all, measured in
+        // `rulekit.validate.laws.ErrorTextSemanticIndexLawsTest`. The row stays here because what it locks is
+        // that THIS family adds nothing on top — not that the checker is silent.
+        expected["a semantic-index key"] = listOf("ILLEGAL_SEMANTIC_INDEX")
+        assertEquals(expected, actual, "the parameter forms this family does not read")
     }
 
     /**
