@@ -63,6 +63,24 @@ internal fun semanticIndexKeysIn(text: String, language: ConditionLanguage, keyw
     ).semanticIndexKeys()
 
 /**
+ * The `->` CATEGORY accesses in the text, each as the reference it hangs off and the name behind the arrow.
+ *
+ * [referencesIn] cannot report either half. The name after the arrow is stepped over deliberately — it is a
+ * category attribute rather than an entity, so resolving it would report every categorized reference as
+ * undeclared — and the PAIRING is what a law about the category needs: `[Tier -> Band]` is legal exactly
+ * when `Tier`'s own Enumeration declares `Band`, so neither half means anything alone.
+ *
+ * An arrow behind something this reader did not record as a reference yields nothing, which is the correct
+ * answer rather than a gap: A12 answers such text with a class about the operand, never about the category.
+ */
+internal fun categoryAccessesIn(text: String, language: ConditionLanguage): List<Pair<String, String>> =
+    ReferenceScan(
+        tokenize(text),
+        CONDITION_KEYWORDS.getValue(language),
+        CONDITION_OPERATOR_KEYWORDS.getValue(language)[CUSTOM_CONDITION],
+    ).categoryAccesses()
+
+/**
  * Whether the text puts a repetition wildcard on the RULE-CONTEXT entity.
  *
  * A12 refuses that with a class of its own, `MVK_INVALID_WILDCARD_FOR_RULEGROUP`
@@ -116,6 +134,10 @@ private class ReferenceScan(
     private var at = 0
     private val found = LinkedHashSet<String>()
     private val keys = LinkedHashSet<String>()
+    private val categories = mutableListOf<Pair<String, String>>()
+
+    /** The reference the scan read most recently — what an arrow immediately after it hangs off. */
+    private var lastPath: String? = null
 
     /** Where a reference would have to begin to be a semantic-index key: right after the last such keyword. */
     private var keyBegins = -1
@@ -123,6 +145,11 @@ private class ReferenceScan(
     fun semanticIndexKeys(): List<String> {
         references()
         return keys.toList()
+    }
+
+    fun categoryAccesses(): List<Pair<String, String>> {
+        references()
+        return categories.toList()
     }
 
     fun references(): List<String> {
@@ -192,7 +219,10 @@ private class ReferenceScan(
      */
     private fun skipCategoryName() {
         at++
-        if (at < tokens.size && tokens[at].isName()) at++
+        if (at < tokens.size && tokens[at].isName()) {
+            lastPath?.let { categories += it to tokens[at].text }
+            at++
+        }
     }
 
     private fun startsReference(index: Int): Boolean {
@@ -230,6 +260,7 @@ private class ReferenceScan(
         if (names > 0) {
             val path = normalizedPath(tokens.subList(begin, end))
             found += path
+            lastPath = path
             if (begin == keyBegins) {
                 keys += path
             }

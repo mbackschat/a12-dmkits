@@ -99,6 +99,10 @@ class CheckFamilyWiringTest {
               {"type":"Field","id":"f32","name":"CrateRef","Field":{"fieldType":{"type":"StringType"}}},
               {"type":"Field","id":"f33","name":"ToteQty","Field":{"fieldType":{"type":"NumberType"}}}
             ]}},
+            {"type":"Rule","id":"r32","name":"UndeclaredCategory","Rule":{
+              "errorCondition":"FieldFilled(Price) And [MiscategorisedTier -> NoSuchBand] == \"STANDARD\"",
+              "errorEntityRelPath":"../Price",
+              "errorCode":"C32","errorMessage":[{"locale":"en_US","text":"x"}]}},
             {"type":"Rule","id":"r31","name":"FilteredGroupOperand","Rule":{
               "errorCondition":"FieldFilled(Price) And NumberOfFilledGroups(Pallets* Having [Pallets/PalletNote] == \"x\") > 0",
               "errorEntityRelPath":"../Price",
@@ -318,6 +322,11 @@ class CheckFamilyWiringTest {
         // two families are distinguished by where the operand sits rather than by the class they name.
         CheckFamily.FILTERED_OPERAND_KIND to
             ("MVK_NO_GROUPS_ALLOWED" to "/Catalog/FilteredGroupOperand"),
+        // `MiscategorisedTier` declares the category `Band`, so the arrow's target IS an Enumeration with
+        // categories and only the NAME behind the arrow is wrong — which is what keeps the enum gate from
+        // pre-empting and makes this row about the reference rather than about the declaration.
+        CheckFamily.CATEGORY_REFERENCE to
+            ("MVK_CATEGORY_UNKOWN" to "/Catalog/UndeclaredCategory"),
         // The rule sits in a repeatable group and reaches its error field only through the root, while
         // reading a sibling of that field — so A12 cannot say which pallet the error belongs to.
         CheckFamily.ERROR_TARGET_ITERATION to

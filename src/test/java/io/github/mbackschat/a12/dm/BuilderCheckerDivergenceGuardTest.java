@@ -127,6 +127,18 @@ class BuilderCheckerDivergenceGuardTest {
             // the family reports only the semantic-index shape (`FilteredOperandGateOrderLawsTest`).
             Map.entry("MVK_WILDCARDS_REQUIRED", Disposition.PROSE_ONLY),
 
+            // `EnumRef.category(name)` fails fast on an undeclared category and `StructuralKernelFix` has no
+            // hint for it; the kit's refusal is on a typed handle built from the model, so it cannot be
+            // wrong about the declared set. The checker reads the same declaration from stored DM-JSON.
+            Map.entry("MVK_CATEGORY_UNKOWN", Disposition.SAME_LAW_SEPARATE_CARRIERS),
+
+
+            // The MIRROR direction of PROSE_ONLY: `EnumRef.is` / `CategoryRef.is` validate the literal
+            // against the model's domain, so the KIT enforces, and the checker only names the code in a KDoc
+            // saying the category family deliberately does not reproduce it — that is a law about the
+            // comparison's constant, not about the arrow (`CategoryReferenceGateOrderLawsTest`).
+            Map.entry("MVK_INVALID_STRING_CONSTANT_FOR_ENUM_COMPARISON", Disposition.PROSE_ONLY),
+
             // Computation.Builder reads List<Alternative> with Optional<Condition>; the checker reads a
             // JsonArray where an ABSENT or null member is the empty precondition. They agree on all four
             // shapes (one unguarded, two mixed, two both-unguarded, three with the middle unguarded); the

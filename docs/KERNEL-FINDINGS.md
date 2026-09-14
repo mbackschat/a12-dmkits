@@ -7138,6 +7138,25 @@ Reported by the portable checker, which did not emit `MVK_SORT_FIELD_DUPLICATE` 
 
 *Locked by:* `rulekit.validate.laws.GroupOrderingMultipleDefectLawsTest`, mirrored by `consistency … GroupOrderingMultipleDefectTest`.
 
+## §8 supplement — the gate chain over a `->` CATEGORY reference, and the three classes around it (measured, 2026-09-14) <a id="kf359"></a>
+
+> Fold: not-foldable — a diagnostic-class selection law, not an evaluation behaviour.
+
+**`CheckEntityUtils.checkCategory` runs two gates**: the referenced entity must be an Enumeration, then the name behind the arrow must be one it DECLARES. Neither class had a measurement in this estate. Locked by `rulekit.validate.laws.CategoryReferenceGateOrderLawsTest`.
+
+| the arrow's operands | A12 |
+|---|---|
+| `[Tier -> Band]`, a declared category — the control | ADMITTED |
+| `[Tier -> NoSuchBand]` | `MVK_CATEGORY_UNKOWN` |
+| `[Reference -> Band]`, a STRING field | `MVK_NO_ENUMERATION` |
+| `[Insured -> Band]`, a GROUP | `MVK_NO_GROUPS_ALLOWED` |
+| `[NoSuchField -> Band]` | `MVK_INVALID_ENTITY` |
+| `[Tier -> Band] == "NOPE"`, a declared category and an undeclared CLASSIFICATION | `MVK_INVALID_STRING_CONSTANT_FOR_ENUM_COMPARISON` |
+
+**Six rows, six distinct classes, and the last two are the ones worth carrying.** Resolution and the operand's kind both answer ahead of this chain, so the two category classes are reachable only where the reference is otherwise sound. And the category's own VALUE domain is a THIRD law with a third class: naming a declared category and then comparing it to a classification the category does not carry is `MVK_INVALID_STRING_CONSTANT_FOR_ENUM_COMPARISON`, about the comparison's constant rather than about the arrow.
+
+**The portable family (`CheckFamily.CATEGORY_REFERENCE`) is silent on a `TypeDefType` field, and the reference corpus is why.** A field typed by reference to a type definition may BE an Enumeration declaring the category — preparation keeps type definitions' ids alone, so the checker cannot tell. A first version reported `MVK_NO_ENUMERATION` on `[format->containsYear]` in a model A12 builds, caught by `adapter.laws.CheckerSilenceOnCleanModelsTest` before the family landed. The silence is the documented under-report; the coverage gap it rides on was already declared in `Check.kt`.
+
 ## §9 supplement — the complete gate chain over a `Having` filter's OWN operand, whose measured order is NOT its source order (measured, 2026-09-14) <a id="kf358"></a>
 
 > Fold: not-foldable — a diagnostic-class selection law, not an evaluation behaviour.
