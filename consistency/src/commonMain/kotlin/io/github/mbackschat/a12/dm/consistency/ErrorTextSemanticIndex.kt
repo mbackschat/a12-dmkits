@@ -50,6 +50,12 @@ fun PreparedModel.errorTextSemanticIndexFindings(): List<Finding> {
                 return@flatMap emptyList()
             }
             messageParameterBodies(message.text).mapNotNull { parameter ->
+                // Only the bare indexed form is this family's. A parameter also carrying a category arrow
+                // or the `index(…)` terminal is a different form with its own gate family, and reducing it
+                // here would name this family's class for a defect A12 answers elsewhere.
+                if (parameter.contains("->") || parameter.trimStart().startsWith("index(")) {
+                    return@mapNotNull null
+                }
                 val use = semanticIndexUsesIn(parameter, conditionLanguage, keyword).singleOrNull()
                     ?: return@mapNotNull null
                 val asked = boundPair(use, group, element) ?: return@mapNotNull null

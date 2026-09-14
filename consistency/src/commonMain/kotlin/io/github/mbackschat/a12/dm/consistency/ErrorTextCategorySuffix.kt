@@ -50,6 +50,18 @@ fun PreparedModel.errorTextCategorySuffixFindings(): List<Finding> {
 
 private const val ARROW = "->"
 
+/**
+ * A12's `$index(Field).value$` terminal, which carries an arrow but is a DIFFERENT parameter form.
+ *
+ * Measured 2026-09-15: this family used to answer `FIELD_NO_ENUM` for `$index(Note)->Band$`, and that is the
+ * class A12 draws for a STRING index field — by luck rather than by reading the right gate.
+ * `checkIndexFieldRef` owns this form and has its own eleven classes for it, several of them about an ENUM
+ * index field, so the shape where the two families disagree is exactly the one where this one is confident.
+ * The terminal is a lexer token spelled lowercase (`$Index(…)$` draws `MVK_UNEXPECTED_TOKEN`,
+ * `rulekit.validate.laws.RuleMessageIndexTerminalLawsTest`), so matching it literally is the whole test.
+ */
+private const val INDEX_TERMINAL = "index("
+
 private const val ENUMERATION = "EnumerationType"
 
 /** The class this parameter's suffix draws, or null where it carries none and where this may not judge. */
@@ -59,7 +71,7 @@ private fun PreparedModel.suffixDefect(
     element: DeclaredElement,
     membership: Membership,
 ): String? {
-    if (!parameter.contains(ARROW)) {
+    if (!parameter.contains(ARROW) || parameter.trimStart().startsWith(INDEX_TERMINAL)) {
         return null
     }
     val access = categoryAccessesIn(parameter, conditionLanguage).singleOrNull()

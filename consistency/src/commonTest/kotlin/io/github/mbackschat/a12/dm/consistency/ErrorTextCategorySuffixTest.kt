@@ -23,6 +23,7 @@ class ErrorTextCategorySuffixTest {
         actual["a TEXT field with a category suffix"] = reporting("\$Note -> Band\$")
         actual["the arrow with no category name after it"] = reporting("\$Grade ->\$")
         actual["a field the condition never reads, with a valid suffix"] = reporting("\$Unread -> Band\$")
+        actual["the INDEX terminal carrying a category suffix"] = reporting("\$index(Note)->Band\$")
 
         val expected = mutableMapOf<String, List<String>>()
         expected["a plain parameter — the control"] = emptyList()
@@ -36,6 +37,10 @@ class ErrorTextCategorySuffixTest {
         // A12 answers `INVALID_FIELD` here — membership runs first — and no family reads the category form
         // for membership, so this is a disclosed under-report rather than a class this one may name.
         expected["a field the condition never reads, with a valid suffix"] = emptyList()
+        // A12 answers `FIELD_NO_ENUM` here too — for a STRING index field — but `checkIndexFieldRef` owns
+        // this form and has eleven classes of its own, several about an ENUM index field. Agreeing by luck on
+        // one carrier is not a basis, so this family declines the form outright.
+        expected["the INDEX terminal carrying a category suffix"] = emptyList()
         assertEquals(expected, actual, "which category suffix an error-text parameter may carry")
     }
 
