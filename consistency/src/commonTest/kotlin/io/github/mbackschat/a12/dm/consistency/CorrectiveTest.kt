@@ -218,7 +218,20 @@ class CorrectiveTest {
     }
 
     /**
-     * Every projected entry is reachable from a real report, save the one the checker never reports.
+     * The codes the checker SPELLS without ever reporting them, so their guidance cannot ride a finding.
+     *
+     * `MVK_NEG_CONDITION_IN_ITERATION` is named by the phase list that withholds a post-parse class behind a
+     * positioned one. It has a real owner corrective and a real consumer — a CLI user meeting the kernel's
+     * own verdict — but no family emits it here, and the list deliberately carries inert members so that the
+     * next family to report one cannot start over-reporting silently (2026-09-14, KERNEL-FINDINGS KF410).
+     *
+     * Named rather than subtracted, for the reason the test below gives: a set that grew silently would
+     * stop catching the dead entry this guard exists for.
+     */
+    private val spelledButNeverReported = setOf("MVK_NEG_CONDITION_IN_ITERATION")
+
+    /**
+     * Every projected entry is reachable from a real report, save the ones the checker never reports.
      *
      * This is the enforcement locus for the projection's own claim, and it cannot live on the Java side: the
      * generator scans source TEXT, and a textual scan cannot tell a code the checker reports from one it
@@ -230,10 +243,10 @@ class CorrectiveTest {
      * guidance shipped for a code no consumer can receive is bytes on every wire and a promise to nobody.
      */
     @Test
-    fun everyProjectedEntryIsReachableExceptTheCodeTheCheckerOnlyComparesAgainst() {
+    fun everyProjectedEntryIsReachableExceptTheCodesTheCheckerNeverReports() {
         val reported = check(reachability).findings.map { it.code }.toSet()
         assertEquals(
-            emptySet(),
+            spelledButNeverReported,
             KERNEL_CORRECTIVES.keys - reported,
             "the corrective table carries guidance no report can deliver — drop the family's emission or " +
                 "the entry, or add a declaration above that draws the code",

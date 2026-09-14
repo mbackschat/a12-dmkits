@@ -1137,14 +1137,19 @@ private val POSITIONED_CONDITION_CODES = setOf(
  * family reports them — and are listed anyway: a family added later would otherwise start over-reporting
  * silently, which is the failure this list exists to prevent.
  *
- * **Three members joined on 2026-09-14, and how they were missed is the lesson.** `IterationChecker`'s whole
- * output — the two error-target iteration classes and `MVK_ERROR_FIELD_AND_ITERATION_INVALID` — is drawn from
- * that same method body, but through a CALL rather than a `throwError`, so a reading that enumerated the
- * method's `throwError` sites found only `MVK_ERROR_FIELD_NOT_REFERENCED`, which the checker happened to
- * report already. The cost was live: an index field on the ROOT group makes a parallel read a parse-time
+ * **Five members joined on 2026-09-14, and how they were missed is the lesson.** The list had been assembled
+ * by enumerating the method's own `throwError` sites — a citable reading that misses everything the method
+ * DELEGATES. `checkNormalRule` makes two such calls, and between them they carry five A12-model classes:
+ * `IterationChecker.checkIteration` draws the two error-target iteration classes,
+ * `MVK_ERROR_FIELD_AND_ITERATION_INVALID` and `MVK_ITERATION_RESTRICTION_IN_A12_MODEL`, while
+ * `checkSimpleIteration` draws `MVK_NEG_CONDITION_IN_ITERATION`. Only `MVK_ERROR_FIELD_NOT_REFERENCED` had
+ * made the list, because it is the one of the six the checker already reported.
+ *
+ * The cost was live for one of them: an index field on the ROOT group makes a parallel read a parse-time
  * `MVK_MULTIPLE_INDEX_FIELDS`, and this checker named `MVK_ERROR_FIELDGROUP_ITERATION5_INVALID` beside it —
  * two classes where A12 draws one ([KERNEL-FINDINGS KF410], `consistency.RootLevelIterationPinningTest`).
- * A phase list read off one syntactic form misses everything the method DELEGATES.
+ * The other four are inert and listed for the reason the paragraph above gives: the next family to report
+ * one of them would otherwise repeat this defect with nothing going red.
  *
  * **One member moved OUT on 2026-09-14: `MVK_SEMANTIC_INDEX_NOT_ALLOWED`.** The method draws it, but the
  * code has three sites and the other two are parse-time — `CheckEntitySpecImpl.checkIndicesInFilterCondition`
@@ -1166,7 +1171,8 @@ private val POST_PARSE_CONDITION_CODES = setOf(
     "MVK_INVALID_LENGTH_OF_RAW_TYPE", "MVK_PARALLEL_ITERATION_INVALID",
     "MVK_ERROR_FIELD_NOT_REFERENCED", "MVK_ERROR_INVALID_LANGUAGE_FEATURE",
     "MVK_ERROR_FIELDGROUP_ITERATION4_INVALID", "MVK_ERROR_FIELDGROUP_ITERATION5_INVALID",
-    "MVK_ERROR_FIELD_AND_ITERATION_INVALID",
+    "MVK_ERROR_FIELD_AND_ITERATION_INVALID", "MVK_ITERATION_RESTRICTION_IN_A12_MODEL",
+    "MVK_NEG_CONDITION_IN_ITERATION",
 )
 
 /**
