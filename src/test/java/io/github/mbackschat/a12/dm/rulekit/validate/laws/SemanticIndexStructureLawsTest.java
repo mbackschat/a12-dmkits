@@ -156,6 +156,43 @@ class SemanticIndexStructureLawsTest {
         assertEquals(expected, actual, "where the star sits chooses the wildcard class");
     }
 
+    /**
+     * The ORDER among the structural gates themselves, which the grids above do not settle.
+     *
+     * <p>Each grid row above holds exactly one defect, so a reproduction of this chain would have to guess
+     * which class a doubly-defective index draws — and the three wildcard classes plus the missing index
+     * field are precisely the pairs an author writes together. These cells put two live gates in one index.
+     */
+    @Test
+    void theOrderAmongTheStructuralGates() {
+        Map<String, String> actual = new LinkedHashMap<>();
+        actual.put("a starred KEY where the indexed group has no index field",
+                indexed("[Sections/SectionLimit For Sections*/SectionName] > 0"));
+        actual.put("a star at the indexed group's level where that group has no index field",
+                firstFilled("Sections*/SectionName For \"S-1\""));
+        actual.put("an EMPTY key beside a star at the indexed group's level",
+                firstFilled("Coverages*/Note For \"\""));
+        actual.put("a CATEGORY key beside a star at the indexed group's level",
+                firstFilled("Endorsements*/Label For Tier -> Band"));
+        actual.put("a starred KEY beside a star at the indexed group's level",
+                firstFilled("Coverages*/Note For Sections*/SectionName"));
+        actual.put("an EMPTY key where the indexed group has no index field",
+                indexed("[Sections/SectionLimit For \"\"] > 0"));
+
+        Map<String, String> expected = new LinkedHashMap<>();
+        expected.put("a starred KEY where the indexed group has no index field",
+                "MVK_SEMANTIC_INDEX_WITH_WILDCARD");
+        expected.put("a star at the indexed group's level where that group has no index field",
+                "MVK_NO_INDEX_FIELD");
+        expected.put("an EMPTY key beside a star at the indexed group's level", "MVK_INDEX_VALUE_INVALID");
+        expected.put("a CATEGORY key beside a star at the indexed group's level",
+                "MVK_SEMANTIC_INDEX_WITH_CATEGORY");
+        expected.put("a starred KEY beside a star at the indexed group's level",
+                "MVK_SEMANTIC_INDEX_WITH_WILDCARD");
+        expected.put("an EMPTY key where the indexed group has no index field", "MVK_NO_INDEX_FIELD");
+        assertEquals(expected, actual, "the order among the structural gates");
+    }
+
     private static String firstFilled(String operand) {
         return KernelLaws.verdictModel(POLICY, "/Policy", "../Reference",
                 "FirstFilledValue(" + operand + ", Reference) == \"x\"");

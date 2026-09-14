@@ -7646,7 +7646,20 @@ Locked: `validate.laws.RepetitionNotUniqueCombinationLawsTest`. **Reported by th
 
 **The key-kind gate reports ahead of every gate below it**, measured on two shapes that violate it and a later one at once: a group key in a group declaring no index field, and a group key whose indexed path is starred. Both draw `MVK_SEMANTIC_INDEX_NO_FIELD`.
 
-Locked: `validate.laws.SemanticIndexStructureLawsTest`. **The key-kind gate is reported by the portable checker since 2026-09-14** (`SEMANTIC_INDEX_KEY`), on the one shape it can decide without knowing the rule's anchoring: a key naming a group with nothing repeating on its path.
+**Extended 2026-09-14 with the ORDER AMONG the structural gates**, which the single-defect rows above cannot settle and which a reproduction turns on, because the pairs an author writes violate two at once:
+
+| the index carries | A12 |
+|---|---|
+| a starred KEY where the indexed group declares no index field | `MVK_SEMANTIC_INDEX_WITH_WILDCARD` |
+| a starred KEY beside a star at the indexed group's level | `MVK_SEMANTIC_INDEX_WITH_WILDCARD` |
+| a star at the indexed group's level, that group declaring no index field | `MVK_NO_INDEX_FIELD` |
+| an EMPTY key where the indexed group declares no index field | `MVK_NO_INDEX_FIELD` |
+| an EMPTY key beside a star at the indexed group's level | `MVK_INDEX_VALUE_INVALID` |
+| a CATEGORY key beside a star at the indexed group's level | `MVK_SEMANTIC_INDEX_WITH_CATEGORY` |
+
+So the chain descends: the key's own star, then the missing index field, then the empty key, then the category, and the star on the indexed path answers only when nothing above it does.
+
+Locked: `validate.laws.SemanticIndexStructureLawsTest`. **The key-kind gate is reported by the portable checker since 2026-09-14** (`SEMANTIC_INDEX_KEY`), on the one shape it can decide without knowing the rule's anchoring: a key naming a group with nothing repeating on its path. **Six more of the chain are reported since the same day** by `CheckFamily.SEMANTIC_INDEX_STRUCTURE` (`consistency … SemanticIndexStructureTest`) — every class above except the two that compare declared TYPES or locations, `MVK_INDEX_TYPE_INCONSISTENT` and `MVK_SEMANTIC_INDEX_CONTAINED_IN_INDEX`. It reports at most one class per condition text and stops at the first index it cannot read through, which is what the iterating-key pre-emption above demands of any reproduction.
 
 ## §9 supplement — an UNSTARRED repetition read decides the class a flat error target draws, and referencedness does not enter it (measured, 2026-09-14) <a id="kf350"></a>
 

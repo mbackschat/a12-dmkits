@@ -110,6 +110,10 @@ class CheckFamilyWiringTest {
               "errorCondition":"FieldFilled(Price) And Min([Amount], 1, 2) > 0",
               "errorEntityRelPath":"../Price",
               "errorCode":"C36","errorMessage":[{"locale":"en_US","text":"x"}]}},
+            {"type":"Rule","id":"r37","name":"StarredIndexKey","Rule":{
+              "errorCondition":"FieldFilled(Price) And [Crates/CrateQty For Pallets*/PalletNote] > 0",
+              "errorEntityRelPath":"../Price",
+              "errorCode":"C37","errorMessage":[{"locale":"en_US","text":"x"}]}},
             {"type":"Group","id":"g7","name":"Crates","Group":{"repeatability":5,
               "indexFieldName":"CrateRef","elements":[
               {"type":"Field","id":"f30","name":"CrateRef","Field":{"fieldType":{"type":"StringType"}}},
@@ -335,6 +339,10 @@ class CheckFamilyWiringTest {
         // discriminator and lives in its mirror; here the row only has to trigger the family.
         CheckFamily.OPERAND_LIST_CONSTANT_BUDGET to
             ("MVK_TOO_MANY_CONST_FOR_CALC_OP" to "/Catalog/OverBudgetSelector"),
+        // A key that stands for a LIST, which is the first of that chain's six gates and the only one this
+        // fixture can reach without also tripping the key-kind family's class on the same index.
+        CheckFamily.SEMANTIC_INDEX_STRUCTURE to
+            ("MVK_SEMANTIC_INDEX_WITH_WILDCARD" to "/Catalog/StarredIndexKey"),
         // `Shelf` again, this time in the KEY position of a semantic index: it is the fixture's only group
         // that does not repeat, which is exactly what keeps A12's iteration gate from pre-empting the class.
         CheckFamily.SEMANTIC_INDEX_KEY to

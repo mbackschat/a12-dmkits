@@ -1,0 +1,204 @@
+package io.github.mbackschat.a12.dm.consistency
+
+import io.github.mbackschat.a12.dm.consistency.syntax.CONDITION_OPERATOR_KEYWORDS
+import io.github.mbackschat.a12.dm.consistency.syntax.SemanticIndexUse
+import io.github.mbackschat.a12.dm.consistency.syntax.semanticIndexUsesIn
+import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.contentOrNull
+
+/**
+ * What a semantic index may CARRY, and where the indexed group has to be.
+ *
+ * `[Coverages/Limit For key]` addresses one repetition, and its own structure carries nine rejection classes
+ * decided by one chain ([KERNEL-FINDINGS KF371], `rulekit.validate.laws.SemanticIndexStructureLawsTest`).
+ * [semanticIndexKeyFindings] owns the first of them — the key must be a field — and this family owns the
+ * six that follow it and need no comparison of declared TYPES.
+ *
+ * **The chain's order is measured, not read off the source**, because the pairs an author actually writes
+ * violate two gates at once: a starred key beats both the missing index field and a star on the indexed
+ * path, the missing index field beats the empty key and the star, and the star at the indexed group's own
+ * level is what answers only when nothing above it does.
+ *
+ * **Three of the classes are about a STAR and are told apart by where it sits**, which is the sharpest
+ * distinction here: inside the KEY it is `MVK_SEMANTIC_INDEX_WITH_WILDCARD`, at the indexed group's own
+ * level `MVK_SEMANTIC_INDEX_AND_WILDCARD`, and above that group `MVK_SEMANTIC_INDEX_BELOW_WILDCARD`. Naming
+ * the wrong one hands an author the fix for a gate they did not trip.
+ *
+ * **Silent where A12's ITERATION gate answers first.** An entity key that iterates — a key read from inside
+ * a repetition without a star — draws `MVK_SEMANTIC_INDEX_INVALID_ITER` whatever else is wrong with the
+ * index, and that gate turns on the rule's anchoring, which this family cannot see. Silent too on a GROUP
+ * key, which is the key-kind family's, and on a value spec or key that does not resolve.
+ *
+ * **Two further classes of the same chain are deliberately not reported**: the key's type against the index
+ * field's, and a key read from inside the indexed group. Both compare DECLARED types or locations against a
+ * gate whose full domain is unmeasured here, so they wait for their own measurement rather than resting on
+ * a reading.
+ */
+fun PreparedModel.semanticIndexStructureFindings(): List<Finding> {
+    val keywords = CONDITION_OPERATOR_KEYWORDS[conditionLanguage] ?: return emptyList()
+    val keyword = keywords[SEMANTIC_INDEX] ?: return emptyList()
+    return elements.flatMap { element ->
+        val body = element.body ?: return@flatMap emptyList()
+        val group = element.path.substringBeforeLast('/', missingDelimiterValue = "")
+        conditionTexts(element.kind, body).mapNotNull { (member, text) ->
+            firstClassIn(semanticIndexUsesIn(text, conditionLanguage, keyword), group, element)
+                ?.let { code -> structureFinding(code, element, member) }
+        }
+    }
+}
+
+private const val SEMANTIC_INDEX = "SemanticIndex"
+
+/**
+ * The class the FIRST defective index in one text draws, or null when this family may not speak about it.
+ *
+ * A12 reports the first defect in a condition and nothing after it, so a text carrying two indices is not
+ * two independent questions: a defect in the first withholds every class the second would have drawn. The
+ * walk therefore stops at the first index it cannot read through — including one another family owns, which
+ * is what keeps a group key in index one from letting a class out of index two.
+ */
+private fun PreparedModel.firstClassIn(
+    uses: List<SemanticIndexUse>,
+    declaringGroup: String,
+    element: DeclaredElement,
+): String? {
+    // A NESTED index is answered before the walk, because the outer index of `[A For B For C]` is the one
+    // A12 judges and it stands LAST in the text — the walk would reach the inner one first and stop at its
+    // key, which is read from inside a repetition and so looks opaque. Its own key gate still runs ahead of
+    // the nesting check, which is the source's order and the one row where the two compete.
+    uses.firstOrNull { it.nested }?.let { outer ->
+        return when (keyVerdict(outer, declaringGroup, element)) {
+            KeyVerdict.STARRED -> "MVK_SEMANTIC_INDEX_WITH_WILDCARD"
+            KeyVerdict.UNJUDGEABLE -> null
+            KeyVerdict.PLAIN -> "MVK_SEMANTIC_INDEX_WITH_SEMANTIC_INDEX"
+        }
+    }
+    uses.forEach { use ->
+        when (val verdict = classOf(use, declaringGroup, element)) {
+            is IndexVerdict.Reported -> return verdict.code
+            IndexVerdict.Opaque -> return null
+            IndexVerdict.Clean -> Unit
+        }
+    }
+    return null
+}
+
+/** What one index settles: a class, nothing to say, or that nothing past it may be judged either. */
+private sealed interface IndexVerdict {
+    data class Reported(val code: String) : IndexVerdict
+    data object Clean : IndexVerdict
+    data object Opaque : IndexVerdict
+}
+
+/** A12's class for this index, in the measured gate order. */
+private fun PreparedModel.classOf(
+    use: SemanticIndexUse,
+    declaringGroup: String,
+    element: DeclaredElement,
+): IndexVerdict {
+    val value = use.valuePath ?: return IndexVerdict.Opaque
+    val indexed = resolveField(value, declaringGroup, element) ?: return IndexVerdict.Opaque
+    when (keyVerdict(use, declaringGroup, element)) {
+        KeyVerdict.UNJUDGEABLE -> return IndexVerdict.Opaque
+        KeyVerdict.STARRED -> return IndexVerdict.Reported("MVK_SEMANTIC_INDEX_WITH_WILDCARD")
+        KeyVerdict.PLAIN -> Unit
+    }
+    val indexGroup = indexGroupOf(indexed) ?: return IndexVerdict.Reported("MVK_NO_INDEX_FIELD")
+    val starred = starredPrefixesOf(value, declaringGroup, element)
+    return when {
+        starred.any { indexGroup.startsWith("$it/") } ->
+            IndexVerdict.Reported("MVK_SEMANTIC_INDEX_BELOW_WILDCARD")
+        use.keyLiteral?.isEmpty() == true -> IndexVerdict.Reported("MVK_INDEX_VALUE_INVALID")
+        use.keyCategory != null -> IndexVerdict.Reported("MVK_SEMANTIC_INDEX_WITH_CATEGORY")
+        indexGroup in starred -> IndexVerdict.Reported("MVK_SEMANTIC_INDEX_AND_WILDCARD")
+        else -> IndexVerdict.Clean
+    }
+}
+
+/** What the KEY half settles on its own: the wildcard class, nothing, or that this index is not ours. */
+private enum class KeyVerdict { STARRED, PLAIN, UNJUDGEABLE }
+
+private fun PreparedModel.keyVerdict(
+    use: SemanticIndexUse,
+    declaringGroup: String,
+    element: DeclaredElement,
+): KeyVerdict {
+    val key = use.keyPath ?: return if (use.keyLiteral == null) KeyVerdict.UNJUDGEABLE else KeyVerdict.PLAIN
+    // A GROUP key is the key-kind family's class and outranks every gate here; a key that does not resolve
+    // is the reference family's.
+    resolveField(key, declaringGroup, element) ?: return KeyVerdict.UNJUDGEABLE
+    if (key.contains('*')) {
+        return KeyVerdict.STARRED
+    }
+    // An unstarred key read from inside a repetition makes the READ iterate, and A12 renames every class of
+    // this chain to `MVK_SEMANTIC_INDEX_INVALID_ITER` when it does.
+    val resolved = resolveEntity(declaringGroup, key, element.origin) as? Reference.Resolved
+        ?: return KeyVerdict.UNJUDGEABLE
+    val iterates = elements.any {
+        it.declaredKind == DeclaredKind.GROUP && it.isRepeatable && resolved.path.startsWith("${it.path}/")
+    }
+    return if (iterates) KeyVerdict.UNJUDGEABLE else KeyVerdict.PLAIN
+}
+
+/** The resolved path of [written] when it names a declared FIELD, stars ignored; null otherwise. */
+private fun PreparedModel.resolveField(
+    written: String,
+    declaringGroup: String,
+    element: DeclaredElement,
+): String? {
+    val resolved = resolveEntity(declaringGroup, written.replace("*", ""), element.origin)
+        as? Reference.Resolved ?: return null
+    return resolved.path.takeIf { path ->
+        elements.any { it.path == path && it.declaredKind == DeclaredKind.FIELD }
+    }
+}
+
+/** The innermost group above [fieldPath] that declares an index field — the one A12 indexes on. */
+private fun PreparedModel.indexGroupOf(fieldPath: String): String? = elements
+    .filter {
+        it.declaredKind == DeclaredKind.GROUP && fieldPath.startsWith("${it.path}/") &&
+            (it.body?.get("indexFieldName") as? JsonPrimitive)?.contentOrNull?.isNotEmpty() == true
+    }
+    .maxByOrNull { it.path.length }
+    ?.path
+
+/** The resolved paths of the levels [written] stars, so a star's POSITION can be compared against a group. */
+private fun PreparedModel.starredPrefixesOf(
+    written: String,
+    declaringGroup: String,
+    element: DeclaredElement,
+): Set<String> {
+    val segments = written.split('/')
+    return segments.indices
+        .filter { segments[it].endsWith("*") }
+        .mapNotNull { last ->
+            val prefix = segments.take(last + 1).joinToString("/").replace("*", "")
+            (resolveEntity(declaringGroup, prefix, element.origin) as? Reference.Resolved)?.path
+        }
+        .toSet()
+}
+
+private fun structureFinding(code: String, element: DeclaredElement, member: String): Finding = Finding(
+    FindingCategory.A12_CONSTRAINT,
+    FindingSeverity.ERROR,
+    code,
+    "in `$member`: this semantic index ${ADVICE.getValue(code)}",
+    element.path,
+)
+
+/** What is wrong, per class — the same index shape reaches six different repairs. */
+private val ADVICE = mapOf(
+    "MVK_SEMANTIC_INDEX_WITH_WILDCARD" to
+        "keys on a starred reference; the key names ONE value to match, so it may not stand for a list",
+    "MVK_SEMANTIC_INDEX_WITH_SEMANTIC_INDEX" to
+        "indexes a reference that is itself indexed; one index selects one repetition, and they do not chain",
+    "MVK_NO_INDEX_FIELD" to
+        "reads a group that declares no index field, so there is nothing for the key to be compared against",
+    "MVK_SEMANTIC_INDEX_BELOW_WILDCARD" to
+        "stars a level ABOVE the indexed group, which leaves the index selecting inside a list of lists",
+    "MVK_INDEX_VALUE_INVALID" to "carries an empty key, which matches no repetition",
+    "MVK_SEMANTIC_INDEX_WITH_CATEGORY" to
+        "keys on a category projection; the key is compared against the index field's own value",
+    "MVK_SEMANTIC_INDEX_AND_WILDCARD" to
+        "stars the very group it indexes — the index already selects one repetition of it",
+)

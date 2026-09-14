@@ -322,6 +322,17 @@ class BuilderCheckerDivergenceGuardTest {
             Map.entry("MVK_WILDCARD_AT_LOWEST_LEVEL_REQUIRED", Disposition.SAME_LAW_SEPARATE_CARRIERS),
             Map.entry("MVK_WILDCARD_ONLY_AT_LOWEST_LEVEL_ALLOWED", Disposition.SAME_LAW_SEPARATE_CARRIERS),
 
+            // The semantic index's own structure, added 2026-09-14 with the family that reports it.
+            // `BoundModel.firstFilledSemanticIndex` and `FirstFilledOperand` refuse a starred enclosing
+            // group with this code; the checker reports the same law off stored DM-JSON, and stays the
+            // narrower of the two — it is silent wherever an earlier gate of A12's chain answers (KF351).
+            Map.entry("MVK_SEMANTIC_INDEX_AND_WILDCARD", Disposition.SAME_LAW_SEPARATE_CARRIERS),
+
+            // The mirror shape: the kits only NAME it — a dozen javadoc references, the catalog's prose and
+            // `DiagnosticEnricher`'s sole-raise-site hint — because rulekit's index does not expose
+            // `indexFieldName` (DEV-API-GAPS DG15). The checker owns the only enforcement.
+            Map.entry("MVK_NO_INDEX_FIELD", Disposition.PROSE_ONLY),
+
             // The row this guard exists for. The kits ERASE the shape — a group predicate's operand is a
             // `GroupRef`, so a field cannot be handed to one — and A12 admits a field operand on FIVE of the
             // eight carriers (KF327). The checker deliberately does NOT inherit that erasure: it reports the
