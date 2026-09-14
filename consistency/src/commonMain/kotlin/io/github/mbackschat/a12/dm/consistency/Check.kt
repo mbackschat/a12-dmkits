@@ -641,6 +641,14 @@ enum class CheckFamily {
     ERROR_TEXT_CATEGORY_SUFFIX,
 
     /**
+     * That the `$index(…)$` message terminal names an index field on the ERROR ENTITY's own path. Its own
+     * constant because the terminal is a third parameter form with five gates of its own, and only the first
+     * — the argument — is reproduced: the four after it are computed from the condition's references to the
+     * same index field, and the measured ordering shows the last one never runs when the first fails.
+     */
+    ERROR_TEXT_INDEX_TERMINAL,
+
+    /**
      * That an error message's TEXT carries no control character. A12 splits the law in two — a line break
      * has its own class — and runs them in ORDER, so a text carrying both draws only the line-break one.
      * A repertoire restriction is a different law and is not this family's.
@@ -881,6 +889,7 @@ internal fun check(
         prepared.messageParameterFindings() +
         prepared.errorTextSemanticIndexFindings() +
         prepared.errorTextCategorySuffixFindings() +
+        prepared.errorTextIndexTerminalFindings() +
         prepared.messageTextCharacterFindings() +
         prepared.stringTypeMessageFindings() + prepared.stringTypeParameterFindings() +
         prepared.numberTypeDigitFindings() + prepared.enumValueLabelFindings() +
@@ -946,7 +955,8 @@ internal fun check(
             CheckFamily.ENUM_COMPUTATION_SOURCE,
             CheckFamily.ERROR_TARGET_ITERATION,
             CheckFamily.MESSAGE_PARAMETER_REFERENCE, CheckFamily.MESSAGE_TEXT_CHARACTERS,
-            CheckFamily.ERROR_TEXT_SEMANTIC_INDEX, CheckFamily.ERROR_TEXT_CATEGORY_SUFFIX),
+            CheckFamily.ERROR_TEXT_SEMANTIC_INDEX, CheckFamily.ERROR_TEXT_CATEGORY_SUFFIX,
+            CheckFamily.ERROR_TEXT_INDEX_TERMINAL),
         gaps = prepared.gaps() + prepared.emptyFactBase() + findings.buildBlocked() +
             prepared.variantFilterGaps() + prepared.enumCategoryGaps() +
             prepared.supportedCharacterGaps() + prepared.fieldTypeBindingGaps() +

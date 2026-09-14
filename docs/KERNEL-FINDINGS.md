@@ -7142,6 +7142,18 @@ Reported by the portable checker, which did not emit `MVK_SORT_FIELD_DUPLICATE` 
 
 *Locked by:* `rulekit.validate.laws.GroupOrderingMultipleDefectLawsTest`, mirrored by `consistency … GroupOrderingMultipleDefectTest`.
 
+## §13 supplement — which of the index terminal's five gates answers first (source-verified + measured, 2026-09-15) <a id="kf414"></a>
+
+> Fold: not-foldable — a diagnostic-class ordering fact about an error text's parameters, not an evaluation behaviour.
+
+`checkIndexFieldRef` applies five gates to `$index(Arg).value$`, in this order: the ARGUMENT must be the short name of an index field on the error entity's path (`INVALID_INDEX_FIELD`); the match must be unique (`INVALID_INDEX_FIELD_AMBIGUOUS`); the indexed group must not carry a composed index (`INVALID_INDEX_FIELD_COMPOSED_INDEX`, unreachable from stored DM-JSON, which writes a singular `indexFieldName`); the repeatability of the field must agree with the CONDITION's own references to it (`INVALID_INDEX_FIELD_REP`, `INVALID_INDEX_FIELD_REP_ITER`, `INVALID_INDEX_FIELD_NONREP_ENUM`); and only then must a suffix be present at all (`INVALID_INDEX_FIELD_PARAMETER`).
+
+**The discriminating row is an unknown argument with NO suffix**, added to `validate.laws.RuleMessageIndexTerminalLawsTest` on 2026-09-15: it draws `INVALID_INDEX_FIELD` and not `INVALID_INDEX_FIELD_PARAMETER`, because the argument gate is first and the suffix gate never runs. Two of the five classes would otherwise be indistinguishable on shapes that violate both, and a checker reporting the missing-suffix class would name it on models where A12 answers the argument class instead.
+
+**That ordering is what licenses reporting the FIRST gate alone.** The portable checker reports `INVALID_INDEX_FIELD` (`CheckFamily.ERROR_TEXT_INDEX_TERMINAL`, mirrored by `consistency.ErrorTextIndexTerminalTest`) and stays silent on the other four: each of them needs either the repeatability machinery computed from the condition's references or a shape stored DM-JSON cannot spell, and a class drawn after an unreproduced gate cannot be claimed to have been reached. Being first means nothing pre-empts it, so the one gate it does reproduce needs no such argument.
+
+**A non-repeatable indexed group and an ambiguous name both PASS this gate.** Their index fields are on the path, so A12's answer comes from a later gate — which is why silence there is the correct reading of a match rather than an omission.
+
 ## §13 supplement — the category suffix an error-text parameter may carry (source-verified + measured, 2026-09-15) <a id="kf413"></a>
 
 > Fold: not-foldable — a diagnostic-class law about an error text's parameters, not an evaluation behaviour.

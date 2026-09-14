@@ -113,12 +113,18 @@ class RuleMessageIndexTerminalLawsTest {
         actual.put("a field outside the group", inRow("row $index(Reference).value$"));
         actual.put("a name no field carries", inRow("row $index(Nope).value$"));
         actual.put("the index field spelled as a PATH", inRow("row $index(/Policy/Claims/ClaimNo).value$"));
+        actual.put("a name no field carries, and NO suffix either", inRow("row $index(Nope)$"));
 
         Map<String, String> expected = new LinkedHashMap<>();
         expected.put("a non-index field of the same group", WRONG_ARGUMENT);
         expected.put("a field outside the group", WRONG_ARGUMENT);
         expected.put("a name no field carries", WRONG_ARGUMENT);
         expected.put("the index field spelled as a PATH", WRONG_ARGUMENT);
+        // The ARGUMENT gate is the first of the five `checkIndexFieldRef` applies and the missing-suffix one
+        // is the last, so an unknown name draws this class rather than `INVALID_INDEX_FIELD_PARAMETER` —
+        // the row that lets a checker report this class without first reproducing the repeatability gates
+        // that sit between them.
+        expected.put("a name no field carries, and NO suffix either", WRONG_ARGUMENT);
         assertEquals(expected, actual, "the match is against the short name, on the error entity's own path");
     }
 
