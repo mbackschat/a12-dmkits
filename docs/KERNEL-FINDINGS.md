@@ -7142,6 +7142,60 @@ Reported by the portable checker, which did not emit `MVK_SORT_FIELD_DUPLICATE` 
 
 *Locked by:* `rulekit.validate.laws.GroupOrderingMultipleDefectLawsTest`, mirrored by `consistency … GroupOrderingMultipleDefectTest`.
 
+## §11 supplement — the four single-field value operators share ONE head and then demand four different things, two of them the opposite of their names (source-verified + measured, 2026-09-14) <a id="kf395"></a>
+
+> Fold: not-foldable — a diagnostic-class law about one construct's operand, not an evaluation behaviour.
+
+`CheckFeldOpImpl.check` gates the operand as a field without a repetition star and then switches on the operator token. The four arms share nothing after that switch:
+
+| the operator | what it demands | otherwise |
+|---|---|---|
+| `AbsValue` | no category, a Number declaration | `MVK_CATEGORY_NOT_ALLOWED`, `MVK_NO_NUMBER` |
+| `FieldValueAsString` | no category, a **Number** declaration | `MVK_CATEGORY_NOT_ALLOWED`, `MVK_NO_NUMBER` |
+| `Length` | no category, a string-LIKE declaration | `MVK_CATEGORY_NOT_ALLOWED`, `MVK_NO_STRING` |
+| `FieldValueAsNumber` | a declaration A12 can convert; **no category gate at all** | `MVK_NO_CONVERT_IN_NUMBER` |
+| all four, first | one field, no star | `MVK_NO_GROUPS_ALLOWED`, `MVK_NO_WILDCARDS_ALLOWED` |
+
+**`FieldValueAsString` demands a NUMBER**, which inverts the reading its name invites — it stringifies a numeric value, so a string operand is `MVK_NO_NUMBER`. Read as "any field's value, as a string" it is wrong on every non-numeric declaration, and the mistake is invisible until the model is checked. Measured against all four declared classes.
+
+**`FieldValueAsNumber` is the one arm with no category gate**, and the kernel source carries a standing note at the switch asking each new arm to decide that for itself — so this is a deliberate asymmetry rather than an omission. The row that separates the two possible readings is a category whose tokens differ in kind from the enumeration's own values: it reads the CATEGORY's, not the enumeration's.
+
+**Its string arm reads the DECLARATION and never a stored value** — a bounded `maxLength` of at most 15 AND exactly the pattern `[0-9]+`. A five-character string with no pattern is refused, and so is a `[0-9]+` string with no length bound; whatever a document happens to hold is never consulted. Its enumeration arm reads the declared values, each of which must parse inside the same 15-digit budget.
+
+**`MVK_INVALID_RAW_TYPE` never arrives ALONE through this operator, and both links were ATTACKED rather than read.** It fires on a `noValueValidation` string and runs after the conversion gate, whose pattern demand that declaration excludes: declare both and A12 answers `MVK_STRING_TYPE_PARAMS_INCONSISTENT, MVK_INVALID_RAW_TYPE`; drop the pattern to make the declaration legal and `MVK_NO_CONVERT_IN_NUMBER` answers first. Measuring each link separately would not have established the chain, which is why both are in the grid.
+
+**`MVK_INVALID_TABLE_ENUM` is unreachable for a different reason entirely** — an enumeration carrying a `tableName` makes the document model UNREADABLE, so no consistency check runs at all (§8).
+
+Reported by the portable checker (`CheckFamily.FIELD_VALUE_OPERATOR_OPERANDS`), narrower than A12 on the enumeration arm by design: it refuses a declared value only where a character outside the numeric alphabet makes it certain, leaving a spelling the kernel's own parser rejects for its grammar to A12.
+
+*Locked by:* `rulekit.validate.laws.FieldValueOperatorOperandLawsTest`, mirrored by `consistency.FieldValueOperatorOperandsTest`.
+
+## §11 supplement — a CUSTOM declaration is text-like on every gate that admits a string and a number on none (source-verified + measured, 2026-09-14) <a id="kf394"></a>
+
+> Fold: not-foldable — a diagnostic-class law about how one declared type is sorted, not an evaluation behaviour.
+
+A12's `FieldUtils` puts `IPredefinedType` beside `IStringType` under `isLikeString` and leaves it out of `isNumber`, and the five gates that ask the question each ask it in their own method. Measured on one custom declaration across all five:
+
+| the carrier | the condition | A12 |
+|---|---|---|
+| the rounding field spelling | `RoundUpValue(Serial, 2)` | `MVK_NO_NUMBER` |
+| the rounding operation spelling | `RoundUp([Serial], 2)` | `MVK_NO_NUMBER` |
+| a field list that is added up | `Sum(Serial, Quantity)` | `MVK_NO_NUMBER` |
+| a field list that is ordered | `MaxValue(Serial, Quantity)` | `MVK_NOT_SORTABLE` |
+| the amount a date is shifted by | `AddDays(PlacedOn, [Serial])` | `MVK_NON_NUMERIC` |
+| the text arm of a value list | `NumberOfValueInFields("X" In Serial, …)` | **admitted** |
+| the same arm over a number — the control | `NumberOfValueInFields("X" In Quantity, …)` | `MVK_NO_STRING_OR_ENUM` |
+
+Two more rows sit in [KF395](#kf395)'s grid on the same declaration: `Length` admits it and `AbsValue` refuses it, which is the same split one gate earlier.
+
+**The grid exists because of the defect it caught, and the defect is a spelling.** The portable checker matched the token `CustomType` in four of its type sets, while the discriminator A12 STORES is `CustomFieldType` — so every one of those sets was blind to a custom declaration and nothing could see it: a set that matches nothing simply never matches, each family's mirror stayed green against the checker's own output, and no laws grid had ever put a custom field to the kernel. Three of the four were silences; the fourth was the forbidden direction, `ValueInFieldsConstantKind`'s text arm listing the custom type among the declarations it ADMITS, so the dead token turned an admission into an over-rejection.
+
+**The class is now guarded rather than remembered.** `CheckerFieldTypeTokenGuardTest` reads the legal spellings off the checker's own `DECLARED_FIELD_TYPES` — the table mirroring A12's deserializer switch — and scans every checker source for a capitalized `…Type` literal that is not one of them. Both denominators are derived, so a new family's type set enters the scan without anyone declaring it.
+
+Reported by the portable checker on all five numeric carriers; the text arm's admission is a silence it now correctly keeps.
+
+*Locked by:* `rulekit.validate.laws.CustomFieldTypeOperandLawsTest` and `CheckerFieldTypeTokenGuardTest`.
+
 ## §11 supplement — the six rounding operators are TWO constructs sharing one digits gate, asked last (source-verified + measured, 2026-09-14) <a id="kf393"></a>
 
 > Fold: not-foldable — a diagnostic-class law about one construct's operand shapes, not an evaluation behaviour.

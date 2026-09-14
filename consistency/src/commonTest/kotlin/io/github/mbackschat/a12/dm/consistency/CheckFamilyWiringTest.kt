@@ -203,6 +203,10 @@ class CheckFamilyWiringTest {
               "errorCondition":"FieldFilled(Price) And [Price] < [Reference]",
               "errorEntityRelPath":"../Price",
               "errorCode":"C47","errorMessage":[{"locale":"en_US","text":"x"}]}},
+            {"type":"Rule","id":"r53","name":"LengthOfANumber","Rule":{
+              "errorCondition":"FieldFilled(Price) And Length(UnitCount) > 0",
+              "errorEntityRelPath":"../Price",
+              "errorCode":"C53","errorMessage":[{"locale":"en_US","text":"x"}]}},
             {"type":"Rule","id":"r52","name":"RoundedToTooManyPlaces","Rule":{
               "errorCondition":"FieldFilled(Price) And RoundUpValue(UnitCount, 99) > 0",
               "errorEntityRelPath":"../Price",
@@ -496,6 +500,10 @@ class CheckFamilyWiringTest {
         // digits gate is ever moved ahead of the operand ones, which would change what a double defect says.
         CheckFamily.ROUNDING_OPERANDS to
             ("MVK_INVALID_DIGIT_FOR_ROUNDING" to "/Catalog/RoundedToTooManyPlaces"),
+        // `Length` over a NUMBER — the one class no other family reports, and the arm whose demand is the
+        // opposite of `FieldValueAsString`'s, so the row fails if the two arms are ever merged.
+        CheckFamily.FIELD_VALUE_OPERATOR_OPERANDS to
+            ("MVK_NO_STRING" to "/Catalog/LengthOfANumber"),
         // Two text declarations under an ordering operator — the one comparison in this fixture whose
         // operator demands more of its sides than they are.
         CheckFamily.COMPARISON_OPERATOR_OPERANDS to

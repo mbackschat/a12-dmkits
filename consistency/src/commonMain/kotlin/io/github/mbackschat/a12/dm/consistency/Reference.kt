@@ -276,9 +276,14 @@ internal enum class BaseTypeClass(val spoken: String) {
     DATE_FRAGMENT("date fragment"),
 }
 
+/**
+ * No `CustomFieldType` row, deliberately: A12 gives a custom declaration the TEXT base type, but whether
+ * each comparison arm behind [baseTypeClass] then treats it as a string is unmeasured on those carriers, and
+ * the three consumers all document that silence. The row was present spelled `CustomType`, a token no stored
+ * model carries, so the silence held by accident; leaving it out states it.
+ */
 private val BASE_TYPE_OF = mapOf(
     "StringType" to BaseTypeClass.TEXT,
-    "CustomType" to BaseTypeClass.TEXT,
     "NumberType" to BaseTypeClass.NUMBER,
     "EnumerationType" to BaseTypeClass.ENUMERATION,
     "DateType" to BaseTypeClass.DATE,
@@ -304,14 +309,19 @@ internal fun DeclaredElement.baseTypeClass(): BaseTypeClass? = BASE_TYPE_OF[decl
  * is one: the complement would sweep in `TypeDefType` and `UnspecifiedType`, whose effective type this
  * reader does not resolve, and refusing those would be an over-rejection. Every member is measured — the six
  * non-temporal ones in this family's own grid, the four temporal ones behind a number leader in
- * `rulekit.validate.laws.ExtremumOperandKindGridLawsTest`.
+ * `rulekit.validate.laws.ExtremumOperandKindGridLawsTest`, and the custom one on all five carriers that ask
+ * the question separately in `rulekit.validate.laws.CustomFieldTypeOperandLawsTest`.
+ *
+ * The custom member is spelled `CustomFieldType` because that is the discriminator A12 STORES; it read
+ * `CustomType` until 2026-09-14, a token no model carries, so every carrier here was silently blind to a
+ * custom declaration (`CheckerFieldTypeTokenGuardTest` now derives the legal spellings).
  */
 internal val PLAINLY_NON_NUMBER_TYPES = setOf(
     "StringType",
     "BooleanType",
     "ConfirmType",
     "EnumerationType",
-    "CustomType",
+    "CustomFieldType",
     "DateRangeType",
 ) + TEMPORAL_DECLARED_TYPES
 

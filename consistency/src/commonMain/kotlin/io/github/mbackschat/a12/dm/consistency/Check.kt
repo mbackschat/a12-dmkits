@@ -431,6 +431,13 @@ enum class CheckFamily {
     ROUNDING_OPERANDS,
 
     /**
+     * What each of the four single-field value operators demands of the one field it reads. One constant for
+     * the four classes because `CheckFeldOpImpl.check` is one switch on the operator token behind one shared
+     * head, so which class answers is decided by the same read that decides whether anything answers at all.
+     */
+    FIELD_VALUE_OPERATOR_OPERANDS,
+
+    /**
      * What each comparison OPERATOR demands of the two sides it joins. One constant for the three classes
      * because `CheckVergleichsBedingungImpl.check` asks them in a fixed order ahead of every agreement
      * gate, so which answers depends on where that walk stops.
@@ -767,6 +774,7 @@ internal fun check(
         prepared.fieldListOperationOperandFindings() +
         prepared.dateArithmeticOperandFindings() +
         prepared.roundingOperandFindings() +
+        prepared.fieldValueOperatorOperandFindings() +
         prepared.comparisonOperatorOperandFindings() +
         prepared.booleanComparisonAgreementFindings() +
         prepared.stringEnumComparisonAgreementFindings() +
@@ -832,6 +840,7 @@ internal fun check(
             CheckFamily.FIELD_VALUES_NOT_UNIQUE_OPERAND_KIND,
             CheckFamily.FIELD_LIST_OPERATION_OPERANDS,
             CheckFamily.DATE_ARITHMETIC_OPERANDS, CheckFamily.ROUNDING_OPERANDS,
+            CheckFamily.FIELD_VALUE_OPERATOR_OPERANDS,
             CheckFamily.COMPARISON_OPERATOR_OPERANDS, CheckFamily.BOOLEAN_COMPARISON_AGREEMENT,
             CheckFamily.STRING_ENUM_COMPARISON_AGREEMENT, CheckFamily.NUMBER_COMPARISON_SCALE,
             CheckFamily.TEMPORAL_COMPARISON_AGREEMENT, CheckFamily.PATTERN_COMPARISON_OPERANDS,

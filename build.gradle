@@ -279,6 +279,10 @@ tasks.register('leakGuardTest', Test) {
         // Same derived-denominator reason, on the column that STEERS the work: an authored list of "codes the
         // checker now reports" is exactly the list that goes stale, and 33 rows had when this was added.
         includeTestsMatching 'io.github.mbackschat.a12.dm.CheckerLedgerDispositionGuardTest'
+        // Same derived-denominator reason, on the checker's TYPE vocabulary: a set that spells a `fieldType`
+        // discriminator A12 never stores matches nothing and reports nothing, so no mirror and no laws grid
+        // can see it. Both sides are read off source, so a new family's set arrives in the scan on its own.
+        includeTestsMatching 'io.github.mbackschat.a12.dm.CheckerFieldTypeTokenGuardTest'
     }
 }
 

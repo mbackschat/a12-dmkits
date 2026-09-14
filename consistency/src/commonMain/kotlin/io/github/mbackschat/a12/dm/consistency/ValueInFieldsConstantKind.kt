@@ -84,7 +84,7 @@ private data class ConstantSpellings(val yes: String?, val no: String?)
 private enum class ConstantArm(val code: String, val admitted: Set<String>) {
     YES("MVK_NO_TYPE_YES_OR_YESNO", setOf("BooleanType", "ConfirmType")),
     YES_NO("MVK_NO_TYPEYESNO", setOf("BooleanType")),
-    TEXT("MVK_NO_STRING_OR_ENUM", setOf("StringType", "CustomType", "EnumerationType")),
+    TEXT("MVK_NO_STRING_OR_ENUM", setOf("StringType", "CustomFieldType", "EnumerationType")),
     NUMBER("MVK_NO_NUMBER", setOf("NumberType")),
 }
 

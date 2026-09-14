@@ -136,9 +136,16 @@ class BuilderCheckerDivergenceGuardTest {
             // The kit only NAMES it: `Computation`'s javadoc cites it as the class a kind mismatch draws on
             // the COMPUTATION carrier, and the builder's own kind pre-check reports its own message rather
             // than this code. The checker owns the only statement of it that carries the code, on the
-            // COMPARISON carrier, and is the narrower of the two — a `CustomType` side is left unjudged
+            // COMPARISON carrier, and is the narrower of the two — a `CustomFieldType` side is left unjudged
             // because its base type is unmeasured there.
             Map.entry("MVK_INVALID_COMPARE_TO_ENUM_OR_STRING", Disposition.PROSE_ONLY),
+
+            // The kit only NAMES it, and says so: `FieldValueAsNumber`'s javadoc cites the code and states
+            // outright that the domain question is "its call (F4/N7), not pre-checked here". The checker owns
+            // the only enforcement, and is deliberately narrower than the kernel on the enumeration arm — it
+            // refuses a declared value only where a character outside the numeric alphabet makes it certain,
+            // so a spelling the kernel's own parser rejects for its grammar is left to A12.
+            Map.entry("MVK_NO_CONVERT_IN_NUMBER", Disposition.PROSE_ONLY),
 
             // Corrected 2026-09-14: this sat with the prose-only group, whose comment says rulekit "never
             // refuses anything itself" — and `NumberExpr.requireCompatibleScale` does exactly that, through

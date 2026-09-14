@@ -35,7 +35,7 @@ import io.github.mbackschat.a12.dm.predicates.kernelPatternBlacklist
  * and is declared as a coverage gap there, which covers this carrier too.
  *
  * **Silent where the left side is a bare name that does not RESOLVE**: that is the reference family's
- * answer, and it runs before this walk. Silent too on a `CustomType` declaration, whose base type is not
+ * answer, and it runs before this walk. Silent too on a `CustomFieldType` declaration, whose base type is not
  * measured on this carrier, and wherever both sides are written out — the constant gate answers that pair
  * ([comparisonOperatorOperandFindings]).
  */
@@ -186,4 +186,4 @@ private fun PreparedModel.sideOf(
 }
 
 /** The declarations whose base type this reader does not know on this carrier, so no question judges them. */
-private val UNMEASURED_TYPES = setOf("CustomType", "TypeDefType", "UnspecifiedType")
+private val UNMEASURED_TYPES = setOf("CustomFieldType", "TypeDefType", "UnspecifiedType")

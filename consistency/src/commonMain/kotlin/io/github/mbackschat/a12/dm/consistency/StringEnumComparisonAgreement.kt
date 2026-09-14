@@ -33,7 +33,7 @@ import io.github.mbackschat.a12.dm.consistency.syntax.tokenize
  * exactly the region the kind question leaves admitted. The two halves therefore never contend, measured on
  * a display-bearing enumeration against a text field and against a textless enumeration.
  *
- * **Silent on a `CustomType` declaration.** It shares this checker's TEXT class with `StringType`, and
+ * **Silent on a `CustomFieldType` declaration.** It shares this checker's TEXT class with `StringType`, and
  * whether A12 gives it the same base type is not measured on this carrier — assuming it would report the
  * kind class on a comparison A12 may well admit.
  *
