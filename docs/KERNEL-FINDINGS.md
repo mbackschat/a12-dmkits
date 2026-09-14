@@ -7138,6 +7138,25 @@ Reported by the portable checker, which did not emit `MVK_SORT_FIELD_DUPLICATE` 
 
 *Locked by:* `rulekit.validate.laws.GroupOrderingMultipleDefectLawsTest`, mirrored by `consistency … GroupOrderingMultipleDefectTest`.
 
+## §14 supplement — four `MVK_*` members are message LABELS and can never be a verdict, and one command enumerates them (source-verified, 2026-09-14) <a id="kf354"></a>
+
+> Fold: not-foldable — a property of A12's diagnostic vocabulary, not an evaluation behaviour.
+
+**A12's checkers share helpers that take the CALLER's operation name as a parameter, and a caller supplies it by asking the message bundle for its own code's bare text.** `CheckEntityUtils.checkIsValueValidation(ref, opName, ctx)` is the worked example: it raises `MVK_INVALID_RAW_TYPE` with `opName` interpolated, and seven callers reach it. A code used that way is never thrown, so no model can draw it — and a ledger row describing it as a law names a real constraint under a code that cannot carry it.
+
+**The enumeration is complete and derivable, which is what makes this a class rather than an anecdote.** `grep -rn 'getBareErrorMessage(' --include='*.java' kernel-tool` returns every label site; four of them name a `ParserErrorTypesEnum` member, and each of those members has **exactly one** occurrence in the kernel outside its own enum declaration — that label site.
+
+| code | its one site | what A12 reports instead |
+|---|---|---|
+| `MVK_FIELD_REF_OP` | `CheckFeldWertOpImpl` | the code the shared check raises, with this text as the operation name |
+| `MVK_CATEGORY_REF_OP` | `CheckEntitySpecImpl.checkCategory` | likewise, through `checkIsField` |
+| `MVK_SEMANTIC_INDEX_REF_OP` | `CheckSemanticIndexImpl` | `MVK_INVALID_RAW_TYPE` ([KF351](#kf351)) |
+| `MVK_CONDITION` | `MVKDefaultErrorStrategy` | one of the four parse-phase codes (`RuleConditionSyntaxLawsTest`) |
+
+**Two of the four were found one at a time, months apart, each time as a surprise.** `MVK_FIELD_REF_OP` was corrected on 2026-06-10 by a `Check*Impl` cross-validation and `MVK_SEMANTIC_INDEX_REF_OP` on 2026-09-14 by a grid whose prediction it refuted; both corrections describe the same mechanism without naming it, which is why the remaining two were still carried as laws. The `_REF_OP` suffix is the visible half of the pattern and `MVK_CONDITION` shows it is not the whole of it — the mechanism is the bare-message call, not the name.
+
+Locked: no test can lock a negative of this shape, and none is claimed. The basis is the enumeration above, re-derivable in one command against the pinned checkout; `validate.laws.RuleConditionSyntaxLawsTest` independently measures that `MVK_CONDITION` is not what a malformed condition draws.
+
 ## §9 supplement — the four whole-RULE gates over a PARALLEL iteration, and the type half nobody had varied (measured, 2026-09-14) <a id="kf353"></a>
 
 > Fold: not-foldable — a diagnostic-class selection law, not an evaluation behaviour.
