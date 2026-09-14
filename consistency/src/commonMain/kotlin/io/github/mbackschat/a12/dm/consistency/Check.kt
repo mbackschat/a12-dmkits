@@ -50,6 +50,13 @@ enum class CheckFamily {
     GROUP_ORDERING_CARRIER,
 
     /**
+     * A group's `repeatability` against A12's cap on it, which differs between a root and a nested group.
+     * Its own constant because it is a claim about the declaration's SIZE rather than about any reference,
+     * and it is the only family that reads the member for its value rather than for repeatability.
+     */
+    GROUP_REPETITION_COUNT,
+
+    /**
      * A computation's `roundingMode` and each alternative's `toleranceRangeOp` — that both spell a value
      * A12 knows, and that the pair they form is one A12 permits.
      */
@@ -528,6 +535,7 @@ internal fun check(
         prepared.conditionLexicalFindings() + prepared.conditionCompletenessFindings() +
         prepared.connectiveAgreementFindings() + prepared.conditionGrammarFindings() +
         prepared.elementNameFindings() + prepared.groupOrderingFindings() +
+        prepared.groupRepetitionCountFindings() +
         prepared.presentationMemberFindings() + prepared.stringSlotFindings() +
         prepared.fieldTypeBindingFindings() + prepared.temporalConfigFindings() +
         prepared.elementNameAlphabetFindings() + prepared.enumCategoryFindings() +
@@ -566,7 +574,7 @@ internal fun check(
             CheckFamily.DECLARATION_SLOTS, CheckFamily.COMPUTATION_ALTERNATIVES,
             CheckFamily.RULE_CONDITION_AND_TARGET, CheckFamily.ELEMENT_NAME_UNIQUENESS,
             CheckFamily.GROUP_ORDERING_REFERENCES, CheckFamily.GROUP_ORDERING_FIELD_TYPE,
-            CheckFamily.GROUP_ORDERING_CARRIER,
+            CheckFamily.GROUP_ORDERING_CARRIER, CheckFamily.GROUP_REPETITION_COUNT,
             CheckFamily.COMPUTATION_ROUNDING, CheckFamily.SUPPRESSED_WARNINGS,
             CheckFamily.VARIANT_FILTER, CheckFamily.CONDITION_LEXICALITY,
             CheckFamily.CONDITION_COMPLETENESS, CheckFamily.CONNECTIVE_AGREEMENT,

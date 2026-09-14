@@ -7138,6 +7138,35 @@ Reported by the portable checker, which did not emit `MVK_SORT_FIELD_DUPLICATE` 
 
 *Locked by:* `rulekit.validate.laws.GroupOrderingMultipleDefectLawsTest`, mirrored by `consistency … GroupOrderingMultipleDefectTest`.
 
+## §13 supplement — a group's repetition cap depends on the CARRIER, and the three laws beside it are unreachable (measured, 2026-09-14) <a id="kf365"></a>
+
+> Fold: not-foldable — a declaration-admission law plus a reachability result.
+
+**[MVK-LEDGER] carries four group-declaration laws as `n/a-structural`; one is live and three have no stored spelling.** Locked by `rulekit.validate.laws.GroupIndexAndSortReferenceLawsTest`.
+
+| the group's declaration | A12 |
+|---|---|
+| the fixture untouched — the control | ADMITTED |
+| a ROOT group declaring no `repeatability` | ADMITTED |
+| a NESTED group declaring none | ADMITTED |
+| a root group at 999 999 999 | ADMITTED |
+| a root group at 1 000 000 000 | `MVK_MAX_TOO_BIG` |
+| a nested group at 1 000 000 000 | ADMITTED |
+| a nested group at 1 999 999 999 | ADMITTED |
+| a nested group at 2 000 000 000 | `MVK_MAX_TOO_BIG` |
+| a nested group at 2 147 483 647 | `MVK_MAX_TOO_BIG` |
+| a nested group at 2 147 483 648 | UNREADABLE |
+| `indexFieldName` holding two names | UNREADABLE |
+| a plural `indexFieldNames` repeating one name | ADMITTED |
+
+**The two caps are an order of magnitude apart, and A12 states them as two rules rather than one.** A checker holding a single bound would refuse a legal nested group or miss an illegal root one — the carrier axis is the whole result, so both were walked rather than one measured and the other assumed.
+
+**Past a signed 32-bit count A12 stops READING**, `Group.repeatability` being an `int`, so the model reaches no verdict at all. Both cells of that boundary are measured, because it is the constant a checker must encode if it is not to name a class A12 never issued.
+
+**`MVK_MAX_MISSING` cannot fire on a stored model**: `CodeGenValidationDataCollector.addRootGroup` and `addGroup` both write `maxRepetitions` unconditionally, from `EntityUtils.getMaxLfdNr`/`getMax` — the count A12 derived, never the member it read. An omitted `repeatability` is a group that repeats once.
+
+**Nor can either INDEX-cardinality law**, and both spellings a stored model could reach for were attacked: A12's `Group` holds a single `indexField` reference and `IGroup.getIndexFieldNames()` answers with a `Set`, so an array under the singular member is refused by the reader and a plural member is ignored. `MVK_INDEX_FIELD_DUPLICATE` needs a repeat inside that set and `MVK_TOO_MANY_INDEX_FIELDS` needs two members of it; neither has a stored shape. (`kernel-core-calc` asserts the same cardinality in its own code.)
+
 ## §13 supplement — the number type's digit budget is 15, and five of its seven metamodel laws reach a stored model (measured, 2026-09-14) <a id="kf364"></a>
 
 > Fold: not-foldable — declaration-admission laws plus a reachability result.

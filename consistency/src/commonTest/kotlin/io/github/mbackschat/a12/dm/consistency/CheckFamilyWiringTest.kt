@@ -52,6 +52,9 @@ class CheckFamilyWiringTest {
             {"type":"Group","id":"g9","name":"Aisle","Group":{"sortFields":[{"name":"AisleCode"}],"elements":[
               {"type":"Field","id":"f34","name":"AisleCode","Field":{"fieldType":{"type":"StringType"}}}
             ]}},
+            {"type":"Group","id":"g12","name":"Overstock","Group":{"repeatability":2000000000,"elements":[
+              {"type":"Field","id":"f35","name":"OverstockCode","Field":{"fieldType":{"type":"StringType"}}}
+            ]}},
             {"type":"Group","id":"g3","name":"Shelf","Group":{"elements":[
               {"type":"Field","id":"f12","name":"ShelfCode","Field":{"fieldType":{"type":"StringType"}}}
             ]}},
@@ -342,6 +345,10 @@ class CheckFamilyWiringTest {
         // pass and only the CARRIER is wrong — which is what makes this row about repeatability alone.
         CheckFamily.GROUP_ORDERING_CARRIER to
             ("MVK_INVALID_SORTINFO" to "/Catalog/Aisle"),
+        // A NESTED group past the nested cap, which is an order of magnitude above the root one — so the
+        // row also fails if the family ever collapses the two carriers onto a single bound.
+        CheckFamily.GROUP_REPETITION_COUNT to
+            ("MVK_MAX_TOO_BIG" to "/Catalog/Overstock"),
         // The rule sits in a repeatable group and reaches its error field only through the root, while
         // reading a sibling of that field — so A12 cannot say which pallet the error belongs to.
         CheckFamily.ERROR_TARGET_ITERATION to

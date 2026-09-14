@@ -282,6 +282,67 @@ class GroupIndexAndSortReferenceLawsTest {
         assertEquals(expected, actual, "what the multiple-index codes need");
     }
 
+    /**
+     * The group's REPETITION count and the CARDINALITY of its index, which the ledger carries as four laws.
+     *
+     * <p>Two of them are about a count A12's collector writes unconditionally
+     * ({@code CodeGenValidationDataCollector.addRootGroup}/{@code addGroup} both emit {@code maxRepetitions}
+     * from {@code EntityUtils}), so "not declared" has no stored spelling — and the cap that remains is
+     * carrier-specific, which is why both carriers are walked rather than one measured and the other assumed.
+     *
+     * <p>The other two need a group to declare SEVERAL index fields. A12's own {@code Group} holds a single
+     * reference and {@code IGroup.getIndexFieldNames()} answers with a {@code Set}, so the rows below attack
+     * both spellings a stored model could reach for rather than concluding from that read.
+     */
+    @Test
+    void theRepetitionCountAndTheIndexCardinality() {
+        Map<String, String> actual = new LinkedHashMap<>();
+        actual.put("the fixture untouched — the control", KernelLaws.verdictOf(Fixtures.orderJson()));
+        actual.put("a ROOT group declaring no repetition count", verdict("Order", "repeatability", null));
+        actual.put("a NESTED group declaring no repetition count",
+                verdict(NON_REPEATABLE, "repeatability", null));
+        actual.put("a root group repeating 999999999 times", verdict("Order", "repeatability", "999999999"));
+        actual.put("a root group repeating 1000000000 times",
+                verdict("Order", "repeatability", "1000000000"));
+        actual.put("a nested group repeating 1000000000 times",
+                verdict(REPEATABLE, "repeatability", "1000000000"));
+        actual.put("a nested group repeating 1999999999 times",
+                verdict(REPEATABLE, "repeatability", "1999999999"));
+        actual.put("a nested group repeating 2000000000 times",
+                verdict(REPEATABLE, "repeatability", "2000000000"));
+        actual.put("a nested group repeating at the signed 32-bit ceiling",
+                verdict(REPEATABLE, "repeatability", "2147483647"));
+        actual.put("a nested group repeating one past that ceiling",
+                verdict(REPEATABLE, "repeatability", "2147483648"));
+        actual.put("an index member holding TWO names", verdict(REPEATABLE, "indexFieldName",
+                "[\"Sku\",\"Count\"]"));
+        actual.put("a plural index member repeating ONE name", verdict(REPEATABLE, "indexFieldNames",
+                "[\"Sku\",\"Sku\"]"));
+
+        Map<String, String> expected = new LinkedHashMap<>();
+        expected.put("the fixture untouched — the control", KernelLaws.ADMITTED);
+        // `MVK_MAX_MISSING` has no stored spelling on either carrier: an absent member is a repetition count
+        // of one, and A12 writes the count it derived rather than the member it read.
+        expected.put("a ROOT group declaring no repetition count", KernelLaws.ADMITTED);
+        expected.put("a NESTED group declaring no repetition count", KernelLaws.ADMITTED);
+        // …and the cap that IS reachable is carrier-specific, an order of magnitude apart. A checker holding
+        // one bound would refuse a legal nested group or miss an illegal root one.
+        expected.put("a root group repeating 999999999 times", KernelLaws.ADMITTED);
+        expected.put("a root group repeating 1000000000 times", "MVK_MAX_TOO_BIG");
+        expected.put("a nested group repeating 1000000000 times", KernelLaws.ADMITTED);
+        expected.put("a nested group repeating 1999999999 times", KernelLaws.ADMITTED);
+        expected.put("a nested group repeating 2000000000 times", "MVK_MAX_TOO_BIG");
+        // The count is a signed 32-bit member, so past its ceiling A12 stops READING rather than judging —
+        // the boundary a checker must encode if it is not to name a class A12 never reached.
+        expected.put("a nested group repeating at the signed 32-bit ceiling", "MVK_MAX_TOO_BIG");
+        expected.put("a nested group repeating one past that ceiling", KernelLaws.UNREADABLE);
+        // Both spellings of a MULTI-field index are inert, so the two cardinality laws have no stored shape:
+        // the singular member is a string A12's reader refuses an array for, and the plural one it ignores.
+        expected.put("an index member holding TWO names", KernelLaws.UNREADABLE);
+        expected.put("a plural index member repeating ONE name", KernelLaws.ADMITTED);
+        assertEquals(expected, actual, "a group's repetition count and the cardinality of its index");
+    }
+
     private static String verdict(String group, String member, String rawJson) {
         return verdict(group, member, rawJson, false);
     }
