@@ -7138,6 +7138,49 @@ Reported by the portable checker, which did not emit `MVK_SORT_FIELD_DUPLICATE` 
 
 *Locked by:* `rulekit.validate.laws.GroupOrderingMultipleDefectLawsTest`, mirrored by `consistency … GroupOrderingMultipleDefectTest`.
 
+## §13 supplement — the number type's digit budget is 15, and five of its seven metamodel laws reach a stored model (measured, 2026-09-14) <a id="kf364"></a>
+
+> Fold: not-foldable — declaration-admission laws plus a reachability result.
+
+**[MVK-LEDGER] carries seven number-type laws as `n/a-structural` beside the two already measured, and they split five-to-two.** Locked by `rulekit.validate.laws.NumberTypeDigitLawsTest`.
+
+| the declared `NumberType` | A12 |
+|---|---|
+| an ordinary scale — the control | ADMITTED |
+| both fractional members `-1` | `MVK_FRACT_DIGITS_MISSING` |
+| only the maximum `-1` | ADMITTED |
+| `trait:"amount"` with no `maxIntegerDigits` | ADMITTED |
+| the same amount with `maxIntegerDigits` | ADMITTED |
+| `trait:"amount"` with no fractional part either | ADMITTED |
+| `trait:"percent"` with no `maxIntegerDigits` | ADMITTED |
+
+**`-1` is the suppression sentinel, and it is what makes "missing" expressible at all.** `FieldDataCollector.addNumberType` writes `fractionalDigits` and `maxFractionalDigits` into the metamodel document only when the member is not `-1`, so an ABSENT member arrives as the primitive default 0 and counts as declared. `MVK_FRACT_DIGITS_MISSING` therefore needs BOTH members explicitly `-1` — which is why `{}` is admitted and the pair `-1,-1` is not.
+
+**`MVK_AMOUNT_INT_PART_MISSING` is unreachable, and its two links were attacked separately.** The arm is reached — `extractFieldTypeName` returns `GeldBetragMitCent`/`GeldBetragOhneCent` for exactly `isNumberTraitAmount()`, split on whether a fractional part is declared — but on that arm the member the law demands is never absent: `TypeConverter.convertNumber` fills the integer-place count with `15 - maxFractionalDigits` whenever an amount declares none, and the collector writes it whenever it is present.
+
+| the same field against the budget | A12 |
+|---|---|
+| `maxLength` 15, 16 | ADMITTED |
+| `maxLength` 17 | `MVK_MAX_LENGTH_TOO_BIG` |
+| `minLength` 17 | `MVK_MIN_LENGTH_TOO_BIG` |
+| `maxLength` 16 with `positivesOnly` | `MVK_MAX_LENGTH_TOO_BIG` |
+| `maxLength` 17 beside `maxFractionalDigits: 2` | ADMITTED |
+| `maxLength` 18 beside `maxFractionalDigits: 2` | `MVK_MAX_LENGTH_TOO_BIG` |
+| `maxLength` 4 beside `minFractionalDigits: 3` | `MVK_MAX_LENGTH_TOO_SMALL` |
+| `maxLength` 5 beside the same | ADMITTED |
+| `minLength` 8 with `maxLength` 4 | `MVK_MIN_LENGTH_BIGGER_MAX_LENGTH` |
+| `maxIntegerDigits: 14` with `minFractionalDigits: 2` | `MVK_ARITY_TOO_BIG` |
+| `maxIntegerDigits: 15` alone | ADMITTED |
+| `maxIntegerDigits: 16` or 20 | NOT BUILDABLE |
+
+**The budget is 15 and the length threshold is `15 + a sign + a fractional part`** — derived from the rows rather than assumed, by walking 16 across the sign and across a declared scale. The sign is `!positivesOnly` (`TypeConverter` writes `hasSign`), so an ordinary number gets 16 and a signless one 15.
+
+**A SUPPRESSED fractional member costs nothing in that threshold**: with both at `-1`, `maxLength` 17 is refused, so the branch taken is the metamodel's `== 0` one against a member the collector never wrote. A checker reading `-1` as "some fractional part" would allow 17 and under-report.
+
+**`MVK_ARITY_TOO_BIG` is reachable only from within the budget.** An integer-place count above 15 is refused at the BUILD tier with no code at all, so the law needs a count of at most 15 that a fractional part then pushes past it. The amount arm reaches it through the derived count: a minimum scale above the maximum leaves the count buildable and the sum over budget, drawing `MVK_ARITY_TOO_BIG` beside `MVK_FRACT_DIGITS_INVALID`; suppressing the maximum instead derives 16 and is refused at the build tier.
+
+**`MVK_MIN_LENGTH_BIGGER_MAX_LENGTH` is measured on this carrier because it was measured on the other one.** A12's metamodel states the law twice, once under the string type and once under the number types, and a class measured on one carrier is not a class measured on the other — [KF319](#kf319) had only the string one.
+
 ## §13 supplement — a name may repeat freely across parents; only the within-parent and root-group collisions are refused (measured, 2026-09-14) <a id="kf363"></a>
 
 > Fold: not-foldable — a reachability result plus an admission law.

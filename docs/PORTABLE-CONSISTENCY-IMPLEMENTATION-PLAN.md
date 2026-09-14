@@ -759,6 +759,18 @@ One cold adversarial review over the frozen range, as [§2](#2-execution-order-a
 
 **The method correction to carry forward: rank by evidence, then READ the ledger row before predicting anything.** The row carries a disposition the count cannot, exactly as the earlier record found that the laws-file ranking measures where containment assertions live rather than where knowledge is missing. Both are the same mistake — trusting a derived score over the prose that owns the fact.
 
+### C record — the fourth declaration block pays five codes into an existing family, and the seam's rate is now known (2026-09-14)
+
+**The number-type block is the productive one, and the reason is that the checker already owned the construct.** `CheckFamily.NUMBER_TYPE_DIGITS` was reading the same `NumberType` body for two laws, so five more — `MVK_FRACT_DIGITS_MISSING`, `MVK_ARITY_TOO_BIG`, `MVK_MAX_LENGTH_TOO_BIG`, `MVK_MIN_LENGTH_TOO_BIG`, `MVK_MAX_LENGTH_TOO_SMALL` — landed as three predicates in that file with no new constant, no wiring, and no divergence dispositions (none of the five is named in a kit main source). A sixth, `MVK_MIN_LENGTH_BIGGER_MAX_LENGTH`, gained its THIRD carrier ([KF364](KERNEL-FINDINGS.md#kf364)).
+
+**So the selection rule the sort block suggested is now confirmed and can be stated as a rule: prefer a block whose construct a family already reads.** Three blocks measured against constructs the checker did not own yielded one family and eleven closed rows; this one yielded five codes in a single file. The `n/a-structural` queue should be worked construct-first rather than code-first.
+
+**The budget had to be DERIVED, because it is a member of A12's metamodel document and not of a stored model.** `/MVK/ModelProperties/maxDigits` is 15, and the length threshold is `15 + a sign + a decimal point` — established by walking a `maxLength` of 16 across `positivesOnly` and across a declared scale rather than by reading the constant anywhere. A grid that had assumed 15 flat would have under-reported every signed number by one place.
+
+**One code in the block is unreachable, and both links of that were attacked separately** — the arm IS reached (`extractFieldTypeName` names an amount `GeldBetrag*`), and on that arm the member `MVK_AMOUNT_INT_PART_MISSING` demands is derived by `TypeConverter.convertNumber` and therefore never absent. Measuring only the first link would have read as a reachability result and been wrong.
+
+**The row that changed the family's shape was the SUPPRESSED fractional pair.** With both members `-1`, `maxLength` 17 is refused where a real fractional part admits it, so A12 takes its `== 0` branch against a member its collector never wrote. Both rows of that pair were needed: the over-long one is consistent with either reading, and only the boundary one discriminates. A checker that had read `-1` as "some fractional part" would have allowed one length too many on every such field.
+
 ### C record — the third declaration block: no family, no gap, and one mislabelled row that nearly inverted it (2026-09-14)
 
 **A name is scoped to its PARENT, so two of the three "model-wide" laws are not laws of a stored model at all** ([KF363](KERNEL-FINDINGS.md#kf363)). `Insured` under two different root groups is admitted, and so are two fields of different groups sharing a name. The two collisions A12 does refuse — the same parent, and two root groups — are build refusals carrying no class, and BOTH are already covered: `ELEMENT_NAME_UNIQUENESS` and `CK_MODEL_NOT_BUILDABLE`. The second was verified against the checker rather than inferred from the family's wording, which speaks of a group's CHILDREN while root groups are not any group's children.
