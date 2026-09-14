@@ -87,6 +87,7 @@ class ReferenceSegmentGateOrderLawsTest {
         actual.put("a STAR on an unresolvable segment", path("Sum(NoSuchGroup*/Amount) > 0"));
         actual.put("a bad wildcard EARLIER, an unresolvable name LATER",
                 path("Sum(Insured*/NoSuchField) > 0"));
+        actual.put("a `.*` suffix on a NON-REPEATABLE group", path("Sum(Insured.*/InsuredName) > 0"));
 
         Map<String, String> expected = new LinkedHashMap<>();
         // Resolution runs first within a segment, so neither of the segment's later gates is reached.
@@ -94,6 +95,9 @@ class ReferenceSegmentGateOrderLawsTest {
         expected.put("a STAR on an unresolvable segment", "MVK_INVALID_ENTITY");
         // And segments run left to right, so the earlier segment's defect answers.
         expected.put("a bad wildcard EARLIER, an unresolvable name LATER", "MVK_INVALID_WILDCARD");
+        // The `.*` gate sits between resolution and the wildcard's landing site, so a segment that breaks
+        // both the suffix rule and the repeatability rule answers with the suffix one.
+        expected.put("a `.*` suffix on a NON-REPEATABLE group", "MVK_POINT_IN_A12_MODEL");
         assertEquals(expected, actual, "which gate wins when one segment breaks two rules");
     }
 }

@@ -281,6 +281,13 @@ enum class CheckFamily {
     PARALLEL_ITERATION_UNIQUENESS,
 
     /**
+     * That no path segment carries the H-model `.*` repetition suffix. Its own constant rather than part of
+     * [REPETITION_WILDCARD_TARGET] because the demand is on the SPELLING rather than on where a star lands,
+     * and A12 gates it between resolution and the landing site rather than alongside it.
+     */
+    H_MODEL_PATH_SUFFIX,
+
+    /**
      * That a rule reading a repetition does not reach its error field only from ABOVE its own group — A12
      * cannot then say which repetition the error attaches to. Its own constant because the demand is on the
      * CONDITION's reach rather than on the target's existence, which `ERROR_FIELD_REFERENCE` already owns,
@@ -501,6 +508,7 @@ internal fun check(
         prepared.semanticIndexKeyFindings() +
         prepared.repetitionNotUniqueCombinationFindings() +
         prepared.parallelIterationUniquenessFindings() +
+        prepared.hModelPathSuffixFindings() +
         prepared.errorTargetIterationFindings() +
         prepared.messageParameterFindings() +
         prepared.messageTextCharacterFindings() +
@@ -538,6 +546,7 @@ internal fun check(
             CheckFamily.FILTER_WILDCARD, CheckFamily.SEMANTIC_INDEX_KEY,
             CheckFamily.REPETITION_NOT_UNIQUE_COMBINATION,
             CheckFamily.PARALLEL_ITERATION_UNIQUENESS,
+            CheckFamily.H_MODEL_PATH_SUFFIX,
             CheckFamily.ERROR_TARGET_ITERATION,
             CheckFamily.MESSAGE_PARAMETER_REFERENCE, CheckFamily.MESSAGE_TEXT_CHARACTERS),
         gaps = prepared.gaps() + prepared.emptyFactBase() + findings.buildBlocked() +

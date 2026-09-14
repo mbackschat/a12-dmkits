@@ -99,6 +99,10 @@ class CheckFamilyWiringTest {
               {"type":"Field","id":"f32","name":"CrateRef","Field":{"fieldType":{"type":"StringType"}}},
               {"type":"Field","id":"f33","name":"ToteQty","Field":{"fieldType":{"type":"NumberType"}}}
             ]}},
+            {"type":"Rule","id":"r29","name":"HModelSuffix","Rule":{
+              "errorCondition":"FieldFilled(Price) And Sum(Pallets.*/PalletQty) > 0",
+              "errorEntityRelPath":"../Price",
+              "errorCode":"C29","errorMessage":[{"locale":"en_US","text":"x"}]}},
             {"type":"Rule","id":"r28","name":"UniquenessUnderParallelIteration","Rule":{
               "errorCondition":"RepetitionNotUnique(Crates/CrateRef) And FieldFilled(Totes/ToteQty)",
               "errorEntityRelPath":"../Crates/CrateRef",
@@ -290,10 +294,14 @@ class CheckFamilyWiringTest {
         // its own, which is what makes this row about the COUNT rather than about either call.
         CheckFamily.REPETITION_NOT_UNIQUE_COMBINATION to
             ("MVK_INVALID_COMBINATION_OF_REPETITON_NOT_UNIQUE" to "/Catalog/TwoUniquenessCalls"),
-        // `Crates` and `Bins` both key on `CrateRef` of the same declared type, so reading one field from
+        // `Crates` and `Totes` both key on `CrateRef` of the same declared type, so reading one field from
         // each makes the rule iterate them jointly — the shape no other row in this fixture produces.
         CheckFamily.PARALLEL_ITERATION_UNIQUENESS to
             ("MVK_PARALLEL_ITERATION_NOT_ALLOWED" to "/Catalog/UniquenessUnderParallelIteration"),
+        // The suffix rides a group that DOES repeat, so the star itself is legal and this row cannot borrow
+        // a wildcard family's finding: the `.` in front of it is the whole defect.
+        CheckFamily.H_MODEL_PATH_SUFFIX to
+            ("MVK_POINT_IN_A12_MODEL" to "/Catalog/HModelSuffix"),
         // The rule sits in a repeatable group and reaches its error field only through the root, while
         // reading a sibling of that field — so A12 cannot say which pallet the error belongs to.
         CheckFamily.ERROR_TARGET_ITERATION to
