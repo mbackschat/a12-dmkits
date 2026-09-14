@@ -34,6 +34,35 @@ class EnumValueLabelTest {
 
     private fun label(locale: String, text: String) = """"label":[{"locale":"$locale","text":"$text"}]"""
 
+    /**
+     * The label TEXTS against each other — a law within ONE language.
+     *
+     * Every row mirrors one measured by `rulekit.validate.laws.EnumValueAndLabelLawsTest`. The last row is
+     * the family's bound: the same text in two different locales is a model A12 takes.
+     */
+    @Test
+    fun theLabelTextsMustBeDistinctWithinOneLanguage() {
+        val duplicateLabel = listOf("MVK_DISPLAY_VALUES_DUPLICATE")
+        val actual = mutableMapOf<String, List<String>>()
+        actual["distinct labels — the control"] = codes(
+            """[{"value":"BASIC",${label("en_US", "Basic")}},{"value":"PLUS",${label("en_US", "Plus")}}]""")
+        actual["two values sharing one label text"] = codes(
+            """[{"value":"BASIC",${label("en_US", "Same")}},{"value":"PLUS",${label("en_US", "Same")}}]""")
+        actual["the same text in two DIFFERENT languages"] = codes(
+            """[{"value":"BASIC","label":[{"locale":"en_US","text":"Same"},""" +
+                """{"locale":"de_DE","text":"Einfach"}]},""" +
+                """{"value":"PLUS","label":[{"locale":"en_US","text":"Plus"},""" +
+                """{"locale":"de_DE","text":"Same"}]}]""",
+            "en_US", "de_DE",
+        )
+
+        val expected = mutableMapOf<String, List<String>>()
+        expected["distinct labels — the control"] = emptyList()
+        expected["two values sharing one label text"] = duplicateLabel
+        expected["the same text in two DIFFERENT languages"] = emptyList()
+        assertEquals(expected, actual, "an enumeration's label texts against each other")
+    }
+
     @Test
     fun theValueTokensThemselves() {
         val actual = mutableMapOf<String, List<String>>()

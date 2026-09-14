@@ -75,14 +75,54 @@ private fun PreparedModel.labelFindings(
     val unanswered = declaredLocales.filter { locale ->
         texts.any { value -> value[locale]?.string("text").isNullOrBlank() }
     }
-    return unanswered.map { locale ->
-        finding(
-            field,
-            "MVK_INTERNAL_VALUES_AND_DISPLAY_VALUES",
-            "this enumeration labels some of its values for a declared locale and leaves `$locale` " +
-                "without a text on at least one of them; A12 refuses a label set that is started and not " +
-                "finished, and a blank text is no text",
-        )
+    if (unanswered.isNotEmpty()) {
+        return unanswered.map { locale ->
+            finding(
+                field,
+                "MVK_INTERNAL_VALUES_AND_DISPLAY_VALUES",
+                "this enumeration labels some of its values for a declared locale and leaves `$locale` " +
+                    "without a text on at least one of them; A12 refuses a label set that is started and " +
+                    "not finished, and a blank text is no text",
+            )
+        }
+    }
+    return repeatedLabelFindings(field, texts)
+}
+
+/**
+ * The texts A12 asks to be distinct, and the scope of that law is ONE LANGUAGE.
+ *
+ * A12 writes one per-language block per declared locale and asks each block's `displayValue` list to be
+ * unique ([KERNEL-FINDINGS KF368], `rulekit.validate.laws.EnumValueAndLabelLawsTest`), so the same text used
+ * for one value in English and another in German is ADMITTED — the row a family keyed on the texts alone
+ * would refuse.
+ *
+ * **It is asked only where the label set is otherwise complete**, which is where it was measured: a set that
+ * is short or half-blank draws its own class first, and whether A12 adds this one there is unmeasured.
+ * Under-reporting the pair is safe; naming a class on an unmeasured shape is not.
+ */
+private fun repeatedLabelFindings(
+    field: DeclaredElement,
+    texts: List<Map<String, JsonObject>>,
+): List<Finding> {
+    val perLocale = mutableMapOf<String, MutableList<String>>()
+    for (value in texts) {
+        for ((locale, entry) in value) {
+            entry.string("text")?.let { perLocale.getOrPut(locale) { mutableListOf() }.add(it) }
+        }
+    }
+    // Sorted rather than in encounter order, because a report's finding order is part of its contract and
+    // `toSortedMap` is JVM-only — this file is common code.
+    return perLocale.entries.sortedBy { it.key }.flatMap { (locale, written) ->
+        written.groupingBy { it }.eachCount().filterValues { it > 1 }.keys.sorted().map { text ->
+            finding(
+                field,
+                "MVK_DISPLAY_VALUES_DUPLICATE",
+                "two of this enumeration's values are both labelled `$text` in `$locale`, which A12 " +
+                    "refuses — a label is what a user picks by, so it has to tell the values apart. The " +
+                    "same text in two different languages is fine",
+            )
+        }
     }
 }
 

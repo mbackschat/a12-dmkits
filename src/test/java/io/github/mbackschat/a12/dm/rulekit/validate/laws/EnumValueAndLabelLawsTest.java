@@ -151,6 +151,36 @@ class EnumValueAndLabelLawsTest {
     }
 
     /** The bilingual axis, which a one-locale header cannot show — the constant the grid above holds. */
+    /**
+     * The label TEXTS against each other, which is a law of its own and a law within ONE language.
+     *
+     * <p>[MVK-LEDGER] carries {@code MVK_DISPLAY_VALUES_DUPLICATE} as a structural law with no measurement.
+     * A12 writes one per-language block per declared locale and asks each block's texts to be distinct, so
+     * the discriminating row is the same text used in two DIFFERENT locales — which a checker keyed on the
+     * texts alone would refuse.
+     */
+    @Test
+    void theLabelTextsMustBeDistinctWithinOneLanguage() {
+        Map<String, String> actual = new LinkedHashMap<>();
+        actual.put("distinct labels — the control", KernelLaws.verdictOf(storedModelWith(
+                "{\"values\":[{\"value\":\"BASIC\"," + label("en_US", "Basic") + "},"
+                        + "{\"value\":\"PLUS\"," + label("en_US", "Plus") + "}]}")));
+        actual.put("two values sharing one label text", KernelLaws.verdictOf(storedModelWith(
+                "{\"values\":[{\"value\":\"BASIC\"," + label("en_US", "Same") + "},"
+                        + "{\"value\":\"PLUS\"," + label("en_US", "Same") + "}]}")));
+        actual.put("the same text in two DIFFERENT languages", KernelLaws.verdictOf(storedModelWith(
+                "{\"values\":[{\"value\":\"BASIC\",\"label\":[{\"locale\":\"en_US\",\"text\":\"Same\"},"
+                        + "{\"locale\":\"de_DE\",\"text\":\"Einfach\"}]},"
+                        + "{\"value\":\"PLUS\",\"label\":[{\"locale\":\"en_US\",\"text\":\"Plus\"},"
+                        + "{\"locale\":\"de_DE\",\"text\":\"Same\"}]}]}", "en_US", "de_DE")));
+
+        Map<String, String> expected = new LinkedHashMap<>();
+        expected.put("distinct labels — the control", KernelLaws.ADMITTED);
+        expected.put("two values sharing one label text", "MVK_DISPLAY_VALUES_DUPLICATE");
+        expected.put("the same text in two DIFFERENT languages", KernelLaws.ADMITTED);
+        assertEquals(expected, actual, "an enumeration's label texts against each other");
+    }
+
     @Test
     void whichDeclaredLocalesTheLabelsMustCover() {
         Map<String, String> rows = new LinkedHashMap<>();

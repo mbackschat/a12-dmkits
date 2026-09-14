@@ -7138,6 +7138,26 @@ Reported by the portable checker, which did not emit `MVK_SORT_FIELD_DUPLICATE` 
 
 *Locked by:* `rulekit.validate.laws.GroupOrderingMultipleDefectLawsTest`, mirrored by `consistency … GroupOrderingMultipleDefectTest`.
 
+## §8 supplement — an enumeration's LABEL TEXTS must differ within one language, and the rest of the per-language block is unreachable (measured, 2026-09-14) <a id="kf368"></a>
+
+> Fold: not-foldable — a declaration-admission law plus a reachability result.
+
+**The last of the enumeration's fifteen structural laws, and one more of them is live.** Locked by `rulekit.validate.laws.EnumValueAndLabelLawsTest`.
+
+| the labels | A12 |
+|---|---|
+| distinct texts — the control | ADMITTED |
+| two values sharing one text in `en_US` | `MVK_DISPLAY_VALUES_DUPLICATE` |
+| the same text for one value in `en_US` and another in `de_DE` | ADMITTED |
+
+**The scope is ONE LANGUAGE, which is the row a checker would get wrong.** A12 writes one per-language block per declared locale and asks each block's `displayValue` list to be unique, so a family comparing the texts across the declaration would refuse the third row. Reported by `CheckFamily.ENUM_VALUE_LABELS`, and only where the label set is otherwise complete — a short or half-blank set draws its own class first and whether A12 adds this one there is unmeasured.
+
+**Everything else in the per-language block is unreachable, and one mechanism accounts for most of it.** `FieldDataCollector` builds those blocks by walking the DECLARED locale set and takes each block's language from it, so the language is never absent (`MVK_LANGUAGE_MISSING`, `MVK_LANGUAGE_FOR_VALUES_MISSING`), never repeated (`MVK_LANGUAGES_DUPLICATE`, `MVK_VALUE_LANGUAGES_DUPLICATE`) and never undeclared (`MVK_LANGUAGE_INVALID`, `MVK_VALUE_LANGUAGE_INVALID`). `addErrorMessageIntern` sharpens the first of those: it writes the language and the text together or writes neither, so the co-requirement `MVK_LANGUAGE_MISSING` tests can never be half-satisfied.
+
+**Two more fall to a dead ARM rather than to a member.** `MVK_DISPLAY_VALUES_MISSING` and `MVK_DISPLAY_VALUE_TOO_LONG` are laws of an extensible enumeration, an arm entered only for an `IStringType` whose `isExtensibleEnum()` is true — a default the md-side `StringTypeImpl` never overrides, DM-JSON having no such type.
+
+**And `MVK_VALUES_FOR_LANGUAGE_MISSING` is the one settled by an existing grid rather than by the collector**: the shape it names — labels for one of two declared locales — draws `MVK_INTERNAL_VALUES_AND_DISPLAY_VALUES` alone, and that grid reports every class A12 gives.
+
 ## §13 supplement — A12 reserves ONE whole name, and the sweep that closed sixteen structural rows around it (measured, 2026-09-14) <a id="kf367"></a>
 
 > Fold: not-foldable — a declaration-admission law plus a reachability sweep.

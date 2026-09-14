@@ -759,6 +759,16 @@ One cold adversarial review over the frozen range, as [§2](#2-execution-order-a
 
 **The method correction to carry forward: rank by evidence, then READ the ledger row before predicting anything.** The row carries a disposition the count cannot, exactly as the earlier record found that the laws-file ranking measures where containment assertions live rather than where knowledge is missing. Both are the same mistake — trusting a derived score over the prose that owns the fact.
 
+### C record — the `n/a-structural` seam is DRAINED, and what it cost and paid (2026-09-14)
+
+**Every one of the ledger's 96 `n/a-structural` rows now carries a disposition.** The last block — the enumeration's per-language labels — gave one more class, `MVK_DISPLAY_VALUES_DUPLICATE`, whose whole content is that the law holds within ONE language: the same text for one value in English and another in German is admitted ([KF368](KERNEL-FINDINGS.md#kf368)). Everything else in that block is unreachable through one mechanism, the collector walking the declared locale SET, plus a dead extensible-enumeration arm.
+
+**The seam's total, so a later reader can judge whether a similar one is worth opening.** Seven blocks measured over one stretch: **eight new classes** reported by the checker (five number-budget, the group repetition cap, the enum special value, the reserved root-group name, the duplicate label — across two new families and four existing ones), **~45 rows re-dispositioned as unreachable or unmeasured**, and **four ledger rows corrected** that had been under-stating work already done. No block cost more than about half an hour once the method settled.
+
+**The method that made it cheap, in one line: read the two COLLECTORS first, and grep the checker before implementing.** The collectors decide reachability before a fixture exists; the checker grep is what stops a code that is already reported from being implemented twice, which happened once and was caught only by three existing tests going red.
+
+**What is left in the residue is now genuinely different work** — the `pre-checked` bucket, whose codes are about a rule's own slots rather than a declaration's shape, and the standing per-operator typing gap this plan does not reproduce. Neither is another pass over this list.
+
 ### C record — the collector sweep run at scale: sixteen rows closed, one class gained, one published claim corrected (2026-09-14)
 
 **The accelerator from the previous record was applied to the whole remaining residue in one pass, and it holds** ([KF367](KERNEL-FINDINGS.md#kf367)). Sixteen `n/a-structural` rows are now re-dispositioned on a collector read — the four `*_H_DV` name laws and `MVK_ROW_TOO_BIG` all gate on an `oldWorld` flag only an H model sets; the two header laws are the collector's own constants; the date-format laws, `MVK_NAME_MISSING` and `MVK_TYPE_MISSING` all test members written unconditionally. **No fixture was needed for any of them**, which is the whole point: the reachability question is decided one layer above the grid.
