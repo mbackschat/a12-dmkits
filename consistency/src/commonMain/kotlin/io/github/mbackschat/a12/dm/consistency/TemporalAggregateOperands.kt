@@ -8,7 +8,7 @@ import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.contentOrNull
 
 /**
- * Whether an entity-list aggregate's temporal operands declare the SAME components.
+ * The two gates an entity-list aggregate asks of each temporal operand: its PRECISION, then its COMPONENTS.
  *
  * `MaxValue`, `MinValue` and `NumberOfDifferentValues` type their operand list from its LEADING field, and a
  * temporal leader sends the whole list through `CheckEntityListenUtils.checkOpTypesAreComparableDatetimeType`.
@@ -33,12 +33,20 @@ import kotlinx.serialization.json.contentOrNull
  * |---|---|
  * | a leading operand that is not temporal | the numeric arm — `MVK_NOT_SORTABLE` / `MVK_NO_NUMBER` |
  * | a later operand that is not temporal | `MVK_DATE_AND_NONDATE`, which the builders pre-check |
- * | any operand declaring a PARTIAL date precision | `MVK_PARTIAL_DATE_NOT_ALLOWED`, and it runs per operand BEFORE that operand's format comparison |
  * | a format outside the derived vocabulary | nobody — an undiscovered format is not a defect |
+ *
+ * **A PARTIALLY KNOWN date is the chain's other reported class**, and it is independent of the components:
+ * the three carriers here compare a DECODED date, which a partial has not, so every precision is refused
+ * `MVK_PARTIAL_DATE_NOT_ALLOWED` whatever the format says — while `FieldValuesNotUnique` and
+ * `FirstFilledValue`, which compare the stored text, admit all three ([KERNEL-FINDINGS KF260],
+ * `rulekit.validate.laws.PartialDatePrecisionOperandLawsTest`). It is asked of the LEADING operand too,
+ * unlike the component comparison, which has no leader to compare against.
  *
  * The walk reproduces A12's INTERLEAVING rather than running the gates in phases: each operand is asked for
  * its temporal declaration, then for its precision, then compared — so a partial precision on a LATER operand
- * than the first format mismatch does not silence the mismatch, exactly as A12 orders it.
+ * than the first component mismatch does not pre-empt the mismatch, exactly as A12 orders it. The vocabulary
+ * limit is this reader's and not A12's, so an unreadable format stops the COMPARISON and not the walk: a
+ * partial precision further down the list is still reported.
  *
  * **`Min` and `Max` carry the same gate and are deliberately out of scope.** Their operands are OPERATIONS,
  * not entity references, so the leading operand's type can be a computed expression this reader does not
@@ -46,7 +54,7 @@ import kotlinx.serialization.json.contentOrNull
  * the reader cannot tell apart from the rest. `Sum` is not a carrier at all — it refuses a temporal operand
  * outright with its own code.
  */
-fun PreparedModel.temporalAggregateComponentFindings(): List<Finding> {
+fun PreparedModel.temporalAggregateOperandFindings(): List<Finding> {
     val keywords = CONDITION_OPERATOR_KEYWORDS[conditionLanguage] ?: return emptyList()
     val carriers = ENTITY_LIST_AGGREGATES.mapNotNull { keywords[it] }.toSet()
     if (carriers.isEmpty()) {
@@ -59,8 +67,8 @@ fun PreparedModel.temporalAggregateComponentFindings(): List<Finding> {
             callsIn(text, conditionLanguage, syntaxEntryOf(member))
                 .filter { it.operator in carriers }
                 .mapNotNull { call ->
-                    componentDefect(call, declaringGroup, element)
-                        ?.let { componentFinding(it, call, element, member) }
+                    operandDefect(call, declaringGroup, element)
+                        ?.let { operandFinding(it, call, element, member) }
                 }
         }
     }
@@ -69,7 +77,7 @@ fun PreparedModel.temporalAggregateComponentFindings(): List<Finding> {
 /** The three carriers whose operands are an ENTITY LIST, named by their catalog ids. */
 private val ENTITY_LIST_AGGREGATES = listOf("MaxValue", "MinValue", "NumberOfDifferentValues")
 
-private data class ComponentDefect(val first: TemporalOperand, val other: TemporalOperand)
+private data class OperandDefect(val code: String, val first: TemporalOperand?, val other: TemporalOperand)
 
 private data class TemporalOperand(val path: String, val format: String, val components: Set<Component>)
 
@@ -81,31 +89,41 @@ private enum class Component { YEAR, MONTH, DAY, HOUR, MINUTE, SECOND }
  * The list is taken whole or not at all: an operand this reader cannot reduce to one resolved entity is one
  * whose components it cannot know, and comparing the rest would judge a shorter list than A12 judged.
  */
-private fun PreparedModel.componentDefect(
+private fun PreparedModel.operandDefect(
     call: ConditionCall,
     declaringGroup: String,
     element: DeclaredElement,
-): ComponentDefect? {
+): OperandDefect? {
     val fields = call.operands.flatMap { operand ->
         val written = operand.path ?: return null
         val resolved = resolveEntity(declaringGroup, written.replace("*", ""), element.origin)
         expandToFields((resolved as? Reference.Resolved)?.path ?: return null) ?: return null
     }
     var first: TemporalOperand? = null
+    var comparable = true
     fields.forEach { field ->
-        val temporal = temporalOperandOf(field) ?: return null
+        val format = declaredTemporalFormatOf(field) ?: return null
         if (declaresAPartialPrecision(field)) {
-            return null
+            return OperandDefect(PARTIAL_REFUSED, null, TemporalOperand(field.path, format, emptySet()))
         }
+        if (format !in ADMITTED_FORMATS) {
+            comparable = false
+            return@forEach
+        }
+        val operand = TemporalOperand(field.path, format, componentsOf(format))
         val leader = first
         if (leader == null) {
-            first = temporal
-        } else if (!compatible(leader.components, temporal.components, hasBaseYear)) {
-            return ComponentDefect(leader, temporal)
+            first = operand
+        } else if (comparable && !compatible(leader.components, operand.components, hasBaseYear)) {
+            return OperandDefect(INCOMPATIBLE, leader, operand)
         }
     }
     return null
 }
+
+private const val PARTIAL_REFUSED = "MVK_PARTIAL_DATE_NOT_ALLOWED"
+
+private const val INCOMPATIBLE = "MVK_DATEFORMATS_NOT_COMPATIBLE"
 
 /**
  * The fields A12's `expandToFieldList` would take for one operand — the field itself, or every field under a
@@ -124,22 +142,19 @@ private fun PreparedModel.expandToFields(path: String): List<DeclaredElement>? {
 }
 
 /**
- * The temporal declaration this field carries, or null when it carries none this family may judge.
+ * The format this field declares as a temporal one, or null when it declares none.
  *
  * Four carriers declare a format A12 reads as a DATETIME operand type; `DateRangeType` deliberately is not
- * one of them, being its own operand base type that the numeric arm refuses ahead of this gate. A format
- * outside the derived vocabulary is undiscovered rather than wrong, so it leaves the whole call unjudged.
+ * one of them, being its own operand base type that the numeric arm refuses ahead of this gate. Null is what
+ * leaves the whole call unjudged, because it means the list is not the one A12 typed as temporal — a format
+ * this reader does not recognise is a separate answer, handled where the comparison needs it.
  */
-private fun temporalOperandOf(field: DeclaredElement): TemporalOperand? {
+private fun declaredTemporalFormatOf(field: DeclaredElement): String? {
     val declared = field.body?.get("fieldType") as? JsonObject ?: return null
     val type = (declared["type"] as? JsonPrimitive)?.contentOrNull ?: return null
     val member = TEMPORAL_FORMAT_MEMBERS[type] ?: return null
     val body = declared[type] as? JsonObject ?: return null
-    val format = (body[member] as? JsonPrimitive)?.takeIf { it.isString }?.content ?: return null
-    if (format !in ADMITTED_FORMATS) {
-        return null
-    }
-    return TemporalOperand(field.path, format, componentsOf(format))
+    return (body[member] as? JsonPrimitive)?.takeIf { it.isString }?.content
 }
 
 private fun declaresAPartialPrecision(field: DeclaredElement): Boolean {
@@ -193,18 +208,24 @@ private fun namesADate(components: Set<Component>): Boolean =
 private fun supplemented(components: Set<Component>, hasBaseYear: Boolean): Set<Component> =
     if (hasBaseYear) components + Component.YEAR else components
 
-private fun componentFinding(
-    defect: ComponentDefect,
+private fun operandFinding(
+    defect: OperandDefect,
     call: ConditionCall,
     element: DeclaredElement,
     member: String,
 ): Finding = Finding(
     FindingCategory.A12_CONSTRAINT,
     FindingSeverity.ERROR,
-    "MVK_DATEFORMATS_NOT_COMPATIBLE",
-    "in `$member`: `${call.operator}` compares `${defect.first.path}` declared `${defect.first.format}` " +
-        "with `${defect.other.path}` declared `${defect.other.format}`, and the two spell different date " +
-        "components — A12 compares the components rather than the spelling, so give both operands formats " +
-        "that name the same ones",
+    defect.code,
+    if (defect.first == null) {
+        "in `$member`: `${call.operator}` compares decoded dates and `${defect.other.path}` declares a " +
+            "PARTIAL precision, which leaves a stored value with no date to decode — compare the stored " +
+            "text with `FieldValuesNotUnique` instead, or drop the precision from the declaration"
+    } else {
+        "in `$member`: `${call.operator}` compares `${defect.first.path}` declared `${defect.first.format}` " +
+            "with `${defect.other.path}` declared `${defect.other.format}`, and the two spell different " +
+            "date components — A12 compares the components rather than the spelling, so give both operands " +
+            "formats that name the same ones"
+    },
     element.path,
 )

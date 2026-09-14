@@ -12,9 +12,11 @@ import kotlin.test.assertEquals
  * SETS are equal and whose format SPELLINGS differ — without them the table would be satisfied by a reader
  * that compared the strings, which is what the neighbouring `FieldValuesNotUnique` gate really does.
  */
-class TemporalAggregateComponentsTest {
+class TemporalAggregateOperandsTest {
 
     private val incompatible = "MVK_DATEFORMATS_NOT_COMPATIBLE"
+
+    private val partialRefused = "MVK_PARTIAL_DATE_NOT_ALLOWED"
 
     /** A policy carrier declaring, per component set, two spellings plus a same-spelling control. */
     private fun codes(condition: String, baseYear: Boolean = false): List<String> {
@@ -49,6 +51,15 @@ class TemporalAggregateComponentsTest {
                   "type":"DateTimeType","DateTimeType":{"format":"yyyy-MM-dd'T'HH:mm:ss"}}}},
                 {"type":"Field","id":"f16","name":"NotifiedOn","Field":{"fieldType":{"type":"DateType",
                   "DateType":{"format":"yyyy-MM-dd","datePrecision":"DAY_OPTIONAL"}}}},
+                {"type":"Field","id":"f21","name":"OnsetOn","Field":{"fieldType":{"type":"DateType",
+                  "DateType":{"format":"yyyy-MM-dd","datePrecision":"MONTH_OPTIONAL"}}}},
+                {"type":"Field","id":"f22","name":"CoverStart","Field":{"fieldType":{"type":"DateType",
+                  "DateType":{"format":"yyyy-MM-dd","datePrecision":"YEAR_OPTIONAL"}}}},
+                {"type":"Group","id":"g3","name":"Assessments","Group":{"elements":[
+                  ${dateField("f23", "AssessedOn", "yyyy-MM-dd")},
+                  {"type":"Field","id":"f24","name":"EstimatedOn","Field":{"fieldType":{"type":"DateType",
+                    "DateType":{"format":"yyyy-MM-dd","datePrecision":"MONTH_OPTIONAL"}}}}
+                ]}},
                 {"type":"Group","id":"g1","name":"Window","Group":{"elements":[
                   ${dateField("f17", "OpenedOn", "yyyy-MM-dd")},
                   ${dateField("f18", "ShutOn", "dd.MM.yyyy")}
@@ -138,8 +149,41 @@ class TemporalAggregateComponentsTest {
         assertEquals(expected, actual, "a base year supplements the year component")
     }
 
+
     /**
-     * A GROUP operand is judged on its expansion, and the two silences this family keeps.
+     * The chain's other reported class: these three carriers compare a DECODED date and a partial has none.
+     *
+     * The full-precision control is what keeps the refusals about the precision rather than about the model,
+     * and the group row is the one a leader-keyed reading gets wrong — `Assessments` declares its full date
+     * first and is refused anyway.
+     */
+    @Test
+    fun everyPartialPrecisionIsRefusedWhateverTheFormatSpells() {
+        val actual = mutableMapOf<String, List<String>>()
+        actual["MaxValue over a DAY_OPTIONAL operand, declared SECOND"] =
+            codes("MaxValue(StartOn, NotifiedOn) == [AuditOn]")
+        actual["MinValue over a MONTH_OPTIONAL operand"] = codes("MinValue(OnsetOn, StartOn) == [AuditOn]")
+        actual["the count carrier over a YEAR_OPTIONAL operand"] =
+            codes("NumberOfDifferentValues(CoverStart, StartOn) > 1")
+        actual["a partial LEADER, which has no leader to compare against"] =
+            codes("MaxValue(NotifiedOn, StartOn) == [AuditOn]")
+        actual["a group whose expansion holds one partial, declared SECOND"] =
+            codes("MaxValue(Assessments) == [AuditOn]")
+        actual["the full-precision control on the same carrier"] =
+            codes("MaxValue(StartOn, AuditOn) == [EndOn]")
+
+        val expected = mutableMapOf<String, List<String>>()
+        expected["MaxValue over a DAY_OPTIONAL operand, declared SECOND"] = listOf(partialRefused)
+        expected["MinValue over a MONTH_OPTIONAL operand"] = listOf(partialRefused)
+        expected["the count carrier over a YEAR_OPTIONAL operand"] = listOf(partialRefused)
+        expected["a partial LEADER, which has no leader to compare against"] = listOf(partialRefused)
+        expected["a group whose expansion holds one partial, declared SECOND"] = listOf(partialRefused)
+        expected["the full-precision control on the same carrier"] = emptyList()
+        assertEquals(expected, actual, "every partial precision is refused whatever the format spells")
+    }
+
+    /**
+     * A GROUP operand is judged on its expansion, and the silences this family keeps.
      *
      * The last row is the positive control: without it the silent rows would pass on a model that never
      * parsed.
@@ -151,8 +195,6 @@ class TemporalAggregateComponentsTest {
         actual["a group whose expansion disagrees"] = codes("MaxValue(Spread) == [AuditOn]")
         actual["a NUMBER after a date leader — A12's own class"] =
             codes("MaxValue(StartOn, Premium) == [AuditOn]")
-        actual["an operand declaring a PARTIAL precision — the sibling gate's"] =
-            codes("MaxValue(NotifiedOn, PeriodFrom) == [AuditOn]")
         actual["the operand-list Min, which carries the gate over OPERATIONS"] =
             codes("Min(StartOn, PeriodFrom) == [AuditOn]")
         actual["a complete date beside a year-month — the positive control"] =
@@ -164,8 +206,6 @@ class TemporalAggregateComponentsTest {
         // `MVK_DATE_AND_NONDATE` is A12's here and the builders pre-check it; this family stays silent rather
         // than naming the class the leader's arm draws.
         expected["a NUMBER after a date leader — A12's own class"] = emptyList()
-        // `MVK_PARTIAL_DATE_NOT_ALLOWED` runs per operand ahead of that operand's comparison.
-        expected["an operand declaring a PARTIAL precision — the sibling gate's"] = emptyList()
         // The operand-list carriers take OPERATIONS, whose types this reader does not infer.
         expected["the operand-list Min, which carries the gate over OPERATIONS"] = emptyList()
         expected["a complete date beside a year-month — the positive control"] = listOf(incompatible)

@@ -386,7 +386,7 @@ class CheckFamilyWiringTest {
             ("MVK_NO_WILDCARD" to "/Catalog/UnstarredRepetitionRead"),
         // A complete date beside a year-month: the aggregate types its list from the leader and then compares
         // what each operand's FORMAT spells, so two DateType fields are enough to reach the class.
-        CheckFamily.TEMPORAL_AGGREGATE_COMPONENTS to
+        CheckFamily.TEMPORAL_AGGREGATE_OPERANDS to
             ("MVK_DATEFORMATS_NOT_COMPATIBLE" to "/Catalog/LatestOfTwoComponentSets"),
         // Two keys in repeatable groups that declare the SAME index field, so they iterate jointly and A12
         // reaches the path question at all — index-free the pair is refused at the wildcard gate instead.

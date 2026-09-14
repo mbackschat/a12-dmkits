@@ -287,7 +287,7 @@ enum class CheckFamily {
      * list is typed from its leader and every later operand is then judged on what its FORMAT spells, so two
      * fields of one kind can disagree and two of different kinds can agree.
      */
-    TEMPORAL_AGGREGATE_COMPONENTS,
+    TEMPORAL_AGGREGATE_OPERANDS,
 
     /**
      * That a `Having` filter carries no repetition wildcard. Its own constant rather than part of
@@ -632,7 +632,7 @@ internal fun check(
         prepared.groupConditionWildcardFindings() +
         prepared.sumOfProductsOperandFindings() +
         prepared.operandListConstantFindings() +
-        prepared.temporalAggregateComponentFindings() +
+        prepared.temporalAggregateOperandFindings() +
         prepared.semanticIndexStructureFindings() +
         prepared.semanticIndexKeyFindings() +
         prepared.repetitionNotUniqueCombinationFindings() +
@@ -686,7 +686,7 @@ internal fun check(
             CheckFamily.FILTER_WILDCARD, CheckFamily.FILTER_BODY_ITERATION,
             CheckFamily.GROUP_CONDITION_WILDCARD,
             CheckFamily.SUM_OF_PRODUCTS_OPERANDS, CheckFamily.OPERAND_LIST_CONSTANT_BUDGET,
-            CheckFamily.TEMPORAL_AGGREGATE_COMPONENTS,
+            CheckFamily.TEMPORAL_AGGREGATE_OPERANDS,
             CheckFamily.SEMANTIC_INDEX_STRUCTURE,
             CheckFamily.SEMANTIC_INDEX_KEY,
             CheckFamily.REPETITION_NOT_UNIQUE_COMBINATION,
@@ -917,7 +917,7 @@ private val POSITIONED_CONDITION_CODES = setOf(
     "MVK_DATE_OR_TIME_EXTRACT_OP_NOT_ALLOWED", "MVK_NO_DIGIT_PATTERN",
     "MVK_INVALID_ITERATION_IN_FILTER_CONDITION", "MVK_NO_ITERATION_FOR_WILDCARD",
     "MVK_NOT_IN_GROUP", "MVK_NOT_IN_SAME_PATH", "MVK_NOT_IN_RULEGROUP",
-    "MVK_DATEFORMATS_NOT_COMPATIBLE",
+    "MVK_DATEFORMATS_NOT_COMPATIBLE", "MVK_PARTIAL_DATE_NOT_ALLOWED",
     "MVK_ERROR_FIELD_INVALID_INDEX", "MVK_ERROR_FIELD_INVALID_INDEX_TYPE",
 )
 
