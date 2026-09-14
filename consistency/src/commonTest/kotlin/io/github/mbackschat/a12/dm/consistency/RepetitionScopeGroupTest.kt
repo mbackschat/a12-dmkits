@@ -51,6 +51,25 @@ class RepetitionScopeGroupTest {
         assertEquals(expected, actual, "RepetitionNotUnique @From scope")
     }
 
+    /**
+     * A malformed KEY does not silence this family, and the choice is deliberate.
+     *
+     * <p>A12 checks the whole key list before it looks at the scope at all, so a group key beside a scope
+     * that does not repeat draws `MVK_NO_GROUPS_ALLOWED` and this class is never seen
+     * (`rulekit.validate.laws.RepetitionNotUniqueGateOrderLawsTest`). The scope's defect is nonetheless
+     * REAL and independent — fixing the key leaves it — so reporting it is the accumulation this checker is
+     * for, not a wrong class. The line it must not cross is a second "defect" that only exists because of
+     * the first, which is why the combination family stops counting a call inside a filter.
+     */
+    @Test
+    fun aMalformedKeyDoesNotSilenceTheScopeClass() {
+        assertEquals(
+            listOf(notRepeatable),
+            codes("../Crates/CrateRef", "RepetitionNotUnique(Crates @From Office)"),
+            "the scope still does not repeat once the key is fixed, so the finding stands",
+        )
+    }
+
     /** Every code this family draws, which is the only thing these models are built to defect in. */
     private fun codes(errorField: String, condition: String): List<String> =
         check(ModelSource(model(errorField, condition))).findings

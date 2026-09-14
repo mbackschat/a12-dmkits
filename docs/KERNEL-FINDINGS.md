@@ -7138,6 +7138,28 @@ Reported by the portable checker, which did not emit `MVK_SORT_FIELD_DUPLICATE` 
 
 *Locked by:* `rulekit.validate.laws.GroupOrderingMultipleDefectLawsTest`, mirrored by `consistency … GroupOrderingMultipleDefectTest`.
 
+## §9 supplement — `RepetitionNotUnique`'s COMPLETE gate order, and the two branches that never both run (measured, 2026-09-14) <a id="kf355"></a>
+
+> Fold: not-foldable — a diagnostic-class selection law, not an evaluation behaviour.
+
+**Eleven classes guard one construct, and until now the estate had measured them one containment assertion at a time across four files.** A containment claim cannot say which gate answers when two are violated, which is the only question that matters to a client-side checker deciding whether it may speak.
+
+**The KEY LIST is checked first, in this order**, every gate over the whole list: a CATEGORY projection `MVK_CATEGORY_NOT_ALLOWED` · a GROUP `MVK_NO_GROUPS_ALLOWED` · a WILDCARD `MVK_NO_WILDCARDS_ALLOWED` · a SEMANTIC INDEX `MVK_SEMANTIC_INDEX_NOT_ALLOWED` · a field without value validation `MVK_INVALID_RAW_TYPE`. **Every one of them reports ahead of every scope and placement gate** — measured on three shapes that break a key rule and a later rule at once.
+
+**Then exactly ONE of two branches runs, chosen by whether `@From` is present**, and that is the structural claim worth keeping:
+
+| with `@From` | without |
+|---|---|
+| scope is a FIELD → `MVK_NO_FIELDS_ALLOWED` | keys on PARALLEL paths → `MVK_NOT_IN_SAME_PATH` |
+| scope does not repeat → `MVK_GROUP_NOT_REPEATABLE` | a key outside the RULE GROUP → `MVK_NOT_IN_RULEGROUP` |
+| a key outside the scope → `MVK_NOT_IN_GROUP` | no repeatable group between key and rule group → `MVK_REPEATABLE_GROUP_MISSING` |
+
+Keys on parallel paths draw `MVK_NOT_IN_SAME_PATH` with no scope and `MVK_NOT_IN_GROUP` with one: the shared-path check is not run at all in the `@From` branch, rather than being outranked.
+
+**The carrier fact that had to be discovered before any placement row could be measured.** A key in a second repeatable group is read by a rule whose error field sits in the first, so unless the two groups are INDEX-KEYED on the same field the read iterates past the target and `MVK_NO_WILDCARD` answers first — on every placement row at once. That is [KF350](#kf350)'s gate again, and it is what [KF349](#kf349) recorded narrowly for `MVK_NOT_IN_GROUP`: the requirement is the carrier's, not that class's.
+
+Locked: `validate.laws.RepetitionNotUniqueGateOrderLawsTest`. `MVK_CATEGORY_NOT_ALLOWED` and `MVK_NOT_IN_RULEGROUP` had no measurement anywhere in this estate before it.
+
 ## §14 supplement — four `MVK_*` members are message LABELS and can never be a verdict, and one command enumerates them (source-verified, 2026-09-14) <a id="kf354"></a>
 
 > Fold: not-foldable — a property of A12's diagnostic vocabulary, not an evaluation behaviour.
