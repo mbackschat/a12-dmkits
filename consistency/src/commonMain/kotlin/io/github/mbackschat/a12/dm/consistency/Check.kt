@@ -288,6 +288,13 @@ enum class CheckFamily {
     H_MODEL_PATH_SUFFIX,
 
     /**
+     * That the two SCALAR field predicates are not handed a group. Its own constant rather than part of
+     * [GROUP_LIST_OPERANDS] because the carrier set is the mirror one and measured separately — the eight
+     * field-LIST carriers expand a group operand instead of refusing it.
+     */
+    FIELD_OPERAND_KIND,
+
+    /**
      * That a rule reading a repetition does not reach its error field only from ABOVE its own group — A12
      * cannot then say which repetition the error attaches to. Its own constant because the demand is on the
      * CONDITION's reach rather than on the target's existence, which `ERROR_FIELD_REFERENCE` already owns,
@@ -509,6 +516,7 @@ internal fun check(
         prepared.repetitionNotUniqueCombinationFindings() +
         prepared.parallelIterationUniquenessFindings() +
         prepared.hModelPathSuffixFindings() +
+        prepared.fieldOperandKindFindings() +
         prepared.errorTargetIterationFindings() +
         prepared.messageParameterFindings() +
         prepared.messageTextCharacterFindings() +
@@ -546,7 +554,7 @@ internal fun check(
             CheckFamily.FILTER_WILDCARD, CheckFamily.SEMANTIC_INDEX_KEY,
             CheckFamily.REPETITION_NOT_UNIQUE_COMBINATION,
             CheckFamily.PARALLEL_ITERATION_UNIQUENESS,
-            CheckFamily.H_MODEL_PATH_SUFFIX,
+            CheckFamily.H_MODEL_PATH_SUFFIX, CheckFamily.FIELD_OPERAND_KIND,
             CheckFamily.ERROR_TARGET_ITERATION,
             CheckFamily.MESSAGE_PARAMETER_REFERENCE, CheckFamily.MESSAGE_TEXT_CHARACTERS),
         gaps = prepared.gaps() + prepared.emptyFactBase() + findings.buildBlocked() +

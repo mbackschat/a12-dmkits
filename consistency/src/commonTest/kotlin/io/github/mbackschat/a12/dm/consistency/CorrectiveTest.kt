@@ -51,6 +51,10 @@ class CorrectiveTest {
               {"type":"Field","id":"f8","name":"ShelfCode","Field":{"fieldType":{"type":"StringType"}}},
               {"type":"Field","id":"f9","name":"ShelfQty","Field":{"fieldType":{"type":"NumberType"}}}
             ]}},
+            {"type":"Rule","id":"r12","name":"GroupWhereAFieldBelongs","Rule":{
+              "errorCondition":"FieldFilled(Note) And FieldFilled(Warehouse)",
+              "errorEntityRelPath":"../Note",
+              "errorCode":"C12","errorMessage":[{"locale":"en_US","text":"x"}]}},
             {"type":"Rule","id":"r11","name":"TwoUniquenessCalls","Rule":{
               "errorCondition":"RepetitionNotUnique(Shelves/ShelfCode) And RepetitionNotUnique(Shelves/ShelfQty)",
               "errorEntityRelPath":"../Shelves/ShelfCode",

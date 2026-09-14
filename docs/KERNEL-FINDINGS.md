@@ -7138,6 +7138,28 @@ Reported by the portable checker, which did not emit `MVK_SORT_FIELD_DUPLICATE` 
 
 *Locked by:* `rulekit.validate.laws.GroupOrderingMultipleDefectLawsTest`, mirrored by `consistency … GroupOrderingMultipleDefectTest`.
 
+## §9 supplement — which FIELD predicates refuse a GROUP operand: the two scalars, and only where the starring is already right (measured, 2026-09-14) <a id="kf357"></a>
+
+> Fold: not-foldable — a diagnostic-class selection law, not an evaluation behaviour.
+
+**A12's `CheckEntityUtils` carries the pair `checkIsField` / `checkIsGroup`, and only the second had ever been measured here** ([KF327](#kf327), the `MVK_NO_FIELDS_ALLOWED` direction). This is the first: `MVK_NO_GROUPS_ALLOWED`, locked by `rulekit.validate.laws.FieldOperandKindLawsTest`.
+
+**Two carriers refuse a group; eight expand it.** `FieldFilled` and `FieldNotFilled` take one entity and have nothing to expand it to. Every field-LIST carrier — `AllFieldsFilled`, `NoFieldFilled`, `AtLeastOneFieldFilled`, `NotAllFieldsFilled`, `FieldsNotCollectivelyFilled`, `NotExactlyOneFieldFilled`, `MoreThanOneFieldFilled`, `NumberOfFilledFields` — ADMITS a group operand and quantifies over its fields (`EntityUtils.expandToFieldList`). A family assembled from what the operators are CALLED would refuse those eight, which is [KF327](#kf327)'s trap arriving from the other side: there the name would have refused five.
+
+**Three gates outrun the kind gate, so the class is only reachable where the path is otherwise well formed.**
+
+| the operand, on `FieldFilled` | A12 |
+|---|---|
+| a field — the control | ADMITTED |
+| a group that neither repeats nor is the root | `MVK_NO_GROUPS_ALLOWED` |
+| a repeatable group read WITHOUT a star | `MVK_NO_WILDCARD` |
+| a star on a group that does not repeat | `MVK_INVALID_WILDCARD` |
+| the ROOT group | `MVK_ROOT_GROUP_REFERENCED` |
+| a correctly STARRED repeatable group | `MVK_NO_GROUPS_ALLOWED` |
+| a nested group below a correctly starred level | `MVK_NO_GROUPS_ALLOWED` |
+
+**The two wildcard rows are the discriminating pair, and they point opposite ways.** A star is neither necessary nor sufficient: adding one to a repeatable group moves the verdict from the wildcard class to the kind class, and adding one to a group that does not repeat moves it from the kind class to the other wildcard class. So a checker cannot treat the star as noise in either direction — the portable family tests that the operand's star COUNT equals the number of repeating levels on its path, and stays silent otherwise (`CheckFamily.FIELD_OPERAND_KIND`).
+
 ## §14 supplement — a path is resolved SEGMENT BY SEGMENT, and the root-group class turns on WHICH segment missed (measured, 2026-09-14) <a id="kf356"></a>
 
 > Fold: not-foldable — a diagnostic-class selection law, not an evaluation behaviour.

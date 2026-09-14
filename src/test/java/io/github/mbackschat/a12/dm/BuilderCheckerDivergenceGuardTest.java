@@ -114,6 +114,13 @@ class BuilderCheckerDivergenceGuardTest {
             // deciding a value POSITION needs the per-operator catalog this checker does not reproduce.
             Map.entry("MVK_INVALID_RAW_TYPE", Disposition.PROSE_ONLY),
 
+            // `StructuralKernelFix` carries a Hint and `DslRenderer`/`GroupRef` name the code in javadoc;
+            // nothing in the kits refuses on it, the typed surface simply having no `fieldFilled(GroupRef)`
+            // to call. A type-level absence states no code, so the checker owns the only enforcement —
+            // and it is the narrower of the two, staying silent wherever a wildcard or the root answers
+            // first (`FieldOperandKindLawsTest`).
+            Map.entry("MVK_NO_GROUPS_ALLOWED", Disposition.PROSE_ONLY),
+
             // Computation.Builder reads List<Alternative> with Optional<Condition>; the checker reads a
             // JsonArray where an ABSENT or null member is the empty precondition. They agree on all four
             // shapes (one unguarded, two mixed, two both-unguarded, three with the middle unguarded); the

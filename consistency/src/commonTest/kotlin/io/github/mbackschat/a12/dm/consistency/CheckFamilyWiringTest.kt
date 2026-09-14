@@ -99,6 +99,10 @@ class CheckFamilyWiringTest {
               {"type":"Field","id":"f32","name":"CrateRef","Field":{"fieldType":{"type":"StringType"}}},
               {"type":"Field","id":"f33","name":"ToteQty","Field":{"fieldType":{"type":"NumberType"}}}
             ]}},
+            {"type":"Rule","id":"r30","name":"GroupWhereAFieldBelongs","Rule":{
+              "errorCondition":"FieldFilled(Price) And FieldFilled(Shelf)",
+              "errorEntityRelPath":"../Price",
+              "errorCode":"C30","errorMessage":[{"locale":"en_US","text":"x"}]}},
             {"type":"Rule","id":"r29","name":"HModelSuffix","Rule":{
               "errorCondition":"FieldFilled(Price) And Sum(Pallets.*/PalletQty) > 0",
               "errorEntityRelPath":"../Price",
@@ -302,6 +306,10 @@ class CheckFamilyWiringTest {
         // a wildcard family's finding: the `.` in front of it is the whole defect.
         CheckFamily.H_MODEL_PATH_SUFFIX to
             ("MVK_POINT_IN_A12_MODEL" to "/Catalog/HModelSuffix"),
+        // `Shelf` a third time, now as a SCALAR field predicate's operand: it is the fixture's only group
+        // that neither repeats nor is the root, which is what leaves the kind gate the one that answers.
+        CheckFamily.FIELD_OPERAND_KIND to
+            ("MVK_NO_GROUPS_ALLOWED" to "/Catalog/GroupWhereAFieldBelongs"),
         // The rule sits in a repeatable group and reaches its error field only through the root, while
         // reading a sibling of that field — so A12 cannot say which pallet the error belongs to.
         CheckFamily.ERROR_TARGET_ITERATION to
