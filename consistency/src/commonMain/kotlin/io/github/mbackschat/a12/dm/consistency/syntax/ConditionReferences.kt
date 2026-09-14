@@ -42,6 +42,27 @@ internal fun namesRuleContext(text: String, language: ConditionLanguage): Boolea
     tokenize(text).any { it.kind == TokenKind.NAME && isRuleContext(it.text, language) }
 
 /**
+ * The references standing in the KEY position of a semantic index — the operand right after [keyword].
+ *
+ * [referencesIn] reports a key like any other name, which is right for binding and useless for a law about
+ * the key POSITION: `[Coverages/Limit For Insured]` names two entities and only the second one is subject to
+ * the key rules. So this runs the same scan and keeps the references that BEGIN where the keyword left off.
+ *
+ * A LITERAL key yields nothing, which is the correct answer rather than a gap: `[… For "C-1"]` puts a string
+ * in that position, and every key-kind law is about an entity key.
+ *
+ * [keyword] arrives already resolved for the model's condition language, since `For` and `Fuer` are different
+ * words and only the catalog knows which one this model speaks.
+ */
+internal fun semanticIndexKeysIn(text: String, language: ConditionLanguage, keyword: String): List<String> =
+    ReferenceScan(
+        tokenize(text),
+        CONDITION_KEYWORDS.getValue(language),
+        CONDITION_OPERATOR_KEYWORDS.getValue(language)[CUSTOM_CONDITION],
+        keyword,
+    ).semanticIndexKeys()
+
+/**
  * Whether the text puts a repetition wildcard on the RULE-CONTEXT entity.
  *
  * A12 refuses that with a class of its own, `MVK_INVALID_WILDCARD_FOR_RULEGROUP`
@@ -89,16 +110,31 @@ private class ReferenceScan(
     private val tokens: List<Token>,
     private val keywords: Map<String, KeywordKind>,
     private val customCondition: String?,
+    private val semanticIndex: String? = null,
 ) {
 
     private var at = 0
     private val found = LinkedHashSet<String>()
+    private val keys = LinkedHashSet<String>()
+
+    /** Where a reference would have to begin to be a semantic-index key: right after the last such keyword. */
+    private var keyBegins = -1
+
+    fun semanticIndexKeys(): List<String> {
+        references()
+        return keys.toList()
+    }
 
     fun references(): List<String> {
         while (at < tokens.size) {
             val keyword = keywordLength()
             when {
-                keyword > 0 -> at += keyword + boundNameLength(keyword)
+                keyword > 0 -> {
+                    if (semanticIndex != null && tokens[at].text == semanticIndex) {
+                        keyBegins = at + keyword
+                    }
+                    at += keyword + boundNameLength(keyword)
+                }
                 tokens[at].text == "->" -> skipCategoryName()
                 startsReference(at) -> readReference()
                 else -> at++
@@ -192,7 +228,11 @@ private class ReferenceScan(
         }
         while (end > begin && tokens[end - 1].text in PATH_SEPARATORS) end--
         if (names > 0) {
-            found += normalizedPath(tokens.subList(begin, end))
+            val path = normalizedPath(tokens.subList(begin, end))
+            found += path
+            if (begin == keyBegins) {
+                keys += path
+            }
         }
         // Even a run that named nothing consumed its first token, so the scan always advances.
         at = maxOf(end, begin + 1)

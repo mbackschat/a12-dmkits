@@ -7163,7 +7163,7 @@ Reported by the portable checker, which did not emit `MVK_SORT_FIELD_DUPLICATE` 
 
 **The key-kind gate reports ahead of every gate below it**, measured on two shapes that violate it and a later one at once: a group key in a group declaring no index field, and a group key whose indexed path is starred. Both draw `MVK_SEMANTIC_INDEX_NO_FIELD`.
 
-Locked: `validate.laws.SemanticIndexStructureLawsTest`.
+Locked: `validate.laws.SemanticIndexStructureLawsTest`. **The key-kind gate is reported by the portable checker since 2026-09-14** (`SEMANTIC_INDEX_KEY`), on the one shape it can decide without knowing the rule's anchoring: a key naming a group with nothing repeating on its path.
 
 ## §9 supplement — an UNSTARRED repetition read decides the class a flat error target draws, and referencedness does not enter it (measured, 2026-09-14) <a id="kf350"></a>
 

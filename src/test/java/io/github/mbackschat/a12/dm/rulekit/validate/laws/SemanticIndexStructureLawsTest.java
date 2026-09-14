@@ -174,10 +174,17 @@ class SemanticIndexStructureLawsTest {
                 indexed("[Sections/SectionLimit For Insured] > 0"));
         actual.put("a group key whose indexed path is starred",
                 firstFilled("Coverages*/Note For Insured"));
+        actual.put("a group key beside a SECOND index the chain would reject on its own",
+                indexed("[Coverages/Limit For Insured] > 0 And [Insured/InsuredName For \"X\"] == \"y\""));
 
         Map<String, String> expected = new LinkedHashMap<>();
         expected.put("a group key in a group that declares NO index field", "MVK_SEMANTIC_INDEX_NO_FIELD");
         expected.put("a group key whose indexed path is starred", "MVK_SEMANTIC_INDEX_NO_FIELD");
+        // The second index is malformed too — `Insured` declares no index field — and A12 stops at the
+        // first gate that answers, so this row is what licenses the checker to report the key class once
+        // rather than leaving a condition with two defects to a family that does not exist.
+        expected.put("a group key beside a SECOND index the chain would reject on its own",
+                "MVK_SEMANTIC_INDEX_NO_FIELD");
         assertEquals(expected, actual, "the key-kind gate reports ahead of the gates below it");
     }
 }

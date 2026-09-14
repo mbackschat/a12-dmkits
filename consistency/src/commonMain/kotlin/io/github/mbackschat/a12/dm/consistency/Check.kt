@@ -260,6 +260,13 @@ enum class CheckFamily {
     FILTER_WILDCARD,
 
     /**
+     * That a semantic index's KEY names a field rather than a group. Its own constant rather than part of
+     * [REPETITION_KEY_PLACEMENT] because the key of an index selects one repetition by VALUE, where a
+     * repetition-uniqueness key declares what makes rows distinct — different laws over the same word.
+     */
+    SEMANTIC_INDEX_KEY,
+
+    /**
      * That a rule reading a repetition does not reach its error field only from ABOVE its own group — A12
      * cannot then say which repetition the error attaches to. Its own constant because the demand is on the
      * CONDITION's reach rather than on the target's existence, which `ERROR_FIELD_REFERENCE` already owns,
@@ -477,6 +484,7 @@ internal fun check(
         prepared.repetitionKeyPlacementFindings() +
         prepared.repetitionScopeGroupFindings() +
         prepared.filterWildcardFindings() +
+        prepared.semanticIndexKeyFindings() +
         prepared.errorTargetIterationFindings() +
         prepared.messageParameterFindings() +
         prepared.messageTextCharacterFindings() +
@@ -511,7 +519,7 @@ internal fun check(
             CheckFamily.RAW_TYPE_LENGTH, CheckFamily.COMPUTED_TARGET_INDEX_FIELD,
             CheckFamily.COMPUTATION_PRECONDITION_FEATURES, CheckFamily.COMPUTATION_CYCLE,
             CheckFamily.REPETITION_KEY_PLACEMENT, CheckFamily.REPETITION_SCOPE_GROUP,
-            CheckFamily.FILTER_WILDCARD,
+            CheckFamily.FILTER_WILDCARD, CheckFamily.SEMANTIC_INDEX_KEY,
             CheckFamily.ERROR_TARGET_ITERATION,
             CheckFamily.MESSAGE_PARAMETER_REFERENCE, CheckFamily.MESSAGE_TEXT_CHARACTERS),
         gaps = prepared.gaps() + prepared.emptyFactBase() + findings.buildBlocked() +
