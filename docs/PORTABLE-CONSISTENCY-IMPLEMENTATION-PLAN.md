@@ -737,6 +737,16 @@ One cold adversarial review over the frozen range, as [§2](#2-execution-order-a
 
 **The catalog half is deliberately not delivered, with its re-open trigger.** A2 ruled that `operators.json` ships as-is because it is already data; that remains right, and it is not yet USEFUL — no finding this checker produces names an operator id, so 293 KB would be packaged with nothing to join it against. It lands when a finding carries an operator.
 
+### C record — the family residue, classified: what is left is the per-operator gap plus four dead codes (measured 2026-09-14)
+
+**The residue was re-derived after the seventh family and then CLASSIFIED, which is the step the earlier passes skipped.** Every `MVK_*` the ledger calls `kernel-delegated` minus every code the checker reports leaves 99; scoring each by mentions in a laws test and in KERNEL-FINDINGS leaves 32 with at most one. Of those, **8 already carry a disposition in their own ledger row** — dormant, unreachable, or no firing site in 30.8.1 — which an evidence count cannot see, so the ranking sends a reader at them repeatedly. Two were chased this way before the rows were read.
+
+**Of the 24 that remain, sixteen are per-operator operand TYPING** — `MVK_NON_NUMERIC`, `MVK_NO_DATE_CONSTANT`, `MVK_NO_STRING_OR_ENUM`, the `YES`/`NO` value pair, the tolerance and rounding kinds — which is the standing gap this plan names and does not reproduce. Three are enum/category typing, two are number-config, and the rest are one-offs already answered elsewhere. **So the relational and whole-rule seam that produced seven families is drained**, and the next family in this area needs either the per-operator catalog decision or a new seam, not another pass over this list.
+
+**Four of the 24 could never have been families at all, and finding that out closed a class** ([KF354](KERNEL-FINDINGS.md#kf354)): they are message LABELS a checker passes into a shared helper, so no model draws them. Two had been corrected individually, months apart, each as a surprise — the mechanism was described twice and named neither time.
+
+**The method correction to carry forward: rank by evidence, then READ the ledger row before predicting anything.** The row carries a disposition the count cannot, exactly as the earlier record found that the laws-file ranking measures where containment assertions live rather than where knowledge is missing. Both are the same mistake — trusting a derived score over the prose that owns the fact.
+
 ### C record — the seventh relational family, and the set-wide CONSTANT the estate had carried for months (2026-09-14)
 
 **The whole-rule chain read in the sixth record paid again, and this time the finding was in the SET rather than in any row.** Every measurement of parallel iteration in this estate — the accepted cross-group read, the pure-negative rejection, `IterationLawsTest`'s four rows, the new grid's five — pairs two index fields both declared STRING. So "two groups whose index field has the same NAME" and "…the same name and TYPE" were one thing across every row anyone had ever run here, and the record's own prose says "same-name/type" without any row having varied the type. Declaring the second key NUMBER draws `MVK_ERROR_FIELD_INVALID_INDEX_TYPE`, a class with no evidence anywhere, ahead of the iteration gates.
