@@ -203,6 +203,10 @@ class CheckFamilyWiringTest {
               "errorCondition":"FieldFilled(Price) And [Price] < [Reference]",
               "errorEntityRelPath":"../Price",
               "errorCode":"C47","errorMessage":[{"locale":"en_US","text":"x"}]}},
+            {"type":"Rule","id":"r52","name":"RoundedToTooManyPlaces","Rule":{
+              "errorCondition":"FieldFilled(Price) And RoundUpValue(UnitCount, 99) > 0",
+              "errorEntityRelPath":"../Price",
+              "errorCode":"C52","errorMessage":[{"locale":"en_US","text":"x"}]}},
             {"type":"Rule","id":"r51","name":"HoursAddedToAPureClock","Rule":{
               "errorCondition":"FieldFilled(Price) And [ShiftStart] > AddHours(ShiftStart, 1)",
               "errorEntityRelPath":"../Price",
@@ -488,6 +492,10 @@ class CheckFamilyWiringTest {
         // answers every calendar operator first, so the row fails if the two gates are ever reordered.
         CheckFamily.DATE_ARITHMETIC_OPERANDS to
             ("MVK_INVALID_TIME" to "/Catalog/HoursAddedToAPureClock"),
+        // A digit count above the ceiling, behind an operand the construct accepts — the row fails if the
+        // digits gate is ever moved ahead of the operand ones, which would change what a double defect says.
+        CheckFamily.ROUNDING_OPERANDS to
+            ("MVK_INVALID_DIGIT_FOR_ROUNDING" to "/Catalog/RoundedToTooManyPlaces"),
         // Two text declarations under an ordering operator — the one comparison in this fixture whose
         // operator demands more of its sides than they are.
         CheckFamily.COMPARISON_OPERATOR_OPERANDS to

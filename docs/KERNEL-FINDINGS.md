@@ -7142,6 +7142,30 @@ Reported by the portable checker, which did not emit `MVK_SORT_FIELD_DUPLICATE` 
 
 *Locked by:* `rulekit.validate.laws.GroupOrderingMultipleDefectLawsTest`, mirrored by `consistency … GroupOrderingMultipleDefectTest`.
 
+## §11 supplement — the six rounding operators are TWO constructs sharing one digits gate, asked last (source-verified + measured, 2026-09-14) <a id="kf393"></a>
+
+> Fold: not-foldable — a diagnostic-class law about one construct's operand shapes, not an evaluation behaviour.
+
+`CheckRundenOpImpl` and `CheckRundenOperOpImpl` differ in what their operand may BE, and end at the same `CheckOpUtils.isSpecificationForRounding`:
+
+| the spelling | the operand | the gates it meets, in order |
+|---|---|---|
+| `RoundUpValue`, `RoundDownValue`, `RoundAccountingValue` | an entity spec | `MVK_NO_GROUPS_ALLOWED`, `MVK_NO_WILDCARDS_ALLOWED`, `MVK_CATEGORY_NOT_ALLOWED`, `MVK_NO_NUMBER` |
+| `RoundUp`, `RoundDown`, `RoundAccounting` | an operation | `MVK_NO_CONST`, `MVK_NO_NUMBER` |
+| both, last | the digit count | `MVK_INVALID_DIGIT_FOR_ROUNDING` |
+
+**The digit domain is `0..14` inclusive**, the raise dated `A12K-3691` in the kernel source, and it holds identically across all six operators — measured on the full cross product rather than on one spelling.
+
+**Neither operand refusal set is derivable from the other.** The bare spelling refuses a CONSTANT, a shape the field spelling cannot express; the field spelling refuses a group, a wildcard and a category, none of which is an operation. A consumer treating the six as one operator is wrong on both halves.
+
+**The digits gate is asked LAST on both constructs**, so an out-of-range count is invisible behind an operand the construct already refuses — `RoundUpValue(ATextField, 99)` is `MVK_NO_NUMBER` and `RoundUp(5, 99)` is `MVK_NO_CONST`. That fixes the gate's POSITION rather than only its class, and it is what the portable family's walk order reproduces.
+
+**The comparand is a confound here too, on the SCALE axis.** A rounded result's scale is the digits argument, so comparing it to a field with a scale of its own draws `MVK_INVALID_COMPARE_DEC_PLACES` from the number-comparison gate and no rounding gate is reached at all — which masked every admitted cell of the first grid run. Every row is compared against a literal instead ([KF249](#kf249) is the same confound on the kind axis).
+
+Reported by the portable checker (`CheckFamily.ROUNDING_OPERANDS`), with two disclosed under-reports: a category operand, which reduces to no entity spec, and a digits argument written as anything but plain digits, whose grammar-level treatment is not measured.
+
+*Locked by:* `rulekit.validate.laws.RoundingOperandLawsTest`, mirrored by `consistency.RoundingOperandsTest`.
+
 ## §6 supplement — date arithmetic asks FOUR questions of its operand, and the ORDER is what makes two of the classes reachable (source-verified + measured, 2026-09-14) <a id="kf392"></a>
 
 > Fold: not-foldable — a diagnostic-class law about one construct's operand types, not an evaluation behaviour.

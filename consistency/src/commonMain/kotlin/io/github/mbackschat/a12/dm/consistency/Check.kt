@@ -424,6 +424,13 @@ enum class CheckFamily {
     DATE_ARITHMETIC_OPERANDS,
 
     /**
+     * What the six rounding operators demand of the value they round and of the digit count. One constant
+     * for the six classes because the two constructs share the digits gate and differ only in which grammar
+     * rule their operand is — a split by class would cut the shared gate in half.
+     */
+    ROUNDING_OPERANDS,
+
+    /**
      * What each comparison OPERATOR demands of the two sides it joins. One constant for the three classes
      * because `CheckVergleichsBedingungImpl.check` asks them in a fixed order ahead of every agreement
      * gate, so which answers depends on where that walk stops.
@@ -759,6 +766,7 @@ internal fun check(
         prepared.fieldValuesNotUniqueOperandKindFindings() +
         prepared.fieldListOperationOperandFindings() +
         prepared.dateArithmeticOperandFindings() +
+        prepared.roundingOperandFindings() +
         prepared.comparisonOperatorOperandFindings() +
         prepared.booleanComparisonAgreementFindings() +
         prepared.stringEnumComparisonAgreementFindings() +
@@ -823,7 +831,7 @@ internal fun check(
             CheckFamily.ENTITY_LIST_PRE_GATES,
             CheckFamily.FIELD_VALUES_NOT_UNIQUE_OPERAND_KIND,
             CheckFamily.FIELD_LIST_OPERATION_OPERANDS,
-            CheckFamily.DATE_ARITHMETIC_OPERANDS,
+            CheckFamily.DATE_ARITHMETIC_OPERANDS, CheckFamily.ROUNDING_OPERANDS,
             CheckFamily.COMPARISON_OPERATOR_OPERANDS, CheckFamily.BOOLEAN_COMPARISON_AGREEMENT,
             CheckFamily.STRING_ENUM_COMPARISON_AGREEMENT, CheckFamily.NUMBER_COMPARISON_SCALE,
             CheckFamily.TEMPORAL_COMPARISON_AGREEMENT, CheckFamily.PATTERN_COMPARISON_OPERANDS,
