@@ -173,6 +173,10 @@ class CheckFamilyWiringTest {
               "errorCondition":"FieldFilled(Price) And Sum(Pallets.*/PalletQty) > 0",
               "errorEntityRelPath":"../Price",
               "errorCode":"C29","errorMessage":[{"locale":"en_US","text":"x"}]}},
+            {"type":"Rule","id":"r49","name":"TextAgainstANumber","Rule":{
+              "errorCondition":"FieldFilled(Price) And [Price] == [Amount]",
+              "errorEntityRelPath":"../Price",
+              "errorCode":"C49","errorMessage":[{"locale":"en_US","text":"x"}]}},
             {"type":"Rule","id":"r48","name":"ConfirmAgainstFalse","Rule":{
               "errorCondition":"FieldFilled(Price) And [Signed] == False",
               "errorEntityRelPath":"../Price",
@@ -442,6 +446,10 @@ class CheckFamilyWiringTest {
         // the row fails the moment the two kinds are collapsed.
         CheckFamily.BOOLEAN_COMPARISON_AGREEMENT to
             ("MVK_INVALID_COMPARE_TO_YES" to "/Catalog/ConfirmAgainstFalse"),
+        // A text declaration against a number one — the kind question alone, with no enumeration in it, so
+        // the row cannot be satisfied by the domain half of the same walk.
+        CheckFamily.STRING_ENUM_COMPARISON_AGREEMENT to
+            ("MVK_INVALID_COMPARE_TO_ENUM_OR_STRING" to "/Catalog/TextAgainstANumber"),
         // A repeatable group read without a star into an error field the root holds: the target's own
         // coordinates cannot pick a repetition of `Crates`, and nothing about the operator is at fault —
         // which is what makes the row about the LEVEL rather than about the predicate reading it.

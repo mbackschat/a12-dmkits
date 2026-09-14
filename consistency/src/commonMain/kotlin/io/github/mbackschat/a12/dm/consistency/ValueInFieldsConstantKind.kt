@@ -151,7 +151,7 @@ private fun firstOffendingField(
             return null
         }
         if (arm == ConstantArm.TEXT && type == "EnumerationType") {
-            val domain = field.enumerationBody()?.declaredValues() ?: return null
+            val domain = field.enumerationBody()?.declaredEnumValues()?.toSet() ?: return null
             if (stringConstantOf(constantText) !in domain) {
                 return null
             }
@@ -198,12 +198,4 @@ private fun armOf(constantText: String, spellings: ConstantSpellings): ConstantA
 private fun stringConstantOf(constantText: String): String? {
     val token = tokenize(constantText).singleOrNull()?.takeIf { it.kind == TokenKind.STRING } ?: return null
     return token.text.removeSurrounding("\"").replace("\"\"", "\"")
-}
-
-/** The values a constant may take, or null when the declaration is a shape this reader does not judge. */
-private fun JsonObject.declaredValues(): Set<String>? {
-    val values = this["values"] as? JsonArray ?: return null
-    return values.map { entry ->
-        ((entry as? JsonObject)?.get("value") as? JsonPrimitive)?.contentOrNull ?: return null
-    }.toSet()
 }

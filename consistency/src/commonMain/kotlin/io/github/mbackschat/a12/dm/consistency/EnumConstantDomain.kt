@@ -65,7 +65,7 @@ private fun PreparedModel.constantFindings(
     val target = elements.firstOrNull { it.path == resolved.path && it.declaredKind == DeclaredKind.FIELD }
         ?: return emptyList()
     val enumeration = target.enumerationBody() ?: return emptyList()
-    val domain = enumeration.declaredValues() ?: return emptyList()
+    val domain = enumeration.declaredEnumValues()?.toSet() ?: return emptyList()
     return call.operands.drop(1).mapNotNull { operand ->
         val constant = operand.literal ?: return@mapNotNull null
         if (constant in domain) {
@@ -82,16 +82,3 @@ private fun PreparedModel.constantFindings(
     }
 }
 
-/**
- * The values a constant may take, or null when the declaration is a shape no row covers.
- *
- * An unreadable `values` belongs to [enumCategoryFindings] and A12 answers it with a class of its own, so it
- * makes the domain unreadable here rather than silently shortening it — a shortened domain would turn a
- * neighbouring defect into a wrong constant class on every literal in the list.
- */
-private fun JsonObject.declaredValues(): Set<String>? {
-    val values = this["values"] as? JsonArray ?: return null
-    return values.map { entry ->
-        ((entry as? JsonObject)?.get("value") as? JsonPrimitive)?.contentOrNull ?: return null
-    }.toSet()
-}

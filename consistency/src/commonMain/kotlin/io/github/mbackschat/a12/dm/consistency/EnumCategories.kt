@@ -36,7 +36,7 @@ import kotlinx.serialization.json.JsonPrimitive
 fun PreparedModel.enumCategoryFindings(): List<Finding> =
     elements.filter { it.declaredKind == DeclaredKind.FIELD }.flatMap { field ->
         val body = field.enumerationBody() ?: return@flatMap emptyList()
-        val values = body.declaredValues()?.takeIf { it.isNotEmpty() } ?: return@flatMap emptyList()
+        val values = body.declaredEnumValues()?.takeIf { it.isNotEmpty() } ?: return@flatMap emptyList()
         val categories = body["categories"] as? JsonArray ?: return@flatMap emptyList()
         categories.flatMap { category ->
             field.misalignment(values, category) + field.spoiltPairing(values, category)
@@ -76,7 +76,7 @@ internal fun DeclaredElement.enumerationBody(): JsonObject? {
  * A12 has nothing to say about it either, so reporting a gap there would describe every ordinary enum.
  */
 private fun JsonObject.unreadableHalf(): String? {
-    val values = declaredValues()
+    val values = declaredEnumValues()
         ?: return "its `values` carries an entry this checker cannot read as a string `value`, and " +
             "refusing a shape nobody has put to A12 would rest a rejection on a reading"
     if (values.isEmpty()) {
@@ -98,8 +98,13 @@ private fun JsonObject.unreadableHalf(): String? {
     }
 }
 
-/** The enum's own value spellings, in declaration order, or null when the list is not the measured shape. */
-private fun JsonObject.declaredValues(): List<String>? {
+/**
+ * The enum's own value spellings, in declaration order, or null when the list is not the measured shape.
+ *
+ * Null rather than a short list is what three families depend on: a shortened domain turns a neighbouring
+ * `values` defect into a wrong constant class on every literal compared against it.
+ */
+internal fun JsonObject.declaredEnumValues(): List<String>? {
     val declared = this["values"] as? JsonArray ?: return null
     return declared.map { entry ->
         val value = ((entry as? JsonObject)?.get("value") as? JsonPrimitive)?.takeIf { it.isString }

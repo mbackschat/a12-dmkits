@@ -125,6 +125,13 @@ class BuilderCheckerDivergenceGuardTest {
             Map.entry("MVK_INVALID_COMPARE_TO_YES", Disposition.SAME_LAW_SEPARATE_CARRIERS),
             Map.entry("MVK_INVALID_COMPARE_TO_YESNO", Disposition.SAME_LAW_SEPARATE_CARRIERS),
 
+            // The kit only NAMES it: `Computation`'s javadoc cites it as the class a kind mismatch draws on
+            // the COMPUTATION carrier, and the builder's own kind pre-check reports its own message rather
+            // than this code. The checker owns the only statement of it that carries the code, on the
+            // COMPARISON carrier, and is the narrower of the two — a `CustomType` side is left unjudged
+            // because its base type is unmeasured there.
+            Map.entry("MVK_INVALID_COMPARE_TO_ENUM_OR_STRING", Disposition.PROSE_ONLY),
+
             // Both enforce A12's group-count law over carriers that cannot share a reader: `CountAggregate`
             // refuses the count from its own typed operands, `EntityListArity` from stored paths and the
             // declared kind each resolves to. Neither refuses what A12 admits.

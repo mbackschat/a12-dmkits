@@ -410,6 +410,14 @@ enum class CheckFamily {
     BOOLEAN_COMPARISON_AGREEMENT,
 
     /**
+     * What a text or enumeration side of a comparison needs of its partner, and which written-out values an
+     * enumeration admits. One constant for the two classes because `CheckVergleichsBedingungImpl.checkStringOrEnumType`
+     * asks them in one walk per side, the domain question only where the partner is written out — so which
+     * answers depends on where that walk stops.
+     */
+    STRING_ENUM_COMPARISON_AGREEMENT,
+
+    /**
      * That every repetition an operand crosses unstarred is one the target's own coordinates address — or,
      * where it is not, that the two branches iterate JOINTLY on a shared index field. One constant for the
      * five classes of that walk because A12 asks them as one gate chain per level, and because which class
@@ -697,6 +705,7 @@ internal fun check(
         prepared.entityListArityFindings() +
         prepared.comparisonOperatorOperandFindings() +
         prepared.booleanComparisonAgreementFindings() +
+        prepared.stringEnumComparisonAgreementFindings() +
         prepared.operandRepetitionScopeFindings() +
         prepared.dateConstructionSlotFindings() +
         prepared.hModelPathSuffixFindings() +
@@ -753,6 +762,7 @@ internal fun check(
             CheckFamily.CALCULATION_OPERATOR_ARITY, CheckFamily.VALUE_IN_FIELDS_CONSTANT_KIND,
             CheckFamily.VALUE_LIST_QUANTIFIER_OPERAND_KIND, CheckFamily.ENTITY_LIST_ARITY,
             CheckFamily.COMPARISON_OPERATOR_OPERANDS, CheckFamily.BOOLEAN_COMPARISON_AGREEMENT,
+            CheckFamily.STRING_ENUM_COMPARISON_AGREEMENT,
             CheckFamily.OPERAND_REPETITION_SCOPE, CheckFamily.DATE_CONSTRUCTION_SLOT,
             CheckFamily.H_MODEL_PATH_SUFFIX, CheckFamily.FIELD_OPERAND_KIND,
             CheckFamily.FILTERED_OPERAND_KIND, CheckFamily.CATEGORY_REFERENCE,

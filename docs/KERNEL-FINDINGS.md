@@ -7142,6 +7142,27 @@ Reported by the portable checker, which did not emit `MVK_SORT_FIELD_DUPLICATE` 
 
 *Locked by:* `rulekit.validate.laws.GroupOrderingMultipleDefectLawsTest`, mirrored by `consistency … GroupOrderingMultipleDefectTest`.
 
+## §1 supplement — a comparison's text/enumeration arm asks a KIND question and a DOMAIN one, and they never meet (source-verified + measured, 2026-09-14) <a id="kf384"></a>
+
+> Fold: not-foldable — a diagnostic-class law about comparison operands, not an evaluation behaviour.
+
+`CheckVergleichsBedingungImpl.checkStringOrEnumType` is called TWICE, once per side, after the date, date-range and boolean arms of [KF383](#kf383). Locked: `rulekit.validate.laws.StringEnumComparisonAgreementLawsTest` (23 rows), mirrored by `consistency.StringEnumComparisonAgreementTest`.
+
+| the question | class |
+|---|---|
+| is a text or enumeration side's partner a NUMBER? | `MVK_INVALID_COMPARE_TO_ENUM_OR_STRING` |
+| is a written-out value opposite an enumeration one of its declared values? | `MVK_INVALID_STRING_CONSTANT_FOR_ENUM_COMPARISON` |
+| does a DISPLAY-BEARING enumeration meet a text field or a textless enumeration? | `MVK_INVALID_COMPARE_ENUM_TO_STRING` |
+| do two display-bearing enumerations map a value differently in a shared locale? | `MVK_INVALID_COMPARE_ENUM_TO_ENUM` |
+
+**The first two questions never contend with the last two**, which is what makes them separable rather than merely distinct. The kind question fires only where the partner is a NUMBER, and the display questions are reachable only where both sides are text-or-enum — disjoint by construction. And a written-out value opposite an enumeration takes `checkEnumValue` and returns, so the display branch beside it is the `else` arm and is never entered on that shape. Both halves measured against a display-bearing enumeration, which is the carrier that would have collapsed them if they did contend.
+
+**Because the walk runs once PER SIDE, the text side raises the kind class wherever it sits.** `[Quantity] == "a"` is refused exactly as `[GiftNote] == 1` is: the forward call sees NUMBER on the left and says nothing, the backward call sees the text and answers. A reading that asked only about the left operand would admit half of these.
+
+**The domain question reads the STORED values and never the DISPLAY ones.** An enumeration declaring `BASIC` with the label `Basic plan` refuses `"Basic plan"` and admits `"BASIC"` — the discriminating row, because a labelled enumeration is exactly where the two readings diverge.
+
+**The arms ahead of it answer first, each measured rather than assumed**: a date partner is `MVK_INVALID_COMPARE_TO_DATE`, a boolean one `MVK_INVALID_COMPARE_TO_YESNO`, an ordering operator `MVK_INVALID_TYPE_FOR_COMPARISON`, and two written-out values `MVK_INVALID_COMPARE_TO_CONST`. A text or enumeration side cannot survive the ordering gate at all, so equality is this arm's whole reachable population.
+
 ## §1 supplement — the two boolean KINDS answer with different classes, and the confirm arm narrows again under EQUALITY (source-verified + measured, 2026-09-14) <a id="kf383"></a>
 
 > Fold: not-foldable — a diagnostic-class law about comparison operands, not an evaluation behaviour.
