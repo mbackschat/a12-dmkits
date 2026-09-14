@@ -203,6 +203,10 @@ class CheckFamilyWiringTest {
               "errorCondition":"FieldFilled(Price) And [Price] < [Reference]",
               "errorEntityRelPath":"../Price",
               "errorCode":"C47","errorMessage":[{"locale":"en_US","text":"x"}]}},
+            {"type":"Rule","id":"r54","name":"DaysFromAReference","Rule":{
+              "errorCondition":"FieldFilled(Price) And DifferenceInDays(Reference, TravelDate) > 0",
+              "errorEntityRelPath":"../Price",
+              "errorCode":"C54","errorMessage":[{"locale":"en_US","text":"x"}]}},
             {"type":"Rule","id":"r53","name":"LengthOfANumber","Rule":{
               "errorCondition":"FieldFilled(Price) And Length(UnitCount) > 0",
               "errorEntityRelPath":"../Price",
@@ -504,6 +508,10 @@ class CheckFamilyWiringTest {
         // opposite of `FieldValueAsString`'s, so the row fails if the two arms are ever merged.
         CheckFamily.FIELD_VALUE_OPERATOR_OPERANDS to
             ("MVK_NO_STRING" to "/Catalog/LengthOfANumber"),
+        // A TEXT field in a date slot, beside a date one — so the slot's own kind gate is what answers and
+        // the row fails if the family ever starts judging the carrier's format gate as well.
+        CheckFamily.DATE_ARGUMENT_SLOT to
+            ("MVK_NO_DATE" to "/Catalog/DaysFromAReference"),
         // Two text declarations under an ordering operator — the one comparison in this fixture whose
         // operator demands more of its sides than they are.
         CheckFamily.COMPARISON_OPERATOR_OPERANDS to

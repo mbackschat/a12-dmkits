@@ -158,6 +158,17 @@ class BuilderCheckerDivergenceGuardTest {
             // non-leading one with the homogeneity class (KF399, measured). The kit still refuses the same
             // models; only the code named in its message is wrong off the leader. Left to the kit's own
             // slice rather than folded in here, and recorded so the row is not read as full agreement.
+            // Both estates enforce A12's date-argument kind gate, over carriers that cannot share a reader:
+            // `TemporalOperands.refuseMeasuredNonPointKind` refuses a typed `Calculation` by its `ValueKind`,
+            // while `DateArgumentSlot` reads the declared field type out of stored DM-JSON. Each denominator
+            // was measured against the kernel separately and they name the same seven kinds — number, string,
+            // enumeration, boolean, confirm, date range, custom — so neither refuses anything A12 admits, and
+            // both leave the unresolved declarations (the kit's UNKNOWN, the checker's TypeDef/Unspecified)
+            // kernel-arbitrated. Their REACH differs and is meant to: the kit gates the two extraction
+            // carriers it can see from a bare `Calculation`, the checker gates every operator that takes the
+            // slot (KF400).
+            Map.entry("MVK_NO_DATE", Disposition.SAME_LAW_SEPARATE_CARRIERS),
+
             Map.entry("MVK_NUMBER_AND_NON_NUMBER", Disposition.SAME_LAW_SEPARATE_CARRIERS),
             Map.entry("MVK_ONLY_STRING_ENUM_NUMBER_CMP_DATE_ALLOWED", Disposition.SAME_LAW_SEPARATE_CARRIERS),
 

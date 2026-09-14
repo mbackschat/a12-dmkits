@@ -101,6 +101,18 @@ class CorrectiveTest {
             {"type":"Rule","id":"r10","name":"KeyWithNoRepetition","Rule":{
               "errorCondition":"RepetitionNotUnique(Note)","errorEntityRelPath":"../Note",
               "errorCode":"C10","errorMessage":[{"locale":"en_US","text":"x"}]}},
+            {"type":"Rule","id":"r25","name":"NestedNumberInADateSlot","Rule":{
+              "errorCondition":"FieldFilled(Note) And DifferenceInDays(YearFromDate(Season), Season) > 0",
+              "errorEntityRelPath":"../Note",
+              "errorCode":"C25","errorMessage":[{"locale":"en_US","text":"x"}]}},
+            {"type":"Rule","id":"r24","name":"UnparseableDateConstant","Rule":{
+              "errorCondition":"FieldFilled(Note) And DifferenceInDays(\"soon\", Season) > 0",
+              "errorEntityRelPath":"../Note",
+              "errorCode":"C24","errorMessage":[{"locale":"en_US","text":"x"}]}},
+            {"type":"Rule","id":"r23","name":"TextInADateSlot","Rule":{
+              "errorCondition":"FieldFilled(Note) And DifferenceInDays(Note, Season) > 0",
+              "errorEntityRelPath":"../Note",
+              "errorCode":"C23","errorMessage":[{"locale":"en_US","text":"x"}]}},
             {"type":"Rule","id":"r22","name":"DistinctUnclaimedLeader","Rule":{
               "errorCondition":"FieldFilled(Note) And NumberOfDifferentValues(Perishable, Note) > 0",
               "errorEntityRelPath":"../Note",

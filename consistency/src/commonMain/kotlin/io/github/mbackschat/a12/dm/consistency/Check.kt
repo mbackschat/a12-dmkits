@@ -538,6 +538,14 @@ enum class CheckFamily {
     SCALAR_VALUE_LIST_GATES,
 
     /**
+     * That every date operator's DATE-ARGUMENT slot holds something the slot takes — a date-kind field
+     * without a star, one of the four date-constant shapes, or a date-valued extraction. Its own constant
+     * because `CheckDatumAngabeImpl` is a SHARED checker: the gates belong to the slot rather than to any
+     * operator, so folding them into a carrier's family would need one copy per carrier.
+     */
+    DATE_ARGUMENT_SLOT,
+
+    /**
      * That a rule reading a repetition does not reach its error field only from ABOVE its own group — A12
      * cannot then say which repetition the error attaches to. Its own constant because the demand is on the
      * CONDITION's reach rather than on the target's existence, which `ERROR_FIELD_REFERENCE` already owns,
@@ -790,6 +798,7 @@ internal fun check(
         prepared.filteredOperandKindFindings() +
         prepared.categoryReferenceFindings() +
         prepared.scalarValueListGateFindings() +
+        prepared.dateArgumentSlotFindings() +
         prepared.errorTargetIterationFindings() +
         prepared.messageParameterFindings() +
         prepared.messageTextCharacterFindings() +
@@ -849,7 +858,7 @@ internal fun check(
             CheckFamily.OPERAND_REPETITION_SCOPE, CheckFamily.DATE_CONSTRUCTION_SLOT,
             CheckFamily.H_MODEL_PATH_SUFFIX, CheckFamily.FIELD_OPERAND_KIND,
             CheckFamily.FILTERED_OPERAND_KIND, CheckFamily.CATEGORY_REFERENCE,
-            CheckFamily.SCALAR_VALUE_LIST_GATES,
+            CheckFamily.SCALAR_VALUE_LIST_GATES, CheckFamily.DATE_ARGUMENT_SLOT,
             CheckFamily.ERROR_TARGET_ITERATION,
             CheckFamily.MESSAGE_PARAMETER_REFERENCE, CheckFamily.MESSAGE_TEXT_CHARACTERS),
         gaps = prepared.gaps() + prepared.emptyFactBase() + findings.buildBlocked() +

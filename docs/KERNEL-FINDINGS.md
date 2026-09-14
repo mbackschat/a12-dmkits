@@ -7142,6 +7142,44 @@ Reported by the portable checker, which did not emit `MVK_SORT_FIELD_DUPLICATE` 
 
 *Locked by:* `rulekit.validate.laws.GroupOrderingMultipleDefectLawsTest`, mirrored by `consistency … GroupOrderingMultipleDefectTest`.
 
+## §6 supplement — every date operator shares ONE argument slot, whose kind gate takes all four temporal declarations and whose constant gate takes four shapes (source-verified + measured, 2026-09-14) <a id="kf400"></a>
+
+> Fold: not-foldable — a diagnostic-class law about a shared operand slot, not an evaluation behaviour.
+
+`CheckDatumAngabeImpl.check` is the checker for the grammar's `datumAngabe`, which the difference, shift and extraction operators all hand their operands to, so the gates below are the same bytes on every one of them. It branches on which of the slot's forms was written, and each form asks a different question:
+
+| the form | the gate | class |
+|---|---|---|
+| a field spec | a category access | `MVK_CATEGORY_NOT_ALLOWED` |
+| | it names a group | `MVK_NO_GROUPS_ALLOWED` |
+| | it carries a repetition star | `MVK_NO_WILDCARDS_ALLOWED` |
+| | its declaration is not a date | `MVK_NO_DATE` |
+| a string literal | it is none of the four accepted shapes | `MVK_INVALID_DATE_STRING` |
+| a nested extraction | the extraction does not itself yield a date | `MVK_INVALID_DATE_FOR_OP` |
+
+**The kind gate takes ALL FOUR temporal declarations.** `FieldUtils.isDate` tests `IDateType`, which covers time, stamp and fragment as well as date — a name that settles nothing, so each member is measured. A `TimeType` and a `DateFragmentType` pass this gate and are refused one layer up by the carrier's own format gate as `MVK_WRONG_DATE_FORMAT_FOR_OP`; the `DateRangeType` is the only temporal declaration the slot itself refuses, as `MVK_NO_DATE`. Those four rows are what separate the two layers, and a reader that folded them would name this class on a model A12 refuses with the other.
+
+**The constant gate accepts FOUR shapes, not the two the kernel's own javadoc names.** `DateUtils.isStringAValidDate` switches on the string's LENGTH and then matches exactly one pattern:
+
+| length | shape | example |
+|---|---|---|
+| 6 | `dd.MM.` — with a TRAILING DOT | `01.02.` |
+| 8 | `HH:mm:ss` | `10:30:00` |
+| 10 | `dd.MM.yyyy` | `01.02.2024` |
+| 19 | `dd.MM.yyyy'T'HH:mm:ss` | `01.02.2024T10:30:00` |
+
+Because the length picks the pattern and nothing else does, a 19-character stamp spelled with a SPACE instead of the `T` reaches the date-time pattern and fails it, one character from the row above; and the year-less shape without its trailing dot is not a shorter date but a length no case handles. The parse behind the pattern is non-lenient, so `32.01.2024` and `29.02.2023` match their pattern and are still refused by the calendar.
+
+**The year-less constant is NOT year-agnostic.** `29.02.` is refused, because `SimpleDateFormat` fills the missing year with the epoch's — 1970, not a leap year. Measured rather than reasoned: the opposite was the intuitive prediction and was wrong.
+
+**The slot accepts the year-less spelling; the MIXTURE is refused one layer up.** `"01.02."` against a dated field draws `MVK_DATE_WITH_AND_WITHOUT_YEAR`, and against another year-less constant is admitted — the same layering as the temporal-kind rows, and the pair that shows it.
+
+**The nested form has its own gate**: an extraction standing in a date slot must itself yield a date, which the seven component extractors (`YearFromDate`, `HoursFromTime`, …) do not — they yield a number, and draw `MVK_INVALID_DATE_FOR_OP`. `DateFromDateTime` and `TimeFromDateTime` are admitted.
+
+Reported by the portable checker (`CheckFamily.DATE_ARGUMENT_SLOT`, keyed on the SLOT rather than the operator, so a new date operator needs one map entry rather than a table of its own). Silent on the two classes A12 draws one layer up, which no family owns; on a category access, whose operand the shared reducer declines before any family sees the call — an under-report with no owner; on a `TypeDefType` or `UnspecifiedType` declaration, whose effective type this reader does not resolve; and on a slot whose repetition stars do not match its repeating levels, where a wildcard-validity class answers ahead of everything here.
+
+*Locked by:* `rulekit.validate.laws.DateArgumentSlotLawsTest`, mirrored by `consistency.DateArgumentSlotTest`.
+
 ## §9 supplement — `NumberOfDifferentValues` types its list from the LEADING field, and the leader NO arm claims has a class of its own (source-verified + measured, 2026-09-14) <a id="kf399"></a>
 
 > Fold: not-foldable — a diagnostic-class law about one operation's operand list, not an evaluation behaviour.
