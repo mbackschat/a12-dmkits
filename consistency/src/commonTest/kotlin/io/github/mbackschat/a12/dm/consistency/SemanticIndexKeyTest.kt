@@ -74,19 +74,47 @@ class SemanticIndexKeyTest {
     @Test
     fun theShapesItDeliberatelyDoesNotReport() {
         val actual = mutableMapOf<String, List<String>>()
-        actual["a REPEATABLE group as the key"] = indexed("[Coverages/Limit For Coverages] > 0")
-        actual["a non-repeatable group INSIDE a repetition as the key"] =
-            indexed("[Coverages/Limit For Coverages/Excess] > 0")
         actual["a key that does not resolve"] = indexed("[Coverages/Limit For NoSuchThing] > 0")
+        actual["a STARRED key, which the structure family names"] =
+            indexed("[Coverages/Limit For Coverages*/CoverageCode] > 0")
 
         val expected = mutableMapOf<String, List<String>>()
-        expected["a REPEATABLE group as the key"] = emptyList()
-        // Silent for the same reason one level down: the read iterates because something above it repeats,
-        // and the iteration gate answers before the key's kind is ever examined.
-        expected["a non-repeatable group INSIDE a repetition as the key"] = emptyList()
         expected["a key that does not resolve"] = listOf("MVK_INVALID_ENTITY")
+        expected["a STARRED key, which the structure family names"] =
+            listOf("MVK_SEMANTIC_INDEX_WITH_WILDCARD")
         assertEquals(expected, actual, "the semantic-index key shapes deliberately not reported")
     }
+
+    /**
+     * The iteration gate, which A12 asks of the key before anything else and answers by RENAMING.
+     *
+     * Every row mirrors one measured by `rulekit.validate.laws.SemanticIndexStructureLawsTest`; the last is
+     * that grid's discriminator, showing the same read outside an index keeps the ordinary class.
+     */
+    @Test
+    fun anIteratingKeyIsRenamedRatherThanAdded() {
+        val actual = mutableMapOf<String, List<String>>()
+        actual["a REPEATABLE group as the key"] = indexed("[Coverages/Limit For Coverages] > 0")
+        actual["a field INSIDE a repetition as the key"] =
+            indexed("[Coverages/Limit For Coverages/CoverageCode] > 0")
+        actual["a NON-repeatable group inside a repetition as the key"] =
+            indexed("[Coverages/Limit For Coverages/Excess] > 0")
+        actual["a key outside every repetition — the control"] =
+            indexed("[Coverages/Limit For LookupCode] > 0")
+        actual["the same iterating read OUTSIDE any semantic index"] =
+            indexed("FieldFilled(Coverages/CoverageCode)")
+
+        val expected = mutableMapOf<String, List<String>>()
+        expected["a REPEATABLE group as the key"] = listOf(invalidIter)
+        expected["a field INSIDE a repetition as the key"] = listOf(invalidIter)
+        // The key's KIND is not the variable: a group here could have drawn the key-kind class instead.
+        expected["a NON-repeatable group inside a repetition as the key"] = listOf(invalidIter)
+        expected["a key outside every repetition — the control"] = emptyList()
+        expected["the same iterating read OUTSIDE any semantic index"] = listOf("MVK_NO_WILDCARD")
+        assertEquals(expected, actual, "an iterating key is renamed rather than added")
+    }
+
+    private val invalidIter = "MVK_SEMANTIC_INDEX_INVALID_ITER"
 
     /** The finding names the group, since the fix is to key on one of its fields instead. */
     @Test

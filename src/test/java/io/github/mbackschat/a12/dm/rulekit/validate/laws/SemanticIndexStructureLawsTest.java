@@ -41,7 +41,10 @@ class SemanticIndexStructureLawsTest {
                     .group("Coverages", g -> g.repeatable(20).indexField("CoverageCode")
                             .stringField("CoverageCode", f -> { })
                             .stringField("Note", f -> { })
-                            .numberField("Limit", f -> f.fractionDigits(2)))
+                            .numberField("Limit", f -> f.fractionDigits(2))
+                            // A NON-repeatable group INSIDE a repetition: the key shape that separates "the
+                            // gate reads the key's KIND" from "the gate reads what the read iterates".
+                            .group("Excess", e -> e.numberField("ExcessAmount", f -> f.fractionDigits(2))))
                     // Keyed on an ENUMERATION, so an enum key passes the index field's base-type gate and the
                     // category gate behind it becomes reachable at all.
                     .group("Endorsements", g -> g.repeatable(10).indexField("Grade")
@@ -121,6 +124,8 @@ class SemanticIndexStructureLawsTest {
         actual.put("a REPEATABLE group as the key", indexed("[Coverages/Limit For Sections] > 0"));
         actual.put("a field INSIDE a repetition as the key",
                 indexed("[Coverages/Limit For Coverages/CoverageCode] > 0"));
+        actual.put("a NON-repeatable group inside a repetition as the key",
+                indexed("[Coverages/Limit For Coverages/Excess] > 0"));
         actual.put("the same iterating read OUTSIDE any semantic index",
                 indexed("FieldFilled(Coverages/CoverageCode)"));
 
@@ -130,6 +135,9 @@ class SemanticIndexStructureLawsTest {
         // read from inside the indexed group draws on this carrier — [KF205] measured that class with the
         // rule anchored so the iteration is legal.
         expected.put("a field INSIDE a repetition as the key", "MVK_SEMANTIC_INDEX_INVALID_ITER");
+        // The key's KIND is not the variable: this one is a group and could have drawn the key-kind class,
+        // and the iteration gate takes it first — so the gate reads what the READ does, not what the key is.
+        expected.put("a NON-repeatable group inside a repetition as the key", "MVK_SEMANTIC_INDEX_INVALID_ITER");
         expected.put("the same iterating read OUTSIDE any semantic index", "MVK_NO_WILDCARD");
         assertEquals(expected, actual, "an iterating key pre-empts the structural gates");
     }

@@ -739,6 +739,16 @@ One cold adversarial review over the frozen range, as [§2](#2-execution-order-a
 
 **The catalog half is deliberately not delivered, with its re-open trigger.** A2 ruled that `operators.json` ships as-is because it is already data; that remains right, and it is not yet USEFUL — no finding this checker produces names an operator id, so 293 KB would be packaged with nothing to join it against. It lands when a finding carries an operator.
 
+### C record — a code the owning family had ruled out, re-opened by a helper that arrived later (2026-09-14)
+
+**Frozen: an ITERATING semantic-index key, `MVK_SEMANTIC_INDEX_INVALID_ITER`.** [KF351](KERNEL-FINDINGS.md#kf351), amended with one new cell. It is not a new family — it is the first gate of `SEMANTIC_INDEX_KEY`, ahead of that family's own class, which is where A12 asks it.
+
+**Its own KDoc had ruled it out, and the reason had expired.** The family said the gate "turns on the rule's anchoring, which this family cannot see" — true when it was written, and false once `OperandRepetitionScope` grew the anchoring lookup and the level helpers moved to a shared file. A recorded silence is a claim about the code as it stood; nothing re-reads those claims when the code beneath them changes, which is an argument for citing what a silence DEPENDS on rather than only stating it.
+
+**The new cell is the one the reader could have got wrong in the safe-looking direction.** A NON-repeatable group inside a repetition, as the key: the key-kind class would have been a plausible verdict and the iteration gate takes it. Measured rather than predicted, because predicting it would have been a claim about which of two gates reads the key first.
+
+**The reporting geometry is narrower than the gate**, stated in the family and in the row: only a repeatable level strictly below the error target's group, which is where both halves were measured. A PARALLEL level draws one of four index-keyed classes outside an index and nothing has measured which name it takes inside one, so that shape stays silent rather than guessing a rename.
+
 ### C record — the selection method's own input had drifted, and now a guard holds it (2026-09-14)
 
 **33 MVK-LEDGER rows said the checker did not report a code it had been reporting for days or weeks.** Several of those rows' own prose already said the checker reported them, beside a disposition cell that did not — the two-copies-of-one-fact smell, in a registry whose column is read mechanically.
