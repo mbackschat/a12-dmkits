@@ -929,7 +929,9 @@ private val POSITIONED_CONDITION_CODES = setOf(
  * and `CheckEntityUtils.checkNoSemanticIndex`. Every shape measured for it reaches the filter walk, which
  * throws during the parse and so erases the whole-rule branch of the same name
  * ([KERNEL-FINDINGS KF377]); it is therefore POSITIONED here. A code is not owned by the phase that happens
- * to name it — a second site of the same class can sit in the other phase and win every race.
+ * to name it — a second site of the same class can sit in the other phase and win every race. **Both sets
+ * were swept for that on 2026-09-14 and it is the only split class**: every other member of this set throws
+ * only from the post-parse phase, and no member of [POSITIONED_CONDITION_CODES] throws from it.
  *
  * Measured: `MVK_PARALLEL_ITERATION_NOT_ALLOWED` and `MVK_INVALID_COMBINATION_OF_REPETITON_NOT_UNIQUE` both
  * vanish behind a containment class on one model (`RepetitionNotUniqueFromScopeLawsTest`, whose verdict is

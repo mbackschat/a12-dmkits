@@ -7152,6 +7152,8 @@ Reported by the portable checker, which did not emit `MVK_SORT_FIELD_DUPLICATE` 
 
 **So a code is not owned by the phase that happens to name it.** A second site of the same class can sit in the other phase and win every race, which is invisible to a reader who greps the class once and stops at the first hit. The check is cheap — grep the class across the parser and read each site's method.
 
+**The rest of the set was then swept both ways, and this is the only split one (2026-09-14).** For each of the seven other classes `checkNormalRule` and `IterationChecker` draw, every throw site outside the enum declarations lies in that same phase; for each of the twenty-six classes this estate treats as positioned, no site lies in `ParserService`, `IterationChecker`, `IterationNotValidVisitor` or `core/calc`. Command: `git grep -n "<CODE>" -- '*.java' ':!*/build/*' ':!*delombok*'` over the kernel checkout, reading every hit; 33 classes, 33 read.
+
 **What the filter walk asks, level by level, per reference in authored order:**
 
 | the level carries | class |
