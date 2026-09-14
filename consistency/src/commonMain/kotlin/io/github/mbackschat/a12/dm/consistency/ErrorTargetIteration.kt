@@ -25,6 +25,11 @@ package io.github.mbackschat.a12.dm.consistency
  * reaching reference is the ROOT" and "the reaching reference is itself an unpinned repetition" — the same
  * thing on nine rows — are separated, and this family keys on the former.
  *
+ * **And the target has to lie INSIDE the rule's own group**, which was the fourth constant of the grid rather
+ * than one of its variables: A12's containment gate throws during the parse, where both these classes come
+ * from a pass over the finished reference set, so neither is reachable with the target outside
+ * ([KERNEL-FINDINGS KF372]). The shape arrives only as stored DM-JSON, our own builder refusing the pair.
+ *
  * **Silent wherever a reading could become a refusal.** A condition naming the rule-context keyword is left
  * alone: the keyword carries no path, so whether it pins here is unmeasured, and `MVK_ERROR_FIELD_NOT_REFERENCED`
  * already treats it as reaching. An unresolvable operand pre-empts A12's own gate, so reporting would name a
@@ -44,6 +49,16 @@ fun PreparedModel.errorTargetIterationFindings(): List<Finding> {
                 return@mapNotNull null
             }
             val ruleGroup = declared.declaredAt.substringBeforeLast('/', missingDelimiterValue = "")
+            // A target OUTSIDE the rule's group is `MVK_ERROR_FIELD_NOT_IN_RULEGROUP`, drawn at the top of
+            // `checkIndicesForA12Model` on the first iterating level — where these two classes come from
+            // `IterationChecker`, which runs after the parse. Every row of both grids that measured them
+            // held the target inside the declaring group, so the containment demand was a constant of the
+            // set rather than something any row tested; measured 2026-09-14 (KERNEL-FINDINGS KF372), and
+            // the reason this shape is now silent. It reaches a checker only through stored DM-JSON,
+            // `Rule.build()` refusing the pair up front — the input this checker exists to read.
+            if (!(target == ruleGroup || target.startsWith("$ruleGroup/"))) {
+                return@mapNotNull null
+            }
             // REACHED-but-not-pinned is the whole shape. A condition that reaches the target from at or
             // below the rule's group has pinned the repetition; one that does not reach it AT ALL is
             // `MVK_ERROR_FIELD_NOT_REFERENCED`'s, and A12 draws that class alone there. Every row of the

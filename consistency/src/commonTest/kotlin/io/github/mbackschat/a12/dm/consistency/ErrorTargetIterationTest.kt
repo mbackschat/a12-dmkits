@@ -60,6 +60,67 @@ class ErrorTargetIterationTest {
         assertEquals(expected, actual, "root-only error-target iteration")
     }
 
+    /**
+     * A target OUTSIDE the declaring group, where A12's containment gate answers ahead of both classes.
+     *
+     * The rule moves to the PARALLEL group and nothing else changes. Every row of the grid above declares
+     * it in the error field's own group, so the containment demand was a constant of that whole set rather
+     * than something any of its rows tested — measured 2026-09-14 in the laws test, after this family named
+     * the parallel class on exactly this shape. `Rule.build()` refuses the pair, so it can only arrive as
+     * stored DM-JSON, which is what this checker reads.
+     *
+     * The third row is the POSITIVE CONTROL, and it is not optional: two rows expecting silence pass just as
+     * well on a model that never parsed, which is how a mirror goes vacuous rather than red.
+     */
+    @Test
+    fun aTargetOutsideTheDeclaringGroupIsNotThisFamilys() {
+        val actual = mutableMapOf<String, List<String>>()
+        actual["read in the error field's own group"] =
+            outsideGroup("GroupFilled(/Shipment) And [/Shipment/Received/Quantity] > 0")
+        actual["read in a PARALLEL repeatable group"] =
+            outsideGroup("GroupFilled(/Shipment) And [/Shipment/Expected/Quantity] > 0")
+        actual["an unresolvable name in the same model — the positive control"] =
+            allCodes(outsideGroupModel("FieldFilled(NoSuchField)"))
+
+        val expected = mutableMapOf<String, List<String>>()
+        expected["read in the error field's own group"] = emptyList()
+        expected["read in a PARALLEL repeatable group"] = emptyList()
+        expected["an unresolvable name in the same model — the positive control"] =
+            listOf("MVK_INVALID_ENTITY")
+        assertEquals(expected, actual, "containment answers ahead of both iteration classes")
+    }
+
+    private fun outsideGroup(condition: String): List<String> =
+        check(ModelSource(outsideGroupModel(condition))).findings
+            .filter { it.code == ownGroup || it.code == parallel }
+            .map { it.code }
+
+    private fun allCodes(source: String): List<String> =
+        check(ModelSource(source)).findings.map { it.code }
+
+    /** The reconciliation shape with the rule declared in `Expected`, reporting on `Received/Note`. */
+    private fun outsideGroupModel(condition: String): String = """
+        {"header":{"id":"shipment","locales":[{"code":"en_US"}]},
+         "content":{"modelRoot":{"rootGroups":[
+          {"type":"Group","id":"g0","name":"Shipment","Group":{"repeatability":5,"elements":[
+            {"type":"Group","id":"g1","name":"Received","Group":{"repeatability":10,
+              "indexFieldName":"LineNo","elements":[
+                {"type":"Field","id":"f0","name":"LineNo","Field":{"fieldType":{"type":"StringType"}}},
+                {"type":"Field","id":"f1","name":"Quantity","Field":{"fieldType":{"type":"NumberType"}}},
+                {"type":"Field","id":"f2","name":"Note","Field":{"fieldType":{"type":"StringType"}}}
+              ]}},
+            {"type":"Group","id":"g2","name":"Expected","Group":{"repeatability":10,
+              "indexFieldName":"LineNo","elements":[
+                {"type":"Field","id":"f3","name":"LineNo","Field":{"fieldType":{"type":"StringType"}}},
+                {"type":"Field","id":"f4","name":"Quantity","Field":{"fieldType":{"type":"NumberType"}}},
+                {"type":"Rule","id":"r0","name":"Reconcile","Rule":{
+                  "errorCondition":"$condition","errorEntityRelPath":"../../Received/Note",
+                  "errorCode":"NOTE","errorMessage":[{"locale":"en_US","text":"x"}]}}
+              ]}}
+          ]}}
+         ]}}}
+    """.trimIndent()
+
     /** …and with nothing repeating there is no repetition to be unable to choose between. */
     @Test
     fun aFlatModelIsNotThisFamilysBusiness() {

@@ -7138,6 +7138,20 @@ Reported by the portable checker, which did not emit `MVK_SORT_FIELD_DUPLICATE` 
 
 *Locked by:* `rulekit.validate.laws.GroupOrderingMultipleDefectLawsTest`, mirrored by `consistency … GroupOrderingMultipleDefectTest`.
 
+## §9 supplement — the root-only iteration classes need the target INSIDE the declaring group, the fourth constant of the set that measured them (measured, 2026-09-14) <a id="kf372"></a>
+
+> Fold: not-foldable — a gate-order result completing [KF348](#kf348)'s account of the same two classes.
+
+[KF348](#kf348) named three conditions for `MVK_ERROR_FIELDGROUP_ITERATION4_INVALID` / `…ITERATION5_INVALID`, two of which had been constants of the set. A fourth was still constant and nobody had asked: **every row declared the rule in the error field's OWN group.** Move the rule to the parallel group, change nothing else, and both classes disappear — `MVK_ERROR_FIELD_NOT_IN_RULEGROUP` answers instead, on the own-group read and on the parallel read alike.
+
+**Source-verified, and the discriminating case is measured**: the mechanism is layer order rather than precedence inside one check — the containment gate is the first statement of `CheckEntityUtils.checkIterationAndErrorField` and throws during the PARSE, while both iteration classes come from `IterationChecker`, which runs over the finished reference set afterwards. A precedence-inside-one-check rival predicts the parallel class on the row whose read IS parallel, since that is the arm precedence would leave standing; measured, that row draws the containment class like the other two. So no condition reaches either class with the target outside the declaring group.
+
+**The control had to change fixture, and that is a finding of its own.** On a repeatable ROOT every reference iterates at level 0, so `GroupFilled(/Shipment)` alone already draws the containment class — there is no non-iterating reference in such a model, and the intended control read as "placement alone refuses", which is exactly the misreading [KF212](#kf212) corrects. Re-run on a fixture differing in the root's repeatability alone, the same rule is ADMITTED.
+
+**Why it mattered:** the shape reaches a Kernel-free checker only through stored DM-JSON — `Rule.build()` refuses the pair up front ([KF212](#kf212), measured OVER-REJECTING) — and that is precisely the input such a checker reads. `ERROR_TARGET_ITERATION` named the parallel class there until this was measured.
+
+*Locked by:* `rulekit.validate.laws.RootOnlyErrorTargetIterationLawsTest.aTargetOUTSIDETheDeclaringGroupIsAnsweredFirstByTheContainmentGate`; mirrored by `consistency … ErrorTargetIterationTest`.
+
 ## §11 supplement — the operand-scope walk is PER LEVEL, and the level reached outranks the order of the gates inside it (measured, 2026-09-14) <a id="kf371"></a>
 
 > Fold: not-foldable — an operand-admission law plus a walk-order result; it completes §11's scope account rather than restating it.

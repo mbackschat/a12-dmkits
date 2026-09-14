@@ -158,6 +158,61 @@ class RootOnlyErrorTargetIterationLawsTest {
     private static String verdict(String condition) {
         return KernelLaws.verdictModel(SHIPMENT, "/Shipment/Received", "../Note", condition);
     }
+
+    /**
+     * The fourth constant of both grids above: every row declares the rule in the error field's OWN group.
+     *
+     * <p>So "the condition reaches the target only from above" and "the target lies inside the declaring
+     * group" hold together throughout, and nothing in either grid says which of them the classes need. The
+     * question is not academic for a Kernel-free checker: {@code Rule.build()} refuses the outside-group
+     * pair, so this shape reaches a checker only through stored DM-JSON, which is exactly what it reads.
+     *
+     * <p>The rule moves to the PARALLEL group and nothing else changes, so the reaching reference is still
+     * the root and the iterating read is still the one the row above it names. Both classes disappear:
+     * containment answers first, from the top of the same method, and a checker reporting either of them
+     * here would name a defect A12 does not.
+     *
+     * <p><b>The control had to move to the fixed-root fixture, and why is worth stating.</b> On
+     * {@link #SHIPMENT} the ROOT repeats, so every reference iterates at level 0 and no reference in that
+     * model is non-iterating — the intended control drew the containment class too, which reads as
+     * "placement alone refuses" and is exactly the misreading [KF212](KERNEL-FINDINGS.md#kf212) corrects.
+     * {@link #FIXED_ROOT} differs from it in the root's repeatability alone.
+     */
+    @Test
+    void aTargetOUTSIDETheDeclaringGroupIsAnsweredFirstByTheContainmentGate() {
+        var actual = new java.util.LinkedHashMap<String, String>();
+        actual.put("outside the declaring group | read in the error field's own group",
+                outsideGroup("GroupFilled(/Shipment) And [/Shipment/Received/Quantity] > 0"));
+        actual.put("outside the declaring group | read in a PARALLEL repeatable group",
+                outsideGroup("GroupFilled(/Shipment) And [/Shipment/Expected/Quantity] > 0"));
+        actual.put("outside the declaring group | a repeatable ROOT reference is itself an iteration",
+                outsideGroup("GroupFilled(/Shipment)"));
+        actual.put("outside the declaring group | FIXED root, no iterating read — control",
+                outsideFixedRoot("GroupFilled(/Shipment)"));
+
+        var expected = new java.util.LinkedHashMap<String, String>();
+        expected.put("outside the declaring group | read in the error field's own group",
+                "MVK_ERROR_FIELD_NOT_IN_RULEGROUP");
+        expected.put("outside the declaring group | read in a PARALLEL repeatable group",
+                "MVK_ERROR_FIELD_NOT_IN_RULEGROUP");
+        expected.put("outside the declaring group | a repeatable ROOT reference is itself an iteration",
+                "MVK_ERROR_FIELD_NOT_IN_RULEGROUP");
+        // The control is what keeps the three refusals from reading as "a rule declared here is simply
+        // illegal": the containment gate fires on ITERATION, never on placement alone (KF212).
+        expected.put("outside the declaring group | FIXED root, no iterating read — control",
+                KernelLaws.ADMITTED);
+        assertEquals(expected, actual, "containment answers ahead of both iteration classes");
+    }
+
+    /** The same rule, declared in the group PARALLEL to the error field's, on {@link #SHIPMENT}. */
+    private static String outsideGroup(String condition) {
+        return KernelLaws.verdictModel(SHIPMENT, "/Shipment/Expected", "../../Received/Note", condition);
+    }
+
+    /** …and on {@link #FIXED_ROOT}, which differs from it in the root's repeatability alone. */
+    private static String outsideFixedRoot(String condition) {
+        return KernelLaws.verdictModel(FIXED_ROOT, "/Shipment/Expected", "../../Received/Note", condition);
+    }
     @Test
     void directReferenceAdmitsTheSamePlainAndParallelIterations() {
         String json = DocumentModelDraft.named("shipment-reconciliation").locale("en_US")
