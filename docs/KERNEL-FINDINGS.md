@@ -7138,6 +7138,27 @@ Reported by the portable checker, which did not emit `MVK_SORT_FIELD_DUPLICATE` 
 
 *Locked by:* `rulekit.validate.laws.GroupOrderingMultipleDefectLawsTest`, mirrored by `consistency … GroupOrderingMultipleDefectTest`.
 
+## §13 supplement — a name may repeat freely across parents; only the within-parent and root-group collisions are refused (measured, 2026-09-14) <a id="kf363"></a>
+
+> Fold: not-foldable — a reachability result plus an admission law.
+
+**[MVK-LEDGER] carries three MODEL-WIDE name laws as `n/a-structural`** — group names unique, root-group names unique, field name+group pairs unique model-wide. Locked by `rulekit.validate.laws.ModelWideNameUniquenessLawsTest`.
+
+| the collision | A12 |
+|---|---|
+| the fixture untouched — the control | ADMITTED |
+| a second ROOT group with a distinct name | ADMITTED |
+| a second root group with the SAME name | NOT BUILDABLE, no code |
+| two subgroups of the SAME parent sharing a name | NOT BUILDABLE, no code |
+| two subgroups of DIFFERENT parents sharing a name | ADMITTED |
+| two fields of different groups sharing a name | ADMITTED |
+
+**A name is scoped to its parent, and the two "model-wide" laws are not laws of a stored model.** `Insured` under one root group and `Insured` under another are both admitted, as are two fields of different groups sharing a name — so a checker that widened the within-parent law to the model would refuse two shapes A12 takes. None of the three codes is reachable: the two collisions A12 does refuse are build refusals carrying no class at all.
+
+**Both refused shapes are already covered**, so this block closes with no new family: the within-parent case is `CheckFamily.ELEMENT_NAME_UNIQUENESS`, and the duplicate ROOT-group name is reported as `CK_MODEL_NOT_BUILDABLE` — verified against the checker rather than assumed from the family's wording, which speaks of a group's children and root groups are not one.
+
+**A mislabelled row nearly made this grid wrong.** The "different parents" case was first written as an insertion into the SAME parent's element list, which measured NOT BUILDABLE and would have read as a model-wide law being real. The label said different parents; the patch said otherwise. Read the patch, not the label.
+
 ## §13 supplement — none of the four YES/NO declaration laws is reachable from a stored A12 model (measured, 2026-09-14) <a id="kf362"></a>
 
 > Fold: not-foldable — a reachability result.

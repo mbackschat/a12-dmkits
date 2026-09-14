@@ -759,6 +759,14 @@ One cold adversarial review over the frozen range, as [§2](#2-execution-order-a
 
 **The method correction to carry forward: rank by evidence, then READ the ledger row before predicting anything.** The row carries a disposition the count cannot, exactly as the earlier record found that the laws-file ranking measures where containment assertions live rather than where knowledge is missing. Both are the same mistake — trusting a derived score over the prose that owns the fact.
 
+### C record — the third declaration block: no family, no gap, and one mislabelled row that nearly inverted it (2026-09-14)
+
+**A name is scoped to its PARENT, so two of the three "model-wide" laws are not laws of a stored model at all** ([KF363](KERNEL-FINDINGS.md#kf363)). `Insured` under two different root groups is admitted, and so are two fields of different groups sharing a name. The two collisions A12 does refuse — the same parent, and two root groups — are build refusals carrying no class, and BOTH are already covered: `ELEMENT_NAME_UNIQUENESS` and `CK_MODEL_NOT_BUILDABLE`. The second was verified against the checker rather than inferred from the family's wording, which speaks of a group's CHILDREN while root groups are not any group's children.
+
+**Eleven ledger rows are now re-dispositioned across three blocks, against two families.** That is the seam's measured yield, and it is a good rate rather than a poor one: a row closed on a shape fact never comes back, while a row left as "outside rulekit's authoring surface" sends the next reader at it again.
+
+**The row that nearly made the grid say the opposite.** The "two subgroups of DIFFERENT parents" case was first written as an insertion into the same parent's element list — it measured NOT BUILDABLE, agreed with the ledger's framing, and would have shipped a model-wide law that does not exist. Nothing about the output looked wrong; the label and the patch simply disagreed. The general form of that check is cheap and belongs beside the control rule: **read what the patch does, not what the row is called.**
+
 ### C record — the second declaration block measured, and it yields NO family at all (2026-09-14)
 
 **Four yes/no laws, four unreachable.** A `BooleanType` carrying an identical true/false pair, only one of them, or two blanks is ADMITTED in every combination ([KF362](KERNEL-FINDINGS.md#kf362)): `TypeConverter.convertBoolean` defaults each member, so "missing" never reaches a check, and the pair laws do not fire on a stored model either. Eight ledger rows are now re-dispositioned across the two blocks — four here, four in the sort block — against two families.
