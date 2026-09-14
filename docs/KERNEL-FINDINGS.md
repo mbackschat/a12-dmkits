@@ -7138,6 +7138,33 @@ Reported by the portable checker, which did not emit `MVK_SORT_FIELD_DUPLICATE` 
 
 *Locked by:* `rulekit.validate.laws.GroupOrderingMultipleDefectLawsTest`, mirrored by `consistency … GroupOrderingMultipleDefectTest`.
 
+## §14 supplement — a path is resolved SEGMENT BY SEGMENT, and the root-group class turns on WHICH segment missed (measured, 2026-09-14) <a id="kf356"></a>
+
+> Fold: not-foldable — a diagnostic-class selection law, not an evaluation behaviour.
+
+**A12 walks a path left to right and runs three gates per segment — resolution, the H-model `.*` suffix, then the wildcard's landing site** (`CheckIdNameRefImpl.checkIdNameRef`). So the first defective segment answers, and within a segment resolution answers before the other two.
+
+| the path | A12 |
+|---|---|
+| `Sum(Claims*/Amount) > 0` — the control | ADMITTED |
+| `/NoSuchRoot/Amount` | `MVK_INVALID_ROOT_GROUP` |
+| `/NoSuchRoot` alone | `MVK_INVALID_ROOT_GROUP` |
+| `/Claims*/Amount` — a DECLARED group read at root level | `MVK_INVALID_ROOT_GROUP` |
+| `/Policy/NoSuchField` — the root resolves | `MVK_INVALID_ENTITY` |
+| `Claims*/NoSuchField` | `MVK_INVALID_ENTITY` |
+| `Claims.*/Amount` | `MVK_POINT_IN_A12_MODEL` |
+| `NoSuchGroup.*/Amount` | `MVK_INVALID_ENTITY` — resolution first |
+| `NoSuchGroup*/Amount` | `MVK_INVALID_ENTITY` — resolution first |
+| `Insured*/InsuredName` — a star on a non-repeatable group | `MVK_INVALID_WILDCARD` |
+| `Insured*/NoSuchField` | `MVK_INVALID_WILDCARD` — the earlier segment answers |
+| `../../../Reference` | `MVK_TOO_MANY_PARENT_GROUPS` |
+
+**`MVK_POINT_IN_A12_MODEL` had never been drawn in this estate.** Its ledger row calls it erased because the typed renderer never emits `.*` — true of the renderer, and not of a raw condition string, which `rule check` and `modify --condition` both accept.
+
+**The row that mattered was `/NoSuchRoot/Amount`, and it exposed a live wrong-class defect in the portable checker.** Every earlier measurement of the root-group class used a path of exactly one segment, so "the path is one segment long" and "the ROOT segment is what failed" were one thing across all of them — and the checker had implemented the first, counting separators in the whole candidate. It named `MVK_INVALID_ENTITY` where A12 names `MVK_INVALID_ROOT_GROUP`, on every absolute path whose missing root carries a child. Two of its own mirrors asserted that wrong class, neither of them ever put to the Kernel; the message-parameter surface had the separating row (`RuleMessageGroupParameterLawsTest`) and the shared helper got it wrong there too.
+
+Locked: `validate.laws.ReferenceSegmentGateOrderLawsTest`. **Fixed in the portable checker on 2026-09-14** — `Reference.Undeclared` now carries whether the root segment resolved, because only the resolver knows which roots a model declares.
+
 ## §9 supplement — `RepetitionNotUnique`'s COMPLETE gate order, and the two branches that never both run (measured, 2026-09-14) <a id="kf355"></a>
 
 > Fold: not-foldable — a diagnostic-class selection law, not an evaluation behaviour.

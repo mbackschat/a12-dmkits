@@ -506,7 +506,7 @@ class WorkspaceMountTest {
         )
 
         assertEquals(
-            listOf(Reference.Undeclared("/AddressBook/Thing")),
+            listOf(Reference.Undeclared("/AddressBook/Thing", rootUnresolved = true)),
             prepared.conditionReferences().map { it.target },
             "a name that merely shares the provider root's opening letters is not the provider root",
         )

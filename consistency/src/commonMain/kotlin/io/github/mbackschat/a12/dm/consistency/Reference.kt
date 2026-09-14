@@ -14,8 +14,17 @@ sealed interface Reference {
     /** The reference names exactly one declared element, at [path]. */
     data class Resolved(val path: String) : Reference
 
-    /** Nothing declares the name. [candidate] is the path the declaring group would have given it. */
-    data class Undeclared(val candidate: String) : Reference
+    /**
+     * Nothing declares the name. [candidate] is the path the declaring group would have given it.
+     *
+     * [rootUnresolved] says that the FIRST segment of [candidate] is not a declared root group, which A12
+     * answers with a class of its own — it resolves a path segment by segment and reports the root-group
+     * class when the root segment is the one that failed, whatever follows it
+     * (`rulekit.validate.laws.ReferenceSegmentGateOrderLawsTest`). It is carried here rather than derived
+     * from [candidate] because only the resolver knows which roots the model declares; counting separators
+     * instead named the wrong class on every absolute path whose missing root had a child.
+     */
+    data class Undeclared(val candidate: String, val rootUnresolved: Boolean = false) : Reference
 
     /** Several fields carry the short [name], so the model-wide fallback cannot choose between them. */
     data class Ambiguous(val name: String, val candidates: List<String>) : Reference
@@ -106,7 +115,10 @@ fun PreparedModel.resolveEntity(
     return when {
         aboveRoot -> Reference.AboveRoot(written)   // the AUTHORED text: that is what a reader has to edit
         resolvableElements.any { it.path == candidate } -> Reference.Resolved(candidate)
-        else -> Reference.Undeclared(candidate)
+        else -> Reference.Undeclared(
+            candidate,
+            rootUnresolved = path.isNotEmpty() && resolvableElements.none { it.path == "/" + path.first() },
+        )
     }
 }
 

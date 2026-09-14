@@ -102,7 +102,11 @@ class ConditionBindingTest {
     @Test
     fun anAbsolutePathIsResolvedFromTheModelRoot() {
         assertEquals(emptyList(), codes("FieldFilled(Amount) And FieldFilled(/Order/Code)"))
-        assertEquals(listOf("MVK_INVALID_ENTITY"), codes("FieldFilled(/Lines/Amount)"))
+        // `/Lines` is a declared group read at ROOT level, which is a different gate from an undeclared
+        // name: A12 answers the root-group class whatever follows the segment, measured on the same
+        // shape in `rulekit.validate.laws.ReferenceSegmentGateOrderLawsTest`. This row asserted
+        // `MVK_INVALID_ENTITY` until 2026-09-14 and had never been put to the Kernel.
+        assertEquals(listOf("MVK_INVALID_ROOT_GROUP"), codes("FieldFilled(/Lines/Amount)"))
     }
 
     /**

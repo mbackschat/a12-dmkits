@@ -43,16 +43,23 @@ class ReferenceDiagnosticTest {
     }
 
     /**
-     * A candidate at ROOT-GROUP level is its own rejection: the Kernel branches on `EntityUtils.isRootGroup`
-     * — exactly one path separator — before reporting an invalid entity, so `/Nope` and `/Order/Nope` draw
-     * different codes for the same failure.
+     * A candidate whose ROOT SEGMENT is the one that failed is its own rejection.
+     *
+     * The Kernel resolves a path segment by segment, so the root-group class turns on WHICH segment missed
+     * and not on how long the path is: `/Nope/Thing` draws it too, and `/Order/Nope` does not
+     * (`rulekit.validate.laws.ReferenceSegmentGateOrderLawsTest`). The middle row is the one an earlier
+     * reading got wrong — it counted separators in the whole candidate, which is right for exactly the two
+     * outer rows here.
      */
     @Test
     fun aRootGroupLevelCandidateReportsTheRootGroupCode() {
         assertEquals(
-            listOf("MVK_INVALID_ROOT_GROUP", "MVK_INVALID_ENTITY"),
-            listOf(Reference.Undeclared("/Nope"), Reference.Undeclared("/Order/Nope"))
-                .map { it.asFinding(ReferenceRole.CONDITION_ENTITY, at = "/Order/Rule")?.code },
+            listOf("MVK_INVALID_ROOT_GROUP", "MVK_INVALID_ROOT_GROUP", "MVK_INVALID_ENTITY"),
+            listOf(
+                Reference.Undeclared("/Nope", rootUnresolved = true),
+                Reference.Undeclared("/Nope/Thing", rootUnresolved = true),
+                Reference.Undeclared("/Order/Nope"),
+            ).map { it.asFinding(ReferenceRole.CONDITION_ENTITY, at = "/Order/Rule")?.code },
         )
     }
 

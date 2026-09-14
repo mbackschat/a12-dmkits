@@ -83,11 +83,13 @@ private fun ReferenceRole.codeFor(outcome: Reference): String = when (this) {
     ReferenceRole.CONDITION_ENTITY -> when (outcome) {
         is Reference.Ambiguous -> "MVK_FIELDNAME_NOT_UNIQUE"
         is Reference.AboveRoot -> "MVK_TOO_MANY_PARENT_GROUPS"
-        // A candidate at root-group level is its own rejection: the Kernel branches on
-        // `EntityUtils.isRootGroup` (exactly one path separator) before reporting an invalid entity.
+        // A candidate whose ROOT SEGMENT is the one that failed is its own rejection, whatever follows it:
+        // A12 resolves a path segment by segment, so the root-group class turns on WHICH segment missed and
+        // not on how long the path is. Reading the separator count instead named `MVK_INVALID_ENTITY` for
+        // `/NoSuchRoot/Amount`, where A12 names the root class
+        // (`rulekit.validate.laws.ReferenceSegmentGateOrderLawsTest`).
         is Reference.Undeclared ->
-            if (outcome.candidate.count { character -> character == '/' } == 1) "MVK_INVALID_ROOT_GROUP"
-            else "MVK_INVALID_ENTITY"
+            if (outcome.rootUnresolved) "MVK_INVALID_ROOT_GROUP" else "MVK_INVALID_ENTITY"
         else -> "MVK_INVALID_ENTITY"
     }
     // The MESSAGE surface answers with A12's unprefixed error-text vocabulary rather than the condition's,
@@ -97,9 +99,11 @@ private fun ReferenceRole.codeFor(outcome: Reference): String = when (this) {
     ReferenceRole.MESSAGE_PARAMETER -> when (outcome) {
         is Reference.Ambiguous -> "ERROR_TEXT_FIELDNAME_NOT_UNIQUE"
         is Reference.AboveRoot -> "ERROR_TEXT_PARAMETER_TOO_MANY_PARENT_GROUPS"
+        // Same law, measured separately on this surface rather than transferred: a group parameter naming an
+        // undeclared root draws the root class whether or not a child follows it
+        // (`rulekit.validate.laws.RuleMessageGroupParameterLawsTest`).
         is Reference.Undeclared ->
-            if (outcome.candidate.count { character -> character == '/' } == 1) "INVALID_ROOT_GROUP"
-            else "INVALID_ENTITY"
+            if (outcome.rootUnresolved) "INVALID_ROOT_GROUP" else "INVALID_ENTITY"
         else -> "INVALID_ENTITY"
     }
 }
