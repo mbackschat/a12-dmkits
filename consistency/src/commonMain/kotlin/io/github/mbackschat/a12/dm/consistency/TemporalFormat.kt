@@ -80,6 +80,15 @@ internal val PLAINLY_NON_TEMPORAL_TYPES = setOf(
 internal fun declaredDateRangeFormatOf(field: DeclaredElement): String? =
     field.declaredFormat(mapOf("DateRangeType" to "format"))
 
+/**
+ * The `interpretationOfYear` a `DateRangeType` declares, or null where it declares none.
+ *
+ * An absent key is A12's `STANDARD`, which is why null and `"STANDARD"` mean the same thing to every caller:
+ * the declaration expresses the default by omitting the property.
+ */
+internal fun declaredRangeYearInterpretationOf(field: DeclaredElement): String? =
+    field.declaredFormat(mapOf("DateRangeType" to "interpretationOfYear"))
+
 private fun DeclaredElement.declaredFormat(members: Map<String, String>): String? {
     val declared = body?.get("fieldType") as? JsonObject ?: return null
     val type = (declared["type"] as? JsonPrimitive)?.contentOrNull ?: return null

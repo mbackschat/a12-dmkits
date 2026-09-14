@@ -52,6 +52,12 @@ class CorrectiveTest {
             {"type":"Field","id":"f7","name":"Blob","Field":{"fieldType":{"type":"StringType",
               "StringType":{"noValueValidation":true,"lineBreaksPermitted":true}}}},
             {"type":"Field","id":"f20","name":"Perishable","Field":{"fieldType":{"type":"BooleanType"}}},
+            {"type":"Field","id":"f21","name":"CoverFrom","Field":{"fieldType":{"type":"DateRangeType",
+              "DateRangeType":{"format":"dd.MM.yyyy","rangeSeparator":"-"}}}},
+            {"type":"Field","id":"f22","name":"CoverTo","Field":{"fieldType":{"type":"DateRangeType",
+              "DateRangeType":{"format":"dd.MM","rangeSeparator":"-"}}}},
+            {"type":"Field","id":"f23","name":"Rolling","Field":{"fieldType":{"type":"DateRangeType",
+              "DateRangeType":{"format":"dd.MM","rangeSeparator":"-","interpretationOfYear":"FROM"}}}},
             {"type":"Group","id":"g3","name":"Shelves","Group":{"repeatability":9,"elements":[
               {"type":"Field","id":"f8","name":"ShelfCode","Field":{"fieldType":{"type":"StringType"}}},
               {"type":"Field","id":"f9","name":"ShelfQty","Field":{"fieldType":{"type":"NumberType"}}}
@@ -101,6 +107,18 @@ class CorrectiveTest {
             {"type":"Rule","id":"r10","name":"KeyWithNoRepetition","Rule":{
               "errorCondition":"RepetitionNotUnique(Note)","errorEntityRelPath":"../Note",
               "errorCode":"C10","errorMessage":[{"locale":"en_US","text":"x"}]}},
+            {"type":"Rule","id":"r28","name":"MixedYearRanges","Rule":{
+              "errorCondition":"FieldFilled(Note) And DateRangesOverlap(CoverFrom, CoverTo)",
+              "errorEntityRelPath":"../Note",
+              "errorCode":"C28","errorMessage":[{"locale":"en_US","text":"x"}]}},
+            {"type":"Rule","id":"r27","name":"RollingRangeOverlap","Rule":{
+              "errorCondition":"FieldFilled(Note) And DateRangesOverlap(Rolling, CoverFrom)",
+              "errorEntityRelPath":"../Note",
+              "errorCode":"C27","errorMessage":[{"locale":"en_US","text":"x"}]}},
+            {"type":"Rule","id":"r26","name":"RangesAgainstAText","Rule":{
+              "errorCondition":"FieldFilled(Note) And DateRangesOverlap(CoverFrom, Note)",
+              "errorEntityRelPath":"../Note",
+              "errorCode":"C26","errorMessage":[{"locale":"en_US","text":"x"}]}},
             {"type":"Rule","id":"r25","name":"NestedNumberInADateSlot","Rule":{
               "errorCondition":"FieldFilled(Note) And DifferenceInDays(YearFromDate(Season), Season) > 0",
               "errorEntityRelPath":"../Note",

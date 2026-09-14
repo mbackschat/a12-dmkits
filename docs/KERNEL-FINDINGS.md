@@ -7142,6 +7142,30 @@ Reported by the portable checker, which did not emit `MVK_SORT_FIELD_DUPLICATE` 
 
 *Locked by:* `rulekit.validate.laws.GroupOrderingMultipleDefectLawsTest`, mirrored by `consistency … GroupOrderingMultipleDefectTest`.
 
+## §6 supplement — the range-overlap operators ask two walks of their list, and only the second has a base-year escape (source-verified + measured, 2026-09-14) <a id="kf401"></a>
+
+> Fold: not-foldable — a diagnostic-class law about one operand list, not an evaluation behaviour.
+
+`CheckEntityListenUtils.checkDateRangeWithoutSpecificInterpretationOfYear` and `checkDateRangeConsistentRegardingYear` are called back to back by both range-overlap constructs, so `DateRangesOverlap`'s plain list and `AtLeastOneDateRangeOverlaps`' subject-plus-values list are judged by the same two walks:
+
+| the walk | the gate | class |
+|---|---|---|
+| per expanded field, in order | it is not a date-range declaration | `MVK_NO_DATE_RANGE` |
+| | its `interpretationOfYear` is `FROM` or `TO` | `MVK_INVALID_DATE_RANGE_FORMAT` |
+| then over the whole list | the references disagree about carrying a year | `MVK_DATE_WITH_AND_WITHOUT_YEAR` |
+
+**The per-field walk completes before the agreement walk starts**, measured in both pairings: a list that is both wrong in kind and inconsistent about the year answers with the kind class, and one carrying a year-interpreting range beside a year mismatch answers with the format class.
+
+**A model-level BASE YEAR disables the agreement walk and nothing else.** `checkDateRangeConsistentRegardingYear` returns on `hasBaseYear` as its first statement; the format walk has no such guard, so a `FROM`-interpreting range is refused with or without one. That pair of rows is the discriminator, and a reader taking "a base year makes year questions moot" from the first would admit a model A12 refuses.
+
+**The agreement walk takes each REFERENCE's distinct FORMATS and only then asks which carry a year.** `map(getFormatOfDate).distinct().map(s -> s.contains("y"))`, then `res.size() > 1` refuses. So a reference expanding to two differently-spelled dated formats fails it although both carry a year — measured on a group of ranges declared `dd.MM.yyyy` and `yyyy-MM-dd`, where a group whose members share one format is admitted. The operator's own law would take both lists; the second is refused on the spelling.
+
+**What comes BEFORE the two walks differs between the carriers, and neither may borrow the other's answer.** The plain list asks its own group gate first (`MVK_NO_GROUPS_ALLOWED`, ahead of the arity gate — measured on a lone group, which fails both and draws the group class), and takes a starred field without asking, that arm calling no wildcard gate at all. The value list instead demands exactly one plain field as its subject and a matching base type from its values, so a wrong KIND on either side is `MVK_VARYING_TYPES_NOT_ALLOWED` and never reaches the range walk. Two fields that AGREE do reach it, which is what keeps that pre-emption from reading as "this carrier cannot report the kind class".
+
+Reported by the portable checker (`CheckFamily.DATE_RANGE_OPERAND_LIST`, keyed on the RANGE LIST rather than on either carrier's method, since the two walks are one shared helper). Silent where a pre-gate of another family answers, on a `DateRangeType` declaring no format, and on a repeated entity, whose duplicate class A12 draws first.
+
+*Locked by:* `rulekit.validate.laws.DateRangeOperandListLawsTest`, mirrored by `consistency.DateRangeOperandListTest`.
+
 ## §6 supplement — every date operator shares ONE argument slot, whose kind gate takes all four temporal declarations and whose constant gate takes four shapes (source-verified + measured, 2026-09-14) <a id="kf400"></a>
 
 > Fold: not-foldable — a diagnostic-class law about a shared operand slot, not an evaluation behaviour.

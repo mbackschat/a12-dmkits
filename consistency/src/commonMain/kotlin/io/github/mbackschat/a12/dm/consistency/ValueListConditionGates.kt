@@ -55,10 +55,10 @@ import kotlinx.serialization.json.contentOrNull
  *
  * **Silent on a `TypeDefType` or `UnspecifiedType` declaration**, whose effective type this reader does not
  * resolve; on the `noValueValidation` gate that runs between the field gates and the value list
- * (`MVK_INVALID_RAW_TYPE`), a value-position law shared with several other constructs; on the two
- * year-consistency classes of the date-range arm, which need the DateRange declaration's format decomposed;
- * and on an enumeration declaring a `tableName`, which A12 exempts from the domain check and which makes a
- * model unreadable here anyway.
+ * (`MVK_INVALID_RAW_TYPE`), a value-position law shared with several other constructs; on the date-range
+ * arm's two format-and-year walks, which run after everything here and belong to
+ * [dateRangeOperandListFindings]; and on an enumeration declaring a `tableName`, which A12 exempts from the
+ * domain check and which makes a model unreadable here anyway.
  */
 fun PreparedModel.valueListConditionGateFindings(): List<Finding> {
     val keywords = CONDITION_OPERATOR_KEYWORDS[conditionLanguage] ?: return emptyList()

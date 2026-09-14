@@ -203,6 +203,10 @@ class CheckFamilyWiringTest {
               "errorCondition":"FieldFilled(Price) And [Price] < [Reference]",
               "errorEntityRelPath":"../Price",
               "errorCode":"C47","errorMessage":[{"locale":"en_US","text":"x"}]}},
+            {"type":"Rule","id":"r55","name":"RangesAgainstAText","Rule":{
+              "errorCondition":"FieldFilled(Price) And DateRangesOverlap(Window, Reference)",
+              "errorEntityRelPath":"../Price",
+              "errorCode":"C55","errorMessage":[{"locale":"en_US","text":"x"}]}},
             {"type":"Rule","id":"r54","name":"DaysFromAReference","Rule":{
               "errorCondition":"FieldFilled(Price) And DifferenceInDays(Reference, TravelDate) > 0",
               "errorEntityRelPath":"../Price",
@@ -512,6 +516,10 @@ class CheckFamilyWiringTest {
         // the row fails if the family ever starts judging the carrier's format gate as well.
         CheckFamily.DATE_ARGUMENT_SLOT to
             ("MVK_NO_DATE" to "/Catalog/DaysFromAReference"),
+        // A text beside a date range under the overlap operator — the per-member walk, which is what the
+        // row pins: the agreement walk cannot reach a list this one already refuses.
+        CheckFamily.DATE_RANGE_OPERAND_LIST to
+            ("MVK_NO_DATE_RANGE" to "/Catalog/RangesAgainstAText"),
         // Two text declarations under an ordering operator — the one comparison in this fixture whose
         // operator demands more of its sides than they are.
         CheckFamily.COMPARISON_OPERATOR_OPERANDS to

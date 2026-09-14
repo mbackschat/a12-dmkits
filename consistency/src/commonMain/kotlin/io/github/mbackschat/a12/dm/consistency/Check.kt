@@ -546,6 +546,14 @@ enum class CheckFamily {
     DATE_ARGUMENT_SLOT,
 
     /**
+     * That the ranges a range-overlap operator compares are date ranges, interpret their year the standard
+     * way, and agree about carrying one. Its own constant because the two walks live in
+     * `CheckEntityListenUtils` and are called by two different constructs, so the law belongs to the RANGE
+     * LIST rather than to either carrier's method.
+     */
+    DATE_RANGE_OPERAND_LIST,
+
+    /**
      * That a rule reading a repetition does not reach its error field only from ABOVE its own group — A12
      * cannot then say which repetition the error attaches to. Its own constant because the demand is on the
      * CONDITION's reach rather than on the target's existence, which `ERROR_FIELD_REFERENCE` already owns,
@@ -799,6 +807,7 @@ internal fun check(
         prepared.categoryReferenceFindings() +
         prepared.scalarValueListGateFindings() +
         prepared.dateArgumentSlotFindings() +
+        prepared.dateRangeOperandListFindings() +
         prepared.errorTargetIterationFindings() +
         prepared.messageParameterFindings() +
         prepared.messageTextCharacterFindings() +
@@ -859,6 +868,7 @@ internal fun check(
             CheckFamily.H_MODEL_PATH_SUFFIX, CheckFamily.FIELD_OPERAND_KIND,
             CheckFamily.FILTERED_OPERAND_KIND, CheckFamily.CATEGORY_REFERENCE,
             CheckFamily.SCALAR_VALUE_LIST_GATES, CheckFamily.DATE_ARGUMENT_SLOT,
+            CheckFamily.DATE_RANGE_OPERAND_LIST,
             CheckFamily.ERROR_TARGET_ITERATION,
             CheckFamily.MESSAGE_PARAMETER_REFERENCE, CheckFamily.MESSAGE_TEXT_CHARACTERS),
         gaps = prepared.gaps() + prepared.emptyFactBase() + findings.buildBlocked() +
