@@ -79,6 +79,21 @@ class TemporalComponentDeclarationLawsTest {
         rejects(numberModel(n -> n.min("0").max("23")), timeCondition(TimePosition.MINUTE), WRONG_FORMAT);
     }
 
+    /**
+     * The sign gate has TWO satisfiers, and the second one has no minimum to read.
+     *
+     * A12's {@code positivesOnly} is the kernel's {@code hasSign()} inverted, so a component declaring it
+     * passes the sign gate with no {@code minValue} at all — the shape a reader keying on the declared
+     * minimum alone would refuse, where the row above pins that the same field without the flag IS refused.
+     * The wrong-width row keeps the flag from reading as a blanket exemption from the slot's own demands.
+     */
+    @Test
+    void theDeclaredSignFlagSatisfiesTheSignGateOnItsOwn() {
+        accepts(numberModel(n -> n.positivesOnly().maxLength(2)), dateCondition(DatePosition.DAY));
+        rejects(numberModel(n -> n.positivesOnly().maxLength(3)), dateCondition(DatePosition.DAY),
+                WRONG_FORMAT);
+    }
+
     @Test
     void everyRecognizedStringPatternSpellingIsAdmitted() {
         for (String pattern : List.of("[0-9]+", "[0-9]*", "\\d+", "\\d*", "[0-9]{4}", "\\d{4}")) {

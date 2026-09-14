@@ -137,9 +137,15 @@ class BuilderCheckerDivergenceGuardTest {
 
             // The kit names it only in the operator catalog — a gotcha on the date-fragment arithmetic
             // operators and a corrective on the extractors — and refuses on none of them. The checker
-            // reports it, and narrower than the code's name: only the CONSTANT arm of a `Date`/`Time`
-            // construction slot, where the demand is digits, a range and a width (`DateConstructionSlotLawsTest`).
+            // reports it, and narrower than the code's name: a `Date`/`Time` construction slot, where the
+            // demand on a constant is digits, a range and a width, and on a field component its declared
+            // width or bound (`DateConstructionSlotLawsTest`, `TemporalComponentDeclarationLawsTest`).
             Map.entry("MVK_WRONG_DATE_FORMAT_FOR_OP", Disposition.PROSE_ONLY),
+
+            // `DateConstruction`'s javadoc names it while pointing the gate at the model, and the typed
+            // surface refuses nothing: a component's declared pattern is not knowable from the handle. The
+            // checker reads that declaration from stored DM-JSON.
+            Map.entry("MVK_NO_DIGIT_PATTERN", Disposition.PROSE_ONLY),
 
             // `EnumRef.category(name)` fails fast on an undeclared category and `StructuralKernelFix` has no
             // hint for it; the kit's refusal is on a typed handle built from the model, so it cannot be

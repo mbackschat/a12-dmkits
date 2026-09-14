@@ -341,10 +341,11 @@ enum class CheckFamily {
     OPERAND_REPETITION_SCOPE,
 
     /**
-     * What each SLOT of a `Date` or `Time` construction admits, on the two arms that carry no declaration —
-     * a quoted constant's range and width, and which extract operator belongs in which slot. Its own
-     * constant because A12 walks the construction's slots left to right, so the answering slot rather than
-     * any gate picks both the class and the component a report has to name.
+     * What each SLOT of a `Date` or `Time` construction admits, on all three of its arms — a quoted
+     * constant's range and width, which extract operator belongs in which slot, and what a field component
+     * has to declare to stand in one. Its own constant because A12 walks the construction's slots left to
+     * right, so the answering slot rather than any gate picks both the class and the component a report has
+     * to name.
      */
     DATE_CONSTRUCTION_SLOT,
 
@@ -857,7 +858,7 @@ private val POSITIONED_CONDITION_CODES = setOf(
     "MVK_ROOT_GROUP_REFERENCED", "MVK_NO_FIELDS_ALLOWED", "MVK_INVALID_WILDCARD",
     "MVK_NO_WILDCARD", "MVK_MULTIPLE_INDEX_FIELDS", "MVK_ERROR_FIELD_NO_INDEX",
     "MVK_WRONG_DATE_FORMAT_FOR_OP", "MVK_INVALID_DATE_OR_TIME_EXTRACT_OP",
-    "MVK_DATE_OR_TIME_EXTRACT_OP_NOT_ALLOWED",
+    "MVK_DATE_OR_TIME_EXTRACT_OP_NOT_ALLOWED", "MVK_NO_DIGIT_PATTERN",
     "MVK_ERROR_FIELD_INVALID_INDEX", "MVK_ERROR_FIELD_INVALID_INDEX_TYPE",
 )
 

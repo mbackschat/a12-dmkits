@@ -36,6 +36,21 @@ class DateConstructionSlotLawsTest {
                     .timeField("Departure", t -> t.format("HH:mm:ss")))
             .build().toJson();
 
+    /**
+     * The same booking with a repeatable leg list, whose number field is one character too wide for a day.
+     *
+     * It exists to ask which gate answers when a component is BOTH an unstarred cross-repetition read and a
+     * wrongly-declared component — two classes from two different checkers on one operand.
+     */
+    private static final String LEGS = DocumentModelDraft.named("booking-legs").locale("en_US")
+            .rootGroup("Booking", b -> b
+                    .dateField("TravelDate", d -> d.format("yyyy-MM-dd"))
+                    .group("Legs", l -> l
+                            .repeatable(9)
+                            .dateField("LegDate", d -> d.format("yyyy-MM-dd"))
+                            .numberField("LegDay", n -> n.min("0").maxLength(3))))
+            .build().toJson();
+
     /** The verdict on a rule comparing one of the two temporal fields against a construction. */
     private static String verdict(String target, String construction) {
         return KernelLaws.verdictModel(BOOKING, "/Booking", "../" + target,
@@ -154,5 +169,38 @@ class DateConstructionSlotLawsTest {
         expected.put("bad constant in the day slot, bad operator in the month slot", WRONG_FORMAT);
         expected.put("bad operator in the day slot, bad constant in the month slot", WRONG_FAMILY);
         assertEquals(expected, actual, "slots are answered left to right");
+    }
+
+    /**
+     * Which checker answers when one operand is both an unstarred cross-repetition read and a wrongly
+     * declared component — the collision a second family reporting the slot class would turn into two
+     * findings where A12 draws one.
+     *
+     * <p>The two controls are what make the row a measurement rather than an observation: the same read with
+     * the component declared CORRECTLY still draws the reference class, so that class does not depend on the
+     * declaration; and the same wrong declaration read from INSIDE the repeatable group, where nothing is
+     * crossed, does draw the slot class, so the slot gate is live on this fixture.
+     */
+    @Test
+    void theReferenceReaderAnswersBeforeTheSlotGate() {
+        Map<String, String> actual = new LinkedHashMap<>();
+        actual.put("a wrongly declared component across an unstarred repetition",
+                legs("/Booking", "../TravelDate", "TravelDate", "Date(Legs/LegDay, \"02\", \"2024\")"));
+        actual.put("a sound constant across the same repetition — control",
+                legs("/Booking", "../TravelDate", "TravelDate", "Date(\"01\", \"02\", \"2024\") "
+                        + "And FieldFilled(Legs/LegDay)"));
+        actual.put("the same wrong declaration with nothing crossed — control",
+                legs("/Booking/Legs", "../LegDate", "LegDate", "Date(LegDay, \"02\", \"2024\")"));
+
+        Map<String, String> expected = new LinkedHashMap<>();
+        expected.put("a wrongly declared component across an unstarred repetition", "MVK_NO_WILDCARD");
+        expected.put("a sound constant across the same repetition — control", "MVK_NO_WILDCARD");
+        expected.put("the same wrong declaration with nothing crossed — control", WRONG_FORMAT);
+        assertEquals(expected, actual, "the reference reader answers before the slot gate");
+    }
+
+    private static String legs(String group, String errorRel, String target, String construction) {
+        return KernelLaws.verdictModel(LEGS, group, errorRel,
+                "FieldFilled(" + target + ") And [" + target + "] == " + construction);
     }
 }
