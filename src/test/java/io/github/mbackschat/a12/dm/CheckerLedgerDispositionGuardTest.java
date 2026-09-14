@@ -42,10 +42,17 @@ import org.junit.jupiter.api.Test;
  * codes it never reports, {@code SUPPRESSIBLE} being the worked case, and a guard that demands a
  * checker-reported row for a code the checker only compares against fails honest content.
  *
+ * <p><b>A file-local {@code finding(…)} helper is a construction too (widened 2026-09-14, measured).</b> Many
+ * families declare {@code private fun finding(code, explain, at): Finding} and never write the constructor
+ * again, so a scan keyed on the capitalised name saw none of their codes — eighteen of them, including codes
+ * this repository's own progress reporting then counted as UNREPORTED work still to do. The helper is
+ * followed only where the file DECLARES one, which keeps the narrowness the paragraph above argues for: a
+ * call to something the file does not define as returning a {@code Finding} is still not a report.
+ *
  * <p><b>One direction only.</b> A row claiming a report the checker no longer emits is a different defect,
- * and no scan of this kind can see it without the same over-counting: a code emitted through a helper this
- * scanner does not follow would read as removed. The drift measured here is one-way in practice — a family
- * lands and the row lags — so this locks the direction that actually happens.
+ * and no scan of this kind can see it without over-counting — measured 2026-09-14 at 71 false positives over
+ * the 306-row ledger when tried. The drift measured here is one-way in practice — a family lands and the row
+ * lags — so this locks the direction that actually happens.
  */
 class CheckerLedgerDispositionGuardTest {
 
@@ -129,7 +136,11 @@ class CheckerLedgerDispositionGuardTest {
     /** The argument list of every {@code Finding(} construction, taken to its balancing parenthesis. */
     private static List<String> findingArguments(String text) {
         List<String> arguments = new java.util.ArrayList<>();
-        Matcher call = Pattern.compile("\\bFinding\\(").matcher(text);
+        // A file that declares its own `finding(…): Finding` helper writes the constructor once and calls the
+        // helper everywhere after, so following the helper is what makes those files visible at all. The
+        // declaration itself is excluded, or its parameter list would read as an argument list.
+        boolean helper = Pattern.compile("fun\\s+finding\\(").matcher(text).find();
+        Matcher call = Pattern.compile(helper ? "(?<!fun )\\b[Ff]inding\\(" : "\\bFinding\\(").matcher(text);
         while (call.find()) {
             int depth = 1;
             int at = call.end();
