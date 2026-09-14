@@ -26,8 +26,9 @@ import kotlinx.serialization.json.contentOrNull
  *
  * **Silent where A12's ITERATION gate answers first.** An entity key that iterates — a key read from inside
  * a repetition without a star — draws `MVK_SEMANTIC_INDEX_INVALID_ITER` whatever else is wrong with the
- * index, and that gate turns on the rule's anchoring, which this family cannot see. Silent too on a GROUP
- * key, which is the key-kind family's, and on a value spec or key that does not resolve.
+ * index. That gate turns on the rule's anchoring, which this family does not take;
+ * [semanticIndexKeyFindings] does, and owns the class. Silent too on a GROUP key, which is the same family's,
+ * and on a value spec or key that does not resolve.
  *
  * **Two further classes of the same chain are deliberately not reported**: the key's type against the index
  * field's, and a key read from inside the indexed group. Both compare DECLARED types or locations against a

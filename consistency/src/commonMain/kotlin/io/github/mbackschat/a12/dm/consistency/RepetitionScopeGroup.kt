@@ -59,8 +59,8 @@ private const val FROM_SCOPE = "FromScope"
  *
  * Three silences, each resting on a measured row rather than on a reading: a scope that does not RESOLVE
  * (`MVK_INVALID_ENTITY`, the reference family's), a scope naming a FIELD (`MVK_NO_FIELDS_ALLOWED`, gated
- * before repeatability), and a scope that repeats, where every remaining defect is about containment and
- * turns on joint iteration this cannot see.
+ * before repeatability), and a scope that repeats, where every remaining defect is about containment —
+ * [repetitionKeyContainmentFindings]', which models the joint iteration those classes turn on.
  */
 private fun PreparedModel.scopeFinding(
     scope: String,
