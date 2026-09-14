@@ -132,6 +132,21 @@ class BuilderCheckerDivergenceGuardTest {
             // because its base type is unmeasured there.
             Map.entry("MVK_INVALID_COMPARE_TO_ENUM_OR_STRING", Disposition.PROSE_ONLY),
 
+            // Corrected 2026-09-14: this sat with the prose-only group, whose comment says rulekit "never
+            // refuses anything itself" — and `NumberExpr.requireCompatibleScale` does exactly that, through
+            // `NumericScaleSummary.requireEqualityCompatible`. Both estates now enforce A12's scale gate over
+            // carriers that cannot share a reader: the kit knows each operand's derived scale and its
+            // multiplicative-constant capability from the typed expression, the checker reads a declaration's
+            // `maxFractionalDigits` and a literal's written digits. The checker is the narrower of the two —
+            // it types only a bare reference or a literal, where the capability question has one answer — so
+            // it inherits no refusal.
+            Map.entry("MVK_INVALID_COMPARE_DEC_PLACES", Disposition.SAME_LAW_SEPARATE_CARRIERS),
+
+            // The checker only NAMES it, in a KDoc saying which arm answers a date partner ahead of the
+            // number one; the kit erases the shape, `DateRef` being the only handle that compares as a date.
+            // This is the mirror direction of the usual prose-only row.
+            Map.entry("MVK_INVALID_COMPARE_TO_DATE", Disposition.PROSE_ONLY),
+
             // Both enforce A12's group-count law over carriers that cannot share a reader: `CountAggregate`
             // refuses the count from its own typed operands, `EntityListArity` from stored paths and the
             // declared kind each resolves to. Neither refuses what A12 admits.
@@ -266,7 +281,6 @@ class BuilderCheckerDivergenceGuardTest {
             // renderer javadoc, catalog gotchas — never to refuse anything itself.
             Map.entry("MVK_FIELDNAME_NOT_UNIQUE", Disposition.PROSE_ONLY),
             Map.entry("MVK_INVALID_ENTITY", Disposition.PROSE_ONLY),
-            Map.entry("MVK_INVALID_COMPARE_DEC_PLACES", Disposition.PROSE_ONLY),
             Map.entry("MVK_UNEXPECTED_TOKEN", Disposition.PROSE_ONLY),
             Map.entry("MVK_ERROR_FIELD_MISSING", Disposition.PROSE_ONLY),
             Map.entry("MVK_MISSING_ERROR_FIELD", Disposition.PROSE_ONLY),

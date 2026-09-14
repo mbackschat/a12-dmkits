@@ -49,6 +49,8 @@ class CheckFamilyWiringTest {
             {"type":"Field","id":"f11","name":"RepeatedTier","Field":{"fieldType":{
               "type":"EnumerationType","EnumerationType":{"values":[{"value":"A"},{"value":"A"}]}}}},
             {"type":"Field","id":"f45","name":"Signed","Field":{"fieldType":{"type":"ConfirmType"}}},
+            {"type":"Field","id":"f46","name":"UnitCount","Field":{"fieldType":{"type":"NumberType",
+              "NumberType":{"maxFractionalDigits":0}}}},
             {"type":"Field","id":"f36","name":"StrandedSpecialValue","Field":{"fieldType":{
               "type":"EnumerationType","EnumerationType":{"values":[{"value":"P"},{"value":"Q"}],
               "sValue":"R"}}}},
@@ -173,6 +175,10 @@ class CheckFamilyWiringTest {
               "errorCondition":"FieldFilled(Price) And Sum(Pallets.*/PalletQty) > 0",
               "errorEntityRelPath":"../Price",
               "errorCode":"C29","errorMessage":[{"locale":"en_US","text":"x"}]}},
+            {"type":"Rule","id":"r50","name":"ScaleTwoAgainstAWholeField","Rule":{
+              "errorCondition":"FieldFilled(Price) And [Amount] == [UnitCount]",
+              "errorEntityRelPath":"../Price",
+              "errorCode":"C50","errorMessage":[{"locale":"en_US","text":"x"}]}},
             {"type":"Rule","id":"r49","name":"TextAgainstANumber","Rule":{
               "errorCondition":"FieldFilled(Price) And [Price] == [Amount]",
               "errorEntityRelPath":"../Price",
@@ -450,6 +456,10 @@ class CheckFamilyWiringTest {
         // the row cannot be satisfied by the domain half of the same walk.
         CheckFamily.STRING_ENUM_COMPARISON_AGREEMENT to
             ("MVK_INVALID_COMPARE_TO_ENUM_OR_STRING" to "/Catalog/TextAgainstANumber"),
+        // Two NUMBER declarations of different scale under `==` — no literal on either side, so the row
+        // cannot be satisfied by the rescaling waiver that admits a differing literal.
+        CheckFamily.NUMBER_COMPARISON_SCALE to
+            ("MVK_INVALID_COMPARE_DEC_PLACES" to "/Catalog/ScaleTwoAgainstAWholeField"),
         // A repeatable group read without a star into an error field the root holds: the target's own
         // coordinates cannot pick a repetition of `Crates`, and nothing about the operator is at fault —
         // which is what makes the row about the LEVEL rather than about the predicate reading it.

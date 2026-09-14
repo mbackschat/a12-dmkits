@@ -342,14 +342,26 @@ internal fun PreparedModel.bareReferenceField(
     return elements.firstOrNull { it.path == target && it.declaredKind == DeclaredKind.FIELD }
 }
 
+/** Whether [tokens] spell one written-out number. */
+internal fun isNumberLiteral(tokens: List<Token>): Boolean = numberLiteralScale(tokens) != null
+
 /**
- * Whether [tokens] spell one written-out number.
+ * The fractional digits [tokens] spell as one written-out number, or null when they are not one.
  *
- * A decimal arrives as three tokens because the tokenizer's number terminal is a digit RUN, and a negative
- * one carries a leading sign, so a single-token test alone would leave `-1.5` unread.
+ * The shape rather than a token COUNT is what decides, because the tokenizer's number terminal is a digit
+ * RUN and its sign is separate: `1` is one token, `1.00` three, `-1.00` four. A count-based test capped at
+ * three — which this was — read a negative decimal as no number at all.
  */
-internal fun isNumberLiteral(tokens: List<Token>): Boolean {
-    val digits = tokens.filter { it.kind == TokenKind.NUMBER }
-    val separators = tokens.filterNot { it.kind == TokenKind.NUMBER }
-    return digits.isNotEmpty() && tokens.size <= 3 && separators.all { it.text == "." || it.text == "-" }
+internal fun numberLiteralScale(tokens: List<Token>): Int? {
+    val unsigned = if (tokens.firstOrNull()?.text == "-") tokens.drop(1) else tokens
+    if (unsigned.firstOrNull()?.kind != TokenKind.NUMBER) {
+        return null
+    }
+    if (unsigned.size == 1) {
+        return 0
+    }
+    if (unsigned.size != 3 || unsigned[1].text != "." || unsigned[2].kind != TokenKind.NUMBER) {
+        return null
+    }
+    return unsigned[2].text.length
 }

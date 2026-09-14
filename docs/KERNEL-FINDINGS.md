@@ -7142,6 +7142,27 @@ Reported by the portable checker, which did not emit `MVK_SORT_FIELD_DUPLICATE` 
 
 *Locked by:* `rulekit.validate.laws.GroupOrderingMultipleDefectLawsTest`, mirrored by `consistency … GroupOrderingMultipleDefectTest`.
 
+## §11 supplement — equality between two numbers compares DECLARED SCALES, and only a written-out one may be rescaled (source-verified + measured, 2026-09-14) <a id="kf385"></a>
+
+> Fold: not-foldable — a diagnostic-class law about comparison operands, not an evaluation behaviour.
+
+`CheckVergleichsBedingungImpl.checkNumberComparison` is the last arm of the comparison walk and carries two classes. Locked: `rulekit.validate.laws.NumberComparisonScaleGateLawsTest` (26 rows), mirrored by `consistency.NumberComparisonScaleGateTest`.
+
+| the question | class |
+|---|---|
+| do `==` / `!=` join two numbers of the same fractional-digit count? | `MVK_INVALID_COMPARE_DEC_PLACES` |
+| is a number's partner number-like at all? | `MVK_INCONSISTENT_TYPES_COMPARED` |
+
+**A differing pair is admitted exactly when the SMALLER-scale side is the written-out one.** `[UnitPrice] == 1` with `UnitPrice` at scale 2 is ADMITTED; `[Quantity] == 1.00` with `Quantity` at scale 0 is refused, and so is `1.00 == [Quantity]`. Both rows pair a declaration with a literal of a different scale and they answer oppositely, which is what separates "a literal has no scale" (it has one — what it spells) from "a literal is the operand A12 will rescale" (it is, and only upward). The existing locks reach this through EXPRESSIONS, where a multiplicative constant carries the same capability (`NumberLawsTest`, `PowerDerivedScaleWaiverLawsTest`); on a bare pair the literal is the whole of it.
+
+**A `NumberType` body that OMITS `maxFractionalDigits` declares scale zero**, measured rather than defaulted: refused against a scale-2 declaration and against `1.00`, admitted against `1`.
+
+**The gate is asked of equality alone**, and the tolerance arm returns before reaching it — two declarations of differing scale are ADMITTED under `<` and under `DiffersWithToleranceRange1`, each measured as the control that attributes the refusal to the operator.
+
+**The scale gate is the one comparison class a COMPUTATION may switch off for itself**, through `errorCodesToSuppress`, which A12 renders into an inline `@SuppressWarning` pragma its parser honours. Measured with the unsuppressed computation as the control; no other carrier can suppress, and no other class is suppressible.
+
+**`MVK_INCONSISTENT_TYPES_COMPARED` is reachable on a comparison only through a written-out BOOLEAN constant.** Every non-number DECLARATION is answered by an earlier arm — a date by `MVK_INVALID_COMPARE_TO_DATE`, a boolean by [KF383](#kf383)'s yes/no arm, text and enumerations by [KF384](#kf384) — so `True` and `False` are what survives to it, measured against a boolean declaration on the same shape, which draws the other class.
+
 ## §1 supplement — a comparison's text/enumeration arm asks a KIND question and a DOMAIN one, and they never meet (source-verified + measured, 2026-09-14) <a id="kf384"></a>
 
 > Fold: not-foldable — a diagnostic-class law about comparison operands, not an evaluation behaviour.

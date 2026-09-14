@@ -418,6 +418,14 @@ enum class CheckFamily {
     STRING_ENUM_COMPARISON_AGREEMENT,
 
     /**
+     * What equality demands of two numbers' declared scales, and what a number may stand against at all. One
+     * constant for the two classes because `CheckVergleichsBedingungImpl.checkNumberComparison` asks them in
+     * one method, the scale question only once the kind question has passed — so which answers depends on
+     * where that walk stops.
+     */
+    NUMBER_COMPARISON_SCALE,
+
+    /**
      * That every repetition an operand crosses unstarred is one the target's own coordinates address — or,
      * where it is not, that the two branches iterate JOINTLY on a shared index field. One constant for the
      * five classes of that walk because A12 asks them as one gate chain per level, and because which class
@@ -706,6 +714,7 @@ internal fun check(
         prepared.comparisonOperatorOperandFindings() +
         prepared.booleanComparisonAgreementFindings() +
         prepared.stringEnumComparisonAgreementFindings() +
+        prepared.numberComparisonScaleFindings() +
         prepared.operandRepetitionScopeFindings() +
         prepared.dateConstructionSlotFindings() +
         prepared.hModelPathSuffixFindings() +
@@ -762,7 +771,7 @@ internal fun check(
             CheckFamily.CALCULATION_OPERATOR_ARITY, CheckFamily.VALUE_IN_FIELDS_CONSTANT_KIND,
             CheckFamily.VALUE_LIST_QUANTIFIER_OPERAND_KIND, CheckFamily.ENTITY_LIST_ARITY,
             CheckFamily.COMPARISON_OPERATOR_OPERANDS, CheckFamily.BOOLEAN_COMPARISON_AGREEMENT,
-            CheckFamily.STRING_ENUM_COMPARISON_AGREEMENT,
+            CheckFamily.STRING_ENUM_COMPARISON_AGREEMENT, CheckFamily.NUMBER_COMPARISON_SCALE,
             CheckFamily.OPERAND_REPETITION_SCOPE, CheckFamily.DATE_CONSTRUCTION_SLOT,
             CheckFamily.H_MODEL_PATH_SUFFIX, CheckFamily.FIELD_OPERAND_KIND,
             CheckFamily.FILTERED_OPERAND_KIND, CheckFamily.CATEGORY_REFERENCE,
