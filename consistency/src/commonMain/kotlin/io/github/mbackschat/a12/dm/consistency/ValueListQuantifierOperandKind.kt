@@ -73,27 +73,9 @@ private val VALUE_LIST_QUANTIFIERS = listOf(
     "NotAllFieldValuesIncludedInValueList",
 )
 
-/**
- * The base-type classes `IFieldType.matchBaseType` sorts declarations into.
- *
- * Text and Custom share one because `IStringType` and `IPredefinedType` each accept the other; every other
- * class accepts only its own. A declaration whose discriminator is absent from this table is one whose
- * effective type this reader does not resolve, and leaves the call unjudged.
- */
-private val BASE_TYPE_OF = mapOf(
-    "StringType" to "text",
-    "CustomType" to "text",
-    "NumberType" to "number",
-    "EnumerationType" to "enumeration",
-    "DateType" to "date",
-    "BooleanType" to "yes/no",
-    "ConfirmType" to "yes",
-    "DateRangeType" to "date range",
-    "DateFragmentType" to "date fragment",
-)
-
 /** The base-type classes the kind question admits; every other one draws its class. */
-private val LISTABLE_BASE_TYPES = setOf("text", "number", "enumeration")
+private val LISTABLE_BASE_TYPES =
+    setOf(BaseTypeClass.TEXT, BaseTypeClass.NUMBER, BaseTypeClass.ENUMERATION)
 
 private const val VARYING_TYPES = "MVK_VARYING_TYPES_NOT_ALLOWED"
 
@@ -115,9 +97,7 @@ private fun PreparedModel.operandKindFinding(
     if (repeated(fields + values)) {
         return null
     }
-    val kinds = (fields + values).map { field ->
-        BASE_TYPE_OF[field.declaredFieldType()] ?: return null
-    }
+    val kinds = (fields + values).map { field -> field.baseTypeClass() ?: return null }
     kinds.zipWithNext().forEachIndexed { at, (left, right) ->
         if (left != right) {
             return kindFinding(VARYING_TYPES, call.operator, (fields + values)[at + 1], member, element)
@@ -128,7 +108,7 @@ private fun PreparedModel.operandKindFinding(
             return kindFinding(ONLY_STRING_ENUM_NUMBER, call.operator, field, member, element)
         }
     }
-    return if (literalList && kinds.firstOrNull() == "number") {
+    return if (literalList && kinds.firstOrNull() == BaseTypeClass.NUMBER) {
         kindFinding(INVALID_TYPES_FOR_COMPARISON, call.operator, fields.first(), member, element)
     } else {
         null

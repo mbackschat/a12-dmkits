@@ -172,6 +172,10 @@ class CheckFamilyWiringTest {
               "errorCondition":"FieldFilled(Price) And Sum(Pallets.*/PalletQty) > 0",
               "errorEntityRelPath":"../Price",
               "errorCode":"C29","errorMessage":[{"locale":"en_US","text":"x"}]}},
+            {"type":"Rule","id":"r47","name":"OrderedTextComparison","Rule":{
+              "errorCondition":"FieldFilled(Price) And [Price] < [Reference]",
+              "errorEntityRelPath":"../Price",
+              "errorCode":"C47","errorMessage":[{"locale":"en_US","text":"x"}]}},
             {"type":"Rule","id":"r46","name":"AllFieldsOverOneField","Rule":{
               "errorCondition":"FieldFilled(Price) And AllFieldsFilled(Amount)",
               "errorEntityRelPath":"../Price",
@@ -425,6 +429,10 @@ class CheckFamilyWiringTest {
         // shorter than the operator's own arity gate accepts.
         CheckFamily.ENTITY_LIST_ARITY to
             ("MVK_PARAMSIZE_INVALIDN" to "/Catalog/AllFieldsOverOneField"),
+        // Two text declarations under an ordering operator — the one comparison in this fixture whose
+        // operator demands more of its sides than they are.
+        CheckFamily.COMPARISON_OPERATOR_OPERANDS to
+            ("MVK_INVALID_TYPE_FOR_COMPARISON" to "/Catalog/OrderedTextComparison"),
         // A repeatable group read without a star into an error field the root holds: the target's own
         // coordinates cannot pick a repetition of `Crates`, and nothing about the operator is at fault —
         // which is what makes the row about the LEVEL rather than about the predicate reading it.

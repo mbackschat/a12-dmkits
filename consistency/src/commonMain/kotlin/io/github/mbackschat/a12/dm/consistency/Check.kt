@@ -395,6 +395,13 @@ enum class CheckFamily {
     ENTITY_LIST_ARITY,
 
     /**
+     * What each comparison OPERATOR demands of the two sides it joins. One constant for the three classes
+     * because `CheckVergleichsBedingungImpl.check` asks them in a fixed order ahead of every agreement
+     * gate, so which answers depends on where that walk stops.
+     */
+    COMPARISON_OPERATOR_OPERANDS,
+
+    /**
      * That every repetition an operand crosses unstarred is one the target's own coordinates address — or,
      * where it is not, that the two branches iterate JOINTLY on a shared index field. One constant for the
      * five classes of that walk because A12 asks them as one gate chain per level, and because which class
@@ -680,6 +687,7 @@ internal fun check(
         prepared.valueInFieldsConstantKindFindings() +
         prepared.valueListQuantifierOperandKindFindings() +
         prepared.entityListArityFindings() +
+        prepared.comparisonOperatorOperandFindings() +
         prepared.operandRepetitionScopeFindings() +
         prepared.dateConstructionSlotFindings() +
         prepared.hModelPathSuffixFindings() +
@@ -735,6 +743,7 @@ internal fun check(
             CheckFamily.PARALLEL_ITERATION_UNIQUENESS, CheckFamily.FILTERED_ENTITY_ITERATION,
             CheckFamily.CALCULATION_OPERATOR_ARITY, CheckFamily.VALUE_IN_FIELDS_CONSTANT_KIND,
             CheckFamily.VALUE_LIST_QUANTIFIER_OPERAND_KIND, CheckFamily.ENTITY_LIST_ARITY,
+            CheckFamily.COMPARISON_OPERATOR_OPERANDS,
             CheckFamily.OPERAND_REPETITION_SCOPE, CheckFamily.DATE_CONSTRUCTION_SLOT,
             CheckFamily.H_MODEL_PATH_SUFFIX, CheckFamily.FIELD_OPERAND_KIND,
             CheckFamily.FILTERED_OPERAND_KIND, CheckFamily.CATEGORY_REFERENCE,

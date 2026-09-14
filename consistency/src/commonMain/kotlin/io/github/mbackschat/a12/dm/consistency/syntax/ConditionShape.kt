@@ -105,6 +105,39 @@ internal data class CallShape(val operator: String, val at: Int, val operands: L
  * reading, and a half-read list would be a shorter list, which is exactly the shape that makes an operand
  * law look satisfied.
  */
+/**
+ * One comparison: the token runs on either side of an infix comparison operator, and the operator itself.
+ *
+ * A comparison is A12's own `vergleichsBedingung`, and it is the one condition shape that is not a call —
+ * which is why no law about it could be written until this existed. Both sides are recorded as token runs
+ * rather than reduced, because what a side IS (a bare reference, a literal, arithmetic, a nested call) is
+ * the question most comparison laws ask first.
+ */
+internal data class ComparisonShape(
+    val left: List<Token>,
+    val operator: Token,
+    val right: List<Token>,
+)
+
+/** Every comparison in [text], or none when the text does not parse — the [callShapes] contract. */
+internal fun comparisonShapes(
+    text: String,
+    language: ConditionLanguage,
+    entry: SyntaxEntry,
+): List<ComparisonShape> {
+    val comparisons = mutableListOf<ComparisonShape>()
+    val parser = ShapeParser(
+        tokenize(text).filter { it.kind != TokenKind.COMMENT },
+        CONDITION_KEYWORDS.getValue(language),
+        comparisons = comparisons,
+    )
+    val failure = when (entry) {
+        SyntaxEntry.CONDITION -> parser.parseCondition()
+        SyntaxEntry.OPERATION -> parser.parseOperation()
+    }
+    return if (failure == null) comparisons else emptyList()
+}
+
 internal fun callShapes(text: String, language: ConditionLanguage, entry: SyntaxEntry): List<CallShape> {
     val calls = mutableListOf<CallShape>()
     val parser = ShapeParser(
@@ -131,6 +164,8 @@ private class ShapeParser(
     private val keywords: Map<String, KeywordKind>,
     /** Where completed calls are recorded, for [callsIn]; null when only the failure is wanted. */
     private val calls: MutableList<CallShape>? = null,
+    /** Where completed comparisons are recorded, for [comparisonsIn]; null when they are not wanted. */
+    private val comparisons: MutableList<ComparisonShape>? = null,
 ) {
 
     private var index = 0
@@ -222,9 +257,22 @@ private class ShapeParser(
                 return null
             }
         }
+        val from = index
         expression()?.let { return it }
+        val operatorAt = index
         comparisonOperator()?.let { return it }
-        return expression()
+        val rightFrom = index
+        val failure = expression()
+        if (failure == null) {
+            comparisons?.add(
+                ComparisonShape(
+                    tokens.subList(from, operatorAt),
+                    tokens[operatorAt],
+                    tokens.subList(rightFrom, index),
+                ),
+            )
+        }
+        return failure
     }
 
     private fun KeywordKind?.isCallableCondition(): Boolean =

@@ -106,6 +106,14 @@ class BuilderCheckerDivergenceGuardTest {
             // fixed 2026-09-13 in the same change that measured the row. Neither refuses anything A12 admits.
             Map.entry("MVK_INTERNAL_ERROR", Disposition.SAME_LAW_SEPARATE_CARRIERS),
 
+            // The kits only NAME these two — `PatternCondition`'s javadoc lists the constant gate among what
+            // the kernel arbitrates, and `Corrective`/`SpanResolver`/`TextConditionCorrective` name the
+            // ordering one as a class the typed path cannot produce. Neither refuses on either; the checker
+            // owns the only enforcement, and it is the narrower of the two, typing only a bare reference or
+            // a literal and leaving every computed side alone.
+            Map.entry("MVK_INVALID_COMPARE_TO_CONST", Disposition.PROSE_ONLY),
+            Map.entry("MVK_INVALID_TYPE_FOR_COMPARISON", Disposition.PROSE_ONLY),
+
             // Both enforce A12's group-count law over carriers that cannot share a reader: `CountAggregate`
             // refuses the count from its own typed operands, `EntityListArity` from stored paths and the
             // declared kind each resolves to. Neither refuses what A12 admits.

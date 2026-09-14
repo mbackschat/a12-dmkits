@@ -253,3 +253,42 @@ internal fun indexFieldNameOf(group: DeclaredElement): String? =
 /** The `fieldType.type` discriminator a field declares, or null where it declares none this reader can see. */
 internal fun DeclaredElement.declaredFieldType(): String? =
     ((body?.get("fieldType") as? JsonObject)?.get("type") as? JsonPrimitive)?.contentOrNull
+
+/**
+ * The base-type classes `IFieldType.matchBaseType` sorts declarations into.
+ *
+ * Text and Custom share one because `IStringType` and `IPredefinedType` each accept the other; every other
+ * class accepts only its own. The names are the ones a finding prints, so they read as a model author would
+ * say them rather than as the wire discriminator does.
+ */
+internal enum class BaseTypeClass(val spoken: String) {
+    TEXT("text"),
+    NUMBER("number"),
+    ENUMERATION("enumeration"),
+    DATE("date"),
+    YES("confirm"),
+    YES_NO("boolean"),
+    DATE_RANGE("date range"),
+    DATE_FRAGMENT("date fragment"),
+}
+
+private val BASE_TYPE_OF = mapOf(
+    "StringType" to BaseTypeClass.TEXT,
+    "CustomType" to BaseTypeClass.TEXT,
+    "NumberType" to BaseTypeClass.NUMBER,
+    "EnumerationType" to BaseTypeClass.ENUMERATION,
+    "DateType" to BaseTypeClass.DATE,
+    "ConfirmType" to BaseTypeClass.YES,
+    "BooleanType" to BaseTypeClass.YES_NO,
+    "DateRangeType" to BaseTypeClass.DATE_RANGE,
+    "DateFragmentType" to BaseTypeClass.DATE_FRAGMENT,
+)
+
+/**
+ * Which base-type class this field's declaration falls into, or null where this reader cannot say.
+ *
+ * Null covers `TypeDefType` and `UnspecifiedType`, whose effective type is a definition body this checker
+ * declares as a coverage gap rather than reads — so a law over base types leaves such a field unjudged
+ * rather than guessing at it.
+ */
+internal fun DeclaredElement.baseTypeClass(): BaseTypeClass? = BASE_TYPE_OF[declaredFieldType()]

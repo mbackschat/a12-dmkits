@@ -237,3 +237,43 @@ private fun infixInAt(text: String): Pair<Int, Int>? {
     }
     return null
 }
+
+/**
+ * The comparisons a condition text makes, each with the authored text of both its sides.
+ *
+ * A comparison is the one condition shape that is not a call, so [callsIn] cannot see it and no law about
+ * `vergleichsBedingung` — A12's largest single check method, thirteen classes — had an operand structure to
+ * read. Both sides arrive as TEXT rather than reduced: a law about a comparison asks first what each side
+ * IS, and a reduction that answered "a path" for a bare reference and null for everything else would erase
+ * the distinction between a literal, arithmetic and a nested call, which those laws turn on.
+ *
+ * A text that does not parse yields no comparisons at all, for the reason [callsIn] gives.
+ */
+fun comparisonsIn(text: String, language: ConditionLanguage, entry: SyntaxEntry): List<ConditionComparison> =
+    comparisonShapes(text, language, entry).map { shape ->
+        ConditionComparison(
+            runText(shape.left, text),
+            shape.operator.text,
+            shape.operator.start,
+            runText(shape.right, text),
+        )
+    }
+
+/**
+ * One comparison in authored order.
+ *
+ * @param left the text left of the operator, verbatim between its first and last token.
+ * @param operator the comparison operator AS SPELLED — a symbol, or a keyword a consumer resolves through
+ *     [CONDITION_OPERATOR_KEYWORDS] for the model's own language.
+ * @param at the offset of the operator, so a finding can point at the comparison rather than at the rule.
+ * @param right the text right of the operator, by the same rule as [left].
+ */
+data class ConditionComparison(
+    val left: String,
+    val operator: String,
+    val at: Int,
+    val right: String,
+)
+
+private fun runText(run: List<Token>, source: String): String =
+    if (run.isEmpty()) "" else source.substring(run.first().start, run.last().end)

@@ -7142,6 +7142,26 @@ Reported by the portable checker, which did not emit `MVK_SORT_FIELD_DUPLICATE` 
 
 *Locked by:* `rulekit.validate.laws.GroupOrderingMultipleDefectLawsTest`, mirrored by `consistency … GroupOrderingMultipleDefectTest`.
 
+## §1 supplement — a comparison's first three questions are about its OPERATOR, and are answered before any type agreement (source-verified + measured, 2026-09-14) <a id="kf382"></a>
+
+> Fold: not-foldable — a diagnostic-class law about comparison operands, not an evaluation behaviour.
+
+`CheckVergleichsBedingungImpl.check` is A12's largest single check method — thirteen classes reachable from stored DM-JSON — and it opens with three questions that have nothing to do with whether the two sides agree. Locked: `rulekit.validate.laws.ComparisonOperatorOperandLawsTest` (16 rows), mirrored by `consistency.ComparisonOperatorOperandsTest`.
+
+| the question | class |
+|---|---|
+| are BOTH sides constants? | `MVK_INVALID_COMPARE_TO_CONST` |
+| does a TOLERANCE operator have a number on both sides? | `MVK_INVALID_TYPE_FOR_TOLERANCE_OP` |
+| does an ORDERING operator have a number or a date on both sides? | `MVK_INVALID_TYPE_FOR_COMPARISON` |
+
+**The constant question is asked first, and the grid moves the OPERATOR to show it.** `1 > 2` is refused as two constants, not as an ordering comparison — so a reading that asked about the operator first would name the wrong class on it. The exemption is DATETIME: two constants are admitted when exactly one of them is `Today`/`Now`, which is why a checker must leave those comparisons alone rather than refuse them.
+
+**The tolerance and ordering arms RETURN once satisfied**, so a comparison that clears them is never asked the agreement questions at all — measured as admitted rows (`[Quantity] DiffersWithToleranceRange1 5`, `[PlacedOn] <= [ShippedOn]`) rather than assumed.
+
+**Ordering admits dates and nothing else beyond numbers.** Two text fields under `<` are refused; the same two under `==` are admitted, which is the control that attributes the refusal to the operator rather than to the declarations.
+
+**A field reference inside a comparison must be BRACKETED** — `[Quantity] == 1`, not `Quantity == 1`, which is `MVK_UNEXPECTED_TOKEN`. The same trap as an operation's operands, and it silently turns a type measurement into a grammar one.
+
 ## §9 supplement — six arity gates, one per operator, and two classes that differ only in an underscore (source-verified + measured, 2026-09-14) <a id="kf381"></a>
 
 > Fold: not-foldable — a diagnostic-class law about operand arity, not an evaluation behaviour.
