@@ -739,6 +739,18 @@ One cold adversarial review over the frozen range, as [§2](#2-execution-order-a
 
 **The catalog half is deliberately not delivered, with its re-open trigger.** A2 ruled that `operators.json` ships as-is because it is already data; that remains right, and it is not yet USEFUL — no finding this checker produces names an operator id, so 293 KB would be packaged with nothing to join it against. It lands when a finding carries an operator.
 
+### C record — two codes that MERGED a family instead of adding one, and the measurement that forced it (2026-09-14)
+
+**Frozen change: the type walk of `CheckOperationImpl`.** [KF396](KERNEL-FINDINGS.md#kf396); two residue codes drained — `MVK_NO_NUMBER_FOR_CALC` and `MVK_NO_STRING_OR_NUMBER_FOR_ADD` — which completes that kernel class. `CALCULATION_OPERATOR_ARITY` is renamed `ARITHMETIC_OPERATION_GATES` and now carries all five; the count stays at 81 because nothing was added.
+
+**The merge was not a tidiness call — a measured pre-emption made two families wrong.** `check` runs the type walk before both arity gates, so a string in a two-division chain is the kind class ALONE, with the all-numbers control drawing the division class. Two families reporting independently would have emitted a second class on a model A12 answers once, which is the over-report the plan's third open lane names and which no test in this estate can currently see. The slice found it by asking the precedence question before writing the family rather than after.
+
+**The tell that a slice belongs INSIDE an existing family is a shared walk, not a shared code.** The two questions have disjoint code sets and disjoint kernel methods; what they share is one `OperationContext` and one order over it. A split by code — the shape every earlier slice took — would have cut that order in half.
+
+**The renaming is the cost of having named a family after one of its gates.** `CALCULATION_OPERATOR_ARITY` was accurate when it held three codes and became a misdescription the moment the walk's first gate landed, and a constant that under-describes its family is read by the report's own consumers. Six sites plus three ledger rows; worth doing in the same commit rather than leaving a name that would have to be explained.
+
+**One measured surprise, and it is the kind a source read produces the wrong shape of.** `+` refuses an enumeration whose values carry display LABELS, beside a plain text, under the KIND class rather than one of its own — two enumerations declaring the same tokens differ only in that property. The grid varies exactly it, with the labelless twin as the control.
+
 ### C record — the eighty-first family, and a construct where two operator NAMES point the wrong way (2026-09-14)
 
 **Frozen family: what each of the four single-field value operators demands of the one field it reads.** [KF395](KERNEL-FINDINGS.md#kf395); three residue codes drained — `MVK_NO_STRING`, `MVK_NO_CONVERT_IN_NUMBER` and the first REPORT of `MVK_CATEGORY_NOT_ALLOWED`, on a construct that also widens `MVK_NO_NUMBER`, `MVK_NO_GROUPS_ALLOWED` and `MVK_NO_WILDCARDS_ALLOWED` to a further carrier.

@@ -7142,6 +7142,33 @@ Reported by the portable checker, which did not emit `MVK_SORT_FIELD_DUPLICATE` 
 
 *Locked by:* `rulekit.validate.laws.GroupOrderingMultipleDefectLawsTest`, mirrored by `consistency … GroupOrderingMultipleDefectTest`.
 
+## §5 supplement — `+` is not an arithmetic operator: it asks its own question, and refuses an enumeration that carries LABELS (source-verified + measured, 2026-09-14) <a id="kf396"></a>
+
+> Fold: not-foldable — a diagnostic-class law about one construct's operand types, not an evaluation behaviour.
+
+`CheckOperationImpl.checkAndSetTypes` switches on the operator's grammar context. Four of the five arms call `CheckOpUtils.checkOpIsANumberInCalc` on both operands; `+` calls it on neither.
+
+| the expression | A12 |
+|---|---|
+| `*`, `/`, `-` or `^` over anything but a number | `MVK_NO_NUMBER_FOR_CALC` |
+| `+` over two numbers, or over two string-LIKE sides | admitted |
+| `+` over a mixed pair | `MVK_NO_STRING_OR_NUMBER_FOR_ADD` |
+| `+` over an enumeration carrying display LABELS | the same class |
+
+**A CUSTOM declaration is string-LIKE and a date is neither**, which `OperationResultTypeMap.getOpTypeForField` makes explicit: it sorts `IStringType` and `IPredefinedType` into one STRING base type and gives a date, a range, a boolean and a confirm their own, so all four fail both of `+`'s arms. Measured over all seven declared kinds on each of the four numeric operators.
+
+**The display-label refusal is the row a source read alone would miss the shape of.** Two enumerations declaring the same two tokens differ only in whether their values carry a `label`, and the labelled one is refused beside a plain text — under the KIND class, not a class of its own. A12 exempts a category access at that branch, which is the only way to concatenate such an enumeration.
+
+**The kind walk PRE-EMPTS both arity gates inside one operation context.** A string in a two-division chain is `MVK_NO_NUMBER_FOR_CALC` alone and the same chain with a number there is `MVK_TOO_MANY_DIV_FOR_CALC`; the same pair holds for a nested power. That is what makes the five classes ONE portable family rather than two: a checker asking the questions independently would name a second class on a model A12 answers once ([KF378](#kf378) measured the arity half's own ordering).
+
+**`^` asks the kind question BEFORE the exponent's scale**, so a non-numeric exponent draws the kind class and never `MVK_INVALID_NUMBER_FOR_EXP` — the order inside `checkAndSetPowerType`, measured rather than read.
+
+**An inner operation's RESULT type is what the outer operator judges**, which is the only way the two classes meet on one expression: a concatenation subtracted from is the number class, and a product added to a text is the addition class.
+
+Reported by the portable checker (`CheckFamily.ARITHMETIC_OPERATION_GATES`), silent on a written-out text, a call, a comma-separated argument list, a category access, and a typedef or unspecified declaration.
+
+*Locked by:* `rulekit.validate.laws.ArithmeticOperandKindLawsTest`, mirrored by `consistency.ArithmeticOperationGatesTest`.
+
 ## §11 supplement — the four single-field value operators share ONE head and then demand four different things, two of them the opposite of their names (source-verified + measured, 2026-09-14) <a id="kf395"></a>
 
 > Fold: not-foldable — a diagnostic-class law about one construct's operand, not an evaluation behaviour.

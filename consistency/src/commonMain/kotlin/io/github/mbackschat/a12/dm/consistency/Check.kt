@@ -365,11 +365,12 @@ enum class CheckFamily {
     FILTERED_ENTITY_ITERATION,
 
     /**
-     * How many divisions and powers one arithmetic expression may carry, and what an exponent has to be.
-     * One constant for the three classes because `CheckOperationImpl.check` asks them of one construct —
-     * an operation context — and which of them answers is decided by the text rather than by their order.
+     * What an arithmetic expression's operands may BE, how many divisions and powers it may carry, and what
+     * an exponent has to be. One constant for the five classes because `CheckOperationImpl.check` asks them
+     * of one construct — an operation context — and the type walk PRE-EMPTS both arity gates inside it, so
+     * splitting them would let a checker name a second class on a model A12 answers once.
      */
-    CALCULATION_OPERATOR_ARITY,
+    ARITHMETIC_OPERATION_GATES,
 
     /**
      * Which field declarations each constant KIND of `NumberOfValueInFields` admits in its list. One
@@ -765,7 +766,7 @@ internal fun check(
         prepared.repetitionNotUniqueCombinationFindings() +
         prepared.parallelIterationUniquenessFindings() +
         prepared.filteredEntityIterationFindings() +
-        prepared.calculationOperatorArityFindings() +
+        prepared.arithmeticOperationGateFindings() +
         prepared.valueInFieldsConstantKindFindings() +
         prepared.valueListQuantifierOperandKindFindings() +
         prepared.entityListArityFindings() +
@@ -834,7 +835,7 @@ internal fun check(
             CheckFamily.SEMANTIC_INDEX_KEY,
             CheckFamily.REPETITION_NOT_UNIQUE_COMBINATION,
             CheckFamily.PARALLEL_ITERATION_UNIQUENESS, CheckFamily.FILTERED_ENTITY_ITERATION,
-            CheckFamily.CALCULATION_OPERATOR_ARITY, CheckFamily.VALUE_IN_FIELDS_CONSTANT_KIND,
+            CheckFamily.ARITHMETIC_OPERATION_GATES, CheckFamily.VALUE_IN_FIELDS_CONSTANT_KIND,
             CheckFamily.VALUE_LIST_QUANTIFIER_OPERAND_KIND, CheckFamily.ENTITY_LIST_ARITY,
             CheckFamily.ENTITY_LIST_PRE_GATES,
             CheckFamily.FIELD_VALUES_NOT_UNIQUE_OPERAND_KIND,

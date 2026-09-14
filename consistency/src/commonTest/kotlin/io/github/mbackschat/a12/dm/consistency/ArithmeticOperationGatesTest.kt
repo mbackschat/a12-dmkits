@@ -4,18 +4,24 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 
 /**
- * The checker's half of the arithmetic arity gates.
+ * The checker's half of everything `CheckOperationImpl.check` asks of an arithmetic expression.
  *
  * Every row mirrors one measured against the real kernel by
- * `rulekit.validate.laws.CalculationOperatorArityLawsTest`. The two ORDERED rows are what the family costs:
+ * `rulekit.validate.laws.CalculationOperatorArityLawsTest` and
+ * `rulekit.validate.laws.ArithmeticOperandKindLawsTest`. The two ORDERED rows are what the arity half costs:
  * A12 checks each operation context as it parses, so an expression violating both gates draws whichever
  * violation is written first — a reader asking the two questions in a fixed order is wrong in one order.
+ *
+ * The PRE-EMPTION row is what holds the two halves together: a kind defect inside one context silences that
+ * context's arity gates, so a checker asking both would report a class A12 never reaches.
  */
-class CalculationOperatorArityTest {
+class ArithmeticOperationGatesTest {
 
     private val invalidExponent = "MVK_INVALID_NUMBER_FOR_EXP"
     private val tooManyPow = "MVK_TOO_MANY_POW_FOR_CALC"
     private val tooManyDiv = "MVK_TOO_MANY_DIV_FOR_CALC"
+    private val notANumber = "MVK_NO_NUMBER_FOR_CALC"
+    private val mixedAdd = "MVK_NO_STRING_OR_NUMBER_FOR_ADD"
 
     /** A billing model whose `BaseFee` declares two fractional digits and `Loose` declares none at all. */
     private fun codes(declaration: String): List<String> = check(
@@ -29,6 +35,17 @@ class CalculationOperatorArityTest {
                 {"type":"Field","id":"f1","name":"Loose","Field":{"fieldType":{"type":"NumberType"}}},
                 {"type":"Field","id":"f2","name":"EffectiveFee","Field":{"fieldType":{"type":"NumberType",
                   "NumberType":{"maxFractionalDigits":2}}}},
+                {"type":"Field","id":"f3","name":"Notes","Field":{"fieldType":{"type":"StringType"}}},
+                {"type":"Field","id":"f4","name":"Serial","Field":{"fieldType":{"type":"CustomFieldType",
+                  "CustomFieldType":{"name":"BillingSerial"}}}},
+                {"type":"Field","id":"f5","name":"IssuedOn","Field":{"fieldType":{"type":"DateType",
+                  "DateType":{"format":"yyyy-MM-dd"}}}},
+                {"type":"Field","id":"f6","name":"PlainChannel","Field":{"fieldType":{
+                  "type":"EnumerationType","EnumerationType":{"values":[{"value":"WEB"},{"value":"STORE"}]}}}},
+                {"type":"Field","id":"f7","name":"LabelledChannel","Field":{"fieldType":{
+                  "type":"EnumerationType","EnumerationType":{"values":[
+                    {"value":"WEB","label":[{"locale":"en_US","text":"Web shop"}]},
+                    {"value":"STORE","label":[{"locale":"en_US","text":"In store"}]}]}}}},
                 $declaration
               ]}}
              ]}}}
@@ -42,6 +59,12 @@ class CalculationOperatorArityTest {
               "computationAlternatives":[{"operation":"${operation.replace("\"", "\\\"")}"}],
               "errorMessage":[{"locale":"en_US","text":"x"}]}}""",
     )
+
+    /**
+     * A condition that also READS the rule's error target, so the unreferenced-target family stays out of the
+     * row — every condition whose arithmetic does not happen to name `BaseFee` needs it.
+     */
+    private fun guarded(condition: String) = ruled("FieldFilled(BaseFee) And $condition")
 
     private fun ruled(condition: String) = codes(
         """{"type":"Rule","id":"r0","name":"Probe","Rule":{
@@ -112,5 +135,51 @@ class CalculationOperatorArityTest {
         expected["a nested power"] = listOf(tooManyPow)
         expected["a DECIMAL literal exponent"] = listOf(invalidExponent)
         assertEquals(expected, actual, "the same gates answer inside a rule condition")
+    }
+
+    @Test
+    fun whatEachOperatorAdmitsAsAnOperand() {
+        val actual = mutableMapOf<String, List<String>>()
+        actual["a text under a product"] = guarded("[BaseFee] * [Notes] > 0")
+        actual["a date under a subtraction"] = guarded("[BaseFee] - [IssuedOn] > 0")
+        actual["a custom type under a division"] = guarded("[BaseFee] / [Serial] > 0")
+        actual["two numbers added"] = guarded("{[BaseFee] + [Loose]} > 0")
+        actual["two texts joined"] = guarded("{[Notes] + [Serial]} == \"x\"")
+        actual["a text joined to a labelless enumeration"] = guarded("{[Notes] + [PlainChannel]} == \"x\"")
+        actual["a text joined to a LABELLED enumeration"] = guarded("{[Notes] + [LabelledChannel]} == \"x\"")
+        actual["a number added to a text"] = guarded("{[BaseFee] + [Notes]} > 0")
+        actual["a concatenation subtracted from"] = guarded("{{[Notes] + [Serial]} - [BaseFee]} > 0")
+        actual["a product added to a number"] = guarded("{{[BaseFee] * [Loose]} + [BaseFee]} > 0")
+
+        val expected = mutableMapOf<String, List<String>>()
+        expected["a text under a product"] = listOf(notANumber)
+        expected["a date under a subtraction"] = listOf(notANumber)
+        expected["a custom type under a division"] = listOf(notANumber)
+        expected["two numbers added"] = emptyList()
+        expected["two texts joined"] = emptyList()
+        expected["a text joined to a labelless enumeration"] = emptyList()
+        // The only difference between this row and the one above it is that the enumeration carries labels.
+        expected["a text joined to a LABELLED enumeration"] = listOf(mixedAdd)
+        expected["a number added to a text"] = listOf(mixedAdd)
+        expected["a concatenation subtracted from"] = listOf(notANumber)
+        expected["a product added to a number"] = emptyList()
+        assertEquals(expected, actual, "what each arithmetic operator admits, and what `+` does instead")
+    }
+
+    /** The handover: a kind defect inside one context silences that context's arity gates. */
+    @Test
+    fun theKindWalkSilencesThisContextsArityGates() {
+        val actual = mutableMapOf<String, List<String>>()
+        actual["a text in a two-division chain"] = guarded("[Notes] / 2 / 4 > 0")
+        actual["the same chain, all numbers"] = guarded("[BaseFee] / 2 / 4 > 0")
+        actual["a text in a nested power"] = guarded("[Notes] ^ 2 ^ 2 > 0")
+        actual["the same power, all numbers"] = guarded("[BaseFee] ^ 2 ^ 2 > 0")
+
+        val expected = mutableMapOf<String, List<String>>()
+        expected["a text in a two-division chain"] = listOf(notANumber)
+        expected["the same chain, all numbers"] = listOf(tooManyDiv)
+        expected["a text in a nested power"] = listOf(notANumber)
+        expected["the same power, all numbers"] = listOf(tooManyPow)
+        assertEquals(expected, actual, "the kind class answers alone where an arity law is also broken")
     }
 }

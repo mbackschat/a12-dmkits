@@ -466,7 +466,7 @@ class CheckFamilyWiringTest {
                 "/Catalog/FilterUnderAParallelBranch"),
         // Two divisions in one multiplicative chain, with nothing between them to restart the count — the
         // only arithmetic in this fixture that carries a second operator of the same kind.
-        CheckFamily.CALCULATION_OPERATOR_ARITY to
+        CheckFamily.ARITHMETIC_OPERATION_GATES to
             ("MVK_TOO_MANY_DIV_FOR_CALC" to "/Catalog/CompoundFee"),
         // `False` counts only Boolean declarations and the list opens on a text one — the one call in this
         // fixture whose constant and whose field list disagree about kind.
