@@ -5,9 +5,11 @@ import com.fasterxml.jackson.databind.node.ArrayNode
 import com.fasterxml.jackson.databind.node.ObjectNode
 import io.github.mbackschat.a12.dm.consistency.ModelSource
 import io.github.mbackschat.a12.dm.consistency.check
+import io.github.mbackschat.a12.dm.core.ReferenceResolvers
 import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertTrue
+import org.junit.jupiter.api.Assumptions.assumeTrue
 import org.junit.jupiter.api.Test
 import java.nio.file.Files
 import java.nio.file.Path
@@ -98,6 +100,59 @@ class CheckerSilenceOnMutatedModelsTest {
         )
     }
 
+    /**
+     * The same demand over the reference corpus — models nobody here wrote, perturbed.
+     *
+     * This is the arm that removes both confounds at once. The committed trees were authored against this
+     * project's own reading of A12, and every model anywhere was authored to be VALID; mutating a corpus
+     * written by A12's own team for A12's own kernel removes the first and the mutation removes the second.
+     *
+     * Each model is expanded by the Kernel first, exactly as the clean sweep does, so the mutation applies to
+     * the self-contained form. A mutant exists only for the length of the assertion and is never written —
+     * the same terms on which the original is read.
+     */
+    @Test
+    fun noFamilyReportsOnAMutatedReferenceCorpusModel() {
+        val root = ParserCorpora.kernelMm()
+        assumeTrue(root != null, "a12-kernel-mm not present — skipping the mutated corpus sweep")
+        sweepCorpus("kernel-mm", root!!)
+    }
+
+    /** The same, over the A12 Tools workspaces, whose mount path is machine-local and supplied as a property. */
+    @Test
+    fun noFamilyReportsOnAMutatedWorkspacesModel() {
+        val root = ParserCorpora.workspaces()
+        assumeTrue(root != null, "a12.corpus1.dir not set / absent — skipping the mutated workspaces sweep")
+        sweepCorpus("workspaces", root!!)
+    }
+
+    private fun sweepCorpus(label: String, root: Path) {
+        val resolver = ReferenceResolvers.directory(root)
+        val offenders = mutableListOf<String>()
+        var swept = 0
+        for (file in CorpusShrinkSupport.documentModels(root)) {
+            val expanded = runCatching {
+                CorpusModelPreparer.prepareKernelJson(file.readText(), resolver)
+            }.getOrNull() ?: continue
+            for (mutation in MUTATIONS) {
+                val mutated = mutation.applyTo(expanded) ?: continue
+                if (runCatching { BoundModel.ofJson(mutated) }.isFailure) continue
+                swept++
+                check(ModelSource(mutated, diagnosticLabel = "${file.name} [${mutation.label}]"))
+                    .findings.filter { it.justifiesRejection }
+                    .forEach { offenders += "${file.name} [${mutation.label}]: ${it.code} at ${it.at}" }
+            }
+        }
+        assertTrue(swept > 0) {
+            "$label produced no mutant the Kernel builds, so the sweep would pass vacuously"
+        }
+        assertTrue(offenders.isEmpty()) {
+            "$label: the checker reported ${offenders.size} A12 constraint(s) on PERTURBED models the Kernel " +
+                "still BUILDS, which is the over-rejection direction this project forbids:\n" +
+                offenders.take(25).joinToString("\n") { "  $it" }
+        }
+    }
+
     private data class Mutant(val model: String, val mutation: String, val json: String) {
         fun label(): String = "$model [$mutation]"
     }
@@ -180,13 +235,7 @@ class CheckerSilenceOnMutatedModelsTest {
             },
         )
 
-        /**
-         * The same three committed trees the clean sweep reads.
-         *
-         * The reference corpora are deliberately not mutated: they are EUPL and machine-local, so a mutant of
-         * one is a derived work this lane would have to hold in memory to no extra purpose — the shapes it
-         * would reach are the same shapes these trees' mutants reach.
-         */
+        /** The same three committed trees the clean sweep reads; the reference corpora have their own arms. */
         private fun committedModels(): List<Path> {
             val root = CorpusFiles.repoRoot()
             return listOf(
