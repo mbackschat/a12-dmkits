@@ -106,6 +106,10 @@ class CheckFamilyWiringTest {
               "errorCondition":"FieldFilled(Price) And SumOfProducts(Pallets*/PalletQty, Crates*/CrateQty) > 0",
               "errorEntityRelPath":"../Price",
               "errorCode":"C35","errorMessage":[{"locale":"en_US","text":"x"}]}},
+            {"type":"Rule","id":"r36","name":"OverBudgetSelector","Rule":{
+              "errorCondition":"FieldFilled(Price) And Min([Amount], 1, 2) > 0",
+              "errorEntityRelPath":"../Price",
+              "errorCode":"C36","errorMessage":[{"locale":"en_US","text":"x"}]}},
             {"type":"Group","id":"g7","name":"Crates","Group":{"repeatability":5,
               "indexFieldName":"CrateRef","elements":[
               {"type":"Field","id":"f30","name":"CrateRef","Field":{"fieldType":{"type":"StringType"}}},
@@ -327,6 +331,10 @@ class CheckFamilyWiringTest {
         // four gates and the only one reachable without a second defect in the same reference.
         CheckFamily.SUM_OF_PRODUCTS_OPERANDS to
             ("MVK_DIFFERENT_GROUPS" to "/Catalog/UnparallelProducts"),
+        // Two literals in ONE call. The nesting that would make the same two legal is the family's own
+        // discriminator and lives in its mirror; here the row only has to trigger the family.
+        CheckFamily.OPERAND_LIST_CONSTANT_BUDGET to
+            ("MVK_TOO_MANY_CONST_FOR_CALC_OP" to "/Catalog/OverBudgetSelector"),
         // `Shelf` again, this time in the KEY position of a semantic index: it is the fixture's only group
         // that does not repeat, which is exactly what keeps A12's iteration gate from pre-empting the class.
         CheckFamily.SEMANTIC_INDEX_KEY to

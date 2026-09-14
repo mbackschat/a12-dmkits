@@ -297,6 +297,13 @@ enum class CheckFamily {
     SUM_OF_PRODUCTS_OPERANDS,
 
     /**
+     * That one numeric operand-list `Min`/`Max` call lists at most one literal. Per CALL and never
+     * flattened: a literal inside a nested call or inside arithmetic belongs to that operand and not to the
+     * outer budget, so a family counting literals over the text would refuse two shapes A12 admits.
+     */
+    OPERAND_LIST_CONSTANT_BUDGET,
+
+    /**
      * That a semantic index's KEY names a field rather than a group. Its own constant rather than part of
      * [REPETITION_KEY_PLACEMENT] because the key of an index selects one repetition by VALUE, where a
      * repetition-uniqueness key declares what makes rows distinct — different laws over the same word.
@@ -573,6 +580,7 @@ internal fun check(
         prepared.filterWildcardFindings() +
         prepared.groupConditionWildcardFindings() +
         prepared.sumOfProductsOperandFindings() +
+        prepared.operandListConstantFindings() +
         prepared.semanticIndexKeyFindings() +
         prepared.repetitionNotUniqueCombinationFindings() +
         prepared.parallelIterationUniquenessFindings() +
@@ -619,7 +627,7 @@ internal fun check(
             CheckFamily.COMPUTATION_PRECONDITION_FEATURES, CheckFamily.COMPUTATION_CYCLE,
             CheckFamily.REPETITION_KEY_PLACEMENT, CheckFamily.REPETITION_SCOPE_GROUP,
             CheckFamily.FILTER_WILDCARD, CheckFamily.GROUP_CONDITION_WILDCARD,
-            CheckFamily.SUM_OF_PRODUCTS_OPERANDS,
+            CheckFamily.SUM_OF_PRODUCTS_OPERANDS, CheckFamily.OPERAND_LIST_CONSTANT_BUDGET,
             CheckFamily.SEMANTIC_INDEX_KEY,
             CheckFamily.REPETITION_NOT_UNIQUE_COMBINATION,
             CheckFamily.PARALLEL_ITERATION_UNIQUENESS,

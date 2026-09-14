@@ -45,12 +45,18 @@ data class ConditionCall(val operator: String, val at: Int, val operands: List<C
  * @param literal the STRING constant it is, quotes stripped and A12's doubled `""` collapsed — absent unless
  *     the operand is exactly one string token, by the same reduction rule [path] follows. An operand is never
  *     both this and [path]: a law about a value list's constants reads this and skips what it cannot reduce.
+ * @param constant whether the operand is a CONSTANT in A12's sense — `CheckOpUtils.isConstant`, which is one
+ *     literal with any `{…}` grouping unwrapped. Narrower than A12 on purpose: only a numeric or string
+ *     literal is recognized, so a temporal constant reads as false and a law counting constants under-reports
+ *     rather than refusing a call A12 admits. Distinct from [literal], which answers WHICH string it is and
+ *     is absent for a number.
  */
 data class CallOperand(
     val path: String?,
     val base: String? = path,
     val clauses: List<OperandClause> = emptyList(),
     val literal: String? = null,
+    val constant: Boolean = false,
 )
 
 /**
@@ -79,7 +85,7 @@ data class OperandClause(val keyword: String, val path: String?, val text: Strin
 private fun List<Token>.asOperand(keywords: Map<String, KeywordKind>, source: String): CallOperand {
     val cuts = clauseCuts(keywords)
     if (cuts.isEmpty()) {
-        return CallOperand(asPath(keywords), literal = asLiteral())
+        return CallOperand(asPath(keywords), literal = asLiteral(), constant = isConstant())
     }
     val clauses = cuts.mapIndexed { position, cut ->
         val body = subList(cut.at + cut.width, cuts.getOrNull(position + 1)?.at ?: size)
@@ -104,6 +110,30 @@ private fun List<Token>.asOperand(keywords: Map<String, KeywordKind>, source: St
 private fun List<Token>.asLiteral(): String? {
     val token = singleOrNull()?.takeIf { it.kind == TokenKind.STRING } ?: return null
     return token.text.removeSurrounding("\"").replace("\"\"", "\"")
+}
+
+/**
+ * Whether this run is one constant, which is what A12's `CheckOpUtils.isConstant` asks of an operand.
+ *
+ * One `{…}` pair is unwrapped, as the kernel's `BRACKET_OP` arm does, and only one pair: a deeper nesting
+ * reads as false, which costs a law nothing it may not lose. A decimal arrives as three tokens because the
+ * tokenizer's number terminal is a digit RUN, so the sign and the fraction are matched here rather than in it.
+ */
+private fun List<Token>.isConstant(): Boolean {
+    val core = if (size >= 2 && first().text == "{" && last().text == "}") subList(1, size - 1) else this
+    if (core.size == 1 && core[0].kind == TokenKind.STRING) {
+        return true
+    }
+    val digits = if (core.firstOrNull()?.text == "-" || core.firstOrNull()?.text == "+") {
+        core.subList(1, core.size)
+    } else {
+        core
+    }
+    return when (digits.size) {
+        1 -> digits[0].kind == TokenKind.NUMBER
+        3 -> digits[0].kind == TokenKind.NUMBER && digits[1].text == "." && digits[2].kind == TokenKind.NUMBER
+        else -> false
+    }
 }
 
 /** Where one clause keyword sits, and how many tokens it spans. */

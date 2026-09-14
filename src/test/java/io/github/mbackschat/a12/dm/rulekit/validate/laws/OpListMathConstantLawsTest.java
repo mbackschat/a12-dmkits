@@ -57,6 +57,20 @@ class OpListMathConstantLawsTest {
         rejects("Min([Quantity], {1}, 2) >= 0");
     }
 
+    /**
+     * The two literal SPELLINGS a token-level reader has to match by hand, because A12's number terminal is
+     * a digit run: a decimal arrives as three tokens and a signed one as two. Measured rather than assumed
+     * from {@code konstante}'s grammar — a reader that failed to recognize either would under-report, and
+     * one that recognized a shape A12 does not would refuse a call it admits.
+     */
+    @Test
+    void aDecimalAndASignedLiteralCountLikeAnyOther() {
+        accepts("Min([Quantity], 1.5) >= 0");
+        rejects("Min([Quantity], 1.5, 2) >= 0");
+        accepts("Min([Quantity], -1) >= 0");
+        rejects("Min([Quantity], -1, 2) >= 0");
+    }
+
     @Test
     void aLiteralInsideArithmeticDoesNotConsumeTheBudget() {
         // `[Quantity] + 1` is an arithmetic operand, not an immediate constant; the sole immediate
