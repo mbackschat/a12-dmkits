@@ -106,6 +106,13 @@ class BuilderCheckerDivergenceGuardTest {
             // fixed 2026-09-13 in the same change that measured the row. Neither refuses anything A12 admits.
             Map.entry("MVK_INTERNAL_ERROR", Disposition.SAME_LAW_SEPARATE_CARRIERS),
 
+            // The naming side here is the CHECKER, which is the less usual way round. The typed aggregates
+            // enforce the arity themselves (`CountAggregate`, `ListAggregate`, `FirstFilledValue`,
+            // `DateListAggregate` all throw citing it); `ValueInFieldsConstantKind` only names it in a KDoc,
+            // as one of the gates that run ahead of the constant switch and whose shapes it therefore leaves
+            // unjudged rather than answering with a type class of its own.
+            Map.entry("MVK_PARAMSIZE_INVALIDN", Disposition.PROSE_ONLY),
+
             // `StructuralKernelFix` carries a Hint keyed on the code — prose for a verdict the Kernel
             // reached, enforcing nothing. The checker owns the only enforcement of either law.
             Map.entry("MVK_INVALID_LENGTH_OF_RAW_TYPE", Disposition.PROSE_ONLY),

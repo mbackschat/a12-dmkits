@@ -172,6 +172,10 @@ class CheckFamilyWiringTest {
               "errorCondition":"FieldFilled(Price) And Sum(Pallets.*/PalletQty) > 0",
               "errorEntityRelPath":"../Price",
               "errorCode":"C29","errorMessage":[{"locale":"en_US","text":"x"}]}},
+            {"type":"Rule","id":"r44","name":"CountFalseOverText","Rule":{
+              "errorCondition":"FieldFilled(Price) And NumberOfValueInFields(False In Price, Amount) > 0",
+              "errorEntityRelPath":"../Price",
+              "errorCode":"C44","errorMessage":[{"locale":"en_US","text":"x"}]}},
             {"type":"Computation","id":"c44","name":"CompoundFee","Computation":{
               "computedFieldRelPath":"../Amount",
               "computationAlternatives":[{"operation":"RoundDown([Amount] / 2 / 4, 2)"}],
@@ -401,6 +405,10 @@ class CheckFamilyWiringTest {
         // only arithmetic in this fixture that carries a second operator of the same kind.
         CheckFamily.CALCULATION_OPERATOR_ARITY to
             ("MVK_TOO_MANY_DIV_FOR_CALC" to "/Catalog/CompoundFee"),
+        // `False` counts only Boolean declarations and the list opens on a text one — the one call in this
+        // fixture whose constant and whose field list disagree about kind.
+        CheckFamily.VALUE_IN_FIELDS_CONSTANT_KIND to
+            ("MVK_NO_TYPEYESNO" to "/Catalog/CountFalseOverText"),
         // A repeatable group read without a star into an error field the root holds: the target's own
         // coordinates cannot pick a repetition of `Crates`, and nothing about the operator is at fault —
         // which is what makes the row about the LEVEL rather than about the predicate reading it.

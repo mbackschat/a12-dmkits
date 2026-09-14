@@ -133,9 +133,6 @@ class CalculationOperatorArityLawsTest {
             ObjectNode root = (ObjectNode) MAPPER.readTree(written);
             ObjectNode body = computationBody(root);
             ((ObjectNode) body.get("computationAlternatives").get(0)).put("operation", operation);
-            if (System.getenv("DUMP") != null) {
-                System.out.println("DUMPNODE " + root.toString().replaceAll(".*(\\{\"type\":\"Field\",\"id\":\"[^\"]*\",\"name\":\"EffectiveFee\".{0,200}).*", "$1"));
-            }
             return KernelLaws.verdictOf(root.toString());
         } catch (IOException unreadable) {
             throw new UncheckedIOException("the writer's own output must parse", unreadable);

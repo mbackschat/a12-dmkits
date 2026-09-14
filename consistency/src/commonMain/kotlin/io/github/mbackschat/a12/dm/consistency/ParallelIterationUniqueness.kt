@@ -2,7 +2,6 @@ package io.github.mbackschat.a12.dm.consistency
 
 import io.github.mbackschat.a12.dm.consistency.syntax.CONDITION_OPERATOR_KEYWORDS
 import io.github.mbackschat.a12.dm.consistency.syntax.callsIn
-import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.contentOrNull
 
@@ -91,9 +90,7 @@ private fun PreparedModel.keyedGroupOver(path: String): KeyedGroup? = elements
 /** The `fieldType.type` a field declares, or null when it declares none this reader can see. */
 private fun PreparedModel.declaredTypeOf(path: String): String? = elements
     .firstOrNull { it.path == path && it.declaredKind == DeclaredKind.FIELD }
-    ?.body
-    ?.let { (it["fieldType"] as? JsonObject)?.get("type") as? JsonPrimitive }
-    ?.contentOrNull
+    ?.declaredFieldType()
 
 /**
  * The first two groups that A12 would iterate jointly, or null.

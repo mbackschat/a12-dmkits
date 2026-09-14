@@ -7142,6 +7142,27 @@ Reported by the portable checker, which did not emit `MVK_SORT_FIELD_DUPLICATE` 
 
 *Locked by:* `rulekit.validate.laws.GroupOrderingMultipleDefectLawsTest`, mirrored by `consistency … GroupOrderingMultipleDefectTest`.
 
+## §9 supplement — `NumberOfValueInFields` is a switch on its CONSTANT: four arms, four classes, and two the checker cannot reach (source-verified + measured, 2026-09-14) <a id="kf379"></a>
+
+> Fold: not-foldable — a diagnostic-class law about one operator's operand typing, not an evaluation behaviour.
+
+`CheckAnzahlWertOpImpl.check` is one method whose body branches on the constant standing to the LEFT of the `In`, and each branch sends the same field list down a different type gate. So which class a list draws is decided by the constant, not by the fields: the same list is admitted under one constant and refused under another. Locked: `rulekit.validate.laws.ValueInFieldsConstantKindLawsTest` (22 rows), mirrored by `consistency.ValueInFieldsConstantKindTest`.
+
+| the constant | declarations it admits | otherwise |
+|---|---|---|
+| `True` | Boolean, Confirm | `MVK_NO_TYPE_YES_OR_YESNO` |
+| `False` | Boolean | `MVK_NO_TYPEYESNO` |
+| a string | String, Custom, Enumeration — and the constant must be a MEMBER of an Enumeration it meets | `MVK_NO_STRING_OR_ENUM`, `MVK_INVALID_STRING_CONSTANT_FOR_ENUMERATION` |
+| a number | Number | `MVK_NO_NUMBER` |
+
+**The two boolean arms are not mirror images**, which [KF113](#kf113) already recorded from the other side and this grid completes: a Confirm declaration carries a yes-representation and no no-representation, so `False` has nothing to compare and refuses it while `True` admits it. Measured on Date and Enumeration carriers as well as text and number ones, because an arm's refusal is about the declaration's KIND rather than about any one neighbouring type.
+
+**A GROUP operand is expanded to every field beneath it, nested groups included.** The discriminating row is a group declaring one Boolean directly and one text field inside a subgroup: an expansion stopping at the group's own members would admit it under `False`, and A12 refuses it.
+
+**Four gates run before the switch, and each answers with a class of its own** — measured, and the reason a portable checker must stay silent on those shapes rather than name a type class: a repeated entity is `MVK_DUPLICATE_PARAM1`, a group listed beside a field it contains is `MVK_DUPLICATE_PARAM2`, a lone unstarred FIELD is `MVK_PARAMSIZE_INVALIDN`, and a root group is `MVK_ROOT_GROUP_REFERENCED`. The last is the one exception to "measured": in a single-root model the reference reader refuses the root group's own name with `MVK_INVALID_ENTITY` before the operator is reached at all, so that gate is a source read on this carrier.
+
+**Two of the method's classes cannot be reached through a consistency check at all.** `MVK_DIFFERENT_YES_VALUE` and `MVK_DIFFERENT_NO_VALUE` compare the two declarations' stored true (or false) representation, spelled in DM-JSON as `notInDCustomTrueValue`/`notInDCustomFalseValue`. Splicing two different representations onto two Boolean declarations is ADMITTED, match and mismatch alike — measured. No control can show the splice arrived, also measured: the model reader ignores an unknown property, so a deliberately misspelled key behaves identically to the correct one. The mechanism is therefore source-verified rather than settled by the table — `DocumentModelServiceUtils.convert(model, variant, problemReporter)` passes `considerNotInD = false`, and on that setting `TypeConverter.convertBoolean`/`convertConfirm` substitute the literals `true` and `false` for whatever the declaration wrote, leaving the two compared representations always equal.
+
 ## §11 supplement — an arithmetic expression's arity gates, and why the verdict follows the TEXT rather than the gate order (source-verified + measured, 2026-09-14) <a id="kf378"></a>
 
 > Fold: not-foldable — a diagnostic-class law about operation shape, not an evaluation behaviour.

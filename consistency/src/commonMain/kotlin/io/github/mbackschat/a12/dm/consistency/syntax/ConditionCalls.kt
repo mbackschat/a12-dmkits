@@ -45,6 +45,10 @@ data class ConditionCall(val operator: String, val at: Int, val operands: List<C
  * @param literal the STRING constant it is, quotes stripped and A12's doubled `""` collapsed — absent unless
  *     the operand is exactly one string token, by the same reduction rule [path] follows. An operand is never
  *     both this and [path]: a law about a value list's constants reads this and skips what it cannot reduce.
+ * @param text the operand's authored text, verbatim between its first and last token. A law whose operator
+ *     carries an INFIX keyword inside one argument — `NumberOfValueInFields(<constant> In <entity>)` is the
+ *     one such shape — cannot use [path] or [literal], both of which reduce a multi-token run to nothing;
+ *     it re-reads this instead.
  * @param constant whether the operand is a CONSTANT in A12's sense — `CheckOpUtils.isConstant`, which is one
  *     literal with any `{…}` grouping unwrapped. Narrower than A12 on purpose: only a numeric or string
  *     literal is recognized, so a temporal constant reads as false and a law counting constants under-reports
@@ -57,6 +61,7 @@ data class CallOperand(
     val clauses: List<OperandClause> = emptyList(),
     val literal: String? = null,
     val constant: Boolean = false,
+    val text: String = "",
 )
 
 /**
@@ -84,8 +89,9 @@ data class OperandClause(val keyword: String, val path: String?, val text: Strin
  */
 private fun List<Token>.asOperand(keywords: Map<String, KeywordKind>, source: String): CallOperand {
     val cuts = clauseCuts(keywords)
+    val text = if (isEmpty()) "" else source.substring(first().start, last().end)
     if (cuts.isEmpty()) {
-        return CallOperand(asPath(keywords), literal = asLiteral(), constant = isConstant())
+        return CallOperand(asPath(keywords), literal = asLiteral(), constant = isConstant(), text = text)
     }
     val clauses = cuts.mapIndexed { position, cut ->
         val body = subList(cut.at + cut.width, cuts.getOrNull(position + 1)?.at ?: size)
@@ -97,7 +103,7 @@ private fun List<Token>.asOperand(keywords: Map<String, KeywordKind>, source: St
     }
     // `path` keeps its narrower contract deliberately: it has always meant "a bare spec and nothing else",
     // and widening it here would silently change every family already reading it.
-    return CallOperand(null, subList(0, cuts.first().at).asPath(keywords), clauses)
+    return CallOperand(null, subList(0, cuts.first().at).asPath(keywords), clauses, text = text)
 }
 
 /**

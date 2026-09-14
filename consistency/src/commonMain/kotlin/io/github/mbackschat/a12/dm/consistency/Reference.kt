@@ -1,5 +1,6 @@
 package io.github.mbackschat.a12.dm.consistency
 
+import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.contentOrNull
 
@@ -248,3 +249,7 @@ internal const val OUTER_MARKER = "$"
 /** The index field [group] declares, or null when it declares none — A12 reads an empty name as none. */
 internal fun indexFieldNameOf(group: DeclaredElement): String? =
     (group.body?.get("indexFieldName") as? JsonPrimitive)?.contentOrNull?.takeIf { it.isNotEmpty() }
+
+/** The `fieldType.type` discriminator a field declares, or null where it declares none this reader can see. */
+internal fun DeclaredElement.declaredFieldType(): String? =
+    ((body?.get("fieldType") as? JsonObject)?.get("type") as? JsonPrimitive)?.contentOrNull

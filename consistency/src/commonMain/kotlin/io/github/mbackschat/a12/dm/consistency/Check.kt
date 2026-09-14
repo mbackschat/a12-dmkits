@@ -372,6 +372,14 @@ enum class CheckFamily {
     CALCULATION_OPERATOR_ARITY,
 
     /**
+     * Which field declarations each constant KIND of `NumberOfValueInFields` admits in its list. One
+     * constant for the four classes because `CheckAnzahlWertOpImpl.check` is one switch on the constant, so
+     * which of them answers is decided by what stands to the left of the `In` rather than by a property a
+     * family could split by.
+     */
+    VALUE_IN_FIELDS_CONSTANT_KIND,
+
+    /**
      * That every repetition an operand crosses unstarred is one the target's own coordinates address — or,
      * where it is not, that the two branches iterate JOINTLY on a shared index field. One constant for the
      * five classes of that walk because A12 asks them as one gate chain per level, and because which class
@@ -654,6 +662,7 @@ internal fun check(
         prepared.parallelIterationUniquenessFindings() +
         prepared.filteredEntityIterationFindings() +
         prepared.calculationOperatorArityFindings() +
+        prepared.valueInFieldsConstantKindFindings() +
         prepared.operandRepetitionScopeFindings() +
         prepared.dateConstructionSlotFindings() +
         prepared.hModelPathSuffixFindings() +
@@ -707,7 +716,7 @@ internal fun check(
             CheckFamily.SEMANTIC_INDEX_KEY,
             CheckFamily.REPETITION_NOT_UNIQUE_COMBINATION,
             CheckFamily.PARALLEL_ITERATION_UNIQUENESS, CheckFamily.FILTERED_ENTITY_ITERATION,
-            CheckFamily.CALCULATION_OPERATOR_ARITY,
+            CheckFamily.CALCULATION_OPERATOR_ARITY, CheckFamily.VALUE_IN_FIELDS_CONSTANT_KIND,
             CheckFamily.OPERAND_REPETITION_SCOPE, CheckFamily.DATE_CONSTRUCTION_SLOT,
             CheckFamily.H_MODEL_PATH_SUFFIX, CheckFamily.FIELD_OPERAND_KIND,
             CheckFamily.FILTERED_OPERAND_KIND, CheckFamily.CATEGORY_REFERENCE,
