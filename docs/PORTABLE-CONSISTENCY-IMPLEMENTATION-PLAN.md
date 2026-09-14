@@ -771,7 +771,7 @@ One cold adversarial review over the frozen range, as [§2](#2-execution-order-a
 
 **A third reader collapsed into a shared home**, `declaredEnumValues` in `EnumCategories.kt` — three private copies in two shapes (ordered and set-valued), with the same null-on-unreadable contract stated three times. The ordered one won and the set consumers call `toSet()`.
 
-**A test-side defect worth naming, because it is invisible and the build stays green.** The first grid used the same row label twice in one `LinkedHashMap`, so the second measurement silently overwrote the first on BOTH sides and the assertion passed over a denominator short by one. A map-keyed grid hides a duplicate key the way a list would not; the check is to count the rows, not to read the verdict.
+**A test-side defect worth naming, and the guard that already owns it.** The first grid used the same row label twice in one `LinkedHashMap`, so the second measurement silently overwrote the first on BOTH sides and the assertion passed over a denominator short by one. It was caught by eye and fixed before any gate ran — which is why `GridRowKeyGuardTest`, which owns exactly this class in `leakGuardTest`, never saw it. Re-proved by mutation on this slice's own grid: it fires. The lesson is not a missing instrument but the order of the loop — the targeted `-Pfast` runs a slice is written against skip that lane, so a collapsed grid can steer a whole family's implementation before anything says so. Read the row count off the result XML when a grid is the thing being written.
 
 ### C record — the seventy-first family, and a published grid that varied one axis too few (2026-09-14)
 
