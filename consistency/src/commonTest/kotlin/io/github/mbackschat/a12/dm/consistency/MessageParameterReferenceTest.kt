@@ -60,14 +60,17 @@ class MessageParameterReferenceTest {
         expected["a GROUP the condition does not read"] = listOf(invalidField)
         expected["a pathed field the condition does not read"] = listOf(invalidField)
         expected["an escaped dollar"] = emptyList()
-        // `WRONG_NUMBER_OF_DOLLARS` is A12's, and an unterminated parameter is not a reference at all.
-        expected["a lone dollar"] = emptyList()
+        // The four dollar-count rows below are A12's `WRONG_NUMBER_OF_DOLLARS`, landed 2026-09-15 by
+        // `MESSAGE_PARAMETER_SYNTAX`. They stay in THIS grid because what each locks is that the membership
+        // family adds nothing on top — an unterminated parameter is not a reference at all.
+        val dollars = listOf("WRONG_NUMBER_OF_DOLLARS")
+        expected["a lone dollar"] = dollars
         // The row with teeth: the name IS a real unread field, so guessing where the parameter ended would
         // report the membership class on a text A12 refuses for a different reason entirely.
-        expected["an unterminated parameter around a real unread field"] = emptyList()
+        expected["an unterminated parameter around a real unread field"] = dollars
         // `$$` is a literal dollar, so what follows is not a parameter — reading it as two delimiters would
-        // lift `Premium` out of a text A12 answers with `WRONG_NUMBER_OF_DOLLARS`.
-        expected["an escaped dollar running into a name"] = emptyList()
+        // lift `Premium` out of a text A12 answers with the dollar-count class instead.
+        expected["an escaped dollar running into a name"] = dollars
         // The message grammar does not resolve a parameter against the CONDITION lexer's terminals, so a
         // name spelling a keyword is an ordinary reference — cataloged or not, quoted or not. Exempting such
         // names would drop real findings silently, which is the one thing silence is not free for.
@@ -83,7 +86,7 @@ class MessageParameterReferenceTest {
         // A12 refuses the whole text on the dollar count and never judges the parameter it DID close, so
         // keeping the names collected before the thread was lost would report on a model A12 admits for
         // this family's reason. The row exists because a mutant returning them survived every other one.
-        expected["a good parameter before an unterminated one"] = emptyList()
+        expected["a good parameter before an unterminated one"] = dollars
         expected["an ABSOLUTE path"] = listOf(invalidField)
         // Only the OVERSHOOT is refused: a `..` landing inside the root group is ordinary and judged for
         // membership like any other address (measured from a rule in `Claims`).

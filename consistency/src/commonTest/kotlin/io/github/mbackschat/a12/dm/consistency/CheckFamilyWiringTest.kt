@@ -370,7 +370,10 @@ class CheckFamilyWiringTest {
               "elements":[
                 {"type":"Field","id":"f13","name":"Slot","Field":{"fieldType":{"type":"NumberType"}}}
               ]}},
-            {"type":"Rule","id":"r64","name":"MarksAnOuterIterationOutsideAFilter","Rule":{
+            {"type":"Rule","id":"r65","name":"OpensAParameterItNeverCloses","Rule":{
+              "errorCondition":"FieldFilled(Price)","errorEntityRelPath":"../Price","errorCode":"C65",
+              "errorMessage":[{"locale":"en_US","text":"see ${'$'}Price"}]}},
+                        {"type":"Rule","id":"r64","name":"MarksAnOuterIterationOutsideAFilter","Rule":{
               "errorCondition":"FieldFilled(Price) And [${'$'}/Catalog/UnitCount] > 0",
               "errorEntityRelPath":"../Price","errorCode":"C64",
               "errorMessage":[{"locale":"en_US","text":"x"}]}},
@@ -639,6 +642,10 @@ class CheckFamilyWiringTest {
         // A filter naming a repeatable SIBLING of the starred operand's group: the operand itself is sound
         // The marker on a reference that RESOLVES, outside any filter: resolution answers before this gate,
         // so a marked path naming nothing would trigger the reference family instead of this one.
+        // A complete text but for the closing dollar, and no control character anywhere: the character gate
+        // pre-empts this one, so a row carrying both would be evidence for the wrong family.
+        CheckFamily.MESSAGE_PARAMETER_SYNTAX to
+            ("WRONG_NUMBER_OF_DOLLARS" to "/Catalog/OpensAParameterItNeverCloses"),
         CheckFamily.OUTER_MARKER_POSITION to
             ("MVK_INVALID_OUTER_ITERATION" to "/Catalog/MarksAnOuterIterationOutsideAFilter"),
         CheckFamily.FILTER_BODY_GATES to

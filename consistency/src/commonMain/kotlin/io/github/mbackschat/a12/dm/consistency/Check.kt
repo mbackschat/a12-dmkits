@@ -664,6 +664,13 @@ enum class CheckFamily {
     MESSAGE_TEXT_CHARACTERS,
 
     /**
+     * That an error message closes every parameter it opens. Its own constant rather than part of
+     * [MESSAGE_TEXT_CHARACTERS] because the character gate PRE-EMPTS this one, so the two are ordered rather
+     * than alternatives — and the gate is already exposed for exactly this kind of consumer.
+     */
+    MESSAGE_PARAMETER_SYNTAX,
+
+    /**
      * That every DSL-bearing member can be TOKENIZED — the syntax layer's first phase, and the only one
      * decidable without a grammar. Whether the tokens then form a condition A12's parser accepts is a
      * separate question this family does not answer.
@@ -900,6 +907,7 @@ internal fun check(
         prepared.errorTextCategorySuffixFindings() +
         prepared.errorTextIndexTerminalFindings() +
         prepared.messageTextCharacterFindings() +
+        prepared.messageParameterSyntaxFindings() +
         prepared.stringTypeMessageFindings() + prepared.stringTypeParameterFindings() +
         prepared.numberTypeDigitFindings() + prepared.enumValueLabelFindings() +
         prepared.enumSpecialValueFindings())
@@ -965,6 +973,7 @@ internal fun check(
             CheckFamily.ENUM_COMPUTATION_SOURCE,
             CheckFamily.ERROR_TARGET_ITERATION,
             CheckFamily.MESSAGE_PARAMETER_REFERENCE, CheckFamily.MESSAGE_TEXT_CHARACTERS,
+            CheckFamily.MESSAGE_PARAMETER_SYNTAX,
             CheckFamily.ERROR_TEXT_SEMANTIC_INDEX, CheckFamily.ERROR_TEXT_CATEGORY_SUFFIX,
             CheckFamily.ERROR_TEXT_INDEX_TERMINAL),
         gaps = prepared.gaps() + prepared.emptyFactBase() + findings.buildBlocked() +

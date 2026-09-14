@@ -7071,8 +7071,11 @@ Reported by the portable checker as two gates where the report is assembled. The
 | an unread parameter **before** a tab | **`MVK_INVALID_CHARACTERS`** |
 | a tab before / after an unresolvable parameter | **`MVK_INVALID_CHARACTERS`**, both |
 | a tab before an unterminated parameter | **`MVK_INVALID_CHARACTERS`** |
+| a LINE BREAK before an unterminated parameter | **`MVK_INVALID_LINEBREAK`** (added 2026-09-15) |
 | `see $Adjuster$ and $NoSuchField$` | **`INVALID_FIELD`, `INVALID_ENTITY`** |
 | the same two reversed | **`INVALID_ENTITY`, `INVALID_FIELD`** |
+
+**BOTH ARMS of the character gate pre-empt the dollar count, measured rather than transferred** (2026-09-15). The tab row above settles the `MVK_INVALID_CHARACTERS` arm; the line-break row settles the other, and it was worth its own measurement because a checker placing the dollar gate behind "the character gate" is relying on the whole gate rather than its tab half. That ordering is what lets the portable checker report `WRONG_NUMBER_OF_DOLLARS` (`CheckFamily.MESSAGE_PARAMETER_SYNTAX`) by asking one already-shared predicate first.
 
 **The character check is a GATE, not a competitor for first place.** It wins wherever the character sits, which is the row a position-blind reading and a first-defect reading both get right and only the reversed pair separates — the control [KF340](#kf340) did not have. Past it, both parameter defects are reported, ordered by where the parameter appears.
 

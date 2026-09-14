@@ -739,6 +739,16 @@ One cold adversarial review over the frozen range, as [§2](#2-execution-order-a
 
 **The catalog half is deliberately not delivered, with its re-open trigger.** A2 ruled that `operators.json` ships as-is because it is already data; that remains right, and it is not yet USEFUL — no finding this checker produces names an operator id, so 293 KB would be packaged with nothing to join it against. It lands when a finding carries an operator.
 
+### C record — the worklist derived instead of guessed (2026-09-15)
+
+**Frozen change: the dollar count an error message has to balance.** `WRONG_NUMBER_OF_DOLLARS` ([KF343](KERNEL-FINDINGS.md#kf343), amended in place). New family `MESSAGE_PARAMETER_SYNTAX`; the count goes 93 → 94.
+
+**The slice matters less than how it was CHOSEN.** Picking families by reading around had started returning items already dispositioned — two in a row, both correctly closed with their reasons, and reading each cost more than the slice would have. So the worklist was derived twice instead: every `MVK_*` ledger row whose disposition column lacks `checker-reported` (113 of 306, of which 77 are `unreachable` or `erased` and nearly all the rest carry a recorded decision), and then every constant of A12's UNPREFIXED `FehlertextErrorType` diffed against both the checker's main source and the laws estate. The second derivation is the one that paid: **49 constants, 14 reported, 11 MEASURED IN LAWS AND NOT REPORTED, 24 neither.** That middle column is the cheapest class of work in the estate and nothing named it before.
+
+**The prefixed estate is nearly drained and the unprefixed one is not — which the family COUNT hides.** Both surfaces are counted by the same `CheckFamily` constants, so progress on one reads like progress on the other. Derive the two denominators separately, and re-derive rather than increment: the first attempt at this diff scanned only the checker's source and put the middle column at 35, because it counted "not reported" without asking which of those had already been measured.
+
+**The gate below this one had to be measured on its OTHER arm.** `INVALID_CHARACTERS` was known to pre-empt the dollar count; `INVALID_LINEBREAK` is a separate class from the same gate and had not been. One row settled it, and it matters because the checker's shared predicate answers for both arms — relying on the tab measurement alone would have been a claim about a gate half nobody had run.
+
 ### C record — a law the backlog had mis-sized, read off a source page opened for something else (2026-09-15)
 
 **Frozen change: where the `$` outer marker may stand.** `MVK_INVALID_OUTER_ITERATION` ([KF-§9](KERNEL-FINDINGS.md), amended in place). New family `OUTER_MARKER_POSITION`; the count goes 92 → 93. The measured denominator now stands at **142 A12-reachable kernel codes, 128 reported** — this code and `MVK_DISALLOWED_CONSTRUCT_IN_FILTER_CONDITION` from the record below.

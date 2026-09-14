@@ -62,6 +62,7 @@ class MessageMultipleDefectLawsTest {
         actual.put("a tab BEFORE an unresolvable parameter", verdict("see" + TAB + " " + UNRESOLVABLE));
         actual.put("an unresolvable parameter BEFORE a tab", verdict("see " + UNRESOLVABLE + TAB));
         actual.put("a tab BEFORE an unterminated parameter", verdict("see" + TAB + " $Adjuster"));
+        actual.put("a LINE BREAK before an unterminated parameter", verdict("see\n $Adjuster"));
 
         Map<String, String> expected = new LinkedHashMap<>();
         expected.put("plain — the control", KernelLaws.ADMITTED);
@@ -77,6 +78,12 @@ class MessageMultipleDefectLawsTest {
         expected.put("an unresolvable parameter BEFORE a tab", "INVALID_CHARACTERS");
         // …and it covers the parameter SYNTAX class too, not only the two that resolve a name.
         expected.put("a tab BEFORE an unterminated parameter", "INVALID_CHARACTERS");
+        // The line-break arm of the same gate, measured rather than transferred from the tab: the two
+        // character classes are themselves ORDERED, so a checker placing the dollar gate behind "the
+        // character gate" needs to know the whole gate pre-empts it and not just its tab half.
+        expected.put("a LINE BREAK before an unterminated parameter",
+                "(no code: Rule with path '/Policy/ProbeRule': Only values without line breaks are "
+                        + "allowed.),INVALID_LINEBREAK");
         assertEquals(expected, actual, "a control character withholds every parameter class");
     }
 
