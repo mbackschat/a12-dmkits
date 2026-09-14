@@ -9,19 +9,34 @@ import io.github.mbackschat.a12.dm.consistency.syntax.referencesIn
 import io.github.mbackschat.a12.dm.consistency.syntax.semanticIndexUsesIn
 
 /**
- * Which repeatable levels a `Having` filter's BODY may name, and the one it must.
+ * What a `Having` filter's BODY may name — which repeatable levels, the one it must, and the constructs it
+ * may not use at all.
  *
  * `CheckEntitySpecImpl.checkIndicesInFilterCondition` walks every entity spec in the filter, level by level,
- * and asks two questions of each repeatable level the spec rides unmarked. They are separate gates with
- * separate classes, and a single-column table reads them as one
+ * and asks two questions of each repeatable level the spec rides unmarked; `checkFilterCondition` then runs
+ * `checkNoDisallowedConstructsInFilterCondition` over the whole body. They are separate gates with separate
+ * classes, and a single-column table reads them as one
  * ([KERNEL-FINDINGS KF374], `rulekit.validate.laws.HavingFilterIterationGateLawsTest`,
- * `…HavingFilterGrammarAndScopeLawsTest`).
+ * `…HavingFilterGrammarAndScopeLawsTest`, `…FilteredOperandGateOrderLawsTest`).
  *
- * | what the level carries | class |
+ * | what the body carries | class |
  * |---|---|
  * | iteration of a level the FILTERED entity does not sit under | `MVK_INVALID_ITERATION_IN_FILTER_CONDITION` |
  * | a SEMANTIC INDEX | `MVK_SEMANTIC_INDEX_NOT_ALLOWED` |
  * | no level is one the operand's star reopens | `MVK_NO_ITERATION_FOR_WILDCARD` |
+ * | `RepetitionNotUnique`, once every gate above passes | `MVK_DISALLOWED_CONSTRUCT_IN_FILTER_CONDITION` |
+ *
+ * **The construct gate runs LAST, so it is reachable only from a filter that is otherwise legal** — every
+ * class above pre-empts it, measured on both of the shapes that violate two gates at once. That ordering is
+ * also what makes it cheap to report here rather than as a family of its own: this walk already decides
+ * whether the gates before it pass, and a separate family would have to reproduce all of them to know the
+ * gate was ever reached.
+ *
+ * **Two of A12's three forbidden constructs are NOT reported, for different reasons.** A nested filter leaves
+ * this walk before the gate, being one of the shapes [filterDefectOf] declines outright. `CustomCondition` is
+ * the sharper case and a disclosed DEFECT rather than a boundary: this checker's condition grammar does not
+ * parse `CustomCondition <Name>` inside a filter body, so the syntax family answers `MVK_UNEXPECTED_TOKEN`
+ * first — a model A12 also refuses, but never with that class.
  *
  * **The first two gates yield to nothing and the third yields to any conjunct**, which is what makes the
  * distinction load-bearing rather than cosmetic: the scope gate is an OCCURRENCE check over the whole body,
@@ -57,7 +72,7 @@ import io.github.mbackschat.a12.dm.consistency.syntax.semanticIndexUsesIn
  * all: [referencesIn] reports a marked reference without it, which is right for binding and wrong for this
  * walk. Judging the text either way would name a class on a shape the marker moves.
  */
-fun PreparedModel.filterBodyIterationFindings(): List<Finding> {
+fun PreparedModel.filterBodyGateFindings(): List<Finding> {
     val keywords = CONDITION_OPERATOR_KEYWORDS[conditionLanguage] ?: return emptyList()
     val filterKeyword = keywords[HAVING] ?: return emptyList()
     val callable = keywords.values.toSet()
@@ -73,7 +88,7 @@ fun PreparedModel.filterBodyIterationFindings(): List<Finding> {
                 .flatMap { it.operands }
                 .firstNotNullOfOrNull { operand ->
                     filterDefectOf(operand, filterKeyword, indexKeyword, clauseKeywords, callable,
-                        group, element)
+                        keywords, group, element)
                         ?.let { filterFinding(it, element, member) }
                 }
         }
@@ -100,6 +115,7 @@ private fun PreparedModel.filterDefectOf(
     indexKeyword: String?,
     clauseKeywords: Set<String>,
     callable: Set<String>,
+    keywords: Map<String, String>,
     group: String,
     element: DeclaredElement,
 ): FilterDefect? {
@@ -157,14 +173,38 @@ private fun PreparedModel.filterDefectOf(
                 }
             }
         }
-    return if (boundSeen) null else FilterDefect(NO_ITERATION, written, null)
+    if (!boundSeen) {
+        return FilterDefect(NO_ITERATION, written, null)
+    }
+    // A12's LAST gate over the body, and it runs only here: `checkNoDisallowedConstructsInFilterCondition`
+    // sits after the index walk in `checkFilterCondition`, so every class above pre-empts it and it is
+    // reachable only from a filter that is otherwise legal.
+    return disallowedConstructIn(filter.text, keywords)?.let { FilterDefect(DISALLOWED_CONSTRUCT, it, null) }
 }
+
+/**
+ * The forbidden construct this filter body names, or null where it names none this reader may judge.
+ *
+ * A12's listener refuses exactly three, and each by its own terminal: a NESTED filter, `CustomCondition` and
+ * `RepetitionNotUnique`. Only the last two are reported, because the nested filter leaves this walk before
+ * the gate is reached — the body is one of the shapes [filterDefectOf] declines outright — so naming it here
+ * would claim a gate that never ran.
+ */
+private fun disallowedConstructIn(text: String, keywords: Map<String, String>): String? =
+    listOfNotNull(keywords[CUSTOM_CONDITION], keywords[REPETITION_NOT_UNIQUE])
+        .firstOrNull { namesKeyword(text, setOf(it)) != null }
 
 private const val INVALID_ITERATION = "MVK_INVALID_ITERATION_IN_FILTER_CONDITION"
 
 private const val NO_ITERATION = "MVK_NO_ITERATION_FOR_WILDCARD"
 
 private const val INDEX_NOT_ALLOWED = "MVK_SEMANTIC_INDEX_NOT_ALLOWED"
+
+private const val DISALLOWED_CONSTRUCT = "MVK_DISALLOWED_CONSTRUCT_IN_FILTER_CONDITION"
+
+private const val CUSTOM_CONDITION = "CustomCondition"
+
+private const val REPETITION_NOT_UNIQUE = "RepetitionNotUnique"
 
 private fun filterFinding(defect: FilterDefect, element: DeclaredElement, member: String): Finding = Finding(
     FindingCategory.A12_CONSTRAINT,

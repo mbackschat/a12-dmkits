@@ -739,6 +739,18 @@ One cold adversarial review over the frozen range, as [§2](#2-execution-order-a
 
 **The catalog half is deliberately not delivered, with its re-open trigger.** A2 ruled that `operators.json` ships as-is because it is already data; that remains right, and it is not yet USEFUL — no finding this checker produces names an operator id, so 293 KB would be packaged with nothing to join it against. It lands when a finding carries an operator.
 
+### C record — the free gate at the end of a chain already reproduced (2026-09-15)
+
+**Frozen change: the `Having` filter's LAST gate.** `MVK_DISALLOWED_CONSTRUCT_IN_FILTER_CONDITION` for a `RepetitionNotUnique` in a filter body ([KF374](KERNEL-FINDINGS.md#kf374)). No new family — it joins `FILTER_BODY_GATES`, renamed from `FILTER_BODY_ITERATION` because a family reporting a non-iteration class under that name misleads the next reader, and the estate already names a multi-gate chain `…Gates` in seven places. The count stays at 92.
+
+**The gate is LAST and every gate before it is already reported**, which is the inverse of the case that usually licenses a slice and just as good: the argument gate of a chain is safe because nothing pre-empts it, and the final gate of a FULLY reproduced chain is safe because this family already decides whether everything before it passed. Putting it in the same reducer is what makes that true — a separate family would have had to reproduce four gates to know the fifth was reached. **The generalisation worth carrying: a chain is worth re-reading whenever its LAST unreported gate sits behind gates the estate has since closed** — the position that was expensive when the family was written may be free now, and nothing re-opens the question on its own.
+
+**The denominator was wrong in the ledger and the source settled it in one read.** The row described the kit's three pre-checked constructs as "the representable forbidden constructs; rest kernel-delegated", implying A12 forbids more. Its listener carries exactly three overrides. A checker built on the ledger's wording would have gone looking for constructs that do not exist.
+
+**One of the three is a DISCLOSED DEFECT rather than a boundary, and the mirror locks the wrong class on purpose.** This checker's condition grammar does not parse `CustomCondition <Name>` inside a filter body, so its syntax family answers `MVK_UNEXPECTED_TOKEN` before any filter gate runs — on a text A12 parses successfully. Every such model is one A12 also refuses, so this is a wrong class rather than an over-rejection, but naming the wrong class is its own defect here. It is locked as measured fact in `FilterBodyGatesTest` with the reason, not left as an untested shape. **Open work:** teach the condition grammar the `CustomCondition <Name>` form inside a filter body, after which the construct gate reports two of the three with no further measurement — the rows are already in `AggregateSlotLawsTest`.
+
+**The conjunct was measured rather than transferred.** Both existing kernel rows carried the construct with no separate in-scope conjunct, and the rule the family needs is about a body that has one. Since the conjunct changes what the gate BEFORE this one sees, the transfer was not free; one row in `FilteredOperandGateOrderLawsTest` settled it for 29 s.
+
 ### C record — two gate-order measurements cashed in the same lane (2026-09-15)
 
 **Frozen change: one more gate in each of two families already landed.** `ILLEGAL_SEMANTIC_INDEX` for a message parameter whose semantic-index key is itself keyed ([KF412](KERNEL-FINDINGS.md#kf412)), and `INVALID_INDEX_FIELD_AMBIGUOUS` for an `$index(…)$` argument matching the index field of more than one group on the error entity's path ([KF414](KERNEL-FINDINGS.md#kf414)). No new family, so the count stays at 92; two more classes of A12's unprefixed error-text vocabulary are now reported.
@@ -1211,7 +1223,7 @@ The second is the one no amount of source reading would have found, because the 
 
 ### C record — a THIRD branch for an existing family, and the code that lives in two phases (2026-09-14)
 
-**Frozen scope: the semantic-index branch of `CheckEntitySpecImpl.checkIndicesInFilterCondition`, added to `FILTER_BODY_ITERATION`.** [KF377](KERNEL-FINDINGS.md#kf377); one residue code drained — `MVK_SEMANTIC_INDEX_NOT_ALLOWED`. No new family: the class belongs to a method this estate had already transcribed, and the transcription had two of its three branches.
+**Frozen scope: the semantic-index branch of `CheckEntitySpecImpl.checkIndicesInFilterCondition`, added to `FILTER_BODY_GATES`.** [KF377](KERNEL-FINDINGS.md#kf377); one residue code drained — `MVK_SEMANTIC_INDEX_NOT_ALLOWED`. No new family: the class belongs to a method this estate had already transcribed, and the transcription had two of its three branches.
 
 **The code had been filed under the wrong PHASE, and the ledger's own wording is what hid it.** It sits in `ParserService.checkNormalRule`, so the post-parse set took it on the strength of that one site. It has three, and the other two throw during the parse; every measured shape reaches the filter walk. The discriminating control is a rule violating the filtered-entity gate as well — a whole-rule gate checked two branches earlier, which loses anyway. **The general lesson for a set keyed by code: grep the class across the parser and read EVERY site, because a class is not owned by the phase that happens to name it.**
 

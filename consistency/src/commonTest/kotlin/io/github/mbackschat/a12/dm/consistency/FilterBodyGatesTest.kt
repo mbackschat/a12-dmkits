@@ -11,7 +11,7 @@ import kotlin.test.assertEquals
  * is what separates the gates: the scope gate yields to any in-scope reference and the iteration gate yields
  * to nothing, so a table carrying only sole-reference rows reads the two codes as one spelling difference.
  */
-class FilterBodyIterationTest {
+class FilterBodyGatesTest {
 
     private val noIteration = "MVK_NO_ITERATION_FOR_WILDCARD"
     private val invalidIteration = "MVK_INVALID_ITERATION_IN_FILTER_CONDITION"
@@ -78,6 +78,45 @@ class FilterBodyIterationTest {
     /** Rule at the root over a `Boxes*` operand, leaving `Parcels` bound by nothing. */
     private fun fromRootOverBoxes(filter: String?) =
         codes(SHIPMENT, "Reference", "Parcels/Boxes*/Code", filter)
+
+    /**
+     * A12's LAST gate over the body: the constructs it may not name, and what pre-empts each.
+     *
+     * The construct gate is reachable only from a filter that is otherwise legal, so the in-scope conjunct in
+     * the reporting row is load-bearing — measured both ways in
+     * `rulekit.validate.laws.FilteredOperandGateOrderLawsTest`, with and without it, because the conjunct
+     * changes what the gate BEFORE this one sees. Only `RepetitionNotUnique` is reported; the other two
+     * constructs A12 forbids are unreachable from here for reasons the rows below state.
+     */
+    @Test
+    fun theConstructsAFilterBodyMayNotName() {
+        val actual = mutableMapOf<String, List<String>>()
+        actual["an in-scope reference alone — the control"] = fromRoot("Parcels/Weight > 0")
+        actual["a CustomCondition beside an in-scope reference"] =
+            fromRoot("Parcels/Weight > 0 And CustomCondition SomeCheck")
+        actual["a RepetitionNotUnique beside an in-scope reference"] =
+            fromRoot("Parcels/Weight > 0 And RepetitionNotUnique(Parcels/Tracking)")
+        actual["a CustomCondition ALONE"] = fromRoot("CustomCondition SomeCheck")
+        actual["a CustomCondition beside a STARRED reference"] =
+            fromRoot("Parcels*/Weight > 0 And CustomCondition SomeCheck")
+
+        val expected = mutableMapOf<String, List<String>>()
+        expected["an in-scope reference alone — the control"] = emptyList()
+        expected["a RepetitionNotUnique beside an in-scope reference"] =
+            listOf("MVK_DISALLOWED_CONSTRUCT_IN_FILTER_CONDITION")
+        // ALL THREE CustomCondition rows are the WRONG CLASS, and the same wrong one: this checker's
+        // condition grammar does not parse `CustomCondition <Name>` inside a filter body, so the syntax
+        // family answers before any filter gate is reached. A12 parses it and refuses each of these three
+        // differently — the construct class, `MVK_NO_ITERATION_FOR_WILDCARD`, and `MVK_NO_WILDCARDS_ALLOWED`
+        // respectively (measured: `rulekit.validate.laws.AggregateSlotLawsTest`). Every model here is one
+        // A12 also refuses, so this is a wrong class rather than an over-rejection, and the rows are locked
+        // as measured fact with the defect disclosed in the portable-consistency plan's gap record.
+        val misparsed = listOf("MVK_UNEXPECTED_TOKEN")
+        expected["a CustomCondition beside an in-scope reference"] = misparsed
+        expected["a CustomCondition ALONE"] = misparsed
+        expected["a CustomCondition beside a STARRED reference"] = misparsed
+        assertEquals(expected, actual, "the constructs a filter body may not name")
+    }
 
     /** The grid the kernel-side laws test calls the gate separator. */
     @Test

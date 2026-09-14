@@ -634,7 +634,7 @@ class CheckFamilyWiringTest {
             ("MVK_NOT_IN_SAME_PATH" to "/Catalog/KeysOnParallelBranches"),
         // A filter naming a repeatable SIBLING of the starred operand's group: the operand itself is sound
         // and the filter is grammatical, so only the level the filter reaches can be what answers.
-        CheckFamily.FILTER_BODY_ITERATION to
+        CheckFamily.FILTER_BODY_GATES to
             ("MVK_INVALID_ITERATION_IN_FILTER_CONDITION" to "/Catalog/FilterOffTheOperandsPath"),
         // A day of 32 in a well-formed three-part construction: the other two components are valid and the
         // target is an ordinary full date, so nothing but the slot's own range can be what answers.

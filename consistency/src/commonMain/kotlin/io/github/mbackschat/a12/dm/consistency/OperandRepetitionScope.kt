@@ -43,7 +43,7 @@ import kotlinx.serialization.json.contentOrNull
  *
  * **Silent on a text carrying a `Having` filter or a semantic index at all, which is an UNDER-REPORT and
  * not a partition.** A filter body's references are judged against the FILTERED entity rather than the
- * rule's target — that walk is [filterBodyIterationFindings]' — and this reader sees one flat reference list
+ * rule's target — that walk is [filterBodyGateFindings]' — and this reader sees one flat reference list
  * with no way to tell the two apart, so it judges neither. The price is that the operand's OWN levels go
  * unjudged too: an unkeyed parallel level under a filtered operand is `MVK_NO_WILDCARD` and nothing here
  * names it (measured 2026-09-14, `rulekit.validate.laws.FilteredEntityParallelIterationLawsTest`).

@@ -302,7 +302,7 @@ enum class CheckFamily {
      * judges the levels the body's unmarked references ride — two gates of one kernel method, with the star
      * refused before either is asked.
      */
-    FILTER_BODY_ITERATION,
+    FILTER_BODY_GATES,
 
     /**
      * That no GROUP-CONDITION operand carries a repetition wildcard where its operator bars one. Its own
@@ -844,7 +844,7 @@ internal fun check(
         prepared.repetitionScopeGroupFindings() +
         prepared.repetitionKeyContainmentFindings() +
         prepared.filterWildcardFindings() +
-        prepared.filterBodyIterationFindings() +
+        prepared.filterBodyGateFindings() +
         prepared.groupConditionWildcardFindings() +
         prepared.sumOfProductsOperandFindings() +
         prepared.operandListConstantFindings() +
@@ -926,7 +926,7 @@ internal fun check(
             CheckFamily.COMPUTATION_PRECONDITION_FEATURES, CheckFamily.COMPUTATION_CYCLE,
             CheckFamily.REPETITION_KEY_PLACEMENT, CheckFamily.REPETITION_SCOPE_GROUP,
             CheckFamily.REPETITION_KEY_CONTAINMENT,
-            CheckFamily.FILTER_WILDCARD, CheckFamily.FILTER_BODY_ITERATION,
+            CheckFamily.FILTER_WILDCARD, CheckFamily.FILTER_BODY_GATES,
             CheckFamily.GROUP_CONDITION_WILDCARD,
             CheckFamily.SUM_OF_PRODUCTS_OPERANDS, CheckFamily.OPERAND_LIST_CONSTANT_BUDGET,
             CheckFamily.TEMPORAL_AGGREGATE_OPERANDS,

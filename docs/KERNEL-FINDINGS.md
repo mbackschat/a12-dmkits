@@ -8162,7 +8162,11 @@ A12 checks a condition in two phases and the estate had only ever measured insid
 
 **The `$`-marked reference is not walked at all**, and that is a skip rather than a pass: the extractor returns early on `ctx.outer != null`, so a marked reference contributes no ridden level, cannot clear the scope gate, and cannot trip the iteration one. Where its outer environment has no coordinate for the level, the reference reader has already answered `MVK_NO_WILDCARD` and none of this runs.
 
-*Locked by:* `rulekit.validate.laws.HavingFilterIterationGateLawsTest` and `…HavingFilterGrammarAndScopeLawsTest`; mirrored by `consistency … FilterBodyIterationTest`.
+**One more gate runs after this walk, and it is the LAST of the filter's five** (added 2026-09-15). `checkFilterCondition` calls `checkNoDisallowedConstructsInFilterCondition` once the index walk returns, and its listener refuses exactly three constructs, each by its own terminal: a NESTED filter, `CustomCondition` (`ApplikationsBedingung`) and `RepetitionNotUnique` (`WiederholungNichtEindeutig`). Source-read, and the count matters — the MVK ledger had described the kit's three pre-checks as a representable subset of a larger delegated set, and there is no larger set.
+
+**Because it runs last, the construct class is reachable only from a filter that is otherwise legal**, which is the part a checker needs and a single-construct measurement cannot show. Measured on the two shapes that violate two gates at once: a star inside the body draws `MVK_NO_WILDCARDS_ALLOWED` and an outer-only body draws `MVK_NO_ITERATION_FOR_WILDCARD`, neither co-firing with the construct class; and a construct beside an in-scope conjunct still draws the construct class, so the conjunct only feeds the gate before it. A body naming a forbidden construct and NOTHING else never reaches this gate at all, the scope gate answering first — which is why the sibling conjunct in the reporting row is load-bearing rather than decorative.
+
+*Locked by:* `rulekit.validate.laws.HavingFilterIterationGateLawsTest`, `…HavingFilterGrammarAndScopeLawsTest`, `…FilteredOperandGateOrderLawsTest` and `…AggregateSlotLawsTest`; mirrored by `consistency … FilterBodyGatesTest`.
 
 ## §6 supplement — a `Date`/`Time` construction is judged SLOT by slot, and the slot's arm picks the class (measured, 2026-09-14) <a id="kf373"></a>
 

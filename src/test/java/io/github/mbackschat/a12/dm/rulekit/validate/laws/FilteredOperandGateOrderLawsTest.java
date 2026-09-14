@@ -55,6 +55,9 @@ class FilteredOperandGateOrderLawsTest {
                 filtered("NumberOfFilledGroups(Claims* For Reference Having [Claims/ClaimRef] == \"X\") > 0"));
         actual.put("a disallowed construct in the filter BODY",
                 filtered("Sum(Claims*/Amount Having RepetitionNotUnique(Claims/ClaimRef)) > 0"));
+        actual.put("a disallowed construct BESIDE an in-scope conjunct",
+                filtered("Sum(Claims*/Amount Having ([Claims/ClaimRef] == \"X\" "
+                        + "And RepetitionNotUnique(Claims/ClaimRef))) > 0"));
 
         Map<String, String> expected = new LinkedHashMap<>();
         expected.put("a starred field operand — the control", KernelLaws.ADMITTED);
@@ -75,6 +78,11 @@ class FilteredOperandGateOrderLawsTest {
         // the wrong class on this shape; the row exists because the prediction was cheap to falsify.
         expected.put("BOTH defects at once — a group operand carrying a semantic index", "MVK_WILDCARDS_REQUIRED");
         expected.put("a disallowed construct in the filter BODY", "MVK_DISALLOWED_CONSTRUCT_IN_FILTER_CONDITION");
+        // The conjunct only helps the iteration gate before it, so the construct class survives it — the row
+        // that stops a checker from transferring the sole-construct measurement to the conjoined shape
+        // silently, since the two differ in what the gate BEFORE this one sees.
+        expected.put("a disallowed construct BESIDE an in-scope conjunct",
+                "MVK_DISALLOWED_CONSTRUCT_IN_FILTER_CONDITION");
 
         assertEquals(expected, actual);
     }

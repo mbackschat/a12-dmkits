@@ -283,7 +283,7 @@ class BuilderCheckerDivergenceGuardTest {
             // The kit names it in the operator catalog and in `GroupPresenceCondition`'s javadoc, both
             // teaching the two-gate distinction, and `having` refuses no filter body on this ground — the
             // gate needs the model's repeatability, which a typed handle does not carry. The checker asks it
-            // from stored DM-JSON (`FILTER_BODY_ITERATION`).
+            // from stored DM-JSON (`FILTER_BODY_GATES`).
             Map.entry("MVK_NO_ITERATION_FOR_WILDCARD", Disposition.PROSE_ONLY),
 
             // `EnumRef.category(name)` fails fast on an undeclared category and `StructuralKernelFix` has no
@@ -340,10 +340,12 @@ class BuilderCheckerDivergenceGuardTest {
             Map.entry("MVK_UNEXPECTED_TOKEN", Disposition.PROSE_ONLY),
             Map.entry("MVK_ERROR_FIELD_MISSING", Disposition.PROSE_ONLY),
             Map.entry("MVK_MISSING_ERROR_FIELD", Disposition.PROSE_ONLY),
-            // The kit ENFORCES this one (FieldListRef.having refuses the three constructs) and the
-            // checker only names it, to say why it stops counting RepetitionNotUnique calls inside a
-            // filter — the reverse of the usual direction, which is why the row says so.
-            Map.entry("MVK_DISALLOWED_CONSTRUCT_IN_FILTER_CONDITION", Disposition.PROSE_ONLY),
+            // Both estates enforce it now, over carriers that cannot share: FieldListRef.having refuses all
+            // three constructs on a typed handle, while the checker reads a stored filter body and can only
+            // reach the gate once the four gates before it pass. Changed from PROSE_ONLY 2026-09-15, when
+            // the checker gained the gate; it reports RepetitionNotUnique alone, the other two being
+            // unreachable from its own parse (FilterBodyGates).
+            Map.entry("MVK_DISALLOWED_CONSTRUCT_IN_FILTER_CONDITION", Disposition.SAME_LAW_SEPARATE_CARRIERS),
             // The usual direction: the checker reports it, the kit names it only as a diagnostic hint
             // in StructuralKernelFix for the kernel's own verdict.
             Map.entry("MVK_INVALID_COMBINATION_OF_REPETITON_NOT_UNIQUE", Disposition.PROSE_ONLY),
