@@ -50,7 +50,7 @@ class RepetitionWildcardTest {
     ).findings.map { it.code }
 
     @Test
-    fun aStarOnAFixedGroupIsRefusedInEveryPositionAndOnARepeatableOneNowhereHere() {
+    fun aStarOnAFixedGroupIsRefusedInEveryPositionAndOnARepeatableOneNeverByThisFamily() {
         val actual = mutableMapOf<String, List<String>>()
         actual["scalar GroupFilled | FIXED"] = codes("GroupFilled(Guest*)")
         actual["scalar GroupFilled | repeatable"] = codes("GroupFilled(Stays*)")
@@ -65,11 +65,13 @@ class RepetitionWildcardTest {
 
         val expected = mutableMapOf<String, List<String>>()
         expected["scalar GroupFilled | FIXED"] = listOf(invalid)
-        // A12 answers the repeatable rows with its slot-specific wildcard classes, which this checker does
-        // not report — so its silence there is right for a different reason than the ADMITTED rows' is.
-        expected["scalar GroupFilled | repeatable"] = emptyList()
+        // A12 answers the repeatable rows with its slot-specific wildcard classes, and THIS family reports
+        // none of them: the two codes below come from [groupConditionWildcardFindings], which owns the
+        // operator-picked classes. Kept in the grid rather than filtered out, because a row that fell silent
+        // would then mean the sibling family stopped firing — which is exactly what this grid should notice.
+        expected["scalar GroupFilled | repeatable"] = listOf("MVK_NO_WILDCARDS_ALLOWED")
         expected["quantifier operand | FIXED"] = listOf(invalid)
-        expected["quantifier operand | repeatable"] = emptyList()
+        expected["quantifier operand | repeatable"] = listOf("MVK_NO_WILDCARDS_G_ALLOWED")
         expected["count operand | FIXED"] = listOf(invalid)
         expected["count operand | repeatable"] = emptyList()
         expected["a starred path PREFIX | FIXED"] = listOf(invalid)

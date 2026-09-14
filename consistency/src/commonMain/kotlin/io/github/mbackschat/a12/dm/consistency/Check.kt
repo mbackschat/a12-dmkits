@@ -281,6 +281,14 @@ enum class CheckFamily {
     FILTER_WILDCARD,
 
     /**
+     * That no GROUP-CONDITION operand carries a repetition wildcard where its operator bars one. Its own
+     * constant rather than part of [REPETITION_WILDCARD_TARGET] or [FILTER_WILDCARD] because here the star
+     * lands on a group that legitimately repeats and the OPERATOR alone picks the class: A12 splits the seven
+     * group conditions three ways, and two of them admit the very star the other five refuse.
+     */
+    GROUP_CONDITION_WILDCARD,
+
+    /**
      * That a semantic index's KEY names a field rather than a group. Its own constant rather than part of
      * [REPETITION_KEY_PLACEMENT] because the key of an index selects one repetition by VALUE, where a
      * repetition-uniqueness key declares what makes rows distinct — different laws over the same word.
@@ -555,6 +563,7 @@ internal fun check(
         prepared.repetitionKeyPlacementFindings() +
         prepared.repetitionScopeGroupFindings() +
         prepared.filterWildcardFindings() +
+        prepared.groupConditionWildcardFindings() +
         prepared.semanticIndexKeyFindings() +
         prepared.repetitionNotUniqueCombinationFindings() +
         prepared.parallelIterationUniquenessFindings() +
@@ -600,7 +609,8 @@ internal fun check(
             CheckFamily.RAW_TYPE_LENGTH, CheckFamily.COMPUTED_TARGET_INDEX_FIELD,
             CheckFamily.COMPUTATION_PRECONDITION_FEATURES, CheckFamily.COMPUTATION_CYCLE,
             CheckFamily.REPETITION_KEY_PLACEMENT, CheckFamily.REPETITION_SCOPE_GROUP,
-            CheckFamily.FILTER_WILDCARD, CheckFamily.SEMANTIC_INDEX_KEY,
+            CheckFamily.FILTER_WILDCARD, CheckFamily.GROUP_CONDITION_WILDCARD,
+            CheckFamily.SEMANTIC_INDEX_KEY,
             CheckFamily.REPETITION_NOT_UNIQUE_COMBINATION,
             CheckFamily.PARALLEL_ITERATION_UNIQUENESS,
             CheckFamily.H_MODEL_PATH_SUFFIX, CheckFamily.FIELD_OPERAND_KIND,

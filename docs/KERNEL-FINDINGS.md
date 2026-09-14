@@ -7138,6 +7138,31 @@ Reported by the portable checker, which did not emit `MVK_SORT_FIELD_DUPLICATE` 
 
 *Locked by:* `rulekit.validate.laws.GroupOrderingMultipleDefectLawsTest`, mirrored by `consistency … GroupOrderingMultipleDefectTest`.
 
+## §9 supplement — the SEVEN group conditions split THREE ways over a repetition wildcard, and the star-required gate outruns all of them (measured, 2026-09-14) <a id="kf369"></a>
+
+> Fold: not-foldable — an operand-admission law plus a gate-order result.
+
+**One `switch` decides the whole family, and it has three arms rather than two.** Locked by `rulekit.validate.laws.GroupQuantifierWildcardLawsTest`; the arms are `CheckKontextListenBedingungImpl.check`'s three token groups, and the grid is what turns that source read into a measurement.
+
+| the operator | a starred REPEATABLE operand | a non-repeatable operand — the control |
+|---|---|---|
+| `GroupFilled`, `GroupNotFilled` | `MVK_NO_WILDCARDS_ALLOWED` | ADMITTED |
+| `AllGroupsFilled`, `GroupsNotCollectivelyFilled`, `NotAllGroupsFilled` | `MVK_NO_WILDCARDS_G_ALLOWED` | ADMITTED |
+| **`AtLeastOneGroupFilled`, `NoGroupFilled`** | **ADMITTED** | ADMITTED |
+| `NumberOfFilledGroups` | ADMITTED | ADMITTED (two operands; a lone one draws `MVK_PARAMSIZE_INVALIDGN`) |
+
+**The third arm is the whole point.** Those two are spelled like the three above them and take the same operand list, so a checker assembled from what the operators are CALLED over-rejects two of seven — the one direction this project forbids. Reported by `CheckFamily.GROUP_CONDITION_WILDCARD`.
+
+**And the control could not be the same group unstarred, because there is no such spelling.** A repeatable group named from a non-repeating rule context draws `MVK_NO_WILDCARD` from the reference reader — in every one of the seven, including the two with no wildcard gate and including the shape whose arity gate would otherwise answer. So in the three refusing operators a repeatable group is refused starred and refused unstarred: it cannot be used there at all, which is a stronger statement than the wildcard law alone.
+
+**What the refusing arm counts as a wildcard is the REFERENCE, not the operand's kind** — the row a reader of the kernel's own predicate would get backwards. `EntityRef.hasWildCardsInGroup` exempts a field's own repetition index, so a field one level below the starred group looks admitted; measured, `AllGroupsFilled(Lines*/Sku, Shipping)` is refused exactly like the bare group. Two starred levels and a single starred operand are refused too — the arity gate reads a star as standing for a list (`isMoreThanOneParameter`), so a one-operand starred call draws the wildcard class and not `MVK_PARAMSIZE_INVALID2`.
+
+**The two arms order differently against the ROOT gate, which is why a family may not treat them alike.** `checkNotRootGroupReferenced` runs before the list arm's wildcard gate and after nothing in the scalar arm, so a starred ROOT group draws `MVK_ROOT_GROUP_REFERENCED` in the first and `MVK_NO_WILDCARDS_ALLOWED` in the second. Unstarred, a repeatable root draws `MVK_NO_WILDCARD` in both — the star-required gate outruns the root gate as it outruns every operator gate.
+
+**Inside a `Having` filter the operator's own gate still answers**, and the discriminating row is what settles it: `MVK_NO_WILDCARDS_G_ALLOWED` is a class no filter gate can produce, so a quantifier nested in a filter is not answered by the filter's wildcard gate. The scalar arm's row alone could not have shown that — the filter gate draws the scalar class too ([KF97](#kf97)). The classes are also unchanged from a rule anchored INSIDE the repeatable group, measured rather than transferred.
+
+*Locked by:* `rulekit.validate.laws.GroupQuantifierWildcardLawsTest`, mirrored by `consistency … GroupConditionWildcardTest`.
+
 ## §8 supplement — an enumeration's LABEL TEXTS must differ within one language, and the rest of the per-language block is unreachable (measured, 2026-09-14) <a id="kf368"></a>
 
 > Fold: not-foldable — a declaration-admission law plus a reachability result.

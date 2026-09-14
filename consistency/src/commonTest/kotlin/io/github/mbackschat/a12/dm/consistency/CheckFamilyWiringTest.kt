@@ -98,6 +98,10 @@ class CheckFamilyWiringTest {
               "errorCondition":"FieldFilled(Price) And Sum(Pallets*/PalletQty Having [Pallets*/PalletNote] == \"x\") > 0",
               "errorEntityRelPath":"../Price",
               "errorCode":"C25","errorMessage":[{"locale":"en_US","text":"x"}]}},
+            {"type":"Rule","id":"r34","name":"StarredGroupQuantifier","Rule":{
+              "errorCondition":"FieldFilled(Price) And AllGroupsFilled(Pallets*, Shelf)",
+              "errorEntityRelPath":"../Price",
+              "errorCode":"C34","errorMessage":[{"locale":"en_US","text":"x"}]}},
             {"type":"Group","id":"g7","name":"Crates","Group":{"repeatability":5,
               "indexFieldName":"CrateRef","elements":[
               {"type":"Field","id":"f30","name":"CrateRef","Field":{"fieldType":{"type":"StringType"}}},
@@ -311,6 +315,10 @@ class CheckFamilyWiringTest {
         // defect, which is what makes this row a position claim rather than a wildcard one.
         CheckFamily.FILTER_WILDCARD to
             ("MVK_NO_WILDCARDS_ALLOWED" to "/Catalog/StarInsideAFilter"),
+        // The identical star on the identical group, one slot over: legal in the aggregate above and refused
+        // here, which is what makes the operator rather than the star the thing this family reads.
+        CheckFamily.GROUP_CONDITION_WILDCARD to
+            ("MVK_NO_WILDCARDS_G_ALLOWED" to "/Catalog/StarredGroupQuantifier"),
         // `Shelf` again, this time in the KEY position of a semantic index: it is the fixture's only group
         // that does not repeat, which is exactly what keeps A12's iteration gate from pre-empting the class.
         CheckFamily.SEMANTIC_INDEX_KEY to
