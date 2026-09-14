@@ -7142,6 +7142,33 @@ Reported by the portable checker, which did not emit `MVK_SORT_FIELD_DUPLICATE` 
 
 *Locked by:* `rulekit.validate.laws.GroupOrderingMultipleDefectLawsTest`, mirrored by `consistency … GroupOrderingMultipleDefectTest`.
 
+## §7 supplement — what the two SUBSTRING operators demand of the field they cut (source-verified + measured, 2026-09-14) <a id="kf405"></a>
+
+> Fold: not-foldable — a diagnostic-class law about one construct's operands, not an evaluation behaviour.
+
+`RangeAsString` and `RangeAsNumber` are checked by one method, `CheckFeldOpMitParamsImpl.check`, which chains six classes over the operand and the interval together.
+
+| the gate, in the measured order | class |
+|---|---|
+| the operand names a group | `MVK_NO_GROUPS_ALLOWED` |
+| it carries a repetition star | `MVK_NO_WILDCARDS_ALLOWED` |
+| it reads a category | `MVK_CATEGORY_NOT_ALLOWED` |
+| the interval is not `1 <= start <= end` | `MVK_INVALID_INTERVAL` |
+| the field is neither text nor a custom type | `MVK_INVALID_TYPE` |
+| the field waives value validation | `MVK_INVALID_RAW_TYPE` |
+
+**The interval answers ahead of both gates that read the declaration.** It is arithmetic on the written text and needs nothing from the model, while the operand is written first and so looks like the first thing judged — which is the half of the order a reader inverts. The three gates about the REFERENCE still come before it, so the interval is neither first nor last.
+
+**The kind gate takes what `FieldUtils.isLikeString` takes: `IStringType` or `IPredefinedType`.** The kernel's own javadoc for this method lists "strings, predefined types or non-closed enumerations", and the third of those is not a kind — an extensible enum is a STRING declaration carrying suggestions, so it passes as the string it is, while a closed `EnumerationType` is refused. Both are measured, because reading that list as three kinds is what the wording invites and is the same trap [KF402](#kf402) recorded one code earlier.
+
+**The gate reads the FIELD's declaration, never the operator's result kind.** `RangeAsNumber` produces a number and refuses a number field; the two operators are measured on one fixture so that they are one law rather than two that happen to agree.
+
+**An unstarred read into a repetition pre-empts all six classes**, the interval included. `MVK_NO_WILDCARD` comes from the gate outside this method, so a model whose only other defect is the interval — which needs nothing from the model at all — still draws the iteration class.
+
+Reported by the portable checker (`CheckFamily.RANGE_OPERAND_GATES`), silent on the iterating operand for that reason, and on a declaration whose effective type it does not resolve. The kits pre-check the interval law on the typed surface (`dsl.operators.RangeOperandTest`); the checker reads it off stored DM-JSON, where nothing pre-checked it.
+
+*Locked by:* `rulekit.validate.laws.RangeOperandGateLawsTest`, mirrored by `consistency.RangeOperandGatesTest`.
+
 ## §9 supplement — the two semantic-index gates that read the KEY, and the class that is last rather than first (source-verified + measured, 2026-09-14) <a id="kf404"></a>
 
 > Fold: not-foldable — a diagnostic-class law about one construct's structure, not an evaluation behaviour.

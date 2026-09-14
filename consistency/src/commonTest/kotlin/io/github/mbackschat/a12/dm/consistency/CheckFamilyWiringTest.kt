@@ -203,6 +203,10 @@ class CheckFamilyWiringTest {
               "errorCondition":"FieldFilled(Price) And [Price] < [Reference]",
               "errorEntityRelPath":"../Price",
               "errorCode":"C47","errorMessage":[{"locale":"en_US","text":"x"}]}},
+            {"type":"Rule","id":"r58","name":"CutOfANumber","Rule":{
+              "errorCondition":"FieldFilled(Price) And RangeAsString(UnitCount, 1, 3) == \"ABC\"",
+              "errorEntityRelPath":"../Price",
+              "errorCode":"C58","errorMessage":[{"locale":"en_US","text":"x"}]}},
             {"type":"Rule","id":"r57","name":"DateWithoutItsYear","Rule":{
               "errorCondition":"FieldFilled(Price) And [TravelDate] == Date(\"01\", \"02\")",
               "errorEntityRelPath":"../Price",
@@ -536,6 +540,10 @@ class CheckFamilyWiringTest {
         // family ever starts reading the declaration as optional.
         CheckFamily.BASE_YEAR_REQUIREMENT to
             ("MVK_MISSING_YEAR" to "/Catalog/DateWithoutItsYear"),
+        // A number field cut as text — the gate reads the FIELD's declaration, so this row fails the moment
+        // the family starts reading the operator's result kind instead.
+        CheckFamily.RANGE_OPERAND_GATES to
+            ("MVK_INVALID_TYPE" to "/Catalog/CutOfANumber"),
         // Two text declarations under an ordering operator — the one comparison in this fixture whose
         // operator demands more of its sides than they are.
         CheckFamily.COMPARISON_OPERATOR_OPERANDS to

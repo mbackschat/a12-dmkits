@@ -1,5 +1,7 @@
 package io.github.mbackschat.a12.dm.consistency
 
+import io.github.mbackschat.a12.dm.consistency.syntax.CallOperand
+import io.github.mbackschat.a12.dm.consistency.syntax.categoryAccessesIn
 import io.github.mbackschat.a12.dm.consistency.syntax.Token
 import io.github.mbackschat.a12.dm.consistency.syntax.TokenKind
 import io.github.mbackschat.a12.dm.consistency.syntax.referencesIn
@@ -394,6 +396,35 @@ internal fun PreparedModel.addressedTargetOf(
         it !in starred && !(declaringGroup == it || declaringGroup.startsWith("$it/"))
     }
     return if (unaddressed) null else target
+}
+
+/**
+ * The declared types this reader is CERTAIN A12 does not treat as string-LIKE.
+ *
+ * `FieldUtils.isLikeString` admits `IStringType` and `IPredefinedType`, our `StringType` and `CustomFieldType`;
+ * this is the allow-list of the rest, so a typedef or an unspecified type is left unjudged. Two families ask
+ * it of two different kernel methods that each call that one predicate.
+ */
+internal val PLAINLY_NON_STRING_TYPES = setOf(
+    "NumberType",
+    "BooleanType",
+    "ConfirmType",
+    "EnumerationType",
+    "DateRangeType",
+) + TEMPORAL_DECLARED_TYPES
+
+/**
+ * The operand reduced to its written spec and the category it names, or null where neither can be read.
+ *
+ * A category access is not a path with a suffix — the reader that finds one returns the path and the category
+ * separately — so a family that only asked for [CallOperand.path] would see nothing at all where A12 sees a
+ * category and refuses the call.
+ */
+internal fun PreparedModel.operandSpec(operand: CallOperand): Pair<String, String?>? {
+    categoryAccessesIn(operand.text, conditionLanguage).singleOrNull()?.let { (path, category) ->
+        return path to category
+    }
+    return (operand.path ?: return null) to null
 }
 
 /**

@@ -86,20 +86,6 @@ private const val MOST_CONVERTIBLE_DIGITS = 15
 private const val DIGIT_PATTERN = "[0-9]+"
 
 /**
- * The declared types this reader is CERTAIN A12 does not treat as string-LIKE.
- *
- * `FieldUtils.isLikeString` admits `IStringType` and `IPredefinedType`, our `StringType` and `CustomFieldType`;
- * this is the allow-list of the rest, so a typedef or an unspecified type is left unjudged.
- */
-private val PLAINLY_NON_STRING_TYPES = setOf(
-    "NumberType",
-    "BooleanType",
-    "ConfirmType",
-    "EnumerationType",
-    "DateRangeType",
-) + TEMPORAL_DECLARED_TYPES
-
-/**
  * The declared types the number conversion refuses outright, without reading anything else about them.
  *
  * `checkIsConvertableToNumber` branches on `IStringType` then `IEnumerationType` and refuses every other
@@ -237,14 +223,6 @@ private fun String.readsAsANumber(): Boolean {
         return false
     }
     return replace(".", "").replace("-", "").length <= MOST_CONVERTIBLE_DIGITS
-}
-
-/** The operand reduced to its written spec and the category it names, or null where neither can be read. */
-private fun PreparedModel.operandSpec(operand: CallOperand): Pair<String, String?>? {
-    categoryAccessesIn(operand.text, conditionLanguage).singleOrNull()?.let { (path, category) ->
-        return path to category
-    }
-    return (operand.path ?: return null) to null
 }
 
 private fun finding(

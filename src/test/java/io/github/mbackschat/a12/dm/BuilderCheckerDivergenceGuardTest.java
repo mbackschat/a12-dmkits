@@ -545,6 +545,13 @@ class BuilderCheckerDivergenceGuardTest {
             // filter is a fourth position, and position is what picks the class there.)*
             Map.entry("MVK_NO_WILDCARDS_ALLOWED", Disposition.SAME_LAW_SEPARATE_CARRIERS),
 
+            // The two substring records refuse `start < 1 || end < start` in their canonical constructors,
+            // which is `CheckFeldOpMitParamsImpl`'s `begin < 1 || begin > ende` character for character, and
+            // the checker reads the same law off a stored condition text where no constructor ran. Neither
+            // is stricter than A12, so the kit's refusal is safe on its read path too: a model carrying such
+            // an interval is one A12 itself rejects.
+            Map.entry("MVK_INVALID_INTERVAL", Disposition.SAME_LAW_SEPARATE_CARRIERS),
+
             // Prose on the CHECKER side again: `Computation.build()` genuinely pre-checks a self-read, while
             // the checker only NAMES the code, in the cycle family's doc comment explaining why a one-node
             // circle is left to A12. The checker deliberately does not carry the law — its two pre-emptions
