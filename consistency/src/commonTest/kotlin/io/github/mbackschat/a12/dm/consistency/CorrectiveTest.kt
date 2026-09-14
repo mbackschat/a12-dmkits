@@ -61,6 +61,10 @@ class CorrectiveTest {
               {"type":"Field","id":"f16","name":"CrateRef","Field":{"fieldType":{"type":"StringType"}}},
               {"type":"Field","id":"f17","name":"ToteQty","Field":{"fieldType":{"type":"NumberType"}}}
             ]}},
+            {"type":"Rule","id":"r15","name":"CountOverOneGroup","Rule":{
+              "errorCondition":"FieldFilled(Note) And NumberOfFilledGroups(Warehouse) > 0",
+              "errorEntityRelPath":"../Note",
+              "errorCode":"C15","errorMessage":[{"locale":"en_US","text":"x"}]}},
             {"type":"Rule","id":"r14","name":"KeysOnParallelBranches","Rule":{
               "errorCondition":"RepetitionNotUnique(Crates/CrateQty, Totes/ToteQty)",
               "errorEntityRelPath":"../Crates/CrateQty",

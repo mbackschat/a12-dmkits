@@ -388,6 +388,13 @@ enum class CheckFamily {
     VALUE_LIST_QUANTIFIER_OPERAND_KIND,
 
     /**
+     * How many entities each entity-list operator's argument list needs. One constant for the six classes
+     * because they are six calls to the same handful of gates in `CheckEntityListenUtils`, differing only
+     * in which operator's switch reaches them — the operator decides the class, so nothing else could.
+     */
+    ENTITY_LIST_ARITY,
+
+    /**
      * That every repetition an operand crosses unstarred is one the target's own coordinates address — or,
      * where it is not, that the two branches iterate JOINTLY on a shared index field. One constant for the
      * five classes of that walk because A12 asks them as one gate chain per level, and because which class
@@ -672,6 +679,7 @@ internal fun check(
         prepared.calculationOperatorArityFindings() +
         prepared.valueInFieldsConstantKindFindings() +
         prepared.valueListQuantifierOperandKindFindings() +
+        prepared.entityListArityFindings() +
         prepared.operandRepetitionScopeFindings() +
         prepared.dateConstructionSlotFindings() +
         prepared.hModelPathSuffixFindings() +
@@ -726,7 +734,7 @@ internal fun check(
             CheckFamily.REPETITION_NOT_UNIQUE_COMBINATION,
             CheckFamily.PARALLEL_ITERATION_UNIQUENESS, CheckFamily.FILTERED_ENTITY_ITERATION,
             CheckFamily.CALCULATION_OPERATOR_ARITY, CheckFamily.VALUE_IN_FIELDS_CONSTANT_KIND,
-            CheckFamily.VALUE_LIST_QUANTIFIER_OPERAND_KIND,
+            CheckFamily.VALUE_LIST_QUANTIFIER_OPERAND_KIND, CheckFamily.ENTITY_LIST_ARITY,
             CheckFamily.OPERAND_REPETITION_SCOPE, CheckFamily.DATE_CONSTRUCTION_SLOT,
             CheckFamily.H_MODEL_PATH_SUFFIX, CheckFamily.FIELD_OPERAND_KIND,
             CheckFamily.FILTERED_OPERAND_KIND, CheckFamily.CATEGORY_REFERENCE,

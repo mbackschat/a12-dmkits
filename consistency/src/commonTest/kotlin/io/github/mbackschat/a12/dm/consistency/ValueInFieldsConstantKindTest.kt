@@ -126,7 +126,9 @@ class ValueInFieldsConstantKindTest {
 
         val expected = mutableMapOf<String, List<String>>()
         expected["a repeated entity, which A12 answers as a duplicate"] = emptyList()
-        expected["a lone unstarred field, which A12 answers on arity"] = emptyList()
+        // Reported, but by [entityListArityFindings] — this family names no type class there, which is what
+        // the row locks; the arity family owns the class A12 actually answers with.
+        expected["a lone unstarred field, which A12 answers on arity"] = listOf("MVK_PARAMSIZE_INVALIDN")
         expected["a member of the enumeration, beside a text declaration"] = emptyList()
         expected["a NON-member of the enumeration, beside a number declaration"] = emptyList()
         assertEquals(expected, actual, "the shapes it deliberately does not report")

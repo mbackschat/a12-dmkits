@@ -7142,6 +7142,33 @@ Reported by the portable checker, which did not emit `MVK_SORT_FIELD_DUPLICATE` 
 
 *Locked by:* `rulekit.validate.laws.GroupOrderingMultipleDefectLawsTest`, mirrored by `consistency … GroupOrderingMultipleDefectTest`.
 
+## §9 supplement — six arity gates, one per operator, and two classes that differ only in an underscore (source-verified + measured, 2026-09-14) <a id="kf381"></a>
+
+> Fold: not-foldable — a diagnostic-class law about operand arity, not an evaluation behaviour.
+
+Every entity-list operator calls exactly one arity gate from `CheckEntityListenUtils`, chosen by a switch in its construct class. The gates are not variations on one predicate, and reading them as "at least two" would refuse models A12 admits. Locked: `rulekit.validate.laws.EntityListArityLawsTest` (23 rows), mirrored by `consistency.EntityListArityTest`.
+
+| the law | refuses | class | operators |
+|---|---|---|---|
+| exactly one entity | any other count | `MVK_PARAMSIZE_INVALID1` | `FieldFilled`, `FieldNotFilled`, `GroupFilled`, `GroupNotFilled` |
+| exactly two entities | any other count | `MVK_PARAMSIZE_INVALID_2` | `SumOfProducts` |
+| more than one FIELD, or a group | a lone unstarred field | `MVK_PARAMSIZE_INVALIDN` | `AllFieldsFilled`, `NotAllFieldsFilled`, `FieldsNotCollectivelyFilled`, `NotExactlyOneFieldFilled`, `MoreThanOneFieldFilled`, `FieldValuesNotUnique`, `MinValue`, `MaxValue`, `Sum`, `FirstFilledValue`, `NumberOfFilledFields`, `NumberOfDifferentValues`, `NumberOfValueInFields` |
+| the same | a lone unstarred field | `MVK_PARAMSIZE_INVALIDFN` | `DateRangesOverlap` |
+| more than one ENTITY | a lone unstarred entity of any kind | `MVK_PARAMSIZE_INVALID2` | `AllGroupsFilled`, `NotAllGroupsFilled`, `GroupsNotCollectivelyFilled` |
+| the same | a lone unstarred entity of any kind | `MVK_PARAMSIZE_INVALIDGN` | `NumberOfFilledGroups` |
+
+**The two predicates differ in what a lone entity has to BE, and that is the row a rule of thumb gets wrong.** `checkIsMoreThanOneEntity` refuses only when the lone entity is a FIELD, so `AllFieldsFilled(Packing)` — one group — is ADMITTED; `isMoreThanOneParameter` refuses a lone entity whatever its kind, so `AllGroupsFilled(Packing)` is not.
+
+**A wildcard satisfies the second predicate and is irrelevant to the first.** `NumberOfFilledGroups(Lines*)` is admitted where `NumberOfFilledGroups(Packing)` is not. The starred group row is measured on `NumberOfFilledGroups` rather than on `AllGroupsFilled`, because that operator family runs a wildcard gate straight after its arity one and answers `MVK_NO_WILDCARDS_G_ALLOWED` first — itself a measured row.
+
+**`MVK_PARAMSIZE_INVALID2` and `MVK_PARAMSIZE_INVALID_2` are different laws on different operators** and differ only in an underscore, so each is measured on its own carrier rather than inferred from the other.
+
+**Three operators ask about KIND before they ask about count**, measured on lists whose count is separately wrong so the rows cannot be explained by the arity gate having passed: `SumOfProducts` and `DateRangesOverlap` answer a group list with `MVK_NO_GROUPS_ALLOWED`, and `NumberOfFilledGroups` answers a field with `MVK_NO_FIELDS_ALLOWED`.
+
+**An operand crossing an UNSTARRED repetition never reaches its operator's arity gate**, the reference reader refusing it while the list is built: `MVK_NO_WILDCARD` where the error field sits outside that group, `MVK_WILDCARDS_REQUIRED` where it sits inside. `Sum(Lines/Amount)` is therefore not a one-entity arity question at all, which matters because it looks exactly like one.
+
+**`AtLeastOneFieldFilled`, `NoFieldFilled`, `AtLeastOneGroupFilled` and `NoGroupFilled` call no arity gate at all** — their arms of the same switches return immediately.
+
 ## §8 supplement — a value-list quantifier asks its field list two questions in a fixed order, and the value list a third (source-verified + measured, 2026-09-14) <a id="kf380"></a>
 
 > Fold: not-foldable — a diagnostic-class law about operand typing, not an evaluation behaviour.

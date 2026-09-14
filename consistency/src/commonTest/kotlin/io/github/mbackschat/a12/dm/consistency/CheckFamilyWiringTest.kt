@@ -172,6 +172,10 @@ class CheckFamilyWiringTest {
               "errorCondition":"FieldFilled(Price) And Sum(Pallets.*/PalletQty) > 0",
               "errorEntityRelPath":"../Price",
               "errorCode":"C29","errorMessage":[{"locale":"en_US","text":"x"}]}},
+            {"type":"Rule","id":"r46","name":"AllFieldsOverOneField","Rule":{
+              "errorCondition":"FieldFilled(Price) And AllFieldsFilled(Amount)",
+              "errorEntityRelPath":"../Price",
+              "errorCode":"C46","errorMessage":[{"locale":"en_US","text":"x"}]}},
             {"type":"Rule","id":"r45","name":"ValueListOverMixedKinds","Rule":{
               "errorCondition":"FieldFilled(Price) And AtLeastOneFieldValueIncludedInValueList(Price, Amount In \"A\")",
               "errorEntityRelPath":"../Price",
@@ -417,6 +421,10 @@ class CheckFamilyWiringTest {
         // fixture that compares two lists whose entries are not declared alike.
         CheckFamily.VALUE_LIST_QUANTIFIER_OPERAND_KIND to
             ("MVK_VARYING_TYPES_NOT_ALLOWED" to "/Catalog/ValueListOverMixedKinds"),
+        // A quantifier over a single unstarred field — the one call in this fixture whose entity list is
+        // shorter than the operator's own arity gate accepts.
+        CheckFamily.ENTITY_LIST_ARITY to
+            ("MVK_PARAMSIZE_INVALIDN" to "/Catalog/AllFieldsOverOneField"),
         // A repeatable group read without a star into an error field the root holds: the target's own
         // coordinates cannot pick a repetition of `Crates`, and nothing about the operator is at fault —
         // which is what makes the row about the LEVEL rather than about the predicate reading it.

@@ -106,6 +106,17 @@ class BuilderCheckerDivergenceGuardTest {
             // fixed 2026-09-13 in the same change that measured the row. Neither refuses anything A12 admits.
             Map.entry("MVK_INTERNAL_ERROR", Disposition.SAME_LAW_SEPARATE_CARRIERS),
 
+            // Both enforce A12's group-count law over carriers that cannot share a reader: `CountAggregate`
+            // refuses the count from its own typed operands, `EntityListArity` from stored paths and the
+            // declared kind each resolves to. Neither refuses what A12 admits.
+            Map.entry("MVK_PARAMSIZE_INVALIDGN", Disposition.SAME_LAW_SEPARATE_CARRIERS),
+
+            // The checker's only statement of it is inside the PROJECTED corrective for
+            // MVK_PARAMSIZE_INVALIDGN, whose owner prose names it as what the kernel's own suggested fix can
+            // draw instead. Prose on both sides: the enricher owns the hint, `Linter` names it in a javadoc,
+            // and no family reports it.
+            Map.entry("MVK_NEG_CONDITION_IN_ITERATION", Disposition.PROSE_ONLY),
+
             // Both enforce A12's base-kind law over carriers that cannot share a reader: `Dsl`'s entity-list
             // quantifier walks typed operands and knows each one's kind from its handle, while the checker
             // resolves a stored path to a declaration and reads its `fieldType`. The kit's own arm is the
@@ -124,12 +135,12 @@ class BuilderCheckerDivergenceGuardTest {
             // it in a KDoc listing the date-range quantifier's own arm, which it deliberately leaves alone.
             Map.entry("MVK_NO_CONST", Disposition.PROSE_ONLY),
 
-            // The naming side here is the CHECKER, which is the less usual way round. The typed aggregates
-            // enforce the arity themselves (`CountAggregate`, `ListAggregate`, `FirstFilledValue`,
-            // `DateListAggregate` all throw citing it); `ValueInFieldsConstantKind` only names it in a KDoc,
-            // as one of the gates that run ahead of the constant switch and whose shapes it therefore leaves
-            // unjudged rather than answering with a type class of its own.
-            Map.entry("MVK_PARAMSIZE_INVALIDN", Disposition.PROSE_ONLY),
+            // Both enforce A12's arity law over carriers that cannot share a reader: the typed aggregates
+            // (`CountAggregate`, `ListAggregate`, `FirstFilledValue`, `DateListAggregate`) refuse the count
+            // at construction from their own operand objects, while `EntityListArity` resolves stored paths
+            // and reads each declaration's kind. Neither refuses what A12 admits — the checker's own arm
+            // stands down wherever an earlier gate answers.
+            Map.entry("MVK_PARAMSIZE_INVALIDN", Disposition.SAME_LAW_SEPARATE_CARRIERS),
 
             // `StructuralKernelFix` carries a Hint keyed on the code — prose for a verdict the Kernel
             // reached, enforcing nothing. The checker owns the only enforcement of either law.
