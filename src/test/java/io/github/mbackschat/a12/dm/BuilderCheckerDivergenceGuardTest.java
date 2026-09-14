@@ -121,6 +121,12 @@ class BuilderCheckerDivergenceGuardTest {
             // first (`FieldOperandKindLawsTest`).
             Map.entry("MVK_NO_GROUPS_ALLOWED", Disposition.PROSE_ONLY),
 
+            // `FieldListRef`'s javadoc names it as satisfied structurally — only a starred list offers
+            // `having` — and the catalog states it as prose. Neither refuses on it. The checker's family is
+            // narrower than the code's name: an unstarred filtered field is `MVK_NO_WILDCARD` to A12, so
+            // the family reports only the semantic-index shape (`FilteredOperandGateOrderLawsTest`).
+            Map.entry("MVK_WILDCARDS_REQUIRED", Disposition.PROSE_ONLY),
+
             // Computation.Builder reads List<Alternative> with Optional<Condition>; the checker reads a
             // JsonArray where an ABSENT or null member is the empty precondition. They agree on all four
             // shapes (one unguarded, two mixed, two both-unguarded, three with the middle unguarded); the

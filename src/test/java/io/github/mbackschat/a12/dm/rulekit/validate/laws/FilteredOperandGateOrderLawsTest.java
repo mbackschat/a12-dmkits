@@ -1,0 +1,81 @@
+package io.github.mbackschat.a12.dm.rulekit.validate.laws;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+
+import java.util.LinkedHashMap;
+import java.util.Map;
+
+import org.junit.jupiter.api.Test;
+
+import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft;
+
+/**
+ * KERNEL-FINDINGS §9 — the complete gate chain A12 runs over a `Having` clause's OWN operand.
+ *
+ * <p>{@code CheckEntitySpecImpl.checkFilterCondition} carries the whole chain in source order, which is why
+ * this is one grid rather than four containment assertions spread across files: the operand must be a field,
+ * then must be starred, then must carry no semantic index, and only then is the filter BODY judged. Three of
+ * those four classes have no measurement in this estate.
+ *
+ * <p>Own domain (insurance).
+ */
+class FilteredOperandGateOrderLawsTest {
+
+    private static final String POLICY = DocumentModelDraft.named("policy-filter").locale("en_US")
+            .rootGroup("Policy", p -> p
+                    .stringField("Reference", f -> { })
+                    .group("Insured", i -> i.stringField("InsuredName", f -> { }))
+                    .group("Claims", g -> g.repeatable(20).indexField("ClaimRef")
+                            .stringField("ClaimRef", f -> { })
+                            .numberField("Amount", f -> f.fractionDigits(2))))
+            .build().toJson();
+
+    /** One probe, with the error field held constant so every row differs in the filtered operand alone. */
+    private static String filtered(String probe) {
+        return KernelLaws.verdictModel(POLICY, "/Policy", "../Reference",
+                "FieldFilled(Reference) And " + probe);
+    }
+
+    @Test
+    void whichGateAnswersOnAFilteredOperand() {
+        Map<String, String> actual = new LinkedHashMap<>();
+        actual.put("a starred field operand — the control",
+                filtered("Sum(Claims*/Amount Having [Claims/ClaimRef] == \"X\") > 0"));
+        actual.put("an UNSTARRED field operand",
+                filtered("Sum(Claims/Amount Having [Claims/ClaimRef] == \"X\") > 0"));
+        actual.put("a starred GROUP operand",
+                filtered("NumberOfFilledGroups(Claims* Having [Claims/ClaimRef] == \"X\") > 0"));
+        actual.put("an operand carrying a SEMANTIC INDEX",
+                filtered("Sum(Claims*/Amount For Reference Having [Claims/ClaimRef] == \"X\") > 0"));
+        actual.put("a semantic index with NO star",
+                filtered("Sum(Claims/Amount For Reference Having [Claims/ClaimRef] == \"X\") > 0"));
+        actual.put("a GROUP operand with no star either",
+                filtered("NumberOfFilledGroups(Claims Having [Claims/ClaimRef] == \"X\") > 0"));
+        actual.put("BOTH defects at once — a group operand carrying a semantic index",
+                filtered("NumberOfFilledGroups(Claims* For Reference Having [Claims/ClaimRef] == \"X\") > 0"));
+        actual.put("a disallowed construct in the filter BODY",
+                filtered("Sum(Claims*/Amount Having RepetitionNotUnique(Claims/ClaimRef)) > 0"));
+
+        Map<String, String> expected = new LinkedHashMap<>();
+        expected.put("a starred field operand — the control", KernelLaws.ADMITTED);
+        // The ITERATION gate outruns `checkHasWildCards`, so a plainly unstarred filtered field is NOT
+        // `MVK_WILDCARDS_REQUIRED` — which is what the code's name predicts and the measurement denies.
+        expected.put("an UNSTARRED field operand", "MVK_NO_WILDCARD");
+        // `checkIsField` runs first in the chain and the star is not a variable for it: both rows agree.
+        expected.put("a starred GROUP operand", "MVK_NO_GROUPS_ALLOWED");
+        expected.put("a GROUP operand with no star either", "MVK_NO_GROUPS_ALLOWED");
+        // The one shape that DOES reach `checkHasWildCards` and fails it. The starred row is the
+        // discriminating one: a `*` is present in the text and `hasWildCards()` is still false, so the
+        // semantic-index spelling consumes it — the unstarred row alone would not have shown that.
+        expected.put("an operand carrying a SEMANTIC INDEX", "MVK_WILDCARDS_REQUIRED");
+        expected.put("a semantic index with NO star", "MVK_WILDCARDS_REQUIRED");
+        // PREDICTED WRONG from source order, which puts `checkIsField` ahead of `checkHasWildCards`: with
+        // both defects present A12 answers with the WILDCARD class, so the semantic index moves the verdict
+        // rather than merely riding along. A checker that took the chain's written order on trust would name
+        // the wrong class on this shape; the row exists because the prediction was cheap to falsify.
+        expected.put("BOTH defects at once — a group operand carrying a semantic index", "MVK_WILDCARDS_REQUIRED");
+        expected.put("a disallowed construct in the filter BODY", "MVK_DISALLOWED_CONSTRUCT_IN_FILTER_CONDITION");
+
+        assertEquals(expected, actual);
+    }
+}

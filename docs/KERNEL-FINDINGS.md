@@ -7138,6 +7138,29 @@ Reported by the portable checker, which did not emit `MVK_SORT_FIELD_DUPLICATE` 
 
 *Locked by:* `rulekit.validate.laws.GroupOrderingMultipleDefectLawsTest`, mirrored by `consistency … GroupOrderingMultipleDefectTest`.
 
+## §9 supplement — the complete gate chain over a `Having` filter's OWN operand, whose measured order is NOT its source order (measured, 2026-09-14) <a id="kf358"></a>
+
+> Fold: not-foldable — a diagnostic-class selection law, not an evaluation behaviour.
+
+**`CheckEntitySpecImpl.checkFilterCondition` carries the whole chain in one method**: the filtered operand must be a field (`checkIsField`), then must carry a wildcard (`checkHasWildCards`), then no semantic index, and only then is the filter BODY judged — the body being [KF97](#kf97)'s subject. Locked by `rulekit.validate.laws.FilteredOperandGateOrderLawsTest`.
+
+| the filtered operand | A12 |
+|---|---|
+| a starred field — the control | ADMITTED |
+| an UNSTARRED field | `MVK_NO_WILDCARD` |
+| a starred GROUP | `MVK_NO_GROUPS_ALLOWED` |
+| a GROUP with no star either | `MVK_NO_GROUPS_ALLOWED` |
+| a starred field carrying a SEMANTIC INDEX | `MVK_WILDCARDS_REQUIRED` |
+| the same with no star | `MVK_WILDCARDS_REQUIRED` |
+| a GROUP carrying a semantic index — BOTH defects | `MVK_WILDCARDS_REQUIRED` |
+| a disallowed construct in the filter BODY | `MVK_DISALLOWED_CONSTRUCT_IN_FILTER_CONDITION` |
+
+**The code's own name is misleading, and that is the first load-bearing row.** `MVK_WILDCARDS_REQUIRED` is NOT what a plainly unstarred filtered field draws — A12's iteration gate outruns this chain and answers `MVK_NO_WILDCARD`. The class is reachable only where the operand carries a semantic index, which the last two rows show holds with a `*` present in the text: the index spelling consumes the wildcard, so `hasWildCards()` is false despite the star.
+
+**The order is measured, and the measurement contradicts the source order — the second load-bearing row.** Reading the method predicts that an operand which is both a group and indexed draws the kind class, `checkIsField` being written first. A12 answers `MVK_WILDCARDS_REQUIRED`. A checker built by transcribing the chain in its written order names the wrong class there, which is why the portable family tests the index before the kind (`CheckFamily.FILTERED_OPERAND_KIND`). *(Why the index moves the verdict is a HYPOTHESIS — presumably the indexed ref is no longer the group — and nothing here rests on it: the rows are what the family encodes.)*
+
+**The star is not a variable on either defect**, which is what the two paired rows establish: a group operand answers the same starred or not, and an indexed operand likewise. So a family keyed on the wildcard would be wrong in both directions.
+
 ## §9 supplement — which FIELD predicates refuse a GROUP operand: the two scalars, and only where the starring is already right (measured, 2026-09-14) <a id="kf357"></a>
 
 > Fold: not-foldable — a diagnostic-class selection law, not an evaluation behaviour.

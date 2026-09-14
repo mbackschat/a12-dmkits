@@ -295,6 +295,13 @@ enum class CheckFamily {
     FIELD_OPERAND_KIND,
 
     /**
+     * What a `Having` filter's own operand may be. Its own constant rather than part of [FILTER_WILDCARD]
+     * because that family judges the filter BODY, and A12 gates the two in one method with the operand's
+     * chain running first.
+     */
+    FILTERED_OPERAND_KIND,
+
+    /**
      * That a rule reading a repetition does not reach its error field only from ABOVE its own group — A12
      * cannot then say which repetition the error attaches to. Its own constant because the demand is on the
      * CONDITION's reach rather than on the target's existence, which `ERROR_FIELD_REFERENCE` already owns,
@@ -517,6 +524,7 @@ internal fun check(
         prepared.parallelIterationUniquenessFindings() +
         prepared.hModelPathSuffixFindings() +
         prepared.fieldOperandKindFindings() +
+        prepared.filteredOperandKindFindings() +
         prepared.errorTargetIterationFindings() +
         prepared.messageParameterFindings() +
         prepared.messageTextCharacterFindings() +
@@ -555,6 +563,7 @@ internal fun check(
             CheckFamily.REPETITION_NOT_UNIQUE_COMBINATION,
             CheckFamily.PARALLEL_ITERATION_UNIQUENESS,
             CheckFamily.H_MODEL_PATH_SUFFIX, CheckFamily.FIELD_OPERAND_KIND,
+            CheckFamily.FILTERED_OPERAND_KIND,
             CheckFamily.ERROR_TARGET_ITERATION,
             CheckFamily.MESSAGE_PARAMETER_REFERENCE, CheckFamily.MESSAGE_TEXT_CHARACTERS),
         gaps = prepared.gaps() + prepared.emptyFactBase() + findings.buildBlocked() +
