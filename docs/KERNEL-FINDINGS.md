@@ -7138,6 +7138,32 @@ Reported by the portable checker, which did not emit `MVK_SORT_FIELD_DUPLICATE` 
 
 *Locked by:* `rulekit.validate.laws.GroupOrderingMultipleDefectLawsTest`, mirrored by `consistency … GroupOrderingMultipleDefectTest`.
 
+## §8 supplement — a string CONSTANT against an Enumeration draws FOUR different classes, one per carrier (measured, 2026-09-14) <a id="kf360"></a>
+
+> Fold: not-foldable — a diagnostic-class selection law, not an evaluation behaviour.
+
+**Two kernel methods own this law and they do not agree on a class.** `CheckVergleichsBedingungImpl.checkEnumValue` answers a comparison; `CheckEntityListenUtils.checkEnumType` answers a value list, splitting again on whether the reference is categorized; and the multi-member quantifiers answer with a fourth. Locked by `rulekit.validate.laws.EnumConstantDomainLawsTest`.
+
+| the constant's carrier | A12 |
+|---|---|
+| `[Tier] == "BASIC"` — the control | ADMITTED |
+| `[Tier] == "NOPE"` | `MVK_INVALID_STRING_CONSTANT_FOR_ENUM_COMPARISON` |
+| `[Tier -> Band] == "NOPE"` | `MVK_INVALID_STRING_CONSTANT_FOR_ENUM_COMPARISON` |
+| `FieldValueIncludedInValueList(Tier, …, "NOPE")` | `MVK_INVALID_STRING_CONSTANT_FOR_ENUMERATION` |
+| `FieldValueNotIncludedInValueList(Tier, "NOPE")` | `MVK_INVALID_STRING_CONSTANT_FOR_ENUMERATION` |
+| `FieldValueIncludedInValueList(Tier -> Band, …, "NOPE")` | `MVK_INVALID_STRING_CONSTANT_FOR_ENUMERATION_CATEGORY` |
+| the three multi-member quantifiers, `(Tier, Segment In "NOPE")` | `MVK_INVALID_STRING_CONSTANT_FOR_ENUMERATION_OR_CATEGORY` |
+| `FieldValueIncludedInValueList(Reference, "anything")`, a STRING field | ADMITTED |
+| `FieldValueIncludedInValueList(Premium, "anything")`, a NUMBER field | `MVK_INVALID_TYPES_FOR_COMPARISON` |
+
+**The category splits the value list and NOT the comparison**, which no reading of either method predicts on its own and is the row a one-carrier family would have got wrong: both categorized and plain comparisons draw the same class, while the value list draws two.
+
+**A STRING field's list is admitted whatever it carries** — `isLikeString` is a `continue` in A12's loop, so there is no domain to be outside of. A family reading only "a literal must be a declared value" refuses every string value list in an estate.
+
+**The NUMBER row was PREDICTED WRONG from that same loop**, which falls through to `MVK_NO_STRING_OR_ENUM`: a comparison gate answers ahead of it, so the loop's kind class is not reachable by this shape. That is the second source-order prediction refuted here in one day ([KF358](#kf358) is the first).
+
+**The portable family (`CheckFamily.ENUM_CONSTANT_DOMAIN`) takes the two SCALAR value lists and stops there**, three under-reports stated in its KDoc: the comparison and the quantifiers need operand shapes the shared call reader does not reduce, and a categorized operand is not a bare entity spec, so widening by analogy would name the scalars' class on all three.
+
 ## §8 supplement — the gate chain over a `->` CATEGORY reference, and the three classes around it (measured, 2026-09-14) <a id="kf359"></a>
 
 > Fold: not-foldable — a diagnostic-class selection law, not an evaluation behaviour.

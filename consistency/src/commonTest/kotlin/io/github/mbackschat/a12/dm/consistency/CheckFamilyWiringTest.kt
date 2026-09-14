@@ -99,6 +99,10 @@ class CheckFamilyWiringTest {
               {"type":"Field","id":"f32","name":"CrateRef","Field":{"fieldType":{"type":"StringType"}}},
               {"type":"Field","id":"f33","name":"ToteQty","Field":{"fieldType":{"type":"NumberType"}}}
             ]}},
+            {"type":"Rule","id":"r33","name":"ConstantOutsideTheEnum","Rule":{
+              "errorCondition":"FieldFilled(Price) And FieldValueIncludedInValueList(LowercaseTier, \"q\", \"NOPE\")",
+              "errorEntityRelPath":"../Price",
+              "errorCode":"C33","errorMessage":[{"locale":"en_US","text":"x"}]}},
             {"type":"Rule","id":"r32","name":"UndeclaredCategory","Rule":{
               "errorCondition":"FieldFilled(Price) And [MiscategorisedTier -> NoSuchBand] == \"STANDARD\"",
               "errorEntityRelPath":"../Price",
@@ -327,6 +331,10 @@ class CheckFamilyWiringTest {
         // pre-empting and makes this row about the reference rather than about the declaration.
         CheckFamily.CATEGORY_REFERENCE to
             ("MVK_CATEGORY_UNKOWN" to "/Catalog/UndeclaredCategory"),
+        // `LowercaseTier` declares exactly one value, so the list carries one constant A12 admits and one it
+        // does not — which keeps the row about the CONSTANT rather than about an empty or unreadable domain.
+        CheckFamily.ENUM_CONSTANT_DOMAIN to
+            ("MVK_INVALID_STRING_CONSTANT_FOR_ENUMERATION" to "/Catalog/ConstantOutsideTheEnum"),
         // The rule sits in a repeatable group and reaches its error field only through the root, while
         // reading a sibling of that field — so A12 cannot say which pallet the error belongs to.
         CheckFamily.ERROR_TARGET_ITERATION to

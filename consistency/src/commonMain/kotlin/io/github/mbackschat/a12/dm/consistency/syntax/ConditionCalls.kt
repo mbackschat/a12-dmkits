@@ -42,11 +42,15 @@ data class ConditionCall(val operator: String, val at: Int, val operands: List<C
  *     one still says which element it is about. Equal to [path] on a clause-free operand, and absent on the
  *     same shapes [path] is absent for.
  * @param clauses what the spec carries, in authored order — empty on a bare operand.
+ * @param literal the STRING constant it is, quotes stripped and A12's doubled `""` collapsed — absent unless
+ *     the operand is exactly one string token, by the same reduction rule [path] follows. An operand is never
+ *     both this and [path]: a law about a value list's constants reads this and skips what it cannot reduce.
  */
 data class CallOperand(
     val path: String?,
     val base: String? = path,
     val clauses: List<OperandClause> = emptyList(),
+    val literal: String? = null,
 )
 
 /**
@@ -75,7 +79,7 @@ data class OperandClause(val keyword: String, val path: String?, val text: Strin
 private fun List<Token>.asOperand(keywords: Map<String, KeywordKind>, source: String): CallOperand {
     val cuts = clauseCuts(keywords)
     if (cuts.isEmpty()) {
-        return CallOperand(asPath(keywords))
+        return CallOperand(asPath(keywords), literal = asLiteral())
     }
     val clauses = cuts.mapIndexed { position, cut ->
         val body = subList(cut.at + cut.width, cuts.getOrNull(position + 1)?.at ?: size)
@@ -88,6 +92,18 @@ private fun List<Token>.asOperand(keywords: Map<String, KeywordKind>, source: St
     // `path` keeps its narrower contract deliberately: it has always meant "a bare spec and nothing else",
     // and widening it here would silently change every family already reading it.
     return CallOperand(null, subList(0, cuts.first().at).asPath(keywords), clauses)
+}
+
+/**
+ * The string constant this run is, or null when it is anything else.
+ *
+ * A12 writes an embedded quote as a doubled one, and the tokenizer keeps the literal verbatim, so the two
+ * unwrappings happen here rather than at each consumer — a law comparing a constant against a declared
+ * domain compares the VALUE, and `"A""B"` names `A"B`.
+ */
+private fun List<Token>.asLiteral(): String? {
+    val token = singleOrNull()?.takeIf { it.kind == TokenKind.STRING } ?: return null
+    return token.text.removeSurrounding("\"").replace("\"\"", "\"")
 }
 
 /** Where one clause keyword sits, and how many tokens it spans. */

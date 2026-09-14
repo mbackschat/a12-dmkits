@@ -139,6 +139,15 @@ class BuilderCheckerDivergenceGuardTest {
             // comparison's constant, not about the arrow (`CategoryReferenceGateOrderLawsTest`).
             Map.entry("MVK_INVALID_STRING_CONSTANT_FOR_ENUM_COMPARISON", Disposition.PROSE_ONLY),
 
+            // `EnumRef.in/notIn` check every literal against the enum's declared domain, built from the
+            // model — so the kit cannot be wrong about the set, and the checker reads the same declaration
+            // from stored DM-JSON. Two carriers, no shared reader: typed value objects against a token run.
+            Map.entry("MVK_INVALID_STRING_CONSTANT_FOR_ENUMERATION", Disposition.SAME_LAW_SEPARATE_CARRIERS),
+
+            // The multi-member quantifiers' union class, likewise named only in that KDoc on the checker
+            // side while `Dsl`'s value-list quantifiers pre-check the union of the members' domains.
+            Map.entry("MVK_INVALID_STRING_CONSTANT_FOR_ENUMERATION_OR_CATEGORY", Disposition.PROSE_ONLY),
+
             // Computation.Builder reads List<Alternative> with Optional<Condition>; the checker reads a
             // JsonArray where an ABSENT or null member is the empty precondition. They agree on all four
             // shapes (one unguarded, two mixed, two both-unguarded, three with the middle unguarded); the

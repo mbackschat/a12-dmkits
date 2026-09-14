@@ -309,6 +309,13 @@ enum class CheckFamily {
     CATEGORY_REFERENCE,
 
     /**
+     * That a value LIST's string constants name declared values of the Enumeration they are compared to.
+     * Its own constant rather than part of [ENUM_VALUE_CHARACTERS] because that family judges a declared
+     * value's spelling and this judges a REFERENCE to one from a condition.
+     */
+    ENUM_CONSTANT_DOMAIN,
+
+    /**
      * That a rule reading a repetition does not reach its error field only from ABOVE its own group — A12
      * cannot then say which repetition the error attaches to. Its own constant because the demand is on the
      * CONDITION's reach rather than on the target's existence, which `ERROR_FIELD_REFERENCE` already owns,
@@ -533,6 +540,7 @@ internal fun check(
         prepared.fieldOperandKindFindings() +
         prepared.filteredOperandKindFindings() +
         prepared.categoryReferenceFindings() +
+        prepared.enumConstantDomainFindings() +
         prepared.errorTargetIterationFindings() +
         prepared.messageParameterFindings() +
         prepared.messageTextCharacterFindings() +
@@ -572,6 +580,7 @@ internal fun check(
             CheckFamily.PARALLEL_ITERATION_UNIQUENESS,
             CheckFamily.H_MODEL_PATH_SUFFIX, CheckFamily.FIELD_OPERAND_KIND,
             CheckFamily.FILTERED_OPERAND_KIND, CheckFamily.CATEGORY_REFERENCE,
+            CheckFamily.ENUM_CONSTANT_DOMAIN,
             CheckFamily.ERROR_TARGET_ITERATION,
             CheckFamily.MESSAGE_PARAMETER_REFERENCE, CheckFamily.MESSAGE_TEXT_CHARACTERS),
         gaps = prepared.gaps() + prepared.emptyFactBase() + findings.buildBlocked() +
