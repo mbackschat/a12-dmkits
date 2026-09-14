@@ -3,9 +3,6 @@ package io.github.mbackschat.a12.dm.consistency
 import io.github.mbackschat.a12.dm.consistency.syntax.CONDITION_OPERATOR_KEYWORDS
 import io.github.mbackschat.a12.dm.consistency.syntax.ConditionCall
 import io.github.mbackschat.a12.dm.consistency.syntax.callsIn
-import kotlinx.serialization.json.JsonObject
-import kotlinx.serialization.json.JsonPrimitive
-import kotlinx.serialization.json.contentOrNull
 
 /**
  * The two gates an entity-list aggregate asks of each temporal operand: its PRECISION, then its COMPONENTS.
@@ -140,12 +137,6 @@ private const val PARTIAL_REFUSED = "MVK_PARTIAL_DATE_NOT_ALLOWED"
 
 private const val INCOMPATIBLE = "MVK_DATEFORMATS_NOT_COMPATIBLE"
 
-
-private fun declaresAPartialPrecision(field: DeclaredElement): Boolean {
-    val declared = field.body?.get("fieldType") as? JsonObject ?: return false
-    val body = declared["DateType"] as? JsonObject ?: return false
-    return (body["datePrecision"] as? JsonPrimitive)?.contentOrNull in PARTIAL_PRECISIONS
-}
 
 /**
  * A12's two predicates, both of them, in the order `checkOpTypesAreComparableDatetimeType` reads them.

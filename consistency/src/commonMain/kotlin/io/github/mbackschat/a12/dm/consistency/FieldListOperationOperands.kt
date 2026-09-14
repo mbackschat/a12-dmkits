@@ -85,26 +85,6 @@ private val ARM_OF = mapOf(
 
 private const val CONFIRM_TYPE = "ConfirmType"
 
-private const val NUMBER_TYPE = "NumberType"
-
-/**
- * The declared types this reader is CERTAIN A12 does not give the NUMBER operand type.
- *
- * An allow-list rather than the complement of `NumberType`, for the same reason [PLAINLY_NON_TEMPORAL_TYPES]
- * is one: the complement would sweep in `TypeDefType` and `UnspecifiedType`, whose effective type this
- * reader does not resolve, and refusing those would be an over-rejection. Every member is measured — the six
- * non-temporal ones in this family's own grid, the four temporal ones behind a number leader in
- * `rulekit.validate.laws.ExtremumOperandKindGridLawsTest`.
- */
-private val PLAINLY_NON_NUMBER_TYPES = setOf(
-    "StringType",
-    "BooleanType",
-    "ConfirmType",
-    "EnumerationType",
-    "CustomType",
-    "DateRangeType",
-) + TEMPORAL_DECLARED_TYPES
-
 /** The first listed field this arm refuses, or null where it refuses none and where it may not judge. */
 private fun PreparedModel.operandDefect(
     call: ConditionCall,

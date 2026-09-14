@@ -7142,6 +7142,32 @@ Reported by the portable checker, which did not emit `MVK_SORT_FIELD_DUPLICATE` 
 
 *Locked by:* `rulekit.validate.laws.GroupOrderingMultipleDefectLawsTest`, mirrored by `consistency … GroupOrderingMultipleDefectTest`.
 
+## §6 supplement — date arithmetic asks FOUR questions of its operand, and the ORDER is what makes two of the classes reachable (source-verified + measured, 2026-09-14) <a id="kf392"></a>
+
+> Fold: not-foldable — a diagnostic-class law about one construct's operand types, not an evaluation behaviour.
+
+`CheckDatumAddOpImpl.check` runs one fixed sequence over the date it shifts, then types the amount:
+
+| # | the question | class |
+|---|---|---|
+| 1 | is the date fully known? | `MVK_INVALID_DATE_TYPE` |
+| 2 | does its format spell the component this operator adds? | `MVK_WRONG_DATE_FORMAT_FOR_OP` |
+| 3 | does its format spell any calendar component at all? | `MVK_INVALID_TIME` |
+| 4 | is it a stamp under `AddMonths` or `AddYears`? | `MVK_WRONG_DATE_FORMAT_FOR_OP` |
+| 5 | is the amount a number? | `MVK_NON_NUMERIC` |
+
+**`MVK_INVALID_TIME` is reachable only through the three CLOCK operators**, and that is the finding — reading gate 3 on its own gets it backwards. The gate sits BEHIND the component gate, so under `AddDays`/`AddMonths`/`AddYears` any format that reaches it already carries a calendar component; only `AddHours`/`AddMinutes`/`AddSeconds` over a pure `TimeType` arrive with none. Measured over all six operators against six declared temporal shapes: a clock under `AddDays` draws gate 2's class, not gate 3's.
+
+**Gate 4 is not a component question**, which is what its own row is for: `AddMonths` and `AddYears` refuse a `DateTimeType` whose format spells exactly what they add, the kernel source citing `A12K-620` — the behaviour over a stamp was never settled. `AddDays` and the three clock operators accept the same field, and that pair is the discriminator against reading the refusal as a missing component.
+
+**A model-level BASE YEAR disables gate 2 for `AddYears` alone**, the same supplementation the aggregates' component comparison applies ([KF193](#kf193)).
+
+**The amount is typed LAST**, so a model with both operands wrong reports the date one — the control that fixes gate 5's position rather than only its class.
+
+Reported by the portable checker (`CheckFamily.DATE_ARITHMETIC_OPERANDS`), which judges the amount only where it is a bare field reference: A12 types it as a whole OPERATION, so a computed amount is left alone.
+
+*Locked by:* `rulekit.validate.laws.DateArithmeticOperandLawsTest`, mirrored by `consistency.DateArithmeticOperandsTest`.
+
 ## §9 supplement — the field-LIST operations share one list and one arity gate, then each asks a different KIND question (source-verified + measured, 2026-09-14) <a id="kf391"></a>
 
 > Fold: not-foldable — a diagnostic-class law about one construct's operand kinds, not an evaluation behaviour.

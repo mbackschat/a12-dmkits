@@ -417,6 +417,13 @@ enum class CheckFamily {
     FIELD_LIST_OPERATION_OPERANDS,
 
     /**
+     * What a date-arithmetic operator demands of the date it shifts and of the amount it shifts by. One
+     * constant for the four classes because `CheckDatumAddOpImpl.check` asks them in a fixed order over one
+     * operand, so which answers is a property of that order rather than of a family a reader could split.
+     */
+    DATE_ARITHMETIC_OPERANDS,
+
+    /**
      * What each comparison OPERATOR demands of the two sides it joins. One constant for the three classes
      * because `CheckVergleichsBedingungImpl.check` asks them in a fixed order ahead of every agreement
      * gate, so which answers depends on where that walk stops.
@@ -751,6 +758,7 @@ internal fun check(
         prepared.entityListPreGateFindings() +
         prepared.fieldValuesNotUniqueOperandKindFindings() +
         prepared.fieldListOperationOperandFindings() +
+        prepared.dateArithmeticOperandFindings() +
         prepared.comparisonOperatorOperandFindings() +
         prepared.booleanComparisonAgreementFindings() +
         prepared.stringEnumComparisonAgreementFindings() +
@@ -815,6 +823,7 @@ internal fun check(
             CheckFamily.ENTITY_LIST_PRE_GATES,
             CheckFamily.FIELD_VALUES_NOT_UNIQUE_OPERAND_KIND,
             CheckFamily.FIELD_LIST_OPERATION_OPERANDS,
+            CheckFamily.DATE_ARITHMETIC_OPERANDS,
             CheckFamily.COMPARISON_OPERATOR_OPERANDS, CheckFamily.BOOLEAN_COMPARISON_AGREEMENT,
             CheckFamily.STRING_ENUM_COMPARISON_AGREEMENT, CheckFamily.NUMBER_COMPARISON_SCALE,
             CheckFamily.TEMPORAL_COMPARISON_AGREEMENT, CheckFamily.PATTERN_COMPARISON_OPERANDS,

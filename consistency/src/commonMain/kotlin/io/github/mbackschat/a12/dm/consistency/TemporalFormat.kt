@@ -87,3 +87,15 @@ private fun DeclaredElement.declaredFormat(members: Map<String, String>): String
     val carrier = declared[type] as? JsonObject ?: return null
     return (carrier[member] as? JsonPrimitive)?.takeIf { it.isString }?.content
 }
+
+/**
+ * Whether this field declares a PARTIALLY KNOWN date — A12's `FieldUtils.isDatePartialKnown`.
+ *
+ * Only a `DateType` carries the member, so every other declaration answers false rather than unknown: the
+ * precision is a `DateType` body key and its absence there is A12's own default.
+ */
+internal fun declaresAPartialPrecision(field: DeclaredElement): Boolean {
+    val declared = field.body?.get("fieldType") as? JsonObject ?: return false
+    val body = declared["DateType"] as? JsonObject ?: return false
+    return (body["datePrecision"] as? JsonPrimitive)?.contentOrNull in PARTIAL_PRECISIONS
+}

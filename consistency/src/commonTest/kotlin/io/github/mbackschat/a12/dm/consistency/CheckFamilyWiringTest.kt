@@ -49,6 +49,8 @@ class CheckFamilyWiringTest {
             {"type":"Field","id":"f11","name":"RepeatedTier","Field":{"fieldType":{
               "type":"EnumerationType","EnumerationType":{"values":[{"value":"A"},{"value":"A"}]}}}},
             {"type":"Field","id":"f45","name":"Signed","Field":{"fieldType":{"type":"ConfirmType"}}},
+            {"type":"Field","id":"f47","name":"ShiftStart","Field":{"fieldType":{"type":"TimeType",
+              "TimeType":{"format":"HH:mm:ss"}}}},
             {"type":"Field","id":"f46","name":"UnitCount","Field":{"fieldType":{"type":"NumberType",
               "NumberType":{"maxFractionalDigits":0}}}},
             {"type":"Field","id":"f36","name":"StrandedSpecialValue","Field":{"fieldType":{
@@ -201,6 +203,10 @@ class CheckFamilyWiringTest {
               "errorCondition":"FieldFilled(Price) And [Price] < [Reference]",
               "errorEntityRelPath":"../Price",
               "errorCode":"C47","errorMessage":[{"locale":"en_US","text":"x"}]}},
+            {"type":"Rule","id":"r51","name":"HoursAddedToAPureClock","Rule":{
+              "errorCondition":"FieldFilled(Price) And [ShiftStart] > AddHours(ShiftStart, 1)",
+              "errorEntityRelPath":"../Price",
+              "errorCode":"C51","errorMessage":[{"locale":"en_US","text":"x"}]}},
             {"type":"Rule","id":"r50","name":"FirstFilledOverAConfirm","Rule":{
               "errorCondition":"FieldFilled(Price) And FirstFilledValue(Signed, Price) == \"x\"",
               "errorEntityRelPath":"../Price",
@@ -478,6 +484,10 @@ class CheckFamilyWiringTest {
         // row fails if it is ever widened to the boolean sibling the code's name suggests.
         CheckFamily.FIELD_LIST_OPERATION_OPERANDS to
             ("MVK_NO_BOOLY_ALLOWED" to "/Catalog/FirstFilledOverAConfirm"),
+        // A pure clock shifted by hours — the one route to this class, since the component gate ahead of it
+        // answers every calendar operator first, so the row fails if the two gates are ever reordered.
+        CheckFamily.DATE_ARITHMETIC_OPERANDS to
+            ("MVK_INVALID_TIME" to "/Catalog/HoursAddedToAPureClock"),
         // Two text declarations under an ordering operator — the one comparison in this fixture whose
         // operator demands more of its sides than they are.
         CheckFamily.COMPARISON_OPERATOR_OPERANDS to

@@ -297,6 +297,24 @@ private val BASE_TYPE_OF = mapOf(
  */
 internal fun DeclaredElement.baseTypeClass(): BaseTypeClass? = BASE_TYPE_OF[declaredFieldType()]
 
+/**
+ * The declared types this reader is CERTAIN A12 does not give the NUMBER operand type.
+ *
+ * An allow-list rather than the complement of `NumberType`, for the same reason [PLAINLY_NON_TEMPORAL_TYPES]
+ * is one: the complement would sweep in `TypeDefType` and `UnspecifiedType`, whose effective type this
+ * reader does not resolve, and refusing those would be an over-rejection. Every member is measured — the six
+ * non-temporal ones in this family's own grid, the four temporal ones behind a number leader in
+ * `rulekit.validate.laws.ExtremumOperandKindGridLawsTest`.
+ */
+internal val PLAINLY_NON_NUMBER_TYPES = setOf(
+    "StringType",
+    "BooleanType",
+    "ConfirmType",
+    "EnumerationType",
+    "CustomType",
+    "DateRangeType",
+) + TEMPORAL_DECLARED_TYPES
+
 /** The token kinds one entity spec may be made of; anything else makes the text an expression. */
 private val REFERENCE_TOKENS = setOf(TokenKind.NAME, TokenKind.QUOTED_NAME, TokenKind.PUNCTUATION)
 
