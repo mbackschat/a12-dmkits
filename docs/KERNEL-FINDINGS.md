@@ -7138,6 +7138,29 @@ Reported by the portable checker, which did not emit `MVK_SORT_FIELD_DUPLICATE` 
 
 *Locked by:* `rulekit.validate.laws.GroupOrderingMultipleDefectLawsTest`, mirrored by `consistency … GroupOrderingMultipleDefectTest`.
 
+## §9 supplement — one `RepetitionNotUnique` per condition, counted as CALLS over the whole tree (measured, 2026-09-14) <a id="kf352"></a>
+
+> Fold: not-foldable — a diagnostic-class selection law, not an evaluation behaviour.
+
+**A condition carrying two `RepetitionNotUnique` calls draws `MVK_INVALID_COMBINATION_OF_REPETITON_NOT_UNIQUE`, and one call with a COMPOSITE key does not.** The law is about the operator's multiplicity, never the key's — which matters because merging the keys into one call is the fix the rejection asks for, so a client-side check reading key count would refuse the corrective.
+
+| the condition carries | A12 |
+|---|---|
+| one call | ADMITTED |
+| one call, composite key `(Items/Sku, Items/Count)` | ADMITTED |
+| one call beside an ordinary conjunct | ADMITTED |
+| two calls over different keys | `MVK_INVALID_COMBINATION_OF_REPETITON_NOT_UNIQUE` |
+| two calls in opposite arms of an `Or` | `MVK_INVALID_COMBINATION_OF_REPETITON_NOT_UNIQUE` |
+| the same call twice | `MVK_INVALID_COMBINATION_OF_REPETITON_NOT_UNIQUE` |
+
+**The `Or` row is the one worth keeping.** No evaluation of that condition reaches both calls, so a per-branch reading fits every other row and is false: A12 runs this over the finished parse tree, in `ParserService.checkNormalRule`, after the condition has parsed.
+
+**It is a whole-RULE gate, so every construct's own gate reports ahead of it** — measured on two conditions that each carry two calls AND break a rule of one call: a `@From` scope naming a group that does not repeat draws `MVK_GROUP_NOT_REPEATABLE`, and a key naming a group draws `MVK_NO_GROUPS_ALLOWED`. That places the gate in the order rather than merely establishing it exists.
+
+**And a second call inside a `Having` filter is not a second call at all**: the construct is refused in that position outright, `MVK_DISALLOWED_CONSTRUCT_IN_FILTER_CONDITION`, so removing the filter's call leaves one legal call behind. The row exists because the portable checker's call scanner does descend into a filter body, and counting naively named this class on a model A12 answers with another.
+
+Locked: `validate.laws.RepetitionNotUniqueCombinationLawsTest`. **Reported by the portable checker since 2026-09-14** (`REPETITION_NOT_UNIQUE_COMBINATION`), which counts calls outside filters and reports even where a construct gate would pre-empt it in A12 — both defects are real and A12 simply stops at the first.
+
 ## §9 supplement — the SEMANTIC INDEX's nine classes, in the order they answer, and the two that are never reported (measured, 2026-09-14) <a id="kf351"></a>
 
 > Fold: not-foldable — a diagnostic-class selection law, not an evaluation behaviour.

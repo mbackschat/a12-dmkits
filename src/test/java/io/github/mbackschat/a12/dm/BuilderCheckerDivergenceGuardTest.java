@@ -148,6 +148,13 @@ class BuilderCheckerDivergenceGuardTest {
             Map.entry("MVK_UNEXPECTED_TOKEN", Disposition.PROSE_ONLY),
             Map.entry("MVK_ERROR_FIELD_MISSING", Disposition.PROSE_ONLY),
             Map.entry("MVK_MISSING_ERROR_FIELD", Disposition.PROSE_ONLY),
+            // The kit ENFORCES this one (FieldListRef.having refuses the three constructs) and the
+            // checker only names it, to say why it stops counting RepetitionNotUnique calls inside a
+            // filter — the reverse of the usual direction, which is why the row says so.
+            Map.entry("MVK_DISALLOWED_CONSTRUCT_IN_FILTER_CONDITION", Disposition.PROSE_ONLY),
+            // The usual direction: the checker reports it, the kit names it only as a diagnostic hint
+            // in StructuralKernelFix for the kernel's own verdict.
+            Map.entry("MVK_INVALID_COMBINATION_OF_REPETITON_NOT_UNIQUE", Disposition.PROSE_ONLY),
             Map.entry("MVK_INVALID_ROOT_GROUP", Disposition.PROSE_ONLY),
 
             // The RepetitionNotUnique key-placement pair, added 2026-09-14 with that family. rulekit names

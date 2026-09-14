@@ -267,6 +267,13 @@ enum class CheckFamily {
     SEMANTIC_INDEX_KEY,
 
     /**
+     * That a condition calls `RepetitionNotUnique` at most once. Its own constant rather than part of
+     * [REPETITION_SCOPE_GROUP] because it is a whole-RULE gate counting calls, where every other family here
+     * judges one construct's own operands — and A12 runs it after the construct gates have had their say.
+     */
+    REPETITION_NOT_UNIQUE_COMBINATION,
+
+    /**
      * That a rule reading a repetition does not reach its error field only from ABOVE its own group — A12
      * cannot then say which repetition the error attaches to. Its own constant because the demand is on the
      * CONDITION's reach rather than on the target's existence, which `ERROR_FIELD_REFERENCE` already owns,
@@ -485,6 +492,7 @@ internal fun check(
         prepared.repetitionScopeGroupFindings() +
         prepared.filterWildcardFindings() +
         prepared.semanticIndexKeyFindings() +
+        prepared.repetitionNotUniqueCombinationFindings() +
         prepared.errorTargetIterationFindings() +
         prepared.messageParameterFindings() +
         prepared.messageTextCharacterFindings() +
@@ -520,6 +528,7 @@ internal fun check(
             CheckFamily.COMPUTATION_PRECONDITION_FEATURES, CheckFamily.COMPUTATION_CYCLE,
             CheckFamily.REPETITION_KEY_PLACEMENT, CheckFamily.REPETITION_SCOPE_GROUP,
             CheckFamily.FILTER_WILDCARD, CheckFamily.SEMANTIC_INDEX_KEY,
+            CheckFamily.REPETITION_NOT_UNIQUE_COMBINATION,
             CheckFamily.ERROR_TARGET_ITERATION,
             CheckFamily.MESSAGE_PARAMETER_REFERENCE, CheckFamily.MESSAGE_TEXT_CHARACTERS),
         gaps = prepared.gaps() + prepared.emptyFactBase() + findings.buildBlocked() +

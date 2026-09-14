@@ -47,6 +47,14 @@ class CorrectiveTest {
             ]}},
             {"type":"Field","id":"f7","name":"Blob","Field":{"fieldType":{"type":"StringType",
               "StringType":{"noValueValidation":true,"lineBreaksPermitted":true}}}},
+            {"type":"Group","id":"g3","name":"Shelves","Group":{"repeatability":9,"elements":[
+              {"type":"Field","id":"f8","name":"ShelfCode","Field":{"fieldType":{"type":"StringType"}}},
+              {"type":"Field","id":"f9","name":"ShelfQty","Field":{"fieldType":{"type":"NumberType"}}}
+            ]}},
+            {"type":"Rule","id":"r11","name":"TwoUniquenessCalls","Rule":{
+              "errorCondition":"RepetitionNotUnique(Shelves/ShelfCode) And RepetitionNotUnique(Shelves/ShelfQty)",
+              "errorEntityRelPath":"../Shelves/ShelfCode",
+              "errorCode":"C11","errorMessage":[{"locale":"en_US","text":"x"}]}},
             {"type":"Rule","id":"r10","name":"KeyWithNoRepetition","Rule":{
               "errorCondition":"RepetitionNotUnique(Note)","errorEntityRelPath":"../Note",
               "errorCode":"C10","errorMessage":[{"locale":"en_US","text":"x"}]}},

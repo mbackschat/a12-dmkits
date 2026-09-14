@@ -89,6 +89,10 @@ class CheckFamilyWiringTest {
               "errorCondition":"FieldFilled(Price) And Sum(Pallets*/PalletQty Having [Pallets*/PalletNote] == \"x\") > 0",
               "errorEntityRelPath":"../Price",
               "errorCode":"C25","errorMessage":[{"locale":"en_US","text":"x"}]}},
+            {"type":"Rule","id":"r27","name":"TwoUniquenessCalls","Rule":{
+              "errorCondition":"RepetitionNotUnique(Pallets/PalletNote) And RepetitionNotUnique(Pallets/PalletQty)",
+              "errorEntityRelPath":"../Pallets/PalletNote",
+              "errorCode":"C27","errorMessage":[{"locale":"en_US","text":"x"}]}},
             {"type":"Rule","id":"r26","name":"GroupKeyedIndex","Rule":{
               "errorCondition":"FieldFilled(Price) And [Pallets/PalletQty For Shelf] > 0",
               "errorEntityRelPath":"../Price",
@@ -268,6 +272,10 @@ class CheckFamilyWiringTest {
         // that does not repeat, which is exactly what keeps A12's iteration gate from pre-empting the class.
         CheckFamily.SEMANTIC_INDEX_KEY to
             ("MVK_SEMANTIC_INDEX_NO_FIELD" to "/Catalog/GroupKeyedIndex"),
+        // Two calls over the same repetition. The keys are legally placed and each call is well formed on
+        // its own, which is what makes this row about the COUNT rather than about either call.
+        CheckFamily.REPETITION_NOT_UNIQUE_COMBINATION to
+            ("MVK_INVALID_COMBINATION_OF_REPETITON_NOT_UNIQUE" to "/Catalog/TwoUniquenessCalls"),
         // The rule sits in a repeatable group and reaches its error field only through the root, while
         // reading a sibling of that field — so A12 cannot say which pallet the error belongs to.
         CheckFamily.ERROR_TARGET_ITERATION to
