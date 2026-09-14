@@ -281,6 +281,14 @@ enum class CheckFamily {
     FILTER_WILDCARD,
 
     /**
+     * Which repeatable levels a `Having` filter's BODY may name, and the one it must. Its own constant
+     * rather than part of [FILTER_WILDCARD] because that family judges a STAR in the body while this one
+     * judges the levels the body's unmarked references ride — two gates of one kernel method, with the star
+     * refused before either is asked.
+     */
+    FILTER_BODY_ITERATION,
+
+    /**
      * That no GROUP-CONDITION operand carries a repetition wildcard where its operator bars one. Its own
      * constant rather than part of [REPETITION_WILDCARD_TARGET] or [FILTER_WILDCARD] because here the star
      * lands on a group that legitimately repeats and the OPERATOR alone picks the class: A12 splits the seven
@@ -603,6 +611,7 @@ internal fun check(
         prepared.repetitionKeyPlacementFindings() +
         prepared.repetitionScopeGroupFindings() +
         prepared.filterWildcardFindings() +
+        prepared.filterBodyIterationFindings() +
         prepared.groupConditionWildcardFindings() +
         prepared.sumOfProductsOperandFindings() +
         prepared.operandListConstantFindings() +
@@ -654,7 +663,8 @@ internal fun check(
             CheckFamily.RAW_TYPE_LENGTH, CheckFamily.COMPUTED_TARGET_INDEX_FIELD,
             CheckFamily.COMPUTATION_PRECONDITION_FEATURES, CheckFamily.COMPUTATION_CYCLE,
             CheckFamily.REPETITION_KEY_PLACEMENT, CheckFamily.REPETITION_SCOPE_GROUP,
-            CheckFamily.FILTER_WILDCARD, CheckFamily.GROUP_CONDITION_WILDCARD,
+            CheckFamily.FILTER_WILDCARD, CheckFamily.FILTER_BODY_ITERATION,
+            CheckFamily.GROUP_CONDITION_WILDCARD,
             CheckFamily.SUM_OF_PRODUCTS_OPERANDS, CheckFamily.OPERAND_LIST_CONSTANT_BUDGET,
             CheckFamily.SEMANTIC_INDEX_STRUCTURE,
             CheckFamily.SEMANTIC_INDEX_KEY,
@@ -859,6 +869,7 @@ private val POSITIONED_CONDITION_CODES = setOf(
     "MVK_NO_WILDCARD", "MVK_MULTIPLE_INDEX_FIELDS", "MVK_ERROR_FIELD_NO_INDEX",
     "MVK_WRONG_DATE_FORMAT_FOR_OP", "MVK_INVALID_DATE_OR_TIME_EXTRACT_OP",
     "MVK_DATE_OR_TIME_EXTRACT_OP_NOT_ALLOWED", "MVK_NO_DIGIT_PATTERN",
+    "MVK_INVALID_ITERATION_IN_FILTER_CONDITION", "MVK_NO_ITERATION_FOR_WILDCARD",
     "MVK_ERROR_FIELD_INVALID_INDEX", "MVK_ERROR_FIELD_INVALID_INDEX_TYPE",
 )
 

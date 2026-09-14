@@ -181,3 +181,53 @@ fun PreparedModel.resolve(
 }
 
 
+
+/**
+ * The repeatable groups [path] lies inside, outermost first — the levels A12 iterates for a plain reference.
+ *
+ * A reference's index vector carries one entry per level, and every repeatable level it crosses without a
+ * marker is A12's `ITERATION`. That is the quantity three families ask for, so it is stated once here.
+ */
+internal fun PreparedModel.crossedRepetitions(path: String): List<DeclaredElement> = elements
+    .filter { it.declaredKind == DeclaredKind.GROUP && it.isRepeatable && path.startsWith("${it.path}/") }
+    .sortedBy { it.path.length }
+
+/**
+ * The same levels plus [path] itself when it names a repeatable group.
+ *
+ * A reference that ENDS at a repeatable group iterates it too — `CurrentRepetition(Legs)` rides the same
+ * marker a field beneath `Legs` does — so a walk that only looks at ancestors misses the group carrier.
+ */
+internal fun PreparedModel.iteratedLevels(path: String): List<String> = elements
+    .filter {
+        it.declaredKind == DeclaredKind.GROUP && it.isRepeatable &&
+            (it.path == path || path.startsWith("${it.path}/"))
+    }
+    .sortedBy { it.path.length }
+    .map { it.path }
+
+/**
+ * The resolved paths [written] stars, or null when a star lands anywhere but on a repeatable group.
+ *
+ * A star on a non-repeatable level is `MVK_INVALID_WILDCARD` and outruns every slot gate ([KF328]), so such
+ * a reference belongs to [repetitionWildcardFindings] and is not judged by a scope law at all — including
+ * the case where the starred prefix does not resolve, which is the reference family's.
+ */
+internal fun PreparedModel.starredLevelsOf(
+    written: String,
+    declaringGroup: String,
+    element: DeclaredElement,
+): Set<String>? {
+    val segments = written.split('/')
+    val starred = mutableSetOf<String>()
+    segments.indices.filter { segments[it].endsWith("*") }.forEach { at ->
+        val prefix = segments.take(at + 1).joinToString("/").replace("*", "")
+        val resolved = resolveEntity(declaringGroup, prefix, element.origin) as? Reference.Resolved
+            ?: return null
+        val group = elements.firstOrNull {
+            it.path == resolved.path && it.declaredKind == DeclaredKind.GROUP && it.isRepeatable
+        } ?: return null
+        starred += group.path
+    }
+    return starred
+}

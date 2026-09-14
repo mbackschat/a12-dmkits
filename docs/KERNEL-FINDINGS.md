@@ -7138,6 +7138,25 @@ Reported by the portable checker, which did not emit `MVK_SORT_FIELD_DUPLICATE` 
 
 *Locked by:* `rulekit.validate.laws.GroupOrderingMultipleDefectLawsTest`, mirrored by `consistency … GroupOrderingMultipleDefectTest`.
 
+## §9 supplement — a `Having` filter's body is walked LEVEL by level, and the two gates it answers are one method's two branches (source-verified, 2026-09-14) <a id="kf374"></a>
+
+> Fold: not-foldable — the mechanism behind §9's two filter codes, which the section states as separate rules.
+
+`CheckEntitySpecImpl.checkIndicesInFilterCondition` is one loop. It collects every entity spec in the filter body, walks each one's index vector level by level, and asks two things of every repeatable level the spec rides unmarked: is the FILTERED entity underneath that level, and is that level one the operand stars. The first question throws immediately; the second only sets a flag, and the flag is read once after every reference has been walked.
+
+| the walk reaches | class |
+|---|---|
+| a ridden level the filtered entity does not sit under | `MVK_INVALID_ITERATION_IN_FILTER_CONDITION` |
+| the end, with no ridden level the operand stars | `MVK_NO_ITERATION_FOR_WILDCARD` |
+
+**That structure is the whole of the conjunct asymmetry [KF-§9](#kf242)'s grid measured behaviourally.** The scope gate is an occurrence check read after the loop, so any in-scope reference anywhere clears it; the iteration gate throws inside the loop, so nothing later can rescue it — the enclosing rule's own iteration of the level included, which is the row that surprises and is exactly what the source predicts, since the walk never consults the rule's environment at all.
+
+**A level is ridden by ENDING at it as much as by passing through it**, which the index vector makes plain and a path-prefix reading would miss: `CurrentRepetition(Legs)` resolves to the group and carries the marker at its own level. Measured on both carriers — a field beneath the group and the group itself draw the same code in the same position.
+
+**The `$`-marked reference is not walked at all**, and that is a skip rather than a pass: the extractor returns early on `ctx.outer != null`, so a marked reference contributes no ridden level, cannot clear the scope gate, and cannot trip the iteration one. Where its outer environment has no coordinate for the level, the reference reader has already answered `MVK_NO_WILDCARD` and none of this runs.
+
+*Locked by:* `rulekit.validate.laws.HavingFilterIterationGateLawsTest` and `…HavingFilterGrammarAndScopeLawsTest`; mirrored by `consistency … FilterBodyIterationTest`.
+
 ## §6 supplement — a `Date`/`Time` construction is judged SLOT by slot, and the slot's arm picks the class (measured, 2026-09-14) <a id="kf373"></a>
 
 > Fold: not-foldable — a per-slot admission law for the two construction operators.

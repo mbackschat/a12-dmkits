@@ -171,6 +171,8 @@ class HavingFilterIterationGateLawsTest {
                 fromParcels(Dsl.currentRepetition(M.group(PARCELS)).gt(0)));
         actual.put("unstarred ancestor ON the operand's path, CurrentRepetition — beside a conjunct",
                 fromParcels(Dsl.currentRepetition(M.group(PARCELS)).gt(0).and(inScopeBoxes())));
+        actual.put("a field UNDER the reopened level, which rides both — sole",
+                fromParcels(inScopeBoxes()));
         actual.put("unstarred ancestor ON the operand's path, FIELD reference — sole",
                 fromParcels(M.num(PARCELS + "/Weight").gt(0)));
         actual.put("unstarred ancestor ON the operand's path, FIELD reference — beside a conjunct",
@@ -187,6 +189,9 @@ class HavingFilterIterationGateLawsTest {
         Map<String, String> expected = new LinkedHashMap<>();
         expected.put("unstarred ancestor ON the operand's path, CurrentRepetition — sole", NO_ITERATION);
         expected.put("unstarred ancestor ON the operand's path, CurrentRepetition — beside a conjunct", ADMITTED);
+        // A reference reaching INTO the reopened level clears the scope gate on its own, which every other
+        // in-scope row measures only as a conjunct beside a failing one.
+        expected.put("a field UNDER the reopened level, which rides both — sole", ADMITTED);
         expected.put("unstarred ancestor ON the operand's path, FIELD reference — sole", NO_ITERATION);
         expected.put("unstarred ancestor ON the operand's path, FIELD reference — beside a conjunct", ADMITTED);
         expected.put("repeatable level OFF the operand's path, CurrentRepetition — sole",

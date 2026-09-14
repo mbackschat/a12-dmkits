@@ -129,36 +129,6 @@ private const val NO_WILDCARD = "MVK_NO_WILDCARD"
 
 private const val MULTIPLE_INDEX_FIELDS = "MVK_MULTIPLE_INDEX_FIELDS"
 
-/**
- * The resolved paths this reference stars, or null when a star lands anywhere but on a repeatable group.
- *
- * A star on a non-repeatable level is `MVK_INVALID_WILDCARD` and outruns every slot gate ([KF328]), so such
- * a reference is [repetitionWildcardFindings]' and not judged here at all — including the case where the
- * starred prefix does not resolve, which is the reference family's.
- */
-private fun PreparedModel.starredLevelsOf(
-    written: String,
-    declaringGroup: String,
-    element: DeclaredElement,
-): Set<String>? {
-    val segments = written.split('/')
-    val starred = mutableSetOf<String>()
-    segments.indices.filter { segments[it].endsWith("*") }.forEach { at ->
-        val prefix = segments.take(at + 1).joinToString("/").replace("*", "")
-        val resolved = resolveEntity(declaringGroup, prefix, element.origin) as? Reference.Resolved
-            ?: return null
-        val group = elements.firstOrNull {
-            it.path == resolved.path && it.declaredKind == DeclaredKind.GROUP && it.isRepeatable
-        } ?: return null
-        starred += group.path
-    }
-    return starred
-}
-
-/** The repeatable groups [path] lies inside, outermost first — the levels A12 iterates for it. */
-private fun PreparedModel.crossedRepetitions(path: String): List<DeclaredElement> = elements
-    .filter { it.declaredKind == DeclaredKind.GROUP && it.isRepeatable && path.startsWith("${it.path}/") }
-    .sortedBy { it.path.length }
 
 /**
  * The class a PARALLEL level draws — one the target's coordinates neither contain nor lie under.

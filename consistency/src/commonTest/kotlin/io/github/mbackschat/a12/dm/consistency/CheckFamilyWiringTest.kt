@@ -116,6 +116,10 @@ class CheckFamilyWiringTest {
               "errorCondition":"FieldFilled(TravelDate) And [TravelDate] == Date(\"32\", \"02\", \"2024\")",
               "errorEntityRelPath":"../TravelDate",
               "errorCode":"C39","errorMessage":[{"locale":"en_US","text":"x"}]}},
+            {"type":"Rule","id":"r40","name":"FilterOffTheOperandsPath","Rule":{
+              "errorCondition":"FieldFilled(Price) And NumberOfFilledFields(Pallets*/PalletNote Having Crates/CrateQty > 0) > 0",
+              "errorEntityRelPath":"../Price",
+              "errorCode":"C40","errorMessage":[{"locale":"en_US","text":"x"}]}},
             {"type":"Rule","id":"r38","name":"UnstarredRepetitionRead","Rule":{
               "errorCondition":"FieldFilled(Price) And FieldFilled(Crates/CrateQty)",
               "errorEntityRelPath":"../Price",
@@ -370,6 +374,10 @@ class CheckFamilyWiringTest {
         // which is what makes the row about the LEVEL rather than about the predicate reading it.
         CheckFamily.OPERAND_REPETITION_SCOPE to
             ("MVK_NO_WILDCARD" to "/Catalog/UnstarredRepetitionRead"),
+        // A filter naming a repeatable SIBLING of the starred operand's group: the operand itself is sound
+        // and the filter is grammatical, so only the level the filter reaches can be what answers.
+        CheckFamily.FILTER_BODY_ITERATION to
+            ("MVK_INVALID_ITERATION_IN_FILTER_CONDITION" to "/Catalog/FilterOffTheOperandsPath"),
         // A day of 32 in a well-formed three-part construction: the other two components are valid and the
         // target is an ordinary full date, so nothing but the slot's own range can be what answers.
         CheckFamily.DATE_CONSTRUCTION_SLOT to

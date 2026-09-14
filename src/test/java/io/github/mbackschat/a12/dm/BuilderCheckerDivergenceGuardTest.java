@@ -147,6 +147,12 @@ class BuilderCheckerDivergenceGuardTest {
             // checker reads that declaration from stored DM-JSON.
             Map.entry("MVK_NO_DIGIT_PATTERN", Disposition.PROSE_ONLY),
 
+            // The kit names it in the operator catalog and in `GroupPresenceCondition`'s javadoc, both
+            // teaching the two-gate distinction, and `having` refuses no filter body on this ground — the
+            // gate needs the model's repeatability, which a typed handle does not carry. The checker asks it
+            // from stored DM-JSON (`FILTER_BODY_ITERATION`).
+            Map.entry("MVK_NO_ITERATION_FOR_WILDCARD", Disposition.PROSE_ONLY),
+
             // `EnumRef.category(name)` fails fast on an undeclared category and `StructuralKernelFix` has no
             // hint for it; the kit's refusal is on a typed handle built from the model, so it cannot be
             // wrong about the declared set. The checker reads the same declaration from stored DM-JSON.
