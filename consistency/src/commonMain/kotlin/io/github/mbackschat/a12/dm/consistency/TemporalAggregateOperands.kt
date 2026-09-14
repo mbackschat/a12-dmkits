@@ -31,7 +31,7 @@ import kotlinx.serialization.json.contentOrNull
  *
  * | the operand list | who answers |
  * |---|---|
- * | a leading operand that is not temporal | the numeric arm — `MVK_NOT_SORTABLE` / `MVK_NO_NUMBER` |
+ * | a leading operand that is not temporal | the numeric arm — [fieldListOperationOperandFindings] |
  * | a format outside the derived vocabulary | nobody — an undiscovered format is not a defect |
  *
  * **A LATER operand that is not temporal is the chain's first class**, `MVK_DATE_AND_NONDATE`, asked of each

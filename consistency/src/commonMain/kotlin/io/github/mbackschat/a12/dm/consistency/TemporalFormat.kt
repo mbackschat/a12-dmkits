@@ -46,6 +46,12 @@ private val TEMPORAL_FORMAT_MEMBERS = mapOf(
 )
 
 /**
+ * The declared types A12 reads as the DATETIME operand base type — `IDateType` and the three kinds that
+ * carry it — for a family that needs the membership rather than the format.
+ */
+internal val TEMPORAL_DECLARED_TYPES: Set<String> = TEMPORAL_FORMAT_MEMBERS.keys
+
+/**
  * The format this field declares as a temporal one, or null when it declares none.
  *
  * Null leaves a reader unjudged rather than defaulting, because it means the declaration is not one A12

@@ -7142,6 +7142,30 @@ Reported by the portable checker, which did not emit `MVK_SORT_FIELD_DUPLICATE` 
 
 *Locked by:* `rulekit.validate.laws.GroupOrderingMultipleDefectLawsTest`, mirrored by `consistency … GroupOrderingMultipleDefectTest`.
 
+## §9 supplement — the field-LIST operations share one list and one arity gate, then each asks a different KIND question (source-verified + measured, 2026-09-14) <a id="kf391"></a>
+
+> Fold: not-foldable — a diagnostic-class law about one construct's operand kinds, not an evaluation behaviour.
+
+`CheckFeldListenOpImpl.check` is a switch on the OPERATOR token run over a list two shared gates have already accepted, so the class a model draws is decided by the caller rather than by the list:
+
+| the operator | what it demands of every expanded field | class |
+|---|---|---|
+| `FirstFilledValue` | not a Confirm declaration (`checkNoBoolY`) | `MVK_NO_BOOLY_ALLOWED` |
+| `FirstFilledValue`, behind it | one operand base type across the list | `MVK_VARYING_TYPES_NOT_ALLOWED` |
+| `Sum`, `SumOfProducts` | a Number declaration | `MVK_NO_NUMBER` |
+| `MaxValue`, `MinValue`, behind a non-temporal LEADER | a Number declaration | `MVK_NOT_SORTABLE` |
+| `MaxValue`, `MinValue`, behind a temporal LEADER | the component-set walk of [KF389](#kf389) | three classes |
+
+**`MVK_NO_BOOLY_ALLOWED` names a kind it does not name.** `checkNoBoolY` tests `FieldUtils.isYes`, which is `IYesType` alone, and `IYesNoType` is a SIBLING interface rather than a subtype — so a BOOLEAN declaration clears the gate entirely and only a CONFIRM one is refused. Measured over all twelve declared kinds in both positions: one confirm anywhere in the list refuses it whatever else is there, a boolean list is admitted, and a boolean beside a text field is refused by the type-matching gate behind it instead. Reading the code as "no boolean kinds" is wrong in exactly that cell, and it is the cell a consumer reaches for first.
+
+**The type-matching gate reads the operand BASE type with ENUM folded into STRING**, so String, Enumeration, Custom and a string-based typedef mix freely while every other pair of distinct kinds is refused — including two temporal kinds, which this gate separates although the extrema's own gate unites them by component set.
+
+**`Sum` has no leader slot and no escape arm**, which is what separates it from the extrema: a date operand is `MVK_NO_NUMBER` there and `MVK_DATEFORMATS_NOT_COMPATIBLE`-or-admitted at `MaxValue`, over the same two fields.
+
+Reported by the portable checker (`CheckFamily.FIELD_LIST_OPERATION_OPERANDS`), which transcribes the caller table and leaves `MVK_VARYING_TYPES_NOT_ALLOWED` and `SumOfProducts`' own six gates to other families.
+
+*Locked by:* `rulekit.validate.laws.FieldListOperandKindLawsTest` (the confirm and `Sum` arms) and `rulekit.validate.laws.ExtremumOperandKindGridLawsTest` (the extrema's numeric arm), mirrored by `consistency.FieldListOperationOperandsTest`.
+
 ## §9 supplement — `FieldValuesNotUnique`'s kind gate admits the CLOCK and STAMP kinds, and its date test is the SPELLING (source-verified + measured, 2026-09-14) <a id="kf390"></a>
 
 > Fold: not-foldable — a diagnostic-class law about one operator's operand kinds, not an evaluation behaviour.

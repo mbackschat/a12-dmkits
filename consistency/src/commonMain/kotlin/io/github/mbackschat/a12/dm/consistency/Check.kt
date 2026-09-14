@@ -410,6 +410,13 @@ enum class CheckFamily {
     FIELD_VALUES_NOT_UNIQUE_OPERAND_KIND,
 
     /**
+     * What KIND of declaration each field-LIST operation admits in its entity list. One constant for the
+     * three classes because `CheckFeldListenOpImpl.check` is one switch on the operator over one list — the
+     * arms differ in what they demand, never in where or when they are asked.
+     */
+    FIELD_LIST_OPERATION_OPERANDS,
+
+    /**
      * What each comparison OPERATOR demands of the two sides it joins. One constant for the three classes
      * because `CheckVergleichsBedingungImpl.check` asks them in a fixed order ahead of every agreement
      * gate, so which answers depends on where that walk stops.
@@ -743,6 +750,7 @@ internal fun check(
         prepared.entityListArityFindings() +
         prepared.entityListPreGateFindings() +
         prepared.fieldValuesNotUniqueOperandKindFindings() +
+        prepared.fieldListOperationOperandFindings() +
         prepared.comparisonOperatorOperandFindings() +
         prepared.booleanComparisonAgreementFindings() +
         prepared.stringEnumComparisonAgreementFindings() +
@@ -806,6 +814,7 @@ internal fun check(
             CheckFamily.VALUE_LIST_QUANTIFIER_OPERAND_KIND, CheckFamily.ENTITY_LIST_ARITY,
             CheckFamily.ENTITY_LIST_PRE_GATES,
             CheckFamily.FIELD_VALUES_NOT_UNIQUE_OPERAND_KIND,
+            CheckFamily.FIELD_LIST_OPERATION_OPERANDS,
             CheckFamily.COMPARISON_OPERATOR_OPERANDS, CheckFamily.BOOLEAN_COMPARISON_AGREEMENT,
             CheckFamily.STRING_ENUM_COMPARISON_AGREEMENT, CheckFamily.NUMBER_COMPARISON_SCALE,
             CheckFamily.TEMPORAL_COMPARISON_AGREEMENT, CheckFamily.PATTERN_COMPARISON_OPERANDS,

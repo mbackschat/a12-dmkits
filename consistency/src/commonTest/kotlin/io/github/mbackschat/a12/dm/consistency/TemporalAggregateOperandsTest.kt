@@ -205,9 +205,10 @@ class TemporalAggregateOperandsTest {
         expected["a group whose expansion agrees"] = emptyList()
         expected["a group whose expansion disagrees"] = listOf(incompatible)
         expected["a NUMBER after a date leader"] = listOf("MVK_DATE_AND_NONDATE")
-        // The LEADER decides which arm types the list at all, so a non-temporal one is never this gate's —
-        // A12 answers `MVK_NOT_SORTABLE` there, and naming this class would be the wrong one.
-        expected["a NUMBER as the LEADER, which another arm types"] = emptyList()
+        // The LEADER decides which arm types the list at all, so a non-temporal one is never this gate's.
+        // A12 answers `MVK_NOT_SORTABLE` there and [fieldListOperationOperandFindings] now reports it, so
+        // this row locks the HANDOVER between the two arms rather than a silence.
+        expected["a NUMBER as the LEADER, which another arm types"] = listOf("MVK_NOT_SORTABLE")
         // The operand-list carriers take OPERATIONS, whose types this reader does not infer.
         expected["the operand-list Min, which carries the gate over OPERATIONS"] = emptyList()
         expected["a complete date beside a year-month — the positive control"] = listOf(incompatible)

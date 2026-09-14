@@ -106,6 +106,14 @@ class BuilderCheckerDivergenceGuardTest {
             // fixed 2026-09-13 in the same change that measured the row. Neither refuses anything A12 admits.
             Map.entry("MVK_INTERNAL_ERROR", Disposition.SAME_LAW_SEPARATE_CARRIERS),
 
+            // Both estates enforce A12's confirm gate on `FirstFilledValue`, over carriers that cannot share
+            // a reader: `FirstFilledValue`'s constructor refuses a CONFIRM operand handed to the typed
+            // facade (`FirstFilledValueDomainTest`), while `FieldListOperationOperands` walks the expanded
+            // field list of a stored condition. Neither refuses more than A12 does — the boolean sibling
+            // clears the gate on both sides, which is the cell the code's name gets wrong
+            // (`FieldListOperandKindLawsTest`).
+            Map.entry("MVK_NO_BOOLY_ALLOWED", Disposition.SAME_LAW_SEPARATE_CARRIERS),
+
             // The kits only NAME these two — `PatternCondition`'s javadoc lists the constant gate among what
             // the kernel arbitrates, and `Corrective`/`SpanResolver`/`TextConditionCorrective` name the
             // ordering one as a class the typed path cannot produce. Neither refuses on either; the checker

@@ -201,6 +201,10 @@ class CheckFamilyWiringTest {
               "errorCondition":"FieldFilled(Price) And [Price] < [Reference]",
               "errorEntityRelPath":"../Price",
               "errorCode":"C47","errorMessage":[{"locale":"en_US","text":"x"}]}},
+            {"type":"Rule","id":"r50","name":"FirstFilledOverAConfirm","Rule":{
+              "errorCondition":"FieldFilled(Price) And FirstFilledValue(Signed, Price) == \"x\"",
+              "errorEntityRelPath":"../Price",
+              "errorCode":"C50","errorMessage":[{"locale":"en_US","text":"x"}]}},
             {"type":"Rule","id":"r49","name":"UniquenessOverADateRange","Rule":{
               "errorCondition":"FieldFilled(Price) And FieldValuesNotUnique(Window, Price)",
               "errorEntityRelPath":"../Price",
@@ -470,6 +474,10 @@ class CheckFamilyWiringTest {
         // the refusal set is ever widened to the clock and stamp kinds a later gate owns.
         CheckFamily.FIELD_VALUES_NOT_UNIQUE_OPERAND_KIND to
             ("MVK_ONLY_STRING_ENUM_NUMBER_DATE_ALLOWED" to "/Catalog/UniquenessOverADateRange"),
+        // A confirm beside a text field under `FirstFilledValue` — the one kind that gate refuses, and the
+        // row fails if it is ever widened to the boolean sibling the code's name suggests.
+        CheckFamily.FIELD_LIST_OPERATION_OPERANDS to
+            ("MVK_NO_BOOLY_ALLOWED" to "/Catalog/FirstFilledOverAConfirm"),
         // Two text declarations under an ordering operator — the one comparison in this fixture whose
         // operator demands more of its sides than they are.
         CheckFamily.COMPARISON_OPERATOR_OPERANDS to
