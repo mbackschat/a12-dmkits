@@ -65,6 +65,10 @@ class CorrectiveTest {
               {"type":"Field","id":"f16","name":"CrateRef","Field":{"fieldType":{"type":"StringType"}}},
               {"type":"Field","id":"f17","name":"ToteQty","Field":{"fieldType":{"type":"NumberType"}}}
             ]}},
+            {"type":"Rule","id":"r18","name":"PatternTheGateRefuses","Rule":{
+              "errorCondition":"FieldFilled(Note) And [Note] PatternMatched \"a++\"",
+              "errorEntityRelPath":"../Note",
+              "errorCode":"C18","errorMessage":[{"locale":"en_US","text":"x"}]}},
             {"type":"Rule","id":"r17","name":"DateAgainstAText","Rule":{
               "errorCondition":"FieldFilled(Note) And [Season] == [Note]",
               "errorEntityRelPath":"../Note",

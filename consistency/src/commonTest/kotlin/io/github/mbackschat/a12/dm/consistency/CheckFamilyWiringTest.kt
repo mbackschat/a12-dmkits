@@ -175,6 +175,10 @@ class CheckFamilyWiringTest {
               "errorCondition":"FieldFilled(Price) And Sum(Pallets.*/PalletQty) > 0",
               "errorEntityRelPath":"../Price",
               "errorCode":"C29","errorMessage":[{"locale":"en_US","text":"x"}]}},
+            {"type":"Rule","id":"r52","name":"PatternOverANumber","Rule":{
+              "errorCondition":"FieldFilled(Price) And [Amount] PatternMatched \"a+\"",
+              "errorEntityRelPath":"../Price",
+              "errorCode":"C52","errorMessage":[{"locale":"en_US","text":"x"}]}},
             {"type":"Rule","id":"r51","name":"DateAgainstATextField","Rule":{
               "errorCondition":"FieldFilled(Price) And [TravelDate] == [Price]",
               "errorEntityRelPath":"../Price",
@@ -468,6 +472,10 @@ class CheckFamilyWiringTest {
         // own, so the row fails the moment the two arms' precedence is read the other way round.
         CheckFamily.TEMPORAL_COMPARISON_AGREEMENT to
             ("MVK_INVALID_COMPARE_TO_DATE" to "/Catalog/DateAgainstATextField"),
+        // A number declaration matched against a written-out pattern — the KIND question, with a plain
+        // field read on the left, so the row cannot be satisfied by the shape question ahead of it.
+        CheckFamily.PATTERN_COMPARISON_OPERANDS to
+            ("MVK_INVALID_TYPE_FOR_PATTERN_COMPARISON" to "/Catalog/PatternOverANumber"),
         // A repeatable group read without a star into an error field the root holds: the target's own
         // coordinates cannot pick a repetition of `Crates`, and nothing about the operator is at fault —
         // which is what makes the row about the LEVEL rather than about the predicate reading it.

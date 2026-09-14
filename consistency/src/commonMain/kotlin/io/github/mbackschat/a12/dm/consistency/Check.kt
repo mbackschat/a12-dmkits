@@ -434,6 +434,13 @@ enum class CheckFamily {
     TEMPORAL_COMPARISON_AGREEMENT,
 
     /**
+     * What a pattern comparison demands of its two sides. One constant for the four classes because
+     * `CheckVergleichsBedingungImpl.checkPatternOp` asks them in a fixed order inside one method, so which
+     * answers depends on where that walk stops rather than on anything a family could split by.
+     */
+    PATTERN_COMPARISON_OPERANDS,
+
+    /**
      * That every repetition an operand crosses unstarred is one the target's own coordinates address — or,
      * where it is not, that the two branches iterate JOINTLY on a shared index field. One constant for the
      * five classes of that walk because A12 asks them as one gate chain per level, and because which class
@@ -724,6 +731,7 @@ internal fun check(
         prepared.stringEnumComparisonAgreementFindings() +
         prepared.numberComparisonScaleFindings() +
         prepared.temporalComparisonAgreementFindings() +
+        prepared.patternComparisonOperandFindings() +
         prepared.operandRepetitionScopeFindings() +
         prepared.dateConstructionSlotFindings() +
         prepared.hModelPathSuffixFindings() +
@@ -781,7 +789,7 @@ internal fun check(
             CheckFamily.VALUE_LIST_QUANTIFIER_OPERAND_KIND, CheckFamily.ENTITY_LIST_ARITY,
             CheckFamily.COMPARISON_OPERATOR_OPERANDS, CheckFamily.BOOLEAN_COMPARISON_AGREEMENT,
             CheckFamily.STRING_ENUM_COMPARISON_AGREEMENT, CheckFamily.NUMBER_COMPARISON_SCALE,
-            CheckFamily.TEMPORAL_COMPARISON_AGREEMENT,
+            CheckFamily.TEMPORAL_COMPARISON_AGREEMENT, CheckFamily.PATTERN_COMPARISON_OPERANDS,
             CheckFamily.OPERAND_REPETITION_SCOPE, CheckFamily.DATE_CONSTRUCTION_SLOT,
             CheckFamily.H_MODEL_PATH_SUFFIX, CheckFamily.FIELD_OPERAND_KIND,
             CheckFamily.FILTERED_OPERAND_KIND, CheckFamily.CATEGORY_REFERENCE,

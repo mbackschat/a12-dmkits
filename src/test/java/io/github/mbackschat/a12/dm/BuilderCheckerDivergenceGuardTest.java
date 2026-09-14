@@ -147,6 +147,15 @@ class BuilderCheckerDivergenceGuardTest {
             // This is the mirror direction of the usual prose-only row.
             Map.entry("MVK_INVALID_COMPARE_TO_DATE", Disposition.PROSE_ONLY),
 
+            // The kit's only STATEMENTS of the pattern arm's three classes are prose — catalog gotchas and
+            // `StructuralKernelFix` hints that explain a kernel verdict. It does also ERASE the shapes at
+            // the type level (`matches`/`violates` live on `StringRef` alone and take a Java `String`, so a
+            // non-text left side and a field on the right are both unauthorable), and the checker inherits
+            // none of that: it REPORTS over stored DM-JSON, where every one of those shapes exists.
+            Map.entry("MVK_INVALID_PARAMETER_FOR_PATTERN_COMPARISON", Disposition.PROSE_ONLY),
+            Map.entry("MVK_INVALID_TYPE_FOR_PATTERN_COMPARISON", Disposition.PROSE_ONLY),
+            Map.entry("MVK_MISSING_CONST_IN_PATTERN_COMP", Disposition.PROSE_ONLY),
+
             // Both enforce A12's group-count law over carriers that cannot share a reader: `CountAggregate`
             // refuses the count from its own typed operands, `EntityListArity` from stored paths and the
             // declared kind each resolves to. Neither refuses what A12 admits.

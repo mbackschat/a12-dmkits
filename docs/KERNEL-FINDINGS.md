@@ -7142,6 +7142,29 @@ Reported by the portable checker, which did not emit `MVK_SORT_FIELD_DUPLICATE` 
 
 *Locked by:* `rulekit.validate.laws.GroupOrderingMultipleDefectLawsTest`, mirrored by `consistency … GroupOrderingMultipleDefectTest`.
 
+## §1 supplement — the PATTERN arm's first question is about SHAPE, and its four classes are strictly ordered (source-verified + measured, 2026-09-14) <a id="kf387"></a>
+
+> Fold: not-foldable — a diagnostic-class law about comparison operands, not an evaluation behaviour.
+
+`CheckVergleichsBedingungImpl.checkPatternOp` returns before every type-agreement arm and asks four questions of its own. Locked: `rulekit.validate.laws.PatternComparisonOperandLawsTest` (15 rows), mirrored by `consistency.PatternComparisonOperandsTest`.
+
+| the question | class |
+|---|---|
+| is the left side a plain FIELD READ? | `MVK_INVALID_PARAMETER_FOR_PATTERN_COMPARISON` |
+| is each side a TEXT declaration or a written-out text? | `MVK_INVALID_TYPE_FOR_PATTERN_COMPARISON` |
+| is the right side WRITTEN OUT? | `MVK_MISSING_CONST_IN_PATTERN_COMP` |
+| is that written-out value a pattern the admission gate takes? | `MVK_INVALID_PATTERN` |
+
+**The first question is about SHAPE, not type, and the row that shows it is a written-out value on the left**: `"x" PatternMatched [GiftNote]` is refused for the left side being an expression rather than for what it spells, and a call on the left is refused before its result type is asked at all. A reading that started from types would name the second class on both.
+
+**The constancy question is asked AFTER both type questions.** A number declaration on the right draws the type class; a TEXT declaration on the right draws the constant one. The pair is what fixes the order, since a reading that asked about constancy first would give one class to both.
+
+**An EMPTY pattern is admitted.** It compiles and it spells no blacklisted adjacency, so the last question takes it — measured, because an empty regex reads as the obvious refusal.
+
+**The whole arm yields to the constant gate**: two written-out values are `MVK_INVALID_COMPARE_TO_CONST` ([KF382](#kf382)), asked ahead of it.
+
+**The pattern gate here is the same admission gate a DECLARED pattern meets, under a different code** — `MVK_INVALID_PATTERN` on a condition, `MVK_PATTERN_INVALID` on a declaration, the same two words swapped ([KF165](#kf165)). Both refuse `a++` and the escaped `a\*+`, the gate reading SOURCE TEXT rather than the expression it spells.
+
 ## §1 supplement — the DATE arm compares three format QUESTIONS, not formats, and claims every partner of another kind (source-verified + measured, 2026-09-14) <a id="kf386"></a>
 
 > Fold: not-foldable — a diagnostic-class law about comparison operands, not an evaluation behaviour.
