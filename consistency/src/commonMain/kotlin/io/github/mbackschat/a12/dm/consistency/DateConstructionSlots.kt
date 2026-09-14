@@ -383,20 +383,6 @@ private fun Slot.entityDefect(
     }
 }
 
-/**
- * Whether reaching [path] from [declaringGroup] enters a repeating group the declaring group is not inside.
- *
- * Such a level is one A12 iterates while reading the reference, and the class it draws there pre-empts every
- * gate the operator carrying the reference would otherwise run.
- */
-private fun PreparedModel.crossesARepetitionOutside(declaringGroup: String, path: String): Boolean =
-    elements.any { candidate ->
-        candidate.declaredKind == DeclaredKind.GROUP &&
-            candidate.isRepeatable &&
-            path.startsWith("${candidate.path}/") &&
-            !(declaringGroup == candidate.path || declaringGroup.startsWith("${candidate.path}/"))
-    }
-
 private fun Slot.stringDefect(body: JsonObject, written: String): SlotDefect? {
     val maxLength = body.declaredInt("maxLength")
     val pattern = (body["pattern"] as? JsonPrimitive)?.contentOrNull

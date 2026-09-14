@@ -7142,6 +7142,37 @@ Reported by the portable checker, which did not emit `MVK_SORT_FIELD_DUPLICATE` 
 
 *Locked by:* `rulekit.validate.laws.GroupOrderingMultipleDefectLawsTest`, mirrored by `consistency … GroupOrderingMultipleDefectTest`.
 
+## §9 supplement — the two semantic-index gates that read the KEY, and the class that is last rather than first (source-verified + measured, 2026-09-14) <a id="kf404"></a>
+
+> Fold: not-foldable — a diagnostic-class law about one construct's structure, not an evaluation behaviour.
+
+[KF351](#kf351) measured every gate of the semantic index that needs no comparison of declared types, and left two: the key's type against the index field's, and a key read from inside the indexed group. Both are now measured, and measuring them corrected the chain's own tail.
+
+| the gate, in the measured order | class |
+|---|---|
+| the key is not a field / carries a star | `MVK_SEMANTIC_INDEX_NO_FIELD` / `MVK_SEMANTIC_INDEX_WITH_WILDCARD` |
+| the indexed reference is itself indexed | `MVK_SEMANTIC_INDEX_WITH_SEMANTIC_INDEX` |
+| the indexed group declares no index field | `MVK_NO_INDEX_FIELD` |
+| a constant key the index field refuses, the empty one included | `MVK_INDEX_VALUE_INVALID` |
+| an entity key whose declared type the index field's does not admit | `MVK_INDEX_TYPE_INCONSISTENT` |
+| an entity key read from inside the indexed group | `MVK_SEMANTIC_INDEX_CONTAINED_IN_INDEX` |
+| an entity key waiving value validation | `MVK_INVALID_RAW_TYPE` |
+| the key carries a category projection | `MVK_SEMANTIC_INDEX_WITH_CATEGORY` |
+| a star at the indexed group's own level | `MVK_SEMANTIC_INDEX_AND_WILDCARD` |
+| a star ABOVE the indexed group | `MVK_SEMANTIC_INDEX_BELOW_WILDCARD` |
+
+**The star ABOVE the indexed group is LAST, and a source reading puts it first.** `CheckSemanticIndexImpl.doChecks` locates the indexed group before it examines the key at all, so `getIndexGroup` looks like the gate that raises it; it does not raise it. The class comes from a later pass over the finished index list (`CheckEntityUtils.checkIndicesForA12Model`), which only sees a semantic index below a wildcard once `checkAndSetIndex` has written the index into its level — so every other class of the chain, `MVK_SEMANTIC_INDEX_AND_WILDCARD` included, answers ahead of it. Four rows pair that star with a different earlier class, because one row could not tell "last" from "later than this one".
+
+**The type comparison is `IFieldType.matchBaseType`, and it is not symmetric.** A string-keyed group admits a custom (predefined) key and a custom-keyed one admits a string key, while an enumeration-keyed group admits nothing but an enumeration — so a reader comparing declared type names for equality refuses a key A12 admits, and one comparing "same kind of type" admits a key A12 refuses. Measured from both sides against a string index field and an enumeration one, over text, custom, enumeration, number, boolean, confirm, date, time and date-range keys.
+
+**A12's model layer has ONE date interface**, so a time, date-time, date-fragment or date-range key is compared against a date index field by an `instanceof` that cannot separate them. Every temporal declaration therefore differs from text, number, enumeration, boolean and confirm — the direction measured here — and whether two temporal declarations differ from each other is a question this comparison cannot ask.
+
+**The containment class is only reachable on an ANCHORED rule.** A key read from inside the indexed group makes the read iterate unless the rule is declared in that group, and the iteration gate renames every class of the chain to `MVK_SEMANTIC_INDEX_INVALID_ITER` when it does ([KF351](#kf351)). What binds a level is the rule's own anchoring and nothing else: a key inside a DIFFERENT repetition still leaves the group, and A12 answers `MVK_ERROR_FIELD_INVALID_INDEX` — the rule-level gate ahead of this whole chain — rather than any class here.
+
+Reported by the portable checker (`CheckFamily.SEMANTIC_INDEX_STRUCTURE`, which the two classes extend rather than adding a family: the residue sits in the same kernel method on the same carrier). It stays silent where the comparison is one this reader cannot settle — a type definition or an unspecified declaration on either side, and a non-empty constant key against an index field whose own value validation constrains anything.
+
+*Locked by:* `rulekit.validate.laws.SemanticIndexKeyGateLawsTest`, mirrored by `consistency.SemanticIndexStructureTest`.
+
 ## §6 supplement — the two shapes that need a declared BASE YEAR, and the third that is disabled by it (source-verified + measured, 2026-09-14) <a id="kf403"></a>
 
 > Fold: not-foldable — a diagnostic-class law about a model-level declaration, not an evaluation behaviour.

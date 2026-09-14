@@ -739,6 +739,16 @@ One cold adversarial review over the frozen range, as [§2](#2-execution-order-a
 
 **The catalog half is deliberately not delivered, with its re-open trigger.** A2 ruled that `operators.json` ships as-is because it is already data; that remains right, and it is not yet USEFUL — no finding this checker produces names an operator id, so 293 KB would be packaged with nothing to join it against. It lands when a finding carries an operator.
 
+### C record — the slice that corrected the chain it was extending (2026-09-14)
+
+**Frozen change: `CheckSemanticIndexImpl.checkIndexField` and its containment test.** [KF404](KERNEL-FINDINGS.md#kf404); two codes drained — `MVK_INDEX_TYPE_INCONSISTENT` and `MVK_SEMANTIC_INDEX_CONTAINED_IN_INDEX` — plus a fourth carrier for `MVK_INVALID_RAW_TYPE`. No new family: the residue sits in the same kernel method on the same carrier, so `SEMANTIC_INDEX_STRUCTURE` was extended and the count stays at **85**. The measured denominator now stands at **142 A12-reachable kernel codes, 118 reported**.
+
+**Measuring a residue re-opened the chain it was joining, and the wrong class was already shipped.** `MVK_SEMANTIC_INDEX_BELOW_WILDCARD` had been placed second in the chain from a source reading — `getIndexGroup` runs before the key is examined — and it is in fact LAST, raised by a later pass over the finished index list. Nothing in the earlier grid could have caught it: every one of its rows paired that star with a class that does answer ahead of it. **A gate's position is only measured against the gates it was actually paired with**, so a chain locked by N rows is not a chain locked end to end, and the cheap check is to pair the newcomer with every class on both sides of it rather than only with its predicted neighbour.
+
+**A per-family type comparison had to be written rather than reused.** The shared `BaseTypeClass` reader splits the temporal declarations, and A12's model layer has ONE date interface — so reusing it here would have refused a time key against a date index field that A12 admits. The family carries its own table with the temporal declarations merged, which under-reports inside that class and cannot over-reject; the shared reader stays as it is, because its own three consumers measured their carriers separately.
+
+**Reading the rule's ANCHOR is what made the second code reachable at all.** The family had treated every key inside a repetition as opaque, which is right for an unanchored rule and wrong for a rule declared in that repetition — and a key inside the indexed group is anchored by definition, so the blanket reading made the class unreportable rather than merely deferred. The helper that decides it already existed in another family, private; it is now a shared reader, and the two rows that license the widening are the anchored key indexing a THIRD group, measured admitted and refused.
+
 ### C record — the slice whose subject was a MODEL declaration rather than a construct (2026-09-14)
 
 **Frozen change: `CheckKonstanteReferenzjahrImpl` and `CheckDatumKonstruktImpl.checkJahresParam`.** [KF403](KERNEL-FINDINGS.md#kf403); two codes drained — `MVK_NO_BASE_YEAR` and `MVK_MISSING_YEAR`. New family `BASE_YEAR_REQUIREMENT`; the count goes 84 → 85. The measured denominator now stands at **142 A12-reachable kernel codes, 116 reported**.
@@ -1169,7 +1179,7 @@ The second is the one no amount of source reading would have found, because the 
 
 ### C record — the fifty-ninth family: six classes of one chain, and the JSON that made three rows vacuous (2026-09-14)
 
-**Frozen family: the semantic index's STRUCTURE.** [KF351](KERNEL-FINDINGS.md#kf351) carries the chain; `SEMANTIC_INDEX_KEY` already owned its first gate, and this family owns the six below it that need no comparison of declared types. `MVK_INDEX_TYPE_INCONSISTENT` and `MVK_SEMANTIC_INDEX_CONTAINED_IN_INDEX` stay out: both compare declared types or locations against a gate whose domain is unmeasured here.
+**Frozen family: the semantic index's STRUCTURE.** [KF351](KERNEL-FINDINGS.md#kf351) carries the chain; `SEMANTIC_INDEX_KEY` already owned its first gate, and this family owns the six below it that need no comparison of declared types. *(Extended 2026-09-14: `MVK_INDEX_TYPE_INCONSISTENT` and `MVK_SEMANTIC_INDEX_CONTAINED_IN_INDEX` were held out here for want of a measured domain; [KF404](KERNEL-FINDINGS.md#kf404) measured both and they joined this family, which also corrected where `MVK_SEMANTIC_INDEX_BELOW_WILDCARD` sits in the chain.)*
 
 **The measurement this needed was the ORDER, and it was the cheapest part.** Every single-defect row already existed; six cells putting two live gates in one index settled the descent, and all six predictions from the kernel source held. The gate order is the whole reason to implement these six together — three of them are about a star and differ only in where it sits.
 

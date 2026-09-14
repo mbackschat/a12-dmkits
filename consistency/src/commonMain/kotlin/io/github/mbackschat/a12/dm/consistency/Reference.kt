@@ -397,6 +397,23 @@ internal fun PreparedModel.addressedTargetOf(
 }
 
 /**
+ * Whether reaching [path] from [declaringGroup] enters a repeating group the declaring group is not inside.
+ *
+ * Such a level is one A12 iterates while reading the reference, and the class it draws there pre-empts every
+ * gate the operator carrying the reference would otherwise run. The declaring group is what BINDS a level:
+ * a rule written inside a repetition reads that repetition's own row, so the same reference iterates or does
+ * not depending on where the rule sits — which is why a reader that only counted repeating levels would call
+ * an anchored read opaque and lose every class behind it.
+ */
+internal fun PreparedModel.crossesARepetitionOutside(declaringGroup: String, path: String): Boolean =
+    elements.any { candidate ->
+        candidate.declaredKind == DeclaredKind.GROUP &&
+            candidate.isRepeatable &&
+            path.startsWith("${candidate.path}/") &&
+            !(declaringGroup == candidate.path || declaringGroup.startsWith("${candidate.path}/"))
+    }
+
+/**
  * How many groups on the path to [path], itself included, repeat — one star each is what A12 wants.
  *
  * Two families need it to decide whether an operand's STARRING is already right, because both of A12's
