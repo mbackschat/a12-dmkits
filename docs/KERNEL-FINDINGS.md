@@ -7142,6 +7142,24 @@ Reported by the portable checker, which did not emit `MVK_SORT_FIELD_DUPLICATE` 
 
 *Locked by:* `rulekit.validate.laws.GroupOrderingMultipleDefectLawsTest`, mirrored by `consistency … GroupOrderingMultipleDefectTest`.
 
+## §8 supplement — when two declarations may be compared once their LABELS count (source-verified + measured, 2026-09-14) <a id="kf407"></a>
+
+> Fold: not-foldable — a diagnostic-class law about a comparison's operands, not an evaluation behaviour.
+
+`EnumComparabilityLawsTest` locks this law's core as ten single verdicts. Three facts a reproduction needs were not among them, and each is a discriminator a reading of `CheckVergleichsBedingungImpl` does not give.
+
+**A label written for a locale the model does not DECLARE is invisible to the gate.** An enumeration labelled only in `fr_FR` inside an `en_US` model is TEXTLESS — it compares happily with an unlabelled one and draws `MVK_INVALID_COMPARE_ENUM_TO_STRING` against a labelled one, exactly as a label-free declaration does. Combined with the value-label law ([KF321](#kf321)) — once any value answers a declared locale, every value owes every declared locale — this makes A12's own "shared display locales" INTERSECTION always the full declared set in a buildable model. The intersection is therefore unreachable as a narrowing, and a reader may walk the declared locales.
+
+**A CATEGORY access on either side returns before the whole gate.** The identical conflicting pair is refused read plainly and admitted read as `[Tier -> Band]`, on both the enum/enum and the enum/text arm — so the projection is not a narrowing of the comparison but an exit from it.
+
+**The text arm's gate is `isFeldWertOp`: it reads how the partner is WRITTEN, not what type it carries.** A labelled enumeration against `[Holder]` is refused and against `RangeAsString(Holder, 1, 3)` — the same field, the same string result — is admitted. A reader typing the partner would refuse the second.
+
+The rest of the grid re-states the core on one carrier: identity labels are textless, a shared stored token carrying two texts and a shared display text standing for two tokens are both `MVK_INVALID_COMPARE_ENUM_TO_ENUM`, and both equality spellings behave alike.
+
+Reported by the portable checker (`CheckFamily.ENUM_DISPLAY_COMPARABILITY`), whose silences are A12's own exits: a category access, an operand that is not one bare field, and a table-backed enumeration.
+
+*Locked by:* `rulekit.validate.laws.EnumDisplayComparabilityLawsTest` (with `EnumComparabilityLawsTest` for the core), mirrored by `consistency.EnumDisplayComparabilityTest`.
+
 ## §8 supplement — an ELEMENT's display label owes no locale at all (measured, 2026-09-14) <a id="kf406"></a>
 
 > Fold: not-foldable — a model-declaration law, not an evaluation behaviour.

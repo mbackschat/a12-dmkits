@@ -27,11 +27,13 @@ import io.github.mbackschat.a12.dm.consistency.syntax.tokenize
  * `BASIC` with the label `Basic plan` refuses `"Basic plan"` and admits `"BASIC"`, which is the row that
  * separates the two readings a labelled enumeration could carry.
  *
- * **The DISPLAY-VALUE half of the same walk is left to A12**, deliberately: `MVK_INVALID_COMPARE_ENUM_TO_STRING`
- * and `MVK_INVALID_COMPARE_ENUM_TO_ENUM` compare what two declarations LABEL their values, in every shared
- * locale and in both directions, and they are reachable only where both sides are text-or-enum — which is
- * exactly the region the kind question leaves admitted. The two halves therefore never contend, measured on
- * a display-bearing enumeration against a text field and against a textless enumeration.
+ * **The DISPLAY-VALUE half of the same walk is [enumDisplayComparabilityFindings]'**, and the split is the
+ * measurement rather than a convenience: `MVK_INVALID_COMPARE_ENUM_TO_STRING` and
+ * `MVK_INVALID_COMPARE_ENUM_TO_ENUM` compare what two declarations LABEL their values, and they are
+ * reachable only where both sides are text-or-enum — exactly the region the kind question leaves admitted.
+ * The two halves therefore never contend, measured on a display-bearing enumeration against a text field and
+ * against a textless enumeration. Their question is also about the PAIR, which this per-side walk could not
+ * carry: the same enumeration is fine opposite one partner and refused opposite another.
  *
  * **Silent on a `CustomFieldType` declaration.** It shares this checker's TEXT class with `StringType`, and
  * whether A12 gives it the same base type is not measured on this carrier — assuming it would report the

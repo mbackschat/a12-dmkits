@@ -577,6 +577,14 @@ enum class CheckFamily {
     RANGE_OPERAND_GATES,
 
     /**
+     * That two declarations a comparison equates agree about LABELLING their values, and label the values
+     * they share the same way. Its own constant because the question is about a PAIR rather than about
+     * either side — the same enumeration is fine opposite one partner and refused opposite another — which
+     * is the one shape `STRING_ENUM_COMPARISON_AGREEMENT`'s per-side walk cannot carry.
+     */
+    ENUM_DISPLAY_COMPARABILITY,
+
+    /**
      * That a rule reading a repetition does not reach its error field only from ABOVE its own group — A12
      * cannot then say which repetition the error attaches to. Its own constant because the demand is on the
      * CONDITION's reach rather than on the target's existence, which `ERROR_FIELD_REFERENCE` already owns,
@@ -834,6 +842,7 @@ internal fun check(
         prepared.validityConditionOperandFindings() +
         prepared.baseYearRequirementFindings() +
         prepared.rangeOperandGateFindings() +
+        prepared.enumDisplayComparabilityFindings() +
         prepared.errorTargetIterationFindings() +
         prepared.messageParameterFindings() +
         prepared.messageTextCharacterFindings() +
@@ -896,6 +905,7 @@ internal fun check(
             CheckFamily.SCALAR_VALUE_LIST_GATES, CheckFamily.DATE_ARGUMENT_SLOT,
             CheckFamily.DATE_RANGE_OPERAND_LIST, CheckFamily.VALIDITY_CONDITION_OPERANDS,
             CheckFamily.BASE_YEAR_REQUIREMENT, CheckFamily.RANGE_OPERAND_GATES,
+            CheckFamily.ENUM_DISPLAY_COMPARABILITY,
             CheckFamily.ERROR_TARGET_ITERATION,
             CheckFamily.MESSAGE_PARAMETER_REFERENCE, CheckFamily.MESSAGE_TEXT_CHARACTERS),
         gaps = prepared.gaps() + prepared.emptyFactBase() + findings.buildBlocked() +

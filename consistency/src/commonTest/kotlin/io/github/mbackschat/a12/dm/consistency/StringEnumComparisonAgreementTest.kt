@@ -8,8 +8,9 @@ import kotlin.test.assertEquals
  *
  * Every row mirrors one measured against the real kernel by
  * `rulekit.validate.laws.StringEnumComparisonAgreementLawsTest`. The display-bearing rows carry the risk:
- * A12 answers them with the display-value classes this family deliberately does not report, so a finding
- * there would be the wrong class on a correct rejection.
+ * A12 answers them with the display-value classes, which `ENUM_DISPLAY_COMPARABILITY` owns — so these rows
+ * state that the two halves of one kernel walk partition the comparison, each naming its own class where the
+ * other says nothing.
  */
 class StringEnumComparisonAgreementTest {
 
@@ -94,7 +95,7 @@ class StringEnumComparisonAgreementTest {
         assertEquals(expected, actual, "which written-out values an enumeration admits")
     }
 
-    /** The arms that answer first, and the display-value neighbour this family stays out of. */
+    /** The arms that answer first, and the display-value neighbour that owns its own rows. */
     @Test
     fun theArmsThisFamilyYieldsTo() {
         val actual = mutableMapOf<String, List<String>>()
@@ -111,8 +112,13 @@ class StringEnumComparisonAgreementTest {
         expected["an enumeration against a boolean"] = listOf("MVK_INVALID_COMPARE_TO_YESNO")
         expected["a text declaration ordered against a number"] = listOf("MVK_INVALID_TYPE_FOR_COMPARISON")
         expected["two written-out values"] = listOf("MVK_INVALID_COMPARE_TO_CONST")
-        expected["a display-bearing enumeration against a text declaration"] = emptyList()
-        expected["a display-bearing enumeration against a textless one"] = emptyList()
+        // Both were this family's documented silence until 2026-09-14, when the DISPLAY half of the same
+        // kernel walk got its own family — so the rows now measure that the two halves partition the
+        // comparison rather than contend, which is what the empty cells could never state.
+        expected["a display-bearing enumeration against a text declaration"] =
+            listOf("MVK_INVALID_COMPARE_ENUM_TO_STRING")
+        expected["a display-bearing enumeration against a textless one"] =
+            listOf("MVK_INVALID_COMPARE_ENUM_TO_STRING")
         assertEquals(expected, actual, "the arms this family yields to")
     }
 }

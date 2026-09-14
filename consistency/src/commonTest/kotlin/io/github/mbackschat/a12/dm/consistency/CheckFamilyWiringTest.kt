@@ -48,6 +48,10 @@ class CheckFamilyWiringTest {
               "NumberType":{"minFractionalDigits":3,"maxFractionalDigits":2}}}},
             {"type":"Field","id":"f11","name":"RepeatedTier","Field":{"fieldType":{
               "type":"EnumerationType","EnumerationType":{"values":[{"value":"A"},{"value":"A"}]}}}},
+            {"type":"Field","id":"f48","name":"LabelledTier","Field":{"fieldType":{
+              "type":"EnumerationType","EnumerationType":{"values":[
+                {"value":"A","label":[{"locale":"en_US","text":"Alpha"}]},
+                {"value":"B","label":[{"locale":"en_US","text":"Beta"}]}]}}}},
             {"type":"Field","id":"f45","name":"Signed","Field":{"fieldType":{"type":"ConfirmType"}}},
             {"type":"Field","id":"f47","name":"ShiftStart","Field":{"fieldType":{"type":"TimeType",
               "TimeType":{"format":"HH:mm:ss"}}}},
@@ -203,6 +207,10 @@ class CheckFamilyWiringTest {
               "errorCondition":"FieldFilled(Price) And [Price] < [Reference]",
               "errorEntityRelPath":"../Price",
               "errorCode":"C47","errorMessage":[{"locale":"en_US","text":"x"}]}},
+            {"type":"Rule","id":"r59","name":"LabelledAgainstPlain","Rule":{
+              "errorCondition":"FieldFilled(Price) And [LabelledTier] == [RepeatedTier]",
+              "errorEntityRelPath":"../Price",
+              "errorCode":"C59","errorMessage":[{"locale":"en_US","text":"x"}]}},
             {"type":"Rule","id":"r58","name":"CutOfANumber","Rule":{
               "errorCondition":"FieldFilled(Price) And RangeAsString(UnitCount, 1, 3) == \"ABC\"",
               "errorEntityRelPath":"../Price",
@@ -544,6 +552,10 @@ class CheckFamilyWiringTest {
         // the family starts reading the operator's result kind instead.
         CheckFamily.RANGE_OPERAND_GATES to
             ("MVK_INVALID_TYPE" to "/Catalog/CutOfANumber"),
+        // One enumeration labels its values and the other does not — a claim about the PAIR, so the row
+        // fails the moment the family starts deciding from one side alone.
+        CheckFamily.ENUM_DISPLAY_COMPARABILITY to
+            ("MVK_INVALID_COMPARE_ENUM_TO_STRING" to "/Catalog/LabelledAgainstPlain"),
         // Two text declarations under an ordering operator — the one comparison in this fixture whose
         // operator demands more of its sides than they are.
         CheckFamily.COMPARISON_OPERATOR_OPERANDS to
