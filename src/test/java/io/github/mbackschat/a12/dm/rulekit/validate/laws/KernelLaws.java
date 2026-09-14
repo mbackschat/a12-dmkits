@@ -277,6 +277,11 @@ final class KernelLaws {
         return verdictModel(ORDER, group, errorField, condition);
     }
 
+    /** {@link #orderVerdict} on the Project fixture, whose two nested repeatable levels the others lack. */
+    static String projectVerdict(String group, String errorField, String condition) {
+        return verdictModel(PROJECT, group, errorField, condition);
+    }
+
     /** {@link #orderVerdict} on a caller-supplied model, for a table whose carrier the fixtures cannot supply. */
     static String verdictModel(String json, String group, String errorField, String condition) {
         ValidationResult r = check(json, group, errorField, condition);

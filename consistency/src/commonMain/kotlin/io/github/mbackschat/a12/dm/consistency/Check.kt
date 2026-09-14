@@ -289,6 +289,14 @@ enum class CheckFamily {
     GROUP_CONDITION_WILDCARD,
 
     /**
+     * That `SumOfProducts`' two operands are PARALLEL: one owning group, and each starring exactly the
+     * lowest repeatable level between the rule's own group and its field. One constant for four codes
+     * because A12 decides them in one operator's gate chain and their ORDER is what a reproduction has to
+     * get right — three of the cells that break two of the laws at once are answered by the earlier gate.
+     */
+    SUM_OF_PRODUCTS_OPERANDS,
+
+    /**
      * That a semantic index's KEY names a field rather than a group. Its own constant rather than part of
      * [REPETITION_KEY_PLACEMENT] because the key of an index selects one repetition by VALUE, where a
      * repetition-uniqueness key declares what makes rows distinct — different laws over the same word.
@@ -564,6 +572,7 @@ internal fun check(
         prepared.repetitionScopeGroupFindings() +
         prepared.filterWildcardFindings() +
         prepared.groupConditionWildcardFindings() +
+        prepared.sumOfProductsOperandFindings() +
         prepared.semanticIndexKeyFindings() +
         prepared.repetitionNotUniqueCombinationFindings() +
         prepared.parallelIterationUniquenessFindings() +
@@ -610,6 +619,7 @@ internal fun check(
             CheckFamily.COMPUTATION_PRECONDITION_FEATURES, CheckFamily.COMPUTATION_CYCLE,
             CheckFamily.REPETITION_KEY_PLACEMENT, CheckFamily.REPETITION_SCOPE_GROUP,
             CheckFamily.FILTER_WILDCARD, CheckFamily.GROUP_CONDITION_WILDCARD,
+            CheckFamily.SUM_OF_PRODUCTS_OPERANDS,
             CheckFamily.SEMANTIC_INDEX_KEY,
             CheckFamily.REPETITION_NOT_UNIQUE_COMBINATION,
             CheckFamily.PARALLEL_ITERATION_UNIQUENESS,

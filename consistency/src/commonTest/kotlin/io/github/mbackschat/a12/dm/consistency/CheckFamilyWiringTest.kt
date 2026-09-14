@@ -102,6 +102,10 @@ class CheckFamilyWiringTest {
               "errorCondition":"FieldFilled(Price) And AllGroupsFilled(Pallets*, Shelf)",
               "errorEntityRelPath":"../Price",
               "errorCode":"C34","errorMessage":[{"locale":"en_US","text":"x"}]}},
+            {"type":"Rule","id":"r35","name":"UnparallelProducts","Rule":{
+              "errorCondition":"FieldFilled(Price) And SumOfProducts(Pallets*/PalletQty, Crates*/CrateQty) > 0",
+              "errorEntityRelPath":"../Price",
+              "errorCode":"C35","errorMessage":[{"locale":"en_US","text":"x"}]}},
             {"type":"Group","id":"g7","name":"Crates","Group":{"repeatability":5,
               "indexFieldName":"CrateRef","elements":[
               {"type":"Field","id":"f30","name":"CrateRef","Field":{"fieldType":{"type":"StringType"}}},
@@ -319,6 +323,10 @@ class CheckFamilyWiringTest {
         // here, which is what makes the operator rather than the star the thing this family reads.
         CheckFamily.GROUP_CONDITION_WILDCARD to
             ("MVK_NO_WILDCARDS_G_ALLOWED" to "/Catalog/StarredGroupQuantifier"),
+        // Two well-formed starred lists over DIFFERENT owning groups, which is the first of that operator's
+        // four gates and the only one reachable without a second defect in the same reference.
+        CheckFamily.SUM_OF_PRODUCTS_OPERANDS to
+            ("MVK_DIFFERENT_GROUPS" to "/Catalog/UnparallelProducts"),
         // `Shelf` again, this time in the KEY position of a semantic index: it is the fixture's only group
         // that does not repeat, which is exactly what keeps A12's iteration gate from pre-empting the class.
         CheckFamily.SEMANTIC_INDEX_KEY to

@@ -311,6 +311,17 @@ class BuilderCheckerDivergenceGuardTest {
             // side's rule is false of the other's operators, so neither can be the other's source.
             Map.entry("MVK_ROOT_GROUP_REFERENCED", Disposition.SAME_LAW_SEPARATE_CARRIERS),
 
+            // `SumOfProducts`' four operand laws, added 2026-09-14 with the family that reports them. The
+            // record's constructor enforces all four over typed operands and QUOTES these codes in its
+            // refusal messages; the checker enforces the same four over stored DM-JSON. Neither is broader
+            // than A12: the kit's shape is exactly what `SumOfProductsLawsTest` measured, and the checker
+            // additionally stays silent wherever the reference reader answers first, which the typed
+            // operands cannot express (KF370).
+            Map.entry("MVK_DIFFERENT_GROUPS", Disposition.SAME_LAW_SEPARATE_CARRIERS),
+            Map.entry("MVK_REPEATABLE_LEVEL_REQUIRED", Disposition.SAME_LAW_SEPARATE_CARRIERS),
+            Map.entry("MVK_WILDCARD_AT_LOWEST_LEVEL_REQUIRED", Disposition.SAME_LAW_SEPARATE_CARRIERS),
+            Map.entry("MVK_WILDCARD_ONLY_AT_LOWEST_LEVEL_ALLOWED", Disposition.SAME_LAW_SEPARATE_CARRIERS),
+
             // The row this guard exists for. The kits ERASE the shape — a group predicate's operand is a
             // `GroupRef`, so a field cannot be handed to one — and A12 admits a field operand on FIVE of the
             // eight carriers (KF327). The checker deliberately does NOT inherit that erasure: it reports the

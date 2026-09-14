@@ -7138,6 +7138,36 @@ Reported by the portable checker, which did not emit `MVK_SORT_FIELD_DUPLICATE` 
 
 *Locked by:* `rulekit.validate.laws.GroupOrderingMultipleDefectLawsTest`, mirrored by `consistency … GroupOrderingMultipleDefectTest`.
 
+## §9 supplement — `SumOfProducts`' four operand laws are ONE gate chain, and the order is what a reproduction gets wrong (measured, 2026-09-14) <a id="kf370"></a>
+
+> Fold: not-foldable — an operand-admission law plus a gate-order result.
+
+**One operator, one `switch` arm, six gates in source order.** Locked by `rulekit.validate.laws.SumOfProductsLawsTest`; the source counterpart is `CheckFeldListenOpImpl.check`'s `SUMME_VON_PRODUKTEN` branch.
+
+| the operand pair | A12 |
+|---|---|
+| two parallel lists over one owning group — the control | ADMITTED |
+| one operand only, or three | `MVK_PARAMSIZE_INVALID_2` |
+| the same starless field twice | `MVK_DUPLICATE_PARAM1` |
+| a GROUP beside a field inside it | `MVK_DUPLICATE_PARAM2` |
+| a repeatable level left unstarred | `MVK_NO_WILDCARD` |
+| the fields' OWNING groups differ | `MVK_DIFFERENT_GROUPS` |
+| an operand carrying a `Having` filter | `MVK_WILDCARD_AT_LOWEST_LEVEL_REQUIRED` |
+| an operand starring two levels | `MVK_WILDCARD_ONLY_AT_LOWEST_LEVEL_ALLOWED` |
+| neither operand has a repeatable level, and they share an owning group | `MVK_REPEATABLE_LEVEL_REQUIRED` |
+
+**The arity code is `MVK_PARAMSIZE_INVALID_2`, not `MVK_PARAMSIZE_INVALID2`** — two distinct members of one enum, and this operator's `checkParamSizeIs2` draws the underscored one. Recorded because a checker quoting the sibling would name a code the model never drew.
+
+**Two gates answer ahead of the ones the operator's own branch calls.** The duplicate gate takes both duplicate rows, so a GROUP operand never reaches `checkOnlyFields` and the kind class is unreachable on that pair; and it is STAR-SENSITIVE — the identical pair `Lines*/Qty, Lines*/Qty` is admitted while `Total, Total` is a duplicate.
+
+**The second class is not the shape its name suggests, and this is the row that matters most.** `MVK_WILDCARD_AT_LOWEST_LEVEL_REQUIRED` reads as "a star above the lowest level", and that shape never reaches it: the reference reader answers a missing or misplaced star with `MVK_NO_WILDCARD` first. What does reach it is a FILTER — `isWildcardRestricted` returns `hasFilterCondition()` for every level, so a filtered operand fails at its lowest level. Measured on both sides of the pair, and measured against a multi-star operand, where the filter wins because the loop reaches the lowest level first.
+
+**The owning-group gate outranks every wildcard gate below it**, so a filtered operand whose owning group also differs draws `MVK_DIFFERENT_GROUPS`, and so does a pair with no repeatable level at all when the two groups differ — the cell that corrected this file's own earlier reading of `MVK_REPEATABLE_LEVEL_REQUIRED`.
+
+Reported by the portable checker under `CheckFamily.SUM_OF_PRODUCTS_OPERANDS`, which speaks only where each operand resolves to a FIELD inside the declaring group and stars exactly the repeatable levels between them — the condition that keeps the reference reader's three classes out of its way.
+
+*Locked by:* `rulekit.validate.laws.SumOfProductsLawsTest`, mirrored by `consistency … SumOfProductsOperandsTest`.
+
 ## §9 supplement — the SEVEN group conditions split THREE ways over a repetition wildcard, and the star-required gate outruns all of them (measured, 2026-09-14) <a id="kf369"></a>
 
 > Fold: not-foldable — an operand-admission law plus a gate-order result.

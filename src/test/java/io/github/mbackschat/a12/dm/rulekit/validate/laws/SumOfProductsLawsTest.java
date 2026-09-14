@@ -144,6 +144,55 @@ class SumOfProductsLawsTest {
         assertEquals(expected, actual, "SumOfProducts operand-pair class precedence");
     }
 
+    /**
+     * The rest of the gate chain, so a checker reproducing this operator knows the whole order.
+     *
+     * <p>The grid above measures the classes; these are the cells around them — the arity gate, the kind
+     * gate, and the two cells where a FILTER competes with another live defect. The filter matters more than
+     * it looks: {@code isWildcardRestricted} reads a filter as restricting EVERY level, so a filtered operand
+     * is the only way to reach {@code MVK_WILDCARD_AT_LOWEST_LEVEL_REQUIRED} at all — the reference reader
+     * answers a plain missing star with {@code MVK_NO_WILDCARD} long before this method runs.
+     */
+    @Test
+    void theRestOfTheOperandGateChain() {
+        var actual = new java.util.LinkedHashMap<String, String>();
+        actual.put("two parallel lists — the control", verdict("Lines*/Qty, Lines*/Qty"));
+        actual.put("one operand only", verdict("Lines*/Qty"));
+        actual.put("three operands", verdict("Lines*/Qty, Lines*/Qty, Lines*/Qty"));
+        actual.put("a GROUP operand", verdict("Lines*, Lines*/Qty"));
+        actual.put("a filtered operand whose owning group also differs",
+                verdict("Lines*/Qty Having [Lines/Qty] > 0, Fees/Handling"));
+        actual.put("a filtered operand that also stars two levels", nestedVerdict(
+                "Milestones*/Tasks*/Effort Having [Milestones/Tasks/TaskId] == \"x\", "
+                        + "Milestones*/Tasks*/Effort"));
+        actual.put("the same two levels starred, unfiltered — the control",
+                nestedVerdict("Milestones*/Tasks*/Effort, Milestones*/Tasks*/Effort"));
+
+        var expected = new java.util.LinkedHashMap<String, String>();
+        expected.put("two parallel lists — the control", KernelLaws.ADMITTED);
+        // `MVK_PARAMSIZE_INVALID_2`, not the underscore-less `MVK_PARAMSIZE_INVALID2` its sibling gates use
+        // — two distinct members of the same enum, and this operator's `checkParamSizeIs2` draws the second.
+        expected.put("one operand only", "MVK_PARAMSIZE_INVALID_2");
+        expected.put("three operands", "MVK_PARAMSIZE_INVALID_2");
+        // The DUPLICATE gate answers ahead of the kind gate: a field named beside the group that contains it
+        // is an indirect duplicate, so this pair never reaches `checkOnlyFields`.
+        expected.put("a GROUP operand", "MVK_DUPLICATE_PARAM2");
+        // The same-group gate runs BEFORE the wildcard one, so the filter never gets asked here.
+        expected.put("a filtered operand whose owning group also differs", "MVK_DIFFERENT_GROUPS");
+        // …and where the owning groups agree the filter wins over the multi-star, because the restriction is
+        // read at the LOWEST level, which the loop reaches first.
+        expected.put("a filtered operand that also stars two levels", "MVK_WILDCARD_AT_LOWEST_LEVEL_REQUIRED");
+        expected.put("the same two levels starred, unfiltered — the control",
+                "MVK_WILDCARD_ONLY_AT_LOWEST_LEVEL_ALLOWED");
+        assertEquals(expected, actual, "the rest of the SumOfProducts operand gate chain");
+    }
+
+    /** The same verdict on the two-level repeatable fixture, which BASKET has no shape for. */
+    private static String nestedVerdict(String operands) {
+        return KernelLaws.projectVerdict("/Project", "../ProjectName",
+                "FieldFilled(ProjectName) And SumOfProducts(" + operands + ") > 0");
+    }
+
     /** The COMPLETE class list for one operand pair on {@link #BASKET} — a single code would hide a co-fire. */
     private static String verdict(String operands) {
         return KernelLaws.verdictModel(BASKET, "/Basket", "../Total",
