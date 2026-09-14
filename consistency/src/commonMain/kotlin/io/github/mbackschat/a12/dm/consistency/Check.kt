@@ -341,6 +341,14 @@ enum class CheckFamily {
     OPERAND_REPETITION_SCOPE,
 
     /**
+     * What each SLOT of a `Date` or `Time` construction admits, on the two arms that carry no declaration —
+     * a quoted constant's range and width, and which extract operator belongs in which slot. Its own
+     * constant because A12 walks the construction's slots left to right, so the answering slot rather than
+     * any gate picks both the class and the component a report has to name.
+     */
+    DATE_CONSTRUCTION_SLOT,
+
+    /**
      * That no path segment carries the H-model `.*` repetition suffix. Its own constant rather than part of
      * [REPETITION_WILDCARD_TARGET] because the demand is on the SPELLING rather than on where a star lands,
      * and A12 gates it between resolution and the landing site rather than alongside it.
@@ -602,6 +610,7 @@ internal fun check(
         prepared.repetitionNotUniqueCombinationFindings() +
         prepared.parallelIterationUniquenessFindings() +
         prepared.operandRepetitionScopeFindings() +
+        prepared.dateConstructionSlotFindings() +
         prepared.hModelPathSuffixFindings() +
         prepared.fieldOperandKindFindings() +
         prepared.filteredOperandKindFindings() +
@@ -650,7 +659,7 @@ internal fun check(
             CheckFamily.SEMANTIC_INDEX_KEY,
             CheckFamily.REPETITION_NOT_UNIQUE_COMBINATION,
             CheckFamily.PARALLEL_ITERATION_UNIQUENESS,
-            CheckFamily.OPERAND_REPETITION_SCOPE,
+            CheckFamily.OPERAND_REPETITION_SCOPE, CheckFamily.DATE_CONSTRUCTION_SLOT,
             CheckFamily.H_MODEL_PATH_SUFFIX, CheckFamily.FIELD_OPERAND_KIND,
             CheckFamily.FILTERED_OPERAND_KIND, CheckFamily.CATEGORY_REFERENCE,
             CheckFamily.ENUM_CONSTANT_DOMAIN,
@@ -847,6 +856,8 @@ private val POSITIONED_CONDITION_CODES = setOf(
     "MVK_LEXER_STANDARD_ERROR", "MVK_BRACKET_MISSING", "MVK_GROUP_IS_EMPTY", "MVK_DUPLICATE_PARAM1",
     "MVK_ROOT_GROUP_REFERENCED", "MVK_NO_FIELDS_ALLOWED", "MVK_INVALID_WILDCARD",
     "MVK_NO_WILDCARD", "MVK_MULTIPLE_INDEX_FIELDS", "MVK_ERROR_FIELD_NO_INDEX",
+    "MVK_WRONG_DATE_FORMAT_FOR_OP", "MVK_INVALID_DATE_OR_TIME_EXTRACT_OP",
+    "MVK_DATE_OR_TIME_EXTRACT_OP_NOT_ALLOWED",
     "MVK_ERROR_FIELD_INVALID_INDEX", "MVK_ERROR_FIELD_INVALID_INDEX_TYPE",
 )
 

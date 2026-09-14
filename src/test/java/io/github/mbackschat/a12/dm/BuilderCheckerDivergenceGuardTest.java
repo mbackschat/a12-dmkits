@@ -135,6 +135,12 @@ class BuilderCheckerDivergenceGuardTest {
             // known kit defect rather than a chosen strictness, and this row is where it stays visible.
             Map.entry("MVK_ERROR_FIELD_NOT_IN_RULEGROUP", Disposition.STRICTER_IN_JAVA),
 
+            // The kit names it only in the operator catalog — a gotcha on the date-fragment arithmetic
+            // operators and a corrective on the extractors — and refuses on none of them. The checker
+            // reports it, and narrower than the code's name: only the CONSTANT arm of a `Date`/`Time`
+            // construction slot, where the demand is digits, a range and a width (`DateConstructionSlotLawsTest`).
+            Map.entry("MVK_WRONG_DATE_FORMAT_FOR_OP", Disposition.PROSE_ONLY),
+
             // `EnumRef.category(name)` fails fast on an undeclared category and `StructuralKernelFix` has no
             // hint for it; the kit's refusal is on a typed handle built from the model, so it cannot be
             // wrong about the declared set. The checker reads the same declaration from stored DM-JSON.

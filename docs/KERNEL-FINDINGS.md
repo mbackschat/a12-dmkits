@@ -7138,6 +7138,30 @@ Reported by the portable checker, which did not emit `MVK_SORT_FIELD_DUPLICATE` 
 
 *Locked by:* `rulekit.validate.laws.GroupOrderingMultipleDefectLawsTest`, mirrored by `consistency … GroupOrderingMultipleDefectTest`.
 
+## §6 supplement — a `Date`/`Time` construction is judged SLOT by slot, and the slot's arm picks the class (measured, 2026-09-14) <a id="kf373"></a>
+
+> Fold: not-foldable — a per-slot admission law for the two construction operators.
+
+`CheckBaseDateConstructionImpl` with its two subclasses is one construct: each slot takes a quoted CONSTANT, a date/time EXTRACT operator, or an ENTITY, and each arm has its own gate. A12 walks the slots left to right and answers at the first defective one, whichever arm that slot happens to carry — measured in both orders, so "the constant gate runs before the operator gate" is excluded.
+
+**The constant arm**, all digits with no sign, inside a half-open range, and at the complete-year slot a width of exactly four:
+
+| slot | admits | the year slot alone also demands |
+|---|---|---|
+| `Date` day | 1–31 | — |
+| `Date` month | 1–12 | — |
+| `Date` year | 1800–2199 | exactly four digits |
+| `Time` hour | 0–23 | — |
+| `Time` minute / second | 0–59 | — |
+
+A leading zero is optional (`Date("1","2","2024")` is admitted), so the day and month slots have no width demand at all; the year slot's is what makes `"24"` a refusal where `"1"` is not.
+
+**The extract-operator arm splits TWO ways, and the discriminating case is `QuarterFromDate`.** An operator of the construction's own family in the wrong slot draws `MVK_INVALID_DATE_OR_TIME_EXTRACT_OP`; every other operator draws `MVK_DATE_OR_TIME_EXTRACT_OP_NOT_ALLOWED`. The obvious reading — "the other family's operator is not allowed, one's own is merely misplaced" — predicts the wrong-slot class for `QuarterFromDate`, which is a date operator; measured, it draws the not-allowed class, because the kernel's switch lists the three operators its own slots expect by NAME rather than asking which family an operator belongs to.
+
+**Both `Date` arities either side of three are other laws'.** Two components is the year-less shape, admitted only when the model declares a base year (`MVK_MISSING_YEAR`); four is the split-year H-model shape, whose own class is erased in A12 models.
+
+*Locked by:* `rulekit.validate.laws.DateConstructionSlotLawsTest`; mirrored by `consistency … DateConstructionSlotsTest`. The ENTITY arm is `…TemporalComponentDeclarationLawsTest`'s.
+
 ## §9 supplement — the root-only iteration classes need the target INSIDE the declaring group, the fourth constant of the set that measured them (measured, 2026-09-14) <a id="kf372"></a>
 
 > Fold: not-foldable — a gate-order result completing [KF348](#kf348)'s account of the same two classes.

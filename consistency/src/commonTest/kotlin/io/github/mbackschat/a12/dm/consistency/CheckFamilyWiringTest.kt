@@ -110,6 +110,12 @@ class CheckFamilyWiringTest {
               "errorCondition":"FieldFilled(Price) And Min([Amount], 1, 2) > 0",
               "errorEntityRelPath":"../Price",
               "errorCode":"C36","errorMessage":[{"locale":"en_US","text":"x"}]}},
+            {"type":"Field","id":"f37","name":"TravelDate","Field":{"fieldType":{"type":"DateType",
+              "DateType":{"format":"yyyy-MM-dd"}}}},
+            {"type":"Rule","id":"r39","name":"ImpossibleDay","Rule":{
+              "errorCondition":"FieldFilled(TravelDate) And [TravelDate] == Date(\"32\", \"02\", \"2024\")",
+              "errorEntityRelPath":"../TravelDate",
+              "errorCode":"C39","errorMessage":[{"locale":"en_US","text":"x"}]}},
             {"type":"Rule","id":"r38","name":"UnstarredRepetitionRead","Rule":{
               "errorCondition":"FieldFilled(Price) And FieldFilled(Crates/CrateQty)",
               "errorEntityRelPath":"../Price",
@@ -364,6 +370,10 @@ class CheckFamilyWiringTest {
         // which is what makes the row about the LEVEL rather than about the predicate reading it.
         CheckFamily.OPERAND_REPETITION_SCOPE to
             ("MVK_NO_WILDCARD" to "/Catalog/UnstarredRepetitionRead"),
+        // A day of 32 in a well-formed three-part construction: the other two components are valid and the
+        // target is an ordinary full date, so nothing but the slot's own range can be what answers.
+        CheckFamily.DATE_CONSTRUCTION_SLOT to
+            ("MVK_WRONG_DATE_FORMAT_FOR_OP" to "/Catalog/ImpossibleDay"),
         // The suffix rides a group that DOES repeat, so the star itself is legal and this row cannot borrow
         // a wildcard family's finding: the `.` in front of it is the whole defect.
         CheckFamily.H_MODEL_PATH_SUFFIX to
