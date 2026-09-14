@@ -7138,6 +7138,20 @@ Reported by the portable checker, which did not emit `MVK_SORT_FIELD_DUPLICATE` 
 
 *Locked by:* `rulekit.validate.laws.GroupOrderingMultipleDefectLawsTest`, mirrored by `consistency … GroupOrderingMultipleDefectTest`.
 
+## §9 supplement — a whole-rule gate runs only on a COMPLETED parse, so a parse-time class erases it (source-verified + measured, 2026-09-14) <a id="kf375"></a>
+
+> Fold: not-foldable — a diagnostic-class selection law across A12's two checking phases, not an evaluation behaviour.
+
+A12 checks a condition in two phases and the estate had only ever measured inside one of them. The per-construct `Check…Impl` classes run DURING the parse and raise by throwing; a second, smaller set runs after it, on the built condition, because what they ask cannot be seen from one construct. `CheckWiederholungBedingungImpl.checkForParallelIteration` is the worked example and states its own precondition: *"This is checked after parsing because for groups on the error field path parallel iteration can be detected only in the context of the whole condition. Preconditions: Has to be called after parsing is complete."*
+
+**So a parse-time class does not merely outrank a whole-rule one — it removes the input the whole-rule one needs.** The throw ends the parse, no condition is built, and nothing calls the second phase at all. That is a stronger claim than the first-defect rule ([KF342](#kf342)) and decides cases the first-defect rule cannot, a whole-rule gate having no position in the text to be compared against.
+
+**The discriminating control, within one model** (`RepetitionNotUniqueFromScopeLawsTest`, two index-keyed parallel groups): a `RepetitionNotUnique` whose key list straddles both branches reports `MVK_NOT_IN_SAME_PATH` and nothing else, while the same model with a CLEAN key list beside a parallel read reports `MVK_PARALLEL_ITERATION_NOT_ALLOWED`. The gate is live on this shape; it disappears only behind the parse-time throw.
+
+**What it means for a reproduction**: a checker that reports both classes over-reports, and the fix is one rule over the whole finding list rather than per family — a whole-rule class is dropped wherever a positioned class already speaks for the same rule. `MVK_PARALLEL_ITERATION_NOT_ALLOWED` is the only member of that set measured so far; a second-phase gate is recognizable in kernel source by taking a built `ICondition` rather than a parser context.
+
+*Locked by:* `rulekit.validate.laws.RepetitionNotUniqueFromScopeLawsTest`; mirrored by `consistency … RepetitionKeyContainmentTest`.
+
 ## §9 supplement — a `Having` filter's body is walked LEVEL by level, and the two gates it answers are one method's two branches (source-verified, 2026-09-14) <a id="kf374"></a>
 
 > Fold: not-foldable — the mechanism behind §9's two filter codes, which the section states as separate rules.
@@ -7644,6 +7658,8 @@ Locked: `validate.laws.ReferenceSegmentGateOrderLawsTest`. **Fixed in the portab
 | a key outside the scope → `MVK_NOT_IN_GROUP` | no repeatable group between key and rule group → `MVK_REPEATABLE_GROUP_MISSING` |
 
 Keys on parallel paths draw `MVK_NOT_IN_SAME_PATH` with no scope and `MVK_NOT_IN_GROUP` with one: the shared-path check is not run at all in the `@From` branch, rather than being outranked.
+
+**Amended 2026-09-14, the shared-path check's own mechanism** (`CheckEntityListenUtils.checkAllRepeatableGroupsOnSamePath`, source-verified), which a reproduction needs and a containment reading gets wrong: it accumulates rather than compares pairwise. It walks the keys in authored order, skips any key with no repeatable group of its own, and keeps the LONGEST path seen so far — `getLongestSharedPath` returns the longer of two when one is a prefix of the other and `null` otherwise. So the key REPORTED is the first one that cannot extend the chain, not the pair that disagrees. Both this gate and `checkAllEntitiesInRuleGroup` compare parent paths carrying a trailing slash, which is what keeps `/Depot/Crate/` from reading as inside `/Depot/Crates/`.
 
 **The carrier fact that had to be discovered before any placement row could be measured.** A key in a second repeatable group is read by a rule whose error field sits in the first, so unless the two groups are INDEX-KEYED on the same field the read iterates past the target and `MVK_NO_WILDCARD` answers first — on every placement row at once. That is [KF350](#kf350)'s gate again, and it is what [KF349](#kf349) recorded narrowly for `MVK_NOT_IN_GROUP`: the requirement is the carrier's, not that class's.
 

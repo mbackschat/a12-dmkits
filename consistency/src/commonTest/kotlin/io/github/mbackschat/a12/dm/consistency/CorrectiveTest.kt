@@ -51,6 +51,20 @@ class CorrectiveTest {
               {"type":"Field","id":"f8","name":"ShelfCode","Field":{"fieldType":{"type":"StringType"}}},
               {"type":"Field","id":"f9","name":"ShelfQty","Field":{"fieldType":{"type":"NumberType"}}}
             ]}},
+            {"type":"Group","id":"g4","name":"Crates","Group":{"repeatability":5,
+              "indexFieldName":"CrateRef","elements":[
+              {"type":"Field","id":"f14","name":"CrateRef","Field":{"fieldType":{"type":"StringType"}}},
+              {"type":"Field","id":"f15","name":"CrateQty","Field":{"fieldType":{"type":"NumberType"}}}
+            ]}},
+            {"type":"Group","id":"g5","name":"Totes","Group":{"repeatability":5,
+              "indexFieldName":"CrateRef","elements":[
+              {"type":"Field","id":"f16","name":"CrateRef","Field":{"fieldType":{"type":"StringType"}}},
+              {"type":"Field","id":"f17","name":"ToteQty","Field":{"fieldType":{"type":"NumberType"}}}
+            ]}},
+            {"type":"Rule","id":"r14","name":"KeysOnParallelBranches","Rule":{
+              "errorCondition":"RepetitionNotUnique(Crates/CrateQty, Totes/ToteQty)",
+              "errorEntityRelPath":"../Crates/CrateQty",
+              "errorCode":"C14","errorMessage":[{"locale":"en_US","text":"x"}]}},
             {"type":"Rule","id":"r12","name":"GroupWhereAFieldBelongs","Rule":{
               "errorCondition":"FieldFilled(Note) And FieldFilled(Warehouse)",
               "errorEntityRelPath":"../Note",

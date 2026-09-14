@@ -116,6 +116,10 @@ class CheckFamilyWiringTest {
               "errorCondition":"FieldFilled(TravelDate) And [TravelDate] == Date(\"32\", \"02\", \"2024\")",
               "errorEntityRelPath":"../TravelDate",
               "errorCode":"C39","errorMessage":[{"locale":"en_US","text":"x"}]}},
+            {"type":"Rule","id":"r41","name":"KeysOnParallelBranches","Rule":{
+              "errorCondition":"RepetitionNotUnique(Crates/CrateQty, Totes/ToteQty)",
+              "errorEntityRelPath":"../Crates/CrateQty",
+              "errorCode":"C41","errorMessage":[{"locale":"en_US","text":"x"}]}},
             {"type":"Rule","id":"r40","name":"FilterOffTheOperandsPath","Rule":{
               "errorCondition":"FieldFilled(Price) And NumberOfFilledFields(Pallets*/PalletNote Having Crates/CrateQty > 0) > 0",
               "errorEntityRelPath":"../Price",
@@ -374,6 +378,10 @@ class CheckFamilyWiringTest {
         // which is what makes the row about the LEVEL rather than about the predicate reading it.
         CheckFamily.OPERAND_REPETITION_SCOPE to
             ("MVK_NO_WILDCARD" to "/Catalog/UnstarredRepetitionRead"),
+        // Two keys in repeatable groups that declare the SAME index field, so they iterate jointly and A12
+        // reaches the path question at all — index-free the pair is refused at the wildcard gate instead.
+        CheckFamily.REPETITION_KEY_CONTAINMENT to
+            ("MVK_NOT_IN_SAME_PATH" to "/Catalog/KeysOnParallelBranches"),
         // A filter naming a repeatable SIBLING of the starred operand's group: the operand itself is sound
         // and the filter is grammatical, so only the level the filter reaches can be what answers.
         CheckFamily.FILTER_BODY_ITERATION to

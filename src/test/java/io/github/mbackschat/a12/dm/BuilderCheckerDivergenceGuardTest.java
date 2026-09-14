@@ -233,10 +233,12 @@ class BuilderCheckerDivergenceGuardTest {
             // and each side asks it of a different representation.
             Map.entry("MVK_GROUP_NOT_REPEATABLE", Disposition.SAME_LAW_SEPARATE_CARRIERS),
 
-            // Prose on BOTH sides, which the enum's wording does not anticipate and this row states rather
-            // than glosses: rulekit carries only a `StructuralKernelFix` corrective for A12's own verdict,
-            // and the checker only names the class in a KDoc saying it is one of the containment classes
-            // `REPETITION_SCOPE_GROUP` stays silent on. Neither estate decides it.
+            // The usual direction: `StructuralKernelFix` carries a corrective for A12's verdict and refuses
+            // nothing, while `REPETITION_KEY_CONTAINMENT` reports the class off stored DM-JSON. *(Amended
+            // 2026-09-14: the checker's mention was a KDoc naming what it did NOT report until that family
+            // landed.)* Its two sibling classes reach no kit `.java`/`.kt` file at all — `MVK_NOT_IN_GROUP`
+            // is named only in the operator catalog, which this scan does not read — so neither belongs
+            // here, and a row for either would fail as a disposition with no pair.
             Map.entry("MVK_NOT_IN_SAME_PATH", Disposition.PROSE_ONLY),
 
             // …and the checker's own mention of this one is a KDoc naming what it deliberately does NOT

@@ -274,6 +274,14 @@ enum class CheckFamily {
     REPETITION_SCOPE_GROUP,
 
     /**
+     * Where a `RepetitionNotUnique` key has to sit relative to its `@From` scope or to the rule's own group.
+     * Its own constant rather than part of [REPETITION_KEY_PLACEMENT] because A12 gates containment BEFORE
+     * the repetition demand that family reports, and the two answer on disjoint shapes: a key inside the
+     * rule group with no repetition between, against a key outside the bound entirely.
+     */
+    REPETITION_KEY_CONTAINMENT,
+
+    /**
      * That a `Having` filter carries no repetition wildcard. Its own constant rather than part of
      * [REPETITION_WILDCARD_TARGET] because the filter is a fourth POSITION and position picks the class
      * there: the same star on the same repeatable group is admitted in the aggregate's own operand.
@@ -610,6 +618,7 @@ internal fun check(
         prepared.computationCycleFindings() +
         prepared.repetitionKeyPlacementFindings() +
         prepared.repetitionScopeGroupFindings() +
+        prepared.repetitionKeyContainmentFindings() +
         prepared.filterWildcardFindings() +
         prepared.filterBodyIterationFindings() +
         prepared.groupConditionWildcardFindings() +
@@ -635,6 +644,7 @@ internal fun check(
         .filterNot { it.at in stopped && it.code !in ERROR_TARGET_CODES }
         .filterNot { it.at in resolvedFirst && it.code in CONDITION_TEXT_CODES }
         .withoutRelationsBehindAPositionedDefect()
+        .withoutWholeRuleGatesBehindAParseTimeDefect()
     val findings = judged.notSuppressedBy(prepared.variantFilterSuppressed())
     return ConsistencyReport(
         modelId = admitted.modelId,
@@ -663,6 +673,7 @@ internal fun check(
             CheckFamily.RAW_TYPE_LENGTH, CheckFamily.COMPUTED_TARGET_INDEX_FIELD,
             CheckFamily.COMPUTATION_PRECONDITION_FEATURES, CheckFamily.COMPUTATION_CYCLE,
             CheckFamily.REPETITION_KEY_PLACEMENT, CheckFamily.REPETITION_SCOPE_GROUP,
+            CheckFamily.REPETITION_KEY_CONTAINMENT,
             CheckFamily.FILTER_WILDCARD, CheckFamily.FILTER_BODY_ITERATION,
             CheckFamily.GROUP_CONDITION_WILDCARD,
             CheckFamily.SUM_OF_PRODUCTS_OPERANDS, CheckFamily.OPERAND_LIST_CONSTANT_BUDGET,
@@ -847,6 +858,31 @@ private val ERROR_TARGET_CODES = setOf(ERROR_FIELD_MISSING, MISSING_ERROR_FIELD,
  * that decides it: the same unreferenced error target is reported on a sound condition and withheld on a
  * defective one, so the trigger is precisely whether another family already spoke about that text.
  */
+/**
+ * Drops a WHOLE-RULE class at any declaration whose condition already draws a parse-time one.
+ *
+ * A12 runs `ParserService.checkNormalRule` over the FINISHED parse tree, so it is reached only when every
+ * per-construct check has passed. A class drawn during the parse therefore pre-empts every class drawn there,
+ * and a report naming both says A12 found two defects where it stopped at one.
+ *
+ * Measured on the shape that exposed it: two index-keyed parallel groups under `RepetitionNotUnique` draw
+ * `MVK_NOT_IN_SAME_PATH` from the construct's own check, and the whole-rule parallel-iteration gate was
+ * naming its own class beside it (`rulekit.validate.laws.RepetitionNotUniqueFromScopeLawsTest`, whose verdict
+ * is the COMPLETE class list rather than one code, which is what made the extra class visible at all).
+ */
+private fun List<Finding>.withoutWholeRuleGatesBehindAParseTimeDefect(): List<Finding> {
+    val defective = filter { it.code in POSITIONED_CONDITION_CODES }.mapTo(mutableSetOf()) { it.at }
+    return filterNot { it.at in defective && it.code in WHOLE_RULE_CONDITION_CODES }
+}
+
+/**
+ * The classes `checkNormalRule` draws after the parse, which every parse-time class outranks.
+ *
+ * Listed by code rather than by family because the two families that own them also report classes A12 draws
+ * during the parse, and it is the CLASS that says which phase answered.
+ */
+private val WHOLE_RULE_CONDITION_CODES = setOf("MVK_PARALLEL_ITERATION_NOT_ALLOWED")
+
 private fun List<Finding>.withoutRelationsBehindAPositionedDefect(): List<Finding> {
     val defective = filter { it.code in POSITIONED_CONDITION_CODES }.mapTo(mutableSetOf()) { it.at }
     return filterNot { it.at in defective && it.code in CONDITION_RELATION_CODES }
@@ -870,6 +906,7 @@ private val POSITIONED_CONDITION_CODES = setOf(
     "MVK_WRONG_DATE_FORMAT_FOR_OP", "MVK_INVALID_DATE_OR_TIME_EXTRACT_OP",
     "MVK_DATE_OR_TIME_EXTRACT_OP_NOT_ALLOWED", "MVK_NO_DIGIT_PATTERN",
     "MVK_INVALID_ITERATION_IN_FILTER_CONDITION", "MVK_NO_ITERATION_FOR_WILDCARD",
+    "MVK_NOT_IN_GROUP", "MVK_NOT_IN_SAME_PATH", "MVK_NOT_IN_RULEGROUP",
     "MVK_ERROR_FIELD_INVALID_INDEX", "MVK_ERROR_FIELD_INVALID_INDEX_TYPE",
 )
 

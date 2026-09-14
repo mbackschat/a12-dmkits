@@ -142,13 +142,30 @@ class RepetitionNotUniqueFromScopeLawsTest {
         Map<String, String> actual = new LinkedHashMap<>();
         actual.put("two keys in parallel repeatable groups | index-free",
                 verdict("../Crates/CrateRef", "RepetitionNotUnique(Crates/CrateRef, Pallets/PalletRef)"));
+        actual.put("a second key outside the rule group, in a NON-repeatable one",
+                verdictIn("/Depot/Crates", "../CrateRef",
+                        "RepetitionNotUnique(CrateRef, /Depot/Office/OfficeRef)"));
+        actual.put("a second key outside the rule group, in a parallel REPEATABLE one",
+                verdictIn("/Depot/Crates", "../CrateRef",
+                        "RepetitionNotUnique(CrateRef, /Depot/Pallets/PalletRef)"));
         actual.put("two keys in parallel repeatable groups | INDEX-KEYED",
                 KernelLaws.verdictModel(INDEXED, "/Depot", "../Crates/CrateRef",
                         "RepetitionNotUnique(Crates/CrateRef, Pallets/PalletRef)"));
+        actual.put("a CLEAN key list beside a parallel read | INDEX-KEYED",
+                KernelLaws.verdictModel(INDEXED, "/Depot", "../Crates/CrateRef",
+                        "RepetitionNotUnique(Crates/CrateRef) And FieldFilled(Pallets/PalletRef)"));
 
         Map<String, String> expected = new LinkedHashMap<>();
         expected.put("two keys in parallel repeatable groups | index-free", "MVK_NO_WILDCARD");
+        // The rule-group class on THIS carrier: `RepetitionNotUniqueKeyPathLawsTest` measured it on a basket
+        // shape, and a checker reading both grids would otherwise be transferring it between fixtures.
+        expected.put("a second key outside the rule group, in a NON-repeatable one", "MVK_NOT_IN_RULEGROUP");
+        expected.put("a second key outside the rule group, in a parallel REPEATABLE one", "MVK_NO_WILDCARD");
         expected.put("two keys in parallel repeatable groups | INDEX-KEYED", "MVK_NOT_IN_SAME_PATH");
+        // The within-model control for the row above, and the reason the containment classes may be reported
+        // alone: this model DOES parallel-iterate, and A12 says so the moment the key list stops offending.
+        // The whole-rule gate runs only on a completed parse ([KF375]), so a parse-time throw removes it.
+        expected.put("a CLEAN key list beside a parallel read | INDEX-KEYED", "MVK_PARALLEL_ITERATION_NOT_ALLOWED");
         assertEquals(expected, actual, "the same-path class turns on index keying");
     }
 
