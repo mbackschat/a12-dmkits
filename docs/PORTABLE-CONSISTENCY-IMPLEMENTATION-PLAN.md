@@ -147,7 +147,26 @@ So one boundary is fully owned, one has a collector awaiting checker rows, and f
 
 **5a is met.** The leaf lands here, and the clean-install run went to CI on 2026-09-13 (`:consistency:nodeConsumerTest` on every push, wired in `ci.yml` and pinned by `GateTierWiringTest`). The API document is [CONSISTENCY-API](CONSISTENCY-API.md).
 
-### A4 — consistency corpus ownership (decided 2026-09-12)
+### F2 record — acceptance matrix for the first Order 7 slice, frozen before any code (2026-09-14)
+
+**The over-rejection guard has a population problem nobody had named: every model it sweeps was written to be VALID.** `CheckerSilenceOnCleanModelsTest` runs the whole checker against every model A12 builds — the committed trees plus both reference corpora, about 80 models — and that is the project's central safety net. But a model authored to be correct exercises each family's *negative* path only where its author happened to write an unusual shape, so the shapes closest to a family's decision boundary are exactly the ones the sweep does not contain.
+
+**Two over-rejections were found by hand on 2026-09-14 that this sweep cannot see, and they share a mechanism.** `REPETITION_SCOPE_GROUP` would have reported the repeatability class on a FIELD scope, and `FILTER_WILDCARD` did report the wildcard class on a filter whose leaf resolves to nothing. Both models are REJECTED by A12, so the silence sweep excludes them by construction; both were caught only because a mirror test stated the declined rows explicitly. **A guard that depends on somebody writing the row is not a guard.**
+
+**So the first F2 slice is a MUTATION sweep with A12 as the arbiter of its own population.** Perturb each committed model mechanically, ask A12 whether the result still builds, and require the checker's silence on every mutant that does. It needs no expectation files and no corpus format change, because the oracle is in the loop: a mutant A12 rejects is simply not in the population, and one it accepts is a model the checker must not refuse.
+
+| acceptance item | oracle | non-goal |
+|---|---|---|
+| every mutant A12 still BUILDS draws no `justifiesRejection` finding | `BoundModel.ofJson` + `check`, in the lane | — |
+| the sweep is not empty: a floor on mutants that survived A12 | the lane's own count | a floor that tracks the corpus size |
+| each mutation kind actually produces mutants A12 accepts | per-kind counts asserted, so a kind that silently stops mutating fails | proving a kind is exhaustive |
+| a mutant A12 REJECTS is excluded, not judged | stated; the classes both engines draw on an invalid model have different denominators — A12 stops, the checker accumulates | comparing classes on rejected models |
+
+**What this slice is NOT**, stated so neither reads as delivered: it does not compare diagnostic CLASSES between the engines, and it is not profile-scoped. Class comparison needs the accumulation contract F2 separates from Kernel comparison, and no profile machinery reaches this lane yet. Both stay open under Order 7.
+
+**And it supersedes [A4](#a4)'s schema change for this slice, measured rather than preferred.** A4 calls adding a consistency op kind to `corpus/case.schema.json` "one bounded schema change". It is not bounded: `CaseJson.parse` hard-requires `document`, and five reading sites across four modules and two languages parse every file under `corpus/cases/` through it — the adapter's `CorpusFiles.all()`, the interpreter's `CorpusFs` on both targets, its JS shim, the browser consumer's `qualification.ts`, and `SemanticsMapResolveTest`. A documentless case in that tree breaks a published browser qualification path. When a consistency corpus with recorded expectations is genuinely needed, it belongs in a sibling tree sharing `corpus/models/`, which keeps the one property A4 actually argued for — one model owner — without teaching five runtime readers to skip a case kind no runtime can replay.
+
+### A4 — consistency corpus ownership (decided 2026-09-12) <a id="a4"></a>
 
 **Reuse the conformance corpus's case convention; do not build a second corpus.** [`corpus/`](../corpus/README.md) already holds every property A4 asks for: 34 cases across 10 family directories, each carrying a stable `meta.id`, the oracle artifact identity in `meta.kernelVersion`, provenance in `meta.source`, `meta.sections` and `meta.tags`, and — the part that matters most for "one input owner" — a `modelRef` indirection into a shared `corpus/models/` tree rather than an inlined model. That is the reuse A4 requires across common replay, adapter differentials and packed consumers.
 
