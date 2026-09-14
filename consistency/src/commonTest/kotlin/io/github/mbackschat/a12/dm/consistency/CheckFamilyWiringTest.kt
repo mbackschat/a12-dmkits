@@ -370,6 +370,10 @@ class CheckFamilyWiringTest {
               "elements":[
                 {"type":"Field","id":"f13","name":"Slot","Field":{"fieldType":{"type":"NumberType"}}}
               ]}},
+            {"type":"Rule","id":"r64","name":"MarksAnOuterIterationOutsideAFilter","Rule":{
+              "errorCondition":"FieldFilled(Price) And [${'$'}/Catalog/UnitCount] > 0",
+              "errorEntityRelPath":"../Price","errorCode":"C64",
+              "errorMessage":[{"locale":"en_US","text":"x"}]}},
             {"type":"Rule","id":"r63","name":"MessageIndexesOffThePath","Rule":{
               "errorCondition":"FieldFilled(Price)","errorEntityRelPath":"../Price",
               "errorCode":"C63","errorMessage":[{"locale":"en_US",
@@ -633,7 +637,10 @@ class CheckFamilyWiringTest {
         CheckFamily.REPETITION_KEY_CONTAINMENT to
             ("MVK_NOT_IN_SAME_PATH" to "/Catalog/KeysOnParallelBranches"),
         // A filter naming a repeatable SIBLING of the starred operand's group: the operand itself is sound
-        // and the filter is grammatical, so only the level the filter reaches can be what answers.
+        // The marker on a reference that RESOLVES, outside any filter: resolution answers before this gate,
+        // so a marked path naming nothing would trigger the reference family instead of this one.
+        CheckFamily.OUTER_MARKER_POSITION to
+            ("MVK_INVALID_OUTER_ITERATION" to "/Catalog/MarksAnOuterIterationOutsideAFilter"),
         CheckFamily.FILTER_BODY_GATES to
             ("MVK_INVALID_ITERATION_IN_FILTER_CONDITION" to "/Catalog/FilterOffTheOperandsPath"),
         // A day of 32 in a well-formed three-part construction: the other two components are valid and the

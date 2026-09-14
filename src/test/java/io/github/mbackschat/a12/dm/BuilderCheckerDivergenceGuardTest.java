@@ -286,6 +286,12 @@ class BuilderCheckerDivergenceGuardTest {
             // from stored DM-JSON (`FILTER_BODY_GATES`).
             Map.entry("MVK_NO_ITERATION_FOR_WILDCARD", Disposition.PROSE_ONLY),
 
+            // The usual direction: the checker reports it (`OUTER_MARKER_POSITION`), and `FieldValue`'s
+            // javadoc names it to say WHY the marker is only rendered inside a filter. The kit refuses
+            // nothing on this ground — it cannot, the marker being a rendering choice its own builder makes
+            // — so the two estates are not enforcing the same law over different carriers.
+            Map.entry("MVK_INVALID_OUTER_ITERATION", Disposition.PROSE_ONLY),
+
             // `EnumRef.category(name)` fails fast on an undeclared category and `StructuralKernelFix` has no
             // hint for it; the kit's refusal is on a typed handle built from the model, so it cannot be
             // wrong about the declared set. The checker reads the same declaration from stored DM-JSON.

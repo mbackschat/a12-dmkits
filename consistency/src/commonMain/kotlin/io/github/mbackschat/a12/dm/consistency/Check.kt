@@ -305,6 +305,14 @@ enum class CheckFamily {
     FILTER_BODY_GATES,
 
     /**
+     * That the `$` outer marker stands only inside a `Having` filter. Its own constant rather than part of
+     * [FILTER_BODY_GATES] because the law is POSITIONAL and names no carrier: A12 refuses the marker from
+     * one locus reached by every entity spec, so the family reads whole conditions where that one reads a
+     * filter's operand.
+     */
+    OUTER_MARKER_POSITION,
+
+    /**
      * That no GROUP-CONDITION operand carries a repetition wildcard where its operator bars one. Its own
      * constant rather than part of [REPETITION_WILDCARD_TARGET] or [FILTER_WILDCARD] because here the star
      * lands on a group that legitimately repeats and the OPERATOR alone picks the class: A12 splits the seven
@@ -845,6 +853,7 @@ internal fun check(
         prepared.repetitionKeyContainmentFindings() +
         prepared.filterWildcardFindings() +
         prepared.filterBodyGateFindings() +
+        prepared.outerMarkerPositionFindings() +
         prepared.groupConditionWildcardFindings() +
         prepared.sumOfProductsOperandFindings() +
         prepared.operandListConstantFindings() +
@@ -927,6 +936,7 @@ internal fun check(
             CheckFamily.REPETITION_KEY_PLACEMENT, CheckFamily.REPETITION_SCOPE_GROUP,
             CheckFamily.REPETITION_KEY_CONTAINMENT,
             CheckFamily.FILTER_WILDCARD, CheckFamily.FILTER_BODY_GATES,
+            CheckFamily.OUTER_MARKER_POSITION,
             CheckFamily.GROUP_CONDITION_WILDCARD,
             CheckFamily.SUM_OF_PRODUCTS_OPERANDS, CheckFamily.OPERAND_LIST_CONSTANT_BUDGET,
             CheckFamily.TEMPORAL_AGGREGATE_OPERANDS,
