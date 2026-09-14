@@ -173,6 +173,39 @@ class GroupIndexAndSortReferenceLawsTest {
         assertEquals(expected, actual, "whether the landing or the short name decides");
     }
 
+    /**
+     * What a sort list on a NON-repeatable group draws, and what the four PRIORITY codes need.
+     *
+     * <p>[MVK-LEDGER] carries five sort laws as {@code n/a-structural}: sort info only on a repeatable group,
+     * priorities unique, a priority not exceeding the entry count, and priorities contiguous. Four of them
+     * are about a PRIORITY, and A12's DM-JSON {@code Group.SortField} declares exactly two members —
+     * {@code field} and {@code order}. The position an {@code ISortField} reports is derived from the list
+     * INDEX by {@code GroupWrapper.SortFieldWrapper}, so a stored model has no priority to duplicate, to
+     * overrun, or to leave a hole in. Those four are unreachable by SHAPE rather than by policy.
+     *
+     * <p>The fifth is about the carrier and is a real DM-JSON shape, so it is measured rather than reasoned.
+     */
+    @Test
+    void whatASortListOnANonRepeatableGroupDraws() {
+        Map<String, String> actual = new LinkedHashMap<>();
+        actual.put("a sort list on a REPEATABLE group — the control",
+                verdict(REPEATABLE, "sortFields", "[{\"name\":\"Sku\"}]"));
+        actual.put("a sort list on a NON-repeatable group",
+                verdict(NON_REPEATABLE, "sortFields", "[{\"name\":\"Street\"}]"));
+        actual.put("an EMPTY sort list on a non-repeatable group",
+                verdict(NON_REPEATABLE, "sortFields", "[]"));
+
+        Map<String, String> expected = new LinkedHashMap<>();
+        expected.put("a sort list on a REPEATABLE group — the control", KernelLaws.ADMITTED);
+        // The fifth law IS reachable, unlike the four priority ones: sorting a group that has at most one
+        // row is meaningless, and A12 says so with its own class.
+        expected.put("a sort list on a NON-repeatable group", "MVK_INVALID_SORTINFO");
+        // …and the member's PRESENCE is not the gate — an empty list is admitted on the same carrier, which
+        // is what keeps a checker from refusing every non-repeatable group that carries the key at all.
+        expected.put("an EMPTY sort list on a non-repeatable group", KernelLaws.ADMITTED);
+        assertEquals(expected, actual, "whether the carrier's repeatability gates a sort list");
+    }
+
     /** What A12 says about the order fixture with one member of [group]'s body replaced, or removed. */
     /**
      * Whether {@code MVK_INDEX_FIELD_INVALID} is reachable, and from where.

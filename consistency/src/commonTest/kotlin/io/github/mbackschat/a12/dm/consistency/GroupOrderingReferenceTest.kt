@@ -44,7 +44,14 @@ class GroupOrderingReferenceTest {
 
     private fun index(written: String) = """"indexFieldName":"$written","""
 
-    private fun sort(written: String) = """"sortFields":[{"name":"$written"}],"""
+    /**
+     * A sort list needs a REPEATABLE carrier, so the helper declares one.
+     *
+     * Without it every sort row also draws `MVK_INVALID_SORTINFO` — a real A12 class, measured, and a
+     * different law from the one these rows are about. Making the carrier repeatable is what keeps each row
+     * on one variable.
+     */
+    private fun sort(written: String) = """"repeatability":9,"sortFields":[{"name":"$written"}],"""
 
     /**
      * One mechanism, discriminated: A12 resolves the spelling from the group and then judges what it landed
@@ -169,7 +176,7 @@ class GroupOrderingReferenceTest {
                         {"header":{"id":"catalog","locales":[{"code":"en_US"}]},
                          "content":{"modelRoot":{"rootGroups":[
                           {"type":"Group","id":"g0","name":"Catalog","Group":{
-                            "sortFields":[{"name":5}],"elements":[
+                            "repeatability":9,"sortFields":[{"name":5}],"elements":[
                             {"type":"Field","id":"f0","name":"Label","Field":{"fieldType":{"type":"StringType"}}}
                           ]}}
                          ]}}}
@@ -195,9 +202,9 @@ class GroupOrderingReferenceTest {
         actual["a field that does not exist"] = codesFor(sort("Missing"))
         actual["an empty name"] = codesFor(sort(""))
         actual["a field outside the group"] = codesFor(sort("../Label"))
-        actual["an entry with no name"] = codesFor(""""sortFields":[{}],""")
-        actual["two entries, one bad"] = codesFor(""""sortFields":[{"name":"Sku"},{"name":"Missing"}],""")
-        actual["a numeric name"] = codesFor(""""sortFields":[{"name":5}],""")
+        actual["an entry with no name"] = codesFor(""""repeatability":9,"sortFields":[{}],""")
+        actual["two entries, one bad"] = codesFor(""""repeatability":9,"sortFields":[{"name":"Sku"},{"name":"Missing"}],""")
+        actual["a numeric name"] = codesFor(""""repeatability":9,"sortFields":[{"name":5}],""")
 
         val expected = mapOf(
             "a field of its own group" to listOf(),

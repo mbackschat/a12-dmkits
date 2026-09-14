@@ -43,6 +43,13 @@ enum class CheckFamily {
     GROUP_ORDERING_FIELD_TYPE,
 
     /**
+     * …and that the group declaring sort entries REPEATS at all. Its own constant because it is a claim
+     * about the carrier rather than about any entry, so a report merging it would let a group that cannot
+     * be sorted read as a group whose sort fields are wrong.
+     */
+    GROUP_ORDERING_CARRIER,
+
+    /**
      * A computation's `roundingMode` and each alternative's `toleranceRangeOp` — that both spell a value
      * A12 knows, and that the pair they form is one A12 permits.
      */
@@ -559,6 +566,7 @@ internal fun check(
             CheckFamily.DECLARATION_SLOTS, CheckFamily.COMPUTATION_ALTERNATIVES,
             CheckFamily.RULE_CONDITION_AND_TARGET, CheckFamily.ELEMENT_NAME_UNIQUENESS,
             CheckFamily.GROUP_ORDERING_REFERENCES, CheckFamily.GROUP_ORDERING_FIELD_TYPE,
+            CheckFamily.GROUP_ORDERING_CARRIER,
             CheckFamily.COMPUTATION_ROUNDING, CheckFamily.SUPPRESSED_WARNINGS,
             CheckFamily.VARIANT_FILTER, CheckFamily.CONDITION_LEXICALITY,
             CheckFamily.CONDITION_COMPLETENESS, CheckFamily.CONNECTIVE_AGREEMENT,

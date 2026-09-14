@@ -49,6 +49,9 @@ class CheckFamilyWiringTest {
             {"type":"Field","id":"f11","name":"RepeatedTier","Field":{"fieldType":{
               "type":"EnumerationType","EnumerationType":{"values":[{"value":"A"},{"value":"A"}]}}}},
             {"type":"Group","id":"g1","name":"Hollow","Group":{"elements":[]}},
+            {"type":"Group","id":"g9","name":"Aisle","Group":{"sortFields":[{"name":"AisleCode"}],"elements":[
+              {"type":"Field","id":"f34","name":"AisleCode","Field":{"fieldType":{"type":"StringType"}}}
+            ]}},
             {"type":"Group","id":"g3","name":"Shelf","Group":{"elements":[
               {"type":"Field","id":"f12","name":"ShelfCode","Field":{"fieldType":{"type":"StringType"}}}
             ]}},
@@ -335,6 +338,10 @@ class CheckFamilyWiringTest {
         // does not — which keeps the row about the CONSTANT rather than about an empty or unreadable domain.
         CheckFamily.ENUM_CONSTANT_DOMAIN to
             ("MVK_INVALID_STRING_CONSTANT_FOR_ENUMERATION" to "/Catalog/ConstantOutsideTheEnum"),
+        // `Aisle` carries a sort entry naming a field it really has, so the reference and type gates both
+        // pass and only the CARRIER is wrong — which is what makes this row about repeatability alone.
+        CheckFamily.GROUP_ORDERING_CARRIER to
+            ("MVK_INVALID_SORTINFO" to "/Catalog/Aisle"),
         // The rule sits in a repeatable group and reaches its error field only through the root, while
         // reading a sibling of that field — so A12 cannot say which pallet the error belongs to.
         CheckFamily.ERROR_TARGET_ITERATION to

@@ -46,7 +46,14 @@ class GroupOrderingFieldTypeTest {
 
     private fun index(written: String) = """"indexFieldName":"$written","""
 
-    private fun sort(written: String) = """"sortFields":[{"name":"$written"}],"""
+    /**
+     * A sort list needs a REPEATABLE carrier, so the helper declares one.
+     *
+     * Without it every sort row also draws `MVK_INVALID_SORTINFO` — a real A12 class, measured, and a
+     * different law from the one these rows are about. Making the carrier repeatable is what keeps each row
+     * on one variable.
+     */
+    private fun sort(written: String) = """"repeatability":9,"sortFields":[{"name":"$written"}],"""
 
     /**
      * A `noValueValidation` string is refused on both members, each with its OWN code.

@@ -71,7 +71,7 @@ private fun PreparedModel.indexFindings(group: DeclaredElement, body: JsonObject
 
 private fun PreparedModel.sortFindings(group: DeclaredElement, body: JsonObject?): List<Finding> {
     val entries = body?.get("sortFields") as? JsonArray ?: return emptyList()
-    return group.repeatedSortField(entries) + entries.flatMap { entry ->
+    return group.unsortableCarrier(entries) + group.repeatedSortField(entries) + entries.flatMap { entry ->
         // A non-string primitive is COERCED to the String member, as a rule's `errorCode` is, so `5` is the
         // name "5" and resolves like any other — measured, because reporting it as a reader refusal was
         // this family's one emission with no basis. Only a MISSING `name`, or an entry that is not an
@@ -88,6 +88,34 @@ private fun PreparedModel.sortFindings(group: DeclaredElement, body: JsonObject?
             )
         }
     }
+}
+
+/**
+ * The finding a NON-repeatable group carrying sort entries draws: a group with at most one row has no order.
+ *
+ * **The member's PRESENCE is not the gate, its CONTENT is** — an EMPTY `sortFields` on the same carrier is
+ * ADMITTED, measured (`GroupIndexAndSortReferenceLawsTest`). Reading the key rather than the entries would
+ * refuse every non-repeatable group that merely carries it.
+ *
+ * **The four sibling PRIORITY laws the ledger lists beside this one are unreachable by SHAPE**, so they are
+ * not silence here: A12's DM-JSON `Group.SortField` declares `field` and `order` and nothing else, the
+ * position being derived from the list INDEX by `GroupWrapper.SortFieldWrapper` — a stored model has no
+ * priority to duplicate, to overrun, or to leave a hole in.
+ */
+private fun DeclaredElement.unsortableCarrier(entries: JsonArray): List<Finding> {
+    if (entries.isEmpty() || isRepeatable) {
+        return emptyList()
+    }
+    return listOf(
+        Finding(
+            FindingCategory.A12_CONSTRAINT,
+            FindingSeverity.ERROR,
+            "MVK_INVALID_SORTINFO",
+            "`$path` declares `sortFields` and does not repeat — a group holding at most one row has no " +
+                "order to declare, so either make it repeatable or drop the entries",
+            path,
+        ),
+    )
 }
 
 /**

@@ -7138,6 +7138,24 @@ Reported by the portable checker, which did not emit `MVK_SORT_FIELD_DUPLICATE` 
 
 *Locked by:* `rulekit.validate.laws.GroupOrderingMultipleDefectLawsTest`, mirrored by `consistency … GroupOrderingMultipleDefectTest`.
 
+## §13 supplement — a sort list needs a REPEATABLE carrier, and the four PRIORITY laws beside it cannot be expressed in DM-JSON (measured, 2026-09-14) <a id="kf361"></a>
+
+> Fold: not-foldable — a declaration-admission law plus a reachability result.
+
+**[MVK-LEDGER] carries five sort laws as `n/a-structural`, and they do not share a fate.** Locked by `rulekit.validate.laws.GroupIndexAndSortReferenceLawsTest`.
+
+| the group's `sortFields` | A12 |
+|---|---|
+| a non-empty list on a REPEATABLE group — the control | ADMITTED |
+| a non-empty list on a NON-repeatable group | `MVK_INVALID_SORTINFO` |
+| an EMPTY list on a non-repeatable group | ADMITTED |
+
+**The member's PRESENCE is not the gate, its CONTENT is** — the empty row is what separates "this group declares sorting" from "this group cannot be sorted", and a checker keyed on the key would refuse every non-repeatable group that merely carries it.
+
+**The other four are unreachable by SHAPE, not by policy.** `MVK_SORT_PRIO_DUPLICATE`, `MVK_INVALID_SORT_PRIO`, `MVK_SORT_PRIO_VALUE_MISSING` and `MVK_SORT_INFO_MISSING` are all about a PRIORITY, and A12's DM-JSON `Group.SortField` (`kernel-md-a12internal`) declares exactly two members, `field` and `order`. The position an `ISortField` reports is derived from the list INDEX by `GroupWrapper.SortFieldWrapper`, so a stored model has no priority to duplicate, to overrun, or to leave a hole in, and no third member to fill or omit.
+
+**That is what the `n/a-structural` bucket actually contains**, and it is worth stating once: those codes come from rules in A12's own METAMODEL document models, which validate a model-under-edit represented as an A12 document. Whether a given one also constrains a stored DM-JSON model is a per-code reachability question — the first one examined here splits four ways unreachable and one way live, so the bucket is a queue of questions rather than a queue of families.
+
 ## §8 supplement — a string CONSTANT against an Enumeration draws FOUR different classes, one per carrier (measured, 2026-09-14) <a id="kf360"></a>
 
 > Fold: not-foldable — a diagnostic-class selection law, not an evaluation behaviour.
