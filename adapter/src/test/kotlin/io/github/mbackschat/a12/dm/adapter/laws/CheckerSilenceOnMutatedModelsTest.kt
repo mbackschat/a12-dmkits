@@ -33,6 +33,12 @@ import kotlin.io.path.readText
  * the population, and one it accepts is a model the checker must not refuse either. So a mutation kind may be
  * as destructive as it likes — it costs coverage, never correctness.
  *
+ * **What it adds, and what it does not — both measured on 2026-09-14 rather than argued.** Inverting
+ * `RepetitionWildcard`'s repeatability test is killed here, so the sweep does reach real family logic through
+ * models nobody wrote. Dropping `ErrorTargetIteration`'s repetition guard SURVIVES it and is caught by that
+ * family's own mirror instead — so this is an additional net over the families, never a replacement for their
+ * grids, and a green here says nothing about a family's reach.
+ *
  * **Deliberately NOT compared: the CLASSES both engines draw on a rejected mutant.** A12 stops at its first
  * refusal while the checker accumulates, so the two have different denominators there and a subset assertion
  * would fail on honest reporting. That comparison is its own slice
@@ -45,7 +51,8 @@ class CheckerSilenceOnMutatedModelsTest {
      * How many surviving mutants the sweep needs before a green here means anything.
      *
      * Far below the live count on purpose: it answers "did the sweep reach models A12 builds", never "how
-     * many mutants does the estate produce", so it does not move when a model tree grows.
+     * many mutants does the estate produce", so it does not move when a model tree grows. 141 mutants
+     * survived A12 when this was set (measured 2026-09-14).
      */
     private val floor = 40
 
