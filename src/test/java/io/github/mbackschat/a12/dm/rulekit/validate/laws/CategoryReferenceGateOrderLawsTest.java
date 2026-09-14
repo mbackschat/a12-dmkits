@@ -46,6 +46,19 @@ class CategoryReferenceGateOrderLawsTest {
         // not confuse them: an undeclared classification is a different class from an undeclared category.
         actual.put("a declared category, undeclared classification", arrow("[Tier -> Band] == \"NOPE\""));
 
-        assertEquals(Map.of(), actual);
+        Map<String, String> expected = new LinkedHashMap<>();
+        expected.put("a declared category — the control", KernelLaws.ADMITTED);
+        expected.put("an UNDECLARED category name", "MVK_CATEGORY_UNKOWN");
+        expected.put("an arrow on a STRING field", "MVK_NO_ENUMERATION");
+        // Resolution and the operand's KIND both answer ahead of this chain, so the two category classes are
+        // reachable only where the reference is otherwise sound — the bound the checker family honours.
+        expected.put("an arrow on a GROUP", "MVK_NO_GROUPS_ALLOWED");
+        expected.put("an arrow on an UNRESOLVABLE name", "MVK_INVALID_ENTITY");
+        // A THIRD law with a third class: the category NAME is declared and the classification compared
+        // against it is not, which is about the comparison's constant rather than about the arrow.
+        expected.put("a declared category, undeclared classification",
+                "MVK_INVALID_STRING_CONSTANT_FOR_ENUM_COMPARISON");
+
+        assertEquals(expected, actual);
     }
 }
