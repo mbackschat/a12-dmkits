@@ -1,0 +1,210 @@
+package io.github.mbackschat.a12.dm.consistency
+
+import io.github.mbackschat.a12.dm.consistency.syntax.CONDITION_OPERATOR_KEYWORDS
+import io.github.mbackschat.a12.dm.consistency.syntax.ConditionCall
+import io.github.mbackschat.a12.dm.consistency.syntax.callsIn
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.contentOrNull
+
+/**
+ * Whether an entity-list aggregate's temporal operands declare the SAME components.
+ *
+ * `MaxValue`, `MinValue` and `NumberOfDifferentValues` type their operand list from its LEADING field, and a
+ * temporal leader sends the whole list through `CheckEntityListenUtils.checkOpTypesAreComparableDatetimeType`.
+ * That method compares each later operand against the first on the components its declared FORMAT spells —
+ * never on the spelling and never on the field's kind — and draws `MVK_DATEFORMATS_NOT_COMPATIBLE` on the
+ * first that disagrees ([KERNEL-FINDINGS KF193], [KF263], [KF271];
+ * `rulekit.validate.laws.TemporalAggregateComponentSetLawsTest`).
+ *
+ * **The component set is read off the format STRING, letter by letter** — `y M d H m s`, each by plain
+ * containment — so `yyyy-MM-dd` and `dd.MM.yyyy` are one set and are admitted together, while `yyyy-MM` and
+ * `yyyy-MM-dd` are two and are refused. That is why this family cannot be written as a kind comparison: a
+ * TIME field declared `yyyy-MM-dd` sits with the dates, and a `FieldValuesNotUnique` over the same pair is
+ * refused under a different code by a gate that really does read the spelling.
+ *
+ * **A declared model-level base year SUPPLEMENTS the year**, adding YEAR to both sets before they are
+ * compared, so `MM` joins `yyyy-MM` and `MM-dd` joins a complete date — and neither joins the year-only
+ * `yyyy`, the control that makes it a supplement rather than a disabled gate.
+ *
+ * **Silent wherever the chain answers ahead of this gate**, each silence another family's or A12's own:
+ *
+ * | the operand list | who answers |
+ * |---|---|
+ * | a leading operand that is not temporal | the numeric arm — `MVK_NOT_SORTABLE` / `MVK_NO_NUMBER` |
+ * | a later operand that is not temporal | `MVK_DATE_AND_NONDATE`, which the builders pre-check |
+ * | any operand declaring a PARTIAL date precision | `MVK_PARTIAL_DATE_NOT_ALLOWED`, and it runs per operand BEFORE that operand's format comparison |
+ * | a format outside the derived vocabulary | nobody — an undiscovered format is not a defect |
+ *
+ * The walk reproduces A12's INTERLEAVING rather than running the gates in phases: each operand is asked for
+ * its temporal declaration, then for its precision, then compared — so a partial precision on a LATER operand
+ * than the first format mismatch does not silence the mismatch, exactly as A12 orders it.
+ *
+ * **`Min` and `Max` carry the same gate and are deliberately out of scope.** Their operands are OPERATIONS,
+ * not entity references, so the leading operand's type can be a computed expression this reader does not
+ * type; judging the sub-case where every operand happens to be a bare field would rest the family on a shape
+ * the reader cannot tell apart from the rest. `Sum` is not a carrier at all — it refuses a temporal operand
+ * outright with its own code.
+ */
+fun PreparedModel.temporalAggregateComponentFindings(): List<Finding> {
+    val keywords = CONDITION_OPERATOR_KEYWORDS[conditionLanguage] ?: return emptyList()
+    val carriers = ENTITY_LIST_AGGREGATES.mapNotNull { keywords[it] }.toSet()
+    if (carriers.isEmpty()) {
+        return emptyList()
+    }
+    return elements.flatMap { element ->
+        val body = element.body ?: return@flatMap emptyList()
+        val declaringGroup = element.path.substringBeforeLast('/', missingDelimiterValue = "")
+        conditionTexts(element.kind, body).flatMap { (member, text) ->
+            callsIn(text, conditionLanguage, syntaxEntryOf(member))
+                .filter { it.operator in carriers }
+                .mapNotNull { call ->
+                    componentDefect(call, declaringGroup, element)
+                        ?.let { componentFinding(it, call, element, member) }
+                }
+        }
+    }
+}
+
+/** The three carriers whose operands are an ENTITY LIST, named by their catalog ids. */
+private val ENTITY_LIST_AGGREGATES = listOf("MaxValue", "MinValue", "NumberOfDifferentValues")
+
+private data class ComponentDefect(val first: TemporalOperand, val other: TemporalOperand)
+
+private data class TemporalOperand(val path: String, val format: String, val components: Set<Component>)
+
+private enum class Component { YEAR, MONTH, DAY, HOUR, MINUTE, SECOND }
+
+/**
+ * The first operand whose components disagree with the leader's, in A12's own order.
+ *
+ * The list is taken whole or not at all: an operand this reader cannot reduce to one resolved entity is one
+ * whose components it cannot know, and comparing the rest would judge a shorter list than A12 judged.
+ */
+private fun PreparedModel.componentDefect(
+    call: ConditionCall,
+    declaringGroup: String,
+    element: DeclaredElement,
+): ComponentDefect? {
+    val fields = call.operands.flatMap { operand ->
+        val written = operand.path ?: return null
+        val resolved = resolveEntity(declaringGroup, written.replace("*", ""), element.origin)
+        expandToFields((resolved as? Reference.Resolved)?.path ?: return null) ?: return null
+    }
+    var first: TemporalOperand? = null
+    fields.forEach { field ->
+        val temporal = temporalOperandOf(field) ?: return null
+        if (declaresAPartialPrecision(field)) {
+            return null
+        }
+        val leader = first
+        if (leader == null) {
+            first = temporal
+        } else if (!compatible(leader.components, temporal.components, hasBaseYear)) {
+            return ComponentDefect(leader, temporal)
+        }
+    }
+    return null
+}
+
+/**
+ * The fields A12's `expandToFieldList` would take for one operand — the field itself, or every field under a
+ * group, in declaration order.
+ *
+ * Null where the operand names a group with no field beneath it, which A12 refuses under its own class.
+ */
+private fun PreparedModel.expandToFields(path: String): List<DeclaredElement>? {
+    val target = elements.firstOrNull { it.path == path } ?: return null
+    if (target.declaredKind == DeclaredKind.FIELD) {
+        return listOf(target)
+    }
+    return elements
+        .filter { it.declaredKind == DeclaredKind.FIELD && it.path.startsWith("${target.path}/") }
+        .takeIf { it.isNotEmpty() }
+}
+
+/**
+ * The temporal declaration this field carries, or null when it carries none this family may judge.
+ *
+ * Four carriers declare a format A12 reads as a DATETIME operand type; `DateRangeType` deliberately is not
+ * one of them, being its own operand base type that the numeric arm refuses ahead of this gate. A format
+ * outside the derived vocabulary is undiscovered rather than wrong, so it leaves the whole call unjudged.
+ */
+private fun temporalOperandOf(field: DeclaredElement): TemporalOperand? {
+    val declared = field.body?.get("fieldType") as? JsonObject ?: return null
+    val type = (declared["type"] as? JsonPrimitive)?.contentOrNull ?: return null
+    val member = TEMPORAL_FORMAT_MEMBERS[type] ?: return null
+    val body = declared[type] as? JsonObject ?: return null
+    val format = (body[member] as? JsonPrimitive)?.takeIf { it.isString }?.content ?: return null
+    if (format !in ADMITTED_FORMATS) {
+        return null
+    }
+    return TemporalOperand(field.path, format, componentsOf(format))
+}
+
+private fun declaresAPartialPrecision(field: DeclaredElement): Boolean {
+    val declared = field.body?.get("fieldType") as? JsonObject ?: return false
+    val body = declared["DateType"] as? JsonObject ?: return false
+    return (body["datePrecision"] as? JsonPrimitive)?.contentOrNull in PARTIAL_PRECISIONS
+}
+
+private val TEMPORAL_FORMAT_MEMBERS = mapOf(
+    "DateType" to "format",
+    "TimeType" to "format",
+    "DateTimeType" to "format",
+    "DateFragmentType" to "formatOfFragment",
+)
+
+/** A12's `DateFormat` reads its components by plain containment of these six letters, and so does this. */
+private val COMPONENT_LETTERS = listOf(
+    'y' to Component.YEAR,
+    'M' to Component.MONTH,
+    'd' to Component.DAY,
+    'H' to Component.HOUR,
+    'm' to Component.MINUTE,
+    's' to Component.SECOND,
+)
+
+private fun componentsOf(format: String): Set<Component> =
+    COMPONENT_LETTERS.filter { format.contains(it.first) }.mapTo(mutableSetOf()) { it.second }
+
+/**
+ * A12's two predicates, both of them, in the order `checkOpTypesAreComparableDatetimeType` reads them.
+ *
+ * The kernel's own comment calls the first one weaker and probably redundant, and it is redundant on every
+ * shape but one: with a base year the sets may agree after supplementation while one of them carries a date
+ * component and the other does not, and the weaker predicate refuses that pair. Whether the format
+ * vocabulary can build it is not claimed here — it is transcribed because A12 runs it, not because a case
+ * was found.
+ */
+private fun compatible(first: Set<Component>, other: Set<Component>, hasBaseYear: Boolean): Boolean {
+    if (!hasBaseYear && first.contains(Component.YEAR) != other.contains(Component.YEAR)) {
+        return false
+    }
+    if (namesADate(first) != namesADate(other)) {
+        return false
+    }
+    return supplemented(first, hasBaseYear) == supplemented(other, hasBaseYear)
+}
+
+private fun namesADate(components: Set<Component>): Boolean =
+    Component.YEAR in components || Component.MONTH in components || Component.DAY in components
+
+private fun supplemented(components: Set<Component>, hasBaseYear: Boolean): Set<Component> =
+    if (hasBaseYear) components + Component.YEAR else components
+
+private fun componentFinding(
+    defect: ComponentDefect,
+    call: ConditionCall,
+    element: DeclaredElement,
+    member: String,
+): Finding = Finding(
+    FindingCategory.A12_CONSTRAINT,
+    FindingSeverity.ERROR,
+    "MVK_DATEFORMATS_NOT_COMPATIBLE",
+    "in `$member`: `${call.operator}` compares `${defect.first.path}` declared `${defect.first.format}` " +
+        "with `${defect.other.path}` declared `${defect.other.format}`, and the two spell different date " +
+        "components — A12 compares the components rather than the spelling, so give both operands formats " +
+        "that name the same ones",
+    element.path,
+)

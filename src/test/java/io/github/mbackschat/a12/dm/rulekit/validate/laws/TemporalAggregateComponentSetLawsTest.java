@@ -109,7 +109,12 @@ class TemporalAggregateComponentSetLawsTest {
                                 .dateField("VisitOn", d -> d.format("yyyy-MM-dd")))
                         .group("Window", w -> w
                                 .dateField("OpenedOn", d -> d.format("yyyy-MM-dd"))
-                                .dateField("ShutOn", d -> d.format("dd.MM.yyyy"))))
+                                .dateField("ShutOn", d -> d.format("dd.MM.yyyy")))
+                        // The same group arm with the expansion DISAGREEING, so the admitted row above is not
+                        // "a group operand is never judged".
+                        .group("Spread", w -> w
+                                .dateField("SpreadFrom", d -> d.format("yyyy-MM-dd"))
+                                .dateField("SpreadTo", d -> d.format("yyyy-MM"))))
                 .build().toJson();
     }
 
@@ -372,6 +377,12 @@ class TemporalAggregateComponentSetLawsTest {
         admits(NO_BASE_YEAR, UNCONFIGURED,
                 Dsl.latestOf(UNCONFIGURED.flattenGroup(GROUP + "/Window"))
                         .eq(UNCONFIGURED.date(GROUP + "/ReopenedOn")));
+    }
+
+    /** A group operand whose expansion carries TWO component sets is refused on the expansion. */
+    @Test
+    void aLatestOverAGroupExpandingToTwoSetsIsRefused() {
+        assertEquals("MVK_DATEFORMATS_NOT_COMPATIBLE", rawVerdict("MaxValue(Spread) == [ReopenedOn]"));
     }
 
     // ── the class boundary, which is the DECLARATION's: date-presence and time-presence ─────────────

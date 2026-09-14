@@ -112,6 +112,12 @@ class CheckFamilyWiringTest {
               "errorCode":"C36","errorMessage":[{"locale":"en_US","text":"x"}]}},
             {"type":"Field","id":"f37","name":"TravelDate","Field":{"fieldType":{"type":"DateType",
               "DateType":{"format":"yyyy-MM-dd"}}}},
+            {"type":"Field","id":"f42","name":"ShipMonth","Field":{"fieldType":{"type":"DateType",
+              "DateType":{"format":"yyyy-MM"}}}},
+            {"type":"Rule","id":"r42","name":"LatestOfTwoComponentSets","Rule":{
+              "errorCondition":"FieldFilled(Price) And MaxValue(TravelDate, ShipMonth) == [TravelDate]",
+              "errorEntityRelPath":"../Price",
+              "errorCode":"C42","errorMessage":[{"locale":"en_US","text":"x"}]}},
             {"type":"Rule","id":"r39","name":"ImpossibleDay","Rule":{
               "errorCondition":"FieldFilled(TravelDate) And [TravelDate] == Date(\"32\", \"02\", \"2024\")",
               "errorEntityRelPath":"../TravelDate",
@@ -378,6 +384,10 @@ class CheckFamilyWiringTest {
         // which is what makes the row about the LEVEL rather than about the predicate reading it.
         CheckFamily.OPERAND_REPETITION_SCOPE to
             ("MVK_NO_WILDCARD" to "/Catalog/UnstarredRepetitionRead"),
+        // A complete date beside a year-month: the aggregate types its list from the leader and then compares
+        // what each operand's FORMAT spells, so two DateType fields are enough to reach the class.
+        CheckFamily.TEMPORAL_AGGREGATE_COMPONENTS to
+            ("MVK_DATEFORMATS_NOT_COMPATIBLE" to "/Catalog/LatestOfTwoComponentSets"),
         // Two keys in repeatable groups that declare the SAME index field, so they iterate jointly and A12
         // reaches the path question at all — index-free the pair is refused at the wildcard gate instead.
         CheckFamily.REPETITION_KEY_CONTAINMENT to

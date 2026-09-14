@@ -282,6 +282,14 @@ enum class CheckFamily {
     REPETITION_KEY_CONTAINMENT,
 
     /**
+     * That the temporal operands of an entity-list aggregate declare the same date COMPONENTS. Its own
+     * constant rather than part of [FIELD_OPERAND_KIND] because the demand is not on any operand's kind: the
+     * list is typed from its leader and every later operand is then judged on what its FORMAT spells, so two
+     * fields of one kind can disagree and two of different kinds can agree.
+     */
+    TEMPORAL_AGGREGATE_COMPONENTS,
+
+    /**
      * That a `Having` filter carries no repetition wildcard. Its own constant rather than part of
      * [REPETITION_WILDCARD_TARGET] because the filter is a fourth POSITION and position picks the class
      * there: the same star on the same repeatable group is admitted in the aggregate's own operand.
@@ -624,6 +632,7 @@ internal fun check(
         prepared.groupConditionWildcardFindings() +
         prepared.sumOfProductsOperandFindings() +
         prepared.operandListConstantFindings() +
+        prepared.temporalAggregateComponentFindings() +
         prepared.semanticIndexStructureFindings() +
         prepared.semanticIndexKeyFindings() +
         prepared.repetitionNotUniqueCombinationFindings() +
@@ -677,6 +686,7 @@ internal fun check(
             CheckFamily.FILTER_WILDCARD, CheckFamily.FILTER_BODY_ITERATION,
             CheckFamily.GROUP_CONDITION_WILDCARD,
             CheckFamily.SUM_OF_PRODUCTS_OPERANDS, CheckFamily.OPERAND_LIST_CONSTANT_BUDGET,
+            CheckFamily.TEMPORAL_AGGREGATE_COMPONENTS,
             CheckFamily.SEMANTIC_INDEX_STRUCTURE,
             CheckFamily.SEMANTIC_INDEX_KEY,
             CheckFamily.REPETITION_NOT_UNIQUE_COMBINATION,
@@ -852,13 +862,6 @@ private val UNIMPLEMENTED_FAMILIES = listOf(
 private val ERROR_TARGET_CODES = setOf(ERROR_FIELD_MISSING, MISSING_ERROR_FIELD, CK_MODEL_NOT_BUILDABLE)
 
 /**
- * Drops a relational class at any declaration whose condition text already draws a positioned one.
- *
- * Unlike the two gates above this one reads the findings rather than the model, because it is not the model
- * that decides it: the same unreferenced error target is reported on a sound condition and withheld on a
- * defective one, so the trigger is precisely whether another family already spoke about that text.
- */
-/**
  * Drops a WHOLE-RULE class at any declaration whose condition already draws a parse-time one.
  *
  * A12 runs `ParserService.checkNormalRule` over the FINISHED parse tree, so it is reached only when every
@@ -883,6 +886,13 @@ private fun List<Finding>.withoutWholeRuleGatesBehindAParseTimeDefect(): List<Fi
  */
 private val WHOLE_RULE_CONDITION_CODES = setOf("MVK_PARALLEL_ITERATION_NOT_ALLOWED")
 
+/**
+ * Drops a relational class at any declaration whose condition text already draws a positioned one.
+ *
+ * Unlike the two model-reading gates above, this one reads the findings, because it is not the model that
+ * decides it: the same unreferenced error target is reported on a sound condition and withheld on a defective
+ * one, so the trigger is precisely whether another family already spoke about that text.
+ */
 private fun List<Finding>.withoutRelationsBehindAPositionedDefect(): List<Finding> {
     val defective = filter { it.code in POSITIONED_CONDITION_CODES }.mapTo(mutableSetOf()) { it.at }
     return filterNot { it.at in defective && it.code in CONDITION_RELATION_CODES }
@@ -907,6 +917,7 @@ private val POSITIONED_CONDITION_CODES = setOf(
     "MVK_DATE_OR_TIME_EXTRACT_OP_NOT_ALLOWED", "MVK_NO_DIGIT_PATTERN",
     "MVK_INVALID_ITERATION_IN_FILTER_CONDITION", "MVK_NO_ITERATION_FOR_WILDCARD",
     "MVK_NOT_IN_GROUP", "MVK_NOT_IN_SAME_PATH", "MVK_NOT_IN_RULEGROUP",
+    "MVK_DATEFORMATS_NOT_COMPATIBLE",
     "MVK_ERROR_FIELD_INVALID_INDEX", "MVK_ERROR_FIELD_INVALID_INDEX_TYPE",
 )
 

@@ -255,6 +255,19 @@ class BuilderCheckerDivergenceGuardTest {
             Map.entry("MVK_ADDITIONAL_CHECK_INVALID", Disposition.PROSE_ONLY),
             Map.entry("MVK_OPTIONAL_DATE_TYPE_INVALID", Disposition.PROSE_ONLY),
 
+            // The entity-list aggregate's temporal chain, added 2026-09-14 with TEMPORAL_AGGREGATE_COMPONENTS.
+            // Only the first runs the usual way round: a `CountAggregate` javadoc names it and
+            // `temporalAggregateComponentFindings` reports it. The other three are the MIRROR — the kits
+            // enforce them (`CountAggregate`'s homogeneity partition raises the second,
+            // `DateListAggregate`/`ListAggregate` the third and fourth) and the checker only names them, in a
+            // KDoc table saying which gate answers ahead of the one it does report. None of the four is a
+            // client-side refusal the checker could inherit: each rests on the operand kinds a typed builder
+            // holds, which is why the component-set gate itself is delegated on that side.
+            Map.entry("MVK_DATEFORMATS_NOT_COMPATIBLE", Disposition.PROSE_ONLY),
+            Map.entry("MVK_DATE_AND_NONDATE", Disposition.PROSE_ONLY),
+            Map.entry("MVK_NOT_SORTABLE", Disposition.PROSE_ONLY),
+            Map.entry("MVK_NO_NUMBER", Disposition.PROSE_ONLY),
+
             // The enum-category pairing. `FieldTypeSpec.EnumSpec` refuses a misaligned category in its
             // constructor, over typed `EnumCategory` records, and collapses A12's two per-element codes into
             // one message; the checker reads stored JSON and reproduces both, once per unpaired element. Same

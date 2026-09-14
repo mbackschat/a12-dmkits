@@ -154,6 +154,12 @@ data class UnexpandedMount(val at: String, val alias: String, val reason: String
  *     the whole EXPANDED tree — a mounted model's enum values answer to the host's restriction, measured
  *     2026-09-13 (`SupportedCharactersDeclarationGateLawsTest`) — which is why it is carried on the model
  *     rather than looked up per declaration.
+ * @param hasBaseYear whether the ENTRY model's `content.modelInfo` declares a `baseYear` at all. A12's
+ *     temporal gates read it as a presence (`modelSpecificSettings.getBaseYear().isPresent()`), and a
+ *     declared base year SUPPLEMENTS the year component of every operand before they are compared — so
+ *     reading it as absent where A12 reads it as present would refuse a model A12 admits. That is why the
+ *     value is not parsed: any present member counts, and an unreadable one leaves this checker silent on a
+ *     model A12 may refuse, which is the safe direction.
  * @param unexpandedMounts the mounts that left the fact base incomplete.
  * @param diagnostics what the checker could not read. Preparation reports and skips rather than failing, so
  *     one broken element cannot mask its siblings' findings — and no input makes [prepare] raise.
@@ -166,6 +172,7 @@ data class PreparedModel(
     val declaredLocales: List<String> = emptyList(),
     val unreadableLocaleCodes: List<String> = emptyList(),
     val supportedCharacters: List<String> = emptyList(),
+    val hasBaseYear: Boolean = false,
     val unexpandedMounts: List<UnexpandedMount> = emptyList(),
     val diagnostics: List<Diagnostic> = emptyList(),
     /**
@@ -267,6 +274,7 @@ fun prepare(
         declaredLocales = locales.keys,
         unreadableLocaleCodes = locales.unreadable,
         supportedCharacters = content.declaredSupportedCharacters(),
+        hasBaseYear = (content?.get("modelInfo") as? JsonObject)?.containsKey("baseYear") == true,
         unexpandedMounts = collector.unexpandedMounts,
         diagnostics = collector.diagnostics,
         declaredTypeDefinitionIds = content.declaredTypeDefinitionIds(),

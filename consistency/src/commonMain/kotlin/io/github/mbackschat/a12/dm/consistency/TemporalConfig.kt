@@ -126,7 +126,7 @@ private val YEAR_BEARING_FORMATS = setOf(
 private val YEAR_FREE_FORMATS = setOf("HH:mm:ss", "MM", "MM-dd", "MMdd", "ddMM", "dd.MM.")
 // VOCABULARY-GRID-END
 
-private val ADMITTED_FORMATS = YEAR_BEARING_FORMATS + YEAR_FREE_FORMATS
+internal val ADMITTED_FORMATS = YEAR_BEARING_FORMATS + YEAR_FREE_FORMATS
 
 /**
  * The formats a PARTIAL precision admits — a strict subset of the year-bearing set, and not "carries all
@@ -135,4 +135,4 @@ private val ADMITTED_FORMATS = YEAR_BEARING_FORMATS + YEAR_FREE_FORMATS
 private val COMPLETE_DATE_FORMATS = setOf("dd.MM.yyyy", "yyyy-MM-dd", "yyyyMMdd")
 
 /** `DatePrecision` minus its `FULL` default, which is the one value that carries no format requirement. */
-private val PARTIAL_PRECISIONS = setOf("DAY_OPTIONAL", "MONTH_OPTIONAL", "YEAR_OPTIONAL")
+internal val PARTIAL_PRECISIONS = setOf("DAY_OPTIONAL", "MONTH_OPTIONAL", "YEAR_OPTIONAL")
