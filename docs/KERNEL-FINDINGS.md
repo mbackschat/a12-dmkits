@@ -7142,6 +7142,32 @@ Reported by the portable checker, which did not emit `MVK_SORT_FIELD_DUPLICATE` 
 
 *Locked by:* `rulekit.validate.laws.GroupOrderingMultipleDefectLawsTest`, mirrored by `consistency … GroupOrderingMultipleDefectTest`.
 
+## §9 supplement — a parallel iteration marks the rule's OWN keyed group too, which is what a `Having` filter is then refused on (source-verified + measured, 2026-09-14) <a id="kf376"></a>
+
+> Fold: not-foldable — a diagnostic-class law about which operands a whole-rule gate looks at, not an evaluation behaviour.
+
+`ParserService.checkNormalRule`'s second gate asks `AnalyseService.hasParallelIteratedFilterConditionId`, which walks the built condition for ONE entity id carrying both a filter condition and the parallel-iteration marker, and refuses the rule with `MVK_PARALLEL_ITERATION_FOR_FILTERED_ENTITY_NOT_ALLOWED`. The natural reading — the filtered operand reads a parallel-iterated group — is measurably too narrow.
+
+**The marker is set by TWO passes, and the second is the one nobody predicts.** `setSeparatePathIndexes` marks, on each reference, the lowest level it iterates OFF the error field's path; that is the joint iteration itself, and finding one is the precondition for the second pass. `setIndexesForParallelIteration` then marks, on EVERY reference, each unstarred repeatable level that is an ancestor-or-equal of the error field **and declares an index field** — the rule's own group included.
+
+**The discriminating pair, within one model** (`Lines` and `Picks` keyed alike, rule anchored in `Lines`):
+
+| condition | verdict |
+|---|---|
+| a filter on an operand under `Picks` | `MVK_PARALLEL_ITERATION_FOR_FILTERED_ENTITY_NOT_ALLOWED` |
+| the same operand with NO filter — the control | admitted |
+| a filter on an operand under the rule's own `Lines` | admitted |
+| the same, plus an unrelated unstarred read of `Picks` | `MVK_PARALLEL_ITERATION_FOR_FILTERED_ENTITY_NOT_ALLOWED` |
+| the parallel level declaring no index field | `MVK_NO_WILDCARD`, during the parse |
+
+Rows three and four carry byte-identical filtered operands and differ only in a conjunct that names neither of them, so "the filtered operand reads a parallel group" admits row four and is false.
+
+**A star marks the level it sits on and nothing above it.** An aggregate over `Picks` with a star on a group BENEATH it still iterates `Picks` jointly — measured through the uniqueness gate, which refuses that condition. A reader treating "the reference carries a star" as "the reference does not iterate" therefore misses the whole shape; ours did, and stayed silent on it until this row.
+
+**Gate order inside the phase:** `checkForParallelIteration` runs first, so a condition carrying a `RepetitionNotUnique` as well draws `MVK_PARALLEL_ITERATION_NOT_ALLOWED`. Both are post-parse ([KF375](#kf375)), so neither hides behind a positioned class and only the measurement settles it.
+
+*Locked by:* `rulekit.validate.laws.FilteredEntityParallelIterationLawsTest`; mirrored by `consistency … FilteredEntityIterationTest`.
+
 ## §9 supplement — a whole-rule gate runs only on a COMPLETED parse, so a parse-time class erases it (source-verified + measured, 2026-09-14) <a id="kf375"></a>
 
 > Fold: not-foldable — a diagnostic-class selection law across A12's two checking phases, not an evaluation behaviour.

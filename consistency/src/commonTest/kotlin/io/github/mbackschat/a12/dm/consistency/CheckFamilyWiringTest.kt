@@ -146,7 +146,11 @@ class CheckFamilyWiringTest {
             {"type":"Group","id":"g8","name":"Totes","Group":{"repeatability":5,
               "indexFieldName":"CrateRef","elements":[
               {"type":"Field","id":"f32","name":"CrateRef","Field":{"fieldType":{"type":"StringType"}}},
-              {"type":"Field","id":"f33","name":"ToteQty","Field":{"fieldType":{"type":"NumberType"}}}
+              {"type":"Field","id":"f33","name":"ToteQty","Field":{"fieldType":{"type":"NumberType"}}},
+              {"type":"Group","id":"g13","name":"Labels","Group":{"repeatability":3,"elements":[
+                {"type":"Field","id":"f43","name":"LabelNote","Field":{"fieldType":{"type":"StringType"}}},
+                {"type":"Field","id":"f44","name":"LabelQty","Field":{"fieldType":{"type":"NumberType"}}}
+              ]}}
             ]}},
             {"type":"Rule","id":"r33","name":"ConstantOutsideTheEnum","Rule":{
               "errorCondition":"FieldFilled(Price) And FieldValueIncludedInValueList(LowercaseTier, \"q\", \"NOPE\")",
@@ -168,6 +172,10 @@ class CheckFamilyWiringTest {
               "errorCondition":"FieldFilled(Price) And Sum(Pallets.*/PalletQty) > 0",
               "errorEntityRelPath":"../Price",
               "errorCode":"C29","errorMessage":[{"locale":"en_US","text":"x"}]}},
+            {"type":"Rule","id":"r43","name":"FilterUnderAParallelBranch","Rule":{
+              "errorCondition":"FieldFilled(Crates/CrateRef) And Sum(Totes/Labels*/LabelQty Having [Totes/Labels/LabelNote] == \"x\") > 0",
+              "errorEntityRelPath":"../Crates/CrateRef",
+              "errorCode":"C43","errorMessage":[{"locale":"en_US","text":"x"}]}},
             {"type":"Rule","id":"r28","name":"UniquenessUnderParallelIteration","Rule":{
               "errorCondition":"RepetitionNotUnique(Crates/CrateRef) And FieldFilled(Totes/ToteQty)",
               "errorEntityRelPath":"../Crates/CrateRef",
@@ -379,6 +387,12 @@ class CheckFamilyWiringTest {
         // each makes the rule iterate them jointly — the shape no other row in this fixture produces.
         CheckFamily.PARALLEL_ITERATION_UNIQUENESS to
             ("MVK_PARALLEL_ITERATION_NOT_ALLOWED" to "/Catalog/UniquenessUnderParallelIteration"),
+        // `Totes` is iterated jointly with the target's own `Crates`, and the aggregate's operand hangs a
+        // filter off a level beneath it — the only shape in this fixture where one entity id carries both
+        // the filter and the parallel marker.
+        CheckFamily.FILTERED_ENTITY_ITERATION to
+            ("MVK_PARALLEL_ITERATION_FOR_FILTERED_ENTITY_NOT_ALLOWED" to
+                "/Catalog/FilterUnderAParallelBranch"),
         // A repeatable group read without a star into an error field the root holds: the target's own
         // coordinates cannot pick a repetition of `Crates`, and nothing about the operator is at fault —
         // which is what makes the row about the LEVEL rather than about the predicate reading it.

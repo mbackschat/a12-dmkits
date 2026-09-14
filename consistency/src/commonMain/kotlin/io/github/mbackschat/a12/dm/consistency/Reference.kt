@@ -1,5 +1,8 @@
 package io.github.mbackschat.a12.dm.consistency
 
+import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.contentOrNull
+
 /**
  * What a bare reference in a condition or operation resolved to.
  *
@@ -231,3 +234,17 @@ internal fun PreparedModel.starredLevelsOf(
     }
     return starred
 }
+
+/**
+ * The `$` that marks a reference as reaching OUT of a filter into the enclosing rule.
+ *
+ * A marked reference re-enters the walk with the enclosing rule's error field restored
+ * (`CheckEntitySpecImpl.checkCommon`), which no reader here can reproduce from text, so a text carrying one
+ * is left alone rather than judged against the wrong target. Three families make that decision, which is why
+ * the spelling is stated once.
+ */
+internal const val OUTER_MARKER = "$"
+
+/** The index field [group] declares, or null when it declares none — A12 reads an empty name as none. */
+internal fun indexFieldNameOf(group: DeclaredElement): String? =
+    (group.body?.get("indexFieldName") as? JsonPrimitive)?.contentOrNull?.takeIf { it.isNotEmpty() }

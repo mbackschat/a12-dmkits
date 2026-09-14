@@ -21,6 +21,12 @@ import kotlinx.serialization.json.contentOrNull
  * fields of DIFFERENT declared types draw `MVK_ERROR_FIELD_INVALID_INDEX_TYPE` instead, ahead of this gate —
  * so a family keying on the index field's NAME alone would name this class where A12 names that one.
  *
+ * **The star has to be tested at the JOINT level, not anywhere in the reference.** A star marks the level it
+ * sits on and nothing above it, so an aggregate over `Picks` then a starred `Checks` beneath it still
+ * iterates `Picks` jointly and A12 refuses the rule — measured 2026-09-14
+ * (`rulekit.validate.laws.FilteredEntityParallelIterationLawsTest`),
+ * after this family had read "carries a star" as "does not iterate" and stayed silent on it.
+ *
  * **It asks for the same NAME and the same declared TYPE, which is the intersection rather than the law.**
  * A12's own test is `matchBaseType` over the two index fields; whether a differing NAME alone stops the
  * joint iteration is unmeasured, and two different declared types can in principle share a base type. Both
@@ -41,10 +47,14 @@ fun PreparedModel.parallelIterationUniquenessFindings(): List<Finding> {
         if (!callsUniqueness) {
             return@mapNotNull null
         }
+        val declaringGroup = element.path.substringBeforeLast('/', missingDelimiterValue = "")
         val keyed = referencesByElement[element.path].orEmpty()
-            .filter { '*' !in it.written }
-            .mapNotNull { (it.target as? Reference.Resolved)?.path }
-            .mapNotNull { keyedGroupOver(it) }
+            .mapNotNull { reference ->
+                val resolved = (reference.target as? Reference.Resolved)?.path ?: return@mapNotNull null
+                val starred = starredLevelsOf(reference.written, declaringGroup, element)
+                    ?: return@mapNotNull null
+                keyedGroupOver(resolved)?.takeIf { it.path !in starred }
+            }
             .distinct()
         val pair = jointlyIteratingPair(keyed) ?: return@mapNotNull null
         Finding(

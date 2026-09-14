@@ -357,6 +357,14 @@ enum class CheckFamily {
     PARALLEL_ITERATION_UNIQUENESS,
 
     /**
+     * That no `Having` filter hangs off an operand A12 marked as parallel-iterated. Its own constant rather
+     * than part of [PARALLEL_ITERATION_UNIQUENESS] because the two are separate gates of the same method
+     * with separate preconditions — one needs a uniqueness call, this one a filter — and A12 runs the
+     * uniqueness gate first, which is what makes the boundary between them observable.
+     */
+    FILTERED_ENTITY_ITERATION,
+
+    /**
      * That every repetition an operand crosses unstarred is one the target's own coordinates address — or,
      * where it is not, that the two branches iterate JOINTLY on a shared index field. One constant for the
      * five classes of that walk because A12 asks them as one gate chain per level, and because which class
@@ -637,6 +645,7 @@ internal fun check(
         prepared.semanticIndexKeyFindings() +
         prepared.repetitionNotUniqueCombinationFindings() +
         prepared.parallelIterationUniquenessFindings() +
+        prepared.filteredEntityIterationFindings() +
         prepared.operandRepetitionScopeFindings() +
         prepared.dateConstructionSlotFindings() +
         prepared.hModelPathSuffixFindings() +
@@ -689,7 +698,7 @@ internal fun check(
             CheckFamily.SEMANTIC_INDEX_STRUCTURE,
             CheckFamily.SEMANTIC_INDEX_KEY,
             CheckFamily.REPETITION_NOT_UNIQUE_COMBINATION,
-            CheckFamily.PARALLEL_ITERATION_UNIQUENESS,
+            CheckFamily.PARALLEL_ITERATION_UNIQUENESS, CheckFamily.FILTERED_ENTITY_ITERATION,
             CheckFamily.OPERAND_REPETITION_SCOPE, CheckFamily.DATE_CONSTRUCTION_SLOT,
             CheckFamily.H_MODEL_PATH_SUFFIX, CheckFamily.FIELD_OPERAND_KIND,
             CheckFamily.FILTERED_OPERAND_KIND, CheckFamily.CATEGORY_REFERENCE,

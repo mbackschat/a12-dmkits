@@ -66,8 +66,6 @@ private const val FROM = "From"
 
 private const val SEMANTIC_INDEX = "SemanticIndex"
 
-private const val OUTER_MARKER = "$"
-
 private data class FilterDefect(val code: String, val wrote: String, val level: String?)
 
 /**

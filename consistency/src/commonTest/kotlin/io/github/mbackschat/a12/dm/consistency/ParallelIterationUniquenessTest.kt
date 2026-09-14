@@ -32,7 +32,10 @@ class ParallelIterationUniquenessTest {
                 {"type":"Group","id":"g2","name":"Picks","Group":{"repeatability":50,
                   "indexFieldName":"LineRef","elements":[
                   {"type":"Field","id":"f3","name":"LineRef","Field":{"fieldType":{"type":"PICK_KEY"}}},
-                  {"type":"Field","id":"f4","name":"PickedQty","Field":{"fieldType":{"type":"NumberType"}}}
+                  {"type":"Field","id":"f4","name":"PickedQty","Field":{"fieldType":{"type":"NumberType"}}},
+                  {"type":"Group","id":"g4","name":"Checks","Group":{"repeatability":5,"elements":[
+                    {"type":"Field","id":"f7","name":"CheckQty","Field":{"fieldType":{"type":"NumberType"}}}
+                  ]}}
                 ]}},
                 {"type":"Group","id":"g3","name":"Bays","Group":{"repeatability":9,
                   "indexFieldName":"BayRef","elements":[
@@ -56,6 +59,8 @@ class ParallelIterationUniquenessTest {
             codes("RepetitionNotUnique(Lines/LineRef) And FieldFilled(Picks/PickedQty)")
         actual["a uniqueness check beside a read of a DIFFERENTLY keyed group"] =
             codes("RepetitionNotUnique(Lines/LineRef) And FieldFilled(Bays/BayQty)")
+        actual["a uniqueness check beside a read starred BELOW the joint group"] =
+            codes("RepetitionNotUnique(Lines/LineRef) And Sum(Picks/Checks*/CheckQty) > 0")
 
         val expected = mutableMapOf<String, List<String>>()
         expected["a uniqueness check alone — the control"] = emptyList()
@@ -65,6 +70,10 @@ class ParallelIterationUniquenessTest {
         // [operandRepetitionScopeFindings] names that class, which is why the row is not empty.
         expected["a uniqueness check beside a read of a DIFFERENTLY keyed group"] =
             listOf("MVK_ERROR_FIELD_INVALID_INDEX")
+        // A star marks the level it sits on and nothing above it, so `Picks` still iterates jointly here —
+        // the row that separates "the reference carries a star" from "the JOINT level is starred"
+        // (`rulekit.validate.laws.FilteredEntityParallelIterationLawsTest`).
+        expected["a uniqueness check beside a read starred BELOW the joint group"] = listOf(notAllowed)
         assertEquals(expected, actual, "when a uniqueness check sits in a joint iteration")
     }
 

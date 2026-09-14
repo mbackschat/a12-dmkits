@@ -41,6 +41,13 @@ import kotlinx.serialization.json.contentOrNull
  * than transferred ([KF212], `ComputationDeclaringGroupLawsTest`) — the computed field takes the error
  * field's role, and the declaring group is not a variable in it.
  *
+ * **Silent on a text carrying a `Having` filter or a semantic index at all, which is an UNDER-REPORT and
+ * not a partition.** A filter body's references are judged against the FILTERED entity rather than the
+ * rule's target — that walk is [filterBodyIterationFindings]' — and this reader sees one flat reference list
+ * with no way to tell the two apart, so it judges neither. The price is that the operand's OWN levels go
+ * unjudged too: an unkeyed parallel level under a filtered operand is `MVK_NO_WILDCARD` and nothing here
+ * names it (measured 2026-09-14, `rulekit.validate.laws.FilteredEntityParallelIterationLawsTest`).
+ *
  * **Silent where `MVK_ERROR_FIELD_NOT_IN_RULEGROUP` answers first.** That gate runs at the top of the same
  * method, on the first iterating level, and fires whenever the target lies outside the declaring group —
  * so a target outside it is never this family's to judge. Our own `Rule.build()` refuses that pair up front
@@ -76,17 +83,8 @@ private const val HAVING = "Having"
 
 private const val SEMANTIC_INDEX = "SemanticIndex"
 
-/**
- * The `$` that marks a reference as reaching OUT of a filter into the enclosing rule.
- *
- * A marked reference re-enters the walk with the enclosing rule's error field restored
- * (`CheckEntitySpecImpl.checkCommon`), which this reader cannot reproduce from text, so a text carrying one
- * is left alone rather than judged against the wrong target.
- */
-private const val OUTER_MARKER = "$"
-
 /** The group whose repetitions A12 addresses the target by, or null when the target is not a FIELD. */
-private fun PreparedModel.groupOfTargetField(target: String): String? = elements
+internal fun PreparedModel.groupOfTargetField(target: String): String? = elements
     .firstOrNull { it.path == target && it.declaredKind == DeclaredKind.FIELD }
     ?.let { target.substringBeforeLast('/', missingDelimiterValue = "") }
 
@@ -119,7 +117,10 @@ private fun PreparedModel.levelClassOf(
             wildcardSeen -> return NO_WILDCARD
             level.path.startsWith("$targetGroup/") -> return NO_WILDCARD
             targetGroup == level.path || targetGroup.startsWith("${level.path}/") -> Unit
-            else -> parallelClassOf(level, targetGroup)?.let { return it }
+            else -> when (val verdict = parallelVerdictOf(level, targetGroup)) {
+                is ParallelVerdict.Refused -> return verdict.code
+                ParallelVerdict.Joint, ParallelVerdict.Unjudged -> Unit
+            }
         }
     }
     return null
@@ -131,36 +132,65 @@ private const val MULTIPLE_INDEX_FIELDS = "MVK_MULTIPLE_INDEX_FIELDS"
 
 
 /**
- * The class a PARALLEL level draws — one the target's coordinates neither contain nor lie under.
+ * What A12 answers about a PARALLEL level — one the target's coordinates neither contain nor lie under.
+ *
+ * Three outcomes rather than a nullable class, because the two silences are different claims and a second
+ * family now depends on which one it got: [Joint] says A12 iterates the two branches TOGETHER, which is the
+ * precondition every whole-rule gate in `ParserService.checkNormalRule` runs behind, where [Unjudged] says
+ * this reader declined to decide. Only [Joint] may be read as an admission.
+ */
+internal sealed interface ParallelVerdict {
+
+    /** A12 iterates the level jointly with the target's own chain. */
+    data object Joint : ParallelVerdict
+
+    /** A12 refuses the level with [code], during the parse. */
+    data class Refused(val code: String) : ParallelVerdict
+
+    /** A shape this reader declines to judge, so neither half may be claimed of it. */
+    data object Unjudged : ParallelVerdict
+}
+
+/**
+ * Whether A12 iterates [level] jointly with [targetGroup]'s chain, and with what class if not.
  *
  * A12's route here is `checkParallelIteration`, which asks whether the two branches iterate JOINTLY: each
  * end must resolve to exactly one index field, and the two must agree. The gates are transcribed in source
  * order, and the `getIndexGroup` walk that resolves each end is what can answer with the multiple-index
  * class before either error-field comparison happens.
  */
-private fun PreparedModel.parallelClassOf(level: DeclaredElement, targetGroup: String): String? {
-    val operandIndexName = indexFieldNameOf(level) ?: return NO_WILDCARD
+internal fun PreparedModel.parallelVerdictOf(
+    level: DeclaredElement,
+    targetGroup: String,
+): ParallelVerdict {
+    val operandIndexName = indexFieldNameOf(level) ?: return ParallelVerdict.Refused(NO_WILDCARD)
     val operandChain = keyedGroupsAtOrAbove(level.path)
     if (operandChain.size > 1) {
-        return MULTIPLE_INDEX_FIELDS
+        return ParallelVerdict.Refused(MULTIPLE_INDEX_FIELDS)
     }
     // A declared index field that names nothing in its own group is A12's `MVK_INDEX_FIELD_INVALID`, and
     // that model shape is measured NOT BUILDABLE with no code at all (KF295) — so it cannot arrive here,
     // and silence is what a reader of a model that somehow carries it should get.
-    val operandIndex = indexFieldAt(level.path, operandIndexName) ?: return null
+    val operandIndex = indexFieldAt(level.path, operandIndexName) ?: return ParallelVerdict.Unjudged
     val targetChain = keyedGroupsAtOrAbove(targetGroup)
     if (targetChain.size > 1) {
-        return MULTIPLE_INDEX_FIELDS
+        return ParallelVerdict.Refused(MULTIPLE_INDEX_FIELDS)
     }
-    val keyedForTheTarget = targetChain.firstOrNull() ?: return "MVK_ERROR_FIELD_NO_INDEX"
-    val targetIndexName = indexFieldNameOf(keyedForTheTarget) ?: return null
+    val keyedForTheTarget = targetChain.firstOrNull()
+        ?: return ParallelVerdict.Refused("MVK_ERROR_FIELD_NO_INDEX")
+    val targetIndexName = indexFieldNameOf(keyedForTheTarget) ?: return ParallelVerdict.Unjudged
     if (targetIndexName != operandIndexName) {
-        return "MVK_ERROR_FIELD_INVALID_INDEX"
+        return ParallelVerdict.Refused("MVK_ERROR_FIELD_INVALID_INDEX")
     }
-    val targetIndex = indexFieldAt(keyedForTheTarget.path, targetIndexName) ?: return null
-    val operandFamily = baseFamilyOf(operandIndex) ?: return null
-    val targetFamily = baseFamilyOf(targetIndex) ?: return null
-    return if (operandFamily == targetFamily) null else "MVK_ERROR_FIELD_INVALID_INDEX_TYPE"
+    val targetIndex = indexFieldAt(keyedForTheTarget.path, targetIndexName)
+        ?: return ParallelVerdict.Unjudged
+    val operandFamily = baseFamilyOf(operandIndex) ?: return ParallelVerdict.Unjudged
+    val targetFamily = baseFamilyOf(targetIndex) ?: return ParallelVerdict.Unjudged
+    return if (operandFamily == targetFamily) {
+        ParallelVerdict.Joint
+    } else {
+        ParallelVerdict.Refused("MVK_ERROR_FIELD_INVALID_INDEX_TYPE")
+    }
 }
 
 /** Every group at or above [path] that declares an index field — A12's `getIndexGroup` walk. */
@@ -170,9 +200,6 @@ private fun PreparedModel.keyedGroupsAtOrAbove(path: String): List<DeclaredEleme
             (path == it.path || path.startsWith("${it.path}/")) &&
             indexFieldNameOf(it) != null
     }
-
-private fun indexFieldNameOf(group: DeclaredElement): String? =
-    (group.body?.get("indexFieldName") as? JsonPrimitive)?.contentOrNull?.takeIf { it.isNotEmpty() }
 
 private fun PreparedModel.indexFieldAt(group: String, name: String): DeclaredElement? =
     elements.firstOrNull { it.path == "$group/$name" && it.declaredKind == DeclaredKind.FIELD }

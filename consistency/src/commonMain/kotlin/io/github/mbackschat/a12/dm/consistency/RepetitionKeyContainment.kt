@@ -3,8 +3,6 @@ package io.github.mbackschat.a12.dm.consistency
 import io.github.mbackschat.a12.dm.consistency.syntax.CONDITION_OPERATOR_KEYWORDS
 import io.github.mbackschat.a12.dm.consistency.syntax.ConditionCall
 import io.github.mbackschat.a12.dm.consistency.syntax.callsIn
-import kotlinx.serialization.json.JsonPrimitive
-import kotlinx.serialization.json.contentOrNull
 
 /**
  * Where a `RepetitionNotUnique` KEY has to sit relative to the scope that bounds it.
@@ -178,9 +176,6 @@ private fun iteratesJointlyWith(one: DeclaredElement?, other: DeclaredElement): 
     val name = indexFieldNameOf(one ?: return false) ?: return false
     return name == indexFieldNameOf(other)
 }
-
-private fun indexFieldNameOf(group: DeclaredElement): String? =
-    (group.body?.get("indexFieldName") as? JsonPrimitive)?.contentOrNull?.takeIf { it.isNotEmpty() }
 
 private fun containmentFinding(
     defect: ContainmentDefect,
