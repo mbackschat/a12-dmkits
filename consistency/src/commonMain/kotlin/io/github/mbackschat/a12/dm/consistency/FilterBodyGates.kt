@@ -24,7 +24,7 @@ import io.github.mbackschat.a12.dm.consistency.syntax.semanticIndexUsesIn
  * | iteration of a level the FILTERED entity does not sit under | `MVK_INVALID_ITERATION_IN_FILTER_CONDITION` |
  * | a SEMANTIC INDEX | `MVK_SEMANTIC_INDEX_NOT_ALLOWED` |
  * | no level is one the operand's star reopens | `MVK_NO_ITERATION_FOR_WILDCARD` |
- * | `RepetitionNotUnique`, once every gate above passes | `MVK_DISALLOWED_CONSTRUCT_IN_FILTER_CONDITION` |
+ * | `RepetitionNotUnique` or `CustomCondition`, once every gate above passes | `MVK_DISALLOWED_CONSTRUCT_IN_FILTER_CONDITION` |
  *
  * **The construct gate runs LAST, so it is reachable only from a filter that is otherwise legal** — every
  * class above pre-empts it, measured on both of the shapes that violate two gates at once. That ordering is
@@ -32,11 +32,11 @@ import io.github.mbackschat.a12.dm.consistency.syntax.semanticIndexUsesIn
  * whether the gates before it pass, and a separate family would have to reproduce all of them to know the
  * gate was ever reached.
  *
- * **Two of A12's three forbidden constructs are NOT reported, for different reasons.** A nested filter leaves
- * this walk before the gate, being one of the shapes [filterDefectOf] declines outright. `CustomCondition` is
- * the sharper case and a disclosed DEFECT rather than a boundary: this checker's condition grammar does not
- * parse `CustomCondition <Name>` inside a filter body, so the syntax family answers `MVK_UNEXPECTED_TOKEN`
- * first — a model A12 also refuses, but never with that class.
+ * **One of A12's three forbidden constructs is not reported**: a NESTED filter leaves this walk before the
+ * gate, being one of the shapes [filterDefectOf] declines outright. `CustomCondition` needed a parser fix to
+ * reach it at all — the shape reader spelled the keyword-plus-bare-name predicate only where a condition was
+ * expected positionally, never as a CLAUSE operand, so a filter body carrying it drew `MVK_UNEXPECTED_TOKEN`
+ * from the syntax family on a text A12 parses.
  *
  * **The first two gates yield to nothing and the third yields to any conjunct**, which is what makes the
  * distinction load-bearing rather than cosmetic: the scope gate is an OCCURRENCE check over the whole body,
@@ -186,9 +186,9 @@ private fun PreparedModel.filterDefectOf(
  * The forbidden construct this filter body names, or null where it names none this reader may judge.
  *
  * A12's listener refuses exactly three, and each by its own terminal: a NESTED filter, `CustomCondition` and
- * `RepetitionNotUnique`. Only the last two are reported, because the nested filter leaves this walk before
- * the gate is reached — the body is one of the shapes [filterDefectOf] declines outright — so naming it here
- * would claim a gate that never ran.
+ * `RepetitionNotUnique`. The last two are reported; the nested filter leaves this walk before the gate is
+ * reached — the body is one of the shapes [filterDefectOf] declines outright — so naming it here would claim
+ * a gate that never ran.
  */
 private fun disallowedConstructIn(text: String, keywords: Map<String, String>): String? =
     listOfNotNull(keywords[CUSTOM_CONDITION], keywords[REPETITION_NOT_UNIQUE])

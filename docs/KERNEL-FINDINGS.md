@@ -8166,6 +8166,8 @@ A12 checks a condition in two phases and the estate had only ever measured insid
 
 **Because it runs last, the construct class is reachable only from a filter that is otherwise legal**, which is the part a checker needs and a single-construct measurement cannot show. Measured on the two shapes that violate two gates at once: a star inside the body draws `MVK_NO_WILDCARDS_ALLOWED` and an outer-only body draws `MVK_NO_ITERATION_FOR_WILDCARD`, neither co-firing with the construct class; and a construct beside an in-scope conjunct still draws the construct class, so the conjunct only feeds the gate before it. A body naming a forbidden construct and NOTHING else never reaches this gate at all, the scope gate answering first — which is why the sibling conjunct in the reporting row is load-bearing rather than decorative.
 
+**One `CustomCondition` body, moved one step in either direction, draws all three classes** — which is the sharpest statement of the ordering and the grid a checker should be held against. Beside an in-scope reference it is the construct class; alone it is `MVK_NO_ITERATION_FOR_WILDCARD`, the scope gate answering first because the construct names no level; beside a STARRED reference it is `MVK_NO_WILDCARDS_ALLOWED`. The text naming the forbidden construct never moves, so nothing about the construct itself decides the verdict.
+
 *Locked by:* `rulekit.validate.laws.HavingFilterIterationGateLawsTest`, `…HavingFilterGrammarAndScopeLawsTest`, `…FilteredOperandGateOrderLawsTest` and `…AggregateSlotLawsTest`; mirrored by `consistency … FilterBodyGatesTest`.
 
 ## §6 supplement — a `Date`/`Time` construction is judged SLOT by slot, and the slot's arm picks the class (measured, 2026-09-14) <a id="kf373"></a>

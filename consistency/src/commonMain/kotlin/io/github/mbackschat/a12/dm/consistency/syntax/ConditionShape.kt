@@ -244,18 +244,11 @@ private class ShapeParser(
         val token = peek() ?: return unexpected()
         // A PREDICATE names a production that IS a condition, so it never takes a comparison operator after
         // it. Everything else has to become one, which is what makes a bare reference an error.
-        if (token.kind == TokenKind.NAME && kindOf(token).isCallableCondition()) {
-            if (callFollows()) {
-                return call()
-            }
-            // `applikationsBedingung` is the one condition that is a keyword followed by a bare name rather
-            // than a call, so a predicate without parentheses is not automatically an error.
-            val following = tokens.getOrNull(index + 1)
-            if (following != null && (following.kind == TokenKind.NAME || following.kind == TokenKind.QUOTED_NAME)) {
-                take()
-                take()
-                return null
-            }
+        if (token.kind == TokenKind.NAME && kindOf(token).isCallableCondition() && callFollows()) {
+            return call()
+        }
+        if (takesBoundNamePredicate()) {
+            return null
         }
         val from = index
         expression()?.let { return it }
@@ -273,6 +266,27 @@ private class ShapeParser(
             )
         }
         return failure
+    }
+
+    /**
+     * Consumes `CustomCondition <Name>` — the one condition spelled as a keyword plus a BARE NAME.
+     *
+     * `applikationsBedingung` is the single production of the grammar that is not a call, so a predicate
+     * without parentheses is not automatically an error. Leaves the index untouched and answers false
+     * wherever the region is some other shape, which is what lets a caller try it ahead of an expression.
+     */
+    private fun takesBoundNamePredicate(): Boolean {
+        val token = peek() ?: return false
+        if (token.kind != TokenKind.NAME || !kindOf(token).isCallableCondition() || callFollows()) {
+            return false
+        }
+        val following = tokens.getOrNull(index + 1) ?: return false
+        if (following.kind != TokenKind.NAME && following.kind != TokenKind.QUOTED_NAME) {
+            return false
+        }
+        take()
+        take()
+        return true
     }
 
     private fun KeywordKind?.isCallableCondition(): Boolean =
@@ -403,7 +417,12 @@ private class ShapeParser(
             val token = peek() ?: return null
             if (token.kind == TokenKind.NAME && kindOf(token) == KeywordKind.PATH_OP) {
                 take()
-                expressionOrCondition()?.let { return it }
+                // A clause's operand is a whole CONDITION, so it may hold the keyword-plus-bare-name
+                // predicate an expression reader cannot spell. A12 parses it there and refuses it from the
+                // filter's own last gate, so reading it as a token error names a class A12 never reaches.
+                // The permission stops at the clause: a plain aggregate argument is an expression, where the
+                // same text IS an error, and widening it there would trade a wrong class for silence.
+                expressionOrCondition(boundNamePredicateAllowed = true)?.let { return it }
                 continue
             }
             if (isScopeMarker()) {
@@ -423,17 +442,17 @@ private class ShapeParser(
      * the tokens after it say which. Parsing the expression and then consuming a comparison and any
      * connectives keeps the reader from having to look ahead for something no bounded lookahead can see.
      */
-    private fun expressionOrCondition(): ShapeFailure? {
+    private fun expressionOrCondition(boundNamePredicateAllowed: Boolean = false): ShapeFailure? {
         val token = peek() ?: return unexpected()
         if (token.kind == TokenKind.NAME && kindOf(token).isCallableCondition() && callFollows()) {
             call()?.let { return it }
-        } else {
+        } else if (!(boundNamePredicateAllowed && takesBoundNamePredicate())) {
             expression()?.let { return it }
         }
         while (true) {
             if (isConnective()) {
                 take()
-                expressionOrCondition()?.let { return it }
+                expressionOrCondition(boundNamePredicateAllowed)?.let { return it }
                 continue
             }
             val next = peek() ?: return null
@@ -463,7 +482,12 @@ private class ShapeParser(
             val token = peek() ?: return null
             if (token.kind == TokenKind.NAME && kindOf(token) == KeywordKind.PATH_OP) {
                 take()
-                expressionOrCondition()?.let { return it }
+                // A clause's operand is a whole CONDITION, so it may hold the keyword-plus-bare-name
+                // predicate an expression reader cannot spell. A12 parses it there and refuses it from the
+                // filter's own last gate, so reading it as a token error names a class A12 never reaches.
+                // The permission stops at the clause: a plain aggregate argument is an expression, where the
+                // same text IS an error, and widening it there would trade a wrong class for silence.
+                expressionOrCondition(boundNamePredicateAllowed = true)?.let { return it }
                 continue
             }
             if (isScopeMarker()) {

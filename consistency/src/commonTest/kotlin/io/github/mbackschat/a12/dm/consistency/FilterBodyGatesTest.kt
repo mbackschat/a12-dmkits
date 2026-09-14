@@ -85,8 +85,8 @@ class FilterBodyGatesTest {
      * The construct gate is reachable only from a filter that is otherwise legal, so the in-scope conjunct in
      * the reporting row is load-bearing — measured both ways in
      * `rulekit.validate.laws.FilteredOperandGateOrderLawsTest`, with and without it, because the conjunct
-     * changes what the gate BEFORE this one sees. Only `RepetitionNotUnique` is reported; the other two
-     * constructs A12 forbids are unreachable from here for reasons the rows below state.
+     * changes what the gate BEFORE this one sees. Two of A12's three forbidden constructs are reported; a
+     * NESTED filter is not, being one of the shapes this walk declines before the gate.
      */
     @Test
     fun theConstructsAFilterBodyMayNotName() {
@@ -100,21 +100,17 @@ class FilterBodyGatesTest {
         actual["a CustomCondition beside a STARRED reference"] =
             fromRoot("Parcels*/Weight > 0 And CustomCondition SomeCheck")
 
+        val refused = listOf("MVK_DISALLOWED_CONSTRUCT_IN_FILTER_CONDITION")
         val expected = mutableMapOf<String, List<String>>()
         expected["an in-scope reference alone — the control"] = emptyList()
-        expected["a RepetitionNotUnique beside an in-scope reference"] =
-            listOf("MVK_DISALLOWED_CONSTRUCT_IN_FILTER_CONDITION")
-        // ALL THREE CustomCondition rows are the WRONG CLASS, and the same wrong one: this checker's
-        // condition grammar does not parse `CustomCondition <Name>` inside a filter body, so the syntax
-        // family answers before any filter gate is reached. A12 parses it and refuses each of these three
-        // differently — the construct class, `MVK_NO_ITERATION_FOR_WILDCARD`, and `MVK_NO_WILDCARDS_ALLOWED`
-        // respectively (measured: `rulekit.validate.laws.AggregateSlotLawsTest`). Every model here is one
-        // A12 also refuses, so this is a wrong class rather than an over-rejection, and the rows are locked
-        // as measured fact with the defect disclosed in the portable-consistency plan's gap record.
-        val misparsed = listOf("MVK_UNEXPECTED_TOKEN")
-        expected["a CustomCondition beside an in-scope reference"] = misparsed
-        expected["a CustomCondition ALONE"] = misparsed
-        expected["a CustomCondition beside a STARRED reference"] = misparsed
+        expected["a RepetitionNotUnique beside an in-scope reference"] = refused
+        expected["a CustomCondition beside an in-scope reference"] = refused
+        // The three CustomCondition rows land on A12's own three classes, which is the point of carrying
+        // them together: the construct gate runs LAST, so moving the body one step in either direction
+        // hands the verdict to a different gate. Each is the class
+        // `rulekit.validate.laws.AggregateSlotLawsTest` measured on the same three shapes.
+        expected["a CustomCondition ALONE"] = listOf(noIteration)
+        expected["a CustomCondition beside a STARRED reference"] = listOf("MVK_NO_WILDCARDS_ALLOWED")
         assertEquals(expected, actual, "the constructs a filter body may not name")
     }
 
