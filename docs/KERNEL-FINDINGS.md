@@ -7142,6 +7142,31 @@ Reported by the portable checker, which did not emit `MVK_SORT_FIELD_DUPLICATE` 
 
 *Locked by:* `rulekit.validate.laws.GroupOrderingMultipleDefectLawsTest`, mirrored by `consistency … GroupOrderingMultipleDefectTest`.
 
+## §13 supplement — the semantic index an error-text parameter may carry (source-verified + measured, 2026-09-15) <a id="kf412"></a>
+
+> Fold: not-foldable — a diagnostic-class law about an error text's parameters, not an evaluation behaviour.
+
+A12 resolves an error-message parameter against the rule's own CONDITION, not against the model. `FullChecks_ErrorTextParameterParser.checkFieldReferencedInConditionAndGetFirstId` asks `refEntities.tryGetFor(fullName, semanticIndexSpec)`; finding nothing, it answers `MVK_INDEX_FOR_ERROR_TEXT_INVALID` when a key was written and `INVALID_FIELD` when none was. Measured on an own-domain fulfilment desk whose condition reads `[Shipments/Weight For "T-1"]`, with the harness's own control that the condition is admitted (`validate.laws.ErrorTextSemanticIndexLawsTest`, mirrored by `consistency.ErrorTextSemanticIndexTest`).
+
+| the parameter | verdict |
+|---|---|
+| `$Reference$` — plain, the condition reads it | ADMITTED |
+| `$Shipments/Weight For "T-1"$` — the condition's own pairing | ADMITTED |
+| `$Shipments/Weight For "T-9"$` — a different literal key | `MVK_INDEX_FOR_ERROR_TEXT_INVALID` |
+| `$Shipments/Weight For LookupCode$` — a field key where the condition used a literal | `MVK_INDEX_FOR_ERROR_TEXT_INVALID` |
+| `$Shipments/Weight$` — the same field with NO key | `INVALID_FIELD` |
+| `$Shipments/TrackingNo For "T-1"$` — the group's INDEX FIELD at the bound key | ADMITTED |
+| `$Shipments/Carrier For "T-1"$` — a PLAIN sibling at the bound key | `MVK_INDEX_FOR_ERROR_TEXT_INVALID` |
+| `$Parcels/Volume For "P-1"$` — a group the condition never reads | `MVK_INDEX_FOR_ERROR_TEXT_INVALID` |
+| `$Total For "T-1"$` — a key on a field that does not repeat | `MVK_INDEX_FOR_ERROR_TEXT_INVALID` |
+| `$Shipments/Weight Fuer "T-1"$` — the German keyword in an `en_US` model | `MVK_UNEXPECTED_TOKEN` |
+
+**The key binds a PAIR, not a repetition — and the last two rows of that pair are the whole finding.** A reader that takes the `TrackingNo` row alone concludes that a bound key makes the whole repetition readable and then admits `Carrier`, which A12 refuses; a reader that takes the `Carrier` row alone refuses `TrackingNo`, which A12 admits. What actually holds is narrower than either: the condition's own (field, key) pairings, PLUS the field that names the key itself. The rival mechanism was named and the discriminating case run before the clause was written.
+
+**Matching is by key SPEC, so a literal and a field key never satisfy each other** even where they could denote the same value — `tryGetFor` keys on the written spec.
+
+**The error-text parameter keyword follows the MODEL's language, and the grammar file says otherwise.** `BaseErrorTextParameterLexer.g4` carries the terminal `FOR: 'Fuer'`, which reads as a German-only spelling; measured, an `en_US` model takes `For` and refuses `Fuer` with `MVK_UNEXPECTED_TOKEN`. A source read of that lexer alone gets this backwards, which is the standing lesson about a grammar file being one layer of several — the first grid written here spelled every row `Fuer` and measured nine parse errors.
+
 ## §11 supplement — what an enum-valued computation may compute FROM (source-verified + measured, 2026-09-14) <a id="kf411"></a>
 
 > Fold: not-foldable — a diagnostic-class law about a computation's source, not an evaluation behaviour.

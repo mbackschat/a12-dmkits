@@ -625,6 +625,14 @@ enum class CheckFamily {
     MESSAGE_PARAMETER_REFERENCE,
 
     /**
+     * That an error message parameter's SEMANTIC INDEX repeats a pairing its own condition wrote. Its own
+     * constant rather than part of `MESSAGE_PARAMETER_REFERENCE` because the question is about the KEY and
+     * not about membership: the two forms draw different classes on the same unresolvable parameter, and one
+     * field — the indexed group's index field — is admitted here that the membership rule would refuse.
+     */
+    ERROR_TEXT_SEMANTIC_INDEX,
+
+    /**
      * That an error message's TEXT carries no control character. A12 splits the law in two — a line break
      * has its own class — and runs them in ORDER, so a text carrying both draws only the line-break one.
      * A repertoire restriction is a different law and is not this family's.
@@ -863,6 +871,7 @@ internal fun check(
         prepared.enumComputationSourceFindings() +
         prepared.errorTargetIterationFindings() +
         prepared.messageParameterFindings() +
+        prepared.errorTextSemanticIndexFindings() +
         prepared.messageTextCharacterFindings() +
         prepared.stringTypeMessageFindings() + prepared.stringTypeParameterFindings() +
         prepared.numberTypeDigitFindings() + prepared.enumValueLabelFindings() +
@@ -927,7 +936,8 @@ internal fun check(
             CheckFamily.VALUE_AS_DATE_OPERAND,
             CheckFamily.ENUM_COMPUTATION_SOURCE,
             CheckFamily.ERROR_TARGET_ITERATION,
-            CheckFamily.MESSAGE_PARAMETER_REFERENCE, CheckFamily.MESSAGE_TEXT_CHARACTERS),
+            CheckFamily.MESSAGE_PARAMETER_REFERENCE, CheckFamily.MESSAGE_TEXT_CHARACTERS,
+            CheckFamily.ERROR_TEXT_SEMANTIC_INDEX),
         gaps = prepared.gaps() + prepared.emptyFactBase() + findings.buildBlocked() +
             prepared.variantFilterGaps() + prepared.enumCategoryGaps() +
             prepared.supportedCharacterGaps() + prepared.fieldTypeBindingGaps() +
