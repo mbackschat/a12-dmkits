@@ -380,6 +380,14 @@ enum class CheckFamily {
     VALUE_IN_FIELDS_CONSTANT_KIND,
 
     /**
+     * What a value-list quantifier's field list may carry, and what may stand opposite it. One constant for
+     * the three classes because `CheckFeldListeUndWerteListenBedingungImpl.check` asks them in a fixed
+     * order over the same two lists, so which answers depends on where the walk stops rather than on a
+     * property a family could split by.
+     */
+    VALUE_LIST_QUANTIFIER_OPERAND_KIND,
+
+    /**
      * That every repetition an operand crosses unstarred is one the target's own coordinates address — or,
      * where it is not, that the two branches iterate JOINTLY on a shared index field. One constant for the
      * five classes of that walk because A12 asks them as one gate chain per level, and because which class
@@ -663,6 +671,7 @@ internal fun check(
         prepared.filteredEntityIterationFindings() +
         prepared.calculationOperatorArityFindings() +
         prepared.valueInFieldsConstantKindFindings() +
+        prepared.valueListQuantifierOperandKindFindings() +
         prepared.operandRepetitionScopeFindings() +
         prepared.dateConstructionSlotFindings() +
         prepared.hModelPathSuffixFindings() +
@@ -717,6 +726,7 @@ internal fun check(
             CheckFamily.REPETITION_NOT_UNIQUE_COMBINATION,
             CheckFamily.PARALLEL_ITERATION_UNIQUENESS, CheckFamily.FILTERED_ENTITY_ITERATION,
             CheckFamily.CALCULATION_OPERATOR_ARITY, CheckFamily.VALUE_IN_FIELDS_CONSTANT_KIND,
+            CheckFamily.VALUE_LIST_QUANTIFIER_OPERAND_KIND,
             CheckFamily.OPERAND_REPETITION_SCOPE, CheckFamily.DATE_CONSTRUCTION_SLOT,
             CheckFamily.H_MODEL_PATH_SUFFIX, CheckFamily.FIELD_OPERAND_KIND,
             CheckFamily.FILTERED_OPERAND_KIND, CheckFamily.CATEGORY_REFERENCE,

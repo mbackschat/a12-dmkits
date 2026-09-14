@@ -6,6 +6,7 @@ import io.github.mbackschat.a12.dm.consistency.syntax.Token
 import io.github.mbackschat.a12.dm.consistency.syntax.TokenKind
 import io.github.mbackschat.a12.dm.consistency.syntax.callsIn
 import io.github.mbackschat.a12.dm.consistency.syntax.referencesIn
+import io.github.mbackschat.a12.dm.consistency.syntax.splitAtIn
 import io.github.mbackschat.a12.dm.consistency.syntax.tokenize
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonObject
@@ -77,14 +78,6 @@ private const val TRUE_CONSTANT = "True"
 
 private const val FALSE_CONSTANT = "False"
 
-/**
- * The infix keyword between the constant and the entity list.
- *
- * One spelling serves both languages: the grammar's `inOp` admits `In`, `IN` and `in` and nothing else, so
- * unlike every operator name this one does not travel through the per-language keyword table.
- */
-private const val IN_KEYWORD = "In"
-
 /** How the model's own language spells the two boolean constants, absent where the table carries neither. */
 private data class ConstantSpellings(val yes: String?, val no: String?)
 
@@ -106,11 +99,10 @@ private fun PreparedModel.constantKindFinding(
     element: DeclaredElement,
     member: String,
 ): Finding? {
-    val head = call.operands.firstOrNull() ?: return null
-    val (constantText, firstEntity) = splitAtIn(head.text) ?: return null
+    val (constants, entities) = call.splitAtIn() ?: return null
+    val constantText = constants.singleOrNull() ?: return null
     val arm = armOf(constantText, spellings) ?: return null
-    val written = (listOf(firstEntity) + call.operands.drop(1).map { it.text })
-        .map { referencesIn(it, conditionLanguage).singleOrNull() ?: return null }
+    val written = entities.map { referencesIn(it, conditionLanguage).singleOrNull() ?: return null }
     val targets = written.map { reference ->
         val resolved = resolveEntity(declaringGroup, reference.replace("*", ""), element.origin)
         (resolved as? Reference.Resolved)?.path ?: return null
@@ -127,7 +119,7 @@ private fun PreparedModel.constantKindFinding(
             else -> return null
         }
     }
-    val offending = firstOffendingField(fields, arm, head.text) ?: return null
+    val offending = firstOffendingField(fields, arm, constantText) ?: return null
     return Finding(
         FindingCategory.A12_CONSTRAINT,
         FindingSeverity.ERROR,
@@ -152,7 +144,7 @@ private fun PreparedModel.constantKindFinding(
 private fun firstOffendingField(
     fields: List<DeclaredElement>,
     arm: ConstantArm,
-    operandText: String,
+    constantText: String,
 ): DeclaredElement? {
     fields.forEach { field ->
         val type = field.declaredFieldType() ?: return null
@@ -161,7 +153,7 @@ private fun firstOffendingField(
         }
         if (arm == ConstantArm.TEXT && type == "EnumerationType") {
             val domain = field.enumerationBody()?.declaredValues() ?: return null
-            if (stringConstantOf(operandText) !in domain) {
+            if (stringConstantOf(constantText) !in domain) {
                 return null
             }
             return@forEach
@@ -188,24 +180,6 @@ private fun PreparedModel.preEmptedBeforeTheSwitch(written: List<String>, target
         elements.firstOrNull { it.path == targets.first() }?.declaredKind == DeclaredKind.FIELD
     return repeated || nested || rootGroup || loneField
 }
-
-/** The text on each side of the call's infix `In`, or null when this reader cannot find one. */
-private fun splitAtIn(text: String): Pair<String, String>? {
-    var depth = 0
-    tokenize(text).forEach { token ->
-        when {
-            token.kind == TokenKind.PUNCTUATION && token.text in OPENING -> depth++
-            token.kind == TokenKind.PUNCTUATION && token.text in CLOSING -> depth--
-            depth == 0 && token.kind == TokenKind.NAME && token.text.equals(IN_KEYWORD, ignoreCase = true) ->
-                return text.substring(0, token.start) to text.substring(token.end)
-        }
-    }
-    return null
-}
-
-private val OPENING = setOf("(", "[", "{")
-
-private val CLOSING = setOf(")", "]", "}")
 
 /** Which arm of the switch this constant takes, or null for a shape none of the four covers. */
 private fun armOf(constantText: String, spellings: ConstantSpellings): ConstantArm? {
@@ -234,9 +208,8 @@ private fun numericArm(tokens: List<Token>): ConstantArm? {
     return if (digits.isNotEmpty() && decimal && tokens.size <= 3) ConstantArm.NUMBER else null
 }
 
-/** The string constant the operand's left side is, or null when it is anything else. */
-private fun stringConstantOf(operandText: String): String? {
-    val constantText = splitAtIn(operandText)?.first ?: return null
+/** The string constant this text is, or null when it is anything else. */
+private fun stringConstantOf(constantText: String): String? {
     val token = tokenize(constantText).singleOrNull()?.takeIf { it.kind == TokenKind.STRING } ?: return null
     return token.text.removeSurrounding("\"").replace("\"\"", "\"")
 }

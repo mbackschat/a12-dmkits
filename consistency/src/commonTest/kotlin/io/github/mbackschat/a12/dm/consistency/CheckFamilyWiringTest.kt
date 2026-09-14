@@ -172,6 +172,10 @@ class CheckFamilyWiringTest {
               "errorCondition":"FieldFilled(Price) And Sum(Pallets.*/PalletQty) > 0",
               "errorEntityRelPath":"../Price",
               "errorCode":"C29","errorMessage":[{"locale":"en_US","text":"x"}]}},
+            {"type":"Rule","id":"r45","name":"ValueListOverMixedKinds","Rule":{
+              "errorCondition":"FieldFilled(Price) And AtLeastOneFieldValueIncludedInValueList(Price, Amount In \"A\")",
+              "errorEntityRelPath":"../Price",
+              "errorCode":"C45","errorMessage":[{"locale":"en_US","text":"x"}]}},
             {"type":"Rule","id":"r44","name":"CountFalseOverText","Rule":{
               "errorCondition":"FieldFilled(Price) And NumberOfValueInFields(False In Price, Amount) > 0",
               "errorEntityRelPath":"../Price",
@@ -409,6 +413,10 @@ class CheckFamilyWiringTest {
         // fixture whose constant and whose field list disagree about kind.
         CheckFamily.VALUE_IN_FIELDS_CONSTANT_KIND to
             ("MVK_NO_TYPEYESNO" to "/Catalog/CountFalseOverText"),
+        // A text declaration and a number one in one quantifier's field list — the only call in this
+        // fixture that compares two lists whose entries are not declared alike.
+        CheckFamily.VALUE_LIST_QUANTIFIER_OPERAND_KIND to
+            ("MVK_VARYING_TYPES_NOT_ALLOWED" to "/Catalog/ValueListOverMixedKinds"),
         // A repeatable group read without a star into an error field the root holds: the target's own
         // coordinates cannot pick a repetition of `Crates`, and nothing about the operator is at fault —
         // which is what makes the row about the LEVEL rather than about the predicate reading it.

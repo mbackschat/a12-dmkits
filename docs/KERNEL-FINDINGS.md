@@ -7142,6 +7142,28 @@ Reported by the portable checker, which did not emit `MVK_SORT_FIELD_DUPLICATE` 
 
 *Locked by:* `rulekit.validate.laws.GroupOrderingMultipleDefectLawsTest`, mirrored by `consistency … GroupOrderingMultipleDefectTest`.
 
+## §8 supplement — a value-list quantifier asks its field list two questions in a fixed order, and the value list a third (source-verified + measured, 2026-09-14) <a id="kf380"></a>
+
+> Fold: not-foldable — a diagnostic-class law about operand typing, not an evaluation behaviour.
+
+`CheckFeldListeUndWerteListenBedingungImpl.check` walks the FIELD list twice before it ever looks at the values: first that every expanded field shares a base type, then that each is a text, enumeration or number declaration. Locked: `rulekit.validate.laws.ValueListQuantifierOperandKindLawsTest` (11 rows), mirrored by `consistency.ValueListQuantifierOperandKindTest`.
+
+| what fails | class |
+|---|---|
+| the expanded fields do not all share a base type | `MVK_VARYING_TYPES_NOT_ALLOWED` |
+| one of them is neither text, enumeration nor number | `MVK_ONLY_STRING_ENUM_NUMBER_ALLOWED` |
+| a LITERAL value list stands opposite a NUMBER field list | `MVK_INVALID_TYPES_FOR_COMPARISON` |
+
+**The order is what makes a grid necessary rather than a column.** Two Date declarations agree on base type and fail the second question; a Date beside a text one fails the first. Both measured, because a reading that keys on "the list carries a Date" would name whichever class it happened to meet.
+
+**The VALUE list is judged against the FIRST field's type, not against itself.** `matchBaseType` seeds the expected type from the field list and then walks the values, so an entity value list of another kind draws the same `MVK_VARYING_TYPES_NOT_ALLOWED` the field list would — measured, with an entity value list of the matching kind as the control.
+
+**A repeated entity pre-empts all three, and the duplicate walk spans BOTH lists**: a field named again among the values is `MVK_DUPLICATE_PARAM1` exactly as a field named twice among the fields is. Measured.
+
+**These shapes are unauthorable through the typed surface**, which is why they are `erased` in the ledger and still worth a checker: the typed quantifiers are kind-typed (`StringRef`, `EnumRef`, `GroupListRef` overloads), so a mixed-kind list cannot be built at all and the shapes reach a checker only as stored DM-JSON. The grid keeps one row on the typed path so the admitted control does not rest on hand-written text.
+
+**`AtLeastOneDateRangeOverlaps` shares the construct and skips this walk**, taking an arm of its own that asks about DateRange formats instead — the reason a family reporting these classes must exclude it by name rather than by operand shape.
+
 ## §9 supplement — `NumberOfValueInFields` is a switch on its CONSTANT: four arms, four classes, and two the checker cannot reach (source-verified + measured, 2026-09-14) <a id="kf379"></a>
 
 > Fold: not-foldable — a diagnostic-class law about one operator's operand typing, not an evaluation behaviour.

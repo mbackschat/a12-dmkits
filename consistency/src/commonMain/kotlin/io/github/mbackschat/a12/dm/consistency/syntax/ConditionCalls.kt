@@ -200,3 +200,40 @@ private fun List<Token>.asPath(keywords: Map<String, KeywordKind>): String? {
     }
     return if (names > 0) normalizedPath(this) else null
 }
+
+/**
+ * This call's operands split at its infix `In`, as authored text, or null when it carries none.
+ *
+ * Two operator families put an `In` between two comma-separated lists — `NumberOfValueInFields(<constant> In
+ * <entities>)` and the value-list quantifiers `…(<fields> In <values>)` — and the keyword sits INSIDE one
+ * operand, because only a comma splits operands. Neither [CallOperand.path] nor [CallOperand.literal]
+ * survives a multi-token run, so a law about either list has to re-read the text; doing it here keeps one
+ * scanner rather than one per family.
+ *
+ * The keyword needs no per-language lookup: the grammar's `inOp` admits `In`, `IN` and `in` and nothing
+ * else, so unlike an operator name it is the same in every rendering.
+ */
+fun ConditionCall.splitAtIn(): Pair<List<String>, List<String>>? {
+    val at = operands.indexOfFirst { infixInAt(it.text) != null }
+    if (at < 0) {
+        return null
+    }
+    val cut = infixInAt(operands[at].text) ?: return null
+    val left = operands.take(at).map { it.text } + operands[at].text.substring(0, cut.first).trim()
+    val right = listOf(operands[at].text.substring(cut.second).trim()) + operands.drop(at + 1).map { it.text }
+    return left.filter { it.isNotEmpty() } to right.filter { it.isNotEmpty() }
+}
+
+/** Where a top-level `In` starts and ends in one operand's text, or null when it carries none. */
+private fun infixInAt(text: String): Pair<Int, Int>? {
+    var depth = 0
+    tokenize(text).forEach { token ->
+        when {
+            token.kind == TokenKind.PUNCTUATION && token.text in OPENING_DELIMITERS -> depth++
+            token.kind == TokenKind.PUNCTUATION && token.text in CLOSING_DELIMITERS -> depth--
+            depth == 0 && token.kind == TokenKind.NAME && token.text.equals("In", ignoreCase = true) ->
+                return token.start to token.end
+        }
+    }
+    return null
+}

@@ -106,6 +106,24 @@ class BuilderCheckerDivergenceGuardTest {
             // fixed 2026-09-13 in the same change that measured the row. Neither refuses anything A12 admits.
             Map.entry("MVK_INTERNAL_ERROR", Disposition.SAME_LAW_SEPARATE_CARRIERS),
 
+            // Both enforce A12's base-kind law over carriers that cannot share a reader: `Dsl`'s entity-list
+            // quantifier walks typed operands and knows each one's kind from its handle, while the checker
+            // resolves a stored path to a declaration and reads its `fieldType`. The kit's own arm is the
+            // narrower of the two — it steps over a GROUP scope rather than re-implement the expansion —
+            // so neither refuses what A12 admits.
+            Map.entry("MVK_VARYING_TYPES_NOT_ALLOWED", Disposition.SAME_LAW_SEPARATE_CARRIERS),
+            Map.entry("MVK_ONLY_STRING_ENUM_NUMBER_ALLOWED", Disposition.SAME_LAW_SEPARATE_CARRIERS),
+
+            // `Dsl.checkedStringList` refuses an enum-kind repetition list in the literal-values overload
+            // and cites the code as what the kernel would otherwise answer; the deferral is the kit's, not
+            // A12's. The checker reports the law itself — a literal value list opposite a NUMBER field list
+            // — and says nothing about enum-kind lists, so it does not inherit the deferral.
+            Map.entry("MVK_INVALID_TYPES_FOR_COMPARISON", Disposition.STRICTER_IN_JAVA),
+
+            // Neither estate enforces it: the enricher names it as a rendering example and the checker names
+            // it in a KDoc listing the date-range quantifier's own arm, which it deliberately leaves alone.
+            Map.entry("MVK_NO_CONST", Disposition.PROSE_ONLY),
+
             // The naming side here is the CHECKER, which is the less usual way round. The typed aggregates
             // enforce the arity themselves (`CountAggregate`, `ListAggregate`, `FirstFilledValue`,
             // `DateListAggregate` all throw citing it); `ValueInFieldsConstantKind` only names it in a KDoc,
