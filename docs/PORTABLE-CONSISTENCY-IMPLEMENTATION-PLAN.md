@@ -739,6 +739,18 @@ One cold adversarial review over the frozen range, as [§2](#2-execution-order-a
 
 **The catalog half is deliberately not delivered, with its re-open trigger.** A2 ruled that `operators.json` ships as-is because it is already data; that remains right, and it is not yet USEFUL — no finding this checker produces names an operator id, so 293 KB would be packaged with nothing to join it against. It lands when a finding carries an operator.
 
+### C record — the slice written whole before it was measured (2026-09-14)
+
+**Frozen change: `CheckAnzahlWertOpImpl`'s string arm past its type walk.** [KF409](KERNEL-FINDINGS.md#kf409); one code drained — `MVK_NO_DATE_CONSTANT`, whose single caller in the estate this is — plus a further carrier for `MVK_INVALID_RAW_TYPE`. An EXTENSION of `VALUE_IN_FIELDS_CONSTANT_KIND` rather than a family: same kernel method, same switch, two more statements of the same arm. The count stays 88; the measured denominator now stands at **142 A12-reachable kernel codes, 124 reported**.
+
+**A ledger row named a construct the code does not have.** It read "date extraction takes fields/expressions, not string literals" — plausible, wrong, and it would have sent a reader to the extractors. One grep for the callers settled it. The general form is worth carrying: a `kernel-delegated` row's PROSE is an unmeasured claim, and the cheapest moment to check it is when the code is drained.
+
+**The accelerator went one step further and the step paid for itself.** The last four slices measured the grid first and then wrote the checker. Here the laws grid, the family change, the reader promotion and the mirror were all written from one source read, and ONE invocation measured all four — twenty-six kernel cells and twenty-six mirror cells, every one right. A wrong prediction would have cost two text edits and no extra build, which is strictly cheaper than the two builds the split order spends every time.
+
+**The near-misses are the measurement; the positives are almost free.** Seven spellings that look like dates are counted as text — wrong length, wrong shape, or a real pattern behind a non-lenient parse. A reader matching the shape alone would refuse all seven, and no positive row would have caught it.
+
+**Separating "no offender" from "cannot judge" was the whole implementation risk.** The type walk returned one `null` for both while the type class was all the family reported; adding two gates behind it makes the conflation a live defect, because a list A12 has already refused would draw a later gate's class. The walk now answers with three cases and the tail gates run only on the third.
+
 ### C record — the slice whose kind gate answers for eleven declarations (2026-09-14)
 
 **Frozen change: `CheckFeldOpMitDatumSpecialImpl.check`, `ValueAsDate`'s four-gate operand chain.** [KF408](KERNEL-FINDINGS.md#kf408); one code drained — `MVK_INVALID_DATE_TYPE_FOR_OP` — plus further carriers for `MVK_NO_GROUPS_ALLOWED`, `MVK_NO_WILDCARDS_ALLOWED` and `MVK_CATEGORY_NOT_ALLOWED`. New family `VALUE_AS_DATE_OPERAND`; the count goes 87 → 88. The measured denominator now stands at **142 A12-reachable kernel codes, 123 reported**.

@@ -53,9 +53,21 @@ import kotlinx.serialization.json.contentOrNull
  * are always equal and every mismatch is admitted, measured in the same grid. Reporting them would refuse a
  * model A12 accepts.
  *
- * **Silent on a string field declaring no value validation** (`MVK_INVALID_RAW_TYPE`, checked after the type
- * gate of the string arm) and on a `TypeDefType` or `UnspecifiedType` declaration, whose effective type this
- * reader does not resolve.
+ * **The string arm does not end at the type walk — two more gates follow it**, and both are reported here
+ * ([KERNEL-FINDINGS KF409], `rulekit.validate.laws.ValueInFieldsDateConstantLawsTest`): a listed field that
+ * waives value validation is `MVK_INVALID_RAW_TYPE`, and after that a literal A12 types as a DATE is
+ * `MVK_NO_DATE_CONSTANT`. The order is the kernel's own phases rather than a per-field interleaving — the
+ * type walk is the whole list's first pass, so it answers before either.
+ *
+ * **The last gate reads the CONSTANT and never the declarations it is counted against.** `CheckKonstanteImpl`
+ * types every quoted literal by calling `DateUtils.isStringAValidDate` on it, so an ordinary list of text
+ * fields is refused because of how the counted value happens to be spelled — and an enumeration that
+ * DECLARES the date-shaped token is refused too, its domain check having passed. The near-misses bound it:
+ * the typing switches on LENGTH first, so `"01.02"` is never tested, and `"32.01.2024"` matches its pattern
+ * and fails a non-lenient parse. Both stay strings and are counted.
+ *
+ * **Silent on a `TypeDefType` or `UnspecifiedType` declaration**, whose effective type this reader does not
+ * resolve.
  */
 fun PreparedModel.valueInFieldsConstantKindFindings(): List<Finding> {
     val keywords = CONDITION_OPERATOR_KEYWORDS[conditionLanguage] ?: return emptyList()
@@ -116,50 +128,108 @@ private fun PreparedModel.constantKindFinding(
             else -> return null
         }
     }
-    val offending = firstOffendingField(fields, arm, constantText) ?: return null
+    val defect = when (val verdict = typeWalkVerdict(fields, arm, constantText)) {
+        is ListVerdict.Offender -> ListDefect(
+            arm.code,
+            "counts `${constantText.trim()}`, and `${verdict.field.path}` is declared " +
+                "`${verdict.field.declaredFieldType()}` — that constant only counts " +
+                arm.admitted.joinToString { "`$it`" } +
+                " declarations; drop the field from the list, or count a constant of its own kind",
+        )
+        ListVerdict.Opaque -> return null
+        ListVerdict.Clean -> stringArmTailDefect(fields, arm, constantText) ?: return null
+    }
     return Finding(
         FindingCategory.A12_CONSTRAINT,
         FindingSeverity.ERROR,
-        arm.code,
-        "in `$member`: `$VALUE_IN_FIELDS` counts `${constantText.trim()}`, and `${offending.path}` is " +
-            "declared `${offending.declaredFieldType()}` — that constant only counts " +
-            arm.admitted.joinToString { "`$it`" } +
-            " declarations; drop the field from the list, or count a constant of its own kind",
+        defect.code,
+        "in `$member`: `$VALUE_IN_FIELDS` ${defect.detail}",
         element.path,
     )
 }
 
+private class ListDefect(val code: String, val detail: String)
+
+/** What the type walk found: a field this arm refuses, a class this family does not own, or neither. */
+private sealed interface ListVerdict {
+    data class Offender(val field: DeclaredElement) : ListVerdict
+
+    /** A12 answers with a class this family does not carry, so naming one of its own would be the wrong one. */
+    data object Opaque : ListVerdict
+
+    data object Clean : ListVerdict
+}
+
 /**
- * The first listed field the arm refuses, or null when none does — and null too wherever A12 would answer
- * with something other than this arm's class.
+ * The two gates the STRING arm runs once its type walk has cleared the whole list, in the kernel's order.
+ *
+ * Both are the string branch's alone — the boolean and number arms `return` before either — so an arm that
+ * is not [ConstantArm.TEXT] has nothing here to fail. The raw-type gate is asked of the expanded field list
+ * exactly as `checkIsValueValidation` asks it, and the date gate of the constant alone.
+ */
+private fun stringArmTailDefect(
+    fields: List<DeclaredElement>,
+    arm: ConstantArm,
+    constantText: String,
+): ListDefect? {
+    if (arm != ConstantArm.TEXT) {
+        return null
+    }
+    fields.firstOrNull { it.waivesValueValidation() }?.let { raw ->
+        return ListDefect(
+            "MVK_INVALID_RAW_TYPE",
+            "counts `${constantText.trim()}` over `${raw.path}`, which waives value validation — A12 holds " +
+                "its content unparsed and cannot compare it against a value",
+        )
+    }
+    val constant = stringConstantOf(constantText) ?: return null
+    if (!isAcceptedDateConstant(constant)) {
+        return null
+    }
+    return ListDefect(
+        "MVK_NO_DATE_CONSTANT",
+        "counts `\"$constant\"`, which A12 types as a DATE from its own spelling rather than as text — the " +
+            "operator counts a text, a number or a boolean, so respell the value (a leading zero more or a " +
+            "separator changed takes it out of the date shapes `dd.MM.`, `HH:mm:ss`, `dd.MM.yyyy` and " +
+            "`dd.MM.yyyy'T'HH:mm:ss`) or compare the fields against a date operand instead",
+    )
+}
+
+/**
+ * What A12's type walk over the list says: the first field this arm refuses, or why it may not be judged.
  *
  * The walk is the kernel's own: field by field in authored order, stopping at the first that fails. It stops
  * for a second reason as well — an Enumeration the string arm would refuse on MEMBERSHIP is A12's answer at
  * that position, so continuing past it would report a later field's type class where A12 reports the
  * membership one.
+ *
+ * [ListVerdict.Clean] is what licenses the two later gates, which is why the three answers had to be
+ * separated: "no offender" and "cannot judge" were one `null` while the type class was all this family
+ * reported, and reading the second as the first would name a later gate's class on a list A12 has already
+ * refused.
  */
-private fun firstOffendingField(
+private fun typeWalkVerdict(
     fields: List<DeclaredElement>,
     arm: ConstantArm,
     constantText: String,
-): DeclaredElement? {
+): ListVerdict {
     fields.forEach { field ->
-        val type = field.declaredFieldType() ?: return null
+        val type = field.declaredFieldType() ?: return ListVerdict.Opaque
         if (type in UNRESOLVED_TYPES) {
-            return null
+            return ListVerdict.Opaque
         }
         if (arm == ConstantArm.TEXT && type == "EnumerationType") {
-            val domain = field.enumerationBody()?.declaredEnumValues()?.toSet() ?: return null
+            val domain = field.enumerationBody()?.declaredEnumValues()?.toSet() ?: return ListVerdict.Opaque
             if (stringConstantOf(constantText) !in domain) {
-                return null
+                return ListVerdict.Opaque
             }
             return@forEach
         }
         if (type !in arm.admitted) {
-            return field
+            return ListVerdict.Offender(field)
         }
     }
-    return null
+    return ListVerdict.Clean
 }
 
 /**

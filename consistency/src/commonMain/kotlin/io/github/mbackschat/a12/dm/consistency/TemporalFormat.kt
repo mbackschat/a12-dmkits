@@ -108,3 +108,78 @@ internal fun declaresAPartialPrecision(field: DeclaredElement): Boolean {
     val body = declared["DateType"] as? JsonObject ?: return false
     return (body["datePrecision"] as? JsonPrimitive)?.contentOrNull in PARTIAL_PRECISIONS
 }
+
+/**
+ * Whether [constant] is one of the four shapes `DateUtils.isStringAValidDate` accepts.
+ *
+ * The LENGTH picks the pattern and the parse behind it is non-lenient, so both halves are reproduced: the
+ * shape must match and the value must exist in the calendar. A length the switch does not name is refused
+ * without any pattern being tried, which is why `01.02` — the year-less shape minus its trailing dot — is
+ * not read as a shorter date.
+ */
+internal fun isAcceptedDateConstant(constant: String): Boolean = when (constant.length) {
+    6 -> constant.matchesShape("dd.mm.") && constant.namesARealDay(day = 0, month = 3, year = null)
+    8 -> constant.matchesShape("hh:mm:ss") && constant.namesARealTime()
+    10 -> constant.matchesShape("dd.mm.yyyy") && constant.namesARealDay(day = 0, month = 3, year = 6)
+    19 -> constant.matchesShape("dd.mm.yyyyThh:mm:ss") &&
+        constant.namesARealDay(day = 0, month = 3, year = 6) && constant.substring(11).namesARealTime()
+    else -> false
+}
+
+/**
+ * Whether the string matches [shape], where a letter stands for the digit class the kernel's pattern uses
+ * at that position and every other character must appear verbatim.
+ *
+ * The kernel writes four `Pattern` constants; this is the same four written once, because they differ only
+ * in which positions are bounded — the hour's first digit is `[0-2]`, the minute's `[0-5]`, the second's
+ * `[0-6]` (leap seconds, per the kernel's own comment), the year's `[1-2]`, and the rest are `[0-9]`.
+ */
+private fun String.matchesShape(shape: String): Boolean {
+    if (length != shape.length) {
+        return false
+    }
+    return shape.withIndex().all { (at, expected) ->
+        val actual = this[at]
+        when (expected) {
+            'd', 'm', 's' -> actual.isDigit()
+            'y' -> if (at == shape.indexOf('y')) actual in '1'..'2' else actual.isDigit()
+            'h' -> if (at == shape.indexOf('h')) actual in '0'..'2' else actual.isDigit()
+            else -> actual == expected
+        }
+    }
+}
+
+/** Whether the day and month at those offsets name a day the calendar has, the year deciding February. */
+private fun String.namesARealDay(day: Int, month: Int, year: Int?): Boolean {
+    val d = substring(day, day + 2).toIntOrNull() ?: return false
+    val m = substring(month, month + 2).toIntOrNull() ?: return false
+    if (m !in 1..12 || d < 1) {
+        return false
+    }
+    val y = year?.let { substring(it, it + 4).toIntOrNull() ?: return false } ?: YEARLESS_DEFAULT_YEAR
+    return d <= daysIn(m, y)
+}
+
+/** Whether the `HH:mm:ss` at the start of this string names a time, on the kernel's own bounds. */
+private fun String.namesARealTime(): Boolean {
+    val h = substring(0, 2).toIntOrNull() ?: return false
+    val min = substring(3, 5).toIntOrNull() ?: return false
+    val s = substring(6, 8).toIntOrNull() ?: return false
+    return h <= 23 && min <= 59 && s <= 59
+}
+
+/**
+ * The year a year-less date constant is judged against.
+ *
+ * `SimpleDateFormat` with the pattern `dd.MM.` leaves the year at its epoch default of 1970, and the parse
+ * is non-lenient — so the year-less spelling is NOT year-agnostic and `29.02.` is refused, measured. Reading
+ * it as year-agnostic would admit a constant A12 rejects, which is under-reporting rather than the forbidden
+ * direction, but it would also have been wrong.
+ */
+private const val YEARLESS_DEFAULT_YEAR = 1970
+
+private fun daysIn(month: Int, year: Int): Int = when (month) {
+    1, 3, 5, 7, 8, 10, 12 -> 31
+    4, 6, 9, 11 -> 30
+    else -> if (year % 4 == 0 && (year % 100 != 0 || year % 400 == 0)) 29 else 28
+}

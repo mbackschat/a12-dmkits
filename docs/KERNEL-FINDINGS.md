@@ -7142,11 +7142,35 @@ Reported by the portable checker, which did not emit `MVK_SORT_FIELD_DUPLICATE` 
 
 *Locked by:* `rulekit.validate.laws.GroupOrderingMultipleDefectLawsTest`, mirrored by `consistency … GroupOrderingMultipleDefectTest`.
 
+## §9 supplement — the two gates `NumberOfValueInFields` runs after its string arm's type walk (source-verified + measured, 2026-09-14) <a id="kf409"></a>
+
+> Fold: not-foldable — a diagnostic-class law about an operator's operands, not an evaluation behaviour.
+
+[KF379](#kf379) locks `NumberOfValueInFields`'s switch on the constant: four arms, four type classes. The STRING arm does not end at its type walk — `CheckAnzahlWertOpImpl` runs the walk, then `checkAllAreValueValidation`, then `CheckOpUtils.checkNoDateConstant`, and the last of those is the estate's ONLY caller of `MVK_NO_DATE_CONSTANT`.
+
+**The last gate is about the CONSTANT and not about the fields.** `CheckKonstanteImpl` calls `DateUtils.isStringAValidDate` on every quoted literal and stores a DATE op-type where it matches, so an ordinary list of TEXT declarations is refused because of how the counted value happens to be spelled. An enumeration that DECLARES the date-shaped token is refused as well, its domain check having passed — which is the row that shows the gate never reads the list.
+
+| the same literal `"01.02.2024"`, counted over | verdict |
+|---|---|
+| two text declarations | `MVK_NO_DATE_CONSTANT` |
+| two DATE declarations | `MVK_NO_STRING_OR_ENUM` |
+| a text declaration and one waiving value validation | `MVK_INVALID_RAW_TYPE` |
+| enumerations that do not declare it | `MVK_INVALID_STRING_CONSTANT_FOR_ENUMERATION` |
+| enumerations that DO declare it | `MVK_NO_DATE_CONSTANT` |
+
+The type walk is the whole list's FIRST pass rather than a per-field interleaving, so it answers ahead of both later gates however the list is ordered. `Today` is a date constant by kind rather than by spelling and takes no arm of the switch at all: `MVK_INVALID_CONST`.
+
+**Which spellings count as a date is decided by LENGTH before any pattern is tried**, and the near-misses are what bound the gate. `"01.02."` (the trailing dot is part of it), `"10:30:00"`, `"01.02.2024"` and `"01.02.2024T10:30:00"` are typed as dates; `"01.02"`, `"0102"`, `"2024-01-02"` and `"01.02.2024 10:30:00"` are the wrong length or the wrong shape, and `"32.01.2024"`, `"29.02.2023"` and `"29.02."` match their pattern and fail the non-lenient parse behind it — the year-less parse leaves the year at the epoch default, so that spelling is not year-agnostic. All seven stay strings and are counted, so a reader matching only the shape would refuse seven constants A12 admits.
+
+Reported by the portable checker (`CheckFamily.VALUE_IN_FIELDS_CONSTANT_KIND`), which reuses the literal reader `CheckFamily.DATE_ARGUMENT_SLOT` already needed for `MVK_INVALID_DATE_STRING` — the same `isStringAValidDate`, asked by two constructs for opposite reasons.
+
+*Locked by:* `rulekit.validate.laws.ValueInFieldsDateConstantLawsTest`, mirrored by `consistency.ValueInFieldsDateConstantTest`.
+
 ## §6 supplement — what `ValueAsDate` demands of the field it resolves (source-verified + measured, 2026-09-14) <a id="kf408"></a>
 
 > Fold: not-foldable — a diagnostic-class law about an operator's operand, not an evaluation behaviour.
 
-`CheckFeldOpMitDatumSpecialImpl.check` runs four gates over one operand and each of them throws, so the classes form a chain rather than a set: a group draws `MVK_NO_GROUPS_ALLOWED`, a repetition star `MVK_NO_WILDCARDS_ALLOWED`, a category access `MVK_CATEGORY_NOT_ALLOWED`, and anything that is not a partially known date `MVK_INVALID_DATE_TYPE_FOR_OP`. Every pairing that can be written at all was measured, the star against the category included.
+`CheckFeldOpMitDatumSpecialImpl.check`, the checker for `ValueAsDate`, runs four gates over one operand and each of them throws, so the classes form a chain rather than a set: a group draws `MVK_NO_GROUPS_ALLOWED`, a repetition star `MVK_NO_WILDCARDS_ALLOWED`, a category access `MVK_CATEGORY_NOT_ALLOWED`, and anything that is not a partially known date `MVK_INVALID_DATE_TYPE_FOR_OP`. Every pairing that can be written at all was measured, the star against the category included.
 
 **The kind gate draws ONE class for eleven different declarations.** `FieldUtils.isDatePartialKnown` asks two questions — the declaration is an `IDateType`, and its `partlyKnownDate()` is not `BEKANNT` — and the operator has no second class to tell them apart:
 
