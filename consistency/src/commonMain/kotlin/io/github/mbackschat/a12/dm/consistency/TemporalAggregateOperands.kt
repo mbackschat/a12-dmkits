@@ -81,8 +81,6 @@ private data class OperandDefect(val code: String, val first: TemporalOperand?, 
 
 private data class TemporalOperand(val path: String, val format: String, val components: Set<Component>)
 
-private enum class Component { YEAR, MONTH, DAY, HOUR, MINUTE, SECOND }
-
 /**
  * The first operand whose components disagree with the leader's, in A12's own order.
  *
@@ -141,47 +139,11 @@ private fun PreparedModel.expandToFields(path: String): List<DeclaredElement>? {
         .takeIf { it.isNotEmpty() }
 }
 
-/**
- * The format this field declares as a temporal one, or null when it declares none.
- *
- * Four carriers declare a format A12 reads as a DATETIME operand type; `DateRangeType` deliberately is not
- * one of them, being its own operand base type that the numeric arm refuses ahead of this gate. Null is what
- * leaves the whole call unjudged, because it means the list is not the one A12 typed as temporal — a format
- * this reader does not recognise is a separate answer, handled where the comparison needs it.
- */
-private fun declaredTemporalFormatOf(field: DeclaredElement): String? {
-    val declared = field.body?.get("fieldType") as? JsonObject ?: return null
-    val type = (declared["type"] as? JsonPrimitive)?.contentOrNull ?: return null
-    val member = TEMPORAL_FORMAT_MEMBERS[type] ?: return null
-    val body = declared[type] as? JsonObject ?: return null
-    return (body[member] as? JsonPrimitive)?.takeIf { it.isString }?.content
-}
-
 private fun declaresAPartialPrecision(field: DeclaredElement): Boolean {
     val declared = field.body?.get("fieldType") as? JsonObject ?: return false
     val body = declared["DateType"] as? JsonObject ?: return false
     return (body["datePrecision"] as? JsonPrimitive)?.contentOrNull in PARTIAL_PRECISIONS
 }
-
-private val TEMPORAL_FORMAT_MEMBERS = mapOf(
-    "DateType" to "format",
-    "TimeType" to "format",
-    "DateTimeType" to "format",
-    "DateFragmentType" to "formatOfFragment",
-)
-
-/** A12's `DateFormat` reads its components by plain containment of these six letters, and so does this. */
-private val COMPONENT_LETTERS = listOf(
-    'y' to Component.YEAR,
-    'M' to Component.MONTH,
-    'd' to Component.DAY,
-    'H' to Component.HOUR,
-    'm' to Component.MINUTE,
-    's' to Component.SECOND,
-)
-
-private fun componentsOf(format: String): Set<Component> =
-    COMPONENT_LETTERS.filter { format.contains(it.first) }.mapTo(mutableSetOf()) { it.second }
 
 /**
  * A12's two predicates, both of them, in the order `checkOpTypesAreComparableDatetimeType` reads them.
@@ -201,12 +163,6 @@ private fun compatible(first: Set<Component>, other: Set<Component>, hasBaseYear
     }
     return supplemented(first, hasBaseYear) == supplemented(other, hasBaseYear)
 }
-
-private fun namesADate(components: Set<Component>): Boolean =
-    Component.YEAR in components || Component.MONTH in components || Component.DAY in components
-
-private fun supplemented(components: Set<Component>, hasBaseYear: Boolean): Set<Component> =
-    if (hasBaseYear) components + Component.YEAR else components
 
 private fun operandFinding(
     defect: OperandDefect,

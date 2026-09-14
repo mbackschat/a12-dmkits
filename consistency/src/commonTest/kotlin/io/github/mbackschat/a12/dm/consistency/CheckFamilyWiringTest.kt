@@ -175,6 +175,10 @@ class CheckFamilyWiringTest {
               "errorCondition":"FieldFilled(Price) And Sum(Pallets.*/PalletQty) > 0",
               "errorEntityRelPath":"../Price",
               "errorCode":"C29","errorMessage":[{"locale":"en_US","text":"x"}]}},
+            {"type":"Rule","id":"r51","name":"DateAgainstATextField","Rule":{
+              "errorCondition":"FieldFilled(Price) And [TravelDate] == [Price]",
+              "errorEntityRelPath":"../Price",
+              "errorCode":"C51","errorMessage":[{"locale":"en_US","text":"x"}]}},
             {"type":"Rule","id":"r50","name":"ScaleTwoAgainstAWholeField","Rule":{
               "errorCondition":"FieldFilled(Price) And [Amount] == [UnitCount]",
               "errorEntityRelPath":"../Price",
@@ -460,6 +464,10 @@ class CheckFamilyWiringTest {
         // cannot be satisfied by the rescaling waiver that admits a differing literal.
         CheckFamily.NUMBER_COMPARISON_SCALE to
             ("MVK_INVALID_COMPARE_DEC_PLACES" to "/Catalog/ScaleTwoAgainstAWholeField"),
+        // A date against a TEXT declaration — the date arm claiming a partner the text arm would otherwise
+        // own, so the row fails the moment the two arms' precedence is read the other way round.
+        CheckFamily.TEMPORAL_COMPARISON_AGREEMENT to
+            ("MVK_INVALID_COMPARE_TO_DATE" to "/Catalog/DateAgainstATextField"),
         // A repeatable group read without a star into an error field the root holds: the target's own
         // coordinates cannot pick a repetition of `Crates`, and nothing about the operator is at fault —
         // which is what makes the row about the LEVEL rather than about the predicate reading it.

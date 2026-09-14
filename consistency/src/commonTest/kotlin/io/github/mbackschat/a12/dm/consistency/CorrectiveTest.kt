@@ -45,6 +45,10 @@ class CorrectiveTest {
             {"type":"Group","id":"g2","name":"Store","Group":{"elements":[
               {"type":"Field","id":"f4","name":"Code","Field":{"fieldType":{"type":"StringType"}}}
             ]}},
+            {"type":"Field","id":"f18","name":"Amount","Field":{"fieldType":{"type":"NumberType",
+              "NumberType":{"maxFractionalDigits":2}}}},
+            {"type":"Field","id":"f19","name":"Tally","Field":{"fieldType":{"type":"NumberType",
+              "NumberType":{"maxFractionalDigits":0}}}},
             {"type":"Field","id":"f7","name":"Blob","Field":{"fieldType":{"type":"StringType",
               "StringType":{"noValueValidation":true,"lineBreaksPermitted":true}}}},
             {"type":"Group","id":"g3","name":"Shelves","Group":{"repeatability":9,"elements":[
@@ -61,6 +65,14 @@ class CorrectiveTest {
               {"type":"Field","id":"f16","name":"CrateRef","Field":{"fieldType":{"type":"StringType"}}},
               {"type":"Field","id":"f17","name":"ToteQty","Field":{"fieldType":{"type":"NumberType"}}}
             ]}},
+            {"type":"Rule","id":"r17","name":"DateAgainstAText","Rule":{
+              "errorCondition":"FieldFilled(Note) And [Season] == [Note]",
+              "errorEntityRelPath":"../Note",
+              "errorCode":"C17","errorMessage":[{"locale":"en_US","text":"x"}]}},
+            {"type":"Rule","id":"r16","name":"ScalesThatDisagree","Rule":{
+              "errorCondition":"FieldFilled(Note) And [Amount] == [Tally]",
+              "errorEntityRelPath":"../Note",
+              "errorCode":"C16","errorMessage":[{"locale":"en_US","text":"x"}]}},
             {"type":"Rule","id":"r15","name":"CountOverOneGroup","Rule":{
               "errorCondition":"FieldFilled(Note) And NumberOfFilledGroups(Warehouse) > 0",
               "errorEntityRelPath":"../Note",
@@ -151,11 +163,10 @@ class CorrectiveTest {
     fun everyProjectedEntryIsReachableExceptTheCodeTheCheckerOnlyComparesAgainst() {
         val reported = check(reachability).findings.map { it.code }.toSet()
         assertEquals(
-            setOf(SUPPRESSIBLE),
+            emptySet(),
             KERNEL_CORRECTIVES.keys - reported,
-            "the corrective table carries guidance no report can deliver. Either the code became " +
-                "unreachable — drop the family's emission or the entry — or a new comparison-only code " +
-                "joined SUPPRESSIBLE and belongs in this expectation with its reason",
+            "the corrective table carries guidance no report can deliver — drop the family's emission or " +
+                "the entry, or add a declaration above that draws the code",
         )
     }
 }

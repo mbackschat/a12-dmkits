@@ -106,7 +106,8 @@ class StringEnumComparisonAgreementTest {
         actual["a display-bearing enumeration against a textless one"] = comparison("[Tier] == [Channel]")
 
         val expected = mutableMapOf<String, List<String>>()
-        expected["a text declaration against a date"] = emptyList()
+        // Reported by the DATE arm, which claims every partner of another kind — this family stays silent.
+        expected["a text declaration against a date"] = listOf("MVK_INVALID_COMPARE_TO_DATE")
         expected["an enumeration against a boolean"] = listOf("MVK_INVALID_COMPARE_TO_YESNO")
         expected["a text declaration ordered against a number"] = listOf("MVK_INVALID_TYPE_FOR_COMPARISON")
         expected["two written-out values"] = listOf("MVK_INVALID_COMPARE_TO_CONST")

@@ -7142,6 +7142,27 @@ Reported by the portable checker, which did not emit `MVK_SORT_FIELD_DUPLICATE` 
 
 *Locked by:* `rulekit.validate.laws.GroupOrderingMultipleDefectLawsTest`, mirrored by `consistency … GroupOrderingMultipleDefectTest`.
 
+## §1 supplement — the DATE arm compares three format QUESTIONS, not formats, and claims every partner of another kind (source-verified + measured, 2026-09-14) <a id="kf386"></a>
+
+> Fold: not-foldable — a diagnostic-class law about comparison operands, not an evaluation behaviour.
+
+`CheckVergleichsBedingungImpl.checkDateType` and `checkDateRangeType` run back to back, ahead of the text, enumeration and number arms. Locked: `rulekit.validate.laws.TemporalComparisonAgreementLawsTest` (23 rows), mirrored by `consistency.TemporalComparisonAgreementTest`.
+
+| the question | class |
+|---|---|
+| is a date's partner a date, agreeing about year, calendar-ness and — under equality — clock-ness? | `MVK_INVALID_COMPARE_TO_DATE` |
+| is a date range's partner a date range of the same components? | `MVK_INVALID_COMPARE_TO_DATE_RANGE` |
+
+**The date arm never compares the format STRINGS, only three questions about their components.** `dd.MM.yyyy` against `yyyy-MM` is ADMITTED though the precisions differ, because both carry a year and both carry a calendar component — A12's own comment calls this the weaker condition and wonders whether it is intended. The clock question is asked of `==` / `!=` alone: a date against a date-and-time is refused under equality and admitted under ordering, measured in both as the control that attributes the refusal to the operator.
+
+**A date's partner of ANOTHER KIND lands on the date arm**, whichever arm would otherwise own it — a number, a text and a date range each draw `MVK_INVALID_COMPARE_TO_DATE` rather than that partner's own class, measured in both operand orders. A DATE FRAGMENT is a date carrier here too: matching components admitted, differing ones refused.
+
+**The date-range arm demands EXACT component agreement and ignores both the format string and the separator.** Two ranges spelled `dd.MM.yyyy`/`-` and `yyyy-MM-dd`/`/` are ADMITTED; `dd.MM.yyyy` against `MM` is refused. A12 passes `false` for the base year in this arm alone, where the date arm supplements.
+
+**The range arm's own ORDERING refusal is UNREACHABLE.** A date range is not orderable, so `MVK_INVALID_TYPE_FOR_COMPARISON` answers first ([KF382](#kf382)) — measured, not read: the branch is written and cannot fire.
+
+**And the walk is reached by six operators only.** The tolerance arm RETURNS once it has refused, so a date inside a tolerance comparison draws `MVK_INVALID_TYPE_FOR_TOLERANCE_OP` and nothing else; under ORDERING the walk is reached only once both sides clear the orderability gate, which is why a date ordered against a number is `MVK_INVALID_COMPARE_TO_DATE` and a date ordered against a text is `MVK_INVALID_TYPE_FOR_COMPARISON`. The tolerance row was found by a co-firing checker family rather than by reading, and is the reason the operator set is stated rather than assumed.
+
 ## §11 supplement — equality between two numbers compares DECLARED SCALES, and only a written-out one may be rescaled (source-verified + measured, 2026-09-14) <a id="kf385"></a>
 
 > Fold: not-foldable — a diagnostic-class law about comparison operands, not an evaluation behaviour.
