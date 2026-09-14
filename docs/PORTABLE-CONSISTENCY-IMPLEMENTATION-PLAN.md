@@ -737,6 +737,18 @@ One cold adversarial review over the frozen range, as [§2](#2-execution-order-a
 
 **The catalog half is deliberately not delivered, with its re-open trigger.** A2 ruled that `operators.json` ships as-is because it is already data; that remains right, and it is not yet USEFUL — no finding this checker produces names an operator id, so 293 KB would be packaged with nothing to join it against. It lands when a finding carries an operator.
 
+### C record — second pass on the standing queue, and the unit that actually pays is the CONSTRUCT (2026-09-14)
+
+**The queue's second item is `IterationLawsTest`, and greping its eight codes first — the method correction the queue's own record carries — said not to convert it.** Every one is already discussed elsewhere, several of them heavily; a grid over that file would mostly restate. What the grep also showed is why: the codes TRAVEL, so a file's assertions are a poor index of a law's coverage.
+
+**Re-aiming the same pass at a CONSTRUCT instead of a file paid immediately.** `RepetitionNotUnique`'s eleven classes were measured one containment assertion at a time across four files, and reading A12's own `CheckWiederholungBedingungImpl` gives the whole chain in source order. Sixteen rows later: the complete key-list order, the complete scope order, that every key gate reports ahead of every scope gate, and that the `@From` and no-`@From` branches are EXCLUSIVE rather than ordered ([KF355](KERNEL-FINDINGS.md#kf355)). Two of the eleven — `MVK_CATEGORY_NOT_ALLOWED` and `MVK_NOT_IN_RULEGROUP` — had no measurement anywhere in this estate.
+
+**One carrier fact cost a build and generalizes a narrower record.** No placement row was reachable at all until the two repeatable groups were INDEX-KEYED together: otherwise the rule reads a repetition its error field does not sit in, and [KF350](KERNEL-FINDINGS.md#kf350)'s iteration gate answers on every row at once. [KF349](KERNEL-FINDINGS.md#kf349) had recorded that requirement as a property of `MVK_NOT_IN_GROUP`; it belongs to the carrier, and three further classes need it too.
+
+**It also settled a policy question that had been implicit across seven families.** A key-list defect pre-empts `REPETITION_SCOPE_GROUP`'s class in A12, so does the checker stay silent there? No — the scope's defect survives fixing the key, so it is independently real and reporting it is the accumulation this checker exists for. The line is the one the combination family already draws: stay silent only where the second defect exists ONLY because of the first. That distinction is now stated in both families' mirrors rather than inferred from their behaviour.
+
+**Queue method, refined: rank by construct, not by file.** Take one construct, find the single kernel method that guards it, transcribe the chain, then grep the estate per code to drop rows already answered. The file ranking still says WHERE containment assertions cluster, which is a hint about which constructs are under-measured — not a work list.
+
 ### C record — the family residue, classified: what is left is the per-operator gap plus four dead codes (measured 2026-09-14)
 
 **The residue was re-derived after the seventh family and then CLASSIFIED, which is the step the earlier passes skipped.** Every `MVK_*` the ledger calls `kernel-delegated` minus every code the checker reports leaves 99; scoring each by mentions in a laws test and in KERNEL-FINDINGS leaves 32 with at most one. Of those, **8 already carry a disposition in their own ledger row** — dormant, unreachable, or no firing site in 30.8.1 — which an evidence count cannot see, so the ranking sends a reader at them repeatedly. Two were chased this way before the rows were read.
