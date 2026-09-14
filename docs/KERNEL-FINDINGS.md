@@ -7138,6 +7138,33 @@ Reported by the portable checker, which did not emit `MVK_SORT_FIELD_DUPLICATE` 
 
 *Locked by:* `rulekit.validate.laws.GroupOrderingMultipleDefectLawsTest`, mirrored by `consistency … GroupOrderingMultipleDefectTest`.
 
+## §9 supplement — the SEMANTIC INDEX's nine classes, in the order they answer, and the two that are never reported (measured, 2026-09-14) <a id="kf351"></a>
+
+> Fold: not-foldable — a diagnostic-class selection law, not an evaluation behaviour.
+
+**`[Field For key]` carries nine rejection classes and they form one chain, so which one answers is a fact about ORDER rather than about any single gate.** Five of them had no measurement anywhere in this estate before this grid, and every ledger row describing them was written from the code's NAME. Two of those readings were wrong, in the direction that hands an author a fix for a gate they did not trip.
+
+| the index is malformed by | A12 reports |
+|---|---|
+| a key naming a NON-REPEATABLE group | `MVK_SEMANTIC_INDEX_NO_FIELD` |
+| a key carrying a wildcard | `MVK_SEMANTIC_INDEX_WITH_WILDCARD` |
+| a key carrying its own semantic index | `MVK_SEMANTIC_INDEX_WITH_SEMANTIC_INDEX` |
+| a key whose type does not match the index field's | `MVK_INDEX_TYPE_INCONSISTENT` |
+| a key field declared without value validation | **`MVK_INVALID_RAW_TYPE`** — not `MVK_SEMANTIC_INDEX_REF_OP` |
+| a key carrying a CATEGORY projection, types otherwise matching | `MVK_SEMANTIC_INDEX_WITH_CATEGORY` |
+| an indexed group declaring no index field | `MVK_NO_INDEX_FIELD` |
+| an empty literal key | `MVK_INDEX_VALUE_INVALID` |
+
+**`MVK_SEMANTIC_INDEX_REF_OP` is never a verdict — it is the operation NAME interpolated into someone else's message.** The value-validation gate is A12's shared `checkIsValueValidation`, which takes the caller's label as a parameter and raises `MVK_INVALID_RAW_TYPE`; the semantic-index caller passes its own code's bare text as that label. A ledger row reading "a semantic index's referenced field must have value validation enabled" therefore names a real law under a code no model can ever draw.
+
+**An ITERATING key pre-empts the whole chain, and A12 renames the class instead of adding one.** A key that reads a repeatable group unstarred — the group itself, or a field inside one — draws `MVK_SEMANTIC_INDEX_INVALID_ITER`, and the discriminator is that the SAME condition with the same read outside any index draws `MVK_NO_WILDCARD`. It is one gate with two spellings: A12's `checkIterationAndErrorField` asks `isSemanticIndex(errorCtx)` and picks the class from the answer, which is also why `MVK_SEMANTIC_INDEX_CONTAINED_IN_INDEX` ([KF205](#kf205)) needs the rule anchored so the iteration is legal before it can be reached at all.
+
+**The three wildcard classes are one law read at three positions, and only a grid separates them.** Where the star sits relative to the indexed group chooses the class outright: at the indexed group's own level `MVK_SEMANTIC_INDEX_AND_WILDCARD`, at any level above it `MVK_SEMANTIC_INDEX_BELOW_WILDCARD`, inside the key `MVK_SEMANTIC_INDEX_WITH_WILDCARD`. `MVK_SEMANTIC_INDEX_BELOW_WILDCARD` had never been drawn here, and a first enumeration concluded it had no raiser at all — a `grep --include` whose globs the shell ate, returning the confident zero this record warns about. It is live, from a second site (`CheckEntityUtils.checkIndicesForA12Model`) rather than from the index checker.
+
+**The key-kind gate reports ahead of every gate below it**, measured on two shapes that violate it and a later one at once: a group key in a group declaring no index field, and a group key whose indexed path is starred. Both draw `MVK_SEMANTIC_INDEX_NO_FIELD`.
+
+Locked: `validate.laws.SemanticIndexStructureLawsTest`.
+
 ## §9 supplement — an UNSTARRED repetition read decides the class a flat error target draws, and referencedness does not enter it (measured, 2026-09-14) <a id="kf350"></a>
 
 > Fold: not-foldable — a diagnostic-class selection law, not an evaluation behaviour.
