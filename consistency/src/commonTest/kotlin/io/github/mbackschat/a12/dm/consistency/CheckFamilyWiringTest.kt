@@ -172,6 +172,10 @@ class CheckFamilyWiringTest {
               "errorCondition":"FieldFilled(Price) And Sum(Pallets.*/PalletQty) > 0",
               "errorEntityRelPath":"../Price",
               "errorCode":"C29","errorMessage":[{"locale":"en_US","text":"x"}]}},
+            {"type":"Computation","id":"c44","name":"CompoundFee","Computation":{
+              "computedFieldRelPath":"../Amount",
+              "computationAlternatives":[{"operation":"RoundDown([Amount] / 2 / 4, 2)"}],
+              "errorMessage":[{"locale":"en_US","text":"x"}]}},
             {"type":"Rule","id":"r43","name":"FilterUnderAParallelBranch","Rule":{
               "errorCondition":"FieldFilled(Crates/CrateRef) And Sum(Totes/Labels*/LabelQty Having [Totes/Labels/LabelNote] == \"x\") > 0",
               "errorEntityRelPath":"../Crates/CrateRef",
@@ -393,6 +397,10 @@ class CheckFamilyWiringTest {
         CheckFamily.FILTERED_ENTITY_ITERATION to
             ("MVK_PARALLEL_ITERATION_FOR_FILTERED_ENTITY_NOT_ALLOWED" to
                 "/Catalog/FilterUnderAParallelBranch"),
+        // Two divisions in one multiplicative chain, with nothing between them to restart the count — the
+        // only arithmetic in this fixture that carries a second operator of the same kind.
+        CheckFamily.CALCULATION_OPERATOR_ARITY to
+            ("MVK_TOO_MANY_DIV_FOR_CALC" to "/Catalog/CompoundFee"),
         // A repeatable group read without a star into an error field the root holds: the target's own
         // coordinates cannot pick a repetition of `Crates`, and nothing about the operator is at fault —
         // which is what makes the row about the LEVEL rather than about the predicate reading it.

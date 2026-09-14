@@ -365,6 +365,13 @@ enum class CheckFamily {
     FILTERED_ENTITY_ITERATION,
 
     /**
+     * How many divisions and powers one arithmetic expression may carry, and what an exponent has to be.
+     * One constant for the three classes because `CheckOperationImpl.check` asks them of one construct —
+     * an operation context — and which of them answers is decided by the text rather than by their order.
+     */
+    CALCULATION_OPERATOR_ARITY,
+
+    /**
      * That every repetition an operand crosses unstarred is one the target's own coordinates address — or,
      * where it is not, that the two branches iterate JOINTLY on a shared index field. One constant for the
      * five classes of that walk because A12 asks them as one gate chain per level, and because which class
@@ -646,6 +653,7 @@ internal fun check(
         prepared.repetitionNotUniqueCombinationFindings() +
         prepared.parallelIterationUniquenessFindings() +
         prepared.filteredEntityIterationFindings() +
+        prepared.calculationOperatorArityFindings() +
         prepared.operandRepetitionScopeFindings() +
         prepared.dateConstructionSlotFindings() +
         prepared.hModelPathSuffixFindings() +
@@ -699,6 +707,7 @@ internal fun check(
             CheckFamily.SEMANTIC_INDEX_KEY,
             CheckFamily.REPETITION_NOT_UNIQUE_COMBINATION,
             CheckFamily.PARALLEL_ITERATION_UNIQUENESS, CheckFamily.FILTERED_ENTITY_ITERATION,
+            CheckFamily.CALCULATION_OPERATOR_ARITY,
             CheckFamily.OPERAND_REPETITION_SCOPE, CheckFamily.DATE_CONSTRUCTION_SLOT,
             CheckFamily.H_MODEL_PATH_SUFFIX, CheckFamily.FIELD_OPERAND_KIND,
             CheckFamily.FILTERED_OPERAND_KIND, CheckFamily.CATEGORY_REFERENCE,

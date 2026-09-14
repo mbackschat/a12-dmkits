@@ -7142,6 +7142,38 @@ Reported by the portable checker, which did not emit `MVK_SORT_FIELD_DUPLICATE` 
 
 *Locked by:* `rulekit.validate.laws.GroupOrderingMultipleDefectLawsTest`, mirrored by `consistency … GroupOrderingMultipleDefectTest`.
 
+## §11 supplement — an arithmetic expression's arity gates, and why the verdict follows the TEXT rather than the gate order (source-verified + measured, 2026-09-14) <a id="kf378"></a>
+
+> Fold: not-foldable — a diagnostic-class law about operation shape, not an evaluation behaviour.
+
+`CheckOperationImpl.check` runs three gates over every operation context, in this source order: the type walk (which carries the exponent's own demand), then at most ONE division per multiplicative chain, then no power directly under a power. None of the refused shapes is authorable through the typed builders — `DslRenderer` braces a left power child and a left division under division — so all of them reach a checker only as stored DM-JSON.
+
+| the expression | verdict |
+|---|---|
+| `RoundDown([BaseFee] * 2, 2)` — the control | admitted |
+| `[BaseFee] ^ 2` | admitted |
+| `[BaseFee] ^ 2.5` | `MVK_INVALID_NUMBER_FOR_EXP` |
+| `[BaseFee] ^ [BaseFee]`, the field declaring scale 2 | `MVK_INVALID_NUMBER_FOR_EXP` |
+| `[BaseFee] ^ 2 ^ 2` | `MVK_TOO_MANY_POW_FOR_CALC` |
+| `{[BaseFee] ^ 2} ^ 2` | admitted |
+| `[BaseFee] ^ 2 ^ 2.5` | `MVK_INVALID_NUMBER_FOR_EXP` |
+| `[BaseFee] / 2 / 4` | `MVK_TOO_MANY_DIV_FOR_CALC` |
+| `[BaseFee] / 2 + [BaseFee] / 4` | admitted |
+| `[BaseFee] / {[BaseFee] / 4}` | admitted |
+| `[BaseFee] / 2 * 4` | admitted |
+
+**The verdict follows the TEXT, not the source order of the gates.** An expression violating both arity gates draws whichever violation is written first — `[BaseFee] ^ 2 ^ 2 + [BaseFee] / 2 / 4` reports the power class and the same pair with the divisions first reports the division class. `check` runs per operation CONTEXT as the expression is parsed, so the gate order inside one call decides nothing between two subexpressions. One text order alone reads as "the power gate wins", which is why both were measured.
+
+**Inside ONE context the order does hold**: the type walk runs first, so `[BaseFee] ^ 2 ^ 2.5` reports the exponent's own defect rather than the nesting it also has.
+
+**The exponent is judged by its DECLARED scale**, not by the values it could take, so a field an author will only ever fill with whole numbers is refused. Source-read and NOT measured: `checkNoFractionalDigitsInExponent` refuses a null scale as well as a positive one, so a number field declaring no `maxFractionalDigits` should be refused too — the estate's fixtures cannot author one, and the portable checker stays silent there rather than acting on the reading.
+
+**The brace rule is a compatibility decision, not a semantic one**, and the kernel says so in its own comment: the nested division `a / {b / c}` *could* be recognised as two divisions and is admitted because the previous parser admitted it. Reading the class names alone would predict the opposite.
+
+**Measuring any of this needs the scale gate held constant.** A power or a division leaves the operation's scale undeterminable, and `MVK_INVALID_COMPARE_DEC_PLACES` then answers every row — so each row wraps its operation in `RoundDown(…, 2)` into a scale-2 target. Without that the grid measures the computed field's declaration instead of the operator's arity.
+
+*Locked by:* `rulekit.validate.laws.CalculationOperatorArityLawsTest`; mirrored by `consistency … CalculationOperatorArityTest`.
+
 ## §9 supplement — one error class, three throw sites, two phases: `MVK_SEMANTIC_INDEX_NOT_ALLOWED` is decided in the filter walk, never by the gate that names it (source-verified + measured, 2026-09-14) <a id="kf377"></a>
 
 > Fold: not-foldable — a diagnostic-class phase law, not an evaluation behaviour.
