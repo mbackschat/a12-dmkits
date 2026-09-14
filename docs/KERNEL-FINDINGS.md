@@ -7142,6 +7142,35 @@ Reported by the portable checker, which did not emit `MVK_SORT_FIELD_DUPLICATE` 
 
 *Locked by:* `rulekit.validate.laws.GroupOrderingMultipleDefectLawsTest`, mirrored by `consistency … GroupOrderingMultipleDefectTest`.
 
+## §9 supplement — an entity list's DUPLICATE and ROOT-GROUP gates are the CALLER's, not the list's (source-verified + measured, 2026-09-14) <a id="kf388"></a>
+
+> Fold: not-foldable — a diagnostic-class law about which gate answers an entity list, not an evaluation behaviour.
+
+`CheckEntityListenUtils.getRefList` refuses a repeated entity while it BUILDS the reference list, and its callers then ask a root-group gate — or do not. Both are shared utilities, so the operator never decides the LAW; it decides only whether the law is asked. That makes the caller table the thing to measure, and the grid therefore moves the operator and holds the list fixed. [KF325](#kf325) and [KF326](#kf326) measured this on the GROUP-LIST carrier; this widens it onto the field and value lists their own boundaries named as out of scope.
+
+| the list | class | on which carriers |
+|---|---|---|
+| an unstarred entity named twice | `MVK_DUPLICATE_PARAM1` | all 28 that build a list |
+| an entity under another of the same list | `MVK_DUPLICATE_PARAM2` | all 28 |
+| a lone ROOT group | `MVK_ROOT_GROUP_REFERENCED` | 22 |
+| …a root group beside another parameter | `MVK_ROOT_GROUP_WITH_OTHER_PARAMETERS` | `NumberOfFilledGroups` alone |
+| a lone root group, under `NumberOfFilledGroups` | `MVK_PARAMSIZE_INVALIDGN` | its own arity gate answers |
+| a lone root group, under `GroupFilled`/`GroupNotFilled`/`AtLeastOneGroupFilled`/`NoGroupFilled` | ADMITTED | they ask no such gate |
+
+**Duplicates precede everything.** Measured on lists that break two laws at once: `(/Order, /Order)` is the duplicate class rather than the root-group one, and `(Quantity, Quantity, Quantity)` under a one-entity operator is the duplicate class rather than the arity one — because `getRefList` asks while it builds, and every other gate is asked of the list it returns.
+
+**The ROOT GROUP beside any other entity of its own model is a NESTED DUPLICATE, never a root-group reference.** Every entity of a model is under its root group, so `(/Order, Shipping)` satisfies `isEntityIndirectlyReferenced` and the earlier gate answers — on all 28 carriers. The consequence is that `MVK_ROOT_GROUP_WITH_OTHER_PARAMETERS` looks dead from any one-root fixture, and it is not: a model with a SECOND root group is the only shape on which a list can hold a root group beside something not under it, and there `NumberOfFilledGroups(/Order, /Payment)` draws it while `AllGroupsFilled(/Order, /Payment)` and `AllFieldsFilled(/Order, /Payment)` draw the plain class. The class was measured rather than declared unreachable, which is the row a one-root grid could not have produced.
+
+**A STARRED read is exempt from the direct test and not from the nested one.** `checkDuplicatesInDirectRefs` skips a reference carrying a wildcard on an A12 model — two starred reads of one repetition are two different rows rather than one entity twice — so `(Lines*/Amount, Lines*/Amount)` reaches each operator's own gate instead, which is how the exemption is visible: `MVK_PARAMSIZE_INVALID1` on the one-entity operators, `MVK_INCOMPLETE_INPUT` on the aggregates, ADMITTED on the field quantifiers. `checkDuplicatesInIndirectRefs` skips nothing.
+
+**Two mechanisms behind the split, both read from source and each confirmed by its measured row.** `GroupFilled`/`GroupNotFilled` take the `KONTEXT_ANGEGEBEN` arm of `CheckKontextListenBedingungImpl`, which asks only `checkOnlyGroups`; the `ALLE_KONTEXTE_ANGEGEBEN` arm beside it does ask the gate, which is why operators whose names suggest the same family split. And `NumberOfFilledGroups` asks `checkNoRootGroupWhenMoreThanOneParameter` rather than `checkNotRootGroupReferenced`, which is a different method with a different class.
+
+**The one caller that asks no root-group gate and still asks both duplicate gates** is `RepetitionNotUnique`: `CheckWiederholungBedingungImpl` calls `getRefList` and goes straight to its own key-list gates, so `RepetitionNotUnique(Shipping, Shipping/Carrier)` is `MVK_DUPLICATE_PARAM2` — ahead of the `MVK_NO_GROUPS_ALLOWED` that a lone group draws there ([KF355](#kf355)), which is what fixes the order between the two sets.
+
+Reported by the portable checker (`CheckFamily.ENTITY_LIST_PRE_GATES`) on the carriers the group-list families do not own.
+
+*Locked by:* `rulekit.validate.laws.EntityListPreGateLawsTest`, mirrored by `consistency.EntityListPreGatesTest`.
+
 ## §1 supplement — the PATTERN arm's first question is about SHAPE, and its four classes are strictly ordered (source-verified + measured, 2026-09-14) <a id="kf387"></a>
 
 > Fold: not-foldable — a diagnostic-class law about comparison operands, not an evaluation behaviour.

@@ -395,6 +395,14 @@ enum class CheckFamily {
     ENTITY_LIST_ARITY,
 
     /**
+     * The duplicate and root-group gates an entity list meets before its operator asks anything of its own.
+     * One constant for the four classes because they are the same two shared utilities in every caller —
+     * what varies is only WHICH caller asks the root-group one, which is a property of the table rather
+     * than of a family a reader could split by.
+     */
+    ENTITY_LIST_PRE_GATES,
+
+    /**
      * What each comparison OPERATOR demands of the two sides it joins. One constant for the three classes
      * because `CheckVergleichsBedingungImpl.check` asks them in a fixed order ahead of every agreement
      * gate, so which answers depends on where that walk stops.
@@ -726,6 +734,7 @@ internal fun check(
         prepared.valueInFieldsConstantKindFindings() +
         prepared.valueListQuantifierOperandKindFindings() +
         prepared.entityListArityFindings() +
+        prepared.entityListPreGateFindings() +
         prepared.comparisonOperatorOperandFindings() +
         prepared.booleanComparisonAgreementFindings() +
         prepared.stringEnumComparisonAgreementFindings() +
@@ -787,6 +796,7 @@ internal fun check(
             CheckFamily.PARALLEL_ITERATION_UNIQUENESS, CheckFamily.FILTERED_ENTITY_ITERATION,
             CheckFamily.CALCULATION_OPERATOR_ARITY, CheckFamily.VALUE_IN_FIELDS_CONSTANT_KIND,
             CheckFamily.VALUE_LIST_QUANTIFIER_OPERAND_KIND, CheckFamily.ENTITY_LIST_ARITY,
+            CheckFamily.ENTITY_LIST_PRE_GATES,
             CheckFamily.COMPARISON_OPERATOR_OPERANDS, CheckFamily.BOOLEAN_COMPARISON_AGREEMENT,
             CheckFamily.STRING_ENUM_COMPARISON_AGREEMENT, CheckFamily.NUMBER_COMPARISON_SCALE,
             CheckFamily.TEMPORAL_COMPARISON_AGREEMENT, CheckFamily.PATTERN_COMPARISON_OPERANDS,

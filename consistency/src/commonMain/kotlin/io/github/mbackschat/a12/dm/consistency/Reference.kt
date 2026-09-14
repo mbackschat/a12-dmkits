@@ -322,24 +322,49 @@ internal fun PreparedModel.bareReferenceField(
     declaringGroup: String,
     element: DeclaredElement,
 ): DeclaredElement? {
-    val tokens = tokenize(text)
-    val outsideASpec = tokens.any {
-        it.kind !in REFERENCE_TOKENS || (it.kind == TokenKind.PUNCTUATION && it.text !in SPEC_PUNCTUATION)
-    }
-    if (tokens.isEmpty() || outsideASpec) {
+    if (!isBareEntitySpec(text)) {
         return null
     }
     val reference = referencesIn(text, conditionLanguage).singleOrNull() ?: return null
+    val target = addressedTargetOf(reference, declaringGroup, element) ?: return null
+    return elements.firstOrNull { it.path == target && it.declaredKind == DeclaredKind.FIELD }
+}
+
+/**
+ * Whether every token of [text] belongs to ONE entity spec, so a reader may reduce it to a reference.
+ *
+ * The test is deliberately over the TOKENS rather than "it names exactly one entity": the latter reduces
+ * `{[Qty] + 1}` to the `Qty` in it, and a family that then typed the operand from that field would make a
+ * claim about a result A12 computes from the whole expression. It is also what keeps a clause — a filter, a
+ * scope, a semantic-index key, a category arrow — out of a reader that cannot compare one.
+ */
+internal fun isBareEntitySpec(text: String): Boolean {
+    val tokens = tokenize(text)
+    return tokens.isNotEmpty() && tokens.none {
+        it.kind !in REFERENCE_TOKENS || (it.kind == TokenKind.PUNCTUATION && it.text !in SPEC_PUNCTUATION)
+    }
+}
+
+/**
+ * The model path [reference] names, or null when nothing resolves it or it crosses an unaddressed repetition.
+ *
+ * A repetition that neither the reference's own star nor the declaring group's iteration addresses is
+ * `MVK_NO_WILDCARD` or `MVK_WILDCARDS_REQUIRED` from the reference reader before any later gate is asked, so
+ * a family that judged such an operand would name its own class on a model A12 refuses for something else —
+ * the defect the corpus mutation found in the arity gates ([KERNEL-FINDINGS KF381]).
+ */
+internal fun PreparedModel.addressedTargetOf(
+    reference: String,
+    declaringGroup: String,
+    element: DeclaredElement,
+): String? {
     val target = (resolveEntity(declaringGroup, reference.replace("*", ""), element.origin)
         as? Reference.Resolved)?.path ?: return null
     val starred = starredLevelsOf(reference, declaringGroup, element) ?: return null
     val unaddressed = iteratedLevels(target).any {
         it !in starred && !(declaringGroup == it || declaringGroup.startsWith("$it/"))
     }
-    if (unaddressed) {
-        return null
-    }
-    return elements.firstOrNull { it.path == target && it.declaredKind == DeclaredKind.FIELD }
+    return if (unaddressed) null else target
 }
 
 /** Whether [tokens] spell one written-out number. */

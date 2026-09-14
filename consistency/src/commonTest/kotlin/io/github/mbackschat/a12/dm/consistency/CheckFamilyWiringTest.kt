@@ -199,6 +199,10 @@ class CheckFamilyWiringTest {
               "errorCondition":"FieldFilled(Price) And [Price] < [Reference]",
               "errorEntityRelPath":"../Price",
               "errorCode":"C47","errorMessage":[{"locale":"en_US","text":"x"}]}},
+            {"type":"Rule","id":"r48","name":"FieldListOverAGroupAndItsField","Rule":{
+              "errorCondition":"FieldFilled(Price) And AllFieldsFilled(Shelf, Shelf/ShelfCode)",
+              "errorEntityRelPath":"../Price",
+              "errorCode":"C48","errorMessage":[{"locale":"en_US","text":"x"}]}},
             {"type":"Rule","id":"r46","name":"AllFieldsOverOneField","Rule":{
               "errorCondition":"FieldFilled(Price) And AllFieldsFilled(Amount)",
               "errorEntityRelPath":"../Price",
@@ -452,6 +456,10 @@ class CheckFamilyWiringTest {
         // shorter than the operator's own arity gate accepts.
         CheckFamily.ENTITY_LIST_ARITY to
             ("MVK_PARAMSIZE_INVALIDN" to "/Catalog/AllFieldsOverOneField"),
+        // A FIELD list naming a group and a field inside it — the nested-duplicate half, on a carrier the
+        // group-list family does not own, so the row fails if this family is narrowed back to group lists.
+        CheckFamily.ENTITY_LIST_PRE_GATES to
+            ("MVK_DUPLICATE_PARAM2" to "/Catalog/FieldListOverAGroupAndItsField"),
         // Two text declarations under an ordering operator — the one comparison in this fixture whose
         // operator demands more of its sides than they are.
         CheckFamily.COMPARISON_OPERATOR_OPERANDS to

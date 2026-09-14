@@ -102,10 +102,7 @@ private fun PreparedModel.constantKindFinding(
     val constantText = constants.singleOrNull() ?: return null
     val arm = armOf(constantText, spellings) ?: return null
     val written = entities.map { referencesIn(it, conditionLanguage).singleOrNull() ?: return null }
-    val targets = written.map { reference ->
-        val resolved = resolveEntity(declaringGroup, reference.replace("*", ""), element.origin)
-        (resolved as? Reference.Resolved)?.path ?: return null
-    }
+    val targets = written.map { addressedTargetOf(it, declaringGroup, element) ?: return null }
     if (preEmptedBeforeTheSwitch(written, targets)) {
         return null
     }
@@ -167,17 +164,13 @@ private fun firstOffendingField(
 /**
  * Whether one of the three gates ahead of the constant switch answers this list instead.
  *
- * A reference carrying a wildcard is exempt from the duplicate test, as A12's own `checkDuplicatesInDirectRefs`
- * skips it: two starred reads of one list are two different rows rather than the same entity twice.
+ * Two of them are the shared pre-gates every entity list meets ([entityListPreGateAnswers]); the third is
+ * this operator's own arity gate, which takes more than one field or one group.
  */
 private fun PreparedModel.preEmptedBeforeTheSwitch(written: List<String>, targets: List<String>): Boolean {
-    val keyed = written.indices.filterNot { '*' in written[it] }.map { targets[it] }
-    val repeated = keyed.size != keyed.distinct().size
-    val nested = targets.any { inner -> targets.any { outer -> inner.startsWith("$outer/") } }
-    val rootGroup = targets.any { it.count { character -> character == '/' } == 1 }
     val loneField = targets.size == 1 && '*' !in written.first() &&
         elements.firstOrNull { it.path == targets.first() }?.declaredKind == DeclaredKind.FIELD
-    return repeated || nested || rootGroup || loneField
+    return entityListPreGateAnswers(written, targets) || loneField
 }
 
 /** Which arm of the switch this constant takes, or null for a shape none of the four covers. */

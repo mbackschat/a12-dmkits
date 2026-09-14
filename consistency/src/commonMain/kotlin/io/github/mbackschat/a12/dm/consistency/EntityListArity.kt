@@ -50,7 +50,8 @@ import io.github.mbackschat.a12.dm.consistency.syntax.splitAtIn
  * **Silent wherever a gate ahead of the arity one answers**: a repeated entity is `MVK_DUPLICATE_PARAM1`, a
  * root group `MVK_ROOT_GROUP_REFERENCED`, a category selector `MVK_CATEGORY_NOT_ALLOWED`, and an entity no
  * reader can resolve `MVK_INVALID_ENTITY` — all of them built or checked while the reference list is, before
- * any operator's own switch is reached.
+ * any operator's own switch is reached. The first two are [entityListPreGateFindings]', which is why the
+ * shared reader this family yields to is that family's; they are a silence here, not in the report.
  */
 fun PreparedModel.entityListArityFindings(): List<Finding> {
     val keywords = CONDITION_OPERATOR_KEYWORDS[conditionLanguage] ?: return emptyList()
@@ -123,24 +124,9 @@ private fun PreparedModel.arityFinding(
     // it; every other carrier here lists its entities as the call's own operands.
     val texts = call.splitAtIn()?.second ?: call.operands.map { it.base ?: it.text }
     val written = texts.map { referencesIn(it, conditionLanguage).singleOrNull() ?: return null }
-    val targets = written.map { reference ->
-        val resolved = resolveEntity(declaringGroup, reference.replace("*", ""), element.origin)
-        (resolved as? Reference.Resolved)?.path ?: return null
-    }
-    if (targets.size != targets.distinct().size || targets.any { it.count { c -> c == '/' } == 1 }) {
+    val targets = written.map { addressedTargetOf(it, declaringGroup, element) ?: return null }
+    if (entityListPreGateAnswers(written, targets)) {
         return null
-    }
-    // A reference that crosses a repeatable level neither its own star nor the declaring group addresses is
-    // refused while the reference list is BUILT — `MVK_NO_WILDCARD` or `MVK_WILDCARDS_REQUIRED`, depending
-    // on where the error field sits — so the operator's own arity gate is never reached. Measured by the
-    // corpus mutation that removes a star from an aggregate operand.
-    written.forEachIndexed { at, reference ->
-        val starred = starredLevelsOf(reference, declaringGroup, element) ?: return null
-        val unaddressed = iteratedLevels(targets[at])
-            .any { it !in starred && !(declaringGroup == it || declaringGroup.startsWith("$it/")) }
-        if (unaddressed) {
-            return null
-        }
     }
     val kinds = targets.map { target -> elements.firstOrNull { it.path == target }?.declaredKind }
     // Three of the six operators run a KIND gate before their arity one, so a list of the wrong kind is

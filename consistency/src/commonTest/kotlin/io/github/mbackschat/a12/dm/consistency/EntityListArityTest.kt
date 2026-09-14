@@ -50,6 +50,10 @@ class EntityListArityTest {
         actual["GroupFilled over one group"] = subject("GroupFilled(Packing)")
         actual["GroupFilled over two groups"] = subject("GroupFilled(Packing, Handover)")
         actual["SumOfProducts over two fields"] = subject("SumOfProducts(Lines*/Amount, Lines*/Amount) > 0")
+        // The same starred read twice is exempt from A12's duplicate gate, so the arity gate is what
+        // answers — the row that fails if this family pre-empts on a starred pair as it once did.
+        actual["FieldFilled over the same starred read twice"] =
+            subject("FieldFilled(Lines*/Amount, Lines*/Amount)")
         actual["SumOfProducts over one field"] = subject("SumOfProducts(Lines*/Amount) > 0")
         actual["SumOfProducts over two GROUPS"] = subject("SumOfProducts(Packing, Handover) > 0")
 
@@ -59,6 +63,7 @@ class EntityListArityTest {
         expected["GroupFilled over one group"] = emptyList()
         expected["GroupFilled over two groups"] = listOf("MVK_PARAMSIZE_INVALID1")
         expected["SumOfProducts over two fields"] = emptyList()
+        expected["FieldFilled over the same starred read twice"] = listOf("MVK_PARAMSIZE_INVALID1")
         expected["SumOfProducts over one field"] = listOf("MVK_PARAMSIZE_INVALID_2")
         // The kind gate answers first, so this family stays silent even though the count is also wrong —
         // and nothing else reports `MVK_NO_GROUPS_ALLOWED` on this carrier either, so the row records a
@@ -109,7 +114,13 @@ class EntityListArityTest {
         assertEquals(expected, actual, "the gate that refuses a lone entity of any kind")
     }
 
-    /** The shapes it leaves alone because a gate ahead of the arity one answers them. */
+    /**
+     * The shapes it leaves alone because a gate ahead of the arity one answers them.
+     *
+     * Both rows read the WHOLE checker, so a code here is whichever family owns that earlier gate — which is
+     * what makes the row meaningful: the arity class staying away is the claim, and the earlier class
+     * arriving is the evidence that the shape is genuinely pre-empted rather than merely unread.
+     */
     @Test
     fun theShapesItDeliberatelyDoesNotReport() {
         val actual = mutableMapOf<String, List<String>>()
@@ -118,7 +129,7 @@ class EntityListArityTest {
         actual["an entity no reader can resolve"] = subject("AllFieldsFilled(Missing)")
 
         val expected = mutableMapOf<String, List<String>>()
-        expected["a repeated entity under an exactly-one operator"] = emptyList()
+        expected["a repeated entity under an exactly-one operator"] = listOf("MVK_DUPLICATE_PARAM1")
         expected["an entity no reader can resolve"] = listOf("MVK_INVALID_ENTITY")
         assertEquals(expected, actual, "the shapes it deliberately does not report")
     }
