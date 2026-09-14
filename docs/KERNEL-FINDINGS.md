@@ -7142,6 +7142,27 @@ Reported by the portable checker, which did not emit `MVK_SORT_FIELD_DUPLICATE` 
 
 *Locked by:* `rulekit.validate.laws.GroupOrderingMultipleDefectLawsTest`, mirrored by `consistency … GroupOrderingMultipleDefectTest`.
 
+## §8 supplement — an ELEMENT's display label owes no locale at all (measured, 2026-09-14) <a id="kf406"></a>
+
+> Fold: not-foldable — a model-declaration law, not an evaluation behaviour.
+
+[KF321](#kf321) measured the enumeration VALUE label's law: once any value answers a DECLARED locale, every value owes a non-blank text for every declared locale, while labels written solely for an undeclared locale are admitted. A field's and a group's label sit in the same `label` array one level up, and it is tempting to read that law as theirs. It is not.
+
+| the element declares | verdict |
+|---|---|
+| a FIELD with no label — the control | ADMITTED |
+| a FIELD label for the declared locale | ADMITTED |
+| a FIELD label for an UNDECLARED locale only | ADMITTED |
+| (bilingual) a FIELD label for only ONE declared locale | ADMITTED |
+| a GROUP label for an UNDECLARED locale only | ADMITTED |
+| (bilingual) a GROUP label for only ONE declared locale | ADMITTED |
+
+**So the law belongs to the enumeration's values and to nothing beside them.** The value law is about the values AGREEING with one another — `MVK_COUNT_OF_VALUES_INVALID` when they disagree about carrying a label at all — and an element has no sibling to disagree with, which is why the analogy has no mechanism behind it.
+
+Our own draft carried that analogy as a refusal until this measurement ([API-FINDINGS AF149](API-FINDINGS.md#af149)); it is removed, and the writer now emits exactly the locales an author supplied.
+
+*Locked by:* `rulekit.validate.laws.ElementLabelLocaleLawsTest`, with the kit's side in `modelkit.ElementLabelLocaleTest`.
+
 ## §7 supplement — what the two SUBSTRING operators demand of the field they cut (source-verified + measured, 2026-09-14) <a id="kf405"></a>
 
 > Fold: not-foldable — a diagnostic-class law about one construct's operands, not an evaluation behaviour.

@@ -226,7 +226,7 @@ public final class DocumentModelDraft {
         ObjectNode body = node.putObject(ElementType.GROUP.wireName());
         body.put(DmKeys.REPEATABILITY, group.repeatability());
         // the display label (ILabeled) lives in the Group body, like a field's — verified against real models
-        writeLabel(body, group.meta().labels(), locales, "group '" + group.name() + "'");
+        writeLocalizedLabels(body, group.meta().labels(), locales);
         if (group.usageType() != null) {
             // the kernel group-template marker (attachment / multi-select), FEATURE-GAPS
             body.put("usageType", group.usageType());
@@ -316,7 +316,7 @@ public final class DocumentModelDraft {
         if (mode != null) {
             body.putObject(DmKeys.REQUIREDNESS_CONFIG).put("mode", mode);
         }
-        writeLabel(body, meta.labels(), locales, "field '" + field.name() + "'");
+        writeLocalizedLabels(body, meta.labels(), locales);
         // global / transient flags + helperText live inside the Field body (kernel FieldSerializer)
         if (meta.global()) {
             body.put("global", true);
@@ -329,24 +329,30 @@ public final class DocumentModelDraft {
     }
 
     /**
-     * Write a per-locale display {@code label} into an element body (a field's or a group's — both are the
-     * kernel's {@code ILabeled}). A label, once present, must cover <b>every</b> declared locale (the same rule
-     * as enum labels). That is a SPEC error (the caller supplied incomplete labels), not an internal invariant —
-     * {@link IllegalArgumentException}, so every CLI write path (add/modify/apply/batch) reports it as a clean
-     * "invalid spec" rejection instead of letting it escape as {@code RK_INTERNAL_ERROR} (02-crash).
+     * Emit a per-locale display {@code label} into an element body (a field's or a group's — both are the
+     * kernel's {@code ILabeled}) for every locale the author supplied, declared ones first.
+     *
+     * <p>A label here owes NO locale coverage: the kernel accepts a field or group label that answers only one
+     * of two declared locales, and one written solely for an undeclared locale
+     * ({@code rulekit.validate.laws.ElementLabelLocaleLawsTest}). This writer refused both until 2026-09-14,
+     * by analogy with the enum-VALUE law — a real law about a different member — so the refusal made a model
+     * the kernel takes both unauthorable and, since the draft is also the read model, unreadable.
+     *
+     * <p>Ordering declared locales first keeps a fully-answered element's bytes identical to what this writer
+     * produced before it learned to carry the rest; the remainder follows in the order they were added.
      */
-    private static void writeLabel(ObjectNode body, Map<String, String> labels, List<String> locales,
-            String elementDesc) {
+    private static void writeLocalizedLabels(ObjectNode body, Map<String, String> labels, List<String> locales) {
         if (labels.isEmpty()) {
             return;
         }
-        for (String loc : locales) {
-            if (!labels.containsKey(loc)) {
-                throw new IllegalArgumentException(elementDesc + " label is missing declared locale '" + loc + "'");
-            }
-        }
         ArrayNode label = body.putArray(DmKeys.LABEL);
-        locales.forEach(loc -> label.addObject().put(DmKeys.LOCALE, loc).put(DmKeys.TEXT, labels.get(loc)));
+        locales.stream().filter(labels::containsKey)
+                .forEach(loc -> label.addObject().put(DmKeys.LOCALE, loc).put(DmKeys.TEXT, labels.get(loc)));
+        labels.forEach((loc, text) -> {
+            if (!locales.contains(loc)) {
+                label.addObject().put(DmKeys.LOCALE, loc).put(DmKeys.TEXT, text);
+            }
+        });
     }
 
     /** Emit an optional per-locale text slot as {@code key: [{locale, text}]} (omitted when empty). */
@@ -516,10 +522,14 @@ public final class DocumentModelDraft {
             case FieldTypeSpec.ConfirmSpec c -> storedValues(fieldType, "ConfirmType",
                     c.customTrueValue(), c.customFalseValue());
             case FieldTypeSpec.EnumSpec e -> {
-                boolean labelled = e.values().stream().anyMatch(v -> !v.labels().isEmpty());
+                // The enum-VALUE label law is armed by an entry for a DECLARED locale, not by any entry at
+                // all: labels written solely for an undeclared locale are accepted (KERNEL-FINDINGS KF321),
+                // so reading `anyMatch(labels not empty)` as the trigger refused a model the kernel takes.
+                boolean labelled = e.values().stream()
+                        .anyMatch(v -> locales.stream().anyMatch(v.labels()::containsKey));
                 if (labelled) {
-                    // all-or-nothing: once any value is labelled, every value needs a label for every
-                    // declared locale, else MVK_COUNT_OF_VALUES_INVALID. Fail fast with a clear message.
+                    // Once armed it is all-or-nothing: every value needs a label for every declared locale,
+                    // else MVK_COUNT_OF_VALUES_INVALID. Fail fast with a clear message.
                     for (FieldTypeSpec.EnumValue v : e.values()) {
                         for (String loc : locales) {
                             if (!v.labels().containsKey(loc)) {
@@ -538,10 +548,7 @@ public final class DocumentModelDraft {
                 for (FieldTypeSpec.EnumValue v : e.values()) {
                     ObjectNode valueNode = values.addObject();
                     valueNode.put(DmKeys.VALUE, v.value());
-                    if (!v.labels().isEmpty()) {
-                        ArrayNode labels = valueNode.putArray(DmKeys.LABEL);
-                        locales.forEach(loc -> labels.addObject().put(DmKeys.LOCALE, loc).put(DmKeys.TEXT, v.labels().get(loc)));
-                    }
+                    writeLocalizedLabels(valueNode, v.labels(), locales);
                 }
                 if (!e.categories().isEmpty()) {
                     ArrayNode categories = enumeration.putArray("categories");

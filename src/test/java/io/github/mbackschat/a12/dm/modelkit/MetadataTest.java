@@ -1,6 +1,5 @@
 package io.github.mbackschat.a12.dm.modelkit;
 
-import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.StringReader;
@@ -50,14 +49,5 @@ class MetadataTest {
         assertTrue(json.contains("\"value\" : \"fuzzy\""), json);
         // group annotation
         assertTrue(json.contains("\"name\" : \"ui_section\""), json);
-    }
-
-    @Test
-    void aLabelMustCoverEveryDeclaredLocale() {
-        // a partial label (one of two declared locales) is rejected fail-fast as a SPEC error
-        // (IllegalArgumentException) — so the CLI reports a clean "invalid field spec", not RK_INTERNAL_ERROR
-        assertThrows(IllegalArgumentException.class, () -> DocumentModelDraft.named("m").locale("en_US").locale("de_DE")
-                .rootGroup("G", g -> g.stringField("F", s -> s.label("en_US", "only english")))
-                .build().toJson());
     }
 }
