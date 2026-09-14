@@ -6,6 +6,7 @@ import io.github.mbackschat.a12.dm.consistency.syntax.callsIn
 import io.github.mbackschat.a12.dm.consistency.syntax.namesKeyword
 import io.github.mbackschat.a12.dm.consistency.syntax.namesRuleContext
 import io.github.mbackschat.a12.dm.consistency.syntax.referencesIn
+import io.github.mbackschat.a12.dm.consistency.syntax.semanticIndexUsesIn
 
 /**
  * Which repeatable levels a `Having` filter's BODY may name, and the one it must.
@@ -16,15 +17,30 @@ import io.github.mbackschat.a12.dm.consistency.syntax.referencesIn
  * ([KERNEL-FINDINGS KF374], `rulekit.validate.laws.HavingFilterIterationGateLawsTest`,
  * `…HavingFilterGrammarAndScopeLawsTest`).
  *
- * | the level a filter reference rides | class |
+ * | what the level carries | class |
  * |---|---|
- * | one the FILTERED entity does not sit under | `MVK_INVALID_ITERATION_IN_FILTER_CONDITION` |
- * | none of them is a level the operand's star reopens | `MVK_NO_ITERATION_FOR_WILDCARD` |
+ * | iteration of a level the FILTERED entity does not sit under | `MVK_INVALID_ITERATION_IN_FILTER_CONDITION` |
+ * | a SEMANTIC INDEX | `MVK_SEMANTIC_INDEX_NOT_ALLOWED` |
+ * | no level is one the operand's star reopens | `MVK_NO_ITERATION_FOR_WILDCARD` |
  *
- * **The first gate yields to nothing and the second yields to any conjunct**, which is what makes the
+ * **The first two gates yield to nothing and the third yields to any conjunct**, which is what makes the
  * distinction load-bearing rather than cosmetic: the scope gate is an OCCURRENCE check over the whole body,
  * so one in-scope reference anywhere clears it, while an out-of-path level is refused however much else the
  * filter names — the enclosing rule's own iteration of that level included.
+ *
+ * **The index gate is REFERENCE-positional against the iteration gate, and is measured in both text orders**
+ * ([KERNEL-FINDINGS KF377], `rulekit.validate.laws.SemanticIndexInFilterLawsTest`): an index replaces
+ * ITERATION at the level it addresses, so a reference carrying one is never asked the scope question, and
+ * whichever of the two references the body writes first is the one A12 answers about. That is also why the
+ * class belongs to this walk rather than to the semantic-index families: `ParserService.checkNormalRule`
+ * carries a `MVK_SEMANTIC_INDEX_NOT_ALLOWED` branch of its own and never reaches it, the filter walk having
+ * thrown during the parse — measured against the whole-rule gate that would otherwise have answered.
+ *
+ * **A filter whose index has an ENTITY key is left alone entirely**, which is an under-report and a
+ * deliberate one: A12 answers those from the index's own spec gates, which run while the spec is parsed and
+ * so ahead of this walk, and their order among themselves inside a filter is measured on two shapes that
+ * disagree with the order [semanticIndexKeyFindings] applies outside one. Judging such a body here would
+ * name a third class beside a pair that is already one too many.
  *
  * **A level is "ridden" by ending at it as much as by passing through it.** `CurrentRepetition(Legs)`
  * resolves to the group itself and carries the same iteration marker a field beneath `Legs` does, so a walk
@@ -45,7 +61,10 @@ fun PreparedModel.filterBodyIterationFindings(): List<Finding> {
     val keywords = CONDITION_OPERATOR_KEYWORDS[conditionLanguage] ?: return emptyList()
     val filterKeyword = keywords[HAVING] ?: return emptyList()
     val callable = keywords.values.toSet()
-    val clauseKeywords = setOfNotNull(keywords[HAVING], keywords[FROM], keywords[SEMANTIC_INDEX])
+    // A nested filter or a scope in the body is a shape with no measured cell; a semantic index no longer
+    // is one — it has its own branch of the same walk.
+    val clauseKeywords = setOfNotNull(keywords[HAVING], keywords[FROM])
+    val indexKeyword = keywords[SEMANTIC_INDEX]
     return elements.mapNotNull { element ->
         val body = element.body ?: return@mapNotNull null
         val group = element.path.substringBeforeLast('/', missingDelimiterValue = "")
@@ -53,7 +72,8 @@ fun PreparedModel.filterBodyIterationFindings(): List<Finding> {
             callsIn(text, conditionLanguage, syntaxEntryOf(member))
                 .flatMap { it.operands }
                 .firstNotNullOfOrNull { operand ->
-                    filterDefectOf(operand, filterKeyword, clauseKeywords, callable, group, element)
+                    filterDefectOf(operand, filterKeyword, indexKeyword, clauseKeywords, callable,
+                        group, element)
                         ?.let { filterFinding(it, element, member) }
                 }
         }
@@ -77,6 +97,7 @@ private data class FilterDefect(val code: String, val wrote: String, val level: 
 private fun PreparedModel.filterDefectOf(
     operand: CallOperand,
     filterKeyword: String,
+    indexKeyword: String?,
     clauseKeywords: Set<String>,
     callable: Set<String>,
     group: String,
@@ -102,6 +123,16 @@ private fun PreparedModel.filterDefectOf(
     if (iteratedLevels(filtered).any { it !in starred && !(group == it || group.startsWith("$it/")) }) {
         return null
     }
+    val uses = indexKeyword
+        ?.let { semanticIndexUsesIn(filter.text, conditionLanguage, it) }
+        .orEmpty()
+    // An ENTITY key leaves the whole operand unjudged. A12 answers such a body from the index's own spec
+    // gates, which run while the spec is parsed and so ahead of this walk — measured on two shapes, one
+    // answered by the key-kind gate and one by the filter branch, neither by anything this walk asks.
+    if (uses.any { it.keyLiteral == null || it.keyCategory != null || it.nested }) {
+        return null
+    }
+    val indexed = uses.mapNotNullTo(mutableSetOf()) { it.valuePath }
     var boundSeen = false
     referencesIn(filter.text, conditionLanguage)
         .filterNot { it in callable }
@@ -111,6 +142,12 @@ private fun PreparedModel.filterDefectOf(
             }
             val resolved = (resolveEntity(group, reference, element.origin) as? Reference.Resolved)
                 ?.path ?: return null
+            // The index replaces ITERATION at the level it addresses, so this reference is never asked the
+            // scope question — and the walk reads references in authored order, which is what decides
+            // between the two classes when the body carries one of each.
+            if (reference in indexed) {
+                return FilterDefect(INDEX_NOT_ALLOWED, reference, null)
+            }
             iteratedLevels(resolved).forEach { level ->
                 if (!(filtered == level || filtered.startsWith("$level/"))) {
                     return FilterDefect(INVALID_ITERATION, reference, level)
@@ -127,12 +164,18 @@ private const val INVALID_ITERATION = "MVK_INVALID_ITERATION_IN_FILTER_CONDITION
 
 private const val NO_ITERATION = "MVK_NO_ITERATION_FOR_WILDCARD"
 
+private const val INDEX_NOT_ALLOWED = "MVK_SEMANTIC_INDEX_NOT_ALLOWED"
+
 private fun filterFinding(defect: FilterDefect, element: DeclaredElement, member: String): Finding = Finding(
     FindingCategory.A12_CONSTRAINT,
     FindingSeverity.ERROR,
     defect.code,
-    when (defect.level) {
-        null ->
+    when {
+        defect.code == INDEX_NOT_ALLOWED ->
+            "in `$member`: the filter reads `${defect.wrote}` through a semantic index, which picks ONE " +
+                "repetition where the filter decides whether the current one belongs — drop the index and " +
+                "read the field the filter is about, or move the comparison out of the filter"
+        defect.level == null ->
             "in `$member`: the filter on `${defect.wrote}` names no level that the operand's own star " +
                 "reopens, so nothing in it is about the repetition being filtered — reference a field or " +
                 "group inside a starred level, or drop the filter"

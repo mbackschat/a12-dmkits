@@ -7142,6 +7142,33 @@ Reported by the portable checker, which did not emit `MVK_SORT_FIELD_DUPLICATE` 
 
 *Locked by:* `rulekit.validate.laws.GroupOrderingMultipleDefectLawsTest`, mirrored by `consistency … GroupOrderingMultipleDefectTest`.
 
+## §9 supplement — one error class, three throw sites, two phases: `MVK_SEMANTIC_INDEX_NOT_ALLOWED` is decided in the filter walk, never by the gate that names it (source-verified + measured, 2026-09-14) <a id="kf377"></a>
+
+> Fold: not-foldable — a diagnostic-class phase law, not an evaluation behaviour.
+
+`ParserService.checkNormalRule` collects every filter condition and refuses one that uses a semantic index. Reading that branch alone puts the class in the post-parse phase ([KF375](#kf375)) — and every shape measured for it is decided two layers earlier, by `CheckEntitySpecImpl.checkIndicesInFilterCondition`, whose per-level walk throws the SAME class the moment a filter reference's level carries `SEMANTIC_INDEX`. A third site, `CheckEntityUtils.checkNoSemanticIndex`, serves the operand slots that forbid the notation.
+
+**The control that separates the phases** (insurance model, `Coverages` and `Endorsements` keyed alike): a filtered operand riding a parallel-iterated level draws `MVK_PARALLEL_ITERATION_FOR_FILTERED_ENTITY_NOT_ALLOWED` — a whole-rule gate checked two branches BEFORE the semantic-index one. Put an index in that same filter and the verdict becomes `MVK_SEMANTIC_INDEX_NOT_ALLOWED`. A post-parse reading predicts the filtered-entity class; the parse-time throw is what actually answers.
+
+**So a code is not owned by the phase that happens to name it.** A second site of the same class can sit in the other phase and win every race, which is invisible to a reader who greps the class once and stops at the first hit. The check is cheap — grep the class across the parser and read each site's method.
+
+**What the filter walk asks, level by level, per reference in authored order:**
+
+| the level carries | class |
+|---|---|
+| iteration of a level the filtered entity does not sit under | `MVK_INVALID_ITERATION_IN_FILTER_CONDITION` |
+| iteration below a wildcard the same reference set | `MVK_NO_WILDCARD` |
+| a semantic index | `MVK_SEMANTIC_INDEX_NOT_ALLOWED` |
+| *(after every reference)* no level any reference iterates is one the operand stars | `MVK_NO_ITERATION_FOR_WILDCARD` |
+
+**The index and iteration branches are REFERENCE-positional, measured in both text orders.** An index replaces `ITERATION` at the level it addresses, so a reference carrying one is never asked the scope question; a body with an off-path read and an indexed read draws whichever the text writes first. One order alone cannot tell that from "the index always wins".
+
+**The group the index addresses is not a variable**, and neither is the key: an index over the filtered group, over an unrelated group, and one whose key is read from the filtered group all draw the class. The gate visits the filter's parse tree and asks only whether some level carries an index at all.
+
+**The index's OWN spec gates run earlier still** — while the spec is parsed — so an index whose key names a group draws `MVK_SEMANTIC_INDEX_NO_FIELD` and never reaches the filter walk. That also **bounds a clause this estate held**: the iteration class `checkIterationAndErrorField` renames into ([KF351](#kf351)) is drawn against the RULE's error target, and inside a filter the anchoring is the filtered entity — two measured shapes there are answered by the key-kind gate and by the filter branch, by neither an iteration class.
+
+*Locked by:* `rulekit.validate.laws.SemanticIndexInFilterLawsTest`; mirrored by `consistency … SemanticIndexInFilterTest`.
+
 ## §9 supplement — a parallel iteration marks the rule's OWN keyed group too, which is what a `Having` filter is then refused on (source-verified + measured, 2026-09-14) <a id="kf376"></a>
 
 > Fold: not-foldable — a diagnostic-class law about which operands a whole-rule gate looks at, not an evaluation behaviour.

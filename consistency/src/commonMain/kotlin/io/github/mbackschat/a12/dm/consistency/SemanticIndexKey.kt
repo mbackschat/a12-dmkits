@@ -1,6 +1,7 @@
 package io.github.mbackschat.a12.dm.consistency
 
 import io.github.mbackschat.a12.dm.consistency.syntax.CONDITION_OPERATOR_KEYWORDS
+import io.github.mbackschat.a12.dm.consistency.syntax.callsIn
 import io.github.mbackschat.a12.dm.consistency.syntax.semanticIndexKeysIn
 
 /**
@@ -28,12 +29,18 @@ import io.github.mbackschat.a12.dm.consistency.syntax.semanticIndexKeysIn
  * one, so this reports only the geometry both halves were measured on — a level strictly below the target's
  * group ([KF351]).
  *
+ * **And it is asked only of a key the RULE reads directly.** Inside a `Having` filter the anchoring is the
+ * filtered entity rather than the error target, and A12 draws no iteration class there: two measured shapes
+ * are answered by the key-kind gate and by the filter's own branch instead ([KERNEL-FINDINGS KF377]). Asking
+ * it there named a class A12 does not draw, on both of them, until 2026-09-14.
+ *
  * **Silent on a key that does not resolve** (`MVK_INVALID_ENTITY`, the reference family's) and on a LITERAL
  * key, which puts a string in the key position and is subject to the value gates instead.
  */
 fun PreparedModel.semanticIndexKeyFindings(): List<Finding> {
     val keywords = CONDITION_OPERATOR_KEYWORDS[conditionLanguage] ?: return emptyList()
     val keyword = keywords[SEMANTIC_INDEX] ?: return emptyList()
+    val filterKeyword = keywords[HAVING]
     val targets = declaredReferences().associateBy { it.declaredAt }
     return elements.flatMap { element ->
         val body = element.body ?: return@flatMap emptyList()
@@ -41,14 +48,43 @@ fun PreparedModel.semanticIndexKeyFindings(): List<Finding> {
         val targetGroup = (targets[element.path]?.target as? Reference.Resolved)?.path
             ?.substringBeforeLast('/', missingDelimiterValue = "")
         conditionTexts(element.kind, body).flatMap { (member, text) ->
+            val filtered = keysInsideAFilter(text, member, filterKeyword, keyword)
             semanticIndexKeysIn(text, conditionLanguage, keyword)
                 .distinct()
-                .mapNotNull { key -> keyFinding(key, group, targetGroup, element, member) }
+                .mapNotNull { key ->
+                    keyFinding(key, group, targetGroup, element, member, key in filtered)
+                }
         }
     }
 }
 
+/**
+ * The index keys written inside a `Having` filter, whose ANCHORING is the filtered entity rather than the
+ * rule's error target.
+ *
+ * A12 draws no iteration class for such a key: two measured shapes inside a filter are answered by the
+ * key-kind gate and by the filter's own branch instead ([KERNEL-FINDINGS KF377],
+ * `rulekit.validate.laws.SemanticIndexInFilterLawsTest`), where outside one the iteration class pre-empts
+ * both. So the gate below is asked only of a key the rule reads directly.
+ */
+private fun PreparedModel.keysInsideAFilter(
+    text: String,
+    member: String,
+    filterKeyword: String?,
+    indexKeyword: String,
+): Set<String> {
+    if (filterKeyword == null) {
+        return emptySet()
+    }
+    return callsIn(text, conditionLanguage, syntaxEntryOf(member))
+        .flatMap { it.operands }
+        .flatMap { operand -> operand.clauses.filter { it.keyword == filterKeyword } }
+        .flatMapTo(mutableSetOf()) { semanticIndexKeysIn(it.text, conditionLanguage, indexKeyword) }
+}
+
 private const val SEMANTIC_INDEX = "SemanticIndex"
+
+private const val HAVING = "Having"
 
 /** The finding one key draws, in A12's order, or null for every shape it answers with another class. */
 private fun PreparedModel.keyFinding(
@@ -57,6 +93,7 @@ private fun PreparedModel.keyFinding(
     targetGroup: String?,
     element: DeclaredElement,
     member: String,
+    insideAFilter: Boolean,
 ): Finding? {
     // A starred key is the structure family's wildcard class, and a star also ADDRESSES the level it sits
     // on, so leaving it here would ask the iteration question about a read that does not iterate.
@@ -64,7 +101,7 @@ private fun PreparedModel.keyFinding(
         return null
     }
     val resolved = resolveEntity(group, key, element.origin) as? Reference.Resolved ?: return null
-    iteratedBelow(resolved.path, targetGroup)?.let { level ->
+    iteratedBelow(resolved.path, targetGroup.takeUnless { insideAFilter })?.let { level ->
         return Finding(
             FindingCategory.A12_CONSTRAINT,
             FindingSeverity.ERROR,

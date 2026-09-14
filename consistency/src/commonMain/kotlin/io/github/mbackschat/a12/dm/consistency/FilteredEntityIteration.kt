@@ -45,6 +45,7 @@ import io.github.mbackschat.a12.dm.consistency.syntax.referencesIn
 fun PreparedModel.filteredEntityIterationFindings(): List<Finding> {
     val keywords = CONDITION_OPERATOR_KEYWORDS[conditionLanguage] ?: return emptyList()
     val filterKeyword = keywords[HAVING] ?: return emptyList()
+    val indexKeyword = keywords[SEMANTIC_INDEX]
     val uniqueness = keywords[REPETITION_NOT_UNIQUE]
     val targets = declaredReferences().associateBy { it.declaredAt }
     return elements.filter { it.kind == "Rule" }.mapNotNull { element ->
@@ -59,7 +60,7 @@ fun PreparedModel.filteredEntityIterationFindings(): List<Finding> {
         }
         conditionTexts(element.kind, body).firstNotNullOfOrNull { (member, text) ->
             markedFilteredOperand(text, member, declaringGroup, targetGroup, element, filterKeyword,
-                uniqueness)?.let { operand ->
+                indexKeyword, uniqueness)?.let { operand ->
                 filteredEntityFinding(operand, filterKeyword, target, element, member)
             }
         }
@@ -67,6 +68,8 @@ fun PreparedModel.filteredEntityIterationFindings(): List<Finding> {
 }
 
 private const val HAVING = "Having"
+
+private const val SEMANTIC_INDEX = "SemanticIndex"
 
 private const val REPETITION_NOT_UNIQUE = "RepetitionNotUnique"
 
@@ -78,6 +81,7 @@ private fun PreparedModel.markedFilteredOperand(
     targetGroup: String,
     element: DeclaredElement,
     filterKeyword: String,
+    indexKeyword: String?,
     uniqueness: String?,
 ): String? {
     if (OUTER_MARKER in text) {
@@ -90,6 +94,16 @@ private fun PreparedModel.markedFilteredOperand(
     val filtered = calls.flatMap { it.operands }
         .filter { operand -> operand.clauses.any { it.keyword == filterKeyword } }
     if (filtered.isEmpty()) {
+        return null
+    }
+    // A semantic index anywhere in a filter body is refused by `checkIndicesInFilterCondition` during the
+    // PARSE, so this whole-rule gate never runs on such a rule — measured on the shape that violates both
+    // ([KERNEL-FINDINGS KF377]), where A12 names the index class and this one would be the wrong verdict.
+    if (indexKeyword != null &&
+        filtered.any { operand ->
+            operand.clauses.any { it.keyword == filterKeyword && indexKeyword in it.text }
+        }
+    ) {
         return null
     }
     if (!parallelIterates(text, filtered, filterKeyword, declaringGroup, targetGroup, element)) {

@@ -907,6 +907,7 @@ private val POSITIONED_CONDITION_CODES = setOf(
     "MVK_NOT_IN_GROUP", "MVK_NOT_IN_SAME_PATH", "MVK_NOT_IN_RULEGROUP",
     "MVK_DATEFORMATS_NOT_COMPATIBLE", "MVK_PARTIAL_DATE_NOT_ALLOWED",
     "MVK_ERROR_FIELD_INVALID_INDEX", "MVK_ERROR_FIELD_INVALID_INDEX_TYPE",
+    "MVK_SEMANTIC_INDEX_NOT_ALLOWED",
 )
 
 /**
@@ -923,6 +924,13 @@ private val POSITIONED_CONDITION_CODES = setOf(
  * family reports them — and are listed anyway: a family added later would otherwise start over-reporting
  * silently, which is the failure this list exists to prevent.
  *
+ * **One member moved OUT on 2026-09-14: `MVK_SEMANTIC_INDEX_NOT_ALLOWED`.** The method draws it, but the
+ * code has three sites and the other two are parse-time — `CheckEntitySpecImpl.checkIndicesInFilterCondition`
+ * and `CheckEntityUtils.checkNoSemanticIndex`. Every shape measured for it reaches the filter walk, which
+ * throws during the parse and so erases the whole-rule branch of the same name
+ * ([KERNEL-FINDINGS KF377]); it is therefore POSITIONED here. A code is not owned by the phase that happens
+ * to name it — a second site of the same class can sit in the other phase and win every race.
+ *
  * Measured: `MVK_PARALLEL_ITERATION_NOT_ALLOWED` and `MVK_INVALID_COMBINATION_OF_REPETITON_NOT_UNIQUE` both
  * vanish behind a containment class on one model (`RepetitionNotUniqueFromScopeLawsTest`, whose verdict is
  * the COMPLETE class list); the two relational members were measured in both orders and on both carriers
@@ -930,7 +938,7 @@ private val POSITIONED_CONDITION_CODES = setOf(
  */
 private val POST_PARSE_CONDITION_CODES = setOf(
     "MVK_PARALLEL_ITERATION_NOT_ALLOWED", "MVK_PARALLEL_ITERATION_FOR_FILTERED_ENTITY_NOT_ALLOWED",
-    "MVK_SEMANTIC_INDEX_NOT_ALLOWED", "MVK_INVALID_COMBINATION_OF_REPETITON_NOT_UNIQUE",
+    "MVK_INVALID_COMBINATION_OF_REPETITON_NOT_UNIQUE",
     "MVK_INVALID_LENGTH_OF_RAW_TYPE", "MVK_PARALLEL_ITERATION_INVALID",
     "MVK_ERROR_FIELD_NOT_REFERENCED", "MVK_ERROR_INVALID_LANGUAGE_FEATURE",
 )

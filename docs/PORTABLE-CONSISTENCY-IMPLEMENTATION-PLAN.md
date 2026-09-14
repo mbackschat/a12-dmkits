@@ -759,6 +759,18 @@ One cold adversarial review over the frozen range, as [§2](#2-execution-order-a
 
 **Only one direction is locked, and that is the honest limit.** A row claiming a report the checker no longer emits would need a scan that follows every helper, and the same over-counting returns. The drift that actually happens is one-way — the family lands and the row lags — so the guard covers the direction with the evidence.
 
+### C record — a THIRD branch for an existing family, and the code that lives in two phases (2026-09-14)
+
+**Frozen scope: the semantic-index branch of `CheckEntitySpecImpl.checkIndicesInFilterCondition`, added to `FILTER_BODY_ITERATION`.** [KF377](KERNEL-FINDINGS.md#kf377); one residue code drained — `MVK_SEMANTIC_INDEX_NOT_ALLOWED`. No new family: the class belongs to a method this estate had already transcribed, and the transcription had two of its three branches.
+
+**The code had been filed under the wrong PHASE, and the ledger's own wording is what hid it.** It sits in `ParserService.checkNormalRule`, so the post-parse set took it on the strength of that one site. It has three, and the other two throw during the parse; every measured shape reaches the filter walk. The discriminating control is a rule violating the filtered-entity gate as well — a whole-rule gate checked two branches earlier, which loses anyway. **The general lesson for a set keyed by code: grep the class across the parser and read EVERY site, because a class is not owned by the phase that happens to name it.**
+
+**Three under-reports taken deliberately, all in the same direction.** An entity-keyed index in a filter is left to the index's own spec gates; a filtered operand riding a parallel level is left alone by both families; and the filter walk's reader still refuses to judge an operand that crosses an unstarred repetition, which is where the second of those comes from. Each is a silence where A12 rejects, which the estate tolerates — what it will not tolerate is the class that was live instead.
+
+**The slice also bounded a clause the estate had been applying too widely.** `SEMANTIC_INDEX_KEY`'s iteration gate is drawn against the RULE's error target; inside a filter the anchoring is the filtered entity, and two measured shapes there are answered by other gates entirely. It had been naming its class on both. That is the third time this month a gate measured on one carrier was applied to a second without measurement, and the tell was the same: no new branch was needed, so nothing prompted the question.
+
+**Where the convergence gate bit, and what it bought.** The first implementation reported on every index in a filter; the mirror then showed two classes where A12 gives one, on two rows, and fixing that exposed the neighbouring family's over-wide gate. Partitioning at that point — report only the literal-keyed shape, leave the rest silent and say so — closed the slice with one measured claim per row instead of a third round.
+
 ### C record — the sixty-fifth family: a gate whose marked operands are not the ones it names (2026-09-14)
 
 **Frozen family: that no `Having` filter hangs off an operand A12 marked as parallel-iterated.** [KF376](KERNEL-FINDINGS.md#kf376); one residue code drained — `MVK_PARALLEL_ITERATION_FOR_FILTERED_ENTITY_NOT_ALLOWED`, the ranking's top row, and the second of `ParserService.checkNormalRule`'s seven `throwError` calls to get a reporting family.
