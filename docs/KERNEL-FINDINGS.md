@@ -7142,6 +7142,36 @@ Reported by the portable checker, which did not emit `MVK_SORT_FIELD_DUPLICATE` 
 
 *Locked by:* `rulekit.validate.laws.GroupOrderingMultipleDefectLawsTest`, mirrored by `consistency … GroupOrderingMultipleDefectTest`.
 
+## §8 supplement — the value-list condition judges its FIELD list before the list it is compared with, and one of its four operators is a different construct (source-verified + measured, 2026-09-14) <a id="kf397"></a>
+
+> Fold: not-foldable — a diagnostic-class law about one construct's two operand lists, not an evaluation behaviour.
+
+`CheckFeldListeUndWerteListenBedingungImpl.check` walks one shape for all four operators and branches on the operator token TWICE — once on the field list and once on the value list:
+
+| the gate, in order | class |
+|---|---|
+| the FIELD list's entries do not all share a base type | `MVK_VARYING_TYPES_NOT_ALLOWED` |
+| `AtLeastOneDateRangeOverlaps`: the field list is not exactly one plain field | `MVK_INVALID_PARAMETER_FOR_DATE_RANGE_COMPARISON` |
+| the other three: an entry is neither text, enumeration nor number | `MVK_ONLY_STRING_ENUM_NUMBER_ALLOWED` |
+| `AtLeastOneDateRangeOverlaps` against a WRITTEN-OUT list | `MVK_NO_CONST` |
+| a written-out list against a NUMBER field list | `MVK_INVALID_TYPES_FOR_COMPARISON` |
+| a written-out value outside the enumeration's domain | `MVK_INVALID_STRING_CONSTANT_FOR_ENUMERATION_OR_CATEGORY` |
+| an ENTITY value list of another base type | `MVK_VARYING_TYPES_NOT_ALLOWED` |
+
+**The FIELD list is judged before the value list's type is looked at**, and that ORDER is the finding rather than any single row: a date-range field list against a text one is `MVK_ONLY_STRING_ENUM_NUMBER_ALLOWED`, the field list's own kind class, while a text field list against a date-range one is the disagreement class. A reader merging the two lists into one same-type walk gets the first of those wrong — [KF380](#kf380)'s portable family did, and its own grid could not see it because every row it held had a listable field list.
+
+**The same-type gate runs for all FOUR operators**, ahead of the branch on the operator token, so a mixed field list under `AtLeastOneDateRangeOverlaps` is the disagreement class and its own shape class is never reached.
+
+**Its shape gate reads the REFERENCE list, not the expansion.** A group holding exactly one date-range field is refused, even though every other operator in this construct expands a group to its fields — the two readings of "exactly one" separated by one row.
+
+**The enum domain is the UNION over the whole field list**, so a written-out constant that only the SECOND listed enumeration declares is admitted; a reader checking each field separately would refuse a model A12 takes.
+
+**…and a `->` CATEGORY access SWAPS that entry's contribution rather than widening it.** One enumeration read through its category contributes the category's tokens and stops contributing its own values, so `BandedTier -> Band In "BASIC"` is refused where `BandedTier In "BASIC"` is admitted. Held on one declaration with only the access varying.
+
+Reported by the portable checker (`CheckFamily.VALUE_LIST_CONDITION_GATES`, renamed from `VALUE_LIST_QUANTIFIER_OPERAND_KIND` when the two branches landed), silent on a repeated entity (the duplicate walk answers first), on the `noValueValidation` gate between the field gates and the value list, on the date-range arm's two year-consistency classes, and on an enumeration declaring a `tableName`, which A12 exempts from the domain check.
+
+*Locked by:* `rulekit.validate.laws.ValueListConditionOperandLawsTest`, mirrored by `consistency.ValueListConditionGatesTest`.
+
 ## §5 supplement — `+` is not an arithmetic operator: it asks its own question, and refuses an enumeration that carries LABELS (source-verified + measured, 2026-09-14) <a id="kf396"></a>
 
 > Fold: not-foldable — a diagnostic-class law about one construct's operand types, not an evaluation behaviour.

@@ -386,7 +386,7 @@ enum class CheckFamily {
      * order over the same two lists, so which answers depends on where the walk stops rather than on a
      * property a family could split by.
      */
-    VALUE_LIST_QUANTIFIER_OPERAND_KIND,
+    VALUE_LIST_CONDITION_GATES,
 
     /**
      * How many entities each entity-list operator's argument list needs. One constant for the six classes
@@ -768,7 +768,7 @@ internal fun check(
         prepared.filteredEntityIterationFindings() +
         prepared.arithmeticOperationGateFindings() +
         prepared.valueInFieldsConstantKindFindings() +
-        prepared.valueListQuantifierOperandKindFindings() +
+        prepared.valueListConditionGateFindings() +
         prepared.entityListArityFindings() +
         prepared.entityListPreGateFindings() +
         prepared.fieldValuesNotUniqueOperandKindFindings() +
@@ -836,7 +836,7 @@ internal fun check(
             CheckFamily.REPETITION_NOT_UNIQUE_COMBINATION,
             CheckFamily.PARALLEL_ITERATION_UNIQUENESS, CheckFamily.FILTERED_ENTITY_ITERATION,
             CheckFamily.ARITHMETIC_OPERATION_GATES, CheckFamily.VALUE_IN_FIELDS_CONSTANT_KIND,
-            CheckFamily.VALUE_LIST_QUANTIFIER_OPERAND_KIND, CheckFamily.ENTITY_LIST_ARITY,
+            CheckFamily.VALUE_LIST_CONDITION_GATES, CheckFamily.ENTITY_LIST_ARITY,
             CheckFamily.ENTITY_LIST_PRE_GATES,
             CheckFamily.FIELD_VALUES_NOT_UNIQUE_OPERAND_KIND,
             CheckFamily.FIELD_LIST_OPERATION_OPERANDS,

@@ -474,7 +474,7 @@ class CheckFamilyWiringTest {
             ("MVK_NO_TYPEYESNO" to "/Catalog/CountFalseOverText"),
         // A text declaration and a number one in one quantifier's field list — the only call in this
         // fixture that compares two lists whose entries are not declared alike.
-        CheckFamily.VALUE_LIST_QUANTIFIER_OPERAND_KIND to
+        CheckFamily.VALUE_LIST_CONDITION_GATES to
             ("MVK_VARYING_TYPES_NOT_ALLOWED" to "/Catalog/ValueListOverMixedKinds"),
         // A quantifier over a single unstarred field — the one call in this fixture whose entity list is
         // shorter than the operator's own arity gate accepts.

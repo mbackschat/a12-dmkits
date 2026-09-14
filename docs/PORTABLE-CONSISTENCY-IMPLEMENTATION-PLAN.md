@@ -739,6 +739,18 @@ One cold adversarial review over the frozen range, as [§2](#2-execution-order-a
 
 **The catalog half is deliberately not delivered, with its re-open trigger.** A2 ruled that `operators.json` ships as-is because it is already data; that remains right, and it is not yet USEFUL — no finding this checker produces names an operator id, so 293 KB would be packaged with nothing to join it against. It lands when a finding carries an operator.
 
+### C record — the slice that found a WRONG CLASS in the family it was extending (2026-09-14)
+
+**Frozen change: the rest of `CheckFeldListeUndWerteListenBedingungImpl`.** [KF397](KERNEL-FINDINGS.md#kf397); two residue codes drained — `MVK_INVALID_PARAMETER_FOR_DATE_RANGE_COMPARISON` and `MVK_INVALID_STRING_CONSTANT_FOR_ENUMERATION_OR_CATEGORY` — plus a fourth carrier for `MVK_VARYING_TYPES_NOT_ALLOWED` and a second for `MVK_NO_CONST`. That kernel class is now fully reported. `VALUE_LIST_QUANTIFIER_OPERAND_KIND` is renamed `VALUE_LIST_CONDITION_GATES`; the count stays at 81.
+
+**The defect was in the incumbent family and only a row it did not hold could see it.** It merged the field list and the value list into one same-type walk, which matches A12 wherever the field list is listable — every row its own grid held. Put a DATE-RANGE field list opposite a text one and A12 answers with the field list's own kind class, since the field gates run before the value list's type is looked at; the family would have answered with the disagreement class. **This is the constant-across-the-set confound in its plainest form: the set varied the disagreement and held "the field list is listable" fixed, so the account fit every row and was wrong.** The new slice exposed it by asking about the operator the old family had EXCLUDED, which is where the constant breaks.
+
+**A silence that was really an exclusion turned into a locked handover.** The family had left `AtLeastOneDateRangeOverlaps` out entirely, justified by the classes its own arm owns — but the same-type gate runs ahead of the branch on the operator token and applies to all four. One measured row converted a mirror expectation of silence into an asserted code, and the operator is now a carrier.
+
+**Two readings of "exactly one" separated by one row.** The date-range shape gate reads the REFERENCE list, so a group holding a single date-range field is refused even though every other operator in the same construct expands a group to its fields. A checker built on the expansion — which this family already had — would have admitted it.
+
+**The rename is the second this session and the pattern is now clear enough to state.** A family named after one of its gates (`…_OPERAND_KIND`, `…_OPERATOR_ARITY`) stops describing itself the moment a neighbouring gate of the same kernel method lands, and the next slice of that method always arrives. Name the family after the METHOD's subject, not after the question the first slice happened to answer.
+
 ### C record — two codes that MERGED a family instead of adding one, and the measurement that forced it (2026-09-14)
 
 **Frozen change: the type walk of `CheckOperationImpl`.** [KF396](KERNEL-FINDINGS.md#kf396); two residue codes drained — `MVK_NO_NUMBER_FOR_CALC` and `MVK_NO_STRING_OR_NUMBER_FOR_ADD` — which completes that kernel class. `CALCULATION_OPERATOR_ARITY` is renamed `ARITHMETIC_OPERATION_GATES` and now carries all five; the count stays at 81 because nothing was added.
