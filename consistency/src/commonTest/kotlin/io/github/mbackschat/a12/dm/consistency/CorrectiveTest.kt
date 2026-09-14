@@ -51,6 +51,7 @@ class CorrectiveTest {
               "NumberType":{"maxFractionalDigits":0}}}},
             {"type":"Field","id":"f7","name":"Blob","Field":{"fieldType":{"type":"StringType",
               "StringType":{"noValueValidation":true,"lineBreaksPermitted":true}}}},
+            {"type":"Field","id":"f20","name":"Perishable","Field":{"fieldType":{"type":"BooleanType"}}},
             {"type":"Group","id":"g3","name":"Shelves","Group":{"repeatability":9,"elements":[
               {"type":"Field","id":"f8","name":"ShelfCode","Field":{"fieldType":{"type":"StringType"}}},
               {"type":"Field","id":"f9","name":"ShelfQty","Field":{"fieldType":{"type":"NumberType"}}}
@@ -100,6 +101,18 @@ class CorrectiveTest {
             {"type":"Rule","id":"r10","name":"KeyWithNoRepetition","Rule":{
               "errorCondition":"RepetitionNotUnique(Note)","errorEntityRelPath":"../Note",
               "errorCode":"C10","errorMessage":[{"locale":"en_US","text":"x"}]}},
+            {"type":"Rule","id":"r22","name":"DistinctUnclaimedLeader","Rule":{
+              "errorCondition":"FieldFilled(Note) And NumberOfDifferentValues(Perishable, Note) > 0",
+              "errorEntityRelPath":"../Note",
+              "errorCode":"C22","errorMessage":[{"locale":"en_US","text":"x"}]}},
+            {"type":"Rule","id":"r21","name":"DistinctNumberLeader","Rule":{
+              "errorCondition":"FieldFilled(Note) And NumberOfDifferentValues(Amount, Note) > 0",
+              "errorEntityRelPath":"../Note",
+              "errorCode":"C21","errorMessage":[{"locale":"en_US","text":"x"}]}},
+            {"type":"Rule","id":"r20","name":"DistinctTextLeader","Rule":{
+              "errorCondition":"FieldFilled(Note) And NumberOfDifferentValues(Note, Amount) > 0",
+              "errorEntityRelPath":"../Note",
+              "errorCode":"C20","errorMessage":[{"locale":"en_US","text":"x"}]}},
             {"type":"Rule","id":"r19","name":"RawInAValueList","Rule":{
               "errorCondition":"FieldValueIncludedInValueList(Blob, \"x\")","errorEntityRelPath":"../Blob",
               "errorCode":"C19","errorMessage":[{"locale":"en_US","text":"x"}]}},

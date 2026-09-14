@@ -7142,6 +7142,35 @@ Reported by the portable checker, which did not emit `MVK_SORT_FIELD_DUPLICATE` 
 
 *Locked by:* `rulekit.validate.laws.GroupOrderingMultipleDefectLawsTest`, mirrored by `consistency … GroupOrderingMultipleDefectTest`.
 
+## §9 supplement — `NumberOfDifferentValues` types its list from the LEADING field, and the leader NO arm claims has a class of its own (source-verified + measured, 2026-09-14) <a id="kf399"></a>
+
+> Fold: not-foldable — a diagnostic-class law about one operation's operand list, not an evaluation behaviour.
+
+`CheckFeldListenAnzahlOpImpl.check`'s third case reads `CheckEntityListenUtils.firstType` — the operand type of the first EXPANDED field — and branches on it, so the same list is admitted under one leader and refused under another, and which code it draws is decided before any member is looked at:
+
+| the leader | what the rest of the list must be | otherwise |
+|---|---|---|
+| text, custom or enumeration | one of those three | `MVK_STRING_ENUM_AND_NON_STRING_ENUM` |
+| …and then, over the whole list | not waiving value validation | `MVK_INVALID_RAW_TYPE` |
+| a number | a number | `MVK_NUMBER_AND_NON_NUMBER` |
+| temporal | the component-set comparison ([KF193](#kf193)) | `MVK_DATE_AND_NONDATE`, … |
+| Boolean, Confirm or DateRange | — | `MVK_ONLY_STRING_ENUM_NUMBER_CMP_DATE_ALLOWED` |
+
+**The else branch has a class of its OWN rather than falling into the numeric arm**, which is the row a reader assembling the arms from the codes' names would miss — "not string, not number, not date" reads like the numeric arm's territory and is not. All three unclaimed leaders are measured separately.
+
+**The string arm FOLDS custom and enumeration in with text**, where the extrema of the neighbouring method refuse both — `isLikeString || isEnum` against `isNumber`. So the same list is legal under `NumberOfDifferentValues` and refused under `MaxValue`, with no change to the model.
+
+**The leader is the first EXPANDED field, not the first operand**, so a GROUP leader is typed by its own first member — measured on a group of numbers leading a text list, which draws the numeric arm's class.
+
+**The value-validation gate runs over the WHOLE list after the kind walk**, not interleaved with it: a kind defect later in the list than a waiving field still answers first.
+
+**`checkNoCategories` is the FIRST statement of the method** and outruns even the duplicate walk, which every other gate of this construct sits behind — measured on a list carrying a category access and a duplicate together, which draws `MVK_CATEGORY_NOT_ALLOWED`.
+
+Reported by the portable checker (`CheckFamily.FIELD_LIST_OPERATION_OPERANDS`, which carries this operator beside the four of `CheckFeldListenOpImpl` — the two methods never share a carrier, so neither family can name the other's class), silent on a temporal leader (`TEMPORAL_AGGREGATE_OPERANDS` owns it), on a `TypeDefType` or `UnspecifiedType` leader, and — an under-report with no owner at all — on the category gate, whose operand the shared reducer declines.
+
+*Locked by:* `rulekit.validate.laws.DistinctValueOperandKindLawsTest`, mirrored by `consistency.FieldListOperationOperandsTest`.
+
+
 ## §8 supplement — the SCALAR value list judges its subject completely first, and a CUSTOM declaration rides with text on both gates that group them (source-verified + measured, 2026-09-14) <a id="kf398"></a>
 
 > Fold: not-foldable — a diagnostic-class law about one construct's operand gates, not an evaluation behaviour.

@@ -11,7 +11,6 @@ import io.github.mbackschat.a12.dm.consistency.syntax.tokenize
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
-import kotlinx.serialization.json.booleanOrNull
 import kotlinx.serialization.json.contentOrNull
 
 /**
@@ -270,16 +269,6 @@ private fun JsonObject.lookupDomain(category: String?): List<String>? {
  */
 private fun DeclaredElement.listBaseType(): BaseTypeClass? =
     if (declaredFieldType() == "CustomFieldType") BaseTypeClass.TEXT else baseTypeClass()
-
-/** Whether this STRING declaration waives A12's per-cell value validation, which every value gate refuses. */
-private fun DeclaredElement.waivesValueValidation(): Boolean {
-    val declared = body?.get("fieldType") as? JsonObject ?: return false
-    if ((declared["type"] as? JsonPrimitive)?.contentOrNull != "StringType") {
-        return false
-    }
-    val string = declared["StringType"] as? JsonObject ?: return false
-    return (string["noValueValidation"] as? JsonPrimitive)?.booleanOrNull == true
-}
 
 /** Whether this operand is the list's `[entity]` spelling rather than a constant. */
 private fun CallOperand.namesAFieldEntry(): Boolean =

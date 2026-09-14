@@ -39,6 +39,21 @@ class FieldListOperationOperandsTest {
                   "DateType":{"format":"yyyy-MM-dd"}}}},
                 {"type":"Field","id":"f9","name":"PolicyRef","Field":{"fieldType":{"type":"TypeDefType",
                   "TypeDefType":{"typeDefinitionId":"POLICY_NUMBER_1"}}}},
+                {"type":"Field","id":"f14","name":"Severity","Field":{"fieldType":{"type":"EnumerationType",
+                  "EnumerationType":{"values":[{"value":"LOW"},{"value":"HIGH"}],
+                  "categories":[{"name":"Band","values":["A","B"]}]}}}},
+                {"type":"Field","id":"f15","name":"Adjuster","Field":{"fieldType":{"type":"CustomFieldType",
+                  "CustomFieldType":{"name":"AdjusterCode"}}}},
+                {"type":"Field","id":"f16","name":"CoverWindow","Field":{"fieldType":{"type":"DateRangeType",
+                  "DateRangeType":{"format":"dd.MM.yyyy","rangeSeparator":"-"}}}},
+                {"type":"Field","id":"f17","name":"FreeNote","Field":{"fieldType":{"type":"StringType",
+                  "StringType":{"lineBreaksPermitted":true,"noValueValidation":true}}}},
+                {"type":"Group","id":"g3","name":"Ledger","Group":{"elements":[
+                  {"type":"Field","id":"f18","name":"LedgerAmount","Field":{"fieldType":{"type":"NumberType",
+                    "NumberType":{"maxFractionalDigits":2}}}},
+                  {"type":"Field","id":"f19","name":"LedgerFee","Field":{"fieldType":{"type":"NumberType",
+                    "NumberType":{"maxFractionalDigits":2}}}}
+                ]}},
                 {"type":"Group","id":"g1","name":"Items","Group":{"repeatability":20,"elements":[
                   {"type":"Field","id":"f10","name":"ItemConfirmed","Field":{
                     "fieldType":{"type":"ConfirmType"}}},
@@ -128,5 +143,79 @@ class FieldListOperationOperandsTest {
         expected["a confirm named twice, which the duplicate gate answers"] = listOf("MVK_DUPLICATE_PARAM1")
         expected["the root group, which the root-group gate answers"] = listOf("MVK_ROOT_GROUP_REFERENCED")
         assertEquals(expected, actual, "a gate ahead of the switch keeps its class, and this family is quiet")
+    }
+
+    /**
+     * The fifth carrier, whose LEADER picks between three arms and a class of its own.
+     *
+     * Every row mirrors one measured by `rulekit.validate.laws.DistinctValueOperandKindLawsTest`. The rows
+     * that carry the method are the three UNCLAIMED leaders: A12 answers them with a class of their own
+     * rather than with the numeric arm's, which is what a reader folding "not string, not number, not date"
+     * into the number branch would get wrong.
+     */
+    @Test
+    fun theDistinctCountTypesItsListFromTheLeaderAndEachArmRefusesDifferently() {
+        val actual = mutableMapOf<String, List<String>>()
+        actual["a text leader over a text list"] = subject("NumberOfDifferentValues(Notes, Reference) > 0")
+        actual["a text leader over an enumeration"] = subject("NumberOfDifferentValues(Notes, Severity) > 0")
+        actual["a text leader over a custom declaration"] =
+            subject("NumberOfDifferentValues(Notes, Adjuster) > 0")
+        actual["a text leader over a number"] = subject("NumberOfDifferentValues(Notes, Amount) > 0")
+        actual["a text leader over a date"] = subject("NumberOfDifferentValues(Notes, ReportedOn) > 0")
+        actual["a text leader over a date range"] =
+            subject("NumberOfDifferentValues(Notes, CoverWindow) > 0")
+        actual["an ENUM leader over a number"] = subject("NumberOfDifferentValues(Severity, Amount) > 0")
+        actual["a CUSTOM leader over a number"] = subject("NumberOfDifferentValues(Adjuster, Amount) > 0")
+        actual["a text leader over a field waiving value validation"] =
+            subject("NumberOfDifferentValues(Notes, FreeNote) > 0")
+        actual["a kind defect BEYOND the waiving field"] =
+            subject("NumberOfDifferentValues(Notes, Amount, FreeNote) > 0")
+        actual["a number leader over numbers"] = subject("NumberOfDifferentValues(Amount, Excess) > 0")
+        actual["a number leader over a text"] = subject("NumberOfDifferentValues(Amount, Notes) > 0")
+        actual["a BOOLEAN leader"] = subject("NumberOfDifferentValues(Settled, Notes) > 0")
+        actual["a CONFIRM leader"] = subject("NumberOfDifferentValues(Acknowledged, Notes) > 0")
+        actual["a DATE-RANGE leader"] = subject("NumberOfDifferentValues(CoverWindow, Notes) > 0")
+        actual["a TEMPORAL leader, which the component gate owns"] =
+            subject("NumberOfDifferentValues(ReportedOn, Notes) > 0")
+        actual["a TYPEDEF leader, whose base this reader does not resolve"] =
+            subject("NumberOfDifferentValues(PolicyRef, Amount) > 0")
+        actual["a GROUP leader, read from its first EXPANDED field"] =
+            subject("NumberOfDifferentValues(Ledger, Notes) > 0")
+        actual["a lone unstarred field, which the arity gate answers"] =
+            subject("NumberOfDifferentValues(Settled) > 0")
+        actual["a category access, an UNDER-REPORT this family discloses"] =
+            subject("NumberOfDifferentValues(Severity -> Band, Notes, Notes) > 0")
+
+        val expected = mutableMapOf<String, List<String>>()
+        // The string arm FOLDS custom and enumeration in with text, where the extrema refuse both.
+        expected["a text leader over a text list"] = emptyList()
+        expected["a text leader over an enumeration"] = emptyList()
+        expected["a text leader over a custom declaration"] = emptyList()
+        expected["a text leader over a number"] = listOf("MVK_STRING_ENUM_AND_NON_STRING_ENUM")
+        expected["a text leader over a date"] = listOf("MVK_STRING_ENUM_AND_NON_STRING_ENUM")
+        expected["a text leader over a date range"] = listOf("MVK_STRING_ENUM_AND_NON_STRING_ENUM")
+        expected["an ENUM leader over a number"] = listOf("MVK_STRING_ENUM_AND_NON_STRING_ENUM")
+        expected["a CUSTOM leader over a number"] = listOf("MVK_STRING_ENUM_AND_NON_STRING_ENUM")
+        expected["a text leader over a field waiving value validation"] = listOf("MVK_INVALID_RAW_TYPE")
+        // The kind walk finishes before the value-validation one starts, so the later defect answers.
+        expected["a kind defect BEYOND the waiving field"] = listOf("MVK_STRING_ENUM_AND_NON_STRING_ENUM")
+        expected["a number leader over numbers"] = emptyList()
+        expected["a number leader over a text"] = listOf("MVK_NUMBER_AND_NON_NUMBER")
+        // No arm claims these three, and the else branch is a class of its own.
+        expected["a BOOLEAN leader"] = listOf("MVK_ONLY_STRING_ENUM_NUMBER_CMP_DATE_ALLOWED")
+        expected["a CONFIRM leader"] = listOf("MVK_ONLY_STRING_ENUM_NUMBER_CMP_DATE_ALLOWED")
+        expected["a DATE-RANGE leader"] = listOf("MVK_ONLY_STRING_ENUM_NUMBER_CMP_DATE_ALLOWED")
+        // The handover, working: this family declines a temporal leader and `TEMPORAL_AGGREGATE_OPERANDS`
+        // reports A12's own class for it on the same call — so the arm is covered, by the other family.
+        expected["a TEMPORAL leader, which the component gate owns"] = listOf("MVK_DATE_AND_NONDATE")
+        expected["a TYPEDEF leader, whose base this reader does not resolve"] = emptyList()
+        expected["a GROUP leader, read from its first EXPANDED field"] = listOf("MVK_NUMBER_AND_NON_NUMBER")
+        expected["a lone unstarred field, which the arity gate answers"] = listOf("MVK_PARAMSIZE_INVALIDN")
+        // A12 answers `MVK_CATEGORY_NOT_ALLOWED` — from the FIRST statement of the method, ahead even of
+        // the duplicate this row also carries. Nothing here reports it: the shared operand reducer declines
+        // a categorized operand, so the call never reaches a gate. Under-reporting, and disclosed rather
+        // than left to look like agreement.
+        expected["a category access, an UNDER-REPORT this family discloses"] = emptyList()
+        assertEquals(expected, actual, "the distinct count's four arms, and what outruns the leader")
     }
 }

@@ -147,6 +147,20 @@ class BuilderCheckerDivergenceGuardTest {
             // so a spelling the kernel's own parser rejects for its grammar is left to A12.
             Map.entry("MVK_NO_CONVERT_IN_NUMBER", Disposition.PROSE_ONLY),
 
+            // Both estates enforce `NumberOfDifferentValues`' leader-decides-the-arm law, over carriers that
+            // cannot share a reader: `CountAggregate.checkValueComparable` partitions typed operands by
+            // `ValueKind`, the checker walks stored DM-JSON. Neither refuses anything A12 admits — the kit
+            // is the laxer of the two on the temporal arm, deliberately leaving format compatibility to F4.
+            //
+            // One divergence that is NOT a refusal difference and belongs to the kit: its admissible-kind
+            // loop cites MVK_ONLY_STRING_ENUM_NUMBER_CMP_DATE_ALLOWED for a boolean, confirm or date-range
+            // operand in ANY position, while A12 draws that code only from the LEADER and answers a
+            // non-leading one with the homogeneity class (KF399, measured). The kit still refuses the same
+            // models; only the code named in its message is wrong off the leader. Left to the kit's own
+            // slice rather than folded in here, and recorded so the row is not read as full agreement.
+            Map.entry("MVK_NUMBER_AND_NON_NUMBER", Disposition.SAME_LAW_SEPARATE_CARRIERS),
+            Map.entry("MVK_ONLY_STRING_ENUM_NUMBER_CMP_DATE_ALLOWED", Disposition.SAME_LAW_SEPARATE_CARRIERS),
+
             // Corrected 2026-09-14: this sat with the prose-only group, whose comment says rulekit "never
             // refuses anything itself" — and `NumberExpr.requireCompatibleScale` does exactly that, through
             // `NumericScaleSummary.requireEqualityCompatible`. Both estates now enforce A12's scale gate over

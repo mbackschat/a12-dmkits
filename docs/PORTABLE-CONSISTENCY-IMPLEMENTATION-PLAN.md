@@ -739,6 +739,19 @@ One cold adversarial review over the frozen range, as [§2](#2-execution-order-a
 
 **The catalog half is deliberately not delivered, with its re-open trigger.** A2 ruled that `operators.json` ships as-is because it is already data; that remains right, and it is not yet USEFUL — no finding this checker produces names an operator id, so 293 KB would be packaged with nothing to join it against. It lands when a finding carries an operator.
 
+### C record — the slice that merged across two kernel METHODS, and the rule that let it (2026-09-14)
+
+**Frozen change: `CheckFeldListenAnzahlOpImpl`'s distinct-count arm.** [KF399](KERNEL-FINDINGS.md#kf399); three residue codes drained — `MVK_STRING_ENUM_AND_NON_STRING_ENUM`, `MVK_NUMBER_AND_NON_NUMBER` and `MVK_ONLY_STRING_ENUM_NUMBER_CMP_DATE_ALLOWED` — plus a third carrier for `MVK_INVALID_RAW_TYPE`. Landed as a fifth carrier of `FIELD_LIST_OPERATION_OPERANDS`; the count stays at 81.
+
+**The three previous slices merged within one kernel method; this one merged ACROSS two, which needs a different justification.** The pre-emption rule says two families reporting gates of ONE method over-report by construction — it says nothing about two methods. What licenses this merge is the weaker condition the rule is really about: the two methods never share a CARRIER, so neither family can name the other's class on any model. That plus an identical question (what kind must each expanded field be), identical pre-emptions (the shared pre-gates and the same `MVK_PARAMSIZE_INVALIDN` arity gate) and an identical leader-decides-the-arm structure made a second family pure duplication. **The condition to check at a merge is therefore carrier-disjointness, not method identity.**
+
+**The derivation that picked the slice overstated it, and the correction is worth keeping.** Subtracting reported codes from the codes each kernel file raises showed this file at 4 of 4 open — a whole unreported file. But the scan counts only literal `ParserErrorTypesEnum.X` references in a file's own text, and this file mostly DELEGATES: its arity, duplicate, root-group and temporal gates are attributed to `CheckEntityListenUtils`, where three families already own them, and one of its four codes is H-model-only. The real residue was three classes on one of three arms. **Per-file counts read high wherever the kernel delegates; re-derive with that in mind rather than citing the count.**
+
+**A leader-decides-the-arm construct hides its hardest row in the branch that has no arm.** "Not string, not number, not date" reads like the numeric arm's territory and is a class of its own; three unclaimed leaders were measured separately rather than inferred, because the else branch is a complement and a complement is what a checker may not infer. The measured denominator now stands at **142 A12-reachable kernel codes, 105 reported**.
+
+**One under-report has no owner and is disclosed rather than closed.** `checkNoCategories` is the first statement of this method and outruns even the duplicate walk — but the shared operand reducer declines a categorized operand, so no family sees such a call. Widening the reducer is a change to every family that reads an operand, which is its own slice; the silence is stated in the family, the finding, the ledger row and a locked mirror row so it cannot read as agreement.
+
+
 ### C record — the slice where the gate's own NAME was the trap, twice in one method (2026-09-14)
 
 **Frozen change: the rest of `CheckFeldUndWerteListenBedingungImpl`.** [KF398](KERNEL-FINDINGS.md#kf398); two residue codes drained — `MVK_INVALID_RAW_TYPE` and `MVK_INVALID_STRING_CONSTANT_FOR_ENUMERATION_CATEGORY` — plus five further carriers (`MVK_NO_GROUPS_ALLOWED`, `MVK_NO_WILDCARDS_ALLOWED`, `MVK_ONLY_STRING_ENUM_NUMBER_ALLOWED`, `MVK_INVALID_TYPES_FOR_COMPARISON`, `MVK_VARYING_TYPES_NOT_ALLOWED`). `ENUM_CONSTANT_DOMAIN` is renamed `SCALAR_VALUE_LIST_GATES`; the count stays at 81.

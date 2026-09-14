@@ -6,6 +6,7 @@ import io.github.mbackschat.a12.dm.consistency.syntax.referencesIn
 import io.github.mbackschat.a12.dm.consistency.syntax.tokenize
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.booleanOrNull
 import kotlinx.serialization.json.contentOrNull
 
 /**
@@ -408,6 +409,22 @@ internal fun PreparedModel.repeatingLevelsOnThePathTo(path: String): Int =
         it.declaredKind == DeclaredKind.GROUP && it.isRepeatable &&
             (it.path == path || path.startsWith("${it.path}/"))
     }
+
+/**
+ * Whether this STRING declaration waives A12's per-cell value validation.
+ *
+ * `FieldUtils.isNoValueValidation` is a STRING-only member — every other declared type answers false — and
+ * the gate that reads it, `checkIsValueValidation`, refuses the whole call with `MVK_INVALID_RAW_TYPE`. Two
+ * families ask it, each at a different point of its own construct's order.
+ */
+internal fun DeclaredElement.waivesValueValidation(): Boolean {
+    val declared = body?.get("fieldType") as? JsonObject ?: return false
+    if ((declared["type"] as? JsonPrimitive)?.contentOrNull != "StringType") {
+        return false
+    }
+    val string = declared["StringType"] as? JsonObject ?: return false
+    return (string["noValueValidation"] as? JsonPrimitive)?.booleanOrNull == true
+}
 
 /** Whether [tokens] spell one written-out number. */
 internal fun isNumberLiteral(tokens: List<Token>): Boolean = numberLiteralScale(tokens) != null
