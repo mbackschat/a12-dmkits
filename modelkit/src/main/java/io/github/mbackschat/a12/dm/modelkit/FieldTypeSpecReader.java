@@ -32,8 +32,10 @@ final class FieldTypeSpecReader {
             case "DateFragmentType" -> new FieldTypeSpec.DateFragmentSpec(text(config, "formatOfFragment"),
                     config.path("youngerThan1900Check").asBoolean(false));
             case "TypeDefType" -> new FieldTypeSpec.TypeDefRef(config.path(DmKeys.TYPE_DEFINITION_ID).asText());
-            case "BooleanType" -> new FieldTypeSpec.BooleanSpec();
-            case "ConfirmType" -> new FieldTypeSpec.ConfirmSpec();
+            case "BooleanType" -> new FieldTypeSpec.BooleanSpec(
+                    text(config, "notInDCustomTrueValue"), text(config, "notInDCustomFalseValue"));
+            case "ConfirmType" -> new FieldTypeSpec.ConfirmSpec(
+                    text(config, "notInDCustomTrueValue"), text(config, "notInDCustomFalseValue"));
             case "EnumerationType" -> enumeration(config);
             case "CustomFieldType" -> new FieldTypeSpec.CustomSpec(
                     config.path(DmKeys.NAME).asText(), integer(config, "minLength"), integer(config, "maxLength"));

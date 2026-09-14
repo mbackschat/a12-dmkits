@@ -36,11 +36,8 @@ The gaps below were the **ergonomic and consistency remainder** — what added f
 
 ## 2. Open
 
-- **DG55 — a Boolean/Confirm field's custom true/false values are not authorable, and there is no field builder for either kind (2026-09-14).** `FieldTypeSpec.BooleanSpec` and `ConfirmSpec` are empty records, and `DocumentModelDraft`'s group builder offers `stringField`, `numberField`, `dateField`, `enumField`, `timeField`, `dateTimeField`, `dateRangeField`, `dateFragmentField`, `customField` and `typedefField` but nothing for the two boolean kinds. A12's DM-JSON carries `notInDCustomTrueValue` / `notInDCustomFalseValue` on both, and real models declare Boolean and Confirm fields, so a round-trip through modelkit cannot preserve either member.
+_None open._
 
-*It is a silent DROP on the read path, which is the sharper half and a defect rather than a gap.* `FieldTypeSpecReader` maps `"BooleanType" -> new FieldTypeSpec.BooleanSpec()` and `"ConfirmType" -> new FieldTypeSpec.ConfirmSpec()`, both empty records, so a kernel-authored model's declared true/false encoding does not survive a read→modify→write. This is a KNOWN CLASS in this estate, not a new one: [AF-sValue](API-FINDINGS.md) closed exactly this for the Enumeration S-value ("closing a pre-existing silent-drop on read→modify of a kernel-authored model"), and the fix pattern it established is the one to follow — the member rides every spec channel at once (the from-scratch emitter, the authored-state reader, the CLI field-spec block and its schema), so a round-trip cannot lose it.
-
-*What it blocked:* nothing yet. `BooleanCustomValueLawsTest` measured the four yes/no laws by patching a draft-built model's JSON, and none of them is reachable from a stored model ([KF362](KERNEL-FINDINGS.md#kf362)), so no checker family needs the members — which is why this is a ledger row rather than an interruption. *What closing it needs:* the two members on both specs, both builders, the reader, the emitter, the CLI field-spec and schema, an API golden regeneration, and a read→write round-trip test that fails today.
 
 ---
 

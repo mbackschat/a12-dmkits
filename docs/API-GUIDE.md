@@ -1244,7 +1244,7 @@ ModelDocument.read(json)
     .addField("/Subscription", "Coupon",
         new FieldTypeSpec.StringSpec(3, 10, "[A-Z]{3,10}", "3–10 uppercase letters"))   // pattern + bounds
     .addField("/Subscription", "RiskBand", new FieldTypeSpec.EnumSpec(values, categories)) // enum + categories
-    .setFieldType("/Subscription/AutoRenew", new FieldTypeSpec.ConfirmSpec())            // re-type a field
+    .setFieldType("/Subscription/AutoRenew", new FieldTypeSpec.ConfirmSpec(null, null))            // re-type a field
     .setLabel("/Subscription/Tier", Map.of("en_US", "Plan tier", "de_DE", "Tarifstufe")) // per-locale label
     .setHelperText("/Subscription/Tier", Map.of("en_US", "Affects pricing"))             // per-locale helper text
     .setAnnotation("/Subscription/Tier", "ui:widget", "dropdown")                        // name/value metadata
@@ -1268,6 +1268,22 @@ DocumentModelDraft draft = permit()
 This emits A12's `DateType.youngerThan1900Check`; the CLI peer is `"date":{"rejectBefore1900":true}`. It applies to stored values and any authorable computed target. Do not infer that a computation may target the partial precision shown above: kernel 30.8.1 rejects `DAY_OPTIONAL`, `MONTH_OPTIONAL`, and `YEAR_OPTIONAL` computation targets because the computation's generated implicit comparison reads the partial target as a value (`MVK_INVALID_DATE_TYPE`), and that code is not suppressible (finding 108 / IF237).
 
 **That check requires the declared format to carry a YEAR**, and the requirement is the format's rather than the kind's: over the kernel's admitted vocabulary it is accepted on `yyyy`, `yyyy-MM`, `yyyyMM`, `yyyy-MM-dd`, `dd.MM.yyyy`, `yyyyMMdd` and `yyyy-MM-dd'T'HH:mm:ss`, and refused `MVK_ADDITIONAL_CHECK_INVALID` on the year-free `MM`, `MM-dd`, `MMdd`, `ddMM` and `HH:mm:ss`. Incompleteness is not the trigger — `yyyy` carries no day and is accepted. The builder does not pre-check it: the kernel's own diagnostic carries a curated corrective naming the accepted formats (`StructuralKernelFix`), and a client-side refusal would also fire on the READ path, making an inconsistent-but-present model unreadable rather than merely unauthorable ([KF251](KERNEL-FINDINGS.md#kf251)).
+
+**The two BOOLEAN-valued kinds are declared with their own builders, and each can override the text it stores:**
+
+<!-- snippet: boolean-stored-values -->
+```java
+DocumentModelDraft draft = DocumentModelDraft.named("subscription").locale("en_US")
+        .rootGroup("Subscription", g -> g
+                .stringField("Reference", s -> { })
+                .booleanField("Paperless", b -> { })
+                .booleanField("MarketingOptIn", b -> b.trueValue("J").falseValue("N"))
+                .confirmField("TermsAccepted", c -> { })
+                .confirmField("AutoRenew", c -> c.trueValue("Y").falseValue("N")))
+        .build();
+```
+
+`booleanField` declares A12's three-state `BooleanType` and `confirmField` its two-state `ConfirmType`, whose unspecified value reads as False (§1). The difference is in EVALUATION rather than in configuration, which is why one `BooleanFieldBuilder` serves both: `trueValue`/`falseValue` emit `notInDCustomTrueValue` / `notInDCustomFalseValue` on either kind, and they are independent — override one and the other keeps A12's default. A bare declaration writes no inner block at all.
 
 **The same check rides two further declarations, and a Number can be declared unsigned:**
 

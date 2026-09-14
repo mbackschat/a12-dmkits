@@ -6,6 +6,11 @@ public enum io.github.mbackschat.a12.dm.modelkit.AttachmentRule
   public static io.github.mbackschat.a12.dm.modelkit.AttachmentRule valueOf(java.lang.String)
   public static io.github.mbackschat.a12.dm.modelkit.AttachmentRule[] values()
 
+public final class io.github.mbackschat.a12.dm.modelkit.BooleanFieldBuilder extends io.github.mbackschat.a12.dm.modelkit.FieldAttrs<io.github.mbackschat.a12.dm.modelkit.BooleanFieldBuilder>
+  public io.github.mbackschat.a12.dm.modelkit.BooleanFieldBuilder falseValue(java.lang.String)
+  protected io.github.mbackschat.a12.dm.modelkit.FieldTypeSpec spec()
+  public io.github.mbackschat.a12.dm.modelkit.BooleanFieldBuilder trueValue(java.lang.String)
+
 public final class io.github.mbackschat.a12.dm.modelkit.CustomFieldBuilder extends io.github.mbackschat.a12.dm.modelkit.FieldAttrs<io.github.mbackschat.a12.dm.modelkit.CustomFieldBuilder>
   public CustomFieldBuilder()
   public io.github.mbackschat.a12.dm.modelkit.CustomFieldBuilder maxLength(int)
@@ -79,6 +84,8 @@ public static final class io.github.mbackschat.a12.dm.modelkit.DocumentModelDraf
   public io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft.Builder typeDef(java.lang.String, java.util.function.Consumer<io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft.TypeDefBuilder>)
 
 public static final class io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft.GroupBuilder extends io.github.mbackschat.a12.dm.modelkit.ElementMeta<io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft.GroupBuilder>
+  public io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft.GroupBuilder booleanField(java.lang.String, java.util.function.Consumer<io.github.mbackschat.a12.dm.modelkit.BooleanFieldBuilder>)
+  public io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft.GroupBuilder confirmField(java.lang.String, java.util.function.Consumer<io.github.mbackschat.a12.dm.modelkit.BooleanFieldBuilder>)
   public io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft.GroupBuilder customField(java.lang.String, java.util.function.Consumer<io.github.mbackschat.a12.dm.modelkit.CustomFieldBuilder>)
   public io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft.GroupBuilder dateField(java.lang.String, java.util.function.Consumer<io.github.mbackschat.a12.dm.modelkit.DateFieldBuilder>)
   public io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft.GroupBuilder dateFragmentField(java.lang.String, java.util.function.Consumer<io.github.mbackschat.a12.dm.modelkit.DateFragmentFieldBuilder>)
@@ -290,14 +297,18 @@ public sealed interface io.github.mbackschat.a12.dm.modelkit.FieldTypeSpec
   public abstract java.lang.String jsonType()
 
 public static record io.github.mbackschat.a12.dm.modelkit.FieldTypeSpec.BooleanSpec implements io.github.mbackschat.a12.dm.modelkit.FieldTypeSpec
-  public BooleanSpec()
+  public BooleanSpec(java.lang.String, java.lang.String)
+  public java.lang.String customFalseValue()
+  public java.lang.String customTrueValue()
   public final boolean equals(java.lang.Object)
   public final int hashCode()
   public java.lang.String jsonType()
   public final java.lang.String toString()
 
 public static record io.github.mbackschat.a12.dm.modelkit.FieldTypeSpec.ConfirmSpec implements io.github.mbackschat.a12.dm.modelkit.FieldTypeSpec
-  public ConfirmSpec()
+  public ConfirmSpec(java.lang.String, java.lang.String)
+  public java.lang.String customFalseValue()
+  public java.lang.String customTrueValue()
   public final boolean equals(java.lang.Object)
   public final int hashCode()
   public java.lang.String jsonType()

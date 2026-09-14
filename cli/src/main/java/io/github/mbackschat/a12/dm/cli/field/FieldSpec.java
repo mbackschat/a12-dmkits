@@ -37,10 +37,12 @@ public final class FieldSpec {
 
     /**
      * The type-selection keys: a {@code typedef} reference, or a {@code kind} plus its per-kind config
-     * block ({@code string}/{@code number}/{@code enum}/{@code custom} and the date/time families).
+     * block ({@code string}/{@code number}/{@code enum}/{@code boolean}/{@code confirm}/{@code custom} and
+     * the date/time families).
      */
     public static final Set<String> TYPE_KEYS = Set.of("kind", "typedef",
-            "string", "number", "enum", "date", "time", "dateTime", "dateRange", "dateFragment", "custom");
+            "string", "number", "enum", "boolean", "confirm",
+            "date", "time", "dateTime", "dateRange", "dateFragment", "custom");
 
     /**
      * The per-kind config-block keys — {@link #TYPE_KEYS} without the two selectors ({@code kind}/{@code typedef}).
@@ -222,8 +224,10 @@ public final class FieldSpec {
             case "DATEFRAGMENT", "DATE_FRAGMENT" -> new FieldTypeSpec.DateFragmentSpec(
                     req(spec.path("dateFragment"), "format"),
                     spec.path("dateFragment").path("rejectBefore1900").asBoolean(false));
-            case "BOOLEAN" -> new FieldTypeSpec.BooleanSpec();
-            case "CONFIRM" -> new FieldTypeSpec.ConfirmSpec();
+            case "BOOLEAN" -> new FieldTypeSpec.BooleanSpec(
+                    text(spec.path("boolean"), "trueValue"), text(spec.path("boolean"), "falseValue"));
+            case "CONFIRM" -> new FieldTypeSpec.ConfirmSpec(
+                    text(spec.path("confirm"), "trueValue"), text(spec.path("confirm"), "falseValue"));
             // a kind with no config block falls through its case above with empty config (= a bare spec);
             // anything here is genuinely unknown
             default -> throw new IllegalArgumentException("unknown field kind: '" + kindText

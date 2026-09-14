@@ -92,6 +92,18 @@
         "rejectBefore1900": { "type": "boolean", "description": "when true, enable A12 DateRangeType.youngerThan1900Check: a range whose START date is before 1900-01-01 is invalid (datumBereichDatumFalsch; end >= start covers the other endpoint); default false. MEASURED and UNLIKE the date/dateFragment key: NO year co-requirement — every admitted (format, separator) pair takes it, the year-free ones included, and on a year-free pair the check reads the model's BASE YEAR completion. One exception: the pure MM pair, where the kernel appends no year at all, so neither this check nor the always-on 1583-10-16 floor ever fires on it." }
       }
     },
+    "boolean": {
+      "type": "object", "description": "(kind BOOLEAN) config", "additionalProperties": false,
+      "properties": {
+        "trueValue": { "type": "string", "description": "A12 BooleanType.notInDCustomTrueValue / notInDCustomFalseValue: the text this model stores for true and for false where they are not A12's defaults. Independent — set either alone; omitting both writes no config block at all." },
+        "falseValue": { "type": "string", "description": "A12 BooleanType.notInDCustomTrueValue / notInDCustomFalseValue: the text this model stores for true and for false where they are not A12's defaults. Independent — set either alone; omitting both writes no config block at all." } }
+    },
+    "confirm": {
+      "type": "object", "description": "(kind CONFIRM) config", "additionalProperties": false,
+      "properties": {
+        "trueValue": { "type": "string", "description": "A12 ConfirmType.notInDCustomTrueValue / notInDCustomFalseValue: the text this model stores for true and for false where they are not A12's defaults. Independent — set either alone; omitting both writes no config block at all." },
+        "falseValue": { "type": "string", "description": "A12 ConfirmType.notInDCustomTrueValue / notInDCustomFalseValue: the text this model stores for true and for false where they are not A12's defaults. Independent — set either alone; omitting both writes no config block at all." } }
+    },
     "dateFragment": {
       "type": "object", "description": "(kind DATEFRAGMENT) config", "additionalProperties": false,
       "required": ["format"],

@@ -368,16 +368,21 @@ public sealed interface FieldTypeSpec {
         }
     }
 
-    /** A boolean (three-state, §1). */
-    record BooleanSpec() implements FieldTypeSpec {
+    /**
+     * A boolean (three-state, §1), with the text this model stores for true and for false.
+     *
+     * Both are {@code null} where the model takes A12's defaults, and they are independent — a model may
+     * override one and leave the other (DM-JSON {@code notInDCustomTrueValue} / {@code notInDCustomFalseValue}).
+     */
+    record BooleanSpec(String customTrueValue, String customFalseValue) implements FieldTypeSpec {
         @Override
         public String jsonType() {
             return "BooleanType";
         }
     }
 
-    /** A confirm (unspecified = False, §1). */
-    record ConfirmSpec() implements FieldTypeSpec {
+    /** A confirm (unspecified = False, §1), carrying the same two stored-value overrides as [BooleanSpec]. */
+    record ConfirmSpec(String customTrueValue, String customFalseValue) implements FieldTypeSpec {
         @Override
         public String jsonType() {
             return "ConfirmType";

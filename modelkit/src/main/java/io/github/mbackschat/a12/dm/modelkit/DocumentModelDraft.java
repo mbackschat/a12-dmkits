@@ -376,6 +376,25 @@ public final class DocumentModelDraft {
         writeTypeConfig(fieldType, spec, locales);
     }
 
+    /**
+     * Write the stored-value overrides of a boolean-valued field, omitting the inner block when neither is set.
+     *
+     * The two are independent: a model may override only one, so this writes whichever are present rather
+     * than treating them as a pair.
+     */
+    private static void storedValues(ObjectNode fieldType, String type, String trueValue, String falseValue) {
+        if (trueValue == null && falseValue == null) {
+            return;
+        }
+        ObjectNode inner = fieldType.putObject(type);
+        if (trueValue != null) {
+            inner.put("notInDCustomTrueValue", trueValue);
+        }
+        if (falseValue != null) {
+            inner.put("notInDCustomFalseValue", falseValue);
+        }
+    }
+
     /** Write the kernel {@code fieldType.<Type>} inner block for the configured slots (omitted when empty). */
     private static void writeTypeConfig(ObjectNode fieldType, FieldTypeSpec spec, List<String> locales) {
         switch (spec) {
@@ -492,8 +511,10 @@ public final class DocumentModelDraft {
             }
             case FieldTypeSpec.TypeDefRef ref ->
                     fieldType.putObject("TypeDefType").put(DmKeys.TYPE_DEFINITION_ID, ref.typeDefinitionId());
-            case FieldTypeSpec.BooleanSpec b -> { /* bare */ }
-            case FieldTypeSpec.ConfirmSpec c -> { /* bare */ }
+            case FieldTypeSpec.BooleanSpec b -> storedValues(fieldType, "BooleanType",
+                    b.customTrueValue(), b.customFalseValue());
+            case FieldTypeSpec.ConfirmSpec c -> storedValues(fieldType, "ConfirmType",
+                    c.customTrueValue(), c.customFalseValue());
             case FieldTypeSpec.EnumSpec e -> {
                 boolean labelled = e.values().stream().anyMatch(v -> !v.labels().isEmpty());
                 if (labelled) {
@@ -995,6 +1016,20 @@ public final class DocumentModelDraft {
             return addField(name, b);
         }
 
+        /** Add a three-state Boolean field, optionally overriding the text stored for true and false. */
+        public GroupBuilder booleanField(String name, Consumer<BooleanFieldBuilder> body) {
+            BooleanFieldBuilder b = new BooleanFieldBuilder(FieldKind.BOOLEAN);
+            body.accept(b);
+            return addField(name, b);
+        }
+
+        /** Add a Confirm field (unspecified reads as False), with the same two stored-value overrides. */
+        public GroupBuilder confirmField(String name, Consumer<BooleanFieldBuilder> body) {
+            BooleanFieldBuilder b = new BooleanFieldBuilder(FieldKind.CONFIRM);
+            body.accept(b);
+            return addField(name, b);
+        }
+
         /** Add a number field with optional scale/range config, requiredness, labels, annotations. */
         public GroupBuilder numberField(String name, Consumer<NumberFieldBuilder> body) {
             NumberFieldBuilder b = new NumberFieldBuilder();
@@ -1410,8 +1445,8 @@ public final class DocumentModelDraft {
             case STRING -> new FieldTypeSpec.StringSpec(null, null, null, null);
             case NUMBER -> FieldTypeSpec.NumberSpec.builder().build();
             case DATE -> new FieldTypeSpec.DateSpec(null, "FULL");
-            case BOOLEAN -> new FieldTypeSpec.BooleanSpec();
-            case CONFIRM -> new FieldTypeSpec.ConfirmSpec();
+            case BOOLEAN -> new FieldTypeSpec.BooleanSpec(null, null);
+            case CONFIRM -> new FieldTypeSpec.ConfirmSpec(null, null);
         };
     }
 

@@ -49,7 +49,7 @@ class ModelMetadataTest {
     void reTypesAnExistingField() {
         // AutoRenew is a BooleanType in the fixture; re-type it to a ConfirmType
         ModelDocument doc = subscription()
-                .setFieldType("/Subscription/AutoRenew", new FieldTypeSpec.ConfirmSpec())
+                .setFieldType("/Subscription/AutoRenew", new FieldTypeSpec.ConfirmSpec(null, null))
                 .validate();
 
         assertEquals("ConfirmType", doc.fieldType("/Subscription/AutoRenew").orElseThrow());
@@ -86,6 +86,6 @@ class ModelMetadataTest {
         assertThrows(IllegalArgumentException.class,
                 () -> subscription().setLabel("/Subscription/Nope", Map.of("en_US", "x", "de_DE", "y")));
         assertThrows(IllegalArgumentException.class,
-                () -> subscription().setFieldType("/Subscription/Nope", new FieldTypeSpec.ConfirmSpec()));
+                () -> subscription().setFieldType("/Subscription/Nope", new FieldTypeSpec.ConfirmSpec(null, null)));
     }
 }
