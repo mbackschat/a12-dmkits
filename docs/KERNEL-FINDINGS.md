@@ -7166,6 +7166,32 @@ Reported by the portable checker, which did not emit `MVK_SORT_FIELD_DUPLICATE` 
 
 *Locked by:* `rulekit.validate.laws.GroupOrderingMultipleDefectLawsTest`, mirrored by `consistency … GroupOrderingMultipleDefectTest`.
 
+## §11 supplement — reading the computed field is CONTAINMENT, not equality, and two shapes are exempt (source-verified + measured, 2026-09-15) <a id="kf416"></a>
+
+> Fold: pending — belongs beside §11's computation account, next to [KF182](#kf182)'s projected-read split.
+
+[KF181](#kf181) and [KF182](#kf182) settle which CLASS a self-read draws and what pre-empts it; both measured only reads of the computed field itself. The predicate is wider. `NormalisierteBerechnungsFormHelper.feldReferenziertOhneKontextAngegeben` asks `EntityUtils.isDescendantOrEqual(calculatedField, referencedEntity)` — the CALCULATED FIELD against the reference — so a reference to any **ancestor** of the computed field is a read of it.
+
+Measured over one computation writing `/Routing/Legs/Distance` from the constant `1`, whose derived scale matches the target's declared zero so the gate [KF181](#kf181) puts ahead of this class cannot fire:
+
+| the guard beside that operation | verdict |
+|---|---|
+| none, and a read of a SIBLING field — the controls | ADMITTED |
+| `FieldFilled(Distance)` — the computed field itself | `MVK_ERROR_REFERENCE_TO_CALCULATED_FIELD` |
+| `GroupNotFilled(/Routing/Legs)` — its own GROUP | `MVK_ERROR_REFERENCE_TO_CALCULATED_FIELD` |
+| `NumberOfFilledGroups(/Routing/Legs*) > 0` | `MVK_ERROR_REFERENCE_TO_CALCULATED_FIELD` |
+| `GroupNotFilled(/Routing)` — the ROOT, an ancestor like any other | `MVK_ERROR_REFERENCE_TO_CALCULATED_FIELD` |
+| `GroupFilled(/Routing/Legs)` | ADMITTED |
+| `CurrentRepetition(/Routing/Legs) == 1` | ADMITTED |
+
+**The last two are carved exemptions, not a rule about group predicates** — which is what the `GroupNotFilled` row establishes, since it names the same group. `GroupFilled` is the kernel's single-entity `AllGroupsFilled`, exempted in the walk as "context specified"; a `CurrentRepetition` operand is not traversed at all. A checker taking either half alone is wrong in one direction: keyed on equality it admits the group rows, keyed on containment alone it refuses the two A12 admits.
+
+**The root row also settles which class answers there**, and it is not the one the operand families draw: the identical `GroupNotFilled(/Routing)` in an ordinary RULE is ADMITTED, so no parse-time gate speaks about a group predicate over a root group and `MVK_ROOT_GROUP_REFERENCED` — an entity-LIST class — never competes.
+
+**The law reaches a target with no scale unchanged**, which is the part a clean-room checker can carry without derived-scale inference: on the string `/Routing/PlannedLeg`, a self-read in the operation and a self-read in the precondition both draw the class, against an accepted peer-read control.
+
+*Locked by:* `rulekit.validate.laws.ComputationSelfReadScopeLawsTest`.
+
 ## §11 supplement — the calculation gates judge a rule A12 SYNTHESIZES, which erases six of their classes for stored A12 models (source-verified + measured, 2026-09-15) <a id="kf415"></a>
 
 > Fold: not-foldable — a reachability account of one module's diagnostic classes, not an evaluation behaviour.
