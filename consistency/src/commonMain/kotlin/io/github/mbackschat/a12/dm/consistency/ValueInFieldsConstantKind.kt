@@ -136,7 +136,8 @@ private fun PreparedModel.constantKindFinding(
 ): Finding? {
     val (constants, entities) = call.splitAtIn() ?: return null
     val constantText = constants.singleOrNull() ?: return null
-    val arm = armOf(constantText, spellings) ?: return null
+    val arm = armOf(constantText, spellings)
+        ?: return unexpectedConstantToken(constantText, declaringGroup, element, member)
     val written = entities.map { referencesIn(it, conditionLanguage).singleOrNull() ?: return null }
     val targets = written.map { addressedTargetOf(it, declaringGroup, element) ?: return null }
     if (preEmptedBeforeTheSwitch(written, targets)) {
@@ -294,6 +295,47 @@ private fun armOf(constantText: String, spellings: ConstantSpellings): ConstantA
         single.text in spellings.pointsInTime -> ConstantArm.POINT_IN_TIME
         else -> null
     }
+}
+
+/**
+ * The slot holds something A12's grammar does not admit there at all — `MVK_UNEXPECTED_TOKEN`.
+ *
+ * `konstante` is `commonKonstante` alone, so the slot takes one of six alternatives and nothing built from
+ * them: an operation is refused, and so are PARENTHESES around a legal constant (measured 2026-09-15,
+ * [KERNEL-FINDINGS KF409]). That is what makes this a position a checker may refuse, rather than only the
+ * four typed arms above.
+ *
+ * **Silent when the slot's own text carries a reference this model cannot resolve.** A12 reports the first
+ * defect in the text and nothing after it, and the reference family already speaks about that token — so
+ * reporting here as well would hand the author two classes where A12 draws one. It is the local form of the
+ * discipline [POSITIONED_CONDITION_CODES] applies across families, and it leaves one divergence standing,
+ * recorded in this family's mirror: on an UNDECLARED name the author sees a resolution class where A12
+ * reports the token. Closing it needs the reader to stop resolving the slot at all, which needs offsets
+ * `ConditionCall` does not carry.
+ */
+private fun PreparedModel.unexpectedConstantToken(
+    constantText: String,
+    declaringGroup: String,
+    element: DeclaredElement,
+    member: String,
+): Finding? {
+    if (constantText.isBlank()) {
+        return null
+    }
+    val unresolvable = referencesIn(constantText, conditionLanguage)
+        .any { addressedTargetOf(it, declaringGroup, element) == null }
+    if (unresolvable) {
+        return null
+    }
+    return Finding(
+        FindingCategory.A12_CONSTRAINT,
+        FindingSeverity.ERROR,
+        "MVK_UNEXPECTED_TOKEN",
+        "in `$member`: `$VALUE_IN_FIELDS` counts `${constantText.trim()}`, which is not a constant — this " +
+            "position takes a number, a text, `True`, `False` or a point in time, and nothing assembled " +
+            "from them, so even parentheses around a legal constant are refused",
+        element.path,
+    )
 }
 
 /** The string constant this text is, or null when it is anything else. */

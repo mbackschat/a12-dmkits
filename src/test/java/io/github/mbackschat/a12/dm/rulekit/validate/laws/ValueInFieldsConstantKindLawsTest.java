@@ -158,6 +158,57 @@ class ValueInFieldsConstantKindLawsTest {
         assertEquals(expected, actual, "the constant kinds the switch falls through on");
     }
 
+    /**
+     * EVERY spelling the constant slot admits, and what it answers to one it does not.
+     *
+     * <p>The grammar's {@code konstante} is {@code commonKonstante} alone — six alternatives and no
+     * operation — so a checker may refuse the position outright. That is a REFUSAL, which makes the admitted
+     * half the load-bearing half: the number alternative carries an optional sign and an optional fractional
+     * part, the string one carries A12's doubled-quote escape, and a checker that missed any of them would
+     * refuse a model A12 builds. The list is taken from the production rather than from the shapes this
+     * estate happened to have written.
+     *
+     * <p>The number list is counted against NUMBER declarations and the rest against declarations their own
+     * arm admits, so every admitted row is an unqualified {@code ADMITTED} rather than a type class standing
+     * in for one.
+     */
+    @Test
+    void everySpellingTheConstantSlotAdmitsAndOneItDoesNot() {
+        Map<String, String> actual = new LinkedHashMap<>();
+        actual.put("an integer", rawVerdict("NumberOfValueInFields(0 In Quantity, Backordered) > 0"));
+        actual.put("a NEGATIVE integer", rawVerdict("NumberOfValueInFields(-1 In Quantity, Backordered) > 0"));
+        actual.put("a decimal", rawVerdict("NumberOfValueInFields(1.5 In Quantity, Backordered) > 0"));
+        actual.put("a negative decimal",
+                rawVerdict("NumberOfValueInFields(-1.5 In Quantity, Backordered) > 0"));
+        actual.put("a string", rawVerdict("NumberOfValueInFields(\"WEB\" In GiftNote, Reference) > 0"));
+        actual.put("a string carrying A12's DOUBLED quote",
+                rawVerdict("NumberOfValueInFields(\"say \"\"hi\"\"\" In GiftNote, Reference) > 0"));
+        actual.put("an EMPTY string", rawVerdict("NumberOfValueInFields(\"\" In GiftNote, Reference) > 0"));
+        actual.put("True", rawVerdict("NumberOfValueInFields(True In Expedited, GiftWrapped) > 0"));
+        actual.put("False", rawVerdict("NumberOfValueInFields(False In Expedited, GiftWrapped) > 0"));
+        actual.put("an OPERATION in the slot",
+                rawVerdict("NumberOfValueInFields(Sum(Quantity) In Quantity, Backordered) > 0"));
+        actual.put("a parenthesized number in the slot",
+                rawVerdict("NumberOfValueInFields((0) In Quantity, Backordered) > 0"));
+
+        Map<String, String> expected = new LinkedHashMap<>();
+        expected.put("an integer", KernelLaws.ADMITTED);
+        expected.put("a NEGATIVE integer", KernelLaws.ADMITTED);
+        expected.put("a decimal", KernelLaws.ADMITTED);
+        expected.put("a negative decimal", KernelLaws.ADMITTED);
+        expected.put("a string", KernelLaws.ADMITTED);
+        expected.put("a string carrying A12's DOUBLED quote", KernelLaws.ADMITTED);
+        expected.put("an EMPTY string", KernelLaws.ADMITTED);
+        expected.put("True", KernelLaws.ADMITTED);
+        expected.put("False", KernelLaws.ADMITTED);
+        // The slot takes the bare production and nothing built from it: even PARENTHESES around a legal
+        // constant are refused, which is the row that separates "a constant" from "an expression yielding
+        // one" and is why a checker may refuse the position rather than only its four typed arms.
+        expected.put("an OPERATION in the slot", "MVK_UNEXPECTED_TOKEN");
+        expected.put("a parenthesized number in the slot", "MVK_UNEXPECTED_TOKEN");
+        assertEquals(expected, actual, "the constant slot's admitted vocabulary");
+    }
+
     /** The string and number arms, and the enumeration membership the string arm additionally checks. */
     @Test
     void whichDeclarationsTheStringAndNumberConstantsAdmit() {

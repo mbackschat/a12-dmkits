@@ -68,6 +68,10 @@ class ValueInFieldsConstantKindTest {
         actual["the same call fully admitted"] = count("0", "Quantity, Backordered")
         actual["a field NAME in the constant slot"] = count("Reference", "Expedited, GiftWrapped")
         actual["an undeclared name in the constant slot"] = count("NoSuchThing", "Expedited, GiftWrapped")
+        actual["an OPERATION in the slot"] = count("Sum(Quantity)", "Quantity, Backordered")
+        actual["a parenthesized number in the slot"] = count("(0)", "Quantity, Backordered")
+        actual["a negative decimal — a legal spelling"] = count("-1.5", "Quantity, Backordered")
+        actual["an empty string — a legal spelling"] = count("\"\"", "GiftNote, Reference")
 
         val expected = mutableMapOf<String, List<String>>()
         expected["Today"] = listOf("MVK_INVALID_CONST")
@@ -77,13 +81,24 @@ class ValueInFieldsConstantKindTest {
         // The boundary, and the rows that keep this arm from being widened to "not one of the four": a bare
         // NAME is no grammar alternative at all, so A12 answers `MVK_UNEXPECTED_TOKEN` to both of these —
         // measured in the laws twin. Silence on the first is under-reporting, the safe direction.
-        expected["a field NAME in the constant slot"] = emptyList()
+        expected["a field NAME in the constant slot"] = listOf("MVK_UNEXPECTED_TOKEN")
         // The second is a DIVERGENCE and is asserted rather than hidden: this checker's reader resolves the
         // token as an entity where A12's grammar never reaches one, so the author is handed a resolution
         // class for a token defect — the right location and the wrong gate. It belongs to the condition
         // families that would have to refuse the position, not to this arm, which is why the row records it
         // instead of this family suppressing a class it does not own.
         expected["an undeclared name in the constant slot"] = listOf("MVK_INVALID_ENTITY")
+        // The SECOND shape of the same divergence, asserted rather than hidden: A12's parse stops at the
+        // token, so the arity gate is never reached, while this checker's reader splits the call anyway and
+        // counts one field. Both classes are positioned ones that compete for first place, and this estate
+        // keeps every competitor because it has no offsets to order them by — so the right class arrives
+        // beside a wrong one instead of replacing it.
+        expected["an OPERATION in the slot"] = listOf("MVK_UNEXPECTED_TOKEN", "MVK_PARAMSIZE_INVALIDN")
+        expected["a parenthesized number in the slot"] = listOf("MVK_UNEXPECTED_TOKEN")
+        // The two legal spellings most likely to be mis-read as "not a constant" by a token-counting
+        // reader: a signed decimal is three tokens and an empty string is a token with no content.
+        expected["a negative decimal — a legal spelling"] = emptyList()
+        expected["an empty string — a legal spelling"] = emptyList()
         assertEquals(expected, actual, "the constant kinds the switch falls through on")
     }
 
