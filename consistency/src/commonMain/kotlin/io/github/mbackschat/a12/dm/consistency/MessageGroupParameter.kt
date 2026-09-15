@@ -2,6 +2,7 @@ package io.github.mbackschat.a12.dm.consistency
 
 import io.github.mbackschat.a12.dm.consistency.syntax.ConditionLanguage
 import io.github.mbackschat.a12.dm.consistency.syntax.messageParameterBodies
+import io.github.mbackschat.a12.dm.consistency.syntax.referencesIn
 
 /**
  * What an error message's `$#…$` GROUP position may name: a group that CONTAINS the rule's own.
@@ -29,6 +30,13 @@ import io.github.mbackschat.a12.dm.consistency.syntax.messageParameterBodies
  * are looked up as ordinary group names and draw `INVALID_GROUP`, while `/'Policy'/'Cover'` reaches the same
  * group its bare spelling does — so quoting is transparent for a SEGMENT and not for a keyword. That is the
  * separator between the two tempting accounts of the escape, and both halves are measured.
+ *
+ * **Two gates sit behind the wildcard one and are NOT reported, with the reason beside them.** A group that
+ * is a PARALLEL ITERATION, or a parameter carrying a semantic index, hands the decision to
+ * `RuleErrorTextIterationParamVisitor` walking the PARSED condition — so `INVALID_USE_OF_ITERATION_PARAM`
+ * and `INVALID_USE_OF_SEMANTIC_INDEX` need that visitor's acceptance reproduced, not another reading of the
+ * model (source-read 30.8.1: `checkSemanticIndexAndParallelIteration` returns true immediately for every
+ * other shape, which is why the two gates are invisible on an ordinary parameter).
  *
  * **`RootGroup` is chain-relative**, naming the root of the rule's OWN ancestor chain rather than the model's
  * first declared root — measured from a rule under a second root, where the first root's name is refused.
@@ -68,7 +76,9 @@ fun PreparedModel.messageGroupParameterFindings(): List<Finding> {
                 val argument = parameter.trim().removePrefix(GROUP_MARKER).takeIf {
                     parameter.trim().startsWith(GROUP_MARKER)
                 } ?: return@mapNotNull null
-                groupArgumentDefect(argument, ruleGroup, roots, conditionLanguage)?.let { code -> finding(code, argument, element) }
+                val defect = groupArgumentDefect(argument, ruleGroup, roots, conditionLanguage)
+                    ?: starredIterationDefect(argument, ruleGroup, roots, element)
+                defect?.let { code -> finding(code, argument, element) }
             }
         }
     }
@@ -123,6 +133,80 @@ private fun groupArgumentDefect(
     return if (ruleGroup == named || ruleGroup.startsWith("$named/")) null else GROUP
 }
 
+/**
+ * The gate BEHIND containment: the condition must ride the named group without a repetition wildcard.
+ *
+ * A12 asks `refEntities.isNotReferencedWithoutWildcard` of the group the parameter resolved to, so the law
+ * belongs to the POSITION and not to the shorthand its comment names — measured on both spellings of one
+ * group, which draw the same class, and against the root shorthand on the same condition, which is admitted
+ * because every reference into the rule's own group rides the root unstarred
+ * (`rulekit.validate.laws.MessageGroupParameterIterationLawsTest`).
+ *
+ * **Reached only where the gates before it ADMITTED the argument**, which is why the named group is resolved
+ * a second time here rather than carried out of [groupArgumentDefect]: a malformed segment is declined
+ * rather than admitted, and a declined argument must stay silent through this gate too.
+ */
+private fun PreparedModel.starredIterationDefect(
+    argument: String,
+    ruleGroup: String,
+    roots: Set<String>,
+    element: DeclaredElement,
+): String? {
+    val named = namedGroup(argument, ruleGroup, roots, conditionLanguage) ?: return null
+    return if (conditionRidesUnstarred(named, ruleGroup, element)) null else STARRED_ITERATION
+}
+
+/** The group an ADMITTED argument names, or null for one this family declined to judge. */
+private fun namedGroup(
+    argument: String,
+    ruleGroup: String,
+    roots: Set<String>,
+    language: ConditionLanguage,
+): String? = when {
+    argument == RULE_GROUP_SPELLING[language] -> ruleGroup
+    argument == ROOT_GROUP_SPELLING[language] -> roots.firstOrNull { ruleGroup == it || ruleGroup.startsWith("$it/") }
+    !argument.startsWith('/') -> null
+    else -> {
+        val segments = argument.removePrefix("/").split('/')
+        if (segments.any { it.isMalformed() }) null else "/" + segments.joinToString("/") { it.trim('\'') }
+    }
+}
+
+/**
+ * Whether any of this declaration's condition references rides [group] with no wildcard at or above it.
+ *
+ * A star BELOW the group leaves the group itself ridden per row, which is the row that separates this from
+ * "the condition carries no star at all": a rule in an inner group reading its own field, beside a starred
+ * read of the outer group's field, is ADMITTED. The star's own level is found by resolving the reference's
+ * prefix up to the starred segment, so relative spellings and `..` steps are handled by the resolver rather
+ * than by arithmetic here — and a prefix that does not resolve counts as a ride, which under-reports.
+ */
+private fun PreparedModel.conditionRidesUnstarred(
+    group: String,
+    ruleGroup: String,
+    element: DeclaredElement,
+): Boolean {
+    val body = element.body ?: return true
+    fun resolves(written: String): String? =
+        (resolveEntity(ruleGroup, written, element.origin) as? Reference.Resolved)?.path
+    return conditionTexts(element.kind, body).any { (_, text) ->
+        referencesIn(text, conditionLanguage).any { written ->
+            val resolved = resolves(written.replace("*", "")) ?: return@any false
+            if (resolved != group && !resolved.startsWith("$group/")) {
+                return@any false
+            }
+            if ('*' !in written) {
+                return@any true
+            }
+            val segments = written.split('/')
+            val starred = segments.indexOfFirst { '*' in it }
+            val prefix = segments.take(starred + 1).joinToString("/").replace("*", "")
+            val starLevel = resolves(prefix) ?: return@any true
+            starLevel.startsWith("$group/")
+        }
+    }
+}
+
 /** A segment A12 refuses while LEXING — an empty one, or one whose quoting does not balance. */
 private fun String.isMalformed(): Boolean =
     isEmpty() || trim('\'').isEmpty() || (count { it == '\'' } % 2 != 0)
@@ -135,6 +219,8 @@ private const val RETIRED = "PARAM_INVALID_IN_NEW_WORLD"
 
 private const val IMMEDIATELY_BELOW_ROOT = "RULEGROUP_IMMEDIATELY_BELOW_ROOT"
 
+private const val STARRED_ITERATION = "ITER_PARAM_WITH_STARREFERENCE"
+
 private fun finding(code: String, argument: String, element: DeclaredElement): Finding = Finding(
     FindingCategory.A12_CONSTRAINT,
     FindingSeverity.ERROR,
@@ -145,6 +231,9 @@ private fun finding(code: String, argument: String, element: DeclaredElement): F
             "names the rule's own group with a shorthand A12 refuses where that group IS a root group — " +
                 "name it by its absolute path, or use `RootGroup`"
         ROOT_GROUP -> "starts at a root group this model does not declare"
+        STARRED_ITERATION ->
+            "names a group this declaration's condition reads only through a repetition wildcard — the " +
+                "parameter pins the message to ONE row, so give the condition an unstarred read of that level"
         else -> "names a group that does not CONTAIN this rule's group — the position takes the rule's own " +
             "group or one of its ancestors, spelled absolutely"
     },

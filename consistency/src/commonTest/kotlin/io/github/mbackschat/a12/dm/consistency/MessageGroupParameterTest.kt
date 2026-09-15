@@ -16,6 +16,8 @@ class MessageGroupParameterTest {
     private val group = "INVALID_GROUP"
     private val rootGroup = "INVALID_ROOT_GROUP"
 
+    private val starredIteration = "ITER_PARAM_WITH_STARREFERENCE"
+
     @Test
     fun whichGroupTheParameterMayName() {
         val actual = mutableMapOf<String, List<String>>()
@@ -93,18 +95,61 @@ class MessageGroupParameterTest {
         assertEquals(expected, actual, "the refusal is of the word at that locus")
     }
 
-    private val owned = setOf(group, rootGroup, "PARAM_INVALID_IN_NEW_WORLD", "RULEGROUP_IMMEDIATELY_BELOW_ROOT")
+    /**
+     * The gate BEHIND containment: the condition has to ride the named group without a wildcard.
+     *
+     * Every row holds the argument's containment fixed and moves only the CONDITION's form, so a refusal
+     * here cannot be the gate before it. The root shorthand is the row that keeps the gate from reading as
+     * "a starred condition refuses every group parameter": a reference into the rule's own group rides the
+     * ROOT unstarred, whatever the star does below it.
+     */
+    @Test
+    fun theConditionHasToRideTheNamedGroupWithoutAWildcard() {
+        val actual = mutableMapOf<String, List<String>>()
+        actual["the near shorthand, its group read per row — the control"] = reporting("RuleGroup")
+        actual["the near shorthand, its group read through a star alone"] = starred("RuleGroup")
+        actual["the same group by absolute path, read through a star alone"] =
+            starred("/Policy/Cover/Sections")
+        actual["the ROOT shorthand on that same condition"] = starred("RootGroup")
+        actual["an ANCESTOR by absolute path, with the star BELOW it"] = starred("/Policy/Cover")
+
+        val refused = listOf(starredIteration)
+        val expected = mutableMapOf<String, List<String>>()
+        expected["the near shorthand, its group read per row — the control"] = emptyList()
+        expected["the near shorthand, its group read through a star alone"] = refused
+        // The gate is the POSITION's, not the shorthand's — the same group spelled out draws the same class.
+        expected["the same group by absolute path, read through a star alone"] = refused
+        expected["the ROOT shorthand on that same condition"] = emptyList()
+        // A star BELOW the named group leaves that group ridden per row, so this must stay silent — the
+        // branch that keeps the reducer from reporting on any condition that carries a star anywhere.
+        expected["an ANCESTOR by absolute path, with the star BELOW it"] = emptyList()
+        assertEquals(expected, actual, "the condition has to ride the named group without a wildcard")
+    }
+
+    private val owned = setOf(
+        group, rootGroup, "PARAM_INVALID_IN_NEW_WORLD", "RULEGROUP_IMMEDIATELY_BELOW_ROOT",
+        starredIteration,
+    )
 
     private fun reporting(argument: String): List<String> =
         check(ModelSource(model(argument, deep = true))).findings.filter { it.code in owned }.map { it.code }
+
+    /** The same deep rule, with its own group read through a repetition wildcard and nothing else. */
+    private fun starred(argument: String): List<String> = check(
+        ModelSource(model(argument, deep = true, condition = "AtLeastOneFieldFilled(/Policy/Cover/Sections*/Amount)")),
+    ).findings.filter { it.code in owned }.map { it.code }
 
     private fun atRoot(argument: String): List<String> =
         check(ModelSource(model(argument, deep = false))).findings.filter { it.code in owned }.map { it.code }
 
     /** An insurance policy whose rule sits three levels down, or in the root group when [deep] is false. */
-    private fun model(argument: String, deep: Boolean): String {
+    private fun model(
+        argument: String,
+        deep: Boolean,
+        condition: String = "FieldFilled(/Policy/Cover/Sections/Amount)",
+    ): String {
         val rule = """{"type":"Rule","id":"r0","name":"Probe","Rule":{
-              "errorCondition":"FieldFilled(/Policy/Cover/Sections/Amount)",
+              "errorCondition":"$condition",
               "errorEntityRelPath":"${if (deep) "../Amount" else "../Reference"}","errorCode":"C1",
               "errorMessage":[{"locale":"en_US","text":"row ${'$'}#$argument${'$'} needs an amount."}]}}"""
         return """

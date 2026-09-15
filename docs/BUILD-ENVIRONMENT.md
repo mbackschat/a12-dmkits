@@ -169,6 +169,12 @@ So an environment-dependent guard test carries two arms:
 
 The general form, for any guard that reads the machine: **a test whose premise the environment may not supply must measure the premise and skip loudly, and must leave behind an assertion that still bites where it skipped.** The failure mode is not a red build — it is a green one.
 
+## An Xcode update makes `/usr/bin/git` refuse, and it reads as a guard failure (measured 2026-09-15)
+
+On macOS `/usr/bin/git` is a shim that defers to the active developer directory, so after an Xcode update it exits **69** with *"You have not agreed to the Xcode license agreements"* until someone runs `sudo xcodebuild -license`. Everything that shells out to `git` fails at once, and the shape it arrives in is confusing: `:deliveryGuardTest` reports two failures inside `DmtoolLauncherTest`, whose scripts build a scratch clone, so the message reads as a defect in the launcher self-tests rather than as machine state. The tell is the exit code and that both failures name a `scripts/selftest-*.sh`.
+
+**The remedy that needs no `sudo`:** the Command Line Tools carry their own git at `/Library/Developer/CommandLineTools/usr/bin/git`, which is not behind the shim. Putting that directory first on `PATH` for the build (`PATH=/Library/Developer/CommandLineTools/usr/bin:$PATH ./build.sh …`) turns the lane green again, because every guard that reaches for git finds the working one. Accepting the licence is the durable fix; the `PATH` prefix is what unblocks a run in progress.
+
 ## Offline and bootstrap limits
 
 - **Wrapper download is blocked in the offline sandbox.** The committed wrapper points at the canonical `services.gradle.org` URL (correct for outside users). Locally, the bootstrap already extracted Gradle 9.0.0 under the a12 parent's `.gradle-dist/gradle-9.0.0/` — run that binary directly when offline.

@@ -739,6 +739,20 @@ One cold adversarial review over the frozen range, as [§2](#2-execution-order-a
 
 **The catalog half is deliberately not delivered, with its re-open trigger.** A2 ruled that `operators.json` ships as-is because it is already data; that remains right, and it is not yet USEFUL — no finding this checker produces names an operator id, so 293 KB would be packaged with nothing to join it against. It lands when a finding carries an operator.
 
+### C record — the gate behind a reproduced one, found by reading the kernel's throw sites (2026-09-15)
+
+**Frozen change: the `$#…$` group position's WILDCARD gate.** One class newly reported — `ITER_PARAM_WITH_STARREFERENCE`, extending `MESSAGE_GROUP_PARAMETER` ([KF214](KERNEL-FINDINGS.md#kf214) amended in place). No new family.
+
+**The worklist ran out of measured codes, so the next derivation was over the kernel's THROW SITES.** Every remaining unprefixed code had no laws expectation anywhere, which means each needs a measurement before any checker work — and the cheap way to choose among them is to read where the kernel throws each one and ask which sites sit behind a gate this checker already reproduces. Three of the remaining codes turned out to live in `checkLevelParam`, immediately behind the `INVALID_GROUP` gate `MESSAGE_GROUP_PARAMETER` owns.
+
+**Two of the three are behind MACHINERY and were dispositioned instead.** `checkSemanticIndexAndParallelIteration` returns true for every shape except a parallel iteration or a keyed parameter, and then hands the decision to a visitor over the parsed condition. That is not another reading of the model, so the two classes are recorded in the family's KDoc with their precondition rather than left as worklist entries.
+
+**Two wrong predictions before the right shape, and the kernel's own comment held the answer.** The first grid aimed the gate at a group named while a DESCENDANT's field was read starred, and the second at an ancestor — both admitted. The kernel's German comment beside the throw says *"bei #Kontext: wird der Kontext in der Bedingung ohne Stern referenziert?"*, which names the shorthand and the exact question; the shape it describes refused first time. Reading the comment in the file I had already opened would have skipped two rounds.
+
+**Then the gate turned out to be wider than the comment, which is why the absolute spelling was measured too.** The same group spelled out draws the same class, so the law is the position's rather than the shorthand's — and a checker keyed on the word `RuleGroup` would have under-reported every other spelling while looking complete.
+
+**The reducer's one dangerous branch got the only mirror row that could catch it.** A star BELOW the named group leaves that group ridden per row, so a reducer testing "does any reference carry a star" would over-report on a legal model. The star's own level is found by resolving the reference's prefix up to the starred segment — the resolver handles relative spellings and `..` steps that arithmetic over segment counts would get wrong — and an unresolvable prefix counts as a ride, which under-reports.
+
 ### F2 record — the class comparison could not see the error MESSAGE (2026-09-15)
 
 **Frozen change: three message-aimed mutation kinds in `CheckerClassAgreementTest`.** The population grows from 32 compared mutants to 98, and none is refused without a keyed class. No family changed.
