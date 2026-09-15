@@ -9182,6 +9182,8 @@ All four cells REJECT, so the axis chooses which gate answers rather than whethe
 
 The third row is what makes the second a measurement rather than a coincidence: the operand is reached, so the filter's own gate is what answers.
 
+**The class is swept, not merely fixed three times.** `grep -rn 'iteratedLevels(' consistency/src/commonMain` returns five sites and all five were read: its own definition, the three corrected here, and two that ask a DIFFERENT question correctly — `SemanticIndexKey` already compares against the target's group, and `FilterBodyGates`' body walk compares against the FILTERED entity, which is right because a filter body's references are judged against it rather than against the rule's target.
+
 Reported by the portable checker (`CheckFamily.FILTERED_OPERAND_KIND`, which now asks the iteration walk instead of the star; `OPERAND_REPETITION_SCOPE` gained the filtered operand's base, `ENTITY_LIST_ARITY` yields on any filtered operand, `ERROR_FIELD_REFERENCE` exempts a jointly iterated level, and the shared `addressedTargetOf` and `FILTER_BODY_GATES` key on the declaration's iteration).
 
 *Locked by:* `rulekit.validate.laws.AggregateSlotLawsTest` and `…HavingFilterIterationGateLawsTest`, mirrored by `consistency.AggregateOperandIterationTest` and `consistency.FilterBodyGatesTest`.
