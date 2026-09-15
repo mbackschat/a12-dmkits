@@ -154,15 +154,18 @@ class RuleVariantFilterLawsTest {
                 "MVK_ERROR_MESSAGE_MISSING,RULE_HAS_NO_ERRORTEXT");
         expected.put("no error message at all, ONLY", KernelLaws.ADMITTED);
         // THE EXCEPTION, and the row that shapes the fix: an empty error code still refuses the model, with
-        // no MVK code at all rather than the one it carries unfiltered. A filter suppresses A12's VERDICTS
-        // about a declaration; it cannot rescue a model that fails to BUILD. So a checker must go silent
-        // about what A12 would have judged while keeping the findings that say the model does not load —
-        // and it must not reproduce `MVK_ERROR_CODE_MISSING` here, which A12 stops reporting.
+        // no MVK code at all rather than the one it carries unfiltered. What a filter suppresses is A12's
+        // CLASSED verdicts about a declaration; it does not reach a refusal A12 states without naming a
+        // class. (This row was read as a BUILD failure until 2026-09-15 — the "it cannot rescue a model that
+        // fails to build" account was the harness collapsing two codeless tiers, and the two UNREADABLE rows
+        // below are the only ones here that genuinely never load.) So a checker must go silent about what A12
+        // would have judged while keeping the findings that say the model is refused anyway — and it must not
+        // reproduce `MVK_ERROR_CODE_MISSING` here, which A12 stops reporting.
         expected.put("an empty error code, unfiltered", "MVK_ERROR_CODE_MISSING");
-        expected.put("an empty error code, ONLY", KernelLaws.NOT_BUILDABLE);
-        // The two shapes A12's READER refuses, which is a tier earlier than any variant logic — so these are
-        // the rows that make "the filter cannot rescue a model that does not load" a measured class rather
-        // than the single instance above. They are what the checker's CK_MODEL_NOT_BUILDABLE exemption rests on.
+        expected.put("an empty error code, ONLY", KernelLaws.REFUSED_CODELESS);
+        // The two shapes A12's READER refuses, which is a tier earlier than any variant logic — and with the
+        // row above re-tiered, these two are the whole of "the filter cannot rescue a model that does not
+        // load". They are what the checker's CK_MODEL_NOT_BUILDABLE exemption rests on.
         expected.put("an error code that is JSON null, unfiltered", KernelLaws.UNREADABLE);
         expected.put("an error code that is JSON null, ONLY", KernelLaws.UNREADABLE);
         expected.put("an error message whose locale the reader refuses, unfiltered", KernelLaws.UNREADABLE);

@@ -5844,7 +5844,7 @@ A computation's `errorCodesToSuppress` is declared `List<String>` and is not a s
 | condition cannot be tokenized | `MVK_LEXER_STANDARD_ERROR` | **ADMITTED** |
 | error target names no field | `MVK_ERROR_FIELD_MISSING`,`MVK_MISSING_ERROR_FIELD` | **ADMITTED** |
 | no error message at all | `MVK_ERROR_MESSAGE_MISSING` | **ADMITTED** |
-| **empty error code** | `MVK_ERROR_CODE_MISSING` | **NOT BUILDABLE** — refused, with no `MVK_*` code at all |
+| **empty error code** | `MVK_ERROR_CODE_MISSING` | **REFUSED, codeless** — a verdict carrying no `MVK_*` code ([re-tiered 2026-09-15](#kf420); it read as NOT BUILDABLE while the harness collapsed the two codeless tiers) |
 | `errorCode` is JSON `null` | UNREADABLE | UNREADABLE |
 | message locale the reader refuses | UNREADABLE | UNREADABLE |
 
@@ -6097,7 +6097,7 @@ The last row generalizes the string-literal result above rather than repeating i
 
 **A field with NO `fieldType` is not an untyped field — the model does not build (added 2026-09-13).** `Field.fieldType` is bound non-null with no default, so omitting the member leaves A12 reading the source and then failing to construct the model. Measured as a within-model pair on a field ADDED to the fixture for the purpose — same model, the member present against absent, nothing else varied — rather than by removing it from a field the fixture had already shaped. The distinction matters because the consequence is corpus-wide: any model whose fields omit the member is one A12 refuses to build.
 
-**The five types an empty body defeats do NOT need the members a source read predicts (added 2026-09-13).** Supplying each type's `@NonNull` member is enough for `DateFragmentType` (`formatOfFragment`) and `CustomFieldType` (`name`), and `EnumerationType` builds from one value even though its `values` field carries a default and so should never have failed empty. Two rows part from the prediction outright: `DateRangeType` with only its `@NonNull` `format` is still NOT BUILDABLE — the `rangeSeparator` default in the kernel's own declaration does not survive this path — and a `TypeDefType` carrying `{"id": …}` is UNREADABLE. So the set of types an empty body defeats is a measured outcome and not a reading of which constructor argument is required; a checker deriving it from the `@NonNull` annotations would be wrong about three of the five.
+**The five types an empty body defeats do NOT need the members a source read predicts (added 2026-09-13).** Supplying each type's `@NonNull` member is enough for `DateFragmentType` (`formatOfFragment`) and `CustomFieldType` (`name`), and `EnumerationType` builds from one value even though its `values` field carries a default and so should never have failed empty. Two rows part from the prediction outright: `DateRangeType` with only its `@NonNull` `format` is still refused — the `rangeSeparator` default in the kernel's own declaration does not survive this path — and a `TypeDefType` carrying `{"id": …}` is UNREADABLE. *Re-tiered 2026-09-15 ([KF420](#kf420)): that `DateRangeType` refusal is a CODELESS VERDICT and not a build failure, so of the five types an empty body "defeats", four are unbuildable and the fifth is judged and refused — one more row where the harness's collapse of the two codeless tiers read as one mechanism.* So the set of types an empty body defeats is a measured outcome and not a reading of which constructor argument is required; a checker deriving it from the `@NonNull` annotations would be wrong about three of the five.
 
 **Corrected 2026-09-13:** that `TypeDefType` row was first read as "a dangling type reference refuses A12's reader", and it is wrong in both halves. The wire member is **`typeDefinitionId`**; `id` is only the Java field's name, so the probe was measuring an UNKNOWN member on a field body — which this carrier refuses whatever it spells, per the carrier-strictness row above. Re-measured with the real member (taken from a shipped model rather than from the class): a `typeDefinitionId` naming a DECLARED `content.typeDefinitions` entry is ADMITTED, and one naming nothing is **NOT BUILDABLE**, matching `EntityReferenceResolverVisitor.visitField`, which sets the unresolved reference to null and carries on rather than raising. An absent reference member is NOT BUILDABLE too. The lesson is the general one: a WIRE name is settled by a real document, never by the class the wire binds to.
 
@@ -6172,7 +6172,7 @@ The last row generalizes the string-literal result above rather than repeating i
 
 | type | required | body with an optional member only | body with the required member |
 |---|---|---|---|
-| `DateRangeType` | `format` | `{"rangeSeparator":"-"}` → NOT BUILDABLE | `{"format":"yyyy-MM-dd"}` → ADMITTED |
+| `DateRangeType` | `format` | `{"rangeSeparator":"-"}` → REFUSED, codeless ([re-tiered 2026-09-15](#kf420)) | `{"format":"yyyy-MM-dd"}` → ADMITTED |
 | `DateFragmentType` | `formatOfFragment` | `{"youngerThan1900Check":true}` → NOT BUILDABLE | `{"formatOfFragment":"dd.MM."}` → ADMITTED |
 | `EnumerationType` | `values` | `{"alphabeticalSorting":true}` → NOT BUILDABLE | `{"values":[{"value":"A"}]}` → ADMITTED |
 | `CustomFieldType` | `name` | `{"displayName":"Signature"}` → `CUSTOM_FIELD_TYPE_CODENAME_MISSING` | `{"name":"Signature"}` → ADMITTED |
@@ -6181,7 +6181,7 @@ The last row generalizes the string-literal result above rather than repeating i
 
 **The member is NECESSARY and not sufficient, and two rows say so** — which is why a checker may report its ABSENCE and must stay silent on its presence:
 
-- `DateRangeType` with `{"format":"dd.MM.yyyy"}` alone is NOT BUILDABLE even though the builder defaults `rangeSeparator`. A12 allowlists the format-and-separator PAIR, the default separator is `/` (`FieldTypeConstants.A12_DATE_RANGE_SEPARATOR`), and (`dd.MM.yyyy`, `/`) is not among the eight admitted pairs ([TEMPORAL-FORMAT-VOCABULARY](TEMPORAL-FORMAT-VOCABULARY.md)). The discriminator is `{"format":"yyyy-MM-dd"}`, whose pair with `/` IS admitted and which is ADMITTED — without it the row would read as "a format alone is never enough for this type". **Amended 2026-09-13:** the pair is measured in its own right in [KF316](#kf316), which settles the tier and the omitted-separator reading, so this row is no longer the only thing a consumer can key on.
+- `DateRangeType` with `{"format":"dd.MM.yyyy"}` alone is REFUSED codeless ([re-tiered 2026-09-15](#kf420)) even though the builder defaults `rangeSeparator`. A12 allowlists the format-and-separator PAIR, the default separator is `/` (`FieldTypeConstants.A12_DATE_RANGE_SEPARATOR`), and (`dd.MM.yyyy`, `/`) is not among the eight admitted pairs ([TEMPORAL-FORMAT-VOCABULARY](TEMPORAL-FORMAT-VOCABULARY.md)). The discriminator is `{"format":"yyyy-MM-dd"}`, whose pair with `/` IS admitted and which is ADMITTED — without it the row would read as "a format alone is never enough for this type". **Amended 2026-09-13:** the pair is measured in its own right in [KF316](#kf316), which settles the tier and the omitted-separator reading, so this row is no longer the only thing a consumer can key on.
 - `DateFragmentType` with `{"formatOfFragment":"dd.MM.","youngerThan1900Check":true}` draws `MVK_ADDITIONAL_CHECK_INVALID` — a consistency verdict rather than a build failure, because the check needs a year and that format has none. Its discriminator is the identical pair of members with `dd.MM.yyyy`, which is ADMITTED.
 
 **Corrected 2026-09-13** ([KF323](#kf323)): the `CustomFieldType` row is not a silent build refusal but a VERDICT, under a class carrying no `MVK_` prefix — it read as NOT BUILDABLE only because the harness lifted classes by that prefix. It is the one of the four that reaches a verdict, and the member is judged on its CONTENT there: `{"name":""}` and `{"name":"   "}` draw the same class as no `name` at all.
@@ -6260,12 +6260,12 @@ The last row generalizes the string-literal result above rather than repeating i
 |---|---|---|
 | `yyyy-MM-dd` | `/` | ADMITTED |
 | `dd.MM.yyyy` | `-` | ADMITTED |
-| `yyyy-MM-dd` | `-` | NOT BUILDABLE |
-| `dd.MM.yyyy` | `/` | NOT BUILDABLE |
+| `yyyy-MM-dd` | `-` | REFUSED, codeless |
+| `dd.MM.yyyy` | `/` | REFUSED, codeless |
 
 Every member of the two refused rows appears in an admitted row, so the allowlist reads the combination rather than either half. The two controls differ from their refused partner in exactly one member, which is what makes each refusal attributable.
 
-**An omitted `rangeSeparator` is `/`, not "no separator"** — the kernel's `FieldTypeConstants.A12_DATE_RANGE_SEPARATOR`, pre-initialised by `DateRangeTypeBuilder` (source-read, kernel `30.8.1`). Only stored JSON can ask: the typed builder always writes one. Omission is ADMITTED on `yyyy-MM-dd` and NOT BUILDABLE on `dd.MM.yyyy`, which is the discriminating pair; an explicit `""` is a different declaration with admitted pairs of its own (`MM` takes it, `yyyy-MM-dd` does not), so a reader treating omission as the empty string gets both rows backwards.
+**An omitted `rangeSeparator` is `/`, not "no separator"** — the kernel's `FieldTypeConstants.A12_DATE_RANGE_SEPARATOR`, pre-initialised by `DateRangeTypeBuilder` (source-read, kernel `30.8.1`). Only stored JSON can ask: the typed builder always writes one. Omission is ADMITTED on `yyyy-MM-dd` and REFUSED codeless on `dd.MM.yyyy`, which is the discriminating pair; an explicit `""` is a different declaration with admitted pairs of its own (`MM` takes it, `yyyy-MM-dd` does not), so a reader treating omission as the empty string gets both rows backwards.
 
 **The range domain is not a projection of the field-format vocabulary, in both directions.** `yyyyMM` is an admitted field format and is refused on a range at every probed separator; `dd.MM` is refused as a field format and admitted on a range with `-`. Reusing the thirteen-member field vocabulary here would refuse a legal model and miss an illegal one.
 
@@ -6369,8 +6369,8 @@ Each of the three excluded members is measured ADMITTED on its own, so every row
 | `minFractionalDigits: 0`, `maxFractionalDigits: -1` | ADMITTED |
 | **`minFractionalDigits: 1`, `maxFractionalDigits: -1`** | **ADMITTED** |
 | `maxFractionalDigits: 14` | ADMITTED |
-| `maxFractionalDigits: 15` | NOT BUILDABLE — A12 reads the model and cannot build it, with no `MVK_*` code |
-| `minFractionalDigits: 15`, `maxFractionalDigits: 15` | NOT BUILDABLE |
+| `maxFractionalDigits: 15` | REFUSED, codeless — `"Only values smaller than or equal to 14 are allowed."` ([re-tiered 2026-09-15](#kf420): A12 builds the model and judges the member, naming no class) |
+| `minFractionalDigits: 15`, `maxFractionalDigits: 15` | REFUSED, codeless |
 
 **The last two bolded rows are the whole finding, and they pull in opposite directions.** A minimum with NO maximum is refused, so an absent maximum reads as `0` and the comparison runs; the same minimum beside an explicit `-1` is admitted, so a negative maximum takes the pair OUT of the comparison instead of being compared as a number. The observable law is therefore *`max >= 0` and `min > max`, with an absent member reading as 0* — and a checker comparing the members as declared is wrong on both rows, admitting one model A12 refuses and refusing one A12 takes. (Whether A12 normalizes the negative to an undefined marker or guards the rule is not observable through this code, so no mechanism is claimed.)
 
@@ -6435,9 +6435,9 @@ Each of the three excluded members is measured ADMITTED on its own, so every row
 | starts with `XML` or `Xml`, or IS `xml` | `MVK_NAME_STARTS_WITH_XML_A12_DV` | `MVK_NAME_STARTS_WITH_XML` | `MVK_NAME_STARTS_WITH_XML` | — |
 | starts with `xm` | ADMITTED | — | — | — |
 | merely CONTAINS `xml` | ADMITTED | ADMITTED | — | — |
-| starts with a digit | `MVK_PATH_INVALID`, `MVK_NAME_STARTS_WITH_DIGIT_A12_DV` | `MVK_PATH_INVALID` | `MVK_NAME_STARTS_WITH_DIGIT` | NOT BUILDABLE |
+| starts with a digit | `MVK_PATH_INVALID`, `MVK_NAME_STARTS_WITH_DIGIT_A12_DV` | `MVK_PATH_INVALID` | `MVK_NAME_STARTS_WITH_DIGIT` | REFUSED, codeless |
 | is EMPTY or BLANK | NOT BUILDABLE | NOT BUILDABLE | RAISED (untyped) | NOT BUILDABLE |
-| carries a dot | `MVK_NAME_INVALID_DOT_COLON_A12_DV` | `MVK_PATH_INVALID` | `MVK_PATH_INVALID` | NOT BUILDABLE |
+| carries a dot | `MVK_NAME_INVALID_DOT_COLON_A12_DV` | `MVK_PATH_INVALID` | `MVK_PATH_INVALID` | REFUSED, codeless |
 
 **Whether a name code fires at all splits root-vs-nested.** The digit row is the one to read: the root group draws the name class and no path class, the nested group draws the path class and no name class, and the field draws both. A checker that learned this row on one carrier names a class A12 does not emit on the other.
 
@@ -7167,6 +7167,70 @@ The control is what makes the fourth row a stop rather than an unread entry. The
 Reported by the portable checker, which did not emit `MVK_SORT_FIELD_DUPLICATE` at all. Its per-entry type findings are deliberately kept where A12 gives one: that is the count divergence [KF340](#kf340) already settled, since a finding per entry names the field to fix and says nothing A12 did not.
 
 *Locked by:* `rulekit.validate.laws.GroupOrderingMultipleDefectLawsTest`, mirrored by `consistency … GroupOrderingMultipleDefectTest`.
+
+## §13 supplement — A12 refuses in FOUR tiers, not three: a codeless VERDICT is not a build failure, and 18 recorded rows were on the wrong side (measured, 2026-09-15) <a id="kf420"></a>
+
+> Fold: not-foldable — a reporting-tier taxonomy, outside KERNEL-SEMANTICS's evaluation scope.
+
+**A12's refusals sort into four observable tiers, and the two codeless ones are different claims.** The reader refuses the bytes (nothing was examined); `checkConsistency` throws and the model is never built (nothing was judged); `checkConsistency` reports a notification carrying NO class key (the declaration WAS judged, and A12 names no class for it); or it reports one carrying an `MVK_*`/unprefixed key. The estate's laws harness collapsed the middle two into one verdict called `NOT BUILDABLE`, whose stated meaning was "A12 reached no verdict about this declaration" — the opposite of the truth for every row of the third tier.
+
+**The discriminator was already published and is ours, not A12's.** `KernelModelPreparation` wraps a build failure as `"the kernel could not build this model: …"`, and `cli/…/schema/diagnostic.schema.json` already names that summary as what separates the two codeless tiers. `KernelLaws.REFUSED_CODELESS` now applies it.
+
+**Eighteen recorded rows moved, across seven law classes, and each is a sentence A12 states about the declaration:**
+
+| the declaration | A12's sentence |
+|---|---|
+| a `DateRangeType` whose `(format, rangeSeparator)` pair is not allowlisted — including a format alone, a separator alone, and an explicit `""` | `The date range format is invalid.` |
+| a `maxFractionalDigits` of 15, or `maxIntegerDigits` past the budget | `Only values smaller than or equal to 14 are allowed.` |
+| a group name of 61 characters | `Only values with up to 60 characters are allowed.` |
+| a RULE name starting with a digit, or carrying a dot | (per-carrier prose) |
+| an empty `errorCode` under an ONLY variant filter | (per-carrier prose) |
+
+**What follows for a report, and it is the reason the distinction is worth a finding.** A codeless verdict is reportable: the refusal is real, it is about this declaration, and a consumer may state it — what it may not do is attribute one of A12's classes to it, which is why `RK_ENUM_TEXT_LINE_BREAK` exists ([KF418](#kf418)). A build failure is not reportable as a verdict at all. Collapsing them makes the first look like the second and turns eighteen measured facts into "A12 said nothing".
+
+**A `NOT BUILDABLE` written in this estate before 2026-09-15 may be either tier.** Only the rows above were re-measured; the rest were not, so re-measure before citing one as evidence that A12 reached no verdict.
+
+*Locked by:* the seven re-tiered classes — `DateRangePairAdmissionLawsTest`, `DeclaredNameShapeLawsTest`, `FieldTypeBindingLawsTest`, `FieldTypeBodyMemberLawsTest`, `GroupNameAlphabetLawsTest`, `NumberTypeDigitLawsTest`, `RuleVariantFilterLawsTest` — and `EnumValueForbiddenCharactersLawsTest`, whose grid found it.
+
+## §8 supplement — the three "invalid value" enum classes are ONE predicate over four characters, and two of the four never reach it (source-verified + measured, 2026-09-15) <a id="kf418"></a>
+
+> Fold: not-foldable — an authoring-gate account of three diagnostic classes, outside KERNEL-SEMANTICS's evaluation scope.
+
+`MVK_INTERNAL_VALUE_INVALID`, `MVK_DISPLAY_VALUE_INVALID` and `MVK_CATEGORY_VALUE_INVALID` sat in [MVK-LEDGER](MVK-LEDGER.md) as **unmeasured predicate** because [KF366](#kf366)'s sweep found markup and a control character both ADMITTED, so nothing authored had reached them. Their names invite "XML-safety"; that reading is wrong. `CheckConfiguration` registers `ungueltigerXMLWert`, `ungueltigerOberflaechenWert` and `ungueltigerKategorieWert` as three instances of ONE class, `CheckEnumOrCategoryValue`, whose whole body is `Strings.CS.containsAny(xmlValue, "\n", "\t", "\r", "|")`. So the carrier picks the class and the four characters are the entire predicate.
+
+| the declared text carries… | internal value | display label | category token |
+|---|---|---|---|
+| a TAB | `MVK_INTERNAL_VALUE_INVALID` | `MVK_DISPLAY_VALUE_INVALID` | `MVK_CATEGORY_VALUE_INVALID` |
+| a PIPE | the same | the same | the same |
+| a NEWLINE or a CARRIAGE RETURN | refused CODELESS, on all three | | |
+| a space, `<`, an escaped quote — the controls | ADMITTED | ADMITTED | ADMITTED |
+
+**Half the predicate is dead, and the reason is a gate above it.** A line break draws `Field with path '/Policy/Tier': Only values without line breaks are allowed.` — a real verdict about the declaration, carrying no class key — so citing one of the three codes for a newline would name a class A12 does not use there.
+
+Three further facts a family has to encode rather than infer, each measured: the unit of report is the TEXT, so a value carrying both a tab and a pipe draws one finding while two defective values draw two, and each carrier answers on its own account (a value and its own label each defective draw both classes); the line-break gate pre-empts the coded one **within one text only** — a sibling value's tab is still reported — and it is raised once for the FIELD however many of its texts carry one; and a label for a locale the model does NOT declare is ADMITTED however it is spelled, so a family judging every label text would refuse a model A12 takes.
+
+**The category's own `name` is a different law.** A tab there is also refused codeless, and its sentence says why: *"A category name starts with a letter and may contain only letters, digits and the underscore"* — a name alphabet, not this predicate, so the character it was keyed on is incidental.
+
+*Locked by:* `rulekit.validate.laws.EnumValueForbiddenCharactersLawsTest`.
+
+## §8 supplement — `MVK_NAME_INVALID_A12_DV` is a RESERVED final segment, which is why no character sweep could reach it (source-verified + measured, 2026-09-15) <a id="kf419"></a>
+
+> Fold: not-foldable — an authoring-gate account of one diagnostic class, outside KERNEL-SEMANTICS's evaluation scope.
+
+[KF367](#kf367)'s complete printable-ASCII sweep over field names draws OTHER classes for every illegal character, which left this code as an **unmeasured predicate**. Reading the gate settles it. `CheckFieldName` delegates to `NameValidationService.checkFieldNameNoMetaModelChecks`, which refuses on two arms: a name that does not match `[a-zA-Z0-9_:]+([.][a-zA-Z][a-zA-Z0-9_:]*)*`, and — for a name that DOES match — a final dotted segment of `.value`, case-insensitively, in the English condition language. The first arm is what the sweep found pre-empted; the second is a name every alphabet gate admits, so no character sweep could ever have reached it.
+
+| declared field name | classes |
+|---|---|
+| `Slot` — the control | ADMITTED |
+| `value` — the reserved word with no dot before it | ADMITTED |
+| `Slot.List` | `MVK_NAME_INVALID_DOT_COLON_A12_DV` |
+| `Slot.value` · `Slot.VALUE` · `Slot.List.value` | `MVK_NAME_INVALID_A12_DV`, `MVK_NAME_INVALID_DOT_COLON_A12_DV` |
+| `Slot.values` — one letter past it | `MVK_NAME_INVALID_DOT_COLON_A12_DV` |
+| `Slot.value.List` — reserved in the MIDDLE | `MVK_NAME_INVALID_DOT_COLON_A12_DV` |
+
+The pattern's dotted group is OPTIONAL, so an undotted name matches with the group unset and the reserved-word test is never asked — measured on the `value` row above, and the reason a checker keyed on the bare word would refuse a name A12 takes. A12 reports BOTH classes and this one FIRST (measured, same grid), so a report stopping at the dot names the half that is not the reason.
+
+*Locked by:* `rulekit.validate.laws.FieldNameReservedSuffixLawsTest`.
 
 ## §9 supplement — the error-field/iteration disagreement cannot arise in an A12 model, and the reason is the index the parser records (source-verified + measured, 2026-09-15) <a id="kf417"></a>
 
@@ -8465,7 +8529,7 @@ The match is the WHOLE name and case-insensitive, and it is the root carrier's l
 | `MVK_DATE_RANGE_FORMAT_INVALID_CODEGEN` | its trigger values carry a `…vonReferenzjahr` suffix the collector never writes: it composes `format + separator + format` and puts the year interpretation in a member of its own |
 | `MVK_ROW_INVALID` | `maxRows` is a field's row count, and an A12 document model's field has no row dimension |
 
-**Two of the sweep's rows are UNMEASURED rather than unreachable, and the distinction is deliberate.** `MVK_NAME_INVALID_A12_DV` and `MVK_NAME_INVALID_H_DV` are metamodel CUSTOM CONDITIONS over a field name (`ungueltigerFeldName`, `ungueltigerFeldNameHDV`), and the complete printable-ASCII sweep in `FieldNameAlphabetLawsTest` draws other classes for every character. What they refuse is unknown, so nothing reproduces them.
+**Two of the sweep's rows were UNMEASURED rather than unreachable, and the distinction is what made one recoverable.** `MVK_NAME_INVALID_A12_DV` and `MVK_NAME_INVALID_H_DV` are metamodel CUSTOM CONDITIONS over a field name (`ungueltigerFeldName`, `ungueltigerFeldNameHDV`), and the complete printable-ASCII sweep in `FieldNameAlphabetLawsTest` draws other classes for every character. *The A12 one is now measured ([KF419](#kf419), 2026-09-15): its live arm is a RESERVED final dotted segment, a name every alphabet gate admits — which is exactly why a character sweep could not reach it, and why the sweep's own rows stand unchanged.* The H-model one keeps this disposition.
 
 ## §8 supplement — the Enumeration's declaration laws: one live class, a table axis the reader refuses, and two custom conditions nothing reaches (measured, 2026-09-14) <a id="kf366"></a>
 
@@ -8492,7 +8556,7 @@ The match is the WHOLE name and case-insensitive, and it is the root carrier's l
 
 **The whole TABLE axis is refused one tier further out than expected.** A12's stored `EnumerationType` declares `values`, `categories`, `errorMessage`, `alphabeticalSorting` and `sValue`; writing a `tableName` beside them makes the source UNREADABLE rather than being ignored. So the five "not allowed beside a table" laws, the table/column co-requirement and the four dependent-column laws have no stored shape at all — ten codes closed on one measured row plus a member list.
 
-**Two of the fifteen stay UNMEASURED rather than unreachable**, and the distinction is the point: `MVK_INTERNAL_VALUE_INVALID` and `MVK_CATEGORY_VALUE_INVALID` are metamodel CUSTOM CONDITIONS (`ungueltigerXMLWert`, `ungueltigerKategorieWert`), and neither markup nor a control character reaches either. What they refuse is unknown, so nothing reproduces them — a checker guessing a predicate it has not seen fire would refuse values A12 takes.
+**Two of the fifteen stayed UNMEASURED rather than unreachable**, and the distinction is what made them recoverable: `MVK_INTERNAL_VALUE_INVALID` and `MVK_CATEGORY_VALUE_INVALID` are metamodel CUSTOM CONDITIONS (`ungueltigerXMLWert`, `ungueltigerKategorieWert`), and neither markup nor a control character reaches either, so nothing reproduced them — a checker guessing a predicate it has not seen fire would refuse values A12 takes. *Both are now measured ([KF418](#kf418), 2026-09-15): the predicate is a tab, a pipe, or a line break, which is why markup was the wrong probe, and the two rows above stay exactly as measured.*
 
 **And `MVK_CATEGORY_NAME_DUPLICATE` and `MVK_MISSING_VALUE_FOR_CATEGORY` fail on the COLLECTOR's shape rather than on the law.** The categories arrive as a `Map` keyed by name, so a repeated name is a conversion failure and never a verdict; and the collector writes the enum's values and the category's tokens into one repeating group, so that group's count is the larger of the two and can never fall short of the value count.
 
@@ -8558,7 +8622,7 @@ The match is the WHOLE name and case-insensitive, and it is the root carrier's l
 | `minLength` 8 with `maxLength` 4 | `MVK_MIN_LENGTH_BIGGER_MAX_LENGTH` |
 | `maxIntegerDigits: 14` with `minFractionalDigits: 2` | `MVK_ARITY_TOO_BIG` |
 | `maxIntegerDigits: 15` alone | ADMITTED |
-| `maxIntegerDigits: 16` or 20 | NOT BUILDABLE |
+| `maxIntegerDigits: 16` or 20 | REFUSED, codeless ([re-tiered 2026-09-15](#kf420)) |
 
 **The budget is 15 and the length threshold is `15 + a sign + a fractional part`** — derived from the rows rather than assumed, by walking 16 across the sign and across a declared scale. The sign is `!positivesOnly` (`TypeConverter` writes `hasSign`), so an ordinary number gets 16 and a signless one 15.
 

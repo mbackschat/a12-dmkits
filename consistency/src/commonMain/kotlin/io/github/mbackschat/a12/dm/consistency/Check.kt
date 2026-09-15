@@ -124,6 +124,13 @@ enum class CheckFamily {
     ELEMENT_NAME_ALPHABET,
 
     /**
+     * A FIELD name whose last dotted segment is `.value`, which A12's field-name gate reserves. Its own
+     * constant because it is a reserved WORD and not an alphabet, and because it is reported BESIDE
+     * [ELEMENT_NAME_ALPHABET]'s dot class rather than instead of it — A12 states both, this one first.
+     */
+    FIELD_NAME_RESERVED_SEGMENT,
+
+    /**
      * That an Enumeration's categories pair with its values. The pairing is POSITIONAL, so the law is equal
      * cardinality rather than set membership, and A12 names each unpaired element separately — a value with
      * no token and a token with no value are different codes, and both are reported once per element.
@@ -138,6 +145,16 @@ enum class CheckFamily {
      * all admitted — the last of those reads as in scope from A12's source and is dead on `30.8.1`.
      */
     ENUM_VALUE_CHARACTERS,
+
+    /**
+     * The four characters A12 refuses in an enumeration's declared TEXTS — a tab, a pipe, and the two line
+     * breaks — whichever of its three carriers holds them. Separate from [ENUM_VALUE_CHARACTERS] because that
+     * family judges a value against the MODEL's own restriction while this law is A12's and is asked of every
+     * model, and because the carrier picks the class here where there only one class exists. The line-break
+     * half is refused a gate earlier and CODELESS, so the family owns a code for it rather than citing one
+     * A12 does not use there.
+     */
+    ENUM_TEXT_FORBIDDEN_CHARACTERS,
 
     /**
      * An enumeration's `sValue` names one of the values it declares. Its own constant because it is a claim
@@ -887,8 +904,10 @@ internal fun check(
         prepared.groupRepetitionCountFindings() +
         prepared.presentationMemberFindings() + prepared.stringSlotFindings() +
         prepared.fieldTypeBindingFindings() + prepared.temporalConfigFindings() +
+        prepared.fieldNameReservedSegmentFindings() +
         prepared.elementNameAlphabetFindings() + prepared.enumCategoryFindings() +
-        prepared.supportedCharacterFindings() + prepared.declaredPatternFindings() +
+        prepared.supportedCharacterFindings() + prepared.enumTextForbiddenCharacterFindings() +
+        prepared.declaredPatternFindings() +
         prepared.emptyGroupOperandFindings() + prepared.errorFieldReferenceFindings() +
         prepared.groupListOperandFindings() + prepared.repetitionWildcardFindings() +
         prepared.computedTargetKindFindings() + prepared.computedTargetIndexFieldFindings() +
@@ -974,7 +993,9 @@ internal fun check(
             CheckFamily.CONDITION_GRAMMAR, CheckFamily.RULE_PRESENTATION_MEMBERS,
             CheckFamily.STRING_SLOT_BINDING, CheckFamily.FIELD_TYPE_BINDING,
             CheckFamily.TEMPORAL_CONFIG, CheckFamily.ELEMENT_NAME_ALPHABET,
+            CheckFamily.FIELD_NAME_RESERVED_SEGMENT,
             CheckFamily.ENUM_CATEGORY_ALIGNMENT, CheckFamily.ENUM_VALUE_CHARACTERS,
+            CheckFamily.ENUM_TEXT_FORBIDDEN_CHARACTERS,
             CheckFamily.STRING_PATTERN_ADMISSION, CheckFamily.STRING_PATTERN_MESSAGE,
             CheckFamily.STRING_TYPE_PARAMETERS, CheckFamily.NUMBER_TYPE_DIGITS,
             CheckFamily.ENUM_VALUE_LABELS, CheckFamily.ENUM_S_VALUE_DOMAIN,
@@ -1023,7 +1044,8 @@ internal fun check(
             CheckFamily.ERROR_TEXT_INDEX_TERMINAL),
         gaps = prepared.gaps() + prepared.emptyFactBase() + findings.buildBlocked() +
             prepared.variantFilterGaps() + prepared.enumCategoryGaps() +
-            prepared.supportedCharacterGaps() + prepared.fieldTypeBindingGaps() +
+            prepared.supportedCharacterGaps() + prepared.enumTextForbiddenCharacterGaps() +
+            prepared.fieldTypeBindingGaps() +
             prepared.typeDefinitionBodyGaps() + prepared.declaredPatternGaps() + UNREAD_MEMBERS + UNIMPLEMENTED_FAMILIES,
     )
 }

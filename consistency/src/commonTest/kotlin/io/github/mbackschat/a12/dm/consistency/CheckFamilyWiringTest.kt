@@ -33,11 +33,14 @@ class CheckFamilyWiringTest {
             {"type":"Field","id":"f2","name":"MisconfiguredDate","Field":{"fieldType":{"type":"DateType",
               "DateType":{"format":"MM","youngerThan1900Check":true}}}},
             {"type":"Field","id":"f3","name":"Bad-Name","Field":{"fieldType":{"type":"StringType"}}},
+            {"type":"Field","id":"f96","name":"Tier.value","Field":{"fieldType":{"type":"StringType"}}},
             {"type":"Field","id":"f5","name":"MiscategorisedTier","Field":{"fieldType":{
               "type":"EnumerationType","EnumerationType":{"values":[{"value":"BASIC"},{"value":"PLUS"}],
               "categories":[{"name":"Band","values":["STANDARD"]}]}}}},
             {"type":"Field","id":"f6","name":"LowercaseTier","Field":{"fieldType":{
               "type":"EnumerationType","EnumerationType":{"values":[{"value":"q"}]}}}},
+            {"type":"Field","id":"f95","name":"TabbedTier","Field":{"fieldType":{
+              "type":"EnumerationType","EnumerationType":{"values":[{"value":"A\tB"}]}}}},
             {"type":"Field","id":"f7","name":"Reference","Field":{"fieldType":{"type":"StringType",
               "StringType":{"pattern":"a++","errorMessage":[{"locale":"en_US","text":"x"}]}}}},
             {"type":"Field","id":"f8","name":"Unexplained","Field":{"fieldType":{"type":"StringType",
@@ -455,10 +458,14 @@ class CheckFamilyWiringTest {
         CheckFamily.FIELD_TYPE_BINDING to (CK_MODEL_NOT_BUILDABLE to "/Catalog/Unbindable"),
         CheckFamily.TEMPORAL_CONFIG to ("MVK_ADDITIONAL_CHECK_INVALID" to "/Catalog/MisconfiguredDate"),
         CheckFamily.ELEMENT_NAME_ALPHABET to ("MVK_PATH_INVALID" to "/Catalog/Bad-Name"),
+        CheckFamily.FIELD_NAME_RESERVED_SEGMENT to
+            ("MVK_NAME_INVALID_A12_DV" to "/Catalog/Tier.value"),
         CheckFamily.ENUM_CATEGORY_ALIGNMENT to
             ("MVK_MISSING_CATEGORY_VALUE" to "/Catalog/MiscategorisedTier"),
         CheckFamily.ENUM_VALUE_CHARACTERS to
             ("MVK_ENUM_VALUE_WITH_INVALID_CHARACTER" to "/Catalog/LowercaseTier"),
+        CheckFamily.ENUM_TEXT_FORBIDDEN_CHARACTERS to
+            ("MVK_INTERNAL_VALUE_INVALID" to "/Catalog/TabbedTier"),
         CheckFamily.STRING_PATTERN_ADMISSION to ("MVK_PATTERN_INVALID" to "/Catalog/Reference"),
         CheckFamily.STRING_PATTERN_MESSAGE to
             ("MVK_ERROR_MESSAGE_AND_PATTERN_INVALID" to "/Catalog/Unexplained"),

@@ -131,11 +131,16 @@ class FieldTypeBindingLawsTest {
         expected.put("TimeType", KernelLaws.ADMITTED);
         expected.put("ConfirmType", KernelLaws.ADMITTED);
         expected.put("BooleanType", KernelLaws.ADMITTED);
-        // Read, then unbuildable: these five carry a member A12 constructs from and an empty body has none.
-        expected.put("DateRangeType", KernelLaws.NOT_BUILDABLE);
+        // These four carry a member A12 constructs from and an empty body has none — read, then refused
+        // BEFORE any declaration is judged.
         expected.put("DateFragmentType", KernelLaws.NOT_BUILDABLE);
         expected.put("EnumerationType", KernelLaws.NOT_BUILDABLE);
         expected.put("TypeDefType", KernelLaws.NOT_BUILDABLE);
+        // …and the fifth is a DIFFERENT tier, which the harness could not tell apart until 2026-09-15: A12
+        // judges the declaration and states the verdict in prose, `"The date range format is invalid."`, so
+        // the model is built and refused rather than never built. A grid that collapses the two reports one
+        // mechanism where there are two.
+        expected.put("DateRangeType", KernelLaws.REFUSED_CODELESS);
         // A verdict, not a build refusal: its own class key carries no `MVK_` prefix, which the harness
         // dropped until it started reading the class off the notification.
         expected.put("CustomFieldType", "CUSTOM_FIELD_TYPE_CODENAME_MISSING");
@@ -270,9 +275,9 @@ class FieldTypeBindingLawsTest {
 
         Map<String, String> expected = new LinkedHashMap<>();
         // The separator's field carries a default in the kernel's own declaration and the default does NOT
-        // survive this path, so a format alone is still not a buildable range. A source reading of the
-        // defaults would have predicted the opposite, which is why these rows are measured.
-        expected.put("DateRangeType with a format only", KernelLaws.NOT_BUILDABLE);
+        // survive this path, so a format alone still draws A12's codeless verdict on the pair. A source
+        // reading of the defaults would have predicted the opposite, which is why these rows are measured.
+        expected.put("DateRangeType with a format only", KernelLaws.REFUSED_CODELESS);
         expected.put("DateRangeType with a format and a separator", KernelLaws.ADMITTED);
         expected.put("EnumerationType with one value", KernelLaws.ADMITTED);
         expected.put("DateFragmentType with a fragment format", KernelLaws.ADMITTED);

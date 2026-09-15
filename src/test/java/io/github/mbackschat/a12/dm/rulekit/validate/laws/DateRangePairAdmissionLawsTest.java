@@ -20,11 +20,18 @@ import io.github.mbackschat.a12.dm.Fixtures;
  *
  * <p>{@link TemporalFormatVocabularyGuardTest} derives the eight admitted pairs and publishes them in
  * {@code docs/TEMPORAL-FORMAT-VOCABULARY.md}, but it asks the kernel a boolean: admitted, or not. A consumer
- * that wants to SAY something about a refused pair needs the tier as well, because the three tiers are
+ * that wants to SAY something about a refused pair needs the tier as well, because the four tiers are
  * different claims — a reader refusal means A12 never examined the declaration, a build failure means it
- * read the model and could not construct it, and an {@code MVK_*} code means A12 judged it. This grid
- * settles that, and settles the absent-member question the stored-JSON carrier raises and the typed builder
- * cannot: the builder always writes a separator.
+ * read the model and could not construct it, a CODELESS refusal means it judged the declaration and named no
+ * class, and an {@code MVK_*} code means it judged and named one. This grid settles that, and settles the
+ * absent-member question the stored-JSON carrier raises and the typed builder cannot: the builder always
+ * writes a separator.
+ *
+ * <p><b>Corrected 2026-09-15: every refusal here is the CODELESS-VERDICT tier, not the build tier.</b> The
+ * rows read {@code NOT BUILDABLE} until {@link KernelLaws#REFUSED_CODELESS} existed, which said A12 had
+ * reached no verdict about the declaration — and its sentence is {@code "Field with path '…': The date range
+ * format is invalid."}, a verdict about exactly this declaration. So a consumer may say the pair was refused
+ * and why; what it may not do is cite one of A12's classes, because A12 names none.
  *
  * <p><b>The pair is genuinely a pair, in both directions.</b> A format admitted with one separator is
  * refused with another, and a separator admitted with one format is refused with another — so neither half
@@ -47,7 +54,7 @@ class DateRangePairAdmissionLawsTest {
      * both, one refusal would be equally consistent with a bad format or a bad separator.
      */
     @Test
-    void aDateRangeAllowlistsThePairAndRefusesItBeforeAnyConsistencyVerdict() {
+    void aDateRangeAllowlistsThePairAndRefusesItWithoutNamingAClass() {
         Map<String, String> actual = new LinkedHashMap<>();
         actual.put("ISO with its separator — a control", range("{\"format\":\"yyyy-MM-dd\",\"rangeSeparator\":\"/\"}"));
         actual.put("German with its separator — a control",
@@ -61,10 +68,10 @@ class DateRangePairAdmissionLawsTest {
         expected.put("ISO with its separator — a control", KernelLaws.ADMITTED);
         expected.put("German with its separator — a control", KernelLaws.ADMITTED);
         // Neither half is faulty on its own — each appears in one of the controls above — so the allowlist
-        // reads the combination. And the refusal is the BUILD tier: A12 reads the model, fails to construct
-        // the type, and issues no consistency code, so a consumer gets no verdict rather than a bad one.
-        expected.put("ISO with the German pair's separator", KernelLaws.NOT_BUILDABLE);
-        expected.put("German with the ISO pair's separator", KernelLaws.NOT_BUILDABLE);
+        // reads the combination. The refusal is a verdict A12 states in prose — "The date range format is
+        // invalid." — so a consumer may report it and may not attribute one of A12's classes to it.
+        expected.put("ISO with the German pair's separator", KernelLaws.REFUSED_CODELESS);
+        expected.put("German with the ISO pair's separator", KernelLaws.REFUSED_CODELESS);
         assertEquals(expected, actual, "a DATERANGE allowlists the (format, separator) pair");
     }
 
@@ -93,9 +100,10 @@ class DateRangePairAdmissionLawsTest {
 
         Map<String, String> expected = new LinkedHashMap<>();
         expected.put("ISO, separator omitted", KernelLaws.ADMITTED);
-        // The discriminator for "omission means `/`": the same omission on a format `/` is not admitted with.
-        expected.put("German, separator omitted", KernelLaws.NOT_BUILDABLE);
-        expected.put("ISO with an explicit empty separator", KernelLaws.NOT_BUILDABLE);
+        // The discriminator for "omission means `/`": the same omission on a format `/` is not admitted
+        // with, and it draws the same prose sentence as an explicit mismatching separator.
+        expected.put("German, separator omitted", KernelLaws.REFUSED_CODELESS);
+        expected.put("ISO with an explicit empty separator", KernelLaws.REFUSED_CODELESS);
         // …and the discriminator for "the empty separator is a declaration rather than a missing one".
         expected.put("month with an explicit empty separator", KernelLaws.ADMITTED);
         // `MM` is admitted with BOTH the empty separator and `/`, so this row cannot separate the two
@@ -121,7 +129,7 @@ class DateRangePairAdmissionLawsTest {
                 range("{\"format\":\"dd.MM\",\"rangeSeparator\":\"-\"}"));
 
         Map<String, String> expected = new LinkedHashMap<>();
-        expected.put("a field-admitted format on a range", KernelLaws.NOT_BUILDABLE);
+        expected.put("a field-admitted format on a range", KernelLaws.REFUSED_CODELESS);
         expected.put("a field-REFUSED format on a range", KernelLaws.ADMITTED);
         assertEquals(expected, actual, "the DATERANGE pair domain is measured, not projected");
     }

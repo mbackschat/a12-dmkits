@@ -35,6 +35,25 @@ final class KernelLaws {
     static final String NOT_BUILDABLE = "NOT BUILDABLE";
 
     /**
+     * The Kernel judged the declaration and stated its verdict in PROSE, carrying no class key.
+     *
+     * <p><b>Codelessness alone does not say which tier refused</b>, and collapsing the two into
+     * {@link #NOT_BUILDABLE} published the wrong claim: a line break inside a declared enumeration value draws
+     * {@code "Field with path '/Policy/Tier': Only values without line breaks are allowed."}, which is a
+     * verdict about the declaration, and reading it as "A12 never judged this" is the opposite of the truth.
+     * The discriminator is the build-failure summary our own adapter writes
+     * ({@code KernelModelPreparation}), which is the same one {@code cli/…/schema/diagnostic.schema.json}
+     * already names to separate these two tiers.
+     *
+     * <p>A row landing here is a finding in its own right: the class is reachable but unnamed, so a portable
+     * checker either owns a code for it or stays silent — it can never cite A12's.
+     */
+    static final String REFUSED_CODELESS = "REFUSED (codeless)";
+
+    /** The summary our adapter writes when {@code checkConsistency} threw instead of reporting. */
+    private static final String COULD_NOT_BUILD = "the kernel could not build this model:";
+
+    /**
      * The Kernel refused the input by RAISING past every typed channel — a bare {@code RuntimeException}
      * that is neither an input refusal nor a consistency exception.
      *
@@ -65,11 +84,12 @@ final class KernelLaws {
      * What A12 says about a whole stored model — {@link #ADMITTED}, {@link #UNREADABLE},
      * {@link #NOT_BUILDABLE}, or the distinct classes it reported, joined by commas in first-seen order.
      *
-     * <p><b>Three verdicts, not two, and the third is the one that matters.</b> A shape A12's reader REFUSES
-     * makes the model unreadable, so A12 never judges it at all. Reporting an {@code MVK_*} finding there
-     * presents the reader's own opinion as A12's, and reporting nothing presents an unbuildable model as
-     * clean, so the tiers must be told apart rather than collapsed into "invalid". They arrive on different
-     * exception types, which is what makes the distinction mechanical rather than a reading of messages.
+     * <p><b>Four verdicts, not two, and the ones past ADMITTED are what matter.</b> A shape A12's reader
+     * REFUSES makes the model unreadable, so A12 never judges it at all. Reporting an {@code MVK_*} finding
+     * there presents the reader's own opinion as A12's, and reporting nothing presents an unbuildable model as
+     * clean, so the tiers must be told apart rather than collapsed into "invalid". The first three arrive on
+     * different exception types; {@link #REFUSED_CODELESS} is separated from {@link #NOT_BUILDABLE} by our own
+     * build-failure summary, since both arrive as a consistency rejection carrying no class key.
      */
     static String verdictOf(String modelJson) {
         try {
@@ -88,10 +108,15 @@ final class KernelLaws {
                     .map(m -> m.group(1))
                     .distinct()
                     .collect(Collectors.joining(","));
-            // A rejection carrying no keyed notification at all is the Kernel refusing to BUILD the model
-            // from inside checkConsistency — still not a verdict about its declarations, and not an input
-            // refusal either.
-            return classes.isEmpty() ? NOT_BUILDABLE : classes;
+            if (!classes.isEmpty()) {
+                return classes;
+            }
+            // Two different tiers arrive codeless and they are not the same claim: the Kernel refusing to
+            // BUILD the model from inside checkConsistency, which is no verdict about its declarations, and
+            // the Kernel stating a real verdict in prose. Our own build-failure summary separates them.
+            return rejected.notifications().stream().anyMatch(n -> n.message().contains(COULD_NOT_BUILD))
+                    ? NOT_BUILDABLE
+                    : REFUSED_CODELESS;
         } catch (RuntimeException raised) {
             // Last, so a typed refusal can never land here: only a throw that escaped every channel does.
             return RAISED_UNTYPED;

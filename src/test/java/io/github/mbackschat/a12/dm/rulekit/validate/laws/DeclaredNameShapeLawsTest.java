@@ -223,8 +223,8 @@ class DeclaredNameShapeLawsTest {
         expected.put("a RULE, ordinary name — the control", KernelLaws.ADMITTED);
         expected.put("a RULE starting with `xml`", KernelLaws.ADMITTED);
         expected.put("a RULE with an EMPTY name", KernelLaws.NOT_BUILDABLE);
-        expected.put("a RULE starting with a digit", KernelLaws.NOT_BUILDABLE);
-        expected.put("a RULE with a dot in its name", KernelLaws.NOT_BUILDABLE);
+        expected.put("a RULE starting with a digit", KernelLaws.REFUSED_CODELESS);
+        expected.put("a RULE with a dot in its name", KernelLaws.REFUSED_CODELESS);
         assertEquals(expected, actual, "the same name shapes on every carrier beside a field");
     }
 
@@ -286,7 +286,7 @@ class DeclaredNameShapeLawsTest {
         expected.put("60 characters — the stated limit", KernelLaws.ADMITTED);
         // The 60-character limit is the group carrier's alone and holds here too — refused with no code on
         // either carrier, so there is nothing for a checker to reproduce and it under-reports the row.
-        expected.put("61 characters — one over", KernelLaws.NOT_BUILDABLE);
+        expected.put("61 characters — one over", KernelLaws.REFUSED_CODELESS);
         expected.put("a leading underscore ONE level down — the same-harness control",
                 "NAME_STARTS_WITH_UNDERSCORE_AND_WRONG_PATTERN");
         expected.put("a leading underscore TWO levels down — the depth control",

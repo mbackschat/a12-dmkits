@@ -98,8 +98,8 @@ class NumberTypeDigitLawsTest {
         expected.put("a ZERO minimum with a negative maximum", KernelLaws.ADMITTED);
         expected.put("a ONE minimum with a negative maximum", KernelLaws.ADMITTED);
         expected.put("a maximum of 14 — the cap this kit claims", KernelLaws.ADMITTED);
-        expected.put("a maximum of 15 — one past it", KernelLaws.NOT_BUILDABLE);
-        expected.put("a minimum of 15 with a maximum of 15", KernelLaws.NOT_BUILDABLE);
+        expected.put("a maximum of 15 — one past it", KernelLaws.REFUSED_CODELESS);
+        expected.put("a minimum of 15 with a maximum of 15", KernelLaws.REFUSED_CODELESS);
         assertEquals(expected, actual, "a number type's fractional-digit pair");
     }
 
@@ -248,16 +248,18 @@ class NumberTypeDigitLawsTest {
         expected.put("integer and fractional places past the budget", "MVK_ARITY_TOO_BIG");
         expected.put("the same places within it", KernelLaws.ADMITTED);
         expected.put("integer places alone at the budget", KernelLaws.ADMITTED);
-        // An integer-place count ABOVE the budget is a build refusal rather than an arity finding, so the
-        // arity law is reachable only from a count within the budget that a fractional part then pushes
-        // past it. This is the same tier the scale cap sits in, and the family reports it the same way.
-        expected.put("integer places one past the budget", KernelLaws.NOT_BUILDABLE);
-        expected.put("integer places well past the budget", KernelLaws.NOT_BUILDABLE);
+        // An integer-place count ABOVE the budget draws a CODELESS verdict rather than an arity finding —
+        // `"Only values smaller than or equal to 14 are allowed."` — so the arity law is reachable only from
+        // a count within the budget that a fractional part then pushes past it. This is the same tier the
+        // scale cap sits in, and the family reports it the same way. (These rows read `NOT BUILDABLE` until
+        // 2026-09-15; the model builds and A12 judges it, it just names no class.)
+        expected.put("integer places one past the budget", KernelLaws.REFUSED_CODELESS);
+        expected.put("integer places well past the budget", KernelLaws.REFUSED_CODELESS);
         // The amount arm reaches both through a DERIVED count of `15 - maxFractionalDigits`: suppressing the
-        // maximum derives 16 and is refused at the build tier, while a minimum above the maximum leaves the
-        // count buildable and puts the SUM over the budget — so the amount arm does reach the arity law,
-        // beside the inversion class rather than instead of it.
-        expected.put("an amount whose maximum scale is suppressed", KernelLaws.NOT_BUILDABLE);
+        // maximum derives 16 and is refused codeless, while a minimum above the maximum leaves the count
+        // within range and puts the SUM over the budget — so the amount arm does reach the arity law, beside
+        // the inversion class rather than instead of it.
+        expected.put("an amount whose maximum scale is suppressed", KernelLaws.REFUSED_CODELESS);
         expected.put("an amount whose minimum scale exceeds its maximum",
                 "MVK_FRACT_DIGITS_INVALID,MVK_ARITY_TOO_BIG");
         assertEquals(expected, actual, "a number type against the model-wide digit budget");
