@@ -4,6 +4,18 @@ Dated measurements of the Kernel-free checker, newest first. **Every number here
 
 Results never land in a spec, and a measurement's home is not its explanation: the mechanism paragraphs below are marked as hypotheses where they are hypotheses.
 
+## 2026-09-15 — H5-c, prepared growth, and the control that keeps the cubic from returning <a id="growth-2026-09-15"></a>
+
+**Lane:** `./build.sh :adapter:checkerGrowthPerfTest` (`adapter.perf.CheckerGrowthPerfTest`), in-process and warm, the ratified paired estimator over 5 interleaved N/4N pairs, median of within-pair ratios. Same machine, JDK and workload as below; typed authoring and the silence preflight — which doubles as the warm-up — sit outside every clock.
+
+| quantity | 200 programs | 800 programs | within-pair ratio |
+|---|---|---|---|
+| prepared `check`, median | 51.23 ms | 261.19 ms | **5.33×** |
+
+**What the ratio says.** Linear over a 4× scale-up would be 4× and quadratic 16×, so the prepared checker is mildly super-linear — an exponent of about 1.2 — and sits under the estate's ratified `PerfBounds.SUB_QUADRATIC_MAX` catastrophe floor with roughly 1.7× of headroom. Prepared checking is about three times faster in absolute terms than the cold lane's derived own-work figures (166 ms and 694 ms at the same two scales), which is the JIT, and shows a slightly higher exponent, which is within what a five-pair median separates.
+
+**This lane asserts where the cold one only records, and the asymmetry is deliberate.** No checker latency is ratified, so no duration is asserted anywhere. A growth RATIO is a different thing: it is already ratified as a mechanism, survives a faster or slower machine, and is the only control that can see the defect class the cold lane found. A cubic checker returns exactly the right answers, so no correctness test in the estate can catch one — and the fix for the 2026-09-15 cubic is a single hoisted value with nothing structural stopping the next caller from un-hoisting it.
+
 ## 2026-09-15 — the curve was a cubic term, and it is gone <a id="hoisted-2026-09-15"></a>
 
 Same lane, same machine, same workload, same preflight as the section below; the only difference is the fix described under it. **Median `check`, before → after:**

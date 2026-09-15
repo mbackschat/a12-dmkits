@@ -741,6 +741,27 @@ tasks.register('profileSynthesisPerfTest', Test) {
     outputs.cacheIf { false }
 }
 
+// H5-c: how the checker's PREPARED cost grows with declarations. Unlike the cold lane this one ASSERTS —
+// the estate's already-ratified growth floor, not a latency — because the cubic the cold lane found is
+// invisible to every correctness test and one hoisted value is all that stands between it and a return.
+tasks.register('checkerGrowthPerfTest', Test) {
+    description = 'Assert the Kernel-free checker\'s N/4N declaration growth stays under the catastrophe floor.'
+    group = 'measurement'
+    testClassesDirs = sourceSets.test.output.classesDirs
+    classpath = sourceSets.test.runtimeClasspath
+    useJUnitPlatform()
+    maxParallelForks = 1
+    failFast = true
+    systemProperty 'perf.checker.growth', 'true'
+    systemProperty 'perf.checker.growth.n', providers.gradleProperty('checkerGrowthN').getOrElse('200')
+    systemProperty 'perf.checker.growth.pairs', providers.gradleProperty('checkerGrowthPairs').getOrElse('5')
+    filter {
+        includeTestsMatching 'io.github.mbackschat.a12.dm.adapter.perf.CheckerGrowthPerfTest'
+    }
+    outputs.upToDateWhen { false }
+    outputs.cacheIf { false }
+}
+
 // H5-b: the checker's COLD first result, one fresh JVM per observation. It records and prints; it asserts no
 // budget, because H5 requires ratification before the implementation it gates is measured and no checker number
 // is ratified (docs/PORTABLE-CONSISTENCY-IMPLEMENTATION-PLAN.md#h5-ordering). Deliberately NOT wired into any
