@@ -4,6 +4,23 @@ Dated measurements of the Kernel-free checker, newest first. **Every number here
 
 Results never land in a spec, and a measurement's home is not its explanation: the mechanism paragraphs below are marked as hypotheses where they are hypotheses.
 
+## 2026-09-15 — the curve was a cubic term, and it is gone <a id="hoisted-2026-09-15"></a>
+
+Same lane, same machine, same workload, same preflight as the section below; the only difference is the fix described under it. **Median `check`, before → after:**
+
+| programs | before | after | factor |
+|---|---|---|---|
+| 100 | 330.58 ms | 217.30 ms | 1.52× |
+| 200 | 552.13 ms | 300.91 ms | 1.83× |
+| 400 | 1 562.90 ms | 503.48 ms | 3.10× |
+| 800 | 8 567.77 ms | **908.17 ms** | **9.4×** |
+
+**The shape changed, which is the part that matters.** Per-doubling ratios were 1.67× / 2.83× / 5.48× and are now 1.39× / 1.67× / 1.80×. Take out the fixed ~130 ms of cold class loading and the checker's own work goes 87 → 171 → 373 → 778 ms, which is 1.97× / 2.18× / 2.09× per doubling: linear, within the noise of a cold lane. The p95 spread collapsed with it — 856.70–944.88 ms at 800 programs against 4 404.28–9 970.16 ms before — so the wide tail that earlier read like memory pressure was the cubic term meeting a scheduler, not the heap.
+
+**The locus, named from the flight recorder rather than from a reading.** 95 % of the samples on a 400-program model sat in two places: `declaredReferences` with its `resolveRelative`, and `computationSelfReadFindings` with its `computedTargetOf`. `declaredReferences` is a whole-model walk resolving one reference per element, and it resolved each by scanning the resolvable elements — quadratic. Fifteen families call it, and `computationSelfReadFindings` called it **per element**, which made the whole check cubic in declarations. The fix is two derived values on `PreparedModel`: the walk computed once, and the resolvable elements keyed by path. No family changed, and none had to remember to hoist anything — a rule no guard could have enforced, which is how the cubic arrived unnoticed.
+
+**What still scales linearly per reference.** About sixty other sites resolve a path with `elements.firstOrNull { it.path == … }`, so any family hot on a different model shape can still contribute an n² term. None of them showed in this profile, and the post-fix curve is linear on this workload, so they are left measured-and-untouched rather than swept on suspicion.
+
 ## 2026-09-15 — H5-b, the cold first result, and the growth it exposed <a id="cold-2026-09-15"></a>
 
 **Lane:** `./build.sh :adapter:checkerColdStartPerfTest` (`adapter.perf.CheckerColdStartPerfTest`), one **fresh JVM per observation**, 50 independent processes per scale, single-fork, no anchor written. **Machine:** Apple M1, 8 processors, 16 GB. **JDK:** OpenJDK 21.0.12.1 (the pin; `JdkIdentity.requireSupported` gates the lane). **Revision:** `505b29d60`. **Workload:** the typed synthesizer's flat shape at `programs` rules **and** `programs` computations over `2 × programs` number fields in one root group (`adapter.perf.ProfileSynthesisTargetProfiles.modelJson`). **Preflight:** every process printed an empty rejecting-finding set, compared whole, so each row times a complete report rather than a rejection path.

@@ -45,15 +45,31 @@ class CheckerColdStartPerfTest {
         val classpath = requiredProperty("perf.checker.cold.classpath")
         val processes = requiredProperty("perf.checker.cold.processes").toInt()
         val programs = requiredProperty("perf.checker.cold.n").toInt()
-        require(processes >= MINIMUM_PROCESSES) {
+        // A recorder attached to the child makes the run a DIAGNOSTIC rather than a measurement: sampling
+        // perturbs exactly the durations this lane exists to report, so the sample floor stops applying and the
+        // printed numbers stop being observations. Saying so here is what keeps a profiling run's output from
+        // being read as a row for the results page — the locus question H5-b's first run raised is answered in
+        // this mode, and never in the same breath as a latency.
+        val recording = System.getProperty("perf.checker.cold.jfr").orEmpty()
+        require(recording.isNotBlank() || processes >= MINIMUM_PROCESSES) {
             "H5-b asks for at least $MINIMUM_PROCESSES independent processes per scale, not $processes"
         }
         require(programs > 0) { "perf.checker.cold.n must be positive" }
         requireCheckerOnly(classpath)
+        if (recording.isNotBlank()) {
+            Files.createDirectories(Path.of(recording))
+            PerfHarness.progress(
+                "[checker-cold] DIAGNOSTIC RUN — a flight recorder is attached to every child, so the durations " +
+                    "below are perturbed and are NOT observations. Recordings: $recording",
+            )
+        }
 
         listOf(programs, programs * 4).forEach { scale ->
             val model = work.resolve("synth-$scale.dm.json")
             Files.writeString(model, ProfileSynthesisTargetProfiles.modelJson(scale))
+            if (recording.isNotBlank()) {
+                Files.copy(model, Path.of(recording).resolve(model.fileName.toString()))
+            }
             val runs = (1..processes).map { run(classpath, model, "synth-$scale") }
             val refused = runs.map { it.rejecting }.distinct().filter { it.isNotEmpty() }
             check(refused.isEmpty()) {
@@ -95,10 +111,15 @@ class CheckerColdStartPerfTest {
     private fun run(classpath: String, model: Path, label: String): ColdRun {
         val java = Path.of(System.getProperty("java.home"), "bin", "java")
         val heap = System.getProperty("perf.checker.cold.heap").orEmpty()
+        val recording = System.getProperty("perf.checker.cold.jfr").orEmpty()
         val process = ProcessBuilder(
             listOfNotNull(
                 java.toString(),
                 heap.takeIf { it.isNotBlank() }?.let { "-Xmx$it" },
+                recording.takeIf { it.isNotBlank() }?.let {
+                    "-XX:StartFlightRecording=settings=profile,dumponexit=true," +
+                        "filename=$it/$label-${++recordings}.jfr"
+                },
                 "-cp", classpath,
                 "io.github.mbackschat.a12.dm.adapter.perf.CheckerColdStartMain",
                 model.toString(), label,
@@ -148,6 +169,9 @@ class CheckerColdStartPerfTest {
 
     private fun requiredProperty(name: String): String =
         requireNotNull(System.getProperty(name)) { "-D$name=<value> is required" }
+
+    /** Recording sequence, so each diagnostic child writes its own file rather than overwriting one. */
+    private var recordings = 0
 
     private data class ColdRun(val checkNanos: Long, val processNanos: Long, val rejecting: List<String>)
 

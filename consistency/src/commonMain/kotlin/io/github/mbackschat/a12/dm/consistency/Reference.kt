@@ -125,10 +125,10 @@ fun PreparedModel.resolveEntity(
     val candidate = "/" + path.joinToString("/")
     return when {
         aboveRoot -> Reference.AboveRoot(written)   // the AUTHORED text: that is what a reader has to edit
-        resolvableElements.any { it.path == candidate } -> Reference.Resolved(candidate)
+        candidate in resolvableByPath -> Reference.Resolved(candidate)
         else -> Reference.Undeclared(
             candidate,
-            rootUnresolved = path.isNotEmpty() && resolvableElements.none { it.path == "/" + path.first() },
+            rootUnresolved = path.isNotEmpty() && ("/" + path.first()) !in resolvableByPath,
         )
     }
 }
@@ -158,7 +158,7 @@ fun PreparedModel.resolve(
     origin: DeclarationOrigin = DeclarationOrigin(""),
 ): Reference {
     val candidate = "$declaringGroup/$name"
-    if (resolvableElements.any { it.path == candidate }) {
+    if (candidate in resolvableByPath) {
         return Reference.Resolved(candidate)
     }
     // WHICH model's flag applies, and WHICH elements the fallback may see, are one question with two

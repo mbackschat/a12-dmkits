@@ -223,6 +223,38 @@ data class PreparedModel(
      * per reference.
      */
     val resolvableElements: List<DeclaredElement> = elements.filterNot { it.isDeletedAtDefaultVariant() }
+
+    /**
+     * [resolvableElements] keyed by path, so resolving a reference is a lookup rather than a scan.
+     *
+     * **FIRST occurrence wins, which is the behaviour it replaces.** A model may declare two elements at one
+     * path — A12 refuses it, and this checker has to report on it rather than fail — and every call site this
+     * index replaced asked `firstOrNull`/`any`. `associateBy` keeps the LAST, so it would have changed which
+     * duplicate a family reads. Nothing measured that difference, which is exactly why it is not introduced.
+     *
+     * Lazy because a model that never resolves a reference should not pay for the map, and because the whole
+     * point is that it is built once per [PreparedModel] rather than per reference.
+     */
+    internal val resolvableByPath: Map<String, DeclaredElement> by lazy {
+        val byPath = LinkedHashMap<String, DeclaredElement>(resolvableElements.size)
+        resolvableElements.forEach { element -> byPath.getOrPut(element.path) { element } }
+        byPath
+    }
+
+    /**
+     * Every declaration's own target reference, computed ONCE per model.
+     *
+     * **This is where the checker's cost curve was, measured 2026-09-15.** `declaredReferences()` is a whole-
+     * model walk that resolves one reference per element, and fifteen families call it — one of them,
+     * `computationSelfReadFindings`, per element, which made the whole check cubic in declarations. A flight
+     * recorder on a 400-program model put 95 % of its samples in that walk and its resolver. Cold checking of
+     * 800 rules plus 800 computations took 8.6 s, with the per-doubling ratio still growing
+     * ([results](../../../../../../../../../../docs/PORTABLE-CONSISTENCY-RESULTS.md#cold-2026-09-15)).
+     *
+     * The walk is a pure function of the model, so the fix is to compute it once here rather than to make each
+     * caller remember to hoist it — a rule no guard can enforce, and the reason the cubic arrived unnoticed.
+     */
+    internal val declaredReferenceList: List<DeclaredReference> by lazy { computeDeclaredReferences() }
 }
 
 /** Whether A12 drops this element before checking — see [PreparedModel.resolvableElements]. */

@@ -31,7 +31,15 @@ data class DeclaredReference(
  * of the rule and correctly fails. On a root-level rule the two readings coincide, which is why the
  * one-level-off case is the discriminator worth keeping.
  */
-fun PreparedModel.declaredReferences(): List<DeclaredReference> = elements.mapNotNull { element ->
+fun PreparedModel.declaredReferences(): List<DeclaredReference> = declaredReferenceList
+
+/**
+ * The walk itself, called once per model from [PreparedModel.declaredReferenceList].
+ *
+ * Separate from [declaredReferences] so the memoized property has something to compute and every caller keeps
+ * the name it already used — the hoisting is invisible to them, which is the point.
+ */
+internal fun PreparedModel.computeDeclaredReferences(): List<DeclaredReference> = elements.mapNotNull { element ->
     val declared = DECLARED_BY_KIND[element.kind] ?: return@mapNotNull null
     val relative = element.body
         ?.get(declared.first)?.let { (it as? JsonPrimitive)?.contentOrNull }
@@ -67,7 +75,7 @@ private fun PreparedModel.resolveRelative(from: String, relative: String): Refer
         // Climbing past the root is a DIFFERENT outcome from naming nothing, and worse: the Kernel raises
         // inside `ElementPathUtils.absPath` while deserializing, so the model never loads and no check runs.
         climbedPastRoot -> Reference.AboveRoot(relative)
-        resolvableElements.any { it.path == path } -> Reference.Resolved(path)
+        path in resolvableByPath -> Reference.Resolved(path)
         else -> Reference.Undeclared(path)
     }
 }

@@ -769,6 +769,12 @@ tasks.register('checkerColdStartPerfTest', Test) {
     if (providers.gradleProperty('checkerColdHeap').isPresent()) {
         systemProperty 'perf.checker.cold.heap', providers.gradleProperty('checkerColdHeap').get()
     }
+    // -PcheckerColdJfr=<dir> attaches a flight recorder to every child and drops the sample floor, because a
+    // recorded run is a DIAGNOSTIC and its durations are no longer observations. It is how the locus of the
+    // super-linear curve this lane measured gets named, in the lane that raised the question.
+    if (providers.gradleProperty('checkerColdJfr').isPresent()) {
+        systemProperty 'perf.checker.cold.jfr', file(providers.gradleProperty('checkerColdJfr').get()).absolutePath
+    }
     filter {
         includeTestsMatching 'io.github.mbackschat.a12.dm.adapter.perf.CheckerColdStartPerfTest'
     }
