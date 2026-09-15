@@ -75,6 +75,10 @@ class RawClockCensusTest {
                     "the cross-engine reading helper"),
             Map.entry("NativePerformanceRunner.java",
                     "drives an out-of-process native binary and times it"),
+            Map.entry("CheckerColdStartMain.kt",
+                    "the child half of the cold-checker lane: a `main`, not a test, so neither annotation hatch can "
+                    + "apply to it — the lane tag and property gate sit on CheckerColdStartPerfTest, which launches "
+                    + "it, and this file asserts nothing at all"),
             Map.entry("NativePerformanceRunnerTest.java",
                     "asserts that runner's protocol, not a duration"),
             Map.entry("ModelReportSinglePassTest.java",

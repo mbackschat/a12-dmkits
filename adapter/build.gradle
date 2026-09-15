@@ -46,6 +46,11 @@ def kernelClosureConsumerRuntime = configurations.create('kernelClosureConsumerR
     extendsFrom kernelClosureConsumerCompile
     description = 'Exactly the runtime dependencies used by the fresh kernel validation consumer.'
 }
+def checkerColdClasspath = configurations.create('checkerColdClasspath') {
+    canBeConsumed = false
+    canBeResolved = true
+    description = 'Exactly what a standalone Kernel-free checker process resolves — the H5-b cold lane.'
+}
 
 sourceSets {
     kernelClosureConsumer {
@@ -117,6 +122,14 @@ dependencies {
     // are on one classpath, which is what makes the parity differential (ConditionReadBackParityTest)
     // expressible. Test scope keeps :interpreter-bridge off :adapter's own consumers.
     testImplementation project(':interpreter-bridge')
+
+    // The classpath a COLD checker process gets, and it is a configuration rather than a filter over this
+    // module's test runtime on purpose: H5-b measures standalone checking, so a kernel or Java-kit artifact on
+    // that path would make every number an answer to a different question. Resolving `:consistency` alone means
+    // the path is whatever the checker DECLARES it needs — it cannot drift as this module's test dependencies
+    // grow. CheckerColdStartPerfTest additionally refuses a foreign artifact at run time, because a
+    // configuration can still be wired to the wrong task.
+    add('checkerColdClasspath', project(':consistency'))
 
     // The Kernel-free consistency checker — TEST-ONLY, and only so its condition parser can be swept over the
     // same real corpora the interpreter's is (ParserCorpusSweepTest). Those corpora are external siblings
@@ -724,6 +737,42 @@ tasks.register('profileSynthesisPerfTest', Test) {
     filter {
         includeTestsMatching 'io.github.mbackschat.a12.dm.adapter.perf.ProfileSynthesisPerfTest'
     }
+    outputs.upToDateWhen { false }
+    outputs.cacheIf { false }
+}
+
+// H5-b: the checker's COLD first result, one fresh JVM per observation. It records and prints; it asserts no
+// budget, because H5 requires ratification before the implementation it gates is measured and no checker number
+// is ratified (docs/PORTABLE-CONSISTENCY-IMPLEMENTATION-PLAN.md#h5-ordering). Deliberately NOT wired into any
+// automated lane for the same reason — a schedule implies a bar.
+tasks.register('checkerColdStartPerfTest', Test) {
+    description = 'Measure the Kernel-free checker\'s cold first result over independent fresh processes.'
+    group = 'measurement'
+    testClassesDirs = sourceSets.test.output.classesDirs
+    classpath = sourceSets.test.runtimeClasspath
+    useJUnitPlatform()
+    // Single-fork because the observations are wall-clock, and the child processes are launched serially for the
+    // same reason: this lane needs the machine, and parallelism inside it would measure contention.
+    maxParallelForks = 1
+    failFast = true
+    systemProperty 'perf.checker.cold', 'true'
+    // The path the CHILD gets: the checker's own resolved closure, plus this module's test output for the entry
+    // point alone. That one entry is a directory rather than an artifact, so it adds no jar the child can load
+    // past `CheckerColdStartMain` and what the checker itself pulls in.
+    systemProperty 'perf.checker.cold.classpath',
+        (checkerColdClasspath.files + sourceSets.test.output.classesDirs.files).join(File.pathSeparator)
+    systemProperty 'perf.checker.cold.processes',
+        providers.gradleProperty('checkerColdProcesses').getOrElse('50')
+    systemProperty 'perf.checker.cold.n', providers.gradleProperty('checkerColdN').getOrElse('200')
+    // Unset by default so the observation is of a plain standalone JVM; -PcheckerColdHeap=2g re-measures one
+    // scale under a fixed heap, which is how a super-linear curve is told apart from memory pressure.
+    if (providers.gradleProperty('checkerColdHeap').isPresent()) {
+        systemProperty 'perf.checker.cold.heap', providers.gradleProperty('checkerColdHeap').get()
+    }
+    filter {
+        includeTestsMatching 'io.github.mbackschat.a12.dm.adapter.perf.CheckerColdStartPerfTest'
+    }
+    // Measurements are observations, never reusable task outputs.
     outputs.upToDateWhen { false }
     outputs.cacheIf { false }
 }
