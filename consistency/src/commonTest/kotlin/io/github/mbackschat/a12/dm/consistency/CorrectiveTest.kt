@@ -76,6 +76,12 @@ class CorrectiveTest {
               {"type":"Field","id":"f16","name":"CrateRef","Field":{"fieldType":{"type":"StringType"}}},
               {"type":"Field","id":"f17","name":"ToteQty","Field":{"fieldType":{"type":"NumberType"}}}
             ]}},
+            {"type":"Field","id":"f71","name":"KeyedNote","Field":{"fieldType":{"type":"StringType"}}},
+            {"type":"Computation","id":"c71","name":"IndexesByItsOwnTarget","Computation":{
+              "computedFieldRelPath":"../KeyedNote",
+              "errorMessage":[{"locale":"en_US","text":"x"}],
+              "computationAlternatives":[
+                {"operation":"[/Catalog/Crates/CrateRef For /Catalog/KeyedNote]"}]}},
             {"type":"Rule","id":"r18","name":"PatternTheGateRefuses","Rule":{
               "errorCondition":"FieldFilled(Note) And [Note] PatternMatched \"a++\"",
               "errorEntityRelPath":"../Note",

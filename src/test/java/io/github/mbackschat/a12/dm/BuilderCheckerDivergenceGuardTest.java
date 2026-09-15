@@ -575,10 +575,12 @@ class BuilderCheckerDivergenceGuardTest {
             // over-rejection, so there is nothing for the checker to inherit either way.)*
             Map.entry("MVK_ERROR_REFERENCE_TO_CALCULATED_FIELD", Disposition.SAME_LAW_SEPARATE_CARRIERS),
 
-            // Named in the self-read family's doc comment as the class that PRE-EMPTS it, which is why that
-            // family stands down on a projected read rather than reporting its own class there. Nothing in
-            // the checker reports this one.
-            Map.entry("MVK_ERROR_SEMANTIC_INDEX_OR_CATEGORY_FOR_ERRORFIELD", Disposition.PROSE_ONLY));
+            // The PROJECTED half of the same ban, and the same split: `Computation.build()` names it off
+            // `ConditionReferences.projectedFieldPaths` over typed handles, while the checker reads the
+            // projection out of a stored condition text and applies A12's containment predicate to what it
+            // finds. Neither is stricter than A12.
+            Map.entry("MVK_ERROR_SEMANTIC_INDEX_OR_CATEGORY_FOR_ERRORFIELD",
+                    Disposition.SAME_LAW_SEPARATE_CARRIERS));
 
     @Test
     void everyCodeStatedInBothEstatesCarriesADisposition() {

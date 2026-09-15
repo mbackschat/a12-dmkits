@@ -2899,6 +2899,8 @@ A computation that reads its own computed field **through a projection** — an 
 | a projected self-read beside a plain read of a **different** field (`FirstFilledValue(RequestedTier, SelectedTier -> ServiceTier)`, both orders — added 2026-08-11, see below) | `MVK_ERROR_SEMANTIC_INDEX_OR_CATEGORY_FOR_ERRORFIELD` |
 | a **plain** self-read in the operation beside a **projected** one in either precondition slot | `MVK_ERROR_SEMANTIC_INDEX_OR_CATEGORY_FOR_ERRORFIELD` |
 | the same two shapes **without** the projection (`[SelectedTier]`, `FirstFilledValue(SelectedTier, RequestedTier)`) | `MVK_ERROR_REFERENCE_TO_CALCULATED_FIELD` |
+
+**Extended 2026-09-15 — the suppression escape surfaces THIS class too.** [KF181](#kf181) measured that a model suppressing `MVK_INVALID_COMPARE_DEC_PLACES` sees the plain self-read class underneath the gate; the same run on the projected shape (`[Legs/Distance For "L-1"] * 1.5`, computing `Legs/Distance`, with the gate suppressed) reports `MVK_ERROR_SEMANTIC_INDEX_OR_CATEGORY_FOR_ERRORFIELD`. Measured rather than transferred, because "the gate behaves the same for the sibling class" is the scope transfer this estate keeps getting wrong. It is what bounds a clean-room checker: both classes are reportable on a target with no scale, and on a number target only where the model has suppressed the gate itself.
 | a projection of any **other** field of the same category, alone or as a two-entry list | **accepted** |
 | the identical indexed read into a **different** target (`PlannedDistance`), or keyed by a **different** field (`PreferredLeg`) | **accepted** |
 

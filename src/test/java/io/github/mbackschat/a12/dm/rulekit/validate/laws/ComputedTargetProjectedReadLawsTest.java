@@ -204,4 +204,21 @@ class ComputedTargetProjectedReadLawsTest {
         assertEquals(List.of(SCALE_GATE),
                 codes("/Routing/Legs", "../Distance", "[" + DISTANCE + " For \"L-1\"] * 1.5", null));
     }
+
+    /**
+     * …and what surfaces underneath it when the model suppresses that gate — the row that settles whether a
+     * clean-room checker may report this class on a NUMBER target at all.
+     *
+     * <p>KF181 measured the suppression escape for the PLAIN class only. Reasoning that it must behave the
+     * same here is exactly the scope transfer this estate keeps getting wrong, so it is measured: the same
+     * mismatched operation, the same projection, with the gate suppressed.
+     */
+    @Test
+    void suppressingTheScaleGateSurfacesThisClassUnderneathIt() {
+        DraftComputation comp = new DraftComputation("/Routing/Legs", "TierComp", "../Distance", null,
+                List.of(new DraftComputation.Alternative(null, "[" + DISTANCE + " For \"L-1\"] * 1.5")),
+                List.of(SCALE_GATE));
+        ValidationResult result = VALIDATOR.check(ROUTING, comp);
+        assertEquals(List.of(PROJECTED), result.diagnostics().stream().flatMap(d -> d.code().stream()).toList());
+    }
 }

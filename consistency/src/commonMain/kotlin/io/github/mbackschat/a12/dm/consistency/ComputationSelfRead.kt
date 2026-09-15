@@ -23,19 +23,19 @@ import kotlinx.serialization.json.JsonPrimitive
  * `AllGroupsFilled`, its "context specified" escape — and a `CurrentRepetition` operand, which the walk does
  * not traverse at all. Missing either would refuse a model A12 admits.
  *
- * **Silent on a NUMBER target unless the model suppresses the scale gate.** The implicit target-scale
- * comparison is decided AHEAD of this class and of its projected sibling ([KERNEL-FINDINGS KF181],
- * [KERNEL-FINDINGS KF182]), so on a number target the first rejection depends on the operation's DERIVED
- * scale, which no family here infers. The one number case that is safe is the model's own escape hatch: with
- * `MVK_INVALID_COMPARE_DEC_PLACES` suppressed the gate cannot answer, and A12 then reports this class
- * whatever the scale — the row that made KF181 an ORDER rather than a coincidence. Every other number target
- * is under-reported, deliberately.
+ * **A PROJECTED self-read is A12's other class and is reported as such.** An enum category or a semantic
+ * index over the computed field draws `MVK_ERROR_SEMANTIC_INDEX_OR_CATEGORY_FOR_ERRORFIELD`, and it
+ * pre-empts across the whole computation rather than per member ([KERNEL-FINDINGS KF182]) — so one projected
+ * read anywhere decides the class everywhere in it, which is why the search runs over every member before
+ * the plain one does.
  *
- * **Silent when the self-read is PROJECTED.** An enum category or a semantic index over the computed field
- * draws `MVK_ERROR_SEMANTIC_INDEX_OR_CATEGORY_FOR_ERRORFIELD` instead, and it pre-empts across the whole
- * computation rather than per member — so one projected read anywhere makes this family's class the wrong
- * one everywhere in it. That class stays unreported: naming it needs the projected half measured against the
- * scale gate, which KF182 leaves open.
+ * **Silent on a NUMBER target unless the model suppresses the scale gate.** The implicit target-scale
+ * comparison is decided AHEAD of both classes ([KERNEL-FINDINGS KF181], [KERNEL-FINDINGS KF182]), so on a
+ * number target the first rejection depends on the operation's DERIVED scale, which no family here infers.
+ * The safe number case is the model's own escape hatch: with `MVK_INVALID_COMPARE_DEC_PLACES` suppressed the
+ * gate cannot answer and A12 reports the self-read class whatever the scale — measured separately for each
+ * of the two classes rather than transferred from one to the other. Every other number target is
+ * under-reported, deliberately.
  *
  * **One finding per computation, not per offending reference.** A12 answers a computation with one class
  * however many of its reads are self-reads, measured across both operand orders of a two-entry list.
@@ -54,10 +54,10 @@ fun PreparedModel.computationSelfReadFindings(): List<Finding> {
             }
             val texts = conditionTexts(element.kind, element.body ?: return@mapNotNull null)
             val group = element.path.substringBeforeLast('/', missingDelimiterValue = "")
-            if (texts.any { (_, text) -> projectsTheTarget(text, target, group, element, indexKeyword) }) {
-                return@mapNotNull null
-            }
             texts.firstNotNullOfOrNull { (member, text) ->
+                projectedSelfReadIn(text, target, group, element, indexKeyword)
+                    ?.let { projectedFinding(element, member, it) }
+            } ?: texts.firstNotNullOfOrNull { (member, text) ->
                 val exempt = exemptOperandsIn(text, member, contextEscape, repetitionOf)
                 referencesIn(text, conditionLanguage)
                     .filter { it !in exempt }
@@ -110,29 +110,29 @@ private fun PreparedModel.readsTheTarget(
 }
 
 /**
- * Whether [text] reads the computed field through a projection, which is another class entirely.
+ * The PROJECTED read of the computed field [text] carries, as authored, or null when it carries none.
  *
- * Both halves of that class are asked, because A12 matches the computed field against a semantic index's KEY
+ * Both halves of the class are asked, because A12 matches the computed field against a semantic index's KEY
  * as well as against its indexed value — a computation whose operation reads another field keyed by its own
- * target is the projected class even though the target is not the field being read ([KERNEL-FINDINGS KF182]).
+ * target is this class even though the target is not the field being read ([KERNEL-FINDINGS KF182]).
  */
-private fun PreparedModel.projectsTheTarget(
+private fun PreparedModel.projectedSelfReadIn(
     text: String,
     target: String,
     declaringGroup: String,
     element: DeclaredElement,
     indexKeyword: String?,
-): Boolean {
-    val categorized = categoryAccessesIn(text, conditionLanguage)
-        .any { (path, _) -> readsTheTarget(path, target, declaringGroup, element) }
-    if (categorized) {
-        return true
-    }
-    val keyword = indexKeyword ?: return false
-    return semanticIndexUsesIn(text, conditionLanguage, keyword).any { use ->
-        listOfNotNull(use.valuePath, use.keyPath)
-            .any { readsTheTarget(it, target, declaringGroup, element) }
-    }
+): String? {
+    categoryAccessesIn(text, conditionLanguage)
+        .firstOrNull { (path, _) -> readsTheTarget(path, target, declaringGroup, element) }
+        ?.let { (path, category) -> return "$path -> $category" }
+    val keyword = indexKeyword ?: return null
+    return semanticIndexUsesIn(text, conditionLanguage, keyword)
+        .firstOrNull { use ->
+            listOfNotNull(use.valuePath, use.keyPath)
+                .any { readsTheTarget(it, target, declaringGroup, element) }
+        }
+        ?.let { use -> "${use.valuePath} $keyword ${use.keyPath ?: use.keyLiteral?.let { key -> "\"$key\"" }}" }
 }
 
 /**
@@ -161,6 +161,21 @@ private fun PreparedModel.exemptOperandsIn(
     }
     return exempt
 }
+
+/**
+ * @param projection the authored projection, which is what the repair has to remove — dropping only the
+ *     reference's decoration leaves the plain self-read behind, so the message names the operand instead.
+ */
+private fun projectedFinding(element: DeclaredElement, member: String, projection: String): Finding = Finding(
+    FindingCategory.A12_CONSTRAINT,
+    FindingSeverity.ERROR,
+    "MVK_ERROR_SEMANTIC_INDEX_OR_CATEGORY_FOR_ERRORFIELD",
+    "in `$member`: this computation reads its own computed field through a projection, `$projection` — a " +
+        "computation may read neither the field it writes nor a projection of it. Compute from a DIFFERENT " +
+        "field's projection, or read the same projected value into another target; removing only the " +
+        "projection leaves the plain self-read behind",
+    element.path,
+)
 
 private fun selfReadFinding(
     element: DeclaredElement,

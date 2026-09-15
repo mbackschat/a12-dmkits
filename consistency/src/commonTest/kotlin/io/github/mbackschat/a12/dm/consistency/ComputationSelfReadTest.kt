@@ -20,6 +20,16 @@ class ComputationSelfReadTest {
 
     private val selfRead = "MVK_ERROR_REFERENCE_TO_CALCULATED_FIELD"
 
+    private val projected = "MVK_ERROR_SEMANTIC_INDEX_OR_CATEGORY_FOR_ERRORFIELD"
+
+    /**
+     * The number target read through a semantic index whose key is a string literal.
+     *
+     * NOT a raw string: the model is assembled as one, and a raw string passes `\\` through as two
+     * backslashes, which breaks the JSON and empties the fixture without failing anything.
+     */
+    private val indexed = "[/Routing/Legs/Distance For \\\"L-1\\\"]"
+
     @Test
     fun readingTheComputedFieldsGroupIsReadingTheField() {
         val actual = mutableMapOf<String, List<String>>()
@@ -51,34 +61,44 @@ class ComputationSelfReadTest {
     }
 
     /**
-     * The two silences this checker adds on top of A12's law, each because another class answers first.
+     * The scale gate's bound, and the PROJECTED half that shares it.
      *
-     * Both are under-reports and neither is a judgement call: the scale gate is measured ahead of this class
-     * and of its projected sibling, and the suppression row is the one number case A12 measures the other
-     * way — with the gate suppressed it reports this class whatever the derived scale is.
+     * The gate is measured ahead of both classes, so a NUMBER target is left alone; the suppression rows are
+     * the two cases A12 settles the other way, each measured on its own class rather than transferred from
+     * the other. The projected rows are the pre-emption: a projection of the computed field is A12's other
+     * class, and it answers wherever it appears in the computation.
      */
     @Test
-    fun theTwoShapesThisCheckerLeavesToTheClassThatAnswersFirst() {
+    fun theScaleGatesBoundAndTheProjectedHalfThatSharesIt() {
         val actual = mutableMapOf<String, List<String>>()
         actual["a NUMBER target reading itself"] =
             codes(inLegs("../Distance", "1", "FieldFilled(Distance)"))
-        actual["the same with the scale gate suppressed"] =
+        actual["the same PLAIN read with the scale gate suppressed"] =
             codes(inLegs("../Distance", "1", "FieldFilled(Distance)", suppressesTheScaleGate = true))
-        actual["a STRING target read through a semantic index"] =
+        actual["a STRING target read through a semantic index keyed by itself"] =
             codes(inRouting("../PlannedLeg", "[/Routing/Legs/LegRef For /Routing/PlannedLeg]"))
         actual["the same index keyed by a PEER — the control"] =
             codes(inRouting("../PlannedLeg", "[/Routing/Legs/LegRef For /Routing/PreferredLeg]"))
+        actual["a NUMBER target read through a semantic index"] = codes(inLegs("../Distance", indexed, null))
+        actual["the same PROJECTED read with the scale gate suppressed"] =
+            codes(inLegs("../Distance", indexed, null, suppressesTheScaleGate = true))
+        actual["a projected read in the GUARD of a plain self-read"] =
+            codes(inRouting("../PlannedLeg", "[/Routing/PreferredLeg]",
+                "FieldFilled(/Routing/Legs/LegRef For /Routing/PlannedLeg)"))
 
         val expected = mutableMapOf<String, List<String>>()
         expected["a NUMBER target reading itself"] = emptyList()
-        expected["the same with the scale gate suppressed"] = listOf(selfRead)
-        expected["a STRING target read through a semantic index"] = emptyList()
+        expected["the same PLAIN read with the scale gate suppressed"] = listOf(selfRead)
+        expected["a STRING target read through a semantic index keyed by itself"] = listOf(projected)
         expected["the same index keyed by a PEER — the control"] = emptyList()
-        assertEquals(expected, actual, "the shapes another class answers first")
+        expected["a NUMBER target read through a semantic index"] = emptyList()
+        expected["the same PROJECTED read with the scale gate suppressed"] = listOf(projected)
+        expected["a projected read in the GUARD of a plain self-read"] = listOf(projected)
+        assertEquals(expected, actual, "the scale gate's bound and the projected half")
     }
 
     private fun codes(source: String): List<String> =
-        check(ModelSource(source)).findings.filter { it.code == selfRead }.map { it.code }
+        check(ModelSource(source)).findings.filter { it.code in setOf(selfRead, projected) }.map { it.code }
 
     /** The routing sheet with one computation declared inside the repeatable `Legs` group. */
     private fun inLegs(
@@ -92,8 +112,8 @@ class ComputationSelfReadTest {
     )
 
     /** …and with one declared in the root group instead. */
-    private fun inRouting(target: String, operation: String): String =
-        routing(inLegs = "", inRouting = computation(target, operation, null, false))
+    private fun inRouting(target: String, operation: String, precondition: String? = null): String =
+        routing(inLegs = "", inRouting = computation(target, operation, precondition, false))
 
     private fun computation(
         target: String,

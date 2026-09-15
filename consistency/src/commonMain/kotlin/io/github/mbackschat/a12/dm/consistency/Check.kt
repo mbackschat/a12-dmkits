@@ -641,9 +641,10 @@ enum class CheckFamily {
     /**
      * That a computation does not read the field it writes. The predicate is CONTAINMENT rather than
      * equality, so the computed field's own group and every group above it are reads of it; `GroupFilled`
-     * over a single entity and a `CurrentRepetition` operand are A12's two carved exemptions. Silent on a
-     * NUMBER target unless the model suppresses the scale gate that answers ahead of this class, and silent
-     * on a PROJECTED self-read, which is a class of its own.
+     * over a single entity and a `CurrentRepetition` operand are A12's two carved exemptions. A PROJECTED
+     * self-read — through an enum category or a semantic index — is A12's other class and is reported as
+     * that one, pre-empting the plain one across the whole computation. Silent on a NUMBER target unless the
+     * model suppresses the scale gate that answers ahead of both.
      */
     COMPUTATION_SELF_READ,
 

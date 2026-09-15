@@ -332,7 +332,7 @@ public final class StructuralKernelFix {
                             + "semantic index or a category access\") is the PROJECTED half of the "
                             + "calculated-field-reference ban, and it pre-empts the plain half when both readings occur "
                             + "in one operation — so this code identifies the reading MODE, while the plain code is what "
-                            + "an unprojected self-read reports (kernel-measured, KERNEL-FINDINGS kf182).")),
+                            + "an unprojected self-read reports (kernel-measured, KF182).")),
             Map.entry("MVK_INVALID_COMPARE_DEC_PLACES", new Hint(
                     "The kernel could not establish compatible DERIVED decimal scales here. Numeric == / != carries "
                             + "a known SIGNED scale or unknown plus an independent multiplicative-constant capability: "
