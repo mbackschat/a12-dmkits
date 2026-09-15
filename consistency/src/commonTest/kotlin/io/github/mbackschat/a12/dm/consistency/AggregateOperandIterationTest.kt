@@ -40,11 +40,7 @@ class AggregateOperandIterationTest {
         expected["unstarred operand, filter, rule does not iterate"] = listOf("MVK_NO_WILDCARD")
         expected["unstarred operand, NO filter, rule does not iterate"] = listOf("MVK_NO_WILDCARD")
         expected["unstarred operand, filter, rule ITERATES"] = listOf("MVK_WILDCARDS_REQUIRED")
-        // DISCLOSED SILENCE, not an admission. A12 reaches the arity gate here because the read is a legal
-        // per-row one, and `addressedTargetOf` yields on any reference crossing a repetition the DECLARING
-        // group does not sit in — which is the wrong question, the rule's iteration being set by its error
-        // field. Closing it moves a helper several families share and is its own slice.
-        expected["unstarred operand, NO filter, rule ITERATES"] = emptyList()
+        expected["unstarred operand, NO filter, rule ITERATES"] = listOf("MVK_PARAMSIZE_INVALIDN")
         expected["starred operand, filter, rule ITERATES — the control"] = emptyList()
         expected["unstarred operand, filter, rule ITERATES, another aggregate of the family"] =
             listOf("MVK_WILDCARDS_REQUIRED")

@@ -71,3 +71,25 @@ private fun PreparedModel.resolveRelative(from: String, relative: String): Refer
         else -> Reference.Undeclared(path)
     }
 }
+
+/**
+ * The group whose repetitions this declaration's own target is addressed by — the level it ITERATES.
+ *
+ * A rule's iteration is set by where its error field sits, not by where the rule is declared, and the two
+ * part company exactly when the error field reaches into a repeatable group below the declaring one. A
+ * reference reader keyed on the declaring group therefore asks the wrong question on such a rule and yields
+ * on an operand A12 admits — measured as two silences in the differential lane
+ * ([KERNEL-FINDINGS KF424](KERNEL-FINDINGS.md#kf424)).
+ *
+ * Resolved per element rather than by scanning [declaredReferences], which is a whole-model walk and is
+ * called from inside per-reference loops.
+ *
+ * @return null for a declaration that names no target, one that resolves to nothing, and one whose target is
+ *   not a FIELD — in each case the caller falls back to the declaring group, which is what it asked before.
+ */
+internal fun PreparedModel.iterationGroupOf(element: DeclaredElement): String? {
+    val declared = DECLARED_BY_KIND[element.kind] ?: return null
+    val relative = (element.body?.get(declared.first) as? JsonPrimitive)?.contentOrNull ?: return null
+    val target = (resolveRelative(element.path, relative) as? Reference.Resolved)?.path ?: return null
+    return groupOfTargetField(target)
+}

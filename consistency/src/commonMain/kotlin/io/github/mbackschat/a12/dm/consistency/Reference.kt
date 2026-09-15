@@ -385,7 +385,7 @@ internal fun isBareEntitySpec(text: String): Boolean {
 /**
  * The model path [reference] names, or null when nothing resolves it or it crosses an unaddressed repetition.
  *
- * A repetition that neither the reference's own star nor the declaring group's iteration addresses is
+ * A repetition that neither the reference's own star nor the DECLARATION'S ITERATION addresses is
  * `MVK_NO_WILDCARD` or `MVK_WILDCARDS_REQUIRED` from the reference reader before any later gate is asked, so
  * a family that judged such an operand would name its own class on a model A12 refuses for something else —
  * the defect the corpus mutation found in the arity gates ([KERNEL-FINDINGS KF381]).
@@ -398,8 +398,12 @@ internal fun PreparedModel.addressedTargetOf(
     val target = (resolveEntity(declaringGroup, reference.replace("*", ""), element.origin)
         as? Reference.Resolved)?.path ?: return null
     val starred = starredLevelsOf(reference, declaringGroup, element) ?: return null
+    // The target's own group, not the DECLARING one: A12 asks whether the target's coordinates address the
+    // level, and a rule's error field can reach into a repetition the rule is not declared in. Keying this
+    // on the declaring group made every family behind it yield on an operand A12 admits there.
+    val iterated = iterationGroupOf(element) ?: declaringGroup
     val unaddressed = iteratedLevels(target).any {
-        it !in starred && !(declaringGroup == it || declaringGroup.startsWith("$it/"))
+        it !in starred && !(iterated == it || iterated.startsWith("$it/"))
     }
     return if (unaddressed) null else target
 }

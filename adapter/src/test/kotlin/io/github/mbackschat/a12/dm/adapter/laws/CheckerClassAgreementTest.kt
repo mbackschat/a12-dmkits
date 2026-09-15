@@ -68,8 +68,9 @@ import kotlin.io.path.readText
  * wherever A12 did not name it, and a genuine second instance A12 masked is a row in [positionsA12Masks].
  *
  * **Where the checker is SILENT on a rejected mutant it is under-reporting, which is the safe direction and
- * is disclosed rather than asserted**: 16 of the 98 as of 2026-09-15. It is not left unguarded — the
- * [positionedFloor] is what fails if that number climbs, because a compared pair needs both sides to speak.
+ * is disclosed rather than asserted**: 7 of the 98 as of 2026-09-15, down from 16 the same day. It is not
+ * left unguarded — the [positionedFloor] is what fails if that number climbs, because a compared pair needs
+ * both sides to speak.
  */
 class CheckerClassAgreementTest {
 
@@ -85,7 +86,7 @@ class CheckerClassAgreementTest {
     /**
      * Rows measured to be a class A12 named about ONE declaration that is genuinely also true of another.
      *
-     * Empty as of 2026-09-15: every one of the checker's 82 positioned findings over this population landed
+     * Empty as of 2026-09-15: every one of the checker's 91 positioned findings over this population landed
      * at the declaration A12 keyed. A row here must name the model, the mutation, both declarations, and the
      * measurement that says the checker's placement is true of the model — not merely plausible.
      */
@@ -99,7 +100,7 @@ class CheckerClassAgreementTest {
      *
      * A pair needs both sides to speak, so this is the assertion that fails if the checker goes quiet on
      * rejected models — the direction the silence sweeps cannot see, since they measure models A12 BUILDS.
-     * 82 of 98 as of 2026-09-15; the floor sits well below that on purpose, because it answers *did the
+     * 91 of 98 as of 2026-09-15; the floor sits well below that on purpose, because it answers *did the
      * comparison happen* rather than *how big is the population*.
      */
     private val positionedFloor = 60
@@ -107,8 +108,8 @@ class CheckerClassAgreementTest {
     /**
      * The classes A12 names on a rejected mutant where the checker says nothing, with how often.
      *
-     * **This is a work list, and pinning it is what makes it one.** The lane counted the silence — 16 of 98
-     * — and a count cannot be acted on: it says a gap exists without saying where. Keyed by class it says
+     * **This is a work list, and pinning it is what makes it one.** The lane counted the silence — 16 of 98,
+     * now 7 — and a count cannot be acted on: it says a gap exists without saying where. Keyed by class it says
      * which family to widen, and it moves in both directions, so a family losing reach is a regression here
      * rather than an unnoticed drop in a number nobody reads.
      *
@@ -116,18 +117,20 @@ class CheckerClassAgreementTest {
      * family — each is a shape an existing family does not reach. That is why the silence direction is
      * cheaper work than it looks, and why it is the plan's row 7 remainder rather than a new row.
      *
-     * `MVK_WILDCARDS_REQUIRED` ×7 came off the list on 2026-09-15, and how it did is the method rather than
-     * the outcome: all seven were one mutation kind on one shape, and reproducing that shape on a shared
-     * fixture gave a DIFFERENT class, because every row of the grid that owns it sat on a rule that does not
-     * iterate — a constant nobody had named. Whether the rule iterates is what picks the class, so the
-     * family now asks the iteration walk instead of the star ([filteredOperandKindFindings]).
+     * `MVK_WILDCARDS_REQUIRED` ×7 and `MVK_PARAMSIZE_INVALIDN` ×2 came off the list on 2026-09-15, and how
+     * they did is the method rather than the outcome. All seven of the first were one mutation kind on one
+     * shape, and reproducing that shape on a shared fixture gave a DIFFERENT class, because every row of the
+     * grid that owns it sat on a rule that does not iterate — a constant nobody had named. Whether the rule
+     * iterates is what picks the class ([KERNEL-FINDINGS KF424]). The other two then fell to the same fact
+     * one layer down: the shared reference reader asked whether the DECLARING group sits in a repetition,
+     * where A12 asks about the target's coordinates, so nine families were yielding on operands A12 admits.
+     * One pinned class turned out to name a defect in a helper none of its mutants pointed at.
      *
      * Measured 2026-09-15.
      */
     private val SILENT_CLASSES = sortedMapOf(
         "MVK_ERROR_FIELD_NOT_REFERENCED" to 3,
         "MVK_NO_WILDCARD" to 4,
-        "MVK_PARAMSIZE_INVALIDN" to 2,
     )
 
     @Test

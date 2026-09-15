@@ -9162,6 +9162,8 @@ All four cells REJECT, so the axis chooses which gate answers rather than whethe
 
 **How the defect was found is the reusable part.** The differential lane had the checker silent on seven rejected mutants, all `MVK_WILDCARDS_REQUIRED`; reproducing the shape on the shared order fixture produced `MVK_NO_WILDCARD` instead, and that disagreement — not a source read — is what exposed the unnamed constant. A silence pinned BY CLASS is what made the seven visible as one shape; the count they replaced said only that a gap existed.
 
-Reported by the portable checker (`CheckFamily.FILTERED_OPERAND_KIND`, which now asks the iteration walk instead of the star; `OPERAND_REPETITION_SCOPE` gained the filtered operand's base, and `ENTITY_LIST_ARITY` yields on any filtered operand).
+**The same fact one layer down was a defect in a SHARED reader, and no mutant pointed at it.** `addressedTargetOf` — the gate nine families ask before judging an operand — asked whether the DECLARING group sits in each repetition the reference crosses, where A12 asks whether the TARGET's coordinates address it. The two agree on every rule whose error field sits beside it and part company on exactly the iterating rules above, so all nine families were yielding on operands A12 admits. Fixing the one helper closed the differential's remaining `MVK_PARAMSIZE_INVALIDN` silences as a side effect: the lane's pinned silence went 16 → 9 → **7 of 98** in one sitting, and the second step was bought by a helper none of the pinned classes named.
+
+Reported by the portable checker (`CheckFamily.FILTERED_OPERAND_KIND`, which now asks the iteration walk instead of the star; `OPERAND_REPETITION_SCOPE` gained the filtered operand's base, `ENTITY_LIST_ARITY` yields on any filtered operand, and the shared `addressedTargetOf` keys on the declaration's iteration).
 
 *Locked by:* `rulekit.validate.laws.AggregateSlotLawsTest`, mirrored by `consistency.AggregateOperandIterationTest`.
