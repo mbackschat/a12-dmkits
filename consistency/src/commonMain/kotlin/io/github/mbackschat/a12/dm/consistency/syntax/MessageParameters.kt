@@ -172,3 +172,25 @@ private fun Char.isNameStart(): Boolean = isLetter() || this == '_'
 private const val UP = ".."
 
 private const val VALUE_SUFFIX = ".value"
+
+/**
+ * The two FORM-LINE suffixes, which are not language-split as the five bilingual terminals are.
+ *
+ * Both spellings are admitted on an `en_US`-condition model ([KF279]), and the language grid's five
+ * differing terminals do not include them — so there is one spelling per suffix and no language to key on.
+ */
+private val FORM_LINE_SUFFIXES = listOf(".Vordruckzeile", ".Vordruckname")
+
+/**
+ * The entity a FORM-LINE parameter addresses, or null when the parameter is not one.
+ *
+ * These two forms SKIP the field-membership gate the plain form meets, and skipping it is not skipping every
+ * gate: `checkVordruckzeile` and `checkVordruckname` both call `checkValidFieldName`, which still asks
+ * whether the parameter resolved to a FIELD ([KF279], `rulekit.validate.laws.RuleMessageAdmissionGateLawsTest`).
+ * So a caller gets the name and answers that one question, and nothing about membership.
+ */
+internal fun formLineParameterName(parameter: String, language: ConditionLanguage): String? {
+    val trimmed = parameter.trim()
+    val suffix = FORM_LINE_SUFFIXES.firstOrNull { trimmed.endsWith(it) } ?: return null
+    return plainParameterName(trimmed.removeSuffix(suffix), language)
+}

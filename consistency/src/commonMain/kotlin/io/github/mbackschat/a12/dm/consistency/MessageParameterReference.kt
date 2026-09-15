@@ -1,6 +1,7 @@
 package io.github.mbackschat.a12.dm.consistency
 
 import io.github.mbackschat.a12.dm.consistency.syntax.NameTerminal
+import io.github.mbackschat.a12.dm.consistency.syntax.formLineParameterName
 import io.github.mbackschat.a12.dm.consistency.syntax.messageParameterBodies
 import io.github.mbackschat.a12.dm.consistency.syntax.nameTerminalOf
 import io.github.mbackschat.a12.dm.consistency.syntax.plainParameterName
@@ -63,6 +64,9 @@ fun PreparedModel.messageParameterFindings(): List<Finding> {
                     NameTerminal.BASE_YEAR -> return@mapNotNull null
                     null -> Unit
                 }
+                formLineParameterName(parameter, conditionLanguage)?.let { addressed ->
+                    return@mapNotNull formLineDefect(addressed, group, element, parameter)
+                }
                 val name = plainParameterName(parameter, conditionLanguage) ?: return@mapNotNull null
                 val address = resolveEntity(group, name, element.origin)
                 val resolved = (address as? Reference.Resolved)?.path
@@ -83,6 +87,38 @@ fun PreparedModel.messageParameterFindings(): List<Finding> {
             }
         }
     }
+}
+
+/**
+ * The one gate a FORM-LINE parameter still meets: what it addresses has to be a FIELD.
+ *
+ * `$X.Vordruckzeile$` and `$X.Vordruckname$` skip the membership check the plain form goes through, which is
+ * why this family reads them separately — but `checkValidFieldName` still refuses a GROUP with
+ * `INVALID_FIELD_IN_PARAMETER`, measured on one condition against the admitted field twin.
+ *
+ * **Silent on an address that does not resolve**, deliberately: the kernel reaches that shape through
+ * `getEntityRef`, which RAISES past every typed channel rather than composing a class ([KF259]), so there is
+ * no verdict to reproduce.
+ */
+private fun PreparedModel.formLineDefect(
+    addressed: String,
+    group: String,
+    element: DeclaredElement,
+    parameter: String,
+): Finding? {
+    val resolved = (resolveEntity(group, addressed, element.origin) as? Reference.Resolved)?.path
+        ?: return null
+    if (elements.firstOrNull { it.path == resolved }?.declaredKind != DeclaredKind.GROUP) {
+        return null
+    }
+    return Finding(
+        FindingCategory.A12_CONSTRAINT,
+        FindingSeverity.ERROR,
+        "INVALID_FIELD_IN_PARAMETER",
+        "in `errorMessage`: `${'$'}$parameter${'$'}` puts a form-line suffix on `$resolved`, which is a " +
+            "GROUP — the suffix reads a field's own form position, so it takes a field",
+        element.path,
+    )
 }
 
 /**

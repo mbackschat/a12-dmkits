@@ -95,11 +95,17 @@ class RuleMessageAdmissionGateLawsTest {
                 verdict(READS_REFERENCE, "see $/Policy/Adjuster$"));
         verdicts.put("Vordruckzeile", verdict(READS_REFERENCE, "see $/Policy/Adjuster.Vordruckzeile$"));
         verdicts.put("Vordruckname", verdict(READS_REFERENCE, "see $/Policy/Adjuster.Vordruckname$"));
+        verdicts.put("Vordruckzeile on a GROUP", verdict(READS_REFERENCE, "see $/Policy/Claims.Vordruckzeile$"));
+        verdicts.put("Vordruckname on a GROUP", verdict(READS_REFERENCE, "see $/Policy/Claims.Vordruckname$"));
 
         Map<String, String> expected = new LinkedHashMap<>();
         expected.put("plain — the membership control", "INVALID_FIELD");
         expected.put("Vordruckzeile", ADMITTED);
         expected.put("Vordruckname", ADMITTED);
+        // Skipping MEMBERSHIP is not skipping every gate: `checkValidFieldName` still asks whether the
+        // parameter resolved to a FIELD, which is the only check these two forms do make (added 2026-09-15).
+        expected.put("Vordruckzeile on a GROUP", "INVALID_FIELD_IN_PARAMETER");
+        expected.put("Vordruckname on a GROUP", "INVALID_FIELD_IN_PARAMETER");
 
         assertEquals(expected, verdicts,
                 "a checker enforcing membership uniformly across name-position forms refuses two admitted ones");
@@ -141,7 +147,10 @@ class RuleMessageAdmissionGateLawsTest {
                 .rootGroup("Policy", policy -> policy
                         .stringField("Reference", f -> { })
                         .stringField("Freeform", f -> f.noValueValidation().lineBreaks())
-                        .stringField("Adjuster", f -> { }))
+                        .stringField("Adjuster", f -> { })
+                        // A GROUP to name in the form-line position, which is the one place this surface
+                        // asks whether the parameter resolved to a FIELD at all.
+                        .group("Claims", claims -> claims.stringField("Payout", f -> { })))
                 .build().toJson();
     }
 }

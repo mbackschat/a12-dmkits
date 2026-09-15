@@ -178,6 +178,38 @@ class MessageParameterReferenceTest {
         assertEquals(expected, actual, "which words are terminals depends on the model's condition language")
     }
 
+    /**
+     * The FORM-LINE suffixes, which skip membership and still have to address a field.
+     *
+     * Three rows on one condition: the plain form on an unread field is refused, both suffixes on that same
+     * field are admitted, and the same suffix on a GROUP is refused under a class of its own. The admitted
+     * rows carry the risk — enforcing membership uniformly across the name-position forms would refuse two
+     * shapes A12 admits.
+     */
+    @Test
+    fun theFormLineSuffixesSkipMembershipAndStillAddressAField() {
+        val actual = mutableMapOf<String, List<String>>()
+        actual["the plain form on an unread field — the control"] = ruleSaying("see \$Premium\$")
+        actual["the Vordruckzeile suffix on that field"] = ruleSaying("see \$Premium.Vordruckzeile\$")
+        actual["the Vordruckname suffix on that field"] = ruleSaying("see \$Premium.Vordruckname\$")
+        actual["the Vordruckzeile suffix on a GROUP"] = ruleSaying("see \$Claims.Vordruckzeile\$")
+        actual["the Vordruckname suffix on a GROUP"] = ruleSaying("see \$Claims.Vordruckname\$")
+        actual["the same suffix on a name that resolves to nothing"] =
+            ruleSaying("see \$NoSuchField.Vordruckzeile\$")
+
+        val refused = listOf("INVALID_FIELD_IN_PARAMETER")
+        val expected = mutableMapOf<String, List<String>>()
+        expected["the plain form on an unread field — the control"] = listOf(invalidField)
+        expected["the Vordruckzeile suffix on that field"] = emptyList()
+        expected["the Vordruckname suffix on that field"] = emptyList()
+        expected["the Vordruckzeile suffix on a GROUP"] = refused
+        expected["the Vordruckname suffix on a GROUP"] = refused
+        // A12 reaches this one through `getEntityRef`, which raises past every typed channel instead of
+        // composing a class, so there is no verdict to reproduce and silence is the whole answer.
+        expected["the same suffix on a name that resolves to nothing"] = emptyList()
+        assertEquals(expected, actual, "the form-line suffixes skip membership and still address a field")
+    }
+
     @Test
     fun theFormsThisFamilyDoesNotRead() {
         val actual = mutableMapOf<String, List<String>>()

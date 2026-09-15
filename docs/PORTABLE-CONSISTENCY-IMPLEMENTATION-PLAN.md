@@ -739,6 +739,14 @@ One cold adversarial review over the frozen range, as [§2](#2-execution-order-a
 
 **The catalog half is deliberately not delivered, with its re-open trigger.** A2 ruled that `operators.json` ships as-is because it is already data; that remains right, and it is not yet USEFUL — no finding this checker produces names an operator id, so 293 KB would be packaged with nothing to join it against. It lands when a finding carries an operator.
 
+### C record — a whole message POSITION the checker had never read (2026-09-15)
+
+**Frozen change: the FORM-LINE suffixes' one gate.** `INVALID_FIELD_IN_PARAMETER` newly reported, extending `MESSAGE_PARAMETER_REFERENCE` ([KF279](KERNEL-FINDINGS.md#kf279) extended in place). No new family.
+
+**A measured EXEMPTION had left the position unread entirely.** [KF279](KERNEL-FINDINGS.md#kf279) established that `.Vordruckzeile` and `.Vordruckname` skip the membership gate, and the checker's reader duly yields nothing for them — correct, and it stopped there, so no family looked at the position at all. Skipping one gate is not skipping every gate: `checkValidFieldName` still refuses a GROUP, and that row had never been put to the kernel because the finding that opened the exemption had no reason to.
+
+**The throw-site read is what sorted the remaining codes, and most of them are out of reach for a stated reason.** `INVALID_PATH_SPEC` and `INVALID_PATH_SPEC_IN_PARAMETER` both sit behind `isHModel()`, so no A12 document model reaches them. `ERROR_TEXT_PARAMETER`, `RULE_ERRORTEXT_WRONG` and `FIELD_INVALID_PREFIX` are composed as BARE messages — no `[CLASS]` key — so they are not classes a consumer can key on at all. Reading where the kernel throws each code is what separates those from the reachable ones, and it costs one grep per code.
+
 ### C record — the gate behind a reproduced one, found by reading the kernel's throw sites (2026-09-15)
 
 **Frozen change: the `$#…$` group position's WILDCARD gate.** One class newly reported — `ITER_PARAM_WITH_STARREFERENCE`, extending `MESSAGE_GROUP_PARAMETER` ([KF214](KERNEL-FINDINGS.md#kf214) amended in place). No new family.
