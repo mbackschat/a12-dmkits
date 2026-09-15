@@ -6435,7 +6435,7 @@ Each of the three excluded members is measured ADMITTED on its own, so every row
 | merely CONTAINS `xml` | ADMITTED | ADMITTED | — | — |
 | starts with a digit | `MVK_PATH_INVALID`, `MVK_NAME_STARTS_WITH_DIGIT_A12_DV` | `MVK_PATH_INVALID` | `MVK_NAME_STARTS_WITH_DIGIT` | NOT BUILDABLE |
 | is EMPTY or BLANK | NOT BUILDABLE | NOT BUILDABLE | RAISED (untyped) | NOT BUILDABLE |
-| carries a dot | `MVK_NAME_INVALID_DOT_COLON_A12_DV` | `MVK_PATH_INVALID` | — | NOT BUILDABLE |
+| carries a dot | `MVK_NAME_INVALID_DOT_COLON_A12_DV` | `MVK_PATH_INVALID` | `MVK_PATH_INVALID` | NOT BUILDABLE |
 
 **Whether a name code fires at all splits root-vs-nested.** The digit row is the one to read: the root group draws the name class and no path class, the nested group draws the path class and no name class, and the field draws both. A checker that learned this row on one carrier names a class A12 does not emit on the other.
 
@@ -7165,6 +7165,29 @@ The control is what makes the fourth row a stop rather than an unread entry. The
 Reported by the portable checker, which did not emit `MVK_SORT_FIELD_DUPLICATE` at all. Its per-entry type findings are deliberately kept where A12 gives one: that is the count divergence [KF340](#kf340) already settled, since a finding per entry names the field to fix and says nothing A12 did not.
 
 *Locked by:* `rulekit.validate.laws.GroupOrderingMultipleDefectLawsTest`, mirrored by `consistency … GroupOrderingMultipleDefectTest`.
+
+## §11 supplement — the calculation gates judge a rule A12 SYNTHESIZES, which erases six of their classes for stored A12 models (source-verified + measured, 2026-09-15) <a id="kf415"></a>
+
+> Fold: not-foldable — a reachability account of one module's diagnostic classes, not an evaluation behaviour.
+
+`CalculationService.checkCalculationRule` reads an `IRule`, and for a stored A12 `Computation` that rule does not exist in the model: `ValidationModelConverter.createRuleFromComputation` builds a `RuleFromComputationImpl` whose condition text is assembled by `ComputationAlternativesJoiner.join()` (kernel `30.8.1`, source-read 2026-09-15). **Six of the module's classes test properties of that synthesis rather than of anything an author stored**, so they cannot fire through `checkConsistency` however the DM-JSON is written — and each one's basis is structural, not a claim about what a typed builder happens to expose.
+
+| the class | what it tests | why no stored model reaches it |
+|---|---|---|
+| `MVK_CALC_INVALID_ACTION_TYPE` | `rule.getSeverityType() != ERROR` | the converter passes the literal `RuleSeverityType.ERROR`, and A12's `Computation` declares no severity member at all |
+| `MVK_ERROR_WRONG_CALCULATED_FIELD` | computed field ≠ the rule's error field | both are `computation.getComputedField().getRelativePath()`, the same string resolved against the same parent |
+| `MVK_ERROR_INVALID_FIELD_GATE` | the condition does not open `FieldFilled(<computed field>) And …` | that prefix is the joiner's own constant template |
+| `MVK_ERROR_COMPARISON_WITH_OR` | a sub-computation joined by `Or` rather than `And` | every stored fragment — the common precondition, each alternative's precondition, each alternative — is wrapped in its own parentheses before joining, so no stored text can reach the operator that joins them |
+| `MVK_ERROR_INVALID_COMPARISON` | the comparison is not an inequality or tolerance op | the operator comes from the joiner's five-way switch on the stored `toleranceRangeOp`, which throws on any other value |
+| `MVK_ERROR_RESTRICTED_CALCULATION_RULE` | the rule restricts its iteration interval | the restriction is read off `IExtmpRule`, the H-model rule type; the synthesized rule is not one, so both intervals are always empty |
+
+**The same `IExtmpRule` reading erases `MVK_ITERATION_RESTRICTION_IN_A12_MODEL`** one layer up, in `IterationChecker.checkIterationRestriction4A12Model`: an A12 `Rule` is not an `IExtmpRule` either, so the two Optionals it guards on are empty and the branch that raises the class is unreachable. The ledger had both of these on a typed-surface basis ("bounded iteration ranges are unrepresentable — rulekit renders only the unrestricted star"), which is the weaker claim: it says our builder cannot write the shape, where the measurement says the shape has no carrier in the A12 metamodel.
+
+**`MVK_ERROR_INVALID_FIELDNAME` needed the carrier sweep rather than the synthesis argument**, because the name it tests IS an author's. It refuses a computed field whose `getFullName()` — the field's PATH — contains `.` or `:`, so any carrier on that path admitting one would reach it. All three refuse first, the root cell measured for this ([KF322](#kf322)): a field name draws `MVK_NAME_INVALID_DOT_COLON_A12_DV`, a nested group name `MVK_PATH_INVALID`, and a root group name `MVK_PATH_INVALID`.
+
+**Two of the module's codes have no raiser at all in kernel `30.8.1`** — `MVK_RULE_GROUP_IS_EMPTY_OR_INVALID` and `MVK_ERROR_FIELD_NOT_VALID` carry message properties and an enum member and nothing calls them, the same dormancy [KF354](#kf354) enumerates for the four label-only members.
+
+*Locked by:* `rulekit.validate.laws.GroupNameAlphabetLawsTest.theDotAndColonOnTheRootCarrier` for the carrier row; the remaining rows are source facts about a synthesis step and carry no authorable witness by construction, which is what the finding states.
 
 ## §13 supplement — which of the index terminal's five gates answers first (source-verified + measured, 2026-09-15) <a id="kf414"></a>
 

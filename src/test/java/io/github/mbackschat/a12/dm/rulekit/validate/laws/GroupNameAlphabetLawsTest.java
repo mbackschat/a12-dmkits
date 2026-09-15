@@ -155,6 +155,32 @@ class GroupNameAlphabetLawsTest {
         assertEquals(expected, actual, "the root-group name A12 reserves");
     }
 
+    /**
+     * The dot and the colon on the ROOT carrier — the cell [KERNEL-FINDINGS KF316]'s carrier table leaves open.
+     *
+     * <p>It is not a curiosity about one more character: a field's FULL NAME is its path, so a root group
+     * that admitted a dot would put one into every field beneath it, and the calculation module refuses a
+     * computed field whose full name carries a dot or a colon
+     * ({@code CalculationService.checkCalculationRule} → {@code MVK_ERROR_INVALID_FIELDNAME}). That class is
+     * reachable from stored DM-JSON exactly if this row is ADMITTED, which is why the root carrier has to be
+     * measured rather than inferred from the field carrier's own dot row above.
+     */
+    @Test
+    void theDotAndColonOnTheRootCarrier() {
+        Map<String, String> actual = new LinkedHashMap<>();
+        actual.put("Bin — the control", declaredRoot("Bin"));
+        actual.put("Bin.Sheet — a dot", declaredRoot("Bin.Sheet"));
+        actual.put("Bin:Sheet — a colon", declaredRoot("Bin:Sheet"));
+
+        Map<String, String> expected = new LinkedHashMap<>();
+        expected.put("Bin — the control", KernelLaws.ADMITTED);
+        // The path validator answers on this carrier, not the name one the FIELD carrier draws — so the
+        // dotted full name the calculation gate looks for cannot be built through a root group either.
+        expected.put("Bin.Sheet — a dot", "MVK_PATH_INVALID");
+        expected.put("Bin:Sheet — a colon", "MVK_PATH_INVALID");
+        assertEquals(expected, actual, "the dot and the colon on the root-group carrier");
+    }
+
     /** The declaration gate, and the second gate the kernel's own wording does not mention. */
     @Test
     void theGroupNameAlphabetIsNarrowerThanTheKernelsOwnSentence() {
