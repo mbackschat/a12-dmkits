@@ -47,6 +47,9 @@ class CheckFamilyWiringTest {
               "StringType":{"pattern":"[A-Z]+"}}}},
             {"type":"Field","id":"f9","name":"Opaque","Field":{"fieldType":{"type":"StringType",
               "StringType":{"noValueValidation":true}}}},
+            {"type":"Field","id":"f97","name":"Suggested","Field":{"fieldType":{"type":"StringType",
+              "StringType":{"maxLength":3,
+                "hintList":[{"locale":"en_US","values":["ABCD"]}]}}}},
             {"type":"Field","id":"f10","name":"Amount","Field":{"fieldType":{"type":"NumberType",
               "NumberType":{"minFractionalDigits":3,"maxFractionalDigits":2}}}},
             {"type":"Field","id":"f11","name":"RepeatedTier","Field":{"fieldType":{
@@ -466,6 +469,7 @@ class CheckFamilyWiringTest {
             ("MVK_ENUM_VALUE_WITH_INVALID_CHARACTER" to "/Catalog/LowercaseTier"),
         CheckFamily.ENUM_TEXT_FORBIDDEN_CHARACTERS to
             ("MVK_INTERNAL_VALUE_INVALID" to "/Catalog/TabbedTier"),
+        CheckFamily.HINT_LIST_VALUES to ("MVK_VALUE_TOO_LONG" to "/Catalog/Suggested"),
         CheckFamily.STRING_PATTERN_ADMISSION to ("MVK_PATTERN_INVALID" to "/Catalog/Reference"),
         CheckFamily.STRING_PATTERN_MESSAGE to
             ("MVK_ERROR_MESSAGE_AND_PATTERN_INVALID" to "/Catalog/Unexplained"),

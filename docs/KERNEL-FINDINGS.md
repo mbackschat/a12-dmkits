@@ -7168,6 +7168,31 @@ Reported by the portable checker, which did not emit `MVK_SORT_FIELD_DUPLICATE` 
 
 *Locked by:* `rulekit.validate.laws.GroupOrderingMultipleDefectLawsTest`, mirrored by `consistency … GroupOrderingMultipleDefectTest`.
 
+## §7 supplement — the hint list's four value laws, three of them live, closed on the wrong carrier for two days (source-verified + measured, 2026-09-15) <a id="kf421"></a>
+
+> Fold: pending — belongs beside §7's string-declaration material, next to [KF319](#kf319)'s parameter grid.
+
+`MVK_VALUES_DUPLICATE`, `MVK_VALUE_TOO_LONG`, `MVK_VALUE_TOO_SHORT` and `MVK_VALUE_INVALID` sat in [MVK-LEDGER](MVK-LEDGER.md) as `n/a-structural`, each citing [KF321](#kf321) — which measured an ENUM value token: repeated, empty, spaced, 300 characters long, all ADMITTED. Every row of that measurement is right and none of them is about these four codes, whose own ledger prose already named the carrier: **a string type's `hintList`**. That member is stored DM-JSON (`"hintList":[{"locale":"en_US","values":["AB"]}]`) and nothing had asked it.
+
+| the string type declares | verdict |
+|---|---|
+| a hint list and no other parameter — the control | ADMITTED |
+| the same hint value twice in one locale's list | `MVK_VALUES_DUPLICATE` |
+| a hint value longer than `maxLength` (and the same value AT it — the control) | `MVK_VALUE_TOO_LONG` / ADMITTED |
+| a hint value shorter than `minLength` (and the same value AT it — the control) | `MVK_VALUE_TOO_SHORT` / ADMITTED |
+| a hint value the type's own `pattern` refuses | **ADMITTED** |
+| an EMPTY hint value, no bound declared | ADMITTED |
+
+**Three live laws, and their multiplicities are part of them.** A length finding is per offending VALUE — two long values draw two — and a uniqueness finding is per duplicated VALUE rather than per list: the same value three times draws one, two distinct values each duplicated draw two, which one duplicated value could not have said. The list-level `MVK_NO_VAL_AND_HINT_LISTS` does not pre-empt them; A12 reports both.
+
+**Only the locales the model DECLARES are examined**, in both laws — predicted the other way and measured, so a checker judging every entry present would refuse two models A12 takes. `-1` is A12's "no bound" here as everywhere else on this type.
+
+**`MVK_VALUE_INVALID` keeps its disposition and gains a predicate.** `CheckConfiguration` registers `invalidValueInHintList` as `CheckHintList`, which resolves the SIBLING `pattern` of the `StringType` above the value and refuses a hint value the pattern does not match. That arm stays silent on a stored hint list under three attacked spellings — a lower-case value, an empty one the same pattern refuses, and one bad value among three good — so what is unreachable is now a specific readable check rather than an unknown one. **Why it is silent is NOT established**: the condition computes its pattern id by dropping two index levels from `…/StringType/HintLists/Values/value`, and whether the converted metamodel document puts the pattern where that lands is unmeasured. Stated as a hypothesis, not a mechanism.
+
+Reported by the portable checker's `CheckFamily.HINT_LIST_VALUES`.
+
+*Locked by:* `rulekit.validate.laws.HintListValueLawsTest`, mirrored by `consistency.HintListValueTest`.
+
 ## §13 supplement — A12 refuses in FOUR tiers, not three: a codeless VERDICT is not a build failure, and 18 recorded rows were on the wrong side (measured, 2026-09-15) <a id="kf420"></a>
 
 > Fold: not-foldable — a reporting-tier taxonomy, outside KERNEL-SEMANTICS's evaluation scope.
