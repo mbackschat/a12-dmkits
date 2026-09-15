@@ -92,6 +92,36 @@ class CheckerCodeBasisGuardTest {
      * count (243 measured at 2026-09-15) on purpose. The reported half is {@link CheckerReportedCodesTest}'s
      * floor, which is where that reader's own controls live.
      */
+    /**
+     * …and the same claim for the UNPREFIXED error-text vocabulary, which had no guard at all.
+     *
+     * <p>Its own test rather than a widened denominator above, because the two halves are recognised
+     * differently: a prefix is decidable from the token, an unprefixed code needs the kernel's enum. Folding
+     * them would make the prefixed half — 200-odd codes with a working guard — abort whenever the kernel is
+     * off the classpath.
+     */
+    @Test
+    void everyErrorTextCodeTheCheckerReportsWasMeasuredAgainstTheKernel() {
+        Set<String> vocabulary = KernelErrorVocabulary.errorTextCodes();
+        Set<String> measured = measuredCodes(vocabulary);
+        Map<String, Set<String>> reported = CheckerReportedCodes.bySource(vocabulary::contains);
+        // The floor, on the REPORTED side rather than the measured one: an empty denominator here passes
+        // silently, and it is the likelier break — the vocabulary is read reflectively and the scan is a
+        // membership test, so either can go quiet without any other symptom. 26 reported at 2026-09-15.
+        assertTrue(reported.size() >= 15,
+                "the scan found only " + reported.size() + " error-text codes in the checker's sources");
+        Map<String, Set<String>> unmeasured = new TreeMap<>();
+        reported.forEach((code, sources) -> {
+            if (!measured.contains(code)) {
+                unmeasured.put(code, sources);
+            }
+        });
+        assertEquals(Map.of(), unmeasured,
+                "the portable checker reports an error-text code that no laws test measures. These carry the "
+                        + "same kernel claim as the prefixed ones and are easier to state by accident, "
+                        + "because the word alone does not say it is a verdict.");
+    }
+
     @Test
     void theScanReachesTheLawsEstate() {
         assertTrue(measuredCodes().size() >= 120,
@@ -108,6 +138,28 @@ class CheckerCodeBasisGuardTest {
         }
         return measured;
     }
+
+    /**
+     * The same walk over a vocabulary whose members are not recognisable from shape.
+     *
+     * <p>Over-matching here is the safe direction and is why the token pattern is loose: a laws test naming
+     * one of these words in a fixture rather than in an expectation only makes the guard weaker, while a
+     * pattern too tight to find a genuine expectation would fail honest content.
+     */
+    private static Set<String> measuredCodes(Set<String> vocabulary) {
+        Set<String> measured = new TreeSet<>();
+        for (Path source : CHECKOUT.testSources()) {
+            if (CHECKOUT.relative(source).contains("/laws/")) {
+                TOKEN.matcher(read(source)).results()
+                        .filter(result -> vocabulary.contains(result.group()))
+                        .forEach(result -> measured.add(result.group()));
+            }
+        }
+        return measured;
+    }
+
+    /** Any screaming-case word a laws test writes; the vocabulary decides which ones are codes. */
+    private static final Pattern TOKEN = Pattern.compile("[A-Z][A-Z0-9_]{2,}");
 
     private static String read(Path path) {
         try {

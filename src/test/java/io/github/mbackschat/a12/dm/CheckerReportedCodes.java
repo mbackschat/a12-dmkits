@@ -10,6 +10,7 @@ import java.util.Set;
 import java.util.TreeMap;
 import java.util.TreeSet;
 import java.util.regex.Matcher;
+import java.util.function.Predicate;
 import java.util.regex.Pattern;
 
 /**
@@ -54,8 +55,16 @@ public final class CheckerReportedCodes {
     /** The generated corrective projection restates every code and reports none of them. */
     private static final String GENERATED = "KernelCorrectives.kt";
 
-    /** An A12 code as the checker spells it, digits wherever they fall. */
-    private static final Pattern CODE = Pattern.compile("\"(MVK_[A-Z0-9_]+)\"");
+    /**
+     * An A12 code as the checker spells it, digits wherever they fall.
+     *
+     * <p><b>Deliberately wider than {@code MVK_}</b>, because the checker states two A12 vocabularies: the
+     * prefixed metamodel codes and the unprefixed error-text ones ({@code INVALID_FIELD},
+     * {@code NO_BASE_YEAR}, …), which carry exactly the same kernel claim and had no reader at all. A caller
+     * supplies the vocabulary that decides which of these tokens is a code, so a screaming-case literal that
+     * is not one cannot enter a denominator by accident.
+     */
+    private static final Pattern CODE = Pattern.compile("\"([A-Z][A-Z0-9_]{2,})\"");
 
     /**
      * The head of a declared code SET — membership the checker compares against, never an answer.
@@ -77,28 +86,45 @@ public final class CheckerReportedCodes {
     private CheckerReportedCodes() {
     }
 
-    /** Every code the checker reports, mapped to the sources that state it. */
+    /** Every PREFIXED code the checker reports, mapped to the sources that state it. */
     public static Map<String, Set<String>> bySource() {
+        return bySource(code -> code.startsWith("MVK_"));
+    }
+
+    /**
+     * The same scan over any A12 vocabulary — the unprefixed error-text estate needs one it cannot infer.
+     *
+     * <p>A prefix is self-describing and an unprefixed code is not, so the caller brings the membership test
+     * (the kernel's own enum constants) rather than this reader guessing from shape.
+     */
+    public static Map<String, Set<String>> bySource(Predicate<String> vocabulary) {
         Map<String, Set<String>> reported = new TreeMap<>();
         for (Path source : checkerSources()) {
-            for (String code : codesIn(read(source))) {
+            for (String code : codesIn(read(source), vocabulary)) {
                 reported.computeIfAbsent(code, key -> new TreeSet<>()).add(CHECKOUT.relative(source));
             }
         }
         return reported;
     }
 
-    /** Every code the checker reports. */
+    /** Every prefixed code the checker reports. */
     public static Set<String> all() {
         return bySource().keySet();
     }
 
     /** The reader itself, over one Kotlin source — the seam {@link CheckerReportedCodesTest} drives. */
     static Set<String> codesIn(String kotlinSource) {
+        return codesIn(kotlinSource, code -> code.startsWith("MVK_"));
+    }
+
+    /** …and over a caller's vocabulary, which is the same walk with a different membership test. */
+    static Set<String> codesIn(String kotlinSource, Predicate<String> vocabulary) {
         Set<String> codes = new TreeSet<>();
         Matcher code = CODE.matcher(withoutCodeSets(withoutComments(kotlinSource)));
         while (code.find()) {
-            codes.add(code.group(1));
+            if (vocabulary.test(code.group(1))) {
+                codes.add(code.group(1));
+            }
         }
         return codes;
     }

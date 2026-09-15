@@ -739,6 +739,14 @@ One cold adversarial review over the frozen range, as [§2](#2-execution-order-a
 
 **The catalog half is deliberately not delivered, with its re-open trigger.** A2 ruled that `operators.json` ships as-is because it is already data; that remains right, and it is not yet USEFUL — no finding this checker produces names an operator id, so 293 KB would be packaged with nothing to join it against. It lands when a finding carries an operator.
 
+### C record — the measure-first guard could not see half the estate (2026-09-15)
+
+**Frozen change: `CheckerCodeBasisGuardTest` now covers the UNPREFIXED error-text vocabulary.** No code drained and no family changed. The guard's claim — every A12 code the checker reports was measured against the kernel — held for the `MVK_` half and was silent about 26 unprefixed codes, because a prefix is recognisable from shape and `INVALID_FIELD` is an ordinary word. The vocabulary is now read off the kernel's own enums (`KernelErrorVocabulary`, the four `MvkLedgerTest` already reaches), so the denominator stays derived.
+
+**The gap opened the way a guard's blind spot usually does: the surface it watched moved.** The guard was written when the checker reported `MVK_*` and little else; three weeks of slices later the unprefixed estate is where the work is, and nothing about the guard looked wrong — it passed, its floor passed, its javadoc described exactly what it did. A guard that names its recognition RULE rather than its subject cannot report that the subject grew past it.
+
+**The floor went on the REPORTED side, which is the one that can go quiet.** The existing floor asserts the laws scan reaches its estate; the new half's likelier failure is an empty vocabulary or a membership test that matches nothing, and both pass silently against an empty reported set. Asserting the reported count is what makes the green mean something.
+
 ### C record — a WRONG-CLASS defect the language axis had been hiding, and two codes with it (2026-09-15)
 
 **Frozen change: the message name position's own TERMINALS, keyed by the model's condition language.** Two classes newly reported — `INVALID_PARAMETER` for the rule-group shorthand (extending `MESSAGE_PARAMETER_REFERENCE`) and `NO_BASE_YEAR` for the base-year terminal (extending `BASE_YEAR_REQUIREMENT`, [KF403](KERNEL-FINDINGS.md#kf403) amended in place). No new family; the count stays where it was.

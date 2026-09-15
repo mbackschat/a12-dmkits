@@ -22,6 +22,23 @@ class CheckerReportedCodesTest {
      * <p>{@code MVK_[A-Z_]+[0-9]*} matches {@code MVK_NAME_STARTS_WITH_XML} and then needs the closing
      * quote, so the {@code _A12_DV} carrier of the very same law read as absent.
      */
+    /**
+     * The vocabulary overload keeps a screaming-case literal that is not a code out of the denominator.
+     *
+     * <p>Without the membership test the same scan would take {@code "StringType"}'s neighbours and every
+     * enum arm a family spells, so the unprefixed half would over-count into a guard that demands a
+     * measurement for each — the one direction over-counting is NOT harmless.
+     */
+    @Test
+    void anUnprefixedCodeIsSeenOnlyWhenTheVocabularyKnowsIt() {
+        String source = """
+                private fun finding() = Finding(code = "NO_BASE_YEAR", explain = "DAY_OPTIONAL")
+                """;
+        assertEquals(Set.of("NO_BASE_YEAR"),
+                CheckerReportedCodes.codesIn(source, Set.of("NO_BASE_YEAR", "INVALID_FIELD")::contains));
+        assertEquals(Set.of(), CheckerReportedCodes.codesIn(source));
+    }
+
     @Test
     void aCodeWithInteriorDigitsIsSeen() {
         assertEquals(
