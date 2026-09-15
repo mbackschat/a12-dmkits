@@ -9,10 +9,11 @@ import kotlin.test.assertTrue
  *
  * Mounting is not a convenience here, it decides verdicts. Every reference into an included subtree reads as
  * undeclared while the provider is absent, so the checker had to suspend the whole analysis; with the
- * provider supplied it can answer, and the answer depends on getting the placement exactly right. The three
- * facts it rests on are the Kernel's, source-verified in [KERNEL-FINDINGS KF3]: the provider's root group is
- * REPLACED by the mount group rather than added above it, the provider is fully expanded before it is
- * mounted, and a reference that named the vanished root is rewritten rather than left to fail.
+ * provider supplied it can answer, and the answer depends on getting the placement exactly right. The facts
+ * it rests on are the Kernel's, source-verified in [KERNEL-FINDINGS KF3]: the placement depends on the
+ * include LEVEL — `SINGLE_RG` replaces the mount group with the provider's sole root's children while
+ * `MODEL_ROOT` mounts every root as a subgroup keeping its name — a provider is fully expanded before it is
+ * mounted, and a reference that named a root the mount moved is rewritten rather than left to fail.
  */
 class WorkspaceMountTest {
 
@@ -329,6 +330,31 @@ class WorkspaceMountTest {
     }
 
     /**
+     * An excluded rule is dropped from the fact base, but a declaration A12's own READER cannot bind is still
+     * diagnosed: the reader binds every declaration before expansion drops any of them, so an unreadable
+     * envelope makes the source unreadable whether this mount keeps the rule or not. It is the same argument
+     * the missing-`id` diagnostic rests on, and its twin was silently lost until 2026-09-15.
+     */
+    @Test
+    fun anExcludedDeclarationStillDiagnosesWhatA12sReaderCannotBind() {
+        val unbindable = provider(
+            "address",
+            "Address",
+            field("Street") + ",{\"type\":\"Rule\",\"id\":\"r\",\"name\":\"R\",\"Rule\":5}",
+        )
+
+        listOf(""""modelAlias":"addr"""", """"modelAlias":"addr","excludeRules":true""").forEach { mountBody ->
+            val report = check(host(mountBody = mountBody), unbindable)
+
+            assertEquals(
+                listOf(DiagnosticCode.DECLARATION_NOT_WELL_FORMED),
+                report.diagnostics.map { it.code },
+                mountBody,
+            )
+        }
+    }
+
+    /**
      * An `attachment`-usage group shields its subtree from an exclusion applied from above it, and the shield
      * is read from the FINAL expanded `usageType` (KF3). Under `SINGLE_RG` that is the provider root's own
      * slot, which REPLACES the mount's — so the second row is the one that separates the two readings: an
@@ -544,47 +570,125 @@ class WorkspaceMountTest {
     /**
      * A provider root A12 refuses to mount is a coverage gap, not a tree to judge.
      *
-     * `SINGLE_RG` needs exactly one NON-REPEATABLE root group with its object body, and A12's own expansion
-     * refuses everything else outright ([KERNEL-FINDINGS KF3], `adapter.WorkspaceIncludeStructureKernelTest`)
-     * — so mounting one anyway would make every finding below it a verdict about a model the Kernel never
-     * builds, which is the failure mode this whole module is arranged to avoid.
+     * `SINGLE_RG` needs exactly one root group with its object body, and a NON-REPEATABLE one; A12's own
+     * expansion refuses the shapes below ([KERNEL-FINDINGS KF3],
+     * `adapter.WorkspaceIncludeStructureKernelTest`) — so mounting one anyway would make every finding under
+     * it a verdict about a model the Kernel never builds, which is the failure this module is arranged to
+     * avoid. Each row asserts its REASON, because two refusals live here and a gap naming the wrong one sends
+     * its reader to the wrong question.
      *
-     * The `repeatability` rows are KF3's measured matrix rather than a rule derived from the member's name,
-     * and that matters because the matrix is not the obvious one: `1.9`, `0.5`, `-1` and the numeric string
-     * `"1"` are ACCEPTED while `2` and `2.1` are refused, which is what an integer coercion of the declared
-     * value does before the non-repeatable test sees it. An implementation that refused anything other than
-     * `1` would suspend four mounts A12 expands in full.
+     * The `repeatability` rows are two measured matrices rather than one derived rule, and the STRING arm is
+     * the half that cost a defect: a NUMBER truncates toward zero (`1.9` in, `2.1` out) while a STRING binds
+     * as an integer, so `"1.5"` is a reader refusal where the number `1.5` is admitted (measured 2026-09-15,
+     * after this checker had generalized the number rule and mounted providers A12 refuses).
      */
     @Test
     fun aProviderRootA12RefusesToMountSuspendsTheAnalysis() {
+        val unreadable = "reader refuses"
+        val repeatable = "is repeatable"
         val refused = mapOf(
-            "repeatable" to addressRoot(""""repeatability":2,"""),
-            "repeatable by truncation" to addressRoot(""""repeatability":2.1,"""),
-            "a boolean repeatability" to addressRoot(""""repeatability":true,"""),
-            "a non-numeric repeatability" to addressRoot(""""repeatability":"one","""),
-            "a container repeatability" to addressRoot(""""repeatability":{},"""),
-            "a non-Group root" to """{"type":"Field","id":"g","name":"Address","Field":{}}""",
-            "a root with no body" to """{"type":"Group","id":"g","name":"Address"}""",
+            addressRoot(""""repeatability":2,""") to repeatable,
+            addressRoot(""""repeatability":2.1,""") to repeatable,
+            addressRoot(""""repeatability":"2",""") to repeatable,
+            addressRoot(""""repeatability":true,""") to unreadable,
+            addressRoot(""""repeatability":"one",""") to unreadable,
+            addressRoot(""""repeatability":"1.5",""") to unreadable,
+            addressRoot(""""repeatability":"NaN",""") to unreadable,
+            addressRoot(""""repeatability":{},""") to unreadable,
+            """{"type":"Field","id":"g","name":"Address","Field":{}}""" to "rather than a Group",
+            """{"type":"Group","id":"g","name":"Address"}""" to "no `Group` body",
         )
-        val mounted = mapOf(
-            "the member absent — the control" to addressRoot(),
-            "explicitly non-repeatable" to addressRoot(""""repeatability":1,"""),
-            "a fraction below two" to addressRoot(""""repeatability":1.9,"""),
-            "an explicit null" to addressRoot(""""repeatability":null,"""),
-            "a numeric string" to addressRoot(""""repeatability":"1","""),
+        val mounted = listOf(
+            addressRoot(),
+            addressRoot(""""repeatability":1,"""),
+            addressRoot(""""repeatability":1.9,"""),
+            addressRoot(""""repeatability":-1,"""),
+            addressRoot(""""repeatability":null,"""),
+            addressRoot(""""repeatability":"1","""),
+            addressRoot(""""repeatability":" 1 ","""),
+            addressRoot(""""repeatability":"01","""),
+            addressRoot(""""repeatability":"","""),
         )
 
-        refused.forEach { (named, root) ->
+        refused.forEach { (root, reason) ->
             val report = check(host(), providerWithRoot(root))
-            assertEquals(emptySet(), report.checksCompleted, named)
-            assertTrue(report.gaps.any { it.at == "/Order/ShipTo" }, "$named: ${report.gaps}")
+            assertEquals(emptySet(), report.checksCompleted, root)
+            assertTrue(
+                report.gaps.any { it.at == "/Order/ShipTo" && reason in it.reason },
+                "$root: ${report.gaps}",
+            )
         }
-        mounted.forEach { (named, root) ->
+        mounted.forEach { root ->
             val report = check(host(extra = rule("R", "../ShipTo/Street", "FieldFilled(ShipTo/Street)")),
                 providerWithRoot(root))
-            assertTrue(CheckFamily.CONDITION_REFERENCES in report.checksCompleted, "$named: ${report.gaps}")
-            assertEquals(emptyList(), report.findings, named)
+            assertTrue(CheckFamily.CONDITION_REFERENCES in report.checksCompleted, "$root: ${report.gaps}")
+            assertEquals(emptyList(), report.findings, root)
         }
+    }
+
+    /**
+     * A root element that is not a JSON object cannot be filtered out and mounted around: A12's expansion
+     * refuses such a provider (KF3's malformed-input matrix), and dropping the entry instead would let a
+     * MODEL_ROOT mount place the remaining roots — or a SINGLE_RG mount satisfy its single-root count — from
+     * a source the Kernel never reads.
+     */
+    @Test
+    fun aNonObjectRootElementSuspendsTheMountAtEitherLevel() {
+        val provider = source(
+            """
+            {"header":{"id":"address","locales":[{"code":"en_US"}]},
+             "content":{"modelRoot":{"rootGroups":[${addressRoot()},5]}}}
+            """,
+        )
+
+        listOf(""""modelAlias":"addr"""", modelRoot).forEach { mountBody ->
+            val report = check(host(mountBody = mountBody), provider)
+
+            assertEquals(emptySet(), report.checksCompleted, mountBody)
+            assertTrue(
+                report.gaps.any { it.at == "/Order/ShipTo" && "not a JSON object" in it.reason },
+                "$mountBody: ${report.gaps}",
+            )
+        }
+    }
+
+    /**
+     * A MODEL_ROOT include of a provider with no root group is refused by A12 (measured 2026-09-15,
+     * `adapter.WorkspaceIncludeStructureKernelTest`), and mounting nothing silently is the reading this
+     * module refuses in any case: no facts and no gap saying so.
+     */
+    @Test
+    fun aModelRootIncludeOfARootlessProviderSuspendsTheMount() {
+        val provider = source(
+            """{"header":{"id":"address","locales":[{"code":"en_US"}]},
+                "content":{"modelRoot":{"rootGroups":[]}}}""",
+        )
+        val report = check(host(mountBody = modelRoot), provider)
+
+        assertEquals(emptySet(), report.checksCompleted)
+        assertTrue(report.gaps.any { it.at == "/Order/ShipTo" && "no root group" in it.reason }, report.gaps.toString())
+    }
+
+    /**
+     * A MODEL_ROOT root the checker cannot place suspends the WHOLE mount rather than mounting its siblings,
+     * which is the same law the single-root arm applies and the same reason: a tree with one root missing is
+     * confidently wrong where an incomplete answer is merely incomplete. Whether A12 admits a nameless root
+     * is not measured; suspending under-reports if it does.
+     */
+    @Test
+    fun aNamelessModelRootRootSuspendsTheWholeMount() {
+        val provider = source(
+            """
+            {"header":{"id":"address","locales":[{"code":"en_US"}]},"content":{"modelRoot":{"rootGroups":[
+              ${addressRoot()},
+              {"type":"Group","id":"g2","Group":{"elements":[${field("Email")}]}}
+            ]}}}
+            """,
+        )
+        val report = check(host(mountBody = modelRoot), provider)
+
+        assertEquals(emptySet(), report.checksCompleted)
+        assertTrue(report.gaps.any { it.at == "/Order/ShipTo" && "no `name`" in it.reason }, report.gaps.toString())
     }
 
     /**
@@ -721,6 +825,24 @@ class WorkspaceMountTest {
             check(twice, unbound).findings.map { it.code },
             "with nothing bound early and no entry-model flag, neither copy resolves — the control",
         )
+
+        // And the instance is delimited by a SEGMENT, not by a string prefix: `/Order/ShipToBilling` is a
+        // different mount that merely starts with `/Order/ShipTo`, and letting it into the first instance's
+        // index makes a resolvable provider-bound reference ambiguous — a model A12 accepts, refused.
+        val prefixSiblings = source(
+            """
+            {"header":{"id":"order","locales":[{"code":"en_US"}],"modelReferences":[
+              {"alias":"addr","purpose":"include","reference":"address"}
+            ]},"content":{"modelRoot":{"rootGroups":[
+              {"type":"Group","id":"g0","name":"Order","Group":{"elements":[
+                {"type":"Group","id":"g1","name":"ShipTo","Group":{"modelAlias":"addr"}},
+                {"type":"Group","id":"g2","name":"ShipToBilling","Group":{"modelAlias":"addr"}}
+              ]}}
+            ]}}}
+            """,
+        )
+
+        assertEquals(emptyList(), check(prefixSiblings, bound).findings)
     }
 
     /**

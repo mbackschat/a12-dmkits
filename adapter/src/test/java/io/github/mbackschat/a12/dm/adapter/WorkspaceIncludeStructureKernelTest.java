@@ -4,6 +4,7 @@ import static io.github.mbackschat.a12.dm.rulekit.dsl.Dsl.en;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -29,6 +30,7 @@ import io.github.mbackschat.a12.dm.edit.EditSession;
 import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft;
 import io.github.mbackschat.a12.dm.modelkit.FieldKind;
 import io.github.mbackschat.a12.dm.modelkit.MountOptions;
+import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Severity;
 
 /** Measured refusal basis for structural include checks enforced by portable workspace preparation. */
@@ -172,6 +174,122 @@ class WorkspaceIncludeStructureKernelTest {
 
             assertThrows(RuntimeException.class, () -> loadEntryWith(component), value.toString());
         }
+    }
+
+    /**
+     * A {@code repeatability} written as a STRING binds as an INTEGER, which no number row can show.
+     *
+     * The number rows above are truncating — {@code 1.5} and {@code 1.9} are admitted and {@code 2.1} is not
+     * — so the obvious reading is one lenient numeric coercion for both shapes. It is two: the string
+     * {@code "1.5"} is refused by the READER ({@code ModelInputException}, the model never loads) while
+     * {@code "2"} reaches the non-repeatable test and is refused by EXPANSION, and a blank string binds as
+     * zero. Measured 2026-09-15 because a portable reader had generalized the number rule to strings and so
+     * mounted a provider the Kernel refuses ({@code consistency.Preparation}).
+     */
+    @Test
+    void kernelBindsAStringSingleRootRepeatabilityAsAnInteger() {
+        var readable = List.of("1", " 1 ", "01", "0", "-1", "");
+        for (var spelling : readable) {
+            var component = tree(oneRootComponent());
+            bodyOfRoot(component).put("repeatability", spelling);
+
+            loadEntryWith(component).field("/Permit/Details/Description");
+        }
+
+        var unreadable = List.of("1.5", "1f", "NaN");
+        for (var spelling : unreadable) {
+            var component = tree(oneRootComponent());
+            bodyOfRoot(component).put("repeatability", spelling);
+
+            assertThrows(RuntimeException.class, () -> loadEntryWith(component), spelling);
+        }
+
+        var repeatable = tree(oneRootComponent());
+        bodyOfRoot(repeatable).put("repeatability", "2");
+        assertThrows(DocumentModelExpansionException.class, () -> loadEntryWith(repeatable),
+                "a string that BINDS still meets the non-repeatable test, which is the second gate");
+    }
+
+    /** A MODEL_ROOT include has nothing to mount from a provider with no root group, and A12 refuses it. */
+    @Test
+    void kernelRejectsAModelRootIncludeOfAProviderWithoutARootGroup() {
+        var component = tree(oneRootComponent());
+        ((ArrayNode) component.path("content").path("modelRoot").path("rootGroups")).removeAll();
+
+        assertThrows(DocumentModelExpansionException.class, () -> KernelModelOracle.of(
+                modelRootHost(false), reference -> component.toString()));
+    }
+
+    /**
+     * Expansion CLEARS a MODEL_ROOT mount group's own {@code usageType}, so its marker shields nothing.
+     *
+     * KF3's replacement clause was measured for {@code SINGLE_RG}, where the provider root's slot replaces
+     * the mount's; at MODEL_ROOT no root disappears, so "the group's final expanded {@code usageType}" reads
+     * as if the mount's own marker were its final slot and should shield its subtree from the mount's
+     * {@code excludeRules}. Measured 2026-09-15: the expanded mount carries NO usage type at all, and the
+     * rule is dropped whether the marker was written or not. The unmarked row is the control for the marker
+     * and the exclusion-free row is the control for the rule — without it both marked rows would agree
+     * vacuously, which is how this measurement would have read as a pass either way.
+     *
+     * **Our JVM reader diverges here and this test does not assert parity** ({@code INTERPRETER-GAPS} IG151):
+     * {@code dm.core.ModelReader} PRESERVES the mount's marker, which no fixture can reach because an
+     * attachment group must declare its own mandated fields (the row below) and a MODEL_ROOT mount's children
+     * are groups. The kernel side is the measurement; the reader's is the gap.
+     */
+    @Test
+    void kernelClearsAModelRootMountsOwnAttachmentMarkerBeforeApplyingItsExclusion() {
+        var provider = ruledOneRootComponent();
+        var mounted = "/Permit/Details/Component/DescriptionRequired";
+
+        var kept = PreparationParityHarness.observe(modelRootHost(false, false), reference -> provider);
+        assertTrue(kept.kernel().rules().contains(mounted), "the rule must be there before a row can drop it");
+
+        for (var marked : List.of(false, true)) {
+            var observation = PreparationParityHarness.observe(modelRootHost(marked), reference -> provider);
+
+            assertNull(observation.kernel().elements().get("/Permit/Details").usageType(),
+                    "marked=" + marked + ": expansion leaves the mount group with no usage type");
+            assertFalse(observation.kernel().rules().contains(mounted),
+                    "marked=" + marked + ": the mount's own marker must not shield its own exclusion");
+        }
+    }
+
+    /**
+     * And the shape the row above measures cannot appear in a model A12 accepts, which is why no fixture
+     * carries it: an {@code attachment} group must declare the eight mandated attachment fields ITSELF, and a
+     * MODEL_ROOT mount's children are the provider's root GROUPS, so none of those fields can land on the
+     * mount. Declaring them locally beside the alias makes the group an ALREADY-EXPANDED mount whose
+     * reference A12 ignores (KF3), so the marker and the mount cannot coexist on a consistent model.
+     */
+    @Test
+    void kernelRefusesAnAttachmentGroupThatDeclaresNoneOfItsMandatedFields() {
+        var marker = tree(oneRootComponent());
+        bodyOfRoot(marker).put("usageType", "attachment");
+
+        // The contract is `checkConsistency`'s, not expansion's: the same model DESERIALIZES and expands.
+        KernelModelOracle.ofSelfContained(marker.toString());
+        var refused = assertThrows(RuntimeException.class, () -> BoundModel.ofJson(marker.toString()));
+
+        assertTrue(refused.getMessage().contains("for attachment with group"), refused.getMessage());
+    }
+
+    /** The entry of the three MODEL_ROOT rows: a mount carrying `excludeRules`, optionally marked attachment. */
+    private static String modelRootHost(boolean marked) {
+        return modelRootHost(marked, true);
+    }
+
+    private static String modelRootHost(boolean marked, boolean excludeRules) {
+        var options = MountOptions.single().asModelRoot();
+        var entry = tree(DocumentModelDraft.named("permit").locale("en_US")
+                .include("component", "component")
+                .rootGroup("Permit", permit -> permit.mount(
+                        "Details", "component", excludeRules ? options.excludingRules() : options))
+                .build()
+                .toJson());
+        if (marked) {
+            ((ObjectNode) elementsOfRoot(entry).get(0).path("Group")).put("usageType", "attachment");
+        }
+        return entry.toString();
     }
 
     @Test
