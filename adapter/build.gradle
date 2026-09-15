@@ -346,6 +346,7 @@ tasks.named('test') {
         excludeTestsMatching 'io.github.mbackschat.a12.dm.adapter.laws.RetainedComputationFixtureGuardTest'
         excludeTestsMatching 'io.github.mbackschat.a12.dm.adapter.WorkspacePreparationFixtureGuardTest'
         excludeTestsMatching 'io.github.mbackschat.a12.dm.adapter.laws.CheckerSilenceOnCleanModelsTest'
+        excludeTestsMatching 'io.github.mbackschat.a12.dm.adapter.laws.CheckerSilenceOnSynthesizedModelsTest'
     }
 }
 
@@ -501,15 +502,17 @@ tasks.register('perfGateTest', Test) {
 // this task's inputs and it is scoped to that one class — never to `test`, whose perf lanes want the machine
 // to itself and whose ~900 tests would re-run on any fixture edit.
 tasks.register('checkerSilenceGuardTest', Test) {
-    description = 'Verify the Kernel-free checker agrees with the Kernel on the committed models and on ' +
-            'mechanical perturbations of them.'
+    description = 'Verify the Kernel-free checker agrees with the Kernel on the committed models, on ' +
+            'mechanical perturbations of them, and on models synthesized far past their size.'
     group = 'verification'
     testClassesDirs = sourceSets.test.output.classesDirs
     classpath = sourceSets.test.runtimeClasspath
     useJUnitPlatform()
-    // All three read the model trees below at RUNTIME, so they belong to the task that declares those files as
-    // inputs. Left in the broad lane they would go up-to-date or restore from the build cache after a model
-    // edit — a false green of exactly the kind the input declaration exists to prevent.
+    // The first three read the model trees below at RUNTIME, so they belong to the task that declares those
+    // files as inputs. Left in the broad lane they would go up-to-date or restore from the build cache after a
+    // model edit — a false green of exactly the kind the input declaration exists to prevent. The synthesized
+    // population reads no repo file; it joins them because it is the same claim about the same checker at a
+    // size the committed trees cannot reach, and its own inputs are test sources this task already declares.
     filter {
         includeTestsMatching(
             'io.github.mbackschat.a12.dm.adapter.laws.CheckerSilenceOnCleanModelsTest')
@@ -517,6 +520,8 @@ tasks.register('checkerSilenceGuardTest', Test) {
             'io.github.mbackschat.a12.dm.adapter.laws.CheckerSilenceOnMutatedModelsTest')
         includeTestsMatching(
             'io.github.mbackschat.a12.dm.adapter.laws.CheckerClassAgreementTest')
+        includeTestsMatching(
+            'io.github.mbackschat.a12.dm.adapter.laws.CheckerSilenceOnSynthesizedModelsTest')
     }
     rootProject.guardInputs(it, [
         'conformance corpus models': rootProject.fileTree('corpus/models') { include '**/*.json' },

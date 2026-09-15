@@ -11,7 +11,17 @@ import java.util.function.Consumer
 /** Builds the synthesis benchmark's target profiles through the same typed APIs used by consumers. */
 internal object ProfileSynthesisTargetProfiles {
 
-    fun extract(programsPerKind: Int): String {
+    fun extract(programsPerKind: Int): String = ModelProfiles.extract(modelJson(programsPerKind))
+
+    /**
+     * The synthesized MODEL itself, at a chosen program count.
+     *
+     * Split out of [extract] so a consumer that needs the model rather than its profile does not have to
+     * rebuild the same thing — the portable checker's H5 workload is exactly this, at `N` and `4N`, because
+     * the checker's cost scales with a model's declarations where an evaluator's scales with a document's
+     * rows.
+     */
+    fun modelJson(programsPerKind: Int): String {
         require(programsPerKind > 0) { "programsPerKind must be positive" }
         val structure = DocumentModelDraft.named("SynthesisGrowth$programsPerKind")
             .locale("en_US")
@@ -43,7 +53,7 @@ internal object ProfileSynthesisTargetProfiles {
                 .message(Dsl.en("Copy the calibration input."))
                 .build()
         }
-        return ModelProfiles.extract(model.addAll(rules, computations).toJson())
+        return model.addAll(rules, computations).toJson()
     }
 
     private fun inputName(index: Int): String = "Input${suffix(index)}"
