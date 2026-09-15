@@ -18,6 +18,23 @@ class MessageParameterReferenceTest {
     private fun ruleSaying(text: String): List<String> =
         check(ModelSource(model(message = text))).findings.filter { it.at == "/Policy/Probe" }.map { it.code }
 
+    /** The same desk in German, with the model's condition language declared — the other arm of the keying. */
+    private fun germanSaying(text: String): List<String> = check(
+        ModelSource(
+            """
+        {"header":{"id":"vertrag","locales":[{"code":"de_DE"}]},
+         "content":{"modelConfig":{"conditionLanguage":{"code":"de_DE"}},"modelRoot":{"rootGroups":[
+          {"type":"Group","id":"g0","name":"Vertrag","Group":{"elements":[
+            {"type":"Field","id":"f0","name":"Referenz","Field":{"fieldType":{"type":"StringType"}}},
+            {"type":"Rule","id":"r0","name":"Probe","Rule":{
+              "errorCondition":"FeldAngegeben(Referenz)","errorEntityRelPath":"../Referenz",
+              "errorCode":"P1","errorMessage":[{"locale":"de_DE","text":"$text"}]}}
+          ]}}
+         ]}}}
+            """.trimIndent(),
+        ),
+    ).findings.filter { it.at == "/Vertrag/Probe" }.map { it.code }
+
     private fun computing(operation: String, text: String): List<String> =
         check(ModelSource(model(message = text, operation = operation)))
             .findings.filter { it.at == "/Policy/Probe" }.map { it.code }
@@ -127,6 +144,40 @@ class MessageParameterReferenceTest {
      * silence check: when a sibling family lands a form, the row stops being empty and says whose class it
      * now carries.
      */
+    /**
+     * The name position's own TERMINALS, and the language that decides which words are terminals at all.
+     *
+     * Each language recognises only its own spelling; the other's falls through to an entity lookup. Both
+     * directions are measured (`rulekit.validate.laws.RuleMessageParameterLanguageLawsTest`), and both are
+     * mirrored, because a checker keyed on the model's language has two arms and a one-language grid tests
+     * one of them.
+     */
+    @Test
+    fun whichWordsAreTerminalsDependsOnTheModelsConditionLanguage() {
+        val actual = mutableMapOf<String, List<String>>()
+        actual["en model, the rule-group shorthand"] = ruleSaying("see \$RuleGroup\$")
+        actual["en model, the GERMAN rule-group shorthand"] = ruleSaying("see \$RegelKontext\$")
+        actual["en model, the GERMAN base-year terminal"] = ruleSaying("see \$Referenzjahr\$")
+        actual["de model, the rule-group shorthand"] = germanSaying("siehe \$RegelKontext\$")
+        actual["de model, the ENGLISH rule-group shorthand"] = germanSaying("siehe \$RuleGroup\$")
+        actual["de model, the base-year terminal"] = germanSaying("siehe \$Referenzjahr\$")
+        actual["de model, a field it reads — the control"] = germanSaying("siehe \$Referenz\$")
+
+        val recognised = listOf("INVALID_PARAMETER")
+        val notAnEntity = listOf("INVALID_ENTITY")
+        val expected = mutableMapOf<String, List<String>>()
+        expected["en model, the rule-group shorthand"] = recognised
+        // The other language's spelling is an ordinary name here, so the reference class is the right one —
+        // and excluding both spellings, which this reader did until 2026-09-15, lost exactly this finding.
+        expected["en model, the GERMAN rule-group shorthand"] = notAnEntity
+        expected["en model, the GERMAN base-year terminal"] = notAnEntity
+        expected["de model, the rule-group shorthand"] = recognised
+        expected["de model, the ENGLISH rule-group shorthand"] = notAnEntity
+        expected["de model, the base-year terminal"] = listOf("NO_BASE_YEAR")
+        expected["de model, a field it reads — the control"] = emptyList()
+        assertEquals(expected, actual, "which words are terminals depends on the model's condition language")
+    }
+
     @Test
     fun theFormsThisFamilyDoesNotRead() {
         val actual = mutableMapOf<String, List<String>>()
@@ -137,6 +188,11 @@ class MessageParameterReferenceTest {
         actual["a row specifier"] = ruleSaying("see \$#Zeile\$")
 
         val expected = actual.keys.associateWith { emptyList<String>() }.toMutableMap()
+        // Landed 2026-09-15 by `BASE_YEAR_REQUIREMENT`, whose law is the MODEL's: this fixture declares no
+        // base year, so the terminal has nothing to interpolate. The offset form draws the same class, which
+        // is why both rows are kept — a reader recognising only the bare spelling would drop the second.
+        expected["a base-year terminal"] = listOf("NO_BASE_YEAR")
+        expected["a base-year terminal with an offset"] = listOf("NO_BASE_YEAR")
         // Landed 2026-09-15 by `ERROR_TEXT_SEMANTIC_INDEX`, which owns the chained key: A12 refuses it with
         // this class before membership is consulted at all, measured in
         // `rulekit.validate.laws.ErrorTextSemanticIndexLawsTest`. The row stays here because what it locks is

@@ -7429,9 +7429,11 @@ Two unrelated kernel checkers ask the same one-line question of the model, and a
 
 **The `Time` construction has no year to omit.** It admits any prefix of its three slots, so the same two-argument shape is admitted there — the discriminator against the tempting reading "a short construction needs a base year".
 
+**Extended 2026-09-15 — the error MESSAGE is a third place, and it answers from a DIFFERENT vocabulary.** The same constant written as a message parameter draws the unprefixed `NO_BASE_YEAR`, not `MVK_NO_BASE_YEAR` — measured on both language spellings, the German one on a `de_DE`-condition model declaring no base year. So "the carrier does not matter" holds for the constant's admission and NOT for its class: a checker sharing one code across the condition and the message arms would name the wrong one on whichever arm it did not measure.
+
 Reported by the portable checker (`CheckFamily.BASE_YEAR_REQUIREMENT`, which looks for the constant's TOKEN rather than for a carrier that admits it, and reads the construction's earlier slots through the slot family's own walk). Silent on everything when the model declares a base year, which is the family's precondition. The kits only NAME `MVK_NO_BASE_YEAR`, in four javadocs that each state the requirement is the kernel's call; nothing there refuses.
 
-*Locked by:* `rulekit.validate.laws.BaseYearRequirementLawsTest`, mirrored by `consistency.BaseYearRequirementTest`.
+*Locked by:* `rulekit.validate.laws.BaseYearRequirementLawsTest`, mirrored by `consistency.BaseYearRequirementTest`; the message carrier by `rulekit.validate.laws.RuleMessageParameterLanguageLawsTest` (both spellings, against the declaring model as its control), mirrored by `consistency.MessageParameterReferenceTest`.
 
 ## §8 supplement — one keyword spells two validity conditions, and the kind gate admits less than its code's name (source-verified + measured, 2026-09-14) <a id="kf402"></a>
 

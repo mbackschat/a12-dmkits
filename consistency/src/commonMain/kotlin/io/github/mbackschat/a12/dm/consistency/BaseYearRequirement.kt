@@ -3,11 +3,14 @@ package io.github.mbackschat.a12.dm.consistency
 import io.github.mbackschat.a12.dm.consistency.syntax.CONDITION_OPERATOR_KEYWORDS
 import io.github.mbackschat.a12.dm.consistency.syntax.CallShape
 import io.github.mbackschat.a12.dm.consistency.syntax.TokenKind
+import io.github.mbackschat.a12.dm.consistency.syntax.NameTerminal
 import io.github.mbackschat.a12.dm.consistency.syntax.callShapes
+import io.github.mbackschat.a12.dm.consistency.syntax.messageParameterBodies
+import io.github.mbackschat.a12.dm.consistency.syntax.nameTerminalOf
 import io.github.mbackschat.a12.dm.consistency.syntax.tokenize
 
 /**
- * The two places a model's declared BASE YEAR is not optional.
+ * The places a model's declared BASE YEAR is not optional.
  *
  * Two unrelated kernel checkers ask the same one-line question of the model, and the pairing is what makes
  * this one family rather than two branches ([KERNEL-FINDINGS KF403],
@@ -35,6 +38,16 @@ import io.github.mbackschat.a12.dm.consistency.syntax.tokenize
  * range-overlap operators ([dateRangeOperandListFindings]) while ENABLING these two shapes, so a family
  * treating it as one switch in one direction would get the other half backwards.
  *
+ * **The error MESSAGE is a third place, and A12 answers it from a different vocabulary.** The same constant
+ * written as a message parameter — `${'$'}BaseYear${'$'}`, or with the signed offset it admits unbounded — draws the
+ * unprefixed `NO_BASE_YEAR` rather than `MVK_NO_BASE_YEAR`, measured on both language spellings
+ * (`rulekit.validate.laws.RuleMessageParameterLanguageLawsTest`). The carrier really does decide the class
+ * here, so the two arms cannot share a code however alike the question is.
+ *
+ * **A declaration whose CONDITION already names the constant is reported once, on the condition.** Which of
+ * the two A12 answers first is not measured, and both are true of the model, so reporting the condition's is
+ * an under-report rather than a wrong class.
+ *
  * **Silent on everything when the model declares a base year**, which is the whole family's precondition,
  * and on a `Date` construction this reader cannot parse into slots.
  */
@@ -45,6 +58,7 @@ fun PreparedModel.baseYearRequirementFindings(): List<Finding> {
     val keywords = CONDITION_OPERATOR_KEYWORDS[conditionLanguage] ?: return emptyList()
     val baseYear = keywords[BASE_YEAR_CONSTANT] ?: return emptyList()
     val dateConstruction = keywords[DATE_CONSTRUCTION] ?: return emptyList()
+    val unsound = declarationsWithUnsoundDsl()
     return elements.mapNotNull { element ->
         val body = element.body ?: return@mapNotNull null
         conditionTexts(element.kind, body).firstNotNullOfOrNull { (member, text) ->
@@ -54,7 +68,37 @@ fun PreparedModel.baseYearRequirementFindings(): List<Finding> {
             callShapes(text, conditionLanguage, syntaxEntryOf(member))
                 .filter { it.operator == dateConstruction }
                 .firstNotNullOfOrNull { shape -> yearlessFinding(shape, element, member) }
+        } ?: messageConstantFinding(element, body, unsound)
+    }
+}
+
+/** The same constant in an error message, which A12 refuses from its own error-text vocabulary. */
+private fun PreparedModel.messageConstantFinding(
+    element: DeclaredElement,
+    body: kotlinx.serialization.json.JsonObject,
+    unsound: Set<String>,
+): Finding? {
+    if (element.path in unsound) {
+        return null
+    }
+    val messages = body.authoredMessages() as? AuthoredMessages.Read ?: return null
+    return messages.entries.firstNotNullOfOrNull { message ->
+        if (message.text.carriesAnOffendingCharacter()) {
+            return@firstNotNullOfOrNull null
         }
+        messageParameterBodies(message.text)
+            .firstOrNull { nameTerminalOf(it, conditionLanguage) == NameTerminal.BASE_YEAR }
+            ?.let { parameter ->
+                Finding(
+                    FindingCategory.A12_CONSTRAINT,
+                    FindingSeverity.ERROR,
+                    "NO_BASE_YEAR",
+                    "in `errorMessage`: `${'$'}$parameter${'$'}` interpolates the model's reference year, and " +
+                        "this model declares none — set `modelInfo.baseYear`, or write the year the message " +
+                        "means",
+                    element.path,
+                )
+            }
     }
 }
 

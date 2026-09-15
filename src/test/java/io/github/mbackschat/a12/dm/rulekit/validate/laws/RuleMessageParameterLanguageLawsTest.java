@@ -81,6 +81,15 @@ class RuleMessageParameterLanguageLawsTest {
                     .build().toJson())
             .setConditionLanguage("de_DE").toJson();
 
+    /** The same German model with no declared base year — the one variable the base-year class needs. */
+    private static final String VERTRAG_OHNE_BASISJAHR = ModelDocument.read(
+            DocumentModelDraft.named("schadenvertrag-ohne-basisjahr").locale("de_DE")
+                    .rootGroup("Vertrag", vertrag -> vertrag
+                            .stringField("Referenz", f -> { })
+                            .numberField("Beitrag", f -> f.fractionDigits(0, 2)))
+                    .build().toJson())
+            .setConditionLanguage("de_DE").toJson();
+
     private static final BoundModel DE = BoundModel.ofJson(VERTRAG);
 
     private static final String DE_READS_BEITRAG = renderDe(Dsl.fieldFilled(DE.field("/Vertrag/Referenz"))
@@ -117,13 +126,21 @@ class RuleMessageParameterLanguageLawsTest {
         verdicts.put("de model, $Referenzjahr$", de(DE_READS_BEITRAG, "siehe $Referenzjahr$"));
         verdicts.put("de model, $Referenzjahr+3$", de(DE_READS_BEITRAG, "siehe $Referenzjahr+3$"));
         verdicts.put("de model, $BaseYear$", de(DE_READS_BEITRAG, "siehe $BaseYear$"));
+        // The class the terminal draws where the model declares no base year, measured on the GERMAN
+        // spelling: the English one is [KF198]'s row, and a checker keying on the model's own language
+        // needs both sides or it is transferring a measurement across the carrier it is keyed by.
+        verdicts.put("de model with no base year, $Referenzjahr$", KernelLaws.messageVerdict(
+                VERTRAG_OHNE_BASISJAHR, "/Vertrag", "../Referenz",
+                renderDe(Dsl.fieldFilled(BoundModel.ofJson(VERTRAG_OHNE_BASISJAHR).field("/Vertrag/Referenz"))),
+                "de_DE", "siehe $Referenzjahr$"));
 
         assertEquals(Map.of(
                 "en model, $BaseYear$", ADMITTED,
                 "en model, $Referenzjahr$", NOT_AN_ENTITY,
                 "de model, $Referenzjahr$", ADMITTED,
                 "de model, $Referenzjahr+3$", ADMITTED,
-                "de model, $BaseYear$", NOT_AN_ENTITY), verdicts);
+                "de model, $BaseYear$", NOT_AN_ENTITY,
+                "de model with no base year, $Referenzjahr$", "NO_BASE_YEAR"), verdicts);
     }
 
     /**

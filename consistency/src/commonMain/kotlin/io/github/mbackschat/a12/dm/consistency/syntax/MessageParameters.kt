@@ -1,19 +1,51 @@
 package io.github.mbackschat.a12.dm.consistency.syntax
 
+/** The two roles a name-position terminal plays, each with a refusal class of its own. */
+internal enum class NameTerminal { BASE_YEAR, RULE_GROUP }
+
 /**
- * The message grammar's own TERMINALS, which are not entity names however plain they look.
+ * The message grammar's own name-position TERMINALS, per condition language.
+ *
+ * These are not entity names however plain they look, and the split is **by the model's own condition
+ * language**, measured in both directions (`rulekit.validate.laws.RuleMessageParameterLanguageLawsTest`):
+ * each language recognises only its own spelling, and the OTHER language's falls through to an entity lookup
+ * and draws `INVALID_ENTITY`. Excluding both spellings everywhere — which this reader did until 2026-09-15 —
+ * loses that second finding, and it is the one an author is most likely to hit.
  *
  * `$BaseYear$` is admitted on a model that declares a base year and draws `NO_BASE_YEAR` on one that does
- * not (`RuleMessageParameterLawsTest.theBaseYearTerminalTakesAnUnboundedSignedOffset`) — never a reference
- * class — so handing it to a reader that reports unresolvable addresses would over-reject outright. Every
- * other form on this grammar's terminal list (`#Zeile`, a signed offset, a category suffix) carries a
- * character no plain segment admits and is already refused below.
- *
- * **Both language spellings are excluded regardless of the model's own language**, because an exclusion can
- * only under-report: only the English spelling is measured, and narrowing the set to the model's language
- * would be a claim about the German message grammar that nothing here has run.
+ * not, on both spellings; `$RuleGroup$` in this position is recognised and refused with `INVALID_PARAMETER`,
+ * never a reference class. `RootGroup`/`LfdNr` are deliberately NOT here: both spellings are looked up as
+ * entities in both languages, so excluding them would drop a real finding.
  */
-private val MESSAGE_TERMINALS = setOf("BaseYear", "Referenzjahr")
+private val NAME_TERMINALS: Map<ConditionLanguage, Map<String, NameTerminal>> = mapOf(
+    ConditionLanguage.EN to mapOf("BaseYear" to NameTerminal.BASE_YEAR, "RuleGroup" to NameTerminal.RULE_GROUP),
+    ConditionLanguage.DE to mapOf(
+        "Referenzjahr" to NameTerminal.BASE_YEAR,
+        "RegelKontext" to NameTerminal.RULE_GROUP,
+    ),
+)
+
+/**
+ * The terminal this parameter spells in [language], or null when it spells none.
+ *
+ * The base-year terminal carries an OPTIONAL signed offset, admitted unbounded (`+9999` measured) — and a
+ * MALFORMED one (`BaseYear+`, `BaseYear+x`, a space instead of a sign) is not this terminal at all: A12
+ * answers those from the parser, so recognising them here would hand a caller a class the parser owns.
+ */
+internal fun nameTerminalOf(parameter: String, language: ConditionLanguage): NameTerminal? {
+    val spellings = NAME_TERMINALS[language] ?: return null
+    val trimmed = parameter.trim()
+    spellings[trimmed]?.let { return it }
+    val sign = trimmed.indexOfFirst { it == '+' || it == '-' }
+    if (sign <= 0) {
+        return null
+    }
+    val offset = trimmed.substring(sign + 1)
+    if (offset.isEmpty() || !offset.all { it.isDigit() }) {
+        return null
+    }
+    return spellings[trimmed.substring(0, sign)]?.takeIf { it == NameTerminal.BASE_YEAR }
+}
 
 /**
  * The PLAIN entity parameters an error message names — `$Name$` and `$Name.value$`, and nothing else.
@@ -31,8 +63,8 @@ private val MESSAGE_TERMINALS = setOf("BaseYear", "Referenzjahr")
  * would report on a text A12 answered otherwise. `$$` outside a parameter is A12's escape, and
  * [closingDollar] is why no branch here has to know that.
  */
-internal fun plainMessageParameters(text: String): List<String> =
-    messageParameterBodies(text).mapNotNull { plainParameterName(it) }
+internal fun plainMessageParameters(text: String, language: ConditionLanguage): List<String> =
+    messageParameterBodies(text).mapNotNull { plainParameterName(it, language) }
 
 /**
  * The raw text inside each `$…$`, before any form is recognised — empty for an UNTERMINATED text.
@@ -108,7 +140,7 @@ private fun closingDollar(text: String, from: Int): Int? {
  * resolve a parameter against the condition lexer's terminals. An earlier version excluded such names to be
  * safe; the measurement shows the exclusion only hid real findings, so it is gone.
  */
-internal fun plainParameterName(parameter: String): String? {
+internal fun plainParameterName(parameter: String, language: ConditionLanguage): String? {
     // No guard for an empty name: [isPlainSegment] refuses an empty segment, so `$$` and `$.value$` fall
     // out below. Written as its own branch first; the mutant that disabled it could not be killed.
     val name = parameter.removeSuffix(VALUE_SUFFIX)
@@ -121,7 +153,7 @@ internal fun plainParameterName(parameter: String): String? {
         return null
     }
     val joined = segments.joinToString("/") { it.trim('\'') }
-    if (!absolute && joined in MESSAGE_TERMINALS) {
+    if (!absolute && nameTerminalOf(joined, language) != null) {
         return null
     }
     return if (absolute) "/$joined" else joined

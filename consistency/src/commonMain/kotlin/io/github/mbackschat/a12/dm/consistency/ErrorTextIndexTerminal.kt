@@ -35,6 +35,14 @@ import io.github.mbackschat.a12.dm.consistency.syntax.semanticIndexUsesIn
  * measured on a mixed shape where the error entity's own index field is admitted and a repeatable group's
  * namesake is not. Naming either arm's class there would be the wrong class rather than an under-report, so
  * the uniqueness question is asked before both arms.
+ *
+ * **The terminal's four CROSS-FIELD classes are behind that same question, which is why they are not a
+ * worklist item.** `checkIndexFieldRefValue` and `checkIndexFieldRefCategory` compare each member of A12's
+ * list against the FIRST — the XML values, the display locales, the category mapping, the types — so every
+ * one of `INVALID_INDEX_FIELD_ENUM_XML_VALUES`, `_ENUM_XML_TO_CAT`, `_ENUM_XML_TO_DISPLAY` and
+ * `_INCONSISTENT_TYPES` needs a list of at least two, which is the shape declined above (source-read
+ * 30.8.1). Their two per-member siblings, `FIELD_NO_ENUM` and `INVALID_CATEGORY`, fire on a single member
+ * and are already reported — by the category-suffix family, from the plain form.
  */
 fun PreparedModel.errorTextIndexTerminalFindings(): List<Finding> {
     val targets = declaredReferences()

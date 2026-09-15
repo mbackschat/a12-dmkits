@@ -1,6 +1,9 @@
 package io.github.mbackschat.a12.dm.consistency
 
-import io.github.mbackschat.a12.dm.consistency.syntax.plainMessageParameters
+import io.github.mbackschat.a12.dm.consistency.syntax.NameTerminal
+import io.github.mbackschat.a12.dm.consistency.syntax.messageParameterBodies
+import io.github.mbackschat.a12.dm.consistency.syntax.nameTerminalOf
+import io.github.mbackschat.a12.dm.consistency.syntax.plainParameterName
 
 /**
  * That an error message only names entities its own declaration already reads.
@@ -51,7 +54,16 @@ fun PreparedModel.messageParameterFindings(): List<Finding> {
             if (message.text.carriesAnOffendingCharacter()) {
                 return@flatMap emptyList()
             }
-            plainMessageParameters(message.text).mapNotNull { name ->
+            messageParameterBodies(message.text).mapNotNull { parameter ->
+                // The TERMINALS are recognised before any lookup, and each language recognises only its own
+                // spelling — so the other's is an ordinary name here and draws a reference class below.
+                when (nameTerminalOf(parameter, conditionLanguage)) {
+                    NameTerminal.RULE_GROUP -> return@mapNotNull ruleGroupFinding(parameter, element)
+                    // The model's own declaration answers this one, from [baseYearRequirementFindings].
+                    NameTerminal.BASE_YEAR -> return@mapNotNull null
+                    null -> Unit
+                }
+                val name = plainParameterName(parameter, conditionLanguage) ?: return@mapNotNull null
                 val address = resolveEntity(group, name, element.origin)
                 val resolved = (address as? Reference.Resolved)?.path
                     ?: return@mapNotNull address.asFinding(ReferenceRole.MESSAGE_PARAMETER, element.path,
@@ -72,6 +84,23 @@ fun PreparedModel.messageParameterFindings(): List<Finding> {
         }
     }
 }
+
+/**
+ * The rule-group shorthand, which this position RECOGNISES and refuses rather than looking up.
+ *
+ * `$RuleGroup$` / `$RegelKontext$` name a group, and a rule-owned parameter takes a field — so A12 answers
+ * `INVALID_PARAMETER` ("recognised, refused here") where the other language's spelling draws `INVALID_ENTITY`
+ * instead. That pair is the instrument the language grid uses, and reporting the reference class on the
+ * own-language spelling would name the wrong one of the two.
+ */
+private fun ruleGroupFinding(parameter: String, element: DeclaredElement): Finding = Finding(
+    FindingCategory.A12_CONSTRAINT,
+    FindingSeverity.ERROR,
+    "INVALID_PARAMETER",
+    "in `errorMessage`: `$parameter` is the rule-group shorthand, which names a GROUP — this position takes " +
+        "a field, and the shorthand belongs in the `${'$'}#…${'$'}` group position instead",
+    element.path,
+)
 
 /**
  * Which entities each rule and computation READS, keyed by the declaration's path.

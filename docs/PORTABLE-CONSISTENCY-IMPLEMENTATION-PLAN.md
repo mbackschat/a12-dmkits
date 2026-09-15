@@ -739,6 +739,18 @@ One cold adversarial review over the frozen range, as [§2](#2-execution-order-a
 
 **The catalog half is deliberately not delivered, with its re-open trigger.** A2 ruled that `operators.json` ships as-is because it is already data; that remains right, and it is not yet USEFUL — no finding this checker produces names an operator id, so 293 KB would be packaged with nothing to join it against. It lands when a finding carries an operator.
 
+### C record — a WRONG-CLASS defect the language axis had been hiding, and two codes with it (2026-09-15)
+
+**Frozen change: the message name position's own TERMINALS, keyed by the model's condition language.** Two classes newly reported — `INVALID_PARAMETER` for the rule-group shorthand (extending `MESSAGE_PARAMETER_REFERENCE`) and `NO_BASE_YEAR` for the base-year terminal (extending `BASE_YEAR_REQUIREMENT`, [KF403](KERNEL-FINDINGS.md#kf403) amended in place). No new family; the count stays where it was.
+
+**The slice found a live WRONG CLASS, which is the one direction this estate forbids.** `$RuleGroup$` in a rule-owned parameter is recognised by A12 and refused with `INVALID_PARAMETER`; the checker resolved it as an ordinary name, found nothing, and said `INVALID_ENTITY`. The fact had been measured and tabled in [KF198](KERNEL-FINDINGS.md#kf198) since before the family existed. What hid it is that the reader's exclusion list held only the BASE-YEAR spellings, so nothing in the family's own source mentioned the other terminal at all — a silence with no marker, which no audit of disclosed under-reports would have surfaced.
+
+**A deliberate, documented under-report turned out to cost a finding in the opposite direction.** The terminal set excluded BOTH language spellings on the stated ground that an exclusion can only under-report, and only the English one was measured. It is true of the terminal's own class and false of the other language's spelling, which A12 looks up as an entity and refuses — so excluding it dropped an `INVALID_ENTITY` on every model that writes it. The lesson is narrower than "don't exclude": an exclusion is safe for the code it excludes and says nothing about what the excluded text would otherwise have drawn.
+
+**The language axis is a CARRIER, so both arms are locked on both sides.** The German base-year class was measured rather than transferred — a `de_DE`-condition model declaring no base year, one row — and the mirror grew a German fixture so the checker's two arms are both exercised. The fixture's first draft was green-looking nonsense: `FeldGefuellt` is not A12's German spelling of `FieldFilled`, so every row including the control returned `MVK_INVALID_ENTITY`. The control is what caught it, which is the whole reason a language grid carries one.
+
+**And the index terminal's four CROSS-FIELD classes were dispositioned rather than left open.** A source read settles them: each compares the members of A12's same-short-name list against the first, so all four need a list of at least two — the shape the previous slice's guard declines. Recorded in the family's KDoc where the next session will meet it, not in a ledger row, because the reason is a property of the code it sits beside.
+
 ### C record — three more codes on a form already owned, and the gate order that made them safe (2026-09-15)
 
 **Frozen change: the `$index(…)$` terminal's last three gates.** Three classes newly reported — `INVALID_INDEX_FIELD_REP_ITER`, `INVALID_INDEX_FIELD_NONREP_ENUM` and `INVALID_INDEX_FIELD_PARAMETER` ([KF280](KERNEL-FINDINGS.md#kf280), amended in place). **No new family**: `ERROR_TEXT_INDEX_TERMINAL` already owned the form and now walks all five of its gates, which is why the count does not move.

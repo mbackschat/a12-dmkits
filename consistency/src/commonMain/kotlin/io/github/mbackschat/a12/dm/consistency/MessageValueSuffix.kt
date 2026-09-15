@@ -47,7 +47,7 @@ fun PreparedModel.messageValueSuffixFindings(): List<Finding> {
                 if (!parameter.trim().endsWith(VALUE_SUFFIX)) {
                     return@mapNotNull null
                 }
-                val name = plainParameterName(parameter.trim()) ?: return@mapNotNull null
+                val name = plainParameterName(parameter.trim(), conditionLanguage) ?: return@mapNotNull null
                 val path = (resolveEntity(group, name, element.origin) as? Reference.Resolved)?.path
                     ?: return@mapNotNull null
                 if (path !in read) {
