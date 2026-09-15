@@ -282,6 +282,54 @@ class HavingFilterIterationGateLawsTest {
                 "the presence leaf splits by the named group's repeatability, not by being out of scope");
     }
 
+    /**
+     * Rule DECLARED at the root but reporting INSIDE {@code Parcels}, so the two candidate readings split.
+     *
+     * <p>Every other carrier above declares the rule in the same group its error field sits in, which makes
+     * "the DECLARING group's iteration addresses the level" and "the TARGET's coordinates address it" the
+     * same sentence on all of them. They are not the same question, and the checker's readers were written
+     * against the first one.
+     */
+    private static String fromRootReportingInsideParcels(Condition filter) {
+        return verdict(BOXES + "*/Code", SHIPMENT, "../Parcels/Tracking", PARCELS + "/Tracking", filter);
+    }
+
+    /**
+     * Which of the two the filter's iteration gate is keyed on — the constant every other carrier here holds.
+     *
+     * <p>The operand stars only {@code Boxes} and so crosses {@code Parcels} unstarred. With the rule
+     * declared at the root and reporting at the root, that level is bound by nothing and the operand is
+     * {@code MVK_NO_WILDCARD} before any filter question. Moving only the ERROR FIELD into {@code Parcels}
+     * changes nothing about the operand and everything about the rule: A12 addresses the level by the
+     * target's coordinates, the operand is admitted, and the filter's own gate is what answers.
+     *
+     * <p>Three readers in the portable checker asked the declaring group instead; two were corrected from
+     * their own differential, and this row is what settles the third rather than leaving it under-reporting
+     * on a shape no grid had built.
+     */
+    @Test
+    void whetherTheFilterIterationGateIsKeyedOnTheDeclaringGroupOrTheTarget() {
+        Map<String, String> actual = new LinkedHashMap<>();
+        actual.put("rule declared AND reporting at the root — the control", fromRootOverBoxes(inScopeBoxes()));
+        actual.put("the same rule reporting INSIDE Parcels, in-scope filter",
+                fromRootReportingInsideParcels(inScopeBoxes()));
+        actual.put("the same, with a filter leaf off the operand's path",
+                fromRootReportingInsideParcels(Dsl.groupFilled(M.group(CLAIMS))));
+        actual.put("the same, unfiltered — the topology control",
+                fromRootReportingInsideParcels(null));
+
+        Map<String, String> expected = new LinkedHashMap<>();
+        // Parcels is bound by nothing here, so the operand never reaches its filter.
+        expected.put("rule declared AND reporting at the root — the control", NO_WILDCARD);
+        // ...and the error field alone rebinds it: the target's coordinates address Parcels.
+        expected.put("the same rule reporting INSIDE Parcels, in-scope filter", ADMITTED);
+        // The filter's OWN gate answers once the operand is admitted, which is what proves the row above is
+        // the operand being reached rather than the whole rule being admitted for some other reason.
+        expected.put("the same, with a filter leaf off the operand's path", INVALID_ITERATION_IN_FILTER);
+        expected.put("the same, unfiltered — the topology control", ADMITTED);
+        assertEquals(expected, actual, "whether the filter's iteration gate is keyed on the declaring group");
+    }
+
     private static String codes(ValidationResult r) {
         return r.ok() ? ADMITTED : r.diagnostics().stream()
                 .map(d -> d.code().orElse("(no code: " + d.summary() + ")")).collect(Collectors.joining(" + "));

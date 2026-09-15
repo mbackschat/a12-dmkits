@@ -9172,6 +9172,16 @@ All four cells REJECT, so the axis chooses which gate answers rather than whethe
 
 **The same fact one layer down was a defect in a SHARED reader, and no mutant pointed at it.** `addressedTargetOf` — the gate nine families ask before judging an operand — asked whether the DECLARING group sits in each repetition the reference crosses, where A12 asks whether the TARGET's coordinates address it. The two agree on every rule whose error field sits beside it and part company on exactly the iterating rules above, so all nine families were yielding on operands A12 admits. Fixing the one helper closed the differential's remaining `MVK_PARAMSIZE_INVALIDN` silences as a side effect: the lane's pinned silence went 16 → 9 → **7 of 98** in one sitting, and the second step was bought by a helper none of the pinned classes named.
 
-Reported by the portable checker (`CheckFamily.FILTERED_OPERAND_KIND`, which now asks the iteration walk instead of the star; `OPERAND_REPETITION_SCOPE` gained the filtered operand's base, `ENTITY_LIST_ARITY` yields on any filtered operand, and the shared `addressedTargetOf` keys on the declaration's iteration).
+**THREE readers were keyed on the declaring group, and the third needed its own row because no grid had built the carrier.** Every carrier that had measured the filter's iteration gate declares its rule in the error field's own group, which makes "the DECLARING group's iteration addresses the level" and "the TARGET's coordinates address it" the same sentence — so the question was never posed. Posing it settles it outright: a rule declared at the root but reporting one level down inside a repetition iterates it, and an operand that crosses that level unstarred goes from `MVK_NO_WILDCARD` to ADMITTED with its filter then judged on its own merits, the error field being the only thing that moved.
 
-*Locked by:* `rulekit.validate.laws.AggregateSlotLawsTest`, mirrored by `consistency.AggregateOperandIterationTest`.
+| the rule, operand starring only the inner level | A12 |
+|---|---|
+| declared at the root, reporting at the root | `MVK_NO_WILDCARD` |
+| declared at the root, reporting INSIDE the repetition, in-scope filter | ADMITTED |
+| the same, filter leaf off the operand's path | `MVK_INVALID_ITERATION_IN_FILTER_CONDITION` |
+
+The third row is what makes the second a measurement rather than a coincidence: the operand is reached, so the filter's own gate is what answers.
+
+Reported by the portable checker (`CheckFamily.FILTERED_OPERAND_KIND`, which now asks the iteration walk instead of the star; `OPERAND_REPETITION_SCOPE` gained the filtered operand's base, `ENTITY_LIST_ARITY` yields on any filtered operand, `ERROR_FIELD_REFERENCE` exempts a jointly iterated level, and the shared `addressedTargetOf` and `FILTER_BODY_GATES` key on the declaration's iteration).
+
+*Locked by:* `rulekit.validate.laws.AggregateSlotLawsTest` and `…HavingFilterIterationGateLawsTest`, mirrored by `consistency.AggregateOperandIterationTest` and `consistency.FilterBodyGatesTest`.

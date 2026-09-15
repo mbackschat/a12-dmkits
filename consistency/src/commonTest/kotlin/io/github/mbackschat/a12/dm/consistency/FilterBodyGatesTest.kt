@@ -79,6 +79,38 @@ class FilterBodyGatesTest {
     private fun fromRootOverBoxes(filter: String?) =
         codes(SHIPMENT, "Reference", "Parcels/Boxes*/Code", filter)
 
+    /** Rule DECLARED at the root but REPORTING inside `Parcels`, so it iterates a level it is not declared in. */
+    private fun fromRootReportingInsideParcels(filter: String?) =
+        codes(SHIPMENT, "Parcels/Tracking", "Parcels/Boxes*/Code", filter)
+
+    /**
+     * That the operand's iteration gate is keyed on the TARGET's group, not the declaring one.
+     *
+     * Mirrors `rulekit.validate.laws.HavingFilterIterationGateLawsTest
+     * .whetherTheFilterIterationGateIsKeyedOnTheDeclaringGroupOrTheTarget`. Every other carrier in this file
+     * declares the rule in its error field's own group, which makes the two questions one sentence — this
+     * reader was keyed on the wrong one and stayed silent on a rule that merely reports one level down.
+     */
+    @Test
+    fun theOperandGateIsKeyedOnTheTargetsGroupRatherThanTheDeclaringOne() {
+        val actual = mutableMapOf<String, List<String>>()
+        actual["declared AND reporting at the root — the control"] =
+            fromRootOverBoxes("CurrentRepetition(/Shipment/Parcels) > 0")
+        actual["the same rule reporting INSIDE Parcels, a filter leaf off the operand's path"] =
+            fromRootReportingInsideParcels("GroupFilled(/Shipment/Claims)")
+        actual["the same, an in-scope filter leaf"] =
+            fromRootReportingInsideParcels("/Shipment/Parcels/Boxes/Volume > 0")
+
+        val expected = mutableMapOf<String, List<String>>()
+        // Parcels is bound by nothing, so the operand never reaches its filter and the scope family answers.
+        expected["declared AND reporting at the root — the control"] = listOf(noWildcard)
+        // Moving only the ERROR FIELD admits the operand, and the filter's own gate is what answers.
+        expected["the same rule reporting INSIDE Parcels, a filter leaf off the operand's path"] =
+            listOf(invalidIteration)
+        expected["the same, an in-scope filter leaf"] = emptyList()
+        assertEquals(expected, actual, "the operand gate is keyed on the target's group")
+    }
+
     /**
      * A12's LAST gate over the body: the constructs it may not name, and what pre-empts each.
      *

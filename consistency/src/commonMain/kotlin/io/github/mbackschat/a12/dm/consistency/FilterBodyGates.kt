@@ -62,9 +62,11 @@ import io.github.mbackschat.a12.dm.consistency.syntax.semanticIndexUsesIn
  * over ancestors alone would find no level at all on the carrier the catalog line is about.
  *
  * **Silent on the operand shapes whose own gate answers earlier**, each measured rather than assumed: a
- * repetition the OPERAND crosses neither starred nor iterated by the declaring group draws `MVK_NO_WILDCARD`
- * from the reference reader before any filter question, and a star inside the BODY draws
- * `MVK_NO_WILDCARDS_ALLOWED` from [filterWildcardFindings]' position.
+ * repetition the OPERAND crosses that neither its own star nor the DECLARATION'S ITERATION addresses draws
+ * `MVK_NO_WILDCARD` from the reference reader before any filter question, and a star inside the BODY draws
+ * `MVK_NO_WILDCARDS_ALLOWED` from [filterWildcardFindings]' position. The iteration is set by where the
+ * error field sits rather than by where the rule is declared, which are the same thing on every carrier that
+ * measured this until 2026-09-15 and are not the same question.
  *
  * **Silent wherever the body carries the `$` outer marker.** The marker relocates a reference to the
  * captured outer environment, so A12's own walk skips it — but where that environment has no coordinate for
@@ -134,9 +136,17 @@ private fun PreparedModel.filterDefectOf(
     val filtered = (resolveEntity(group, written.replace("*", ""), element.origin) as? Reference.Resolved)
         ?.path ?: return null
     // The OPERAND is read before its filter, so a repetition it crosses that neither its own star nor the
-    // declaring group's iteration addresses is `MVK_NO_WILDCARD` there and the filter is never reached —
+    // DECLARATION'S ITERATION addresses is `MVK_NO_WILDCARD` there and the filter is never reached —
     // measured with the unfiltered operand as the control that locates the refusal.
-    if (iteratedLevels(filtered).any { it !in starred && !(group == it || group.startsWith("$it/")) }) {
+    //
+    // The iteration is the TARGET's group, not the declaring one: a rule declared at the root but reporting
+    // inside a repetition iterates it, and the identical operand is then admitted and its filter reached
+    // (`rulekit.validate.laws.HavingFilterIterationGateLawsTest
+    // .whetherTheFilterIterationGateIsKeyedOnTheDeclaringGroupOrTheTarget`). Every other carrier in that
+    // grid declares the rule in its error field's own group, which makes the two questions one sentence —
+    // this was the third reader in the module keyed on the wrong one.
+    val iterated = iterationGroupOf(element) ?: group
+    if (iteratedLevels(filtered).any { it !in starred && !(iterated == it || iterated.startsWith("$it/")) }) {
         return null
     }
     val uses = indexKeyword
