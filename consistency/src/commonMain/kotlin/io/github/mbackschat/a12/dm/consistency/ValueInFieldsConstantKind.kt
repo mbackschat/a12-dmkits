@@ -312,13 +312,21 @@ private fun armOf(constantText: String, spellings: ConstantSpellings): ConstantA
  * [KERNEL-FINDINGS KF409]). That is what makes this a position a checker may refuse, rather than only the
  * four typed arms above.
  *
- * **Silent when the slot's own text carries a reference this model cannot resolve.** A12 reports the first
- * defect in the text and nothing after it, and the reference family already speaks about that token — so
- * reporting here as well would hand the author two classes where A12 draws one. It is the local form of the
- * discipline [POSITIONED_CONDITION_CODES] applies across families, and it leaves one divergence standing,
- * recorded in this family's mirror: on an UNDECLARED name the author sees a resolution class where A12
- * reports the token. Closing it needs the reader to stop resolving the slot at all, which needs offsets
- * `ConditionCall` does not carry.
+ * **Silent when the slot's own text carries a reference this model cannot ADDRESS.** A12 reports the first
+ * defect in the text and nothing after it, and the reference families already speak about that token — so
+ * reporting here as well would hand the author two classes where A12 draws one.
+ *
+ * Addressing is deliberately wider than resolution, and only the wider half is load-bearing: an UNRESOLVABLE
+ * name is already withheld estate-wide by the gate `CONDITION_TEXT_CODES` drives, so standing down on it
+ * restates that gate. What no other gate covers is a spec that RESOLVES and whose repetition is unaddressed —
+ * an illegal star, or a repeating level neither starred nor iterated — because the declaration then carries
+ * no unresolvable name at all. A12 answers the PARSE class there, ahead of every reference phase
+ * (`rulekit.validate.laws.ValueInFieldsConstantKindLawsTest`, measured 2026-09-15), so the wildcard class
+ * this estate draws instead is one class either way rather than two.
+ *
+ * The divergence that stands is the resolvable-name one, recorded in this family's mirror: on an UNDECLARED
+ * name the author sees a resolution class where A12 reports the token. Closing it needs the reader to stop
+ * resolving the slot at all, which needs offsets `ConditionCall` does not carry.
  */
 private fun PreparedModel.unexpectedConstantToken(
     constantText: String,

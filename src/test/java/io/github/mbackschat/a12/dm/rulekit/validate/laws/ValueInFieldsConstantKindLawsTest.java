@@ -141,6 +141,10 @@ class ValueInFieldsConstantKindLawsTest {
                 rawVerdict("NumberOfValueInFields(Reference In Expedited, GiftWrapped) > 0"));
         actual.put("an undeclared name in the constant slot",
                 rawVerdict("NumberOfValueInFields(NoSuchThing In Expedited, GiftWrapped) > 0"));
+        // A path whose STAR is illegal — Packing does not repeat — so the slot holds a spec that resolves
+        // and whose wildcard a later phase would refuse. Which class answers says which phase runs first.
+        actual.put("a resolvable spec with an ILLEGAL star in the constant slot",
+                rawVerdict("NumberOfValueInFields(Packing*/Fragile In Expedited, GiftWrapped) > 0"));
 
         Map<String, String> expected = new LinkedHashMap<>();
         expected.put("Today", "MVK_INVALID_CONST");
@@ -155,6 +159,9 @@ class ValueInFieldsConstantKindLawsTest {
         // class on a correct rejection.
         expected.put("a field NAME in the constant slot", "MVK_UNEXPECTED_TOKEN");
         expected.put("an undeclared name in the constant slot", "MVK_UNEXPECTED_TOKEN");
+        // The PARSE answers before any reference phase does, so the illegal star is never reached — which
+        // is why a checker that stands down here draws one class either way rather than two.
+        expected.put("a resolvable spec with an ILLEGAL star in the constant slot", "MVK_UNEXPECTED_TOKEN");
         assertEquals(expected, actual, "the constant kinds the switch falls through on");
     }
 

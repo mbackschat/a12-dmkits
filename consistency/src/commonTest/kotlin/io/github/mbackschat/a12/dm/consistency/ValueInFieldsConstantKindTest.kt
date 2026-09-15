@@ -68,6 +68,8 @@ class ValueInFieldsConstantKindTest {
         actual["the same call fully admitted"] = count("0", "Quantity, Backordered")
         actual["a field NAME in the constant slot"] = count("Reference", "Expedited, GiftWrapped")
         actual["an undeclared name in the constant slot"] = count("NoSuchThing", "Expedited, GiftWrapped")
+        actual["a resolvable spec with an ILLEGAL star in the constant slot"] =
+            count("Packing*/Fragile", "Expedited, GiftWrapped")
         actual["an OPERATION in the slot"] = count("Sum(Quantity)", "Quantity, Backordered")
         actual["a parenthesized number in the slot"] = count("(0)", "Quantity, Backordered")
         actual["an EMPTY slot"] = count("", "Quantity, Backordered")
@@ -89,6 +91,12 @@ class ValueInFieldsConstantKindTest {
         // families that would have to refuse the position, not to this arm, which is why the row records it
         // instead of this family suppressing a class it does not own.
         expected["an undeclared name in the constant slot"] = listOf("MVK_INVALID_ENTITY")
+        // The row that makes the slot's stand-down load-bearing rather than a restatement of the global
+        // withholding gate: this spec RESOLVES, so that gate — which keys on an unresolvable name — leaves
+        // the declaration alone, and only the family's own refusal to speak keeps the wildcard class alone
+        // where A12 draws one class. Drop it and the author is handed two.
+        expected["a resolvable spec with an ILLEGAL star in the constant slot"] =
+            listOf("MVK_INVALID_WILDCARD")
         // The SECOND shape of the same divergence, asserted rather than hidden: A12's parse stops at the
         // token, so the arity gate is never reached, while this checker's reader splits the call anyway and
         // counts one field. Both classes are positioned ones that compete for first place, and this estate
