@@ -30,14 +30,21 @@ import io.github.mbackschat.a12.dm.consistency.syntax.referencesIn
  *
  * **Silent on every level the scope chain refuses**, which is most of the grid: an unkeyed parallel level,
  * keys that differ in name or type, a level below a starred one, a level under the target's own group. A12
- * draws those DURING the parse, so naming this class there would be a post-parse verdict on a rule that
- * never finished parsing. They are [operandRepetitionScopeFindings]' classes and that family does not judge
- * a filter-carrying text at all, so those rows are silent in the report rather than answered — an
- * under-report the estate carries on both sides of the boundary.
+ * draws those DURING the parse, so naming this class HERE would be a post-parse verdict on a rule that never
+ * finished parsing. They are [operandRepetitionScopeFindings]' classes, and since 2026-09-15 that family
+ * reads a filter-carrying text — with the filter BODY removed — so the levels the filtered OPERAND crosses
+ * are answered in the report by the family that owns them rather than going unnamed. This family's silence
+ * is a partition, not an under-report, for exactly those rows. *(Until then it was both: that family skipped
+ * such a text wholesale, and the two silences together left the class unnamed on either side.)*
  *
- * **Silent wherever the text carries the `$` outer marker**, for [operandRepetitionScopeFindings]' reason:
- * the marker re-binds a filter reference to the enclosing rule's error field, which this reader cannot
- * reproduce, so the levels it would walk are not the ones A12 walks.
+ * **Still silent on a level only the filter BODY crosses**, which is the genuine remainder: those references
+ * are judged against the filtered entity rather than the rule's target, so neither this family nor the scope
+ * walk speaks for them — [filterBodyGateFindings] owns what can be said there.
+ *
+ * **Silent wherever the `$` outer marker survives**, for [operandRepetitionScopeFindings]' reason: the
+ * marker re-binds a filter reference to the enclosing rule's error field, which this reader cannot
+ * reproduce, so the levels it would walk are not the ones A12 walks. It binds inside a filter body, so
+ * removing the body usually removes it too; what is declined is a marker left in the surrounding text.
  *
  * **Rules only.** The gate is `checkNormalRule`'s; a computation's operations are normalised by the
  * calculation module instead, whose own parallel-iteration treatment is unmeasured here.
