@@ -7168,6 +7168,26 @@ Reported by the portable checker, which did not emit `MVK_SORT_FIELD_DUPLICATE` 
 
 *Locked by:* `rulekit.validate.laws.GroupOrderingMultipleDefectLawsTest`, mirrored by `consistency … GroupOrderingMultipleDefectTest`.
 
+## §9 supplement — the error-field/iteration disagreement cannot arise in an A12 model, and the reason is the index the parser records (source-verified + measured, 2026-09-15) <a id="kf417"></a>
+
+> Fold: not-foldable — a reachability account of one diagnostic class, not an evaluation behaviour.
+
+`IterationChecker.checkVRefs` raises `MVK_ERROR_FIELD_AND_ITERATION_INVALID` when the error entity's own references record no `ITERATION` at index level 0 while some other reference does. Eight attempts across this estate failed to author it, the first seven by varying NESTED repeatable groups — level 0 is the OUTERMOST repeatable level, so those were varying the wrong thing. Varying the ROOT repetition instead, on a multi-form model, does not reach it either, and the eighth attempt is the one that says why.
+
+`CheckIdNameRefImpl.setIndexOfCurrentLevel` records the index: `WILDCARD` when the reference carries a star, `ITERATION` when the level is repeatable and it does NOT. So the two states the check compares are "aggregate" and "per-row read", not "starred" and "unstarred" as the class's name suggests. Measured on `/Persons` (repeatable root) against `/Header` (fixed root), with the error field referenced in every row so the post-parse referenced-ness gate cannot answer first:
+
+| the rule | verdict |
+|---|---|
+| fixed root reports, fixed root reads — the control | ADMITTED |
+| fixed root reports, `AtLeastOneFieldFilled(/Persons*/Name)` | ADMITTED |
+| fixed root reports, `FieldFilled(/Persons/Name)` — per-row | `MVK_NO_WILDCARD` |
+| repeatable root reports, its own field read — the control | ADMITTED |
+| repeatable root reports, the fixed root read | ADMITTED |
+
+**The middle row is the whole account.** A per-row read is the only spelling that records `ITERATION`, and a per-row read of an extent the error field's own path does not enter is refused by the wildcard gate before the iteration check runs. Where such a read IS admitted, the error field shares the level and therefore records `ITERATION` too — so the disagreement has no A12 carrier. The class's other arm is the parallel-iteration one, which belongs to `MVK_PARALLEL_ITERATION_*` and is dispositioned separately.
+
+*Locked by:* `rulekit.validate.laws.RootRepetitionIterationAgreementLawsTest`.
+
 ## §11 supplement — reading the computed field is CONTAINMENT, not equality, and two shapes are exempt (source-verified + measured, 2026-09-15) <a id="kf416"></a>
 
 > Fold: pending — belongs beside §11's computation account, next to [KF182](#kf182)'s projected-read split.
