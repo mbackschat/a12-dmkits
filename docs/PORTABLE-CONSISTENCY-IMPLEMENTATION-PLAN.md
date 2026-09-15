@@ -739,6 +739,20 @@ One cold adversarial review over the frozen range, as [§2](#2-execution-order-a
 
 **The catalog half is deliberately not delivered, with its re-open trigger.** A2 ruled that `operators.json` ships as-is because it is already data; that remains right, and it is not yet USEFUL — no finding this checker produces names an operator id, so 293 KB would be packaged with nothing to join it against. It lands when a finding carries an operator.
 
+### C record — three more codes on a form already owned, and the gate order that made them safe (2026-09-15)
+
+**Frozen change: the `$index(…)$` terminal's last three gates.** Three classes newly reported — `INVALID_INDEX_FIELD_REP_ITER`, `INVALID_INDEX_FIELD_NONREP_ENUM` and `INVALID_INDEX_FIELD_PARAMETER` ([KF280](KERNEL-FINDINGS.md#kf280), amended in place). **No new family**: `ERROR_TEXT_INDEX_TERMINAL` already owned the form and now walks all five of its gates, which is why the count does not move.
+
+**The biggest remaining yield was behind a family already written, not in an unread form.** The derived worklist lists codes; grouping them by FORM put seven `INVALID_INDEX_FIELD_*` constants on one terminal whose first two gates were already reproduced. Extending a family is cheaper than adding one — no enum constant, no call site, no `checksCompleted` entry, no wiring declaration — and it is where the estate's under-reports concentrate, because a family stops at the first gate whose ORDER nobody measured.
+
+**The family's own KDoc had recorded exactly why it stopped, and that record was the worklist entry.** It said the three later classes were a disclosed under-report because reporting them would mean reproducing the repeatability machinery. That is a standing invitation to measure, and honouring it took one laws grid. A disclosed under-report that names its own precondition is worth more than a TODO, and this estate now has several.
+
+**A source read predicted two rows and the measurement refuted both.** `checkIndexFieldRefRepeatability` iterates the CONDITION's index-field references filtered by short name, so a declaration the condition never names looked admitted and a mixed shape looked like `INVALID_INDEX_FIELD_REP`. Measured: the non-repeatable arm refuses with no condition reference at all, and the mixed shape answers with the error entity's OWN class when that one also offends. The rows were written as predictions and run before anything was implemented, which is the only reason the checker was never built on the wrong law.
+
+**The under-report is now a NAMED shape rather than a named class.** `INVALID_INDEX_FIELD_REP` stays unreported, and the guard is the question that makes it safe: a short name that more than one group declares as its index field is left alone entirely, because A12 then walks a list this family does not reproduce. Guarding on the SHAPE rather than on the class is what keeps both reproduced arms from naming a wrong class there — the failure mode that is worse than silence.
+
+**A mirror that filters by code hid the class it was supposed to watch.** `ErrorTextIndexTerminalTest` filtered its rows to `INVALID_INDEX_FIELD`, so the row for the suffix-omitted parameter read `emptyList()` and its comment claimed deliberate silence — and it would have kept passing, unchanged, after the class started being reported. Filtering by the declaration's PATH instead is the fix, and it is the general one: a mirror that filters by code cannot see the family grow.
+
 ### C record — two codes on one FORM, and the order between them nobody had measured (2026-09-15)
 
 **Frozen change: the error message's `.value` SUFFIX.** Two classes newly reported — `PARAM_VALUE_WITH_STARREFERENCE` and `INVALID_NO_VALUE_VALIDATION` ([KF279](KERNEL-FINDINGS.md#kf279), amended in place). New family `MESSAGE_VALUE_SUFFIX`; re-derive the count rather than increment it — it reads 96 today.
