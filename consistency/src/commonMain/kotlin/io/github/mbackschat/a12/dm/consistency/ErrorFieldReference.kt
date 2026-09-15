@@ -21,20 +21,41 @@ import io.github.mbackschat.a12.dm.consistency.syntax.namesRuleContext
  * than a member of it; [namesTheRulesOwnGroup] says why that distinction was invisible until a real model
  * paired the spelling with an ordinary operand.
  *
- * **Two deliberate under-reports, each stated rather than discovered later.** A reference inside a `Having`
- * filter does NOT satisfy A12's gate, but the names a filter contributes are indistinguishable from an
- * operand's once condition text is scanned, so they are treated as reaching and this family stays silent.
+ * **One deliberate under-report and one closed, each stated rather than discovered later.** A reference
+ * inside a `Having` filter does NOT satisfy A12's gate, and such a reference is still treated as REACHING, so
+ * this family stays silent there. That silence rested on the names a filter contributes being
+ * indistinguishable from an operand's, which stopped being true on 2026-09-15 — the filter BODY can now be
+ * removed from the text — and it is kept because what SATISFIES the gate is a separate question needing its
+ * own measured row. The ITERATION pre-emption no longer counts filter references, which is measured: an
+ * unstarred leaf inside a filter does not draw the iteration class, and treating it as if it did silenced
+ * this family on three corpus mutants A12 answers with its own class ([KERNEL-FINDINGS KF424]).
+ *
+ * **Lifting that pre-emption alone was not enough, and the missing half is a gate ORDER.** A filtered
+ * PARALLEL operand is refused by [filteredEntityIterationFindings]' class ahead of this one, so without the
+ * yield above this family named a wrong class beside a right one on exactly that shape — caught by a mirror
+ * row, not by reasoning.
  * And it reports nothing unless the target's own NAME is absent from the condition text, so a spelling the
  * reference extractor does not recognise can never become a refusal here — the recall risk above is bounded
  * by a test the extractor is not involved in.
  */
 fun PreparedModel.errorFieldReferenceFindings(): List<Finding> {
     val named = conditionReferences().groupBy { it.declaredAt }
+    // A filtered PARALLEL operand is refused by its own gate AHEAD of this one — measured, on a rule whose
+    // error field is unreferenced, where A12 names that class and only that class
+    // (`rulekit.validate.laws.FilteredEntityParallelIterationLawsTest.whichPostParseGateAnswersFirst`).
+    // Asking the family rather than re-deriving its predicate keeps the two from drifting apart.
+    val answeredByTheFilterGate = filteredEntityIterationFindings().mapNotNull { it.at }.toSet()
     return declaredReferences()
         .filter { it.role == ReferenceRole.ERROR_TARGET }
         .mapNotNull { declared ->
             val target = (declared.target as? Reference.Resolved)?.path ?: return@mapNotNull null
             val references = named[declared.declaredAt].orEmpty()
+            // Only what the RULE reads may pre-empt this family at the ITERATION gate. A filter body's leaf
+            // is about the filtered entity and does not iterate the rule — measured as the admitted control
+            // of `AggregateSlotLawsTest`'s iteration grid, where an unstarred filter leaf crossing a
+            // repetition the target sits outside of draws nothing at all.
+            val readsOutsideFilters = elements.firstOrNull { it.path == declared.declaredAt }
+                ?.let { referencesOutsideFilterBodies(it) }.orEmpty()
             // Three ways this rule is not this family's to judge. A rule with no condition at all belongs to
             // `MVK_CONDITION_MISSING`. An UNRESOLVABLE operand PRE-EMPTS the gate — A12 reports the entity
             // and says nothing about the reference, measured — so reporting here would name a second fix for
@@ -42,7 +63,8 @@ fun PreparedModel.errorFieldReferenceFindings(): List<Finding> {
             if (references.isEmpty() ||
                 references.any { it.target !is Reference.Resolved } ||
                 references.any { it.reaches(target) } ||
-                references.any { iteratesPastTheTarget(it, target) } ||
+                declared.declaredAt in answeredByTheFilterGate ||
+                references.any { it.written in readsOutsideFilters && iteratesPastTheTarget(it, target) } ||
                 namesTheRulesOwnGroup(declared) ||
                 mentions(declared, target)
             ) {

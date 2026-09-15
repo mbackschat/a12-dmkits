@@ -67,10 +67,10 @@ import kotlin.io.path.readText
  * compared as (declaration, class) PAIRS rather than per declaration — a class A12 named is then wrong
  * wherever A12 did not name it, and a genuine second instance A12 masked is a row in [positionsA12Masks].
  *
- * **Where the checker is SILENT on a rejected mutant it is under-reporting, which is the safe direction and
- * is disclosed rather than asserted**: 7 of the 98 as of 2026-09-15, down from 16 the same day. It is not
- * left unguarded — the [positionedFloor] is what fails if that number climbs, because a compared pair needs
- * both sides to speak.
+ * **The checker is silent on NONE of the 98 as of 2026-09-15, down from 16 the same day.** Silence was
+ * always the safe direction and was disclosed rather than asserted; now there is nothing to disclose, and
+ * [SILENT_CLASSES] guards the floor from the other side by being empty. The [positionedFloor] still fails if
+ * silence returns, because a compared pair needs both sides to speak.
  */
 class CheckerClassAgreementTest {
 
@@ -86,7 +86,7 @@ class CheckerClassAgreementTest {
     /**
      * Rows measured to be a class A12 named about ONE declaration that is genuinely also true of another.
      *
-     * Empty as of 2026-09-15: every one of the checker's 91 positioned findings over this population landed
+     * Empty as of 2026-09-15: every one of the checker's 98 positioned findings over this population landed
      * at the declaration A12 keyed. A row here must name the model, the mutation, both declarations, and the
      * measurement that says the checker's placement is true of the model — not merely plausible.
      */
@@ -100,22 +100,23 @@ class CheckerClassAgreementTest {
      *
      * A pair needs both sides to speak, so this is the assertion that fails if the checker goes quiet on
      * rejected models — the direction the silence sweeps cannot see, since they measure models A12 BUILDS.
-     * 91 of 98 as of 2026-09-15; the floor sits well below that on purpose, because it answers *did the
-     * comparison happen* rather than *how big is the population*.
+     * 98 of 98 as of 2026-09-15 — every rejected mutant now has something on both sides. The floor sits
+     * well below that on purpose, because it answers *did the comparison happen* rather than *how big is
+     * the population*.
      */
     private val positionedFloor = 60
 
     /**
      * The classes A12 names on a rejected mutant where the checker says nothing, with how often.
      *
-     * **This is a work list, and pinning it is what makes it one.** The lane counted the silence — 16 of 98,
-     * now 7 — and a count cannot be acted on: it says a gap exists without saying where. Keyed by class it says
-     * which family to widen, and it moves in both directions, so a family losing reach is a regression here
-     * rather than an unnoticed drop in a number nobody reads.
+     * **EMPTY as of 2026-09-15, and it was a work list that emptied itself in one sitting.** The lane
+     * counted the silence — 16 of 98 — and a count cannot be acted on: it says a gap exists without saying
+     * where. Keyed by class it said which family to widen. Now that it is empty its job reverses: any entry
+     * ARRIVING is a family that LOST reach, which is a regression rather than a number nobody reads.
      *
-     * Every one of these is a class the checker ALREADY states elsewhere, so none of them is a missing
-     * family — each is a shape an existing family does not reach. That is why the silence direction is
-     * cheaper work than it looks, and why it is the plan's row 7 remainder rather than a new row.
+     * Every one of the four it held was a class the checker ALREADY stated elsewhere, so none was a missing
+     * family — each was a shape an existing family did not reach. That is why the silence direction turned
+     * out cheaper than it looked: no new family was written to empty this map.
      *
      * `MVK_WILDCARDS_REQUIRED` ×7 and `MVK_PARAMSIZE_INVALIDN` ×2 came off the list on 2026-09-15, and how
      * they did is the method rather than the outcome. All seven of the first were one mutation kind on one
@@ -132,19 +133,16 @@ class CheckerClassAgreementTest {
      * BODY's references, so the family now removes the body and reads what surrounds it; the two mirror rows
      * that had DISCLOSED this under-report in their own comments went green by gaining the class.
      *
-     * **The last three are left, with their blocker named.** They are the same mutation on the same shape
-     * without the outer marker, and `ERROR_FIELD_REFERENCE` is silent because a filter leaf pre-empts its
-     * iteration test. Removing that pre-emption is measured and correct, and it is NOT enough: A12 answers a
-     * filtered PARALLEL operand with its own class ahead of the not-referenced gate, so the family would then
-     * name a wrong class beside a right one — tried 2026-09-15 and reverted on the evidence. Closing these
-     * three means modelling that third gate's precedence, which is its own measured slice rather than a
-     * widening of this one.
+     * `MVK_ERROR_FIELD_NOT_REFERENCED` ×3 was the last, and it took TWO facts, which is why lifting one of
+     * them failed loudly first. A filter leaf must stop pre-empting that family's iteration test — measured
+     * and correct on its own — and that alone made the family name a wrong class beside a right one, because
+     * A12 answers a filtered PARALLEL operand with its own class ahead of the not-referenced gate. The gate
+     * ORDER was already kernel-locked in a laws row nobody had connected to this map; adding the yield to it
+     * is what closed them.
      *
      * Measured 2026-09-15.
      */
-    private val SILENT_CLASSES = sortedMapOf(
-        "MVK_ERROR_FIELD_NOT_REFERENCED" to 3,
-    )
+    private val SILENT_CLASSES = sortedMapOf<String, Int>()
 
     @Test
     fun everyClassTheCheckerNamesOnARejectedModelIsOneTheKernelNames() {

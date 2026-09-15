@@ -106,6 +106,24 @@ fun PreparedModel.operandRepetitionScopeFindings(): List<Finding> {
  * Blanking rather than re-parsing, because the clause body is already reduced verbatim and a substring is
  * what a reference reader needs. A body occurring twice blanks both: over-removal only ever under-reports.
  */
+/**
+ * The condition references of [element] that lie OUTSIDE every `Having` filter body.
+ *
+ * A filter body's references are about the FILTERED entity, so a family asking what the RULE itself reads
+ * must not count them. Offered as a set of written spellings because that is what a consumer already holds:
+ * the reference objects come from [conditionReferences], which scans the whole text.
+ */
+internal fun PreparedModel.referencesOutsideFilterBodies(element: DeclaredElement): Set<String> {
+    val keywords = CONDITION_OPERATOR_KEYWORDS[conditionLanguage] ?: return emptySet()
+    val filterKeyword = setOfNotNull(keywords[HAVING])
+    val body = element.body ?: return emptySet()
+    return conditionTexts(element.kind, body)
+        .flatMap { (member, text) ->
+            referencesIn(withoutFilterBodies(text, member, filterKeyword), conditionLanguage)
+        }
+        .toSet()
+}
+
 private fun PreparedModel.withoutFilterBodies(
     text: String,
     member: String,
