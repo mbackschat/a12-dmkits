@@ -213,25 +213,34 @@ private fun List<Token>.asPath(keywords: Map<String, KeywordKind>): String? {
  * The keyword needs no per-language lookup: the grammar's `inOp` admits `In`, `IN` and `in` and nothing
  * else, so unlike an operator name it is the same in every rendering.
  */
-fun ConditionCall.splitAtIn(): Pair<List<String>, List<String>>? {
-    val at = operands.indexOfFirst { infixInAt(it.text) != null }
+fun ConditionCall.splitAtIn(): Pair<List<String>, List<String>>? = splitAtInfix("In")
+
+/**
+ * The same split at an arbitrary infix keyword, for the productions whose separator is not `In`.
+ *
+ * `ValueNotConsistent(<field> To <values>)` puts a `To` where those put an `In`, and `To` — unlike `In` —
+ * IS language-dependent (`Zu` in a German model), so the caller supplies the spelling its language uses.
+ * Matching is case-insensitive because every one of these grammar terminals admits all three casings.
+ */
+fun ConditionCall.splitAtInfix(keyword: String): Pair<List<String>, List<String>>? {
+    val at = operands.indexOfFirst { infixAt(it.text, keyword) != null }
     if (at < 0) {
         return null
     }
-    val cut = infixInAt(operands[at].text) ?: return null
+    val cut = infixAt(operands[at].text, keyword) ?: return null
     val left = operands.take(at).map { it.text } + operands[at].text.substring(0, cut.first).trim()
     val right = listOf(operands[at].text.substring(cut.second).trim()) + operands.drop(at + 1).map { it.text }
     return left.filter { it.isNotEmpty() } to right.filter { it.isNotEmpty() }
 }
 
-/** Where a top-level `In` starts and ends in one operand's text, or null when it carries none. */
-private fun infixInAt(text: String): Pair<Int, Int>? {
+/** Where a top-level [keyword] starts and ends in one operand's text, or null when it carries none. */
+private fun infixAt(text: String, keyword: String): Pair<Int, Int>? {
     var depth = 0
     tokenize(text).forEach { token ->
         when {
             token.kind == TokenKind.PUNCTUATION && token.text in OPENING_DELIMITERS -> depth++
             token.kind == TokenKind.PUNCTUATION && token.text in CLOSING_DELIMITERS -> depth--
-            depth == 0 && token.kind == TokenKind.NAME && token.text.equals("In", ignoreCase = true) ->
+            depth == 0 && token.kind == TokenKind.NAME && token.text.equals(keyword, ignoreCase = true) ->
                 return token.start to token.end
         }
     }

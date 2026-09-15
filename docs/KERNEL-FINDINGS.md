@@ -9089,3 +9089,29 @@ So "every collected text is whitespace" fits every single-locale row and is fals
 Reported by the portable checker, which emitted the prefixed class alone on the stated ground that the split was unmeasured — an under-report on every shape but one.
 
 *Locked by:* `rulekit.validate.laws.RuleSlotMultipleDefectLawsTest`, mirrored by `consistency … DeclarationSlotTest`.
+
+## §8 supplement — the table-enum condition family: one gate every model reaches, closed as unreachable on an inverted reading (source-verified + measured, 2026-09-15) <a id="kf422"></a>
+
+> Fold: not-foldable — a reachability correction plus the gate order behind it.
+
+[MVK-LEDGER](MVK-LEDGER.md) carried six codes of `ValueNotConsistent` on one sentence — table-backed enums are not DM-JSON-serializable, so the construct is un-buildable, [KF366](#kf366) — and the sentence is right about five of them and **inverted on the sixth**. `CheckFieldAndValueListConditionImpl.check` asks `checkField` first, and that call ends in `CheckEntityUtils.checkEnumWithTableReference`, which raises `MVK_TABLE_ENUM_EXPECTED` when the subject is **not** a table enum. The absence of a table enum is therefore not what makes that code unreachable; it is exactly what fires it.
+
+| the subject of `ValueNotConsistent(<subject> To <values>)` | verdict |
+|---|---|
+| an ordinary enumeration field | `MVK_TABLE_ENUM_EXPECTED` |
+| a string field, a number field | `MVK_TABLE_ENUM_EXPECTED` |
+| a group | `MVK_NO_GROUPS_ALLOWED` |
+| a repetition-list selector | `MVK_NO_WILDCARDS_ALLOWED` |
+| a path naming nothing declared | `MVK_INVALID_ENTITY` |
+| an ordinary enum with two value-list members, or with a FIELD member | `MVK_TABLE_ENUM_EXPECTED` |
+| another operator on the same subject — the control | ADMITTED |
+
+**The last two rows are what make this a gate and not a kind law.** The arity gate (`MVK_DEPENDENT_COLUMN_SIZE_MISMATCH`) and the member-kind gate (`MVK_ONLY_ENUMS_ALLOWED`) are both written *after* `checkField` returns, so neither a wrong member count nor a non-enum member is visible: the table-enum demand answers first in both. The subject's own kind never matters either — a string, a number and an enumeration draw one class.
+
+**The five behind it stay closed, and for a reason the sixth never had.** `MVK_DEPENDENT_COLUMN_SIZE_MISMATCH` and `MVK_ONLY_ENUMS_ALLOWED` sit below `checkField`; `MVK_STRING_VALUE_NOT_IN_COLUMN` and `MVK_ENUM_VALUES_NOT_IN_COLUMN` sit inside `enumType.getTable().ifPresent(…)` below that — so all four need the stored table enum [KF366](#kf366) measured A12's own READER refusing. `MVK_INVALID_TABLE_ENUM` is the mirror image and carries a second, independent reason: its sole raiser is `CheckEntityUtils.checkNoTableEnum`, which no site in the 30.8.1 checkout calls.
+
+**The defect class is the one the oracle table names: a search grouped six codes and one member was read for all six.** Every row said "same §8 fact", and five of them were right — the sixth is the one whose predicate runs the other way, and no amount of re-reading the five would have shown it. Reading the FIRING SITE per code, rather than the ledger's own grouping, is what separated them.
+
+Reported by the portable checker (`CheckFamily.TABLE_ENUM_OPERAND`), which emits all three reachable classes in the kernel's own order.
+
+*Locked by:* `rulekit.validate.laws.TableEnumConditionLawsTest`, mirrored by `consistency.TableEnumOperandTest`.

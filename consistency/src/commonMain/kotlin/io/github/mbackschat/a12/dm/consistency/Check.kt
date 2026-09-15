@@ -165,6 +165,15 @@ enum class CheckFamily {
     HINT_LIST_VALUES,
 
     /**
+     * `ValueNotConsistent`'s subject must be an enumeration with a TABLE reference, which no stored model
+     * declares. Its own constant rather than a row of an operand-kind family because the law is not about
+     * the subject's kind at all: every kind fails it alike, the demand being for a backing A12's own reader
+     * refuses, so a report merging it would read as "wrong field type" where the answer is "no admissible
+     * subject exists".
+     */
+    TABLE_ENUM_OPERAND,
+
+    /**
      * An enumeration's `sValue` names one of the values it declares. Its own constant because it is a claim
      * about a single distinguished member rather than about the value list, and a report merging it would
      * let a special value pointing nowhere read as a defect in the values themselves.
@@ -915,7 +924,7 @@ internal fun check(
         prepared.fieldNameReservedSegmentFindings() +
         prepared.elementNameAlphabetFindings() + prepared.enumCategoryFindings() +
         prepared.supportedCharacterFindings() + prepared.enumTextForbiddenCharacterFindings() +
-        prepared.hintListValueFindings() +
+        prepared.hintListValueFindings() + prepared.tableEnumOperandFindings() +
         prepared.declaredPatternFindings() +
         prepared.emptyGroupOperandFindings() + prepared.errorFieldReferenceFindings() +
         prepared.groupListOperandFindings() + prepared.repetitionWildcardFindings() +
@@ -1005,6 +1014,7 @@ internal fun check(
             CheckFamily.FIELD_NAME_RESERVED_SEGMENT,
             CheckFamily.ENUM_CATEGORY_ALIGNMENT, CheckFamily.ENUM_VALUE_CHARACTERS,
             CheckFamily.ENUM_TEXT_FORBIDDEN_CHARACTERS, CheckFamily.HINT_LIST_VALUES,
+            CheckFamily.TABLE_ENUM_OPERAND,
             CheckFamily.STRING_PATTERN_ADMISSION, CheckFamily.STRING_PATTERN_MESSAGE,
             CheckFamily.STRING_TYPE_PARAMETERS, CheckFamily.NUMBER_TYPE_DIGITS,
             CheckFamily.ENUM_VALUE_LABELS, CheckFamily.ENUM_S_VALUE_DOMAIN,

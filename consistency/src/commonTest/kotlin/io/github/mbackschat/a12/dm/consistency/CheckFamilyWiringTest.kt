@@ -85,6 +85,9 @@ class CheckFamilyWiringTest {
             {"type":"Rule","id":"r1","name":"BadTarget","Rule":{
               "errorCondition":"FieldFilled(Price)","errorEntityRelPath":"../NoSuchField",
               "errorCode":"C1","errorMessage":[{"locale":"en_US","text":"x"}]}},
+            {"type":"Rule","id":"r99","name":"TableSubject","Rule":{
+              "errorCondition":"ValueNotConsistent(Price To \"HIGH\")","errorEntityRelPath":"../Price",
+              "errorCode":"C99","errorMessage":[{"locale":"en_US","text":"x"}]}},
             {"type":"Rule","id":"r2","name":"BadEntity","Rule":{
               "errorCondition":"FieldFilled(NoSuchEntity)","errorEntityRelPath":"../Price",
               "errorCode":"C2","errorMessage":[{"locale":"en_US","text":"x"}]}},
@@ -470,6 +473,7 @@ class CheckFamilyWiringTest {
         CheckFamily.ENUM_TEXT_FORBIDDEN_CHARACTERS to
             ("MVK_INTERNAL_VALUE_INVALID" to "/Catalog/TabbedTier"),
         CheckFamily.HINT_LIST_VALUES to ("MVK_VALUE_TOO_LONG" to "/Catalog/Suggested"),
+        CheckFamily.TABLE_ENUM_OPERAND to ("MVK_TABLE_ENUM_EXPECTED" to "/Catalog/TableSubject"),
         CheckFamily.STRING_PATTERN_ADMISSION to ("MVK_PATTERN_INVALID" to "/Catalog/Reference"),
         CheckFamily.STRING_PATTERN_MESSAGE to
             ("MVK_ERROR_MESSAGE_AND_PATTERN_INVALID" to "/Catalog/Unexplained"),
