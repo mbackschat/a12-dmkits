@@ -257,6 +257,24 @@ gradle.projectsEvaluated {
         'npm-packed',
         ['packInterpreterNpmPackage', 'verifyInterpreterNpmPublication'],
     )
+    /*
+     * The CHECKER's delivery joins this collector rather than getting one of its own (H5's "resources and
+     * delivery" boundary). A second collector would be a second definition of a byte basis, and the whole point
+     * of injecting THIS file into the previous release's checkout is that both sides measure by one definition.
+     *
+     * The module is younger than the releases this runs against, so its absence is the normal baseline case and
+     * is reported the way the npm and Maven arms already report theirs — never by dropping the ids, which the
+     * id-set equality check below would refuse.
+     */
+    def checker = root.findProject(':consistency')
+    def checkerSurface = [
+        measured: checker != null && checker.tasks.findByName('packConsistencyNpmPackage') != null,
+        project : checker,
+    ]
+    if (!checkerSurface.measured && !previousBaselineBuild) {
+        throw new GradleException(
+            'current revision lacks the :consistency delivery tasks (jvmJar, jsJar, packConsistencyNpmPackage)')
+    }
     def mavenSurface = publicationSurface(
         'maven-publication',
         [
@@ -275,6 +293,11 @@ gradle.projectsEvaluated {
         }
         if (mavenSurface.measured) {
             mavenSurface.taskNames.each { dependsOn interpreter.tasks.named(it) }
+        }
+        if (checkerSurface.measured) {
+            dependsOn checkerSurface.project.tasks.named('jvmJar')
+            dependsOn checkerSurface.project.tasks.named('jsJar')
+            dependsOn checkerSurface.project.tasks.named('packConsistencyNpmPackage')
         }
         if (!nativeOverride.isPresent()) dependsOn cli.tasks.named('nativeCompile')
         def outputProvider = root.providers.gradleProperty('deliveryOutput')
@@ -425,6 +448,61 @@ gradle.projectsEvaluated {
                     definition: 'exact clean staged Maven repository after standalone Kotlin/JVM and Kotlin/JS consumer smokes',
                     reason: 'The archived baseline predates the paired standalone Kotlin/JVM and Kotlin/JS Maven consumer delivery tasks.',
                 ]
+            }
+
+            if (checkerSurface.measured) {
+                def checkerProject = checkerSurface.project
+                File checkerJvmJar = checkerProject.tasks.named('jvmJar').get().archiveFile.get().asFile
+                File checkerJsJar = checkerProject.tasks.named('jsJar').get().archiveFile.get().asFile
+                // The pack task is an `Exec` that declares no outputs (its tarball name comes from the packed
+                // package.json), so the archive is found the way the interpreter's own npm row finds its own:
+                // exactly one tarball in the directory the task packs into, and anything else is an error
+                // rather than a silently chosen file.
+                File checkerPackDir = checkerProject.layout.buildDirectory
+                    .dir('consumer-tests/pack').get().asFile
+                def checkerArchives = (checkerPackDir.listFiles() ?: [])
+                    .findAll { it.isFile() && it.name.endsWith('.tgz') }
+                if (checkerArchives.size() != 1) {
+                    throw new GradleException(
+                        "checker-npm-packed expected one packed tarball under ${checkerPackDir}, " +
+                        "found ${checkerArchives}",
+                    )
+                }
+                File checkerArchive = checkerArchives[0]
+                bases << [
+                    id: 'checker-jvm-thin',
+                    status: 'MEASURED',
+                    definition: 'Kernel-free consistency checker JVM jar only',
+                    bytes: checkerJvmJar.length(),
+                    sha256: sha256(checkerJvmJar),
+                ]
+                bases << [
+                    id: 'checker-js-klib',
+                    status: 'MEASURED',
+                    definition: 'checker Kotlin/JS KLIB only; not a production npm package',
+                    bytes: checkerJsJar.length(),
+                    sha256: sha256(checkerJsJar),
+                ]
+                bases << [
+                    id: 'checker-npm-packed',
+                    status: 'MEASURED',
+                    definition: 'real packed checker tarball, the artifact H2\'s Node and browser consumers receive',
+                    bytes: checkerArchive.length(),
+                    sha256: sha256(checkerArchive),
+                ]
+            } else {
+                [['checker-jvm-thin', 'Kernel-free consistency checker JVM jar only'],
+                 ['checker-js-klib', 'checker Kotlin/JS KLIB only; not a production npm package'],
+                 ['checker-npm-packed',
+                  'real packed checker tarball, the artifact H2\'s Node and browser consumers receive']]
+                    .each { id, definition ->
+                        bases << [
+                            id: id,
+                            status: 'NOT_AVAILABLE_IN_BASELINE',
+                            definition: definition,
+                            reason: 'The archived baseline predates the :consistency module.',
+                        ]
+                    }
             }
 
             def report = [

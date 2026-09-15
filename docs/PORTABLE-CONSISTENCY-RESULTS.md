@@ -4,6 +4,20 @@ Dated measurements of the Kernel-free checker, newest first. **Every number here
 
 Results never land in a spec, and a measurement's home is not its explanation: the mechanism paragraphs below are marked as hypotheses where they are hypotheses.
 
+## 2026-09-16 — H5's resources-and-delivery boundary, in the collector that already owned it <a id="delivery-2026-09-16"></a>
+
+**Collector:** `scripts/interpreter-delivery-footprint.init.gradle` — the existing IF173 collector, extended rather than duplicated, because the reason it is an *init script* injected into the previous release's checkout is that both revisions measure by one definition of a byte basis. **Revision:** `153ae86a2`. Measured on the current tree with the artifact smokes skipped and an existing native binary supplied, which is the collector's own shape-test path; the cross-revision comparison is a release-grade run and is not what these rows needed.
+
+| base | definition | bytes |
+|---|---|---|
+| `checker-jvm-thin` | the checker's JVM jar only | 1 059 331 |
+| `checker-js-klib` | the checker's Kotlin/JS KLIB only; not a production package | 1 148 688 |
+| `checker-npm-packed` | the real packed tarball, the artifact H2's Node and browser consumers receive | **634 443** |
+
+**The packed tarball is the number that answers the boundary.** 620 KiB is what a Node or browser consumer downloads to check a DocumentModel without the Kernel; the JVM jar and the KLIB are development artifacts and are recorded so a later jump can be attributed to one of the three rather than to "the checker got bigger". For scale, the interpreter's own packed npm tarball at the same revision is 1 311 139 bytes.
+
+**Both baseline arms were controlled before landing.** `:consistency` is younger than the releases this collector runs against, so a baseline without it is the ordinary case, and the three ids must still appear — the collector's base-set equality check refuses a report whose ids differ. Pointed at a deliberately unresolvable project name, the run emits all three as `NOT_AVAILABLE_IN_BASELINE` with the baseline flag set, and refuses outright without it, naming the missing tasks.
+
 ## 2026-09-15 — H5-c, prepared growth, and the control that keeps the cubic from returning <a id="growth-2026-09-15"></a>
 
 **Lane:** `./build.sh :adapter:checkerGrowthPerfTest` (`adapter.perf.CheckerGrowthPerfTest`), in-process and warm, the ratified paired estimator over 5 interleaved N/4N pairs, median of within-pair ratios. Same machine, JDK and workload as below; typed authoring and the silence preflight — which doubles as the warm-up — sit outside every clock.
