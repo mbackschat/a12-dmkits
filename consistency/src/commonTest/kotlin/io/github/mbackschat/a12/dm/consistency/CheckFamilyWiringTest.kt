@@ -741,6 +741,42 @@ class CheckFamilyWiringTest {
             ("MVK_ERROR_FIELD_NOT_IN_RULEGROUP" to "/Catalog/Pallets/WritesOutsideItsExtent"),
     )
 
+    /**
+     * A second, GERMAN-language model, for the families whose law an English model cannot reach.
+     *
+     * The H-model form spellings exist in no English keyword bundle, so the fixture above can carry no
+     * declaration that triggers them — flipping its condition language instead would unspell every other
+     * row's operator. One extra model is the cheaper half of that trade, and it is where the next
+     * German-only family lands too.
+     */
+    private val germanSource = ModelSource(
+        """
+        {"header":{"id":"wiring-de","locales":[{"code":"de_DE"}]},
+         "content":{"modelConfig":{"conditionLanguage":{"code":"de_DE"}},"modelRoot":{"rootGroups":[
+          {"type":"Group","id":"gd0","name":"Bestellung","Group":{"repeatability":9,"elements":[
+            {"type":"Field","id":"fd0","name":"Kennzeichen","Field":{"fieldType":{"type":"StringType"}}},
+            {"type":"Rule","id":"rd0","name":"FormularRegel","Rule":{
+              "errorCondition":"VordruckAngegeben(Bestellung)",
+              "errorEntityRelPath":"../Kennzeichen",
+              "errorCode":"D0","errorMessage":[{"locale":"de_DE","text":"x"}]}}
+          ]}}
+         ]}}}
+        """.trimIndent(),
+    )
+
+    /** What the German model proves, in the same (code, at) shape as [evidence]. */
+    private val germanEvidence = mapOf(
+        CheckFamily.H_MODEL_FORM_CONSTRUCT to
+            ("MVK_INVALID_ROOT_GROUP_CONSTR" to "/Bestellung/FormularRegel"),
+    )
+
+    @Test
+    fun everyGermanOnlyFamilyReachesTheReport() {
+        val present = check(germanSource).findings.map { it.code to it.at }.toSet()
+        assertEquals(germanEvidence.mapValues { true }, germanEvidence.mapValues { (_, row) -> row in present },
+            "a German-only family reports nothing while checksCompleted still names it")
+    }
+
     @Test
     fun everyAdvertisedFamilyReachesTheReport() {
         val report = check(source)
@@ -763,7 +799,8 @@ class CheckFamilyWiringTest {
     /** Every family is triggered by something above — the half a per-family test cannot supply. */
     @Test
     fun everyFamilyIsAccountedFor() {
-        assertEquals(CheckFamily.entries.toSet(), evidence.keys + CheckFamily.VARIANT_FILTER,
+        assertEquals(CheckFamily.entries.toSet(),
+            evidence.keys + germanEvidence.keys + CheckFamily.VARIANT_FILTER,
             "a new CheckFamily constant needs a declaration here that triggers it, not only a call site")
     }
 

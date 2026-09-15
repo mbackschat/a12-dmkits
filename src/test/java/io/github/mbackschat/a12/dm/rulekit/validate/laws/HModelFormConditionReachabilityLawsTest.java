@@ -69,6 +69,26 @@ class HModelFormConditionReachabilityLawsTest {
     }
 
     /**
+     * The other FOUR form-condition names, so the seven-member denominator is measured rather than argued.
+     *
+     * <p>All six {@code formularBedingungName} alternatives run one action — {@code checkFormularBedingungName},
+     * whose {@code isA12Model()} throw is the first statement — and the count operation has its own copy of it.
+     * Reading that is what makes the transfer plausible; it is not what makes it a fact, and a grid that
+     * measured three of seven and named the class for all seven is the sibling case the oracle table warns
+     * about. Measured 2026-09-15, for the portable checker's own denominator.
+     */
+    @Test
+    void theRemainingFormConditionNamesDrawTheSameRejection() {
+        for (String name : List.of("VordruckNichtAngegeben", "KeinVordruckAngegeben",
+                "VordruckNichtFortlaufend", "UsbNichtFortlaufend")) {
+            KernelLaws.rejectsModelInsteadOf(ORDERS_DE, "/Order", "../Code", name + "(Order)",
+                    "MVK_INVALID_ROOT_GROUP_CONSTR", "MVK_UNEXPECTED_TOKEN");
+            KernelLaws.rejectsModelInsteadOf(ORDERS, "/Order", "../Code", name + "(Order)",
+                    "MVK_UNEXPECTED_TOKEN", "MVK_INVALID_ROOT_GROUP_CONSTR");
+        }
+    }
+
+    /**
      * The second CARRIER. A computation parses through the grammar's {@code operation} entry rule rather
      * than {@code bedingung}, so reachability there is a separate measurement — and it agrees.
      */

@@ -174,6 +174,14 @@ enum class CheckFamily {
     TABLE_ENUM_OPERAND,
 
     /**
+     * The seven legacy FORM constructs, which A12 refuses by name in an A12 model. Its own constant because
+     * it is the only family keyed on the model's condition LANGUAGE rather than on a declaration's shape:
+     * the spellings exist in no English bundle, so an English model's identical text is a parser refusal
+     * under a different class, and a family merging the two would name this one on that.
+     */
+    H_MODEL_FORM_CONSTRUCT,
+
+    /**
      * An enumeration's `sValue` names one of the values it declares. Its own constant because it is a claim
      * about a single distinguished member rather than about the value list, and a report merging it would
      * let a special value pointing nowhere read as a defect in the values themselves.
@@ -925,6 +933,7 @@ internal fun check(
         prepared.elementNameAlphabetFindings() + prepared.enumCategoryFindings() +
         prepared.supportedCharacterFindings() + prepared.enumTextForbiddenCharacterFindings() +
         prepared.hintListValueFindings() + prepared.tableEnumOperandFindings() +
+        prepared.hModelFormConstructFindings() +
         prepared.declaredPatternFindings() +
         prepared.emptyGroupOperandFindings() + prepared.errorFieldReferenceFindings() +
         prepared.groupListOperandFindings() + prepared.repetitionWildcardFindings() +
@@ -1014,7 +1023,7 @@ internal fun check(
             CheckFamily.FIELD_NAME_RESERVED_SEGMENT,
             CheckFamily.ENUM_CATEGORY_ALIGNMENT, CheckFamily.ENUM_VALUE_CHARACTERS,
             CheckFamily.ENUM_TEXT_FORBIDDEN_CHARACTERS, CheckFamily.HINT_LIST_VALUES,
-            CheckFamily.TABLE_ENUM_OPERAND,
+            CheckFamily.TABLE_ENUM_OPERAND, CheckFamily.H_MODEL_FORM_CONSTRUCT,
             CheckFamily.STRING_PATTERN_ADMISSION, CheckFamily.STRING_PATTERN_MESSAGE,
             CheckFamily.STRING_TYPE_PARAMETERS, CheckFamily.NUMBER_TYPE_DIGITS,
             CheckFamily.ENUM_VALUE_LABELS, CheckFamily.ENUM_S_VALUE_DOMAIN,
@@ -1064,7 +1073,7 @@ internal fun check(
         gaps = prepared.gaps() + prepared.emptyFactBase() + findings.buildBlocked() +
             prepared.variantFilterGaps() + prepared.enumCategoryGaps() +
             prepared.supportedCharacterGaps() + prepared.enumTextForbiddenCharacterGaps() +
-            prepared.hintListValueGaps() +
+            prepared.hintListValueGaps() + prepared.hModelFormConstructGaps() +
             prepared.fieldTypeBindingGaps() +
             prepared.typeDefinitionBodyGaps() + prepared.declaredPatternGaps() + UNREAD_MEMBERS + UNIMPLEMENTED_FAMILIES,
     )
