@@ -413,6 +413,18 @@ private class ShapeParser(
      */
     private fun argument(): ShapeFailure? {
         expressionOrCondition()?.let { return it }
+        return clauses()
+    }
+
+    /**
+     * The clause chain an entity spec may carry, wherever it is reached from.
+     *
+     * Shared because the two callers reach the same grammar production from different heads — an argument
+     * parses an expression first, a spec a reference — and the clause loop itself is the SAME one. It had
+     * been written out twice, which is how the bare-name-predicate permission came to need applying in two
+     * places at once.
+     */
+    private fun clauses(): ShapeFailure? {
         while (true) {
             val token = peek() ?: return null
             if (token.kind == TokenKind.NAME && kindOf(token) == KeywordKind.PATH_OP) {
@@ -478,26 +490,7 @@ private class ShapeParser(
      */
     private fun entitySpecWithClauses(): ShapeFailure? {
         entityReference()?.let { return it }
-        while (true) {
-            val token = peek() ?: return null
-            if (token.kind == TokenKind.NAME && kindOf(token) == KeywordKind.PATH_OP) {
-                take()
-                // A clause's operand is a whole CONDITION, so it may hold the keyword-plus-bare-name
-                // predicate an expression reader cannot spell. A12 parses it there and refuses it from the
-                // filter's own last gate, so reading it as a token error names a class A12 never reaches.
-                // The permission stops at the clause: a plain aggregate argument is an expression, where the
-                // same text IS an error, and widening it there would trade a wrong class for silence.
-                expressionOrCondition(boundNamePredicateAllowed = true)?.let { return it }
-                continue
-            }
-            if (isScopeMarker()) {
-                take()
-                take()
-                expressionOrCondition()?.let { return it }
-                continue
-            }
-            return null
-        }
+        return clauses()
     }
 
     /** `@From` / `@Von`, which reaches here as `@` then the name. */

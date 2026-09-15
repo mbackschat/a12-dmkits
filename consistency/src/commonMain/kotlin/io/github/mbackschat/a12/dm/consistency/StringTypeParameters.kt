@@ -3,7 +3,6 @@ package io.github.mbackschat.a12.dm.consistency
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
-import kotlinx.serialization.json.booleanOrNull
 import kotlinx.serialization.json.intOrNull
 
 /**
@@ -149,8 +148,6 @@ private fun JsonObject.declares(member: String): Boolean = when (member) {
  */
 private fun JsonObject.declaredLength(member: String): Int? =
     (this[member] as? JsonPrimitive)?.intOrNull?.takeIf { it >= 0 }
-
-private fun JsonObject.flag(member: String): Boolean? = (this[member] as? JsonPrimitive)?.booleanOrNull
 
 private fun JsonObject.hintList(): List<*> = (this["hintList"] as? JsonArray) ?: emptyList<Any>()
 

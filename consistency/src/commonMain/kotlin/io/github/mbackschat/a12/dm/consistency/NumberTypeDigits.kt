@@ -2,7 +2,6 @@ package io.github.mbackschat.a12.dm.consistency
 
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
-import kotlinx.serialization.json.booleanOrNull
 import kotlinx.serialization.json.doubleOrNull
 import kotlinx.serialization.json.intOrNull
 
@@ -233,8 +232,6 @@ private fun declaredPlaces(count: Int): Int = if (count == SUPPRESSED) 0 else co
 /** A length A12's metamodel would accept as one, or null — outside its own bounds nothing is measured. */
 private fun JsonObject.declaredLength(member: String): Int? =
     (this[member] as? JsonPrimitive)?.intOrNull?.takeIf { it in 1..99999 }
-
-private fun JsonObject.flag(member: String): Boolean? = (this[member] as? JsonPrimitive)?.booleanOrNull
 
 /** The `NumberType` body this field declares, or null when it declares another type or none. */
 private fun DeclaredElement.numberTypeBody(): JsonObject? {

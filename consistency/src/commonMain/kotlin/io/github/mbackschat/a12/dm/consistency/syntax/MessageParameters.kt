@@ -1,6 +1,21 @@
 package io.github.mbackschat.a12.dm.consistency.syntax
 
 /**
+ * The message grammar's own TERMINALS, which are not entity names however plain they look.
+ *
+ * `$BaseYear$` is admitted on a model that declares a base year and draws `NO_BASE_YEAR` on one that does
+ * not (`RuleMessageParameterLawsTest.theBaseYearTerminalTakesAnUnboundedSignedOffset`) — never a reference
+ * class — so handing it to a reader that reports unresolvable addresses would over-reject outright. Every
+ * other form on this grammar's terminal list (`#Zeile`, a signed offset, a category suffix) carries a
+ * character no plain segment admits and is already refused below.
+ *
+ * **Both language spellings are excluded regardless of the model's own language**, because an exclusion can
+ * only under-report: only the English spelling is measured, and narrowing the set to the model's language
+ * would be a claim about the German message grammar that nothing here has run.
+ */
+private val MESSAGE_TERMINALS = setOf("BaseYear", "Referenzjahr")
+
+/**
  * The PLAIN entity parameters an error message names — `$Name$` and `$Name.value$`, and nothing else.
  *
  * A12's message grammar is a third DSL beside the condition and operation ones, and it is wide: a category
@@ -16,21 +31,6 @@ package io.github.mbackschat.a12.dm.consistency.syntax
  * would report on a text A12 answered otherwise. `$$` outside a parameter is A12's escape, and
  * [closingDollar] is why no branch here has to know that.
  */
-/**
- * The message grammar's own TERMINALS, which are not entity names however plain they look.
- *
- * `$BaseYear$` is admitted on a model that declares a base year and draws `NO_BASE_YEAR` on one that does
- * not (`RuleMessageParameterLawsTest.theBaseYearTerminalTakesAnUnboundedSignedOffset`) — never a reference
- * class — so handing it to a reader that reports unresolvable addresses would over-reject outright. Every
- * other form on this grammar's terminal list (`#Zeile`, a signed offset, a category suffix) carries a
- * character no plain segment admits and is already refused below.
- *
- * **Both language spellings are excluded regardless of the model's own language**, because an exclusion can
- * only under-report: only the English spelling is measured, and narrowing the set to the model's language
- * would be a claim about the German message grammar that nothing here has run.
- */
-private val MESSAGE_TERMINALS = setOf("BaseYear", "Referenzjahr")
-
 internal fun plainMessageParameters(text: String): List<String> =
     messageParameterBodies(text).mapNotNull { plainParameterName(it) }
 
