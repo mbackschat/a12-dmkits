@@ -135,6 +135,12 @@ class ValueInFieldsConstantKindLawsTest {
                 rawVerdict("NumberOfValueInFields(0 In Expedited, GiftWrapped) > 0"));
         actual.put("the same call fully admitted — the liveness control",
                 rawVerdict("NumberOfValueInFields(0 In Quantity, Backordered) > 0"));
+        // The boundary the two rows above must NOT be widened past: a bare NAME in the constant slot is
+        // not a sixth grammar alternative, so whatever A12 answers there belongs to another family.
+        actual.put("a field NAME in the constant slot",
+                rawVerdict("NumberOfValueInFields(Reference In Expedited, GiftWrapped) > 0"));
+        actual.put("an undeclared name in the constant slot",
+                rawVerdict("NumberOfValueInFields(NoSuchThing In Expedited, GiftWrapped) > 0"));
 
         Map<String, String> expected = new LinkedHashMap<>();
         expected.put("Today", "MVK_INVALID_CONST");
@@ -143,6 +149,12 @@ class ValueInFieldsConstantKindLawsTest {
         // above are the constant's doing rather than the operand list's.
         expected.put("a number over the same list — the control", "MVK_NO_NUMBER");
         expected.put("the same call fully admitted — the liveness control", KernelLaws.ADMITTED);
+        // A PARSE class, and the same one whether the name is declared or not — so the slot admits no
+        // identifier at all and the two rows above are not the start of an "everything else" rule. A family
+        // keyed on "not one of the four" would name its own class on both of these, which is the wrong
+        // class on a correct rejection.
+        expected.put("a field NAME in the constant slot", "MVK_UNEXPECTED_TOKEN");
+        expected.put("an undeclared name in the constant slot", "MVK_UNEXPECTED_TOKEN");
         assertEquals(expected, actual, "the constant kinds the switch falls through on");
     }
 

@@ -66,12 +66,24 @@ class ValueInFieldsConstantKindTest {
         actual["Now"] = count("Now", "Expedited, GiftWrapped")
         actual["a number over the same list"] = count("0", "Expedited, GiftWrapped")
         actual["the same call fully admitted"] = count("0", "Quantity, Backordered")
+        actual["a field NAME in the constant slot"] = count("Reference", "Expedited, GiftWrapped")
+        actual["an undeclared name in the constant slot"] = count("NoSuchThing", "Expedited, GiftWrapped")
 
         val expected = mutableMapOf<String, List<String>>()
         expected["Today"] = listOf("MVK_INVALID_CONST")
         expected["Now"] = listOf("MVK_INVALID_CONST")
         expected["a number over the same list"] = listOf("MVK_NO_NUMBER")
         expected["the same call fully admitted"] = emptyList()
+        // The boundary, and the rows that keep this arm from being widened to "not one of the four": a bare
+        // NAME is no grammar alternative at all, so A12 answers `MVK_UNEXPECTED_TOKEN` to both of these —
+        // measured in the laws twin. Silence on the first is under-reporting, the safe direction.
+        expected["a field NAME in the constant slot"] = emptyList()
+        // The second is a DIVERGENCE and is asserted rather than hidden: this checker's reader resolves the
+        // token as an entity where A12's grammar never reaches one, so the author is handed a resolution
+        // class for a token defect — the right location and the wrong gate. It belongs to the condition
+        // families that would have to refuse the position, not to this arm, which is why the row records it
+        // instead of this family suppressing a class it does not own.
+        expected["an undeclared name in the constant slot"] = listOf("MVK_INVALID_ENTITY")
         assertEquals(expected, actual, "the constant kinds the switch falls through on")
     }
 
