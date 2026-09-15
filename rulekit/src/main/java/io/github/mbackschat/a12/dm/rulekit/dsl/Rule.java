@@ -251,8 +251,9 @@ public record Rule(
 
         /**
          * Validate the typed slots and produce the immutable {@link Rule}. {@code build()} fail-fasts on the
-         * <b>structural</b> requirements (name, error field, condition, code, severity, &ge;1 message per
-         * declared locale, error field under the rule's group) but does <b>not</b> run the semantic lint.
+         * <b>structural</b> requirements (name, error field, condition, code, &ge;1 message per declared
+         * locale, error field under the rule's group) but does <b>not</b> run the semantic lint. An unset
+         * {@link #severity(Severity)} is DEFAULTED rather than refused — see the note at its check.
          * Valid-but-suspicious shapes the type system can't see — a wrong-{@link #when(Condition) polarity}
          * condition, a negative presence test under a repeatable group, an unguarded number comparison — are
          * surfaced by {@code lint.RuleDiagnostics.diagnose(model, rule)} (the developer's lint backstop), and
@@ -275,8 +276,14 @@ public record Rule(
                     "a rule needs an error condition — when(...)", "when(...)");
             check(code != null && !code.isBlank(), "RK_INCOMPLETE_RULE",
                     "a rule needs an error code — code(...)", "code(...)");
-            check(severity != null, "RK_INCOMPLETE_RULE",
-                    "a rule needs a severity — severity(...)", "severity(...)");
+            // NOT checked, and the refusal that used to stand here was an over-rejection: A12 ACCEPTS a
+            // stored rule with no `severity` member, and no spelling of absent/null/empty fires
+            // MVK_SEVERITY_MISSING (KERNEL-FINDINGS KF291, validate.laws.RuleCodeAndSeverityLawsTest). The
+            // default is the CLI's published one — `rule add`'s schema has always said "default ERROR" — so
+            // the two authoring surfaces agree and `severity()` stays non-null for every consumer. Emitting
+            // no member at all is the other option and is declined while A12's runtime meaning for an absent
+            // severity is unmeasured (locked: dsl.RuleSeverityDefaultTest).
+            Severity declaredSeverity = severity != null ? severity : Severity.ERROR;
             check(!messages.isEmpty(), "MVK_ERROR_MESSAGE_MISSING",
                     "a rule needs at least one error message (the kernel rejects message-less rules"
                             + " with MVK_ERROR_MESSAGE_MISSING) — message(en(...))", "message(en(...))");
@@ -294,7 +301,8 @@ public record Rule(
             if (rootCommentAfter != null) {
                 finalComments = finalComments.after(condition, rootCommentAfter);
             }
-            return new Rule(group, name, errorField, condition, code, severity, messages, finalComments);
+            return new Rule(group, name, errorField, condition, code, declaredSeverity, messages,
+                    finalComments);
         }
 
         /** Fail fast with a structured PRECHECK diagnostic (still an {@code IllegalStateException}). */

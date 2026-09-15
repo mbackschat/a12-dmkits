@@ -44,29 +44,59 @@ class FieldVerbTest {
 
     @Test
     void addRejectsIncompleteLocaleCoverageCleanly(@TempDir Path dir) throws Exception {
-        // 02-crash (probe): a field label that misses a declared locale is a correctable SPEC error, not an
-        // internal tool failure — yet `field add` let the modelkit IllegalStateException escape as exit 70 /
-        // RK_INTERNAL_ERROR while its siblings (apply / field modify / rule add) rejected the same input
-        // cleanly. It must surface as the standard spec rejection, never exit 70. That rejection moved into
-        // the result envelope on 2026-08-29 (SpecValueRefusalEnvelopeTest), so the corrective is now read off
-        // stdout with its RK_ code rather than off stderr prose, and the exit code is a rejection's 1.
+        // 02-crash (probe): a locale-incomplete label spec is a correctable SPEC error, not an internal tool
+        // failure — yet `field add` let the modelkit exception escape as exit 70 / RK_INTERNAL_ERROR while its
+        // siblings (apply / field modify / rule add) rejected the same input cleanly. It must surface as the
+        // standard spec rejection, never exit 70. That rejection moved into the result envelope on 2026-08-29
+        // (SpecValueRefusalEnvelopeTest), so the corrective is read off stdout with its RK_ code rather than
+        // off stderr prose, and the exit code is a rejection's 1.
+        //
+        // The CARRIER moved on 2026-09-14: [AF149](../../docs/API-FINDINGS.md#af149) removed the coverage
+        // demand from a field's own `label`, because the kernel accepts a label answering one of two declared
+        // locales ([KF406]) — so the input this row used to send is now ADMITTED and is locked as such by
+        // addAcceptsALabelAnsweringOneOfTwoDeclaredLocales below. The ENUM-VALUE labels are A12's own law and
+        // stand ([KF321], measured), so the anti-exit-70 lock rides them and keeps its subject: a correctable
+        // spec error must never be an internal error.
         Path m = dir.resolve("loc.dm.json");
         assertEquals(0, CliTestSupport.run("model", "new", "--id", "loc", "--locale", "en_US",
                 "--root", "Doc", "-o", m.toString()).code());
         assertEquals(0, CliTestSupport.run("-m", m.toString(), "config", "modify", "--add-locale", "de_DE").code(),
-                "declare a second locale so a single-locale label is now incomplete");
-        Path spec = dir.resolve("partial-label.json");
+                "declare a second locale so a single-locale enum label is now incomplete");
+        Path spec = dir.resolve("partial-labels.json");
         Files.writeString(spec, """
-                {"group":"/Doc","name":"Title","kind":"STRING","label":{"en_US":"Title"}}""");
+                {"group":"/Doc","name":"Tier","kind":"ENUM",
+                 "enum":{"values":[{"value":"BASIC","labels":{"en_US":"Basic"}}]}}""");
         var res = CliTestSupport.run("-m", m.toString(), "field", "add", spec.toString());
         assertNotEquals(70, res.code(), () -> "incomplete locale coverage must NOT be an internal error: " + res.out());
         assertEquals(1, res.code(), () -> "it is a clean spec rejection: " + res.out());
         assertFalse(res.out().contains("RK_INTERNAL_ERROR"), () -> "no internal-error envelope: " + res.out());
-        String summary = new com.fasterxml.jackson.databind.ObjectMapper().readTree(res.out())
-                .path("diagnostics").get(0).path("summary").asText();
-        assertTrue(summary.contains("invalid field spec") && summary.contains("missing declared locale"),
+        String summary = M.readTree(res.out()).path("diagnostics").get(0).path("summary").asText();
+        assertTrue(summary.contains("invalid field spec") && summary.contains("declared locale 'de_DE'"),
                 () -> "the corrective names the missing locale: " + res.out());
-        assertFalse(Files.readString(m).contains("Title"), "nothing written on a rejected spec");
+        assertFalse(Files.readString(m).contains("Tier"), "nothing written on a rejected spec");
+    }
+
+    @Test
+    void addAcceptsALabelAnsweringOneOfTwoDeclaredLocales(@TempDir Path dir) throws Exception {
+        // The other half of [AF149](../../docs/API-FINDINGS.md#af149), and it was locked nowhere on this
+        // carrier: a field's own `label` owes NO locale coverage, because the kernel takes one that answers a
+        // single declared locale ([KF406]). The demand that used to stand here was an over-rejection, so the
+        // admission needs a lock of its own — otherwise the next session reads the refusal row above as
+        // covering the whole class and re-adds it.
+        Path m = dir.resolve("loc.dm.json");
+        assertEquals(0, CliTestSupport.run("model", "new", "--id", "loc", "--locale", "en_US",
+                "--root", "Doc", "-o", m.toString()).code());
+        assertEquals(0, CliTestSupport.run("-m", m.toString(), "config", "modify", "--add-locale", "de_DE").code());
+        Path spec = dir.resolve("one-locale-label.json");
+        Files.writeString(spec, """
+                {"group":"/Doc","name":"Title","kind":"STRING","label":{"en_US":"Title"}}""");
+        var res = CliTestSupport.run("-m", m.toString(), "field", "add", spec.toString());
+        assertEquals(0, res.code(), () -> "a label answering one declared locale is the kernel's law: " + res.out());
+        JsonNode j = M.readTree(res.out());
+        assertEquals("applied", j.get("outcome").asText());
+        assertEquals("KERNEL_CONFIRMED", j.path("verification").asText(),
+                () -> "and the kernel confirms the written model: " + res.out());
+        assertTrue(Files.readString(m).contains("Title"), "the field is persisted");
     }
 
     @Test

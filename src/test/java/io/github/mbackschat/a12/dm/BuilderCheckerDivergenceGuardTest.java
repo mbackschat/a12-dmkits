@@ -122,6 +122,12 @@ class BuilderCheckerDivergenceGuardTest {
             Map.entry("MVK_INVALID_COMPARE_TO_CONST", Disposition.PROSE_ONLY),
             Map.entry("MVK_INVALID_TYPE_FOR_COMPARISON", Disposition.PROSE_ONLY),
 
+            // Neither estate enforces it, and both say so where a reader would otherwise assume they do:
+            // `Rule.Builder` names it at the check it REMOVED (the refusal had no measured basis — A12
+            // accepts an absent `severity`, AF150), and `DeclarationSlots` names it to state that the
+            // checker reports nothing for an absent member. Prose on both sides, deliberately.
+            Map.entry("MVK_SEVERITY_MISSING", Disposition.PROSE_ONLY),
+
             // Both estates enforce A12's boolean-kind law, on carriers that cannot share a reader:
             // `Computation` refuses `False` into a CONFIRM computed field and the wrong constant into a
             // BOOLEAN one, each measured (`ConfirmComputationSourceKindLawsTest`), while

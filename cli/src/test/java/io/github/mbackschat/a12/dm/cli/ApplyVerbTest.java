@@ -229,13 +229,17 @@ class ApplyVerbTest {
         // 02-crash sibling: the standalone `field add` once let an incomplete-locale label escape as exit 70 /
         // RK_INTERNAL_ERROR. The apply path is the sibling that must ALSO reject it as a clean rolled-back
         // rejection (exit 1, committed:false), never an internal error — locking the whole field-write class.
+        // Retargeted 2026-09-15 with its standalone twin (FieldVerbTest.addRejectsIncompleteLocaleCoverage-
+        // Cleanly): [AF149](../../docs/API-FINDINGS.md#af149) removed the coverage demand from a field's own
+        // `label`, so the carrier is now the ENUM-VALUE labels, which are A12's own law ([KF321]).
         Path m = dir.resolve("loc.dm.json");
         assertEquals(0, CliTestSupport.run("model", "new", "--id", "loc", "--locale", "en_US",
                 "--root", "Doc", "-o", m.toString()).code());
         assertEquals(0, CliTestSupport.run("-m", m.toString(), "config", "modify", "--add-locale", "de_DE").code());
         Path ops = dir.resolve("ops.json");
         Files.writeString(ops, """
-                [ {"target":"field","op":"add","group":"/Doc","name":"Title","kind":"STRING","label":{"en_US":"Title"}} ]""");
+                [ {"target":"field","op":"add","group":"/Doc","name":"Tier","kind":"ENUM",
+                   "enum":{"values":[{"value":"BASIC","labels":{"en_US":"Basic"}}]}} ]""");
 
         var res = CliTestSupport.run("-m", m.toString(), "apply", ops.toString());
         assertNotEquals(70, res.code(), () -> "apply must not crash on incomplete locale coverage: " + res.out());
@@ -243,7 +247,7 @@ class ApplyVerbTest {
         JsonNode j = M.readTree(res.out());
         assertFalse(j.path("data").path("committed").asBoolean(), "nothing committed");
         assertFalse(res.out().contains("RK_INTERNAL_ERROR"), () -> "clean rejection, not internal error: " + res.out());
-        assertFalse(Files.readString(m).contains("Title"), "nothing written on the rolled-back sequence");
+        assertFalse(Files.readString(m).contains("Tier"), "nothing written on the rolled-back sequence");
     }
 
     @Test
