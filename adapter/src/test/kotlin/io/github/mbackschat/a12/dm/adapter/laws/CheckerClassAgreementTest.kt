@@ -43,7 +43,7 @@ import kotlin.io.path.readText
  * class that stood longest in this estate — the rule-group shorthand reported as a reference failure — could
  * not be reached by any of them. The three message kinds also reach far more of the estate, because a rule
  * with a message is nearly every model while a rule whose message writes a PARAMETER is four of forty-three:
- * 98 mutants compare, up from 32 (measured 2026-09-15), and none is refused without a keyed class.
+ * 116 mutants compare, up from 32 (measured 2026-09-15), and none is refused without a keyed class.
  *
  * **A12 masking one class behind another is not automatically a defect, which is why [masked] exists.** A12
  * stops at the first gate that answers; the checker accumulates. A class the checker reports and A12 does not
@@ -52,12 +52,12 @@ import kotlin.io.path.readText
  *
  * **The comparison is keyed by DECLARATION, which is what makes the right class in the wrong place visible.**
  * A12 prefixes every keyed notification of this population with the declaration it judged — measured
- * 2026-09-15 as `<Kind> with path '<path>': … [KEY]` on all 98, every one of them keyed, every one of them
+ * 2026-09-15 as `<Kind> with path '<path>': … [KEY]` on all 116, every one of them keyed, every one of them
  * prefixed and every one naming a `Rule`; the earlier assumption that the prefix carries an element ID was
  * wrong, so no id→path map is needed and the paths compare directly against a finding's own `at`. A class-only
  * comparison passes a checker that names A12's own class about a declaration A12 said nothing about, and on
  * this population it cannot even see a SECOND class, because A12 answers each of these mutants with exactly
- * one notification (98 of 98) — so `ours ⊆ kernel` already forces a one-element set and the count invariant
+ * one notification (116 of 116) — so `ours ⊆ kernel` already forces a one-element set and the count invariant
  * the F2 record asked for is only meaningful once the key is the declaration.
  *
  * **Only declarations A12 keyed are compared, and that restriction is the honest half.** A12 stops at its
@@ -67,7 +67,7 @@ import kotlin.io.path.readText
  * compared as (declaration, class) PAIRS rather than per declaration — a class A12 named is then wrong
  * wherever A12 did not name it, and a genuine second instance A12 masked is a row in [positionsA12Masks].
  *
- * **The checker is silent on NONE of the 98 as of 2026-09-15, down from 16 the same day.** Silence was
+ * **The checker is silent on NONE of the 116 as of 2026-09-15, down from 16 of 98 the same day.** Silence was
  * always the safe direction and was disclosed rather than asserted; now there is nothing to disclose, and
  * [SILENT_CLASSES] guards the floor from the other side by being empty. The [positionedFloor] still fails if
  * silence returns, because a compared pair needs both sides to speak.
@@ -86,7 +86,7 @@ class CheckerClassAgreementTest {
     /**
      * Rows measured to be a class A12 named about ONE declaration that is genuinely also true of another.
      *
-     * Empty as of 2026-09-15: every one of the checker's 98 positioned findings over this population landed
+     * Empty as of 2026-09-15: every one of the checker's 116 positioned findings over this population landed
      * at the declaration A12 keyed. A row here must name the model, the mutation, both declarations, and the
      * measurement that says the checker's placement is true of the model — not merely plausible.
      */
@@ -120,7 +120,7 @@ class CheckerClassAgreementTest {
      *
      * A pair needs both sides to speak, so this is the assertion that fails if the checker goes quiet on
      * rejected models — the direction the silence sweeps cannot see, since they measure models A12 BUILDS.
-     * 98 of 98 as of 2026-09-15 — every rejected mutant now has something on both sides. The floor sits
+     * 116 of 116 as of 2026-09-15 — every rejected mutant has something on both sides. The floor sits
      * well below that on purpose, because it answers *did the comparison happen* rather than *how big is
      * the population*.
      */
@@ -324,7 +324,7 @@ class CheckerClassAgreementTest {
             val message = notification.message().trim()
             // An UNKEYED notification carries prose rather than a class, so it is not a comparable claim at
             // all; only a keyed one that hides its declaration is a parser failure. Measured 2026-09-15:
-            // every one of the 98 over this population is keyed, prefixed, and about a `Rule`.
+            // every one of the 116 over this population is keyed, prefixed, and about a `Rule`.
             CLASS_KEY.find(message)?.groupValues?.get(1)?.let { key ->
                 KEYED_DECLARATION.find(message)?.groupValues?.get(2) to key
             }
@@ -363,6 +363,25 @@ class CheckerClassAgreementTest {
          * without measuring anything this comparison is about.
          */
         private val KEYED_DECLARATION = Regex("^(\\w+) with path '([^']*)':", RegexOption.DOT_MATCHES_ALL)
+
+        /** The declared NAME of the element whose `Group` body is [body], for building a relative path. */
+        private fun nameOfGroupBody(root: ObjectNode, body: ObjectNode): String? {
+            var found: String? = null
+            fun walk(node: ObjectNode) {
+                if (node["Group"] === body) {
+                    found = node["name"]?.asText()
+                }
+                node.elements().forEach { child ->
+                    when (child) {
+                        is ObjectNode -> walk(child)
+                        is ArrayNode -> child.forEach { if (it is ObjectNode) walk(it) }
+                        else -> Unit
+                    }
+                }
+            }
+            walk(root)
+            return found
+        }
 
         private fun groupBodies(root: ObjectNode): List<ObjectNode> {
             val found = mutableListOf<ObjectNode>()
@@ -418,6 +437,30 @@ class CheckerClassAgreementTest {
                 val rule = (0 until elements.size()).first { elements[it]["type"]?.asText() == "Rule" }
                 ((elements[rule] as ObjectNode)["Rule"] as ObjectNode)
                     .put("errorEntityRelPath", "../MutantTarget")
+                true
+            },
+            // Repoint a rule's error field INTO a repeatable group, which makes the rule ITERATE. The kind
+            // above only ever points OUT of one, so every mutant it produces sits on a non-iterating rule —
+            // and whether the rule iterates is what picks the class an unstarred operand draws
+            // ([KERNEL-FINDINGS KF424]). Two over-reports of that shape were nearly shipped on 2026-09-15
+            // and both were caught by a family mirror, because no mutation kind could build the carrier.
+            Mutation("repoint-error-field-into-a-repetition") { root ->
+                val repeatable = groupBodies(root).firstOrNull { body ->
+                    body["repeatability"]?.asInt()?.let { it > 1 } == true &&
+                        (body["elements"] as? ArrayNode)?.any { it["type"]?.asText() == "Field" } == true
+                } ?: return@Mutation false
+                val group = groupBodies(root).firstOrNull { body ->
+                    (body["elements"] as? ArrayNode)?.any { it["type"]?.asText() == "Rule" } == true
+                } ?: return@Mutation false
+                val repeatableName = nameOfGroupBody(root, repeatable) ?: return@Mutation false
+                val field = MAPPER.createObjectNode()
+                field.put("type", "Field").put("id", "mutant-inner-1").put("name", "MutantInner")
+                field.putObject("Field").putObject("fieldType").put("type", "StringType")
+                (repeatable["elements"] as ArrayNode).add(field)
+                val elements = group["elements"] as ArrayNode
+                val rule = (0 until elements.size()).first { elements[it]["type"]?.asText() == "Rule" }
+                ((elements[rule] as ObjectNode)["Rule"] as ObjectNode)
+                    .put("errorEntityRelPath", "../$repeatableName/MutantInner")
                 true
             },
             // Remove one star from a rule's condition. A legal aggregate read becomes an iterating per-row

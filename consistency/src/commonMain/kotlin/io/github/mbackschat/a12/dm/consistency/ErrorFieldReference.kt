@@ -97,6 +97,13 @@ fun PreparedModel.errorFieldReferenceFindings(): List<Finding> {
  * class. Every row of its grid held the condition flat, so "the target is unreferenced" and "nothing
  * iterates" were one thing across all of them.
  *
+ * **A PARALLEL level the target iterates JOINTLY with does not count as past it**, which is the same
+ * differential one carrier further on: the sweep gained a kind that repoints the error field INTO a
+ * repetition, and two models whose branches key alike went silent here because a sibling read looked
+ * unaddressed. A12 admits such a read — both ends resolve to one index field of the same name and type — so
+ * no iteration class fires and this family's own is what answers ([KERNEL-FINDINGS KF424]). A containment
+ * test cannot see it, which is why the measured walk is asked instead of re-derived.
+ *
  * **One residue, stated rather than left to be discovered.** The star is tested on the WHOLE written
  * reference, so a single reference that stars an outer level while crossing an inner repeatable group
  * unstarred is not pre-empted here. A condition mixing a starred and an unstarred read is handled, because
@@ -109,10 +116,12 @@ private fun PreparedModel.iteratesPastTheTarget(reference: ConditionReference, t
         return false
     }
     val resolved = (reference.target as? Reference.Resolved)?.path ?: return false
+    val targetGroup = groupOfTargetField(target)
     return elements.any { candidate ->
         candidate.declaredKind == DeclaredKind.GROUP && candidate.isRepeatable &&
             resolved.startsWith("${candidate.path}/") &&
-            !(target == candidate.path || target.startsWith("${candidate.path}/"))
+            !(target == candidate.path || target.startsWith("${candidate.path}/")) &&
+            !(targetGroup != null && parallelVerdictOf(candidate, targetGroup) == ParallelVerdict.Joint)
     }
 }
 
