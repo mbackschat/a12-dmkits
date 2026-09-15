@@ -196,9 +196,10 @@ class FilterBodyGatesTest {
 
         val expected = mutableMapOf<String, List<String>>()
         expected["an operand crossing a repetition nothing addresses — unfiltered control"] = listOf(noWildcard)
-        // The sibling family stays silent on a FILTERED operand, so nothing names it — A12 says
-        // `MVK_NO_WILDCARD` here and the estate under-reports it.
-        expected["the same operand with a filter"] = emptyList()
+        // Reported since 2026-09-15. The sibling family used to skip a filtered text wholesale, so this row
+        // recorded the under-report its own comment had already measured; it now reads the condition with
+        // the filter BODY removed, and the operand outside it is judged like any other.
+        expected["the same operand with a filter"] = listOf(noWildcard)
         expected["a star inside the filter body"] = listOf("MVK_NO_WILDCARDS_ALLOWED")
         expected["the `$` outer marker in the filter body"] = emptyList()
         expected["an out-of-path filter on the same model — the positive control"] = listOf(invalidIteration)

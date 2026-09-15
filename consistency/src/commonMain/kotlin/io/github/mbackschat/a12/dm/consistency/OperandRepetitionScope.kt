@@ -73,15 +73,15 @@ fun PreparedModel.operandRepetitionScopeFindings(): List<Finding> {
             return@mapNotNull null
         }
         conditionTexts(element.kind, body).firstNotNullOfOrNull { (member, text) ->
-            if (namesKeyword(text, unjudgeable) != null || OUTER_MARKER in text) {
+            if (namesKeyword(text, unjudgeable) != null) {
                 return@firstNotNullOfOrNull null
             }
-            val read = if (namesKeyword(text, filterKeyword) != null) {
-                filteredOperandBases(text, member, filterKeyword)
-            } else {
-                referencesIn(text, conditionLanguage)
+            val own = withoutFilterBodies(text, member, filterKeyword)
+            if (OUTER_MARKER in own) {
+                return@firstNotNullOfOrNull null
             }
-            read.filterNot { isRuleContext(it, conditionLanguage) }
+            referencesIn(own, conditionLanguage)
+                .filterNot { isRuleContext(it, conditionLanguage) }
                 .firstNotNullOfOrNull { written ->
                     levelClassOf(written, declaringGroup, targetGroup, element)
                         ?.let { scopeFinding(it, written, target, element, member) }
@@ -91,28 +91,32 @@ fun PreparedModel.operandRepetitionScopeFindings(): List<Finding> {
 }
 
 /**
- * The bases of the FILTERED operands in [text] — the only references a filtered text exposes to THIS walk.
+ * [text] with every `Having` filter BODY blanked out — the condition this walk is actually about.
  *
- * A base is the operand with its clauses cut off, so a filter body's leaves never appear here: they are
- * judged against the filtered entity by [filterBodyGateFindings] instead. Restricting to the operands that
- * actually carry a filter is what keeps them out — `callsIn` returns the calls NESTED IN a filter body too,
- * and taking every call's operands made a `RepetitionNotUnique` leaf inside a filter read as an operand of
- * the rule, which drew a second class on a body the construct gate already refuses. Everything else in a
- * filtered text is left unjudged, an under-report this family did not previously make either.
+ * A filter body's references are judged against the FILTERED entity rather than the rule's target, so they
+ * belong to [filterBodyGateFindings] and not here; removing them is what lets everything else in the text be
+ * read normally. The flat reference list cannot tell the two apart, which is why this family skipped a
+ * filtered text wholesale until 2026-09-15 — and skipping it threw away the operands of the surrounding
+ * condition, where a rule's own unstarred read usually sits.
  *
- * Anything that is not a bare entity spec is dropped rather than reduced to the reference inside it, for the
- * reason [isBareEntitySpec] carries: a reader that took the `Qty` out of `{[Qty] + 1}` would make a claim
- * about a value A12 computes from the whole expression.
+ * It also removes the reason the OUTER MARKER silenced the whole text: `$` binds the enclosing iteration for
+ * a filter body's references, so a text carrying one carries it THERE. The caller still declines a stripped
+ * text that has one left, which is a shape this walk has not been measured on.
+ *
+ * Blanking rather than re-parsing, because the clause body is already reduced verbatim and a substring is
+ * what a reference reader needs. A body occurring twice blanks both: over-removal only ever under-reports.
  */
-private fun PreparedModel.filteredOperandBases(
+private fun PreparedModel.withoutFilterBodies(
     text: String,
     member: String,
     filterKeyword: Set<String>,
-): List<String> = callsIn(text, conditionLanguage, syntaxEntryOf(member))
+): String = callsIn(text, conditionLanguage, syntaxEntryOf(member))
     .flatMap { call -> call.operands }
-    .filter { operand -> operand.clauses.any { it.keyword in filterKeyword } }
-    .mapNotNull { it.base }
-    .filter { isBareEntitySpec(it) }
+    .flatMap { operand -> operand.clauses }
+    .filter { it.keyword in filterKeyword }
+    .map { it.text }
+    .filter { it.isNotEmpty() }
+    .fold(text) { stripped, bodyText -> stripped.replace(bodyText, " ") }
 
 private const val HAVING = "Having"
 

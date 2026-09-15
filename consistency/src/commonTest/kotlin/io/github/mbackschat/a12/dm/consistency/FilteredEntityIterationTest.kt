@@ -108,11 +108,12 @@ class FilteredEntityIterationTest {
         // into a parallel-iterated one.
         expected["a filtered operand on the target's chain, the condition parallel-iterating ELSEWHERE"] =
             listOf(filtered)
-        // A12 refuses an unkeyed parallel level during the parse with `MVK_NO_WILDCARD`, and nothing in the
-        // report names it: [operandRepetitionScopeFindings] owns that class and does not judge a
-        // filter-carrying text. A disclosed under-report, and the reason this family stays silent here
-        // rather than naming a post-parse class on a rule that never parsed.
-        expected["the parallel level declares NO index field"] = emptyList()
+        // A12 refuses an unkeyed parallel level during the parse with `MVK_NO_WILDCARD`. THIS family stays
+        // silent, because naming its own post-parse class on a rule that never parsed would be the wrong
+        // one; [operandRepetitionScopeFindings] owns `MVK_NO_WILDCARD` and, since 2026-09-15, reads a
+        // filter-carrying text with the filter BODY removed and so reaches this row. The under-report this
+        // comment used to disclose is closed, and the row now measures which family answers.
+        expected["the parallel level declares NO index field"] = listOf("MVK_NO_WILDCARD")
         assertEquals(expected, actual, "what makes a filtered operand parallel-iterated")
     }
 

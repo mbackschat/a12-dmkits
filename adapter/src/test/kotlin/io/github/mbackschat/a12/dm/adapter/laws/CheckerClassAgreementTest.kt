@@ -126,11 +126,24 @@ class CheckerClassAgreementTest {
      * where A12 asks about the target's coordinates, so nine families were yielding on operands A12 admits.
      * One pinned class turned out to name a defect in a helper none of its mutants pointed at.
      *
+     * `MVK_NO_WILDCARD` ×4 followed, and the enumeration below is what made it cheap: all seven remaining
+     * mutants came from ONE mutation kind, and the four differed from the three only in carrying the outer
+     * marker — which the scope family used to read as a reason to skip the whole condition. It binds a filter
+     * BODY's references, so the family now removes the body and reads what surrounds it; the two mirror rows
+     * that had DISCLOSED this under-report in their own comments went green by gaining the class.
+     *
+     * **The last three are left, with their blocker named.** They are the same mutation on the same shape
+     * without the outer marker, and `ERROR_FIELD_REFERENCE` is silent because a filter leaf pre-empts its
+     * iteration test. Removing that pre-emption is measured and correct, and it is NOT enough: A12 answers a
+     * filtered PARALLEL operand with its own class ahead of the not-referenced gate, so the family would then
+     * name a wrong class beside a right one — tried 2026-09-15 and reverted on the evidence. Closing these
+     * three means modelling that third gate's precedence, which is its own measured slice rather than a
+     * widening of this one.
+     *
      * Measured 2026-09-15.
      */
     private val SILENT_CLASSES = sortedMapOf(
         "MVK_ERROR_FIELD_NOT_REFERENCED" to 3,
-        "MVK_NO_WILDCARD" to 4,
     )
 
     @Test
@@ -146,6 +159,7 @@ class CheckerClassAgreementTest {
         val unpositioned = mutableListOf<String>()
         val unparsed = mutableListOf<String>()
         val silentClasses = mutableMapOf<String, Int>()
+        val silentRows = mutableListOf<String>()
         for (model in committedModels()) {
             val text = model.readText()
             for (mutation in MUTATIONS) {
@@ -164,6 +178,7 @@ class CheckerClassAgreementTest {
                 if (ours.isEmpty()) {
                     silentOnRejection++
                     kernel.classes.forEach { silentClasses.merge(it, 1, Int::plus) }
+                    silentRows += where("A12 said ${kernel.byDeclaration}")
                 }
                 (ours.map { it.code }.toSet() - kernel.classes).forEach { extra ->
                     val row = where("ours=$extra kernel=${kernel.classes}")
@@ -196,7 +211,12 @@ class CheckerClassAgreementTest {
             "the classes A12 named where the checker said nothing have moved. This map is the SILENCE " +
                 "direction's work list, not a failure: a class leaving it is a family gaining reach and the " +
                 "pin comes down with it, while a class ARRIVING is a family that lost reach and is a " +
-                "regression. Re-derive before editing:\n" + silentClasses.toSortedMap(),
+                "regression. Re-derive before editing:\n" + silentClasses.toSortedMap() +
+                // The MUTANTS, not just the classes. Widening a family starts by reading the shapes behind
+                // one class, and deriving them used to mean adding a throwaway assertion to this test —
+                // which is a diff waiting to be committed by accident. Carrying them in the message costs
+                // nothing while green and is the whole input to the next slice.
+                "\n\nthe silent mutants:\n" + silentRows.sorted().joinToString("\n"),
         )
         assertEquals(
             emptyList<String>(), unparsed,
