@@ -532,6 +532,77 @@ class WorkspaceMountTest {
         assertTrue(report.gaps.any { it.at == "/Order/ShipTo" && "exactly one root group" in it.reason })
     }
 
+    /** A provider whose sole root group is [root] verbatim, so a row can vary the root itself. */
+    private fun providerWithRoot(root: String) = source(
+        """{"header":{"id":"address","locales":[{"code":"en_US"}]},
+           "content":{"modelRoot":{"rootGroups":[$root]}}}""",
+    )
+
+    private fun addressRoot(extra: String = "") =
+        """{"type":"Group","id":"g","name":"Address","Group":{$extra"elements":[${field("Street")}]}}"""
+
+    /**
+     * A provider root A12 refuses to mount is a coverage gap, not a tree to judge.
+     *
+     * `SINGLE_RG` needs exactly one NON-REPEATABLE root group with its object body, and A12's own expansion
+     * refuses everything else outright ([KERNEL-FINDINGS KF3], `adapter.WorkspaceIncludeStructureKernelTest`)
+     * — so mounting one anyway would make every finding below it a verdict about a model the Kernel never
+     * builds, which is the failure mode this whole module is arranged to avoid.
+     *
+     * The `repeatability` rows are KF3's measured matrix rather than a rule derived from the member's name,
+     * and that matters because the matrix is not the obvious one: `1.9`, `0.5`, `-1` and the numeric string
+     * `"1"` are ACCEPTED while `2` and `2.1` are refused, which is what an integer coercion of the declared
+     * value does before the non-repeatable test sees it. An implementation that refused anything other than
+     * `1` would suspend four mounts A12 expands in full.
+     */
+    @Test
+    fun aProviderRootA12RefusesToMountSuspendsTheAnalysis() {
+        val refused = mapOf(
+            "repeatable" to addressRoot(""""repeatability":2,"""),
+            "repeatable by truncation" to addressRoot(""""repeatability":2.1,"""),
+            "a boolean repeatability" to addressRoot(""""repeatability":true,"""),
+            "a non-numeric repeatability" to addressRoot(""""repeatability":"one","""),
+            "a container repeatability" to addressRoot(""""repeatability":{},"""),
+            "a non-Group root" to """{"type":"Field","id":"g","name":"Address","Field":{}}""",
+            "a root with no body" to """{"type":"Group","id":"g","name":"Address"}""",
+        )
+        val mounted = mapOf(
+            "the member absent — the control" to addressRoot(),
+            "explicitly non-repeatable" to addressRoot(""""repeatability":1,"""),
+            "a fraction below two" to addressRoot(""""repeatability":1.9,"""),
+            "an explicit null" to addressRoot(""""repeatability":null,"""),
+            "a numeric string" to addressRoot(""""repeatability":"1","""),
+        )
+
+        refused.forEach { (named, root) ->
+            val report = check(host(), providerWithRoot(root))
+            assertEquals(emptySet(), report.checksCompleted, named)
+            assertTrue(report.gaps.any { it.at == "/Order/ShipTo" }, "$named: ${report.gaps}")
+        }
+        mounted.forEach { (named, root) ->
+            val report = check(host(extra = rule("R", "../ShipTo/Street", "FieldFilled(ShipTo/Street)")),
+                providerWithRoot(root))
+            assertTrue(CheckFamily.CONDITION_REFERENCES in report.checksCompleted, "$named: ${report.gaps}")
+            assertEquals(emptyList(), report.findings, named)
+        }
+    }
+
+    /**
+     * The same refusal at the other include level, where it is a deliberate UNDER-report: KF3 measures the
+     * non-Group root refusal on a `SINGLE_RG` mount, and a `MODEL_ROOT` one reaches the same deserializer, so
+     * suspending here costs coverage if A12 turns out to admit it and invents nothing if it does not.
+     */
+    @Test
+    fun aModelRootProvidersNonGroupRootSuspendsTheMountToo() {
+        val report = check(
+            host(mountBody = modelRoot),
+            providerWithRoot("""{"type":"Field","id":"g","name":"Address","Field":{}}"""),
+        )
+
+        assertEquals(emptySet(), report.checksCompleted)
+        assertTrue(report.gaps.any { it.at == "/Order/ShipTo" }, report.gaps.toString())
+    }
+
     /**
      * A mount group that also carries local elements is ALREADY EXPANDED to the Kernel: the local elements
      * survive and the reference is silently ignored (KF3). So it needs no provider at all, which is the row

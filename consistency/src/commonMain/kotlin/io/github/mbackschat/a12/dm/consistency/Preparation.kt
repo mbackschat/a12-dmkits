@@ -515,8 +515,16 @@ private class Collector(
         val root = roots.singleOrNull()
             ?: return unexpanded(path, alias, "a SINGLE_RG include needs exactly one root group in " +
                 "`${target.reference}`, which declares ${roots.size}")
+        unmountableRoot(root, target.reference)?.let { return unexpanded(path, alias, it) }
         val rootName = root.text("name")
             ?: return unexpanded(path, alias, "the root group of `${target.reference}` carries no `name`")
+        // SINGLE_RG additionally demands a NON-REPEATABLE root, which this level cannot express any other
+        // way: the provider root becomes the mount group, and the mount's own repeatability is the host's.
+        if ((root["Group"] as? JsonObject).declaresARepeatableRoot()) {
+            return unexpanded(path, alias, "the root group of `${target.reference}` is repeatable, and a " +
+                "SINGLE_RG include needs a non-repeatable one, so A12 refuses this expansion outright and " +
+                "nothing here is a verdict about the model")
+        }
         // The provider's root group DISAPPEARS into the mount, so its own absolute paths — which all begin
         // with that root — now begin with the mount's path instead.
         val nested = target.scope(mapOf("/$rootName" to path))
@@ -539,6 +547,7 @@ private class Collector(
      * silently is exactly the confidently-wrong tree this module refuses to produce.
      */
     private fun mountModelRoots(alias: String, path: String, roots: List<JsonObject>, target: MountTarget) {
+        roots.forEach { root -> unmountableRoot(root, target.reference)?.let { return unexpanded(path, alias, it) } }
         val names = roots.map { it.text("name") }
         if (names.any { it == null }) {
             return unexpanded(path, alias, "a root group of `${target.reference}` carries no `name`")
@@ -624,6 +633,43 @@ private class Collector(
 }
 
 private fun JsonArray?.isNullOrEmpty(): Boolean = this == null || this.isEmpty()
+
+/**
+ * Why A12's own expansion refuses to mount this provider root, or null when it will mount it.
+ *
+ * Both shapes are measured refusals — a known non-Group root element, and a Group root without its object
+ * body ([KERNEL-FINDINGS KF3], `adapter.WorkspaceIncludeStructureKernelTest`). Reading them as an empty
+ * subtree instead is the quieter failure and the worse one: the mount contributes nothing, no gap says so,
+ * and every reference into it becomes a finding against a model A12 never built.
+ *
+ * KF3 measures both on a `SINGLE_RG` mount. They are applied at `MODEL_ROOT` as well, where the direction is
+ * what settles it: the two levels reach the same deserializer, so suspending costs coverage if A12 turns out
+ * to admit such a root there and invents nothing if it does not.
+ */
+private fun unmountableRoot(root: JsonObject, reference: String): String? = when {
+    root.text("type") != DeclaredKind.GROUP.wire -> "the root element of `$reference` is " +
+        "`${root.text("type")}` rather than a Group, which A12's own expansion refuses, so nothing here is " +
+        "a verdict about the model"
+    root["Group"] !is JsonObject -> "the root group of `$reference` carries no `Group` body, so A12's " +
+        "expansion has nothing to mount and refuses the model"
+    else -> null
+}
+
+/**
+ * Whether A12 reads this provider root as REPEATABLE, which `SINGLE_RG` refuses.
+ *
+ * The admitted set is KF3's measured matrix rather than the member's obvious reading, and the two differ:
+ * `1.9`, `0.5`, `-1`, `-1.5`, an explicit null and the numeric string `"1"` are all accepted while `2` and
+ * `2.1` are refused, which is what an INTEGER coercion of the declared value does before the non-repeatable
+ * test sees it. Refusing everything but `1` would suspend five mounts A12 expands in full. A value that is
+ * no number at all — a Boolean, a container, `"one"` — is refused, which is the rest of that matrix.
+ */
+private fun JsonObject?.declaresARepeatableRoot(): Boolean {
+    val declared = this?.get("repeatability") ?: return false
+    val primitive = declared as? JsonPrimitive ?: return true
+    val content = primitive.contentOrNull ?: return false
+    return (content.toDoubleOrNull()?.toInt() ?: return true) > 1
+}
 
 /** The `usageType` whose group shields its subtree from an outer mount exclusion (KF3). */
 private const val ATTACHMENT_USAGE = "attachment"
