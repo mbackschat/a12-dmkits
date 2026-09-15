@@ -151,7 +151,10 @@ public final class ModelDrafts {
                         .stringField("PreferredLeg", f -> f.maxLength(10))
                         .group("Legs", g -> g.repeatable(10).indexField("LegRef")
                                 .stringField("LegRef", f -> f.maxLength(10))
-                                .numberField("Distance", n -> n.fractionDigits(0))))
+                                .numberField("Distance", n -> n.fractionDigits(0)))
+                        // a second group that contains nothing of Legs, so a two-entity group predicate can
+                        // be written without the pair being a nesting duplicate
+                        .group("Depots", d -> d.stringField("DepotRef", f -> f.maxLength(10))))
                 .build();
     }
 

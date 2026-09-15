@@ -73,6 +73,12 @@ class ComputationSelfReadScopeLawsTest {
         actual.put("GroupFilled over its own group — the context escape",
                 legs("GroupFilled(/Routing/Legs)"));
         actual.put("CurrentRepetition of its own group", legs("CurrentRepetition(/Routing/Legs) == 1"));
+        // The kernel exempts its `AllGroupsFilled` only at arity ONE, so whether this catalog's spelling of
+        // it can carry a second entity at all decides whether that arity test is reachable from here.
+        actual.put("GroupFilled over TWO groups, one of them its own",
+                legs("GroupFilled(/Routing/Legs, /Routing/Depots)"));
+        actual.put("GroupFilled over a group that contains nothing of it — the control",
+                legs("GroupFilled(/Routing/Depots)"));
 
         Map<String, List<String>> expected = new LinkedHashMap<>();
         expected.put("no guard at all — the liveness control", List.of());
@@ -85,6 +91,10 @@ class ComputationSelfReadScopeLawsTest {
         // group". A checker taking either half alone is wrong in one direction.
         expected.put("GroupFilled over its own group — the context escape", List.of());
         expected.put("CurrentRepetition of its own group", List.of());
+        // The arity gate answers ahead of the calculation walk, so the kernel's own `size() == 1` test on
+        // its exemption is unreachable through this catalog's spelling — a checker needs no arity branch.
+        expected.put("GroupFilled over TWO groups, one of them its own", List.of("MVK_PARAMSIZE_INVALID1"));
+        expected.put("GroupFilled over a group that contains nothing of it — the control", List.of());
         assertEquals(expected, actual, "which reads of the computed field's group count as reading it");
     }
 

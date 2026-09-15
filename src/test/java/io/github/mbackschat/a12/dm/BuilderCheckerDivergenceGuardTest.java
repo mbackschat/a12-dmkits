@@ -567,11 +567,18 @@ class BuilderCheckerDivergenceGuardTest {
             // an interval is one A12 itself rejects.
             Map.entry("MVK_INVALID_INTERVAL", Disposition.SAME_LAW_SEPARATE_CARRIERS),
 
-            // Prose on the CHECKER side again: `Computation.build()` genuinely pre-checks a self-read, while
-            // the checker only NAMES the code, in the cycle family's doc comment explaining why a one-node
-            // circle is left to A12. The checker deliberately does not carry the law — its two pre-emptions
-            // need derived-scale inference — so there is nothing here for the kit's refusal to leak into.
-            Map.entry("MVK_ERROR_REFERENCE_TO_CALCULATED_FIELD", Disposition.PROSE_ONLY));
+            // *(Amended 2026-09-15: this read PROSE_ONLY while the checker only named the code. It now
+            // reports it, and the two sides are not one law restated — `Computation.build()` pre-checks a
+            // read of the computed field ITSELF off typed handles, where the checker reads stored DM-JSON
+            // and carries the containment half A12 actually applies: the field's own group and every group
+            // above it, minus the two exemptions ([KF416]). The builder's narrower predicate is not an
+            // over-rejection, so there is nothing for the checker to inherit either way.)*
+            Map.entry("MVK_ERROR_REFERENCE_TO_CALCULATED_FIELD", Disposition.SAME_LAW_SEPARATE_CARRIERS),
+
+            // Named in the self-read family's doc comment as the class that PRE-EMPTS it, which is why that
+            // family stands down on a projected read rather than reporting its own class there. Nothing in
+            // the checker reports this one.
+            Map.entry("MVK_ERROR_SEMANTIC_INDEX_OR_CATEGORY_FOR_ERRORFIELD", Disposition.PROSE_ONLY));
 
     @Test
     void everyCodeStatedInBothEstatesCarriesADisposition() {

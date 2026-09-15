@@ -366,6 +366,10 @@ class CheckFamilyWiringTest {
             {"type":"Computation","id":"c8","name":"TareCalc","Computation":{
               "computedFieldRelPath":"../Tare",
               "computationAlternatives":[{"operation":"[Gross] * 2"}]}},
+            {"type":"Field","id":"f70","name":"Label","Field":{"fieldType":{"type":"StringType"}}},
+            {"type":"Computation","id":"c70","name":"ReadsItsOwnTarget","Computation":{
+              "computedFieldRelPath":"../Label",
+              "computationAlternatives":[{"operation":"[Label]"}]}},
             {"type":"Computation","id":"c6","name":"GuardedByAnAppCondition","Computation":{
               "computationAlternatives":[
                 {"precondition":"FieldFilled(Price) And CustomCondition NotReverse",
@@ -477,6 +481,9 @@ class CheckFamilyWiringTest {
         // The circle's report is anchored at the computation writing its smallest member, so the path here
         // is `Gross`'s writer rather than either declaration's position in the file.
         CheckFamily.COMPUTATION_CYCLE to ("MVK_ERROR_CALC_CYCLE" to "/Catalog/GrossCalc"),
+        // A STRING target, so the scale gate this family stands aside for cannot be what decides the row.
+        CheckFamily.COMPUTATION_SELF_READ to
+            ("MVK_ERROR_REFERENCE_TO_CALCULATED_FIELD" to "/Catalog/ReadsItsOwnTarget"),
         CheckFamily.MESSAGE_PARAMETER_REFERENCE to
             ("INVALID_FIELD" to "/Catalog/MessageNamesUnread"),
         CheckFamily.ERROR_TEXT_SEMANTIC_INDEX to

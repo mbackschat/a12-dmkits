@@ -21,6 +21,7 @@ class BlankDslSlotTest {
          "content":{"modelRoot":{"rootGroups":[
           {"type":"Group","id":"g0","name":"Catalog","Group":{"elements":[
             {"type":"Field","id":"f0","name":"Price","Field":{"fieldType":{"type":"StringType"}}},
+            {"type":"Field","id":"f1","name":"Listed","Field":{"fieldType":{"type":"StringType"}}},
             {"type":"Computation","id":"c0","name":"Calc","Computation":{
               "computedFieldRelPath":"../Price",
               "errorMessage":[{"locale":"en_US","text":"x"}],
@@ -33,7 +34,10 @@ class BlankDslSlotTest {
 
     private fun codes(source: ModelSource) = check(source).findings.map { it.code }.distinct().sorted()
 
-    private val guarded = """{"precondition":"FieldFilled(Price)","operation":"42.00"}"""
+    // The guard reads a PEER of the computed field, never `Price` itself: a computation guarded by a read
+    // of its own target is a shape A12 refuses outright (`MVK_ERROR_REFERENCE_TO_CALCULATED_FIELD`), which
+    // this fixture carried silently until `COMPUTATION_SELF_READ` landed and reported it on every row.
+    private val guarded = """{"precondition":"FieldFilled(Listed)","operation":"42.00"}"""
 
     @Test
     fun aBlankSlotDrawsTheCodeItsOwnMemberDraws() {
@@ -43,11 +47,11 @@ class BlankDslSlotTest {
             computation("""[$guarded,{"precondition":"","operation":"42.00"}]"""),
         )
         actual["a filled common precondition — the control"] =
-            codes(computation("[$guarded]", "FieldFilled(Price)"))
+            codes(computation("[$guarded]", "FieldFilled(Listed)"))
         actual["a BLANK common precondition"] = codes(computation("[$guarded]", ""))
         actual["a filled operation — the control"] = codes(computation("[$guarded]"))
         actual["a BLANK operation"] = codes(
-            computation("""[{"precondition":"FieldFilled(Price)","operation":""}]"""),
+            computation("""[{"precondition":"FieldFilled(Listed)","operation":""}]"""),
         )
 
         val expected = mutableMapOf<String, List<String>>()

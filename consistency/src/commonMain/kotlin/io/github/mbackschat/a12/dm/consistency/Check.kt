@@ -639,6 +639,15 @@ enum class CheckFamily {
     COMPUTATION_CYCLE,
 
     /**
+     * That a computation does not read the field it writes. The predicate is CONTAINMENT rather than
+     * equality, so the computed field's own group and every group above it are reads of it; `GroupFilled`
+     * over a single entity and a `CurrentRepetition` operand are A12's two carved exemptions. Silent on a
+     * NUMBER target unless the model suppresses the scale gate that answers ahead of this class, and silent
+     * on a PROJECTED self-read, which is a class of its own.
+     */
+    COMPUTATION_SELF_READ,
+
+    /**
      * That an error message only names entities its own declaration already reads. The membership set is the
      * carrier's — a rule's condition references, a computation's target plus what its own members read — and
      * only the PLAIN `$Name$` and `$Name.value$` forms are read, because every other parameter form has a
@@ -884,6 +893,7 @@ internal fun check(
         prepared.computedTargetKindFindings() + prepared.computedTargetIndexFieldFindings() +
         prepared.rawTypeLengthFindings() + prepared.computationPreconditionFeatureFindings() +
         prepared.computationCycleFindings() +
+        prepared.computationSelfReadFindings() +
         prepared.repetitionKeyPlacementFindings() +
         prepared.repetitionScopeGroupFindings() +
         prepared.repetitionKeyContainmentFindings() +
@@ -973,6 +983,7 @@ internal fun check(
             CheckFamily.REPETITION_WILDCARD_TARGET, CheckFamily.COMPUTED_TARGET_KIND,
             CheckFamily.RAW_TYPE_LENGTH, CheckFamily.COMPUTED_TARGET_INDEX_FIELD,
             CheckFamily.COMPUTATION_PRECONDITION_FEATURES, CheckFamily.COMPUTATION_CYCLE,
+            CheckFamily.COMPUTATION_SELF_READ,
             CheckFamily.REPETITION_KEY_PLACEMENT, CheckFamily.REPETITION_SCOPE_GROUP,
             CheckFamily.REPETITION_KEY_CONTAINMENT,
             CheckFamily.FILTER_WILDCARD, CheckFamily.FILTER_BODY_GATES,

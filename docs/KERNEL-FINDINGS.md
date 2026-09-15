@@ -7190,7 +7190,9 @@ Measured over one computation writing `/Routing/Legs/Distance` from the constant
 
 **The law reaches a target with no scale unchanged**, which is the part a clean-room checker can carry without derived-scale inference: on the string `/Routing/PlannedLeg`, a self-read in the operation and a self-read in the precondition both draw the class, against an accepted peer-read control.
 
-*Locked by:* `rulekit.validate.laws.ComputationSelfReadScopeLawsTest`.
+**The kernel's exemption tests arity, and that test is unreachable through this catalog's spelling** — worth recording because a checker would otherwise carry a branch nothing can exercise. The walk exempts `AllGroupsFilled` only at `entityIdList.size() == 1`, and our `GroupFilled` IS that single-entity spelling: a second operand draws `MVK_PARAMSIZE_INVALID1` from a gate answering ahead of the calculation walk, and a second operand nested in the first draws `MVK_DUPLICATE_PARAM2`. So no model reaching the walk carries a multi-entity form of the exempt predicate.
+
+*Locked by:* `rulekit.validate.laws.ComputationSelfReadScopeLawsTest`, mirrored by `consistency.ComputationSelfReadTest`; reported by `CheckFamily.COMPUTATION_SELF_READ`.
 
 ## §11 supplement — the calculation gates judge a rule A12 SYNTHESIZES, which erases six of their classes for stored A12 models (source-verified + measured, 2026-09-15) <a id="kf415"></a>
 
