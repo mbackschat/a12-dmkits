@@ -72,7 +72,11 @@ import kotlinx.serialization.json.contentOrNull
 fun PreparedModel.valueInFieldsConstantKindFindings(): List<Finding> {
     val keywords = CONDITION_OPERATOR_KEYWORDS[conditionLanguage] ?: return emptyList()
     val carrier = keywords[VALUE_IN_FIELDS] ?: return emptyList()
-    val spellings = ConstantSpellings(keywords[TRUE_CONSTANT], keywords[FALSE_CONSTANT])
+    val spellings = ConstantSpellings(
+        keywords[TRUE_CONSTANT],
+        keywords[FALSE_CONSTANT],
+        listOfNotNull(keywords[TODAY_CONSTANT], keywords[NOW_CONSTANT]),
+    )
     return elements.mapNotNull { element ->
         val body = element.body ?: return@mapNotNull null
         val group = element.path.substringBeforeLast('/', missingDelimiterValue = "")
@@ -90,8 +94,18 @@ private const val TRUE_CONSTANT = "True"
 
 private const val FALSE_CONSTANT = "False"
 
-/** How the model's own language spells the two boolean constants, absent where the table carries neither. */
-private data class ConstantSpellings(val yes: String?, val no: String?)
+private const val TODAY_CONSTANT = "Today"
+
+private const val NOW_CONSTANT = "Now"
+
+/**
+ * How the model's own language spells the constants this family keys on, absent where the table carries none.
+ *
+ * @param pointsInTime the two constants A12's switch does not handle at all. They are named rather than
+ *     derived from "everything else" because everything else is a parse failure, which is a different
+ *     verdict: only these two are grammatical constants the check falls through on.
+ */
+private data class ConstantSpellings(val yes: String?, val no: String?, val pointsInTime: List<String>)
 
 /** One arm of A12's switch on the constant: which declarations it admits, and what it refuses with. */
 private enum class ConstantArm(val code: String, val admitted: Set<String>) {
@@ -99,6 +113,15 @@ private enum class ConstantArm(val code: String, val admitted: Set<String>) {
     YES_NO("MVK_NO_TYPEYESNO", setOf("BooleanType")),
     TEXT("MVK_NO_STRING_OR_ENUM", setOf("StringType", "CustomFieldType", "EnumerationType")),
     NUMBER("MVK_NO_NUMBER", setOf("NumberType")),
+
+    /**
+     * The FALL-THROUGH: a constant the switch tests for none of the four arms above.
+     *
+     * It refuses before reading a single declaration, so its admitted set is empty and never consulted —
+     * `CheckAnzahlWertOpImpl.check` throws after its four `instanceof` tests, and the grammar's
+     * `commonKonstante` carries exactly two further alternatives, the points in time.
+     */
+    POINT_IN_TIME("MVK_INVALID_CONST", emptySet()),
 }
 
 /** The declarations whose effective type this reader does not resolve, so no arm may judge them. */
@@ -118,6 +141,20 @@ private fun PreparedModel.constantKindFinding(
     val targets = written.map { addressedTargetOf(it, declaringGroup, element) ?: return null }
     if (preEmptedBeforeTheSwitch(written, targets)) {
         return null
+    }
+    // The fall-through arm refuses the CONSTANT and never reads a declaration, so it answers here rather
+    // than through the type walk below — whose admitted set it has none of, and whose explain would name a
+    // field that has nothing to do with the refusal.
+    if (arm == ConstantArm.POINT_IN_TIME) {
+        return Finding(
+            FindingCategory.A12_CONSTRAINT,
+            FindingSeverity.ERROR,
+            arm.code,
+            "in `$member`: `$VALUE_IN_FIELDS` counts `${constantText.trim()}`, a point in time — this " +
+                "operator counts a number, a text or a boolean constant and nothing else, whatever the " +
+                "listed declarations are. Compare the date against a field instead of counting it",
+            element.path,
+        )
     }
     val fields = targets.flatMap { target ->
         val declared = elements.firstOrNull { it.path == target } ?: return null
@@ -254,6 +291,7 @@ private fun armOf(constantText: String, spellings: ConstantSpellings): ConstantA
         single.text == spellings.no -> ConstantArm.YES_NO
         single.kind == TokenKind.STRING -> ConstantArm.TEXT
         single.kind == TokenKind.NUMBER -> ConstantArm.NUMBER
+        single.text in spellings.pointsInTime -> ConstantArm.POINT_IN_TIME
         else -> null
     }
 }

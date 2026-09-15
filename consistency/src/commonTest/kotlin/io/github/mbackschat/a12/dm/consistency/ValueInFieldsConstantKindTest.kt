@@ -49,6 +49,32 @@ class ValueInFieldsConstantKindTest {
     private fun count(constant: String, list: String): List<String> =
         codes("FieldFilled(Reference) And NumberOfValueInFields($constant In $list) > 0")
 
+    /**
+     * The arm A12's switch has no case for, and the reason it is named rather than derived.
+     *
+     * A12 tests four constants and throws after them, so "anything else" looks like the rule — but anything
+     * else is mostly a PARSE failure, a different verdict this family may not claim. The grammar's
+     * `commonKonstante` carries exactly two further alternatives, the points in time, and those are what the
+     * family keys on. The last two rows are the controls: the same call with a constant the switch DOES
+     * handle, one refused by the type walk and one admitted outright, so a silence here could not pass as a
+     * model that never parsed.
+     */
+    @Test
+    fun theConstantKindsTheSwitchFallsThroughOn() {
+        val actual = mutableMapOf<String, List<String>>()
+        actual["Today"] = count("Today", "Expedited, GiftWrapped")
+        actual["Now"] = count("Now", "Expedited, GiftWrapped")
+        actual["a number over the same list"] = count("0", "Expedited, GiftWrapped")
+        actual["the same call fully admitted"] = count("0", "Quantity, Backordered")
+
+        val expected = mutableMapOf<String, List<String>>()
+        expected["Today"] = listOf("MVK_INVALID_CONST")
+        expected["Now"] = listOf("MVK_INVALID_CONST")
+        expected["a number over the same list"] = listOf("MVK_NO_NUMBER")
+        expected["the same call fully admitted"] = emptyList()
+        assertEquals(expected, actual, "the constant kinds the switch falls through on")
+    }
+
     @Test
     fun whichDeclarationsEachBooleanConstantAdmits() {
         val actual = mutableMapOf<String, List<String>>()

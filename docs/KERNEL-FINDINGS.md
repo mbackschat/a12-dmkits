@@ -7300,7 +7300,10 @@ The type walk is the whole list's FIRST pass rather than a per-field interleavin
 
 Reported by the portable checker (`CheckFamily.VALUE_IN_FIELDS_CONSTANT_KIND`), which reuses the literal reader `CheckFamily.DATE_ARGUMENT_SLOT` already needed for `MVK_INVALID_DATE_STRING` — the same `isStringAValidDate`, asked by two constructs for opposite reasons.
 
-*Locked by:* `rulekit.validate.laws.ValueInFieldsDateConstantLawsTest`, mirrored by `consistency.ValueInFieldsDateConstantTest`.
+**Extended 2026-09-15 — the switch has a FIFTH outcome, and it is reachable.** `CheckAnzahlWertOpImpl.check` tests `Falsch`, `Wahr`, a string literal and a number in that order and throws `MVK_INVALID_CONST` after them. Read from the check method alone that arm looks unreachable, since "anything else" is where a parse failure lives; the GRAMMAR settles it instead — `commonKonstante` carries exactly six alternatives, and the two the switch never tests are the points in time. Measured: `NumberOfValueInFields(Today In …)` and `… (Now In …)` both draw `MVK_INVALID_CONST`, over a field list the number arm refuses with `MVK_NO_NUMBER` and another it admits outright, so the class is the constant's and not the list's. The typed builder writes no such call — its overloads take a number, a string or a boolean — so the shape arrives only as authored text, which is where a clean-room checker reading stored DM-JSON meets it.
+
+
+*Locked by:* `rulekit.validate.laws.ValueInFieldsDateConstantLawsTest`, mirrored by `consistency.ValueInFieldsDateConstantTest`; the 2026-09-15 fall-through extension by `rulekit.validate.laws.ValueInFieldsConstantKindLawsTest`, mirrored by `consistency.ValueInFieldsConstantKindTest`.
 
 ## §6 supplement — what `ValueAsDate` demands of the field it resolves (source-verified + measured, 2026-09-14) <a id="kf408"></a>
 

@@ -113,6 +113,39 @@ class ValueInFieldsConstantKindLawsTest {
         assertEquals(expected, actual, "which declarations each boolean constant admits");
     }
 
+    /**
+     * The FALL-THROUGH arm: a constant that is none of the four the switch handles.
+     *
+     * <p>{@code CheckAnzahlWertOpImpl.check} tests {@code Falsch}, {@code Wahr}, a string literal and a
+     * number in that order and throws {@code MVK_INVALID_CONST} after them (source-read 2026-09-15,
+     * kernel-core-parser). The grammar's {@code commonKonstante} carries two further alternatives —
+     * {@code Heute} and {@code Jetzt}, the point-in-time constants — so the arm is REACHABLE, which a
+     * reading of the check method alone cannot say. The typed builder has no overload that writes one here,
+     * so the shape arrives only as authored text, which is what {@link #rawVerdict} exists for.
+     *
+     * <p>The number row is the control: the same call shape with a constant the switch DOES handle, so a
+     * refusal below is the constant's and not the call's.
+     */
+    @Test
+    void whichConstantKindsTheSwitchDoesNotHandleAtAll() {
+        Map<String, String> actual = new LinkedHashMap<>();
+        actual.put("Today", rawVerdict("NumberOfValueInFields(Today In Expedited, GiftWrapped) > 0"));
+        actual.put("Now", rawVerdict("NumberOfValueInFields(Now In Expedited, GiftWrapped) > 0"));
+        actual.put("a number over the same list — the control",
+                rawVerdict("NumberOfValueInFields(0 In Expedited, GiftWrapped) > 0"));
+        actual.put("the same call fully admitted — the liveness control",
+                rawVerdict("NumberOfValueInFields(0 In Quantity, Backordered) > 0"));
+
+        Map<String, String> expected = new LinkedHashMap<>();
+        expected.put("Today", "MVK_INVALID_CONST");
+        expected.put("Now", "MVK_INVALID_CONST");
+        // Not silence but the switch's number arm answering, so the call shape reached it and the two rows
+        // above are the constant's doing rather than the operand list's.
+        expected.put("a number over the same list — the control", "MVK_NO_NUMBER");
+        expected.put("the same call fully admitted — the liveness control", KernelLaws.ADMITTED);
+        assertEquals(expected, actual, "the constant kinds the switch falls through on");
+    }
+
     /** The string and number arms, and the enumeration membership the string arm additionally checks. */
     @Test
     void whichDeclarationsTheStringAndNumberConstantsAdmit() {

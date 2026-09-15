@@ -834,6 +834,14 @@ One cold adversarial review over the frozen range, as [§2](#2-execution-order-a
 
 **The population argument matters more than the three kinds.** Four of 43 committed models write a message PARAMETER at all, so a kind that perturbs an existing parameter reaches four models; a kind that appends one reaches every model with a rule. The estate's own corpus decides what an instrument can see, and picking mutations by what the corpus already contains is how a sweep stays small without anyone choosing to keep it small.
 
+### C record — the switch arm that looked unreachable from its own method (2026-09-15)
+
+**Frozen change: `MVK_INVALID_CONST` newly reported by `VALUE_IN_FIELDS_CONSTANT_KIND`.** One code, no new family, and the arm answers before any declaration is read — so it returns ahead of the type walk whose admitted set it has none of.
+
+**The method's four `instanceof` tests end in a throw, and "anything else" is not the rule.** Read from `CheckAnzahlWertOpImpl` alone the fall-through reads as unreachable, because anything not a boolean, a string or a number is where a PARSE failure lives and a parse failure is a different verdict this family may not claim. The GRAMMAR is what settles it: `commonKonstante` has exactly six alternatives and the two the switch never tests are the points in time, so the family keys on those two spellings rather than on the absence of the other four. Measured on both, against a control the number arm refuses and one it admits outright ([KF409](KERNEL-FINDINGS.md#kf409)).
+
+**Same denominator hole as the containment row, one layer down.** The ledger called it `erased` because the typed overloads take a number, a string or a boolean — a claim about the BUILDER, which the portable checker is not. Two residue rows in a row have now turned on that distinction, which is the argument for re-deriving the residue against all four dispositions rather than trusting any one of them.
+
 ### C record — the containment gate, and the residue re-derived over the whole ledger to find it (2026-09-15) <a id="error-target-containment"></a>
 
 **Frozen change: `CheckFamily.ERROR_TARGET_CONTAINMENT`, reporting `MVK_ERROR_FIELD_NOT_IN_RULEGROUP` on both constructs.** A rule or computation that ITERATES has to write into a field at or below its own declaring group; A12 answers the violation during the PARSE, ahead of every class the neighbouring families draw on the same reads.

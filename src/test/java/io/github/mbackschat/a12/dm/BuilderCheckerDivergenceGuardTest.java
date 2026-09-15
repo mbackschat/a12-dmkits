@@ -417,6 +417,13 @@ class BuilderCheckerDivergenceGuardTest {
             // what keeps the family's own class off a list A12 refuses for a different reason.
             Map.entry("MVK_STRING_ENUM_AND_NON_STRING_ENUM", Disposition.PROSE_ONLY),
             Map.entry("MVK_NO_NUMBER", Disposition.PROSE_ONLY),
+            // The MIRROR shape, and the naming side is not a check at all: `KernelMessageOperands` quotes
+            // this code's German text as an example of a message whose operands are fixed prose, while the
+            // checker REPORTS it — `NumberOfValueInFields` counting a point in time, the arm A12's switch
+            // falls through on (measured 2026-09-15, KF409). The kit could not inherit a refusal here even
+            // if it wanted one: its overloads take a number, a string or a boolean, so the shape is
+            // unwritable through them and reaches a reader only as stored text.
+            Map.entry("MVK_INVALID_CONST", Disposition.PROSE_ONLY),
 
             // The enum-category pairing. `FieldTypeSpec.EnumSpec` refuses a misaligned category in its
             // constructor, over typed `EnumCategory` records, and collapses A12's two per-element codes into
