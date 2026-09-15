@@ -124,7 +124,7 @@ A **targeted** re-run (§8b) confirming the day's CLI-surface changes didn't reg
 
 ### 2026-06-17 03:03 CEST — OQ1: code-mode (`dmcode`) vs bare-tool CLI, head-to-head (opus, k=2, 7 tasks)
 
-The [DMCODE-PROPOSAL](../docs/DMCODE-PROPOSAL.md) OQ1 probe: is **code-against-the-API** (a clean agent authoring Java via the typed kits, compiler + `RuleValidator` as feedback) **more powerful** than the **bare-tool CLI** for BA authoring? Two arms, **neither given the skill**. CLI arm = self-describing `dmtool` + the model (bare-tool boundary). Code arm = a `/tmp` **`api.txt` proxy** (scoped signatures + javadoc) + `operators.json` + the model, source-launched against the kits classpath (no `src/` — boundary-audited clean, both arms). Tasks chosen from a verb-surface study to hit the CLI's *theoretical* difficulty axes.
+The [DMCODE-PROPOSAL](../docs/archived/DMCODE-PROPOSAL.md) OQ1 probe: is **code-against-the-API** (a clean agent authoring Java via the typed kits, compiler + `RuleValidator` as feedback) **more powerful** than the **bare-tool CLI** for BA authoring? Two arms, **neither given the skill**. CLI arm = self-describing `dmtool` + the model (bare-tool boundary). Code arm = a `/tmp` **`api.txt` proxy** (scoped signatures + javadoc) + `operators.json` + the model, source-launched against the kits classpath (no `src/` — boundary-audited clean, both arms). Tasks chosen from a verb-surface study to hit the CLI's *theoretical* difficulty axes.
 
 **Result — code-mode ties the CLI on correctness on every axis, never beats it, costs ~2.3×, and is worse on refactors.** Deterministic scores (k=2):
 

@@ -49,6 +49,16 @@ import org.junit.jupiter.api.Test;
  * <p><b>Only a target naming a real {@code docs/} file is checked</b>, so the rule never has to guess whether
  * {@code [a](target)} in a comment was meant as a path at all — a regex-shaped fragment or a prose parenthesis
  * cannot match, because its basename is not a document this repository has.
+ *
+ * <p><b>The sibling estate was swept and deliberately left uncovered, on its measurement (2026-09-15).</b>
+ * Markdown OUTSIDE {@code docs/} is the other half of the class no guard reaches: 432 relative links, of which
+ * <b>one</b> was dead — {@code eval/RESULTS.md} still naming a proposal since moved to {@code docs/archived/},
+ * repaired with this. The other 15 apparent danglers are all in {@code plugin/README.md} and
+ * {@code interpreter/public-release/README.md}, whose trees {@code scripts/assemble-release-repo.sh} copies to
+ * a mirror ROOT where {@code LICENSE}, {@code examples/} and {@code codex/} do sit beside them — correct at the
+ * destination and dead here, the generated-output case again. Covering that estate would therefore need a
+ * publication-tree exemption list to hold a family already healthy at 1 in 432, where this one was broken at 65
+ * in 66. That ratio is the reason, so re-measure it rather than inheriting the decision.
  */
 class SourceDocLinkResolvesTest {
 
