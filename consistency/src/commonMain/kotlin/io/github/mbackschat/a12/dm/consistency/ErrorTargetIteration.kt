@@ -28,7 +28,9 @@ package io.github.mbackschat.a12.dm.consistency
  * **And the target has to lie INSIDE the rule's own group**, which was the fourth constant of the grid rather
  * than one of its variables: A12's containment gate throws during the parse, where both these classes come
  * from a pass over the finished reference set, so neither is reachable with the target outside
- * ([KERNEL-FINDINGS KF372]). The shape arrives only as stored DM-JSON, our own builder refusing the pair.
+ * ([KERNEL-FINDINGS KF372]). The shape arrives only as stored DM-JSON, our own builder refusing the pair —
+ * and it is not unreported: [errorTargetContainmentFindings] owns it, which is why this family's silence
+ * there costs an author nothing.
  *
  * **Silent wherever a reading could become a refusal.** A condition naming the rule-context keyword is left
  * alone: the keyword carries no path, so whether it pins here is unmeasured, and `MVK_ERROR_FIELD_NOT_REFERENCED`
@@ -54,8 +56,8 @@ fun PreparedModel.errorTargetIterationFindings(): List<Finding> {
             // `IterationChecker`, which runs after the parse. Every row of both grids that measured them
             // held the target inside the declaring group, so the containment demand was a constant of the
             // set rather than something any row tested; measured 2026-09-14 (KERNEL-FINDINGS KF372), and
-            // the reason this shape is now silent. It reaches a checker only through stored DM-JSON,
-            // `Rule.build()` refusing the pair up front — the input this checker exists to read.
+            // the reason this shape is silent HERE — `ERROR_TARGET_CONTAINMENT` reports it. It reaches a
+            // checker only through stored DM-JSON, `Rule.build()` refusing the pair up front.
             if (!(target == ruleGroup || target.startsWith("$ruleGroup/"))) {
                 return@mapNotNull null
             }

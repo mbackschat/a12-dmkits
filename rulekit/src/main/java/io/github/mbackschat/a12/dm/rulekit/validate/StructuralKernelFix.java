@@ -195,13 +195,18 @@ public final class StructuralKernelFix {
                     "A composite uniqueness key needs one shared repetition lineage so the kernel can form one row "
                             + "tuple. Fields from parallel repeatable groups do not identify a single correlated row.")),
             Map.entry("MVK_ERROR_FIELD_NOT_IN_RULEGROUP", new Hint(
-                    "Place the error field inside every repeatable group the rule iterates over. The condition "
-                            + "references a per-row field, so the rule iterates and its error field must live in that "
-                            + "repeatable group — either pick an error field inside it, or make the rule whole-document "
-                            + "by aggregating the per-row operand (e.g. Sum(Group*/Field)) so it no longer iterates.",
-                    "A rule's iteration scope is the set of repeatable groups among the fields it references "
-                            + "(including the error field); the error field must lie in every repeatably-referenced group, "
-                            + "otherwise the per-row error has nowhere to attach.")),
+                    "The declaration ITERATES and writes outside its own group, so there are three repairs and "
+                            + "the first is usually the smallest: DECLARE it in a group that contains the field it "
+                            + "writes — an ancestor will do, containment is what the kernel asks for, not membership "
+                            + "of the repeating group. Or write into a field under the declaring group. Or stop "
+                            + "iterating: a STAR aggregate (Sum(Group*/Field)) reads no row, so it lifts the demand "
+                            + "entirely, where the same operand unstarred is what creates it.",
+                    "A declaration that iterates has to say which repetition its result belongs to, and the kernel "
+                            + "reads that from PATH CONTAINMENT: the written field must lie at or below the declaring "
+                            + "group. It gates both constructs, but they differ in what derives the iteration — an "
+                            + "unstarred per-row read does so for either, while a per-row COMPUTED field derives it "
+                            + "with no operand at all and a per-row ERROR field does not (measured 2026-09-15, "
+                            + "KERNEL-FINDINGS KF212). Crossing a root boundary is not itself a refusal.")),
             Map.entry("MVK_ERROR_FIELD_NOT_REFERENCED", new Hint(
                     "Name the rule's error field somewhere in the condition. Most often this is a model-level "
                             + "aggregate rule whose condition only references the aggregated per-row path — reference "

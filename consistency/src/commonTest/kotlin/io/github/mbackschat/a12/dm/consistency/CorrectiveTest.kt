@@ -60,7 +60,11 @@ class CorrectiveTest {
               "DateRangeType":{"format":"dd.MM","rangeSeparator":"-","interpretationOfYear":"FROM"}}}},
             {"type":"Group","id":"g3","name":"Shelves","Group":{"repeatability":9,"elements":[
               {"type":"Field","id":"f8","name":"ShelfCode","Field":{"fieldType":{"type":"StringType"}}},
-              {"type":"Field","id":"f9","name":"ShelfQty","Field":{"fieldType":{"type":"NumberType"}}}
+              {"type":"Field","id":"f9","name":"ShelfQty","Field":{"fieldType":{"type":"NumberType"}}},
+              {"type":"Rule","id":"r90","name":"ReportsAboveItsShelf","Rule":{
+                "errorCondition":"FieldFilled(../Note) And [ShelfQty] > 0",
+                "errorEntityRelPath":"../../Note",
+                "errorCode":"C90","errorMessage":[{"locale":"en_US","text":"x"}]}}
             ]}},
             {"type":"Group","id":"g4","name":"Crates","Group":{"repeatability":5,
               "indexFieldName":"CrateRef","elements":[

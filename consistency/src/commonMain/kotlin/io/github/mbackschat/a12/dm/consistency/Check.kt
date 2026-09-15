@@ -617,6 +617,14 @@ enum class CheckFamily {
     ERROR_TARGET_ITERATION,
 
     /**
+     * That a rule or computation which ITERATES writes into a field at or below its own declaring group.
+     * Its own constant because A12 answers it during the PARSE, ahead of every class `ERROR_TARGET_ITERATION`
+     * and the operand families draw on the same reads — and because the two constructs differ in what
+     * derives their iteration, which no family keyed on the written field alone could express.
+     */
+    ERROR_TARGET_CONTAINMENT,
+
+    /**
      * That the model's computations do not depend on each other in a CIRCLE. A12 sorts the calculated fields
      * topologically and refuses a graph it cannot order. A read in a PRECONDITION builds an edge just as an
      * operation read does, and the two ends may sit in different groups. A one-node circle — a computation
@@ -917,6 +925,7 @@ internal fun check(
         prepared.valueAsDateOperandFindings() +
         prepared.enumComputationSourceFindings() +
         prepared.errorTargetIterationFindings() +
+        prepared.errorTargetContainmentFindings() +
         prepared.messageParameterFindings() +
         prepared.errorTextSemanticIndexFindings() +
         prepared.errorTextCategorySuffixFindings() +
@@ -988,7 +997,7 @@ internal fun check(
             CheckFamily.ENUM_DISPLAY_COMPARABILITY,
             CheckFamily.VALUE_AS_DATE_OPERAND,
             CheckFamily.ENUM_COMPUTATION_SOURCE,
-            CheckFamily.ERROR_TARGET_ITERATION,
+            CheckFamily.ERROR_TARGET_ITERATION, CheckFamily.ERROR_TARGET_CONTAINMENT,
             CheckFamily.MESSAGE_PARAMETER_REFERENCE, CheckFamily.MESSAGE_TEXT_CHARACTERS,
             CheckFamily.MESSAGE_PARAMETER_SYNTAX, CheckFamily.MESSAGE_GROUP_PARAMETER,
             CheckFamily.MESSAGE_VALUE_SUFFIX,

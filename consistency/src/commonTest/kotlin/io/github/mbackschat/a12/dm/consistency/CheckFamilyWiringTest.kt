@@ -108,6 +108,10 @@ class CheckFamilyWiringTest {
                 "errorCondition":"GroupFilled(/Catalog) And [PalletQty] > 0",
                 "errorEntityRelPath":"../PalletNote",
                 "errorCode":"C23","errorMessage":[{"locale":"en_US","text":"x"}]}}
+              ,{"type":"Rule","id":"r68","name":"WritesOutsideItsExtent","Rule":{
+                "errorCondition":"FieldFilled(../Price) And [PalletQty] > 0",
+                "errorEntityRelPath":"../../Price",
+                "errorCode":"C68","errorMessage":[{"locale":"en_US","text":"x"}]}}
             ]}},
             {"type":"Rule","id":"r25","name":"StarInsideAFilter","Rule":{
               "errorCondition":"FieldFilled(Price) And Sum(Pallets*/PalletQty Having [Pallets*/PalletNote] == \"x\") > 0",
@@ -708,6 +712,11 @@ class CheckFamilyWiringTest {
         // reading a sibling of that field — so A12 cannot say which pallet the error belongs to.
         CheckFamily.ERROR_TARGET_ITERATION to
             ("MVK_ERROR_FIELDGROUP_ITERATION4_INVALID" to "/Catalog/Pallets/ReachedFromAbove"),
+        // The same extent, the other way round: the rule reads one pallet at a time and reports on a field
+        // ABOVE its own group, so A12 cannot say which pallet the error belongs to and refuses during the
+        // parse — ahead of the class the row above measures.
+        CheckFamily.ERROR_TARGET_CONTAINMENT to
+            ("MVK_ERROR_FIELD_NOT_IN_RULEGROUP" to "/Catalog/Pallets/WritesOutsideItsExtent"),
     )
 
     @Test

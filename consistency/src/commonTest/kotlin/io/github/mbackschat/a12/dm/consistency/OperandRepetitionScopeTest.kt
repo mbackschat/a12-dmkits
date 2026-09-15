@@ -195,7 +195,9 @@ class OperandRepetitionScopeTest {
             probe("Invoices", "InvoiceAmount", "/Fulfilment/Refunds/RefundAmount")
 
         val expected = mutableMapOf<String, List<String>>()
-        expected["the target lies outside the declaring group"] = emptyList()
+        // Not silence, and no longer this family's business either: `ERROR_TARGET_CONTAINMENT` names the
+        // class the KDoc above predicted, so the row asserts the prediction instead of only recording it.
+        expected["the target lies outside the declaring group"] = listOf("MVK_ERROR_FIELD_NOT_IN_RULEGROUP")
         expected["a GROUP operand crossing a parallel repetition"] = emptyList()
         expected["the same operand as a FIELD read — the positive control"] =
             listOf("MVK_ERROR_FIELD_INVALID_INDEX")
