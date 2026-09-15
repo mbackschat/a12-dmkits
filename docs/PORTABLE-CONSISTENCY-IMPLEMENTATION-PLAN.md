@@ -739,6 +739,27 @@ One cold adversarial review over the frozen range, as [§2](#2-execution-order-a
 
 **The catalog half is deliberately not delivered, with its re-open trigger.** A2 ruled that `operators.json` ships as-is because it is already data; that remains right, and it is not yet USEFUL — no finding this checker produces names an operator id, so 293 KB would be packaged with nothing to join it against. It lands when a finding carries an operator.
 
+### C record — the unprefixed estate DISPOSITIONED to the last code (2026-09-15)
+
+**Frozen change: no code drained; the remaining 22 are classified, each with a cited reason.** Derived, not remembered: every constant of `FehlertextErrorType` matched against the checker's reported literals, and every unreported one's THROW SITE read in the 30.8.1 checkout. 28 of 50 reported.
+
+| why it is not reported | codes | the citation |
+|---|---|---|
+| behind `isHModel()` — no A12 document model reaches it | `INVALID_PATH_SPEC`, `INVALID_PATH_SPEC_IN_PARAMETER` | the guard is the first statement of its site |
+| refused by an EARLIER gate on the A12 route | `NO_Z_ITERATION`, `NO_U_ITERATION` | `checkZeile`/`checkUSB` answer `PARAM_INVALID_IN_NEW_WORLD` first, and the checker reports that |
+| composed as a BARE message — no `[CLASS]` key for a consumer to read | `ERROR_TEXT_PARAMETER`, `RULE_ERRORTEXT_WRONG`, `FIELD_INVALID_PREFIX` | `getBareErrorMessage` at each site |
+| needs a list of ≥2 same-short-named index fields, the shape the terminal family declines | `INVALID_INDEX_FIELD_REP`, `_ENUM_XML_VALUES`, `_ENUM_XML_TO_CAT`, `_ENUM_XML_TO_DISPLAY`, `_INCONSISTENT_TYPES` | each compares list members against the first |
+| structurally unreachable from any A12 model | `INVALID_INDEX_FIELD_COMPOSED_INDEX` | [KF280](KERNEL-FINDINGS.md#kf280) attacked every link |
+| needs PARALLEL-ITERATION detection or the kernel's own condition visitor | `INVALID_USE_OF_ITERATION_PARAM`, `INVALID_USE_OF_SEMANTIC_INDEX`, `INVALID_HASH_LFDNR_FOR_PARALLEL_ITERATION` | `checkSemanticIndexAndParallelIteration`, `checkFehlerEnum` |
+| reads the H-model's form/row dimensions (`getMaxValues()[0]`/`[1]`) | `INVALID_FIELD_L`, `INVALID_FIELD_Z` | `checkLfdNrSpecifier`/`checkZeileSpecifier` |
+| **measured absent** on six authored shapes | `INVALID_CONDITION` | `MessageOnAnUnparsableConditionLawsTest`, [KF343](KERNEL-FINDINGS.md#kf343) |
+| adjacent shape measured and draws another class; no shape known to reach it | `WRONG_ENCODING` | [KF279](KERNEL-FINDINGS.md#kf279)'s supplementary-plane row carries NO class |
+| the form-line suffixes' H-model half | `NO_VORDRUCKZEILE`, `NO_VORDRUCKNAME_IN_H` | no throw site in `kernel-core-service`; the name states the model kind |
+
+**The last candidate was measured to be ABSENT, and that absence is worth more than the code would have been.** `INVALID_CONDITION` looked reachable from a source read — `RuleParser` re-parses the condition whenever a message text contains a `$` and composes the class when that parse yields nothing. Six unparsable conditions later, the verdict is the condition's parse class and nothing about the message. That is the fact every message family in this checker depends on without having had it: they all skip a declaration whose DSL they could not read, and now something says that skip loses nothing.
+
+**Reading the throw site is what made a 22-code remainder cheap to classify.** Nine of the 22 are excluded by a guard on the FIRST line of their site — an `isHModel()` test, an earlier `PARAM_INVALID_IN_NEW_WORLD`, a `getBareErrorMessage` with no class key. None of those is visible from the code's name, its message text, or the ledger; all are visible in one grep per code. A remainder nobody has read reads as work, and most of this one was never work at all.
+
 ### C record — a whole message POSITION the checker had never read (2026-09-15)
 
 **Frozen change: the FORM-LINE suffixes' one gate.** `INVALID_FIELD_IN_PARAMETER` newly reported, extending `MESSAGE_PARAMETER_REFERENCE` ([KF279](KERNEL-FINDINGS.md#kf279) extended in place). No new family.

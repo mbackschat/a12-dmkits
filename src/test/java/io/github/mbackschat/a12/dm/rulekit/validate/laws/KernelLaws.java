@@ -299,6 +299,23 @@ final class KernelLaws {
      * message. Nine rows of the probe behind [KF198] were exactly that mistake, so this asserts the same
      * condition is admitted with a plain text before it reads the row.
      */
+    /**
+     * The same, on a condition the kernel REFUSES — where the control [messageVerdict] asserts cannot hold.
+     *
+     * One law needs this and only this: A12 answers a rule whose condition does not parse with an extra
+     * class when the message text contains a `$`, because it then needs the condition to resolve the
+     * parameters. The refused condition is the measurement's subject rather than its confound, so the
+     * control has to be the plain-message row of the same table instead of a precondition — which is why
+     * this entry point exists rather than a flag on the one above.
+     */
+    static String messageVerdictOnARefusedCondition(String json, String group, String errorField,
+            String condition, String locale, String messageText) {
+        ValidationResult verdict = VALIDATOR.check(json, message(group, errorField, condition, locale, messageText));
+        return verdict.ok() ? ADMITTED
+                : verdict.diagnostics().stream().map(d -> d.code().orElse("(no code: " + d.summary() + ")"))
+                        .collect(Collectors.joining(","));
+    }
+
     static String messageVerdict(String json, String group, String errorField, String condition,
             String locale, String messageText) {
         ValidationResult control = VALIDATOR.check(json, message(group, errorField, condition, locale, "plain"));
