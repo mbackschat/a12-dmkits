@@ -33,36 +33,34 @@ import kotlin.test.assertTrue
  * it resolves a reference ([DeclarationOrigin]) — comparing the text would measure a rewrite this module
  * deliberately does not perform.
  *
- * **A suspended case is an expectation, not a hole.** Where the checker does not implement a mount directive
- * it names the mount and reports no facts for it, so the row records which cases that is. Moving a case from
- * suspended to agreeing is exactly what implementing a directive looks like, and this table is where that
- * shows up.
+ * **Every case agrees, as of 2026-09-15, and that is a ceiling rather than a milestone.** While a mount
+ * directive was unimplemented the checker named the mount and reported no facts for it, and the row carried
+ * that sentence instead — so moving a row from suspended to agreeing is what implementing a directive looked
+ * like here, twice. With none left, a suspension appearing anywhere in this table is a regression, and the
+ * machinery that spells it out stays for the failure message.
  */
 class WorkspaceMatrixReconciliationTest {
 
     private val agrees = "agrees with the Kernel"
 
     @Test
-    fun everyMountedCaseEitherAgreesWithTheKernelOrNamesWhatItSuspended() {
+    fun everyMountedCaseAgreesWithTheKernelsOwnExpansion() {
         val expected = mapOf(
             "self-contained" to agrees,
             "local-typedef" to agrees,
             "include-contributed-typedef" to agrees,
             "imported-typedef-nested-single" to agrees,
             "imported-typedef-nested-model-root" to agrees,
-            "alias-with-exclusions" to "suspended at [/Permit/Inspection (excludeRules)]",
-            "rules-excluded-computation-retained" to "suspended at [/Permit/Inspection (excludeRules)]",
-            "computations-excluded-rule-retained" to
-                "suspended at [/Permit/Inspection (excludeComputations)]",
+            "alias-with-exclusions" to agrees,
+            "rules-excluded-computation-retained" to agrees,
+            "computations-excluded-rule-retained" to agrees,
             "model-root-multiple-groups" to agrees,
             "same-alias-mounted-twice" to agrees,
-            "nested-rules-excluded" to "suspended at [/Permit/Review (excludeRules)]",
-            // The two attachment cases differ in the directive that stops the checker first, not only in the
-            // path: this one mounts the template as MODEL_ROOT, its sibling as SINGLE_RG with an exclusion.
-            "attachment-rules-survive-outer-exclusion" to
-                "suspended at [/Permit/Documents (excludeRules)]",
-            "single-attachment-rules-survive-outer-exclusion" to
-                "suspended at [/Permit/Documents (excludeRules)]",
+            "nested-rules-excluded" to agrees,
+            // The two attachment cases mount the same template at DIFFERENT levels — MODEL_ROOT here, and
+            // SINGLE_RG in its sibling, where the shielding `usageType` transfers to the mount group itself.
+            "attachment-rules-survive-outer-exclusion" to agrees,
+            "single-attachment-rules-survive-outer-exclusion" to agrees,
             "single-provider-root-include" to agrees,
             "reference-family-single" to agrees,
             "reference-family-model-root" to agrees,
@@ -122,9 +120,9 @@ class WorkspaceMatrixReconciliationTest {
     }
 
     /**
-     * Which mount directive suspended the analysis. The full sentence is `WorkspaceMountTest`'s to hold; here
-     * a class is what keeps the table readable while still failing when two directives swap — the path alone
-     * cannot tell `excludeRules` from `excludeComputations` on the same mount.
+     * Which mount directive suspended the analysis — reached only by a regression now that every case
+     * agrees, and kept because a path alone cannot tell `excludeRules` from `excludeComputations`. The full
+     * sentence is `WorkspaceMountTest`'s to hold.
      */
     private fun directive(reason: String): String = when {
         "MODEL_ROOT" in reason -> "MODEL_ROOT"

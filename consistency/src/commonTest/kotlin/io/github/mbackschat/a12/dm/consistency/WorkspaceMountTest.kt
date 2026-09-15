@@ -278,24 +278,105 @@ class WorkspaceMountTest {
     }
 
     /**
-     * The two mount options this slice does not reproduce each suspend the analysis by name. Reading them as
-     * absent would place declarations A12 drops — a tree that is confidently wrong, which is worse than an
-     * incomplete answer. The plain mount is the control.
+     * A computation whose computed field does not resolve — the same one-defect instrument as [broken], and
+     * a heavier one: A12 does not BUILD such a model, so retaining it costs the whole report its verdict
+     * while excluding it leaves a model A12 checks in full.
+     *
+     * It carries a message because the slot family judges a computation's `errorMessage` exactly as a rule's,
+     * so omitting it would add two unrelated codes to every row.
+     */
+    private fun brokenComputation() =
+        """{"type":"Computation","id":"c0","name":"Total","Computation":{
+           "errorMessage":[{"locale":"en_US","text":"x"}],
+           "computedFieldRelPath":"../Missing","computationAlternatives":[{"operation":"42.00"}]}}"""
+
+    /** A rule whose error target does not resolve, so its presence in the fact base is one finding. */
+    private fun broken() = rule("Broken", "../Missing", "FieldFilled(Street)")
+
+    /**
+     * An excluded executable is not a silent element, it is ABSENT: A12 drops the provider's rules before it
+     * checks the expanded model (KF3), so nothing about that rule is A12's verdict and reporting its defect
+     * would be this checker speaking alone. The instrument is a provider rule that IS defective — an
+     * unresolvable error target — so retention and exclusion differ by one finding rather than by nothing.
+     *
+     * The unflagged mount is the control that the silence is the flag's work and not a mount that failed to
+     * expand, and the completed family says the same thing from the other side.
      */
     @Test
-    fun anUnimplementedMountOptionSuspendsInsteadOfGuessing() {
-        val address = provider("address", "Address", field("Street"))
-        val suspended = mapOf(
-            """"modelAlias":"addr","excludeRules":true""" to "excludeRules",
-            """"modelAlias":"addr","excludeComputations":true""" to "excludeComputations",
+    fun anExcludedExecutablesDefectIsNotReportedBecauseA12NeverChecksIt() {
+        val ruleProvider = provider("address", "Address", field("Street") + "," + broken())
+        val computationProvider = provider("address", "Address", field("Street") + "," + brokenComputation())
+        val excluded = mapOf(
+            """"modelAlias":"addr","excludeRules":true""" to ruleProvider,
+            """"modelAlias":"addr","excludeComputations":true""" to computationProvider,
         )
 
-        suspended.forEach { (body, named) ->
-            val report = check(host(mountBody = body), address)
-            assertEquals(emptySet(), report.checksCompleted, named)
-            assertTrue(report.gaps.any { it.at == "/Order/ShipTo" && named in it.reason }, "$named: ${report.gaps}")
+        excluded.forEach { (mountBody, source) ->
+            val report = check(host(mountBody = mountBody), source)
+            assertTrue(CheckFamily.CONDITION_REFERENCES in report.checksCompleted, report.gaps.toString())
+            assertEquals(emptyList(), report.findings, mountBody)
         }
-        assertTrue(CheckFamily.CONDITION_REFERENCES in check(host(), address).checksCompleted)
+        assertEquals(
+            listOf("MVK_ERROR_FIELD_MISSING"),
+            check(host(), ruleProvider).findings.map { it.code },
+            "without the flag the same provider's rule is checked",
+        )
+        assertEquals(
+            listOf("CK_MODEL_NOT_BUILDABLE"),
+            check(host(), computationProvider).findings.map { it.code },
+            "and without the flag its unresolvable computed field costs the model its verdict",
+        )
+    }
+
+    /**
+     * An `attachment`-usage group shields its subtree from an exclusion applied from above it, and the shield
+     * is read from the FINAL expanded `usageType` (KF3). Under `SINGLE_RG` that is the provider root's own
+     * slot, which REPLACES the mount's — so the second row is the one that separates the two readings: an
+     * `attachment` marker authored on the MOUNT group is cleared by a provider root that declares none, and
+     * supplies no shield. Both are locked against the Kernel for the placement half by the shared matrix's
+     * two attachment cases; what is measured here is which declaration the shield is read from.
+     */
+    @Test
+    fun anAttachmentProviderRootShieldsItsSubtreeAndAMountsOwnMarkerDoesNot() {
+        val shielded = source(
+            """
+            {"header":{"id":"address","locales":[{"code":"en_US"}]},"content":{"modelRoot":{"rootGroups":[
+              {"type":"Group","id":"g","name":"Address","Group":{"usageType":"attachment","elements":[
+                ${field("Street")},${broken()}
+              ]}}
+            ]}}}
+            """,
+        )
+        val plain = provider("address", "Address", field("Street") + "," + broken())
+        val markedMount = """"modelAlias":"addr","excludeRules":true,"usageType":"attachment""""
+
+        assertEquals(
+            listOf("MVK_ERROR_FIELD_MISSING"),
+            check(host(mountBody = """"modelAlias":"addr","excludeRules":true"""), shielded).findings.map { it.code },
+            "the provider root is an attachment, so its rules survive the outer exclusion",
+        )
+        assertEquals(
+            emptyList(),
+            check(host(mountBody = markedMount), plain).findings,
+            "the mount's own marker is replaced by the provider root's absent slot, so nothing is shielded",
+        )
+    }
+
+    /**
+     * The exclusion members are INCLUDE directives: on an ordinary group A12 accepts them inertly and the
+     * content survives (KF3), so a checker that read them wherever they appear would drop declarations A12
+     * checks — an under-report that hides real defects.
+     */
+    @Test
+    fun anOrdinaryGroupsExclusionFlagsAreInert() {
+        val address = provider("address", "Address", field("Street"))
+        val entry = host(
+            extra = """{"type":"Group","id":"g2","name":"Notes","Group":{"excludeRules":true,"elements":[
+                ${field("Text")},${rule("Broken", "../Missing", "FieldFilled(Text)")}
+            ]}}""",
+        )
+
+        assertEquals(listOf("MVK_ERROR_FIELD_MISSING"), check(entry, address).findings.map { it.code })
     }
 
     /**
@@ -304,22 +385,22 @@ class WorkspaceMountTest {
      */
     /**
      * Every non-Boolean exclusion value is FALSE to the Kernel and the content survives (KF3's coercion
-     * matrix, re-measured 2026-09-12 across these four), so none may suspend an include A12 expands in full.
-     * The QUOTED `"true"` is the row that matters: it reads as the flag being set and is not, so a check on
-     * the text rather than the type refuses a legal model.
+     * matrix, re-measured 2026-09-12 across these four), so none may drop a declaration A12 checks. The
+     * QUOTED `"true"` is the row that matters: it reads as the flag being set and is not, so a check on the
+     * text rather than the type silences findings about a rule A12 judges.
      */
     @Test
-    fun noMalformedExclusionValueSuspendsTheMount() {
-        val address = provider("address", "Address", field("Street"))
+    fun noMalformedExclusionValueDropsAnIncludedRule() {
+        val address = provider("address", "Address", field("Street") + "," + broken())
 
         listOf("\"true\"", "\"yes\"", "1", "{}").forEach { value ->
             val report = check(host(mountBody = """"modelAlias":"addr","excludeRules":$value"""), address)
-            assertTrue(CheckFamily.CONDITION_REFERENCES in report.checksCompleted, "$value: ${report.gaps}")
+            assertEquals(listOf("MVK_ERROR_FIELD_MISSING"), report.findings.map { it.code }, value)
         }
         assertEquals(
-            emptySet(),
-            check(host(mountBody = """"modelAlias":"addr","excludeRules":true"""), address).checksCompleted,
-            "the boolean IS the flag, and that one suspends",
+            emptyList(),
+            check(host(mountBody = """"modelAlias":"addr","excludeRules":true"""), address).findings,
+            "the boolean IS the flag, and that one drops the rule",
         )
     }
 

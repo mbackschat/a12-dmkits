@@ -331,7 +331,40 @@ private data class Scope(
      * failure the label exists to prevent.
      */
     val diagnosticLabel: String?,
+    /** The mount exclusions in force here — [MountExclusions.NONE] in the entry model, which mounts nothing. */
+    val exclusions: MountExclusions = MountExclusions.NONE,
 )
+
+/**
+ * The executables an enclosing mount drops, as they reach the declaration being collected.
+ *
+ * A12 applies `excludeRules`/`excludeComputations` to the mount's FULLY EXPANDED provider, so they
+ * ACCUMULATE down an include chain: a nested mount's content answers to its own flags and to every enclosing
+ * mount's ([KERNEL-FINDINGS KF3]). Filtering an expanded tree and declining to collect the declaration in
+ * the first place are the same filter one phase apart, and the second needs no second tree.
+ *
+ * An excluded declaration is ABSENT rather than silent, which is the distinction that matters here: A12 drops
+ * it before it checks the model, so its defects are not A12's verdicts and reporting them would be this
+ * checker speaking alone.
+ */
+private data class MountExclusions(val rules: Boolean, val computations: Boolean) {
+
+    fun excludes(kind: DeclaredKind): Boolean = when (kind) {
+        DeclaredKind.RULE -> rules
+        DeclaredKind.COMPUTATION -> computations
+        DeclaredKind.FIELD, DeclaredKind.GROUP -> false
+    }
+
+    /** These, plus whatever the mount at [body] declares. */
+    fun and(body: JsonObject) = MountExclusions(
+        rules = rules || body.flagIsOn("excludeRules"),
+        computations = computations || body.flagIsOn("excludeComputations"),
+    )
+
+    companion object {
+        val NONE = MountExclusions(rules = false, computations = false)
+    }
+}
 
 private class Collector(
     private val providers: Map<String, Admission.Admitted>,
@@ -362,6 +395,14 @@ private class Collector(
         if (id == null) {
             malformed(path, "a declaration must carry an `id`", scope)
         }
+        // An enclosing mount's exclusion drops this declaration from the model A12 checks, so it is not
+        // collected at all. The `id` above is still diagnosed first: A12's reader binds every declaration
+        // before expansion drops any of them, so a missing id makes the source unreadable either way.
+        DeclaredKind.of(kind)?.let { declared ->
+            if (scope.exclusions.excludes(declared)) {
+                return
+            }
+        }
         elements += DeclaredElement(path, name, kind, id, element, scope.origin)
         // The envelope is optional — the Kernel default-constructs the element when it is absent — but a
         // present one must be an object, since the Kernel binds it to the kind's type.
@@ -384,6 +425,13 @@ private class Collector(
      * The test is the Kernel's own idempotency guard: an alias with elements already beside it is an
      * ALREADY-EXPANDED mount, and its local elements win while the reference is silently ignored (KF3's
      * malformed-input matrix). So a group with elements is descended, whatever its alias says.
+     *
+     * An `attachment`-usage group SHIELDS its subtree from every exclusion applied from above it (KF3), which
+     * is why the shield is read HERE — from the body being descended — rather than from the mount group that
+     * named the provider. That placement is what reproduces the two halves A12 measures: a `SINGLE_RG`
+     * mount's slot is REPLACED by its provider root's, so an `attachment` marker on the mount is cleared by a
+     * provider that declares none, while the provider root's own marker shields the subtree that landed on
+     * the mount's path.
      */
     private fun descendGroup(body: JsonObject?, path: String, scope: Scope) {
         val elements = body?.get("elements")
@@ -391,7 +439,12 @@ private class Collector(
         if (!alias.isNullOrEmpty() && (elements == null || (elements as? JsonArray).isNullOrEmpty())) {
             return mount(alias, path, body, scope)
         }
-        each(elements, path, "$path's `elements`", scope) { collect(it, path, path, scope) }
+        val inner = if (body?.text("usageType") == ATTACHMENT_USAGE) {
+            scope.copy(exclusions = MountExclusions.NONE)
+        } else {
+            scope
+        }
+        each(elements, path, "$path's `elements`", inner) { collect(it, path, path, inner) }
     }
 
     /** Expand the model [alias] names into the mount group at [path], or state why it stayed unexpanded. */
@@ -407,10 +460,6 @@ private class Collector(
             "`includeLevel` carries a spelling A12's own reader refuses, so the model does not load at all " +
                 "and nothing here is a verdict about it",
         )
-        // The exclusions change which declarations survive the mount, so an unimplemented one suspends the
-        // analysis rather than producing a tree that is confidently wrong. Each is a named landing rather
-        // than an open question (KF3 has the semantics).
-        unsupportedMountOption(body)?.let { return unexpanded(path, alias, it) }
         val reference = scope.header.referenceForAlias(alias)
             ?: return unexpanded(path, alias, "no `header.modelReferences` entry declares this alias")
         if (reference in scope.visiting) {
@@ -448,6 +497,10 @@ private class Collector(
             shortNameFallbackAllowed = providerContent.declaresShortNameFallback(),
             diagnosticLabel = provider.source.diagnosticLabel,
             visiting = scope.visiting + reference,
+            // This mount's own exclusions on top of whatever it was mounted under. The mount group's own
+            // `usageType` is deliberately not consulted: A12 filters the mounted CHILDREN, so the shield is
+            // always some descended group's, never the mount's (KF3).
+            exclusions = scope.exclusions.and(body),
         )
         when (level) {
             IncludeLevel.SINGLE_RG -> mountSingleRoot(alias, path, roots, target)
@@ -509,28 +562,15 @@ private class Collector(
         private val shortNameFallbackAllowed: Boolean,
         private val diagnosticLabel: String?,
         private val visiting: Set<String>,
+        private val exclusions: MountExclusions,
     ) {
         fun scope(mountedPrefixes: Map<String, String>) = Scope(
             header = header,
             origin = DeclarationOrigin(reference, mountedPrefixes, shortNameFallbackAllowed),
             visiting = visiting,
             diagnosticLabel = diagnosticLabel,
+            exclusions = exclusions,
         )
-    }
-
-    /**
-     * Why this mount is beyond the implemented include semantics, or null when it is the plain case.
-     *
-     * Each of these is measured Kernel behaviour ([KERNEL-FINDINGS KF3]) that this slice does not yet
-     * reproduce — not an unknown. Reading them as absent would place declarations A12 drops, so the analysis
-     * is suspended instead.
-     */
-    private fun unsupportedMountOption(body: JsonObject): String? = when {
-        body.flagIsOn("excludeRules") ->
-            "`excludeRules` drops the provider's rules before mounting and is not applied here"
-        body.flagIsOn("excludeComputations") ->
-            "`excludeComputations` drops the provider's computations before mounting and is not applied here"
-        else -> null
     }
 
     private fun unexpanded(path: String, alias: String, reason: String) {
@@ -584,6 +624,9 @@ private class Collector(
 }
 
 private fun JsonArray?.isNullOrEmpty(): Boolean = this == null || this.isEmpty()
+
+/** The `usageType` whose group shields its subtree from an outer mount exclusion (KF3). */
+private const val ATTACHMENT_USAGE = "attachment"
 
 /** The two levels A12's `IncludeLevel` enum admits, each placing the provider's roots differently (KF3). */
 private enum class IncludeLevel {
