@@ -47,6 +47,12 @@ import io.github.mbackschat.a12.dm.consistency.syntax.splitAtIn
  * group and `MVK_WILDCARDS_REQUIRED` where it sits inside. Measured by the corpus mutation that removes a
  * star from an aggregate operand, which is exactly the shape a lone-field arity reading would claim.
  *
+ * **Nor does a FILTERED operand, whatever it crosses**, for the same reason one layer along:
+ * `checkFilterCondition` judges it while the list is built, so a lone filtered field draws the filter's
+ * `MVK_WILDCARDS_REQUIRED` and never the arity class. That one is not a repetition shape at all — a lone
+ * filtered field on a NON-repeating path draws it too — so the rule above does not cover it, and the two
+ * were reported together until it was measured (2026-09-15, [filteredOperandKindFindings]).
+ *
  * **Silent wherever a gate ahead of the arity one answers**: a repeated entity is `MVK_DUPLICATE_PARAM1`, a
  * root group `MVK_ROOT_GROUP_REFERENCED`, a category selector `MVK_CATEGORY_NOT_ALLOWED`, and an entity no
  * reader can resolve `MVK_INVALID_ENTITY` — all of them built or checked while the reference list is, before
@@ -59,13 +65,16 @@ fun PreparedModel.entityListArityFindings(): List<Finding> {
     if (laws.isEmpty()) {
         return emptyList()
     }
+    val filterKeyword = keywords[HAVING]
     return elements.mapNotNull { element ->
         val body = element.body ?: return@mapNotNull null
         val group = element.path.substringBeforeLast('/', missingDelimiterValue = "")
         conditionTexts(element.kind, body).firstNotNullOfOrNull { (member, text) ->
             callsIn(text, conditionLanguage, syntaxEntryOf(member))
                 .firstNotNullOfOrNull { call ->
-                    laws[call.operator]?.let { law -> arityFinding(call, law, group, element, member) }
+                    laws[call.operator]?.let { law ->
+                        arityFinding(call, law, filterKeyword, group, element, member)
+                    }
                 }
         }
     }
@@ -113,13 +122,24 @@ private val ARITY_OF = mapOf(
     "NumberOfFilledGroups" to ArityLaw.MORE_THAN_ONE_GROUP,
 )
 
+private const val HAVING = "Having"
+
 private fun PreparedModel.arityFinding(
     call: ConditionCall,
     law: ArityLaw,
+    filterKeyword: String?,
     declaringGroup: String,
     element: DeclaredElement,
     member: String,
 ): Finding? {
+    // A FILTERED operand is judged by `checkFilterCondition` while the reference list is built, so the call
+    // never reaches its arity gate: an unstarred one draws the filter's own `MVK_WILDCARDS_REQUIRED` (or the
+    // iteration gate's class where it crosses a repetition), and naming the arity class beside it would add a
+    // second, wrong repair. Measured 2026-09-15 on a lone filtered field, which a lone-field arity reading
+    // claims outright (`rulekit.validate.laws.AggregateSlotLawsTest`).
+    if (call.operands.any { operand -> operand.clauses.any { it.keyword == filterKeyword } }) {
+        return null
+    }
     // `NumberOfValueInFields` puts its constant ahead of an infix `In`, so the entity list is what follows
     // it; every other carrier here lists its entities as the call's own operands.
     val texts = call.splitAtIn()?.second ?: call.operands.map { it.base ?: it.text }

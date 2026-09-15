@@ -8780,7 +8780,9 @@ The match is the WHOLE name and case-insensitive, and it is the root carrier's l
 | a GROUP carrying a semantic index — BOTH defects | `MVK_WILDCARDS_REQUIRED` |
 | a disallowed construct in the filter BODY | `MVK_DISALLOWED_CONSTRUCT_IN_FILTER_CONDITION` |
 
-**The code's own name is misleading, and that is the first load-bearing row.** `MVK_WILDCARDS_REQUIRED` is NOT what a plainly unstarred filtered field draws — A12's iteration gate outruns this chain and answers `MVK_NO_WILDCARD`. The class is reachable only where the operand carries a semantic index, which the last two rows show holds with a `*` present in the text: the index spelling consumes the wildcard, so `hasWildCards()` is false despite the star.
+**The code's own name is misleading, and that is the first load-bearing row.** `MVK_WILDCARDS_REQUIRED` is NOT what a plainly unstarred filtered field draws — A12's iteration gate outruns this chain and answers `MVK_NO_WILDCARD`. The class is also reachable where the operand carries a semantic index, which the last two rows show holds with a `*` present in the text: the index spelling consumes the wildcard, so `hasWildCards()` is false despite the star.
+
+*Corrected 2026-09-15 ([KF424](#kf424)): the first sentence's measurement stands and its reach did not. Every row of this grid sits on a rule whose error field is outside every repetition, so "the iteration gate outruns this chain" was true of the whole SET rather than of the unstarred operand — on a rule that iterates, and on an operand that crosses no repetition at all, that gate is satisfied and a plainly unstarred filtered field does draw `MVK_WILDCARDS_REQUIRED`. The semantic index is therefore one of two routes to the class, not the only one; "only" above is amended to "also".*
 
 **The order is measured, and the measurement contradicts the source order — the second load-bearing row.** Reading the method predicts that an operand which is both a group and indexed draws the kind class, `checkIsField` being written first. A12 answers `MVK_WILDCARDS_REQUIRED`. A checker built by transcribing the chain in its written order names the wrong class there, which is why the portable family tests the index before the kind (`CheckFamily.FILTERED_OPERAND_KIND`). *(Why the index moves the verdict is a HYPOTHESIS — presumably the indexed ref is no longer the group — and nothing here rests on it: the rows are what the family encodes.)*
 
@@ -9139,3 +9141,27 @@ Reported by the portable checker (`CheckFamily.TABLE_ENUM_OPERAND`), which emits
 Reported by the portable checker (`CheckFamily.DATE_CONSTRUCTION_SLOTS`, whose KDoc had carried the same wrong claim).
 
 *Locked by:* `rulekit.validate.laws.DateConstructionSlotLawsTest`, mirrored by `consistency.DateConstructionSlotsTest`.
+
+## §11 supplement — which class an unstarred aggregate operand draws is decided by whether the RULE iterates (measured, 2026-09-15) <a id="kf424"></a>
+
+> Fold: not-foldable — it corrects a published silence whose stated basis was a constant of the grid that measured it.
+
+[KF358](#kf358) recorded that a plainly unstarred field operand under a `Having` filter is `MVK_NO_WILDCARD` and never `MVK_WILDCARDS_REQUIRED`, "A12's iteration gate outruns this chain". The measurement was right and the claim was too wide: every row of that grid sat on a rule whose error field is outside every repetition, so "does not iterate" was a constant of the set rather than one of its variables. Moving it splits the row in two.
+
+| the operand, on an aggregate | rule does NOT iterate | rule ITERATES |
+|---|---|---|
+| unstarred, with a `Having` filter | `MVK_NO_WILDCARD` | `MVK_WILDCARDS_REQUIRED` |
+| unstarred, no filter | `MVK_NO_WILDCARD` | `MVK_PARAMSIZE_INVALIDN` |
+| starred, with a filter — the control | ADMITTED | ADMITTED |
+
+All four cells REJECT, so the axis chooses which gate answers rather than whether one does. Off an iteration the unstarred read crosses a repetition the rule does not sit in and the reference gate answers for both columns; on an iterating rule that gate is satisfied — the read is a legal per-row one — and what remains is the aggregate having a single value to aggregate, reported by the filter's star demand where there is a filter and by the operator's arity gate where there is not.
+
+**The filter's class is not the iterating column's own.** A NON-repeating operand with a filter draws `MVK_WILDCARDS_REQUIRED` off an iteration too — there being no repetition for the reference gate to object to first — which is what keeps the account above a reading rather than a restatement of the table. It also means a filtered lone field never reaches its operator's arity gate at all, on any carrier.
+
+**A third iteration carrier exists and a containment test cannot see it.** A level the target iterates JOINTLY with — parallel, both ends keyed on an index field of the same name and type — satisfies the iteration gate exactly as a contained one does, and the unstarred filtered operand there draws `MVK_WILDCARDS_REQUIRED`. Measured on its own fixture rather than transferred, with a sibling keyed on another name as the control (`MVK_ERROR_FIELD_INVALID_INDEX`).
+
+**How the defect was found is the reusable part.** The differential lane had the checker silent on seven rejected mutants, all `MVK_WILDCARDS_REQUIRED`; reproducing the shape on the shared order fixture produced `MVK_NO_WILDCARD` instead, and that disagreement — not a source read — is what exposed the unnamed constant. A silence pinned BY CLASS is what made the seven visible as one shape; the count they replaced said only that a gap existed.
+
+Reported by the portable checker (`CheckFamily.FILTERED_OPERAND_KIND`, which now asks the iteration walk instead of the star; `OPERAND_REPETITION_SCOPE` gained the filtered operand's base, and `ENTITY_LIST_ARITY` yields on any filtered operand).
+
+*Locked by:* `rulekit.validate.laws.AggregateSlotLawsTest`, mirrored by `consistency.AggregateOperandIterationTest`.

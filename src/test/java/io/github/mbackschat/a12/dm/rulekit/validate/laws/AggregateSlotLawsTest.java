@@ -9,6 +9,8 @@ import java.util.Map;
 import org.junit.jupiter.api.Test;
 
 import io.github.mbackschat.a12.dm.Fixtures;
+import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft;
+import io.github.mbackschat.a12.dm.modelkit.FieldKind;
 import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Condition;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Dsl;
@@ -112,6 +114,147 @@ class AggregateSlotLawsTest {
         expected.put("a STARRED operand under the outer marker", "MVK_NO_WILDCARDS_ALLOWED");
         expected.put("a STARRED operand on another aggregate of the family", "MVK_NO_WILDCARDS_ALLOWED");
         assertEquals(expected, actual, "Having filter gates");
+    }
+
+    /**
+     * The OPERAND axis of the same construct, on BOTH iteration carriers — the variable that picks the class.
+     *
+     * <p>The differential lane found the checker silent on seven rejected mutants, every one an
+     * `unstar-a-condition` mutation of an aggregate carrying a filter, with A12 answering
+     * {@code MVK_WILDCARDS_REQUIRED}. Reproducing that on the shared order fixture gave
+     * {@code MVK_NO_WILDCARD} instead — and the discriminator turned out not to be the operand or the filter
+     * but whether the RULE iterates, which its error field decides. Every other row in this class sits on a
+     * non-iterating rule, so the whole set shared a constant nobody had named; these rows move it.
+     *
+     * <table>
+     * <caption>measured: which class an unstarred aggregate operand draws</caption>
+     * <tr><th></th><th>rule does NOT iterate</th><th>rule ITERATES</th></tr>
+     * <tr><td>unstarred operand, with a filter</td><td>{@code MVK_NO_WILDCARD}</td>
+     *     <td>{@code MVK_WILDCARDS_REQUIRED}</td></tr>
+     * <tr><td>unstarred operand, no filter</td><td>{@code MVK_NO_WILDCARD}</td>
+     *     <td>{@code MVK_PARAMSIZE_INVALIDN}</td></tr>
+     * </table>
+     *
+     * <p>So all four cells REJECT, and the axis chooses which gate gets to answer rather than whether one
+     * does. The reading the grid supports: off an iteration the unstarred read crosses a repetition the rule
+     * does not sit in, and the reference gate answers first for both columns; on an iterating rule that gate
+     * is satisfied — the read is a legal per-row one — and what is left is the aggregate having a single
+     * value to aggregate, which the filter's star demand reports when there is a filter and the parameter
+     * gate reports when there is not. The last row is what keeps that a reading rather than a restatement: a
+     * NON-repeating operand draws the filter's class even off an iteration, so {@code MVK_WILDCARDS_REQUIRED}
+     * is not the iterating column's own class.
+     *
+     * <p>Two of the four classes the differential lane lists as silent are in this table, which is why the
+     * grid is worth more than the row that prompted it.
+     */
+    @Test
+    void whichClassAnUnstarredAggregateOperandDrawsOnEachIterationCarrier() {
+        Map<String, String> actual = new LinkedHashMap<>();
+        actual.put("starred operand, filter, rule does not iterate — the control",
+                aggregate("Sum(Items*/Count Having [Items/Sku] == \"X\")"));
+        actual.put("unstarred operand, filter, rule does not iterate",
+                aggregate("Sum(Items/Count Having [Items/Sku] == \"X\")"));
+        actual.put("unstarred operand, NO filter, rule does not iterate", aggregate("Sum(Items/Count)"));
+        actual.put("unstarred operand, filter, rule ITERATES",
+                iterating("Sum(Items/Count Having [Items/Sku] == \"X\")"));
+        actual.put("unstarred operand, NO filter, rule ITERATES", iterating("Sum(Items/Count)"));
+        actual.put("starred operand, filter, rule ITERATES — the control",
+                iterating("Sum(Items*/Count Having [Items/Sku] == \"X\")"));
+        actual.put("unstarred operand, filter, rule ITERATES, another aggregate of the family",
+                iterating("MaxValue(Items/Count Having [Items/Sku] == \"X\")"));
+        actual.put("a NON-repeating operand with a filter, rule does not iterate",
+                aggregate("Sum(Quantity Having [Items/Sku] == \"X\")"));
+
+        Map<String, String> expected = new LinkedHashMap<>();
+        expected.put("starred operand, filter, rule does not iterate — the control", KernelLaws.ADMITTED);
+        // Off an iteration the reference gate answers for both filter columns, so the filter is not the
+        // variable here at all — the row below is what establishes that.
+        expected.put("unstarred operand, filter, rule does not iterate", "MVK_NO_WILDCARD");
+        expected.put("unstarred operand, NO filter, rule does not iterate", "MVK_NO_WILDCARD");
+        // On an ITERATING rule the reference gate is satisfied and the aggregate's own demand is what is
+        // left — reported by the filter's star demand with a filter, by the parameter gate without one.
+        expected.put("unstarred operand, filter, rule ITERATES", "MVK_WILDCARDS_REQUIRED");
+        expected.put("unstarred operand, NO filter, rule ITERATES", "MVK_PARAMSIZE_INVALIDN");
+        expected.put("starred operand, filter, rule ITERATES — the control", KernelLaws.ADMITTED);
+        expected.put("unstarred operand, filter, rule ITERATES, another aggregate of the family",
+                "MVK_WILDCARDS_REQUIRED");
+        // The class is the FILTER's, not the iterating column's: a non-repeating operand draws it off an
+        // iteration too, because there is no repetition for the reference gate to object to first.
+        expected.put("a NON-repeating operand with a filter, rule does not iterate", "MVK_WILDCARDS_REQUIRED");
+        assertEquals(expected, actual, "which class an unstarred aggregate operand draws");
+    }
+
+    /**
+     * The third iteration carrier: a level the target iterates JOINTLY with, rather than contains.
+     *
+     * <p>The grid above has two columns because a level is either addressed by the target's own chain or it
+     * is not. A12 has a third answer — `checkParallelIteration` admits a PARALLEL level when both branches
+     * resolve to one index field of the same name and type — and a family keyed on containment alone would
+     * call that column by the wrong name. It matters here because the filter gate is what runs once the
+     * iteration gate is satisfied, so the question is whether a JOINT level satisfies it the way a contained
+     * one does.
+     *
+     * <p>It does: the unstarred filtered operand draws the same {@code MVK_WILDCARDS_REQUIRED}. Without the
+     * measurement this cell would have had to stay silent, since a containment test cannot see it.
+     */
+    @Test
+    void whetherAJointlyIteratedLevelSatisfiesTheIterationGateTheSameWay() {
+        Map<String, String> actual = new LinkedHashMap<>();
+        actual.put("unstarred operand on a JOINTLY iterated level, with a filter",
+                joint("Sum(Shipments/ShipmentCost Having [Shipments/ShipmentKey] == \"K\")"));
+        actual.put("the same, starred — the control", joint("Sum(Shipments*/ShipmentCost)"));
+        actual.put("an operand on a level the target neither contains nor iterates jointly with",
+                joint("Sum(Refunds/RefundAmount Having [Refunds/RefundKey] == \"K\")"));
+
+        Map<String, String> expected = new LinkedHashMap<>();
+        // The joint level satisfies the iteration gate exactly as a contained one does, so the filter's own
+        // demand is what answers — the same class as the grid's iterating column.
+        expected.put("unstarred operand on a JOINTLY iterated level, with a filter", "MVK_WILDCARDS_REQUIRED");
+        expected.put("the same, starred — the control", KernelLaws.ADMITTED);
+        // Refunds keys on its own name, so the two branches resolve different index fields and the
+        // iteration gate answers first — the control proving the row above is the JOINT-ness, not the filter.
+        expected.put("an operand on a level the target neither contains nor iterates jointly with",
+                "MVK_ERROR_FIELD_INVALID_INDEX");
+        assertEquals(expected, actual, "whether a jointly iterated level satisfies the iteration gate");
+    }
+
+    /**
+     * A fulfilment sheet whose {@code Shipments} and {@code Invoices} carry the SAME index field, so a target
+     * in one iterates jointly with a read of the other; {@code Refunds} keys on its own name and does not.
+     */
+    private static final String FULFILMENT = DocumentModelDraft.named("fulfilment").locale("en_US")
+            .rootGroup("Fulfilment", f -> f
+                    .group("Shipments", s -> s.repeatable(20).indexField("ShipmentKey")
+                            .field("ShipmentKey", FieldKind.STRING)
+                            .numberField("ShipmentCost", n -> n.fractionDigits(0)))
+                    .group("Invoices", i -> i.repeatable(20).indexField("ShipmentKey")
+                            .field("ShipmentKey", FieldKind.STRING)
+                            .numberField("InvoiceAmount", n -> n.fractionDigits(0)))
+                    .group("Refunds", r -> r.repeatable(20).indexField("RefundKey")
+                            .field("RefundKey", FieldKind.STRING)
+                            .numberField("RefundAmount", n -> n.fractionDigits(0))))
+            .build().toJson();
+
+    /**
+     * One aggregate call on a rule whose error field sits in a level PARALLEL to the operand's.
+     *
+     * <p>Guarded by a read of the error field itself, exactly as the two carriers above are: without it a
+     * call that never names the target draws {@code MVK_ERROR_FIELD_NOT_REFERENCED} and the row measures the
+     * guard rather than the gate. That is what the starred control did on first run.
+     */
+    private static String joint(String call) {
+        return KernelLaws.verdictModel(FULFILMENT, "/Fulfilment", "../Invoices/InvoiceAmount",
+                "FieldFilled(Invoices/InvoiceAmount) And " + call + " > 0");
+    }
+
+    /** One aggregate call on a rule that does NOT iterate — its error field sits outside every repetition. */
+    private static String aggregate(String call) {
+        return KernelLaws.orderVerdict("/Order", "../Quantity", "FieldFilled(Quantity) And " + call + " > 0");
+    }
+
+    /** The same call on a rule that DOES iterate, its error field being inside the repeatable group. */
+    private static String iterating(String call) {
+        return KernelLaws.orderVerdict("/Order", "../Items/Count", "FieldFilled(Quantity) And " + call + " > 0");
     }
 
     /** The COMPLETE class list for one {@code Having} filter body, the wrapper held constant. */

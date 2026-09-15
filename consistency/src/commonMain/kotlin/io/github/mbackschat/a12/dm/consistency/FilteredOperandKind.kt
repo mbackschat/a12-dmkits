@@ -21,15 +21,26 @@ import io.github.mbackschat.a12.dm.consistency.syntax.callsIn
  * draws the kind class starred or not, and an indexed operand draws the wildcard class starred or not — in
  * the latter case with a `*` present in the text, so the semantic-index spelling consumes it.
  *
- * **The one silence that matters: a plainly UNSTARRED field operand is `MVK_NO_WILDCARD`, not
- * `MVK_WILDCARDS_REQUIRED`.** A12's iteration gate outruns this chain there. That is the shape the code's
- * name predicts and the measurement denies, and naming the wildcard-required class on it would send the
- * author to a repair for a gate that never fired.
+ * **An unstarred FIELD operand draws this class exactly when the ITERATION gate has nothing to say.** The
+ * first measurement of it was taken on a rule that does not iterate, where A12's iteration gate outruns the
+ * whole chain and answers `MVK_NO_WILDCARD` — recorded then as a flat silence, because every row of that
+ * grid shared a non-iterating carrier nobody had named as a variable. Moving it shows the silence is
+ * conditional: on a rule whose error field sits INSIDE the repetition, and on an operand that crosses no
+ * repetition at all, the iteration gate is satisfied and this gate is what reports
+ * (`rulekit.validate.laws.AggregateSlotLawsTest.whichClassAnUnstarredAggregateOperandDrawsOnEachIterationCarrier`,
+ * measured 2026-09-15).
+ *
+ * So the condition is not containment but whatever the iteration walk itself answers, which is why this asks
+ * [levelClassOf] rather than re-deriving it: a level the target iterates JOINTLY with — parallel, both ends
+ * keyed alike — satisfies that gate too and draws this class, and a containment test would have called that
+ * cell silent. That row was measured rather than reasoned, on its own fixture, for the same reason the
+ * carrier above had to be.
  */
 fun PreparedModel.filteredOperandKindFindings(): List<Finding> {
     val keywords = CONDITION_OPERATOR_KEYWORDS[conditionLanguage] ?: return emptyList()
     val filterKeyword = keywords[HAVING] ?: return emptyList()
     val indexKeyword = keywords[SEMANTIC_INDEX]
+    val targets = declaredReferences().associateBy { it.declaredAt }
     return elements.flatMap { element ->
         val body = element.body ?: return@flatMap emptyList()
         val group = element.path.substringBeforeLast('/', missingDelimiterValue = "")
@@ -39,10 +50,26 @@ fun PreparedModel.filteredOperandKindFindings(): List<Finding> {
                 .filter { operand -> operand.clauses.any { it.keyword == filterKeyword } }
                 .mapNotNull { operand ->
                     operandFinding(operand.base, operand.clauses.any { it.keyword == indexKeyword },
-                        group, element, member)
+                        group, iterationScopeOf(targets[element.path], group), element, member)
                 }
         }
     }
+}
+
+/**
+ * The group whose repetitions the declaration's target is addressed by, when this reader may use it.
+ *
+ * Null wherever the iteration walk is not this declaration's to run: a target that is not a FIELD, and one
+ * outside the declaring group, where `MVK_ERROR_FIELD_NOT_IN_RULEGROUP` answers at the top of the same
+ * method and no later gate is reached. Null makes the wildcard gate below silent, which is the safe
+ * direction: it can only under-report a class A12 states.
+ */
+private fun PreparedModel.iterationScopeOf(declared: DeclaredReference?, declaringGroup: String): String? {
+    val target = (declared?.target as? Reference.Resolved)?.path ?: return null
+    if (!(target == declaringGroup || target.startsWith("$declaringGroup/"))) {
+        return null
+    }
+    return groupOfTargetField(target)
 }
 
 private const val HAVING = "Having"
@@ -53,6 +80,7 @@ private fun PreparedModel.operandFinding(
     base: String?,
     indexed: Boolean,
     declaringGroup: String,
+    targetGroup: String?,
     element: DeclaredElement,
     member: String,
 ): Finding? {
@@ -66,19 +94,39 @@ private fun PreparedModel.operandFinding(
     }
     val path = base ?: return null
     val resolved = resolveEntity(declaringGroup, path.replace("*", ""), element.origin)
-    if (resolved !is Reference.Resolved || !isGroupPath(resolved.path)) {
+    if (resolved !is Reference.Resolved) {
+        return null
+    }
+    if (isGroupPath(resolved.path)) {
+        return finding(
+            "MVK_NO_GROUPS_ALLOWED",
+            "in `$member`: `Having` filters the group `${resolved.path}` — the filter selects rows by a " +
+                "FIELD of the repetition, so name a field of that group instead",
+            element.path,
+        )
+    }
+    if (OUTER_MARKER in path || '*' in path || !isFieldPath(resolved.path) || targetGroup == null) {
+        return null
+    }
+    // The iteration gate runs at the top of the same method and answers for the whole reference, so this
+    // gate is only reached where that walk has nothing to say — the condition measured on all three
+    // iteration carriers rather than read off the chain's written order.
+    if (levelClassOf(path, declaringGroup, targetGroup, element) != null) {
         return null
     }
     return finding(
-        "MVK_NO_GROUPS_ALLOWED",
-        "in `$member`: `Having` filters the group `${resolved.path}` — the filter selects rows by a FIELD " +
-            "of the repetition, so name a field of that group instead",
+        "MVK_WILDCARDS_REQUIRED",
+        "in `$member`: `Having` filters `$path`, which reads a single value — a filter selects ROWS, so " +
+            "star the repetition you mean to filter",
         element.path,
     )
 }
 
 private fun PreparedModel.isGroupPath(path: String): Boolean =
     elements.any { it.path == path && it.declaredKind == DeclaredKind.GROUP }
+
+private fun PreparedModel.isFieldPath(path: String): Boolean =
+    elements.any { it.path == path && it.declaredKind == DeclaredKind.FIELD }
 
 private fun finding(code: String, explain: String, at: String): Finding =
     Finding(FindingCategory.A12_CONSTRAINT, FindingSeverity.ERROR, code, explain, at)

@@ -112,9 +112,15 @@ class CheckerClassAgreementTest {
      * which family to widen, and it moves in both directions, so a family losing reach is a regression here
      * rather than an unnoticed drop in a number nobody reads.
      *
-     * Every one of these four is a class the checker ALREADY states elsewhere, so none of them is a missing
+     * Every one of these is a class the checker ALREADY states elsewhere, so none of them is a missing
      * family — each is a shape an existing family does not reach. That is why the silence direction is
      * cheaper work than it looks, and why it is the plan's row 7 remainder rather than a new row.
+     *
+     * `MVK_WILDCARDS_REQUIRED` ×7 came off the list on 2026-09-15, and how it did is the method rather than
+     * the outcome: all seven were one mutation kind on one shape, and reproducing that shape on a shared
+     * fixture gave a DIFFERENT class, because every row of the grid that owns it sat on a rule that does not
+     * iterate — a constant nobody had named. Whether the rule iterates is what picks the class, so the
+     * family now asks the iteration walk instead of the star ([filteredOperandKindFindings]).
      *
      * Measured 2026-09-15.
      */
@@ -122,7 +128,6 @@ class CheckerClassAgreementTest {
         "MVK_ERROR_FIELD_NOT_REFERENCED" to 3,
         "MVK_NO_WILDCARD" to 4,
         "MVK_PARAMSIZE_INVALIDN" to 2,
-        "MVK_WILDCARDS_REQUIRED" to 7,
     )
 
     @Test

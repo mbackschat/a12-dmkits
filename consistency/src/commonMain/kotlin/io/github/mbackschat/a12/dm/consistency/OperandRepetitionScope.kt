@@ -1,6 +1,7 @@
 package io.github.mbackschat.a12.dm.consistency
 
 import io.github.mbackschat.a12.dm.consistency.syntax.CONDITION_OPERATOR_KEYWORDS
+import io.github.mbackschat.a12.dm.consistency.syntax.callsIn
 import io.github.mbackschat.a12.dm.consistency.syntax.isRuleContext
 import io.github.mbackschat.a12.dm.consistency.syntax.namesKeyword
 import io.github.mbackschat.a12.dm.consistency.syntax.referencesIn
@@ -41,12 +42,17 @@ import kotlinx.serialization.json.contentOrNull
  * than transferred ([KF212], `ComputationDeclaringGroupLawsTest`) — the computed field takes the error
  * field's role, and the declaring group is not a variable in it.
  *
- * **Silent on a text carrying a `Having` filter or a semantic index at all, which is an UNDER-REPORT and
- * not a partition.** A filter body's references are judged against the FILTERED entity rather than the
- * rule's target — that walk is [filterBodyGateFindings]' — and this reader sees one flat reference list
- * with no way to tell the two apart, so it judges neither. The price is that the operand's OWN levels go
- * unjudged too: an unkeyed parallel level under a filtered operand is `MVK_NO_WILDCARD` and nothing here
- * names it (measured 2026-09-14, `rulekit.validate.laws.FilteredEntityParallelIterationLawsTest`).
+ * **On a text carrying a `Having` filter this reads the operand BASES only.** A filter body's references are
+ * judged against the FILTERED entity rather than the rule's target — that walk is [filterBodyGateFindings]' —
+ * and the flat reference list cannot tell the two apart, so a filtered text is read through its calls
+ * instead, where the base is exactly the operand without its clauses and is judged by this walk like any
+ * other reference. Until 2026-09-15 the whole text was skipped, which threw the base away with the body and
+ * left an unkeyed parallel level under a filtered operand unnamed (measured 2026-09-14,
+ * `rulekit.validate.laws.FilteredEntityParallelIterationLawsTest`; the reach is
+ * `rulekit.validate.laws.AggregateSlotLawsTest.whichClassAnUnstarredAggregateOperandDrawsOnEachIterationCarrier`).
+ *
+ * **Still silent on a semantic index**, where the spelling consumes the star and an indexed reference names
+ * one value rather than a repetition — a shape this walk has not been measured on.
  *
  * **Silent where `MVK_ERROR_FIELD_NOT_IN_RULEGROUP` answers first.** That gate runs at the top of the same
  * method, on the first iterating level, and fires whenever the target lies outside the declaring group —
@@ -55,7 +61,8 @@ import kotlinx.serialization.json.contentOrNull
  */
 fun PreparedModel.operandRepetitionScopeFindings(): List<Finding> {
     val keywords = CONDITION_OPERATOR_KEYWORDS[conditionLanguage] ?: return emptyList()
-    val unjudgeable = setOfNotNull(keywords[HAVING], keywords[SEMANTIC_INDEX])
+    val unjudgeable = setOfNotNull(keywords[SEMANTIC_INDEX])
+    val filterKeyword = setOfNotNull(keywords[HAVING])
     val targets = declaredReferences().associateBy { it.declaredAt }
     return elements.mapNotNull { element ->
         val body = element.body ?: return@mapNotNull null
@@ -69,8 +76,12 @@ fun PreparedModel.operandRepetitionScopeFindings(): List<Finding> {
             if (namesKeyword(text, unjudgeable) != null || OUTER_MARKER in text) {
                 return@firstNotNullOfOrNull null
             }
-            referencesIn(text, conditionLanguage)
-                .filterNot { isRuleContext(it, conditionLanguage) }
+            val read = if (namesKeyword(text, filterKeyword) != null) {
+                filteredOperandBases(text, member, filterKeyword)
+            } else {
+                referencesIn(text, conditionLanguage)
+            }
+            read.filterNot { isRuleContext(it, conditionLanguage) }
                 .firstNotNullOfOrNull { written ->
                     levelClassOf(written, declaringGroup, targetGroup, element)
                         ?.let { scopeFinding(it, written, target, element, member) }
@@ -78,6 +89,30 @@ fun PreparedModel.operandRepetitionScopeFindings(): List<Finding> {
         }
     }
 }
+
+/**
+ * The bases of the FILTERED operands in [text] — the only references a filtered text exposes to THIS walk.
+ *
+ * A base is the operand with its clauses cut off, so a filter body's leaves never appear here: they are
+ * judged against the filtered entity by [filterBodyGateFindings] instead. Restricting to the operands that
+ * actually carry a filter is what keeps them out — `callsIn` returns the calls NESTED IN a filter body too,
+ * and taking every call's operands made a `RepetitionNotUnique` leaf inside a filter read as an operand of
+ * the rule, which drew a second class on a body the construct gate already refuses. Everything else in a
+ * filtered text is left unjudged, an under-report this family did not previously make either.
+ *
+ * Anything that is not a bare entity spec is dropped rather than reduced to the reference inside it, for the
+ * reason [isBareEntitySpec] carries: a reader that took the `Qty` out of `{[Qty] + 1}` would make a claim
+ * about a value A12 computes from the whole expression.
+ */
+private fun PreparedModel.filteredOperandBases(
+    text: String,
+    member: String,
+    filterKeyword: Set<String>,
+): List<String> = callsIn(text, conditionLanguage, syntaxEntryOf(member))
+    .flatMap { call -> call.operands }
+    .filter { operand -> operand.clauses.any { it.keyword in filterKeyword } }
+    .mapNotNull { it.base }
+    .filter { isBareEntitySpec(it) }
 
 private const val HAVING = "Having"
 
@@ -93,7 +128,7 @@ internal fun PreparedModel.groupOfTargetField(target: String): String? = element
  *
  * @return null wherever the reference is admitted, or is a shape another family owns.
  */
-private fun PreparedModel.levelClassOf(
+internal fun PreparedModel.levelClassOf(
     written: String,
     declaringGroup: String,
     targetGroup: String,
