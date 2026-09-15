@@ -32,7 +32,7 @@ package io.github.mbackschat.a12.dm.consistency.syntax
 private val MESSAGE_TERMINALS = setOf("BaseYear", "Referenzjahr")
 
 internal fun plainMessageParameters(text: String): List<String> =
-    messageParameterBodies(text).mapNotNull { plainNameOrNull(it) }
+    messageParameterBodies(text).mapNotNull { plainParameterName(it) }
 
 /**
  * The raw text inside each `$…$`, before any form is recognised — empty for an UNTERMINATED text.
@@ -108,7 +108,7 @@ private fun closingDollar(text: String, from: Int): Int? {
  * resolve a parameter against the condition lexer's terminals. An earlier version excluded such names to be
  * safe; the measurement shows the exclusion only hid real findings, so it is gone.
  */
-private fun plainNameOrNull(parameter: String): String? {
+internal fun plainParameterName(parameter: String): String? {
     // No guard for an empty name: [isPlainSegment] refuses an empty segment, so `$$` and `$.value$` fall
     // out below. Written as its own branch first; the mutant that disabled it could not be killed.
     val name = parameter.removeSuffix(VALUE_SUFFIX)

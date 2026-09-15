@@ -678,6 +678,14 @@ enum class CheckFamily {
     MESSAGE_GROUP_PARAMETER,
 
     /**
+     * The two further gates an error message's `.value` SUFFIX passes that its plain form does not — the
+     * condition must read the field through something other than a star alone, and the field must declare a
+     * validated value. Separate from [MESSAGE_PARAMETER_REFERENCE] because membership is what that family
+     * answers and both of these sit BEHIND it, on the one form that carries them.
+     */
+    MESSAGE_VALUE_SUFFIX,
+
+    /**
      * That every DSL-bearing member can be TOKENIZED — the syntax layer's first phase, and the only one
      * decidable without a grammar. Whether the tokens then form a condition A12's parser accepts is a
      * separate question this family does not answer.
@@ -916,6 +924,7 @@ internal fun check(
         prepared.messageTextCharacterFindings() +
         prepared.messageParameterSyntaxFindings() +
         prepared.messageGroupParameterFindings() +
+        prepared.messageValueSuffixFindings() +
         prepared.stringTypeMessageFindings() + prepared.stringTypeParameterFindings() +
         prepared.numberTypeDigitFindings() + prepared.enumValueLabelFindings() +
         prepared.enumSpecialValueFindings())
@@ -982,6 +991,7 @@ internal fun check(
             CheckFamily.ERROR_TARGET_ITERATION,
             CheckFamily.MESSAGE_PARAMETER_REFERENCE, CheckFamily.MESSAGE_TEXT_CHARACTERS,
             CheckFamily.MESSAGE_PARAMETER_SYNTAX, CheckFamily.MESSAGE_GROUP_PARAMETER,
+            CheckFamily.MESSAGE_VALUE_SUFFIX,
             CheckFamily.ERROR_TEXT_SEMANTIC_INDEX, CheckFamily.ERROR_TEXT_CATEGORY_SUFFIX,
             CheckFamily.ERROR_TEXT_INDEX_TERMINAL),
         gaps = prepared.gaps() + prepared.emptyFactBase() + findings.buildBlocked() +

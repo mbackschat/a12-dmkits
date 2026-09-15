@@ -370,6 +370,11 @@ class CheckFamilyWiringTest {
               "elements":[
                 {"type":"Field","id":"f13","name":"Slot","Field":{"fieldType":{"type":"NumberType"}}}
               ]}},
+            {"type":"Field","id":"f14","name":"Remark","Field":{"fieldType":{"type":"StringType",
+              "StringType":{"noValueValidation":true,"lineBreaksPermitted":true}}}},
+            {"type":"Rule","id":"r67","name":"SuffixesAValueFreeField","Rule":{
+              "errorCondition":"FieldFilled(Remark)","errorEntityRelPath":"../Price","errorCode":"C67",
+              "errorMessage":[{"locale":"en_US","text":"see ${'$'}Remark.value${'$'}"}]}},
             {"type":"Rule","id":"r66","name":"NamesAGroupBesideTheRule","Rule":{
               "errorCondition":"FieldFilled(Price)","errorEntityRelPath":"../Price","errorCode":"C66",
               "errorMessage":[{"locale":"en_US","text":"row ${'$'}#/Catalog/Aisle${'$'} here"}]}},
@@ -651,6 +656,11 @@ class CheckFamilyWiringTest {
         // which keeps the row on containment rather than on the root gate or on a missing address.
         CheckFamily.MESSAGE_GROUP_PARAMETER to
             ("INVALID_GROUP" to "/Catalog/NamesAGroupBesideTheRule"),
+        // The condition reads the field, so membership is satisfied and the suffix's own gates are what is
+        // left — and the field is read WITHOUT a star, which leaves the declaration gate as the one answering
+        // rather than the star gate that pre-empts it.
+        CheckFamily.MESSAGE_VALUE_SUFFIX to
+            ("INVALID_NO_VALUE_VALIDATION" to "/Catalog/SuffixesAValueFreeField"),
         CheckFamily.MESSAGE_PARAMETER_SYNTAX to
             ("WRONG_NUMBER_OF_DOLLARS" to "/Catalog/OpensAParameterItNeverCloses"),
         CheckFamily.OUTER_MARKER_POSITION to
