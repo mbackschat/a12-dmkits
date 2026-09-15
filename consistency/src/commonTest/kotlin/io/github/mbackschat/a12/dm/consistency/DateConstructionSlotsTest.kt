@@ -55,6 +55,42 @@ class DateConstructionSlotsTest {
 
     private fun time(construction: String) = codes("Departure", construction)
 
+    /**
+     * The four-parameter SPLIT-YEAR form, which the ledger had as an H-model shape with no A12 reach.
+     *
+     * The rows that carry the correction are the two controls: the very same extract operator is ADMITTED in
+     * the three-parameter year slot, so the refusal belongs to the split-year pair rather than to the
+     * operator; and a well-formed split year draws nothing, so the family did not simply start refusing an
+     * arity it used to ignore. The century's own constant range is deliberately not reported — A12 answers a
+     * bad one through the comparison's format gate, which this family does not own.
+     */
+    @Test
+    fun theSplitYearFormRefusesAnExtractOperatorInEitherYearSlot() {
+        val actual = mutableMapOf<String, List<String>>()
+        actual["a well-formed split year — the control"] = date("""Date("01", "02", "20", "24")""")
+        actual["an extract op in the CENTURY slot"] =
+            date("""Date("01", "02", YearFromDate(TravelDate), "24")""")
+        actual["an extract op in the SHORT-YEAR slot"] =
+            date("""Date("01", "02", "20", YearFromDate(TravelDate))""")
+        actual["the same op in the three-parameter YEAR slot — the control"] =
+            date("""Date("01", "02", YearFromDate(TravelDate))""")
+        actual["a bad DAY beside a split year, so the earlier gate still answers first"] =
+            date("""Date("32", "02", "20", "24")""")
+
+        val expected = mutableMapOf<String, List<String>>()
+        expected["a well-formed split year — the control"] = emptyList()
+        expected["an extract op in the CENTURY slot"] = listOf(SPLIT_YEAR_EXTRACT)
+        expected["an extract op in the SHORT-YEAR slot"] = listOf(SPLIT_YEAR_EXTRACT)
+        expected["the same op in the three-parameter YEAR slot — the control"] = emptyList()
+        // A12 walks day and month before it asks about the year at all, so the split-year law never gets to
+        // answer over an earlier slot's defect — the ordering this family has to encode rather than infer.
+        expected["a bad DAY beside a split year, so the earlier gate still answers first"] =
+            listOf("MVK_WRONG_DATE_FORMAT_FOR_OP")
+        assertEquals(expected, actual, "the four-parameter split-year date construction")
+    }
+
+    private val SPLIT_YEAR_EXTRACT = "MVK_EXTRACT_OP_NOT_ALLOWED_4_DATE_CONSTRUCT_WITH_4_PARAMS"
+
     @Test
     fun whatEachConstantSlotAdmits() {
         val actual = mutableMapOf<String, List<String>>()

@@ -29,6 +29,9 @@ class DateConstructionSlotLawsTest {
     private static final String WRONG_SLOT = "MVK_INVALID_DATE_OR_TIME_EXTRACT_OP";
     private static final String WRONG_FAMILY = "MVK_DATE_OR_TIME_EXTRACT_OP_NOT_ALLOWED";
 
+    private static final String EXTRACT_IN_SPLIT_YEAR =
+            "MVK_EXTRACT_OP_NOT_ALLOWED_4_DATE_CONSTRUCT_WITH_4_PARAMS";
+
     private static final String BOOKING = DocumentModelDraft.named("booking").locale("en_US")
             .rootGroup("Booking", b -> b
                     .stringField("BookingRef", s -> { })
@@ -66,6 +69,43 @@ class DateConstructionSlotLawsTest {
     }
 
     /**
+     * The FOUR-parameter (split-year) form, and whether an A12 model reaches it at all.
+     *
+     * <p>[MVK-LEDGER] carries {@code MVK_EXTRACT_OP_NOT_ALLOWED_4_DATE_CONSTRUCT_WITH_4_PARAMS} as an H-model
+     * shape, legacy-only. The grammar disagrees on its face: {@code datumKonstrukt} admits a fourth parameter
+     * with no {@code isHModel()} predicate on the production and none at the raiser, so the century /
+     * short-year pair is available to any model. Measured here rather than argued, because "legacy-only" was
+     * exactly the unmeasured basis that hid a live A12-facing rejection once already
+     * ([KF282](KERNEL-FINDINGS.md#kf282), 2026-09-12).
+     */
+    @Test
+    void whichSlotsOfTheFourParameterSplitYearFormAdmitWhat() {
+        Map<String, String> actual = new LinkedHashMap<>();
+        actual.put("century and short year as constants", date("Date(\"01\", \"02\", \"20\", \"24\")"));
+        actual.put("an extract op in the CENTURY slot",
+                date("Date(\"01\", \"02\", YearFromDate(TravelDate), \"24\")"));
+        actual.put("an extract op in the SHORT-YEAR slot",
+                date("Date(\"01\", \"02\", \"20\", YearFromDate(TravelDate))"));
+        actual.put("an extract op in the three-parameter YEAR slot — the control",
+                date("Date(\"01\", \"02\", YearFromDate(TravelDate))"));
+        actual.put("a century out of its declared range", date("Date(\"01\", \"02\", \"17\", \"24\")"));
+
+        Map<String, String> expected = new LinkedHashMap<>();
+        expected.put("century and short year as constants", KernelLaws.ADMITTED);
+        expected.put("an extract op in the CENTURY slot", EXTRACT_IN_SPLIT_YEAR);
+        expected.put("an extract op in the SHORT-YEAR slot", EXTRACT_IN_SPLIT_YEAR);
+        // The control that makes the two rows above a SPLIT-YEAR law rather than a year-slot law: the same
+        // extract op in the three-parameter form is admitted, so it is the fourth parameter that forbids it.
+        expected.put("an extract op in the three-parameter YEAR slot — the control", KernelLaws.ADMITTED);
+        // …and the split-year form's own constant bounds are NOT what answers an out-of-range century: the
+        // comparison's format gate outruns them, so this row measures which gate answers rather than the
+        // bound. Predicted as the constant class and measured otherwise.
+        expected.put("a century out of its declared range", "MVK_WRONG_DATE_FORMAT_FOR_OP");
+        assertEquals(expected, actual, "what the four-parameter split-year date construction admits");
+    }
+
+    /**
+     * A quoted constant against its slot's own bounds.    /**
      * A quoted constant against its slot's own bounds. Each row moves one component out of range and leaves
      * the other two valid, so the class cannot be attributed to the construction as a whole.
      */

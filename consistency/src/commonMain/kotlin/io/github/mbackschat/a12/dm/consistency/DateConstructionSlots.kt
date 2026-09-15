@@ -48,9 +48,13 @@ import kotlinx.serialization.json.intOrNull
  * both controls — so that shape belongs to [CheckFamily.OPERAND_REPETITION_SCOPE] alone, and answering here
  * too would put two findings on a declaration A12 answers once.
  *
- * **Silent on a `Date` that does not carry exactly three components.** Two is the year-less shape, admitted
- * only when the model declares a base year (`MVK_MISSING_YEAR`, model data this does not read), and four is
- * the split-year H-model shape whose own class is erased in A12 models.
+ * **The two-component and SPLIT-YEAR shapes are read too, each for what is measured about it.** Two is the
+ * year-less form, whose missing year is `MVK_MISSING_YEAR` — model data this does not read — while its
+ * present slots are still this walk's. Four is the century/short-year form, and the ledger had it as an
+ * H-model shape with no authoring surface: the grammar carries no `isHModel()` predicate on that arity and
+ * neither does the raiser, so an ordinary A12 model reaches it and does
+ * ([KF423](KERNEL-FINDINGS.md#kf423)). Only its measured law is reported — an extract operator in either
+ * year slot — because the pair's constant and entity arms answer to gates this grid did not separate.
  */
 fun PreparedModel.dateConstructionSlotFindings(): List<Finding> {
     val keywords = CONDITION_OPERATOR_KEYWORDS[conditionLanguage] ?: return emptyList()
@@ -199,10 +203,11 @@ private enum class TemporalConstruction(val id: String, val slots: List<Slot>, v
      *
      * A12 runs the day and month gates whatever the arity, so the two-parameter `Date` is judged here too —
      * its MISSING year is a law of its own ([baseYearRequirementFindings]) and its present slots are still
-     * this walk's. The four-parameter split-year shape is an H-model form and is left alone.
+     * this walk's. The four-parameter split-year form is admitted here as well: it is reachable in an A12
+     * model, measured, and carries one law of its own.
      */
     fun admitsArity(count: Int): Boolean = when (this) {
-        DATE -> count in 2..slots.size
+        DATE -> count in 2..SPLIT_YEAR_ARITY
         TIME -> count in 1..slots.size
     }
 
@@ -227,7 +232,11 @@ private enum class TemporalConstruction(val id: String, val slots: List<Slot>, v
         operands: List<List<Token>>,
         extractOps: Map<String, String>,
     ): SlotDefect? {
-        operands.take(slots.size).forEachIndexed { at, operand ->
+        // The split-year shape's last two operands are a CENTURY and a SHORT YEAR, which the slot table does
+        // not describe — walking them against the complete year's demands would compare `"20"` to 1800..2199.
+        // So its day and month keep their gates, in A12's own order, and the pair gets its one measured law.
+        val described = if (this == DATE && operands.size == SPLIT_YEAR_ARITY) 2 else slots.size
+        operands.take(described).forEachIndexed { at, operand ->
             val slot = slots[at]
             val defect = when (val arm = armOf(operand, extractOps)) {
                 is SlotArm.Constant -> slot.constantDefect(arm.digits)
@@ -239,9 +248,39 @@ private enum class TemporalConstruction(val id: String, val slots: List<Slot>, v
                 return defect
             }
         }
-        return null
+        return splitYearExtractDefect(operands, extractOps)
+    }
+
+    /**
+     * The one measured law of the four-parameter split-year `Date`: neither year slot takes an extract op.
+     *
+     * `checkYearFormat(century, shortYear)` routes an operand's `datumExtractOp` arm straight to
+     * `handleDatumExtractOpAtYearParam`, whatever the operator, and neither the production nor the raiser
+     * carries an `isHModel()` gate — so an ordinary A12 model reaches this
+     * ([KF423](KERNEL-FINDINGS.md#kf423), measured on an `en_US` model with the three-parameter year slot as
+     * the control that admits the very same operator). The pair's CONSTANT and ENTITY arms are unmeasured
+     * and are left alone.
+     */
+    private fun splitYearExtractDefect(
+        operands: List<List<Token>>,
+        extractOps: Map<String, String>,
+    ): SlotDefect? {
+        if (this != DATE || operands.size != SPLIT_YEAR_ARITY) {
+            return null
+        }
+        return operands.drop(2).firstNotNullOfOrNull { operand ->
+            (armOf(operand, extractOps) as? SlotArm.Extract)?.let {
+                SlotDefect(
+                    "MVK_EXTRACT_OP_NOT_ALLOWED_4_DATE_CONSTRUCT_WITH_4_PARAMS",
+                    "the split year", it.op, "a two-digit constant or a field",
+                )
+            }
+        }
     }
 }
+
+/** A `Date` written with a CENTURY and a SHORT YEAR instead of one complete year. */
+private const val SPLIT_YEAR_ARITY = 4
 
 /** The catalog ids of every operator A12's `datumExtractOp` rule admits, keyed for spelling lookup. */
 private val EXTRACT_OPS = listOf(

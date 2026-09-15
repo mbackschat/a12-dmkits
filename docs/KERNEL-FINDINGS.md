@@ -9115,3 +9115,27 @@ Reported by the portable checker, which emitted the prefixed class alone on the 
 Reported by the portable checker (`CheckFamily.TABLE_ENUM_OPERAND`), which emits all three reachable classes in the kernel's own order.
 
 *Locked by:* `rulekit.validate.laws.TableEnumConditionLawsTest`, mirrored by `consistency.TableEnumOperandTest`.
+
+## §10 supplement — the four-parameter split-year `Date` is not an H-model shape, and one of its laws is live in A12 (source-verified + measured, 2026-09-15) <a id="kf423"></a>
+
+> Fold: not-foldable — a reachability correction plus the slot law it exposes.
+
+[MVK-LEDGER](MVK-LEDGER.md) carried `MVK_EXTRACT_OP_NOT_ALLOWED_4_DATE_CONSTRUCT_WITH_4_PARAMS` as "the four-parameter (split-year) date construction is an H-model shape — legacy-only". The grammar carries no such restriction: `datumKonstrukt: 'Datum' '(' dp1 ',' dp2 (',' dp3 (',' dp4)? )? ')'` is un-predicated, and `CheckDatumKonstruktImpl.checkYearFormat(century, shortYear)` routes a `datumExtractOp` in either year slot to `handleDatumExtractOpAtYearParam` with no `isHModel()` gate anywhere on the path.
+
+| the `Date` construction, on an `en_US` model | A12 |
+|---|---|
+| `Date("01", "02", "20", "24")` — century and short year as constants | ADMITTED |
+| `Date("01", "02", YearFromDate(TravelDate), "24")` | `MVK_EXTRACT_OP_NOT_ALLOWED_4_DATE_CONSTRUCT_WITH_4_PARAMS` |
+| `Date("01", "02", "20", YearFromDate(TravelDate))` | the same |
+| `Date("01", "02", YearFromDate(TravelDate))` — the same op in the THREE-parameter year slot | **ADMITTED** |
+| `Date("01", "02", "17", "24")` — a century outside 18..22 | `MVK_WRONG_DATE_FORMAT_FOR_OP` |
+
+**The third and fourth rows are the pair that makes this a SPLIT-YEAR law rather than a year-slot one.** The identical operator in the identical position of the three-parameter form is admitted, so what forbids it is the presence of the fourth parameter, not the operator and not the year.
+
+**The last row was predicted as the constant class and is not.** An out-of-range century draws the comparison's format class instead, so the split-year pair's own constant bounds are not what answers — which is why the portable checker reports only the extract law of that pair and leaves its constant and entity arms alone.
+
+**The defect class is the third of its kind in one day, and they share a shape: an unmeasured "legacy-only" basis.** [KF282](#kf282) corrected one by moving the condition LANGUAGE; [KF422](#kf422) corrected one whose predicate ran the opposite way; this one needed only the grammar production read for a predicate that is not there. A disposition whose whole basis is the word "legacy" has not been measured, and the cheapest test is to look for the gate that is supposed to make it legacy.
+
+Reported by the portable checker (`CheckFamily.DATE_CONSTRUCTION_SLOTS`, whose KDoc had carried the same wrong claim).
+
+*Locked by:* `rulekit.validate.laws.DateConstructionSlotLawsTest`, mirrored by `consistency.DateConstructionSlotsTest`.
