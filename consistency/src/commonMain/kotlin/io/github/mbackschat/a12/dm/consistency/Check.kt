@@ -6,6 +6,12 @@ package io.github.mbackschat.a12.dm.consistency
  * The enum is the coverage denominator's live half. Its other half — the pinned profile's full list of
  * required families — does not exist yet, which is exactly why every report currently carries a gap saying
  * so: "the reference check completed" must never read as "the analysis completed".
+ *
+ * **Adding a constant here touches seven places, and `docs/TESTING-SPEC.md` enumerates them** — the wiring
+ * fixture's triggering declaration and evidence row, the corrective projection, that corrective's
+ * reachability row, the builder-divergence disposition, and a new laws class's two registrations. Every one
+ * is a guard that fires only AFTER the family is green, so reading the list first turns four failing lanes
+ * into one pass; it has cost that four twice (2026-09-14, 2026-09-15).
  */
 enum class CheckFamily {
     /** A rule's error target and a computation's computed field resolve to a declared element. */
