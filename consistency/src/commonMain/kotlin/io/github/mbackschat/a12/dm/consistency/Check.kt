@@ -671,6 +671,13 @@ enum class CheckFamily {
     MESSAGE_PARAMETER_SYNTAX,
 
     /**
+     * What an error message's `$#…$` GROUP position may name. Its own constant rather than part of
+     * [MESSAGE_PARAMETER_REFERENCE] because the two positions resolve the SAME WORDS differently — the
+     * shorthands admitted here are refused there — so one reader would have to branch on position anyway.
+     */
+    MESSAGE_GROUP_PARAMETER,
+
+    /**
      * That every DSL-bearing member can be TOKENIZED — the syntax layer's first phase, and the only one
      * decidable without a grammar. Whether the tokens then form a condition A12's parser accepts is a
      * separate question this family does not answer.
@@ -908,6 +915,7 @@ internal fun check(
         prepared.errorTextIndexTerminalFindings() +
         prepared.messageTextCharacterFindings() +
         prepared.messageParameterSyntaxFindings() +
+        prepared.messageGroupParameterFindings() +
         prepared.stringTypeMessageFindings() + prepared.stringTypeParameterFindings() +
         prepared.numberTypeDigitFindings() + prepared.enumValueLabelFindings() +
         prepared.enumSpecialValueFindings())
@@ -973,7 +981,7 @@ internal fun check(
             CheckFamily.ENUM_COMPUTATION_SOURCE,
             CheckFamily.ERROR_TARGET_ITERATION,
             CheckFamily.MESSAGE_PARAMETER_REFERENCE, CheckFamily.MESSAGE_TEXT_CHARACTERS,
-            CheckFamily.MESSAGE_PARAMETER_SYNTAX,
+            CheckFamily.MESSAGE_PARAMETER_SYNTAX, CheckFamily.MESSAGE_GROUP_PARAMETER,
             CheckFamily.ERROR_TEXT_SEMANTIC_INDEX, CheckFamily.ERROR_TEXT_CATEGORY_SUFFIX,
             CheckFamily.ERROR_TEXT_INDEX_TERMINAL),
         gaps = prepared.gaps() + prepared.emptyFactBase() + findings.buildBlocked() +

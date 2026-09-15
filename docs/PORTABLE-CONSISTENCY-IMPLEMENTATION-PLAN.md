@@ -739,6 +739,16 @@ One cold adversarial review over the frozen range, as [§2](#2-execution-order-a
 
 **The catalog half is deliberately not delivered, with its re-open trigger.** A2 ruled that `operators.json` ships as-is because it is already data; that remains right, and it is not yet USEFUL — no finding this checker produces names an operator id, so 293 KB would be packaged with nothing to join it against. It lands when a finding carries an operator.
 
+### C record — a whole unread parameter POSITION, four codes at once (2026-09-15)
+
+**Frozen change: the error message's `$#…$` GROUP position.** Four classes newly reported — `INVALID_GROUP`, `INVALID_ROOT_GROUP` on this carrier, `PARAM_INVALID_IN_NEW_WORLD` and `RULEGROUP_IMMEDIATELY_BELOW_ROOT` ([KF-§13](KERNEL-FINDINGS.md), amended in place). New family `MESSAGE_GROUP_PARAMETER`; the count goes 94 → 95.
+
+**The derived worklist's middle column paid again, and bigger.** The previous slice took one code from it; this one took four, because they all belong to a single POSITION nobody had read — the tier was split by parameter FORM and this form was simply absent from the split. A position is a better unit than a code here: its gates are ordered against each other and against nothing else, so reading it once settles all four.
+
+**A source read produced a confident wrong mechanism and one row cost 27 seconds to refute it.** `CheckIdNameImpl.checkAndCreateFullName`'s absolute arm answers `INVALID_ENTITY` for a candidate that does not resolve, so an address under a declared root naming nothing looked like a third class sitting between the root gate and containment. Measured, it is `INVALID_GROUP` — `resolveAndStoreEntity`'s group branch answers in this position. The law is SIMPLER than its source chain, and the practical consequence is the whole reduction: containment alone decides, so the family never asks whether the named group exists.
+
+**The near-miss was a claim the estate had already measured and I restated from the GRAMMAR.** The draft admitted both language spellings of each shorthand, reasoning that a wider exclusion can only under-report — safe, and the wrong law. `RuleMessageParameterLanguageLawsTest` had measured both directions on one model pair: each language admits ONLY its own spelling, and the German far shorthand is `LfdNr`, not the word the draft guessed. The lexer file spells the German terminal while a running `en_US` model takes the English one, so the grammar read gets the pair backwards — the same one-layer trap [KF412](KERNEL-FINDINGS.md#kf412) records, hit again nine slices later. **Before writing a language-keyed set, grep the laws estate for the code: the measurement was already there.**
+
 ### C record — the worklist derived instead of guessed (2026-09-15)
 
 **Frozen change: the dollar count an error message has to balance.** `WRONG_NUMBER_OF_DOLLARS` ([KF343](KERNEL-FINDINGS.md#kf343), amended in place). New family `MESSAGE_PARAMETER_SYNTAX`; the count goes 93 → 94.

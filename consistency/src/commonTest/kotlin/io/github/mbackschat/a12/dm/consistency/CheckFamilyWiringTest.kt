@@ -370,7 +370,10 @@ class CheckFamilyWiringTest {
               "elements":[
                 {"type":"Field","id":"f13","name":"Slot","Field":{"fieldType":{"type":"NumberType"}}}
               ]}},
-            {"type":"Rule","id":"r65","name":"OpensAParameterItNeverCloses","Rule":{
+            {"type":"Rule","id":"r66","name":"NamesAGroupBesideTheRule","Rule":{
+              "errorCondition":"FieldFilled(Price)","errorEntityRelPath":"../Price","errorCode":"C66",
+              "errorMessage":[{"locale":"en_US","text":"row ${'$'}#/Catalog/Aisle${'$'} here"}]}},
+                        {"type":"Rule","id":"r65","name":"OpensAParameterItNeverCloses","Rule":{
               "errorCondition":"FieldFilled(Price)","errorEntityRelPath":"../Price","errorCode":"C65",
               "errorMessage":[{"locale":"en_US","text":"see ${'$'}Price"}]}},
                         {"type":"Rule","id":"r64","name":"MarksAnOuterIterationOutsideAFilter","Rule":{
@@ -644,6 +647,10 @@ class CheckFamilyWiringTest {
         // so a marked path naming nothing would trigger the reference family instead of this one.
         // A complete text but for the closing dollar, and no control character anywhere: the character gate
         // pre-empts this one, so a row carrying both would be evidence for the wrong family.
+        // The rule sits in `/Catalog`, so a group BESIDE it does not contain it — and `Aisle` is declared,
+        // which keeps the row on containment rather than on the root gate or on a missing address.
+        CheckFamily.MESSAGE_GROUP_PARAMETER to
+            ("INVALID_GROUP" to "/Catalog/NamesAGroupBesideTheRule"),
         CheckFamily.MESSAGE_PARAMETER_SYNTAX to
             ("WRONG_NUMBER_OF_DOLLARS" to "/Catalog/OpensAParameterItNeverCloses"),
         CheckFamily.OUTER_MARKER_POSITION to

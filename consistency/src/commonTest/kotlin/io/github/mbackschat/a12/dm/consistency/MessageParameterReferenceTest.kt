@@ -142,6 +142,11 @@ class MessageParameterReferenceTest {
         // `rulekit.validate.laws.ErrorTextSemanticIndexLawsTest`. The row stays here because what it locks is
         // that THIS family adds nothing on top — not that the checker is silent.
         expected["a semantic-index key"] = listOf("ILLEGAL_SEMANTIC_INDEX")
+        // Landed 2026-09-15 by `MESSAGE_GROUP_PARAMETER`: `$#Zeile$` is not a row specifier this checker
+        // fails to read, it is a terminal A12 RECOGNISES and refuses on the modern route, measured in
+        // `rulekit.validate.laws.RuleMessageGroupParameterLawsTest`. Same reason as the row above — what
+        // stays locked here is that the membership family adds nothing on top.
+        expected["a row specifier"] = listOf("PARAM_INVALID_IN_NEW_WORLD")
         assertEquals(expected, actual, "the parameter forms this family does not read")
     }
 

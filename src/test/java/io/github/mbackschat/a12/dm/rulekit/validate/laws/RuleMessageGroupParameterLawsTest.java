@@ -114,12 +114,22 @@ class RuleMessageGroupParameterLawsTest {
         actual.put("an undeclared root, with a child", groupParam("/Nope/Sections"));
         actual.put("the right root in the wrong case", groupParam("/policy"));
         actual.put("a declared root, non-containing child — control", groupParam("/Policy/Admin"));
+        actual.put("a declared root, UNDECLARED child", groupParam("/Policy/NoSuchGroup"));
+        actual.put("a declared root, and a FIELD rather than a group", groupParam("/Policy/Admin/AdminRef"));
 
         Map<String, String> expected = new LinkedHashMap<>();
         expected.put("an undeclared root, alone", INVALID_ROOT_GROUP);
         expected.put("an undeclared root, with a child", INVALID_ROOT_GROUP);
         expected.put("the right root in the wrong case", INVALID_ROOT_GROUP);
         expected.put("a declared root, non-containing child — control", INVALID_GROUP);
+        // PREDICTED `INVALID_ENTITY` for the undeclared child, from a source read of
+        // `CheckIdNameImpl.checkAndCreateFullName`, whose absolute arm answers that for an unresolvable
+        // candidate. Measured `INVALID_GROUP`: in this position `resolveAndStoreEntity`'s group branch is
+        // what answers, so the code does NOT turn on whether the address exists. Both cells collapse onto
+        // one class, which makes the law simpler than the chain it is written as — and is why a checker may
+        // test containment alone here without first asking whether the group is there.
+        expected.put("a declared root, UNDECLARED child", INVALID_GROUP);
+        expected.put("a declared root, and a FIELD rather than a group", INVALID_GROUP);
         assertEquals(expected, actual, "the root gate answers before containment is asked");
     }
 
