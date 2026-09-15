@@ -11,19 +11,25 @@ import kotlinx.serialization.json.contentOrNull
  * The model a declaration was AUTHORED in, and how that model's own absolute paths read after mounting.
  *
  * A mounted declaration keeps naming the entities that moved with it, so its absolute references still spell
- * the provider's own root group — which no longer exists in the host tree. [rehost] applies the one
- * substitution that fixes that, and the Kernel does the same thing at expansion time rather than leaving the
- * reference to fail (`DocumentModelExpandService.RuleAndComputationConditionUpdaterVisitor` with
+ * the provider's own root groups — which no longer stand where they did in the host tree. [rehost] applies
+ * the substitutions that fix that, and the Kernel does the same thing at expansion time rather than leaving
+ * the reference to fail (`DocumentModelExpandService.RuleAndComputationConditionUpdaterVisitor` with
  * `EntityPathsRelativizer`, [KERNEL-FINDINGS KF3]). A relative downward reference needs no rehosting at all:
- * mounting preserves depth within the fragment, because the provider's root group is replaced by the mount
- * group rather than added above it.
+ * mounting preserves depth within the fragment, whether the provider's root group is replaced by the mount
+ * group (`SINGLE_RG`) or placed beneath it (`MODEL_ROOT`).
  *
  * @param modelId the source that declares this element. It also scopes the model-wide short-name fallback:
  *     the Kernel binds a provider's unique cross-group short name BEFORE integration, so a name the host
  *     happens to reuse cannot retarget it.
- * @param authoredPrefix the absolute prefix this model's own paths carried standalone — `""` for the entry
- *     model, whose paths are already host paths.
- * @param mountedPrefix the host path that prefix became.
+ * @param mountedPrefixes each absolute prefix this model's own paths carried standalone, and the host prefix
+ *     it became — EMPTY for the entry model, whose paths are already host paths. A `SINGLE_RG` mount
+ *     contributes one entry, because the provider's single root disappears INTO the mount (`/Address` →
+ *     `/Order/ShipTo`); a `MODEL_ROOT` mount contributes one per provider root group, each KEEPING its own
+ *     name (`/Address` → `/Order/ShipTo/Address`), because that level adds the provider's roots as subgroups
+ *     instead of replacing the mount with one of them (KF3). A path matching no entry is left as written:
+ *     the Kernel rewrites a reference because its TARGET moved, and a provider path naming none of its own
+ *     roots has no target that did — which is what lets a provider reference spelling a HOST path still bind
+ *     to the host's element.
  * @param shortNameFallbackAllowed this model's OWN `fieldRefByShortNameAllowed`. For a provider it decides
  *     whether its bare names are bound before integration at all: with the flag on, `FieldFilled(Zip)`
  *     expands to `FieldFilled(/Order/ShipTo/Inner/Zip)` whatever the host declares, and with it off the name
@@ -33,8 +39,7 @@ import kotlinx.serialization.json.contentOrNull
  */
 data class DeclarationOrigin(
     val modelId: String,
-    val authoredPrefix: String = "",
-    val mountedPrefix: String = "",
+    val mountedPrefixes: Map<String, String> = emptyMap(),
     val shortNameFallbackAllowed: Boolean = false,
 ) {
     /**
@@ -47,14 +52,17 @@ data class DeclarationOrigin(
      * whole EXPANDED tree, so a mounted field of the same name does make it ambiguous
      * (`MVK_FIELDNAME_NOT_UNIQUE`, measured 2026-09-12 through `checkConsistency` on the expanded model).
      */
-    val isMounted: Boolean get() = authoredPrefix.isNotEmpty()
+    val isMounted: Boolean get() = mountedPrefixes.isNotEmpty()
 
     /** [written] as it reads in the host tree. Any other spelling is returned unchanged. */
-    fun rehost(written: String): String = when {
-        authoredPrefix.isEmpty() -> written
-        written == authoredPrefix -> mountedPrefix
-        written.startsWith("$authoredPrefix/") -> mountedPrefix + written.removePrefix(authoredPrefix)
-        else -> written
+    fun rehost(written: String): String {
+        mountedPrefixes.forEach { (authored, hosted) ->
+            when {
+                written == authored -> return hosted
+                written.startsWith("$authored/") -> return hosted + written.removePrefix(authored)
+            }
+        }
+        return written
     }
 }
 
@@ -388,9 +396,20 @@ private class Collector(
 
     /** Expand the model [alias] names into the mount group at [path], or state why it stayed unexpanded. */
     private fun mount(alias: String, path: String, body: JsonObject, scope: Scope) {
-        // Everything the mount can carry BESIDES the plain SINGLE_RG case changes which declarations survive
-        // or where they land, so an unimplemented one suspends the analysis rather than producing a tree that
-        // is confidently wrong. Each is a named landing rather than an open question (KF3 has the semantics).
+        // `includeLevel` is a strict two-valued enum: any other spelling — `model_root`, a number, a blank —
+        // makes the model UNREADABLE ("No enum constant …IncludeLevel.x", measured 2026-09-12), so A12 never
+        // judges it, and expanding it as the default would invent a verdict for a source the Kernel refuses.
+        // This states it as a gap rather than as the rejection A12 issues, which under-reports deliberately:
+        // the checker owns no code for an unbuildable model beyond `CK_MODEL_NOT_BUILDABLE`, and reaching
+        // that from here would need the mount path to carry findings as well as gaps.
+        val level = IncludeLevel.declaredIn(body) ?: return unexpanded(
+            path, alias,
+            "`includeLevel` carries a spelling A12's own reader refuses, so the model does not load at all " +
+                "and nothing here is a verdict about it",
+        )
+        // The exclusions change which declarations survive the mount, so an unimplemented one suspends the
+        // analysis rather than producing a tree that is confidently wrong. Each is a named landing rather
+        // than an open question (KF3 has the semantics).
         unsupportedMountOption(body)?.let { return unexpanded(path, alias, it) }
         val reference = scope.header.referenceForAlias(alias)
             ?: return unexpanded(path, alias, "no `header.modelReferences` entry declares this alias")
@@ -423,26 +442,31 @@ private class Collector(
         val roots = ((providerContent?.get("modelRoot") as? JsonObject)?.get("rootGroups") as? JsonArray)
             ?.filterIsInstance<JsonObject>()
             .orEmpty()
+        val target = MountTarget(
+            reference = reference,
+            header = (provider.parsed as? JsonObject)?.get("header") as? JsonObject,
+            shortNameFallbackAllowed = providerContent.declaresShortNameFallback(),
+            diagnosticLabel = provider.source.diagnosticLabel,
+            visiting = scope.visiting + reference,
+        )
+        when (level) {
+            IncludeLevel.SINGLE_RG -> mountSingleRoot(alias, path, roots, target)
+            IncludeLevel.MODEL_ROOT -> mountModelRoots(alias, path, roots, target)
+        }
+    }
+
+    /** The default level: the provider's sole root group is REPLACED by the mount group (KF3). */
+    private fun mountSingleRoot(alias: String, path: String, roots: List<JsonObject>, target: MountTarget) {
         // SINGLE_RG requires exactly one root group in the provider, and the Kernel refuses zero or several
         // rather than choosing (KF3). Choosing here would mount a tree A12 would not have built.
         val root = roots.singleOrNull()
             ?: return unexpanded(path, alias, "a SINGLE_RG include needs exactly one root group in " +
-                "`$reference`, which declares ${roots.size}")
+                "`${target.reference}`, which declares ${roots.size}")
         val rootName = root.text("name")
-            ?: return unexpanded(path, alias, "the root group of `$reference` carries no `name`")
-        val nested = Scope(
-            header = (provider.parsed as? JsonObject)?.get("header") as? JsonObject,
-            // The provider's root group DISAPPEARS into the mount, so its own absolute paths — which all
-            // begin with that root — now begin with the mount's path instead.
-            origin = DeclarationOrigin(
-                modelId = reference,
-                authoredPrefix = "/$rootName",
-                mountedPrefix = path,
-                shortNameFallbackAllowed = providerContent.declaresShortNameFallback(),
-            ),
-            visiting = scope.visiting + reference,
-            diagnosticLabel = provider.source.diagnosticLabel,
-        )
+            ?: return unexpanded(path, alias, "the root group of `${target.reference}` carries no `name`")
+        // The provider's root group DISAPPEARS into the mount, so its own absolute paths — which all begin
+        // with that root — now begin with the mount's path instead.
+        val nested = target.scope(mapOf("/$rootName" to path))
         // The provider is FULLY EXPANDED before it is mounted (KF3), so its root group gets the same
         // treatment as any other: when it is itself an unexpanded mount, that include is expanded into this
         // same path. Reading its `elements` directly instead would find the empty array a mount group carries
@@ -452,24 +476,56 @@ private class Collector(
     }
 
     /**
+     * `MODEL_ROOT`: every top-level group of the provider is mounted as a subgroup of the mount and KEEPS its
+     * own name, so no root disappears and the provider's absolute paths simply move one level down (KF3,
+     * placement locked by the `model-root-multiple-groups` and `reference-family-model-root` cases of the
+     * shared matrix).
+     *
+     * A nameless root suspends the WHOLE mount rather than being skipped. A12 refuses such a provider
+     * outright, so placing its siblings would mount a tree the Kernel never builds — and dropping one root
+     * silently is exactly the confidently-wrong tree this module refuses to produce.
+     */
+    private fun mountModelRoots(alias: String, path: String, roots: List<JsonObject>, target: MountTarget) {
+        val names = roots.map { it.text("name") }
+        if (names.any { it == null }) {
+            return unexpanded(path, alias, "a root group of `${target.reference}` carries no `name`")
+        }
+        val nested = target.scope(names.filterNotNull().associate { name -> "/$name" to "$path/$name" })
+        // Each root is collected as an ordinary declaration, which places it at `$path/$name` and descends —
+        // including into a root that is itself an unexpanded mount, for the reason the SINGLE_RG arm states.
+        roots.forEach { root -> collect(root, path, path, nested) }
+    }
+
+    /**
+     * The provider a mount resolved to, and the include-chain state its declarations inherit.
+     *
+     * It exists so each include level builds its [Scope] from one place: the two levels differ ONLY in which
+     * prefix substitutions the mount applies, and handing the other four members to each arm separately is
+     * where a divergence between them would hide.
+     */
+    private class MountTarget(
+        val reference: String,
+        private val header: JsonObject?,
+        private val shortNameFallbackAllowed: Boolean,
+        private val diagnosticLabel: String?,
+        private val visiting: Set<String>,
+    ) {
+        fun scope(mountedPrefixes: Map<String, String>) = Scope(
+            header = header,
+            origin = DeclarationOrigin(reference, mountedPrefixes, shortNameFallbackAllowed),
+            visiting = visiting,
+            diagnosticLabel = diagnosticLabel,
+        )
+    }
+
+    /**
      * Why this mount is beyond the implemented include semantics, or null when it is the plain case.
      *
      * Each of these is measured Kernel behaviour ([KERNEL-FINDINGS KF3]) that this slice does not yet
-     * reproduce — not an unknown. Reading them as absent would place declarations A12 drops, or place them
-     * one level off, so the analysis is suspended instead.
+     * reproduce — not an unknown. Reading them as absent would place declarations A12 drops, so the analysis
+     * is suspended instead.
      */
     private fun unsupportedMountOption(body: JsonObject): String? = when {
-        (body["includeLevel"] as? JsonPrimitive)?.contentOrNull == "MODEL_ROOT" ->
-            "a MODEL_ROOT include mounts every top-level group of the provider and is not expanded here"
-        // `includeLevel` is a strict two-valued enum: any other spelling — `model_root`, a number, a blank —
-        // makes the model UNREADABLE ("No enum constant …IncludeLevel.x", measured 2026-09-12), so A12 never
-        // judges it. Expanding it as the default would invent a verdict for a source the Kernel refuses.
-        // This states it as a gap rather than as the rejection A12 issues, which under-reports deliberately:
-        // the checker owns no code for an unbuildable model beyond `CK_MODEL_NOT_BUILDABLE`, and reaching
-        // that from here would need the mount path to carry findings as well as gaps.
-        body.declaresUnreadableIncludeLevel() ->
-            "`includeLevel` carries a spelling A12's own reader refuses, so the model does not load at all " +
-                "and nothing here is a verdict about it"
         body.flagIsOn("excludeRules") ->
             "`excludeRules` drops the provider's rules before mounting and is not applied here"
         body.flagIsOn("excludeComputations") ->
@@ -529,12 +585,21 @@ private class Collector(
 
 private fun JsonArray?.isNullOrEmpty(): Boolean = this == null || this.isEmpty()
 
-/** The two spellings A12's `IncludeLevel` enum admits; absence means `SINGLE_RG`. */
-private val INCLUDE_LEVELS = setOf("SINGLE_RG", "MODEL_ROOT")
+/** The two levels A12's `IncludeLevel` enum admits, each placing the provider's roots differently (KF3). */
+private enum class IncludeLevel {
+    SINGLE_RG, MODEL_ROOT;
 
-private fun JsonObject.declaresUnreadableIncludeLevel(): Boolean {
-    val declared = this["includeLevel"] ?: return false
-    return (declared as? JsonPrimitive)?.contentOrNull !in INCLUDE_LEVELS
+    companion object {
+        /**
+         * The level [body] declares — an absent member is [SINGLE_RG], A12's own default — and null for any
+         * other spelling, including a non-string one, which A12's reader refuses outright.
+         */
+        fun declaredIn(body: JsonObject): IncludeLevel? {
+            val declared = body["includeLevel"] ?: return SINGLE_RG
+            val spelling = (declared as? JsonPrimitive)?.contentOrNull
+            return entries.firstOrNull { it.name == spelling }
+        }
+    }
 }
 
 /**

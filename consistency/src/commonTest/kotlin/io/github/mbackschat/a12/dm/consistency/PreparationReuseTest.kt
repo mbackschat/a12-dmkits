@@ -36,7 +36,7 @@ class PreparationReuseTest {
             "the fixture must mount one provider at two scopes for this row to mean anything")
         assertSame(score[0].declaration, score[1].declaration,
             "one authored declaration, read once and retained — not parsed or copied per mount")
-        assertNotEquals(score[0].origin.mountedPrefix, score[1].origin.mountedPrefix,
+        assertNotEquals(score[0].origin.mountedPrefixes, score[1].origin.mountedPrefixes,
             "each mount instance binds separately, which is what the shared syntax must not collapse")
     }
 

@@ -125,6 +125,90 @@ class WorkspaceMountTest {
         )
     }
 
+    /**
+     * A provider with two root groups, both carrying one field — the shape only a `MODEL_ROOT` mount admits,
+     * since `SINGLE_RG` refuses a provider that does not declare exactly one root.
+     */
+    private fun twoRootProvider(rules: String = "") = source(
+        """
+        {"header":{"id":"address","locales":[{"code":"en_US"}]},"content":{"modelRoot":{"rootGroups":[
+          {"type":"Group","id":"g","name":"Address","Group":{"elements":[${field("Street")}$rules]}},
+          {"type":"Group","id":"g2","name":"Contact","Group":{"elements":[${field("Email")}]}}
+        ]}}}
+        """,
+    )
+
+    private val modelRoot = """"modelAlias":"addr","includeLevel":"MODEL_ROOT""""
+
+    /**
+     * The `MODEL_ROOT` placement is the OPPOSITE of `SINGLE_RG`'s: every top-level group of the provider is
+     * mounted as a subgroup of the mount and KEEPS its own name (KF3), so nothing disappears and both roots
+     * are addressable. Its Kernel basis is the `model-root-multiple-groups` and `reference-family-model-root`
+     * cases of the shared matrix, whose expected placement [WorkspaceMatrixReconciliationTest] holds.
+     *
+     * The second model is the control, and it is the mistake worth catching: flattening the roots onto the
+     * mount — reusing the `SINGLE_RG` placement — resolves `ShipTo/Street` and would satisfy a row that only
+     * asked whether the provider's field arrived somewhere.
+     */
+    @Test
+    fun aModelRootIncludeKeepsEveryProviderRootGroupUnderTheMount() {
+        val reaches = host(
+            mountBody = modelRoot,
+            extra = rule(
+                "R",
+                "../ShipTo/Address/Street",
+                "FieldFilled(ShipTo/Address/Street) And FieldFilled(ShipTo/Contact/Email)",
+            ),
+        )
+        val flattened = host(mountBody = modelRoot, extra = rule("R", "../ShipTo/Street", "FieldFilled(ShipTo/Street)"))
+
+        val report = check(reaches, twoRootProvider())
+
+        // A suspended mount silences every family, so silence alone would pass this row before the mount was
+        // implemented at all — the completed family is what makes the empty finding list a measurement.
+        assertTrue(CheckFamily.CONDITION_REFERENCES in report.checksCompleted, report.gaps.toString())
+        assertEquals(emptyList(), report.findings)
+        // The error target's code alone, for the reason the SINGLE_RG row above states: A12 stops a rule at
+        // its unresolvable error target rather than reporting its condition as well.
+        assertEquals(
+            listOf("MVK_ERROR_FIELD_MISSING"),
+            check(flattened, twoRootProvider()).findings.map { it.code },
+        )
+    }
+
+    /**
+     * An absolute reference inside a `MODEL_ROOT` provider moves with the mount and KEEPS its root segment,
+     * and that holds across roots: a rule in one root naming a field in its sibling is rehosted by the prefix
+     * of the root it NAMES, not by the one it sits in. A single mount-wide substitution passes every
+     * same-root row and gets this one wrong, which is why the reference points sideways.
+     *
+     * The third model is the boundary in the other direction, and the row that separates per-root
+     * substitution from prefixing every absolute path: `/Order/Code` names no root of the provider, so no
+     * target of it moved and the Kernel leaves it as written (KF3) — after mounting it binds to the HOST's
+     * own field. Prefixing it instead would report `MVK_INVALID_ENTITY` for a reference A12 resolves, which
+     * is the one direction this checker may not take. That the Kernel rewrites by moved target is KF3's
+     * measured mechanism on the `SINGLE_RG` carrier; if it turned out to prefix more widely here, this
+     * checker would stay silent where A12 speaks, which is the safe half.
+     */
+    @Test
+    fun aModelRootProvidersAbsoluteReferencesAreRehostedPerRoot() {
+        // Every condition names the rule's own error field too, because A12 refuses a rule whose condition
+        // does not (`MVK_ERROR_FIELD_NOT_REFERENCED`) — so the reference under test is the second conjunct.
+        fun provider(reference: String) =
+            twoRootProvider(rules = "," + rule("Filled", "../Street", "FieldFilled(Street) And FieldFilled($reference)"))
+        val ownRoot = provider("/Address/Street")
+        val sibling = provider("/Contact/Email")
+        val hostShaped = provider("/Order/Code")
+        val entry = host(mountBody = modelRoot)
+
+        listOf(ownRoot, sibling, hostShaped).forEach { source ->
+            val report = check(entry, source)
+            // Non-vacuity again: an unexpanded mount reports nothing about anything.
+            assertTrue(CheckFamily.CONDITION_REFERENCES in report.checksCompleted, report.gaps.toString())
+            assertEquals(emptyList(), report.findings)
+        }
+    }
+
     /** A provider is fully expanded before it is mounted, so a nested mount's children arrive already placed. */
     @Test
     fun aProviderIsExpandedBeforeItIsMounted() {
@@ -194,15 +278,14 @@ class WorkspaceMountTest {
     }
 
     /**
-     * The three mount options this slice does not reproduce each suspend the analysis by name. Reading them
-     * as absent would place declarations A12 drops, or place them one level off — a tree that is confidently
-     * wrong, which is worse than an incomplete answer. The plain mount is the control.
+     * The two mount options this slice does not reproduce each suspend the analysis by name. Reading them as
+     * absent would place declarations A12 drops — a tree that is confidently wrong, which is worse than an
+     * incomplete answer. The plain mount is the control.
      */
     @Test
     fun anUnimplementedMountOptionSuspendsInsteadOfGuessing() {
         val address = provider("address", "Address", field("Street"))
         val suspended = mapOf(
-            """"modelAlias":"addr","includeLevel":"MODEL_ROOT"""" to "MODEL_ROOT",
             """"modelAlias":"addr","excludeRules":true""" to "excludeRules",
             """"modelAlias":"addr","excludeComputations":true""" to "excludeComputations",
         )

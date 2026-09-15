@@ -22,9 +22,10 @@ import kotlin.test.assertTrue
  * its typed author, so a green `:consistency:check` alone does not mean the oracle is current.
  *
  * **What the matrix does NOT reach, so the hand-written rows stay.** No case spells `includeLevel` as
- * `SINGLE_RG` explicitly, none carries `modelAlias` beside non-empty `elements`, and its only multi-root
- * provider sits behind a mount that suspends first — the already-expanded branch, the level spelling and the
- * multi-root refusal are `WorkspaceMountTest`'s, and this file is not evidence about them.
+ * `SINGLE_RG` explicitly, none carries `modelAlias` beside non-empty `elements`, and its multi-root providers
+ * are only ever mounted at `MODEL_ROOT`, which admits them — the already-expanded branch, the level spelling
+ * and `SINGLE_RG`'s refusal of a multi-root provider are `WorkspaceMountTest`'s, and this file is not
+ * evidence about them.
  *
  * **What is compared, and what deliberately is not.** Paths and element kinds: the expanded set of
  * declarations and where each one landed. Not the rules' condition TEXT, which the Kernel rewrites during
@@ -48,23 +49,23 @@ class WorkspaceMatrixReconciliationTest {
             "local-typedef" to agrees,
             "include-contributed-typedef" to agrees,
             "imported-typedef-nested-single" to agrees,
-            "imported-typedef-nested-model-root" to "suspended at [/Permit/Review (MODEL_ROOT)]",
+            "imported-typedef-nested-model-root" to agrees,
             "alias-with-exclusions" to "suspended at [/Permit/Inspection (excludeRules)]",
             "rules-excluded-computation-retained" to "suspended at [/Permit/Inspection (excludeRules)]",
             "computations-excluded-rule-retained" to
                 "suspended at [/Permit/Inspection (excludeComputations)]",
-            "model-root-multiple-groups" to "suspended at [/Permit/Sections (MODEL_ROOT)]",
+            "model-root-multiple-groups" to agrees,
             "same-alias-mounted-twice" to agrees,
             "nested-rules-excluded" to "suspended at [/Permit/Review (excludeRules)]",
             // The two attachment cases differ in the directive that stops the checker first, not only in the
             // path: this one mounts the template as MODEL_ROOT, its sibling as SINGLE_RG with an exclusion.
             "attachment-rules-survive-outer-exclusion" to
-                "suspended at [/Permit/Documents (MODEL_ROOT)]",
+                "suspended at [/Permit/Documents (excludeRules)]",
             "single-attachment-rules-survive-outer-exclusion" to
                 "suspended at [/Permit/Documents (excludeRules)]",
             "single-provider-root-include" to agrees,
             "reference-family-single" to agrees,
-            "reference-family-model-root" to "suspended at [/Policy/Cover (MODEL_ROOT)]",
+            "reference-family-model-root" to agrees,
             "reference-family-german-single" to agrees,
             "reference-family-mixed-language-neutral" to agrees,
             "reference-family-mixed-language-neutral-reverse" to agrees,

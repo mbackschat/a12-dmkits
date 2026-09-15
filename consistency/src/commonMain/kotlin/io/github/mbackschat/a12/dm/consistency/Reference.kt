@@ -180,8 +180,14 @@ fun PreparedModel.resolve(
     // one arm can silently stop honouring the variant deletion while the other keeps it, and a mutant doing
     // exactly that survived every control here (2026-09-13) because the provider-bound arm needs a mounted
     // model with its own flag on to be reached at all. One expression cannot diverge from itself.
+    // A MODEL_ROOT mount places several prefixes and is still ONE instance, so the denominator is the union
+    // of what this mount placed rather than a single subtree.
     val scope = resolvableElements.let { visible ->
-        if (boundInProvider) visible.filter { it.path.startsWith(origin.mountedPrefix + "/") } else visible
+        if (boundInProvider) {
+            visible.filter { element -> origin.mountedPrefixes.values.any { element.path.startsWith("$it/") } }
+        } else {
+            visible
+        }
     }
     val matches = scope.filter { it.declaredKind == DeclaredKind.FIELD && it.path.substringAfterLast('/') == name }
     return when (matches.size) {
