@@ -84,7 +84,7 @@ class ConditionReferencePathLawsTest {
 
     /**
      * Whitespace rides the lexer's HIDDEN channel and is insignificant between ANY two tokens
-     * ([KF76](../../../../../../../../../docs/KERNEL-FINDINGS.md)), so every spaced spelling must behave
+     * ([KF76](../../../../../../../../../../../docs/KERNEL-FINDINGS.md)), so every spaced spelling must behave
      * exactly like its tight twin. Each row here is paired with the tight control in the tests above.
      */
     @Test

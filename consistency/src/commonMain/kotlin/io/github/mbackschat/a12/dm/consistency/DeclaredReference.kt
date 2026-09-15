@@ -79,7 +79,7 @@ private fun PreparedModel.resolveRelative(from: String, relative: String): Refer
  * part company exactly when the error field reaches into a repeatable group below the declaring one. A
  * reference reader keyed on the declaring group therefore asks the wrong question on such a rule and yields
  * on an operand A12 admits — measured as two silences in the differential lane
- * ([KERNEL-FINDINGS KF424](KERNEL-FINDINGS.md#kf424)).
+ * ([KERNEL-FINDINGS KF424](../../../../../../../../../../docs/KERNEL-FINDINGS.md#kf424)).
  *
  * Resolved per element rather than by scanning [declaredReferences], which is a whole-model walk and is
  * called from inside per-reference loops.

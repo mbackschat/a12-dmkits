@@ -18,7 +18,7 @@ import io.github.mbackschat.a12.dm.rulekit.dsl.Severity;
 import io.github.mbackschat.a12.dm.rulekit.read.ReadResult;
 
 /**
- * The READ half of the keyed DATE_RANGE operand ([KF205](../../../../../../../../../docs/KERNEL-FINDINGS.md)).
+ * The READ half of the keyed DATE_RANGE operand ([KF205](../../../../../../../../../../docs/KERNEL-FINDINGS.md)).
  *
  * <p><b>Why this exists beside the authoring law.</b> Shipping {@code DateRangeRef.forIndex} made a shape
  * authorable that the kernel had always admitted; the converter could read neither side of it, and the two

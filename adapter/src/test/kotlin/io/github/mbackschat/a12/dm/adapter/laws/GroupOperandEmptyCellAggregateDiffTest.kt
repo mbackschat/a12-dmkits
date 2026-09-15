@@ -18,7 +18,7 @@ import org.junit.jupiter.api.Test
  * operand**, [IG136] item (f).
  *
  * **Why one measurement did not cover four operators.** `starVals` feeds `Sum`, `MinValue`, `MaxValue` and
- * `NumberOfDifferentValues`, and only `Sum` was measured ([IF287](../../../../../../../../../docs/INTERPRETER-FINDINGS.md#if287)'s
+ * `NumberOfDifferentValues`, and only `Sum` was measured ([IF287](../../../../../../../../../../../docs/INTERPRETER-FINDINGS.md#if287)'s
  * sixth instance). For `Sum` the empty-cell question is **invariant** — dropping a cell and adding zero are the
  * same thing — so that row could not distinguish "empties are dropped" from "the numeric empty is substituted",
  * and the other three are exactly where the two readings diverge. That makes `Sum` the wrong operator to
@@ -41,7 +41,7 @@ import org.junit.jupiter.api.Test
  * Every aggregate is authored through the typed surface, which reaches the group form here
  * (`Dsl.sum`/`minValue`/`maxValue`/`numberOfDifferentValues` take an `AggregateOperand`, and `GroupListRef` is
  * one) — unlike the DATE extrema and the value-list quantifiers
- * ([DG35](../../../../../../../../../docs/DEV-API-GAPS.md)).
+ * ([DG35](../../../../../../../../../../../docs/DEV-API-GAPS.md)).
  */
 class GroupOperandEmptyCellAggregateDiffTest {
 

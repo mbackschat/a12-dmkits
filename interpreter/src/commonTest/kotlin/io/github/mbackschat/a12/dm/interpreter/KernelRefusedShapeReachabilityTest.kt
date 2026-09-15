@@ -15,7 +15,7 @@ import kotlin.test.assertTrue
  * review demanded for two closures made on 2026-08-14.
  *
  * **The closures, and the gap in them.** `Min`/`Max` refuse a group operand and `DateRangesOverlap` refuses one
- * (`MVK_NO_GROUPS_ALLOWED`, [KF187](../../../../../../../../docs/KERNEL-FINDINGS.md#kf187)), which was used to
+ * (`MVK_NO_GROUPS_ALLOWED`, [KF187](../../../../../../../../../../docs/KERNEL-FINDINGS.md#kf187)), which was used to
  * close two candidate defects as unreachable. The review's objection is exact: a kernel refusal bounds what a
  * **stored, validated** model can contain and nothing more. Three channels bypass it —
  *
@@ -31,7 +31,7 @@ import kotlin.test.assertTrue
  * `UnsupportedConstructException` is the one exception the evaluator's degrade net catches, so it fails that rule
  * alone and leaves the rest of the model evaluating. Any other exception type escapes and takes the whole
  * evaluation down — which is exactly how two crash-class defects reached a legal document earlier the same day
- * ([IF287](../../../../../../../../docs/INTERPRETER-FINDINGS.md#if287)'s tenth and fifteenth instances). So the
+ * ([IF287](../../../../../../../../../../docs/INTERPRETER-FINDINGS.md#if287)'s tenth and fifteenth instances). So the
  * assertion is deliberately about the exception TYPE and not about a message or a value.
  */
 class KernelRefusedShapeReachabilityTest {

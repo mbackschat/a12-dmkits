@@ -13,7 +13,7 @@ import org.junit.jupiter.api.Test
  * Differential — what a `DateFragmentType` does at RUNTIME when its declared format is one the four
  * conventional fragment spellings never covered (IG149).
  *
- * [KF252](docs/KERNEL-FINDINGS.md) measured that the fragment kind admits all twelve members of the shared
+ * [KF252](../../../../../../../../../../../docs/KERNEL-FINDINGS.md) measured that the fragment kind admits all twelve members of the shared
  * temporal vocabulary, not the `MM` / `yyyy` / `yyyy-MM` / `MM-dd` every surface in this estate named. That is
  * an ADMISSION result; §6's completion law — missing month/day to `01`, a missing year from the Base Year —
  * was measured on those four alone, so eight declarations had no measured behaviour on either engine.

@@ -17,7 +17,7 @@ import java.util.function.Consumer
  *
  * **Why this had the highest prior of anything left open.** `Document` carries three implementations of "which
  * repetition levels bind to this row and which iterate", and the other two were BOTH confirmed defects in the same
- * session: `fillScope` ([IF287](../../../../../../../../../docs/INTERPRETER-FINDINGS.md#if287)'s sixteenth
+ * session: `fillScope` ([IF287](../../../../../../../../../../../docs/INTERPRETER-FINDINGS.md#if287)'s sixteenth
  * instance) and `containedFieldCells` (its nineteenth, which a cold review found because the sixteenth's fix was
  * not swept across its siblings). `starScanCells` is the third, and its `declaredRange` branch is worse-looking
  * than either: it computes `commonPrefixLen(fieldParts, partsOf(group))` **and ignores `bindDepth` entirely**,

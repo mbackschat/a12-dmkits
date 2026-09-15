@@ -257,7 +257,7 @@ class HavingFilterIterationGateLawsTest {
     }
 
     /**
-     * The group-PRESENCE carrier, because [KF242](../../docs/KERNEL-FINDINGS.md) and the API guide state its
+     * The group-PRESENCE carrier, because [KF242](../../../../../../../../../../../docs/KERNEL-FINDINGS.md) and the API guide state its
      * conjunct rule on a NON-repeatable out-of-scope group and read as if it held for any out-of-scope group.
      * A repeatable sibling is the carrier that separates those, so the same claim is put to it here.
      */

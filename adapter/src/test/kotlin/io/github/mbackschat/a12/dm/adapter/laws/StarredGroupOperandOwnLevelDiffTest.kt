@@ -25,7 +25,7 @@ import org.junit.jupiter.api.Test
  * From a rule authored anywhere above `G` the difference is invisible, because `commonPrefixLen` is the binding
  * term and the cap never applies. From a rule authored ON `G` it is not. Two channels of one operand disagreeing
  * about its extent is this class's own cheapest tell — it is how the fourth instance of
- * [IF287](../../../../../../../../../docs/INTERPRETER-FINDINGS.md#if287) was found — and `Document.rowContexts`'
+ * [IF287](../../../../../../../../../../../docs/INTERPRETER-FINDINGS.md#if287) was found — and `Document.rowContexts`'
  * own documentation states the principle for this case in the opposite direction: "an aggregate/quantifier over
  * groupPath spans all rows under groupPath's PARENT … scoping to the full rowReps would wrongly return only this
  * one row".

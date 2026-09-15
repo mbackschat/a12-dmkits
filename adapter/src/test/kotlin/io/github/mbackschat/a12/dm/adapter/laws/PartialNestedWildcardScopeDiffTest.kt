@@ -18,7 +18,7 @@ import org.junit.jupiter.api.Test
 import java.util.function.Consumer
 
 /**
- * Differential — the WILDCARD-ONLY gate ([IF42](../../../../../../../../docs/INTERPRETER-FINDINGS.md)) under two
+ * Differential — the WILDCARD-ONLY gate ([IF42](../../../../../../../../../../../docs/INTERPRETER-FINDINGS.md)) under two
  * nested repeatable levels, for the four combiner aggregates rather than `SumOfProducts`.
  *
  * `SumOfProducts`' completeness gate was found to be decided globally when the kernel decides **per iteration

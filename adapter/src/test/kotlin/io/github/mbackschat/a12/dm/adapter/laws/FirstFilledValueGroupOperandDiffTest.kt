@@ -16,9 +16,9 @@ import org.junit.jupiter.api.Test
 /**
  * Differential + tri-check — **`FirstFilledValue` over a GROUP operand**, closing [IG135].
  *
- * **Why this needed its own measurement rather than an inference.** [KF173](../../../../../../../../../docs/KERNEL-FINDINGS.md#kf173)
+ * **Why this needed its own measurement rather than an inference.** [KF173](../../../../../../../../../../../docs/KERNEL-FINDINGS.md#kf173)
  * records that `FirstFilledValue` routes through the same shared entity-list checker as `FieldValuesNotUnique`,
- * whose group-operand runtime contract is fully measured ([IF287](../../../../../../../../../docs/INTERPRETER-FINDINGS.md#if287)).
+ * whose group-operand runtime contract is fully measured ([IF287](../../../../../../../../../../../docs/INTERPRETER-FINDINGS.md#if287)).
  * But routing through one checker is a **source-level reading, not a measured mechanism** — and the
  * `FieldValuesNotUnique` history is precisely the reason to distrust that inference: the same shape produced
  * **two** silent wrong answers in this evaluator, each found only by a differential, each reporting a missed
@@ -37,7 +37,7 @@ import org.junit.jupiter.api.Test
  *
  * The group form is authored through the typed surface (`m.firstFilledGroup`), which exists here — unlike the
  * date extrema and the value-list quantifiers, whose group slots are type-level unrepresentable
- * ([DG35](../../../../../../../../../docs/DEV-API-GAPS.md)) — so the dogfooding rule applies and no condition
+ * ([DG35](../../../../../../../../../../../docs/DEV-API-GAPS.md)) — so the dogfooding rule applies and no condition
  * below is hand-written.
  */
 class FirstFilledValueGroupOperandDiffTest {

@@ -12,7 +12,7 @@ import org.junit.jupiter.api.Test
 
 /**
  * Differential + tri-check — **a GROUP operand in `AtLeastOneDateRangeOverlaps`' `In` slot**, the shape that
- * reopened a question [IF287](../../../../../../../../../docs/INTERPRETER-FINDINGS.md#if287) had closed.
+ * reopened a question [IF287](../../../../../../../../../../../docs/INTERPRETER-FINDINGS.md#if287) had closed.
  *
  * **The premise this file corrects.** IF287 deliberately did NOT push group expansion into the shared
  * `filteredStarCells`, on the stated grounds that "its other caller is the date-range overlap operator, whose
@@ -20,7 +20,7 @@ import org.junit.jupiter.api.Test
  * which is the right instinct. The 2026-08-14 admission sweep then measured it, and the family turns out to
  * DISAGREE WITH ITSELF: `DateRangesOverlap(<group>)` is refused `MVK_NO_GROUPS_ALLOWED` in both repetition shapes,
  * while the plural `AtLeastOneDateRangeOverlaps(<scalar> In <group>)` is **ACCEPTED**
- * ([KF187](../../../../../../../../../docs/KERNEL-FINDINGS.md#kf187)). So half the reason for withholding the
+ * ([KF187](../../../../../../../../../../../docs/KERNEL-FINDINGS.md#kf187)). So half the reason for withholding the
  * expansion was correct and the other half was not, and the shape is authorable after all.
  *
  * **Both arms of the dispatch are blind, for two different reasons, and they need separate rows.**

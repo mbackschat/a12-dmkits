@@ -19,7 +19,7 @@ import org.junit.jupiter.api.Test
  * `ctxOf(arg)`, which returns the OUTER context for a `$`-marked node (`Interpreter.ctxOf`). So the fill test and
  * the value read consulted **different rows**. The sibling `starOperandVals` uses `ctxOf` consistently, which is
  * this class's "disagrees with a sibling" tell for the fifth time
- * ([IF287](../../../../../../../../../docs/INTERPRETER-FINDINGS.md#if287)).
+ * ([IF287](../../../../../../../../../../../docs/INTERPRETER-FINDINGS.md#if287)).
  *
  * **It was nearly closed as unreachable, on a measurement that measured something else.** A first sweep put `$`
  * under `Sum` at the TOP LEVEL of a condition and read `MVK_INVALID_OUTER_ITERATION` as "an aggregate cannot carry

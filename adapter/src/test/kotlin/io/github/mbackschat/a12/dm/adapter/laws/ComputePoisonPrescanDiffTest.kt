@@ -18,7 +18,7 @@ import java.util.function.Consumer
  * prescan that exists only on the compute path and had no test reaching it.
  *
  * **Why an unexercised prescan is worth its own file rather than a note.** A prescan is code that runs only in
- * one mode, and [IF287](../../../../../../../../../docs/INTERPRETER-FINDINGS.md#if287)'s seventh instance is the
+ * one mode, and [IF287](../../../../../../../../../../../docs/INTERPRETER-FINDINGS.md#if287)'s seventh instance is the
  * standing lesson about exactly that shape: an operator is demonstrably right wherever the estate pairs it and
  * wrong on the path nobody paired. These three are the inverse risk — not a missing check but an *unverified*
  * one, which can be too eager as easily as too lax, and neither direction is visible without a measurement.

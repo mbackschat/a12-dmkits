@@ -186,7 +186,7 @@ class MessageSlotRawShapeLawsTest {
     }
 
     /**
-     * The BARE locale, which [KF158](KERNEL-FINDINGS.md#kf158) records as "not supported" at the validation
+     * The BARE locale, which [KF158](../../../../../../../../../../../docs/KERNEL-FINDINGS.md#kf158) records as "not supported" at the validation
      * tier — measured here because the table above admits it, and a disagreement with a clause we already
      * hold is the hypothesis to test rather than a row to quietly overwrite.
      *

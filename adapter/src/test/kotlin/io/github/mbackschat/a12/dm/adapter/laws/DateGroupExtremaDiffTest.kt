@@ -17,7 +17,7 @@ import org.junit.jupiter.api.Test
 /**
  * Differential + tri-check — `MinValue`/`MaxValue` over a **group of DATE fields**, the shape [IG136] item (e)
  * names and the 2026-08-14 admission sweep measured as ADMITTED in both repetition shapes
- * ([KF187](../../../../../../../../../docs/KERNEL-FINDINGS.md)).
+ * ([KF187](../../../../../../../../../../../docs/KERNEL-FINDINGS.md)).
  *
  * **Why this exists, and what is actually at stake.** `dateAggregate` decides whether a min/max rides the
  * kernel's date machinery, and it asks `declaredKind(a.path)` of each operand — **null for a group path**, so a
@@ -45,7 +45,7 @@ import org.junit.jupiter.api.Test
  *
  * **The group operand is authored as a literal, and only the group operand.** `Dsl.earliestOf`/`latestOf` accept
  * a `FieldListRef` and no `GroupListRef`, so the admitted group shape is type-level unrepresentable there
- * ([DG35](../../../../../../../../../docs/DEV-API-GAPS.md)) — reaching a shape the typed surface refuses is the
+ * ([DG35](../../../../../../../../../../../docs/DEV-API-GAPS.md)) — reaching a shape the typed surface refuses is the
  * one legitimate reason to hand-write a condition in this estate. Every control IS authored through the typed
  * surface, and each group condition is derived from its control by substituting the operand alone, so the two
  * cannot differ in anything else. [assertOperandSubstituted] fails if that substitution silently misses, which
@@ -276,7 +276,7 @@ class DateGroupExtremaDiffTest {
      *
      * Its two siblings are CLOSED as measured negatives rather than tested here, because the kernel refuses them:
      * `Sum(<date group>)` draws `MVK_NO_NUMBER` and `MinValue(<mixed-kind group>)` draws `MVK_NOT_SORTABLE`
-     * ([KF187](../../../../../../../../../docs/KERNEL-FINDINGS.md#kf187)). So the order-dependent
+     * ([KF187](../../../../../../../../../../../docs/KERNEL-FINDINGS.md#kf187)). So the order-dependent
      * `firstFilledEntityKind` read a review flagged for a mixed group is unreachable through min/max, and `Sum`
      * cannot reach `dateGroupFill` at all.
      */

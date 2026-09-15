@@ -76,7 +76,7 @@ class DateConstructionSlotLawsTest {
      * with no {@code isHModel()} predicate on the production and none at the raiser, so the century /
      * short-year pair is available to any model. Measured here rather than argued, because "legacy-only" was
      * exactly the unmeasured basis that hid a live A12-facing rejection once already
-     * ([KF282](KERNEL-FINDINGS.md#kf282), 2026-09-12).
+     * ([KF282](../../../../../../../../../../../docs/KERNEL-FINDINGS.md#kf282), 2026-09-12).
      */
     @Test
     void whichSlotsOfTheFourParameterSplitYearFormAdmitWhat() {

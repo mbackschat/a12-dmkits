@@ -19,7 +19,7 @@ import io.github.mbackschat.a12.dm.Fixtures;
  *
  * <p>[MVK-LEDGER] carried {@code MVK_VALUE_INVALID}, {@code MVK_VALUES_DUPLICATE},
  * {@code MVK_VALUE_TOO_LONG} and {@code MVK_VALUE_TOO_SHORT} as {@code n/a-structural}, each citing
- * [KF321](KERNEL-FINDINGS.md#kf321) — which measured an enum VALUE TOKEN: repeated, empty, spaced, 300
+ * [KF321](../../../../../../../../../../../docs/KERNEL-FINDINGS.md#kf321) — which measured an enum VALUE TOKEN: repeated, empty, spaced, 300
  * characters long. Every row of that measurement is right and none of them is about these four codes, whose
  * own rows already named the carrier: <b>a hint list</b>. Measuring a law on the carrier next to the one it
  * names is the scope transfer that needs no new branch and so prompts no question, and here it closed four

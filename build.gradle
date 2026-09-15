@@ -698,6 +698,7 @@ tasks.register('docGuardTest', Test) {
         includeTestsMatching 'io.github.mbackschat.a12.dm.GateTierWiringTest'
         includeTestsMatching 'io.github.mbackschat.a12.dm.LockCitationResolvesTest'
         includeTestsMatching 'io.github.mbackschat.a12.dm.CheckerCodeCitationResolvesTest'
+        includeTestsMatching 'io.github.mbackschat.a12.dm.SourceDocLinkResolvesTest'
         includeTestsMatching 'io.github.mbackschat.a12.dm.PerfAnchorCoverageGuardTest'
         includeTestsMatching 'io.github.mbackschat.a12.dm.PerfTestClassificationTest'
         includeTestsMatching 'io.github.mbackschat.a12.dm.RawClockCensusTest'
@@ -729,6 +730,10 @@ tasks.register('docGuardTest', Test) {
             // ApiFindingsNumberingGuardTest reads the findings sections at runtime: the ordinals are public
             // anchors ("finding N", cited from production sources), so a prose-only edit must re-run it.
             'docs/API-FINDINGS.md': file('docs/API-FINDINGS.md'),
+            // SourceDocLinkResolvesTest resolves every source comment's doc citation against this tree, so its
+            // verdict changes when a document is RENAMED or DELETED and not one source byte moves — the exact
+            // edit that would otherwise leave the lane UP-TO-DATE with the now-dead citations unchecked.
+            'cited docs'       : fileTree('docs') { include '**/*.md' },
             // PerfAnchorCoverageGuardTest reads the committed absolute-time anchor beside PerfGateTest's source
             // (already covered above) to check that every growth lane is anchored at both scales — IF280.
             'perf anchors': file('adapter/src/test/resources/perf/anchors.json'),

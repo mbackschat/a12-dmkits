@@ -9,7 +9,7 @@ import io.github.mbackschat.a12.dm.modelkit.FieldKind;
  * KERNEL-FINDINGS §9 — which operand of {@code NumberOfDifferentValues} the homogeneity gate reports,
  * measured 2026-08-31 on kernel 30.8.1 through {@code checkConsistency}.
  *
- * <p><b>Why this file exists.</b> [KF173](docs/KERNEL-FINDINGS.md#kf173) established for
+ * <p><b>Why this file exists.</b> [KF173](../../../../../../../../../../../docs/KERNEL-FINDINGS.md#kf173) established for
  * {@code FieldValuesNotUnique} that "each gate's SCOPE is the whole operand list, so authored position never
  * selects the reported class". That sentence is true of <i>that</i> operator and was never measured on this
  * one; the two are separate gates, distinguished by the {@code CMP} token in their kind codes. a12-kernel-lean

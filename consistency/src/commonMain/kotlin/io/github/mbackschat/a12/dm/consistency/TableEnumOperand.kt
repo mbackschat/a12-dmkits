@@ -10,13 +10,13 @@ import io.github.mbackschat.a12.dm.consistency.syntax.splitAtInfix
  * `ValueNotConsistent`'s first operand must be an enumeration WITH A TABLE REFERENCE, and no stored model
  * has one.
  *
- * [MVK-LEDGER](MVK-LEDGER.md) carried six codes of this family on one sentence — table-backed enums are not
+ * [MVK-LEDGER](../../../../../../../../../../docs/MVK-LEDGER.md) carried six codes of this family on one sentence — table-backed enums are not
  * DM-JSON-serializable, so the construct is un-buildable — and the sentence is right about five of them and
  * INVERTED on the sixth. `CheckFieldAndValueListConditionImpl.check` asks `checkField` first, and that call
  * ends in `CheckEntityUtils.checkEnumWithTableReference`, which raises `MVK_TABLE_ENUM_EXPECTED` when the
  * first operand is **not** a table enum. The absence of a table enum is therefore not what makes the code
  * unreachable; it is exactly what fires it, on every model that writes this operator at all
- * ([KERNEL-FINDINGS KF422](KERNEL-FINDINGS.md#kf422),
+ * ([KERNEL-FINDINGS KF422](../../../../../../../../../../docs/KERNEL-FINDINGS.md#kf422),
  * `rulekit.validate.laws.TableEnumConditionLawsTest`).
  *
  * **The order is measured, and it decides which class this family may name.** A group first operand draws
@@ -28,7 +28,7 @@ import io.github.mbackschat.a12.dm.consistency.syntax.splitAtInfix
  * **What it leaves alone**, under-reporting. The five codes BEHIND the gate —
  * `MVK_DEPENDENT_COLUMN_SIZE_MISMATCH`, `MVK_ONLY_ENUMS_ALLOWED`, `MVK_STRING_VALUE_NOT_IN_COLUMN`,
  * `MVK_ENUM_VALUES_NOT_IN_COLUMN` and `MVK_INVALID_TABLE_ENUM` — need the stored table enum that
- * [KF366](KERNEL-FINDINGS.md#kf366) measured A12's own READER refusing, so no model this checker is given can
+ * [KF366](../../../../../../../../../../docs/KERNEL-FINDINGS.md#kf366) measured A12's own READER refusing, so no model this checker is given can
  * reach them. An operand this reader cannot resolve is left to A12 as well: an unknown path draws
  * `MVK_INVALID_ENTITY` from the reference gate ahead of everything here.
  */

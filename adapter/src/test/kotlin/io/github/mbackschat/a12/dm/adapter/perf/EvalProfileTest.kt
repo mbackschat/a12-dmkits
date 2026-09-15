@@ -56,7 +56,7 @@ class EvalProfileTest {
      * Three of the four memos that reopened it cannot be reached by the two existing drivers *by construction*:
      * `ValidationPass.indexColumns` says of itself "Empty and unread in a FULL validation", `decided` is the same
      * shape, and the group-relevance map is built by `groupRelevanceOf`, which only `validatePart` calls. Reading a
-     * 0 for them off a full-validation profile was the defect [IF285](../docs/INTERPRETER-FINDINGS.md) corrected —
+     * 0 for them off a full-validation profile was the defect [IF285](../../../../../../../../../../../docs/INTERPRETER-FINDINGS.md) corrected —
      * a measurement whose denominator was never checked — so measuring them needs this path, not a longer run of
      * the old one.
      *

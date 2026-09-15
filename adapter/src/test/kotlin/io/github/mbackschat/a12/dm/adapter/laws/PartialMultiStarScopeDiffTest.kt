@@ -23,7 +23,7 @@ import java.util.function.Consumer
  * `PartialNestedWildcardScopeDiffTest` and `PartialNestedAggregateDiffTest` both vary two nested repeatable
  * levels with a **single** star, where the star's own level and the deepest repeatable level of its path are the
  * same level. This file separates them: `Outer* then Inner* then Qty` stars BOTH levels, and
- * [IF94](../../../../../../../../docs/INTERPRETER-FINDINGS.md) pins the kernel's binding rule as *the levels
+ * [IF94](../../../../../../../../../../../docs/INTERPRETER-FINDINGS.md) pins the kernel's binding rule as *the levels
  * strictly above the FIRST starred group* — so from `Outer[2]`'s row this operand still spans EVERY outer row.
  *
  * That is exactly the assumption the row-scoping helper got wrong: it derived the row's bound prefix from the

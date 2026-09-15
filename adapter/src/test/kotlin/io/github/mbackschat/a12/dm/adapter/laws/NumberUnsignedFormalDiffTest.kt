@@ -12,7 +12,7 @@ import org.junit.jupiter.api.Test
 /**
  * Tri-engine lock for `NumberType.positivesOnly` — the unsigned-number formal check `zahlMitVorzeichen`, its
  * placement in the format ladder, and the two classes it is DISJOINT from rather than ordered against
- * ([KERNEL-FINDINGS](../../../../../../../../../docs/KERNEL-FINDINGS.md) KF253).
+ * ([KERNEL-FINDINGS](../../../../../../../../../../../docs/KERNEL-FINDINGS.md) KF253).
  *
  * <p>Every row is a **within-model** control: one model declares the whole grid, so two rows differ in exactly
  * the builder call under test and nothing else. Comparing two models would vary everything not thought about.

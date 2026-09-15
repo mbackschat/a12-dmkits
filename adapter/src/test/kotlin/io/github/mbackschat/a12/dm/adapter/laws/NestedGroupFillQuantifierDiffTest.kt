@@ -21,7 +21,7 @@ import org.junit.jupiter.api.Test
  * is flat or guards on a non-repeatable field, so the plan binds `Once` and nothing is pinned." Here the operand
  * is a NON-repeatable group holding one direct field and a nested repeatable subgroup, so the expansion has to
  * cross that subgroup's rows — which is exactly the shape that produced the fourth defect of
- * [IF287](../../../../../../../../../docs/INTERPRETER-FINDINGS.md#if287)'s class.
+ * [IF287](../../../../../../../../../../../docs/INTERPRETER-FINDINGS.md#if287)'s class.
  *
  * **Two of the seven are the discriminators, and the table is what makes that visible.** On the single document
  * below, a row-1-pinned expansion sees ONE filled cell (`PrimaryNote`) where a correct one sees TWO
@@ -31,7 +31,7 @@ import org.junit.jupiter.api.Test
  * aborts at the first divergence and hides which of the seven moved.
  *
  * Conditions are hand-written because a group operand is not reachable through the fill quantifiers' typed slots
- * (the same type-level erasure as [DG35](../../../../../../../../../docs/DEV-API-GAPS.md)), and each is paired
+ * (the same type-level erasure as [DG35](../../../../../../../../../../../docs/DEV-API-GAPS.md)), and each is paired
  * with the equivalent EXPLICIT entity list so a disagreement cannot be read as a fixture defect.
  */
 class NestedGroupFillQuantifierDiffTest {

@@ -17,7 +17,7 @@ import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel;
  * Reachability law — <b>{@code checkConsistency} re-runs the validation CODE GENERATOR, so the generator's own
  * {@code NoMetaModelCheckErrorType} classes reach an ordinary authoring gate.</b>
  *
- * <p>This exists because [`MVK-LEDGER`](../../../../../../../../../docs/MVK-LEDGER.md)'s scope boundary
+ * <p>This exists because [`MVK-LEDGER`](../../../../../../../../../../../docs/MVK-LEDGER.md)'s scope boundary
  * asserted the opposite for six weeks — "unreachable from our surface because we never invoke codegen" — and
  * that sentence was a reachability claim carried on a reasonable-sounding mechanism with no run behind it. The
  * mechanism is {@code CodeGenerationRule} (kernel-md-model consistency rules), which extends

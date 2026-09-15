@@ -11,7 +11,7 @@ import org.junit.jupiter.api.Test
 /**
  * Tri-engine lock for the opt-in pre-1900 check on its two OTHER carriers — `DateFragmentType` and
  * `DateRangeType` both declare `youngerThan1900Check`, and [DateBefore1900DiffTest] covered only `DateType`
- * ([KERNEL-FINDINGS](../../../../../../../../../docs/KERNEL-FINDINGS.md) KF253).
+ * ([KERNEL-FINDINGS](../../../../../../../../../../../docs/KERNEL-FINDINGS.md) KF253).
  *
  * <p>Every firing row is twinned with a **plain** sibling in the same model, identical but for the
  * `rejectBefore1900()` builder call, so a reported class belongs to the check and not to the value. The

@@ -20,7 +20,7 @@ import org.junit.jupiter.api.TestInstance
  *
  * **Why this is not covered by what we already hold.** [TemporalDeclaredFormatGateDiffTest] establishes the
  * same rule for the CLASSIFIER — which formal check and which value decoder a declaration selects — on the
- * complete 8-format × 3-kind grid ([KF211](../../../../../../../../../docs/KERNEL-FINDINGS.md)), and it does
+ * complete 8-format × 3-kind grid ([KF211](../../../../../../../../../../../docs/KERNEL-FINDINGS.md)), and it does
  * measure the comparison gate. But it measures it on ONE arm: a date-declared TIME against a date-declared
  * DATE, plus the ordinary clock-versus-date refusal as its control. Its model declares no clock-formatted DATE
  * at all. So "the format decides the comparison partition too" was established for one direction and, for the
@@ -132,7 +132,7 @@ class CrossKindTemporalComparisonGateDiffTest {
      * **The DATE_TIME family, which both estates had left explicitly open.** a12-kernel-lean's
      * `SPEC-2026-09-05-13` limited itself to the DATE/TIME pair under equality and recorded the DateTime
      * family's cross-kind comparison as an untested gap; so did we, four times across that exchange. Neither
-     * side's grid reached it: [KF211](../../../../../../../../../docs/KERNEL-FINDINGS.md#kf211)'s 12 × 3
+     * side's grid reached it: [KF211](../../../../../../../../../../../docs/KERNEL-FINDINGS.md#kf211)'s 12 × 3
      * vocabulary grid covers a DATE_TIME *declaration* for the CLASSIFIER, which is a different gate.
      *
      * The same 2×2, one family over: a stamp-declared DATE compares with a stamp and not with a date, and a

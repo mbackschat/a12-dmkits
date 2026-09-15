@@ -53,7 +53,7 @@ import kotlinx.serialization.json.intOrNull
  * present slots are still this walk's. Four is the century/short-year form, and the ledger had it as an
  * H-model shape with no authoring surface: the grammar carries no `isHModel()` predicate on that arity and
  * neither does the raiser, so an ordinary A12 model reaches it and does
- * ([KF423](KERNEL-FINDINGS.md#kf423)). Only its measured law is reported — an extract operator in either
+ * ([KF423](../../../../../../../../../../docs/KERNEL-FINDINGS.md#kf423)). Only its measured law is reported — an extract operator in either
  * year slot — because the pair's constant and entity arms answer to gates this grid did not separate.
  */
 fun PreparedModel.dateConstructionSlotFindings(): List<Finding> {
@@ -257,7 +257,7 @@ private enum class TemporalConstruction(val id: String, val slots: List<Slot>, v
      * `checkYearFormat(century, shortYear)` routes an operand's `datumExtractOp` arm straight to
      * `handleDatumExtractOpAtYearParam`, whatever the operator, and neither the production nor the raiser
      * carries an `isHModel()` gate — so an ordinary A12 model reaches this
-     * ([KF423](KERNEL-FINDINGS.md#kf423), measured on an `en_US` model with the three-parameter year slot as
+     * ([KF423](../../../../../../../../../../docs/KERNEL-FINDINGS.md#kf423), measured on an `en_US` model with the three-parameter year slot as
      * the control that admits the very same operator). The pair's CONSTANT and ENTITY arms are unmeasured
      * and are left alone.
      */

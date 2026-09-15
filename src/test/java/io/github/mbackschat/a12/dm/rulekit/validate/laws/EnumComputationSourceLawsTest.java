@@ -30,7 +30,7 @@ import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft;
  * target does not cover.
  *
  * <p><b>The display half rides along</b>, reusing the same {@code checkDisplayValues} the comparison walk
- * uses ([KF407](../../../../../../../../../docs/KERNEL-FINDINGS.md)) — so a labelled source and an
+ * uses ([KF407](../../../../../../../../../../../docs/KERNEL-FINDINGS.md)) — so a labelled source and an
  * unlabelled target are incomparable here for the same reason they are there.
  *
  * <p>Own domain (a policy administration desk).

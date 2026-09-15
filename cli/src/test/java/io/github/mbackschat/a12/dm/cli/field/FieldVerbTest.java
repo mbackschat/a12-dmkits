@@ -51,7 +51,7 @@ class FieldVerbTest {
         // (SpecValueRefusalEnvelopeTest), so the corrective is read off stdout with its RK_ code rather than
         // off stderr prose, and the exit code is a rejection's 1.
         //
-        // The CARRIER moved on 2026-09-14: [AF149](../../docs/API-FINDINGS.md#af149) removed the coverage
+        // The CARRIER moved on 2026-09-14: [AF149](../../../../../../../../../../../docs/API-FINDINGS.md#af149) removed the coverage
         // demand from a field's own `label`, because the kernel accepts a label answering one of two declared
         // locales ([KF406]) — so the input this row used to send is now ADMITTED and is locked as such by
         // addAcceptsALabelAnsweringOneOfTwoDeclaredLocales below. The ENUM-VALUE labels are A12's own law and
@@ -78,7 +78,7 @@ class FieldVerbTest {
 
     @Test
     void addAcceptsALabelAnsweringOneOfTwoDeclaredLocales(@TempDir Path dir) throws Exception {
-        // The other half of [AF149](../../docs/API-FINDINGS.md#af149), and it was locked nowhere on this
+        // The other half of [AF149](../../../../../../../../../../../docs/API-FINDINGS.md#af149), and it was locked nowhere on this
         // carrier: a field's own `label` owes NO locale coverage, because the kernel takes one that answers a
         // single declared locale ([KF406]). The demand that used to stand here was an over-rejection, so the
         // admission needs a lock of its own — otherwise the next session reads the refusal row above as

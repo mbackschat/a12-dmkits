@@ -22,7 +22,7 @@ import org.junit.jupiter.api.Test;
  * {@code MVK_DEPENDENT_COLUMN_SIZE_MISMATCH} and {@code MVK_ONLY_ENUMS_ALLOWED} are raised after
  * {@code checkField} returns, and {@code MVK_STRING_VALUE_NOT_IN_COLUMN} /
  * {@code MVK_ENUM_VALUES_NOT_IN_COLUMN} sit inside {@code enumType.getTable().ifPresent(...)} below that —
- * so reaching any of them needs the stored table enum that [KF366](KERNEL-FINDINGS.md#kf366) measured the
+ * so reaching any of them needs the stored table enum that [KF366](../../../../../../../../../../../docs/KERNEL-FINDINGS.md#kf366) measured the
  * READER refusing. {@code MVK_INVALID_TABLE_ENUM} is the mirror image and has a second, independent reason:
  * its sole raiser is {@code CheckEntityUtils.checkNoTableEnum}, which no site in the 30.8.1 checkout calls.
  *

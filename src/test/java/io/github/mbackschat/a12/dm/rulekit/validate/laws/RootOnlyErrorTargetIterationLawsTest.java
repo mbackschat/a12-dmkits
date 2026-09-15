@@ -175,7 +175,7 @@ class RootOnlyErrorTargetIterationLawsTest {
      * <p><b>The control had to move to the fixed-root fixture, and why is worth stating.</b> On
      * {@link #SHIPMENT} the ROOT repeats, so every reference iterates at level 0 and no reference in that
      * model is non-iterating — the intended control drew the containment class too, which reads as
-     * "placement alone refuses" and is exactly the misreading [KF212](KERNEL-FINDINGS.md#kf212) corrects.
+     * "placement alone refuses" and is exactly the misreading [KF212](../../../../../../../../../../../docs/KERNEL-FINDINGS.md#kf212) corrects.
      * {@link #FIXED_ROOT} differs from it in the root's repeatability alone.
      */
     @Test

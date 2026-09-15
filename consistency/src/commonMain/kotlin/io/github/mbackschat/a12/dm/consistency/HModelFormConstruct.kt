@@ -10,7 +10,7 @@ import io.github.mbackschat.a12.dm.consistency.syntax.callsIn
  * the rejection is the first statement of the checks that own them: `CheckFormularBedingungImpl`'s
  * `checkFormularBedingungName` and `CheckAnzahlAngegebenOpHModelImpl.check` each open with an
  * `isA12Model()` throw, so nothing else about the construct is ever asked ([KERNEL-FINDINGS
- * KF282](KERNEL-FINDINGS.md#kf282), `rulekit.validate.laws.HModelFormConditionReachabilityLawsTest`).
+ * KF282](../../../../../../../../../../docs/KERNEL-FINDINGS.md#kf282), `rulekit.validate.laws.HModelFormConditionReachabilityLawsTest`).
  *
  * **Only a GERMAN-language model reaches it, and that is the whole subtlety.** These seven spellings exist in
  * `LexerTerminals_de` and in no English bundle at all, so in an `en_US` model they are ordinary names and the

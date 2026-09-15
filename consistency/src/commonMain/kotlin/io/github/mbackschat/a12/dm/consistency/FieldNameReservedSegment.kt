@@ -11,7 +11,7 @@ import io.github.mbackschat.a12.dm.consistency.syntax.ConditionLanguage
  * ([KERNEL-FINDINGS KF419], `rulekit.validate.laws.FieldNameReservedSuffixLawsTest`).
  *
  * **Only the second arm is reported, because only the second arm fires.** A complete printable-ASCII sweep
- * over field names draws OTHER classes for every illegal character ([KF367](KERNEL-FINDINGS.md#kf367)), so
+ * over field names draws OTHER classes for every illegal character ([KF367](../../../../../../../../../../docs/KERNEL-FINDINGS.md#kf367)), so
  * the pattern arm is pre-empted and a family reproducing it would refuse names A12 takes with a class A12
  * does not use. The reserved segment is the opposite case: every alphabet gate admits the name, which is why
  * no character sweep could reach it.

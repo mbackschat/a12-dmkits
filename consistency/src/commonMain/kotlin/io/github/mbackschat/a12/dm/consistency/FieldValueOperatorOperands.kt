@@ -43,7 +43,7 @@ import kotlinx.serialization.json.intOrNull
  * and the conversion gate answers `MVK_NO_CONVERT_IN_NUMBER` alone. So the class never arrives on its own,
  * and reporting it would mean reporting a declaration A12 already refuses for its own inconsistency. And
  * `MVK_INVALID_TABLE_ENUM` needs an enumeration carrying a `tableName`, which makes a document model
- * UNREADABLE before any consistency check runs ([KERNEL-FINDINGS](../../../../../../../docs/KERNEL-FINDINGS.md)
+ * UNREADABLE before any consistency check runs ([KERNEL-FINDINGS](../../../../../../../../../../docs/KERNEL-FINDINGS.md)
  * "the stored shape").
  *
  * **Silent on a declaration whose effective type this reader does not resolve** — a typedef, an unspecified

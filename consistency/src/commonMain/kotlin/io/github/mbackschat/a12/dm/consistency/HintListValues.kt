@@ -13,8 +13,8 @@ import kotlinx.serialization.json.intOrNull
  * ([KERNEL-FINDINGS KF421], `rulekit.validate.laws.HintListValueLawsTest`). The two do not pre-empt each
  * other: A12 reports the list-level refusal and the value laws together, measured.
  *
- * **These three codes sat in [MVK-LEDGER](MVK-LEDGER.md) as unreachable, measured on the wrong carrier.**
- * [KF321](KERNEL-FINDINGS.md#kf321) put a repeated, empty, spaced and 300-character token to A12 as an ENUM
+ * **These three codes sat in [MVK-LEDGER](../../../../../../../../../../docs/MVK-LEDGER.md) as unreachable, measured on the wrong carrier.**
+ * [KF321](../../../../../../../../../../docs/KERNEL-FINDINGS.md#kf321) put a repeated, empty, spaced and 300-character token to A12 as an ENUM
  * value and each was admitted — correctly, and about a different member. The rows' own prose named the
  * carrier as a hint list, and nothing had asked it.
  *

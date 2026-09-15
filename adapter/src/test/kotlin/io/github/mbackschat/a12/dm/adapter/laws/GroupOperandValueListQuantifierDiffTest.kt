@@ -17,7 +17,7 @@ import org.junit.jupiter.api.Test
 /**
  * Differential + tri-check — the **value-list quantifiers over a GROUP operand**, the [IG136] candidate the
  * 2026-08-14 admission sweep promoted from speculation to live work: all three plural forms are ADMITTED in both
- * repetition shapes ([KF187](../../../../../../../../../docs/KERNEL-FINDINGS.md)).
+ * repetition shapes ([KF187](../../../../../../../../../../../docs/KERNEL-FINDINGS.md)).
  *
  * **The predicted symptom is an EMPTY SELECTION, and neither arm of `vlqOperands` escapes it.** Its `Expr.Star`
  * arm reads `c.starCells(e.path, …)` — cells AT the starred path, of which a group path has none, since no field
@@ -29,7 +29,7 @@ import org.junit.jupiter.api.Test
  * "read everything and answered no". A pair of OPPOSITE-DIRECTION quantifiers can: on a document where one
  * listed value IS in the list, `AtLeastOne…` must fire and `No…` must not. If both invert together, the
  * selection was empty — that is the signature, and it is exactly the evidence that settled the seventh instance
- * of this class ([IF287](../../../../../../../../../docs/INTERPRETER-FINDINGS.md#if287)), where `NoFieldFilled`
+ * of this class ([IF287](../../../../../../../../../../../docs/INTERPRETER-FINDINGS.md#if287)), where `NoFieldFilled`
  * answered TRUE and `AtLeastOneFieldFilled` answered FALSE on the same fully-filled document.
  *
  * **`NotAll…` is deliberately included as the third polarity and deliberately NOT trusted alone**: over zero
@@ -38,7 +38,7 @@ import org.junit.jupiter.api.Test
  *
  * **Every group condition is derived from its typed control by substituting the operand alone.** The group form
  * itself is unauthorable — the three quantifiers carry six operand overload shapes and not one is a
- * `GroupListRef` ([DG35](../../../../../../../../../docs/DEV-API-GAPS.md)) — so deriving it by substitution is
+ * `GroupListRef` ([DG35](../../../../../../../../../../../docs/DEV-API-GAPS.md)) — so deriving it by substitution is
  * what keeps the two conditions from differing in anything else, and [assertSubstituted] fails if the
  * substitution misses, which would otherwise compare each control to itself and pass.
  */

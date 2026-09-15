@@ -14,7 +14,7 @@ import org.junit.jupiter.api.Test
 /**
  * Differential + tri-check — a field-fill quantifier over a list that **mixes an unfiltered star with a
  * `Having`-filtered one**, the shape [IG136] item (a) names. Measured ADMITTED by the 2026-08-14 sweep
- * ([KF187](../../../../../../../../../docs/KERNEL-FINDINGS.md)), which is why it is runtime work.
+ * ([KF187](../../../../../../../../../../../docs/KERNEL-FINDINGS.md)), which is why it is runtime work.
  *
  * **The mechanism, and why the estate could not already see it.** A fill quantifier takes the group/starred-scope
  * path as soon as **any** operand qualifies (`hasFillScopeOperand`: a bare group, or a star with no `Having`).

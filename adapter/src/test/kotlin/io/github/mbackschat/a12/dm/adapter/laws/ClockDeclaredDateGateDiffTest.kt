@@ -17,13 +17,13 @@ import org.junit.jupiter.api.TestInstance
 
 /**
  * Differential — the gates nobody had measured on a **DATE field declared `HH:mm:ss`**, the carrier
- * [KF211](../../../../../../../../../docs/KERNEL-FINDINGS.md#kf211)'s read-gate table does not contain.
+ * [KF211](../../../../../../../../../../../docs/KERNEL-FINDINGS.md#kf211)'s read-gate table does not contain.
  *
  * **Why this carrier and not another.** Every read-gate row in KF211 rides one field: a TIME declared
  * `yyyy-MM-dd`. Its model declares no clock-formatted DATE at all, so the mirror direction was inherited from
  * the classifier rule across a gate boundary rather than measured — a scope transfer. Two independent
  * a12-kernel-lean entries landed in exactly that corner; the comparison arm is
- * [KF248](../../../../../../../../../docs/KERNEL-FINDINGS.md#kf248), and this file takes the extractor arm
+ * [KF248](../../../../../../../../../../../docs/KERNEL-FINDINGS.md#kf248), and this file takes the extractor arm
  * (their `SPEC-2026-09-05-14` row, handed over so neither estate measures it twice) plus the **opt-in pre-1900
  * policy**, which turned out to be a model-ADMISSION question rather than a value one.
  *

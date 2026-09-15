@@ -127,7 +127,7 @@ class DateConstantTargetPolicyDiffTest {
      * declaring anything else would land in the identical uncanonicalized-store defect.
      *
      * <p>**It is not an assumption, and the basis is derived rather than recalled.**
-     * [`TEMPORAL-FORMAT-VOCABULARY.md`](../../../../../../../../docs/TEMPORAL-FORMAT-VOCABULARY.md) puts 135
+     * [`TEMPORAL-FORMAT-VOCABULARY.md`](../../../../../../../../../../../docs/TEMPORAL-FORMAT-VOCABULARY.md) puts 135
      * candidate format strings to the kernel and finds 12 admitted, of which `HH:mm:ss` is the ONLY
      * clock-bearing one. So there is no second TIME format for a constant to be mis-stored into: the literal's
      * spelling and the sole admissible declaration are the same string. Both halves are measured here rather

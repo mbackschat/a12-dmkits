@@ -15,7 +15,7 @@ import java.util.function.Consumer
 /**
  * Differential + tri-check — the **three operator paths that never read `computeMode`**, [IG136] item (b).
  *
- * **Why a mode-blind path is the nastiest member of this defect class.** [IF287](../../../../../../../../../docs/INTERPRETER-FINDINGS.md#if287)'s
+ * **Why a mode-blind path is the nastiest member of this defect class.** [IF287](../../../../../../../../../../../docs/INTERPRETER-FINDINGS.md#if287)'s
  * seventh instance was a validation/compute split, and the lesson it left is that the operator is
  * *demonstrably right* wherever the estate pairs it and wrong on the path nobody paired. IG136 names three such
  * paths and, crucially, why they were invisible: **zero** compute-touching test files in the estate contain a

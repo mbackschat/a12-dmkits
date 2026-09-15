@@ -25,7 +25,7 @@ import org.junit.jupiter.api.Test
  *
  * **What that comparison does not hold fixed.** A no-value outcome's REPORTED shape is decided by the target
  * cell's prior state, not by the ground of the no-value: the kernel's change projection reports a **stale-filled**
- * target as `CLEARED` and an **absent** one not at all ([IF123](../../../../../../../../docs/INTERPRETER-FINDINGS.md),
+ * target as `CLEARED` and an **absent** one not at all ([IF123](../../../../../../../../../../../docs/INTERPRETER-FINDINGS.md),
  * measured from a12-kernel-lean's own 13-case receipt). An empty-candidate target that nothing seeded and a
  * cleared producer over a stale value therefore differ in **two** variables at once, and the seed is the one that
  * decides the shape.

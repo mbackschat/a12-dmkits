@@ -230,7 +230,7 @@ class ApplyVerbTest {
         // RK_INTERNAL_ERROR. The apply path is the sibling that must ALSO reject it as a clean rolled-back
         // rejection (exit 1, committed:false), never an internal error — locking the whole field-write class.
         // Retargeted 2026-09-15 with its standalone twin (FieldVerbTest.addRejectsIncompleteLocaleCoverage-
-        // Cleanly): [AF149](../../docs/API-FINDINGS.md#af149) removed the coverage demand from a field's own
+        // Cleanly): [AF149](../../../../../../../../../../docs/API-FINDINGS.md#af149) removed the coverage demand from a field's own
         // `label`, so the carrier is now the ENUM-VALUE labels, which are A12's own law ([KF321]).
         Path m = dir.resolve("loc.dm.json");
         assertEquals(0, CliTestSupport.run("model", "new", "--id", "loc", "--locale", "en_US",
