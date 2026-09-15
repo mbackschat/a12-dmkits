@@ -104,6 +104,27 @@ class CheckerClassAgreementTest {
      */
     private val positionedFloor = 60
 
+    /**
+     * The classes A12 names on a rejected mutant where the checker says nothing, with how often.
+     *
+     * **This is a work list, and pinning it is what makes it one.** The lane counted the silence — 16 of 98
+     * — and a count cannot be acted on: it says a gap exists without saying where. Keyed by class it says
+     * which family to widen, and it moves in both directions, so a family losing reach is a regression here
+     * rather than an unnoticed drop in a number nobody reads.
+     *
+     * Every one of these four is a class the checker ALREADY states elsewhere, so none of them is a missing
+     * family — each is a shape an existing family does not reach. That is why the silence direction is
+     * cheaper work than it looks, and why it is the plan's row 7 remainder rather than a new row.
+     *
+     * Measured 2026-09-15.
+     */
+    private val SILENT_CLASSES = sortedMapOf(
+        "MVK_ERROR_FIELD_NOT_REFERENCED" to 3,
+        "MVK_NO_WILDCARD" to 4,
+        "MVK_PARAMSIZE_INVALIDN" to 2,
+        "MVK_WILDCARDS_REQUIRED" to 7,
+    )
+
     @Test
     fun everyClassTheCheckerNamesOnARejectedModelIsOneTheKernelNames() {
         var compared = 0
@@ -116,6 +137,7 @@ class CheckerClassAgreementTest {
         val repeated = mutableListOf<String>()
         val unpositioned = mutableListOf<String>()
         val unparsed = mutableListOf<String>()
+        val silentClasses = mutableMapOf<String, Int>()
         for (model in committedModels()) {
             val text = model.readText()
             for (mutation in MUTATIONS) {
@@ -131,7 +153,10 @@ class CheckerClassAgreementTest {
                 perKind[mutation.label] = perKind.getValue(mutation.label) + 1
                 val ours = check(ModelSource(mutated, diagnosticLabel = model.name)).findings
                     .filter { it.justifiesRejection && it.category == FindingCategory.A12_CONSTRAINT }
-                if (ours.isEmpty()) silentOnRejection++
+                if (ours.isEmpty()) {
+                    silentOnRejection++
+                    kernel.classes.forEach { silentClasses.merge(it, 1, Int::plus) }
+                }
                 (ours.map { it.code }.toSet() - kernel.classes).forEach { extra ->
                     val row = where("ours=$extra kernel=${kernel.classes}")
                     if (row !in masked) disagreements += row
@@ -158,6 +183,13 @@ class CheckerClassAgreementTest {
             }
         }
 
+        assertEquals(
+            SILENT_CLASSES, silentClasses.toSortedMap(),
+            "the classes A12 named where the checker said nothing have moved. This map is the SILENCE " +
+                "direction's work list, not a failure: a class leaving it is a family gaining reach and the " +
+                "pin comes down with it, while a class ARRIVING is a family that lost reach and is a " +
+                "regression. Re-derive before editing:\n" + silentClasses.toSortedMap(),
+        )
         assertEquals(
             emptyList<String>(), unparsed,
             "A12 keyed a class in a shape this comparison cannot read, so the declaration it judged was " +
