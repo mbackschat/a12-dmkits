@@ -92,6 +92,26 @@ class CheckerClassAgreementTest {
      */
     private val positionsA12Masks = emptySet<String>()
 
+    /**
+     * (declaration, class-pair) rows measured to be a TRUE second defect rather than an over-report.
+     *
+     * Empty as of 2026-09-15. Two families report a second class deliberately — `REPETITION_NOT_UNIQUE_
+     * COMBINATION` and `H_MODEL_PATH_SUFFIX`, where A12 stops at an earlier gate — so the invariant is not
+     * blanket and a row here is the way to say so, with the measurement that says A12 draws the second class
+     * once the first is repaired.
+     *
+     * **What this assertion catches today is narrower than it reads, and saying so is the point.** A12
+     * answers each mutant of this population with exactly ONE notification, so `ours ⊆ kernel.classes`
+     * already forces at most one distinct class and this check is implied by the disagreement assertion
+     * above. It is landed anyway because the implication is a property of the POPULATION, not of the
+     * contract: the moment A12 answers two notifications on some mutant, or [masked] gains a row, the subset
+     * check starts admitting a pair at one declaration and only this assertion refuses it. Two such
+     * over-reports were nearly shipped on 2026-09-15 and BOTH were caught by a family mirror rather than by
+     * this lane, because the corpus carries no model of either shape — which is the honest reason this is
+     * insurance rather than the net that would have caught them.
+     */
+    private val coFiring = emptySet<String>()
+
     /** Mutants A12 must reject with a keyed class before a green here means anything. */
     private val floor = 20
 
@@ -158,6 +178,7 @@ class CheckerClassAgreementTest {
         val unparsed = mutableListOf<String>()
         val silentClasses = mutableMapOf<String, Int>()
         val silentRows = mutableListOf<String>()
+        val coFired = mutableListOf<String>()
         for (model in committedModels()) {
             val text = model.readText()
             for (mutation in MUTATIONS) {
@@ -189,6 +210,12 @@ class CheckerClassAgreementTest {
                 positioned.groupBy { it.at to it.code }.filterValues { it.size > 1 }.forEach { (key, found) ->
                     repeated += where("${found.size} × ${key.second} at ${key.first}")
                 }
+                positioned.groupBy { it.at }.filterValues { found ->
+                    found.mapTo(mutableSetOf()) { it.code }.size > 1
+                }.forEach { (at, found) ->
+                    val row = where("${found.map { it.code }.sorted()} together at $at")
+                    if (row !in coFiring) coFired += row
+                }
                 // Only the classes A12 actually named: a class A12 names nowhere is the row above, and
                 // reporting it twice would make one defect read as two.
                 positioned.filter { it.code in kernel.classes }
@@ -215,6 +242,14 @@ class CheckerClassAgreementTest {
                 // which is a diff waiting to be committed by accident. Carrying them in the message costs
                 // nothing while green and is the whole input to the next slice.
                 "\n\nthe silent mutants:\n" + silentRows.sorted().joinToString("\n"),
+        )
+        assertEquals(
+            emptyList<String>(), coFired,
+            "two DIFFERENT classes at one declaration of a model A12 rejects. A12 stops at the first gate " +
+                "that answers, so a second positioned class is an over-report by construction unless it is " +
+                "a true second defect — which is what [coFiring] is for, per entry, with its measurement. " +
+                "Add a row there only after measuring that A12 would draw the second class on a model where " +
+                "the first is repaired:\n" + coFired.joinToString("\n"),
         )
         assertEquals(
             emptyList<String>(), unparsed,
