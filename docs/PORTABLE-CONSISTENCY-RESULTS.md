@@ -8,18 +8,20 @@ Results never land in a spec, and a measurement's home is not its explanation: t
 
 Same lane, same machine, same workload, same preflight as the section below; the only difference is the fix described under it. **Median `check`, before → after:**
 
-| programs | before | after | factor |
-|---|---|---|---|
-| 100 | 330.58 ms | 217.30 ms | 1.52× |
-| 200 | 552.13 ms | 300.91 ms | 1.83× |
-| 400 | 1 562.90 ms | 503.48 ms | 3.10× |
-| 800 | 8 567.77 ms | **908.17 ms** | **9.4×** |
+| programs | before | after the walk fix | + the kind fix | total factor |
+|---|---|---|---|---|
+| 100 | 330.58 ms | 217.30 ms | 211.89 ms | 1.56× |
+| 200 | 552.13 ms | 300.91 ms | 296.10 ms | 1.86× |
+| 400 | 1 562.90 ms | 503.48 ms | 469.97 ms | 3.33× |
+| 800 | 8 567.77 ms | 908.17 ms | **823.88 ms** | **10.4×** |
 
-**The shape changed, which is the part that matters.** Per-doubling ratios were 1.67× / 2.83× / 5.48× and are now 1.39× / 1.67× / 1.80×. Take out the fixed ~130 ms of cold class loading and the checker's own work goes 87 → 171 → 373 → 778 ms, which is 1.97× / 2.18× / 2.09× per doubling: linear, within the noise of a cold lane. The p95 spread collapsed with it — 856.70–944.88 ms at 800 programs against 4 404.28–9 970.16 ms before — so the wide tail that earlier read like memory pressure was the cubic term meeting a scheduler, not the heap.
+**The shape changed, which is the part that matters.** Per-doubling ratios were 1.67× / 2.83× / 5.48× and are now 1.40× / 1.59× / 1.75×. Take out the fixed ~130 ms of cold class loading and the checker's own work goes 82 → 166 → 340 → 694 ms, which is 2.02× / 2.05× / 2.04× per doubling: **linear**, and more convincingly so than the totals suggest. The p95 spread collapsed with it — 725.70–870.25 ms at 800 programs against 4 404.28–9 970.16 ms before — so the wide tail that earlier read like memory pressure was the cubic term meeting a scheduler, not the heap.
 
 **The locus, named from the flight recorder rather than from a reading.** 95 % of the samples on a 400-program model sat in two places: `declaredReferences` with its `resolveRelative`, and `computationSelfReadFindings` with its `computedTargetOf`. `declaredReferences` is a whole-model walk resolving one reference per element, and it resolved each by scanning the resolvable elements — quadratic. Fifteen families call it, and `computationSelfReadFindings` called it **per element**, which made the whole check cubic in declarations. The fix is two derived values on `PreparedModel`: the walk computed once, and the resolvable elements keyed by path. No family changed, and none had to remember to hoist anything — a rule no guard could have enforced, which is how the cubic arrived unnoticed.
 
-**What still scales linearly per reference.** About sixty other sites resolve a path with `elements.firstOrNull { it.path == … }`, so any family hot on a different model shape can still contribute an n² term. None of them showed in this profile, and the post-fix curve is linear on this workload, so they are left measured-and-untouched rather than swept on suspicion.
+**The second fix came from re-profiling rather than from guessing what was next.** With the walk hoisted, the top of the new profile was `DeclaredKind.of` and `DeclaredElement.declaredKind` — 14 of about 60 samples — because the kind was a `get()` that re-ran a four-entry scan on every access, and dozens of families filter on it. Storing it per element is one line and took 800 programs from 908 ms to 824 ms.
+
+**Then it stopped, and that was a measurement too.** The profile after both fixes has no concentration left: the largest non-dispatch entries are 4–5 samples each, spread across `levelClassOf`, `iteratedLevels`, `crossedRepetitions` and `addressedTargetOf` — the per-reference walkers. About sixty sites still resolve a path with `elements.firstOrNull { it.path == … }`, so a family hot on a different model shape could contribute an n² term, and the same index that fixed the walk would fix them. None is hot here and the curve is linear on this workload, so they are left measured-and-untouched rather than swept on suspicion; re-profile before touching them.
 
 ## 2026-09-15 — H5-b, the cold first result, and the growth it exposed <a id="cold-2026-09-15"></a>
 

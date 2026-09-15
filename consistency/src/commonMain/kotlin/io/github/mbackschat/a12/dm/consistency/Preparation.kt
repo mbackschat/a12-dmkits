@@ -100,9 +100,13 @@ data class DeclaredElement(
      *
      * Internal because the kind set is the Kernel's, not this API's: a consumer reads [kind] verbatim, and
      * publishing the enum would make every future `type` A12 adds a breaking change here.
+     *
+     * Stored rather than computed per access, and the reason is measured: dozens of families filter on it, so
+     * a `get()` re-ran [DeclaredKind.of]'s entry scan on every element of every filter and took 14 of the 60-odd
+     * samples in the profile that followed the 2026-09-15 walk fix. Outside `equals`/`copy` like every other
+     * derived value here, so a kind is a projection of [kind] and never a second place to change.
      */
-    internal val declaredKind: DeclaredKind?
-        get() = DeclaredKind.of(kind)
+    internal val declaredKind: DeclaredKind? = DeclaredKind.of(kind)
 
     /** The model this group mounts, when it declares one — `Group.modelAlias`. */
     val modelAlias: String?
