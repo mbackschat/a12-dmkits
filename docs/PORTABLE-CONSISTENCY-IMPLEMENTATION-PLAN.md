@@ -739,6 +739,16 @@ One cold adversarial review over the frozen range, as [§2](#2-execution-order-a
 
 **The catalog half is deliberately not delivered, with its re-open trigger.** A2 ruled that `operators.json` ships as-is because it is already data; that remains right, and it is not yet USEFUL — no finding this checker produces names an operator id, so 293 KB would be packaged with nothing to join it against. It lands when a finding carries an operator.
 
+### F2 record — the class comparison could not see the error MESSAGE (2026-09-15)
+
+**Frozen change: three message-aimed mutation kinds in `CheckerClassAgreementTest`.** The population grows from 32 compared mutants to 98, and none is refused without a keyed class. No family changed.
+
+**The gap was a POSITION, not a gate.** Every existing kind perturbs a declaration or a condition, so the message text was untouched in all 43 committed models — which is exactly where the wrong class this estate held longest lived (`$RuleGroup$` named as a reference failure until this same day). An instrument aimed at the gates a defect was once found in cannot find the next one in a position it never writes to.
+
+**Appending is what keeps a message mutation one-variable.** The condition kinds rewrite a member; these three append to an existing text, so every declared element stays exactly as authored and a class A12 draws on the mutant is the parameter's. That also made them free of `masked` rows: the sweep went green first time across all 43 models.
+
+**The population argument matters more than the three kinds.** Four of 43 committed models write a message PARAMETER at all, so a kind that perturbs an existing parameter reaches four models; a kind that appends one reaches every model with a rule. The estate's own corpus decides what an instrument can see, and picking mutations by what the corpus already contains is how a sweep stays small without anyone choosing to keep it small.
+
 ### C record — the measure-first guard could not see half the estate (2026-09-15)
 
 **Frozen change: `CheckerCodeBasisGuardTest` now covers the UNPREFIXED error-text vocabulary.** No code drained and no family changed. The guard's claim — every A12 code the checker reports was measured against the kernel — held for the `MVK_` half and was silent about 26 unprefixed codes, because a prefix is recognisable from shape and `INVALID_FIELD` is an ordinary word. The vocabulary is now read off the kernel's own enums (`KernelErrorVocabulary`, the four `MvkLedgerTest` already reaches), so the denominator stays derived.

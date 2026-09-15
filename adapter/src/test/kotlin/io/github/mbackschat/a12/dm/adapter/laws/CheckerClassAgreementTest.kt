@@ -35,8 +35,14 @@ import kotlin.io.path.readText
  * than counted as agreement. The mutations are chosen to reach the CONDITION gates, because damaging a
  * declaration mostly makes a model unbuildable and lands in that excluded tier — measured, not assumed: a
  * kind that removes a group's repetitions drew a keyed class from A12 **zero** times over the whole
- * estate and was dropped, which is what the per-kind assertion exists to catch. 32 mutants compare as
- * of 2026-09-14, 22 from the repoint and 10 from the unstar.
+ * estate and was dropped, which is what the per-kind assertion exists to catch.
+ *
+ * **The error MESSAGE is a second position A12 classifies, and it was outside this population until
+ * 2026-09-15.** Every kind aimed at a declaration or a condition leaves the message untouched, so the wrong
+ * class that stood longest in this estate — the rule-group shorthand reported as a reference failure — could
+ * not be reached by any of them. The three message kinds also reach far more of the estate, because a rule
+ * with a message is nearly every model while a rule whose message writes a PARAMETER is four of forty-three:
+ * 98 mutants compare, up from 32 (measured 2026-09-15), and none is refused without a keyed class.
  *
  * **A12 masking one class behind another is not automatically a defect, which is why [masked] exists.** A12
  * stops at the first gate that answers; the checker accumulates. A class the checker reports and A12 does not
@@ -145,6 +151,28 @@ class CheckerClassAgreementTest {
             return found
         }
 
+        /**
+         * The first rule message text the model carries, as the entry that owns it.
+         *
+         * The message mutations all APPEND to an existing text rather than rewriting the declaration, which
+         * is what keeps them one-variable: every declared element stays exactly as authored, so a class A12
+         * draws on the mutant is the parameter's and the comparison is about the message families alone.
+         */
+        private fun firstRuleMessage(root: ObjectNode): ObjectNode? = groupBodies(root).asSequence()
+            .mapNotNull { it["elements"] as? ArrayNode }
+            .flatMap { elements -> elements.asSequence() }
+            .filter { it["type"]?.asText() == "Rule" }
+            .mapNotNull { (it["Rule"] as? ObjectNode)?.get("errorMessage") as? ArrayNode }
+            .mapNotNull { it.firstOrNull() as? ObjectNode }
+            .firstOrNull { it["text"]?.isTextual == true }
+
+        /** One perturbation of a message TEXT — the position no declaration-shaped mutation reaches. */
+        private fun messageMutation(label: String, appended: String) = Mutation(label) { root ->
+            val message = firstRuleMessage(root) ?: return@Mutation false
+            message.put("text", message["text"].asText() + appended)
+            true
+        }
+
         private val MUTATIONS = listOf(
             // The mutation that found KF350: a target the condition cannot be naming, in the rule's own
             // group, leaving the condition untouched. It reaches the error-target gates, which is where the
@@ -184,6 +212,17 @@ class CheckerClassAgreementTest {
                 rule.put("errorCondition", rule["errorCondition"].asText().replaceFirst("*", ""))
                 true
             },
+            // The three below aim at the error MESSAGE, which no declaration-shaped mutation reaches — the
+            // blind spot that let a wrong class stand in the name position for as long as the family existed
+            // (`$RuleGroup$` reported as `INVALID_ENTITY`, fixed 2026-09-15). They also reach far more of the
+            // estate than the condition kinds do: every model carrying a rule with a message, rather than the
+            // four that happen to write a parameter.
+            messageMutation("name-an-unresolvable-parameter", " ${'$'}MutantParameter${'$'}"),
+            messageMutation("unterminate-a-message", " ${'$'}Oops"),
+            // The rule-group shorthand is a TERMINAL A12 recognises and refuses in this position, and only in
+            // its own language — so this kind compares nothing on a German-condition model, which is what the
+            // per-kind assertion tolerates as long as some model reaches it.
+            messageMutation("name-the-rule-group-shorthand", " ${'$'}RuleGroup${'$'}"),
         )
 
         private fun committedModels(): List<Path> {
