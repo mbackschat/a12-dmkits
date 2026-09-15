@@ -135,7 +135,14 @@ private fun PreparedModel.constantKindFinding(
     member: String,
 ): Finding? {
     val (constants, entities) = call.splitAtIn() ?: return null
-    val constantText = constants.singleOrNull() ?: return null
+    // An ABSENT constant is refused exactly like a wrong one — measured, so the empty slot reports rather
+    // than reading as a shape this reader could not reduce.
+    val constantText = constants.singleOrNull()
+        ?: return if (constants.isEmpty()) {
+            unexpectedConstantToken("", declaringGroup, element, member)
+        } else {
+            null
+        }
     val arm = armOf(constantText, spellings)
         ?: return unexpectedConstantToken(constantText, declaringGroup, element, member)
     val written = entities.map { referencesIn(it, conditionLanguage).singleOrNull() ?: return null }
@@ -319,9 +326,6 @@ private fun PreparedModel.unexpectedConstantToken(
     element: DeclaredElement,
     member: String,
 ): Finding? {
-    if (constantText.isBlank()) {
-        return null
-    }
     val unresolvable = referencesIn(constantText, conditionLanguage)
         .any { addressedTargetOf(it, declaringGroup, element) == null }
     if (unresolvable) {
@@ -331,9 +335,11 @@ private fun PreparedModel.unexpectedConstantToken(
         FindingCategory.A12_CONSTRAINT,
         FindingSeverity.ERROR,
         "MVK_UNEXPECTED_TOKEN",
-        "in `$member`: `$VALUE_IN_FIELDS` counts `${constantText.trim()}`, which is not a constant — this " +
-            "position takes a number, a text, `True`, `False` or a point in time, and nothing assembled " +
-            "from them, so even parentheses around a legal constant are refused",
+        "in `$member`: `$VALUE_IN_FIELDS` counts " +
+            (constantText.trim().takeIf { it.isNotEmpty() }?.let { "`$it`, which is not a constant" }
+                ?: "nothing — the slot before `In` is empty") +
+            ". That position takes a number, a text, `True`, `False` or a point in time, and nothing " +
+            "assembled from them, so even parentheses around a legal constant are refused",
         element.path,
     )
 }

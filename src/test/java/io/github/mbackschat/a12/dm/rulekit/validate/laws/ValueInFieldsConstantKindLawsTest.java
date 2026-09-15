@@ -190,6 +190,7 @@ class ValueInFieldsConstantKindLawsTest {
                 rawVerdict("NumberOfValueInFields(Sum(Quantity) In Quantity, Backordered) > 0"));
         actual.put("a parenthesized number in the slot",
                 rawVerdict("NumberOfValueInFields((0) In Quantity, Backordered) > 0"));
+        actual.put("an EMPTY slot", rawVerdict("NumberOfValueInFields( In Quantity, Backordered) > 0"));
 
         Map<String, String> expected = new LinkedHashMap<>();
         expected.put("an integer", KernelLaws.ADMITTED);
@@ -206,6 +207,10 @@ class ValueInFieldsConstantKindLawsTest {
         // one" and is why a checker may refuse the position rather than only its four typed arms.
         expected.put("an OPERATION in the slot", "MVK_UNEXPECTED_TOKEN");
         expected.put("a parenthesized number in the slot", "MVK_UNEXPECTED_TOKEN");
+        // Empty is not a tenth alternative either, so the position is refused for absence exactly as for
+        // the wrong token — which is why the checker reports it rather than treating a missing constant as
+        // a shape it could not read.
+        expected.put("an EMPTY slot", "MVK_UNEXPECTED_TOKEN");
         assertEquals(expected, actual, "the constant slot's admitted vocabulary");
     }
 

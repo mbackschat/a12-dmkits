@@ -70,6 +70,7 @@ class ValueInFieldsConstantKindTest {
         actual["an undeclared name in the constant slot"] = count("NoSuchThing", "Expedited, GiftWrapped")
         actual["an OPERATION in the slot"] = count("Sum(Quantity)", "Quantity, Backordered")
         actual["a parenthesized number in the slot"] = count("(0)", "Quantity, Backordered")
+        actual["an EMPTY slot"] = count("", "Quantity, Backordered")
         actual["a negative decimal — a legal spelling"] = count("-1.5", "Quantity, Backordered")
         actual["an empty string — a legal spelling"] = count("\"\"", "GiftNote, Reference")
 
@@ -95,6 +96,7 @@ class ValueInFieldsConstantKindTest {
         // beside a wrong one instead of replacing it.
         expected["an OPERATION in the slot"] = listOf("MVK_UNEXPECTED_TOKEN", "MVK_PARAMSIZE_INVALIDN")
         expected["a parenthesized number in the slot"] = listOf("MVK_UNEXPECTED_TOKEN")
+        expected["an EMPTY slot"] = listOf("MVK_UNEXPECTED_TOKEN")
         // The two legal spellings most likely to be mis-read as "not a constant" by a token-counting
         // reader: a signed decimal is three tokens and an empty string is a token with no content.
         expected["a negative decimal — a legal spelling"] = emptyList()
