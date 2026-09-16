@@ -224,6 +224,41 @@ That was the position on 2026-09-12: one boundary fully owned, one with a collec
 
 **And it supersedes [A4](#a4)'s schema change for this slice, measured rather than preferred.** A4 calls adding a consistency op kind to `corpus/case.schema.json` "one bounded schema change". It is not bounded: `CaseJson.parse` hard-requires `document`, and five reading sites across four modules and two languages parse every file under `corpus/cases/` through it — the adapter's `CorpusFiles.all()`, the interpreter's `CorpusFs` on both targets, its JS shim, the browser consumer's `qualification.ts`, and `SemanticsMapResolveTest`. A documentless case in that tree breaks a published browser qualification path. When a consistency corpus with recorded expectations is genuinely needed, it belongs in a sibling tree sharing `corpus/models/`, which keeps the one property A4 actually argued for — one model owner — without teaching five runtime readers to skip a case kind no runtime can replay.
 
+### F1 record — the partition, and F1-a's acceptance matrix frozen before any code (2026-09-16) <a id="f1-partition"></a>
+
+**F1's row couples five mechanisms, so it is partitioned rather than attempted whole.** [Its acceptance row](PORTABLE-CONSISTENCY-PROPOSAL.md#7-implementation-slices-and-finite-acceptance-matrices) asks for engine selection on two verbs, a receipt contract, a mechanical artifact-identity equality against the published JS package, packaged-and-native qualification, and a source-versus-artifact doc sync. Those need different oracles — a CLI envelope test, a build-resolution assertion, a native gate — so attempting them as one slice would let each review invalidate the framing of the last, which is what the convergence gate exists to stop.
+
+| slice | what it lands | why it is its own commit |
+|---|---|---|
+| F1-a | `model check --engine` (`kernel` or `portable`), the portable verdict's result contract, and the `:cli` → `:consistency` edge | it settles the receipt SHAPE every later slice publishes |
+| F1-b | `rule check` portable selection | a candidate rule must be spliced into a model before a whole-model checker can see it — a different algorithm, so its own semantics record |
+| F1-c | the mechanical artifact identity: the coordinate and version `:cli` resolves equals what the JS package publishes | a build-resolution oracle, not an envelope one. The corpus comparison in F1's row is a behaviour check and cannot carry this claim |
+| F1-d | packaged and native qualification | release-grade, and it must follow the mandatory recapture → build → gate sequence |
+| F1-e | the source-versus-artifact doc sync | its `interpreter/CLAUDE.md` half may not be edited by this session, so that half is surfaced to the owner rather than written |
+
+**F1-a's foundational decision, taken before any code, because the portable path's DOMINANT outcome has no existing encoding.** `:consistency` cannot emit VALID by construction — it reports INVALID or INCONCLUSIVE until the coverage registry lifts that bar — so `model check --engine=portable` on a model A12 accepts is INCONCLUSIVE, and that is the ordinary case rather than an edge. Meanwhile the envelope's `valid` is a nullable Boolean whose *absence* already means "no verdict was established", and `exitCode()` maps a `VERDICT` family with absent `valid` to **0**. Exiting 0 on a check that established nothing is the silent-green class, so the existing encoding cannot be reused as it stands.
+
+| candidate encoding | why it is refused |
+|---|---|
+| `valid:false` for INCONCLUSIVE | over-rejection at the CLI boundary, which is the one forbidden direction. The checker did not find the model invalid; it could not conclude |
+| `valid:true` for INCONCLUSIVE | fabricates a green — and the checker's own report shape exists precisely to prevent it |
+| `valid` absent, staying in the `VERDICT` family | honest on the wire and wrong on the process: a script reading the exit code sees a pass |
+
+**So F1-a adds a family and an exit code, which is exactly what the envelope's design anticipates** — "a new family cannot be added without deciding, at the compiler's insistence, what it exits with". [CLI-SPEC](CLI-SPEC.md) §3b spends `0`, `1`, `2` and `70`, and none of them means *ran and established nothing*, so the new code is **3**. The payload reuses the checker's own published report verbatim — `status`, `complete`, `findings`, `diagnostics`, `checksCompleted`, `gaps` — rather than re-encoding it, because that shape was designed for this exact question and already carries the reason `status` is a string where a boolean would do: three states do not fit in two.
+
+| acceptance item | oracle | non-goal |
+|---|---|---|
+| the default and `--engine=kernel` behave exactly as `model check` does today | the existing `model check` suite, unchanged | no change of any kind to the Kernel path |
+| `--engine=portable` on an A12-accepted model reports INCONCLUSIVE, exit 3, `verification: PORTABLE_CHECKED`, and no `valid` key | a CLI test over a committed accepted model | not VALID — the coverage registry lifts that bar, not this slice |
+| `--engine=portable` on a model the checker refuses reports `valid:false` and exit 1 | a CLI test over a model with an already-measured portable rejection | no new checker family |
+| the receipt names the requested AND the executed engine | the envelope's own JSON | no auto-selection on any input, ever |
+| the portable engine's version is DERIVED from the resolved artifact, never a constant in CLI source | a guard that fails when the version is a literal in `cli/src/main` | the equality with the JS package's coordinate, which is F1-c's |
+| **substitution fails even when both engines agree** — a mutant running Kernel under `--engine=portable` must be killed | that mutant, run against the one guard that should catch it | — |
+| **no fallback, in both directions** — a portable INCONCLUSIVE never consults Kernel, and a Kernel failure never becomes a portable answer | one test per direction, asserting the EXECUTED engine rather than the verdict | no availability-, discovery-, coverage- or exception-driven selection |
+| `CommandContracts` and the manifest/help/schema projections carry the new mode selector | `CommandContractsTest` and `:cli:publicContractTest` | native qualification, which is F1-d's |
+
+**What makes this slice stop rather than grow.** A finding enters F1-a only when it violates one of those rows. An adjacent defect in a checker family, a wording gap in a doc F1-e owns, and anything at all about `rule check` go to their owning slice instead.
+
 ### A4 — consistency corpus ownership (decided 2026-09-12) <a id="a4"></a>
 
 **Reuse the conformance corpus's case convention; do not build a second corpus.** [`corpus/`](../corpus/README.md) already holds every property A4 asks for: 34 cases across 10 family directories, each carrying a stable `meta.id`, the oracle artifact identity in `meta.kernelVersion`, provenance in `meta.source`, `meta.sections` and `meta.tags`, and — the part that matters most for "one input owner" — a `modelRef` indirection into a shared `corpus/models/` tree rather than an inlined model. That is the reuse A4 requires across common replay, adapter differentials and packed consumers.

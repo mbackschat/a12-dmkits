@@ -536,6 +536,54 @@ tasks.named('compileTestKotlinJvm') { dependsOn generateConditionCorpus }
 tasks.named('compileTestKotlinJs') { dependsOn generateConditionCorpus }
 
 // ─────────────────────────────────────────────────────────────────────────────────────────────────────────
+// The checker names its own build, so a consumer's receipt can cite the artifact it RESOLVED.
+//
+// dmtool's `model check --engine=portable` publishes which engine answered and which build of it. A constant
+// on dmtool's side cannot carry that claim: it would state dmtool's expectation, and a dmtool linked against
+// a different checker build would report the wrong one with no way to notice. So the identity is baked into
+// THIS artifact from this module's own Gradle version — resolve a different checker and the reported version
+// moves with it (PORTABLE-CONSISTENCY-IMPLEMENTATION-PLAN.md "F1 record").
+//
+// Generated rather than committed, like the workspace matrix and the condition corpus: derived from
+// `project.version` on every build, so it cannot drift from the artifact it describes and needs no diff
+// guard. A compiled constant rather than a jar-manifest attribute on purpose — the manifest is absent when
+// the classes come from a directory rather than a jar (measured: the built `consistency-jvm` jar carries only
+// `Manifest-Version`), and a version that silently reads null would make the receipt lie.
+def generatedIdentityDir = layout.buildDirectory.dir('generated/checkerIdentity/commonMain/kotlin').get().asFile
+def generatedIdentity = new File(generatedIdentityDir,
+        'io/github/mbackschat/a12/dm/consistency/CheckerIdentity.kt')
+
+def renderCheckerIdentity = { String version ->
+    """\
+// GENERATED from this module's Gradle version by :consistency:generateCheckerIdentity — never hand-edited.
+package io.github.mbackschat.a12.dm.consistency
+
+/**
+ * The version of THIS checker build, baked in at build time from the module's own Gradle version.
+ *
+ * It exists so a consumer can name the checker artifact it actually resolved instead of a constant of its
+ * own. `dmtool model check --engine=portable` publishes it as the portable engine's version, which is what
+ * makes that receipt a statement about the resolved artifact rather than about dmtool's expectations.
+ */
+public const val CHECKER_VERSION: String = "${version}"
+"""
+}
+
+def generateCheckerIdentity = tasks.register('generateCheckerIdentity') {
+    description = "Bakes this module's Gradle version into the checker, so a consumer receipt can cite it."
+    inputs.property('version', providers.provider { project.version.toString() })
+    outputs.file(generatedIdentity)
+    doLast {
+        generatedIdentity.parentFile.mkdirs()
+        generatedIdentity.text = renderCheckerIdentity(project.version.toString())
+    }
+}
+
+kotlin.sourceSets.commonMain.kotlin.srcDir(generatedIdentityDir)
+tasks.matching { it.name.startsWith('compileKotlin') || it.name.startsWith('compileCommonMainKotlinMetadata') }
+        .configureEach { dependsOn generateCheckerIdentity }
+
+// ─────────────────────────────────────────────────────────────────────────────────────────────────────────
 // The Node consumer test: the first end-to-end proof that the checker is CONSUMABLE, not only correct.
 //
 // Everything else in this module tests the checker from inside Kotlin, where the code under test is on the

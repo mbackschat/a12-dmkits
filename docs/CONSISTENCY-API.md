@@ -33,6 +33,8 @@ const report = JSON.parse(checkModelJson(modelJson));
 
 From Kotlin or Java on the JVM the same check is `check(ModelSource(json))`, returning the typed `ConsistencyReport`; `report.toJson()` produces the identical wire shape.
 
+**`CHECKER_VERSION` names the build you resolved.** It is generated into the artifact from this module's own Gradle version, so it moves with the checker rather than with whoever calls it — which is the point: a consumer that publishes a receipt naming the engine that answered must cite the artifact it actually loaded, and a constant on the consumer's own side would state its expectation instead. `dmtool model check --engine=portable` publishes exactly this value.
+
 ## The report
 
 ```json
