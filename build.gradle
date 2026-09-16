@@ -713,6 +713,7 @@ tasks.register('docGuardTest', Test) {
         includeTestsMatching 'io.github.mbackschat.a12.dm.SurvivingDataNotInBuildGuardTest'
         includeTestsMatching 'io.github.mbackschat.a12.dm.AdmissionClaimIsAssertedGuardTest'
         includeTestsMatching 'io.github.mbackschat.a12.dm.VersionMentionFreshnessTest'
+        includeTestsMatching 'io.github.mbackschat.a12.dm.PlanStageStatusAgreementGuardTest'
         includeTestsMatching 'io.github.mbackschat.a12.dm.rulekit.catalog.DslCatalogBridgeTest'
     }
     guardInputs(it, [
