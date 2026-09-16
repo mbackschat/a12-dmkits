@@ -6,6 +6,23 @@ Dated measurements of the Kernel-free checker, newest first. **Every LATENCY her
 
 Results never land in a spec, and a measurement's home is not its explanation: the mechanism paragraphs below are marked as hypotheses where they are hypotheses.
 
+## 2026-09-16 — H5's COMBINED boundary: holding both prepared representations costs the sum, measured <a id="combined-2026-09-16"></a>
+
+**Lane:** `./build.sh :adapter:checkerCombinedPerfTest` (`adapter.perf.CheckerCombinedApplicationPerfTest`), one JVM, the same synthesized flat workload the growth lanes use, `JdkIdentity.requireSupported` gating it. This is the fifth and last of H5's boundaries, and it existed as an unmeasurable row until F's package shipped. **Nothing here is asserted**; the boundary's bar is UNSET and a collector coming first with informative output is the sequence [H5's ordering rule](PORTABLE-CONSISTENCY-IMPLEMENTATION-PLAN.md#h5-ordering) prescribes.
+
+**The quantity is ADDITIVITY, fixed by the proposal rather than chosen here.** [§4](PORTABLE-CONSISTENCY-PROPOSAL.md) says an application choosing both consistency and evaluation "may hold two prepared representations and pay for two parses. Measure that combined cost separately; no zero-copy integration, shared-program adapter or elimination of all cross-component duplicate parsing is promised." So the question is not milliseconds — no checker duration is certified — but whether `both` costs `consistency + evaluation`. That ratio survives a change of machine; the durations beside it do not.
+
+| arm order within each pair | consistency | evaluation | sum | both | **additivity ratio** |
+|---|---|---|---|---|---|
+| `both` **last** | 62.011 ms | 10.706 ms | 72.717 ms | 71.355 ms | **0.988×** |
+| `both` **first** | 54.431 ms | 8.454 ms | 62.885 ms | 61.538 ms | **0.998×** |
+
+**The two rows ARE the control, and running only one would have published a false finding.** An uncontrolled first run — `both` always third, inheriting the other two arms' warm-up — reported **0.963×**, which reads as sub-additivity: the two preparations sharing work, exactly what §4 declines to promise. Putting `both` first removes the warm-up advantage and the ratio goes to 0.998×. So the effect was the harness's arm order, the lane now measures both orders in one run, and the honest reading is **1.0 within noise: strictly additive.** Two prepared representations cost two parses, there is no sharing, and equally there is no interference — a ratio meaningfully above 1.0 would have meant the two preparations contending, which is the finding this lane exists to be able to see.
+
+**The two arms are not symmetric, and a reader comparing 62 ms against 11 ms would draw the wrong conclusion.** The consistency arm constructs the snapshot *and* reads its whole report, because that is what a consumer holding a snapshot pays for; the evaluation arm loads the model only, with no document evaluated. Both match what the `both` arm does, which is what makes the ratio well-posed — but the columns are not a checker-versus-interpreter comparison and must not be quoted as one.
+
+**Revision:** `63abbc44f` plus this lane. Durations moved run to run (consistency measured 68.2 / 62.0 / 54.4 ms across three invocations of the same workload), which is the standing reason no duration on this page is a bar.
+
 ## 2026-09-16 — H5-e: the after-edit boundary, which finally has something to measure <a id="after-edit-2026-09-16"></a>
 
 **Lane:** `./build.sh :adapter:checkerAfterEditPerfTest` (`adapter.perf.CheckerAfterEditPerfTest`), one JVM, the same synthesized flat workload the growth lanes use. Three arms, each measured as **interleaved pairs** of the stateful call against the stateless one that answers identically, reporting the median of the within-pair ratios; `JdkIdentity.requireSupported` gates the lane. Two preflights run outside every clock and double as the warm-up: the model must draw no rejecting finding, and the snapshot's answer must equal the stateless one — the whole `EditReport` for a draft, the whole report for a saved edit. **Revision:** `cb3456995` plus this lane. **Nothing here is asserted.** This boundary's bar is UNSET, and a collector coming first with informative output is the sequence [H5's ordering rule](PORTABLE-CONSISTENCY-IMPLEMENTATION-PLAN.md#h5-ordering) prescribes.

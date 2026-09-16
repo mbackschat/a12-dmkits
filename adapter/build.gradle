@@ -789,6 +789,32 @@ tasks.register('checkerAfterEditPerfTest', Test) {
     outputs.cacheIf { false }
 }
 
+// H5's COMBINED boundary — what holding BOTH prepared representations costs against holding each. Records and
+// prints; asserts no budget, because the owner's ratification left this boundary UNSET until F's package
+// existed (docs/PORTABLE-CONSISTENCY-IMPLEMENTATION-PLAN.md#h5-ratification), and a bar taken from this lane's
+// own first figure is what H5's ordering rule forbids. Deliberately NOT wired into any automated lane, because
+// a schedule implies a bar.
+tasks.register('checkerCombinedPerfTest', Test) {
+    description = 'Measure whether holding the checker and the interpreter costs the sum of holding each.'
+    group = 'measurement'
+    testClassesDirs = sourceSets.test.output.classesDirs
+    classpath = sourceSets.test.runtimeClasspath
+    useJUnitPlatform()
+    // Single-fork: the observations are wall-clock, and parallelism inside the lane would measure contention.
+    maxParallelForks = 1
+    failFast = true
+    systemProperty 'perf.checker.combined', 'true'
+    systemProperty 'perf.checker.combined.n', providers.gradleProperty('checkerCombinedN').getOrElse('200')
+    // Odd, for the reason the after-edit lane states: the estimator medians within-pair ratios.
+    systemProperty 'perf.checker.combined.samples',
+        providers.gradleProperty('checkerCombinedSamples').getOrElse('11')
+    filter {
+        includeTestsMatching 'io.github.mbackschat.a12.dm.adapter.perf.CheckerCombinedApplicationPerfTest'
+    }
+    outputs.upToDateWhen { false }
+    outputs.cacheIf { false }
+}
+
 // H5-b: the checker's COLD first result, one fresh JVM per observation. It records and prints; it asserts no
 // budget, because H5 requires ratification before the implementation it gates is measured and no checker number
 // is ratified (docs/PORTABLE-CONSISTENCY-IMPLEMENTATION-PLAN.md#h5-ordering). Deliberately NOT wired into any
