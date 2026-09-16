@@ -104,7 +104,16 @@ public final class InterpreterEngine {
 
     /**
      * The gate for a WHOLE-MODEL evaluation ({@code model eval}): every stored rule and every computation.
-     * Kernel-free, so it works on the native binary where the MVK consistency oracle is unavailable.
+     *
+     * <p>Kernel-free, which is what keeps the EVAL path native-safe — the kernel's Groovy codegen cannot go
+     * native. <b>Not</b> because the native binary lacks the kernel; it carries it. This javadoc said
+     * "the native binary where the MVK consistency oracle is unavailable" until 2026-09-16, and source
+     * refutes that twice over: {@link io.github.mbackschat.a12.dm.cli.Cli#JVM_ONLY_VERBS} is
+     * {@code List.of()}, so no verb is removed from the native command tree, and the committed
+     * reachability metadata under {@code META-INF/native-image} (both the {@code rulekit-agent} and
+     * {@code rulekit-manual} sets) registers ~400 distinct {@code com.mgmtp.a12.kernel} classes, which a
+     * closed-world image can only do for classes it contains. The oracle is served on both artifacts, as
+     * proposal H3 requires.
      */
     public static List<UndeclaredReference> undeclaredReferences(String modelJson) {
         return new DmInterpreter(InterpreterModelLoader.load(modelJson)).undeclaredReferences();
