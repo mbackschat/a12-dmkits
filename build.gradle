@@ -297,6 +297,10 @@ tasks.register('leakGuardTest', Test) {
         // discriminator A12 never stores matches nothing and reports nothing, so no mirror and no laws grid
         // can see it. Both sides are read off source, so a new family's set arrives in the scan on its own.
         includeTestsMatching 'io.github.mbackschat.a12.dm.CheckerFieldTypeTokenGuardTest'
+        // Same derived-denominator reason, on the one A12 code source that is NOT in the ledger at all: it
+        // lives in a sibling checkout rather than on any classpath, so no Gradle input can declare it and an
+        // authored count of it was re-derived wrongly three times before this read it from source.
+        includeTestsMatching 'io.github.mbackschat.a12.dm.CodegenTierCodeDenominatorGuardTest'
     }
 }
 

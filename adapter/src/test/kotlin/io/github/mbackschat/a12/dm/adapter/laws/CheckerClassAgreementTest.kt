@@ -165,6 +165,21 @@ class CheckerClassAgreementTest {
             "at /M/G1/G2/R_AG and no family of ours does (we say [MVK_ERROR_FIELD_MISSING])",
     )
 
+    /**
+     * (declaration, class) pairs A12 would name on a TWO-defect model that the checker does not name there.
+     *
+     * Empty as of 2026-09-16. A row is an under-report on the accumulated verdict specifically, so it names
+     * the model, both mutation kinds, the declaration, the class, and why no family reaches it.
+     */
+    private val accumulationUnreached = emptySet<String>()
+
+    /** Independent mutation PAIRS that must compare before a green on the accumulated verdict means anything. */
+    private val pairFloor = 20
+
+    /** The two declarations a pair's defects land on — different by construction, not by luck. */
+    private val FIRST = 0
+    private val SECOND = 1
+
     /** Mutants A12 must reject with a keyed class before a green here means anything. */
     private val floor = 20
 
@@ -381,6 +396,111 @@ class CheckerClassAgreementTest {
     }
 
     /**
+     * What A12 WOULD name if it did not stop — the accumulation contract, CONSTRUCTED rather than requested.
+     *
+     * **The blocker this answers.** The sweep above compares only where A12 spoke, because A12 stops at its
+     * first answering gate and its silence about every other declaration is not evidence. That leaves "does
+     * the checker name everything A12 would name" unasked, and it was recorded as needing an accumulation
+     * contract A12 does not offer. It does not need one from A12: for two defects on DIFFERENT declarations,
+     * what A12 would say about a model carrying both is what it says about each alone. So the accumulated
+     * verdict is built from single-defect observations we already make, and the composed model is then the
+     * only new thing measured.
+     *
+     * **Independence is checked, not assumed** — the pair is skipped unless A12 keys the two single-defect
+     * models at disjoint declarations. Two mutations landing on one declaration interact: the union is then
+     * a claim about a defect A12 may never have judged in that combination, which is precisely the inference
+     * this test exists to avoid making.
+     *
+     * The assertion is one-directional in the safe sense: the checker must name at least what A12 would, and
+     * naming more is what [everyClassTheCheckerNamesOnARejectedModelIsOneTheKernelNames] already refuses.
+     */
+    @Test
+    fun everyClassA12WouldNameOnATwoDefectModelIsOneTheCheckerNamesThere() {
+        val singles = mutableMapOf<String, KernelClassification?>()
+        var pairs = 0
+        var a12Stopped = 0
+        var attempted = 0
+        var uncomposable = 0
+        var unrejected = 0
+        var overlapping = 0
+        val missed = mutableListOf<String>()
+        for (model in committedModels()) {
+            val text = model.readText()
+            // Memoised per (model, kind): a pair only ever adds the COMPOSED model's classification, so the
+            // sweep costs one kernel run per pair rather than three.
+            fun single(mutation: Mutation, ordinal: Int): KernelClassification? =
+                singles.getOrPut("${model.name}|${mutation.label}|$ordinal") {
+                    mutation.applyTo(text, ordinal)?.let { kernelClassification(it) }
+                }
+            MUTATIONS.forEachIndexed { index, first ->
+                MUTATIONS.drop(index + 1).forEach { second ->
+                    attempted++
+                    // The second mutation takes the NEXT declaration it can reach, so the two defects are on
+                    // different rules by construction rather than by luck. `single` uses the same ordinals,
+                    // or the union below would be built from defects the composed model does not carry.
+                    val composed = first.applyTo(text, FIRST)?.let { second.applyTo(it, SECOND) }
+                    val one = single(first, FIRST)
+                    val other = single(second, SECOND)
+                    if (composed == null) uncomposable++
+                    else if (one == null || other == null || one.classes.isEmpty() || other.classes.isEmpty()) {
+                        unrejected++
+                    } else if (one.byDeclaration.keys.intersect(other.byDeclaration.keys).isNotEmpty()) {
+                        overlapping++
+                    }
+                    if (composed != null && one != null && other != null &&
+                        one.classes.isNotEmpty() && other.classes.isNotEmpty() &&
+                        one.byDeclaration.keys.intersect(other.byDeclaration.keys).isEmpty()
+                    ) {
+                        pairs++
+                        val would = one.pairs() + other.pairs()
+                        if (kernelClassification(composed)?.pairs() != would) a12Stopped++
+                        val ours = check(ModelSource(composed, diagnosticLabel = model.name)).findings
+                            .filter { it.justifiesRejection && it.category == FindingCategory.A12_CONSTRAINT }
+                            .mapTo(mutableSetOf()) { it.at to it.code }
+                        (would - ours).forEach { (at, code) ->
+                            val row = "${model.name}[${first.label}+${second.label}]: A12 would name $code " +
+                                "at $at and no family of ours does"
+                            if (row !in accumulationUnreached) missed += row
+                        }
+                    }
+                }
+            }
+        }
+        assertTrue(
+            pairs >= pairFloor,
+            "only $pairs independent mutation pairs compared (floor $pairFloor), so a green here would be an " +
+                "empty accumulation check rather than an agreeing one. Attempted $attempted; rejected " +
+                "$uncomposable uncomposable, $unrejected where a single mutant drew no keyed class, and " +
+                "$overlapping where the two defects land on one declaration. A12 reported less than the " +
+                "union on $a12Stopped of the pairs that compared",
+        )
+        // A12 reporting the FULL union is the measured fact that makes this a direct comparison instead of a
+        // contract, so it is pinned rather than assumed. A non-zero here means the early stop has appeared
+        // ACROSS declarations, and the union stops being what A12 would say — which invalidates the sweep's
+        // premise rather than merely failing one of its rows.
+        assertEquals(
+            0, a12Stopped,
+            "A12 reported less than the union of its own single-defect verdicts on $a12Stopped of $pairs " +
+                "pairs whose defects sit on DIFFERENT declarations. Measured 2026-09-16 as 0 of 23: its stop " +
+                "is intra-text ([KERNEL-FINDINGS KF340]) and does not hide a sibling declaration. If that has " +
+                "changed, the accumulated verdict can no longer be built this way and this sweep must be " +
+                "re-derived, not re-pinned",
+        )
+        assertEquals(
+            emptyList<String>(), missed,
+            "the checker does not name a class A12 WOULD name on a model carrying two independent defects. " +
+                "A12 reported less than the union on $a12Stopped of $pairs pairs, which is the early stop " +
+                "this contract exists to see past — so the gap below is not excused by it. Add the family " +
+                "that reaches the shape, or a row in `accumulationUnreached` saying why none does:\n" +
+                missed.joinToString("\n") { "  $it" },
+        )
+    }
+
+    /** A12's verdict as (declaration, class) pairs, the shape both directions above compare in. */
+    private fun KernelClassification.pairs(): Set<Pair<String?, String>> =
+        byDeclaration.flatMap { (at, codes) -> codes.map { at to it } }.toSet()
+
+    /**
      * What A12 says about a model, keyed by the declaration it says it about.
      *
      * @param unparsed classes A12 keyed whose declaration prefix this reader could not bind, held separately
@@ -420,10 +540,19 @@ class CheckerClassAgreementTest {
     }
 
     /** One perturbation aimed at the CONDITION gates, where A12 reports classes rather than refusing to build. */
-    private class Mutation(val label: String, private val mutate: (ObjectNode) -> Boolean) {
-        fun applyTo(text: String): String? {
+    private class Mutation(val label: String, private val mutate: (ObjectNode, Int) -> Boolean) {
+        /**
+         * Apply this perturbation to the [ordinal]-th declaration it can reach, or null when there is none.
+         *
+         * **The ordinal exists so two mutations can land on DIFFERENT declarations.** Every kind here picks
+         * the first declaration that fits it, which is right for the one-defect population and makes a
+         * two-defect one nearly impossible to build: measured 2026-09-16 over 645 attempted pairs, 355 could
+         * not compose at all and 246 more put both defects on one declaration, leaving 5. Ordinal 0 is
+         * exactly today's behaviour, so the one-defect population is unchanged.
+         */
+        fun applyTo(text: String, ordinal: Int = 0): String? {
             val root = runCatching { MAPPER.readTree(text) as? ObjectNode }.getOrNull() ?: return null
-            return if (mutate(root)) MAPPER.writeValueAsString(root) else null
+            return if (mutate(root, ordinal)) MAPPER.writeValueAsString(root) else null
         }
     }
 
@@ -484,17 +613,19 @@ class CheckerClassAgreementTest {
          * is what keeps them one-variable: every declared element stays exactly as authored, so a class A12
          * draws on the mutant is the parameter's and the comparison is about the message families alone.
          */
-        private fun firstRuleMessage(root: ObjectNode): ObjectNode? = groupBodies(root).asSequence()
+        private fun ruleMessage(root: ObjectNode, ordinal: Int): ObjectNode? = groupBodies(root).asSequence()
             .mapNotNull { it["elements"] as? ArrayNode }
             .flatMap { elements -> elements.asSequence() }
             .filter { it["type"]?.asText() == "Rule" }
             .mapNotNull { (it["Rule"] as? ObjectNode)?.get("errorMessage") as? ArrayNode }
             .mapNotNull { it.firstOrNull() as? ObjectNode }
-            .firstOrNull { it["text"]?.isTextual == true }
+            .filter { it["text"]?.isTextual == true }
+            .drop(ordinal)
+            .firstOrNull()
 
         /** One perturbation of a message TEXT — the position no declaration-shaped mutation reaches. */
-        private fun messageMutation(label: String, appended: String) = Mutation(label) { root ->
-            val message = firstRuleMessage(root) ?: return@Mutation false
+        private fun messageMutation(label: String, appended: String) = Mutation(label) { root, ordinal ->
+            val message = ruleMessage(root, ordinal) ?: return@Mutation false
             message.put("text", message["text"].asText() + appended)
             true
         }
@@ -503,18 +634,24 @@ class CheckerClassAgreementTest {
             // The mutation that found KF350: a target the condition cannot be naming, in the rule's own
             // group, leaving the condition untouched. It reaches the error-target gates, which is where the
             // checker and A12 have the most to disagree about.
-            Mutation("repoint-error-field") { root ->
+            Mutation("repoint-error-field") { root, ordinal ->
                 val group = groupBodies(root).firstOrNull { body ->
                     (body["elements"] as? ArrayNode)?.any { it["type"]?.asText() == "Rule" } == true
                 } ?: return@Mutation false
                 val elements = group["elements"] as ArrayNode
+                val rule = (0 until elements.size())
+                    .filter { elements[it]["type"]?.asText() == "Rule" }
+                    .getOrNull(ordinal) ?: return@Mutation false
+                // The injected name carries the ordinal, so composing two of these adds two DISTINCT fields.
+                // Sharing one name would collide into a duplicate-child refusal, which is a third defect
+                // neither mutation intended and would make the composed model unbuildable.
+                val target = "MutantTarget$ordinal"
                 val field = MAPPER.createObjectNode()
-                field.put("type", "Field").put("id", "mutant-target-1").put("name", "MutantTarget")
+                field.put("type", "Field").put("id", "mutant-target-$ordinal").put("name", target)
                 field.putObject("Field").putObject("fieldType").put("type", "StringType")
                 elements.add(field)
-                val rule = (0 until elements.size()).first { elements[it]["type"]?.asText() == "Rule" }
                 ((elements[rule] as ObjectNode)["Rule"] as ObjectNode)
-                    .put("errorEntityRelPath", "../MutantTarget")
+                    .put("errorEntityRelPath", "../$target")
                 true
             },
             // Repoint a rule's error field INTO a repeatable group, which makes the rule ITERATE. The kind
@@ -522,7 +659,7 @@ class CheckerClassAgreementTest {
             // and whether the rule iterates is what picks the class an unstarred operand draws
             // ([KERNEL-FINDINGS KF424]). Two over-reports of that shape were nearly shipped on 2026-09-15
             // and both were caught by a family mirror, because no mutation kind could build the carrier.
-            Mutation("repoint-error-field-into-a-repetition") { root ->
+            Mutation("repoint-error-field-into-a-repetition") { root, ordinal ->
                 val repeatable = groupBodies(root).firstOrNull { body ->
                     body["repeatability"]?.asInt()?.let { it > 1 } == true &&
                         (body["elements"] as? ArrayNode)?.any { it["type"]?.asText() == "Field" } == true
@@ -531,20 +668,24 @@ class CheckerClassAgreementTest {
                     (body["elements"] as? ArrayNode)?.any { it["type"]?.asText() == "Rule" } == true
                 } ?: return@Mutation false
                 val repeatableName = nameOfGroupBody(root, repeatable) ?: return@Mutation false
+                val elements = group["elements"] as ArrayNode
+                val rule = (0 until elements.size())
+                    .filter { elements[it]["type"]?.asText() == "Rule" }
+                    .getOrNull(ordinal) ?: return@Mutation false
+                // Ordinal-suffixed for the same reason as the kind above: two of these must add two fields.
+                val inner = "MutantInner$ordinal"
                 val field = MAPPER.createObjectNode()
-                field.put("type", "Field").put("id", "mutant-inner-1").put("name", "MutantInner")
+                field.put("type", "Field").put("id", "mutant-inner-$ordinal").put("name", inner)
                 field.putObject("Field").putObject("fieldType").put("type", "StringType")
                 (repeatable["elements"] as ArrayNode).add(field)
-                val elements = group["elements"] as ArrayNode
-                val rule = (0 until elements.size()).first { elements[it]["type"]?.asText() == "Rule" }
                 ((elements[rule] as ObjectNode)["Rule"] as ObjectNode)
-                    .put("errorEntityRelPath", "../$repeatableName/MutantInner")
+                    .put("errorEntityRelPath", "../$repeatableName/$inner")
                 true
             },
             // Remove one star from a rule's condition. A legal aggregate read becomes an iterating per-row
             // read, which is precisely the gate KF350 turned on — so this is the mutation aimed at the class
             // of defect this test exists for, rather than at models in general.
-            Mutation("unstar-a-condition") { root ->
+            Mutation("unstar-a-condition") { root, ordinal ->
                 val group = groupBodies(root).firstOrNull { body ->
                     (body["elements"] as? ArrayNode)?.any { element ->
                         element["type"]?.asText() == "Rule" &&
@@ -553,11 +694,11 @@ class CheckerClassAgreementTest {
                     } == true
                 } ?: return@Mutation false
                 val elements = group["elements"] as ArrayNode
-                val at = (0 until elements.size()).first { position ->
+                val at = (0 until elements.size()).filter { position ->
                     elements[position]["type"]?.asText() == "Rule" &&
                         (elements[position]["Rule"] as? ObjectNode)?.get("errorCondition")?.asText()
                             ?.contains('*') == true
-                }
+                }.getOrNull(ordinal) ?: return@Mutation false
                 val rule = elements[at]["Rule"] as ObjectNode
                 rule.put("errorCondition", rule["errorCondition"].asText().replaceFirst("*", ""))
                 true
