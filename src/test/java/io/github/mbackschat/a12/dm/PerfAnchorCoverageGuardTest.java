@@ -67,7 +67,7 @@ class PerfAnchorCoverageGuardTest {
                 "PerfHarness.assertSubQuadraticLane must hold each lane's accepted medians against the committed "
                         + "anchor: without that call the growth floors are the only bar left, and no growth ratio "
                         + "can see a uniform slowdown at any factor (IF280)");
-        assertTrue(harness.contains("accepted.smallMs") && harness.contains("accepted.largeMs"),
+        assertTrue(harness.contains("accepted.smallValue") && harness.contains("accepted.largeValue"),
                 "both scales must be anchored, and from the medians acceptance was decided on rather than a fresh "
                         + "sample");
         assertTrue(advantage.contains("PerfAnchors.assertWithinBudget"),

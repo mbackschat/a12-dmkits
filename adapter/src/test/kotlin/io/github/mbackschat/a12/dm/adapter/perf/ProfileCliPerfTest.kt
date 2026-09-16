@@ -76,7 +76,7 @@ private object ProfileCliCanary {
                         PerfHarness.progress(
                             "[profile-cli] ${verb.id} ${small.id}->${large.id} " +
                                 "work=${small.counts.work(verb)}->${large.counts.work(verb)} " +
-                                "normalized=${format(growth.smallMs, 4)}->${format(growth.largeMs, 4)} ms/unit " +
+                                "normalized=${format(growth.smallValue, 4)}->${format(growth.largeValue, 4)} ms/unit " +
                                 "paired-ratio=${format(growth.ratio, 2)}x",
                         )
                     }

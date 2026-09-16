@@ -63,8 +63,8 @@ class StarRelevanceReductionPerfTest {
         // A ratio over two unmeasurably small numbers passes whatever the reduction did. The antichain is built
         // so that one pass costs milliseconds, so a measurement rounding to zero means the clock answered.
         assertTrue(
-            accepted.smallMs > 0.0,
-            "the $PATTERNS-pattern measurement was ${accepted.smallMs}ms — too small to carry a ratio, so this " +
+            accepted.smallValue > 0.0,
+            "the $PATTERNS-pattern measurement was ${accepted.smallValue}ms — too small to carry a ratio, so this " +
                 "run asserted nothing about growth",
         )
     }

@@ -29,8 +29,12 @@ import org.junit.jupiter.api.condition.EnabledIfSystemProperty
  * sampler here would produce a third quantity nothing could be compared against, and §8's "supported peak
  * observations" is qualified by §8's own "where the host supports measurement".
  *
- * **It records and asserts nothing.** A collector coming first with informative output is H5's ordering rule,
- * and a budget taken from this lane's own first figure is what that rule forbids. The ratified `>=5 forks for
+ * **It asserts the GROWTH RATIO and no byte count.** A budget taken from this lane's own figures is what H5's
+ * ordering rule forbids, and `PerfBounds.SUB_QUADRATIC_MAX` escapes that because it was ratified as a mechanism
+ * before `:consistency` existed — so applying it is a scope transfer onto a new carrier, which needs a
+ * measurement here and has one (3.97x retained, 3.98x allocated, three runs, 2026-09-17). An absolute byte
+ * ceiling is declined for the reason the delivery ceiling is honest and this one would not be: a tarball's
+ * length is machine-independent and a post-GC heap reading is not. The ratified `>=5 forks for
  * footprint` sampling default is deliberately NOT met — this takes bracketed samples inside one JVM, as the
  * four sibling checker lanes did before their own dispositions — and under IF137 that default binds a number
  * only at its promotion, so the shortfall is disclosed rather than hidden.
@@ -57,33 +61,73 @@ class CheckerRetainedMemoryPerfTest {
         val small = admitted(programs)
         val large = admitted(programs * 4)
 
-        // Both scales are sampled as INTERLEAVED pairs with the median of within-pair ratios, which is the
-        // ratified paired estimator the timing lanes use. A post-GC byte delta drifts far less over a run than a
-        // duration does, so the interleaving buys less here than it does there — it is kept because one
-        // estimator across every H5 boundary is worth more than a local simplification, and because a growth
-        // ratio is the only shape this boundary could carry if bytes ever turn out to be machine-dependent.
-        val retainedSmall = LongArray(samples)
-        val retainedLarge = LongArray(samples)
-        val allocatedSmall = LongArray(samples)
-        val allocatedLarge = LongArray(samples)
-        val retainedRatio = DoubleArray(samples)
-        val allocatedRatio = DoubleArray(samples)
-        repeat(samples) { pair ->
-            retainedSmall[pair] = retainedBytesOfOneSnapshot(small)
-            retainedLarge[pair] = retainedBytesOfOneSnapshot(large)
-            allocatedSmall[pair] = allocatedBytesOfOneCheck(small.text)
-            allocatedLarge[pair] = allocatedBytesOfOneCheck(large.text)
-            retainedRatio[pair] = retainedLarge[pair].toDouble() / retainedSmall[pair]
-            allocatedRatio[pair] = allocatedLarge[pair].toDouble() / allocatedSmall[pair]
-        }
+        // The two BARS, and each is the growth ratio rather than any byte count. `SUB_QUADRATIC_MAX` was
+        // ratified as a mechanism long before `:consistency` existed, so applying it here is a scope transfer
+        // that needs a measurement on the new carrier and has one. An absolute byte ceiling is declined: a
+        // post-GC heap reading moves with the JDK, the collector and the heap size, where a packed tarball's
+        // length does not, so only the ratio survives a change of machine. What it catches is the failure class
+        // no correctness test can see — a quadratic-memory checker returns entirely right answers and then
+        // exhausts a heap, exactly as the cubic TIME term did before H5-b found it.
+        //
+        // Deliberately NOT `assertSubQuadraticLane`, which additionally anchors both endpoints as ABSOLUTE
+        // observations through `PerfAnchors`: that record is milliseconds, and a byte count written into it
+        // would be compared against a duration budget.
+        //
+        // `GATED` explicitly, overriding the growth floor's ambient `forGrowthFloor()` — which returns FLAGGED
+        // whenever `CI` is set, because a self-referential TIMING floor is a property of the machine as much as
+        // of the code. A byte ratio is not: a contended slice adds wall time and allocates nothing, so the
+        // reason for flagging does not exist here, and the default would disarm this bar on every hosted run.
+        //
+        // The estimator is passed as a CLOSURE that re-samples, never as a precomputed median. That is the whole
+        // point of the helper's acceptance rule: a breach must survive the median of independent re-measurements,
+        // and handing it one constant three times makes the retry vacuous while reading exactly like a control.
+        // Caught here on 2026-09-17 by the floor-lowering control itself, which printed three byte-identical
+        // "independent" estimates.
+        val retained = PerfHarness.assertGrowthBelowCatastropheFloor(
+            "a held snapshot's retained bytes, $programs->${programs * 4} programs",
+            culprit = "the fact base retaining per-declaration state it could derive",
+            unit = " bytes",
+            enforcement = TimingEnforcement.GATED,
+        ) { growthOf(samples, small, large, ::retainedBytesOfOneSnapshot) }
+        val allocated = PerfHarness.assertGrowthBelowCatastropheFloor(
+            "one check's allocated bytes, $programs->${programs * 4} programs",
+            culprit = "a family materializing an intermediate per declaration pair",
+            unit = " bytes",
+            enforcement = TimingEnforcement.GATED,
+        ) { growthOf(samples, small, large) { allocatedBytesOfOneCheck(it.text) } }
 
         PerfHarness.progress(
             "[checker-memory] programs=$programs->${programs * 4} samples=$samples " +
                 "model-text=${small.text.length}->${large.text.length} chars | " +
-                "snapshot-retained=${format(median(retainedSmall))}->${format(median(retainedLarge))} bytes " +
-                "growth=${ratio(median(retainedRatio))} | " +
-                "check-allocated=${format(median(allocatedSmall))}->${format(median(allocatedLarge))} bytes " +
-                "growth=${ratio(median(allocatedRatio))}",
+                "snapshot-retained=${format(retained.smallValue)}->${format(retained.largeValue)} bytes " +
+                "growth=${ratio(retained.ratio)} | " +
+                "check-allocated=${format(allocated.smallValue)}->${format(allocated.largeValue)} bytes " +
+                "growth=${ratio(allocated.ratio)}",
+        )
+    }
+
+    /**
+     * One quantity's paired growth: [measure] at both scales, INTERLEAVED per pair, median of within-pair ratios.
+     *
+     * The ratified paired estimator, and interleaving earns less here than in a timing lane because a post-GC
+     * byte delta barely drifts over a run. It is kept anyway: one estimator across every H5 boundary is worth
+     * more than a local simplification, and the ratio is the only shape this boundary can carry as a bar.
+     */
+    private fun growthOf(samples: Int, small: Scale, large: Scale, measure: (Scale) -> Long): Growth {
+        val smallBytes = LongArray(samples)
+        val largeBytes = LongArray(samples)
+        val ratios = DoubleArray(samples)
+        repeat(samples) { pair ->
+            smallBytes[pair] = measure(small)
+            largeBytes[pair] = measure(large)
+            ratios[pair] = largeBytes[pair].toDouble() / smallBytes[pair]
+        }
+        return Growth(
+            ratio = median(ratios),
+            smallValue = median(smallBytes).toDouble(),
+            largeValue = median(largeBytes).toDouble(),
+            smallN = small.programs,
+            largeN = large.programs,
         )
     }
 
@@ -177,7 +221,7 @@ class CheckerRetainedMemoryPerfTest {
 
     private fun ratio(value: Double): String = "%.3fx".format(Locale.ROOT, value)
 
-    private fun format(value: Long): String = String.format(Locale.ROOT, "%,d", value)
+    private fun format(value: Double): String = String.format(Locale.ROOT, "%,.0f", value)
 
     private fun requiredProperty(name: String): String =
         requireNotNull(System.getProperty(name)) { "-D$name=<value> is required" }

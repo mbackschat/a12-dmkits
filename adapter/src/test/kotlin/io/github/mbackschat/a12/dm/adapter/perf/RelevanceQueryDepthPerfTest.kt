@@ -65,8 +65,8 @@ class RelevanceQueryDepthPerfTest {
         // milliseconds at these depths, so a measurement that rounds to zero means the clock, not the code, was
         // what answered.
         assertTrue(
-            accepted.smallMs > 0.0,
-            "the depth-${DEPTHS.first()} measurement was ${accepted.smallMs}ms — too small to carry a ratio, so " +
+            accepted.smallValue > 0.0,
+            "the depth-${DEPTHS.first()} measurement was ${accepted.smallValue}ms — too small to carry a ratio, so " +
                 "this run asserted nothing about growth",
         )
     }

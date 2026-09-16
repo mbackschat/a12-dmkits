@@ -21,7 +21,7 @@ data class ScaleStep(val small: Int, val large: Int) {
  * engine's fixed per-call cost and therefore cannot be compared ACROSS engines (IF205, IF279).
  */
 data class EngineCurve(val engine: String, val growth: Growth) {
-    fun perUnitMs(step: ScaleStep): Double = (growth.largeMs - growth.smallMs) / step.units
+    fun perUnitMs(step: ScaleStep): Double = (growth.largeValue - growth.smallValue) / step.units
 }
 
 /**
@@ -79,6 +79,6 @@ internal object PairedAcceptance {
     private fun render(curve: EngineCurve, step: ScaleStep): String =
         "%s %.4fms/unit (%.3fms@%d → %.3fms@%d, ratio %.2f×)".format(Locale.ROOT,
             curve.engine, curve.perUnitMs(step),
-            curve.growth.smallMs, step.small, curve.growth.largeMs, step.large, curve.growth.ratio,
+            curve.growth.smallValue, step.small, curve.growth.largeValue, step.large, curve.growth.ratio,
         )
 }

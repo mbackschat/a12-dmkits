@@ -34,8 +34,8 @@ class PerfGrowthEstimatorTest {
 
         assertEquals(listOf(10, 40, 10, 40, 10, 40, 10, 40, 10, 40), scales)
         assertEquals(3.0, growth.ratio, 0.0, "median ratios [8, 3, 4, 2, 3]")
-        assertEquals(100.0, growth.smallMs, 0.0)
-        assertEquals(400.0, growth.largeMs, 0.0)
+        assertEquals(100.0, growth.smallValue, 0.0)
+        assertEquals(400.0, growth.largeValue, 0.0)
     }
 
     @Test

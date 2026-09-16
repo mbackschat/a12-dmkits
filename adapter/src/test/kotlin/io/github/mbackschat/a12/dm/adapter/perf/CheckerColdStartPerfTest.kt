@@ -140,7 +140,7 @@ class CheckerColdStartPerfTest {
             }
             PerfHarness.progress(
                 "[checker-cold] paired programs=${scales.first()}->${scales.last()} " +
-                    "median=${format(growth.smallMs)}->${format(growth.largeMs)} ms " +
+                    "median=${format(growth.smallValue)}->${format(growth.largeValue)} ms " +
                     "paired-ratio=${format(growth.ratio)}x",
             )
         }

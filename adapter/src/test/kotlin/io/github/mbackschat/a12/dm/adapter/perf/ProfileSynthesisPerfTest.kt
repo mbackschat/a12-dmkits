@@ -36,7 +36,7 @@ class ProfileSynthesisPerfTest {
             }.also { growth ->
                 PerfHarness.progress(
                     "[profile-synthesis] rules+computations=$small+$small->$large+$large " +
-                        "median=${format(growth.smallMs)}->${format(growth.largeMs)} ms " +
+                        "median=${format(growth.smallValue)}->${format(growth.largeValue)} ms " +
                         "paired-ratio=${format(growth.ratio)}x",
                 )
             }

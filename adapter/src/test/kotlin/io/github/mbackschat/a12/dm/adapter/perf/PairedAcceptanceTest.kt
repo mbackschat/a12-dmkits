@@ -17,9 +17,9 @@ class PairedAcceptanceTest {
 
     /** The medians the nightly gate measured for `Number index compute` on 2026-08-11 (hosted x64 runner). */
     private val step = ScaleStep(small = 500, large = 2_000)
-    private val interpreter = EngineCurve("interpreter", Growth(ratio = 3.94, smallMs = 3.148, largeMs = 12.396))
-    private val groovy = EngineCurve("Groovy", Growth(ratio = 3.59, smallMs = 36.414, largeMs = 126.815))
-    private val java = EngineCurve("Java", Growth(ratio = 3.86, smallMs = 30.460, largeMs = 119.347))
+    private val interpreter = EngineCurve("interpreter", Growth(ratio = 3.94, smallValue = 3.148, largeValue = 12.396))
+    private val groovy = EngineCurve("Groovy", Growth(ratio = 3.59, smallValue = 36.414, largeValue = 126.815))
+    private val java = EngineCurve("Java", Growth(ratio = 3.86, smallValue = 30.460, largeValue = 119.347))
 
     @Test
     fun theLeanestEngineMayHaveTheHighestGrowthRatio() {
@@ -37,7 +37,7 @@ class PairedAcceptanceTest {
     /** Between Java's 0.0593 and Groovy's 0.0603 ms/row, so it loses to the FAIR baseline only. */
     @Test
     fun anInterpreterThatCostsMorePerUnitThanJavaAloneIsRefused() {
-        val slow = EngineCurve("interpreter", Growth(ratio = 3.94, smallMs = 3.148, largeMs = 93.0))
+        val slow = EngineCurve("interpreter", Growth(ratio = 3.94, smallValue = 3.148, largeValue = 93.0))
         val failure = assertThrows(IllegalStateException::class.java) {
             PairedAcceptance.requireInterpreterHasLowestPerUnitCost("number-index", step, slow, listOf(groovy, java))
         }
@@ -48,7 +48,7 @@ class PairedAcceptanceTest {
 
     @Test
     fun losingToBothStrategiesNamesBoth() {
-        val slow = EngineCurve("interpreter", Growth(ratio = 3.94, smallMs = 3.148, largeMs = 200.0))
+        val slow = EngineCurve("interpreter", Growth(ratio = 3.94, smallValue = 3.148, largeValue = 200.0))
         val failure = assertThrows(IllegalStateException::class.java) {
             PairedAcceptance.requireInterpreterHasLowestPerUnitCost("number-index", step, slow, listOf(groovy, java))
         }
@@ -65,7 +65,7 @@ class PairedAcceptanceTest {
      */
     @Test
     fun aQuadraticInterpreterKeepsTheLowestSlopeSoTheFloorIsASeparateCheck() {
-        val quadratic = EngineCurve("interpreter", Growth(ratio = 16.0, smallMs = 3.148, largeMs = 50.368))
+        val quadratic = EngineCurve("interpreter", Growth(ratio = 16.0, smallValue = 3.148, largeValue = 50.368))
         assertTrue(quadratic.perUnitMs(step) < java.perUnitMs(step)) {
             "a 16× interpreter is still the cheapest per unit here, which is why the floor is a separate check"
         }
@@ -79,7 +79,7 @@ class PairedAcceptanceTest {
 
     @Test
     fun anEngineThatDidNotGrowWithTheScaleIsRefusedAsDegenerate() {
-        val flat = EngineCurve("Groovy", Growth(ratio = 1.0, smallMs = 36.414, largeMs = 36.414))
+        val flat = EngineCurve("Groovy", Growth(ratio = 1.0, smallValue = 36.414, largeValue = 36.414))
         val failure = assertThrows(IllegalStateException::class.java) {
             PairedAcceptance.requireInterpreterHasLowestPerUnitCost("number-index", step, interpreter, listOf(flat, java))
         }
@@ -90,7 +90,7 @@ class PairedAcceptanceTest {
 
     @Test
     fun aDegenerateInterpreterCurveIsRefusedToo() {
-        val flat = EngineCurve("interpreter", Growth(ratio = 0.9, smallMs = 3.148, largeMs = 2.8))
+        val flat = EngineCurve("interpreter", Growth(ratio = 0.9, smallValue = 3.148, largeValue = 2.8))
         val failure = assertThrows(IllegalStateException::class.java) {
             PairedAcceptance.requireInterpreterHasLowestPerUnitCost("number-index", step, flat, listOf(groovy, java))
         }

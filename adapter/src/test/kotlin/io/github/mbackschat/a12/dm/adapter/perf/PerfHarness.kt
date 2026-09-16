@@ -466,15 +466,22 @@ internal class SteadyStateWarmUp(private val budget: WarmUpBudget) {
 }
 
 /** The result of the IF137-ratified [PerfHarness.pairedGrowth] estimator: the median within-pair growth [ratio]
- *  and a representative [smallMs]/[largeMs] (the medians across pairs) for the log line.
+ *  and a representative [smallValue]/[largeValue] (the medians across pairs) for the log line.
+ *
+ *  **The two representative values carry the LANE's unit, which is why they are not named `*Ms`** (renamed
+ *  2026-09-17, when a byte lane became the second consumer). The quantity under assertion is the dimensionless
+ *  [ratio]; the values exist so a breach names the observations it was decided on, and a caller passes its own
+ *  `unit` to whichever seam prints them. Timing lanes hold milliseconds and `:adapter`'s memory lane holds bytes.
+ *  [PairedAcceptance.perUnitMs] keeps its millisecond-specific name deliberately: it divides these values by a
+ *  scale to get a per-unit cost, and only the timing curves construct the `EngineCurve` it reads.
  *
  *  [smallN]/[largeN] carry the scales the two medians were measured at, so a caller that wants to ANCHOR them does
  *  not have to thread the scales separately and cannot pair a median with the wrong one. They default to zero for
  *  the harness's own unit tests, which script the ratios rather than measuring them. */
 data class Growth(
     val ratio: Double,
-    val smallMs: Double,
-    val largeMs: Double,
+    val smallValue: Double,
+    val largeValue: Double,
     val smallN: Int = 0,
     val largeN: Int = 0,
 )
@@ -845,7 +852,7 @@ object PerfHarness {
      * warmed observation or a repeated median at that scale—never an inner minimum. A linear axis medians ≈4×,
      * a quadratic one ≈16×; the trip line is
      * [PerfBounds.SUB_QUADRATIC_MAX] (the ratified backstop — a tighter bar is an owner-gated per-number promotion,
-     * IF137). Reported [Growth.smallMs]/[Growth.largeMs] are the medians across pairs, for the log line.
+     * IF137). Reported [Growth.smallValue]/[Growth.largeValue] are the medians across pairs, for the log line.
      */
     fun pairedGrowth(small: Int, large: Int, pairs: Int = PerfBounds.GROWTH_PAIRS, measureAt: (Int) -> Double): Growth {
         require(small > 0) { "small scale must be positive" }
@@ -910,7 +917,7 @@ object PerfHarness {
                     println(
                         "[perf] %s → %s %s: %.1fms@%d → %.1fms@%d %s  median-growth=%.2f× (linear≈4, quadratic≈16)"
                             .format(Locale.ROOT, identityAt(small), identityAt(large), label,
-                                g.smallMs, small, g.largeMs, large, unit, g.ratio),
+                                g.smallValue, small, g.largeValue, large, unit, g.ratio),
                     )
                 }
             }
@@ -940,7 +947,7 @@ object PerfHarness {
         measureAt: (Int) -> Double,
     ) {
         var failure: Throwable? = null
-        for ((scale, observed) in listOf(small to accepted.smallMs, large to accepted.largeMs)) {
+        for ((scale, observed) in listOf(small to accepted.smallValue, large to accepted.largeValue)) {
             try {
                 PerfAnchors.assertWithinBudget(
                     ObservationKey(
@@ -988,6 +995,9 @@ object PerfHarness {
         culprit: String? = null,
         floor: Double = PerfBounds.SUB_QUADRATIC_MAX,
         attempts: Int = GROWTH_RETRY_ATTEMPTS,
+        /** The unit [Growth.smallValue]/[Growth.largeValue] are in, for the breach text only. Defaults to the
+         *  timing lanes' millisecond; a byte lane passes its own, or a breach reads a byte count as a duration. */
+        unit: String = "ms",
         /** Where this is running, which decides what a breach MEANS. Injected so the three outcomes are testable
          *  without a hosted runner; production callers take the ambient decision. */
         enforcement: TimingEnforcement = TimingEnforcement.forGrowthFloor(),
@@ -1006,7 +1016,9 @@ object PerfHarness {
         val breach =
             "$label median within-pair N/4N growth stayed at or above the ${floor}x catastrophe floor across " +
                 "${seen.taken.size} independent re-measurements: " +
-                seen.taken.joinToString(", ") { "${it.ratio} (${it.smallMs}ms -> ${it.largeMs}ms)" } +
+                seen.taken.joinToString(", ") {
+                    "${it.ratio} (${it.smallValue}$unit -> ${it.largeValue}$unit)"
+                } +
                 ". Acceptance is the median of these, so one low outlier cannot clear a real breach. Load " +
                 "inflates one estimate and does not reproduce; an algorithmic blowup does (linear medians " +
                 "~4x, quadratic ~16x)." + culprit?.let { " Likely cause: $it." }.orEmpty()
