@@ -9187,3 +9187,17 @@ The third row is what makes the second a measurement rather than a coincidence: 
 Reported by the portable checker (`CheckFamily.FILTERED_OPERAND_KIND`, which now asks the iteration walk instead of the star; `OPERAND_REPETITION_SCOPE` gained the filtered operand's base, `ENTITY_LIST_ARITY` yields on any filtered operand, `ERROR_FIELD_REFERENCE` exempts a jointly iterated level, and the shared `addressedTargetOf` and `FILTER_BODY_GATES` key on the declaration's iteration).
 
 *Locked by:* `rulekit.validate.laws.AggregateSlotLawsTest` and `…HavingFilterIterationGateLawsTest`, mirrored by `consistency.AggregateOperandIterationTest` and `consistency.FilterBodyGatesTest`.
+
+## §12 supplement — `checkConsistency` runs the CODEGEN tier's checks, so `NoMetaModelCheckErrorType` is consistency-reachable (measured + source-read, 2026-09-16) <a id="kf425"></a>
+
+> Fold: not-foldable — it corrects a scope boundary that excluded 26 classes from a coverage denominator.
+
+[MVK-LEDGER](MVK-LEDGER.md)'s scope note puts `NoMetaModelCheckErrorType` (`kernel-tool/kernel-core-codegen`) outside the ledger, and the natural reading of a type in a *codegen* module is that its 26 classes arise when code is generated rather than when a model is checked. They do not. An unparseable `modelConfig.timeZone` draws `MVK_INVALID_TIME_ZONE` from `checkConsistency` itself, with the same model at `Europe/Berlin` admitted as the within-model control.
+
+**One reachable class settles the whole tier, which is why this is one row rather than 26.** `NoMetaModelChecks` exposes exactly one public entry point — `check()`, constructed over `CodeGenData` — and raises all 26 classes from private methods beneath it (source-read, kernel `30.8.1`). So the question was never per class; it was whether that single door opens on the consistency path, and it does. `check()` also runs its checks in two batches with an early return between them, the name/package/language/character-set/dynamic-enum/time-zone batch gating the enum-table, index-field and sort-field batch — source-read, and *not* asserted here as a pre-emption law, since no model was built to defeat the other reading.
+
+The tier's reachability was in fact already pinned once, indirectly: `GroupIndexAndSortReferenceLawsTest` expects `MVK_INVALID_INDEX_FIELD` — also a `NoMetaModelCheckErrorType` member — from the real Kernel, with a no-semantic-index control. Nobody had read that row as a statement about the tier, which is how a 26-class denominator stayed excluded while one of its members was already locked.
+
+**Consequence for the portable checker**, tracked in [the coverage-residue record](PORTABLE-CONSISTENCY-IMPLEMENTATION-PLAN.md#coverage-residue): 7 of the 26 are reported by `:consistency`, so the remaining 19 are each a candidate route to a false pass. Measured on the witness above — A12 reports `MVK_INVALID_TIME_ZONE`, the portable engine returns INCONCLUSIVE with zero findings. That is honest under the current contract, which cannot emit VALID at all; it is exactly the row that would become a false VALID if that bar were lifted before these 19 are dispositioned.
+
+*Locked by:* `rulekit.validate.laws.CodegenTierReachedByCheckConsistencyLawsTest`.
