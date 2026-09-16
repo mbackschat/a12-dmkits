@@ -46,6 +46,13 @@ dependencies {
     // kits. dmtool is unaffected — :cli depends on :adapter directly, so the provider is on its classpath.
     testImplementation project(':adapter')
 
+    // The Kernel-free gate (PORTABLE-CONSISTENCY-PROPOSAL §7 F3-b), TEST scope for the same reason :adapter is:
+    // it arms the differential, never the published artifact. Every model this suite imports is put through
+    // BOTH oracles by `SchemaTestSupport.assertKernelAccepts`, so a model A12 accepts and the portable checker
+    // refuses fails here — an over-rejection, which is the one direction neither product may drift in. The
+    // published dmkits-schemakit POM is unchanged, and `verifySchemakitPurity` reads main classes only.
+    testImplementation project(':consistency-gate')
+
     // JSON Schema parse/emit — Jackson tree (the same tree-walking style as modelkit's DM-JSON read).
     implementation 'com.fasterxml.jackson.core:jackson-databind:2.18.2'
 

@@ -322,12 +322,13 @@ The verbs/options are discoverable from the binary (`manifest`/`--help`): import
 The differential is **round-trip + kernel-accept** (the kernel-accept gate rides the public facade via `ModelLoader`):
 
 1. **Kernel-accept** — every imported model loads clean: `ModelLoader.loadSelfContained` does not throw `ModelConsistencyException`.
+1a. **Portable agreement** — the same models, through `dmkits-consistency-gate` with no kernel involved, must not be REFUSED. Only that direction fails: A12 has just accepted the model, so a portable ERROR is the Kernel-free checker refusing what A12 admits — invisible to a consumer, because the kernel is never asked. Its silence is never evidence of the converse, since that checker completes only the families it implements and reports no VALID verdict at all. It rides the one `assertKernelAccepts` seam every shape test already calls, so the arm covers the whole import corpus rather than hand-picked fixtures; `PortableAcceptanceGateTest` supplies its positive controls, without which an arm that fires only on a disagreement would be green whether armed or not. **Measured 2026-09-16: no disagreement across the 135-test corpus.**
 2. **Round-trip** — `import(schema) → DM → export → schema'` is structurally equal on `{type, properties, required, $defs}`; and `DM → export → import → DM'` preserves structure + (a12↔a12) rules/computations via `x-a12-*`.
 3. **Valid JSON Schema** — exports validate against the JSON-Schema meta-schema.
 4. **Report accuracy** — the transcoding report states every disposition; it is asserted against (it doubles as the suite's evidence, proposal §11).
 5. **Two-tier boundary** *(shape 5)* — exported Tier-A keywords feed a stock validator; a cross-field rule that the stock tier cannot enforce remains present in `x-a12-rule`. Live `interpreter.validateFull` wiring is deferred in [`SCHEMAKIT-GAPS.md`](SCHEMAKIT-GAPS.md) §3.
 
-Tests live in `:schemakit:test`; the kernel-accept gate uses only the public facade (`ModelLoader`), so the structural shapes need no `:adapter` on the test classpath. Tier-A projection uses the `ConditionReadBack` provider from `:adapter` at test runtime; the deferred live full-rule tier would add `:interpreter`.
+Tests live in `:schemakit:test`; the kernel-accept gate uses only the public facade (`ModelLoader`), so the structural shapes need no `:adapter` on the test classpath. The portable arm adds `:consistency-gate` at TEST scope for the same reason `:adapter` is test-scoped — it arms the differential, never the published artifact, so `dmkits-schemakit`'s POM is unchanged and `verifySchemakitPurity` (which reads main classes) is untouched. Tier-A projection uses the `ConditionReadBack` provider from `:adapter` at test runtime; the deferred live full-rule tier would add `:interpreter`.
 
 ---
 
