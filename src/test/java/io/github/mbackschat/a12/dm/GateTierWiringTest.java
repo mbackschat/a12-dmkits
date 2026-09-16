@@ -49,6 +49,13 @@ class GateTierWiringTest {
         assertTrue(invocation.contains(":consistency:nodeConsumerTest"),
                 "CI must run :consistency:nodeConsumerTest — it is the only lane that packs the checker's npm "
                         + "package and imports it by name, and it hangs off no lifecycle task");
+        // The checker's ONE absolute release bar (owner-ratified 2026-09-16 through IF137's six points): the
+        // packed tarball's bytes against a 1 MiB ceiling. It hangs off no lifecycle task for the same reason as
+        // the lane above — it needs node and npm — and the only other place the number is produced is the
+        // release-grade delivery collector, so unnamed here the bar would fire once per release at most.
+        assertTrue(invocation.contains(":consistency:verifyConsistencyDeliveryCeiling"),
+                "CI must run :consistency:verifyConsistencyDeliveryCeiling — it is the only routine lane that "
+                        + "holds the checker's ratified delivery ceiling, and it hangs off no lifecycle task");
         assertFalse(ci.contains("schedule:"),
                 "main-push correctness CI must not rerun on the nightly schedule");
         assertTrue(ci.contains("uses: gradle/actions/setup-gradle@v6"),

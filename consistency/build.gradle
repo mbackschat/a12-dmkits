@@ -586,6 +586,56 @@ def packConsistencyNpmPackage = tasks.register('packConsistencyNpmPackage', Exec
     outputs.upToDateWhen { false }
 }
 
+/**
+ * The one packed tarball, or a refusal — shared, because every consumer of the pack has to agree on WHICH file
+ * it got. Two tarballs means a stale one from an earlier version, and each caller would take whichever it named
+ * first: a green run against code the current build did not produce.
+ */
+def resolvePackedConsistencyTarball = {
+    def packDir = consistencyNpmPackDir.get().asFile
+    def tarballs = packDir.listFiles()?.findAll { it.name.endsWith('.tgz') }
+    if (!tarballs) {
+        throw new GradleException("npm pack produced no tarball in $packDir")
+    }
+    if (tarballs.size() > 1) {
+        throw new GradleException("several packed tarballs in $packDir: ${tarballs*.name.toSorted()} — " +
+                'delete the directory and re-run')
+    }
+    return tarballs.first()
+}
+
+// The checker's delivery bar, ratified per-number by the owner on 2026-09-16 through IF137's six points
+// (docs/PORTABLE-CONSISTENCY-IMPLEMENTATION-PLAN.md "H5 — the calibration ordering was overtaken by events").
+// A byte count is the one checker quantity that can carry an ABSOLUTE bar, because it is machine-independent:
+// unlike a latency it means the same thing on every runner, and re-packing the same revision is bit-identical
+// (measured 2026-09-16, same sha256 across two packs). What it certifies is BOUNDED GROWTH, not smallness —
+// the ceiling was set from the measured 634 443 bytes, so it says "not 1.65x bigger without a decision" and
+// never "small enough". The cross-revision comparison stays informative and stays in its collector
+// (scripts/interpreter-delivery-footprint.init.gradle); this is the bar, and it lives where the bytes are made.
+def consistencyDeliveryCeilingBytes = 1_048_576L
+
+tasks.register('verifyConsistencyDeliveryCeiling') {
+    group = 'verification'
+    description = 'Refuse a packed checker above the ratified 1 MiB ceiling — the only absolute checker bar.'
+    dependsOn packConsistencyNpmPackage
+    outputs.upToDateWhen { false }
+    doLast {
+        def tarball = resolvePackedConsistencyTarball()
+        def bytes = tarball.length()
+        logger.lifecycle(String.format(Locale.ROOT,
+                '[checker-delivery] %s is %d bytes against a %d ceiling (%.2fx headroom)',
+                tarball.name, bytes, consistencyDeliveryCeilingBytes,
+                consistencyDeliveryCeilingBytes / (double) bytes))
+        if (bytes > consistencyDeliveryCeilingBytes) {
+            throw new GradleException("the packed checker is $bytes bytes, above the ratified " +
+                    "$consistencyDeliveryCeilingBytes-byte delivery ceiling. A release bar is not raised to " +
+                    'fit: find what entered the published package (`npm pack --dry-run` under ' +
+                    'consistency/build/dist/js/productionLibrary lists every entry with its size), or take the ' +
+                    "new number through IF137's six points if the growth is worth ratifying.")
+        }
+    }
+}
+
 def prepareNodeConsumer = tasks.register('prepareNodeConsumer', Sync) {
     group = 'verification'
     description = 'Stage a disposable copy of the Node consumer project, with no node_modules carried over.'
@@ -605,18 +655,8 @@ def installPackedConsistencyInNodeConsumer = tasks.register('installPackedConsis
     dependsOn packConsistencyNpmPackage, prepareNodeConsumer
     workingDir nodeConsumerBuildDir
     doFirst {
-        def tarballs = consistencyNpmPackDir.get().asFile.listFiles()?.findAll { it.name.endsWith('.tgz') }
-        if (!tarballs) {
-            throw new GradleException("npm pack produced no tarball in ${consistencyNpmPackDir.get().asFile}")
-        }
-        if (tarballs.size() > 1) {
-            // Two tarballs means a stale one from an earlier version, and `npm install` would take whichever
-            // this code named first — a green run against code the current build did not produce.
-            throw new GradleException("several packed tarballs in ${consistencyNpmPackDir.get().asFile}: " +
-                    "${tarballs*.name.toSorted()} — delete the directory and re-run")
-        }
         commandLine new File(resolveNodeBinDir(), 'npm').absolutePath, 'install',
-                '--no-audit', '--no-fund', tarballs.first().absolutePath
+                '--no-audit', '--no-fund', resolvePackedConsistencyTarball().absolutePath
     }
     outputs.upToDateWhen { false }
 }

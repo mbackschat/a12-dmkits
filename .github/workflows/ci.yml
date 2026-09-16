@@ -129,6 +129,10 @@ jobs:
       # compiled green for the module's whole life while emitting nothing importable. It is off
       # `:consistency:check` deliberately (it needs node and npm), so naming it here is what runs it at all —
       # the Node setup step above puts both on PATH. It reaches no network.
+      # `:consistency:verifyConsistencyDeliveryCeiling` is the checker's one ABSOLUTE release bar (owner-ratified
+      # 2026-09-16): the packed tarball's byte count against a 1 MiB ceiling. It reuses the pack the consumer
+      # test already performs, so it costs nothing extra here, and it needs a routine lane precisely because the
+      # cross-revision collector runs only at release — a doubled download would otherwise ship unnoticed.
       - name: Build & test rulekit (kits + adapter + cli + fuzzers + kernel-free nets)
         working-directory: a12-dmkits
         env:
@@ -138,7 +142,7 @@ jobs:
         # belong to the release rehearsal. Naming them is what GateTierWiringTest derives and enforces; five of
         # them ran nowhere at all until 2026-09-12, `verifyInterpreterPurity` — the EUPL import boundary —
         # among them.
-        run: ./gradlew --no-daemon test :adapter:test :cli:test :cli:publicContractTest :interpreter:allTests :interpreter:verifyInterpreterPurity :interpreter:interpreterRuntimeClosurePolicyTest :interpreter:interpreterAbiGoldenDepthTest :interpreter:verifyInterpreterVersionAlignment :interpreter:verifyInterpreterPerformanceClaims :interpreter-bridge:check :consistency:check :consistency:nodeConsumerTest :schemakit:check :verifyKitPurity :verifyPublishedClasspathsAreKernelFree :noBackendTest -PrunFuzz
+        run: ./gradlew --no-daemon test :adapter:test :cli:test :cli:publicContractTest :interpreter:allTests :interpreter:verifyInterpreterPurity :interpreter:interpreterRuntimeClosurePolicyTest :interpreter:interpreterAbiGoldenDepthTest :interpreter:verifyInterpreterVersionAlignment :interpreter:verifyInterpreterPerformanceClaims :interpreter-bridge:check :consistency:check :consistency:nodeConsumerTest :consistency:verifyConsistencyDeliveryCeiling :schemakit:check :verifyKitPurity :verifyPublishedClasspathsAreKernelFree :noBackendTest -PrunFuzz
 
       # Both agent plugins (Claude Code, Codex) bundle COPIES of the single-source assets — the skills,
       # installer, and release-asset manifest — synced by scripts/sync-plugin-assets.sh. Fail loudly if any
