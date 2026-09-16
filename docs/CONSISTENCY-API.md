@@ -196,6 +196,24 @@ run.report()                          // this checker's own report: status, chec
 
 Includes and type-definition imports are resolved through the caller's own resolver, transitively: a provider that itself includes a third model is supplied too. A reference the resolver answers with `null` is simply not supplied and the mount is then reported as a coverage gap rather than as a missing reference — the same honest under-report every other entry point makes.
 
+## Calling it from an interpreter consumer — `dmkits-interpreter-preflight`
+
+Evaluating a model says nothing about whether A12 accepts it, and the two questions are easy to conflate because one of them answers first. `ModelWorkspace.prepare` says the interpreter can build an evaluator; `Interpreter.supportReport()` says which rules it can execute. **Neither consults A12's constraints**, so a model A12 rejects prepares perfectly well and reports full support — measured, and locked by `ConsistencyPreflightTest`. A consumer who gated evaluation on preparation would evaluate a broken model and get answers about it.
+
+```kotlin
+val sources = listOf(WorkspaceModelSource.builder().json(orderJson).build())
+
+when (ConsistencyPreflight.of(sources, "orders").outcome) {
+    CheckOutcome.REJECTED        -> // A12 rejects a declaration
+    CheckOutcome.NO_REJECTION    -> // nothing rejected it — NOT a pass
+    CheckOutcome.NOT_ESTABLISHED -> // nothing was checked; the report says why
+}
+```
+
+It takes exactly the sources `ModelWorkspace.fromSources` takes, so asking the second question costs no second representation of the model. It builds no prepared graph, holds no interpreter, and changes no evaluator admission — the interpreter accepts and refuses precisely what it did before.
+
+`CheckOutcome` is the checker's own three-way classification (`ConsistencyReport.outcome`), and it exists because `ConsistencyStatus` answers a different question: `Inconclusive` covers both "every family ran and none rejected this" and "nothing ran at all", which are the same verdict and opposite instructions. None of the three is a pass, and no fourth value is coming until the coverage registry does.
+
 ## Calling it from Node
 
 The worked example is [`consistency/consumer-tests/node`](../consistency/consumer-tests/node), which is executable rather than illustrative: `./build.sh :consistency:nodeConsumerTest` packs the library into a real npm tarball, clean-installs it into a staged copy of that project, and runs it. It needs `node` and `npm` and reaches no network — the package declares no runtime dependency.

@@ -74,3 +74,9 @@ include 'predicates'
 // edge that folds an integration into a core's published POM works equally well in reverse, and §1 forbids
 // exactly that for this façade. Kernel-free, held by its own verifyConsistencyGatePurity.
 include 'consistency-gate'
+
+// The :interpreter-preflight module (PORTABLE-CONSISTENCY-PROPOSAL §7 F3-c): an interpreter consumer asks the
+// Kernel-free checker whether a model is consistent, as a question SEPARATE from whether the interpreter can
+// prepare it and whether it supports every rule. Beside both products, never inside either (§1); it builds no
+// prepared graph and changes no evaluator admission.
+include 'interpreter-preflight'

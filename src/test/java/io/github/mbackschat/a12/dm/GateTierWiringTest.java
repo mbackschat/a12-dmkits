@@ -147,6 +147,7 @@ class GateTierWiringTest {
             ":interpreter-bridge:", "interpreter-bridge/build.gradle",
             ":consistency:", "consistency/build.gradle",
             ":consistency-gate:", "consistency-gate/build.gradle",
+            ":interpreter-preflight:", "interpreter-preflight/build.gradle",
             ":schemakit:", "schemakit/build.gradle");
 
     /**

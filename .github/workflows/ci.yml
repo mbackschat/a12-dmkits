@@ -117,8 +117,9 @@ jobs:
       # `:schemakit:check` for the same reason and a sharper one: until 2026-09-05 the fifth published kit
       # appeared in NO lane here, so neither its 27 test classes nor `verifySchemakitPurity` — the guard
       # SCHEMAKIT-SPEC §1 cites for the module's kernel-free claim — had ever run in CI. It costs 4 s.
-      # `:consistency-gate:check` is the F3 façade — the one module whose whole claim is a verdict reached
-      # with NO kernel present, so its purity lint is the guard behind the claim rather than a formality.
+      # `:consistency-gate:check` and `:interpreter-preflight:check` are the F3 façades — the two modules whose
+      # whole claim is a verdict reached with NO kernel present, so their purity lints are the guards behind
+      # that claim rather than a formality.
       # `:verifyPublishedClasspathsAreKernelFree` is the resolution-level half of that same claim across every
       # published artifact, and is named explicitly for the reason the two above are: it hangs off root
       # `check`, which this workflow does not run.
@@ -148,7 +149,7 @@ jobs:
         # belong to the release rehearsal. Naming them is what GateTierWiringTest derives and enforces; five of
         # them ran nowhere at all until 2026-09-12, `verifyInterpreterPurity` — the EUPL import boundary —
         # among them.
-        run: ./gradlew --no-daemon test :adapter:test :cli:test :cli:publicContractTest :interpreter:allTests :interpreter:verifyInterpreterPurity :interpreter:interpreterRuntimeClosurePolicyTest :interpreter:interpreterAbiGoldenDepthTest :interpreter:verifyInterpreterVersionAlignment :interpreter:verifyInterpreterPerformanceClaims :interpreter-bridge:check :consistency-gate:check :consistency:check :consistency:nodeConsumerTest :consistency:verifyConsistencyDeliveryCeiling :consistency:verifyCheckerArtifactIdentity :schemakit:check :verifyKitPurity :verifyPublishedClasspathsAreKernelFree :noBackendTest -PrunFuzz
+        run: ./gradlew --no-daemon test :adapter:test :cli:test :cli:publicContractTest :interpreter:allTests :interpreter:verifyInterpreterPurity :interpreter:interpreterRuntimeClosurePolicyTest :interpreter:interpreterAbiGoldenDepthTest :interpreter:verifyInterpreterVersionAlignment :interpreter:verifyInterpreterPerformanceClaims :interpreter-bridge:check :consistency-gate:check :interpreter-preflight:check :consistency:check :consistency:nodeConsumerTest :consistency:verifyConsistencyDeliveryCeiling :consistency:verifyCheckerArtifactIdentity :schemakit:check :verifyKitPurity :verifyPublishedClasspathsAreKernelFree :noBackendTest -PrunFuzz
 
       # Both agent plugins (Claude Code, Codex) bundle COPIES of the single-source assets — the skills,
       # installer, and release-asset manifest — synced by scripts/sync-plugin-assets.sh. Fail loudly if any

@@ -47,6 +47,12 @@ export const ExitCode = Object.freeze({ NO_REJECTION: 0, REJECTED: 1, OPERATIONA
 /**
  * Classify one report from its WIRE shape alone.
  *
+ * **The library owns this rule; this is its wire-level mirror.** `ConsistencyReport.outcome` in the checker
+ * states the same three-way classification over a TYPED report, and a consumer holding one should call that
+ * rather than reimplement it. A CI gate does not hold one: it reads the JSON `checkModelJson` returns, possibly
+ * across a process or service boundary, where no typed report exists. The durable fix is to publish the outcome
+ * ON the wire shape, which is a report-shape change with its own guards.
+ *
  * The operational test is `checksCompleted` being empty rather than the presence of a diagnostic, and that is
  * the load-bearing choice here. The report shape documents what the emptiness means — no family ran — while a
  * diagnostic may perfectly well ride along with a complete run: `DECLARATION_NOT_WELL_FORMED` reports one

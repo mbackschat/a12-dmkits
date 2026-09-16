@@ -66,6 +66,7 @@ else
     # is a false SURVIVED rather than an error (measured 2026-09-12, planting into consistency/src/commonMain).
     consistency/*) LANE=:consistency:jvmTest ;;
     consistency-gate/*) LANE=:consistency-gate:test ;;
+    interpreter-preflight/*) LANE=:interpreter-preflight:test ;;
     interpreter/*) LANE=:interpreter:jvmTest ;;
     interpreter-bridge/*) LANE=:interpreter-bridge:test ;;
     schemakit/*) LANE=:schemakit:test ;;

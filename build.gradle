@@ -99,6 +99,7 @@ dependencies {
     // loads its classes to dump them, and they reference :consistency and :rulekit types that must resolve
     // through this suite's own loader. It registers no ServiceLoader provider, so nothing else here changes.
     testImplementation project(':consistency-gate')
+    testImplementation project(':interpreter-preflight')
 
     // The kernel stays the oracle in TESTS (verification unchanged). :adapter supplies the real
     // ConsistencyOracle/BackendInfo ServiceLoader providers so the kernel gate actually runs in the
@@ -1194,8 +1195,8 @@ tasks.named('check') { dependsOn verifyKitPurity }
 // --- What the published POMs hand a consumer, locked (DEV-API-GAPS DG45) ---------------------------------
 // Every artifact below advertises a kernel-free consumer classpath — the kits behind their SPI ports,
 // dmkits-schemakit "never the raw kernel jars directly" (SCHEMAKIT-SPEC §1), dmkits-interpreter-bridge as the
-// no-kernel provider of ConditionReadBack, dmkits-consistency-gate as the façade whose whole purpose is a
-// verdict reached with no kernel present. Until this guard the whole class advertised that with only a
+// no-kernel provider of ConditionReadBack, dmkits-consistency-gate and dmkits-interpreter-preflight as the
+// façades whose whole purpose is a verdict reached with no kernel present. Until this guard the whole class advertised that with only a
 // compiled-linkage lint behind it, which cannot see a declared-but-unimported dependency, so the guarantee a
 // consumer actually cares about was the one nothing checked. Six modules rather than the one gap that named
 // it: the claim, the POM mechanism and the blind spot are identical across them.
@@ -1209,16 +1210,29 @@ tasks.named('check') { dependsOn verifyKitPurity }
 def verifyPublishedClasspathsAreKernelFree = tasks.register('verifyPublishedClasspathsAreKernelFree') {
     group = 'verification'
     description = 'Fail if a published kernel-free artifact resolves a raw kernel module onto a consumer classpath.'
-    def kernelFreePublications = ['core', 'rulekit', 'modelkit', 'edit', 'schemakit', 'interpreter-bridge',
-                                  'consistency-gate']
+    // Keyed by the module's own POSITIVE CONTROL — a group its classpath really resolves — because the
+    // control is what separates "no kernel here" from "this guard read nothing". A shared Jackson control was
+    // right while every published artifact was a Java kit and became wrong the moment one sat on top of the
+    // multiplatform modules, which carry kotlinx and no Jackson at all: the guard then failed a module it had
+    // nothing to say about, which reads as a finding (measured 2026-09-16, adding dmkits-interpreter-preflight).
+    def kernelFreePublications = [
+            'core'                 : 'com.fasterxml.jackson.',
+            'rulekit'              : 'com.fasterxml.jackson.',
+            'modelkit'             : 'com.fasterxml.jackson.',
+            'edit'                 : 'com.fasterxml.jackson.',
+            'schemakit'            : 'com.fasterxml.jackson.',
+            'interpreter-bridge'   : 'com.fasterxml.jackson.',
+            'consistency-gate'     : 'com.fasterxml.jackson.',
+            'interpreter-preflight': 'org.jetbrains.kotlinx',
+    ]
     doLast {
-        kernelFreePublications.each { name ->
+        kernelFreePublications.each { name, positiveControl ->
             def published = project(":${name}")
             verifyKernelFreeClasspath(
                 "published classpath — dmkits-${name}",
                 [published.configurations.compileClasspath, published.configurations.runtimeClasspath],
                 ['com.mgmtp.'],
-                'com.fasterxml.jackson.')
+                positiveControl)
         }
     }
 }

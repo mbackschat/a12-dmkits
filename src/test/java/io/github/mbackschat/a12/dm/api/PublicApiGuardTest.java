@@ -69,7 +69,8 @@ class PublicApiGuardTest {
             // :adapter's would fail every kernel-oracle test here on resolution rather than on its subject.
             // It is loaded for the dump alone, by classLoader below.
             new Kit("dmkits-interpreter-bridge", "interpreter-bridge"),
-            new Kit("dmkits-consistency-gate", "consistency-gate"));
+            new Kit("dmkits-consistency-gate", "consistency-gate"),
+            new Kit("dmkits-interpreter-preflight", "interpreter-preflight"));
 
     @Test
     @DisabledIfSystemProperty(named = "api.fix", matches = "true")
@@ -118,7 +119,8 @@ class PublicApiGuardTest {
             "io.github.mbackschat.a12.dm.edit.",
             "io.github.mbackschat.a12.dm.schemakit.",
             "io.github.mbackschat.a12.dm.bridge.",
-            "io.github.mbackschat.a12.dm.gate.");
+            "io.github.mbackschat.a12.dm.gate.",
+            "io.github.mbackschat.a12.dm.preflight.");
 
     /**
      * <b>Signatures that reference one of OUR OTHER publications rather than a kit, kept as a named ratchet.</b>
@@ -152,8 +154,14 @@ class PublicApiGuardTest {
      * <p>Ratcheted by {@link #everyForeignSignatureExemptionIsStillNeeded()} exactly as the exemptions are:
      * an allowance that stops matching a live signature is deleted, never left standing.
      */
-    private static final Map<String, String> API_SCOPED_PUBLICATIONS = Map.of(
-            "dmkits-consistency-gate", "io.github.mbackschat.a12.dm.consistency.");
+    private static final Map<String, List<String>> API_SCOPED_PUBLICATIONS = Map.of(
+            "dmkits-consistency-gate", List.of("io.github.mbackschat.a12.dm.consistency."),
+            // Both of this façade's dependencies are `api`-scoped, and both have to be: it takes the
+            // interpreter's own source type so a consumer needs no second representation of their model, and
+            // it returns the checker's report because the coverage evidence is the half that says how much
+            // weight its answer bears.
+            "dmkits-interpreter-preflight", List.of("io.github.mbackschat.a12.dm.consistency.",
+                    "io.github.mbackschat.a12.dm.interpreter."));
 
     /**
      * The <b>class</b> guard behind the Set W cleanup (root-cause generalization of "Jackson leaks on public
@@ -236,8 +244,8 @@ class PublicApiGuardTest {
         if (ALLOWED_TYPE_PREFIXES.stream().anyMatch(c.getName()::startsWith)) {
             return true;
         }
-        String advertised = API_SCOPED_PUBLICATIONS.get(kit.artifact());
-        if (advertised != null && c.getName().startsWith(advertised)) {
+        List<String> advertised = API_SCOPED_PUBLICATIONS.get(kit.artifact());
+        if (advertised != null && advertised.stream().anyMatch(c.getName()::startsWith)) {
             return true;
         }
         String exempt = FOREIGN_SIGNATURE_EXEMPTIONS.get(kit.artifact());
@@ -253,11 +261,15 @@ class PublicApiGuardTest {
     @DisabledIfSystemProperty(named = "api.fix", matches = "true")
     void everyForeignSignatureExemptionIsStillNeeded() {
         Map<String, String> allowances = new java.util.LinkedHashMap<>(FOREIGN_SIGNATURE_EXEMPTIONS);
-        allowances.putAll(API_SCOPED_PUBLICATIONS);
+        API_SCOPED_PUBLICATIONS.forEach((artifact, prefixes) ->
+                prefixes.forEach(prefix -> allowances.put(artifact + " " + prefix, prefix)));
         for (Map.Entry<String, String> exemption : allowances.entrySet()) {
-            Kit kit = KITS.stream().filter(k -> k.artifact().equals(exemption.getKey())).findFirst()
+            // The key is the artifact for an exemption and "<artifact> <prefix>" for an api-scoped allowance,
+            // because one artifact may advertise several packages and each needs its own live-signature check.
+            String artifact = exemption.getKey().split(" ")[0];
+            Kit kit = KITS.stream().filter(k -> k.artifact().equals(artifact)).findFirst()
                     .orElseThrow(() -> new AssertionError(
-                            "exemption names an artifact that is not a published kit: " + exemption.getKey()));
+                            "allowance names an artifact that is not a published kit: " + artifact));
             List<String> matched = new ArrayList<>();
             for (Class<?> type : PublicApiDumper.apiTypes(mainClasses(kit), classLoader(kit))) {
                 List<String> referenced = new ArrayList<>();
