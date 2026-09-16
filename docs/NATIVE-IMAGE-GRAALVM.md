@@ -117,6 +117,19 @@ The bugs raise a fair concern: *is fixing them just whack-a-mole?* Native-image'
 
 **The irreducible residual (stated honestly):** rule-based registration + the battery shrink the risk to "a reflective path in a class *outside* the two packages that *no battery input* exercises." That cannot be driven to zero while AOT-compiling a reflection-heavy embedded kernel — the only zero is B1 (a real JVM). The chosen posture (all three now in place): **rule-based coverage of the known surfaces (§3.4) makes the common shapes safe; the no-crash battery (`native-battery.sh`, 192 checks) catches out-of-package gaps at build time; B1 (§10, measured) is the escape hatch if the battery ever shows native can't be made robust per shape.** Failures are at least **loud** (thrown/coded), never silently-wrong.
 
+### 3.7 An open native/JVM divergence that is NOT a reflection gap — implicit-exception messages are erased <a id="implicit-exception-messages"></a>
+
+**Measured 2026-09-16 on the same model file through both artifacts, kernel engine, kernel `30.8.1`.** A model whose build fails *codelessly* — an implicit exception escaping the Kernel rather than a structured MVK finding — reaches the user with a different `diagnostics[].summary` per artifact:
+
+| artifact | the `summary` the user sees |
+|---|---|
+| JVM launcher | `the kernel could not build this model: Cannot invoke "java.lang.CharSequence.length()" because "this.text" is null` |
+| native binary | `the kernel could not build this model: Stack trace is imprecise, the top frames are missing and/or have wrong line numbers. To get precise stack traces, build the image with option -H:-ReduceImplicitExceptionStackTraceInformation` |
+
+**The mechanism is discriminated, not inferred.** GraalVM's `ReduceImplicitExceptionStackTraceInformation` is on by default and replaces the *message* of implicitly-thrown exceptions (NPE, index, cast) with that notice; our codeless arm interpolates `getMessage()` into the user-facing summary, so the substitution travels all the way out. The control that separates "native breaks every Kernel diagnostic" from "native breaks only implicit-exception messages" was run on the same binary: a **structured** finding renders correctly there (`"code": "MVK_INVALID_TIME_ZONE"`), because its text is Kernel-authored rather than exception-derived. So the blast radius is exactly the codeless arm.
+
+**Not a correctness divergence — a message-fidelity one.** Both artifacts agree on the verdict (`valid:false`, `KERNEL_CONFIRMED`), so nothing is mis-accepted; what the native user loses is any statement about their model, replaced by a build flag they cannot act on. Two candidate remedies, neither yet chosen: build with `-H:-ReduceImplicitExceptionStackTraceInformation` (costs image size and is a toolchain-wide change), or stop interpolating a raw exception message into that summary and render a stable sentence instead, which fixes both artifacts and is the smaller change. **Deliberately recorded rather than fixed in the same pass**: the choice touches the shipped diagnostic contract and belongs with a release decision, not with the plan edit that exposed it.
+
 ## 4. The Groovy ceiling — lifted for the verbs; the `--kernel` eval path that hit it is retired
 
 **History (the ceiling that was):** `model eval` / `rule eval` / `model compute` used to execute the **kernel's** runtime validation against a document instance, which **generates and loads Groovy classes at runtime** (`GroovyClassLoader.parseClass`; the agent captured `Com_mgmtp_a12_kernel_generated_*` classes) — [`CLI-SPEC.md`](CLI-SPEC.md) [§11](CLI-SPEC.md#packaging)'s hard ceiling. Groovy is genuinely required by that *kernel* path (JVM and native), and the §3.1 exclusion keeps it off the native classpath, so the **kernel** engine can't run native.
