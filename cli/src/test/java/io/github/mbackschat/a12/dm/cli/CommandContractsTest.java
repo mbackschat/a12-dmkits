@@ -9,6 +9,8 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.TreeSet;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import com.fasterxml.jackson.databind.JsonNode;
@@ -178,7 +180,7 @@ class CommandContractsTest {
     }
 
     @Test
-    void parsedSemanticSelectorsAreTotalAndDisjointForEveryMultiModeProfile() {
+    void parsedSemanticSelectorsAreTotalAndDisjointForEveryMultiModeProfile() throws Exception {
         Map<String, List<String>> cases = Map.ofEntries(
                 Map.entry("apply#commit", List.of("apply", "ops.json")),
                 Map.entry("apply#preview", List.of("apply", "ops.json", "--dry-run")),
@@ -190,6 +192,9 @@ class CommandContractsTest {
                 Map.entry("meta#read", List.of("meta", "/R/F")),
                 Map.entry("meta#commit", List.of("meta", "/R/F", "--annotation", "owner=qa")),
                 Map.entry("meta#preview", List.of("meta", "/R/F", "--annotation", "owner=qa", "--dry-run")),
+                // `mcp`'s two transports were the one bespoke pair the derived denominator found uncontrolled.
+                Map.entry("mcp#stdio", List.of("mcp")),
+                Map.entry("mcp#http", List.of("mcp", "--http")),
                 Map.entry("patterns#catalog", List.of("patterns")),
                 Map.entry("patterns#detail", List.of("patterns", "date-order")),
                 Map.entry("patterns#scaffold", List.of("patterns", "date-order", "--arg", "earlier=/R/A")),
@@ -197,6 +202,10 @@ class CommandContractsTest {
                 Map.entry("patterns#preview", List.of("patterns", "date-order", "--arg", "earlier=/R/A", "--apply", "--dry-run")),
                 Map.entry("model new#stdout", List.of("model", "new", "--id", "R", "--locale", "en_US", "--root", "R")),
                 Map.entry("model new#file", List.of("model", "new", "--id", "R", "--locale", "en_US", "--root", "R", "-o", "r.json")),
+                // The default invocation is the control that matters here: an ABSENT `--engine` is a request for
+                // the kernel, so the kernel arm must match an argument list that names no engine at all.
+                Map.entry("model check#kernel", List.of("model", "check")),
+                Map.entry("model check#portable", List.of("model", "check", "--engine", "portable")),
                 Map.entry("model expand#stdout", List.of("model", "expand")),
                 Map.entry("model expand#file", List.of("model", "expand", "-o", "r.json")),
                 Map.entry("model export-jsonschema#stdout", List.of("model", "export-jsonschema")),
@@ -235,7 +244,40 @@ class CommandContractsTest {
         });
 
         assertEquals(cases.keySet(), exercised, "every named multi-mode profile has a positive control");
+
+        // The CONVERSE direction, and the one that was missing: `cases` is hand-kept, so the assertion above is
+        // self-referential — a newly argument-dependent verb contributes no entry and this test stays green.
+        // Measured 2026-09-16: `model check` gained two engine profiles whose selectors named the option's wire
+        // spelling (`kernel`) instead of the resolved enum the parser produces (`A12_KERNEL`), so they matched
+        // NOTHING — not even the default invocation — and only the packaged `publicContractTest` caught it,
+        // 5m37s in. The denominator is therefore DERIVED from `CommandContracts.Special`, the list of verbs that
+        // write their own selectors. It deliberately excludes the editor verbs, whose commit/preview pair comes
+        // from the one shared `modelEditorProfiles` derivation that `group extract` already controls: controlling
+        // each MECHANISM once is the design, and re-controlling every reuse of it would assert nothing new.
+        // Their count is asserted live by theDerivedOperationalDenominatorHasAll48WritesAnd39Previews, so it is
+        // deliberately not restated here.
+        Set<String> bespoke = new HashSet<>();
+        JsonNode manifest = MAPPER.readTree(CliTestSupport.run("manifest").out());
+        Set<String> specialVerbs = Arrays.stream(CommandContracts.Special.values())
+                .map(CommandContracts.Special::verb).collect(Collectors.toSet());
+        for (JsonNode verb : manifest.path("verbs")) {
+            String name = verb.path("verb").asText();
+            if (!specialVerbs.contains(name)) continue;
+            JsonNode operational = verb.path("operationalProfiles");
+            if (operational.size() < 2) continue;
+            for (JsonNode profile : operational) {
+                bespoke.add(name + "#" + profile.path("id").asText());
+            }
+        }
+        Set<String> uncontrolled = new TreeSet<>(bespoke);
+        uncontrolled.removeAll(cases.keySet());
+        assertTrue(uncontrolled.isEmpty(),
+                () -> "these hand-written argument-dependent profiles are live but have no positive control "
+                        + "above, so a selector matching nothing would pass this lane: " + uncontrolled);
         assertMatch("apply#commit", "apply", "ops.json", "--dry-run=false");
+        // Naming the default must reach the same arm as omitting it, or the two spellings of one request would
+        // carry different operational claims.
+        assertMatch("model check#kernel", "model", "check", "--engine", "kernel");
         assertMatch("patterns#commit", "patterns", "date-order", "--arg", "earlier=/R/A", "--apply",
                 "--dry-run=false");
         assertTrue(CommandContracts.matchingProfiles(List.of("patterns", "--arg", "earlier=/R/A")).isEmpty(),

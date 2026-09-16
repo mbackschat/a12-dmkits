@@ -38,6 +38,11 @@ dependencies {
     // N8/D15 "no internal tier in core" rule doesn't apply to it; kernel types stay inside the adapter.
     implementation project(':adapter')
 
+    // The Kernel-free portable checker, for `model check --engine=portable` (F1-a). It is a SECOND checking
+    // path beside the adapter's Kernel gate, never a fallback for it: nothing about availability, coverage or
+    // an exception may choose between them, so both are always present and only the caller selects.
+    implementation project(':consistency')
+
     // The CLI serializes the context projections to JSONL/markdown itself (kept out of core), so it
     // needs Jackson directly (core's is `implementation`, not exposed transitively).
     implementation 'com.fasterxml.jackson.core:jackson-databind:2.18.2'
@@ -199,7 +204,20 @@ def nativeCaptureStampDigest = {
     def add = { String label, byte[] bytes ->
         md.update(label.getBytes('UTF-8')); md.update((byte) 0); md.update(bytes); md.update((byte) 0)
     }
-    def trees = rootProject.allprojects.collect { it.file('src/main') } + [project.file('src/test')]
+    // A Kotlin Multiplatform module has NO `src/main` — its sources are `src/commonMain`/`src/jvmMain`/… — so
+    // globbing the Java layout alone contributed ZERO bytes for `:interpreter`, `:consistency` and
+    // `:predicates` (measured 2026-09-16: a file added under `consistency/src/commonMain` left the digest at
+    // 45d9e7e6756b). That is the exact hole the stamp exists to close, open for three whole modules, and
+    // `:interpreter` is the native binary's only runtime-eval engine. Derived from the tree rather than
+    // enumerated, so a new target or KMP module is covered on arrival instead of when someone remembers.
+    // `jsMain` rides along: it cannot reach the JVM image, but an unowed re-capture is the cheap direction and
+    // `-PrkStampReason` already exists to state why one is being skipped.
+    def trees = rootProject.allprojects.collectMany { p ->
+        def src = p.file('src')
+        [p.file('src/main')] + (src.directory
+                ? (src.listFiles() ?: []).findAll { it.directory && it.name.endsWith('Main') }
+                : [])
+    } + [project.file('src/test')]
     trees.findAll { it.directory }.toSorted { a, b -> a.absolutePath <=> b.absolutePath }.each { root ->
         project.fileTree(root).files.toSorted { a, b -> a.absolutePath <=> b.absolutePath }.each { f ->
             add(rootProject.relativePath(f), f.bytes)

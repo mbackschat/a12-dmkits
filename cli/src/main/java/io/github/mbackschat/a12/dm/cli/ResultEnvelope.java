@@ -85,6 +85,20 @@ public final class ResultEnvelope {
         QUERY,
         /** A consistency verdict about a subject model, with the gate receipt that produced it. */
         VERDICT,
+        /**
+         * A consistency gate RAN and established no verdict — exit 3.
+         *
+         * <p>Its own family because neither neighbour can carry it honestly. A {@link #VERDICT} with
+         * {@code valid} absent exits 0, so a script reads a pass on a check that concluded nothing; with
+         * {@code valid:false} it would over-report, claiming the subject invalid when the engine merely could
+         * not decide — the one direction a checker must never take. {@link #REFUSAL} is also wrong: the
+         * operation ran and produced a full report, which is precisely what a refusal did not do.
+         *
+         * <p>The portable checker cannot emit VALID by construction, so this is its ORDINARY outcome on a
+         * model A12 accepts rather than an edge case, and the distinction between invalid, incomplete and
+         * operational failure is one the published consumers are required to make.
+         */
+        INCONCLUSIVE,
         /** A runtime evaluation observation, attributed to the engine that computed it. */
         RUNTIME_OBSERVATION,
         /** A comparison of two like artifacts; owns its own exit code and is not a validity claim. */
@@ -130,6 +144,7 @@ public final class ResultEnvelope {
     private final boolean written;
     private final String output;
     private final Verification verification;
+    private final EngineReceipt engine;
     private final RuntimeEvidence runtimeEvidence;
     private final ComparisonOutcome comparison;
 
@@ -146,6 +161,7 @@ public final class ResultEnvelope {
         this.written = draft.written;
         this.output = draft.output;
         this.verification = draft.verification;
+        this.engine = draft.engine;
         this.runtimeEvidence = draft.runtimeEvidence;
         this.comparison = draft.comparison;
     }
@@ -169,6 +185,7 @@ public final class ResultEnvelope {
         private boolean written;
         private String output;
         private Verification verification;
+        private EngineReceipt engine;
         private RuntimeEvidence runtimeEvidence;
         private ComparisonOutcome comparison;
 
@@ -208,6 +225,11 @@ public final class ResultEnvelope {
 
         private Draft verification(Verification value) {
             this.verification = value;
+            return this;
+        }
+
+        private Draft engine(EngineReceipt value) {
+            this.engine = value;
             return this;
         }
 
@@ -259,6 +281,40 @@ public final class ResultEnvelope {
                 .build();
     }
 
+    /**
+     * The engine half of a consistency receipt: which engine was asked, which answered, and which build of it.
+     *
+     * <p><b>It rides only the verbs that can SELECT an engine</b>, which today is {@code model check}. A verb
+     * with no choice has no request to record — its arbitration is already named by {@code verification} — so
+     * publishing an engine triple there would state a decision nobody made, and every other check envelope
+     * stays byte-identical. The three request shapes F1 requires controls for are all shapes of the selecting
+     * verb: the default, an explicit {@code kernel}, and an explicit {@code portable}.
+     *
+     * <p>{@code engineExecuted} is DERIVED from the arbitration witness rather than measured beside it, so it
+     * cannot contradict {@code verification}; {@code engineRequested} is the caller's input and is the only
+     * independent column here. Comparing the two is therefore a real check and not a restatement — and
+     * {@link ConsistencyEvidence#requestedBy(CheckEngine)} has already refused a mismatch before this exists.
+     */
+    private record EngineReceipt(CheckEngine requested, CheckEngine executed, String version) {
+
+        /** Empty unless the verb recorded a request, which is what marks it as one that offers a choice. */
+        private static EngineReceipt from(ConsistencyEvidence evidence) {
+            return evidence.requestedEngine()
+                    .map(requested -> new EngineReceipt(requested, evidence.executedEngine().orElseThrow(),
+                            evidence.engineVersion().orElseThrow()))
+                    .orElse(null);
+        }
+
+        private void writeTo(ObjectNode root) {
+            // The enum NAME, matching the sibling `engine` key a runtime observation publishes, so one generic
+            // envelope reader learns one engine vocabulary. `--engine` spells the same two engines `kernel` and
+            // `portable`, which is the CLI's option convention; the schema states both spellings.
+            root.put("engineRequested", requested.name());
+            root.put("engineExecuted", executed.name());
+            root.put("engineVersion", version);
+        }
+    }
+
     // --- 2. consistency verdict ----------------------------------------------------------------------
 
     /**
@@ -286,6 +342,41 @@ public final class ResultEnvelope {
                 .diagnostics(diagnostics)
                 .data(data)
                 .verification(evidence.verification().orElseThrow())
+                .engine(EngineReceipt.from(evidence))
+                .build();
+    }
+
+    /**
+     * A consistency gate that RAN and established no verdict — {@code model check --engine=portable} on a model
+     * the portable checker cannot conclude about, which is its ordinary outcome rather than an edge case.
+     *
+     * <p><b>It publishes no {@code valid}, and that is the whole point of having it.</b> The engine did not find
+     * the subject invalid, so {@code valid:false} would be an over-rejection — the one direction a checker must
+     * never take; and it did not find it valid, so {@code valid:true} would fabricate a green. What it can state
+     * honestly is that the arbitration happened and produced no verdict, which is {@code verification} plus the
+     * absence of {@code valid}, at {@link Family#INCONCLUSIVE}'s exit 3 so a caller reading only the exit code
+     * cannot mistake it for a pass.
+     *
+     * <p>{@code data} carries the engine's own report verbatim — for the portable checker that is its published
+     * shape, including the {@code status} and {@code complete} members it publishes precisely so a consumer need
+     * not infer why a check concluded nothing. Re-encoding that into this envelope's vocabulary would be the
+     * second copy of a fact whose owner already got it right.
+     *
+     * @throws IllegalStateException if {@code evidence} attests no gate — an inconclusive result still requires
+     *                               that something ran, otherwise the honest family is a refusal or a read
+     */
+    public static ResultEnvelope consistencyInconclusive(ResultIdentity identity, String summary,
+            List<Diagnostic> diagnostics, JsonNode data, ConsistencyEvidence evidence) {
+        if (!evidence.gateRan()) {
+            throw new IllegalStateException("an inconclusive consistency result for `" + identity + "` must still "
+                    + "carry the gate that ran — nothing ran on this path, so there is no arbitration to report "
+                    + "(a route that only reads is queryResult; one that produced nothing is a refusal)");
+        }
+        return new Draft(Family.INCONCLUSIVE, identity, Outcome.READ, summary)
+                .diagnostics(diagnostics)
+                .data(data)
+                .verification(evidence.verification().orElseThrow())
+                .engine(EngineReceipt.from(evidence))
                 .build();
     }
 
@@ -707,7 +798,7 @@ public final class ResultEnvelope {
     /** {@code ok} = the operation succeeded — NOT the subject's validity (that is {@link #valid()}). */
     boolean ok() {
         return switch (family) {
-            case QUERY, VERDICT, RUNTIME_OBSERVATION, COMPARISON, MUTATION, DISPATCH -> true;
+            case QUERY, VERDICT, INCONCLUSIVE, RUNTIME_OBSERVATION, COMPARISON, MUTATION, DISPATCH -> true;
             case DISPATCH_WITH_FAILURES, REFUSAL, REJECTION, INTERNAL_ERROR -> false;
         };
     }
@@ -729,6 +820,9 @@ public final class ResultEnvelope {
             case REJECTION -> 1;
             case DISPATCH_WITH_FAILURES -> 1;
             case VERDICT -> Boolean.FALSE.equals(valid) ? 1 : 0;
+            // 3 = the gate ran and established nothing. Distinct from every neighbour on purpose: 0 would read
+            // as a pass, 1 would claim the subject invalid, and 2 would claim nothing ran. CLI-SPEC §3b.
+            case INCONCLUSIVE -> 3;
             case COMPARISON -> comparison.exitCode();
             case QUERY, RUNTIME_OBSERVATION, MUTATION, DISPATCH -> 0;
         };
@@ -745,6 +839,9 @@ public final class ResultEnvelope {
         }
         if (verification != null) {
             root.put("verification", verification.name());
+        }
+        if (engine != null) {
+            engine.writeTo(root);
         }
         if (runtimeEvidence != null) {
             runtimeEvidence.writeTo(root);

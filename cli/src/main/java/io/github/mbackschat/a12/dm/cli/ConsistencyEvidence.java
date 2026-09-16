@@ -40,22 +40,37 @@ import io.github.mbackschat.a12.dm.rulekit.validate.ValidationResult;
  *   <li>{@link #of(ValidationResult)} — a validator run attests for the candidate verbs, which hold no binding.</li>
  *   <li>{@link #of(ModelConsistencyException)} — a gate that ran and <em>rejected</em> attests through its own
  *       exception, which is the only thing a check verb holds on that branch.</li>
+ *   <li>{@link #of(PortableCheck)} — the <b>portable</b> gate's witness. A {@code ConsistencyReport} is a
+ *       public data class its consumers rebuild, so holding one proves nothing; {@link PortableCheck} can
+ *       only be obtained by running the checker, which is what makes it a witness.</li>
  *   <li>{@link #none()} — the explicit "no gate ran here" every ungated route must state out loud, so an absent
  *       {@code verification} key is a decision on the record rather than an omission.</li>
  * </ul>
+ *
+ * <p><b>The engine half, and why {@code requested} is kept OUT of every witness.</b> Which engine ran is
+ * derived from the receipt ({@link #executedEngine()}), so it cannot disagree with the arbitration it is read
+ * from. Which engine the caller ASKED for cannot be witnessed by anything the gate produces — it is an input —
+ * so a verb that offers a choice records it through {@link #requestedBy(CheckEngine)}, which is the one place
+ * both facts meet and therefore the place that <b>refuses a receipt answering a different request</b>. That
+ * refusal is what makes engine substitution unrepresentable rather than merely reportable: a dispatch that ran
+ * the kernel under {@code --engine=portable} cannot build an envelope at all, however plausible its verdict.
  *
  * <p>There is deliberately <b>no</b> {@code kernelConfirmed()} factory, and no constructor taking a
  * {@code Verification}. That absence is the enforcement.
  */
 public final class ConsistencyEvidence {
 
-    private static final ConsistencyEvidence NONE = new ConsistencyEvidence(null);
+    private static final ConsistencyEvidence NONE = new ConsistencyEvidence(null, null);
 
     /** Null iff no gate ran; a gate that ran unbacked is {@link Verification#STRUCTURAL_ONLY}, not null. */
     private final Verification verification;
 
-    private ConsistencyEvidence(Verification verification) {
+    /** The engine the caller asked for — null until a verb that offers a choice records it. */
+    private final CheckEngine requested;
+
+    private ConsistencyEvidence(Verification verification, CheckEngine requested) {
         this.verification = verification;
+        this.requested = requested;
     }
 
     /**
@@ -108,7 +123,7 @@ public final class ConsistencyEvidence {
      * claim, which is why only a review caught it.
      */
     public static ConsistencyEvidence of(ModelSynthesizer.Synthesized synthesized) {
-        return synthesized == null ? NONE : new ConsistencyEvidence(synthesized.consistencyGate());
+        return synthesized == null ? NONE : new ConsistencyEvidence(synthesized.consistencyGate(), null);
     }
 
     /**
@@ -180,11 +195,92 @@ public final class ConsistencyEvidence {
      * refusal we made ourselves would otherwise be published with the kernel's receipt on it.
      */
     public static ConsistencyEvidence of(ModelConsistencyException rejection) {
-        return rejection == null ? NONE : new ConsistencyEvidence(Backends.verification());
+        return rejection == null ? NONE : new ConsistencyEvidence(Backends.verification(), null);
+    }
+
+    /**
+     * The <b>portable</b> checker's receipt, witnessed by the report it produced.
+     *
+     * <p>{@link PortableCheck} has exactly one producer — its own factory, which runs the checker — so holding
+     * one is proof of which engine answered, on the same terms as every witness above: the mode is read off
+     * the object rather than named by the caller. It attests {@link Verification#PORTABLE_CHECKED}
+     * unconditionally, because the check ran to completion, and the checker states its own coverage in its
+     * report rather than in this receipt.
+     *
+     * <p><b>A report that concluded nothing is still a receipt.</b> An INCONCLUSIVE report means the checker
+     * ran and could not establish a verdict, which is a gate that ran — so the envelope publishes its
+     * arbitration and withholds {@code valid}. Treating it as {@link #none()} instead would lose the one fact
+     * the caller needs: that the engine they selected is the engine that answered.
+     */
+    public static ConsistencyEvidence of(PortableCheck check) {
+        return check == null ? NONE : new ConsistencyEvidence(Verification.PORTABLE_CHECKED, null);
     }
 
     private static ConsistencyEvidence from(Optional<Verification> receipt) {
-        return receipt.map(ConsistencyEvidence::new).orElse(NONE);
+        return receipt.map(gate -> new ConsistencyEvidence(gate, null)).orElse(NONE);
+    }
+
+    /**
+     * Which engine produced this receipt, derived from the arbitration it records so the two cannot disagree.
+     *
+     * <p>Empty for {@link Verification#STRUCTURAL_ONLY}: that mode means no backend was found and our own
+     * structural prechecks ran, which is neither of the two checking engines. The CLI always bundles the
+     * backend, so it does not arise here — and naming a third engine for it would invent a concept to describe
+     * a path that cannot occur.
+     */
+    public Optional<CheckEngine> executedEngine() {
+        if (verification == null) {
+            return Optional.empty();
+        }
+        return switch (verification) {
+            case KERNEL_CONFIRMED -> Optional.of(CheckEngine.A12_KERNEL);
+            case PORTABLE_CHECKED -> Optional.of(CheckEngine.PORTABLE_CHECKER);
+            case STRUCTURAL_ONLY -> Optional.empty();
+        };
+    }
+
+    /** The engine the caller asked for, recorded by {@link #requestedBy(CheckEngine)}; empty on verbs with no choice. */
+    public Optional<CheckEngine> requestedEngine() {
+        return Optional.ofNullable(requested);
+    }
+
+    /**
+     * The build of the engine that answered, read from that engine rather than stated by this tool.
+     *
+     * <p>The portable arm reports the checker artifact's own baked version, so a {@code dmtool} resolving a
+     * different checker build reports that build; the kernel arm reports the kernel actually on the classpath,
+     * never the built-against pin, on the same rule {@code RuntimeEvidence.kernel()} follows. Either way the
+     * version describes what ran, which a constant in this class could not do.
+     */
+    public Optional<String> engineVersion() {
+        return executedEngine().map(engine -> switch (engine) {
+            case A12_KERNEL -> VersionInfo.current().kernelRuntime();
+            case PORTABLE_CHECKER -> io.github.mbackschat.a12.dm.consistency.CheckerIdentityKt.CHECKER_VERSION;
+        });
+    }
+
+    /**
+     * Record the engine the caller asked for, and refuse a receipt that answers a different request.
+     *
+     * <p>This is the enforcement point for F1's no-substitution rule, and it throws rather than reporting,
+     * because a gate answering the wrong request is a defect in this tool and not a fact about the model. A
+     * mutant that routes {@code --engine=portable} to the kernel therefore cannot produce an envelope at all,
+     * even when the kernel would have returned the same verdict — which is exactly the case a comparison of
+     * verdicts cannot catch.
+     *
+     * @throws IllegalStateException if no gate ran, if the executed engine cannot be determined, or if it is
+     *                               not the one that was requested
+     */
+    public ConsistencyEvidence requestedBy(CheckEngine engine) {
+        CheckEngine executed = executedEngine().orElseThrow(() -> new IllegalStateException(
+                "a verb that selects its checking engine must hold a receipt naming the engine that ran; this "
+                        + "one attests " + (verification == null ? "no gate at all" : verification.name())));
+        if (executed != engine) {
+            throw new IllegalStateException("engine substitution: `" + engine.wireName() + "` was requested and `"
+                    + executed.wireName() + "` answered. The selected engine is never replaced — not on an "
+                    + "incomplete answer, not on a failure, and not when the other engine would agree.");
+        }
+        return new ConsistencyEvidence(verification, engine);
     }
 
     /** The arbitration mode to publish, or empty when no gate ran and the key must be omitted. */

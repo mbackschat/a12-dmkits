@@ -699,6 +699,7 @@ tasks.register('docGuardTest', Test) {
         includeTestsMatching 'io.github.mbackschat.a12.dm.LockCitationResolvesTest'
         includeTestsMatching 'io.github.mbackschat.a12.dm.CheckerCodeCitationResolvesTest'
         includeTestsMatching 'io.github.mbackschat.a12.dm.SourceDocLinkResolvesTest'
+        includeTestsMatching 'io.github.mbackschat.a12.dm.PortableEngineVersionIsDerivedGuardTest'
         includeTestsMatching 'io.github.mbackschat.a12.dm.PerfAnchorCoverageGuardTest'
         includeTestsMatching 'io.github.mbackschat.a12.dm.PerfTestClassificationTest'
         includeTestsMatching 'io.github.mbackschat.a12.dm.RawClockCensusTest'

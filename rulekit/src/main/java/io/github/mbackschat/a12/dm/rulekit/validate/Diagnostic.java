@@ -160,6 +160,15 @@ public record Diagnostic(
         DiagnosticSource source = switch (gate) {
             case KERNEL_CONFIRMED -> DiagnosticSource.KERNEL;
             case STRUCTURAL_ONLY -> DiagnosticSource.PRECHECK;
+            // The portable checker cannot reach this tier: it never raises a ModelConsistencyException, and a
+            // source it cannot read comes back as a diagnostic INSIDE its own report. So there is no origin to
+            // map, and mapping one anyway would be the very defect this method's derivation exists to remove —
+            // a source asserted for an engine that did not speak. If this ever throws, the portable path has
+            // grown a refusal tier and the right fix is to give DiagnosticSource a value for it, not to borrow
+            // PRECHECK, which would tell a reader that a rulekit heuristic refused their model.
+            case PORTABLE_CHECKED -> throw new IllegalArgumentException(
+                    "the portable checker reports an unreadable source inside its own report and raises no gate "
+                            + "refusal, so there is no diagnostic origin for PORTABLE_CHECKED here");
         };
         return new Diagnostic(Severity.ERROR, source, Optional.empty(), summary, where,
                 Optional.empty(), Optional.empty());

@@ -119,14 +119,22 @@ final class CommandContracts {
     private static final List<String> PATTERN_GENERATION_FLAGS = List.of(
             "--arg", "--code", "--message", "--name", "--apply", "--dry-run", "--output", "-o");
 
-    /** The finite list of commands whose semantics depend on their arguments. */
-    private enum Special {
+    /**
+     * The finite list of commands whose semantics depend on their arguments.
+     *
+     * <p>Package-private so {@code CommandContractsTest} can DERIVE its positive-control denominator from this
+     * list instead of keeping a parallel one. Every verb here writes its own selectors by hand — as opposed to
+     * the {@code commit}/{@code preview} pair the editor verbs share through {@code modelEditorProfiles} — so a
+     * wrong selector here is a bespoke mistake nothing else would catch.
+     */
+    enum Special {
         APPLY("apply"),
         BATCH("batch"),
         EXPORT("export"),
         GROUP_EXTRACT("group extract"),
         MCP("mcp"),
         META("meta"),
+        MODEL_CHECK("model check"),
         MODEL_EXPAND("model expand"),
         MODEL_EXPORT_JSONSCHEMA("model export-jsonschema"),
         MODEL_IMPORT_JSONSCHEMA("model import-jsonschema"),
@@ -147,6 +155,11 @@ final class CommandContracts {
 
         static Optional<Special> forVerb(String verb) {
             return Arrays.stream(values()).filter(value -> value.verb.equals(verb)).findFirst();
+        }
+
+        /** The verb this contract owns, for the test that derives its controls from this list. */
+        String verb() {
+            return verb;
         }
     }
 
@@ -677,6 +690,21 @@ final class CommandContracts {
                     preview("preview", Selector.builder().supplied("<patternId>", "--arg")
                             .values("--apply", "true").values("--dry-run", "true").build(), AggregateSuccess.SELF));
             case MODEL_NEW -> stdoutAndFile("model artifact", Consistency.REQUIRED);
+            // Two profiles because the engine is argument-dependent, and the arms answer DIFFERENT contracts:
+            // the kernel arm is the consistency authority and can report a model valid, while the portable arm
+            // cannot report VALID at all and therefore has an outcome the kernel arm never produces. One derived
+            // profile would publish a single operational claim for both, which is what the explicit-selector
+            // rule exists to prevent.
+            // The selector values are the ENUM CONSTANTS, not the `kernel`/`portable` spelling the option takes:
+            // `Invocation` records each option's RESOLVED semantic value, so a typed option arrives as its
+            // converted `CheckEngine` and stringifies to `name()`. The wire spelling matched nothing at all —
+            // including the default invocation, which is what the totality check caught. Using `name()` also
+            // makes the published selector read in the same vocabulary as the envelope's own receipt.
+            case MODEL_CHECK -> List.of(
+                    read("kernel", semantic("--engine", CheckEngine.A12_KERNEL.name()),
+                            envelope(), Consistency.REQUIRED),
+                    read("portable", semantic("--engine", CheckEngine.PORTABLE_CHECKER.name()),
+                            envelope(), Consistency.REQUIRED));
             case MODEL_EXPAND -> stdoutAndFile("expanded model artifact", Consistency.NONE);
             case MODEL_EXPORT_JSONSCHEMA -> stdoutAndFile("JSON Schema artifact", Consistency.REQUIRED);
             case PROFILE_SYNTHESIZE -> stdoutAndFile("synthesized model artifact", Consistency.REQUIRED);

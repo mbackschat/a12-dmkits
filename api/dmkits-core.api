@@ -235,6 +235,7 @@ public enum io.github.mbackschat.a12.dm.core.ValueKind
 
 public enum io.github.mbackschat.a12.dm.core.Verification
   public static final io.github.mbackschat.a12.dm.core.Verification KERNEL_CONFIRMED
+  public static final io.github.mbackschat.a12.dm.core.Verification PORTABLE_CHECKED
   public static final io.github.mbackschat.a12.dm.core.Verification STRUCTURAL_ONLY
   public static io.github.mbackschat.a12.dm.core.Verification valueOf(java.lang.String)
   public static io.github.mbackschat.a12.dm.core.Verification[] values()

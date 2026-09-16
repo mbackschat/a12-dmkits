@@ -34,12 +34,20 @@ class ResultEnvelopeFrameTripwireTest {
     private static final ObjectMapper M = new ObjectMapper();
 
     /**
-     * The published frame, as of 2026-08-01. Change this <b>together with</b> the consumer sweep, never before it.
+     * The published frame, as of 2026-09-16. Change this <b>together with</b> the consumer sweep, never before it.
+     *
+     * <p>That sweep's standing result, so the next one starts from evidence rather than from scratch: every
+     * unguarded consumer reads the envelope <b>selectively, by named key</b> — the Codex activation smoke script
+     * predicates on six fields, {@code digest-probe.sh} matches top-level members by their two-space indentation,
+     * and the eval harness's prompts describe the harness's own report schema rather than this frame. None
+     * enumerates the key set, so a purely ADDITIVE change (2026-09-16: {@code engineRequested} and
+     * {@code engineExecuted}) reaches none of them. A key that is REMOVED or RENAMED is the dangerous direction
+     * and has no such shortcut.
      */
     private static final Set<String> FRAME = new LinkedHashSet<>(Set.of(
             "target", "op", "outcome", "ok", "summary", "data", "diagnostics",
             "valid", "verification", "changed", "written", "output",
-            "engine", "engineVersion", "toolVersion"));
+            "engine", "engineRequested", "engineExecuted", "engineVersion", "toolVersion"));
 
     @Test
     void theEnvelopeFrameIsUnchangedOrTheConsumersWereSwept() throws Exception {

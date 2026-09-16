@@ -28,6 +28,8 @@ dmtool -m examples/models/order-ruled.dm.json model describe \
 
 Runs a model through the **real kernel** consistency check — the same engine that gates persistence. This verb returns the **result envelope**: `outcome`, `ok` (did the op run), `valid` (is the subject model valid), and `diagnostics[]`, with exit 0 valid / 1 invalid.
 
+Because this is the one verb that can be answered by **two** engines (`--engine kernel`, the default, or the kernel-free `--engine portable`), its envelope also carries a receipt — `engineRequested`, `engineExecuted`, `engineVersion` — read from the engine that answered rather than stated by dmtool. The two always match: the engine you ask for is the engine that answers, and no envelope is emitted at all where they would differ.
+
 ```bash
 dmtool -m examples/models/order-ruled.dm.json model check
 ```
@@ -40,6 +42,9 @@ dmtool -m examples/models/order-ruled.dm.json model check
   "ok" : true,
   "valid" : true,
   "verification" : "KERNEL_CONFIRMED",
+  "engineRequested" : "A12_KERNEL",
+  "engineExecuted" : "A12_KERNEL",
+  "engineVersion" : "30.8.1",
   "summary" : "model is valid",
   "diagnostics" : [ ],
   "written" : false

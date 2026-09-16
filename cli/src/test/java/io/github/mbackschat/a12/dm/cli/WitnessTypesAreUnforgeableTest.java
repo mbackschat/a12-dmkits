@@ -62,7 +62,7 @@ class WitnessTypesAreUnforgeableTest {
      */
     @Test
     void theWitnessSetIsActuallyBeingRead() {
-        assertEquals(10, witnessTypes().size(),
+        assertEquals(11, witnessTypes().size(),
                 () -> "expected every ConsistencyEvidence.of(witness) overload to be found, got "
                         + witnessTypes() + ". Change this number only alongside a witness factory — a silent drop "
                         + "to zero would make the check below pass over an empty loop");

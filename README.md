@@ -242,6 +242,11 @@ dmtool -m order.dm.json model describe
 # run it through the real kernel → {valid, diagnostics[]}; malformed input is refused (exit 2)
 dmtool -m order.dm.json model check
 
+# the same question on the kernel-free portable checker, which answers a NARROWER one: it can reject a
+# model, or report that it concluded nothing (exit 3) — it never calls a model valid. The engine you ask
+# for is the engine that answers; neither one ever falls back to the other.
+dmtool -m order.dm.json model check --engine portable
+
 # one field in full: kind, required, AND its per-kind config (min/max/unit/pattern/format)
 # — verify a constraint, never read raw JSON
 dmtool -m order.dm.json field read /Order/Quantity
