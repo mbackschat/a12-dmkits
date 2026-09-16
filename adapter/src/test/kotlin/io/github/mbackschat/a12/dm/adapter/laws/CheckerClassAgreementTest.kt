@@ -71,6 +71,17 @@ import kotlin.io.path.readText
  * always the safe direction and was disclosed rather than asserted; now there is nothing to disclose, and
  * [SILENT_CLASSES] guards the floor from the other side by being empty. The [positionedFloor] still fails if
  * silence returns, because a compared pair needs both sides to speak.
+ *
+ * **Both directions are asserted as of 2026-09-16, where only `ours ⊆ kernel` was before.** The reverse is
+ * [unreached], and the reason it was reachable at all is that it is scoped to declarations A12 KEYED: A12
+ * stops at its first answering gate, so what it would say about a declaration it never reached needs an
+ * accumulation contract this lane deliberately does not have — but where A12 did speak, it said everything
+ * it had to say there, and no contract is needed to compare against that. The residual is therefore precisely
+ * "what A12 would name about declarations it never reached", and nothing here claims it.
+ *
+ * It was not a formality: the first run found a real under-report the subset direction cannot see by
+ * construction, and with it a live false claim in the MVK ledger's `MVK_MISSING_ERROR_FIELD` row, which said
+ * the checker reports a code that no line of `consistency/src` reads.
  */
 class CheckerClassAgreementTest {
 
@@ -111,6 +122,47 @@ class CheckerClassAgreementTest {
      * insurance rather than the net that would have caught them.
      */
     private val coFiring = emptySet<String>()
+
+    /**
+     * (declaration, class) pairs A12 named that the checker does not name there — the MISSING direction.
+     *
+     * **Empty as of 2026-09-16, which is the first time this lane asserts both directions.** Until then it
+     * asserted only `ours ⊆ kernel` and disclosed the reverse, because "the checker names everything A12
+     * does" reads as a claim about A12's whole verdict and A12 stops at its first answering gate. The half
+     * that does NOT need an accumulation contract is this one: where A12 SPOKE, it said everything it had to
+     * say about that declaration, so a class it named there and the checker did not is a gap with no
+     * accumulation question attached. What stays out of reach is only what A12 would have said about
+     * declarations it never reached, and that is the residual the plan's row 7 still names.
+     *
+     * A row here is an under-report, which is the safe direction and must be disclosed rather than hidden —
+     * so it carries the model, the mutation, the declaration, the class, and why no family reaches that
+     * shape. Like [SILENT_CLASSES] the map moves both ways: a row leaving is a family gaining reach, a row
+     * arriving is a family that lost it.
+     *
+     * It overlaps [SILENT_CLASSES] and is kept beside it deliberately: silence keyed by CLASS says which
+     * family to widen and carries its mutants, while this says which (declaration, class) pair is missing
+     * even on a mutant where the checker did speak — the case a per-mutant silence count cannot see.
+     *
+     * **Its positive control is the run that introduced it, not a synthetic mutant.** With this set empty the
+     * sweep failed on the row below and on nothing else, every other assertion staying green — which is the
+     * whole claim, since that row is invisible to `ours ⊆ kernel` by construction.
+     *
+     * **What this check does NOT currently add over [misplaced], measured 2026-09-16 and stated rather than
+     * assumed:** dropping the declaration from its key leaves the sweep green, because [misplaced] being
+     * empty already forces every class of ours that A12 also named to sit where A12 named it. So the keying
+     * is redundant *on this population*, exactly as [coFiring] is. It is keyed anyway for the same reason:
+     * the redundancy is a property of the corpus, and the moment a row enters [positionsA12Masks] the two
+     * stop agreeing and only the keyed form still refuses a class named about the wrong element.
+     */
+    private val unreached = setOf(
+        // A12 draws BOTH codes for an unresolvable error target and the checker draws the first alone, on a
+        // decision already recorded in `ReferenceDiagnostic.kt`: the second is the metamodel law restating
+        // the first, not a second defect, and reporting it would hand an author two defects to fix where
+        // there is one. The pin carries the class we name instead, so a change there re-opens this row
+        // rather than silently matching nothing.
+        "iteration-groups.json[repoint-error-field-into-a-repetition]: A12 named MVK_MISSING_ERROR_FIELD " +
+            "at /M/G1/G2/R_AG and no family of ours does (we say [MVK_ERROR_FIELD_MISSING])",
+    )
 
     /** Mutants A12 must reject with a keyed class before a green here means anything. */
     private val floor = 20
@@ -176,6 +228,7 @@ class CheckerClassAgreementTest {
         val repeated = mutableListOf<String>()
         val unpositioned = mutableListOf<String>()
         val unparsed = mutableListOf<String>()
+        val missed = mutableListOf<String>()
         val silentClasses = mutableMapOf<String, Int>()
         val silentRows = mutableListOf<String>()
         val coFired = mutableListOf<String>()
@@ -227,6 +280,22 @@ class CheckerClassAgreementTest {
                         )
                         if (row !in positionsA12Masks) misplaced += row
                     }
+                // The reverse of `disagreements`, and the only half of "names everything A12 does" that can
+                // be asked without an accumulation contract: A12 keyed this declaration, so it said all it
+                // had to say there.
+                kernel.byDeclaration.forEach { (at, classes) ->
+                    classes.filterNot { code -> positioned.any { it.at == at && it.code == code } }
+                        .forEach { code ->
+                            // What we DID say there rides along: widening a family starts from the class we
+                            // named instead, and deriving it otherwise means a throwaway assertion here.
+                            val instead = positioned.filter { it.at == at }.map { it.code }.sorted()
+                            val row = where(
+                                "A12 named $code at $at and no family of ours does" +
+                                    if (instead.isEmpty()) " (we say nothing there)" else " (we say $instead)",
+                            )
+                            if (row !in unreached) missed += row
+                        }
+                }
                 positionedPairs += kernel.byDeclaration.keys.count { at -> positioned.any { it.at == at } }
             }
         }
@@ -299,6 +368,14 @@ class CheckerClassAgreementTest {
                 "author the wrong element to fix — unless the second instance is genuinely true of the " +
                 "model, which is a row in `positionsA12Masks` with its measurement:\n" +
                 misplaced.joinToString("\n") { "  $it" },
+        )
+        assertEquals(
+            emptyList<String>(), missed,
+            "A12 named a class about a declaration and no family of ours names it there. This is the " +
+                "MISSING direction and it is an under-report, so it is safe — but it must be DISCLOSED " +
+                "rather than passed: add the family that reaches the shape, or a row in `unreached` saying " +
+                "why none does. A12 keyed this declaration, so its early stop does not excuse the gap:\n" +
+                missed.joinToString("\n") { "  $it" },
         )
     }
 
