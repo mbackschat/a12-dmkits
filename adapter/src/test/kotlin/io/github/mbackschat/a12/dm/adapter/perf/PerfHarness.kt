@@ -993,18 +993,20 @@ object PerfHarness {
         enforcement: TimingEnforcement = TimingEnforcement.forGrowthFloor(),
         estimate: () -> Growth,
     ): Growth {
-        require(attempts > 0 && attempts % 2 == 1) { "attempts must be a positive odd number" }
-        val seen = mutableListOf(estimate())
-        if (seen.single().ratio < floor) return seen.single()   // clean first estimate: one measurement, as before
-        while (seen.size < attempts) seen += estimate()  // a breach must survive the MEDIAN of independent re-runs
+        val seen = acceptOnMedianOfRetries(
+            attempts = attempts,
+            breaches = { it.ratio >= floor },
+            rank = { it.ratio },
+            sample = estimate,
+        )
         // The ACCEPTED estimate is returned so a caller can anchor its absolute medians without paying to
         // re-measure them (PerfAnchors) — the same numbers acceptance was decided on, never a fresh sample.
-        val accepted = seen.sortedBy { it.ratio }[seen.size / 2]
+        val accepted = seen.accepted
         if (accepted.ratio < floor) return accepted
         val breach =
             "$label median within-pair N/4N growth stayed at or above the ${floor}x catastrophe floor across " +
-                "$attempts independent re-measurements: " +
-                seen.joinToString(", ") { "${it.ratio} (${it.smallMs}ms -> ${it.largeMs}ms)" } +
+                "${seen.taken.size} independent re-measurements: " +
+                seen.taken.joinToString(", ") { "${it.ratio} (${it.smallMs}ms -> ${it.largeMs}ms)" } +
                 ". Acceptance is the median of these, so one low outlier cannot clear a real breach. Load " +
                 "inflates one estimate and does not reproduce; an algorithmic blowup does (linear medians " +
                 "~4x, quadratic ~16x)." + culprit?.let { " Likely cause: $it." }.orEmpty()
@@ -1066,15 +1068,17 @@ object PerfHarness {
         // [assertSubQuadraticLane], while this one is called DIRECTLY by perf classes, so nothing else is in the
         // path. Both current callers carry a lane tag, which is precisely why the hole was invisible.
         PerfLaneGate.requireMeasuringLane()
-        require(attempts > 0 && attempts % 2 == 1) { "attempts must be a positive odd number" }
-        val seen = mutableListOf(estimate())
-        if (seen.single().growth < ceiling) return seen.single()
-        while (seen.size < attempts) seen += estimate()
-        val accepted = seen.sortedBy { it.growth }[seen.size / 2]
+        val seen = acceptOnMedianOfRetries(
+            attempts = attempts,
+            breaches = { it.growth >= ceiling },
+            rank = { it.growth },
+            sample = estimate,
+        )
+        val accepted = seen.accepted
         if (accepted.growth < ceiling) return accepted
         val breach = "$label interp/kernel ratio grew ${accepted.ratioSmall}x -> ${accepted.ratioLarge}x " +
-            "(${accepted.growth}x, ceiling ${ceiling}x) across $attempts independent re-measurements: " +
-            seen.joinToString(", ") { "${it.growth}x" } +
+            "(${accepted.growth}x, ceiling ${ceiling}x) across ${seen.taken.size} independent re-measurements: " +
+            seen.taken.joinToString(", ") { "${it.growth}x" } +
             ". Acceptance is their median, so one contended slice cannot fail it — this is a RELATIVE claim, so " +
             "note the interpreter may still be far faster than the kernel at both scales while its ADVANTAGE " +
             "narrows, which is what this bar is about."
@@ -1179,10 +1183,15 @@ object PerfHarness {
     /**
      * Take one sample; while it breaches, take more up to [attempts]; accept the **median** by [rank].
      *
-     * This is [assertGrowthBelowCatastropheFloor]'s acceptance rule, factored out so the comparative bars can use
-     * the same one. The median is the whole correctness of it: returning as soon as any attempt passes makes a
-     * real breach *more* likely to be admitted the more often it is retried, which is the shape an external review
-     * falsified once already. The happy path costs exactly one sample; only a breach pays.
+     * **Every bar in this file now reaches its acceptance decision through here** — the growth floor, the
+     * cross-engine class and the reuse ceiling — so the rule has exactly one implementation and one place where
+     * it can be got wrong. It was extracted from [assertGrowthBelowCatastropheFloor] for the comparative bars to
+     * share, and the two older seams kept private copies of it until 2026-09-17; a third copy arriving with the
+     * reuse ceiling is what made consolidating cheaper than maintaining.
+     *
+     * The median is the whole correctness of it: returning as soon as any attempt passes makes a real breach
+     * *more* likely to be admitted the more often it is retried, which is the shape an external review falsified
+     * once already. The happy path costs exactly one sample; only a breach pays.
      */
     internal fun <T> acceptOnMedianOfRetries(
         attempts: Int = GROWTH_RETRY_ATTEMPTS,
