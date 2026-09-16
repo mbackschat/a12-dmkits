@@ -56,6 +56,12 @@ class GateTierWiringTest {
         assertTrue(invocation.contains(":consistency:verifyConsistencyDeliveryCeiling"),
                 "CI must run :consistency:verifyConsistencyDeliveryCeiling — it is the only routine lane that "
                         + "holds the checker's ratified delivery ceiling, and it hangs off no lifecycle task");
+        // The cross-artifact identity oracle. All three values it compares are BUILD OUTPUTS, so no test
+        // inside the artifact can make the comparison — a constant agrees with itself, which is what
+        // `CheckerIdentityTest` says in as many words before deferring it here.
+        assertTrue(invocation.contains(":consistency:verifyCheckerArtifactIdentity"),
+                "CI must run :consistency:verifyCheckerArtifactIdentity — it is the only check that the version "
+                        + "a consumer installs is the version the checker inside reports");
         assertFalse(ci.contains("schedule:"),
                 "main-push correctness CI must not rerun on the nightly schedule");
         assertTrue(ci.contains("uses: gradle/actions/setup-gradle@v6"),

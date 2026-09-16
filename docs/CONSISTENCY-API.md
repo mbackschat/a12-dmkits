@@ -35,6 +35,8 @@ From Kotlin or Java on the JVM the same check is `check(ModelSource(json))`, ret
 
 **`CHECKER_VERSION` names the build you resolved.** It is generated into the artifact from this module's own Gradle version, so it moves with the checker rather than with whoever calls it — which is the point: a consumer that publishes a receipt naming the engine that answered must cite the artifact it actually loaded, and a constant on the consumer's own side would state its expectation instead. `dmtool model check --engine=portable` publishes exactly this value.
 
+**From Node you read that version off `package.json`, not off an export** — the constant is Kotlin-side only, because a JS consumer already resolved the package by name and version and a second copy of the answer inside the bundle would be a second thing to keep true. `:consistency:verifyCheckerArtifactIdentity` is what makes the two answers the same answer: it reads the npm name and version out of the packaged `package.json`, the version out of the jvm jar's coordinate, and `CHECKER_VERSION` out of that jar's compiled class, and refuses a build where any of the three disagrees. So `a12-consistency@X` and a dmtool receipt citing `X` are the same checker, and that is checked rather than intended.
+
 ## The report
 
 ```json
@@ -110,6 +112,21 @@ Two properties are worth knowing before you rely on it. Findings are compared by
 The worked example is [`consistency/consumer-tests/node`](../consistency/consumer-tests/node), which is executable rather than illustrative: `./build.sh :consistency:nodeConsumerTest` packs the library into a real npm tarball, clean-installs it into a staged copy of that project, and runs it. It needs `node` and `npm` and reaches no network — the package declares no runtime dependency.
 
 That test is also the only thing in the build that can catch an unconsumable artifact. Every other test has the checker on the compile classpath by construction, and the JS target compiled green for the module's whole life while emitting nothing importable.
+
+### The CI gate — and why it has no pass
+
+[`ci-gate.mjs`](../consistency/consumer-tests/node/ci-gate.mjs) in that same project is a runnable pipeline step: `node ci-gate.mjs <sources…>` prints a structured result and exits `0`, `1` or `70`, reusing dmtool's own code contract ([CLI-SPEC](CLI-SPEC.md) §3b) rather than inventing a second numbering for the same three meanings.
+
+**Copy its shape rather than writing the obvious pipeline, because the obvious one is wrong.** "No findings, therefore green" is the silent pass this checker's report was designed to prevent, and a consumer who writes it will never be told. So the gate's payload carries `validated: false` with no code path that sets it true, and lists per source why nothing was validated. Exit `0` means *no rejection was found*, which is a weaker claim a CI job may still legitimately act on.
+
+| the gate's outcome | what the report looked like | what a job should do |
+|---|---|---|
+| `REJECTED` | `status: INVALID` | fail the build, and show the codes that justify rejection |
+| `NOT_ESTABLISHED` | `INCONCLUSIVE`, families ran | proceed if your policy allows it, but never record it as validated |
+| `UNREADABLE` | `INCONCLUSIVE`, `checksCompleted` empty — or the file never reached the checker | fail the build as a TOOL failure; nothing was checked |
+| `UNRECOGNIZED` | a `status` this gate does not know | fail closed; a gate pinned to an older package must not read an unfamiliar status as a pass |
+
+**The operational test is `checksCompleted` being empty, never "a diagnostic arrived"** — the distinction a consumer is most likely to get wrong. A `DECLARATION_NOT_WELL_FORMED` diagnostic rides along with a fully completed run: one declaration could not be read and its siblings were checked anyway. Treating that as a tool failure would fail the build for the wrong reason and send the author looking in the wrong place, which is an over-rejection in the consumer rather than in the checker and lands on them just the same.
 
 ## What this API does not promise
 

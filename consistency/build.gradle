@@ -684,6 +684,76 @@ tasks.register('verifyConsistencyDeliveryCeiling') {
     }
 }
 
+/**
+ * F1-c: the identity a consumer INSTALLS must be the identity the checker REPORTS — on both packagings.
+ *
+ * `CheckerIdentityTest` asserts the baked constant is a plausible version and says plainly that a test inside
+ * the artifact cannot establish this — a constant agrees with itself. The failure this catches lives BETWEEN
+ * build outputs, so every value it compares is read out of one: the npm name and version out of the packaged
+ * `package.json` (written by the Kotlin/JS plugin), the version a JVM consumer resolves out of the jvm jar's
+ * own file name, and `CHECKER_VERSION` out of that jar's compiled class by reflection. Reading the GENERATED
+ * SOURCE instead would have been one step short of the artifact, which is the distinction that has already
+ * cost this project a wrong claim — a catalog fact was committed and asserted as discoverable while the
+ * launcher still served the old one.
+ *
+ * <p>What it therefore establishes, stated narrowly: all three projections of this module's Gradle version
+ * still agree. It cannot say the version is the RIGHT one — no build-time oracle can — but a consumer who
+ * installs `a12-consistency@X` and reads a receipt citing `Y` has one published id meaning two byte
+ * contracts, which is the class the estate's release rule forbids, and that is what diverging projections
+ * produce.
+ *
+ * <p>The NAME is pinned rather than derived for the same reason: it is what consumers depend on, so it may
+ * not change as a side effect of a module rename.
+ */
+tasks.register('verifyCheckerArtifactIdentity') {
+    group = 'verification'
+    description = 'Refuse a published checker whose npm identity disagrees with the version baked into it.'
+    dependsOn 'jsNodeProductionLibraryDistribution', 'jvmJar'
+    outputs.upToDateWhen { false }
+    def jvmArtifact = tasks.named('jvmJar').flatMap { it.archiveFile }
+    doLast {
+        def manifest = layout.buildDirectory.file('dist/js/productionLibrary/package.json').get().asFile
+        if (!manifest.file) {
+            throw new GradleException("no packaged manifest at $manifest — the JS distribution did not run")
+        }
+        def published = new groovy.json.JsonSlurper().parse(manifest)
+        def jar = jvmArtifact.get().asFile
+        // The version a JVM consumer RESOLVES, taken from the coordinate rather than from the project: this is
+        // the file `:cli`'s `project(':consistency')` edge puts on its classpath, and its name is the coordinate.
+        def resolved = (jar.name =~ /^consistency-jvm-(.+)\.jar$/)
+        if (!resolved.find()) {
+            throw new GradleException("the jvm artifact is named `$jar.name`, which no longer carries its " +
+                    'version where this check reads it. A renamed artifact is a coordinate change.')
+        }
+        def resolvedVersion = resolved.group(1)
+        // The constant as it exists IN that artifact, by reflection. The platform loader suffices — a file
+        // holding one `const val` compiles to a static final with a ConstantValue attribute and needs no
+        // Kotlin runtime to read, so this loads the shipped class without putting the build on its classpath.
+        def bakedVersion = new URLClassLoader([jar.toURI().toURL()] as URL[], ClassLoader.platformClassLoader)
+                .withCloseable { loader ->
+                    loader.loadClass('io.github.mbackschat.a12.dm.consistency.CheckerIdentityKt')
+                            .getField('CHECKER_VERSION').get(null)
+                }
+        logger.lifecycle("[checker-identity] ${published.name}@${published.version} · " +
+                "$jar.name · CHECKER_VERSION $bakedVersion")
+        if (published.name != 'a12-consistency') {
+            throw new GradleException("the published package name is `${published.name}`, not `a12-consistency`. " +
+                    'That name is what consumers depend on; changing it is a release decision, not a rename.')
+        }
+        if (published.version != bakedVersion) {
+            throw new GradleException("the published package is version `${published.version}` while the " +
+                    "checker it contains reports `$bakedVersion`. A consumer's receipt would then cite a build " +
+                    'they did not install. Both derive from this module\'s Gradle version, so a difference means ' +
+                    'one side stopped doing so.')
+        }
+        if (resolvedVersion != bakedVersion) {
+            throw new GradleException("the jvm artifact resolves as version `$resolvedVersion` while the " +
+                    "checker inside it reports `$bakedVersion`, so dmtool's portable-engine receipt would name " +
+                    'a build other than the one on its classpath.')
+        }
+    }
+}
+
 def prepareNodeConsumer = tasks.register('prepareNodeConsumer', Sync) {
     group = 'verification'
     description = 'Stage a disposable copy of the Node consumer project, with no node_modules carried over.'
