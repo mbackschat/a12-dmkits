@@ -49,6 +49,7 @@ data class Finding(
     val code: String,
     val explain: String,
     val at: String? = null,
+    val span: TextSpan? = null,
 ) {
     /**
      * Whether this finding alone makes the model invalid: a measured A12 constraint, violated at ERROR.
@@ -62,7 +63,35 @@ data class Finding(
      */
     val justifiesRejection: Boolean
         get() = category == FindingCategory.A12_CONSTRAINT && severity == FindingSeverity.ERROR
+
+    /**
+     * The same defect with its location dropped — what "is this the same finding?" must compare.
+     *
+     * A finding's identity is the DEFECT, not where the text currently sits. Typing a character earlier in a
+     * condition moves every span after it, and an attribution comparing whole findings would then report one
+     * defect as resolved and an identical one as introduced on a keystroke that changed nothing about it.
+     * [attribute] compares this rather than the finding, which is why [span] can be added to a published
+     * report without making the edit surface unstable.
+     */
+    internal val sameDefect: Finding get() = copy(span = null)
 }
+
+/**
+ * Which characters of which DSL member a finding is about — what an editor underlines.
+ *
+ * [member] is spelled as a report spells it (`errorCondition`, `computationAlternatives[0].operation`), so a
+ * consumer holding several texts of one declaration knows which buffer the offsets index. The range is
+ * half-open over the member's own text: `start` is the first character and `end` the one after the last, the
+ * convention every editor API in reach already uses.
+ *
+ * **It is absent far more often than present, and absence is deliberate rather than pending.** A span is
+ * published only where the family that judged the text already knew the offset — an unresolved reference,
+ * unreadable characters, half-typed input, a shape the grammar refuses. A finding about a declaration's
+ * STRUCTURE has no characters to point at, and a family that would have to re-derive an offset publishes
+ * none rather than an approximate one: an editor underlining the wrong words is worse than one underlining
+ * nothing.
+ */
+data class TextSpan(val member: String, val start: Int, val end: Int)
 
 /**
  * A12's own guidance for a finding's code — what the code MEANS and how to repair it.

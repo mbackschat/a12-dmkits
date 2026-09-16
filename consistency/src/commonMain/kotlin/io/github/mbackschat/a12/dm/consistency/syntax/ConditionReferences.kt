@@ -21,12 +21,29 @@ package io.github.mbackschat.a12.dm.consistency.syntax
  * against the ancestor it names — A12 does check it, so this under-reports and never invents a rejection.
  * And nothing here decides whether the text parses; a malformed condition yields whatever names it contains.
  */
-fun referencesIn(text: String, language: ConditionLanguage): List<String> =
-    ReferenceScan(
-        tokenize(text),
-        CONDITION_KEYWORDS.getValue(language),
-        CONDITION_OPERATOR_KEYWORDS.getValue(language)[CUSTOM_CONDITION],
-    ).references()
+fun referencesIn(text: String, language: ConditionLanguage): List<String> = scanOf(text, language).references()
+
+/**
+ * The same references with the characters each one occupies — what a report needs to point at one.
+ *
+ * Every OCCURRENCE is reported, in text order, where [referencesIn] reports each name once: a consumer
+ * underlining a name wants all of them, and a consumer binding one wants the name. Both come from a single
+ * scan, so asking for spans costs no second tokenization.
+ *
+ * The offsets are half-open over [text] and span the whole path run, `..` steps and repetition markers
+ * included — the run a reader has to edit, not the normalized spelling [ReferenceSpan.written] carries.
+ */
+fun referenceSpansIn(text: String, language: ConditionLanguage): List<ReferenceSpan> =
+    scanOf(text, language).referenceSpans()
+
+/** One reference occurrence: its normalized spelling, and the characters it occupies. */
+data class ReferenceSpan(val written: String, val start: Int, val end: Int)
+
+private fun scanOf(text: String, language: ConditionLanguage) = ReferenceScan(
+    tokenize(text),
+    CONDITION_KEYWORDS.getValue(language),
+    CONDITION_OPERATOR_KEYWORDS.getValue(language)[CUSTOM_CONDITION],
+)
 
 /**
  * Whether the text names the RULE-CONTEXT entity — A12's `RuleGroup` / `RegelKontext`.
@@ -133,6 +150,7 @@ private class ReferenceScan(
 
     private var at = 0
     private val found = LinkedHashSet<String>()
+    private val spans = mutableListOf<ReferenceSpan>()
     private val keys = LinkedHashSet<String>()
     private val categories = mutableListOf<Pair<String, String>>()
 
@@ -145,6 +163,12 @@ private class ReferenceScan(
     fun semanticIndexKeys(): List<String> {
         references()
         return keys.toList()
+    }
+
+    /** Every occurrence, in text order — the list [found] deduplicates away. */
+    fun referenceSpans(): List<ReferenceSpan> {
+        references()
+        return spans.toList()
     }
 
     fun categoryAccesses(): List<Pair<String, String>> {
@@ -260,6 +284,7 @@ private class ReferenceScan(
         if (names > 0) {
             val path = normalizedPath(tokens.subList(begin, end))
             found += path
+            spans += ReferenceSpan(path, tokens[begin].start, tokens[end - 1].end)
             lastPath = path
             if (begin == keyBegins) {
                 keys += path

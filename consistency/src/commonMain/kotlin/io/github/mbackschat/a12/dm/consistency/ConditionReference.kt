@@ -1,7 +1,8 @@
 package io.github.mbackschat.a12.dm.consistency
 
 import io.github.mbackschat.a12.dm.consistency.syntax.SyntaxEntry
-import io.github.mbackschat.a12.dm.consistency.syntax.referencesIn
+import io.github.mbackschat.a12.dm.consistency.syntax.ReferenceSpan
+import io.github.mbackschat.a12.dm.consistency.syntax.referenceSpansIn
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
@@ -14,12 +15,15 @@ import kotlinx.serialization.json.contentOrNull
  * @param member the text member it was written in, so a report can name which of a computation's several
  *     texts is at fault rather than only the computation.
  * @param written the reference exactly as authored, which is what a reader has to find and edit.
+ * @param span the characters of [member] this reference occupies — its FIRST occurrence when the text names
+ *     it more than once, which is the one A12 would report about: it stops at the first defect in a text.
  */
 data class ConditionReference(
     val declaredAt: String,
     val member: String,
     val written: String,
     val target: Reference,
+    val span: TextSpan,
 )
 
 /**
@@ -38,12 +42,17 @@ fun PreparedModel.conditionReferences(): List<ConditionReference> = elements.fla
     val body = element.body ?: return@flatMap emptyList()
     val group = element.path.substringBeforeLast('/', missingDelimiterValue = "")
     conditionTexts(element.kind, body).flatMap { (member, text) ->
-        referencesIn(text, conditionLanguage).map { written ->
+        // One scan, keyed by name with the FIRST occurrence winning. `associateBy` would keep the last, and
+        // the first is the one a report must point at, A12 stopping at the first defect in a text.
+        val firstOccurrence = LinkedHashMap<String, ReferenceSpan>()
+        referenceSpansIn(text, conditionLanguage).forEach { firstOccurrence.getOrPut(it.written) { it } }
+        firstOccurrence.values.map { occurrence ->
             ConditionReference(
                 element.path,
                 member,
-                written,
-                resolveEntity(group, written, element.origin),
+                occurrence.written,
+                resolveEntity(group, occurrence.written, element.origin),
+                TextSpan(member, occurrence.start, occurrence.end),
             )
         }
     }

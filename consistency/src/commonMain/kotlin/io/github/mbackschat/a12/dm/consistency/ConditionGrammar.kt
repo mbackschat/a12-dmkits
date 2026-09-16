@@ -60,6 +60,9 @@ fun PreparedModel.conditionGrammarFindings(): List<Finding> = elements.flatMap {
                     "use where it stands"
             },
             element.path,
+            // A parser that ran out with a delimiter open has nothing left to point AT, so the span is the
+            // position it stopped rather than a run of characters — an editor places a caret there.
+            TextSpan(member, failure.at, failure.at + if (failure.ranOutWithDelimiterOpen) 0 else failure.found.length),
         )
     }
 }

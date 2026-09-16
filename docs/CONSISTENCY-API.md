@@ -62,6 +62,7 @@ All seven keys are always present. An empty array and an absent key would mean o
   "severity": "ERROR",
   "explain": "in `errorCondition`: no declared element matches `/Storefront/NoSuchField`, and no model-wide field short name resolved it",
   "at": "/Storefront/EmailRequiredForPaidOrder",
+  "span": { "member": "errorCondition", "start": 15, "end": 40 },
   "justifiesRejection": true,
   "corrective": {
     "fix": "The group or field name in the condition could not be resolved in the rule's scope. Use its ABSOLUTE path …",
@@ -75,6 +76,10 @@ All seven keys are always present. An empty array and an absent key would mean o
 **Read `justifiesRejection`, not `severity`, to decide whether a model is rejected.** The two come apart on purpose: `category` is `A12_CONSTRAINT` for a measured Kernel verdict and `AUTHORING_POLICY` for a house rule that the Kernel accepts, and an `AUTHORING_POLICY` finding at `ERROR` deliberately does not make a model invalid. `justifiesRejection` is the conjunction, published because a consumer cannot derive it from the fields without knowing that rule.
 
 `at` is the declaration's model path, or `null` for a finding about the model as a whole.
+
+**`span` is what an editor underlines, and it is `null` more often than not.** Its offsets are half-open over the `member` text it names — `errorCondition`, `commonPrecondition`, `computationAlternatives[0].operation` — so a consumer holding several of a declaration's texts knows which buffer they index. A span is published only where the family that judged the text already knew the offset: an unresolved reference (at its FIRST occurrence, because A12 stops at the first defect in a text), characters the lexer cannot read, half-typed input, and a shape the grammar refuses. A finding about a declaration's structure has no characters to point at and publishes `null` rather than an approximate range, because an editor underlining the wrong words is worse than one underlining nothing. When a parser ran out with a bracket still open the range is EMPTY at the end of the text — there is nothing left to underline, and an editor places a caret.
+
+A finding's identity is its defect, not its location: typing a character earlier in a text moves every span after it, and `checkEdit`/`checkDraft` compare findings with the span excluded, so an ordinary keystroke does not report one defect as resolved and an identical one as introduced.
 
 **`corrective` is A12's own guidance for the CODE, and it is `null` far more often than not.** Its `fix` says what to change and its `meaning` says what the code classifies wherever it is raised — neither is about the declaration in front of you, which is what `explain` is for. The texts are PROJECTED from the dmkits' Java diagnostic owners rather than restated here, over the codes this checker's own sources spell, so there is one live statement of each and a build guard fails when they drift. That bound is a superset of what the checker can actually report — a code it compares an authored value against is spelled too — so a second test measures every entry against a real report and names the residue. A `null` is the ordinary case: most codes are explained by the operator catalog, whose entries are keyed by operator rather than by code, so a code-keyed lookup has nothing to return. The member is always present, because an omitted one and a `null` one would look identical to a consumer reading an older report.
 

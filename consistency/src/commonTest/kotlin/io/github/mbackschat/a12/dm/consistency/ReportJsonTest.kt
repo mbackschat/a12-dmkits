@@ -68,7 +68,7 @@ class ReportJsonTest {
     fun aFindingCarriesItsFullKeySetAndItsDerivedVerdict() {
         val finding = parsed(broken)["findings"]!!.jsonArray.single().jsonObject
         assertEquals(
-            setOf("code", "category", "severity", "explain", "at", "justifiesRejection", "corrective"),
+            setOf("code", "category", "severity", "explain", "at", "span", "justifiesRejection", "corrective"),
             finding.keys,
         )
         assertEquals("MVK_INVALID_ENTITY", finding["code"]!!.jsonPrimitive.content)
@@ -83,6 +83,12 @@ class ReportJsonTest {
         val corrective = finding["corrective"]!!.jsonObject
         assertEquals(setOf("fix", "meaning"), corrective.keys)
         assertTrue(corrective["fix"]!!.jsonPrimitive.content.isNotBlank())
+        // Where in which text, for a consumer that highlights rather than only lists. An object rather than
+        // two flat keys because the offsets are meaningless without the member they index.
+        val span = finding["span"]!!.jsonObject
+        assertEquals(setOf("member", "start", "end"), span.keys)
+        assertEquals("errorCondition", span["member"]!!.jsonPrimitive.content)
+        assertTrue(span["end"]!!.jsonPrimitive.content.toInt() > span["start"]!!.jsonPrimitive.content.toInt())
     }
 
     /**

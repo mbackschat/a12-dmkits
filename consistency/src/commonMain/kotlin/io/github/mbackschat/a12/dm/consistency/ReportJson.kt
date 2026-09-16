@@ -78,6 +78,18 @@ private fun Finding.asJson(): JsonObject = buildJsonObject {
     put("severity", severity.name)
     put("explain", explain)
     put("at", at)
+    // Absent far more often than present, and `null` rather than an omitted member so "this finding has no
+    // characters to point at" and "this consumer is reading an older report" cannot look the same.
+    val located = span
+    if (located == null) {
+        put("span", JsonNull)
+    } else {
+        put("span", buildJsonObject {
+            put("member", located.member)
+            put("start", located.start)
+            put("end", located.end)
+        })
+    }
     // Derived rather than stored, and published because it is the one question a consumer asks of a finding
     // that the fields alone do not answer: an AUTHORING_POLICY finding at ERROR does NOT make a model
     // invalid, so severity cannot be read as the verdict on its own.

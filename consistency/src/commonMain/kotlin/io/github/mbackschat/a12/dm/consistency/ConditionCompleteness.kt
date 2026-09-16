@@ -40,6 +40,7 @@ fun PreparedModel.conditionCompletenessFindings(): List<Finding> = elements.flat
                 "`$member` ends on `${incomplete.spelling}` at offset ${incomplete.at}, which still needs a " +
                     "right-hand side — A12 runs out of input reading this text",
                 element.path,
+                TextSpan(member, incomplete.at, incomplete.at + incomplete.spelling.length),
             )
         }
     }

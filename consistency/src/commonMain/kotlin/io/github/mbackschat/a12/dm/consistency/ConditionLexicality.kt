@@ -36,6 +36,7 @@ fun PreparedModel.conditionLexicalFindings(): List<Finding> = elements.flatMap {
             "MVK_LEXER_STANDARD_ERROR",
             "`$member` ${failure.explain()}, so A12's lexer cannot read this text at all",
             element.path,
+            TextSpan(member, failure.at, failure.at + failure.text.length),
         )
     }
 }

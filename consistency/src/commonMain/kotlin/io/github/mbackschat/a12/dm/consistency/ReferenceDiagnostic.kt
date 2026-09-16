@@ -28,7 +28,12 @@ package io.github.mbackschat.a12.dm.consistency
  *     A computation has three kinds, so a finding that named only the computation would leave an author
  *     reading all of them — and three references to one missing name would report three identical findings.
  */
-fun Reference.asFinding(role: ReferenceRole, at: String, member: String? = null): Finding? {
+fun Reference.asFinding(
+    role: ReferenceRole,
+    at: String,
+    member: String? = null,
+    span: TextSpan? = null,
+): Finding? {
     val explain = when (this) {
         is Reference.Resolved -> return null
         is Reference.Undeclared ->
@@ -39,7 +44,7 @@ fun Reference.asFinding(role: ReferenceRole, at: String, member: String? = null)
         is Reference.AboveRoot ->
             "`$written` climbs above the root group, so it names no position in this model"
     }
-    return a12Error(role.codeFor(this), at, member?.let { "in `$it`: $explain" } ?: explain)
+    return a12Error(role.codeFor(this), at, member?.let { "in `$it`: $explain" } ?: explain, span)
 }
 
 /**
@@ -108,5 +113,5 @@ private fun ReferenceRole.codeFor(outcome: Reference): String = when (this) {
     }
 }
 
-private fun a12Error(code: String, at: String, explain: String) =
-    Finding(FindingCategory.A12_CONSTRAINT, FindingSeverity.ERROR, code, explain, at)
+private fun a12Error(code: String, at: String, explain: String, span: TextSpan? = null) =
+    Finding(FindingCategory.A12_CONSTRAINT, FindingSeverity.ERROR, code, explain, at, span)

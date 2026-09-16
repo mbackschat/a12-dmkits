@@ -61,6 +61,11 @@ test('a rule naming an undeclared field is INVALID, with the code A12 gives', ()
   assert.ok(finding.corrective, 'MVK_INVALID_ENTITY is a code A12 explains');
   assert.ok(finding.corrective.fix.length > 0);
   assert.ok(finding.corrective.meaning.length > 0);
+  // Where in the text, which is what an editor underlines. Asserted as a SLICE of the condition this test
+  // wrote rather than as offsets: a wrong pair of numbers that happens to be self-consistent reads as right.
+  assert.equal(finding.span.member, 'errorCondition');
+  const condition = 'FieldNotFilled(NoSuchField)';
+  assert.equal(condition.slice(finding.span.start, finding.span.end), 'NoSuchField');
 });
 
 test('an unreadable source returns a report rather than throwing', () => {

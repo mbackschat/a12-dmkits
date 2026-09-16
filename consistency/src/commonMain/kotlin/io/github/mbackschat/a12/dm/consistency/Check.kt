@@ -932,7 +932,7 @@ internal fun checkPrepared(
     val resolvedFirst = prepared.declarationsWithAnUnresolvableConditionReference()
     val judged = (declared.mapNotNull { it.target.asFinding(it.role, it.declaredAt) } +
         prepared.conditionReferences().mapNotNull {
-            it.target.asFinding(ReferenceRole.CONDITION_ENTITY, it.declaredAt, it.member)
+            it.target.asFinding(ReferenceRole.CONDITION_ENTITY, it.declaredAt, it.member, it.span)
         } + prepared.declarationSlotFindings() + prepared.computationAlternativeFindings() +
         prepared.computationRoundingFindings() + prepared.suppressedWarningFindings() +
         prepared.ruleConditionAndTargetFindings() + prepared.variantFilterFindings() +

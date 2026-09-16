@@ -46,7 +46,7 @@ Rows below are dependency stages, not permission to combine every named slice in
 | 8 | **blocked, with the sequence agreed** — H5's calibration ordering was overtaken by events; the replacement sequence is [recorded](#h5-ordering) · [where it stands](#stage-8) | F standalone public delivery and qualification | B–E/C2/F2 supply the declared profile and full reports. Start with H5 budget ratification using §5's calibration record, before measuring the qualifying implementation. Execute Java, packed Node and browser acceptance, replaying B0's retained controls and F2's same corpus; run ownership/closure guards, API compatibility and H5 qualification | One earlier API/schema/publication-boundary review; terminal review of the actual packed consumers and qualification |
 | 9 | **part** — F1-a, F1-b and F1-c landed 2026-09-16; F1-d and F1-e remain, and this row's packaged/native identity half belongs to F1-d · [where it stands](#stage-9) | F1 dmtool coexistence; F3 published-library integration, as separate commits | F provides the artifact and explicit result contract. F1 retains default/explicit Kernel in both launchers and adds explicit portable selection. F3 adds dmkits/schemakit checking and an integration façade outside both standalone cores | Terminal review for each integration; F1 includes packaged JVM/native identity and substitution controls |
 | 10 | **part** — both landed 2026-09-16: H's mechanism with F1-b (`checkEdit`/`checkEditJson`), then G's Node CI gate; what either still owes is a decision belonging to `I` · [where it stands](#stage-10) | G Node CI example; H candidate checking | F's package can be consumed normally. G distinguishes invalid, incomplete and operational failure; H checks immutable candidates without persistence and agrees with fresh checking | Terminal review of each public consumer contract |
-| 11 | **part** — J landed 2026-09-16 as `impactOf`, and I-a as `checkDraft`; I-b (source locations) remains · [where it stands](#stage-11) | J impact reports; I editor diagnostics, as separate slices | J uses E's dependency facts and H's candidates. I uses source-aware partial analysis and H's snapshots; neither depends on the other's implementation | Terminal review of affected/unaffected controls for J and source-location controls for I |
+| 11 | **done** — J landed 2026-09-16 as `impactOf`, I-a as `checkDraft`, I-b as a finding's source span · [where it stands](#stage-11) | J impact reports; I editor diagnostics, as separate slices | J uses E's dependency facts and H's candidates. I uses source-aware partial analysis and H's snapshots; neither depends on the other's implementation | Terminal review of affected/unaffected controls for J and source-location controls for I |
 | 12 | open | L incremental checking | L uses B3/J and must match fresh full reports while demonstrating reuse. Complete the H/I/L browser integration once it lands | Terminal review per API, including stale-cache controls |
 | 13 | open | N combined availability and qualification | Every earlier slice passes its frozen matrix; all G–J/L exports and the browser integration work from shipped packages. Complete §5 below | Terminal whole-product contract review before declaring completion |
 
@@ -64,7 +64,7 @@ Three levers cut it further, and each is a scheduling decision rather than a sco
 
 **Two stages cannot be pulled earlier, so do not try.** Row 8's remaining perf bars are `L` (after-edit) and `N` (combined), which the owner's [H5 ratification](#h5-ratification) deliberately left UNSET — they are measurable only once those slices exist, so row 8 closes as a by-product of rows 12 and 13 rather than as work of its own. And row 7's single remainder is contract-blocked on F2's own accumulation contract: that is a decision inside row 7, so it is actionable whenever that contract is settled, but it is not unblocked by effort elsewhere.
 
-**Resulting order, six landings:** F1-b + H → (G + F1-c + F3, parallel) → J → I → L → one recapture + F1-d + N, which closes row 8 with it. *Reached 2026-09-16: F1-b + H, then G + F1-c together, then J, then I-a. What stands between here and L is I-b and F3 — F3 being a separate consumer estate (JVM dmkits) that shares nothing with the rest.*
+**Resulting order, six landings:** F1-b + H → (G + F1-c + F3, parallel) → J → I → L → one recapture + F1-d + N, which closes row 8 with it. *Reached 2026-09-16: F1-b + H, then G + F1-c together, then J, then I-a and I-b — which closes row 11. What stands between here and L is F3 alone, and F3 is a separate consumer estate (JVM dmkits) that shares nothing with the rest.*
 
 ### Where each stage has reached <a id="stage-detail"></a>
 
@@ -101,7 +101,7 @@ The table above carries each stage's token and the clause that decides whether i
 | I slice | what it lands | why it is its own commit |
 |---|---|---|
 | I-a | **LANDED 2026-09-16** — `checkDraft`, the prepared-fact-base seam it needs, and the incomplete-is-not-invalid contract | it settles what an editor ASKS; a finding's shape is untouched |
-| I-b | a finding's source span — which characters of which member it is about | it changes `Finding` and therefore the published wire shape, and it forces a decision `checkEdit` depends on: a finding whose text merely MOVED must not read as one resolved and another introduced |
+| I-b | **LANDED 2026-09-16** — a finding's source span, and the defect-keyed attribution it forced ([the record](#ib-spans)) | it changes `Finding` and therefore the published wire shape, and it forces a decision `checkEdit` depends on: a finding whose text merely MOVED must not read as one resolved and another introduced |
 
 #### Stage 9 — F1 dmtool coexistence <a id="stage-9"></a>
 
@@ -375,6 +375,24 @@ That needed one seam — `checkPrepared(prepared, modelId, inherited)`, factored
 **The measured trap, and it cost the whole JS lane: a top-level `private val` can be `undefined` on Kotlin/JS.** Taking an alternative's member name apart with a file-level `Regex`, read from a private top-level function, left **359 of 615 `jsNodeTest` rows** failing with `Cannot read properties of undefined` while **all 615 `jvmTest` rows passed**. Kotlin/JS initialises file-level properties through a per-file init function it calls at the entry of the functions that need one, and that insertion did not reach this private function. The fix holds no file-level state at all. Recorded in [BUILD-ENVIRONMENT](BUILD-ENVIRONMENT.md) beside its sibling stale-ordinal trap, because the lesson generalises past this slice: **a green `jvmTest` is not evidence about the JS target.**
 
 Six mutants planted, six dead — but one survived its first hearing and the reason is worth keeping. Making the alternative-name parse fail closed left every carrier still analysed with the right code, because the draft then wrote a FLAT member whose key was the spelling `computationAlternatives[0].operation` and every family read it as the member it was named after. What a write BESIDE the original cannot do is make the original go away, so the discriminator is a baseline whose alternative is already broken: replacing it resolves the defect where writing beside it leaves it standing. A row asserting only that the right code appears cannot tell a replacement from an addition.
+
+### I-b record — a location on a finding, and the identity question it forced (2026-09-16) <a id="ib-spans"></a>
+
+**Adding `span` to `Finding` is not only a new member; it changes what "the same finding" means.** `checkEdit` and `checkDraft` attribute by set difference over findings, and a span moves whenever a character is typed EARLIER in the same text. Comparing whole findings would therefore report one defect as resolved and an identical one as introduced on a keystroke that changed nothing about it — on every keystroke an editor makes, which is the one consumer this slice exists for. So a finding's identity is its DEFECT: `Finding.sameDefect` drops the location and the attribution compares that. The row asserting it carries its own control, because a test where the span did not move would pass without the fix.
+
+**Where a span is published, and the rule that decides.** Only where the family that judged the text already knew the offset — an unresolved reference, characters the lexer cannot read, half-typed input, a shape the grammar refuses. A finding about a declaration's STRUCTURE has no characters to point at, and a family that would have to re-derive an offset publishes none: **an editor underlining the wrong words is worse than one underlining nothing.** That is the same under-report-rather-than-invent direction the whole checker follows, applied to position instead of to verdict, and it has its own row (`aFindingAboutTheDECLARATIONCarriesNoSpanAtAll`) so "spans are populated" cannot come to mean "populated with anything".
+
+**Three decisions inside the reference span, each with the reading it rejects.**
+
+| decision | the rejected reading |
+|---|---|
+| the FIRST occurrence when a name appears twice | the last, which `associateBy` would have given — and A12 stops at the first defect in a text, so the first is the one it is talking about |
+| the whole path RUN, `..` steps and repetition markers included | the last segment, or the normalized spelling: a reader edits the characters that are there |
+| an empty range at the end for a parser that ran out with a bracket open | a range over the last token, which would underline something that is not the problem. Nothing is left to underline, so an editor places a caret |
+
+**The spans cost no second tokenization.** `referencesIn` and the new `referenceSpansIn` run the same scan, and `conditionReferences` — which is NOT memoised and is called by eleven families — asks for the spans and derives the distinct names locally, so the hot path does exactly the work it did before.
+
+Every assertion reads a SLICE of the text rather than a pair of offsets, which is both how an editor uses the span and the only form that cannot pass for a wrong range: a self-consistent wrong pair of numbers reads as right. Six mutants planted, six dead, including the two that only a slice assertion can catch — the last-occurrence key and the last-token-only range.
 
 ### F1-c record — one version, three projections, and the one that is not the artifact (2026-09-16) <a id="f1c-projections"></a>
 

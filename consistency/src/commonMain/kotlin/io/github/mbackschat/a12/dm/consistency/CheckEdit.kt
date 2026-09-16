@@ -71,10 +71,13 @@ internal fun attribute(before: ConsistencyReport, after: ConsistencyReport): Edi
         )
     }
 
-    val had = before.findings.toSet()
-    val has = after.findings.toSet()
-    val introduced = after.findings.filter { it !in had }
-    val resolved = before.findings.filter { it !in has }
+    // Compared by DEFECT rather than by finding: a span moves when a character is typed earlier in the
+    // same text, and comparing whole findings would then report one defect as resolved and an identical one
+    // as introduced on an edit that changed nothing about it.
+    val had = before.findings.mapTo(mutableSetOf()) { it.sameDefect }
+    val has = after.findings.mapTo(mutableSetOf()) { it.sameDefect }
+    val introduced = after.findings.filter { it.sameDefect !in had }
+    val resolved = before.findings.filter { it.sameDefect !in has }
     return EditReport(
         baseline = before,
         edited = after,

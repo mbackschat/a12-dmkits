@@ -127,7 +127,8 @@ private fun Reference.asElementDependency(): DependencyOn = when (this) {
  * resolves to NOTHING is rebindable too: declaring it anywhere is what would bind it.
  */
 private fun ConditionReference.rebindableShortName(): String? {
-    val name = written.removeSuffix("*").removeSuffix(".*")
+    // `.*` before `*`, or the dot survives and the name matches nothing — a silent false negative.
+    val name = written.removeSuffix(".*").removeSuffix("*")
     if ('/' in name || name.isEmpty()) {
         return null
     }
