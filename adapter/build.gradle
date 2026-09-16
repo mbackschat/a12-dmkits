@@ -789,6 +789,36 @@ tasks.register('checkerAfterEditPerfTest', Test) {
     outputs.cacheIf { false }
 }
 
+// H5's resources boundary, RETAINED-MEMORY half — the required §8 observation the boundary count hid until
+// 2026-09-17 (docs/PORTABLE-CONSISTENCY-IMPLEMENTATION-PLAN.md#stage-8). Records and asserts nothing.
+//
+// Serial GC and a fixed heap are not tuning: the lane reads post-GC used heap, so a concurrent collector makes
+// the reading depend on when a background cycle happened to finish, and a growing heap makes two samples
+// incomparable. Those are the same jvmArgs the interpreter's footprint forks take, for the same reason.
+tasks.register('checkerMemoryPerfTest', Test) {
+    description = 'Measure what a held consistency analysis retains and what one check allocates.'
+    group = 'measurement'
+    testClassesDirs = sourceSets.test.output.classesDirs
+    classpath = sourceSets.test.runtimeClasspath
+    useJUnitPlatform()
+    // Single-fork: a neighbouring fork's allocation lands in this JVM's heap readings.
+    maxParallelForks = 1
+    failFast = true
+    minHeapSize = '1g'
+    maxHeapSize = '1g'
+    jvmArgs '-XX:+UseSerialGC', '-XX:-DisableExplicitGC'
+    systemProperty 'perf.checker.memory', 'true'
+    systemProperty 'perf.checker.memory.n', providers.gradleProperty('checkerMemoryN').getOrElse('200')
+    // Odd, for the reason the sibling lanes state: the estimator reports a median.
+    systemProperty 'perf.checker.memory.samples',
+        providers.gradleProperty('checkerMemorySamples').getOrElse('5')
+    filter {
+        includeTestsMatching 'io.github.mbackschat.a12.dm.adapter.perf.CheckerRetainedMemoryPerfTest'
+    }
+    outputs.upToDateWhen { false }
+    outputs.cacheIf { false }
+}
+
 // H5's COMBINED boundary — what holding BOTH prepared representations costs against holding each. Records and
 // prints; asserts no budget, because the owner's ratification left this boundary UNSET until F's package
 // existed (docs/PORTABLE-CONSISTENCY-IMPLEMENTATION-PLAN.md#h5-ratification), and a bar taken from this lane's

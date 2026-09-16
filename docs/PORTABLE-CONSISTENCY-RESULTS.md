@@ -8,6 +8,27 @@ Dated measurements of the Kernel-free checker, newest first. **Every LATENCY her
 
 Results never land in a spec, and a measurement's home is not its explanation: the mechanism paragraphs below are marked as hypotheses where they are hypotheses.
 
+## 2026-09-17 — the resources boundary's RETAINED-MEMORY half, which nobody had measured <a id="memory-2026-09-17"></a>
+
+**Lane:** `./build.sh :adapter:checkerMemoryPerfTest` (`adapter.perf.CheckerRetainedMemoryPerfTest`), one JVM at a fixed 1 GiB heap under `-XX:+UseSerialGC`, the same synthesized flat workload the growth lanes use, `JdkIdentity.requireSupported` gating it. **Nothing is asserted**; the budget is UNSET and a collector coming first is [H5's ordering rule](PORTABLE-CONSISTENCY-IMPLEMENTATION-PLAN.md#h5-ordering).
+
+**Why it exists: the boundary was marked done on one of its four required observations.** [§8](PORTABLE-CONSISTENCY-PROPOSAL.md) asks this boundary for "retained memory, release behavior, supported peak observations and installed/downloaded production closure size", and the 2026-09-16 landing measured the last one. No checker memory task existed in any module, while [the stage's own collector table](PORTABLE-CONSISTENCY-IMPLEMENTATION-PLAN.md#stage-8) named the footprint family as this observation's owner — so the gap was named in its own record and still read as closed, because boundaries were counted rather than observations.
+
+**The quantities are the interpreter footprint estate's, deliberately.** It reports post-GC used heap with the owner held LIVE, and thread-allocated bytes during the operation, behind a GC-viability gate and an owner-release check. Re-using that pair makes the two products comparable; a peak sampler invented here would be a third quantity with nothing to compare against, and §8 qualifies its peak clause with "where the host supports measurement".
+
+| quantity | 200 programs | 800 programs | **growth over the 4x scale-up** |
+|---|---|---|---|
+| a held `ConsistencySnapshot`, retained | 1 754 984 bytes | 6 971 432 bytes | **3.972x** |
+| one `check`, thread-allocated | 68 406 144 bytes | 272 550 240 bytes | **3.984x** |
+
+**Memory is LINEAR in model size, and that is the finding.** 3.97x and 3.98x over a 4x scale-up are linear to within measurement error, on a model text that itself grows 3.99x (343 458 -> 1 371 258 chars). Reproduced over three independent runs: retained growth 3.972 / 3.974 / 3.972, allocated growth 3.984 / 3.993 / 3.993, and the 200-program retained figure came back byte-identical at 1 754 984 in all three — a determinism the timing lanes cannot offer. **The contrast with time is the useful part:** the same workload grows 5.33x in prepared time and 2.75x in cold time, so the super-linearity this checker has ever shown was a time phenomenon and never a space one. The cubic term H5-b found in 2026-09-15 had no memory counterpart.
+
+**A held analysis is cheap and running one is not.** 1.75 MB retained against 68 MB allocated per check: holding the analysis costs about 5.1x the model text it came from, while each check churns roughly 40x what holding it costs. That is the quantitative case for L-a's snapshot, arrived at from the allocation side rather than from the clock, and it says the pressure a consumer should care about is per-check garbage rather than residency.
+
+**The release gate is live, and it was controlled rather than assumed.** With the snapshot deliberately retained in a companion list, the lane refuses with "the snapshot was still reachable after being dropped" instead of reporting a number — which is §8's "release behavior" observation discharged by a gate rather than by a claim. Without that control the gate could pass while verifying nothing, and the same run would silently measure each sample against a heap still holding the previous one's analysis.
+
+**The disclosed shortfall.** IF137's ratified footprint sampling default is >=5 forks; this lane takes 5 bracketed samples inside ONE JVM, as the four sibling checker lanes did before their dispositions. Under IF137 that default binds a number only at its promotion, so the shortfall is stated here rather than hidden — and a promotion of this number needs the fork arm, which is why none is claimed.
+
 ## 2026-09-16 — H5's COMBINED boundary: holding both prepared representations costs the sum, measured <a id="combined-2026-09-16"></a>
 
 **Lane:** `./build.sh :adapter:checkerCombinedPerfTest` (`adapter.perf.CheckerCombinedApplicationPerfTest`), one JVM, the same synthesized flat workload the growth lanes use, `JdkIdentity.requireSupported` gating it. This is the fifth and last of H5's boundaries, and it existed as an unmeasurable row until F's package shipped. **Nothing here is asserted, and after 2026-09-17 nothing ever will be**: the boundary's bar is UNSET by [decision](PORTABLE-CONSISTENCY-IMPLEMENTATION-PLAN.md#combined-ratification) rather than by sequence, because the quantity is certified to be ~1.0 by design and the controlled arm straddles it.
