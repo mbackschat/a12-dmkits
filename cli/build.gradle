@@ -410,6 +410,13 @@ tasks.named('test', Test) {
         executable = "${graalHome}/bin/java"
         jvmArgs "-agentlib:native-image-agent=config-merge-dir=${cfgDir},caller-filter-file=${callerFilter},access-filter-file=${nativeAgentAccessFilter.get().asFile}"
         maxParallelForks = 1
+        // A capture-ONLY heap cap. A forked test JVM defaults to a quarter of physical RAM — 4 GB on a 16 GB
+        // machine — and this one lives for the whole traced suite, so a lazy GC lets its RSS grow for half an
+        // hour beside a Gradle daemon, a Kotlin daemon and the agent's own native tables. A harness memory
+        // watchdog killed a capture at nine minutes on 2026-09-16 for exactly that. The cap costs some GC
+        // time and buys a footprint that fits; it applies to no other run, because only a capture is both
+        // single-forked and long-lived.
+        maxHeapSize = '1g'
         // Picocli's AUTO ANSI path reflectively calls System.console(). Ambient colour hints can bypass that
         // lookup: a capture run with NO_COLOR=1 lost the committed reflection member even though the runtime
         // path still exists. Normalize on the child process, not capture-native-config.sh's shell, because an
