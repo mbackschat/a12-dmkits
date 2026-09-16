@@ -26,10 +26,9 @@ import kotlin.test.assertTrue
  *    `ConsistencyOracle`, `checkConsistency` or `RuleValidator`.
  *
  *    *(Corrected 2026-09-16: this read "and the native binary carries no kernel to pre-flight with", which is
- *    false and also narrowed a bypass that holds on both artifacts. The native image's committed reachability
- *    metadata registers ~400 `com.mgmtp.a12.kernel` classes — a closed-world image registers only classes it
- *    contains — and `Cli.JVM_ONLY_VERBS` is empty, so it serves `model check --engine kernel` itself. What
- *    makes the eval path MVK-free is that it is the interpreter's path, not a missing kernel.)*
+ *    false — the native image does carry it (`docs/NATIVE-IMAGE-GRAALVM.md` §3.8) — and it also narrowed a
+ *    bypass that holds on both artifacts. What makes the eval path MVK-free is that it is the interpreter's
+ *    path, not a missing kernel.)*
  *
  * — and the same finding that keeps the `bindDepth` normalizer as "defensive hardening for hand-built AST" cannot
  * consistently use the mirror argument to skip work in the same defect class.

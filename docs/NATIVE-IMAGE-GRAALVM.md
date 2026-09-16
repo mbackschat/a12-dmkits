@@ -130,6 +130,23 @@ The bugs raise a fair concern: *is fixing them just whack-a-mole?* Native-image'
 
 **Not a correctness divergence — a message-fidelity one.** Both artifacts agree on the verdict (`valid:false`, `KERNEL_CONFIRMED`), so nothing is mis-accepted; what the native user loses is any statement about their model, replaced by a build flag they cannot act on. Two candidate remedies, neither yet chosen: build with `-H:-ReduceImplicitExceptionStackTraceInformation` (costs image size and is a toolchain-wide change), or stop interpolating a raw exception message into that summary and render a stable sentence instead, which fixes both artifacts and is the smaller change. **Deliberately recorded rather than fixed in the same pass**: the choice touches the shipped diagnostic contract and belongs with a release decision, not with the plan edit that exposed it.
 
+### 3.8 The native image CONTAINS kernel bytecode — the evidence, in one place <a id="native-carries-kernel"></a>
+
+**Why this subsection exists.** "The native binary carries no kernel" was asserted in **four** places and is false; it cost a wrong licensing claim in two auto-loaded instruction files, where an agent reads it before it reads [LICENSING](LICENSING.md). The fact now lives here once, and the licensing consequence lives once in [LICENSING](LICENSING.md)'s bundled-distributables clause. Both are cited, never restated.
+
+**Four links from source, none of them requiring the binary to be run:**
+
+| # | link | where |
+|---|---|---|
+| 1 | `:adapter` declares eight `com.mgmtp.a12.kernel:*` coordinates as `implementation` | [adapter/build.gradle](../adapter/build.gradle) |
+| 2 | `:cli` — the native image's own module — declares `implementation project(':adapter')` | [cli/build.gradle](../cli/build.gradle) |
+| 3 | the committed reflection metadata registers **404** (`rulekit-agent`) and **399** (`rulekit-manual`) distinct `com.mgmtp.a12.kernel` classes, including `core.codegen.internal.generator.backingbeans.*` — the validation-codegen beans the MVK tier interpolates. **A closed-world image can only register classes it contains**, so this is the decisive link | `cli/src/main/resources/META-INF/native-image/rulekit-{agent,manual}/reachability-metadata.json` |
+| 4 | `Cli.JVM_ONLY_VERBS` is `List.of()`, so **no** verb is stripped from the native command tree — `model check` / `rule check` are served natively | [Cli.java](../cli/src/main/java/io/github/mbackschat/a12/dm/cli/Cli.java) |
+
+**Runtime corroboration, not the basis (2026-09-16):** native `model check --engine kernel` answers `engineExecuted: A12_KERNEL`, `engineVersion: 30.8.1`, `verification: KERNEL_CONFIRMED`, with a structured `MVK_INVALID_TIME_ZONE`; `--engine portable` on the same binary answers `PORTABLE_CHECKER` / `0.13.0`. The source chain is what settles it, because a single run cannot show that the *next* build still bundles the kernel.
+
+**What is NOT implied.** The **evaluation** path carries no kernel on either artifact, and that is a hard requirement rather than an accident — `:interpreter` declares no kernel coordinate and `verifyInterpreterPurity` fails the build on a `com.mgmtp.*` import in any of its source sets ([interpreter/CLAUDE.md](../interpreter/CLAUDE.md) rule (B)). Native `model eval` reports `"engine": "DM_INTERPRETER"`, and no `--engine`/`--kernel` option exists on that verb. The artifacts that genuinely carry no kernel at all are the published standalone `:interpreter` packages.
+
 ## 4. The Groovy ceiling — lifted for the verbs; the `--kernel` eval path that hit it is retired
 
 **History (the ceiling that was):** `model eval` / `rule eval` / `model compute` used to execute the **kernel's** runtime validation against a document instance, which **generates and loads Groovy classes at runtime** (`GroovyClassLoader.parseClass`; the agent captured `Com_mgmtp_a12_kernel_generated_*` classes) — [`CLI-SPEC.md`](CLI-SPEC.md) [§11](CLI-SPEC.md#packaging)'s hard ceiling. Groovy is genuinely required by that *kernel* path (JVM and native), and the §3.1 exclusion keeps it off the native classpath, so the **kernel** engine can't run native.
