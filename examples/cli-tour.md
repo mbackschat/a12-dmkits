@@ -241,6 +241,9 @@ dmtool -m examples/models/order-ruled.dm.json rule check --field /Order/Quantity
   "ok" : true,
   "valid" : true,
   "verification" : "KERNEL_CONFIRMED",
+  "engineRequested" : "A12_KERNEL",
+  "engineExecuted" : "A12_KERNEL",
+  "engineVersion" : "30.8.1",
   "summary" : "candidate is kernel-valid",
   "diagnostics" : [ {
     "severity" : "WARNING",

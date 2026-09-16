@@ -205,6 +205,10 @@ class CommandContractsTest {
                 // The default invocation is the control that matters here: an ABSENT `--engine` is a request for
                 // the kernel, so the kernel arm must match an argument list that names no engine at all.
                 Map.entry("model check#kernel", List.of("model", "check")),
+                Map.entry("rule check#kernel", List.of("rule", "check", "--field", "/R/F",
+                        "--condition", "FieldFilled(F)", "--code", "C")),
+                Map.entry("rule check#portable", List.of("rule", "check", "--field", "/R/F",
+                        "--condition", "FieldFilled(F)", "--code", "C", "--engine", "portable")),
                 Map.entry("model check#portable", List.of("model", "check", "--engine", "portable")),
                 Map.entry("model expand#stdout", List.of("model", "expand")),
                 Map.entry("model expand#file", List.of("model", "expand", "-o", "r.json")),

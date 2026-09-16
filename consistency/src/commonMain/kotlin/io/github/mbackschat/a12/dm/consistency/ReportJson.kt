@@ -30,7 +30,13 @@ import kotlinx.serialization.json.put
  * The rendering is stable across platforms because it builds the tree explicitly; nothing here depends on
  * declaration order, reflection, or a serializer's defaults.
  */
-fun ConsistencyReport.toJson(): String = buildJsonObject {
+fun ConsistencyReport.toJson(): String = asJson().toString()
+
+/**
+ * The same tree, unrendered, so a report can be NESTED inside another document without re-implementing its
+ * shape. [EditReport.toJson] is the one caller; rendering stays in exactly one place either way.
+ */
+private fun ConsistencyReport.asJson(): JsonObject = buildJsonObject {
     put("modelId", modelId)
     put("status", status.wireName())
     // Published beside the status because it is the half a consumer must not infer: INCONCLUSIVE with
@@ -41,6 +47,29 @@ fun ConsistencyReport.toJson(): String = buildJsonObject {
     put("diagnostics", JsonArray(diagnostics.map { it.asJson() }))
     put("checksCompleted", buildJsonArray { checksCompleted.forEach { add(JsonPrimitive(it.name)) } })
     put("gaps", JsonArray(gaps.map { it.asJson() }))
+}
+
+/**
+ * An edit's attribution as JSON — the wire shape a candidate-checking consumer reads.
+ *
+ * **`status` describes the EDIT, not the edited model**, which is the one thing a reader must not conflate:
+ * an edit can be INCONCLUSIVE while `edited.status` is INVALID, because the model was already broken and
+ * this verdict is about what the edit added. Both nested reports are published in full for that reason —
+ * `baseline` is the disclosure that makes an INCONCLUSIVE edit on a broken model readable, and summarizing
+ * it would invent a second shape for facts the report already states.
+ *
+ * `introduced` and `resolved` are always present, never omitted when empty, on the same rule the whole-model
+ * shape follows: absent and empty would otherwise mean the same thing for a consumer deciding whether an
+ * edit is safe to save.
+ */
+fun EditReport.toJson(): String = buildJsonObject {
+    put("status", status.wireName())
+    put("complete", status.complete)
+    put("introduced", JsonArray(introduced.map { it.asJson() }))
+    put("resolved", JsonArray(resolved.map { it.asJson() }))
+    put("gaps", JsonArray(gaps.map { it.asJson() }))
+    put("baseline", baseline.asJson())
+    put("edited", edited.asJson())
 }.toString()
 
 private fun Finding.asJson(): JsonObject = buildJsonObject {

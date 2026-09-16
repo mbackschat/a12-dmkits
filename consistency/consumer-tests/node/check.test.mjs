@@ -12,12 +12,25 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { checkModelJson } from 'a12-consistency';
+import { checkEditJson, checkModelJson } from 'a12-consistency';
 
 const soundModel = readFileSync(new URL('./models/storefront.dm.json', import.meta.url), 'utf8');
 
 /** The same model with the rule's condition naming a field the model does not declare. */
 const brokenModel = soundModel.replace('FieldNotFilled(CustomerEmail)', 'FieldNotFilled(NoSuchField)');
+
+/**
+ * A genuine, unrelated edit: one more declared field. It cannot introduce a finding — nothing references it —
+ * so it isolates the question these tests ask, which is whether the model's OWN state leaks into the edit's
+ * verdict. An edit that changed nothing would assert nothing.
+ */
+function addUnrelatedField(modelJson) {
+  const anchor = '"elements": [';
+  assert.ok(modelJson.includes(anchor), 'the fixture must still declare its elements in the expected shape');
+  const field = '{ "type": "Field", "id": "/Storefront/InternalNote", "name": "InternalNote",'
+    + ' "Field": { "fieldType": { "type": "StringType" } } },';
+  return modelJson.replace(anchor, anchor + field);
+}
 
 test('a model the checker finds nothing wrong with is INCONCLUSIVE, never valid', () => {
   const report = JSON.parse(checkModelJson(soundModel));
@@ -59,4 +72,36 @@ test('an unreadable source returns a report rather than throwing', () => {
   // A diagnostic is the checker saying it could not read something; a finding is A12's verdict on a
   // declaration. A consumer that merged the two arrays would report a model defect that was never measured.
   assert.equal(report.diagnostics[0].at, null);
+});
+
+// H's surface: the question an editor asks before saving. It is a SEPARATE export rather than something a
+// consumer could compose from two `checkModelJson` calls, because the composition is exactly what goes
+// wrong — subtracting the reports by hand is what this does, and the trap is that a consumer who forgets to
+// would blame the author's edit for a defect the model already carried.
+test('an edit is judged by what IT introduced, not by the state of the model it lands in', () => {
+  // The baseline is already broken and the edit is unrelated to that break, so a consumer reading the edited
+  // model's own report would call this edit INVALID. The attribution must not.
+  const report = JSON.parse(checkEditJson(brokenModel, addUnrelatedField(brokenModel)));
+
+  assert.equal(report.status, 'INCONCLUSIVE', 'the edit added nothing, so its verdict is not a rejection');
+  assert.deepEqual(report.introduced, []);
+  assert.deepEqual(report.resolved, []);
+  // The model's own defect is disclosed rather than discarded: the author needs to know the model is broken
+  // even though their edit is not what broke it.
+  assert.equal(report.baseline.status, 'INVALID');
+  assert.ok(report.baseline.findings.length > 0, "the baseline's own findings stay readable");
+});
+
+test('an edit that introduces a defect is attributed to the edit', () => {
+  const report = JSON.parse(checkEditJson(soundModel, brokenModel));
+
+  assert.equal(report.status, 'INVALID');
+  assert.equal(report.introduced.length, 1, `introduced: ${JSON.stringify(report.introduced)}`);
+  assert.equal(report.introduced[0].code, 'MVK_INVALID_ENTITY');
+  assert.deepEqual(report.resolved, []);
+  // And the reverse edit reports the repair, which is the half an editor shows as a fix landing.
+  const repair = JSON.parse(checkEditJson(brokenModel, soundModel));
+  assert.equal(repair.status, 'INCONCLUSIVE');
+  assert.equal(repair.resolved.length, 1);
+  assert.deepEqual(repair.introduced, []);
 });

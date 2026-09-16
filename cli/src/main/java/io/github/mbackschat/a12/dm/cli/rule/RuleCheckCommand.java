@@ -2,10 +2,13 @@ package io.github.mbackschat.a12.dm.cli.rule;
 
 import io.github.mbackschat.a12.dm.core.EntityPath;
 import io.github.mbackschat.a12.dm.cli.BaseCommand;
+import io.github.mbackschat.a12.dm.cli.CheckEngine;
 import io.github.mbackschat.a12.dm.cli.ConsistencyEvidence;
+import io.github.mbackschat.a12.dm.cli.EngineOption;
 import io.github.mbackschat.a12.dm.cli.LintBackstop;
 import io.github.mbackschat.a12.dm.cli.ModelPaths;
 import io.github.mbackschat.a12.dm.cli.ParamKind;
+import io.github.mbackschat.a12.dm.cli.PortableCheck;
 import io.github.mbackschat.a12.dm.cli.RejectionBasis;
 import io.github.mbackschat.a12.dm.cli.ResultEnvelope;
 import io.github.mbackschat.a12.dm.cli.WorkspaceOption;
@@ -21,6 +24,9 @@ import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import io.github.mbackschat.a12.dm.core.EntityPaths;
 import io.github.mbackschat.a12.dm.core.ModelResolver;
+import io.github.mbackschat.a12.dm.consistency.ConsistencyStatus;
+import io.github.mbackschat.a12.dm.consistency.EditReport;
+import io.github.mbackschat.a12.dm.consistency.ReportJsonKt;
 
 import io.github.mbackschat.a12.dm.adapter.KernelAdapter;
 import io.github.mbackschat.a12.dm.rulekit.context.ModelContext;
@@ -86,6 +92,9 @@ final class RuleCheckCommand extends BaseCommand {
     @Mixin
     WorkspaceOption workspace = new WorkspaceOption();
 
+    @Mixin
+    EngineOption engine = new EngineOption();
+
     private static final com.fasterxml.jackson.databind.ObjectMapper MAPPER =
             new com.fasterxml.jackson.databind.ObjectMapper();
 
@@ -135,6 +144,17 @@ final class RuleCheckCommand extends BaseCommand {
             // defer to the kernel validation below
         }
 
+        CheckEngine requested = engine.selected();
+        return switch (requested) {
+            case A12_KERNEL -> checkWithKernel(json, effectiveGroup, errorEntityRelPath, resolver, requested);
+            case PORTABLE_CHECKER ->
+                    checkWithPortableChecker(model, json, effectiveGroup, errorEntityRelPath, requested);
+        };
+    }
+
+    /** The A12 kernel arm — this verb's original and default behaviour, unchanged. */
+    private Integer checkWithKernel(String json, String effectiveGroup, String errorEntityRelPath,
+            ModelResolver resolver, CheckEngine requested) {
         List<Diagnostic> findings = new ArrayList<>();
         // The validator run is this verb's gate receipt. It stays empty when the validator THREW, because then no
         // kernel verdict was ever reached — the previous shape derived the marker from ValidationResult.of(findings),
@@ -165,6 +185,9 @@ final class RuleCheckCommand extends BaseCommand {
                 ? errorFieldSuggestions(json, effectiveGroup, errorEntityRelPath, resolver)
                 : null;
 
+        if (evidence.gateRan()) {
+            evidence = evidence.requestedBy(requested);
+        }
         ValidationResult merged = ValidationResult.of(findings);
         // With a receipt this is a real verdict about the candidate. Without one the validator never returned, so
         // the only honest report is a rejection the CLI itself made — same exit 1, no invented verdict. `data`
@@ -178,6 +201,49 @@ final class RuleCheckCommand extends BaseCommand {
                         RejectionBasis.preflight());
         out().print(env.toJsonString());
         return env.exitCode();
+    }
+
+    /**
+     * The kernel-free portable arm — the candidate is spliced in and the checker's answer is ATTRIBUTED.
+     *
+     * <p><b>Why an attribution rather than the spliced model's report.</b> The portable checker reports over a
+     * whole model, so publishing the spliced report as the candidate's verdict would reject a perfectly good
+     * candidate whenever the model already carried an ERROR of its own — a verdict about someone else's
+     * declaration, delivered as a verdict about this candidate. {@code checkEdit} separates the two, and the
+     * baseline's own findings ride the payload as a disclosure so an author checking against an
+     * already-broken model still learns that.
+     *
+     * <p>The splice reuses {@link RuleValidator#inject} — the same step the kernel arm runs before validating,
+     * so both engines judge the identical bytes and a disagreement between them is about the engines rather
+     * than about two different models.
+     */
+    private Integer checkWithPortableChecker(String model, String json, String effectiveGroup,
+            String errorEntityRelPath, CheckEngine requested) {
+        DraftRule draft = candidate(effectiveGroup, errorEntityRelPath);
+        List<String> undeclared = new RuleValidator().undeclaredMessageLocales(json, draft);
+        if (!undeclared.isEmpty()) {
+            return refuseUndeclaredLocales(json, undeclared);
+        }
+
+        PortableCheck check = PortableCheck.ofEdit(json, new RuleValidator().inject(json, draft), model);
+        EditReport edit = check.edit().orElseThrow(() -> new IllegalStateException(
+                "the edit arm must carry an attribution; PortableCheck.ofEdit is the only producer"));
+        ConsistencyEvidence evidence = ConsistencyEvidence.of(check).requestedBy(requested);
+        ObjectNode data = (ObjectNode) readGeneratedJson(ReportJsonKt.toJson(edit));
+
+        // The candidate's verdict is the attribution's, never the edited model's. INVALID is a real rejection
+        // of THIS candidate; anything else is "nothing established", which is exit 3 rather than a green 0 —
+        // the checker cannot report a candidate acceptable at all.
+        if (edit.getStatus() instanceof ConsistencyStatus.Invalid) {
+            return print(ResultEnvelope.consistencyVerdict(resultIdentity(),
+                    "the portable checker rejects the candidate — " + edit.getIntroduced().size()
+                            + " finding(s) it introduced",
+                    false, List.of(), data, evidence));
+        }
+        return print(ResultEnvelope.consistencyInconclusive(resultIdentity(),
+                "the portable checker established no verdict on the candidate; this is NOT a statement that "
+                        + "the candidate is valid",
+                List.of(), data, evidence));
     }
 
     /** This invocation's candidate rule, messages included — built once so both routes check the same thing. */

@@ -142,6 +142,7 @@ final class CommandContracts {
         MODEL_REPORT("model report"),
         PATTERNS("patterns"),
         PROFILE_EXTRACT("profile extract"),
+        RULE_CHECK("rule check"),
         PROFILE_SYNTHESIZE("profile synthesize"),
         SCHEMA("schema"),
         WORKSPACE_GRAPH("workspace graph"),
@@ -700,6 +701,14 @@ final class CommandContracts {
             // converted `CheckEngine` and stringifies to `name()`. The wire spelling matched nothing at all —
             // including the default invocation, which is what the totality check caught. Using `name()` also
             // makes the published selector read in the same vocabulary as the envelope's own receipt.
+            // `rule check`'s two arms answer contracts as different as `model check`'s, and one more besides:
+            // the Kernel arm's receipt is OPTIONAL because its validator can refuse before consulting the
+            // oracle, while the portable arm always runs its gate and therefore always publishes one.
+            case RULE_CHECK -> List.of(
+                    read("kernel", semantic("--engine", CheckEngine.A12_KERNEL.name()),
+                            envelope(), Consistency.OPTIONAL),
+                    read("portable", semantic("--engine", CheckEngine.PORTABLE_CHECKER.name()),
+                            envelope(), Consistency.REQUIRED));
             case MODEL_CHECK -> List.of(
                     read("kernel", semantic("--engine", CheckEngine.A12_KERNEL.name()),
                             envelope(), Consistency.REQUIRED),

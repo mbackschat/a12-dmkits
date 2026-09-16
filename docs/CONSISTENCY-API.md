@@ -86,6 +86,25 @@ A diagnostic is the checker speaking about itself; a finding is A12's verdict ab
 
 **A family that ran can still have declined a DECLARATION, and that is disclosed too.** `checksCompleted` names a family once for the whole report, so a family that read most declarations and skipped one would otherwise publish "examined, nothing found" about the one it skipped. Every such skip carries its own gap, `at` the declaration it concerns: a range whose (format, separator) pair the sweep never put to the kernel, an enumeration whose `values` or `categories` is not the shape the pairing law was measured on, an enum value carrying a supplementary-plane character. Two are model-level instead, because they silence a family everywhere at once: a character restriction spelled with a combined grapheme, and the field types declared under `content.typeDefinitions`, which are read for their ids alone. All of it is under-reporting — the safe direction — but undisclosed under-reporting is indistinguishable from a clean result.
 
+## Checking an EDIT — `checkEdit`, for a candidate you have not saved
+
+`checkEdit(baseline, edited)` answers a different question from `check`: not *is this model acceptable* but **what did this edit do**. It is what an editor wants before saving, and what `dmtool rule check --engine portable` uses for a candidate rule.
+
+It exists because this checker reports over a whole model, so the edited model's report cannot serve as the edit's verdict: a consumer shown it would read `INVALID` whenever the **baseline** already carried an ERROR of its own — a verdict about another declaration, delivered as a verdict about the edit. That is an over-rejection, the one direction this checker must never take.
+
+```kotlin
+val report = checkEdit(ModelSource(savedJson), ModelSource(editedJson))
+report.status        // the EDIT's verdict: INVALID or INCONCLUSIVE, never VALID
+report.introduced    // the findings the edit ADDED — these, and only these, decide `status`
+report.resolved      // the findings the edit removed, so a repair is visible as one
+report.baseline      // the full report for the model as it stood: a DISCLOSURE, never part of the verdict
+report.edited        // the full report for the model as edited
+```
+
+`report.toJson()` gives the wire shape, with `introduced` and `resolved` always present rather than omitted when empty — absent and empty would otherwise mean the same thing to a consumer deciding whether an edit is safe to save.
+
+Two properties are worth knowing before you rely on it. Findings are compared by **content** (`Finding` is a data class), which works because the baseline's own findings were measured to survive an edit unchanged; attribution by each finding's `at` path was rejected as assuming more, since it would additionally need every edit-caused finding to land under the edited declaration and nothing has measured that. And it **refuses rather than guesses when the baseline could not be analysed at all** — with no baseline there is no "already carried", so every finding would read as introduced — reporting that refusal as a gap while still handing back the edited model's own report.
+
 ## Calling it from Node
 
 The worked example is [`consistency/consumer-tests/node`](../consistency/consumer-tests/node), which is executable rather than illustrative: `./build.sh :consistency:nodeConsumerTest` packs the library into a real npm tarball, clean-installs it into a staged copy of that project, and runs it. It needs `node` and `npm` and reaches no network — the package declares no runtime dependency.

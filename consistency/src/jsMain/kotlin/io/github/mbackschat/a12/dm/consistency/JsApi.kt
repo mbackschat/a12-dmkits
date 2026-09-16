@@ -6,7 +6,7 @@ import kotlin.js.ExperimentalJsExport
 import kotlin.js.JsExport
 
 /**
- * The checker's whole JavaScript surface: one function, strings in and out.
+ * The checker's whole JavaScript surface: two functions, strings in and out.
  *
  * **It is deliberately this small.** The checker is not feature-complete and its Kotlin types are still
  * moving, so exporting them would publish an ABI that has to change — and a JS consumer that destructures
@@ -25,3 +25,18 @@ import kotlin.js.JsExport
 @JsExport
 fun checkModelJson(modelJson: String, diagnosticLabel: String? = null): String =
     check(ModelSource(modelJson, diagnosticLabel)).toJson()
+
+/**
+ * Check an EDIT and attribute the difference against its baseline — strings in, the edit's wire shape out.
+ *
+ * This is the surface an editor wants before saving: [checkModelJson] answers whether a model is acceptable,
+ * which is not the question "did MY change break something". Because the checker reports over a whole model,
+ * a consumer that called [checkModelJson] on the edited text alone would read INVALID whenever the baseline
+ * was already broken, and would blame the author's edit for someone else's declaration.
+ *
+ * The result's `status` is the EDIT's verdict and is decided by `introduced` alone; `baseline` rides along as
+ * a disclosure. See [checkEdit] for the attribution's own contract, including what it refuses to attribute.
+ */
+@JsExport
+fun checkEditJson(baselineJson: String, editedJson: String, diagnosticLabel: String? = null): String =
+    checkEdit(ModelSource(baselineJson, diagnosticLabel), ModelSource(editedJson, diagnosticLabel)).toJson()
