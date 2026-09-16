@@ -22,7 +22,14 @@ import kotlin.test.assertTrue
  * 1. `Expr` is a public sealed interface with public data classes, so a library consumer builds any tree it likes;
  * 2. this module's parser accepts a bare path as a function argument, so the refused spelling PARSES here;
  * 3. `dmtool rule eval --condition` evaluates an arbitrary non-stored condition with **no MVK pre-flight at all**,
- *    and the native binary carries no kernel to pre-flight with.
+ *    on EITHER artifact, because `RuleEvalCommand` reaches only `InterpreterEngine` and names no
+ *    `ConsistencyOracle`, `checkConsistency` or `RuleValidator`.
+ *
+ *    *(Corrected 2026-09-16: this read "and the native binary carries no kernel to pre-flight with", which is
+ *    false and also narrowed a bypass that holds on both artifacts. The native image's committed reachability
+ *    metadata registers ~400 `com.mgmtp.a12.kernel` classes — a closed-world image registers only classes it
+ *    contains — and `Cli.JVM_ONLY_VERBS` is empty, so it serves `model check --engine kernel` itself. What
+ *    makes the eval path MVK-free is that it is the interpreter's path, not a missing kernel.)*
  *
  * — and the same finding that keeps the `bindDepth` normalizer as "defensive hardening for hand-built AST" cannot
  * consistently use the mirror argument to skip work in the same defect class.
