@@ -12,13 +12,20 @@ import org.junit.jupiter.api.condition.EnabledIfSystemProperty
 /**
  * H5-e: the AFTER-EDIT boundary — what holding one analysis across many questions saves, measured.
  *
- * **It records and asserts nothing, and that is the whole posture.** H5 requires a budget to be ratified
- * before the implementation it gates is measured, and the after-edit boundary has no ratified bar: the
- * owner's 2026-09-16 ratification left it UNSET because nothing existed to measure
- * (`docs/PORTABLE-CONSISTENCY-IMPLEMENTATION-PLAN.md#h5-ratification`). L-a then shipped the operations, so
- * the collector can exist — and its output is informative until per-number ratified, which is the sequence
- * that record prescribes. Asserting a bar derived from this lane's own first figure is exactly what H5's
- * ordering rule forbids.
+ * **Exactly ONE of its three arms carries a bar, and the other two never will.** H5 requires a budget to be
+ * ratified before the implementation it gates is measured, and the owner's 2026-09-16 ratification left this
+ * boundary UNSET because nothing existed to measure
+ * (`docs/PORTABLE-CONSISTENCY-IMPLEMENTATION-PLAN.md#h5-ratification`). L-a then shipped the operations, the
+ * collector ran, and the **keystroke** ratio was ratified on 2026-09-17 against [KEYSTROKE_CEILING] — whose
+ * basis is a work count written before this lane existed, never a figure this lane produced, because asserting
+ * a bar derived from a collector's own output is what H5's ordering rule forbids.
+ *
+ * The **build-snapshot** and **saved-edit** arms stay informative permanently, and that is a result rather than
+ * a gap: both sit at ~1.0 BY CONSTRUCTION — building an analysis contains one check, and `withSource`
+ * re-prepares and re-checks because the source set changed — so a ceiling on either would have to come from
+ * this lane's own spread, and the saved-edit arm straddles 1.0 across four runs anyway (0.958-1.006x), so such
+ * a bar would refuse healthy runs. Their figures live in
+ * `docs/PORTABLE-CONSISTENCY-RESULTS.md#after-edit-2026-09-16`.
  *
  * **Why a RATIO against the stateless path rather than a latency.** `ConsistencySnapshot`'s claim is about
  * work avoided, not about wall time, and [io.github.mbackschat.a12.dm.consistency.Reuse] already counts the
@@ -73,11 +80,18 @@ class CheckerAfterEditPerfTest {
             "an updated snapshot disagrees with a fresh check of the updated set, so no ratio is meaningful"
         }
 
-        val keystroke = pairedRatio(
-            samples,
-            stateless = { millis { checkDraft(source, AT, MEMBER, DRAFTED_CONDITION).introduced.size } },
-            stateful = { millis { snapshot.draft(AT, MEMBER, DRAFTED_CONDITION).edit.introduced.size } },
-        )
+        // The one ARM of this lane that carries a bar, and it is asserted rather than printed. Measured first, as
+        // it always was, so the ratified figure is not the one that inherited two other arms' warm-up.
+        val keystroke = PerfHarness.assertReuseRatioBelowCeiling(
+            "a keystroke against the stateless draft at $programs programs",
+            ceiling = KEYSTROKE_CEILING,
+        ) {
+            pairedRatio(
+                samples,
+                stateless = { millis { checkDraft(source, AT, MEMBER, DRAFTED_CONDITION).introduced.size } },
+                stateful = { millis { snapshot.draft(AT, MEMBER, DRAFTED_CONDITION).edit.introduced.size } },
+            )
+        }
         val savedEdit = pairedRatio(
             samples,
             stateless = { millis { runChecker(edited).findings.size } },
@@ -104,7 +118,7 @@ class CheckerAfterEditPerfTest {
     }
 
     /** Medians of both arms and the median of the within-pair ratios, the two arms interleaved per pair. */
-    private fun pairedRatio(samples: Int, stateless: () -> Double, stateful: () -> Double): Paired {
+    private fun pairedRatio(samples: Int, stateless: () -> Double, stateful: () -> Double): Reuse {
         val statelessMs = DoubleArray(samples)
         val statefulMs = DoubleArray(samples)
         val ratios = DoubleArray(samples)
@@ -113,10 +127,8 @@ class CheckerAfterEditPerfTest {
             statefulMs[pair] = stateful()
             ratios[pair] = statefulMs[pair] / statelessMs[pair]
         }
-        return Paired(median(statelessMs), median(statefulMs), median(ratios))
+        return Reuse(median(ratios), median(statelessMs), median(statefulMs))
     }
-
-    private data class Paired(val statelessMs: Double, val statefulMs: Double, val ratio: Double)
 
     /**
      * One call, clocked.
@@ -141,6 +153,24 @@ class CheckerAfterEditPerfTest {
         requireNotNull(System.getProperty(name)) { "-D$name=<value> is required" }
 
     private companion object {
+        /**
+         * The keystroke arm's ratified ceiling, and its basis is a WORK COUNT written before this lane existed.
+         *
+         * `checkDraft` performs one admission, one preparation and TWO checks per call; a snapshot makes the same
+         * keystroke cost one check and nothing else. That count is L-a's stated reason to exist
+         * (`docs/PORTABLE-CONSISTENCY-IMPLEMENTATION-PLAN.md#l-partition`), so a ratio at or above `1.0` means the
+         * held analysis saves nothing and an editor has no reason to hold one — the feature, not a measurement,
+         * is what fixes the number.
+         *
+         * **Deliberately NOT tightened toward the measured 0.474-0.502x** (eight independent estimates spanning
+         * 5.9 %, 2026-09-17, `docs/PORTABLE-CONSISTENCY-RESULTS.md#after-edit-2026-09-16`). The work count
+         * predicts ~0.5, so a bar
+         * near it would be fitted to the implementation it gates, which is the failure IF137's promotion gate
+         * exists to prevent; this is a catastrophe floor in the ratified house style, with ~2x of headroom, the
+         * same posture as `PerfBounds.SUB_QUADRATIC_MAX` at 9.0 against a measured 5.33x.
+         */
+        const val KEYSTROKE_CEILING = 1.0
+
         /** The first synthesized rule, whose condition is the text an author would be typing into. */
         const val AT = "/Calibration/RequireInput00000"
         const val MEMBER = "errorCondition"

@@ -479,6 +479,13 @@ data class Growth(
     val largeN: Int = 0,
 )
 
+/** One paired REUSE comparison: the stateless arm, the stateful arm that answers identically, and their ratio.
+ *
+ *  The ratio is the median of the WITHIN-PAIR ratios rather than the quotient of the two medians beside it — a
+ *  quotient of medians is not the median of quotients — so the two durations are representative and the ratio is
+ *  the measurement. Both are carried because a breach reported as a bare ratio does not say which arm moved. */
+data class Reuse(val ratio: Double, val statelessMs: Double, val statefulMs: Double)
+
 /** A complete same-run N/4N comparison, paired independently for all three engines. */
 data class PairedPerfCurve(
     val small: PerfRow,
@@ -1081,6 +1088,55 @@ object PerfHarness {
         // was untouched. A cold review caught it. Switching a guard off is exactly what INTERPRETER-PERFORMANCE.md
         // warns about: "Collapsing those two into one rule switches guards off, and that is not hypothetical."
         throw AssertionError(breach)
+    }
+
+    /**
+     * **A REUSE ceiling: the stateful call must stay cheaper than the stateless one that answers identically.**
+     *
+     * The quantity is what holding an analysis is FOR, so the ceiling a caller passes comes from the feature's
+     * purpose and never from a figure this lane produced. IF137's promotion gate exists because "a budget fitted
+     * to an already-measured implementation gates nothing", and a reuse ratio is the easiest place in the estate
+     * to fit one — the measurement is sitting right beside the constant. The derivation therefore belongs with the
+     * number's ratification, not here; this seam only enforces it.
+     *
+     * **It gates everywhere, deliberately, and for [assertCrossEngineClassHolds]'s reason rather than the growth
+     * floor's.** Both arms run in ONE JVM, interleaved per pair on the same vCPUs in the same load slice, so
+     * contention moves both and largely cancels. That makes the ratio dimensionless: there is no machine on which
+     * holding an analysis stops being cheaper than not holding one, so a breach is a property of the code and
+     * routing it through [TimingEnforcement] would switch the bar off exactly where it still means something.
+     *
+     * A breach must survive the MEDIAN of [attempts] independent estimates — the acceptance rule
+     * [acceptOnMedianOfRetries] owns and IF281/IF282 ratified. The happy path costs one estimate.
+     */
+    fun assertReuseRatioBelowCeiling(
+        label: String,
+        ceiling: Double,
+        attempts: Int = GROWTH_RETRY_ATTEMPTS,
+        estimate: () -> Reuse,
+    ): Reuse {
+        // This builds a BAR, so it asks the lane gate — PerfLaneGate's own doc names the three seams that do and
+        // says to add a fourth here when one appears, because "it looks like the inner rule" is the specific
+        // reasoning that once left a seam ungated for two days.
+        PerfLaneGate.requireMeasuringLane()
+        val outcome = acceptOnMedianOfRetries(
+            attempts = attempts,
+            // Strict, and the strictness is the bar: a ratio of exactly 1.0 is a reuse that saves NOTHING, which
+            // is the case the ceiling exists to refuse (`ReuseCeilingRetryTest`).
+            breaches = { it.ratio >= ceiling },
+            rank = { it.ratio },
+            sample = estimate,
+        )
+        if (outcome.accepted.ratio < ceiling) return outcome.accepted
+        throw AssertionError(
+            "$label reuse ratio stayed at or above the ${ceiling}x ceiling across ${outcome.taken.size} " +
+                "independent re-measurements: " +
+                outcome.taken.joinToString(", ") {
+                    "${it.ratio} (stateless ${it.statelessMs}ms -> stateful ${it.statefulMs}ms)"
+                } +
+                ". Acceptance is their median, so one contended slice cannot fail it. What this says is that the " +
+                "held analysis stopped being cheaper than not holding one, which is the only thing holding it is " +
+                "for — so the reuse is either no longer happening or no longer worth its bookkeeping.",
+        )
     }
 
     /**

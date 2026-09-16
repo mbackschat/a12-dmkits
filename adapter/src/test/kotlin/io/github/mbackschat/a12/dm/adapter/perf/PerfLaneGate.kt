@@ -12,8 +12,9 @@ import org.junit.jupiter.api.condition.EnabledIfSystemProperty
  * convention (a `*PerfTest` name implies a lane tag, and a lane tag implies a measuring name), and a cold review
  * pointed out what that can never see: a clock-reading assertion written under a neutral name with no tag at all.
  *
- * This is the runtime half. The three seams that build a **bar** — [PerfHarness.assertSubQuadraticLane],
- * [PerfHarness.assertCrossEngineClassHolds] and [KernelAdvantage.assertBeatsKernelAndScales] — ask here first, so
+ * This is the runtime half. The four seams that build a **bar** — [PerfHarness.assertSubQuadraticLane],
+ * [PerfHarness.assertCrossEngineClassHolds], [PerfHarness.assertReuseRatioBelowCeiling] and
+ * [KernelAdvantage.assertBeatsKernelAndScales] — ask here first, so
  * a lane that asserts on a measurement must be in an opted-in tier whatever its class is called. The third was
  * added later and did **not** ask for two days: it is shaped like the ungated inner rule
  * [PerfHarness.assertGrowthBelowCatastropheFloor], and the shape is misleading — that rule is only reachable
@@ -64,6 +65,10 @@ internal object PerfLaneGate {
             "takes NO measurement: it drives assertCrossEngineClassHolds with scripted constants to check the " +
                 "decision rule, reads no clock, and so cannot be perturbed by load at all — a stronger reason " +
                 "than the entry above, whose exemption at least touches a clock",
+        "io.github.mbackschat.a12.dm.adapter.perf.ReuseCeilingRetryTest" to
+            "the same clockless reason as the entry above, for assertReuseRatioBelowCeiling. A decision-rule " +
+                "test must answer on every push — tagging it into the perf lane would run it only where a " +
+                "breach cannot be scripted, which is the one place it cannot do its job",
     )
 
     /** Infrastructure that measures by definition — the harness, its anchors, and the out-of-process workers. */
