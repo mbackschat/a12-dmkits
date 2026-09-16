@@ -1,5 +1,6 @@
 package io.github.mbackschat.a12.dm.consistency
 
+import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.longOrNull
 
@@ -32,11 +33,18 @@ import kotlinx.serialization.json.longOrNull
  */
 fun PreparedModel.groupRepetitionCountFindings(): List<Finding> =
     elements.filter { it.declaredKind == DeclaredKind.GROUP }.mapNotNull { group ->
-        val declared = (group.body?.get("repeatability") as? JsonPrimitive)?.longOrNull
-            ?: return@mapNotNull null
+        val member = group.body?.get("repeatability") ?: return@mapNotNull null
         val cap = if (group.isRootGroup()) ROOT_GROUP_CAP else NESTED_GROUP_CAP
+        // An explicit `null` is the DOMAIN's defect and not the absent key, and the two are one line apart
+        // here: absence means a group that simply does not repeat, while a declared null draws
+        // `MVK_MAX_VALUES_INVALID` with the same *greater than 0* wording `0` does (KF221). Reading the
+        // member through `longOrNull` alone collapses them, which left this silent on a value A12 refuses.
+        if (member is JsonNull) return@mapNotNull group.invalidCount("null")
+        val declared = (member as? JsonPrimitive)?.longOrNull ?: return@mapNotNull null
         when {
-            declared > READABLE_CEILING -> Finding(
+            // Both directions are the same refusal — the member does not fit A12's signed 32-bit slot — so
+            // they share one message rather than stating it twice.
+            declared > READABLE_CEILING || declared < READABLE_FLOOR -> Finding(
                 FindingCategory.A12_CONSTRAINT,
                 FindingSeverity.ERROR,
                 CK_MODEL_NOT_BUILDABLE,
@@ -46,24 +54,7 @@ fun PreparedModel.groupRepetitionCountFindings(): List<Finding> =
                 group.path,
             )
 
-            declared < READABLE_FLOOR -> Finding(
-                FindingCategory.A12_CONSTRAINT,
-                FindingSeverity.ERROR,
-                CK_MODEL_NOT_BUILDABLE,
-                "`${group.path}` declares a `repeatability` of $declared, which A12's reader cannot hold " +
-                    "in the signed 32-bit member it declares — the source is refused before any check runs, " +
-                    "so no verdict about this model exists",
-                group.path,
-            )
-
-            declared <= 0 -> Finding(
-                FindingCategory.A12_CONSTRAINT,
-                FindingSeverity.ERROR,
-                "MVK_MAX_VALUES_INVALID",
-                "`${group.path}` declares a `repeatability` of $declared and A12 requires at least 1, " +
-                    "since a group repeating a non-positive number of times has no index range to address",
-                group.path,
-            )
+            declared <= 0 -> group.invalidCount(declared.toString())
 
             declared > cap -> Finding(
                 FindingCategory.A12_CONSTRAINT,
@@ -77,6 +68,16 @@ fun PreparedModel.groupRepetitionCountFindings(): List<Finding> =
             else -> null
         }
     }
+
+/** The domain's own class, for a count A12 requires to be at least 1 — `0`, a negative, or a literal null. */
+private fun DeclaredElement.invalidCount(declared: String): Finding = Finding(
+    FindingCategory.A12_CONSTRAINT,
+    FindingSeverity.ERROR,
+    "MVK_MAX_VALUES_INVALID",
+    "`$path` declares a `repeatability` of $declared and A12 requires at least 1, since a group " +
+        "repeating a non-positive number of times has no index range to address",
+    path,
+)
 
 /** A root group's own cap, measured: 999999999 is admitted and one more is not. */
 private const val ROOT_GROUP_CAP = 999999999L
