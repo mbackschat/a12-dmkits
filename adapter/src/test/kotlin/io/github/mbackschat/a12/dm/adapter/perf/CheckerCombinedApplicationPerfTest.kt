@@ -13,7 +13,7 @@ import org.junit.jupiter.api.condition.EnabledIfSystemProperty
  * H5's COMBINED boundary — what an application pays for choosing consistency *and* evaluation.
  *
  * **The quantity is ADDITIVITY, not latency, and the proposal fixes it rather than this lane choosing it.**
- * [PORTABLE-CONSISTENCY-PROPOSAL](../../../../../../../../../docs/PORTABLE-CONSISTENCY-PROPOSAL.md) §4 says an
+ * `docs/PORTABLE-CONSISTENCY-PROPOSAL.md` §4 says an
  * application choosing both "may hold two prepared representations and pay for two parses. Measure that
  * combined cost separately; no zero-copy integration, shared-program adapter or elimination of all
  * cross-component duplicate parsing is promised." So the question a consumer actually has is not "how many
