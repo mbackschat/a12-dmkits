@@ -9,6 +9,10 @@
 // verifyPublishedClasspathsAreKernelFree over what its POM resolves.
 plugins {
     id 'java-library'
+    // Kotlin JVM — this module's own sources, per the project default for new code. Its TESTS stay Java on
+    // purpose: every consumer of this artifact is a Java dmkits caller, so a Java suite is what proves the
+    // surface they actually meet (a Kotlin one would exercise property syntax no Java consumer can use).
+    id 'org.jetbrains.kotlin.jvm'
     id 'maven-publish'
 }
 

@@ -1,8 +1,13 @@
 public final class io.github.mbackschat.a12.dm.gate.PortableConsistencyGate
-  public static io.github.mbackschat.a12.dm.gate.PortableGateRun check(io.github.mbackschat.a12.dm.consistency.ModelSource)
-  public static io.github.mbackschat.a12.dm.gate.PortableGateRun check(io.github.mbackschat.a12.dm.consistency.ModelSource, io.github.mbackschat.a12.dm.core.ModelResolver)
-  public static io.github.mbackschat.a12.dm.gate.PortableGateRun check(java.lang.String)
+  public static final io.github.mbackschat.a12.dm.gate.PortableConsistencyGate INSTANCE
+  public static final io.github.mbackschat.a12.dm.gate.PortableGateRun check(io.github.mbackschat.a12.dm.consistency.ModelSource)
+  public static final io.github.mbackschat.a12.dm.gate.PortableGateRun check(io.github.mbackschat.a12.dm.consistency.ModelSource, io.github.mbackschat.a12.dm.core.ModelResolver)
+  public static final io.github.mbackschat.a12.dm.gate.PortableGateRun check(java.lang.String)
 
 public final class io.github.mbackschat.a12.dm.gate.PortableGateRun
-  public io.github.mbackschat.a12.dm.consistency.ConsistencyReport report()
-  public io.github.mbackschat.a12.dm.rulekit.validate.ValidationResult validation()
+  public static final io.github.mbackschat.a12.dm.gate.PortableGateRun.Companion Companion
+  public final io.github.mbackschat.a12.dm.consistency.ConsistencyReport report()
+  public final io.github.mbackschat.a12.dm.rulekit.validate.ValidationResult validation()
+
+public static final class io.github.mbackschat.a12.dm.gate.PortableGateRun.Companion
+  public final io.github.mbackschat.a12.dm.gate.PortableGateRun of$dmkits_consistency_gate(io.github.mbackschat.a12.dm.consistency.ConsistencyReport)
