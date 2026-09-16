@@ -6,6 +6,24 @@ Dated measurements of the Kernel-free checker, newest first. **Every LATENCY her
 
 Results never land in a spec, and a measurement's home is not its explanation: the mechanism paragraphs below are marked as hypotheses where they are hypotheses.
 
+## 2026-09-16 — H5-e: the after-edit boundary, which finally has something to measure <a id="after-edit-2026-09-16"></a>
+
+**Lane:** `./build.sh :adapter:checkerAfterEditPerfTest` (`adapter.perf.CheckerAfterEditPerfTest`), one JVM, the same synthesized flat workload the growth lanes use. Three arms, each measured as **interleaved pairs** of the stateful call against the stateless one that answers identically, reporting the median of the within-pair ratios; `JdkIdentity.requireSupported` gates the lane. Two preflights run outside every clock and double as the warm-up: the model must draw no rejecting finding, and the snapshot's answer must equal the stateless one — the whole `EditReport` for a draft, the whole report for a saved edit. **Revision:** `cb3456995` plus this lane. **Nothing here is asserted.** This boundary's bar is UNSET, and a collector coming first with informative output is the sequence [H5's ordering rule](PORTABLE-CONSISTENCY-IMPLEMENTATION-PLAN.md#h5-ordering) prescribes.
+
+| arm | what each pair compares | 50 programs | 200 | 400 |
+|---|---|---|---|---|
+| build the analysis | `snapshotOf` against `check` | 0.986× | 0.995× | 0.968× |
+| **keystroke** | `snapshot.draft` against `checkDraft` | **0.478×** | **0.474×** | **0.492×** |
+| saved edit | `snapshot.withSource` against `check` | 1.000× | 1.006× | 1.064× |
+
+Medians at 200 programs, for shape and never as a bar: building 35.66 ms against a 35.98 ms check; a keystroke 54.01 ms against 111.35 ms; a saved edit 42.86 ms against 41.74 ms.
+
+**The keystroke halves, and it stays halved across an 8× span of model size.** 0.474–0.492 over 50→400 programs is the ratio [L-a's counter](PORTABLE-CONSISTENCY-IMPLEMENTATION-PLAN.md#l-partition) predicts from work alone — `checkDraft` runs two checks plus an admission and a preparation, `snapshot.draft` runs one check — so the measurement and the count agree. That agreement is a **consistency check and not evidence for the mechanism**: the count was the design, so a figure near 0.5 is what any implementation of that design gives, and it would take a rival explanation predicting something else to make this discriminating.
+
+**The saved edit is a wash, and that is the result rather than a disappointment.** `withSource` re-prepares and re-checks by construction — the `Reuse` doc says so, because the source set changed and the old fact base describes a model that is no longer the one being asked about — so its only reuse is the source parses, and those are free beside a check at any scale measured here. A consumer therefore gets nothing from holding a snapshot across SAVES, and everything from holding one across keystrokes. The 1.064× at 400 programs is inside this lane's run-to-run spread and is not read as a cost.
+
+**And building the analysis costs what checking it costs.** 0.97–1.00× says admission and preparation disappear beside the check at every scale measured, which is the same thing the 2026-09-15 profile said from the other side when it put the cost in the declaration walk. So the up-front price of holding an analysis is one check — a consumer pays for the first answer either way.
+
 ## 2026-09-16 — H5-d: the cold curve gets a bar, and it is the looser of the two <a id="cold-paired-2026-09-16"></a>
 
 **Lane:** `./build.sh :adapter:checkerColdStartPerfTest` (`adapter.perf.CheckerColdStartPerfTest`), one **fresh JVM per observation**, now launched as **51 interleaved N/4N pairs** instead of two sequential campaigns — the ratified paired estimator, median of the within-pair ratios. Same machine, JDK and flat workload as the 2026-09-15 rows below; `JdkIdentity.requireSupported` gates the lane and every process's rejecting-finding set is compared whole, empty at both scales. **Revision:** `fc1605c28`.

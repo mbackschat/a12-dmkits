@@ -762,6 +762,33 @@ tasks.register('checkerGrowthPerfTest', Test) {
     outputs.cacheIf { false }
 }
 
+// H5-e: the checker's AFTER-EDIT boundary — what holding one analysis saves against answering statelessly.
+// Records and prints; asserts no budget, for the same reason the cold lane did before H5-d: the owner's
+// ratification left this boundary UNSET because nothing existed to measure, and a bar taken from this lane's
+// own first figure is what H5's ordering rule forbids (docs/PORTABLE-CONSISTENCY-IMPLEMENTATION-PLAN.md
+// #h5-ratification). Deliberately NOT wired into any automated lane, because a schedule implies a bar.
+tasks.register('checkerAfterEditPerfTest', Test) {
+    description = 'Measure what a held consistency analysis saves on a keystroke and on a saved edit.'
+    group = 'measurement'
+    testClassesDirs = sourceSets.test.output.classesDirs
+    classpath = sourceSets.test.runtimeClasspath
+    useJUnitPlatform()
+    // Single-fork: the observations are wall-clock, and parallelism inside the lane would measure contention.
+    maxParallelForks = 1
+    failFast = true
+    systemProperty 'perf.checker.afteredit', 'true'
+    systemProperty 'perf.checker.afteredit.n', providers.gradleProperty('checkerAfterEditN').getOrElse('200')
+    // Odd, because the estimator medians within-pair ratios and an even count would report the midpoint of
+    // two observed ratios rather than one of them.
+    systemProperty 'perf.checker.afteredit.samples',
+        providers.gradleProperty('checkerAfterEditSamples').getOrElse('11')
+    filter {
+        includeTestsMatching 'io.github.mbackschat.a12.dm.adapter.perf.CheckerAfterEditPerfTest'
+    }
+    outputs.upToDateWhen { false }
+    outputs.cacheIf { false }
+}
+
 // H5-b: the checker's COLD first result, one fresh JVM per observation. It records and prints; it asserts no
 // budget, because H5 requires ratification before the implementation it gates is measured and no checker number
 // is ratified (docs/PORTABLE-CONSISTENCY-IMPLEMENTATION-PLAN.md#h5-ordering). Deliberately NOT wired into any
