@@ -1,0 +1,88 @@
+// :consistency-gate — the F3 integration façade (PORTABLE-CONSISTENCY-PROPOSAL §7): a published-dmkits caller
+// asks the Kernel-free portable checker for a verdict in the shape it already consumes, and the receipt says
+// PORTABLE_CHECKED rather than borrowing either neighbour's provenance.
+//
+// Its own module, beside :adapter and :interpreter-bridge rather than inside either product, for the reason
+// §1 states: an integration surface that depends on both must not be folded into either core's published
+// package, and the `api project(…)` edge that produced the archived coupling works equally well in reverse.
+// Kernel-free, held by verifyConsistencyGatePurity over its compiled classes and by the root
+// verifyPublishedClasspathsAreKernelFree over what its POM resolves.
+plugins {
+    id 'java-library'
+    id 'maven-publish'
+}
+
+base { archivesName = 'dmkits-consistency-gate' }
+
+repositories {
+    mavenLocal()
+    mavenCentral()
+}
+
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(21)
+    }
+}
+
+dependencies {
+    // The result shape a dmkits caller already consumes — ValidationResult, Diagnostic, the gate receipt.
+    api project(':rulekit')
+    // The checker itself. `api` because the façade RETURNS its report: the coverage evidence is the half a
+    // consumer must read on an accepted model, since this checker cannot conclude VALID.
+    api project(':consistency')
+    // Reading `header.modelReferences` to drive a caller's ModelResolver. modelkit already owns that reader
+    // (`ModelDocument.authoredReferences`), and restating it here would be a second live copy of a header
+    // contract — `implementation`, because a caller of this façade never meets a ModelDocument.
+    implementation project(':modelkit')
+
+    testImplementation platform('org.junit:junit-bom:5.11.4')
+    testImplementation 'org.junit.jupiter:junit-jupiter'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+}
+
+tasks.named('test') {
+    useJUnitPlatform()
+}
+
+// The module's Kernel-freedom, over COMPILED dependencies. It holds in TEST scope too: the whole point of
+// this façade is a verdict reached with no kernel on the classpath, so a test that reached one would be
+// measuring the wrong product.
+def verifyConsistencyGatePurity = tasks.register('verifyConsistencyGatePurity') {
+    group = 'verification'
+    description = 'Fail if any consistency-gate main or test class depends on com.mgmtp.*/groovy.*.'
+    dependsOn tasks.named('classes'), tasks.named('testClasses')
+    def classRoots = providers.provider {
+        sourceSets.main.output.classesDirs.files + sourceSets.test.output.classesDirs.files
+    }
+    inputs.files(classRoots)
+    doLast {
+        rootProject.verifyCompiledPurity(
+            'consistency-gate purity — main and test',
+            classRoots.get(),
+            ['com.mgmtp.', 'groovy.'],
+            'java.util.Optional')
+    }
+}
+tasks.named('check') { dependsOn verifyConsistencyGatePurity }
+
+// Publishing: io.github.mbackschat.a12.dm:dmkits-consistency-gate — MIT, Kernel-free by the lint above.
+// Deliberately NOT a member of the `dmkits` aggregator: that umbrella is the kits, and this is an integration
+// a consumer opts into — the same category as :adapter and :interpreter-bridge.
+publishing {
+    publications {
+        maven(MavenPublication) {
+            from components.java
+            artifactId = 'dmkits-consistency-gate'
+            pom {
+                name = 'dmkits-consistency-gate'
+                description = 'a12-dmkits — the Kernel-free consistency gate for dmkits consumers: run the '\
+                        + 'portable checker over DM-JSON and read the verdict as a rulekit ValidationResult, '\
+                        + 'with a PORTABLE_CHECKED receipt that is never a kernel confirmation. The checker '\
+                        + 'cannot conclude VALID, so an accepted model comes back INCONCLUSIVE with its own '\
+                        + 'coverage evidence rather than a pass. MIT.'
+                rootProject.dmkitsPom(delegate)
+            }
+        }
+    }
+}

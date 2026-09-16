@@ -65,6 +65,7 @@ else
     # the wrong lane — it would run one that compiles none of this module's sources and matches no test, which
     # is a false SURVIVED rather than an error (measured 2026-09-12, planting into consistency/src/commonMain).
     consistency/*) LANE=:consistency:jvmTest ;;
+    consistency-gate/*) LANE=:consistency-gate:test ;;
     interpreter/*) LANE=:interpreter:jvmTest ;;
     interpreter-bridge/*) LANE=:interpreter-bridge:test ;;
     schemakit/*) LANE=:schemakit:test ;;

@@ -68,7 +68,8 @@ class PublicApiGuardTest {
             // deliberate: read-back REFUSES a classpath carrying two providers, so registering one beside
             // :adapter's would fail every kernel-oracle test here on resolution rather than on its subject.
             // It is loaded for the dump alone, by classLoader below.
-            new Kit("dmkits-interpreter-bridge", "interpreter-bridge"));
+            new Kit("dmkits-interpreter-bridge", "interpreter-bridge"),
+            new Kit("dmkits-consistency-gate", "consistency-gate"));
 
     @Test
     @DisabledIfSystemProperty(named = "api.fix", matches = "true")
@@ -116,7 +117,8 @@ class PublicApiGuardTest {
             "io.github.mbackschat.a12.dm.modelkit.",
             "io.github.mbackschat.a12.dm.edit.",
             "io.github.mbackschat.a12.dm.schemakit.",
-            "io.github.mbackschat.a12.dm.bridge.");
+            "io.github.mbackschat.a12.dm.bridge.",
+            "io.github.mbackschat.a12.dm.gate.");
 
     /**
      * <b>Signatures that reference one of OUR OTHER publications rather than a kit, kept as a named ratchet.</b>
@@ -133,6 +135,25 @@ class PublicApiGuardTest {
      */
     private static final Map<String, String> FOREIGN_SIGNATURE_EXEMPTIONS = Map.of(
             "dmkits-interpreter-bridge", "io.github.mbackschat.a12.dm.interpreter.");
+
+    /**
+     * <b>Per-artifact prefixes that artifact's OWN POM advertises at {@code api} scope</b> — so a consumer
+     * compiling against such a signature resolves the type with no extra dependency, which is the rule's
+     * actual test rather than a licence against it.
+     *
+     * <p>Kept apart from {@link #FOREIGN_SIGNATURE_EXEMPTIONS} because the two are opposite findings that
+     * would read identically in one map. An exemption excuses a LEAK: the bridge declares
+     * {@code dmkits-interpreter} at {@code runtime} scope, so a consumer does not get those types and the
+     * signature is the defect the rule exists to catch. This map records the case where there is no leak —
+     * {@code dmkits-consistency-gate} declares {@code a12-consistency} at {@code api} scope on purpose,
+     * because the checker's own report IS what the façade returns, and restating that report in a second
+     * shape is the one outcome worse than naming its type.
+     *
+     * <p>Ratcheted by {@link #everyForeignSignatureExemptionIsStillNeeded()} exactly as the exemptions are:
+     * an allowance that stops matching a live signature is deleted, never left standing.
+     */
+    private static final Map<String, String> API_SCOPED_PUBLICATIONS = Map.of(
+            "dmkits-consistency-gate", "io.github.mbackschat.a12.dm.consistency.");
 
     /**
      * The <b>class</b> guard behind the Set W cleanup (root-cause generalization of "Jackson leaks on public
@@ -215,6 +236,10 @@ class PublicApiGuardTest {
         if (ALLOWED_TYPE_PREFIXES.stream().anyMatch(c.getName()::startsWith)) {
             return true;
         }
+        String advertised = API_SCOPED_PUBLICATIONS.get(kit.artifact());
+        if (advertised != null && c.getName().startsWith(advertised)) {
+            return true;
+        }
         String exempt = FOREIGN_SIGNATURE_EXEMPTIONS.get(kit.artifact());
         return exempt != null && c.getName().startsWith(exempt);
     }
@@ -227,7 +252,9 @@ class PublicApiGuardTest {
     @Test
     @DisabledIfSystemProperty(named = "api.fix", matches = "true")
     void everyForeignSignatureExemptionIsStillNeeded() {
-        for (Map.Entry<String, String> exemption : FOREIGN_SIGNATURE_EXEMPTIONS.entrySet()) {
+        Map<String, String> allowances = new java.util.LinkedHashMap<>(FOREIGN_SIGNATURE_EXEMPTIONS);
+        allowances.putAll(API_SCOPED_PUBLICATIONS);
+        for (Map.Entry<String, String> exemption : allowances.entrySet()) {
             Kit kit = KITS.stream().filter(k -> k.artifact().equals(exemption.getKey())).findFirst()
                     .orElseThrow(() -> new AssertionError(
                             "exemption names an artifact that is not a published kit: " + exemption.getKey()));
@@ -238,9 +265,9 @@ class PublicApiGuardTest {
                 referenced.stream().filter(v -> v.contains(exemption.getValue())).forEach(matched::add);
             }
             assertFalse(matched.isEmpty(), () ->
-                    "the '" + exemption.getKey() + "' exemption for " + exemption.getValue() + " matches no live"
-                    + " signature — the leak it excused is gone, so DELETE the exemption rather than leaving a"
-                    + " licence for the next type in that package");
+                    "the '" + exemption.getKey() + "' allowance for " + exemption.getValue() + " matches no live"
+                    + " signature — what it covered is gone, so DELETE the entry rather than leaving a licence"
+                    + " for the next type in that package");
         }
     }
 

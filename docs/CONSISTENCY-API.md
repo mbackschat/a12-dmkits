@@ -174,6 +174,28 @@ snapshot = snapshot.withoutSource("catalog")                         // and the 
 
 Per-declaration reuse *inside* a check is a different proposition and is deliberately not attempted: it would need each of the 103 families to declare the model footprint its verdict depends on. The [implementation plan](PORTABLE-CONSISTENCY-IMPLEMENTATION-PLAN.md) carries that as its own work item rather than a follow-up here.
 
+## Calling it from a JVM dmkits consumer — `dmkits-consistency-gate`
+
+A caller already holding DM-JSON and a `ModelResolver` should not have to assemble a `List<ModelSource>` by hand, nor re-shape the report to fit the result type the rest of their code handles. The `dmkits-consistency-gate` artifact is the façade for that, and it lives beside both products rather than inside either — neither the kits nor this checker depends on the other.
+
+```java
+PortableGateRun run = PortableConsistencyGate.check(
+        new ModelSource(orderJson, "orders.dm.json"), ReferenceResolvers.directory(modelsDir));
+
+run.validation().ok()                 // false iff something rejected the model
+run.validation().diagnostics()        // the checker's own codes, source PORTABLE_CHECKER
+run.validation().consistencyGate()    // Verification.PORTABLE_CHECKED — never a kernel confirmation
+run.report()                          // this checker's own report: status, checksCompleted, gaps
+```
+
+**`ok() == true` is not VALID, and the façade cannot make it one.** It means nothing that ran rejected the model; the status beside it is still `Inconclusive`, and that is the whole first section of this document restated at a second surface. A consumer that reads only `ok()` has silently upgraded "nothing rejected it" into "it is valid", which is why both halves are published and why `report()` is the one carrying the coverage evidence.
+
+**The receipt is its own value on purpose.** `PORTABLE_CHECKED` is neither of its neighbours: not `KERNEL_CONFIRMED`, because no kernel saw the model, and not `STRUCTURAL_ONLY`, because a measured re-implementation of A12's constraints ran rather than the kits' own prechecks. Diagnostics carry the matching origin, `DiagnosticSource.PORTABLE_CHECKER` — `KERNEL` would claim the kernel arbitrated and `PRECHECK` would claim a rulekit heuristic refused the model.
+
+**Selection is explicit, and there is no `ServiceLoader` registration.** The façade is deliberately not a `ConsistencyOracle` provider: a portable verdict arriving through that port would make `Backends.verification()` answer `KERNEL_CONFIRMED` for a run no kernel arbitrated — an over-claim no consumer could detect, since the kernel is never asked. A caller reaches `PortableConsistencyGate` by name.
+
+Includes and type-definition imports are resolved through the caller's own resolver, transitively: a provider that itself includes a third model is supplied too. A reference the resolver answers with `null` is simply not supplied and the mount is then reported as a coverage gap rather than as a missing reference — the same honest under-report every other entry point makes.
+
 ## Calling it from Node
 
 The worked example is [`consistency/consumer-tests/node`](../consistency/consumer-tests/node), which is executable rather than illustrative: `./build.sh :consistency:nodeConsumerTest` packs the library into a real npm tarball, clean-installs it into a staged copy of that project, and runs it. It needs `node` and `npm` and reaches no network — the package declares no runtime dependency.

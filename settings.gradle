@@ -67,3 +67,10 @@ include 'consistency'
 // any resolved dependency at all, because a leaf that grows one stops being a leaf.
 include 'predicates'
 
+
+// The :consistency-gate module (PORTABLE-CONSISTENCY-PROPOSAL §7 F3): the integration façade that lets a
+// published-dmkits caller ask the Kernel-free checker for a verdict in the shape it already consumes. It sits
+// BESIDE both products rather than inside either, for :interpreter-bridge's reason — the `api project(…)`
+// edge that folds an integration into a core's published POM works equally well in reverse, and §1 forbids
+// exactly that for this façade. Kernel-free, held by its own verifyConsistencyGatePurity.
+include 'consistency-gate'

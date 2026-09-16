@@ -95,6 +95,10 @@ dependencies {
     // test classpath here (root is the cross-kit test host). It is the fifth kit's ONLY appearance at root
     // and stays test-scope — root publishes no jar, so this adds nothing to any consumer's classpath.
     testImplementation project(':schemakit')
+    // The F3 integration façade, on this classpath for the same reason and no other: the API-surface lock
+    // loads its classes to dump them, and they reference :consistency and :rulekit types that must resolve
+    // through this suite's own loader. It registers no ServiceLoader provider, so nothing else here changes.
+    testImplementation project(':consistency-gate')
 
     // The kernel stays the oracle in TESTS (verification unchanged). :adapter supplies the real
     // ConsistencyOracle/BackendInfo ServiceLoader providers so the kernel gate actually runs in the
@@ -1190,7 +1194,8 @@ tasks.named('check') { dependsOn verifyKitPurity }
 // --- What the published POMs hand a consumer, locked (DEV-API-GAPS DG45) ---------------------------------
 // Every artifact below advertises a kernel-free consumer classpath — the kits behind their SPI ports,
 // dmkits-schemakit "never the raw kernel jars directly" (SCHEMAKIT-SPEC §1), dmkits-interpreter-bridge as the
-// no-kernel provider of ConditionReadBack. Until this guard the whole class advertised that with only a
+// no-kernel provider of ConditionReadBack, dmkits-consistency-gate as the façade whose whole purpose is a
+// verdict reached with no kernel present. Until this guard the whole class advertised that with only a
 // compiled-linkage lint behind it, which cannot see a declared-but-unimported dependency, so the guarantee a
 // consumer actually cares about was the one nothing checked. Six modules rather than the one gap that named
 // it: the claim, the POM mechanism and the blind spot are identical across them.
@@ -1204,7 +1209,8 @@ tasks.named('check') { dependsOn verifyKitPurity }
 def verifyPublishedClasspathsAreKernelFree = tasks.register('verifyPublishedClasspathsAreKernelFree') {
     group = 'verification'
     description = 'Fail if a published kernel-free artifact resolves a raw kernel module onto a consumer classpath.'
-    def kernelFreePublications = ['core', 'rulekit', 'modelkit', 'edit', 'schemakit', 'interpreter-bridge']
+    def kernelFreePublications = ['core', 'rulekit', 'modelkit', 'edit', 'schemakit', 'interpreter-bridge',
+                                  'consistency-gate']
     doLast {
         kernelFreePublications.each { name ->
             def published = project(":${name}")

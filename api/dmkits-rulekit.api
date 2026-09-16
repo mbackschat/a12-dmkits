@@ -2667,6 +2667,7 @@ public enum io.github.mbackschat.a12.dm.rulekit.validate.DiagnosticSource
   public static final io.github.mbackschat.a12.dm.rulekit.validate.DiagnosticSource INTERNAL
   public static final io.github.mbackschat.a12.dm.rulekit.validate.DiagnosticSource KERNEL
   public static final io.github.mbackschat.a12.dm.rulekit.validate.DiagnosticSource LINT
+  public static final io.github.mbackschat.a12.dm.rulekit.validate.DiagnosticSource PORTABLE_CHECKER
   public static final io.github.mbackschat.a12.dm.rulekit.validate.DiagnosticSource PRECHECK
   public static io.github.mbackschat.a12.dm.rulekit.validate.DiagnosticSource valueOf(java.lang.String)
   public static io.github.mbackschat.a12.dm.rulekit.validate.DiagnosticSource[] values()
