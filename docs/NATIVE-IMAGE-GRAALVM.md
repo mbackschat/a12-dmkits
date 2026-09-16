@@ -179,7 +179,7 @@ cli/build.gradle  →  -H:IncludeResources=.*error_messages.*\.properties       
 
 The **verification gate is the trip-wire**: if any source lags, a fresh reflective path throws `MissingReflectionRegistrationError`/`MissingResourceException`/`STNoSuchPropertyException`, and the native gate fails. **But note (§3.5): the gate's inputs decide what it catches** — the demo-only gate that shipped passed while patterned-field/parser-error paths were broken. `native-gate.sh` now runs the **no-crash battery** ([`../scripts/native-battery.sh`](../scripts/native-battery.sh), §3.6 — 192 checks across every fixture × read/validate verbs + the FieldKind × constraint matrix + invalid conditions per locale + the self-describing surface (manifest/operators) + a real rule read-back), so the broad reflective/resource surface is checked, not just the happy-path demos. Add a shape to the battery whenever a new native-only gap is found.
 
-### 5.2 Capturing in slices, when one process cannot live long enough
+### 5.2 Capturing in slices, when one process cannot live long enough <a id="capture-slices"></a>
 
 The traced suite runs 36–38 minutes, and an **agent harness cannot hold a single process that long**: a harness-backgrounded task is killed by a memory watchdog, and a Monitor is killed at its 30-minute ceiling — both measured 2026-09-16, three dead captures, and the ceiling is recorded in [AGENT-RUN-DISCIPLINE](AGENT-RUN-DISCIPLINE.md). Adding `maxHeapSize = '1g'` to the traced fork (it is the only test JVM that is both single-forked and long-lived, so it alone accumulates half an hour of lazily-collected garbage against a default max heap of a quarter of physical RAM) was not sufficient on its own.
 
