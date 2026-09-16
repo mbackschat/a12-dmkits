@@ -782,8 +782,11 @@ tasks.register('checkerColdStartPerfTest', Test) {
     // past `CheckerColdStartMain` and what the checker itself pulls in.
     systemProperty 'perf.checker.cold.classpath',
         (checkerColdClasspath.files + sourceSets.test.output.classesDirs.files).join(File.pathSeparator)
+    // 51, not 50: each process is one member of an interleaved N/4N pair, and the ratified estimator medians
+    // the within-pair ratios — an odd count makes that median an observed ratio instead of the midpoint of two.
+    // It also keeps the run at or above H5-b's own floor of 50 observations per scale.
     systemProperty 'perf.checker.cold.processes',
-        providers.gradleProperty('checkerColdProcesses').getOrElse('50')
+        providers.gradleProperty('checkerColdProcesses').getOrElse('51')
     systemProperty 'perf.checker.cold.n', providers.gradleProperty('checkerColdN').getOrElse('200')
     // Unset by default so the observation is of a plain standalone JVM; -PcheckerColdHeap=2g re-measures one
     // scale under a fixed heap, which is how a super-linear curve is told apart from memory pressure.

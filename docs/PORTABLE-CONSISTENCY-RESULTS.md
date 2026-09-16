@@ -2,9 +2,29 @@
 
 Dated measurements of the Kernel-free checker, newest first. **Every LATENCY here is informative and uncertified, and always will be**: [H5](PORTABLE-CONSISTENCY-PROPOSAL.md#hard-acceptance-conditions-confirmed-by-the-owner) requires a budget to pass IF137's six-point gate before the implementation it gates is measured, and a millisecond figure taken on one machine has no basis that survives another. No duration on this page is a bar, a regression floor or an acceptance criterion, and the lanes that produce them write no anchor, because an anchor is a bar.
 
-**Two quantities ARE certified, as of the owner's 2026-09-16 ratification** — the [split by what each quantity can honestly bear](PORTABLE-CONSISTENCY-IMPLEMENTATION-PLAN.md#h5-ratification), which carries each number's six-point disposition: the **delivery byte ceiling** (1 MiB on the packed npm tarball, held by `:consistency:verifyConsistencyDeliveryCeiling` in push CI) and the **prepared growth ratio** (`PerfBounds.SUB_QUADRATIC_MAX`, held by `:adapter:checkerGrowthPerfTest`). The cold lane's ratio is ratified too and its assertion lands with H5-d; its durations are not and never will be. So read a table below for its curve and its shape, never for permission to be slower.
+**Two quantities ARE certified, as of the owner's 2026-09-16 ratification** — the [split by what each quantity can honestly bear](PORTABLE-CONSISTENCY-IMPLEMENTATION-PLAN.md#h5-ratification), which carries each number's six-point disposition: the **delivery byte ceiling** (1 MiB on the packed npm tarball, held by `:consistency:verifyConsistencyDeliveryCeiling` in push CI) and the **prepared growth ratio** (`PerfBounds.SUB_QUADRATIC_MAX`, held by `:adapter:checkerGrowthPerfTest`). The **cold growth ratio** is certified on the same footing and asserted since H5-d, by `:adapter:checkerColdStartPerfTest`. Its durations are not, and never will be. So read a table below for its curve and its shape, never for permission to be slower.
 
 Results never land in a spec, and a measurement's home is not its explanation: the mechanism paragraphs below are marked as hypotheses where they are hypotheses.
+
+## 2026-09-16 — H5-d: the cold curve gets a bar, and it is the looser of the two <a id="cold-paired-2026-09-16"></a>
+
+**Lane:** `./build.sh :adapter:checkerColdStartPerfTest` (`adapter.perf.CheckerColdStartPerfTest`), one **fresh JVM per observation**, now launched as **51 interleaved N/4N pairs** instead of two sequential campaigns — the ratified paired estimator, median of the within-pair ratios. Same machine, JDK and flat workload as the 2026-09-15 rows below; `JdkIdentity.requireSupported` gates the lane and every process's rejecting-finding set is compared whole, empty at both scales. **Revision:** `fc1605c28`.
+
+| quantity | 200 programs | 800 programs |
+|---|---|---|
+| `check` median | 307.79 ms | 859.24 ms |
+| `check` p95 | 376.98 ms | 1 015.82 ms |
+| `check` min–max | 297.50–500.31 ms | 793.46–1 258.63 ms |
+| `process` median | 352.91 ms | 901.34 ms |
+| **median within-pair ratio** | — | **2.75×** |
+
+**The bar is the ratio and nothing else.** 2.75× over a 4× scale-up sits under the ratified `PerfBounds.SUB_QUADRATIC_MAX` floor of 9.0 with 3.3× of headroom. No duration in that table is asserted or anchored, and none ever will be here: a cold millisecond figure has no basis that survives another machine, which is why [the ratification](PORTABLE-CONSISTENCY-IMPLEMENTATION-PLAN.md#h5-ratification) gave this boundary a ratio and gave delivery the only absolute bar.
+
+**It is the looser of the two growth instruments, and the numbers say so rather than a comment.** The prepared lane measures **5.33×** on the same workload at the same two scales; this one measures 2.75×. Both clock the same operation, model text to complete report, so the gap has to come from what only a fresh process carries — the per-process fixed cost and the absence of JIT. That much is a **hypothesis**: it is consistent with the ~130 ms of cold class loading the 2026-09-15 profile estimated (subtracting it puts the checker's own cold work at 4.10× per 4× scale-up, near-linear), but the subtraction reuses these same two medians and therefore cannot test itself. What would settle it is a child that reports its own class-loading time directly, and that has not been measured. The practical consequence is the part to act on: **a blowup trips the prepared lane first, and this lane is not claimed to see any defect class that one cannot.**
+
+**Interleaving widened each scale's tail and that is the trade it exists to make.** The post-fix run of 2026-09-15 saw 725.70–870.25 ms at 800 programs against 793.46–1 258.63 ms here. Fifty-one pairs alternate the scales, so each scale's samples now span the whole 73-second run instead of clustering in one half of it: drift lands *inside* every distribution rather than between the two, which is what makes the ratio robust and the per-scale spread wider. The ratio is the quantity under assertion, so that is the right direction to pay in.
+
+**The assertion was controlled rather than assumed, and the control measured reproducibility for free.** With the floor lowered to 2.0 — under the observed ratio, the rest of the lane untouched — the lane refused across all three independent re-measurements, at 2.791×, 2.766× and 2.765×, and failed on their median, which is the helper's acceptance rule. Without a control of that shape a growth assertion can pass while computing nothing. The by-product settles IF137's point 5 by measurement instead of by assertion: **four independent estimates of this ratio — 2.75× in the accepted run, then 2.791/2.766/2.765 — span 1.5 %**, over 408 fresh JVMs in total. Each attempt also reported its own per-scale medians rather than an accumulated set, which is why a re-measured breach still describes runs that happened.
 
 ## 2026-09-16 — H5's resources-and-delivery boundary, in the collector that already owned it <a id="delivery-2026-09-16"></a>
 

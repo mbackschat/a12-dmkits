@@ -15,11 +15,19 @@ import org.junit.jupiter.api.io.TempDir
  * H5-b: what the Kernel-free checker costs to reach its FIRST result, measured on processes that have never
  * checked anything.
  *
- * **It asserts no budget and is not a gate.** H5 requires a budget to be ratified before the implementation it
- * gates is measured, and none is ([the plan's H5 record](../../../../../../../../../../../docs/PORTABLE-CONSISTENCY-IMPLEMENTATION-PLAN.md#h5-ordering)).
- * So this lane produces an informative, uncertified number for the owner to rule on, exactly the status the
- * interpreter's own NFR figures carry. It deliberately writes no anchor: an anchor IS a bar, and a bar written
- * before ratification would gate on a number nobody has approved.
+ * **It asserts the ratified GROWTH ratio and no latency — the split the owner ratified on 2026-09-16**
+ * ([the record](../../../../../../../../../../../docs/PORTABLE-CONSISTENCY-IMPLEMENTATION-PLAN.md#h5-ratification)).
+ * A cold millisecond figure is machine-dependent and has no certified basis, so no duration is asserted and no
+ * anchor is written: an anchor IS a bar. A ratio is a different quantity — `PerfBounds.SUB_QUADRATIC_MAX` was
+ * ratified as a mechanism long before this module existed — so the medians below stay informative while the
+ * ratio between them gates.
+ *
+ * **The cold ratio is the LOOSER of the two growth instruments, which is stated rather than hidden.** This lane
+ * and [CheckerGrowthPerfTest] clock the same operation, model text to complete report, and the fixed ~130 ms of
+ * class loading and serializer setup that only this one pays *deflates* its ratio — so a blowup trips the
+ * prepared lane first. It is asserted anyway for two reasons that are not detection: the owner ratified the
+ * ratio for both boundaries, and this is the mode a standalone consumer actually runs in, where nothing else in
+ * the estate bars growth at all. No claim is made that it sees a class the prepared lane cannot.
  *
  * **What it does assert is the preflight, and the report rather than a count.** A timing over a model the
  * checker refuses would be timing the rejection path, so every process prints its rejecting findings and the
@@ -40,7 +48,7 @@ import org.junit.jupiter.api.io.TempDir
 class CheckerColdStartPerfTest {
 
     @Test
-    fun theColdFirstResultOverIndependentProcessesAtBothScales(@TempDir work: Path) {
+    fun theColdCheckerGrowsBelowTheCatastropheFloorOverIndependentProcesses(@TempDir work: Path) {
         JdkIdentity.requireSupported()
         val classpath = requiredProperty("perf.checker.cold.classpath")
         val processes = requiredProperty("perf.checker.cold.processes").toInt()
@@ -51,33 +59,90 @@ class CheckerColdStartPerfTest {
         // being read as a row for the results page — the locus question H5-b's first run raised is answered in
         // this mode, and never in the same breath as a latency.
         val recording = System.getProperty("perf.checker.cold.jfr").orEmpty()
-        require(recording.isNotBlank() || processes >= MINIMUM_PROCESSES) {
+        val diagnostic = recording.isNotBlank()
+        require(diagnostic || processes >= MINIMUM_PROCESSES) {
             "H5-b asks for at least $MINIMUM_PROCESSES independent processes per scale, not $processes"
+        }
+        // One child per scale per pair, so the process count IS the pair count — and the ratified estimator
+        // medians the within-pair ratios, which needs an odd count so that the median names a ratio actually
+        // observed rather than the midpoint of two that were not.
+        require(processes % 2 == 1) {
+            "the paired estimator medians the within-pair ratios, so the process count must be odd, not $processes"
         }
         require(programs > 0) { "perf.checker.cold.n must be positive" }
         requireCheckerOnly(classpath)
-        if (recording.isNotBlank()) {
+        if (diagnostic) {
             Files.createDirectories(Path.of(recording))
             PerfHarness.progress(
                 "[checker-cold] DIAGNOSTIC RUN — a flight recorder is attached to every child, so the durations " +
-                    "below are perturbed and are NOT observations. Recordings: $recording",
+                    "below are perturbed, are NOT observations, and the growth floor is NOT asserted. " +
+                    "Recordings: $recording",
             )
         }
 
-        listOf(programs, programs * 4).forEach { scale ->
+        val scales = listOf(programs, programs * 4)
+        val models = scales.associateWith { scale ->
             val model = work.resolve("synth-$scale.dm.json")
             Files.writeString(model, ProfileSynthesisTargetProfiles.modelJson(scale))
-            if (recording.isNotBlank()) {
+            if (diagnostic) {
                 Files.copy(model, Path.of(recording).resolve(model.fileName.toString()))
             }
-            val runs = (1..processes).map { run(classpath, model, "synth-$scale") }
-            val refused = runs.map { it.rejecting }.distinct().filter { it.isNotEmpty() }
-            check(refused.isEmpty()) {
-                "the checker REFUSED the synthesized model at $scale programs, so these processes timed the " +
-                    "rejection path rather than a complete report: $refused"
+            model
+        }
+
+        // A perturbed run must not decide a bar: a recorder changes the very durations the ratio divides, so a
+        // diagnostic run reports its curve and asserts nothing. Every ordinary run asserts.
+        if (diagnostic) {
+            pairedColdGrowth(classpath, scales, models, processes)
+        } else {
+            PerfHarness.assertGrowthBelowCatastropheFloor(
+                "portable checker COLD N/4N over model declarations",
+                "the same whole-model declaration walk the prepared lane guards, in the mode a standalone " +
+                    "consumer gets — a fresh JVM that has never checked anything",
+            ) {
+                pairedColdGrowth(classpath, scales, models, processes)
             }
-            report("check", scale, runs.map { it.checkNanos })
-            report("process", scale, runs.map { it.processNanos })
+        }
+    }
+
+    /**
+     * One estimate: [processes] interleaved N/4N pairs of fresh processes, the median of the within-pair ratios.
+     *
+     * **The interleaving is what makes this the ratified estimator rather than two separate campaigns, and it
+     * costs nothing** — the same `2 × processes` children were already being launched, one scale after the
+     * other. Both members of a pair now meet the same machine-load slice, so drift over a multi-minute run can
+     * no longer be read as growth.
+     *
+     * **The per-scale median and p95 are reported from THIS estimate's own children, which is why the
+     * collection lives here rather than in the caller.** A breach is re-measured, and a report that accumulated
+     * across attempts would describe no single run.
+     */
+    private fun pairedColdGrowth(
+        classpath: String,
+        scales: List<Int>,
+        models: Map<Int, Path>,
+        processes: Int,
+    ): Growth {
+        val observed = scales.associateWith { mutableListOf<ColdRun>() }
+        return PerfHarness.pairedGrowth(scales.first(), scales.last(), processes) { scale ->
+            val single = run(classpath, models.getValue(scale), "synth-$scale")
+            observed.getValue(scale) += single
+            single.checkNanos / 1_000_000.0
+        }.also { growth ->
+            observed.forEach { (scale, runs) ->
+                val refused = runs.map { it.rejecting }.distinct().filter { it.isNotEmpty() }
+                check(refused.isEmpty()) {
+                    "the checker REFUSED the synthesized model at $scale programs, so these processes timed the " +
+                        "rejection path rather than a complete report: $refused"
+                }
+                report("check", scale, runs.map { it.checkNanos })
+                report("process", scale, runs.map { it.processNanos })
+            }
+            PerfHarness.progress(
+                "[checker-cold] paired programs=${scales.first()}->${scales.last()} " +
+                    "median=${format(growth.smallMs)}->${format(growth.largeMs)} ms " +
+                    "paired-ratio=${format(growth.ratio)}x",
+            )
         }
     }
 
@@ -165,7 +230,9 @@ class CheckerColdStartPerfTest {
         }
     }
 
-    private fun millis(nanos: Long): String = "%.2f".format(Locale.ROOT, nanos / 1_000_000.0)
+    private fun millis(nanos: Long): String = format(nanos / 1_000_000.0)
+
+    private fun format(value: Double): String = "%.2f".format(Locale.ROOT, value)
 
     private fun requiredProperty(name: String): String =
         requireNotNull(System.getProperty(name)) { "-D$name=<value> is required" }
