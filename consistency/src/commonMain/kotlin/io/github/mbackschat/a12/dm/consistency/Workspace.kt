@@ -36,6 +36,36 @@ class ConsistencyWorkspace private constructor(
         return check(entry, admitted - entryModelId, rejected)
     }
 
+    /**
+     * The same workspace with [source] admitted in place of whatever declared its id — every OTHER source's
+     * admission is REUSED, which is the point: re-reading them would re-parse text that did not change.
+     *
+     * Replacing rather than keeping the first is the deliberate difference from [fromSources], where first
+     * wins so that a report never depends on argument order. Here the caller is naming one source and saying
+     * "this is its new text", which is an instruction rather than an ordering.
+     *
+     * A source that cannot be admitted CHANGES NOTHING but its diagnostic: with no `header.id` there is no
+     * identity, so nothing can be replaced, and dropping whatever stood there would silently discard a model
+     * the caller never asked to remove.
+     */
+    fun with(source: ModelSource): ConsistencyWorkspace = when (val outcome = admit(source)) {
+        is Admission.Rejected -> ConsistencyWorkspace(admitted, rejected + outcome.diagnostic)
+        is Admission.Admitted -> ConsistencyWorkspace(admitted + (outcome.modelId to outcome), rejected)
+    }
+
+    /** The same workspace without the source declaring [modelId]; every other admission is reused. */
+    fun without(modelId: String): ConsistencyWorkspace =
+        ConsistencyWorkspace(admitted - modelId, rejected)
+
+    /**
+     * The admitted sources, by id — for a caller inside this module that has to tell a REUSED parse from a
+     * fresh one, which only object identity can answer.
+     */
+    internal val admittedSources: Map<String, Admission.Admitted> get() = admitted
+
+    /** The diagnostics about the source SET itself, which ride into every report this workspace produces. */
+    internal val sourceDiagnostics: List<Diagnostic> get() = rejected
+
     private fun unknownEntry(entryModelId: String) = ConsistencyReport(
         modelId = null,
         status = ConsistencyStatus.Inconclusive,

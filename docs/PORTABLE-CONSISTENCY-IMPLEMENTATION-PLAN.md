@@ -47,7 +47,7 @@ Rows below are dependency stages, not permission to combine every named slice in
 | 9 | **part** — F1-a, F1-b and F1-c landed 2026-09-16; F1-d and F1-e remain, and this row's packaged/native identity half belongs to F1-d · [where it stands](#stage-9) | F1 dmtool coexistence; F3 published-library integration, as separate commits | F provides the artifact and explicit result contract. F1 retains default/explicit Kernel in both launchers and adds explicit portable selection. F3 adds dmkits/schemakit checking and an integration façade outside both standalone cores | Terminal review for each integration; F1 includes packaged JVM/native identity and substitution controls |
 | 10 | **part** — both landed 2026-09-16: H's mechanism with F1-b (`checkEdit`/`checkEditJson`), then G's Node CI gate; what either still owes is a decision belonging to `I` · [where it stands](#stage-10) | G Node CI example; H candidate checking | F's package can be consumed normally. G distinguishes invalid, incomplete and operational failure; H checks immutable candidates without persistence and agrees with fresh checking | Terminal review of each public consumer contract |
 | 11 | **done** — J landed 2026-09-16 as `impactOf`, I-a as `checkDraft`, I-b as a finding's source span · [where it stands](#stage-11) | J impact reports; I editor diagnostics, as separate slices | J uses E's dependency facts and H's candidates. I uses source-aware partial analysis and H's snapshots; neither depends on the other's implementation | Terminal review of affected/unaffected controls for J and source-location controls for I |
-| 12 | open | L incremental checking | L uses B3/J and must match fresh full reports while demonstrating reuse. Complete the H/I/L browser integration once it lands | Terminal review per API, including stale-cache controls |
+| 12 | **doing** — L-a LANDED 2026-09-16 against its frozen matrix; L-b is plan-scale and stays partitioned off · [the partition](#l-partition) | L incremental checking | L uses B3/J and must match fresh full reports while demonstrating reuse. Complete the H/I/L browser integration once it lands | Terminal review per API, including stale-cache controls |
 | 13 | open | N combined availability and qualification | Every earlier slice passes its frozen matrix; all G–J/L exports and the browser integration work from shipped packages. Complete §5 below | Terminal whole-product contract review before declaring completion |
 
 ### Fastest path to completion — the critical path, and the three things that shorten it (2026-09-16) <a id="fastest-path"></a>
@@ -393,6 +393,40 @@ Six mutants planted, six dead — but one survived its first hearing and the rea
 **The spans cost no second tokenization.** `referencesIn` and the new `referenceSpansIn` run the same scan, and `conditionReferences` — which is NOT memoised and is called by eleven families — asks for the spans and derives the distinct names locally, so the hot path does exactly the work it did before.
 
 Every assertion reads a SLICE of the text rather than a pair of offsets, which is both how an editor uses the span and the only form that cannot pass for a wrong range: a self-consistent wrong pair of numbers reads as right. Six mutants planted, six dead, including the two that only a slice assertion can catch — the last-occurrence key and the last-token-only range.
+
+### L record — the partition, and its acceptance matrix frozen before any code (2026-09-16) <a id="l-partition"></a>
+
+**L's row couples two reuse granularities with completely different costs, so it is partitioned before anything is written.** [Its acceptance](PORTABLE-CONSISTENCY-PROPOSAL.md#7-implementation-slices-and-finite-acceptance-matrices) asks to "update analysis from an earlier immutable snapshot, reuse unaffected work, and invalidate every affected dependency", with counters that an always-full-recheck implementation fails. Two readings of "unaffected work" are available and only one is reachable now.
+
+| slice | what it reuses | why it is separable |
+|---|---|---|
+| L-a | the SNAPSHOT: an admitted source set, one prepared fact base, and the baseline report — so a consumer that asks repeatedly about the same model pays for them once | sound by construction. The reused values are pure functions of inputs that did not change, so no invalidation rule can be wrong |
+| L-b | per-DECLARATION or per-FAMILY results inside one check | needs every family to declare the model footprint its verdict depends on. There are 103 of them, each footprint is a hand-kept set, and each wrong one is a silent under-report — a plan-scale change, not a slice |
+
+**What decided the order is a measurement this session already holds, not a preference.** The checker's own hot path is the reference walk and the families, which is why `declaredReferenceList` was memoised after a flight recorder put 95 % of samples there — admission is not the cost. So reuse of *admission alone* would ship a counter proving reuse of a quantity that does not matter, which is precisely the "unmeasured universal speedup claim" the row's non-goals forbid.
+
+**The consumer that makes L-a worth landing is I, and its cost is countable rather than timed.** `checkDraft` performs **one admission, one preparation and TWO checks** per call — the baseline and the drafted fact base — and an editor calls it per keystroke while the baseline side cannot have changed. A snapshot makes a keystroke cost **one check and nothing else**. That is a claim about work performed, counted, not a latency claim; no wall-clock budget is asserted, and H5 still owns the after-edit boundary it deliberately left UNSET.
+
+**L-a's acceptance matrix, frozen here.**
+
+| acceptance item | oracle | non-goal |
+|---|---|---|
+| a snapshot's own report equals `check` of the same source set and entry | the existing check, compared on status, findings, diagnostics, `checksCompleted` and gaps | no new verdict, ever |
+| `snapshot.draft(...)` equals `checkDraft(...)` on the same input | those two calls, compared | not a second draft semantics |
+| an updated snapshot's report equals a FRESH full check of the updated set, across every change kind the row names — a rule/computation edit, a field-kind change, a model-config change, a type definition, an include, and a removed source | one table, fresh against incremental per row | no per-declaration reuse, which is L-b's |
+| counters show reuse: a draft performs no admission and no preparation, and an update re-admits only the source that changed | the counters themselves, on operations whose reuse differs | no timing assertion. A counter counts work, and this slice claims nothing about latency |
+| the OLD snapshot is unchanged after an update | the old snapshot's own report, read again after | no mutable session object |
+| a poisoned snapshot is caught by the equivalence guard | a mutant that reuses a fact base belonging to a DIFFERENT source, which the equality must refuse | — |
+
+**What makes this slice stop rather than grow.** A finding enters L-a only when it violates one of those rows. Anything about per-declaration reuse, any family footprint, and any latency number goes to L-b or to row 8.
+
+**L-a landed 2026-09-16, and two matrix rows needed narrowing to stay honest.** `ConsistencySnapshot` / `snapshotOf` ship with `withSource`, `withoutSource` and `draft`; the public account is in [CONSISTENCY-API](CONSISTENCY-API.md#holding-one-analysis-across-many-questions--snapshotof).
+
+The **stateless-equivalence row** compares `snapshot.draft(...)` against `checkDraft(...)` on a fixture with **no mount**, and the narrowing is a contract rather than a concession: given one, the stateless call cannot expand it, so its reference families are suspended for an incomplete fact base while the snapshot's are not. Comparing the two there would measure the unexpanded-mount rule, not the snapshot. The rows now agree on the *whole* `EditReport` rather than on a projection of it, which is strictly stronger than the frozen row asked for.
+
+That left the mounted fact base with no oracle at all, which the **poisoned-snapshot row** then exposed: a snapshot prepared with `emptyMap()` providers passes the equivalence table (whose reports come from `workspace.check`, not from the fact base), both counter rows, and the value-semantics row. The mutant is killed by a row added for it — a draft whose reference resolves into the **mounted provider**, with the missing-field spelling as its positive control. Six mutants planted, six killed: the formula-instead-of-identity counter, `withSource` dropping the other parses, a draft re-checking its baseline, a draft re-preparing, `withoutSource` as a no-op, and the poisoned fact base.
+
+**One documented claim was false when written and is now true.** `Reuse`'s doc said every field was an identity measurement; two readings are structural — making a snapshot always re-prepares and re-checks, and answering a draft has no admission call to measure — and the code said so with `prepared === prepared`, a tautology that would have agreed with any implementation. The doc now names which two fields are measured and which two are structural, which is the only version of that claim a mutant can test.
 
 ### F1-c record — one version, three projections, and the one that is not the artifact (2026-09-16) <a id="f1c-projections"></a>
 

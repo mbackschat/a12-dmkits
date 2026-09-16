@@ -153,6 +153,27 @@ report.gaps           // what the ANALYSIS could not follow
 
 **No claim is made about runtime behaviour or intent.** A reached declaration is one whose consistency may have moved, never one whose computed values have — the transitive reason included, which reports a dependency on a computation's output rather than a change in it.
 
+## Holding one analysis across many questions — `snapshotOf`
+
+Every entry point above is stateless, and that is right for a gate and wrong for an editor: `checkDraft` performs one admission, one preparation and **two** checks per call, and an editor asks per keystroke while the baseline side cannot possibly have changed. A snapshot pays for the source parses and the fact base once.
+
+```kotlin
+var snapshot = snapshotOf(listOf(ModelSource(orderJson), ModelSource(catalogJson)), "orders")
+
+snapshot.report                                   // the entry model's report, computed once
+snapshot.draft("/Order/CodeRequired", "errorCondition", typed).edit   // `checkDraft`'s answer, one check
+snapshot = snapshot.withSource(ModelSource(editedOrderJson))         // re-admits that source, reuses the rest
+snapshot = snapshot.withoutSource("catalog")                         // and the mount goes unexpanded, visibly
+```
+
+**A snapshot is a value.** Every operation returns a new one and none writes into the receiver, so a consumer may hold an old snapshot and keep getting the answer it already had — which is what makes it safe to hand one to a UI that renders asynchronously.
+
+**Reuse can never change an answer, by construction rather than by care.** Everything a snapshot reuses is a pure function of inputs that did not change — a source's parse, the entry's fact base, the baseline report — so there is no invalidation rule to get wrong. `SnapshotTest` still holds every change kind to a fresh full check, because "by construction" is a claim and the table is the oracle for it.
+
+**What was reused is reported, and measured rather than asserted.** `snapshot.reuse` and `DraftResult.reuse` carry `sourcesReused`, `sourcesAdmitted`, `preparationReused` and `baselineReportReused`; the first compares each admitted parse against the previous snapshot's by object identity, and the two flags compare the objects an answer was actually computed from against the snapshot's own. Two readings are structural and say so in the type's own documentation: making a snapshot always re-prepares and re-checks, and answering a draft never calls admission at all. **No latency is claimed** — H5 owns the after-edit boundary and left it unset, so a number here would be a bar nobody ratified.
+
+Per-declaration reuse *inside* a check is a different proposition and is deliberately not attempted: it would need each of the 103 families to declare the model footprint its verdict depends on. The [implementation plan](PORTABLE-CONSISTENCY-IMPLEMENTATION-PLAN.md) carries that as its own work item rather than a follow-up here.
+
 ## Calling it from Node
 
 The worked example is [`consistency/consumer-tests/node`](../consistency/consumer-tests/node), which is executable rather than illustrative: `./build.sh :consistency:nodeConsumerTest` packs the library into a real npm tarball, clean-installs it into a staged copy of that project, and runs it. It needs `node` and `npm` and reaches no network — the package declares no runtime dependency.

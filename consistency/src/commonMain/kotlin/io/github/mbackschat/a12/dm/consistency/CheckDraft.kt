@@ -32,53 +32,62 @@ import kotlinx.serialization.json.JsonObject
 fun checkDraft(source: ModelSource, at: String, member: String, text: String): EditReport {
     val admitted = admit(source) as? Admission.Admitted
         ?: check(source).let { report ->
-            return refused(report, CoverageGap(
+            return refusedDraft(report, CoverageGap(
                 null,
                 "the source could not be read, so there is no model for this draft to be checked in",
             ))
         }
     val prepared = prepare(admitted, providers = emptyMap())
     val baseline = checkPrepared(prepared, admitted.modelId, inherited = emptyList())
-    val element = prepared.elements.firstOrNull { it.path == at }
+    return when (val drafted = prepared.draftedWith(at, member, text)) {
+        is Drafted.Refused -> refusedDraft(baseline, drafted.gap)
+        is Drafted.Applied ->
+            attribute(baseline, checkPrepared(drafted.prepared, admitted.modelId, inherited = emptyList()))
+    }
+}
+
+/** Either the fact base with the draft in it, or the reason the draft was not applied. */
+internal sealed interface Drafted {
+
+    data class Applied(val prepared: PreparedModel) : Drafted
+
+    data class Refused(val gap: CoverageGap) : Drafted
+}
+
+/**
+ * The same fact base with one declaration's DSL member replaced, or why it could not be.
+ *
+ * One function rather than an apply and a separate explain, because the two would have to agree about which
+ * inputs are admissible — and the caller that got one without the other is where they would stop agreeing.
+ *
+ * The element's whole declaration is rebuilt rather than its body mutated, because `body` is DERIVED from
+ * `declaration[kind]`: writing into a body object would leave the declaration every other reader sees
+ * unchanged, which is the silent half of that indirection.
+ */
+internal fun PreparedModel.draftedWith(at: String, member: String, text: String): Drafted {
+    val element = elements.firstOrNull { it.path == at }
     val body = element?.body
     if (element == null || body == null) {
-        return refused(baseline, CoverageGap(
+        return Drafted.Refused(CoverageGap(
             at,
             "this model declares no rule or computation there, so the draft has nothing to be typed into",
         ))
     }
     val draftable = draftableMembers(element.kind, body)
     if (member !in draftable) {
-        return refused(baseline, CoverageGap(
+        return Drafted.Refused(CoverageGap(
             at,
             "a `${element.kind}` carries no DSL member `$member`; this one can carry " +
                 draftable.joinToString(", ") { "`$it`" }.ifEmpty { "no DSL text at all" },
         ))
     }
-    val drafted = prepared.withDraft(element, body, member, text)
-        ?: return refused(baseline, CoverageGap(
+    val drafted = replaceConditionText(body, member, text)
+        ?: return Drafted.Refused(CoverageGap(
             at,
             "`$member` could not be replaced in this declaration, so the draft was not analysed",
         ))
-    return attribute(baseline, checkPrepared(drafted, admitted.modelId, inherited = emptyList()))
-}
-
-/**
- * The same fact base with one declaration's DSL member replaced.
- *
- * The element's whole declaration is rebuilt rather than its body mutated, because `body` is DERIVED from
- * `declaration[kind]` — writing to a body object would leave the declaration every other reader sees
- * unchanged, which is the silent half of that indirection.
- */
-private fun PreparedModel.withDraft(
-    element: DeclaredElement,
-    body: JsonObject,
-    member: String,
-    text: String,
-): PreparedModel? {
-    val drafted = replaceConditionText(body, member, text) ?: return null
     val redeclared = element.copy(declaration = JsonObject(element.declaration + (element.kind to drafted)))
-    return copy(elements = elements.map { if (it.path == element.path) redeclared else it })
+    return Drafted.Applied(copy(elements = elements.map { if (it.path == element.path) redeclared else it }))
 }
 
 /**
@@ -88,7 +97,7 @@ private fun PreparedModel.withDraft(
  * and a consumer reading `edited` as "the model with my draft in it" would then have to distinguish absent
  * from empty — where what actually happened is that the model was checked and the draft never reached it.
  */
-private fun refused(baseline: ConsistencyReport, gap: CoverageGap) = EditReport(
+internal fun refusedDraft(baseline: ConsistencyReport, gap: CoverageGap) = EditReport(
     baseline = baseline,
     edited = baseline,
     introduced = emptyList(),
