@@ -66,6 +66,10 @@ class GroupRepeatabilityDomainLawsTest {
         actual.put("absent — key removed", verdictForAbsent());
         actual.put("\"2\" — canonical value as text", verdictFor(MAPPER.getNodeFactory().textNode("2")));
         actual.put("true — a non-numeric kind", verdictFor(MAPPER.getNodeFactory().booleanNode(true)));
+        actual.put("-2147483648 — the signed 32-bit floor",
+                verdictFor(MAPPER.getNodeFactory().numberNode(-2147483648)));
+        actual.put("-2147483649 — one below that floor",
+                verdictFor(MAPPER.getNodeFactory().numberNode(-2147483649L)));
 
         Map<String, String> expected = new LinkedHashMap<>();
         for (String admitted : List.of("2 — canonical, control", "3", "1 — our builder refuses",
@@ -76,6 +80,12 @@ class GroupRepeatabilityDomainLawsTest {
         expected.put("-1 — our builder refuses", invalidMaxima("Only values without a sign are allowed."));
         expected.put("null", invalidMaxima("Only values greater than 0 are allowed."));
         expected.put("true — a non-numeric kind", "RuntimeException");
+        // The floor mirrors the ceiling, and it is the boundary the CHECKER's own family needed: it held
+        // only the upper half until 2026-09-16, so a stored `"repeatability":0` was reported here and
+        // silent there (`consistency.GroupRepetitionCountTest`).
+        expected.put("-2147483648 — the signed 32-bit floor",
+                invalidMaxima("Only values without a sign are allowed."));
+        expected.put("-2147483649 — one below that floor", "RuntimeException");
 
         assertEquals(expected, actual,
                 "the kernel's own domain for a repeatable group's repeatability — what any client-side refusal "

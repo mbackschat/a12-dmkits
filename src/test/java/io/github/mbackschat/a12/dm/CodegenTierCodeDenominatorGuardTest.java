@@ -96,6 +96,9 @@ class CodegenTierCodeDenominatorGuardTest {
             "MVK_INDEX_FIELD_NO_VALUE_VALIDATION",
             "MVK_INVALID_INDEX_FIELD",
             "MVK_INVALID_SORT_FIELD",
+            // Arrived 2026-09-16: GROUP_REPETITION_COUNT gained the lower half of the repeatability law it
+            // had only held the upper half of, closing a measured false-pass route (KF221, extended).
+            "MVK_MAX_VALUES_INVALID",
             "MVK_PATH_INVALID",
             "MVK_PATHS_INCONSISTENT",
             "MVK_SORT_FIELD_NO_VALUE_VALIDATION"));

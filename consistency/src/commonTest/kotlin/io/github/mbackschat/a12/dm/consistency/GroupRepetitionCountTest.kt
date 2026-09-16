@@ -15,6 +15,8 @@ class GroupRepetitionCountTest {
 
     private val tooBig = "MVK_MAX_TOO_BIG"
 
+    private val invalid = "MVK_MAX_VALUES_INVALID"
+
     /** A catalog whose root group carries [root] and whose nested `Pallets` carries [nested]. */
     private fun codes(root: String = "", nested: String = ""): List<String> = check(
         ModelSource(
@@ -59,5 +61,41 @@ class GroupRepetitionCountTest {
         // reached — the unbuildable tier is the honest report.
         expected["a nested group one past that ceiling"] = listOf(CK_MODEL_NOT_BUILDABLE)
         assertEquals(expected, actual, "a group's repetition count against A12's cap")
+    }
+
+    /**
+     * The FLOOR, which this family did not hold and a stored model can reach.
+     *
+     * A12's side of these rows is [KERNEL-FINDINGS KF221], locked by
+     * `adapter.laws.GroupRepeatabilityDomainLawsTest`: the domain is any integer `> 0`, and `0`, `null` and
+     * `-1` draw `MVK_MAX_VALUES_INVALID`. The two boundary cells that finding did not carry — the signed
+     * 32-bit floor, and one below it, which is refused as malformed input exactly as one above the ceiling
+     * is — were measured on 2026-09-16 and extend it there.
+     *
+     * Both carriers are walked for the same reason the cap rows do it: the ceiling's bound differs per
+     * carrier, so a floor asserted on one carrier alone would leave the other untested.
+     */
+    @Test
+    fun aNonPositiveCountIsInvalidOnEitherCarrier() {
+        val actual = mutableMapOf<String, List<String>>()
+        actual["the minimum A12 admits"] = codes(nested = """"repeatability":1,""")
+        actual["a nested group at zero"] = codes(nested = """"repeatability":0,""")
+        actual["a nested group at minus one"] = codes(nested = """"repeatability":-1,""")
+        actual["a ROOT group at zero"] = codes(root = """"repeatability":0,""")
+        actual["a nested group at the signed 32-bit floor"] =
+            codes(nested = """"repeatability":-2147483648,""")
+        actual["a nested group one below that floor"] = codes(nested = """"repeatability":-2147483649,""")
+
+        val expected = mutableMapOf<String, List<String>>()
+        expected["the minimum A12 admits"] = emptyList()
+        expected["a nested group at zero"] = listOf(invalid)
+        expected["a nested group at minus one"] = listOf(invalid)
+        // The floor is NOT carrier-dependent, unlike the cap — stated as its own row rather than assumed.
+        expected["a ROOT group at zero"] = listOf(invalid)
+        expected["a nested group at the signed 32-bit floor"] = listOf(invalid)
+        // Below the floor A12's reader refuses the source, so naming a class would claim a verdict it never
+        // reached — the same honest report the ceiling's overflow row makes.
+        expected["a nested group one below that floor"] = listOf(CK_MODEL_NOT_BUILDABLE)
+        assertEquals(expected, actual, "a group's repetition count against A12's floor")
     }
 }
