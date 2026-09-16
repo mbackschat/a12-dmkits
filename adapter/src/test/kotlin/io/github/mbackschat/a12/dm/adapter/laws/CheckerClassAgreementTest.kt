@@ -173,8 +173,15 @@ class CheckerClassAgreementTest {
      */
     private val accumulationUnreached = emptySet<String>()
 
-    /** Independent mutation PAIRS that must compare before a green on the accumulated verdict means anything. */
-    private val pairFloor = 20
+    /**
+     * Independent mutation PAIRS that must compare before a green on the accumulated verdict means anything.
+     *
+     * 23 compare as of 2026-09-16, and this sits well below that on purpose — like every other floor here it
+     * answers *did the comparison happen*, not *how big is the population*. Set at the live count it would
+     * fail on any corpus edit that removes a second rule from one model, which is an editorial change rather
+     * than a regression in what this asserts.
+     */
+    private val pairFloor = 10
 
     /** The two declarations a pair's defects land on — different by construction, not by luck. */
     private val FIRST = 0
