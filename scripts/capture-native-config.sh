@@ -18,6 +18,34 @@
 #
 # Usage:  GRAALVM_HOME=/path/to/graalvm-25 ./scripts/capture-native-config.sh
 # Then:   ./gradlew :cli:nativeCompile   (the metadata is bundled under cli/src/main/resources)
+#
+# CHUNKED capture (same result, split across several shorter runs). The whole traced suite takes 36-38
+# minutes, and an agent harness cannot hold one process that long: a background task is killed by a memory
+# watchdog and a Monitor is killed at its 30-minute ceiling (docs/AGENT-RUN-DISCIPLINE.md, both measured
+# 2026-09-16). `config-merge-dir` already merges, so tracing N disjoint slices into one directory yields the
+# union of their traces. That union is a SUPERSET of a single run's, never a subset — each slice re-runs JVM
+# and static-initializer reflection the single run traced once — and over-approximated reachability is the
+# safe direction.
+#
+#   RK_NATIVE_TESTS=<file>   trace ONLY the classes named in <file> (one FQCN per line), record them, stop
+#                            before the assemble steps. This is one slice, never a whole capture.
+#   RK_NATIVE_KEEP_CFG=1     keep an existing $RK_NATIVE_CFG and add to it, instead of wiping it.
+#   RK_NATIVE_ASSEMBLE=1     skip tracing; run the removal check, strip, copy, hygiene and stamp over what
+#                            the slices already accumulated.
+#
+#   for f in chunks/*; do RK_NATIVE_TESTS=$f RK_NATIVE_KEEP_CFG=1 ./scripts/capture-native-config.sh; done
+#   RK_NATIVE_KEEP_CFG=1 RK_NATIVE_ASSEMBLE=1 ./scripts/capture-native-config.sh
+#
+# A slice-bounded capture is the v0.1.0/v0.1.1 defect class itself (§3.5: coverage bounded by what someone
+# remembered to list), so the assemble step REFUSES to stamp until the recorded slices cover every compiled
+# test class. The completeness claim is mechanical here, not a promise in a comment.
+#
+# Read that gate for exactly what it says: the SLICING omitted nothing. It does not certify the traced set
+# itself. The test task still applies its own documented exclusions (mutationTailGuardTest's class as build
+# tooling, NativeImageMetadataHygieneTest because it reads the pre-capture file), so a slice can pass 20
+# classes and execute 18 — identical to what an unsliced capture traces, which is the point. And a reflective
+# site no test reaches is invisible here just as it is to a single run; that is §3.5's open residue, not
+# something slicing introduced or this gate closes.
 set -euo pipefail
 
 : "${GRAALVM_HOME:?set GRAALVM_HOME to a GraalVM 25 home}"
@@ -43,7 +71,27 @@ if ! git show "HEAD:$DEST/reachability-metadata.json" > "$BASELINE" 2>/dev/null;
   }
   \cp -f "$DEST/reachability-metadata.json" "$BASELINE"
 fi
-rm -rf "$CFG"; mkdir -p "$DEST" "$CFG"
+MANIFEST="$CFG/traced-classes.txt"
+if [[ -n "${RK_NATIVE_KEEP_CFG:-}" || -n "${RK_NATIVE_ASSEMBLE:-}" ]]; then
+  mkdir -p "$DEST" "$CFG"
+else
+  rm -rf "$CFG"; mkdir -p "$DEST" "$CFG"
+fi
+
+# The traced denominator: every top-level compiled :cli test class. Derived from the COMPILED output rather
+# than from sources, because that is what the test task actually selects from.
+#
+# The `Test$` filter drops no test, verified 2026-09-16: the nine compiled top-level classes that do not end
+# in `Test` (CliTestSupport, GitTestSupport, KernelEval, OperatorIndex, PackagedDmtool, PublicMarkdownSurfaces,
+# RepoWalk, ResultEnvelopeAssertions, StaleGapReferenceClassifier) carry no @Test, @ParameterizedTest,
+# @TestFactory, @RepeatedTest or @TestTemplate between them — they are fixtures and helpers. The filter is
+# needed because a `--tests` pattern naming a class with no tests contributes nothing while still counting
+# against the manifest, which would make an incomplete capture look complete.
+all_test_classes() {
+  find cli/build/classes -path '*test*' -name '*.class' ! -name '*$*' \
+    | sed -E 's|.*/classes/[a-z]+/test/||; s|/|.|g; s|\.class$||' \
+    | grep -E 'Test$' | sort -u
+}
 
 # Run the full :cli verification graph: the ordinary product test is traced except
 # NativeImageMetadataHygieneTest, which necessarily reads the PRE-CAPTURE committed file; repository-structure
@@ -52,7 +100,42 @@ rm -rf "$CFG"; mkdir -p "$DEST" "$CFG"
 # build.sh keeps the Gradle daemon on the project's JDK 21 and resolves the shared isolated Gradle home
 # through Git's common directory. The rkNativeAgent mode independently launches the traced test JVM from
 # GRAALVM_HOME, so the capture still uses GraalVM without reimplementing the wrapper's environment policy.
-./build.sh -PrkNativeAgent "-PrkNativeAgentDir=$CFG" :cli:test
+if [[ -z "${RK_NATIVE_ASSEMBLE:-}" ]]; then
+  if [[ -n "${RK_NATIVE_TESTS:-}" ]]; then
+    [[ -f "$RK_NATIVE_TESTS" ]] || { echo "RK_NATIVE_TESTS=$RK_NATIVE_TESTS is not a file" >&2; exit 1; }
+    slice=()
+    while read -r cls; do [[ -n "$cls" ]] && slice+=("$cls"); done < "$RK_NATIVE_TESTS"
+    [[ ${#slice[@]} -gt 0 ]] || { echo "RK_NATIVE_TESTS=$RK_NATIVE_TESTS names no class" >&2; exit 1; }
+    # A name that matches nothing would be recorded as traced while contributing no trace, so the manifest
+    # would over-count and the completeness gate would pass on a capture that is genuinely short. Reject the
+    # typo here instead, against the same derivation the gate uses.
+    unknown="$(comm -13 <(all_test_classes) <(printf '%s\n' "${slice[@]}" | sort -u))"
+    [[ -z "$unknown" ]] || { echo "RK_NATIVE_TESTS names classes that are not compiled :cli tests:" >&2
+                             echo "$unknown" >&2; exit 1; }
+    filters=()
+    for cls in "${slice[@]}"; do filters+=(--tests "$cls"); done
+    ./build.sh -PrkNativeAgent "-PrkNativeAgentDir=$CFG" :cli:test "${filters[@]}"
+    printf '%s\n' "${slice[@]}" >> "$MANIFEST"
+    remaining="$(comm -23 <(all_test_classes) <(sort -u "$MANIFEST") | wc -l | tr -d ' ')"
+    echo "slice traced: ${#slice[@]} class(es); $remaining of $(all_test_classes | wc -l | tr -d ' ') still untraced in $CFG"
+    echo "run the remaining slices, then: RK_NATIVE_KEEP_CFG=1 RK_NATIVE_ASSEMBLE=1 $0"
+    exit 0
+  fi
+  ./build.sh -PrkNativeAgent "-PrkNativeAgentDir=$CFG" :cli:test
+  all_test_classes > "$MANIFEST"
+fi
+
+# Nothing below may run on a capture that traced only part of the suite. §3.5's shipped defect was exactly a
+# capture whose coverage was bounded by a list, so the check is against the compiled denominator rather than
+# against an intention: an unstamped partial capture is recoverable, a stamped one claims a freshness it does
+# not have and the gate will believe it.
+[[ -f "$MANIFEST" ]] || { echo "no traced-class manifest in $CFG — run at least one slice first" >&2; exit 1; }
+untraced="$(comm -23 <(all_test_classes) <(sort -u "$MANIFEST"))"
+if [[ -n "$untraced" ]]; then
+  echo "refusing to assemble: $(printf '%s\n' "$untraced" | wc -l | tr -d ' ') compiled test class(es) were never traced:" >&2
+  printf '%s\n' "$untraced" >&2
+  exit 1
+fi
 
 shopt -s nullglob
 files=("$CFG"/*.json)

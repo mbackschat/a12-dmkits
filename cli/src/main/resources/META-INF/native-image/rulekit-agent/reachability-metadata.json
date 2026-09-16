@@ -4604,6 +4604,21 @@
       ]
     },
     {
+      "type": "com.mgmtp.a12.kernel.core.rt._30_8.internal.core.RuntimeController$alleFelderAngegeben$1",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": [
+            "org.codehaus.groovy.runtime.callsite.CallSite",
+            "groovy.lang.MetaClassImpl",
+            "groovy.lang.MetaMethod",
+            "java.lang.Class[]",
+            "java.lang.reflect.Constructor"
+          ]
+        }
+      ]
+    },
+    {
       "type": "com.mgmtp.a12.kernel.core.rt._30_8.internal.core.RuntimeController$alleFelderAngegeben$4",
       "methods": [
         {
@@ -4649,6 +4664,21 @@
       ]
     },
     {
+      "type": "com.mgmtp.a12.kernel.core.rt._30_8.internal.core.RuntimeController$alleKontexteAngegeben$6",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": [
+            "org.codehaus.groovy.runtime.callsite.CallSite",
+            "groovy.lang.MetaClassImpl",
+            "groovy.lang.MetaMethod",
+            "java.lang.Class[]",
+            "java.lang.reflect.Constructor"
+          ]
+        }
+      ]
+    },
+    {
       "type": "com.mgmtp.a12.kernel.core.rt._30_8.internal.core.RuntimeController$feldWert$12",
       "methods": [
         {
@@ -4665,6 +4695,21 @@
     },
     {
       "type": "com.mgmtp.a12.kernel.core.rt._30_8.internal.core.RuntimeController$feldWert$13",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": [
+            "org.codehaus.groovy.runtime.callsite.CallSite",
+            "groovy.lang.MetaClassImpl",
+            "groovy.lang.MetaMethod",
+            "java.lang.Class[]",
+            "java.lang.reflect.Constructor"
+          ]
+        }
+      ]
+    },
+    {
+      "type": "com.mgmtp.a12.kernel.core.rt._30_8.internal.core.RuntimeController$feldWertAlsDatum$10",
       "methods": [
         {
           "name": "<init>",
@@ -4769,7 +4814,37 @@
       ]
     },
     {
+      "type": "com.mgmtp.a12.kernel.core.rt._30_8.internal.core.RuntimeController$getDifferenzInTagen$11",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": [
+            "org.codehaus.groovy.runtime.callsite.CallSite",
+            "groovy.lang.MetaClassImpl",
+            "groovy.lang.MetaMethod",
+            "java.lang.Class[]",
+            "java.lang.reflect.Constructor"
+          ]
+        }
+      ]
+    },
+    {
       "type": "com.mgmtp.a12.kernel.core.rt._30_8.internal.core.RuntimeController$getDifferenzInTagen$6",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": [
+            "org.codehaus.groovy.runtime.callsite.CallSite",
+            "groovy.lang.MetaClassImpl",
+            "groovy.lang.MetaMethod",
+            "java.lang.Class[]",
+            "java.lang.reflect.Constructor"
+          ]
+        }
+      ]
+    },
+    {
+      "type": "com.mgmtp.a12.kernel.core.rt._30_8.internal.core.RuntimeController$getMaxGesetzterKontext",
       "methods": [
         {
           "name": "<init>",
@@ -4815,6 +4890,21 @@
     },
     {
       "type": "com.mgmtp.a12.kernel.core.rt._30_8.internal.core.RuntimeController$getValidationCache$1",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": [
+            "org.codehaus.groovy.runtime.callsite.CallSite",
+            "groovy.lang.MetaClassImpl",
+            "groovy.lang.MetaMethod",
+            "java.lang.Class[]",
+            "java.lang.reflect.Constructor"
+          ]
+        }
+      ]
+    },
+    {
+      "type": "com.mgmtp.a12.kernel.core.rt._30_8.internal.core.RuntimeController$getValidationCache$7",
       "methods": [
         {
           "name": "<init>",
@@ -4904,6 +4994,51 @@
       ]
     },
     {
+      "type": "com.mgmtp.a12.kernel.core.rt._30_8.internal.core.RuntimeController$logMessung$5",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": [
+            "org.codehaus.groovy.runtime.callsite.CallSite",
+            "groovy.lang.MetaClassImpl",
+            "groovy.lang.MetaMethod",
+            "java.lang.Class[]",
+            "java.lang.reflect.Constructor"
+          ]
+        }
+      ]
+    },
+    {
+      "type": "com.mgmtp.a12.kernel.core.rt._30_8.internal.core.RuntimeController$logMessung$9",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": [
+            "org.codehaus.groovy.runtime.callsite.CallSite",
+            "groovy.lang.MetaClassImpl",
+            "groovy.lang.MetaMethod",
+            "java.lang.Class[]",
+            "java.lang.reflect.Constructor"
+          ]
+        }
+      ]
+    },
+    {
+      "type": "com.mgmtp.a12.kernel.core.rt._30_8.internal.core.RuntimeController$makeDecimal$3",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": [
+            "org.codehaus.groovy.runtime.callsite.CallSite",
+            "groovy.lang.MetaClassImpl",
+            "groovy.lang.MetaMethod",
+            "java.lang.Class[]",
+            "java.lang.reflect.Constructor"
+          ]
+        }
+      ]
+    },
+    {
       "type": "com.mgmtp.a12.kernel.core.rt._30_8.internal.core.RuntimeController$makeDecimal$7",
       "methods": [
         {
@@ -4949,6 +5084,21 @@
       ]
     },
     {
+      "type": "com.mgmtp.a12.kernel.core.rt._30_8.internal.core.RuntimeController$makeIdentifier$8",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": [
+            "org.codehaus.groovy.runtime.callsite.CallSite",
+            "groovy.lang.MetaClassImpl",
+            "groovy.lang.MetaMethod",
+            "java.lang.Class[]",
+            "java.lang.reflect.Constructor"
+          ]
+        }
+      ]
+    },
+    {
       "type": "com.mgmtp.a12.kernel.core.rt._30_8.internal.core.RuntimeController$makeIdentifier$9",
       "methods": [
         {
@@ -4965,6 +5115,36 @@
     },
     {
       "type": "com.mgmtp.a12.kernel.core.rt._30_8.internal.core.RuntimeController$startMesspunkt",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": [
+            "org.codehaus.groovy.runtime.callsite.CallSite",
+            "groovy.lang.MetaClassImpl",
+            "groovy.lang.MetaMethod",
+            "java.lang.Class[]",
+            "java.lang.reflect.Constructor"
+          ]
+        }
+      ]
+    },
+    {
+      "type": "com.mgmtp.a12.kernel.core.rt._30_8.internal.core.RuntimeController$startMesspunkt$0",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": [
+            "org.codehaus.groovy.runtime.callsite.CallSite",
+            "groovy.lang.MetaClassImpl",
+            "groovy.lang.MetaMethod",
+            "java.lang.Class[]",
+            "java.lang.reflect.Constructor"
+          ]
+        }
+      ]
+    },
+    {
+      "type": "com.mgmtp.a12.kernel.core.rt._30_8.internal.core.RuntimeController$vergleiche$4",
       "methods": [
         {
           "name": "<init>",
@@ -6777,6 +6957,27 @@
       ]
     },
     {
+      "type": "com.mgmtp.a12.kernel.md.model.a12internal.fieldtypes.DateFragmentType",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": []
+        },
+        {
+          "name": "setFormatOfFragment",
+          "parameterTypes": [
+            "java.lang.String"
+          ]
+        },
+        {
+          "name": "setYoungerThan1900Check",
+          "parameterTypes": [
+            "boolean"
+          ]
+        }
+      ]
+    },
+    {
       "type": "com.mgmtp.a12.kernel.md.model.a12internal.fieldtypes.DateRangeType",
       "methods": [
         {
@@ -6799,6 +7000,12 @@
           "name": "setRangeSeparator",
           "parameterTypes": [
             "java.lang.String"
+          ]
+        },
+        {
+          "name": "setYoungerThan1900Check",
+          "parameterTypes": [
+            "boolean"
           ]
         }
       ]
@@ -7081,6 +7288,12 @@
           ]
         },
         {
+          "name": "setPositivesOnly",
+          "parameterTypes": [
+            "boolean"
+          ]
+        },
+        {
           "name": "setTrait",
           "parameterTypes": [
             "java.lang.String"
@@ -7267,6 +7480,9 @@
     },
     {
       "type": "com.mgmtp.a12.kernel.md.serializer.model.internal.service.serialization.CustomFieldTypeMixin"
+    },
+    {
+      "type": "com.mgmtp.a12.kernel.md.serializer.model.internal.service.serialization.DateFragmentTypeMixin"
     },
     {
       "type": "com.mgmtp.a12.kernel.md.serializer.model.internal.service.serialization.DateRangeTypeMixin"
@@ -8815,6 +9031,9 @@
       "type": "io.github.mbackschat.a12.dm.cli.BaseCommand",
       "fields": [
         {
+          "name": "JSON"
+        },
+        {
           "name": "spec"
         }
       ]
@@ -8869,6 +9088,23 @@
           "name": "source"
         }
       ],
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
+      "type": "io.github.mbackschat.a12.dm.cli.EngineOption",
+      "fields": [
+        {
+          "name": "engine"
+        }
+      ]
+    },
+    {
+      "type": "io.github.mbackschat.a12.dm.cli.EngineOption$EngineConverter",
       "methods": [
         {
           "name": "<init>",
@@ -9038,6 +9274,9 @@
           "parameterTypes": []
         }
       ]
+    },
+    {
+      "type": "io.github.mbackschat.a12.dm.cli.PortableCheck"
     },
     {
       "type": "io.github.mbackschat.a12.dm.cli.ReferenceRewritingRefactorCommand",
@@ -9979,6 +10218,9 @@
       "type": "io.github.mbackschat.a12.dm.cli.model.ModelCheckCommand",
       "fields": [
         {
+          "name": "engine"
+        },
+        {
           "name": "workspace"
         }
       ],
@@ -10465,6 +10707,9 @@
         },
         {
           "name": "condition"
+        },
+        {
+          "name": "engine"
         },
         {
           "name": "field"
@@ -11319,6 +11564,19 @@
       "type": "io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel"
     },
     {
+      "type": "io.github.mbackschat.a12.dm.rulekit.dsl.LocalizedText",
+      "methods": [
+        {
+          "name": "locale",
+          "parameterTypes": []
+        },
+        {
+          "name": "text",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
       "type": "io.github.mbackschat.a12.dm.rulekit.validate.ValidationResult"
     },
     {
@@ -11853,6 +12111,9 @@
       ]
     },
     {
+      "type": "java.util.ArrayList$SubList"
+    },
+    {
       "type": "java.util.ArrayListBeanInfo"
     },
     {
@@ -11953,6 +12214,9 @@
     },
     {
       "type": "java.util.ImmutableCollections$MapN"
+    },
+    {
+      "type": "java.util.ImmutableCollections$SubList"
     },
     {
       "type": "java.util.Iterator"
@@ -12302,6 +12566,21 @@
       ]
     },
     {
+      "type": "java_util_Map$get",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": [
+            "org.codehaus.groovy.runtime.callsite.CallSite",
+            "groovy.lang.MetaClassImpl",
+            "groovy.lang.MetaMethod",
+            "java.lang.Class[]",
+            "java.lang.reflect.Constructor"
+          ]
+        }
+      ]
+    },
+    {
       "type": "java_util_Map$get$0",
       "methods": [
         {
@@ -12318,6 +12597,21 @@
     },
     {
       "type": "java_util_Map$put",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": [
+            "org.codehaus.groovy.runtime.callsite.CallSite",
+            "groovy.lang.MetaClassImpl",
+            "groovy.lang.MetaMethod",
+            "java.lang.Class[]",
+            "java.lang.reflect.Constructor"
+          ]
+        }
+      ]
+    },
+    {
+      "type": "java_util_Map$put$0",
       "methods": [
         {
           "name": "<init>",
@@ -18288,6 +18582,9 @@
     },
     {
       "glob": "internal/templates/validation/groovy/entityidDir/EntityId_varAssignment.st"
+    },
+    {
+      "glob": "internal/templates/validation/groovy/entityidDir/LfdNrIndexCode.st"
     },
     {
       "glob": "internal/templates/validation/groovy/entityidDir/UsbIndexCode.st"
