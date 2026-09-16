@@ -107,6 +107,33 @@ report.edited        // the full report for the model as edited
 
 Two properties are worth knowing before you rely on it. Findings are compared by **content** (`Finding` is a data class), which works because the baseline's own findings were measured to survive an edit unchanged; attribution by each finding's `at` path was rejected as assuming more, since it would additionally need every edit-caused finding to land under the edited declaration and nothing has measured that. And it **refuses rather than guesses when the baseline could not be analysed at all** — with no baseline there is no "already carried", so every finding would read as introduced — reporting that refusal as a gap while still handing back the edited model's own report.
 
+## Which declarations a change reaches — `impactOf`, before you commit to it
+
+`checkEdit` says what your change broke. `impactOf(baseline, edited)` says what you now have to re-read, which is a different question and the one an author cannot answer by hand on a model of any size.
+
+```kotlin
+val report = impactOf(ModelSource(before), ModelSource(after))
+
+report.delta          // what changed: paths added, removed, re-declared; type definitions; moved short names
+report.impacts        // one entry per (declaration, dependency) reached, each with the reason it was reached
+report.affected       // the declarations, each named once
+report.edit           // the verdict half — `checkEdit` verbatim, not re-derived
+report.gaps           // what the ANALYSIS could not follow
+```
+
+**It may over-report and may not under-report**, and two design consequences follow from that direction. An element dependency reaches a referent's **ancestors** as well as the referent, because nothing in a model textually references the groups a path passes through — so rescoping a repeatable group would otherwise reach nothing at all. And a bare reference the model-wide short-name fallback resolved depends on the **name** as well as on what it currently names, because declaring a namesake in the reading declaration's own group takes the reference over through the local tier while touching nothing it names. That last case is the one a path-keyed analysis cannot see: both models are acceptable, so neither the check nor the edit report says anything.
+
+| reason | what a change did |
+|---|---|
+| `REFERENCES_A_CHANGED_ELEMENT` | added, removed or re-declared an element the declaration names — or one above it |
+| `BINDS_A_CHANGED_TYPE_DEFINITION` | added or removed the `content.typeDefinitions` entry a field types by |
+| `RESOLVES_A_MOVED_SHORT_NAME` | moved what a bare name can bind to, or flipped `fieldRefByShortNameAllowed` |
+| `READS_A_CHANGED_COMPUTED_FIELD` | reached a computation, and this declaration reads the field that computation writes |
+
+**`gaps` is the analysis talking about itself, and it is not the same list as a report's own coverage gaps.** A reference that resolves to nothing has no position for a change to be matched against, so a declaration reachable only through it can be missed — that is a limit of the ANALYSIS. That the model is also defective there is a finding. An unexpanded include is the stronger case: the fact base is missing declarations that exist, so no declaration can be reported as *unreached* at all, and the report carries the mount and nothing else.
+
+**No claim is made about runtime behaviour or intent.** A reached declaration is one whose consistency may have moved, never one whose computed values have — the transitive reason included, which reports a dependency on a computation's output rather than a change in it.
+
 ## Calling it from Node
 
 The worked example is [`consistency/consumer-tests/node`](../consistency/consumer-tests/node), which is executable rather than illustrative: `./build.sh :consistency:nodeConsumerTest` packs the library into a real npm tarball, clean-installs it into a staged copy of that project, and runs it. It needs `node` and `npm` and reaches no network — the package declares no runtime dependency.

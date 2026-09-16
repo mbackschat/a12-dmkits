@@ -145,7 +145,7 @@ private fun unbindableFieldType(
         )
     }
     if (discriminator == "TypeDefType") {
-        return unresolvedTypeDefinition(field, body as? JsonObject, declaredTypeDefinitionIds)
+        return unresolvedTypeDefinition(field, declaredTypeDefinitionIds)
     }
     // The one type refused for BEING itself: it binds like any other and A12 then has no code to generate
     // for it, in both body spellings, on a root and a nested field, and once per declaration rather than
@@ -247,10 +247,9 @@ private fun inadmissibleRangePair(field: DeclaredElement, body: JsonObject): Fin
  */
 private fun unresolvedTypeDefinition(
     field: DeclaredElement,
-    body: JsonObject?,
     declaredTypeDefinitionIds: Set<String>,
 ): Finding? {
-    val named = (body?.get("typeDefinitionId") as? JsonPrimitive)?.takeIf { it.isString }?.content
+    val named = field.boundTypeDefinitionId()
         ?: return unbuildable(
             field,
             "`fieldType` names `TypeDefType` without a `typeDefinitionId`, so A12 has no type definition to " +
@@ -263,6 +262,23 @@ private fun unresolvedTypeDefinition(
         field,
         "`fieldType` names the type definition `$named`, which `content.typeDefinitions` does not declare",
     )
+}
+
+/**
+ * The type definition a field binds BY ID, or null when it types inline or names no usable id.
+ *
+ * Extracted so the dependency graph reads the id from the same place this family judges it: `TypeDefType` and
+ * `typeDefinitionId` are wire names, and a second copy of them is the copy the two would disagree about. The
+ * kernel's own Java field is called `id`, and taking THAT for the wire name is what once made a probe measure
+ * an unknown member and mistake the result for a law ([KERNEL-FINDINGS KF308], corrected).
+ */
+internal fun DeclaredElement.boundTypeDefinitionId(): String? {
+    val declared = body?.get("fieldType") as? JsonObject ?: return null
+    if ((declared["type"] as? JsonPrimitive)?.content != "TypeDefType") {
+        return null
+    }
+    val typeDef = declared["TypeDefType"] as? JsonObject ?: return null
+    return (typeDef["typeDefinitionId"] as? JsonPrimitive)?.takeIf { it.isString }?.content
 }
 
 /**

@@ -11,12 +11,16 @@ import kotlinx.serialization.json.contentOrNull
  * @param member the member it was read from, so a report can say which one did not resolve.
  * @param role which rejection A12 issues when it does not resolve — the two members differ.
  * @param target what it resolved to.
+ * @param written the relative path exactly as authored, which is what a reader has to find and edit. Kept
+ *     beside the resolved target because a report naming only the resolution sends its reader looking for a
+ *     string the model does not contain.
  */
 data class DeclaredReference(
     val declaredAt: String,
     val member: String,
     val role: ReferenceRole,
     val target: Reference,
+    val written: String,
 )
 
 /**
@@ -48,7 +52,8 @@ internal fun PreparedModel.computeDeclaredReferences(): List<DeclaredReference> 
     // strictly RELATIVE — an absolute spelling is "illegal relPath" at conversion and the model never builds
     // (measured 2026-09-12) — and a relative path is move-invariant under mounting, because the provider's
     // root group is REPLACED by the mount group rather than added above it.
-    DeclaredReference(element.path, declared.first, declared.second, resolveRelative(element.path, relative))
+    DeclaredReference(element.path, declared.first, declared.second,
+        resolveRelative(element.path, relative), relative)
 }
 
 private val DECLARED_BY_KIND = mapOf(
