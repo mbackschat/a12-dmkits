@@ -864,13 +864,26 @@ internal fun check(
     admitted: Admission.Admitted,
     providers: Map<String, Admission.Admitted>,
     inherited: List<Diagnostic>,
+): ConsistencyReport = checkPrepared(prepare(admitted, providers), admitted.modelId, inherited)
+
+/**
+ * Check an already-prepared fact base — the seam a caller needs when the thing to check is not a source.
+ *
+ * It exists for the draft path: text an editor is typing is not in any source yet, so applying it to the fact
+ * base and checking THAT is the only way to answer without writing the model first ([checkDraft]). The source
+ * path reaches it through [check] and nothing else changes — preparation is still where a fact base comes
+ * from, and this function makes no decision preparation used to make.
+ */
+internal fun checkPrepared(
+    prepared: PreparedModel,
+    modelId: String?,
+    inherited: List<Diagnostic>,
 ): ConsistencyReport {
-    val prepared = prepare(admitted, providers)
     prepared.unsupportedConditionLanguage?.let { code ->
         // A12 refuses the model rather than falling back to a language, so there is no reading of its
         // conditions to have — every keyword question would be answered in a language A12 never applies.
         return ConsistencyReport(
-            modelId = admitted.modelId,
+            modelId = modelId,
             status = ConsistencyStatus.Invalid,
             findings = listOf(
                 Finding(
@@ -897,7 +910,7 @@ internal fun check(
         // reach: the elements are declared, in a model this source does not carry. Reporting the references
         // anyway would reject a model A12 accepts, which is the one direction a checker must never take.
         return ConsistencyReport(
-            modelId = admitted.modelId,
+            modelId = modelId,
             status = ConsistencyStatus.Inconclusive,
             findings = emptyList(),
             diagnostics = inherited + prepared.diagnostics,
@@ -1005,7 +1018,7 @@ internal fun check(
                 .withoutPostParseClassesBehindAPositionedDefect()
     val findings = judged.notSuppressedBy(prepared.variantFilterSuppressed())
     return ConsistencyReport(
-        modelId = admitted.modelId,
+        modelId = modelId,
         status = statusOf(findings),
         findings = findings,
         diagnostics = inherited + prepared.diagnostics,

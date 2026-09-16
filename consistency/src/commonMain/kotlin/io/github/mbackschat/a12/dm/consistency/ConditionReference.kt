@@ -50,23 +50,93 @@ fun PreparedModel.conditionReferences(): List<ConditionReference> = elements.fla
 }
 
 /**
- * The DSL-bearing members of one declaration, paired with the name a report should use for each.
+ * The DSL-bearing members of one declaration that are PRESENT, paired with the name a report should use.
  *
  * A computation carries up to three kinds at once and every one of them is checked, so naming only the
  * computation would leave an author looking through all of them. Alternatives are numbered by position
  * because they have no names of their own.
+ *
+ * Derived from [draftableMembers] rather than enumerating the vocabulary a second time: "which members could
+ * this declaration carry" and "which does it carry" are one list and one filter, and two independent
+ * enumerations of the member names are what the reader and the writer would eventually disagree about.
  */
-internal fun conditionTexts(kind: String, body: JsonObject): List<Pair<String, String>> = when (kind) {
-    "Rule" -> listOfNotNull(body.text("errorCondition")?.let { "errorCondition" to it })
+internal fun conditionTexts(kind: String, body: JsonObject): List<Pair<String, String>> =
+    draftableMembers(kind, body).mapNotNull { member -> conditionText(body, member)?.let { member to it } }
+
+/**
+ * Every DSL member this declaration COULD carry, present or not — the vocabulary, in report order.
+ *
+ * An absent member is draftable: an author writing a computation's first `commonPrecondition` is editing a
+ * member the declaration does not yet have, and refusing that would make the one case an editor starts from
+ * unanswerable. An absent ALTERNATIVE is not, because adding one is a structural edit to the declaration
+ * rather than text being typed into it, so the indices come from what the model declares.
+ */
+internal fun draftableMembers(kind: String, body: JsonObject): List<String> = when (kind) {
+    "Rule" -> listOf("errorCondition")
     "Computation" -> buildList {
-        body.text("commonPrecondition")?.let { add("commonPrecondition" to it) }
+        add("commonPrecondition")
         (body["computationAlternatives"] as? JsonArray).orEmpty().forEachIndexed { index, alternative ->
-            val alt = alternative as? JsonObject ?: return@forEachIndexed
-            alt.text("precondition")?.let { add("computationAlternatives[$index].precondition" to it) }
-            alt.text("operation")?.let { add("computationAlternatives[$index].operation" to it) }
+            if (alternative is JsonObject) {
+                add("computationAlternatives[$index].precondition")
+                add("computationAlternatives[$index].operation")
+            }
         }
     }
     else -> emptyList()
+}
+
+/** Read one member of [draftableMembers], or null when the declaration does not carry it. */
+private fun conditionText(body: JsonObject, member: String): String? {
+    val (index, key) = alternativeMemberOf(member) ?: return body.text(member)
+    val alternatives = body["computationAlternatives"] as? JsonArray ?: return null
+    return (alternatives.getOrNull(index) as? JsonObject)?.text(key)
+}
+
+/**
+ * Replace one member of [draftableMembers] in [body], or null when [member] is not one.
+ *
+ * The inverse of the naming in [draftableMembers], and deliberately beside it: the names are BUILT there, so
+ * a reader that parsed them anywhere else would be the copy that stopped matching.
+ */
+internal fun replaceConditionText(body: JsonObject, member: String, text: String): JsonObject? {
+    val (index, key) = alternativeMemberOf(member)
+        ?: return JsonObject(body + (member to JsonPrimitive(text)))
+    val alternatives = body["computationAlternatives"] as? JsonArray ?: return null
+    if (index !in alternatives.indices || alternatives[index] !is JsonObject) {
+        return null
+    }
+    val updated = alternatives.mapIndexed { position, alternative ->
+        if (position != index) {
+            alternative
+        } else {
+            JsonObject((alternative as JsonObject) + (key to JsonPrimitive(text)))
+        }
+    }
+    return JsonObject(body + ("computationAlternatives" to JsonArray(updated)))
+}
+
+/**
+ * Take an alternative's member name apart, mirroring where [draftableMembers] puts it together.
+ *
+ * **Deliberately not a `Regex`, and not because a regex reads worse.** A top-level `private val` holding one
+ * is initialised by a per-file init function that Kotlin/JS inserts at the entry of the functions that need
+ * it — and reading it from a PRIVATE top-level function reached from another file left it `undefined` on the
+ * JS target while the JVM target was perfectly green (measured 2026-09-16: 359 of 615 `jsNodeTest` rows
+ * failed with `Cannot read properties of undefined`, against 0 on `jvmTest`). Parsing a fixed-shape name by
+ * hand holds no file-level state at all, so there is no initialisation order to get wrong.
+ */
+private fun alternativeMemberOf(member: String): Pair<Int, String>? {
+    val prefix = "computationAlternatives["
+    if (!member.startsWith(prefix)) {
+        return null
+    }
+    val close = member.indexOf(']', prefix.length)
+    if (close < 0) {
+        return null
+    }
+    val index = member.substring(prefix.length, close).toIntOrNull() ?: return null
+    val key = member.substring(close + 1).removePrefix(".")
+    return if (key.isEmpty()) null else index to key
 }
 
 /**

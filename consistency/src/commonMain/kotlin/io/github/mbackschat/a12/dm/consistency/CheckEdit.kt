@@ -41,10 +41,17 @@ data class EditReport(
  * The refusal is reported as a [CoverageGap] on [EditReport.gaps]; the edited model's own report still rides
  * along, so the caller keeps everything that WAS established.
  */
-fun checkEdit(baseline: ModelSource, edited: ModelSource): EditReport {
-    val before = check(baseline)
-    val after = check(edited)
+fun checkEdit(baseline: ModelSource, edited: ModelSource): EditReport =
+    attribute(check(baseline), check(edited))
 
+/**
+ * Attribute [after]'s findings against [before]'s — the comparison both edit operations share.
+ *
+ * It is one function rather than two because the attribution IS the semantics: [checkDraft] answers about
+ * unsaved text and [checkEdit] about a second source, and a second copy of the comparison is where one of
+ * them would quietly start blaming a baseline defect on the author.
+ */
+internal fun attribute(before: ConsistencyReport, after: ConsistencyReport): EditReport {
     // An analysis that completed no family established no baseline. `status` cannot serve as this test: an
     // Inconclusive baseline is the ORDINARY outcome here, since the checker never reports Valid.
     if (before.checksCompleted.isEmpty()) {

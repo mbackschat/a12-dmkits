@@ -107,6 +107,20 @@ report.edited        // the full report for the model as edited
 
 Two properties are worth knowing before you rely on it. Findings are compared by **content** (`Finding` is a data class), which works because the baseline's own findings were measured to survive an edit unchanged; attribution by each finding's `at` path was rejected as assuming more, since it would additionally need every edit-caused finding to land under the edited declaration and nothing has measured that. And it **refuses rather than guesses when the baseline could not be analysed at all** — with no baseline there is no "already carried", so every finding would read as introduced — reporting that refusal as a gap while still handing back the edited model's own report.
 
+## Checking text an editor has not saved — `checkDraft`
+
+```kotlin
+val report = checkDraft(ModelSource(modelJson), "/Order/CodeRequired", "errorCondition", typedText)
+```
+
+**The draft is applied to the fact base, never to your source.** Text being typed is not in the model yet: an editor that wrote it into the source to find out would have to undo the write on every keystroke, and a consumer that checked the text on its own would lose the model context every reference in it resolves against. So the declaration is re-declared internally with that member carrying your text, and the result is attributed exactly as `checkEdit` attributes a saved edit — the draft's own findings, apart from what its neighbours already carried.
+
+`member` is spelled the way a report spells it: `errorCondition` for a rule, and `commonPrecondition`, `computationAlternatives[0].precondition` or `computationAlternatives[0].operation` for a computation. A member the declaration does not yet have is still draftable — writing a computation's first `commonPrecondition` is the case an editor starts from — while an alternative that does not exist is not, because adding one is a structural edit rather than text being typed.
+
+**Two things this gets right that an editor would otherwise get wrong.** Half-typed text is `MVK_INCOMPLETE_INPUT`, not invalid, and nothing here promotes it to a rejection — an author would otherwise be told their rule is wrong on every keystroke. And a draft's verdict never absorbs another declaration's defect, so typing into a model that is broken elsewhere still reports honestly about your text; the neighbour's findings ride along on `baseline`.
+
+A draft that could not be applied at all — an unreadable source, a path the model does not declare, a member the declaration cannot carry — attributes **nothing** and says why in `gaps`, naming the members the declaration can carry. It never raises.
+
 ## Which declarations a change reaches — `impactOf`, before you commit to it
 
 `checkEdit` says what your change broke. `impactOf(baseline, edited)` says what you now have to re-read, which is a different question and the one an author cannot answer by hand on a model of any size.
