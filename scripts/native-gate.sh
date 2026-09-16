@@ -45,8 +45,12 @@ stale="$(find "$ROOT"/*/src "$ROOT/src" -type f \( -name '*.java' -o -name '*.kt
 if [[ -n "$stale" ]]; then
     echo "STALE native binary — refusing to certify it (newer than the build: $stale)" >&2
     echo "  the reflection metadata capture is TEST-SUITE-DRIVEN, so re-capture FIRST, then rebuild:" >&2
-    echo "    GRAALVM_HOME=/Library/Java/JavaVirtualMachines/graalvm-25.jdk/Contents/Home ./scripts/capture-native-config.sh" >&2
-    echo "    GRAALVM_HOME=/Library/Java/JavaVirtualMachines/graalvm-25.jdk/Contents/Home ./build.sh :cli:nativeCompile -Porg.gradle.java.installations.fromEnv=GRAALVM_HOME" >&2
+    # The home is MACHINE-LOCAL — this installation sits under ~/Library, and the system path this hint used
+    # to name does not exist here, which costs the reader a hunt at exactly the wrong moment. So print how to
+    # find it; `java_home -V` lists every JVM with its vendor, and GraalVM names itself in that column.
+    echo "    # GRAALVM_HOME is machine-local: /usr/libexec/java_home -V  and take the Oracle GraalVM 25 row" >&2
+    echo "    GRAALVM_HOME=<that home> ./scripts/capture-native-config.sh" >&2
+    echo "    GRAALVM_HOME=<that home> ./build.sh :cli:nativeCompile -Porg.gradle.java.installations.fromEnv=GRAALVM_HOME" >&2
     echo "    ./scripts/native-gate.sh   # then re-run this gate on the rebuilt binary" >&2
     exit 3
 fi

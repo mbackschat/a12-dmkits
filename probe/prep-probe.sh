@@ -34,7 +34,7 @@ LOG="$SANDBOX/dmtool-calls.log"
   echo "native binary not found: $NATIVE" >&2
   echo "build it first (GraalVM 25 auto-discovered):" >&2
   echo "  GRADLE_USER_HOME=\"\$(cd \"$ROOT/..\" && pwd)/.gradle-isolated\" \\" >&2
-  echo "  GRAALVM_HOME=/Library/Java/JavaVirtualMachines/graalvm-25.jdk/Contents/Home \\" >&2
+  echo "  GRAALVM_HOME=<see: /usr/libexec/java_home -V, the Oracle GraalVM 25 row> \\" >&2
   echo "  JAVA_HOME=\"\$(/usr/libexec/java_home -v 21)\" $ROOT/gradlew :cli:nativeCompile -Porg.gradle.java.installations.fromEnv=GRAALVM_HOME" >&2
   exit 2
 }
@@ -54,8 +54,8 @@ stale="$(find "$ROOT"/*/src "$ROOT/src" -type f \( -name '*.java' -o -name '*.kt
 if [[ -n "$stale" ]]; then
   echo "STALE native binary — refusing to probe a fiction (newer than the build: $stale)" >&2
   echo "  the capture is TEST-SUITE-DRIVEN, so re-capture metadata FIRST, then rebuild:" >&2
-  echo "    GRAALVM_HOME=/Library/Java/JavaVirtualMachines/graalvm-25.jdk/Contents/Home ./scripts/capture-native-config.sh" >&2
-  echo "    GRAALVM_HOME=/Library/Java/JavaVirtualMachines/graalvm-25.jdk/Contents/Home ./build.sh :cli:nativeCompile -Porg.gradle.java.installations.fromEnv=GRAALVM_HOME" >&2
+  echo "    GRAALVM_HOME=<see: /usr/libexec/java_home -V, the Oracle GraalVM 25 row> ./scripts/capture-native-config.sh" >&2
+  echo "    GRAALVM_HOME=<see: /usr/libexec/java_home -V, the Oracle GraalVM 25 row> ./build.sh :cli:nativeCompile -Porg.gradle.java.installations.fromEnv=GRAALVM_HOME" >&2
   echo "    ./scripts/native-gate.sh   # then confirm the rebuilt binary is clean" >&2
   exit 3
 fi
