@@ -80,8 +80,9 @@ import kotlin.io.path.readText
  * "what A12 would name about declarations it never reached", and nothing here claims it.
  *
  * It was not a formality: the first run found a real under-report the subset direction cannot see by
- * construction, and with it a live false claim in the MVK ledger's `MVK_MISSING_ERROR_FIELD` row, which said
- * the checker reports a code that no line of `consistency/src` reads.
+ * construction, and with it a live false claim in the MVK ledger's `MVK_MISSING_ERROR_FIELD` row, which had
+ * the checker drawing that code for an unresolvable error target when it draws it for a BLANK member only —
+ * a sentence contradicting the one above it in its own row.
  */
 class CheckerClassAgreementTest {
 
