@@ -32,11 +32,11 @@ import io.github.mbackschat.a12.dm.consistency.syntax.callsIn
  * too on an identical starless pair and on a starred filter, which A12 answers with `MVK_DUPLICATE_PARAM1`
  * and `MVK_NO_WILDCARDS_ALLOWED` — measured, both ahead of every gate here.
  */
-fun PreparedModel.sumOfProductsOperandFindings(): List<Finding> {
+internal fun TrackedFactBase.sumOfProductsOperandFindings(): List<Finding> {
     val keywords = CONDITION_OPERATOR_KEYWORDS[conditionLanguage] ?: return emptyList()
     val operator = keywords[SUM_OF_PRODUCTS] ?: return emptyList()
     val filterKeyword = keywords[HAVING] ?: return emptyList()
-    return elements.flatMap { element ->
+    return declarations().flatMap { element ->
         val body = element.body ?: return@flatMap emptyList()
         val group = element.path.substringBeforeLast('/', missingDelimiterValue = "")
         conditionTexts(element.kind, body).flatMap { (member, text) ->
@@ -68,10 +68,10 @@ private class ParallelOperand(val owningGroup: String, val stars: Int, val filte
  * than from the model root, because the rule's own context binds everything at or above it — the fixture
  * that made this concrete has a REPEATABLE root group, where root-relative counting refuses a legal pair.
  */
-private fun PreparedModel.readOperand(
+private fun TrackedFactBase.readOperand(
     operand: CallOperand,
     declaringGroup: String,
-    element: DeclaredElement,
+    element: TrackedDeclaration,
     filterKeyword: String,
 ): ParallelOperand? {
     val written = operand.base ?: return null
@@ -81,7 +81,7 @@ private fun PreparedModel.readOperand(
     }
     val resolved = resolveEntity(declaringGroup, written.replace("*", ""), element.origin)
         as? Reference.Resolved ?: return null
-    val field = elements.firstOrNull { it.path == resolved.path && it.declaredKind == DeclaredKind.FIELD }
+    val field = declarations().firstOrNull { it.path == resolved.path && it.declaredKind == DeclaredKind.FIELD }
         ?: return null
     if (!field.path.startsWith("$declaringGroup/")) {
         return null
@@ -99,8 +99,8 @@ private fun PreparedModel.readOperand(
 }
 
 /** The repeatable groups strictly between [declaringGroup] and [fieldPath] — one star each is what A12 wants. */
-private fun PreparedModel.repeatableLevelsBetween(declaringGroup: String, fieldPath: String): Int =
-    elements.count {
+private fun TrackedFactBase.repeatableLevelsBetween(declaringGroup: String, fieldPath: String): Int =
+    declarations().count {
         it.declaredKind == DeclaredKind.GROUP && it.isRepeatable &&
             it.path.startsWith("$declaringGroup/") && fieldPath.startsWith("${it.path}/")
     }
@@ -115,7 +115,7 @@ private fun classOf(left: ParallelOperand, right: ParallelOperand): String? = wh
     else -> null
 }
 
-private fun finding(code: String, element: DeclaredElement, member: String): Finding = Finding(
+private fun finding(code: String, element: TrackedDeclaration, member: String): Finding = Finding(
     FindingCategory.A12_CONSTRAINT,
     FindingSeverity.ERROR,
     code,

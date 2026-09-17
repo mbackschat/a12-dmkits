@@ -32,8 +32,8 @@ import kotlinx.serialization.json.booleanOrNull
  * fills `yyyy-MM-dd`, which is year-bearing and complete, so both rows are ADMITTED — which is why
  * [declaredFormat] can treat the absent member as nothing to judge and still give A12's answer.
  */
-fun PreparedModel.temporalConfigFindings(): List<Finding> =
-    elements.filter { it.declaredKind == DeclaredKind.FIELD }.flatMap { field ->
+internal fun TrackedFactBase.temporalConfigFindings(): List<Finding> =
+    declarations().filter { it.declaredKind == DeclaredKind.FIELD }.flatMap { field ->
         val declared = field.body?.get("fieldType") as? JsonObject ?: return@flatMap emptyList()
         val type = (declared["type"] as? JsonPrimitive)?.content ?: return@flatMap emptyList()
         val body = declared[type] as? JsonObject ?: return@flatMap emptyList()
@@ -68,7 +68,7 @@ private fun JsonObject.declaredFormat(member: String): String? {
     return text.takeIf { it in ADMITTED_FORMATS }
 }
 
-private fun pre1900Finding(field: DeclaredElement, body: JsonObject, format: String?): Finding? {
+private fun pre1900Finding(field: TrackedDeclaration, body: JsonObject, format: String?): Finding? {
     // The gate is on the VALUE and not on the member's presence — `false` is admitted on a year-free format,
     // so a checker keyed on presence would report a declaration A12 takes.
     if ((body["youngerThan1900Check"] as? JsonPrimitive)?.booleanOrNull != true) {
@@ -88,7 +88,7 @@ private fun pre1900Finding(field: DeclaredElement, body: JsonObject, format: Str
     )
 }
 
-private fun partialPrecisionFinding(field: DeclaredElement, body: JsonObject, format: String?): Finding? {
+private fun partialPrecisionFinding(field: TrackedDeclaration, body: JsonObject, format: String?): Finding? {
     val precision = (body["datePrecision"] as? JsonPrimitive)?.takeIf { it.isString }?.content ?: return null
     if (precision !in PARTIAL_PRECISIONS) {
         return null

@@ -41,10 +41,10 @@ import io.github.mbackschat.a12.dm.consistency.syntax.callsIn
  * as `MVK_ERROR_INVALID_LANGUAGE_FEATURE`), so a computation carrying one has a different defect and this
  * family would be a second opinion about a condition A12 never reaches.
  */
-fun PreparedModel.repetitionKeyPlacementFindings(): List<Finding> {
+internal fun TrackedFactBase.repetitionKeyPlacementFindings(): List<Finding> {
     val spelling = CONDITION_OPERATOR_KEYWORDS[conditionLanguage]?.get(REPETITION_NOT_UNIQUE)
         ?: return emptyList()
-    return elements.filter { it.kind == "Rule" }.flatMap { element ->
+    return declarations().filter { it.kind == "Rule" }.flatMap { element ->
         val body = element.body ?: return@flatMap emptyList()
         val declaringGroup = element.path.substringBeforeLast('/', missingDelimiterValue = "")
         conditionTexts(element.kind, body).flatMap { (member, text) ->
@@ -68,10 +68,10 @@ private const val REPETITION_NOT_UNIQUE = "RepetitionNotUnique"
  * only where it also had its repetition, so whether the duplicate class still wins when the key lacks one is
  * unknown, and emitting here would be a rejection resting on a reading.
  */
-private fun PreparedModel.placementFinding(
+private fun TrackedFactBase.placementFinding(
     call: ConditionCall,
     declaringGroup: String,
-    element: DeclaredElement,
+    element: TrackedDeclaration,
     member: String,
 ): Finding? {
     if (call.operands.isEmpty() || call.operands.any { it.path == null || it.path.contains('*') }) {
@@ -108,8 +108,8 @@ private fun PreparedModel.placementFinding(
  * Strictly on both ends: the declaring group itself does not count however repeatable it is — that is the
  * measured "rule group is the repeated group" row — and neither does anything at or below the key.
  */
-private fun PreparedModel.repeatableLiesBetween(declaringGroup: String, key: String): Boolean =
-    elements.any { candidate ->
+private fun TrackedFactBase.repeatableLiesBetween(declaringGroup: String, key: String): Boolean =
+    declarations().any { candidate ->
         candidate.declaredKind == DeclaredKind.GROUP &&
             candidate.isRepeatable &&
             candidate.path.startsWith("$declaringGroup/") &&

@@ -181,18 +181,6 @@ public final class io/github/mbackschat/a12/dm/consistency/ComparisonOperatorOpe
 	public static final fun comparisonOperatorOperandFindings (Lio/github/mbackschat/a12/dm/consistency/PreparedModel;)Ljava/util/List;
 }
 
-public final class io/github/mbackschat/a12/dm/consistency/ComputationAlternativesKt {
-	public static final fun computationAlternativeFindings (Lio/github/mbackschat/a12/dm/consistency/PreparedModel;)Ljava/util/List;
-}
-
-public final class io/github/mbackschat/a12/dm/consistency/ComputationCycleKt {
-	public static final fun computationCycleFindings (Lio/github/mbackschat/a12/dm/consistency/PreparedModel;)Ljava/util/List;
-}
-
-public final class io/github/mbackschat/a12/dm/consistency/ComputationRoundingKt {
-	public static final fun computationRoundingFindings (Lio/github/mbackschat/a12/dm/consistency/PreparedModel;)Ljava/util/List;
-}
-
 public final class io/github/mbackschat/a12/dm/consistency/ComputationSelfReadKt {
 	public static final fun computationSelfReadFindings (Lio/github/mbackschat/a12/dm/consistency/PreparedModel;)Ljava/util/List;
 }
@@ -649,10 +637,6 @@ public final class io/github/mbackschat/a12/dm/consistency/FindingsKt {
 	public static final fun statusOf (Ljava/util/List;)Lio/github/mbackschat/a12/dm/consistency/ConsistencyStatus;
 }
 
-public final class io/github/mbackschat/a12/dm/consistency/GroupConditionWildcardKt {
-	public static final fun groupConditionWildcardFindings (Lio/github/mbackschat/a12/dm/consistency/PreparedModel;)Ljava/util/List;
-}
-
 public final class io/github/mbackschat/a12/dm/consistency/GroupListOperandsKt {
 	public static final fun groupListOperandFindings (Lio/github/mbackschat/a12/dm/consistency/PreparedModel;)Ljava/util/List;
 }
@@ -912,14 +896,6 @@ public final class io/github/mbackschat/a12/dm/consistency/RepetitionKeyContainm
 	public static final fun repetitionKeyContainmentFindings (Lio/github/mbackschat/a12/dm/consistency/PreparedModel;)Ljava/util/List;
 }
 
-public final class io/github/mbackschat/a12/dm/consistency/RepetitionKeyPlacementKt {
-	public static final fun repetitionKeyPlacementFindings (Lio/github/mbackschat/a12/dm/consistency/PreparedModel;)Ljava/util/List;
-}
-
-public final class io/github/mbackschat/a12/dm/consistency/RepetitionWildcardKt {
-	public static final fun repetitionWildcardFindings (Lio/github/mbackschat/a12/dm/consistency/PreparedModel;)Ljava/util/List;
-}
-
 public final class io/github/mbackschat/a12/dm/consistency/ReportJsonKt {
 	public static final fun toJson (Lio/github/mbackschat/a12/dm/consistency/ConsistencyReport;)Ljava/lang/String;
 	public static final fun toJson (Lio/github/mbackschat/a12/dm/consistency/EditReport;)Ljava/lang/String;
@@ -974,10 +950,6 @@ public final class io/github/mbackschat/a12/dm/consistency/StringTypeParametersK
 	public static final fun stringTypeParameterFindings (Lio/github/mbackschat/a12/dm/consistency/PreparedModel;)Ljava/util/List;
 }
 
-public final class io/github/mbackschat/a12/dm/consistency/SumOfProductsOperandsKt {
-	public static final fun sumOfProductsOperandFindings (Lio/github/mbackschat/a12/dm/consistency/PreparedModel;)Ljava/util/List;
-}
-
 public final class io/github/mbackschat/a12/dm/consistency/SupportedCharactersKt {
 	public static final fun supportedCharacterFindings (Lio/github/mbackschat/a12/dm/consistency/PreparedModel;)Ljava/util/List;
 	public static final fun supportedCharacterGaps (Lio/github/mbackschat/a12/dm/consistency/PreparedModel;)Ljava/util/List;
@@ -989,10 +961,6 @@ public final class io/github/mbackschat/a12/dm/consistency/TemporalAggregateOper
 
 public final class io/github/mbackschat/a12/dm/consistency/TemporalComparisonAgreementKt {
 	public static final fun temporalComparisonAgreementFindings (Lio/github/mbackschat/a12/dm/consistency/PreparedModel;)Ljava/util/List;
-}
-
-public final class io/github/mbackschat/a12/dm/consistency/TemporalConfigKt {
-	public static final fun temporalConfigFindings (Lio/github/mbackschat/a12/dm/consistency/PreparedModel;)Ljava/util/List;
 }
 
 public final class io/github/mbackschat/a12/dm/consistency/TextSpan {

@@ -938,15 +938,15 @@ internal fun checkPrepared(
     val judged = (declared.mapNotNull { it.target.asFinding(it.role, it.declaredAt) } +
         prepared.conditionReferences().mapNotNull {
             it.target.asFinding(ReferenceRole.CONDITION_ENTITY, it.declaredAt, it.member, it.span)
-        } + prepared.declarationSlotFindings() + prepared.computationAlternativeFindings() +
-        prepared.computationRoundingFindings() + tracked.suppressedWarningFindings() +
+        } + prepared.declarationSlotFindings() + tracked.computationAlternativeFindings() +
+        tracked.computationRoundingFindings() + tracked.suppressedWarningFindings() +
         tracked.ruleConditionAndTargetFindings() + prepared.variantFilterFindings() +
         tracked.conditionLexicalFindings() + tracked.conditionCompletenessFindings() +
         tracked.connectiveAgreementFindings() + tracked.conditionGrammarFindings() +
         tracked.elementNameFindings() + prepared.groupOrderingFindings() +
         tracked.groupRepetitionCountFindings() +
         tracked.presentationMemberFindings() + tracked.stringSlotFindings() +
-        prepared.fieldTypeBindingFindings() + prepared.temporalConfigFindings() +
+        prepared.fieldTypeBindingFindings() + tracked.temporalConfigFindings() +
         tracked.fieldNameReservedSegmentFindings() +
         prepared.elementNameAlphabetFindings() + tracked.enumCategoryFindings() +
         prepared.supportedCharacterFindings() + tracked.enumTextForbiddenCharacterFindings() +
@@ -954,19 +954,19 @@ internal fun checkPrepared(
         tracked.hModelFormConstructFindings() +
         prepared.declaredPatternFindings() +
         prepared.emptyGroupOperandFindings() + prepared.errorFieldReferenceFindings() +
-        prepared.groupListOperandFindings() + prepared.repetitionWildcardFindings() +
+        prepared.groupListOperandFindings() + tracked.repetitionWildcardFindings() +
         tracked.computedTargetKindFindings() + tracked.computedTargetIndexFieldFindings() +
         prepared.rawTypeLengthFindings() + tracked.computationPreconditionFeatureFindings() +
-        prepared.computationCycleFindings() +
+        tracked.computationCycleFindings() +
         prepared.computationSelfReadFindings() +
-        prepared.repetitionKeyPlacementFindings() +
+        tracked.repetitionKeyPlacementFindings() +
         tracked.repetitionScopeGroupFindings() +
         prepared.repetitionKeyContainmentFindings() +
         prepared.filterWildcardFindings() +
         prepared.filterBodyGateFindings() +
         tracked.outerMarkerPositionFindings() +
-        prepared.groupConditionWildcardFindings() +
-        prepared.sumOfProductsOperandFindings() +
+        tracked.groupConditionWildcardFindings() +
+        tracked.sumOfProductsOperandFindings() +
         tracked.operandListConstantFindings() +
         prepared.temporalAggregateOperandFindings() +
         prepared.semanticIndexStructureFindings() +

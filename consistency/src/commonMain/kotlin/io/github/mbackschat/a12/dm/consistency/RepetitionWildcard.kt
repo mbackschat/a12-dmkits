@@ -39,7 +39,7 @@ import kotlinx.serialization.json.intOrNull
  * arrives here. A12 does refuse it, so this under-reports — narrowly, since any name after the step brings the
  * whole reference back into view, and in the direction this project requires when a reading is incomplete.
  */
-fun PreparedModel.repetitionWildcardFindings(): List<Finding> = elements.flatMap { element ->
+internal fun TrackedFactBase.repetitionWildcardFindings(): List<Finding> = declarations().flatMap { element ->
     val body = element.body ?: return@flatMap emptyList()
     val group = element.path.substringBeforeLast('/', missingDelimiterValue = "")
     conditionTexts(element.kind, body).flatMap { (member, text) ->
@@ -85,7 +85,7 @@ private class Offence(val code: String, val why: String)
  * The order of the arms is the order the segment's own SPELLING decides — nothing here depends on position,
  * because the measured grid shows the class does not either.
  */
-private fun PreparedModel.offenceAt(
+private fun TrackedFactBase.offenceAt(
     segments: List<String>,
     at: Int,
     declaringGroup: String,
@@ -118,7 +118,7 @@ private fun PreparedModel.offenceAt(
  * with the DEPTH class before any star is considered, which is why the resolve has to succeed here rather
  * than merely be attempted.
  */
-private fun PreparedModel.upStepOffence(
+private fun TrackedFactBase.upStepOffence(
     segments: List<String>,
     at: Int,
     declaringGroup: String,
@@ -135,13 +135,13 @@ private fun PreparedModel.upStepOffence(
 }
 
 /** Whether [prefix] resolves to something other than a repeatable group — unresolvable counting as neither. */
-private fun PreparedModel.namesNoRepetition(
+private fun TrackedFactBase.namesNoRepetition(
     declaringGroup: String,
     prefix: String,
     origin: DeclarationOrigin,
 ): Boolean {
     val path = (resolveEntity(declaringGroup, prefix, origin) as? Reference.Resolved)?.path ?: return false
-    val element = elements.firstOrNull { it.path == path } ?: return false
+    val element = declarations().firstOrNull { it.path == path } ?: return false
     return !element.isRepeatable
 }
 

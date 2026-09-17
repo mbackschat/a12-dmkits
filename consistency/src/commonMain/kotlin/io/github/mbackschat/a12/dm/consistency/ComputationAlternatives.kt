@@ -35,14 +35,14 @@ import kotlinx.serialization.json.JsonPrimitive
  * one level down are ordinary verdicts, identical to the omitted member. All three are measured, because the
  * one that was inferred from its neighbour was the one that turned out wrong.
  */
-fun PreparedModel.computationAlternativeFindings(): List<Finding> =
-    elements.filter { it.declaredKind == DeclaredKind.COMPUTATION }.flatMap { alternativeFindings(it) }
+internal fun TrackedFactBase.computationAlternativeFindings(): List<Finding> =
+    declarations().filter { it.declaredKind == DeclaredKind.COMPUTATION }.flatMap { alternativeFindings(it) }
 
 /**
  * A computation is a whole element A12 refuses or judges as one, so an unreadable shape stops the read here
  * rather than contributing an alternative nothing can be said about.
  */
-private fun alternativeFindings(element: DeclaredElement): List<Finding> {
+private fun alternativeFindings(element: TrackedDeclaration): List<Finding> {
     // An envelope A12 cannot bind is a tier ABOVE any verdict about this member, and reading it as an
     // absent member would report two codes about a model A12 never examined.
     val body = element.body ?: return listOf(unreadableEnvelope(element))
@@ -65,7 +65,7 @@ private fun alternativeFindings(element: DeclaredElement): List<Finding> {
  * incompleteness. An alternative that merely lacks its operation draws the incompleteness alone, which is
  * what separates "nothing to compute" from "an alternative with no work in it".
  */
-private fun noWorkFindings(element: DeclaredElement): List<Finding> = listOf(
+private fun noWorkFindings(element: TrackedDeclaration): List<Finding> = listOf(
     Finding(
         FindingCategory.A12_CONSTRAINT,
         FindingSeverity.ERROR,
@@ -84,7 +84,7 @@ private fun noWorkFindings(element: DeclaredElement): List<Finding> = listOf(
     ),
 )
 
-private fun alternativeFindings(element: DeclaredElement, alternatives: JsonArray): List<Finding> {
+private fun alternativeFindings(element: TrackedDeclaration, alternatives: JsonArray): List<Finding> {
     val declared = alternatives.map {
         it as? JsonObject
             ?: return listOf(unreadable(element, "a `computationAlternatives` entry is not a JSON object"))
@@ -134,7 +134,7 @@ private fun alternativeFindings(element: DeclaredElement, alternatives: JsonArra
     )
 }
 
-private fun unreadable(element: DeclaredElement, explain: String): Finding = Finding(
+private fun unreadable(element: TrackedDeclaration, explain: String): Finding = Finding(
     FindingCategory.A12_CONSTRAINT,
     FindingSeverity.ERROR,
     CK_MODEL_NOT_BUILDABLE,

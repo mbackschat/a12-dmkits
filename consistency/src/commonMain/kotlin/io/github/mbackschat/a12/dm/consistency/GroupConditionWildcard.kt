@@ -32,13 +32,13 @@ import io.github.mbackschat.a12.dm.consistency.syntax.callsIn
  * resolves.** A star on a non-repeatable level is [repetitionWildcardFindings]' class and outruns this one;
  * an unresolvable leaf is unmeasured in this position, so silence is the safe answer.
  */
-fun PreparedModel.groupConditionWildcardFindings(): List<Finding> {
+internal fun TrackedFactBase.groupConditionWildcardFindings(): List<Finding> {
     val keywords = CONDITION_OPERATOR_KEYWORDS[conditionLanguage] ?: return emptyList()
     val gates = WILDCARD_GATES.mapNotNull { (id, arm) -> keywords[id]?.let { it to arm } }.toMap()
     if (gates.isEmpty()) {
         return emptyList()
     }
-    return elements.flatMap { element ->
+    return declarations().flatMap { element ->
         val body = element.body ?: return@flatMap emptyList()
         val group = element.path.substringBeforeLast('/', missingDelimiterValue = "")
         conditionTexts(element.kind, body).flatMap { (member, text) ->
@@ -90,10 +90,10 @@ private val WILDCARD_GATES = mapOf(
  * list first, so one root operand silences the call rather than only itself. The two scalar predicates have
  * no root gate in an A12 model and do draw the wildcard class on a starred root, measured.
  */
-private fun PreparedModel.namesARootGroup(
+private fun TrackedFactBase.namesARootGroup(
     path: String?,
     declaringGroup: String,
-    element: DeclaredElement,
+    element: TrackedDeclaration,
 ): Boolean {
     val written = path ?: return false
     val resolved = resolveEntity(declaringGroup, written.replace("*", ""), element.origin)
@@ -102,10 +102,10 @@ private fun PreparedModel.namesARootGroup(
 }
 
 /** Whether [path] stars at least one level, and every level it stars is one A12 agrees repeats. */
-private fun PreparedModel.starsARepetition(
+private fun TrackedFactBase.starsARepetition(
     path: String?,
     declaringGroup: String,
-    element: DeclaredElement,
+    element: TrackedDeclaration,
 ): Boolean {
     val written = path?.takeIf { it.contains('*') } ?: return false
     if (resolveEntity(declaringGroup, written.replace("*", ""), element.origin) !is Reference.Resolved) {
@@ -117,7 +117,7 @@ private fun PreparedModel.starsARepetition(
         .map { segments.take(it + 1).joinToString("/").replace("*", "") }
     return starredPrefixes.isNotEmpty() && starredPrefixes.all { prefix ->
         val resolved = resolveEntity(declaringGroup, prefix, element.origin) as? Reference.Resolved
-        resolved != null && elements.any {
+        resolved != null && declarations().any {
             it.path == resolved.path && it.declaredKind == DeclaredKind.GROUP && it.isRepeatable
         }
     }
@@ -127,7 +127,7 @@ private fun wildcardFinding(
     arm: GroupConditionArm,
     operator: String,
     written: String,
-    element: DeclaredElement,
+    element: TrackedDeclaration,
     member: String,
 ): Finding = Finding(
     FindingCategory.A12_CONSTRAINT,

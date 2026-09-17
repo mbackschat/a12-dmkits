@@ -40,6 +40,8 @@ class DeclarationGateArmsTest {
         assertIs<Admission.Admitted>(admitted, "the fixture must be admissible")
         val prepared = prepare(admitted)
 
+        // The untracked arm on purpose: a blanket rewrite of test call sites made both sides tracked on
+        // 2026-09-17, and the test kept passing while comparing one arm with itself.
         val untracked = prepared.declarationsWithUnsoundDsl()
         val tracked = prepared.tracked().declarationsWithUnsoundDsl()
 

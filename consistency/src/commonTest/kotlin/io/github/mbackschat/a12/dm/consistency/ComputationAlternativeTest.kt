@@ -46,7 +46,7 @@ class ComputationAlternativeTest {
 
     /** The codes reported for one shape, in report order, so a missing and an extra row both show. */
     private fun codesFor(alternatives: String?) =
-        model(alternatives).computationAlternativeFindings().map { it.code }
+        model(alternatives).tracked().computationAlternativeFindings().map { it.code }
 
     /** A scale-free constant operation, so no operand law can move a row that is about structure. */
     private val work = """{"operation":"42.00"}"""
@@ -216,7 +216,7 @@ class ComputationAlternativeTest {
                 ),
             ),
         ),
-    ).computationAlternativeFindings().map { it.code }
+    ).tracked().computationAlternativeFindings().map { it.code }
 
     /** A rule carries no alternative list, and nothing here may report one missing from it. */
     @Test
@@ -238,6 +238,6 @@ class ComputationAlternativeTest {
                 ),
             ),
         )
-        assertEquals(emptyList(), prepared.computationAlternativeFindings())
+        assertEquals(emptyList(), prepared.tracked().computationAlternativeFindings())
     }
 }

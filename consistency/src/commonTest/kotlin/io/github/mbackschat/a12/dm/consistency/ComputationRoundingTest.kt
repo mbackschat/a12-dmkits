@@ -46,7 +46,7 @@ class ComputationRoundingTest {
     )
 
     private fun codesFor(mode: String?, alternatives: String = "[$strict]") =
-        model(mode, alternatives).computationRoundingFindings().map { it.code }
+        model(mode, alternatives).tracked().computationRoundingFindings().map { it.code }
 
     /** An alternative comparing exactly — no band, which is what makes a rounding mode's pair wrong. */
     private val strict = """{"operation":"42.00"}"""
@@ -94,12 +94,12 @@ class ComputationRoundingTest {
     fun anUnknownModeIsNamedAsA12ReadsIt() {
         assertEquals(
             true,
-            model("7", "[$strict]").computationRoundingFindings().single().explain.contains("is `7`"),
+            model("7", "[$strict]").tracked().computationRoundingFindings().single().explain.contains("is `7`"),
             "a coerced scalar is named by its content",
         )
         assertEquals(
             true,
-            model("""{"mode":"Exact"}""", "[$strict]").computationRoundingFindings().single()
+            model("""{"mode":"Exact"}""", "[$strict]").tracked().computationRoundingFindings().single()
                 .explain.contains("is not a string"),
             "a container has no spelling to name",
         )
@@ -175,7 +175,7 @@ class ComputationRoundingTest {
         expected["both strict"] = listOf("MVK_ERROR_WRONG_ROUNDING_MODE")
         assertEquals(expected, actual, "one unbanded alternative is enough, in any position")
 
-        val named = model(""""RoundUp"""", "[${banded()},$strict]").computationRoundingFindings().single()
+        val named = model(""""RoundUp"""", "[${banded()},$strict]").tracked().computationRoundingFindings().single()
         assertEquals("/Catalog/PriceCalc", named.at, "the finding names the computation that carries the mode")
         assertEquals(
             true,

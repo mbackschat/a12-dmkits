@@ -35,8 +35,8 @@ import kotlinx.serialization.json.JsonPrimitive
  * when spelled `null`, while these two are read through `Optional.ofNullable` accessors and simply default.
  * Measured on both rather than carried across from the neighbouring family.
  */
-fun PreparedModel.computationRoundingFindings(): List<Finding> =
-    elements.filter { it.declaredKind == DeclaredKind.COMPUTATION }.flatMap { roundingFindings(it) }
+internal fun TrackedFactBase.computationRoundingFindings(): List<Finding> =
+    declarations().filter { it.declaredKind == DeclaredKind.COMPUTATION }.flatMap { roundingFindings(it) }
 
 /** A12's internal values for `IBaseCalculationService.RoundingMode`, which is what the member is matched against. */
 private val ROUNDING_MODES = setOf("Exact", "RoundUp", "RoundDown")
@@ -85,7 +85,7 @@ private fun JsonObject.bound(member: String, admitted: Set<String>): Bound {
     return Bound.Refused(spelled?.let { "`$it`" } ?: "not a string")
 }
 
-private fun roundingFindings(element: DeclaredElement): List<Finding> {
+private fun roundingFindings(element: TrackedDeclaration): List<Finding> {
     // An envelope A12 cannot bind is reported by the alternatives family, which meets it first; naming it
     // again here would report one unreadable computation twice.
     val body = element.body ?: return emptyList()
@@ -126,7 +126,7 @@ private fun roundingFindings(element: DeclaredElement): List<Finding> {
  * would assert something about A12's own reporting that no row here measures.
  */
 private fun wrongRoundingModeFinding(
-    element: DeclaredElement,
+    element: TrackedDeclaration,
     mode: Bound,
     bands: List<Bound>,
 ): List<Finding> {
@@ -161,7 +161,7 @@ private fun JsonObject.alternativeObjects(): List<JsonObject>? {
     return member.map { it as? JsonObject ?: return null }
 }
 
-private fun unbuildable(element: DeclaredElement, explain: String): Finding = Finding(
+private fun unbuildable(element: TrackedDeclaration, explain: String): Finding = Finding(
     FindingCategory.A12_CONSTRAINT,
     FindingSeverity.ERROR,
     CK_MODEL_NOT_BUILDABLE,

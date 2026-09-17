@@ -25,7 +25,7 @@ package io.github.mbackschat.a12.dm.consistency
  * exactly like two sibling reads, so keying on the resolved path alone is correct. Measured, because a
  * family built from same-group rows would have inherited a scope it never tested.
  */
-fun PreparedModel.computationCycleFindings(): List<Finding> {
+internal fun TrackedFactBase.computationCycleFindings(): List<Finding> {
     val writtenBy = computedTargets()
     if (writtenBy.isEmpty()) {
         return emptyList()
@@ -45,7 +45,7 @@ fun PreparedModel.computationCycleFindings(): List<Finding> {
 }
 
 /** Each computed field's absolute path, mapped to the computation that writes it. */
-private fun PreparedModel.computedTargets(): Map<String, String> = declaredReferences()
+private fun TrackedFactBase.computedTargets(): Map<String, String> = declaredReferences()
     .filter { it.role == ReferenceRole.COMPUTED_TARGET }
     .mapNotNull { declared ->
         (declared.target as? Reference.Resolved)?.path?.let { it to declared.declaredAt }
@@ -60,7 +60,7 @@ private fun PreparedModel.computedTargets(): Map<String, String> = declaredRefer
  * Self-loops are dropped here rather than at the report, so nothing downstream can reintroduce them: they
  * are A12's other law, and this is the only place that knows a read landed on its own writer.
  */
-private fun PreparedModel.dependencyEdges(writtenBy: Map<String, String>): Map<String, Set<String>> {
+private fun TrackedFactBase.dependencyEdges(writtenBy: Map<String, String>): Map<String, Set<String>> {
     val targetOfComputation = writtenBy.entries.associate { (path, declaredAt) -> declaredAt to path }
     val edges = mutableMapOf<String, MutableSet<String>>()
     conditionReferences().forEach { reference ->
