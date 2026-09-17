@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>A12 Consistency Checker — cold first result</title>
+  </head>
+  <body>
+    <h1>A12 consistency checker — cold first result</h1>
+    <!--
+      A second page, and a separate one on purpose. `index.html` replays the shared corpus and has therefore
+      already loaded the checker by the time anything is timed; this page's whole job is to be a context that
+      has never loaded it, which is what §8's cold row asks for. Sharing one page could not express both.
+
+      The model to check arrives as `?model=<url>`, so one built page serves every scale the driver asks for
+      and no scale is baked into the bundle.
+
+      `data-state` starts at `running` and the driver waits for it to change, for the same reason the replay
+      page does: a page that never finished must not read as a fast one.
+    -->
+    <p id="status" data-state="running">Loading the packed checker…</p>
+    <pre id="measurement"></pre>
+    <script type="module" src="/src/cold.ts"></script>
+  </body>
+</html>

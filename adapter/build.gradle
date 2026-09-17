@@ -936,6 +936,50 @@ tasks.register('checkerColdNodePerfTest', Test) {
     outputs.cacheIf { false }
 }
 
+// H5-g: the cold boundary's BROWSER arm — the third host §8's cold row names, and with H5-f the one that closes
+// that row's host grid. It orchestrates the bundle build rather than `:consistency` doing so, because the
+// workload comes from the typed synthesizer here and `:adapter` already depends on `:consistency`, so the
+// reverse edge would close a cycle. Off every automated lane, like the other perf lanes and for the extra reason
+// the browser replay already carries: it needs pnpm and a system Chrome.
+tasks.register('checkerColdBrowserPerfTest', Test) {
+    description = 'Measure the checker\'s cold first result in a real browser against the packed bundle.'
+    group = 'measurement'
+    dependsOn ':consistency:installPackedConsistencyInBrowserConsumer'
+    dependsOn ':consistency:prepareSharedConsumerCases'
+    // The same guard the functional browser arm carries, for the same reason: this lane adds two more authored
+    // sources to that project, and "executable sources must be TypeScript" is an invariant of the project
+    // rather than of one task that happens to run it.
+    dependsOn ':consistency:verifyConsistencyBrowserTypeScriptSources'
+    testClassesDirs = sourceSets.test.output.classesDirs
+    classpath = sourceSets.test.runtimeClasspath
+    useJUnitPlatform()
+    maxParallelForks = 1
+    failFast = true
+    systemProperty 'perf.checker.coldbrowser', 'true'
+    doFirst {
+        systemProperty 'perf.checker.coldbrowser.project',
+            project(':consistency').layout.buildDirectory.dir('consumer-tests/browser').get().asFile.absolutePath
+        // pnpm drives the project's own build scripts; node runs the compiled sampler. Both come from the
+        // shared resolver, and the sampler is pinned for the same reason H5-f's children are — a V8 change
+        // moves these numbers.
+        systemProperty 'perf.checker.coldbrowser.pnpm', resolveNodeTool('pnpm').absolutePath
+        systemProperty 'perf.checker.coldbrowser.node',
+            resolveNodeTool('node', checkerNodeMajor).absolutePath
+    }
+    // 51 for the cold boundary's floor of 50 observations per scale, and odd so the paired median names a ratio
+    // actually observed.
+    systemProperty 'perf.checker.coldbrowser.pairs',
+        providers.gradleProperty('checkerColdBrowserPairs').getOrElse('51')
+    systemProperty 'perf.checker.coldbrowser.n',
+        providers.gradleProperty('checkerColdBrowserN').getOrElse('200')
+    filter {
+        includeTestsMatching 'io.github.mbackschat.a12.dm.adapter.perf.CheckerColdBrowserPerfTest'
+    }
+    // Measurements are observations, never reusable task outputs.
+    outputs.upToDateWhen { false }
+    outputs.cacheIf { false }
+}
+
 tasks.register('profileCliPerfTest', Test) {
     description = 'Run the opt-in profile-shaped model describe/report/diff JVM-process catastrophe canary.'
     group = 'measurement'
