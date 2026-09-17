@@ -135,11 +135,17 @@ def verifyConsistencyPurity = tasks.register('verifyConsistencyPurity') {
 // API only, because it retains a number's literal text (B3) — plus the test framework's own groups.
 def verifyConsistencyDependencies = tasks.register('verifyConsistencyDependencies') {
     group = 'verification'
-    description = 'Fail if the checker resolves any module outside its declared allowlist, on JVM or JS.'
+    description = 'Fail if the checker resolves anything outside its allowlist, on either target, compile or runtime.'
     doLast {
         rootProject.verifyKernelFreeClasspath(
-            'consistency dependencies — jvm and js, main and test',
-            ['jvmRuntimeClasspath', 'jvmTestRuntimeClasspath', 'jsRuntimeClasspath', 'jsTestRuntimeClasspath']
+            'consistency dependencies — jvm and js, main and test, compile and runtime',
+            // COMPILE as well as RUNTIME, because the two differ exactly where a sneaky edge would live: a
+            // `compileOnly` dependency never reaches a runtime classpath, so a runtime-only guard would let
+            // the one configuration that can still make code compile through unexamined.
+            ['jvmCompileClasspath', 'jvmRuntimeClasspath',
+             'jvmTestCompileClasspath', 'jvmTestRuntimeClasspath',
+             'jsCompileClasspath', 'jsRuntimeClasspath',
+             'jsTestCompileClasspath', 'jsTestRuntimeClasspath']
                     .collect { configurations.getByName(it) },
             ['com.mgmtp.'],
             'org.jetbrains.kotlin',

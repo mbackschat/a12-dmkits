@@ -622,8 +622,14 @@ def verifyInterpreterDependencies = tasks.register('verifyInterpreterDependencie
     description = 'Fail if the interpreter resolves the kernel, or any intra-repo module, on JVM or JS.'
     doLast {
         rootProject.verifyKernelFreeClasspath(
-            'interpreter dependencies — jvm and js, main and test',
-            ['jvmRuntimeClasspath', 'jvmTestRuntimeClasspath', 'jsRuntimeClasspath', 'jsTestRuntimeClasspath']
+            'interpreter dependencies — jvm and js, main and test, compile and runtime',
+            // COMPILE as well as RUNTIME, because the two differ exactly where a sneaky edge would live: a
+            // `compileOnly` dependency never reaches a runtime classpath, so a runtime-only guard would let
+            // the one configuration that can still make code compile through unexamined.
+            ['jvmCompileClasspath', 'jvmRuntimeClasspath',
+             'jvmTestCompileClasspath', 'jvmTestRuntimeClasspath',
+             'jsCompileClasspath', 'jsRuntimeClasspath',
+             'jsTestCompileClasspath', 'jsTestRuntimeClasspath']
                     .collect { configurations.getByName(it) },
             ['com.mgmtp.'],
             'org.jetbrains.kotlin',
