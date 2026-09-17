@@ -33,8 +33,8 @@ import kotlinx.serialization.json.JsonPrimitive
  *
  * Nothing is reported for a computation: neither member exists on that carrier.
  */
-fun PreparedModel.presentationMemberFindings(): List<Finding> =
-    elements.filter { it.declaredKind == DeclaredKind.RULE }.flatMap { element ->
+internal fun TrackedFactBase.presentationMemberFindings(): List<Finding> =
+    declarations().filter { it.declaredKind == DeclaredKind.RULE }.flatMap { element ->
         val body = element.body ?: return@flatMap emptyList()
         guiPatternFindings(element, body) + variantErrorMessageFindings(element, body)
     }
@@ -45,7 +45,7 @@ fun PreparedModel.presentationMemberFindings(): List<Finding> =
  * A scalar of any JSON type binds, because Jackson coerces it into the `String` value — a boolean is the
  * measured case — so the law is about the CONTAINER at both levels and never about the value's JSON type.
  */
-private fun guiPatternFindings(element: DeclaredElement, body: JsonObject): List<Finding> {
+private fun guiPatternFindings(element: TrackedDeclaration, body: JsonObject): List<Finding> {
     val declared = body["guiPatterns"] ?: return emptyList()
     val patterns = declared as? JsonObject
         ?: return listOf(unbindable(element, "guiPatterns", "is ${shapeOf(declared)} where A12 binds a map"))
@@ -68,7 +68,7 @@ private fun guiPatternFindings(element: DeclaredElement, body: JsonObject): List
  * shape. The finding is the same either way, since both leave a model that cannot be used, but the two are
  * separated so the next reader does not take one member's null row as the other's.
  */
-private fun variantErrorMessageFindings(element: DeclaredElement, body: JsonObject): List<Finding> {
+private fun variantErrorMessageFindings(element: TrackedDeclaration, body: JsonObject): List<Finding> {
     val declared = body["variantErrorMessages"] ?: return emptyList()
     val byVariant = declared as? JsonObject
         ?: return listOf(
@@ -101,7 +101,7 @@ private fun isTextEntry(entry: JsonElement): Boolean {
     return fields["locale"] is JsonPrimitive && fields["text"] is JsonPrimitive
 }
 
-private fun unbindable(element: DeclaredElement, member: String, complaint: String) = Finding(
+private fun unbindable(element: TrackedDeclaration, member: String, complaint: String) = Finding(
     FindingCategory.A12_CONSTRAINT,
     FindingSeverity.ERROR,
     CK_MODEL_NOT_BUILDABLE,

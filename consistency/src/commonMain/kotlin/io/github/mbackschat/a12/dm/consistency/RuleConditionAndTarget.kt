@@ -25,8 +25,8 @@ import kotlinx.serialization.json.JsonPrimitive
  * ([KERNEL-FINDINGS KF291]) — and unlike inside a computation alternative, where a `null` operation and a
  * `null` precondition are ordinary verdicts.
  */
-fun PreparedModel.ruleConditionAndTargetFindings(): List<Finding> =
-    elements.filter { it.declaredKind == DeclaredKind.RULE }.flatMap { element ->
+internal fun TrackedFactBase.ruleConditionAndTargetFindings(): List<Finding> =
+    declarations().filter { it.declaredKind == DeclaredKind.RULE }.flatMap { element ->
         val body = element.body ?: return@flatMap listOf(unreadableEnvelope(element))
         requiredTextFindings(element, body?.get("errorCondition"), CONDITION) +
             requiredTextFindings(element, body?.get("errorEntityRelPath"), ERROR_TARGET)
@@ -59,7 +59,7 @@ private val ERROR_TARGET = RequiredMember(
 )
 
 private fun requiredTextFindings(
-    element: DeclaredElement,
+    element: TrackedDeclaration,
     declared: JsonElement?,
     required: RequiredMember,
 ): List<Finding> = when {

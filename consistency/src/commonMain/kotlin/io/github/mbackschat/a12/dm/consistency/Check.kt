@@ -940,18 +940,18 @@ internal fun checkPrepared(
             it.target.asFinding(ReferenceRole.CONDITION_ENTITY, it.declaredAt, it.member, it.span)
         } + prepared.declarationSlotFindings() + prepared.computationAlternativeFindings() +
         prepared.computationRoundingFindings() + prepared.suppressedWarningFindings() +
-        prepared.ruleConditionAndTargetFindings() + prepared.variantFilterFindings() +
+        tracked.ruleConditionAndTargetFindings() + prepared.variantFilterFindings() +
         tracked.conditionLexicalFindings() + tracked.conditionCompletenessFindings() +
-        tracked.connectiveAgreementFindings() + prepared.conditionGrammarFindings() +
+        tracked.connectiveAgreementFindings() + tracked.conditionGrammarFindings() +
         tracked.elementNameFindings() + prepared.groupOrderingFindings() +
-        prepared.groupRepetitionCountFindings() +
-        prepared.presentationMemberFindings() + prepared.stringSlotFindings() +
+        tracked.groupRepetitionCountFindings() +
+        tracked.presentationMemberFindings() + tracked.stringSlotFindings() +
         prepared.fieldTypeBindingFindings() + prepared.temporalConfigFindings() +
         tracked.fieldNameReservedSegmentFindings() +
         prepared.elementNameAlphabetFindings() + tracked.enumCategoryFindings() +
         prepared.supportedCharacterFindings() + tracked.enumTextForbiddenCharacterFindings() +
         prepared.hintListValueFindings() + prepared.tableEnumOperandFindings() +
-        prepared.hModelFormConstructFindings() +
+        tracked.hModelFormConstructFindings() +
         prepared.declaredPatternFindings() +
         prepared.emptyGroupOperandFindings() + prepared.errorFieldReferenceFindings() +
         prepared.groupListOperandFindings() + prepared.repetitionWildcardFindings() +
@@ -1091,7 +1091,7 @@ internal fun checkPrepared(
         gaps = prepared.gaps() + prepared.emptyFactBase() + findings.buildBlocked() +
             prepared.variantFilterGaps() + tracked.enumCategoryGaps() +
             prepared.supportedCharacterGaps() + tracked.enumTextForbiddenCharacterGaps() +
-            prepared.hintListValueGaps() + prepared.hModelFormConstructGaps() +
+            prepared.hintListValueGaps() + tracked.hModelFormConstructGaps() +
             prepared.fieldTypeBindingGaps() +
             prepared.typeDefinitionBodyGaps() + prepared.declaredPatternGaps() + UNREAD_MEMBERS + UNIMPLEMENTED_FAMILIES,
     )

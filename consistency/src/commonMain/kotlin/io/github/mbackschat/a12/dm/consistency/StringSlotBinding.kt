@@ -30,7 +30,7 @@ import kotlinx.serialization.json.JsonObject
  * The finding is [CK_MODEL_NOT_BUILDABLE] rather than any `MVK_*`, because A12 never reaches the tier that
  * issues codes.
  */
-fun PreparedModel.stringSlotFindings(): List<Finding> = elements.flatMap { element ->
+internal fun TrackedFactBase.stringSlotFindings(): List<Finding> = declarations().flatMap { element ->
     val body = element.body ?: return@flatMap emptyList()
     when (element.declaredKind) {
         DeclaredKind.RULE -> RULE_TEXT_MEMBERS.mapNotNull { unbindableText(element, body, it) }
@@ -51,7 +51,7 @@ private val ALTERNATIVE_TEXT_MEMBERS = listOf("operation", "precondition")
  * A `computationAlternatives` that is not a list, or an entry that is not an object, is the alternative
  * family's finding and not this one's — this family would otherwise report the same unusable model twice.
  */
-private fun alternativeTextFindings(element: DeclaredElement, body: JsonObject): List<Finding> {
+private fun alternativeTextFindings(element: TrackedDeclaration, body: JsonObject): List<Finding> {
     val alternatives = body["computationAlternatives"] as? JsonArray ?: return emptyList()
     return alternatives.flatMap { entry ->
         val alternative = entry as? JsonObject ?: return@flatMap emptyList()
@@ -60,7 +60,7 @@ private fun alternativeTextFindings(element: DeclaredElement, body: JsonObject):
 }
 
 /** One member of one carrier: a finding when it holds a container, and nothing for every other shape. */
-private fun unbindableText(element: DeclaredElement, carrier: JsonObject, member: String): Finding? {
+private fun unbindableText(element: TrackedDeclaration, carrier: JsonObject, member: String): Finding? {
     val declared = carrier[member] ?: return null
     if (declared !is JsonObject && declared !is JsonArray) {
         return null
@@ -75,7 +75,7 @@ private fun unbindableText(element: DeclaredElement, carrier: JsonObject, member
  * an object, a string and a number were each measured and each refuses the reader. Its ENTRIES' `name`
  * members are the ordering family's business, which reads them once they bind.
  */
-private fun unbindableSortFields(element: DeclaredElement, body: JsonObject): Finding? {
+private fun unbindableSortFields(element: TrackedDeclaration, body: JsonObject): Finding? {
     val declared = body["sortFields"] ?: return null
     if (declared is JsonArray) {
         return null
@@ -83,7 +83,7 @@ private fun unbindableSortFields(element: DeclaredElement, body: JsonObject): Fi
     return unbindableSlot(element, "sortFields", "holds ${shapeOfSlot(declared)} where A12 binds a list")
 }
 
-private fun unbindableSlot(element: DeclaredElement, member: String, complaint: String) = Finding(
+private fun unbindableSlot(element: TrackedDeclaration, member: String, complaint: String) = Finding(
     FindingCategory.A12_CONSTRAINT,
     FindingSeverity.ERROR,
     CK_MODEL_NOT_BUILDABLE,

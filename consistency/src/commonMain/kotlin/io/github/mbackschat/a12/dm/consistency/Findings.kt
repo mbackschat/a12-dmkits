@@ -159,11 +159,18 @@ fun statusOf(findings: List<Finding>): ConsistencyStatus =
  * instead of reading the members as absent — which is the same defect one tier down, and the direction that
  * publishes a verdict about a model A12 never examined.
  */
-internal fun unreadableEnvelope(element: DeclaredElement) = Finding(
+internal fun unreadableEnvelope(element: DeclaredElement) =
+    unreadableEnvelope(element.kind, element.path)
+
+/** The same finding for a family that has migrated to the read barrier. */
+internal fun unreadableEnvelope(element: TrackedDeclaration) =
+    unreadableEnvelope(element.kind, element.path)
+
+private fun unreadableEnvelope(kind: String, at: String) = Finding(
     FindingCategory.A12_CONSTRAINT,
     FindingSeverity.ERROR,
     CK_MODEL_NOT_BUILDABLE,
-    "`${element.kind}` here is present and is not a JSON object, which A12's own reader refuses — the " +
+    "`$kind` here is present and is not a JSON object, which A12's own reader refuses — the " +
         "source never loads, and an OMITTED envelope is what A12 default-constructs instead",
-    element.path,
+    at,
 )

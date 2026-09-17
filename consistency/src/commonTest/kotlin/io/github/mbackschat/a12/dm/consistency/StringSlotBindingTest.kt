@@ -62,7 +62,7 @@ class StringSlotBindingTest {
     )
 
     private fun codesFor(source: ModelSource): List<String> =
-        prepare(assertIs<Admission.Admitted>(admit(source))).stringSlotFindings().map { it.code }
+        prepare(assertIs<Admission.Admitted>(admit(source))).tracked().stringSlotFindings().map { it.code }
 
     private val containers = listOf(
         "an empty object" to "{}",

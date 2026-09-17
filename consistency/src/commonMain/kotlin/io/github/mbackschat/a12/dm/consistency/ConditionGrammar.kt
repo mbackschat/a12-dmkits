@@ -30,7 +30,7 @@ import io.github.mbackschat.a12.dm.consistency.syntax.shapeFailureAhead
  * and not a legal condition, so running one text through the other's entry would report a defect that is not
  * there.
  */
-fun PreparedModel.conditionGrammarFindings(): List<Finding> = elements.flatMap { element ->
+internal fun TrackedFactBase.conditionGrammarFindings(): List<Finding> = declarations().flatMap { element ->
     val body = element.body ?: return@flatMap emptyList()
     conditionTexts(element.kind, body).mapNotNull { (member, text) ->
         val entry = syntaxEntryOf(member)
@@ -87,7 +87,7 @@ fun PreparedModel.conditionGrammarFindings(): List<Finding> = elements.flatMap {
  * `MVK_CONDITION_MISSING` for the same declaration, so adding the second code A12 gives would hand a consumer
  * two findings for one defect — a report-shape choice, not a coverage one: the defect is surfaced either way.
  */
-private fun blankSlotFinding(element: DeclaredElement, member: String): Finding? {
+private fun blankSlotFinding(element: TrackedDeclaration, member: String): Finding? {
     val code = when {
         member == "errorCondition" -> return null
         member.endsWith("operation") -> "MVK_INCOMPLETE_INPUT"

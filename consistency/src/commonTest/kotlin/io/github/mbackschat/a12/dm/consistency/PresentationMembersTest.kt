@@ -39,7 +39,7 @@ class PresentationMembersTest {
     private fun codes(member: String, rawJson: String?): List<String> {
         val members = rawJson?.let { ""","$member":$it""" } ?: ""
         val prepared = prepare(assertIs<Admission.Admitted>(admit(source(members))))
-        return prepared.presentationMemberFindings().map { it.code }
+        return prepared.tracked().presentationMemberFindings().map { it.code }
     }
 
     @Test
@@ -135,6 +135,6 @@ class PresentationMembersTest {
             """.trimIndent(),
         )
         val prepared = prepare(assertIs<Admission.Admitted>(admit(source)))
-        assertEquals(emptyList(), prepared.presentationMemberFindings().map { it.code })
+        assertEquals(emptyList(), prepared.tracked().presentationMemberFindings().map { it.code })
     }
 }

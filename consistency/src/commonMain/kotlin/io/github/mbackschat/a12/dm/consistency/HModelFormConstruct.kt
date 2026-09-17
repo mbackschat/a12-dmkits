@@ -34,11 +34,11 @@ import io.github.mbackschat.a12.dm.consistency.syntax.callsIn
  * and the whole text yields no calls at all. Widening that predicate would change what every call-reading
  * family sees and is its own slice; naming the shape here costs nothing and keeps the silence disclosed.
  */
-fun PreparedModel.hModelFormConstructFindings(): List<Finding> {
+internal fun TrackedFactBase.hModelFormConstructFindings(): List<Finding> {
     if (conditionLanguage != ConditionLanguage.DE) {
         return emptyList()
     }
-    return elements.mapNotNull { element ->
+    return declarations().mapNotNull { element ->
         val body = element.body ?: return@mapNotNull null
         conditionTexts(element.kind, body).firstNotNullOfOrNull { (member, text) ->
             callsIn(text, conditionLanguage, syntaxEntryOf(member))
@@ -65,11 +65,11 @@ fun PreparedModel.hModelFormConstructFindings(): List<Finding> {
  * it is the right one for a disclosure, where naming a declaration A12 might refuse costs only an extra line
  * of honesty.
  */
-fun PreparedModel.hModelFormConstructGaps(): List<CoverageGap> {
+internal fun TrackedFactBase.hModelFormConstructGaps(): List<CoverageGap> {
     if (conditionLanguage != ConditionLanguage.DE) {
         return emptyList()
     }
-    return elements.mapNotNull { element ->
+    return declarations().mapNotNull { element ->
         val body = element.body ?: return@mapNotNull null
         conditionTexts(element.kind, body).firstNotNullOfOrNull { (member, text) ->
             val named = FORM_CONSTRUCTS.firstOrNull { text.namesWholeWord(it) } ?: return@firstNotNullOfOrNull null

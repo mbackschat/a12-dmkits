@@ -31,8 +31,8 @@ import kotlinx.serialization.json.longOrNull
  * `MVK_MAX_MISSING` cannot fire on a stored model — an omitted `repeatability` is simply a group that
  * repeats once.
  */
-fun PreparedModel.groupRepetitionCountFindings(): List<Finding> =
-    elements.filter { it.declaredKind == DeclaredKind.GROUP }.mapNotNull { group ->
+internal fun TrackedFactBase.groupRepetitionCountFindings(): List<Finding> =
+    declarations().filter { it.declaredKind == DeclaredKind.GROUP }.mapNotNull { group ->
         val member = group.body?.get("repeatability") ?: return@mapNotNull null
         val cap = if (group.isRootGroup()) ROOT_GROUP_CAP else NESTED_GROUP_CAP
         // An explicit `null` is the DOMAIN's defect and not the absent key, and the two are one line apart
@@ -70,7 +70,7 @@ fun PreparedModel.groupRepetitionCountFindings(): List<Finding> =
     }
 
 /** The domain's own class, for a count A12 requires to be at least 1 — `0`, a negative, or a literal null. */
-private fun DeclaredElement.invalidCount(declared: String): Finding = Finding(
+private fun TrackedDeclaration.invalidCount(declared: String): Finding = Finding(
     FindingCategory.A12_CONSTRAINT,
     FindingSeverity.ERROR,
     "MVK_MAX_VALUES_INVALID",
@@ -92,4 +92,4 @@ private const val READABLE_CEILING = 2147483647L
 private const val READABLE_FLOOR = -2147483648L
 
 /** A root group is the one segment below the model root; every other group hangs under one. */
-private fun DeclaredElement.isRootGroup(): Boolean = path.count { it == '/' } == 1
+private fun TrackedDeclaration.isRootGroup(): Boolean = path.count { it == '/' } == 1

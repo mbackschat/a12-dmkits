@@ -42,7 +42,7 @@ class RuleConditionAndTargetTest {
                 ),
             ),
         ),
-    ).ruleConditionAndTargetFindings().map { it.code }
+    ).tracked().ruleConditionAndTargetFindings().map { it.code }
 
     private val condition = """"FieldNotFilled(Price)""""
     private val target = """"../Price""""
@@ -110,6 +110,6 @@ class RuleConditionAndTargetTest {
                 ),
             ),
         )
-        assertEquals(emptyList(), prepared.ruleConditionAndTargetFindings())
+        assertEquals(emptyList(), prepared.tracked().ruleConditionAndTargetFindings())
     }
 }
