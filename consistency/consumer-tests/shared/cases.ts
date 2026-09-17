@@ -77,12 +77,22 @@ export function runCases(api: CheckerApi, soundModel: string): readonly CaseOutc
     }];
   }
 
-  return [
+  const cases = [
     soundModelIsInconclusive(api, soundModel),
     undeclaredReferenceIsInvalid(api, brokenModel),
     unreadableSourceReturnsAReport(api),
     anUnrelatedEditIsNotBlamedForTheModel(api, brokenModel),
     anEditThatBreaksTheModelIsAttributedToIt(api, soundModel, brokenModel),
+  ];
+  // This suite's own count, owned here rather than by a floor in each host: a host cannot tell five cases
+  // from four, and a number kept in two other files is one someone forgets to raise.
+  return [
+    {
+      name: 'the consumer cases reached this arm',
+      ok: cases.length === 5,
+      detail: `this suite has 5 cases and produced ${cases.length}`,
+    },
+    ...cases,
   ];
 }
 

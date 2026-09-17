@@ -24,13 +24,14 @@ import process from 'node:process';
 import { chromium, type Browser } from 'playwright-core';
 
 /**
- * The count the Node arm also guards: a corpus that silently emptied would report zero failures.
+ * A floor on the PAGE having published anything at all, not on any suite's size.
  *
- * It covers all three shared suites — the named-field cases, the full-report parity corpus and B0's
- * reference grid — because a browser fetches each of them, and a 404 that resolved to an empty set is
- * exactly what this catches.
+ * Each shared suite asserts its own count and `runSharedSuites` turns a suite that reported nothing into a
+ * failing outcome, so this driver does not carry a total — a hand-written total in two hosts was a number
+ * someone had to remember to raise, which is the vacuity it was meant to prevent. What is left for a driver
+ * to catch is a page that published an empty array, which no suite can report on its own behalf.
  */
-const MINIMUM_CASES = 18;
+const MINIMUM_CASES = 1;
 const DEADLINE_MILLIS = 30_000;
 const SHUTDOWN_DEADLINE_MILLIS = 30_000;
 
@@ -192,7 +193,7 @@ try {
 }
 
 if (results.length < MINIMUM_CASES) {
-  process.stderr.write(`expected at least ${MINIMUM_CASES} shared cases, the page published ${results.length}\n`);
+  process.stderr.write(`the replay page published ${results.length} outcome(s); the suites cannot have run\n`);
   process.exit(1);
 }
 const failed = results.filter((result) => !result.ok);

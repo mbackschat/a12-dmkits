@@ -3,18 +3,19 @@
 //
 // It is the same three moves the Node arm makes, with a browser's spellings substituted: resolve
 // `a12-consistency` by PACKAGE NAME (a bundler resolving `node_modules`, where Node resolved a clean install
-// of the same tarball), load the shared inputs (`fetch` where Node read files), and hand both to the two
-// shared suites — `runCases` for the named-field claims and `runParity` for the full report contract. Nothing
-// about either corpus is restated here; that is the point of the shared modules.
+// of the same tarball), load the shared inputs (`fetch` where Node read files), and hand them to
+// `runSharedSuites`, which owns the suite list. Nothing about any corpus is restated here, and no expected
+// count is either — each suite asserts its own.
 //
 // The verdicts are written into the DOM as JSON. The driver could have read a global, but a global proves only
 // that the module ran; the DOM proves the page got as far as showing a consumer what it found.
 
 import { checkEditJson, checkModelJson } from 'a12-consistency';
 
-import { runCases, type CaseOutcome } from '../../shared/cases.ts';
-import { runParity, type ParityCorpus, type ParityManifest } from '../../shared/parity.ts';
-import { REFERENCE_MODELS, runReferenceControls } from '../../shared/references.ts';
+import type { CaseOutcome } from '../../shared/cases.ts';
+import type { ParityCorpus, ParityManifest } from '../../shared/parity.ts';
+import { REFERENCE_MODELS } from '../../shared/references.ts';
+import { runSharedSuites } from '../../shared/suites.ts';
 
 const status = document.querySelector<HTMLElement>('#status');
 const outcomes = document.querySelector<HTMLElement>('#outcomes');
@@ -68,11 +69,11 @@ try {
   for (const key of REFERENCE_MODELS) {
     referenceModels[key] = await fetchText(`models/${key}.dm.json`);
   }
-  const results = [
-    ...runCases(api, soundModel),
-    ...runParity(api, await fetchCorpus()),
-    ...runReferenceControls(api, referenceModels),
-  ];
+  const results = runSharedSuites(api, {
+    soundModel,
+    parityCorpus: await fetchCorpus(),
+    referenceModels,
+  });
   const failed = results.filter((result) => !result.ok);
   publish(
     failed.length === 0 ? 'passed' : 'failed',
