@@ -239,4 +239,57 @@ class ReadTranscriptTest {
                 "passes on a family that read nothing at all — $observed",
         )
     }
+
+    @Test
+    fun aScopedFactBaseNarrowsTheWALKAndNothingElse() {
+        // A rule, so `declaredReferences()` has something to find: it is the accessor that had to be moved
+        // off the public walk when the scope arrived, and an empty answer would pass either way.
+        val prepared = preparedOf(
+            ModelSource(
+                """
+                {"header":{"id":"scoped","locales":[{"code":"en_US"}]},
+                 "content":{"modelRoot":{"rootGroups":[
+                  {"type":"Group","id":"g0","name":"Catalog","Group":{"elements":[
+                    {"type":"Field","id":"f0","name":"Price","Field":{"fieldType":{"type":"NumberType"}}},
+                    {"type":"Rule","id":"r0","name":"PriceRequired","Rule":{
+                      "errorCondition":"FieldFilled(Price)","errorEntityRelPath":"../Price",
+                      "errorCode":"C1","errorMessage":[{"locale":"en_US","text":"x"}]}}
+                  ]}}
+                 ]}}}
+                """.trimIndent(),
+            ),
+        )
+        val base = TrackedFactBase(prepared, ReadTranscript())
+        val first = base.declarations().first()
+        val at = DeclarationKey(first.path, 0)
+        val scoped = base.scopedTo(at, first)
+
+        // Read through BUCKETS, because a scoped base shares its parent's transcript — which is the
+        // production arrangement rather than a test convenience: the dispatcher's own walk charges the
+        // composition, and each cell records only what it read. Two arbitrary registrations serve as keys;
+        // nothing here asks what they produce.
+        val walk = CellKey(CHECK_PRODUCERS.first(), at)
+        val setQuestion = CellKey(CHECK_PRODUCERS.last(), at)
+        val walked = base.whileProducing(walk) { scoped.declarations() }
+        val references = base.whileProducing(setQuestion) { scoped.declaredReferences() }
+
+        // The narrowing and its charge: the family's loop runs once, and the cell is keyed on that
+        // declaration's row rather than on the set — which is the whole reason the scope exists.
+        assertEquals(listOf(first.path), walked.map { it.path }, "a scoped base hands back its one declaration")
+        assertEquals(setOf(FactRead.DeclarationRow(first.path, 0)), base.observedWhileProducing(walk),
+            "and charges that declaration's row, and nothing else")
+
+        // …and the half that keeps the migration gate mechanical: a SET question is still answered about the
+        // whole model and still charges the shape, so a family asking one is refused by the charge-profile
+        // invariant instead of quietly receiving one declaration's worth of answer.
+        assertEquals(listOf("/Catalog/PriceRequired"), references.map { it.declaredAt },
+            "declaredReferences answers for the whole model, whatever the base is scoped to")
+        assertTrue(FactRead.DeclarationSetShape in base.observedWhileProducing(setQuestion),
+            "and charges the set shape, or the invariant that refuses a set-reading family cannot see it")
+
+        // The group counts as a declaration, so the denominator is derived rather than written: `first` above
+        // is `/Catalog` itself, which is also why the row assertion is about a group's row.
+        assertEquals(prepared.elements.size, base.declarations().size,
+            "the unscoped base still sees every declaration")
+    }
 }
