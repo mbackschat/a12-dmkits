@@ -184,14 +184,16 @@ internal val CHECK_PRODUCERS: List<CheckProducer> = listOf(
         listOfNotNull(base.groupRepetitionCountFinding(at))
     },
     produces(CheckFamily.RULE_PRESENTATION_MEMBERS) { it.presentationMemberFindings() },
-    produces(CheckFamily.STRING_SLOT_BINDING) { it.stringSlotFindings() },
+    perDeclaration(CheckFamily.STRING_SLOT_BINDING) { base, at -> base.stringSlotFindings(at) },
     CheckProducer.ModelWide(
         completes = setOf(CheckFamily.FIELD_TYPE_BINDING),
         findings = { it.fieldTypeBindingFindings() },
         gaps = { it.fieldTypeBindingGaps() },
     ),
-    produces(CheckFamily.TEMPORAL_CONFIG) { it.temporalConfigFindings() },
-    produces(CheckFamily.FIELD_NAME_RESERVED_SEGMENT) { it.fieldNameReservedSegmentFindings() },
+    perDeclaration(CheckFamily.TEMPORAL_CONFIG) { base, at -> base.temporalConfigFindings(at) },
+    perDeclaration(CheckFamily.FIELD_NAME_RESERVED_SEGMENT) { base, at ->
+        listOfNotNull(base.fieldNameReservedSegmentFinding(at))
+    },
     perDeclaration(CheckFamily.ELEMENT_NAME_ALPHABET) { base, at ->
         base.elementNameAlphabetFindings(at)
     },
@@ -240,7 +242,9 @@ internal val CHECK_PRODUCERS: List<CheckProducer> = listOf(
     produces(CheckFamily.COMPUTED_TARGET_KIND) { it.computedTargetKindFindings() },
     produces(CheckFamily.COMPUTED_TARGET_INDEX_FIELD) { it.computedTargetIndexFieldFindings() },
     produces(CheckFamily.RAW_TYPE_LENGTH) { it.rawTypeLengthFindings() },
-    produces(CheckFamily.COMPUTATION_PRECONDITION_FEATURES) { it.computationPreconditionFeatureFindings() },
+    perDeclaration(CheckFamily.COMPUTATION_PRECONDITION_FEATURES) { base, at ->
+        base.computationPreconditionFeatureFindings(at)
+    },
     produces(CheckFamily.COMPUTATION_CYCLE) { it.computationCycleFindings() },
     produces(CheckFamily.COMPUTATION_SELF_READ) { it.computationSelfReadFindings() },
     produces(CheckFamily.REPETITION_KEY_PLACEMENT) { it.repetitionKeyPlacementFindings() },
@@ -251,11 +255,15 @@ internal val CHECK_PRODUCERS: List<CheckProducer> = listOf(
     produces(CheckFamily.OUTER_MARKER_POSITION) { it.outerMarkerPositionFindings() },
     produces(CheckFamily.GROUP_CONDITION_WILDCARD) { it.groupConditionWildcardFindings() },
     produces(CheckFamily.SUM_OF_PRODUCTS_OPERANDS) { it.sumOfProductsOperandFindings() },
-    produces(CheckFamily.OPERAND_LIST_CONSTANT_BUDGET) { it.operandListConstantFindings() },
+    perDeclaration(CheckFamily.OPERAND_LIST_CONSTANT_BUDGET) { base, at ->
+        base.operandListConstantFindings(at)
+    },
     produces(CheckFamily.TEMPORAL_AGGREGATE_OPERANDS) { it.temporalAggregateOperandFindings() },
     produces(CheckFamily.SEMANTIC_INDEX_STRUCTURE) { it.semanticIndexStructureFindings() },
     produces(CheckFamily.SEMANTIC_INDEX_KEY) { it.semanticIndexKeyFindings() },
-    produces(CheckFamily.REPETITION_NOT_UNIQUE_COMBINATION) { it.repetitionNotUniqueCombinationFindings() },
+    perDeclaration(CheckFamily.REPETITION_NOT_UNIQUE_COMBINATION) { base, at ->
+        base.repetitionNotUniqueCombinationFindings(at)
+    },
     produces(CheckFamily.PARALLEL_ITERATION_UNIQUENESS) { it.parallelIterationUniquenessFindings() },
     produces(CheckFamily.FILTERED_ENTITY_ITERATION) { it.filteredEntityIterationFindings() },
     produces(CheckFamily.ARITHMETIC_OPERATION_GATES) { it.arithmeticOperationGateFindings() },
@@ -299,7 +307,9 @@ internal val CHECK_PRODUCERS: List<CheckProducer> = listOf(
     produces(CheckFamily.MESSAGE_PARAMETER_SYNTAX) { it.messageParameterSyntaxFindings() },
     produces(CheckFamily.MESSAGE_GROUP_PARAMETER) { it.messageGroupParameterFindings() },
     produces(CheckFamily.MESSAGE_VALUE_SUFFIX) { it.messageValueSuffixFindings() },
-    produces(CheckFamily.STRING_PATTERN_MESSAGE) { it.stringTypeMessageFindings() },
+    perDeclaration(CheckFamily.STRING_PATTERN_MESSAGE) { base, at ->
+        base.stringTypeMessageFindings(at)
+    },
     produces(CheckFamily.STRING_TYPE_PARAMETERS) { it.stringTypeParameterFindings() },
     produces(CheckFamily.NUMBER_TYPE_DIGITS) { it.numberTypeDigitFindings() },
     produces(CheckFamily.ENUM_VALUE_LABELS) { it.enumValueLabelFindings() },

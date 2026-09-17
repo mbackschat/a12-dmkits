@@ -32,24 +32,26 @@ import kotlinx.serialization.json.booleanOrNull
  * fills `yyyy-MM-dd`, which is year-bearing and complete, so both rows are ADMITTED — which is why
  * [declaredFormat] can treat the absent member as nothing to judge and still give A12's answer.
  */
-internal fun TrackedFactBase.temporalConfigFindings(): List<Finding> =
-    declarations().filter { it.declaredKind == DeclaredKind.FIELD }.flatMap { field ->
-        val declared = field.body?.get("fieldType") as? JsonObject ?: return@flatMap emptyList()
-        val type = (declared["type"] as? JsonPrimitive)?.content ?: return@flatMap emptyList()
-        val body = declared[type] as? JsonObject ?: return@flatMap emptyList()
-        when (type) {
-            "DateType" -> listOfNotNull(
-                pre1900Finding(field, body, body.declaredFormat("format")),
-                partialPrecisionFinding(field, body, body.declaredFormat("format")),
-            )
-            // The fragment carrier spells its format under its own member and takes only the first gate,
-            // having no precision of its own.
-            "DateFragmentType" -> listOfNotNull(
-                pre1900Finding(field, body, body.declaredFormat("formatOfFragment")),
-            )
-            else -> emptyList()
-        }
+internal fun TrackedFactBase.temporalConfigFindings(field: TrackedDeclaration): List<Finding> {
+    if (field.declaredKind != DeclaredKind.FIELD) {
+        return emptyList()
     }
+    val declared = field.body?.get("fieldType") as? JsonObject ?: return emptyList()
+    val type = (declared["type"] as? JsonPrimitive)?.content ?: return emptyList()
+    val body = declared[type] as? JsonObject ?: return emptyList()
+    return when (type) {
+        "DateType" -> listOfNotNull(
+            pre1900Finding(field, body, body.declaredFormat("format")),
+            partialPrecisionFinding(field, body, body.declaredFormat("format")),
+        )
+        // The fragment carrier spells its format under its own member and takes only the first gate,
+        // having no precision of its own.
+        "DateFragmentType" -> listOfNotNull(
+            pre1900Finding(field, body, body.declaredFormat("formatOfFragment")),
+        )
+        else -> emptyList()
+    }
+}
 
 /**
  * The format this body declares and this family may judge — null when there is nothing to judge.

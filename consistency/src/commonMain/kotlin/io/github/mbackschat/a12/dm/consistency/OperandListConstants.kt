@@ -21,19 +21,17 @@ import io.github.mbackschat.a12.dm.consistency.syntax.callsIn
  * constant — and that falls out of the same rule: an operand counts only when the WHOLE of it is one
  * literal, with any `{…}` grouping unwrapped.
  */
-internal fun TrackedFactBase.operandListConstantFindings(): List<Finding> {
+internal fun TrackedFactBase.operandListConstantFindings(element: TrackedDeclaration): List<Finding> {
     val keywords = CONDITION_OPERATOR_KEYWORDS[conditionLanguage] ?: return emptyList()
     val carriers = OPERAND_LIST_MATH.mapNotNull { keywords[it] }.toSet()
     if (carriers.isEmpty()) {
         return emptyList()
     }
-    return declarations().flatMap { element ->
-        val body = element.body ?: return@flatMap emptyList()
-        conditionTexts(element.kind, body).flatMap { (member, text) ->
-            callsIn(text, conditionLanguage, syntaxEntryOf(member))
-                .filter { it.operator in carriers && it.operands.count { operand -> operand.constant } > 1 }
-                .map { call -> budgetFinding(call.operator, element, member) }
-        }
+    val body = element.body ?: return emptyList()
+    return conditionTexts(element.kind, body).flatMap { (member, text) ->
+        callsIn(text, conditionLanguage, syntaxEntryOf(member))
+            .filter { it.operator in carriers && it.operands.count { operand -> operand.constant } > 1 }
+            .map { call -> budgetFinding(call.operator, element, member) }
     }
 }
 

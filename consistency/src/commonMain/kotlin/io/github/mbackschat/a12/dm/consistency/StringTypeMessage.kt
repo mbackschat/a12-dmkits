@@ -26,27 +26,29 @@ package io.github.mbackschat.a12.dm.consistency
  * That boundary is [authoredMessages]' and is measured on this carrier too, which is what lets one reader
  * serve both.
  */
-internal fun TrackedFactBase.stringTypeMessageFindings(): List<Finding> =
-    declarations().filter { it.declaredKind == DeclaredKind.FIELD }.flatMap { field ->
-        val stringType = field.stringTypeBody() ?: return@flatMap emptyList()
-        when (val read = stringType.authoredMessages()) {
-            is AuthoredMessages.Refused -> listOf(
-                Finding(
-                    FindingCategory.A12_CONSTRAINT,
-                    FindingSeverity.ERROR,
-                    CK_MODEL_NOT_BUILDABLE,
-                    "${read.explain}, so A12's own reader refuses the source and nothing in this model is " +
-                        "examined — this field's pattern message is not judged here",
-                    field.path,
-                ),
-            )
-            is AuthoredMessages.Read -> patternMessageFindings(
-                field,
-                stringType.string("pattern") != null,
-                read.entries.coveredLocales(declaredLocales),
-            )
-        }
+internal fun TrackedFactBase.stringTypeMessageFindings(field: TrackedDeclaration): List<Finding> {
+    if (field.declaredKind != DeclaredKind.FIELD) {
+        return emptyList()
     }
+    val stringType = field.stringTypeBody() ?: return emptyList()
+    return when (val read = stringType.authoredMessages()) {
+        is AuthoredMessages.Refused -> listOf(
+            Finding(
+                FindingCategory.A12_CONSTRAINT,
+                FindingSeverity.ERROR,
+                CK_MODEL_NOT_BUILDABLE,
+                "${read.explain}, so A12's own reader refuses the source and nothing in this model is " +
+                    "examined — this field's pattern message is not judged here",
+                field.path,
+            ),
+        )
+        is AuthoredMessages.Read -> patternMessageFindings(
+            field,
+            stringType.string("pattern") != null,
+            read.entries.coveredLocales(declaredLocales),
+        )
+    }
+}
 
 private fun TrackedFactBase.patternMessageFindings(
     field: TrackedDeclaration,

@@ -25,26 +25,27 @@ import io.github.mbackschat.a12.dm.consistency.syntax.namesKeyword
  * measurement for it and does not report it. Silence there under-reports, which is safe; reporting a refusal
  * with no measured basis is the one thing this project forbids.
  */
-internal fun TrackedFactBase.computationPreconditionFeatureFindings(): List<Finding> {
+internal fun TrackedFactBase.computationPreconditionFeatureFindings(element: TrackedDeclaration): List<Finding> {
+    if (element.kind != "Computation") {
+        return emptyList()
+    }
     val spellings = CONDITION_OPERATOR_KEYWORDS.getValue(conditionLanguage)
     val prohibited = PROHIBITED_IN_A_PRECONDITION.map { spellings.getValue(it) }.toSet()
-    return declarations().filter { it.kind == "Computation" }.flatMap { element ->
-        val body = element.body ?: return@flatMap emptyList()
-        conditionTexts(element.kind, body)
-            .filter { (member, _) -> syntaxEntryOf(member) == SyntaxEntry.CONDITION }
-            .mapNotNull { (member, text) ->
-                val used = namesKeyword(text, prohibited) ?: return@mapNotNull null
-                Finding(
-                    FindingCategory.A12_CONSTRAINT,
-                    FindingSeverity.ERROR,
-                    "MVK_ERROR_INVALID_LANGUAGE_FEATURE",
-                    "in `$member`: `$used` is prohibited in a computation's precondition — A12 normalizes a " +
-                        "calculation rule's condition and refuses this predicate there. The same predicate " +
-                        "in a RULE condition is ordinary",
-                    element.path,
-                )
-            }
-    }
+    val body = element.body ?: return emptyList()
+    return conditionTexts(element.kind, body)
+        .filter { (member, _) -> syntaxEntryOf(member) == SyntaxEntry.CONDITION }
+        .mapNotNull { (member, text) ->
+            val used = namesKeyword(text, prohibited) ?: return@mapNotNull null
+            Finding(
+                FindingCategory.A12_CONSTRAINT,
+                FindingSeverity.ERROR,
+                "MVK_ERROR_INVALID_LANGUAGE_FEATURE",
+                "in `$member`: `$used` is prohibited in a computation's precondition — A12 normalizes a " +
+                    "calculation rule's condition and refuses this predicate there. The same predicate " +
+                    "in a RULE condition is ordinary",
+                element.path,
+            )
+        }
 }
 
 /**

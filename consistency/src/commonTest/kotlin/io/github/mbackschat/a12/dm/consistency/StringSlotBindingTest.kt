@@ -62,7 +62,9 @@ class StringSlotBindingTest {
     )
 
     private fun codesFor(source: ModelSource): List<String> =
-        prepare(assertIs<Admission.Admitted>(admit(source))).tracked().stringSlotFindings().map { it.code }
+        prepare(assertIs<Admission.Admitted>(admit(source))).tracked()
+            .everyDeclaration(TrackedFactBase::stringSlotFindings)
+            .map { it.code }
 
     private val containers = listOf(
         "an empty object" to "{}",
@@ -100,7 +102,7 @@ class StringSlotBindingTest {
      * The families that own these members read them too, and the failure this guards against is not that one
      * of them reports the wrong thing but that two of them report the same thing: an unbindable envelope once
      * produced two near-identical `CK_MODEL_NOT_BUILDABLE` findings at one path, and only counting caught it.
-     * Calling `stringSlotFindings()` directly cannot see that, which is why this row goes through `check`.
+     * Calling `stringSlotFindings` per declaration cannot see that, which is why this row goes through `check`.
      */
     @Test
     fun anUnbindableSlotIsReportedOnceAcrossTheWholeReport() {

@@ -30,9 +30,9 @@ import kotlinx.serialization.json.JsonObject
  * The finding is [CK_MODEL_NOT_BUILDABLE] rather than any `MVK_*`, because A12 never reaches the tier that
  * issues codes.
  */
-internal fun TrackedFactBase.stringSlotFindings(): List<Finding> = declarations().flatMap { element ->
-    val body = element.body ?: return@flatMap emptyList()
-    when (element.declaredKind) {
+internal fun TrackedFactBase.stringSlotFindings(element: TrackedDeclaration): List<Finding> {
+    val body = element.body ?: return emptyList()
+    return when (element.declaredKind) {
         DeclaredKind.RULE -> RULE_TEXT_MEMBERS.mapNotNull { unbindableText(element, body, it) }
         DeclaredKind.COMPUTATION -> alternativeTextFindings(element, body)
         DeclaredKind.GROUP -> listOfNotNull(unbindableText(element, body, "indexFieldName")) +

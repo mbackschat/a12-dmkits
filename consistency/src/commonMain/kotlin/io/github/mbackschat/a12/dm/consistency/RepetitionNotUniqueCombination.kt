@@ -32,33 +32,36 @@ import io.github.mbackschat.a12.dm.consistency.syntax.callsIn
  * **Rules only.** A12's calculation module refuses `RepetitionNotUnique` in a computation outright
  * ([KERNEL-FINDINGS KF333]), so a computation carrying two has a different defect entirely.
  */
-internal fun TrackedFactBase.repetitionNotUniqueCombinationFindings(): List<Finding> {
+internal fun TrackedFactBase.repetitionNotUniqueCombinationFindings(
+    element: TrackedDeclaration,
+): List<Finding> {
+    if (element.kind != "Rule") {
+        return emptyList()
+    }
     val keywords = CONDITION_OPERATOR_KEYWORDS[conditionLanguage] ?: return emptyList()
     val spelling = keywords[REPETITION_NOT_UNIQUE_OPERATOR] ?: return emptyList()
-    return declarations().filter { it.kind == "Rule" }.flatMap { element ->
-        val body = element.body ?: return@flatMap emptyList()
-        val filterKeyword = keywords[FILTER]
-        conditionTexts(element.kind, body).mapNotNull { (member, text) ->
-            val entry = syntaxEntryOf(member)
-            val found = callsIn(text, conditionLanguage, entry)
-            val inFilters = found.flatMap { it.operands }.flatMap { it.clauses }
-                .filter { it.keyword == filterKeyword }
-                .sumOf { filter ->
-                    callsIn(filter.text, conditionLanguage, entry).count { it.operator == spelling }
-                }
-            val calls = found.count { it.operator == spelling } - inFilters
-            if (calls < 2) {
-                return@mapNotNull null
+    val body = element.body ?: return emptyList()
+    val filterKeyword = keywords[FILTER]
+    return conditionTexts(element.kind, body).mapNotNull { (member, text) ->
+        val entry = syntaxEntryOf(member)
+        val found = callsIn(text, conditionLanguage, entry)
+        val inFilters = found.flatMap { it.operands }.flatMap { it.clauses }
+            .filter { it.keyword == filterKeyword }
+            .sumOf { filter ->
+                callsIn(filter.text, conditionLanguage, entry).count { it.operator == spelling }
             }
-            Finding(
-                FindingCategory.A12_CONSTRAINT,
-                FindingSeverity.ERROR,
-                "MVK_INVALID_COMBINATION_OF_REPETITON_NOT_UNIQUE",
-                "this $member calls `$spelling` $calls times — A12 admits one per condition, counted over " +
-                    "the whole text rather than per branch; give the single call a composite key instead",
-                element.path,
-            )
+        val calls = found.count { it.operator == spelling } - inFilters
+        if (calls < 2) {
+            return@mapNotNull null
         }
+        Finding(
+            FindingCategory.A12_CONSTRAINT,
+            FindingSeverity.ERROR,
+            "MVK_INVALID_COMBINATION_OF_REPETITON_NOT_UNIQUE",
+            "this $member calls `$spelling` $calls times — A12 admits one per condition, counted over " +
+                "the whole text rather than per branch; give the single call a composite key instead",
+            element.path,
+        )
     }
 }
 

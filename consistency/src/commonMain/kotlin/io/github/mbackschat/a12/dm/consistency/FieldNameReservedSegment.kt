@@ -25,22 +25,21 @@ import io.github.mbackschat.a12.dm.consistency.syntax.ConditionLanguage
  * different set there — `.Wert`, `.Vordruckzeile`, `.Vordruckname` — and nothing in this estate has measured
  * it, so a checker applying the German list would be reproducing a source read rather than a measurement.
  */
-internal fun TrackedFactBase.fieldNameReservedSegmentFindings(): List<Finding> {
+internal fun TrackedFactBase.fieldNameReservedSegmentFinding(field: TrackedDeclaration): Finding? {
     if (conditionLanguage != ConditionLanguage.EN) {
-        return emptyList()
+        return null
     }
-    return declarations().filter { it.declaredKind == DeclaredKind.FIELD }
-        .filter { it.name.reservesItsFinalSegment() }
-        .map { field ->
-            Finding(
-                FindingCategory.A12_CONSTRAINT,
-                FindingSeverity.ERROR,
-                "MVK_NAME_INVALID_A12_DV",
-                "this field's name ends in the segment `.value`, which A12's field-name gate reserves — the " +
-                    "dot itself is refused beside it, and A12 states this class first",
-                field.path,
-            )
-        }
+    if (field.declaredKind != DeclaredKind.FIELD || !field.name.reservesItsFinalSegment()) {
+        return null
+    }
+    return Finding(
+        FindingCategory.A12_CONSTRAINT,
+        FindingSeverity.ERROR,
+        "MVK_NAME_INVALID_A12_DV",
+        "this field's name ends in the segment `.value`, which A12's field-name gate reserves — the " +
+            "dot itself is refused beside it, and A12 states this class first",
+        field.path,
+    )
 }
 
 /** A12's field-name identifier pattern; the captured group is the LAST dotted segment when there is one. */
