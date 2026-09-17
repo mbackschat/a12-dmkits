@@ -552,22 +552,8 @@ internal val PLAINLY_NON_DATE_TYPES = setOf(
     "CustomFieldType", "DateRangeType",
 )
 
-/**
- * The operand reduced to its written spec and the category it names, or null where neither can be read.
- *
- * A category access is not a path with a suffix — the reader that finds one returns the path and the category
- * separately — so a family that only asked for [CallOperand.path] would see nothing at all where A12 sees a
- * category and refuses the call.
- */
-internal fun PreparedModel.operandSpec(operand: CallOperand): Pair<String, String?>? =
-    operandSpecIn(operand, conditionLanguage)
-
-/** The same reading through the read barrier — it reads the condition language and nothing else. */
-internal fun TrackedFactBase.operandSpec(operand: CallOperand): Pair<String, String?>? =
-    operandSpecIn(operand, conditionLanguage)
-
-private fun operandSpecIn(operand: CallOperand, language: ConditionLanguage): Pair<String, String?>? {
-    categoryAccessesIn(operand.text, language).singleOrNull()?.let { (path, category) ->
+internal fun TrackedFactBase.operandSpec(operand: CallOperand): Pair<String, String?>? {
+    categoryAccessesIn(operand.text, conditionLanguage).singleOrNull()?.let { (path, category) ->
         return path to category
     }
     return (operand.path ?: return null) to null
@@ -598,23 +584,8 @@ private fun crossesARepetitionOutsideIn(
         !(declaringGroup == candidate || declaringGroup.startsWith("$candidate/"))
 }
 
-/**
- * How many groups on the path to [path], itself included, repeat — one star each is what A12 wants.
- *
- * Two families need it to decide whether an operand's STARRING is already right, because both of A12's
- * wildcard-validity classes outrun the gate they are about to report: a repetition read without a star is
- * `MVK_NO_WILDCARD` and a star on a level that does not repeat is `MVK_INVALID_WILDCARD`, so naming any
- * later class on such an operand would send the author to the wrong repair.
- */
-internal fun PreparedModel.repeatingLevelsOnThePathTo(path: String): Int =
-    repeatingLevelsIn(repeatableGroupPaths(), path)
-
-/** The same count through the read barrier; the charge rides the cursor, as on [iteratedLevels]. */
 internal fun TrackedFactBase.repeatingLevelsOnThePathTo(path: String): Int =
-    repeatingLevelsIn(repeatableGroupPaths(), path)
-
-private fun repeatingLevelsIn(repeatableGroups: List<String>, path: String): Int =
-    repeatableGroups.count { it == path || path.startsWith("$it/") }
+    repeatableGroupPaths().count { it == path || path.startsWith("$it/") }
 
 /**
  * Whether this STRING declaration waives A12's per-cell value validation.

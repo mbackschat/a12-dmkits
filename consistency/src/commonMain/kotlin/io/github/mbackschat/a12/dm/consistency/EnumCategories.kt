@@ -61,17 +61,7 @@ internal fun TrackedFactBase.enumCategoryGaps(): List<CoverageGap> =
     }
 
 /** The `EnumerationType` body this field declares, or null when it declares another kind or none at all. */
-internal fun DeclaredElement.enumerationBody(): JsonObject? = enumerationBodyIn(body)
-
-/**
- * The same reading for a family that has migrated to the read barrier.
- *
- * It exists so the two carriers share one implementation rather than two that can drift: the barrier changes
- * WHERE the body comes from and records the read, and says nothing about how an `EnumerationType` is spelled.
- */
-internal fun TrackedDeclaration.enumerationBody(): JsonObject? = enumerationBodyIn(body)
-
-private fun enumerationBodyIn(body: JsonObject?): JsonObject? {
+internal fun TrackedDeclaration.enumerationBody(): JsonObject? {
     val declared = body?.get("fieldType") as? JsonObject ?: return null
     if ((declared["type"] as? JsonPrimitive)?.content != "EnumerationType") {
         return null

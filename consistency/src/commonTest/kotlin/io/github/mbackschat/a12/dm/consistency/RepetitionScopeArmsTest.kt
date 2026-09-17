@@ -1,6 +1,5 @@
 package io.github.mbackschat.a12.dm.consistency
 
-import io.github.mbackschat.a12.dm.consistency.syntax.CallOperand
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertIs
@@ -9,9 +8,9 @@ import kotlin.test.assertTrue
 /**
  * The repetition-scope helpers answer the same on both receivers while the estate is part-migrated.
  *
- * **Why these three need their own lock, when the shared core is structural.** Each helper keeps one
+ * **Why these two need their own lock, when the shared core is structural.** Each helper keeps one
  * implementation that both arms call, so the DECISION cannot diverge — what can is the INPUT each arm feeds
- * it, and two of these three feed a list the arms build separately (`elements` on one side, the cursors on
+ * it, and both of them feed a list the arms build separately (`elements` on one side, the cursors on
  * the other). A divergence there is silent and splits the estate: the families still on [PreparedModel] would
  * answer one way about a repetition and the migrated ones the other, on the same model, with every family's
  * own test green because each family only ever calls one arm.
@@ -81,22 +80,5 @@ class RepetitionScopeArmsTest {
             prepared.tracked().crossesARepetitionOutside("/Policy/Claims", "/Policy/Claims/Amount"),
             "the two arms must agree on the negative direction too",
         )
-    }
-
-    @Test
-    fun bothArmsReadTheSameOperandSpec() {
-        val prepared = prepared()
-        val categorized = CallOperand(path = "Claims*/Amount", text = "Claims*/Amount -> Band")
-
-        val untracked = prepared.operandSpec(categorized)
-        val tracked = prepared.tracked().operandSpec(categorized)
-
-        assertEquals(
-            "Claims*/Amount" to "Band",
-            untracked,
-            "the categorized operand must read as a path and its category, or the equality below compares " +
-                "two nulls and the category branch is never entered",
-        )
-        assertEquals(untracked, tracked, "the two arms must read the same operand spec")
     }
 }

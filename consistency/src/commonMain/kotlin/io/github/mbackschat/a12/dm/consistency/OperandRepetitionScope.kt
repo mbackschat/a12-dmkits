@@ -91,45 +91,12 @@ fun PreparedModel.operandRepetitionScopeFindings(): List<Finding> {
     }
 }
 
-/**
- * [text] with every `Having` filter BODY blanked out — the condition this walk is actually about.
- *
- * A filter body's references are judged against the FILTERED entity rather than the rule's target, so they
- * belong to [filterBodyGateFindings] and not here; removing them is what lets everything else in the text be
- * read normally. The flat reference list cannot tell the two apart, which is why this family skipped a
- * filtered text wholesale until 2026-09-15 — and skipping it threw away the operands of the surrounding
- * condition, where a rule's own unstarred read usually sits.
- *
- * It also removes the reason the OUTER MARKER silenced the whole text: `$` binds the enclosing iteration for
- * a filter body's references, so a text carrying one carries it THERE. The caller still declines a stripped
- * text that has one left, which is a shape this walk has not been measured on.
- *
- * Blanking rather than re-parsing, because the clause body is already reduced verbatim and a substring is
- * what a reference reader needs. A body occurring twice blanks both: over-removal only ever under-reports.
- */
-/**
- * The condition references of [element] that lie OUTSIDE every `Having` filter body.
- *
- * A filter body's references are about the FILTERED entity, so a family asking what the RULE itself reads
- * must not count them. Offered as a set of written spellings because that is what a consumer already holds:
- * the reference objects come from [conditionReferences], which scans the whole text.
- */
-internal fun PreparedModel.referencesOutsideFilterBodies(element: DeclaredElement): Set<String> =
-    referencesOutsideFilterBodiesIn(element.kind, element.body, conditionLanguage)
-
-/** The same reading through the read barrier; the declaration's body charges itself. */
-internal fun TrackedFactBase.referencesOutsideFilterBodies(element: TrackedDeclaration): Set<String> =
-    referencesOutsideFilterBodiesIn(element.kind, element.body, conditionLanguage)
-
-private fun referencesOutsideFilterBodiesIn(
-    kind: String,
-    body: JsonObject?,
-    language: ConditionLanguage,
-): Set<String> {
+internal fun TrackedFactBase.referencesOutsideFilterBodies(element: TrackedDeclaration): Set<String> {
+    val language = conditionLanguage
     val keywords = CONDITION_OPERATOR_KEYWORDS[language] ?: return emptySet()
     val filterKeyword = setOfNotNull(keywords[HAVING])
-    val declared = body ?: return emptySet()
-    return conditionTexts(kind, declared)
+    val declared = element.body ?: return emptySet()
+    return conditionTexts(element.kind, declared)
         .flatMap { (member, text) ->
             referencesIn(withoutFilterBodies(text, member, filterKeyword, language), language)
         }
