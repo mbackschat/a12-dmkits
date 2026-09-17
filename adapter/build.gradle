@@ -937,6 +937,44 @@ tasks.register('checkerColdNodePerfTest', Test) {
     outputs.cacheIf { false }
 }
 
+// H5-h: the PREPARED boundary's plain-Node arm. §8's prepared row reads host-neutral, but the owner's
+// hard-acceptance section attaches "JVM, plain Node and browser consumers" to the whole budget list, so the
+// grid is 5 x 3 and this cell was unmeasured. It asserts the already-ratified growth ratio — ratified as a
+// mechanism on 2026-09-16, before this host had any lane — and no duration.
+//
+// ONE warm child for the whole run, unlike H5-f's launch per observation: warmth is what this boundary is
+// about, so relaunching would measure precisely what it excludes.
+tasks.register('checkerPreparedNodePerfTest', Test) {
+    description = 'Measure the checker\'s PREPARED growth from one warm Node process against the packed package.'
+    group = 'measurement'
+    dependsOn ':consistency:installPackedConsistencyInNodeConsumer'
+    testClassesDirs = sourceSets.test.output.classesDirs
+    classpath = sourceSets.test.runtimeClasspath
+    useJUnitPlatform()
+    maxParallelForks = 1
+    failFast = true
+    systemProperty 'perf.checker.preparednode', 'true'
+    // One value drives the Gradle resolution and NodeIdentity's refusal both — see gradle.properties.
+    systemProperty 'perf.checker.preparednode.major', checkerNodeMajor
+    doFirst {
+        systemProperty 'perf.checker.preparednode.node',
+            resolveNodeTool('node', checkerNodeMajor).absolutePath
+        systemProperty 'perf.checker.preparednode.project',
+            project(':consistency').layout.buildDirectory.dir('consumer-tests/node').get().asFile.absolutePath
+    }
+    // 51: odd so the paired median names an observed ratio, and at or above the boundary's floor of 50.
+    systemProperty 'perf.checker.preparednode.pairs',
+        providers.gradleProperty('checkerPreparedNodePairs').getOrElse('51')
+    systemProperty 'perf.checker.preparednode.n',
+        providers.gradleProperty('checkerPreparedNodeN').getOrElse('200')
+    filter {
+        includeTestsMatching 'io.github.mbackschat.a12.dm.adapter.perf.CheckerPreparedNodePerfTest'
+    }
+    // Measurements are observations, never reusable task outputs.
+    outputs.upToDateWhen { false }
+    outputs.cacheIf { false }
+}
+
 // H5-g: the cold boundary's BROWSER arm — the third host §8's cold row names, and with H5-f the one that closes
 // that row's host grid. It orchestrates the bundle build rather than `:consistency` doing so, because the
 // workload comes from the typed synthesizer here and `:adapter` already depends on `:consistency`, so the

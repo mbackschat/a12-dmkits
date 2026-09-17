@@ -199,9 +199,7 @@ class CheckerColdBrowserPerfTest {
         return output.lineSequence()
             .filter { it.startsWith("observation ") }
             .map { line ->
-                val fields = line.removePrefix("observation ").split(' ')
-                    .mapNotNull { field -> field.split('=', limit = 2).takeIf { it.size == 2 } }
-                    .associate { (key, value) -> key to value }
+                val fields = ColdLane.taggedFields(line, "observation")
                 ColdObservation(
                     model = requireNotNull(fields["model"]) { "no model in: $line" },
                     moduleMillis = requireNotNull(fields["moduleMillis"]) { "no moduleMillis in: $line" }.toDouble(),

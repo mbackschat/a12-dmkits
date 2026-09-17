@@ -90,6 +90,18 @@ internal object ColdLane {
      * Splitting on the FIRST `=` only, because a value may contain one: a rejecting finding's address or a
      * label is not guaranteed to be free of it, and a greedy split would silently drop the tail.
      */
+    /**
+     * The fields of ONE `<tag> key=value key=value …` line, as a map.
+     *
+     * The two protocols differ by where the newlines are: a child launched per observation prints one field per
+     * line and is read by [printedFields], while a child that runs many observations tags each line and packs
+     * its fields onto it. Same split rule either way, on the first `=` only.
+     */
+    fun taggedFields(line: String, tag: String): Map<String, String> = line.removePrefix("$tag ")
+        .split(' ')
+        .mapNotNull { field -> field.split('=', limit = 2).takeIf { it.size == 2 } }
+        .associate { (key, value) -> key to value }
+
     fun printedFields(output: String): Map<String, String> = output.lineSequence()
         .mapNotNull { line -> line.split('=', limit = 2).takeIf { it.size == 2 } }
         .associate { (key, value) -> key to value }
