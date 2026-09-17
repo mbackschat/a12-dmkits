@@ -907,4 +907,31 @@ class CheckFamilyWiringTest {
         )
         assertTrue(examined > 2, "only the two fixtures were examined, so the corpus reached this arm empty")
     }
+
+    @Test
+    fun onlyTheTwoCompositionPassesReachTheReportWithoutACell() {
+        // **The one route a family can take to the report without a cell, pinned.** `checksCompleted` is
+        // the union of `COMPOSED_FAMILIES` and what the registry completes, so a family added to that set
+        // and wired into `checkRun`'s own concatenation would be advertised, reported, and never cached —
+        // and every other test here would pass, because they ask whether a family REACHES the report and
+        // not how. A third member means exactly that bypass, so the set is a pin rather than a list.
+        //
+        // Both members earn it: resolving declared references and resolving a condition's entities are done
+        // once for the whole model, ahead of every family, because several families then ask what those
+        // passes found. A cell keyed on what a model-wide pass read could never be reused, which is why
+        // they are composition rather than registrations.
+        assertEquals(
+            setOf(CheckFamily.DECLARED_REFERENCES, CheckFamily.CONDITION_REFERENCES),
+            COMPOSED_FAMILIES,
+            "a family outside the registry bypasses the cell store; register it as a producer instead",
+        )
+
+        // …and the other direction, so the pin cannot be satisfied by shrinking the denominator: every
+        // family is either composed or registered, which is what makes the two sets a partition.
+        assertEquals(
+            CheckFamily.entries.toSet(),
+            COMPOSED_FAMILIES + CHECK_PRODUCERS.flatMap { it.completes },
+            "every CheckFamily must be composed or registered, or it is advertised by neither",
+        )
+    }
 }
