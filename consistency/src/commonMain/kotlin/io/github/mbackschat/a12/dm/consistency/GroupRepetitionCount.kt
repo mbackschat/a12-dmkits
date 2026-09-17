@@ -31,43 +31,47 @@ import kotlinx.serialization.json.longOrNull
  * `MVK_MAX_MISSING` cannot fire on a stored model — an omitted `repeatability` is simply a group that
  * repeats once.
  */
-internal fun TrackedFactBase.groupRepetitionCountFindings(): List<Finding> =
-    declarations().filter { it.declaredKind == DeclaredKind.GROUP }.mapNotNull { group ->
-        val member = group.body?.get("repeatability") ?: return@mapNotNull null
-        val cap = if (group.isRootGroup()) ROOT_GROUP_CAP else NESTED_GROUP_CAP
-        // An explicit `null` is the DOMAIN's defect and not the absent key, and the two are one line apart
-        // here: absence means a group that simply does not repeat, while a declared null draws
-        // `MVK_MAX_VALUES_INVALID` with the same *greater than 0* wording `0` does (KF221). Reading the
-        // member through `longOrNull` alone collapses them, which left this silent on a value A12 refuses.
-        if (member is JsonNull) return@mapNotNull group.invalidCount("null")
-        val declared = (member as? JsonPrimitive)?.longOrNull ?: return@mapNotNull null
-        when {
-            // Both directions are the same refusal — the member does not fit A12's signed 32-bit slot — so
-            // they share one message rather than stating it twice.
-            declared > READABLE_CEILING || declared < READABLE_FLOOR -> Finding(
-                FindingCategory.A12_CONSTRAINT,
-                FindingSeverity.ERROR,
-                CK_MODEL_NOT_BUILDABLE,
-                "`${group.path}` declares a `repeatability` of $declared, which A12's reader cannot hold " +
-                    "in the signed 32-bit member it declares — the source is refused before any check runs, " +
-                    "so no verdict about this model exists",
-                group.path,
-            )
-
-            declared <= 0 -> group.invalidCount(declared.toString())
-
-            declared > cap -> Finding(
-                FindingCategory.A12_CONSTRAINT,
-                FindingSeverity.ERROR,
-                "MVK_MAX_TOO_BIG",
-                "`${group.path}` may repeat $declared times and A12 caps a " +
-                    (if (group.isRootGroup()) "root" else "nested") + " group at $cap",
-                group.path,
-            )
-
-            else -> null
-        }
+internal fun TrackedFactBase.groupRepetitionCountFinding(group: TrackedDeclaration): Finding? {
+    if (group.declaredKind != DeclaredKind.GROUP) {
+        return null
     }
+    val member = group.body?.get("repeatability") ?: return null
+    val cap = if (group.isRootGroup()) ROOT_GROUP_CAP else NESTED_GROUP_CAP
+    // An explicit `null` is the DOMAIN's defect and not the absent key, and the two are one line apart
+    // here: absence means a group that simply does not repeat, while a declared null draws
+    // `MVK_MAX_VALUES_INVALID` with the same *greater than 0* wording `0` does (KF221). Reading the
+    // member through `longOrNull` alone collapses them, which left this silent on a value A12 refuses.
+    if (member is JsonNull) {
+        return group.invalidCount("null")
+    }
+    val declared = (member as? JsonPrimitive)?.longOrNull ?: return null
+    return when {
+        // Both directions are the same refusal — the member does not fit A12's signed 32-bit slot — so
+        // they share one message rather than stating it twice.
+        declared > READABLE_CEILING || declared < READABLE_FLOOR -> Finding(
+            FindingCategory.A12_CONSTRAINT,
+            FindingSeverity.ERROR,
+            CK_MODEL_NOT_BUILDABLE,
+            "`${group.path}` declares a `repeatability` of $declared, which A12's reader cannot hold " +
+                "in the signed 32-bit member it declares — the source is refused before any check runs, " +
+                "so no verdict about this model exists",
+            group.path,
+        )
+
+        declared <= 0 -> group.invalidCount(declared.toString())
+
+        declared > cap -> Finding(
+            FindingCategory.A12_CONSTRAINT,
+            FindingSeverity.ERROR,
+            "MVK_MAX_TOO_BIG",
+            "`${group.path}` may repeat $declared times and A12 caps a " +
+                (if (group.isRootGroup()) "root" else "nested") + " group at $cap",
+            group.path,
+        )
+
+        else -> null
+    }
+}
 
 /** The domain's own class, for a count A12 requires to be at least 1 — `0`, a negative, or a literal null. */
 private fun TrackedDeclaration.invalidCount(declared: String): Finding = Finding(

@@ -159,6 +159,17 @@ internal class TrackedFactBase(
 
     /** What the cell at [key] read out of this fact base — what that cell is then keyed on. */
     fun observedWhileProducing(key: CellKey): Set<FactRead> = transcript.observedWhileProducing(key)
+
+    /**
+     * Charge the declaration at [at] its own shape row, for the cell currently producing.
+     *
+     * The dispatcher calls it before asking a per-declaration family, so the cell records WHICH declaration
+     * it answered about rather than only where it sat — [FactRead.DeclarationRow] says why the cursor's free
+     * shape members leave that gap.
+     */
+    fun chargeDeclarationRow(at: DeclarationKey) {
+        transcript.record(FactRead.DeclarationRow(at.path, at.amongSamePath))
+    }
 }
 
 /**

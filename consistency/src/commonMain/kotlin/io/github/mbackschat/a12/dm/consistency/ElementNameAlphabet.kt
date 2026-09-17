@@ -34,13 +34,12 @@ package io.github.mbackschat.a12.dm.consistency
  * character; and a name that breaks its alphabet AND a prefix gate at once, which is reported for the
  * character alone because the pair has not been measured.
  */
-internal fun TrackedFactBase.elementNameAlphabetFindings(): List<Finding> = declarations().flatMap { element ->
+internal fun TrackedFactBase.elementNameAlphabetFindings(element: TrackedDeclaration): List<Finding> =
     when (element.declaredKind) {
         DeclaredKind.GROUP -> element.groupNameFindings()
         DeclaredKind.FIELD -> element.fieldNameFindings()
         else -> emptyList()
     }
-}
 
 /**
  * The prefix A12 reserves on every element carrier, case-insensitively.

@@ -116,6 +116,56 @@ class CheckCellKeyTest {
     }
 
     @Test
+    fun aCellFallsWhenItsDeclarationChangesKindUnderAnIdenticalBody() {
+        // One declaration, declared as a Rule in one model and a Computation in the other, carrying the SAME
+        // body object. Every family that filters by kind — which is most of them — answers differently for
+        // the two, and nothing in a per-declaration cell's own reads would say so: the cursor's shape
+        // members are free, and the cell key carries only the path.
+        fun model(kind: String) = ModelSource(
+            """
+            {"header":{"id":"kinds","locales":[{"code":"en_US"}]},
+             "content":{"modelRoot":{"rootGroups":[
+              {"type":"Group","id":"g0","name":"Order","Group":{"elements":[
+                {"type":"Field","id":"f0","name":"Code","Field":{"fieldType":{"type":"StringType"}}},
+                {"type":"$kind","id":"r0","name":"Check","$kind":{
+                  "errorCondition":"FieldFilled(Code)","errorEntityRelPath":"../Code"}}
+              ]}}
+             ]}}}
+            """.trimIndent(),
+        )
+        fun prepared(kind: String): PreparedModel {
+            val admitted = admit(model(kind))
+            assertIs<Admission.Admitted>(admitted, "the $kind fixture must be admissible")
+            return prepare(admitted)
+        }
+
+        val asRule = prepared("Rule")
+        val asComputation = prepared("Computation")
+        val content = FactRead.DeclarationContent(CHECK)
+        val row = FactRead.DeclarationRow(CHECK, 0)
+
+        // The control that gives this row its meaning, and the reason the pair was built this way: on the
+        // CONTENT the two models are indistinguishable, so only the shape row can tell them apart.
+        assertEquals(asRule.valueOf(content), asComputation.valueOf(content),
+            "the two bodies must be identical, or the content value would do this row's work")
+        assertTrue(asRule.valueOf(row) != asComputation.valueOf(row),
+            "the declaration's kind must move its row, or there is nothing here to fell a cell")
+
+        val tracked = TrackedFactBase(asRule, ReadTranscript())
+        val scheduled = schedule(tracked)
+        val store = CheckCells(scheduled.associate { it.key to tracked.cellFor(it.key, asRule, it.produce) })
+        val atCheck = scheduled.map { it.key }
+            .filter { it.producer is CheckProducer.PerDeclaration && it.at?.path == CHECK }
+
+        assertTrue(atCheck.isNotEmpty(), "no family is keyed per declaration there, so this row is vacuous")
+        assertEquals(
+            emptyList(),
+            atCheck.filter { store.validIn(asComputation, it) != null }.map { it.producer.completes },
+            "a per-declaration cell must fall when its declaration is no longer the same declaration",
+        )
+    }
+
+    @Test
     fun twoDeclarationsAtOnePathGetTwoCellsAndBothVerdictsReachTheReport() {
         val source = ModelSource(
             """
@@ -183,5 +233,6 @@ class CheckCellKeyTest {
 
     private companion object {
         const val TWIN = "/Order/Twin"
+        const val CHECK = "/Order/Check"
     }
 }

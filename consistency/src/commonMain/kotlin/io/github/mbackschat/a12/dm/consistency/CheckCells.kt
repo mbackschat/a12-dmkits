@@ -84,6 +84,9 @@ internal fun PreparedModel.valueOf(read: FactRead): Any? = when (read) {
     // one — A12 refuses such a model and this checker has to report on it rather than fail, so the path is
     // not a unique key and a value covering only the first body would miss an edit to the second.
     is FactRead.DeclarationContent -> bodiesByPath[read.path].orEmpty()
+    // `null` when nothing is declared there any more, which differs from every real row and so fells the
+    // cell — the one outcome a removed declaration must produce.
+    is FactRead.DeclarationRow -> rowsByPath[read.path]?.getOrNull(read.amongSamePath)
     is FactRead.ModelMember -> when (read.fact) {
         ModelFact.CONDITION_LANGUAGE -> conditionLanguage
         ModelFact.DECLARED_LOCALES -> declaredLocales

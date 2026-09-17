@@ -42,7 +42,7 @@ class RuleConditionAndTargetTest {
                 ),
             ),
         ),
-    ).tracked().ruleConditionAndTargetFindings().map { it.code }
+    ).tracked().everyDeclaration(TrackedFactBase::ruleConditionAndTargetFindings).map { it.code }
 
     private val condition = """"FieldNotFilled(Price)""""
     private val target = """"../Price""""
@@ -110,6 +110,6 @@ class RuleConditionAndTargetTest {
                 ),
             ),
         )
-        assertEquals(emptyList(), prepared.tracked().ruleConditionAndTargetFindings())
+        assertEquals(emptyList(), prepared.tracked().everyDeclaration(TrackedFactBase::ruleConditionAndTargetFindings))
     }
 }

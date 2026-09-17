@@ -25,12 +25,14 @@ import kotlinx.serialization.json.JsonPrimitive
  * ([KERNEL-FINDINGS KF291]) — and unlike inside a computation alternative, where a `null` operation and a
  * `null` precondition are ordinary verdicts.
  */
-internal fun TrackedFactBase.ruleConditionAndTargetFindings(): List<Finding> =
-    declarations().filter { it.declaredKind == DeclaredKind.RULE }.flatMap { element ->
-        val body = element.body ?: return@flatMap listOf(unreadableEnvelope(element))
-        requiredTextFindings(element, body?.get("errorCondition"), CONDITION) +
-            requiredTextFindings(element, body?.get("errorEntityRelPath"), ERROR_TARGET)
+internal fun TrackedFactBase.ruleConditionAndTargetFindings(element: TrackedDeclaration): List<Finding> {
+    if (element.declaredKind != DeclaredKind.RULE) {
+        return emptyList()
     }
+    val body = element.body ?: return listOf(unreadableEnvelope(element))
+    return requiredTextFindings(element, body["errorCondition"], CONDITION) +
+        requiredTextFindings(element, body["errorEntityRelPath"], ERROR_TARGET)
+}
 
 /**
  * One required member's two outcomes, named so each row states which tier it belongs to.

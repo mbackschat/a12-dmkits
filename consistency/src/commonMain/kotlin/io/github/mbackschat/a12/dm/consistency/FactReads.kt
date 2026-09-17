@@ -36,6 +36,22 @@ internal sealed interface FactRead {
     /** One declaration's body, named by the path that identifies it. */
     data class DeclarationContent(val path: String) : FactRead
 
+    /**
+     * One declaration's own SHAPE row — its name, kind, id and origin — and no body.
+     *
+     * **It exists because the cursor's shape members are free, and that is exactly what makes a
+     * per-declaration cell incomplete without it.** A family that WALKS the set charges
+     * [DeclarationSetShape] and so covers every row it then reads off a cursor. A family the dispatcher
+     * hands one declaration to never walks, so nothing in its own bucket says which declaration it was
+     * about: the cell key carries the path, and a verdict that turned on `declaredKind` — which is every
+     * family that filters by kind — would be reused for a declaration whose kind had changed at that path.
+     * So the dispatcher charges the row to the cell it is about, and the cell is a function of what it read
+     * again.
+     *
+     * The ordinal is the same one [DeclarationKey] carries, because a path is not unique.
+     */
+    data class DeclarationRow(val path: String, val amongSamePath: Int) : FactRead
+
     /** One model-wide member of the fact base. */
     data class ModelMember(val fact: ModelFact) : FactRead
 }

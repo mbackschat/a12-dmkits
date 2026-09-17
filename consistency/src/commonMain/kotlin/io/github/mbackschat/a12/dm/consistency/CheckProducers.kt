@@ -111,6 +111,7 @@ internal fun schedule(tracked: TrackedFactBase): List<ScheduledCell> {
             )
             is CheckProducer.PerDeclaration -> walked.map { (at, cursor) ->
                 ScheduledCell(CellKey(producer, at)) {
+                    tracked.chargeDeclarationRow(at)
                     producer.findings(tracked, cursor) to emptyList()
                 }
             }
@@ -158,7 +159,9 @@ internal val CHECK_PRODUCERS: List<CheckProducer> = listOf(
     produces(CheckFamily.COMPUTATION_ALTERNATIVES) { it.computationAlternativeFindings() },
     produces(CheckFamily.COMPUTATION_ROUNDING) { it.computationRoundingFindings() },
     produces(CheckFamily.SUPPRESSED_WARNINGS) { it.suppressedWarningFindings() },
-    produces(CheckFamily.RULE_CONDITION_AND_TARGET) { it.ruleConditionAndTargetFindings() },
+    perDeclaration(CheckFamily.RULE_CONDITION_AND_TARGET) { base, at ->
+        base.ruleConditionAndTargetFindings(at)
+    },
     CheckProducer.ModelWide(
         completes = setOf(CheckFamily.VARIANT_FILTER),
         findings = { it.variantFilterFindings() },
@@ -177,7 +180,9 @@ internal val CHECK_PRODUCERS: List<CheckProducer> = listOf(
         ),
         findings = { it.groupOrderingFindings() },
     ),
-    produces(CheckFamily.GROUP_REPETITION_COUNT) { it.groupRepetitionCountFindings() },
+    perDeclaration(CheckFamily.GROUP_REPETITION_COUNT) { base, at ->
+        listOfNotNull(base.groupRepetitionCountFinding(at))
+    },
     produces(CheckFamily.RULE_PRESENTATION_MEMBERS) { it.presentationMemberFindings() },
     produces(CheckFamily.STRING_SLOT_BINDING) { it.stringSlotFindings() },
     CheckProducer.ModelWide(
@@ -187,7 +192,9 @@ internal val CHECK_PRODUCERS: List<CheckProducer> = listOf(
     ),
     produces(CheckFamily.TEMPORAL_CONFIG) { it.temporalConfigFindings() },
     produces(CheckFamily.FIELD_NAME_RESERVED_SEGMENT) { it.fieldNameReservedSegmentFindings() },
-    produces(CheckFamily.ELEMENT_NAME_ALPHABET) { it.elementNameAlphabetFindings() },
+    perDeclaration(CheckFamily.ELEMENT_NAME_ALPHABET) { base, at ->
+        base.elementNameAlphabetFindings(at)
+    },
     CheckProducer.ModelWide(
         completes = setOf(CheckFamily.ENUM_CATEGORY_ALIGNMENT),
         findings = { it.enumCategoryFindings() },

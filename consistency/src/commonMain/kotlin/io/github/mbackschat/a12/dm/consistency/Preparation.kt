@@ -262,6 +262,17 @@ data class PreparedModel(
     }
 
     /**
+     * Every declaration's shape ROW keyed by path, for [FactRead.DeclarationRow].
+     *
+     * A list per path for the same reason [bodiesByPath] is one — a path may be declared twice — and the
+     * ordinal a cell holds indexes into it. The path is the key rather than a member of the row, so what a
+     * row carries is precisely what the path does not.
+     */
+    internal val rowsByPath: Map<String, List<List<Any?>>> by lazy {
+        elements.groupBy({ it.path }, { listOf(it.name, it.kind, it.id, it.origin) })
+    }
+
+    /**
      * Every declaration's own target reference, computed ONCE per model.
      *
      * **This is where the checker's cost curve was, measured 2026-09-15.** `declaredReferences()` is a whole-
