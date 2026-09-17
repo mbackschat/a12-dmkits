@@ -95,16 +95,24 @@ class CheckCellKeyTest {
     @Test
     fun theContentValueCoversEveryDeclarationAtAPath() {
         // A12 refuses a model that declares two elements at one path, and this checker REPORTS on it rather
-        // than failing — so a path is not a unique key here. A content value covering only the first body
-        // would make an edit to the second look like no change at all.
+        // than failing — so a path is not a unique key here, and a value covering one of the two bodies
+        // would make an edit to the other look like no change at all.
         val twins = prepared(second = field("Code", "NumberType"))
-        val edited = prepared(second = field("Code", "ConfirmType"))
         val content = FactRead.DeclarationContent("/Order/Code")
 
         assertEquals(2, twins.elements.count { it.path == "/Order/Code" },
             "the fixture must really declare the path twice, or this row is about one body")
-        assertTrue(twins.valueOf(content) != edited.valueOf(content),
-            "an edit to the SECOND declaration at a path must change that path's content value")
+        // BOTH edits, because one alone cannot discriminate: a value keeping only the LAST body moves when
+        // the second is edited, and one keeping only the first moves when the first is. The second-edit row
+        // alone let a `associate`-shaped mutant survive (2026-09-18), which is how this pair got here.
+        assertEquals(
+            emptyList(),
+            listOf(
+                "the first" to prepared(codeType = "ConfirmType", second = field("Code", "NumberType")),
+                "the second" to prepared(second = field("Code", "ConfirmType")),
+            ).filter { (_, edited) -> edited.valueOf(content) == twins.valueOf(content) }.map { it.first },
+            "an edit to either declaration at a path must change that path's content value",
+        )
     }
 
     @Test
