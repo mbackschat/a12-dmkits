@@ -62,6 +62,13 @@ class GateTierWiringTest {
         assertTrue(invocation.contains(":consistency:verifyCheckerArtifactIdentity"),
                 "CI must run :consistency:verifyCheckerArtifactIdentity — it is the only check that the version "
                         + "a consumer installs is the version the checker inside reports");
+        // The CLOSED denominator over what the checker publishes, in both carriers. F's oracle asks for it by
+        // name and gives the reason no other guard can supply it: a COPIED file carries no dependency edge, so
+        // `verifyConsistencyPurity` (what links) and `verifyConsistencyDependencies` (what resolves) are both
+        // blind to it. It reuses the pack the lanes above already perform, so it costs nothing extra here.
+        assertTrue(invocation.contains(":consistency:verifyConsistencyShippedFiles"),
+                "CI must run :consistency:verifyConsistencyShippedFiles — it is the only guard that closes the "
+                        + "denominator on the published files, which a linkage or resolution guard cannot see");
         assertFalse(ci.contains("schedule:"),
                 "main-push correctness CI must not rerun on the nightly schedule");
         assertTrue(ci.contains("uses: gradle/actions/setup-gradle@v6"),

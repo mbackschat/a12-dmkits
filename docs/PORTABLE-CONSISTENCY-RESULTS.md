@@ -8,6 +8,29 @@ Dated measurements of the Kernel-free checker, newest first. **Every LATENCY her
 
 Results never land in a spec, and a measurement's home is not its explanation: the mechanism paragraphs below are marked as hypotheses where they are hypotheses.
 
+## 2026-09-17 — what the checker actually publishes, enumerated for the first time <a id="shipped-2026-09-17"></a>
+
+`:consistency:verifyConsistencyShippedFiles`. The denominator had never been closed on either carrier, and closing it found three things the required-set shape it replaces could not see.
+
+| carrier | entries | what the enumeration found |
+|---|---|---|
+| npm tarball | **16** files | it shipped a `devDependencies: {"typescript": "5.5.4"}` and **no licence at all** — no `license` field, no `LICENSE` file — because the pack ran over Kotlin's compiler output directory rather than over a staged set |
+| jvm jar | **2** class packages, both under `io/github/mbackschat/a12/dm/consistency/` | clean, and now closed by ROOT: a subpackage is ours by construction, a package outside the root is a shaded or copied dependency |
+
+**Why no existing guard could have found it.** `verifyConsistencyPurity` reads what the classes LINK and `verifyConsistencyDependencies` reads what a consumer RESOLVES. A file that was *copied in* declares neither, which is the reason [F's oracle](PORTABLE-CONSISTENCY-PROPOSAL.md) asks for a shipped-file enumeration in addition to both. The shape matters as much as the existence: a **required-set** check ("is what I expect present") stays green while something else rides along, and that is what `:interpreter:verifyInterpreterNpmPackage` still is.
+
+**Three positive controls, all fired.**
+
+| planted | observed |
+|---|---|
+| `a12-dmkits-interpreter.mjs` in the distribution | `ships interpreter-owned file(s) [package/a12-dmkits-interpreter.mjs]` |
+| `stowaway.mjs` in the distribution | `ships [package/stowaway.mjs], which nothing…` |
+| the permitted jar root narrowed to `io/example/nothing/` | `carries class package(s) [io/…/consistency/, io/…/consistency/syntax/] outside [io/example/nothing/]` |
+
+**The interpreter-owned check is ordered FIRST, and that ordering is what makes it exist.** Behind the closed enumeration it would be unreachable — no interpreter name is in the permitted set, so the generic check refuses such a file before the specific one runs — and an invariant nothing can enforce is the "parsed but never consumed" class. Ahead of it, it earns its place by naming which invariant broke rather than which file was unexpected.
+
+**The staging change moved the delivery number, and the ceiling still holds**: 640 783 bytes against 1 MiB, 1.64× headroom ([the delivery entry](#delivery-2026-09-16) carries the correction).
+
 ## 2026-09-17 — the three arms compared on the FULL report, and they agree exactly <a id="parity-2026-09-17"></a>
 
 Same host as the browser entry below. Corpus: 6 cases over 4 stored inputs, 92 kB, generated from packed `a12-consistency@0.13.0`.
@@ -147,7 +170,7 @@ Medians at 200 programs, for shape and never as a bar: building 35.66 ms against
 
 **The packed tarball is the number that answers the boundary.** 620 KiB is what a Node or browser consumer downloads to check a DocumentModel without the Kernel; the JVM jar and the KLIB are development artifacts and are recorded so a later jump can be attributed to one of the three rather than to "the checker got bigger". For scale, the interpreter's own packed npm tarball at the same revision is 1 311 139 bytes.
 
-**Corrected 2026-09-17: the packed tarball is now 638 760 bytes.** Declaring the JS target's missing `browser()` — the prerequisite [F's third acceptance arm](PORTABLE-CONSISTENCY-IMPLEMENTATION-PLAN.md#stage-8-browser) needs — adds Kotlin's `kotlin-dom-api-compat` module to the package, which is **+4 317 bytes, +0.68 %**. The ratified ceiling still holds with **1.64× headroom** against 1.65× before, and the rows below remain the measurement taken at `153ae86a2`, which is what a dated entry is for.
+**Corrected 2026-09-17, twice in one day: the packed tarball is now 640 783 bytes.** Declaring the JS target's missing `browser()` — the prerequisite [F's third acceptance arm](PORTABLE-CONSISTENCY-IMPLEMENTATION-PLAN.md#stage-8-browser) needs — adds Kotlin's `kotlin-dom-api-compat` module to the package, which is **+4 317 bytes, +0.68 %**. A second change the same day added the two files an MIT package cannot publish without — a `LICENSE` and a `README.md`, neither of which the package had ever carried — for a further **+2 023 bytes**. The ratified ceiling still holds with **1.64× headroom** against 1.65× before, and the rows below remain the measurement taken at `153ae86a2`, which is what a dated entry is for.
 
 **Re-measured and ratified 2026-09-16.** Two further packs at `0d1d6f2fe` returned 634 443 bytes again — the same length and the same SHA-256, so `npm pack` is bit-reproducible here and this quantity needs no sampling regime. The owner then ratified **1 MiB** as the ceiling, held by `:consistency:verifyConsistencyDeliveryCeiling` on every push; it reuses the pack the consumer test already performs, so the bar costs nothing that was not already being built. A control run with the ceiling lowered to 100 000 bytes refuses with the byte count and the corrective, which is the only evidence that the comparison is live.
 

@@ -136,6 +136,11 @@ jobs:
       # 2026-09-16): the packed tarball's byte count against a 1 MiB ceiling. It reuses the pack the consumer
       # test already performs, so it costs nothing extra here, and it needs a routine lane precisely because the
       # cross-revision collector runs only at release — a doubled download would otherwise ship unnoticed.
+      # `:consistency:verifyConsistencyShippedFiles` closes the denominator on what the checker publishes, in
+      # both carriers — every npm tarball entry and every jvm class package must be one something decided to
+      # ship. F's oracle asks for exactly this and says why neither other guard can do it: a COPIED file
+      # carries no dependency edge, so a linkage guard and a resolution guard are both blind to it. It reuses
+      # the pack the lanes above already perform.
       # `:consistency:verifyCheckerArtifactIdentity` compares the three build outputs nothing else compares:
       # the version the JS `package.json` publishes, the version the jvm jar's coordinate carries, and the
       # `CHECKER_VERSION` compiled into that jar. A disagreement means a consumer installs one id and reads a
@@ -149,7 +154,7 @@ jobs:
         # belong to the release rehearsal. Naming them is what GateTierWiringTest derives and enforces; five of
         # them ran nowhere at all until 2026-09-12, `verifyInterpreterPurity` — the EUPL import boundary —
         # among them.
-        run: ./gradlew --no-daemon test :adapter:test :cli:test :cli:publicContractTest :interpreter:allTests :interpreter:verifyInterpreterPurity :interpreter:interpreterRuntimeClosurePolicyTest :interpreter:interpreterAbiGoldenDepthTest :interpreter:verifyInterpreterVersionAlignment :interpreter:verifyInterpreterPerformanceClaims :interpreter-bridge:check :consistency-gate:check :interpreter-preflight:check :consistency:check :consistency:nodeConsumerTest :consistency:verifyConsistencyDeliveryCeiling :consistency:verifyCheckerArtifactIdentity :schemakit:check :verifyKitPurity :verifyPublishedClasspathsAreKernelFree :noBackendTest -PrunFuzz
+        run: ./gradlew --no-daemon test :adapter:test :cli:test :cli:publicContractTest :interpreter:allTests :interpreter:verifyInterpreterPurity :interpreter:interpreterRuntimeClosurePolicyTest :interpreter:interpreterAbiGoldenDepthTest :interpreter:verifyInterpreterVersionAlignment :interpreter:verifyInterpreterPerformanceClaims :interpreter-bridge:check :consistency-gate:check :interpreter-preflight:check :consistency:check :consistency:nodeConsumerTest :consistency:verifyConsistencyDeliveryCeiling :consistency:verifyCheckerArtifactIdentity :consistency:verifyConsistencyShippedFiles :schemakit:check :verifyKitPurity :verifyPublishedClasspathsAreKernelFree :noBackendTest -PrunFuzz
 
       # Both agent plugins (Claude Code, Codex) bundle COPIES of the single-source assets — the skills,
       # installer, and release-asset manifest — synced by scripts/sync-plugin-assets.sh. Fail loudly if any

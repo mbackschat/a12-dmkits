@@ -735,12 +735,68 @@ def resolveNodeToolDir = { String tool ->
 }
 def resolveNodeTool = { String tool -> new File(resolveNodeToolDir(tool), tool) }
 
+// ─────────────────────────────────────────────────────────────────────────────────────────────────────────
+// What SHIPS, staged deliberately rather than packed where the compiler happened to write it.
+//
+// Packing Kotlin's `productionLibrary` directory directly shipped whatever that directory contained, which
+// is how the published package carried a `devDependencies: {typescript}` entry and NO licence at all — no
+// `license` field and no LICENSE file, in an MIT project. A staged tree makes the shipped set a decision with
+// an owner, and `verifyConsistencyShippedFiles` then closes the denominator over it.
+//
+// `package.json` is hand-written for the same reason `:interpreter`'s is: Kotlin's generated one describes a
+// compiler output, where this one is a publication contract — identity, licence, entry points, and the empty
+// dependency set H2's "ordinary npm consumption" rests on.
+def consistencyNpmStageDir = layout.buildDirectory.dir('consumer-tests/npm-package')
+def consistencyJsDistribution = layout.buildDirectory.dir('dist/js/productionLibrary')
+def stageConsistencyNpmPackage = tasks.register('stageConsistencyNpmPackage', Sync) {
+    group = 'build'
+    description = 'Stage exactly what the npm package ships, with a hand-written publication contract.'
+    // Both distribution tasks declare the shared productionLibrary directory, and a full build schedules
+    // both, so every producer must precede this consumer under Gradle 9. The browser one became a producer
+    // when `browser()` was declared (2026-09-17); missing it is a race, not a missing file.
+    dependsOn tasks.named('jsNodeProductionLibraryDistribution')
+    dependsOn tasks.named('jsBrowserProductionLibraryDistribution')
+    from(consistencyJsDistribution) {
+        include '*.mjs'
+        include '*.mjs.map'
+        include 'a12-consistency.d.ts'
+    }
+    from(file('README.md'))
+    from(rootProject.file('LICENSE'))
+    into(consistencyNpmStageDir)
+    inputs.property('consistencyNpmIdentity', provider { "a12-consistency@${project.version}" })
+    doLast {
+        def packageJson = [
+            name        : 'a12-consistency',
+            version     : project.version.toString(),
+            description : 'Kernel-free consistency checker for A12 DocumentModel rules and computations.',
+            type        : 'module',
+            main        : './a12-consistency.mjs',
+            types       : './a12-consistency.d.ts',
+            exports     : [
+                '.': [
+                    types  : './a12-consistency.d.ts',
+                    import : './a12-consistency.mjs',
+                    default: './a12-consistency.mjs',
+                ],
+            ],
+            license     : 'MIT',
+            author      : 'Martin Backschat',
+            repository  : [type: 'git', url: 'git+https://github.com/mbackschat/a12-dmkits.git'],
+            // Empty and asserted empty: H2 promises an ordinary npm install, and a checker that dragged in a
+            // runtime dependency would make that a different promise.
+            dependencies: [:],
+        ]
+        consistencyNpmStageDir.get().file('package.json').asFile.text =
+                groovy.json.JsonOutput.prettyPrint(groovy.json.JsonOutput.toJson(packageJson)) + '\n'
+    }
+}
+
 def packConsistencyNpmPackage = tasks.register('packConsistencyNpmPackage', Exec) {
     group = 'verification'
-    description = 'Pack the compiled JS library into a real npm tarball, as a consumer would receive it.'
-    dependsOn 'jsNodeProductionLibraryDistribution'
-    def distDir = layout.buildDirectory.dir('dist/js/productionLibrary')
-    workingDir distDir
+    description = 'Pack the staged package into a real npm tarball, as a consumer would receive it.'
+    dependsOn stageConsistencyNpmPackage
+    workingDir consistencyNpmStageDir
     doFirst {
         consistencyNpmPackDir.get().asFile.mkdirs()
         commandLine resolveNodeTool('npm').absolutePath, 'pack',
@@ -866,6 +922,125 @@ tasks.register('verifyCheckerArtifactIdentity') {
                     "checker inside it reports `$bakedVersion`, so dmtool's portable-engine receipt would name " +
                     'a build other than the one on its classpath.')
         }
+    }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────────────────────────────────
+// The shipped-file provenance enumeration — a CLOSED denominator over both published carriers.
+//
+// F's oracle for "standalone checking is interpreter-independent" asks for this by name, with the reason a
+// closure guard cannot supply it: *"plus a shipped-file provenance enumeration over the published package —
+// sources, type declarations and generated output — failing on any file the interpreter owns, because a
+// copied file carries no dependency edge for a closure guard to see"*. `verifyConsistencyPurity` reads what
+// classes LINK and `verifyConsistencyDependencies` reads what a consumer RESOLVES; neither can see a file
+// that was copied in, because a copy declares nothing.
+//
+// So the test is CLOSED, not a required-set: every entry must be accounted for, and an unrecognised one is a
+// failure. A required-set check answers "is what I expect present", which stays green while something else
+// rides along — the shape `:interpreter`'s own npm guard still has, and the reason this one does not copy it.
+//
+// Two carriers, because a claim measured on one is not measured on the other: the npm tarball a JS consumer
+// installs, and the jvm jar a Maven consumer resolves. The jar is enumerated by PACKAGE rather than by file,
+// since a class file per declaration is not a decision anyone makes.
+def verifyConsistencyShippedFiles = tasks.register('verifyConsistencyShippedFiles') {
+    group = 'verification'
+    description = 'Close the denominator on every file the checker publishes, in both carriers.'
+    dependsOn packConsistencyNpmPackage
+    dependsOn tasks.named('jvmJar')
+    outputs.upToDateWhen { false }
+    doLast {
+        // Kotlin's JS linker names a module file after the Gradle module it came from, so the OWNERS of the
+        // shipped .mjs set are readable from the names. Anything else is a file nobody decided to ship.
+        def permittedJsModules = [
+            'a12-consistency',                                      // this module
+            'a12-dmkits-predicates',                                // the one intra-repo edge (plan row 5a)
+            'kotlin-kotlin-stdlib',                                 // Kotlin/JS runtime
+            'kotlin_org_jetbrains_kotlin_kotlin_dom_api_compat',     // arrived with browser() on 2026-09-17
+            'kotlinx-serialization-kotlinx-serialization-core',
+            'kotlinx-serialization-kotlinx-serialization-json',
+        ]
+        def permittedOther = ['package/package.json', 'package/README.md', 'package/LICENSE',
+                              'package/a12-consistency.d.ts'] as Set
+        def tarball = resolvePackedConsistencyTarball()
+        def archive = tarTree(tarball)
+        def entries = [] as Set
+        archive.visit { details ->
+            if (!details.directory) {
+                entries += details.relativePath.pathString
+            }
+        }
+        def permittedEntries = permittedOther + permittedJsModules.collectMany {
+            ["package/${it}.mjs".toString(), "package/${it}.mjs.map".toString()]
+        }
+        // The named claim goes FIRST, and the order is the whole reason it is reachable: the closed
+        // enumeration below already refuses any interpreter-owned file, since no interpreter name is
+        // permitted, so this check would be dead code behind it and would advertise an invariant nothing
+        // could ever enforce. Ahead of it, it earns its place by naming WHICH invariant broke.
+        def interpreterOwned = entries.findAll { it.toLowerCase().contains('interpreter') }
+        if (interpreterOwned) {
+            throw new GradleException("the published npm package ships interpreter-owned file(s) " +
+                    "${interpreterOwned.toSorted()}. NFR #1 is that checking is interpreter-independent, and " +
+                    'a copied file carries no dependency edge for a closure guard to see.')
+        }
+        def unaccounted = (entries - permittedEntries).toSorted()
+        if (unaccounted) {
+            throw new GradleException("the published npm package ships ${unaccounted}, which nothing in " +
+                    'consistency/build.gradle decided to ship. Add it to the permitted set with its owner, ' +
+                    'or stop staging it — a file with no owner is how a copied source arrives with no ' +
+                    'dependency edge to detect it.')
+        }
+        def absent = (permittedEntries - entries).toSorted()
+        if (absent) {
+            throw new GradleException("the published npm package is missing ${absent}; the permitted set is " +
+                    'the shipped set, so an entry listed there and not packed means the staging changed.')
+        }
+
+        // The publication contract, on the packed bytes rather than on the staging source: identity, licence
+        // and the empty dependency set H2's "ordinary npm consumption" rests on. A `devDependencies` entry
+        // shipped here for the module's whole life, which is what a closed enumeration over metadata catches.
+        def packaged = new groovy.json.JsonSlurper().parse(
+                archive.matching { include 'package/package.json' }.singleFile)
+        if (packaged.license != 'MIT') {
+            throw new GradleException("the published npm package declares license=${packaged.license}; an " +
+                    'MIT project that publishes without one leaves a consumer unable to tell.')
+        }
+        if (packaged.dependencies != [:] || packaged.containsKey('devDependencies')) {
+            throw new GradleException("unexpected npm dependency contract: dependencies=" +
+                    "${packaged.dependencies} devDependencies=${packaged.devDependencies}")
+        }
+        if (packaged.types != './a12-consistency.d.ts' || packaged.main != './a12-consistency.mjs') {
+            throw new GradleException("the published entry points moved: main=${packaged.main} " +
+                    "types=${packaged.types}; a TypeScript consumer resolves both.")
+        }
+
+        // The jvm carrier, enumerated by package ROOT rather than by package: a subpackage of our own root is
+        // ours by construction, where a package outside it is a shaded or copied dependency — which is the
+        // thing with no POM entry for a resolution guard to find. `:predicates` publishes its own jar, so the
+        // shared leaf is deliberately NOT expected here, and its arrival would be a bundling change.
+        def permittedJarRoots = ['io/github/mbackschat/a12/dm/consistency/']
+        def jar = tasks.named('jvmJar').get().archiveFile.get().asFile
+        def jarPackages = [] as Set
+        new java.util.zip.ZipFile(jar).withCloseable { zip ->
+            zip.entries().each { entry ->
+                if (!entry.directory && entry.name.endsWith('.class')) {
+                    jarPackages += entry.name.substring(0, entry.name.lastIndexOf('/')) + '/'
+                }
+            }
+        }
+        def unaccountedPackages = jarPackages.findAll { pkg ->
+            !permittedJarRoots.any { pkg.startsWith(it) }
+        }.toSorted()
+        if (unaccountedPackages) {
+            throw new GradleException("the published jvm jar carries class package(s) " +
+                    "${unaccountedPackages} outside ${permittedJarRoots}. A shaded or copied dependency " +
+                    'arrives exactly this way, with no POM entry to resolve.')
+        }
+        if (jarPackages.isEmpty()) {
+            throw new GradleException("no classes found in ${jar.name}; an empty denominator would make " +
+                    'every absence above vacuous.')
+        }
+        logger.lifecycle("[shipped-files] npm ${entries.size()} entr(ies) · jvm ${jarPackages.size()} " +
+                "package(s) · ${tarball.name}")
     }
 }
 
