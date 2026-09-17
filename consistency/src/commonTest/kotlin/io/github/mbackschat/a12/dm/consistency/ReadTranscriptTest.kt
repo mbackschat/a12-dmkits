@@ -52,6 +52,27 @@ class ReadTranscriptTest {
     }
 
     @Test
+    fun askingWhetherAPathResolvesChargesTheSetShapeAlone() {
+        val observed = transcriptOf(twoFieldModel(""""fieldType":{"type":"StringType"}""")) {
+            isResolvable("/Catalog/Tier")
+        }
+
+        // Positive control on the answer, not only on the charge: a member that answered false for every
+        // path would record the same shape read and make the resolvable set useless.
+        assertTrue(
+            TrackedFactBase(preparedOf(twoFieldModel(""""fieldType":{"type":"StringType"}""")), ReadTranscript())
+                .isResolvable("/Catalog/Tier"),
+            "the fixture's field must really be resolvable, or the charge below is measured on a null answer",
+        )
+        assertEquals(
+            setOf<FactRead>(FactRead.DeclarationSetShape),
+            observed,
+            "the resolvable set is the declarations minus what the default variant deletes, which IS the " +
+                "set's shape — charging it as content would give every reference reader every body",
+        )
+    }
+
+    @Test
     fun readingOneDeclarationsBodyChargesThatPathAlone() {
         val observed = transcriptOf(twoFieldModel(""""fieldType":{"type":"StringType"}""")) {
             declarations().first { it.name == "Tier" }.body

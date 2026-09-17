@@ -34,11 +34,11 @@ import kotlinx.serialization.json.contentOrNull
  * **Rules only**, like every family here that reads `RepetitionNotUnique`: A12's calculation module refuses
  * the construct in a computation outright ([KERNEL-FINDINGS KF333]).
  */
-fun PreparedModel.parallelIterationUniquenessFindings(): List<Finding> {
+internal fun TrackedFactBase.parallelIterationUniquenessFindings(): List<Finding> {
     val keywords = CONDITION_OPERATOR_KEYWORDS[conditionLanguage] ?: return emptyList()
     val spelling = keywords[REPETITION_NOT_UNIQUE_CALL] ?: return emptyList()
     val referencesByElement = conditionReferences().groupBy { it.declaredAt }
-    return elements.filter { it.kind == "Rule" }.mapNotNull { element ->
+    return declarations().filter { it.kind == "Rule" }.mapNotNull { element ->
         val body = element.body ?: return@mapNotNull null
         val callsUniqueness = conditionTexts(element.kind, body).any { (member, text) ->
             callsIn(text, conditionLanguage, syntaxEntryOf(member)).any { it.operator == spelling }
@@ -74,7 +74,7 @@ private const val REPETITION_NOT_UNIQUE_CALL = "RepetitionNotUnique"
 private data class KeyedGroup(val path: String, val indexField: String, val indexType: String)
 
 /** The nearest index-keyed repeatable group at or above [path], or null when nothing above it is keyed. */
-private fun PreparedModel.keyedGroupOver(path: String): KeyedGroup? = elements
+private fun TrackedFactBase.keyedGroupOver(path: String): KeyedGroup? = declarations()
     .filter {
         it.declaredKind == DeclaredKind.GROUP && it.isRepeatable &&
             (it.path == path || path.startsWith("${it.path}/"))
@@ -88,7 +88,7 @@ private fun PreparedModel.keyedGroupOver(path: String): KeyedGroup? = elements
     }
 
 /** The `fieldType.type` a field declares, or null when it declares none this reader can see. */
-private fun PreparedModel.declaredTypeOf(path: String): String? = elements
+private fun TrackedFactBase.declaredTypeOf(path: String): String? = declarations()
     .firstOrNull { it.path == path && it.declaredKind == DeclaredKind.FIELD }
     ?.declaredFieldType()
 

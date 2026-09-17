@@ -96,6 +96,23 @@ internal class TrackedFactBase(
      */
     fun declaredReferences(): List<DeclaredReference> = declarations().mapNotNull { it.declaredReference() }
 
+    /**
+     * Whether [path] names a declaration a reference may resolve to.
+     *
+     * Named for the question rather than for the act, because two families already declare a LOCAL `resolves`
+     * over their own operand and a member of that name would sit silently shadowed beside them.
+     *
+     * **Charged as the set's SHAPE, and that is the design rather than a convenience.** The resolvable set is
+     * the declarations minus the ones the default variant deletes, and that filter sits in the shape on
+     * purpose ([FactRead.DeclarationSetShape] says why) — charging it as content would hand every reader of
+     * the resolvable set a dependency on every body. So resolution costs no granularity at all: a keystroke
+     * in a condition or a message leaves this answer alone.
+     */
+    fun isResolvable(path: String): Boolean {
+        transcript.record(FactRead.DeclarationSetShape)
+        return path in model.resolvableByPath
+    }
+
     val conditionLanguage: ConditionLanguage
         get() {
             transcript.record(FactRead.ModelMember(ModelFact.CONDITION_LANGUAGE))

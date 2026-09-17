@@ -59,14 +59,14 @@ import io.github.mbackschat.a12.dm.consistency.syntax.splitAtIn
  * any operator's own switch is reached. The first two are [entityListPreGateFindings]', which is why the
  * shared reader this family yields to is that family's; they are a silence here, not in the report.
  */
-fun PreparedModel.entityListArityFindings(): List<Finding> {
+internal fun TrackedFactBase.entityListArityFindings(): List<Finding> {
     val keywords = CONDITION_OPERATOR_KEYWORDS[conditionLanguage] ?: return emptyList()
     val laws = ARITY_OF.mapNotNull { (id, law) -> keywords[id]?.let { it to law } }.toMap()
     if (laws.isEmpty()) {
         return emptyList()
     }
     val filterKeyword = keywords[HAVING]
-    return elements.mapNotNull { element ->
+    return declarations().mapNotNull { element ->
         val body = element.body ?: return@mapNotNull null
         val group = element.path.substringBeforeLast('/', missingDelimiterValue = "")
         conditionTexts(element.kind, body).firstNotNullOfOrNull { (member, text) ->
@@ -124,12 +124,12 @@ private val ARITY_OF = mapOf(
 
 private const val HAVING = "Having"
 
-private fun PreparedModel.arityFinding(
+private fun TrackedFactBase.arityFinding(
     call: ConditionCall,
     law: ArityLaw,
     filterKeyword: String?,
     declaringGroup: String,
-    element: DeclaredElement,
+    element: TrackedDeclaration,
     member: String,
 ): Finding? {
     // A FILTERED operand is judged by `checkFilterCondition` while the reference list is built, so the call
@@ -148,7 +148,7 @@ private fun PreparedModel.arityFinding(
     if (entityListPreGateAnswers(written, targets)) {
         return null
     }
-    val kinds = targets.map { target -> elements.firstOrNull { it.path == target }?.declaredKind }
+    val kinds = targets.map { target -> declarations().firstOrNull { it.path == target }?.declaredKind }
     // Three of the six operators run a KIND gate before their arity one, so a list of the wrong kind is
     // answered there — `MVK_NO_GROUPS_ALLOWED` or `MVK_NO_FIELDS_ALLOWED` — however wrong its count is.
     if (law.kindFirst != null && kinds.any { it != law.kindFirst }) {

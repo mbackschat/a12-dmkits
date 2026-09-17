@@ -962,22 +962,22 @@ internal fun checkPrepared(
         tracked.repetitionKeyPlacementFindings() +
         tracked.repetitionScopeGroupFindings() +
         tracked.repetitionKeyContainmentFindings() +
-        prepared.filterWildcardFindings() +
+        tracked.filterWildcardFindings() +
         prepared.filterBodyGateFindings() +
         tracked.outerMarkerPositionFindings() +
         tracked.groupConditionWildcardFindings() +
         tracked.sumOfProductsOperandFindings() +
         tracked.operandListConstantFindings() +
         prepared.temporalAggregateOperandFindings() +
-        prepared.semanticIndexStructureFindings() +
+        tracked.semanticIndexStructureFindings() +
         tracked.semanticIndexKeyFindings() +
         tracked.repetitionNotUniqueCombinationFindings() +
-        prepared.parallelIterationUniquenessFindings() +
+        tracked.parallelIterationUniquenessFindings() +
         prepared.filteredEntityIterationFindings() +
         prepared.arithmeticOperationGateFindings() +
         prepared.valueInFieldsConstantKindFindings() +
         prepared.valueListConditionGateFindings() +
-        prepared.entityListArityFindings() +
+        tracked.entityListArityFindings() +
         prepared.entityListPreGateFindings() +
         prepared.fieldValuesNotUniqueOperandKindFindings() +
         prepared.fieldListOperationOperandFindings() +
@@ -1001,9 +1001,9 @@ internal fun checkPrepared(
         prepared.dateRangeOperandListFindings() +
         prepared.validityConditionOperandFindings() +
         prepared.baseYearRequirementFindings() +
-        prepared.rangeOperandGateFindings() +
+        tracked.rangeOperandGateFindings() +
         prepared.enumDisplayComparabilityFindings() +
-        prepared.valueAsDateOperandFindings() +
+        tracked.valueAsDateOperandFindings() +
         prepared.enumComputationSourceFindings() +
         tracked.errorTargetIterationFindings() +
         prepared.errorTargetContainmentFindings() +

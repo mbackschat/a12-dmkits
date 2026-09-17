@@ -103,10 +103,17 @@ private fun DeclaredElement.declaredFormat(members: Map<String, String>): String
  * Only a `DateType` carries the member, so every other declaration answers false rather than unknown: the
  * precision is a `DateType` body key and its absence there is A12's own default.
  */
-internal fun declaresAPartialPrecision(field: DeclaredElement): Boolean {
-    val declared = field.body?.get("fieldType") as? JsonObject ?: return false
-    val body = declared["DateType"] as? JsonObject ?: return false
-    return (body["datePrecision"] as? JsonPrimitive)?.contentOrNull in PARTIAL_PRECISIONS
+internal fun declaresAPartialPrecision(field: DeclaredElement): Boolean =
+    declaresAPartialPrecisionIn(field.body)
+
+/** The same reading through the read barrier, sharing one implementation so the two cannot drift. */
+internal fun declaresAPartialPrecision(field: TrackedDeclaration): Boolean =
+    declaresAPartialPrecisionIn(field.body)
+
+private fun declaresAPartialPrecisionIn(body: JsonObject?): Boolean {
+    val declared = body?.get("fieldType") as? JsonObject ?: return false
+    val dateType = declared["DateType"] as? JsonObject ?: return false
+    return (dateType["datePrecision"] as? JsonPrimitive)?.contentOrNull in PARTIAL_PRECISIONS
 }
 
 /**

@@ -66,7 +66,18 @@ private val DECLARED_BY_KIND = mapOf(
  * descends. Climbing past the root yields a path nothing declares rather than a silently clamped one, so an
  * over-long relative path is reported instead of quietly naming a root element.
  */
-private fun PreparedModel.resolveRelative(from: String, relative: String): Reference {
+private fun PreparedModel.resolveRelative(from: String, relative: String): Reference =
+    resolveRelativeIn(from, relative) { it in resolvableByPath }
+
+/** The same walk through the read barrier — it asks the resolvable set and reads no body. */
+private fun TrackedFactBase.resolveRelative(from: String, relative: String): Reference =
+    resolveRelativeIn(from, relative) { isResolvable(it) }
+
+private inline fun resolveRelativeIn(
+    from: String,
+    relative: String,
+    resolves: (String) -> Boolean,
+): Reference {
     val segments = from.split('/').filter { it.isNotEmpty() }.toMutableList()
     var climbedPastRoot = false
     relative.split('/').filter { it.isNotEmpty() }.forEach { step ->
@@ -80,7 +91,7 @@ private fun PreparedModel.resolveRelative(from: String, relative: String): Refer
         // Climbing past the root is a DIFFERENT outcome from naming nothing, and worse: the Kernel raises
         // inside `ElementPathUtils.absPath` while deserializing, so the model never loads and no check runs.
         climbedPastRoot -> Reference.AboveRoot(relative)
-        path in resolvableByPath -> Reference.Resolved(path)
+        resolves(path) -> Reference.Resolved(path)
         else -> Reference.Undeclared(path)
     }
 }
@@ -101,8 +112,20 @@ private fun PreparedModel.resolveRelative(from: String, relative: String): Refer
  *   not a FIELD — in each case the caller falls back to the declaring group, which is what it asked before.
  */
 internal fun PreparedModel.iterationGroupOf(element: DeclaredElement): String? {
-    val declared = DECLARED_BY_KIND[element.kind] ?: return null
-    val relative = (element.body?.get(declared.first) as? JsonPrimitive)?.contentOrNull ?: return null
+    val relative = declaredTargetRelPathOf(element.kind, element.body) ?: return null
     val target = (resolveRelative(element.path, relative) as? Reference.Resolved)?.path ?: return null
     return groupOfTargetField(target)
+}
+
+/** The same question through the read barrier; the declaration's body and the resolvable set charge themselves. */
+internal fun TrackedFactBase.iterationGroupOf(element: TrackedDeclaration): String? {
+    val relative = declaredTargetRelPathOf(element.kind, element.body) ?: return null
+    val target = (resolveRelative(element.path, relative) as? Reference.Resolved)?.path ?: return null
+    return groupOfTargetField(target)
+}
+
+/** The relative target path a rule or computation spells, or null for any other carrier. */
+private fun declaredTargetRelPathOf(kind: String, body: JsonObject?): String? {
+    val declared = DECLARED_BY_KIND[kind] ?: return null
+    return (body?.get(declared.first) as? JsonPrimitive)?.contentOrNull
 }

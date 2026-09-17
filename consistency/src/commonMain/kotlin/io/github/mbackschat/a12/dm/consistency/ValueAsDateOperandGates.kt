@@ -38,9 +38,9 @@ import io.github.mbackschat.a12.dm.consistency.syntax.callsIn
  * resolve — a typedef may well resolve to a partially known date, and refusing it would be the one
  * direction this checker may not take.
  */
-fun PreparedModel.valueAsDateOperandFindings(): List<Finding> {
+internal fun TrackedFactBase.valueAsDateOperandFindings(): List<Finding> {
     val carrier = CONDITION_OPERATOR_KEYWORDS[conditionLanguage]?.get(VALUE_AS_DATE) ?: return emptyList()
-    return elements.flatMap { element ->
+    return declarations().flatMap { element ->
         val body = element.body ?: return@flatMap emptyList()
         val declaringGroup = element.path.substringBeforeLast('/', missingDelimiterValue = "")
         conditionTexts(element.kind, body).flatMap { (member, text) ->
@@ -73,17 +73,17 @@ private const val DATE_TYPE = "DateType"
 private val PLAINLY_NOT_A_PARTIAL_DATE = PLAINLY_NON_DATE_TYPES + TEMPORAL_DECLARED_TYPES
 
 /** The first gate this call fails, in A12's own order, or null where none fails and where it may not judge. */
-private fun PreparedModel.valueAsDateDefect(
+private fun TrackedFactBase.valueAsDateDefect(
     call: ConditionCall,
     declaringGroup: String,
-    element: DeclaredElement,
+    element: TrackedDeclaration,
 ): PartialDateDefect? {
     if (call.operands.size != VALUE_AS_DATE_ARITY) {
         return null
     }
     val (written, category) = operandSpec(call.operands[0]) ?: return null
     val target = addressedTargetOf(written, declaringGroup, element) ?: return null
-    val declared = elements.firstOrNull { it.path == target } ?: return null
+    val declared = declarations().firstOrNull { it.path == target } ?: return null
     val starred = '*' in written
     if (declared.declaredKind == DeclaredKind.GROUP) {
         // A repeatable group read without its star iterates, and the reference reader answers there; the
@@ -120,7 +120,7 @@ private fun PreparedModel.valueAsDateDefect(
 }
 
 /** The kind gate's own verdict: A12's `isDatePartialKnown`, read off the stored declaration. */
-private fun partialDateDefect(declared: DeclaredElement, target: String): PartialDateDefect? {
+private fun partialDateDefect(declared: TrackedDeclaration, target: String): PartialDateDefect? {
     val type = declared.declaredFieldType() ?: return null
     if (type == DATE_TYPE && declaresAPartialPrecision(declared)) {
         return null
@@ -145,7 +145,7 @@ private fun partialDateDefect(declared: DeclaredElement, target: String): Partia
 private fun finding(
     defect: PartialDateDefect,
     call: ConditionCall,
-    element: DeclaredElement,
+    element: TrackedDeclaration,
     member: String,
 ): Finding = Finding(
     FindingCategory.A12_CONSTRAINT,

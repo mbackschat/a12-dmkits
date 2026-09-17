@@ -141,9 +141,15 @@ private const val HAVING = "Having"
 private const val SEMANTIC_INDEX = "SemanticIndex"
 
 /** The group whose repetitions A12 addresses the target by, or null when the target is not a FIELD. */
-internal fun PreparedModel.groupOfTargetField(target: String): String? = elements
-    .firstOrNull { it.path == target && it.declaredKind == DeclaredKind.FIELD }
-    ?.let { target.substringBeforeLast('/', missingDelimiterValue = "") }
+internal fun PreparedModel.groupOfTargetField(target: String): String? =
+    groupOfTargetFieldIn(elements.any { it.path == target && it.declaredKind == DeclaredKind.FIELD }, target)
+
+/** The same question through the read barrier; it reads the set's shape and no body. */
+internal fun TrackedFactBase.groupOfTargetField(target: String): String? = groupOfTargetFieldIn(
+    declarationAt(target)?.declaredKind == DeclaredKind.FIELD, target)
+
+private fun groupOfTargetFieldIn(namesAField: Boolean, target: String): String? =
+    if (namesAField) target.substringBeforeLast('/', missingDelimiterValue = "") else null
 
 /**
  * The class ONE reference draws, walking the repeatable levels it crosses from the outermost inwards.

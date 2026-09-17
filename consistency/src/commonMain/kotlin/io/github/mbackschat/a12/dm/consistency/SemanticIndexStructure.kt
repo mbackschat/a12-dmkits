@@ -48,10 +48,10 @@ import kotlinx.serialization.json.intOrNull
  * `MVK_INDEX_VALUE_INVALID` on an enumeration-keyed group; this family reads only the empty case, and a
  * later class it names on such an index would be the wrong class on a correct rejection.
  */
-fun PreparedModel.semanticIndexStructureFindings(): List<Finding> {
+internal fun TrackedFactBase.semanticIndexStructureFindings(): List<Finding> {
     val keywords = CONDITION_OPERATOR_KEYWORDS[conditionLanguage] ?: return emptyList()
     val keyword = keywords[SEMANTIC_INDEX] ?: return emptyList()
-    return elements.flatMap { element ->
+    return declarations().flatMap { element ->
         val body = element.body ?: return@flatMap emptyList()
         val group = element.path.substringBeforeLast('/', missingDelimiterValue = "")
         conditionTexts(element.kind, body).mapNotNull { (member, text) ->
@@ -71,10 +71,10 @@ private const val SEMANTIC_INDEX = "SemanticIndex"
  * walk therefore stops at the first index it cannot read through — including one another family owns, which
  * is what keeps a group key in index one from letting a class out of index two.
  */
-private fun PreparedModel.firstClassIn(
+private fun TrackedFactBase.firstClassIn(
     uses: List<SemanticIndexUse>,
     declaringGroup: String,
-    element: DeclaredElement,
+    element: TrackedDeclaration,
 ): String? {
     // A NESTED index is answered before the walk, because the outer index of `[A For B For C]` is the one
     // A12 judges and it stands LAST in the text — the walk would reach the inner one first and stop at its
@@ -105,10 +105,10 @@ private sealed interface IndexVerdict {
 }
 
 /** A12's class for this index, in the measured gate order. */
-private fun PreparedModel.classOf(
+private fun TrackedFactBase.classOf(
     use: SemanticIndexUse,
     declaringGroup: String,
-    element: DeclaredElement,
+    element: TrackedDeclaration,
 ): IndexVerdict {
     val value = use.valuePath ?: return IndexVerdict.Opaque
     val indexed = resolveField(value, declaringGroup, element) ?: return IndexVerdict.Opaque
@@ -141,12 +141,12 @@ private fun PreparedModel.classOf(
  * value validation over the constant — and this reader decides that only where the index field constrains
  * nothing, leaving every other constant-keyed index unjudged rather than naming a class A12 reaches past.
  */
-private fun PreparedModel.keyClassOf(
+private fun TrackedFactBase.keyClassOf(
     use: SemanticIndexUse,
     indexGroup: String,
-    indexField: DeclaredElement,
+    indexField: TrackedDeclaration,
     declaringGroup: String,
-    element: DeclaredElement,
+    element: TrackedDeclaration,
 ): IndexVerdict? {
     use.keyLiteral?.let { literal ->
         return when {
@@ -175,7 +175,7 @@ private fun PreparedModel.keyClassOf(
  * constant as one of its own values. A string that declares no length and no pattern constrains nothing, and
  * a declaration carrying no type body at all declares none of the three.
  */
-private fun DeclaredElement.admitsEveryConstant(): Boolean {
+private fun TrackedDeclaration.admitsEveryConstant(): Boolean {
     if (declaredFieldType() != "StringType") {
         return false
     }
@@ -187,19 +187,19 @@ private fun DeclaredElement.admitsEveryConstant(): Boolean {
 private val LENGTH_MEMBERS = listOf("minLength", "maxLength")
 
 /** The field a group declares as its index, or null where the declaration names none this reader can find. */
-private fun PreparedModel.indexFieldOf(indexGroup: String): DeclaredElement? {
-    val group = elements.firstOrNull { it.path == indexGroup } ?: return null
+private fun TrackedFactBase.indexFieldOf(indexGroup: String): TrackedDeclaration? {
+    val group = declarations().firstOrNull { it.path == indexGroup } ?: return null
     val name = indexFieldNameOf(group) ?: return null
-    return elements.firstOrNull { it.path == "$indexGroup/$name" && it.declaredKind == DeclaredKind.FIELD }
+    return declarations().firstOrNull { it.path == "$indexGroup/$name" && it.declaredKind == DeclaredKind.FIELD }
 }
 
-private fun PreparedModel.element(path: String?): DeclaredElement? =
-    path?.let { resolved -> elements.firstOrNull { it.path == resolved } }
+private fun TrackedFactBase.element(path: String?): TrackedDeclaration? =
+    path?.let { resolved -> declarations().firstOrNull { it.path == resolved } }
 
 /** What the base-type comparison says about one key, or that this reader may not say. */
 private enum class KeyTypeVerdict { CONSISTENT, INCONSISTENT, UNSETTLED }
 
-private fun keyTypeVerdict(indexField: DeclaredElement, key: DeclaredElement): KeyTypeVerdict {
+private fun keyTypeVerdict(indexField: TrackedDeclaration, key: TrackedDeclaration): KeyTypeVerdict {
     val expected = INDEX_KEY_CLASS_OF[indexField.declaredFieldType()] ?: return KeyTypeVerdict.UNSETTLED
     val actual = INDEX_KEY_CLASS_OF[key.declaredFieldType()] ?: return KeyTypeVerdict.UNSETTLED
     return if (expected == actual) KeyTypeVerdict.CONSISTENT else KeyTypeVerdict.INCONSISTENT
@@ -235,10 +235,10 @@ private val INDEX_KEY_CLASS_OF = mapOf(
 /** What the KEY half settles on its own: the wildcard class, nothing, or that this index is not ours. */
 private enum class KeyVerdict { STARRED, PLAIN, UNJUDGEABLE }
 
-private fun PreparedModel.keyVerdict(
+private fun TrackedFactBase.keyVerdict(
     use: SemanticIndexUse,
     declaringGroup: String,
-    element: DeclaredElement,
+    element: TrackedDeclaration,
 ): KeyVerdict {
     val key = use.keyPath ?: return if (use.keyLiteral == null) KeyVerdict.UNJUDGEABLE else KeyVerdict.PLAIN
     // A GROUP key is the key-kind family's class and outranks every gate here; a key that does not resolve
@@ -261,20 +261,20 @@ private fun PreparedModel.keyVerdict(
 }
 
 /** The resolved path of [written] when it names a declared FIELD, stars ignored; null otherwise. */
-private fun PreparedModel.resolveField(
+private fun TrackedFactBase.resolveField(
     written: String,
     declaringGroup: String,
-    element: DeclaredElement,
+    element: TrackedDeclaration,
 ): String? {
     val resolved = resolveEntity(declaringGroup, written.replace("*", ""), element.origin)
         as? Reference.Resolved ?: return null
     return resolved.path.takeIf { path ->
-        elements.any { it.path == path && it.declaredKind == DeclaredKind.FIELD }
+        declarations().any { it.path == path && it.declaredKind == DeclaredKind.FIELD }
     }
 }
 
 /** The innermost group above [fieldPath] that declares an index field — the one A12 indexes on. */
-private fun PreparedModel.indexGroupOf(fieldPath: String): String? = elements
+private fun TrackedFactBase.indexGroupOf(fieldPath: String): String? = declarations()
     .filter {
         it.declaredKind == DeclaredKind.GROUP && fieldPath.startsWith("${it.path}/") &&
             indexFieldNameOf(it) != null
@@ -283,10 +283,10 @@ private fun PreparedModel.indexGroupOf(fieldPath: String): String? = elements
     ?.path
 
 /** The resolved paths of the levels [written] stars, so a star's POSITION can be compared against a group. */
-private fun PreparedModel.starredPrefixesOf(
+private fun TrackedFactBase.starredPrefixesOf(
     written: String,
     declaringGroup: String,
-    element: DeclaredElement,
+    element: TrackedDeclaration,
 ): Set<String> {
     val segments = written.split('/')
     return segments.indices
@@ -298,7 +298,7 @@ private fun PreparedModel.starredPrefixesOf(
         .toSet()
 }
 
-private fun structureFinding(code: String, element: DeclaredElement, member: String): Finding = Finding(
+private fun structureFinding(code: String, element: TrackedDeclaration, member: String): Finding = Finding(
     FindingCategory.A12_CONSTRAINT,
     FindingSeverity.ERROR,
     code,

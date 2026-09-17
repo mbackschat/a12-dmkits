@@ -30,11 +30,11 @@ import io.github.mbackschat.a12.dm.consistency.syntax.referencesIn
  * refused is unmeasured, and a filter is the one place this reader hands back authored text rather than
  * structure, so a call in it is a shape no row covers.
  */
-fun PreparedModel.filterWildcardFindings(): List<Finding> {
+internal fun TrackedFactBase.filterWildcardFindings(): List<Finding> {
     val keywords = CONDITION_OPERATOR_KEYWORDS[conditionLanguage] ?: return emptyList()
     val filterKeyword = keywords[HAVING] ?: return emptyList()
     val callable = keywords.values.toSet()
-    return elements.flatMap { element ->
+    return declarations().flatMap { element ->
         val body = element.body ?: return@flatMap emptyList()
         val group = element.path.substringBeforeLast('/', missingDelimiterValue = "")
         conditionTexts(element.kind, body).flatMap { (member, text) ->
@@ -58,10 +58,10 @@ private const val HAVING = "Having"
  * which is measured rather than inherited: the wildcard class outruns the entity gate at the non-repeatable
  * landing site and does NOT outrun it here.
  */
-private fun PreparedModel.starredGroupsIn(
+private fun TrackedFactBase.starredGroupsIn(
     filter: String,
     group: String,
-    element: DeclaredElement,
+    element: TrackedDeclaration,
     callable: Set<String>,
 ): List<String> {
     if (callsIn(filter, conditionLanguage, syntaxEntryOf("errorCondition")).isNotEmpty() ||
@@ -82,13 +82,13 @@ private fun PreparedModel.starredGroupsIn(
             val starred = reference.substringBefore('*')
             val resolved = resolveEntity(group, starred, element.origin) as? Reference.Resolved
                 ?: return@mapNotNull null
-            elements.firstOrNull {
+            declarations().firstOrNull {
                 it.path == resolved.path && it.declaredKind == DeclaredKind.GROUP && it.isRepeatable
             }?.path
         }
 }
 
-private fun wildcardFinding(starred: String, element: DeclaredElement, member: String): Finding = Finding(
+private fun wildcardFinding(starred: String, element: TrackedDeclaration, member: String): Finding = Finding(
     FindingCategory.A12_CONSTRAINT,
     FindingSeverity.ERROR,
     "MVK_NO_WILDCARDS_ALLOWED",

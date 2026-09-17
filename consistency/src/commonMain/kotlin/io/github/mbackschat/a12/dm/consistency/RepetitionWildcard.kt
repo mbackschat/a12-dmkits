@@ -175,6 +175,14 @@ internal val DeclaredElement.isRepeatable: Boolean
  * precise and easy to get wrong: the shape would have to be redefined to include it in the same change, and
  * a charge narrower than what was read is the one direction that makes reuse UNSOUND rather than coarse.
  */
+/** A repeatable GROUP, which is what every wildcard and scope question actually asks about. */
+internal val DeclaredElement.isRepeatableGroup: Boolean
+    get() = declaredKind == DeclaredKind.GROUP && isRepeatable
+
+/** The same question through the read barrier. */
+internal val TrackedDeclaration.isRepeatableGroup: Boolean
+    get() = declaredKind == DeclaredKind.GROUP && isRepeatable
+
 internal val TrackedDeclaration.isRepeatable: Boolean
     get() = isRepeatableIn(body)
 

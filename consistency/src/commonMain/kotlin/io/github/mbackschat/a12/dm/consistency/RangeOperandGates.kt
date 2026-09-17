@@ -40,13 +40,13 @@ import io.github.mbackschat.a12.dm.consistency.syntax.callsIn
  * **Silent on a `TypeDefType` or `UnspecifiedType` field**, whose effective type this reader does not
  * resolve, and on an interval whose bounds are not both written as integers.
  */
-fun PreparedModel.rangeOperandGateFindings(): List<Finding> {
+internal fun TrackedFactBase.rangeOperandGateFindings(): List<Finding> {
     val keywords = CONDITION_OPERATOR_KEYWORDS[conditionLanguage] ?: return emptyList()
     val carriers = RANGE_OPERATORS.mapNotNull { keywords[it] }.toSet()
     if (carriers.isEmpty()) {
         return emptyList()
     }
-    return elements.flatMap { element ->
+    return declarations().flatMap { element ->
         val body = element.body ?: return@flatMap emptyList()
         val declaringGroup = element.path.substringBeforeLast('/', missingDelimiterValue = "")
         conditionTexts(element.kind, body).flatMap { (member, text) ->
@@ -68,17 +68,17 @@ private const val RANGE_ARITY = 3
 private class SubstringDefect(val code: String, val detail: String)
 
 /** The first gate this call fails, in A12's own order, or null where none fails and where it may not judge. */
-private fun PreparedModel.rangeDefect(
+private fun TrackedFactBase.rangeDefect(
     call: ConditionCall,
     declaringGroup: String,
-    element: DeclaredElement,
+    element: TrackedDeclaration,
 ): SubstringDefect? {
     if (call.operands.size != RANGE_ARITY) {
         return null
     }
     val (written, category) = operandSpec(call.operands[0]) ?: return null
     val target = addressedTargetOf(written, declaringGroup, element) ?: return null
-    val declared = elements.firstOrNull { it.path == target } ?: return null
+    val declared = declarations().firstOrNull { it.path == target } ?: return null
     val starred = '*' in written
     if (declared.declaredKind == DeclaredKind.GROUP) {
         // A repeatable group read without its star iterates, and the gate outside this method answers there;
@@ -152,7 +152,7 @@ private fun intervalDefect(call: ConditionCall): SubstringDefect? {
 private fun finding(
     defect: SubstringDefect,
     call: ConditionCall,
-    element: DeclaredElement,
+    element: TrackedDeclaration,
     member: String,
 ): Finding = Finding(
     FindingCategory.A12_CONSTRAINT,

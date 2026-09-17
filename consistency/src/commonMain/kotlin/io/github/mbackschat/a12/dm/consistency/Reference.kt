@@ -1,6 +1,7 @@
 package io.github.mbackschat.a12.dm.consistency
 
 import io.github.mbackschat.a12.dm.consistency.syntax.CallOperand
+import io.github.mbackschat.a12.dm.consistency.syntax.ConditionLanguage
 import io.github.mbackschat.a12.dm.consistency.syntax.categoryAccessesIn
 import io.github.mbackschat.a12.dm.consistency.syntax.Token
 import io.github.mbackschat.a12.dm.consistency.syntax.TokenKind
@@ -252,17 +253,46 @@ internal fun PreparedModel.starredLevelsOf(
     written: String,
     declaringGroup: String,
     element: DeclaredElement,
+): Set<String>? = starredLevelsIn(
+    written,
+    resolve = { prefix -> resolveEntity(declaringGroup, prefix, element.origin) },
+    // Asked per starred segment, so it stays a direct lookup rather than a list of every repeatable group:
+    // the common reference carries no star at all and must pay for no walk.
+    repeats = { path -> elements.any { it.path == path && it.isRepeatableGroup } },
+)
+
+/**
+ * The same walk through the read barrier; both of its reads charge themselves through the cursor.
+ *
+ * The repeatability lookup charges TIGHTER here than the untracked arm reads: [TrackedFactBase.declarationAt]
+ * takes the set's shape and then one declaration's content, where a repeatable-group list would have charged
+ * every group's body. Narrower than what is read would be unsound; narrower than what the other ARM reads is
+ * just a better question.
+ */
+internal fun TrackedFactBase.starredLevelsOf(
+    written: String,
+    declaringGroup: String,
+    element: TrackedDeclaration,
+): Set<String>? = starredLevelsIn(
+    written,
+    resolve = { prefix -> resolveEntity(declaringGroup, prefix, element.origin) },
+    repeats = { path -> declarationAt(path)?.isRepeatableGroup == true },
+)
+
+private inline fun starredLevelsIn(
+    written: String,
+    resolve: (String) -> Reference,
+    repeats: (String) -> Boolean,
 ): Set<String>? {
     val segments = written.split('/')
     val starred = mutableSetOf<String>()
     segments.indices.filter { segments[it].endsWith("*") }.forEach { at ->
         val prefix = segments.take(at + 1).joinToString("/").replace("*", "")
-        val resolved = resolveEntity(declaringGroup, prefix, element.origin) as? Reference.Resolved
-            ?: return null
-        val group = elements.firstOrNull {
-            it.path == resolved.path && it.declaredKind == DeclaredKind.GROUP && it.isRepeatable
-        } ?: return null
-        starred += group.path
+        val resolved = resolve(prefix) as? Reference.Resolved ?: return null
+        if (!repeats(resolved.path)) {
+            return null
+        }
+        starred += resolved.path
     }
     return starred
 }
@@ -426,13 +456,33 @@ internal fun PreparedModel.addressedTargetOf(
     val target = (resolveEntity(declaringGroup, reference.replace("*", ""), element.origin)
         as? Reference.Resolved)?.path ?: return null
     val starred = starredLevelsOf(reference, declaringGroup, element) ?: return null
-    // The target's own group, not the DECLARING one: A12 asks whether the target's coordinates address the
-    // level, and a rule's error field can reach into a repetition the rule is not declared in. Keying this
-    // on the declaring group made every family behind it yield on an operand A12 admits there.
-    val iterated = iterationGroupOf(element) ?: declaringGroup
-    val unaddressed = iteratedLevels(target).any {
-        it !in starred && !(iterated == it || iterated.startsWith("$it/"))
-    }
+    return addressedTargetIn(target, starred, iterationGroupOf(element) ?: declaringGroup, iteratedLevels(target))
+}
+
+/** The same question through the read barrier, over the tracked arm of each helper it composes. */
+internal fun TrackedFactBase.addressedTargetOf(
+    reference: String,
+    declaringGroup: String,
+    element: TrackedDeclaration,
+): String? {
+    val target = (resolveEntity(declaringGroup, reference.replace("*", ""), element.origin)
+        as? Reference.Resolved)?.path ?: return null
+    val starred = starredLevelsOf(reference, declaringGroup, element) ?: return null
+    return addressedTargetIn(target, starred, iterationGroupOf(element) ?: declaringGroup, iteratedLevels(target))
+}
+
+/**
+ * @param iterated the TARGET's own group, not the DECLARING one: A12 asks whether the target's coordinates
+ *     address the level, and a rule's error field can reach into a repetition the rule is not declared in.
+ *     Keying this on the declaring group made every family behind it yield on an operand A12 admits there.
+ */
+private fun addressedTargetIn(
+    target: String,
+    starred: Set<String>,
+    iterated: String,
+    levels: List<String>,
+): String? {
+    val unaddressed = levels.any { it !in starred && !(iterated == it || iterated.startsWith("$it/")) }
     return if (unaddressed) null else target
 }
 
@@ -472,8 +522,15 @@ internal val PLAINLY_NON_DATE_TYPES = setOf(
  * separately — so a family that only asked for [CallOperand.path] would see nothing at all where A12 sees a
  * category and refuses the call.
  */
-internal fun PreparedModel.operandSpec(operand: CallOperand): Pair<String, String?>? {
-    categoryAccessesIn(operand.text, conditionLanguage).singleOrNull()?.let { (path, category) ->
+internal fun PreparedModel.operandSpec(operand: CallOperand): Pair<String, String?>? =
+    operandSpecIn(operand, conditionLanguage)
+
+/** The same reading through the read barrier — it reads the condition language and nothing else. */
+internal fun TrackedFactBase.operandSpec(operand: CallOperand): Pair<String, String?>? =
+    operandSpecIn(operand, conditionLanguage)
+
+private fun operandSpecIn(operand: CallOperand, language: ConditionLanguage): Pair<String, String?>? {
+    categoryAccessesIn(operand.text, language).singleOrNull()?.let { (path, category) ->
         return path to category
     }
     return (operand.path ?: return null) to null
@@ -489,6 +546,10 @@ internal fun PreparedModel.operandSpec(operand: CallOperand): Pair<String, Strin
  * an anchored read opaque and lose every class behind it.
  */
 internal fun PreparedModel.crossesARepetitionOutside(declaringGroup: String, path: String): Boolean =
+    crossesARepetitionOutsideIn(repeatableGroupPaths(), declaringGroup, path)
+
+/** The same question through the read barrier; the charge rides the cursor, as on [iteratedLevels]. */
+internal fun TrackedFactBase.crossesARepetitionOutside(declaringGroup: String, path: String): Boolean =
     crossesARepetitionOutsideIn(repeatableGroupPaths(), declaringGroup, path)
 
 private fun crossesARepetitionOutsideIn(
