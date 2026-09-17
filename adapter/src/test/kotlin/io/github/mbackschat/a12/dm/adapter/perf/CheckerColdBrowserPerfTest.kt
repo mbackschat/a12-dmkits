@@ -3,7 +3,6 @@ package io.github.mbackschat.a12.dm.adapter.perf
 import java.nio.file.Files
 import java.nio.file.Path
 import java.util.Locale
-import java.util.concurrent.TimeUnit
 import kotlin.math.ceil
 import org.junit.jupiter.api.Tag
 import org.junit.jupiter.api.Test
@@ -231,17 +230,15 @@ class CheckerColdBrowserPerfTest {
         what: String,
         tool: Path,
     ): String {
-        val builder = ProcessBuilder(command).directory(workingDir.toFile()).redirectErrorStream(true)
         val toolDir = requireNotNull(tool.parent) { "$tool has no parent directory" }
-        builder.environment()["PATH"] = "$toolDir${java.io.File.pathSeparator}${System.getenv("PATH")}"
-        val process = builder.start()
-        val output = process.inputStream.bufferedReader().use { it.readText() }
-        if (!process.waitFor(CHILD_TIMEOUT_SECONDS, TimeUnit.SECONDS)) {
-            process.destroyForcibly().waitFor()
-            error("$what exceeded the $CHILD_TIMEOUT_SECONDS-second harness fuse: $output")
-        }
-        check(process.exitValue() == 0) { "$what exited ${process.exitValue()}: $output" }
-        return output
+        val completed = ChildProcess.runWithFuse(
+            command = command,
+            directory = workingDir,
+            environment = mapOf("PATH" to "$toolDir${java.io.File.pathSeparator}${System.getenv("PATH")}"),
+            timeoutSeconds = CHILD_TIMEOUT_SECONDS,
+        ) { what }
+        check(completed.exitCode == 0) { "$what exited ${completed.exitCode}: ${completed.output}" }
+        return completed.output
     }
 
     /**

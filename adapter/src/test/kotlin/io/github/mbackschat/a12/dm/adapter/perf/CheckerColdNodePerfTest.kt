@@ -3,7 +3,6 @@ package io.github.mbackschat.a12.dm.adapter.perf
 import java.nio.file.Files
 import java.nio.file.Path
 import java.util.Locale
-import java.util.concurrent.TimeUnit
 import kotlin.math.ceil
 import org.junit.jupiter.api.Tag
 import org.junit.jupiter.api.Test
@@ -165,18 +164,15 @@ class CheckerColdNodePerfTest {
 
     /** One child: a Node process whose whole program is [COLD_SCRIPT], run from the installed consumer tree. */
     private fun run(node: Path, consumer: Path, model: Path, label: String): ColdRun {
-        val process = ProcessBuilder(node.toString(), COLD_SCRIPT, model.toString(), label)
+        val completed = ChildProcess.runWithFuse(
+            command = listOf(node.toString(), COLD_SCRIPT, model.toString(), label),
             // The working directory is what makes `import 'a12-consistency'` resolve to the INSTALLED package
             // rather than to anything this build compiled: Node walks up from the importing file's directory.
-            .directory(consumer.toFile())
-            .redirectErrorStream(true)
-            .start()
-        val output = process.inputStream.bufferedReader().use { it.readText() }
-        if (!process.waitFor(PROCESS_TIMEOUT_SECONDS, TimeUnit.SECONDS)) {
-            process.destroyForcibly().waitFor()
-            error("a cold Node process exceeded the $PROCESS_TIMEOUT_SECONDS-second harness fuse: $output")
-        }
-        check(process.exitValue() == 0) { "a cold Node process exited ${process.exitValue()}: $output" }
+            directory = consumer,
+            timeoutSeconds = PROCESS_TIMEOUT_SECONDS,
+        ) { "a cold Node process" }
+        val output = completed.output
+        check(completed.exitCode == 0) { "a cold Node process exited ${completed.exitCode}: $output" }
         val printed = output.lineSequence()
             .mapNotNull { line -> line.split('=', limit = 2).takeIf { it.size == 2 } }
             .associate { (key, value) -> key to value }
@@ -225,12 +221,12 @@ class CheckerColdNodePerfTest {
 
     /** What the pin is checked against, asked of the binary rather than inferred from its path. */
     private fun probeVersion(node: Path): String {
-        val process = ProcessBuilder(node.toString(), "--version").redirectErrorStream(true).start()
-        val output = process.inputStream.bufferedReader().use { it.readText() }.trim()
-        check(process.waitFor(PROBE_TIMEOUT_SECONDS, TimeUnit.SECONDS) && process.exitValue() == 0) {
-            "could not ask $node for its version: $output"
-        }
-        return output
+        val completed = ChildProcess.runWithFuse(
+            command = listOf(node.toString(), "--version"),
+            timeoutSeconds = PROBE_TIMEOUT_SECONDS,
+        ) { "the version probe of $node" }
+        check(completed.exitCode == 0) { "could not ask $node for its version: ${completed.output}" }
+        return completed.output.trim()
     }
 
     private fun millis(nanos: Long): String = format(nanos / 1_000_000.0)

@@ -858,9 +858,17 @@ tasks.register('apiGuardTest', Test) {
     dependsOn ':interpreter-bridge:classes'
     filter {
         includeTestsMatching 'io.github.mbackschat.a12.dm.api.PublicApiGuardTest'
+        // The checker's two Kotlin ABI goldens, whose DEPTH `checkLegacyAbi` cannot check: it compares each
+        // golden with its own dump, so a dump that collapsed to bare type headers is recorded faithfully and
+        // reported green (IRG3 measured exactly that on a KLIB dump). Same tier and the same reason as this
+        // task's other resident — a committed artifact bound to the source it mirrors.
+        includeTestsMatching 'io.github.mbackschat.a12.dm.api.CheckerAbiGoldenDepthTest'
     }
     guardInputs(it, [
             'api goldens'              : fileTree('api') { include '**/*.api' },
+            // The checker publishes into its OWN module directory rather than the root `api/` tree, so the
+            // line above does not reach it and an edit there would leave this task UP-TO-DATE.
+            'checker api goldens'      : fileTree('consistency/api') { include '**/*.api' },
             'bridge main sources'      : fileTree('interpreter-bridge/src/main') { include '**/*.kt', '**/*.java' },
     ])
 }

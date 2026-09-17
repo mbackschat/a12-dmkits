@@ -4,7 +4,6 @@ import java.io.File
 import java.nio.file.Files
 import java.nio.file.Path
 import java.util.Locale
-import java.util.concurrent.TimeUnit
 import kotlin.math.ceil
 import org.junit.jupiter.api.Tag
 import org.junit.jupiter.api.Test
@@ -177,8 +176,8 @@ class CheckerColdStartPerfTest {
         val java = Path.of(System.getProperty("java.home"), "bin", "java")
         val heap = System.getProperty("perf.checker.cold.heap").orEmpty()
         val recording = System.getProperty("perf.checker.cold.jfr").orEmpty()
-        val process = ProcessBuilder(
-            listOfNotNull(
+        val completed = ChildProcess.runWithFuse(
+            command = listOfNotNull(
                 java.toString(),
                 heap.takeIf { it.isNotBlank() }?.let { "-Xmx$it" },
                 recording.takeIf { it.isNotBlank() }?.let {
@@ -189,13 +188,10 @@ class CheckerColdStartPerfTest {
                 "io.github.mbackschat.a12.dm.adapter.perf.CheckerColdStartMain",
                 model.toString(), label,
             ),
-        ).redirectErrorStream(true).start()
-        val output = process.inputStream.bufferedReader().use { it.readText() }
-        if (!process.waitFor(PROCESS_TIMEOUT_SECONDS, TimeUnit.SECONDS)) {
-            process.destroyForcibly().waitFor()
-            error("a cold checker process exceeded the $PROCESS_TIMEOUT_SECONDS-second harness fuse: $output")
-        }
-        check(process.exitValue() == 0) { "a cold checker process exited ${process.exitValue()}: $output" }
+            timeoutSeconds = PROCESS_TIMEOUT_SECONDS,
+        ) { "a cold checker process" }
+        val output = completed.output
+        check(completed.exitCode == 0) { "a cold checker process exited ${completed.exitCode}: $output" }
         val printed = output.lineSequence()
             .mapNotNull { line -> line.split('=', limit = 2).takeIf { it.size == 2 } }
             .associate { (key, value) -> key to value }

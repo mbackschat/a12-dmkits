@@ -30,6 +30,30 @@ Row 8 lists **Java API compatibility**, and its oracle asks for a "compiled publ
 
 **The first reading of the dump is itself the finding: 183 public classes against two shipped functions.** Almost all of it is public by omission — Kotlin's default visibility is public, and the module was written as internal implementation before it became a published artifact. The gate is deliberately **unfiltered** so this stays visible; a filter drawn today would encode the accident as the contract. What the checker's contract *should* be is a design call, not a side effect of adding a gate, so it is recorded with a re-open trigger rather than decided here ([the disposition](PORTABLE-CONSISTENCY-IMPLEMENTATION-PLAN.md#stage-8-abi)).
 
+## 2026-09-17 — the cold lanes' fuses could not fire, and all three re-measure unchanged <a id="cold-fuse-2026-09-17"></a>
+
+Every perf lane in `:adapter` that launches a child advertised a harness timeout that was unreachable code. The shape was identical at four sites — `CheckerColdStartPerfTest`, `CheckerColdNodePerfTest` (the observation child **and** the version probe) and `CheckerColdBrowserPerfTest`'s tool runner — and the oldest carried it from the day it was written: read the child's whole output into a string, *then* call the timed `waitFor`. `readText()` blocks until EOF and EOF arrives only when the child exits, so a hung child never reached the timeout and the `error(…)` line naming it could never run.
+
+| what was measured | result |
+|---|---|
+| the control against a deliberate re-implementation of the old shape | `the fuse fires on a child that never exits` **FAILED** (preemptive 20 s bound); the 4 MiB flood case **PASSED** |
+| the same control after the fix | both pass, 4 cases green |
+| sites carrying the defect | **4**, in 3 classes; `ProfileCliPerfTest` in the same package had the correct shape all along |
+
+**The passing half of that first run is the interesting half: it is why the defect was invisible.** The old shape was *dead-fused*, not deadlock-prone — reading first is exactly what keeps a loud child from blocking — so every lane ran correctly on every good day and the fuse existed only in prose. And the repair that suggests itself makes it worse: wait first, read second, and a child whose output passes the pipe buffer blocks in its own `write` while the parent waits for an exit that can no longer come. `ChildProcess.runWithFuse` redirects to a file instead, so there is nothing for the child to block on and nothing to read before waiting; `ChildProcessFuseTest` locks both halves, because a change satisfying one and not the other is not a fix. [The shell half of this rule](AGENT-RUN-DISCIPLINE.md) had been written down in this repository for a year.
+
+**All three cold lanes re-measured after the migration, and the quantity did not move on any host:**
+
+| lane | ratio before | ratio after | medians after |
+|---|---|---|---|
+| `checkerColdStartPerfTest` (JVM) | 2.75× | **2.65×** | 314.52 → 834.53 ms |
+| `checkerColdNodePerfTest` | 3.90× | **3.93×** | 260.46 → 1 022.03 ms |
+| `checkerColdBrowserPerfTest` | 3.88× | **3.92×** | 203.50 → 796.30 ms |
+
+Durations moved by a few percent and every ratio by about one, which is the spread these lanes already publish across re-measurements — the standing reason the ratio is the asserted quantity and no duration is.
+
+**The checker's ABI goldens also got the depth control they were advertised to have.** `checkLegacyAbi` compares each golden with its own dump, so a dump that collapsed to bare type headers is recorded faithfully and passes — IRG3 measured exactly that on a KLIB dump whose JVM twin kept every member, and the only control for the checker's pair was a planted deletion run by hand once. `CheckerAbiGoldenDepthTest` now refuses any type that carries JVM members and none in KLIB, and pins `ConsistencyReport`'s `getFindings`/`findings` from each carrier's parsed member set rather than by substring, because the file text names `findings` on the accessor line too. Four mutants, four kills on four different assertions: a KLIB header collapse, `findings` renamed in KLIB, `getFindings` renamed on the JVM, and a parser mutant that drops the matched-type floor from ~150 to 0 with the message naming the parse as the thing to suspect.
+
 ## 2026-09-17 — H5-g: the cold boundary in a real browser, and the host grid closes <a id="cold-browser-2026-09-17"></a>
 
 With the plain-Node arm below, this is the third of the three hosts §8's cold row names, so that row's grid is complete: **JVM, plain Node and browser**. What a browser adds over Node is not the engine — V8 in both — but a bundler's output instead of Node's own module graph, an HTTP transfer instead of a filesystem read, and a document context.
