@@ -205,11 +205,6 @@ public final class io/github/mbackschat/a12/dm/consistency/ComputationSelfReadKt
 	public static final fun computationSelfReadFindings (Lio/github/mbackschat/a12/dm/consistency/PreparedModel;)Ljava/util/List;
 }
 
-public final class io/github/mbackschat/a12/dm/consistency/ComputedTargetKindKt {
-	public static final fun computedTargetIndexFieldFindings (Lio/github/mbackschat/a12/dm/consistency/PreparedModel;)Ljava/util/List;
-	public static final fun computedTargetKindFindings (Lio/github/mbackschat/a12/dm/consistency/PreparedModel;)Ljava/util/List;
-}
-
 public final class io/github/mbackschat/a12/dm/consistency/ConditionCompletenessKt {
 	public static final fun conditionCompletenessFindings (Lio/github/mbackschat/a12/dm/consistency/PreparedModel;)Ljava/util/List;
 }

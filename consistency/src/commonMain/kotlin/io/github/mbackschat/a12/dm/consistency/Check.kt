@@ -955,7 +955,7 @@ internal fun checkPrepared(
         prepared.declaredPatternFindings() +
         prepared.emptyGroupOperandFindings() + prepared.errorFieldReferenceFindings() +
         prepared.groupListOperandFindings() + prepared.repetitionWildcardFindings() +
-        prepared.computedTargetKindFindings() + prepared.computedTargetIndexFieldFindings() +
+        tracked.computedTargetKindFindings() + tracked.computedTargetIndexFieldFindings() +
         prepared.rawTypeLengthFindings() + prepared.computationPreconditionFeatureFindings() +
         prepared.computationCycleFindings() +
         prepared.computationSelfReadFindings() +

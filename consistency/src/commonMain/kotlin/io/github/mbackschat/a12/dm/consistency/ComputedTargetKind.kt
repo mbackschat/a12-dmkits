@@ -22,11 +22,10 @@ import kotlinx.serialization.json.contentOrNull
  * field slot is a typed field handle, so `MVK_GROUP_AS_CALCULATED_FIELD` is `erased` there. The member this
  * reads is an ordinary string, and a group path is one edit away.
  */
-fun PreparedModel.computedTargetKindFindings(): List<Finding> = declaredReferences()
-    .filter { it.role == ReferenceRole.COMPUTED_TARGET }
+internal fun TrackedFactBase.computedTargetKindFindings(): List<Finding> = computedTargets()
     .mapNotNull { declared ->
         val path = (declared.target as? Reference.Resolved)?.path ?: return@mapNotNull null
-        val element = elements.firstOrNull { it.path == path } ?: return@mapNotNull null
+        val element = declarationAt(path) ?: return@mapNotNull null
         if (element.declaredKind != DeclaredKind.GROUP) {
             return@mapNotNull null
         }
@@ -59,8 +58,7 @@ fun PreparedModel.computedTargetKindFindings(): List<Finding> = declaredReferenc
  * than transferred from the inside-the-group row, which is where this family would otherwise have inherited
  * a scope it never tested.
  */
-fun PreparedModel.computedTargetIndexFieldFindings(): List<Finding> = declaredReferences()
-    .filter { it.role == ReferenceRole.COMPUTED_TARGET }
+internal fun TrackedFactBase.computedTargetIndexFieldFindings(): List<Finding> = computedTargets()
     .mapNotNull { declared ->
         val path = (declared.target as? Reference.Resolved)?.path ?: return@mapNotNull null
         val group = path.substringBeforeLast('/', missingDelimiterValue = "")
@@ -79,7 +77,18 @@ fun PreparedModel.computedTargetIndexFieldFindings(): List<Finding> = declaredRe
     }
 
 /** The short name [group] declares as its index field, when it declares one. */
-private fun PreparedModel.indexFieldOf(group: String): String? = elements
-    .firstOrNull { it.path == group && it.declaredKind == DeclaredKind.GROUP }
+private fun TrackedFactBase.indexFieldOf(group: String): String? = declarationAt(group)
+    ?.takeIf { it.declaredKind == DeclaredKind.GROUP }
     ?.body
     ?.let { (it["indexFieldName"] as? JsonPrimitive)?.contentOrNull }
+
+/**
+ * Every computation's computed-field reference, charged per declaration rather than model-wide.
+ *
+ * Both families above want the same subset, and going through the cursor is what keeps the charge
+ * per-declaration: the whole-model `declaredReferences()` would make each of them depend on every rule's and
+ * computation's body ([TrackedDeclaration.declaredReference]).
+ */
+private fun TrackedFactBase.computedTargets(): List<DeclaredReference> = declarations()
+    .mapNotNull { it.declaredReference() }
+    .filter { it.role == ReferenceRole.COMPUTED_TARGET }

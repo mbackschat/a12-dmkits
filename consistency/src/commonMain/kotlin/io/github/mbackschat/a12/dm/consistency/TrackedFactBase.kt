@@ -33,7 +33,20 @@ internal class TrackedFactBase(
      */
     fun declarations(): List<TrackedDeclaration> {
         transcript.record(FactRead.DeclarationSetShape)
-        return model.elements.map { TrackedDeclaration(it, transcript) }
+        return model.elements.map { TrackedDeclaration(it, model, transcript) }
+    }
+
+    /**
+     * The declaration at [path], or null when nothing declares it.
+     *
+     * Charges the set's SHAPE and not the found declaration's content, which is the split that matters: a
+     * family asking "is there a field here, and what type is it" depends on the set for the answer to the
+     * first question and on that one declaration's body for the second. The body is charged if and when it
+     * is read through the returned cursor, so a family that only checks existence does not pay for content.
+     */
+    fun declarationAt(path: String): TrackedDeclaration? {
+        transcript.record(FactRead.DeclarationSetShape)
+        return model.elements.firstOrNull { it.path == path }?.let { TrackedDeclaration(it, model, transcript) }
     }
 
     val conditionLanguage: ConditionLanguage
@@ -59,6 +72,15 @@ internal class TrackedFactBase(
  */
 internal class TrackedDeclaration(
     private val element: DeclaredElement,
+    /**
+     * Held for [declaredReference] alone, which needs the model's memoized walk.
+     *
+     * The barrier's integrity does not rest on hiding it from this class — it rests on this class exposing
+     * no member that hands it out, which is checkable in the twenty lines below. Building the reference
+     * lookup eagerly instead would force that `by lazy` walk on every check whose families never ask for a
+     * reference, and the walk reads every declaration's body.
+     */
+    private val model: PreparedModel,
     private val transcript: ReadTranscript,
 ) {
     val path: String get() = element.path
@@ -74,4 +96,20 @@ internal class TrackedDeclaration(
             transcript.record(FactRead.DeclarationContent(element.path))
             return element.body
         }
+
+    /**
+     * This declaration's own declared reference — a rule's error target or a computation's computed field.
+     *
+     * **A derived query, charged per declaration, which is the case the design record singles out.** The
+     * whole-model `declaredReferences()` hands its caller every rule's and computation's reference at once,
+     * so eighteen families reading it would each depend on every one of those declarations' bodies. This
+     * entry point charges exactly what the answer depends on: THIS declaration's body, for the relative path
+     * it spells, and the set's shape, because resolving that path consults the by-path index. Another
+     * declaration's body cannot change this answer and is not charged for it.
+     */
+    fun declaredReference(): DeclaredReference? {
+        transcript.record(FactRead.DeclarationContent(element.path))
+        transcript.record(FactRead.DeclarationSetShape)
+        return model.declaredReferenceList.firstOrNull { it.declaredAt == element.path }
+    }
 }

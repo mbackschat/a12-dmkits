@@ -75,6 +75,52 @@ class ReadTranscriptTest {
     }
 
     /**
+     * A DERIVED query is charged per declaration, which is the case the design record singles out.
+     *
+     * `declaredReferences()` on the fact base hands back every rule's and computation's reference at once,
+     * so a family reading it depends on all of their bodies; eighteen families do. Asked through one
+     * declaration's cursor, the charge must be that declaration's own content plus the set's shape — the
+     * shape because resolving the relative path consults the by-path index, and nothing more, because no
+     * other declaration's body can change this answer.
+     *
+     * The rule's SIBLING is the discriminator: a model carrying two rules must not charge the second's body
+     * when only the first is asked.
+     */
+    @Test
+    fun aDerivedReferenceIsChargedAgainstItsOwnDeclarationAlone() {
+        val twoRules = ModelSource(
+            """
+            {"header":{"id":"orders","locales":[{"code":"en_US"}]},
+             "content":{"modelRoot":{"rootGroups":[
+              {"type":"Group","id":"g0","name":"Order","Group":{"elements":[
+                {"type":"Field","id":"f0","name":"Code","Field":{"fieldType":{"type":"StringType"}}},
+                {"type":"Rule","id":"r0","name":"First","Rule":{
+                  "errorEntityRelPath":"../Code","errorCondition":"FieldFilled(Code)"}},
+                {"type":"Rule","id":"r1","name":"Second","Rule":{
+                  "errorEntityRelPath":"../Code","errorCondition":"FieldFilled(Code)"}}
+              ]}}
+             ]}}}
+            """.trimIndent(),
+        )
+
+        var resolved: Reference? = null
+        val observed = transcriptOf(twoRules) {
+            resolved = declarations().first { it.name == "First" }.declaredReference()?.target
+        }
+
+        // The positive control, and it is not optional: the charge is recorded BEFORE the lookup, so this
+        // assertion would pass on an implementation that found no reference at all and charged anyway.
+        assertEquals(Reference.Resolved("/Order/Code"), resolved,
+            "the fixture's rule must really carry a resolvable error target, or the charge below is a charge " +
+                "for work that did not happen")
+        assertEquals(
+            setOf(FactRead.DeclarationSetShape, FactRead.DeclarationContent("/Order/First")),
+            observed,
+            "asking one declaration for its reference must not charge its sibling's body",
+        )
+    }
+
+    /**
      * Each model-wide accessor charges ITS OWN fact, which nothing else in the suite can catch.
      *
      * The 643 verdict tests cannot: an accessor recording a neighbour's [ModelFact] returns the right value
