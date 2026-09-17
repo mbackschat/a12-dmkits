@@ -142,18 +142,20 @@ internal fun schedule(tracked: TrackedFactBase): List<ScheduledCell> {
             )
             is CheckProducer.PerDeclaration -> walked.map { (at, cursor, _) ->
                 ScheduledCell(CellKey(producer, at)) {
-                    // Charged here as well as by a walking family's own `declarations()`, because a family
-                    // that takes its declaration as a parameter never calls it and would otherwise key its
-                    // cell on nothing at all ([FactRead.DeclarationRow]).
+                    // A family taking its declaration as a parameter never calls `declarations()`, so
+                    // nothing else would say which declaration its cell answered about
+                    // ([FactRead.DeclarationRow]).
                     tracked.chargeDeclarationRow(at)
                     producer.findings(tracked, cursor) to emptyList()
                 }
             }
+            // No charge here, deliberately: a scoped `declarations()` records the row itself, and the
+            // explicit call was measured redundant — a mutant removing it survived every control
+            // (2026-09-18). A walk that returned BEFORE iterating would charge no row and be refused by
+            // `FamilyChargeProfileTest`, which is the loud outcome rather than a silent one: such a family
+            // decided on a model-wide fact and belongs in the parameter form.
             is CheckProducer.PerDeclarationWalk -> walked.map { (at, _, scoped) ->
-                ScheduledCell(CellKey(producer, at)) {
-                    tracked.chargeDeclarationRow(at)
-                    producer.findings(scoped) to emptyList()
-                }
+                ScheduledCell(CellKey(producer, at)) { producer.findings(scoped) to emptyList() }
             }
         }
     }

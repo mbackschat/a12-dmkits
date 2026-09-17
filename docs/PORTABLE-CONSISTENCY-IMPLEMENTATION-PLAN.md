@@ -790,6 +790,8 @@ The sixty-nine model-wide producers are not one population. Classified by what t
 
 The eight the differential rejected are reference-loop families in disguise: their entry point walks declarations but their real subject is a reference list, so a scoped pass repeats the model-wide answer once per declaration. They join [3b](#l-b3c-3-partition)'s population rather than being forced.
 
+**Two mutants, and the surviving one removed a line rather than adding a test.** `allDeclarations()` delegating to the scoped `declarations()` dies in the walk differential. The dispatcher's explicit row charge removed from the WALK arm SURVIVED every control — and rightly, because a scoped `declarations()` records the row itself, so the call was redundant there. It is gone: a line that cannot matter misleads the next reader about what holds the key together. What remains is loud rather than silent — a walk that returned before iterating would charge no row and be refused by the row invariant, and such a family decided on a model-wide fact and belongs in the parameter form, where the same mutant is still killed by `CheckCellKeyTest`.
+
 Both carriers: **679 tests, 0 failures**; report JSON unchanged (`ParityCorpusTest`).
 
 ### F3 record — the partition, one blocked acceptance clause, and F3-a's matrix frozen before code (2026-09-16) <a id="f3-partition"></a>
