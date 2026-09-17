@@ -27,14 +27,14 @@ import io.github.mbackschat.a12.dm.consistency.syntax.callsIn
  * `RepetitionNotUnique` in a computation outright ([KERNEL-FINDINGS KF333]), so a computation carrying one
  * has a different defect entirely.
  */
-fun PreparedModel.repetitionScopeGroupFindings(): List<Finding> {
+internal fun TrackedFactBase.repetitionScopeGroupFindings(): List<Finding> {
     val keywords = CONDITION_OPERATOR_KEYWORDS[conditionLanguage] ?: return emptyList()
     val spelling = keywords[REPETITION_NOT_UNIQUE] ?: return emptyList()
     // Resolved by CATALOG ID rather than by a literal or by "the PATH_OP that starts with @", because the
     // German spelling is a different word and the clause set will grow: `For`/`Fuer` is a PATH_OP too and
     // means something else entirely.
     val scopeKeyword = keywords[FROM_SCOPE] ?: return emptyList()
-    return elements.filter { it.kind == "Rule" }.flatMap { element ->
+    return declarations().filter { it.kind == "Rule" }.flatMap { element ->
         val body = element.body ?: return@flatMap emptyList()
         val declaringGroup = element.path.substringBeforeLast('/', missingDelimiterValue = "")
         conditionTexts(element.kind, body).flatMap { (member, text) ->
@@ -62,15 +62,15 @@ private const val FROM_SCOPE = "FromScope"
  * before repeatability), and a scope that repeats, where every remaining defect is about containment —
  * [repetitionKeyContainmentFindings]', which models the joint iteration those classes turn on.
  */
-private fun PreparedModel.scopeFinding(
+private fun TrackedFactBase.scopeFinding(
     scope: String,
     declaringGroup: String,
-    element: DeclaredElement,
+    element: TrackedDeclaration,
     member: String,
 ): Finding? {
     val resolved = resolveEntity(declaringGroup, scope, element.origin) as? Reference.Resolved
         ?: return null
-    val group = elements.firstOrNull { it.path == resolved.path && it.declaredKind == DeclaredKind.GROUP }
+    val group = declarations().firstOrNull { it.path == resolved.path && it.declaredKind == DeclaredKind.GROUP }
         ?: return null
     if (group.isRepeatable) {
         return null

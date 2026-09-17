@@ -36,7 +36,7 @@ class SuppressedWarningsTest {
         ),
     )
 
-    private fun codesFor(suppress: String?) = model(suppress).suppressedWarningFindings().map { it.code }
+    private fun codesFor(suppress: String?) = model(suppress).tracked().suppressedWarningFindings().map { it.code }
 
     private val supported = "MVK_INVALID_COMPARE_DEC_PLACES"
 
@@ -102,12 +102,12 @@ class SuppressedWarningsTest {
     fun anExplicitNullIsNamedRatherThanCalledANonArray() {
         assertEquals(
             true,
-            model("null").suppressedWarningFindings().single().explain.contains("an explicit `null`"),
+            model("null").tracked().suppressedWarningFindings().single().explain.contains("an explicit `null`"),
             "an explicit null is named as one",
         )
         assertEquals(
             true,
-            model("""{"code":"$supported"}""").suppressedWarningFindings().single()
+            model("""{"code":"$supported"}""").tracked().suppressedWarningFindings().single()
                 .explain.contains("not a JSON array"),
             "a container is named as the wrong shape",
         )
@@ -116,7 +116,7 @@ class SuppressedWarningsTest {
     /** The finding names the computation, so a consumer can act on it without re-deriving the path. */
     @Test
     fun theFindingNamesTheComputationThatCarriesTheMember() {
-        val finding = model("""["MVK_TOTALLY_BOGUS"]""").suppressedWarningFindings().single()
+        val finding = model("""["MVK_TOTALLY_BOGUS"]""").tracked().suppressedWarningFindings().single()
         assertEquals("/Catalog/PriceCalc", finding.at)
         assertEquals(
             true,

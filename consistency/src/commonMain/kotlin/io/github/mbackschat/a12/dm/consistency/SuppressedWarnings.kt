@@ -28,8 +28,8 @@ import kotlinx.serialization.json.JsonPrimitive
  * KF297]), because the member is bound `@NonNull List<String>` rather than through an `Optional` accessor —
  * a property of the binding, not of DM-JSON, and measured rather than carried across.
  */
-fun PreparedModel.suppressedWarningFindings(): List<Finding> =
-    elements.filter { it.declaredKind == DeclaredKind.COMPUTATION }.flatMap { suppressionFindings(it) }
+internal fun TrackedFactBase.suppressedWarningFindings(): List<Finding> =
+    declarations().filter { it.declaredKind == DeclaredKind.COMPUTATION }.flatMap { suppressionFindings(it) }
 
 /**
  * The single code A12's `@SuppressWarning` pragma accepts — the static assignment-scale gate.
@@ -40,7 +40,7 @@ fun PreparedModel.suppressedWarningFindings(): List<Finding> =
  */
 internal const val SUPPRESSIBLE = "MVK_INVALID_COMPARE_DEC_PLACES"
 
-private fun suppressionFindings(element: DeclaredElement): List<Finding> {
+private fun suppressionFindings(element: TrackedDeclaration): List<Finding> {
     // An envelope A12 cannot bind is the alternatives family's finding; naming it again would report one
     // unreadable computation twice in a single report.
     val body = element.body ?: return emptyList()
@@ -111,7 +111,7 @@ private fun suppressionFindings(element: DeclaredElement): List<Finding> {
 private fun String.isCodeToken(): Boolean =
     isNotEmpty() && first().isLetter() && all { it.isLetterOrDigit() || it == '_' }
 
-private fun unbuildable(element: DeclaredElement, explain: String): Finding = Finding(
+private fun unbuildable(element: TrackedDeclaration, explain: String): Finding = Finding(
     FindingCategory.A12_CONSTRAINT,
     FindingSeverity.ERROR,
     CK_MODEL_NOT_BUILDABLE,

@@ -32,10 +32,10 @@ import io.github.mbackschat.a12.dm.consistency.syntax.splitAtInfix
  * reach them. An operand this reader cannot resolve is left to A12 as well: an unknown path draws
  * `MVK_INVALID_ENTITY` from the reference gate ahead of everything here.
  */
-fun PreparedModel.tableEnumOperandFindings(): List<Finding> {
+internal fun TrackedFactBase.tableEnumOperandFindings(): List<Finding> {
     val carrier = VALUE_NOT_CONSISTENT_SPELLING[conditionLanguage] ?: return emptyList()
     val infix = TO_SPELLING[conditionLanguage] ?: return emptyList()
-    return elements.mapNotNull { element ->
+    return declarations().mapNotNull { element ->
         val body = element.body ?: return@mapNotNull null
         val declaringGroup = element.path.substringBeforeLast('/', missingDelimiterValue = "")
         conditionTexts(element.kind, body).firstNotNullOfOrNull { (member, text) ->
@@ -78,18 +78,18 @@ private const val NO_WILDCARDS = "MVK_NO_WILDCARDS_ALLOWED"
  * table-enum demand), because naming a later class on a call the earlier gate refuses would be the wrong
  * class on a correct rejection.
  */
-private fun PreparedModel.subjectDefect(
+private fun TrackedFactBase.subjectDefect(
     call: ConditionCall,
     infix: String,
     declaringGroup: String,
-    element: DeclaredElement,
+    element: TrackedDeclaration,
     member: String,
 ): Finding? {
     val written = call.splitAtInfix(infix)?.first?.singleOrNull() ?: return null
     val reference = referencesIn(written, conditionLanguage).singleOrNull() ?: return null
     val resolved = resolveEntity(declaringGroup, reference.replace("*", ""), element.origin)
     val path = (resolved as? Reference.Resolved)?.path ?: return null
-    val target = elements.firstOrNull { it.path == path } ?: return null
+    val target = declarations().firstOrNull { it.path == path } ?: return null
     if (target.declaredKind == DeclaredKind.GROUP) {
         return finding(
             NO_GROUPS,
@@ -115,5 +115,5 @@ private fun PreparedModel.subjectDefect(
     )
 }
 
-private fun finding(code: String, explain: String, element: DeclaredElement): Finding =
+private fun finding(code: String, explain: String, element: TrackedDeclaration): Finding =
     Finding(FindingCategory.A12_CONSTRAINT, FindingSeverity.ERROR, code, explain, element.path)

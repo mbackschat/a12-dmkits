@@ -71,6 +71,18 @@ internal class TrackedFactBase(
         return model.resolveEntity(declaringGroup, written, origin)
     }
 
+    /**
+     * Every declared reference in the model, assembled from the per-declaration cursor.
+     *
+     * **A family that genuinely reads every declaration gets a model-wide transcript, and that is the truth
+     * rather than a defect.** What the cursor buys is ATTRIBUTION — the transcript says which declarations
+     * were read, one entry each — and per-declaration *reuse* then comes from keying a cell per declaration
+     * rather than from pretending the family read less than it did. Going through
+     * [TrackedDeclaration.declaredReference] is what keeps that attribution; reading the model's own list
+     * would give one opaque charge that no cell could ever narrow.
+     */
+    fun declaredReferences(): List<DeclaredReference> = declarations().mapNotNull { it.declaredReference() }
+
     val conditionLanguage: ConditionLanguage
         get() {
             transcript.record(FactRead.ModelMember(ModelFact.CONDITION_LANGUAGE))

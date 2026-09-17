@@ -952,10 +952,6 @@ public final class io/github/mbackschat/a12/dm/consistency/RepetitionKeyPlacemen
 	public static final fun repetitionKeyPlacementFindings (Lio/github/mbackschat/a12/dm/consistency/PreparedModel;)Ljava/util/List;
 }
 
-public final class io/github/mbackschat/a12/dm/consistency/RepetitionScopeGroupKt {
-	public static final fun repetitionScopeGroupFindings (Lio/github/mbackschat/a12/dm/consistency/PreparedModel;)Ljava/util/List;
-}
-
 public final class io/github/mbackschat/a12/dm/consistency/RepetitionWildcardKt {
 	public static final fun repetitionWildcardFindings (Lio/github/mbackschat/a12/dm/consistency/PreparedModel;)Ljava/util/List;
 }
@@ -1021,14 +1017,6 @@ public final class io/github/mbackschat/a12/dm/consistency/SumOfProductsOperands
 public final class io/github/mbackschat/a12/dm/consistency/SupportedCharactersKt {
 	public static final fun supportedCharacterFindings (Lio/github/mbackschat/a12/dm/consistency/PreparedModel;)Ljava/util/List;
 	public static final fun supportedCharacterGaps (Lio/github/mbackschat/a12/dm/consistency/PreparedModel;)Ljava/util/List;
-}
-
-public final class io/github/mbackschat/a12/dm/consistency/SuppressedWarningsKt {
-	public static final fun suppressedWarningFindings (Lio/github/mbackschat/a12/dm/consistency/PreparedModel;)Ljava/util/List;
-}
-
-public final class io/github/mbackschat/a12/dm/consistency/TableEnumOperandKt {
-	public static final fun tableEnumOperandFindings (Lio/github/mbackschat/a12/dm/consistency/PreparedModel;)Ljava/util/List;
 }
 
 public final class io/github/mbackschat/a12/dm/consistency/TemporalAggregateOperandsKt {

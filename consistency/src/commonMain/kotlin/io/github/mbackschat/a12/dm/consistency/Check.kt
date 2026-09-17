@@ -939,7 +939,7 @@ internal fun checkPrepared(
         prepared.conditionReferences().mapNotNull {
             it.target.asFinding(ReferenceRole.CONDITION_ENTITY, it.declaredAt, it.member, it.span)
         } + prepared.declarationSlotFindings() + prepared.computationAlternativeFindings() +
-        prepared.computationRoundingFindings() + prepared.suppressedWarningFindings() +
+        prepared.computationRoundingFindings() + tracked.suppressedWarningFindings() +
         tracked.ruleConditionAndTargetFindings() + prepared.variantFilterFindings() +
         tracked.conditionLexicalFindings() + tracked.conditionCompletenessFindings() +
         tracked.connectiveAgreementFindings() + tracked.conditionGrammarFindings() +
@@ -950,7 +950,7 @@ internal fun checkPrepared(
         tracked.fieldNameReservedSegmentFindings() +
         prepared.elementNameAlphabetFindings() + tracked.enumCategoryFindings() +
         prepared.supportedCharacterFindings() + tracked.enumTextForbiddenCharacterFindings() +
-        prepared.hintListValueFindings() + prepared.tableEnumOperandFindings() +
+        prepared.hintListValueFindings() + tracked.tableEnumOperandFindings() +
         tracked.hModelFormConstructFindings() +
         prepared.declaredPatternFindings() +
         prepared.emptyGroupOperandFindings() + prepared.errorFieldReferenceFindings() +
@@ -960,7 +960,7 @@ internal fun checkPrepared(
         prepared.computationCycleFindings() +
         prepared.computationSelfReadFindings() +
         prepared.repetitionKeyPlacementFindings() +
-        prepared.repetitionScopeGroupFindings() +
+        tracked.repetitionScopeGroupFindings() +
         prepared.repetitionKeyContainmentFindings() +
         prepared.filterWildcardFindings() +
         prepared.filterBodyGateFindings() +

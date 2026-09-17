@@ -89,6 +89,5 @@ private fun TrackedFactBase.indexFieldOf(group: String): String? = declarationAt
  * per-declaration: the whole-model `declaredReferences()` would make each of them depend on every rule's and
  * computation's body ([TrackedDeclaration.declaredReference]).
  */
-private fun TrackedFactBase.computedTargets(): List<DeclaredReference> = declarations()
-    .mapNotNull { it.declaredReference() }
+private fun TrackedFactBase.computedTargets(): List<DeclaredReference> = declaredReferences()
     .filter { it.role == ReferenceRole.COMPUTED_TARGET }
