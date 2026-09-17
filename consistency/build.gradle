@@ -771,21 +771,9 @@ def consistencyNpmPackDir = layout.buildDirectory.dir('consumer-tests/pack')
 // system PATH, so a bare `commandLine 'npm'` fails on a machine where Node is present and merely not
 // exported. This resolves the executable once and fails with what to do about it, instead of a bare
 // "command not found" from Exec.
-def resolveNodeToolDir = { String tool ->
-    def onPath = System.getenv('PATH')?.split(File.pathSeparator)?.find { new File(it, tool).canExecute() }
-    if (onPath) {
-        return new File(onPath)
-    }
-    def nvm = new File(System.getProperty('user.home'), '.nvm/versions/node')
-    def newest = nvm.isDirectory() ? nvm.listFiles()?.findAll { new File(it, "bin/$tool").canExecute() }
-            ?.toSorted { a, b -> a.name <=> b.name }?.last() : null
-    if (newest) {
-        return new File(newest, 'bin')
-    }
-    throw new GradleException("node and $tool are required for the consumer test and were found neither on " +
-            'PATH nor under ~/.nvm/versions/node — install Node, or export its bin directory on PATH.')
-}
-def resolveNodeTool = { String tool -> new File(resolveNodeToolDir(tool), tool) }
+// Node discovery moved to a shared script on 2026-09-17, when `:adapter`'s cold-Node perf lane became its
+// second consumer and needed the version PIN this module's calls deliberately do not ask for.
+apply from: rootProject.file('gradle/node-tools.gradle')
 
 // ─────────────────────────────────────────────────────────────────────────────────────────────────────────
 // What SHIPS, staged deliberately rather than packed where the compiler happened to write it.

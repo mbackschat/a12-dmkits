@@ -8,6 +8,34 @@ Dated measurements of the Kernel-free checker, newest first. **Every LATENCY her
 
 Results never land in a spec, and a measurement's home is not its explanation: the mechanism paragraphs below are marked as hypotheses where they are hypotheses.
 
+## 2026-09-17 — H5-f: the cold boundary on plain Node, the host nothing had measured <a id="cold-node-2026-09-17"></a>
+
+§8's cold row names **three hosts** — "installed package load through preparation and first complete consistency result, on JVM, plain Node and browser" — and every H5 lane built before today lives in `:adapter` and therefore on the JVM. So "measured" and "measured on the JVM" were indistinguishable across the whole set, which is why [the plan's row 8](PORTABLE-CONSISTENCY-IMPLEMENTATION-PLAN.md#stage-8) could record that "every budget H5's required list names is now set" while naming only the five **quantities**. The host was the constant nobody had varied — the same denominator error that row had already confessed one axis over, when the resources boundary read as done on one of its four required observations.
+
+**And the JVM arm does not cover this host even in part, for a second reason: it never used an installed package.** `:adapter:checkerColdStartPerfTest` resolves `:consistency` as a project dependency on a classpath the build assembles. This arm launches a fresh Node process whose whole program imports `a12-consistency` by package name out of a consumer project's `node_modules`, populated by `npm install` from the packed tarball — so it is the first cold observation of the artifact a consumer actually receives, on any host.
+
+**Lane:** `./build.sh :adapter:checkerColdNodePerfTest` (`adapter.perf.CheckerColdNodePerfTest`), one **fresh Node process per observation**, launched as **51 interleaved N/4N pairs** — the ratified paired estimator, median of the within-pair ratios. Runtime **Node v24.18.0**, pinned by `checkerNodeMajor` and gated by `NodeIdentity.requireSupported`; every child reports the version it ran on and the lane refuses a set spanning two. Same machine and flat synthesized workload as the JVM rows below, from the same generator. Every process's rejecting-finding set is compared whole, empty at both scales. **Revision:** `efcdaaf1d`.
+
+| quantity | 200 programs | 800 programs |
+|---|---|---|
+| `check` median — installed package load through complete report | 282.06 ms | 1 061.01 ms |
+| `check` p95 | 350.17 ms | 1 295.29 ms |
+| `check` min–max | 258.20–354.87 ms | 1 011.80–1 478.79 ms |
+| `process` median — from process start | 298.54 ms | 1 077.87 ms |
+| **median within-pair ratio** | — | **3.90×** |
+
+**The bar is the ratio and nothing else**, the posture [the ratification](PORTABLE-CONSISTENCY-IMPLEMENTATION-PLAN.md#h5-ratification) set for both timing boundaries. 3.90× over a 4× scale-up is essentially linear and sits under the ratified `PerfBounds.SUB_QUADRATIC_MAX` floor of 9.0 with 2.3× of headroom. No duration in that table is asserted or anchored, and asserting one would breach H5's ordering rule outright — the bar would be fitted to this lane's own first run. `SUB_QUADRATIC_MAX` escapes that because it was ratified as a mechanism long before this host had a lane.
+
+**What the cross-host numbers say, and what they do not.** Three ratios now exist on one workload at one pair of scales: JVM cold **2.75×**, Node cold **3.90×**, JVM prepared **5.33×**. The JVM cold entry below explains its own low ratio as per-process fixed cost deflating it, and names the discriminating case it lacks — "a child that reports its own class-loading time directly". This arm is **not** that case and must not be read as one, for two separate reasons. A different engine moves more than one variable, so at best this is a second carrier agreeing rather than a control. And the quantity that would do the discriminating is still not isolated on either host: `process − check` measures only the **pre-check** overhead — 16.48 ms here at 200 programs against the JVM arm's 45.12 ms — while each host's *loading* cost sits INSIDE its own `check` figure by construction (class loading on the JVM, module resolution and evaluation on Node), which is exactly what makes the timer honest and exactly what neither lane separates. So the ordering of the three ratios is consistent with the fixed-cost account and tests it no better than before; the within-host discriminator the JVM entry named is still the thing that would settle it.
+
+**One observation with no mechanism offered:** the two hosts cross over. Node is faster at 200 programs (281 ms against 308 ms) and slower at 800 (1 073 ms against 859 ms). Both figures are informative-only and neither is anchored, so the crossover is recorded rather than explained; nothing here measures why.
+
+**The assertion is controlled rather than assumed.** With the floor lowered to 2.0 — under the observed ratio, the rest of the lane untouched — the lane refused across all three independent re-measurements, at 3.912×, 3.915× and 3.920×, and failed on their median, which is the helper's acceptance rule. Without a control of that shape a growth assertion can pass while computing nothing. The by-product settles IF137's point 5 by measurement: **four independent estimates of this ratio — 3.90× in the accepted run, then 3.912/3.915/3.920 — span 0.5 %**, over 408 fresh Node processes in total. That is tighter than the JVM cold lane's 1.5 % across the same number of children, and no mechanism is offered for it here.
+
+**Read the ratio as the median of the within-pair ratios, not as the quotient of the two medians** — the ratified estimator's definition, and on this run the two differ visibly: 1 061.01 / 282.06 is 3.76×, while the median within-pair ratio is 3.90×. The estimator is the quantity that was ratified and the one under assertion; the per-scale medians are reported for the log line.
+
+**Two preflights ride the lane, because a timing over the wrong thing is worse than no timing.** The checker must accept the synthesized model at both scales, or these processes timed the rejection path. And the consumer's `node_modules` must hold the checker **and nothing else**: the delivery row's closure figure rests on the checker declaring no dependencies, so a second installed package would mean this load time describes a closure that figure does not. It holds at exactly one entry.
+
 ## 2026-09-17 — two shipped POMs named a coordinate nothing publishes <a id="pom-closure-2026-09-17"></a>
 
 F's row 8 lists **Java API compatibility**, and its oracle asks for a "compiled public API comparison where relevant". Following that to the checker found something one layer below the API dumps.

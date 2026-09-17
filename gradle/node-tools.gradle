@@ -1,0 +1,64 @@
+// Node discovery, shared because a PERFORMANCE lane needs a pinned runtime and a functional one does not.
+//
+// This was a closure in `consistency/build.gradle` until 2026-09-17, when `:adapter` acquired the second
+// consumer — H5's cold boundary on plain Node. Two copies of a tool resolver drift on the machine-specific half
+// (the nvm fallback), which is the half nobody notices is wrong until a different machine runs it.
+//
+// The added capability is `requiredMajor`. Without it the resolver returns the NEWEST installed Node, which is
+// not a pin at all: on this machine `.last()` over the nvm directory selects v26.5.0 today and something else
+// after the next `nvm install`. That is tolerable for a functional consumer test, where the question is whether
+// the package resolves and runs, and inadmissible for a timing lane — [H5](../docs/PORTABLE-CONSISTENCY-PROPOSAL.md)
+// point (2) of IF137's per-number gate requires the runtime to be pinned, and a JS engine change moves absolute
+// numbers the way a JIT change does on the JVM. So a pinned call names its major and a mismatch REFUSES rather
+// than measuring, exactly as `JdkIdentity.requireSupported` does for the JVM lanes.
+//
+// The unpinned form keeps its old behaviour verbatim, so the existing consumer tasks are unchanged by the
+// extraction. That the functional consumer tests therefore still run on whatever Node is newest is a real
+// exposure and a separate decision — it is recorded as a gap rather than fixed here, because choosing the
+// project's supported Node set is an owner call and not a side effect of adding a perf lane.
+
+ext.resolveNodeToolDir = { String tool, String requiredMajor = null ->
+    def majorOf = { String version -> (version =~ /v?(\d+)\./) ? (version =~ /v?(\d+)\./)[0][1] : null }
+    def onPath = System.getenv('PATH')?.split(File.pathSeparator)?.findAll { new File(it, tool).canExecute() }
+    // A pinned lookup must interrogate the candidate rather than trust its directory name: a `node` on PATH
+    // carries no version in its path, so the only way to know its major is to ask it.
+    if (requiredMajor != null) {
+        def matchingOnPath = onPath?.find { dir ->
+            def probe = new File(dir, 'node')
+            if (!probe.canExecute()) {
+                return false
+            }
+            def reported = new ProcessBuilder(probe.absolutePath, '--version')
+                    .redirectErrorStream(true).start().inputStream.text.trim()
+            majorOf(reported) == requiredMajor
+        }
+        if (matchingOnPath) {
+            return new File(matchingOnPath)
+        }
+    } else if (onPath) {
+        return new File(onPath.first())
+    }
+    def nvm = new File(System.getProperty('user.home'), '.nvm/versions/node')
+    def installed = nvm.isDirectory()
+            ? nvm.listFiles()?.findAll { new File(it, "bin/$tool").canExecute() }?.toSorted { a, b ->
+                  // Component-wise, because a lexical sort puts v9 above v24 — harmless while every installed
+                  // major is two digits, and wrong the moment one is not.
+                  def parts = { File dir -> dir.name.replaceFirst('^v', '').split('\\.').collect { it.toInteger() } }
+                  [parts(a), parts(b)].transpose().findResult { l, r -> l <=> r ?: null } ?: 0
+              }
+            : null
+    def selected = requiredMajor != null
+            ? installed?.findAll { majorOf(it.name) == requiredMajor }?.last()
+            : installed?.last()
+    if (selected) {
+        return new File(selected, 'bin')
+    }
+    def wanted = requiredMajor != null ? "Node $requiredMajor's $tool" : "node and $tool"
+    throw new GradleException("$wanted is required and was found neither on PATH nor under " +
+            "~/.nvm/versions/node — install it, or export its bin directory on PATH. Installed majors: " +
+            "${installed?.collect { it.name }?.join(', ') ?: '(none)'}.")
+}
+
+ext.resolveNodeTool = { String tool, String requiredMajor = null ->
+    new File(project.resolveNodeToolDir(tool, requiredMajor), tool)
+}

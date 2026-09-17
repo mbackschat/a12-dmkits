@@ -11,6 +11,10 @@ plugins {
 // unsupported conversion fails loud. Most paths only parse/format/read. ReferenceRewriter is the deliberate narrow
 // exception: it mutates one deserialized internal model behind a JSON-in/JSON-out boundary. This module is not part
 // of the shipped, polyglot core.
+// Node discovery, for H5-f's cold-Node perf lane alone — the pinned form, which is the whole reason the
+// resolver is shared rather than duplicated (gradle/node-tools.gradle carries the reasoning).
+apply from: rootProject.file('gradle/node-tools.gradle')
+
 repositories {
     mavenLocal()
     mavenCentral()
@@ -884,6 +888,48 @@ tasks.register('checkerColdStartPerfTest', Test) {
     }
     filter {
         includeTestsMatching 'io.github.mbackschat.a12.dm.adapter.perf.CheckerColdStartPerfTest'
+    }
+    // Measurements are observations, never reusable task outputs.
+    outputs.upToDateWhen { false }
+    outputs.cacheIf { false }
+}
+
+// H5-f: the cold boundary's PLAIN-NODE arm, which §8 names alongside the JVM one and which nothing measured
+// until 2026-09-17. Unlike H5-b above it asserts the ratified growth ratio, because that ratio was ratified as a
+// mechanism on 2026-09-16 — long before this host had a lane — so it gates without being fitted to what this
+// lane produced. No latency is asserted and no anchor written, on this runtime least of all.
+//
+// It depends on the packaged consumer install rather than on anything this module compiles: the quantity §8 asks
+// for is "installed package load", so the child must import the tarball out of `node_modules`.
+tasks.register('checkerColdNodePerfTest', Test) {
+    description = 'Measure the checker\'s cold first result from a plain Node process against the packed package.'
+    group = 'measurement'
+    dependsOn ':consistency:installPackedConsistencyInNodeConsumer'
+    testClassesDirs = sourceSets.test.output.classesDirs
+    classpath = sourceSets.test.runtimeClasspath
+    useJUnitPlatform()
+    // Single-fork, and the children are launched serially, for the reason H5-b's lane gives: this lane needs the
+    // machine, and parallelism inside it would measure contention.
+    maxParallelForks = 1
+    failFast = true
+    systemProperty 'perf.checker.coldnode', 'true'
+    // One value drives both halves of the pin — see `checkerNodeMajor` in gradle.properties for why a second
+    // copy would make the gate unfalsifiable rather than merely duplicated.
+    systemProperty 'perf.checker.coldnode.major', checkerNodeMajor
+    // Resolved at execution time, so configuring any other task cannot fail on a missing Node install.
+    doFirst {
+        systemProperty 'perf.checker.coldnode.node',
+            resolveNodeTool('node', checkerNodeMajor).absolutePath
+        systemProperty 'perf.checker.coldnode.project',
+            project(':consistency').layout.buildDirectory.dir('consumer-tests/node').get().asFile.absolutePath
+    }
+    // 51 for the same two reasons as the JVM lane: an odd count makes the paired median an observed ratio, and
+    // it holds the run at or above the cold boundary's floor of 50 observations per scale.
+    systemProperty 'perf.checker.coldnode.processes',
+        providers.gradleProperty('checkerColdNodeProcesses').getOrElse('51')
+    systemProperty 'perf.checker.coldnode.n', providers.gradleProperty('checkerColdNodeN').getOrElse('200')
+    filter {
+        includeTestsMatching 'io.github.mbackschat.a12.dm.adapter.perf.CheckerColdNodePerfTest'
     }
     // Measurements are observations, never reusable task outputs.
     outputs.upToDateWhen { false }
