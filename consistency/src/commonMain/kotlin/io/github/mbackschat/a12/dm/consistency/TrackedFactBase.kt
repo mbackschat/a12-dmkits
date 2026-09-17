@@ -41,6 +41,12 @@ internal class TrackedFactBase(
             transcript.record(FactRead.ModelMember(ModelFact.CONDITION_LANGUAGE))
             return model.conditionLanguage
         }
+
+    val declaredLocales: List<String>
+        get() {
+            transcript.record(FactRead.ModelMember(ModelFact.DECLARED_LOCALES))
+            return model.declaredLocales
+        }
 }
 
 /**

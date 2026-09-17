@@ -75,6 +75,35 @@ class ReadTranscriptTest {
     }
 
     /**
+     * Each model-wide accessor charges ITS OWN fact, which nothing else in the suite can catch.
+     *
+     * The 643 verdict tests cannot: an accessor recording a neighbour's [ModelFact] returns the right value
+     * and every verdict stays correct, while the cell it keys is keyed on a fact the family never read — a
+     * silent wrong-key bug, and the one class that makes reuse unsound rather than merely coarse. So an
+     * accessor arrives with a row here, and the assertion is on the fact recorded rather than on the value
+     * returned.
+     */
+    @Test
+    fun eachModelWideAccessorChargesItsOwnFact() {
+        val source = twoFieldModel(""""fieldType":{"type":"StringType"}""")
+        val actual = mapOf(
+            "conditionLanguage" to transcriptOf(source) { conditionLanguage }
+                .filterIsInstance<FactRead.ModelMember>().toSet(),
+            "declaredLocales" to transcriptOf(source) { declaredLocales }
+                .filterIsInstance<FactRead.ModelMember>().toSet(),
+        )
+
+        assertEquals(
+            mapOf(
+                "conditionLanguage" to setOf(FactRead.ModelMember(ModelFact.CONDITION_LANGUAGE)),
+                "declaredLocales" to setOf(FactRead.ModelMember(ModelFact.DECLARED_LOCALES)),
+            ),
+            actual,
+            "every accessor must charge the fact it names, or a cell is keyed on a fact nobody read",
+        )
+    }
+
+    /**
      * A body-scoped family charges bodies and no model-wide member, which is what makes it independent of one.
      *
      * The enum family's verdict reads an enumeration's own declaration and nothing about the model, so no

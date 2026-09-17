@@ -50,6 +50,7 @@ internal sealed interface FactRead {
  */
 internal enum class ModelFact {
     CONDITION_LANGUAGE,
+    DECLARED_LOCALES,
 }
 
 /**

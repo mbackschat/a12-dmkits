@@ -33,8 +33,8 @@ import kotlinx.serialization.json.JsonPrimitive
  * family reported two `MVK_MISSING_INTERNAL_VALUE` there until the row was run — a code A12 never raises on
  * that model, which is the pairing law transferred onto a shape the pairing never sees.
  */
-fun PreparedModel.enumCategoryFindings(): List<Finding> =
-    elements.filter { it.declaredKind == DeclaredKind.FIELD }.flatMap { field ->
+internal fun TrackedFactBase.enumCategoryFindings(): List<Finding> =
+    declarations().filter { it.declaredKind == DeclaredKind.FIELD }.flatMap { field ->
         val body = field.enumerationBody() ?: return@flatMap emptyList()
         val values = body.declaredEnumValues()?.takeIf { it.isNotEmpty() } ?: return@flatMap emptyList()
         val categories = body["categories"] as? JsonArray ?: return@flatMap emptyList()
@@ -51,8 +51,8 @@ fun PreparedModel.enumCategoryFindings(): List<Finding> =
  * declaration the family never paired. The gap is per DECLARATION rather than per model because that is
  * what the consumer needs: which enumeration was left to A12, not that some were.
  */
-fun PreparedModel.enumCategoryGaps(): List<CoverageGap> =
-    elements.filter { it.declaredKind == DeclaredKind.FIELD }.mapNotNull { field ->
+internal fun TrackedFactBase.enumCategoryGaps(): List<CoverageGap> =
+    declarations().filter { it.declaredKind == DeclaredKind.FIELD }.mapNotNull { field ->
         val unread = field.enumerationBody()?.unreadableHalf() ?: return@mapNotNull null
         CoverageGap(
             field.path,
@@ -123,7 +123,7 @@ internal fun JsonObject.declaredEnumValues(): List<String>? {
 }
 
 /** One category's unpaired elements, in the order A12 reports them: its own values first, then its tokens. */
-private fun DeclaredElement.misalignment(values: List<String>, category: JsonElement): List<Finding> {
+private fun TrackedDeclaration.misalignment(values: List<String>, category: JsonElement): List<Finding> {
     val declared = category as? JsonObject ?: return emptyList()
     val tokens = declared["values"] as? JsonArray ?: return emptyList()
     val named = (declared["name"] as? JsonPrimitive)?.takeIf { it.isString }?.content ?: return emptyList()
@@ -148,7 +148,7 @@ private fun DeclaredElement.misalignment(values: List<String>, category: JsonEle
  * under two categories draw FOUR; 1×2 and 2×1 each draw two, which a maximum and a sum predict as well. And
  * it counts duplicated VALUES rather than extra occurrences: a token declared three times draws one.
  */
-private fun DeclaredElement.spoiltPairing(values: List<String>, category: JsonElement): List<Finding> {
+private fun TrackedDeclaration.spoiltPairing(values: List<String>, category: JsonElement): List<Finding> {
     val declared = category as? JsonObject ?: return emptyList()
     val named = (declared["name"] as? JsonPrimitive)?.takeIf { it.isString }?.content ?: return emptyList()
     return values.groupingBy { it }.eachCount().filterValues { it > 1 }.keys.map { token ->
@@ -164,7 +164,7 @@ private fun DeclaredElement.spoiltPairing(values: List<String>, category: JsonEl
     }
 }
 
-private fun DeclaredElement.unclassified(category: String, value: String, tokens: Int) = Finding(
+private fun TrackedDeclaration.unclassified(category: String, value: String, tokens: Int) = Finding(
     FindingCategory.A12_CONSTRAINT,
     FindingSeverity.ERROR,
     "MVK_MISSING_CATEGORY_VALUE",
@@ -179,7 +179,7 @@ private fun DeclaredElement.unclassified(category: String, value: String, tokens
  * them draw two). Findings identical in code, path and text would be folded by any consumer deduplicating
  * on those three, which would silently discard the multiplicity this family exists to reproduce.
  */
-private fun DeclaredElement.unmatched(category: String, token: String, values: Int) = Finding(
+private fun TrackedDeclaration.unmatched(category: String, token: String, values: Int) = Finding(
     FindingCategory.A12_CONSTRAINT,
     FindingSeverity.ERROR,
     "MVK_MISSING_INTERNAL_VALUE",

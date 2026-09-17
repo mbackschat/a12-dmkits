@@ -948,8 +948,8 @@ internal fun checkPrepared(
         prepared.presentationMemberFindings() + prepared.stringSlotFindings() +
         prepared.fieldTypeBindingFindings() + prepared.temporalConfigFindings() +
         prepared.fieldNameReservedSegmentFindings() +
-        prepared.elementNameAlphabetFindings() + prepared.enumCategoryFindings() +
-        prepared.supportedCharacterFindings() + prepared.enumTextForbiddenCharacterFindings() +
+        prepared.elementNameAlphabetFindings() + tracked.enumCategoryFindings() +
+        prepared.supportedCharacterFindings() + tracked.enumTextForbiddenCharacterFindings() +
         prepared.hintListValueFindings() + prepared.tableEnumOperandFindings() +
         prepared.hModelFormConstructFindings() +
         prepared.declaredPatternFindings() +
@@ -1016,7 +1016,7 @@ internal fun checkPrepared(
         prepared.messageGroupParameterFindings() +
         prepared.messageValueSuffixFindings() +
         prepared.stringTypeMessageFindings() + prepared.stringTypeParameterFindings() +
-        prepared.numberTypeDigitFindings() + prepared.enumValueLabelFindings() +
+        prepared.numberTypeDigitFindings() + tracked.enumValueLabelFindings() +
         tracked.enumSpecialValueFindings())
         .filterNot { it.at in stopped && it.code !in ERROR_TARGET_CODES }
         .filterNot { it.at in resolvedFirst && it.code in CONDITION_TEXT_CODES }
@@ -1089,8 +1089,8 @@ internal fun checkPrepared(
             CheckFamily.ERROR_TEXT_SEMANTIC_INDEX, CheckFamily.ERROR_TEXT_CATEGORY_SUFFIX,
             CheckFamily.ERROR_TEXT_INDEX_TERMINAL),
         gaps = prepared.gaps() + prepared.emptyFactBase() + findings.buildBlocked() +
-            prepared.variantFilterGaps() + prepared.enumCategoryGaps() +
-            prepared.supportedCharacterGaps() + prepared.enumTextForbiddenCharacterGaps() +
+            prepared.variantFilterGaps() + tracked.enumCategoryGaps() +
+            prepared.supportedCharacterGaps() + tracked.enumTextForbiddenCharacterGaps() +
             prepared.hintListValueGaps() + prepared.hModelFormConstructGaps() +
             prepared.fieldTypeBindingGaps() +
             prepared.typeDefinitionBodyGaps() + prepared.declaredPatternGaps() + UNREAD_MEMBERS + UNIMPLEMENTED_FAMILIES,

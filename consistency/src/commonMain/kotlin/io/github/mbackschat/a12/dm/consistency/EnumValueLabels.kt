@@ -26,14 +26,14 @@ import kotlinx.serialization.json.JsonObject
  * all — an empty `label` array counts as carrying none — draw `MVK_COUNT_OF_VALUES_INVALID`, and A12 reports
  * that INSTEAD of the locale code, so this family does the same.
  */
-fun PreparedModel.enumValueLabelFindings(): List<Finding> =
-    elements.filter { it.declaredKind == DeclaredKind.FIELD }.flatMap { field ->
+internal fun TrackedFactBase.enumValueLabelFindings(): List<Finding> =
+    declarations().filter { it.declaredKind == DeclaredKind.FIELD }.flatMap { field ->
         val values = field.enumerationBody()?.get("values") as? JsonArray ?: return@flatMap emptyList()
         val entries = values.map { it as? JsonObject }
         duplicateTokenFindings(field, entries) + labelFindings(field, entries)
     }
 
-private fun duplicateTokenFindings(field: DeclaredElement, values: List<JsonObject?>): List<Finding> {
+private fun duplicateTokenFindings(field: TrackedDeclaration, values: List<JsonObject?>): List<Finding> {
     val tokens = values.mapNotNull { it?.string("value") }
     val repeated = tokens.groupingBy { it }.eachCount().filterValues { it > 1 }.keys
     return repeated.map { token ->
@@ -46,8 +46,8 @@ private fun duplicateTokenFindings(field: DeclaredElement, values: List<JsonObje
     }
 }
 
-private fun PreparedModel.labelFindings(
-    field: DeclaredElement,
+private fun TrackedFactBase.labelFindings(
+    field: TrackedDeclaration,
     values: List<JsonObject?>,
 ): List<Finding> {
     val labelled = values.map { (it?.get("label") as? JsonArray)?.takeIf { list -> list.isNotEmpty() } }
@@ -102,7 +102,7 @@ private fun PreparedModel.labelFindings(
  * Under-reporting the pair is safe; naming a class on an unmeasured shape is not.
  */
 private fun repeatedLabelFindings(
-    field: DeclaredElement,
+    field: TrackedDeclaration,
     texts: List<Map<String, JsonObject>>,
 ): List<Finding> {
     val perLocale = mutableMapOf<String, MutableList<String>>()
@@ -126,5 +126,5 @@ private fun repeatedLabelFindings(
     }
 }
 
-private fun finding(field: DeclaredElement, code: String, explain: String) =
+private fun finding(field: TrackedDeclaration, code: String, explain: String) =
     Finding(FindingCategory.A12_CONSTRAINT, FindingSeverity.ERROR, code, explain, field.path)

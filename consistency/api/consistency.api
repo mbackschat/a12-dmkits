@@ -579,26 +579,12 @@ public final class io/github/mbackschat/a12/dm/consistency/EntityListPreGatesKt 
 	public static final fun entityListPreGateFindings (Lio/github/mbackschat/a12/dm/consistency/PreparedModel;)Ljava/util/List;
 }
 
-public final class io/github/mbackschat/a12/dm/consistency/EnumCategoriesKt {
-	public static final fun enumCategoryFindings (Lio/github/mbackschat/a12/dm/consistency/PreparedModel;)Ljava/util/List;
-	public static final fun enumCategoryGaps (Lio/github/mbackschat/a12/dm/consistency/PreparedModel;)Ljava/util/List;
-}
-
 public final class io/github/mbackschat/a12/dm/consistency/EnumComputationSourceKt {
 	public static final fun enumComputationSourceFindings (Lio/github/mbackschat/a12/dm/consistency/PreparedModel;)Ljava/util/List;
 }
 
 public final class io/github/mbackschat/a12/dm/consistency/EnumDisplayComparabilityKt {
 	public static final fun enumDisplayComparabilityFindings (Lio/github/mbackschat/a12/dm/consistency/PreparedModel;)Ljava/util/List;
-}
-
-public final class io/github/mbackschat/a12/dm/consistency/EnumTextForbiddenCharactersKt {
-	public static final fun enumTextForbiddenCharacterFindings (Lio/github/mbackschat/a12/dm/consistency/PreparedModel;)Ljava/util/List;
-	public static final fun enumTextForbiddenCharacterGaps (Lio/github/mbackschat/a12/dm/consistency/PreparedModel;)Ljava/util/List;
-}
-
-public final class io/github/mbackschat/a12/dm/consistency/EnumValueLabelsKt {
-	public static final fun enumValueLabelFindings (Lio/github/mbackschat/a12/dm/consistency/PreparedModel;)Ljava/util/List;
 }
 
 public final class io/github/mbackschat/a12/dm/consistency/ErrorFieldReferenceKt {

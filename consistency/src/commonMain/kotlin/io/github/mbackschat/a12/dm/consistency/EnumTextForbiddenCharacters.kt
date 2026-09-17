@@ -36,8 +36,8 @@ import kotlinx.serialization.json.JsonPrimitive
  * *"A category name starts with a letter and may contain only letters, digits and the underscore"*, so the
  * character that triggers it is incidental and reporting it here would state the wrong law.
  */
-fun PreparedModel.enumTextForbiddenCharacterFindings(): List<Finding> =
-    elements.filter { it.declaredKind == DeclaredKind.FIELD }.flatMap { field ->
+internal fun TrackedFactBase.enumTextForbiddenCharacterFindings(): List<Finding> =
+    declarations().filter { it.declaredKind == DeclaredKind.FIELD }.flatMap { field ->
         val body = field.enumerationBody() ?: return@flatMap emptyList()
         val texts = declaredTexts(body)
         val broken = texts.filter { it.text.any(::isALineBreak) }
@@ -55,8 +55,8 @@ fun PreparedModel.enumTextForbiddenCharacterFindings(): List<Finding> =
  * Per DECLARATION for the ordinary reason: a consumer needs to know which enumeration was left to A12, not
  * that some were.
  */
-fun PreparedModel.enumTextForbiddenCharacterGaps(): List<CoverageGap> =
-    elements.filter { it.declaredKind == DeclaredKind.FIELD }.mapNotNull { field ->
+internal fun TrackedFactBase.enumTextForbiddenCharacterGaps(): List<CoverageGap> =
+    declarations().filter { it.declaredKind == DeclaredKind.FIELD }.mapNotNull { field ->
         val unread = field.enumerationBody()?.unreadableText() ?: return@mapNotNull null
         CoverageGap(
             field.path,
@@ -75,7 +75,7 @@ private enum class TextCarrier(val code: String, val describe: String) {
 private data class DeclaredText(val carrier: TextCarrier, val text: String)
 
 /** Every text of this enumeration A12 asks the question of, in the order it asks. */
-private fun PreparedModel.declaredTexts(body: JsonObject): List<DeclaredText> {
+private fun TrackedFactBase.declaredTexts(body: JsonObject): List<DeclaredText> {
     val values = body["values"] as? JsonArray ?: return emptyList()
     val fromValues = values.filterIsInstance<JsonObject>().flatMap { entry ->
         val value = entry.string("value")?.let { DeclaredText(TextCarrier.INTERNAL_VALUE, it) }
@@ -90,7 +90,7 @@ private fun PreparedModel.declaredTexts(body: JsonObject): List<DeclaredText> {
 }
 
 /** …and only for a locale the model DECLARES, which is the over-rejection this family must not make. */
-private fun PreparedModel.declaredLabels(entry: JsonObject): List<DeclaredText> =
+private fun TrackedFactBase.declaredLabels(entry: JsonObject): List<DeclaredText> =
     (entry["label"] as? JsonArray).orEmpty().filterIsInstance<JsonObject>()
         .filter { label -> label.string("locale")?.let { localeKeyOrNull(it) } in declaredLocales }
         .mapNotNull { label -> label.string("text") }
@@ -98,7 +98,7 @@ private fun PreparedModel.declaredLabels(entry: JsonObject): List<DeclaredText> 
 
 private fun isALineBreak(character: Char): Boolean = character == '\n' || character == '\r'
 
-private fun DeclaredElement.lineBreakFinding(broken: DeclaredText): Finding = Finding(
+private fun TrackedDeclaration.lineBreakFinding(broken: DeclaredText): Finding = Finding(
     FindingCategory.A12_CONSTRAINT,
     FindingSeverity.ERROR,
     "RK_ENUM_TEXT_LINE_BREAK",
@@ -108,7 +108,7 @@ private fun DeclaredElement.lineBreakFinding(broken: DeclaredText): Finding = Fi
     path,
 )
 
-private fun DeclaredElement.codedFinding(declared: DeclaredText): Finding = Finding(
+private fun TrackedDeclaration.codedFinding(declared: DeclaredText): Finding = Finding(
     FindingCategory.A12_CONSTRAINT,
     FindingSeverity.ERROR,
     declared.carrier.code,
