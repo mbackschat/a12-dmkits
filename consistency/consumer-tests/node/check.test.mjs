@@ -9,11 +9,11 @@
 // whole point of packing a tarball first: a relative import would prove the compiler emitted a file, where
 // this proves a consumer's `node_modules` resolution reaches the same code.
 //
-// The CASES are not here. They live in `../shared/cases.ts` and the browser arm runs the same ones, because
-// F asks for "the same corpus" through Node and browser and two hand-written files cannot be shown to be the
-// same. This file supplies a host: it resolves the package, reads the fixture off disk, and projects each
-// shared verdict into `node:test`. `cases.ts` is TypeScript imported directly — Node strips the types, so
-// this arm still needs no build step.
+// Neither the CASES nor the FIXTURE are here. Both live under `../shared/` and the browser arm runs the same
+// ones, because F asks for "the same corpus" through Node and browser and two hand-written files cannot be
+// shown to be the same. This file supplies a host: it resolves the package, reads the shared fixture off disk,
+// and projects each shared verdict into `node:test`. `cases.ts` is TypeScript imported directly — Node strips
+// the types, so this arm still needs no build step.
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
@@ -21,7 +21,7 @@ import { readFileSync } from 'node:fs';
 import { checkEditJson, checkModelJson } from 'a12-consistency';
 import { runCases } from '../shared/cases.ts';
 
-const soundModel = readFileSync(new URL('./models/storefront.dm.json', import.meta.url), 'utf8');
+const soundModel = readFileSync(new URL('../shared/models/storefront.dm.json', import.meta.url), 'utf8');
 const outcomes = runCases({ checkModelJson, checkEditJson }, soundModel);
 
 // A case set that silently became empty would make every `test()` below vanish and the file still pass — the

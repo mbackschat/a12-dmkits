@@ -627,23 +627,25 @@ def sharedConsumerSourceDir = file('consumer-tests/shared')
 def sharedConsumerBuildDir = layout.buildDirectory.dir('consumer-tests/shared')
 def consistencyNpmPackDir = layout.buildDirectory.dir('consumer-tests/pack')
 
-// node and npm are commonly installed per-user (nvm) rather than on the system PATH, so a bare `commandLine
-// 'npm'` fails on a machine where Node is present and merely not exported. This resolves the bin directory
-// once and fails with what to do about it, instead of a bare "command not found" from Exec.
-def resolveNodeBinDir = {
-    def onPath = System.getenv('PATH')?.split(File.pathSeparator)?.find { new File(it, 'npm').canExecute() }
+// node, npm and pnpm are commonly installed per-user (nvm, or nvm's bundled corepack) rather than on the
+// system PATH, so a bare `commandLine 'npm'` fails on a machine where Node is present and merely not
+// exported. This resolves the executable once and fails with what to do about it, instead of a bare
+// "command not found" from Exec.
+def resolveNodeToolDir = { String tool ->
+    def onPath = System.getenv('PATH')?.split(File.pathSeparator)?.find { new File(it, tool).canExecute() }
     if (onPath) {
         return new File(onPath)
     }
     def nvm = new File(System.getProperty('user.home'), '.nvm/versions/node')
-    def newest = nvm.isDirectory() ? nvm.listFiles()?.findAll { new File(it, 'bin/npm').canExecute() }
+    def newest = nvm.isDirectory() ? nvm.listFiles()?.findAll { new File(it, "bin/$tool").canExecute() }
             ?.toSorted { a, b -> a.name <=> b.name }?.last() : null
     if (newest) {
         return new File(newest, 'bin')
     }
-    throw new GradleException('node and npm are required for the consumer test and were found neither on ' +
+    throw new GradleException("node and $tool are required for the consumer test and were found neither on " +
             'PATH nor under ~/.nvm/versions/node — install Node, or export its bin directory on PATH.')
 }
+def resolveNodeTool = { String tool -> new File(resolveNodeToolDir(tool), tool) }
 
 def packConsistencyNpmPackage = tasks.register('packConsistencyNpmPackage', Exec) {
     group = 'verification'
@@ -653,7 +655,7 @@ def packConsistencyNpmPackage = tasks.register('packConsistencyNpmPackage', Exec
     workingDir distDir
     doFirst {
         consistencyNpmPackDir.get().asFile.mkdirs()
-        commandLine new File(resolveNodeBinDir(), 'npm').absolutePath, 'pack',
+        commandLine resolveNodeTool('npm').absolutePath, 'pack',
                 '--pack-destination', consistencyNpmPackDir.get().asFile.absolutePath
     }
     outputs.upToDateWhen { false }
@@ -808,7 +810,7 @@ def installPackedConsistencyInNodeConsumer = tasks.register('installPackedConsis
     dependsOn packConsistencyNpmPackage, prepareNodeConsumer
     workingDir nodeConsumerBuildDir
     doFirst {
-        commandLine new File(resolveNodeBinDir(), 'npm').absolutePath, 'install',
+        commandLine resolveNodeTool('npm').absolutePath, 'install',
                 '--no-audit', '--no-fund', resolvePackedConsistencyTarball().absolutePath
     }
     outputs.upToDateWhen { false }
@@ -821,7 +823,125 @@ tasks.register('nodeConsumerTest', Exec) {
     dependsOn prepareSharedConsumerCases
     workingDir nodeConsumerBuildDir
     doFirst {
-        commandLine new File(resolveNodeBinDir(), 'npm').absolutePath, 'test'
+        commandLine resolveNodeTool('npm').absolutePath, 'test'
+    }
+    outputs.upToDateWhen { false }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────────────────────────────────
+// The BROWSER consumer test: F's third arm, and the one a JVM or Node lane cannot stand in for.
+//
+// H5 and F name the browser as a target, and F's acceptance asks for the same corpus "through Java, packed
+// Node and browser". The first two arms exercise a CommonJS-free ES module under Node's loader; a browser
+// adds a bundler, a document, `fetch`, and no `node:*` anything. None of that is observable from the other
+// arms, and the module's own `jsBrowserTest` deliberately does not cover it either — Karma would test the
+// COMPILER'S OUTPUT, where F's acceptance names the packed tarball (the measurement is on `browser()` above).
+//
+// So this is the Node arm's shape with a browser's spellings: pack a real tarball, install it into a fresh
+// project, import it BY PACKAGE NAME, and run the SHARED cases — then bundle the result with Vite and replay
+// it in a real system Chrome. It is not on `check` for the same reason the Node arm is not: it needs node,
+// pnpm and a browser.
+//
+// pnpm rather than npm, matching `:interpreter`'s browser consumer: the dev tools install from a store this
+// build owns, so a repeat run resolves from disk, and `pnpm add <tarball>` keeps the packed artifact the only
+// thing that is ever installed from a file path.
+def browserConsumerSourceDir = file('consumer-tests/browser')
+def browserConsumerBuildDir = layout.buildDirectory.dir('consumer-tests/browser')
+def browserConsumerStoreDir = layout.buildDirectory.dir('consumer-tests/browser-pnpm-store')
+
+// Executable sources in this project are TypeScript, and the guard exists because the alternative is
+// invisible: a stray `.js` beside a `.ts` compiles and runs, and nothing else would ever say which one the
+// page loaded. `:interpreter` carries the same guard on its own browser consumer.
+def verifyConsistencyBrowserTypeScriptSources = tasks.register('verifyConsistencyBrowserTypeScriptSources') {
+    group = 'verification'
+    description = 'Reject authored JavaScript in the TypeScript browser consumer.'
+    inputs.dir(browserConsumerSourceDir)
+            .withPropertyName('browserConsumerSources')
+            .withPathSensitivity(org.gradle.api.tasks.PathSensitivity.RELATIVE)
+    doLast {
+        def authored = fileTree(browserConsumerSourceDir) {
+            include '**/*.js'
+            include '**/*.mjs'
+            // `build/` and `node_modules/` are this project's own OUTPUT when it has been staged and run in
+            // place; only authored sources are the subject.
+            exclude 'build/**'
+            exclude 'node_modules/**'
+            exclude 'dist/**'
+        }.files.toSorted { left, right -> left.path <=> right.path }
+        if (!authored.isEmpty()) {
+            def relative = authored.collect {
+                browserConsumerSourceDir.toPath().relativize(it.toPath()).toString()
+            }.join(', ')
+            throw new GradleException("browser consumer executable sources must be TypeScript: $relative")
+        }
+    }
+}
+
+def prepareBrowserConsumer = tasks.register('prepareBrowserConsumer', Sync) {
+    group = 'verification'
+    description = 'Stage a disposable copy of the browser consumer project, with the shared fixture served.'
+    from browserConsumerSourceDir
+    // Vite serves `public/` at the site root, and the page fetches `models/storefront.dm.json`. The fixture is
+    // copied from the SHARED tree rather than owned here, so the bytes the browser fetches are the bytes the
+    // Node arm reads — "the same corpus" covering the input as well as the cases.
+    from(new File(sharedConsumerSourceDir, 'models')) {
+        into 'public/models'
+    }
+    into browserConsumerBuildDir
+    outputs.upToDateWhen { false }
+    doFirst {
+        // A previous run leaves node_modules, dist and a build dir; Sync would walk them, and a stale install
+        // would let the replay pass against a package this build did not produce.
+        project.delete(browserConsumerBuildDir)
+    }
+}
+
+def installBrowserConsumerDependencies = tasks.register('installBrowserConsumerDependencies', Exec) {
+    group = 'verification'
+    description = 'Resolve the browser consumer development tools (Vite, tsc, playwright-core).'
+    dependsOn prepareBrowserConsumer
+    workingDir browserConsumerBuildDir
+    doFirst {
+        def binDir = resolveNodeToolDir('pnpm')
+        // pnpm's nvm/corepack shim is a node script, so node itself must be reachable from the child process.
+        environment 'PATH', "${binDir.absolutePath}${File.pathSeparator}${System.getenv('PATH')}"
+        commandLine new File(binDir, 'pnpm').absolutePath, 'install',
+                '--config.confirmModulesPurge=false',
+                '--frozen-lockfile=false',
+                '--lockfile=false',
+                '--store-dir', browserConsumerStoreDir.get().asFile.absolutePath
+    }
+    outputs.upToDateWhen { false }
+}
+
+def installPackedConsistencyInBrowserConsumer = tasks.register('installPackedConsistencyInBrowserConsumer', Exec) {
+    group = 'verification'
+    description = 'Install the packed tarball into the staged browser consumer, as a consumer would.'
+    dependsOn packConsistencyNpmPackage, installBrowserConsumerDependencies
+    workingDir browserConsumerBuildDir
+    doFirst {
+        def binDir = resolveNodeToolDir('pnpm')
+        environment 'PATH', "${binDir.absolutePath}${File.pathSeparator}${System.getenv('PATH')}"
+        commandLine new File(binDir, 'pnpm').absolutePath, 'add',
+                '--save-exact',
+                '--lockfile=false',
+                '--store-dir', browserConsumerStoreDir.get().asFile.absolutePath,
+                resolvePackedConsistencyTarball().absolutePath
+    }
+    outputs.upToDateWhen { false }
+}
+
+tasks.register('browserConsumerTest', Exec) {
+    group = 'verification'
+    description = 'Replay the shared consumer cases against the packed npm package in a real Chrome.'
+    dependsOn verifyConsistencyBrowserTypeScriptSources
+    dependsOn installPackedConsistencyInBrowserConsumer
+    dependsOn prepareSharedConsumerCases
+    workingDir browserConsumerBuildDir
+    doFirst {
+        def binDir = resolveNodeToolDir('pnpm')
+        environment 'PATH', "${binDir.absolutePath}${File.pathSeparator}${System.getenv('PATH')}"
+        commandLine new File(binDir, 'pnpm').absolutePath, 'run', 'verify'
     }
     outputs.upToDateWhen { false }
 }

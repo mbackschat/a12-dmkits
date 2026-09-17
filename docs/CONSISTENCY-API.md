@@ -216,7 +216,7 @@ It takes exactly the sources `ModelWorkspace.fromSources` takes, so asking the s
 
 ## Calling it from Node
 
-The worked example is [`consistency/consumer-tests/node`](../consistency/consumer-tests/node), which is executable rather than illustrative: `./build.sh :consistency:nodeConsumerTest` packs the library into a real npm tarball, clean-installs it into a staged copy of that project, and runs it. It needs `node` and `npm` and reaches no network — the package declares no runtime dependency.
+The worked example is [`consistency/consumer-tests/node`](../consistency/consumer-tests/node), which is executable rather than illustrative: `./build.sh :consistency:nodeConsumerTest` packs the library into a real npm tarball, clean-installs it into a staged copy of that project, and runs it. It needs `node` and `npm` and reaches no network — the package declares no runtime dependency. Its cases are not in it: they live in [`consumer-tests/shared/cases.ts`](../consistency/consumer-tests/shared/cases.ts), which the browser example below runs too, so the two arms share a corpus rather than agreeing by inspection.
 
 That test is also the only thing in the build that can catch an unconsumable artifact. Every other test has the checker on the compile classpath by construction, and the JS target compiled green for the module's whole life while emitting nothing importable.
 
@@ -234,6 +234,21 @@ That test is also the only thing in the build that can catch an unconsumable art
 | `UNRECOGNIZED` | a `status` this gate does not know | fail closed; a gate pinned to an older package must not read an unfamiliar status as a pass |
 
 **The operational test is `checksCompleted` being empty, never "a diagnostic arrived"** — the distinction a consumer is most likely to get wrong. A `DECLARATION_NOT_WELL_FORMED` diagnostic rides along with a fully completed run: one declaration could not be read and its siblings were checked anyway. Treating that as a tool failure would fail the build for the wrong reason and send the author looking in the wrong place, which is an over-rejection in the consumer rather than in the checker and lands on them just the same.
+
+## Calling it from a browser
+
+**Nothing changes, and that is the finding.** The published npm package is Kotlin/JS's Node production distribution, and it names no host API at all — zero `require(`, `node:` or `process.` references across its six ES modules — so a bundler consumes it unchanged. Import the same two functions, `fetch` the model text instead of reading a file, and call them:
+
+```ts
+import { checkEditJson, checkModelJson } from 'a12-consistency';
+
+const source = await (await fetch('models/storefront.dm.json')).text();
+const report = JSON.parse(checkModelJson(source));
+```
+
+The worked example is [`consistency/consumer-tests/browser`](../consistency/consumer-tests/browser), executable like the Node one: `./build.sh :consistency:browserConsumerTest` packs the tarball, installs it into a staged copy of that project, bundles it with Vite, and replays the shared cases in a real system Chrome. It needs `pnpm` and a browser, so it is off `:consistency:check` — and a missing browser fails it rather than skipping it, because a browser arm that passes without a browser establishes nothing.
+
+Two things the example deliberately does not offer. It is a **test fixture, not a showcase**: the page renders verdicts as JSON for its driver to read, and nothing more. And its bundle size is not a bar — the checker's one absolute bar is the packed tarball's byte count, and no tree-shaking is promised ([the measurement, with what it is not](PORTABLE-CONSISTENCY-RESULTS.md#browser-2026-09-17)).
 
 ## What this API does not promise
 

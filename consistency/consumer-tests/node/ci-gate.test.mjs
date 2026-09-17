@@ -20,7 +20,8 @@ import { classify, ExitCode, Outcome, runGate } from './ci-gate.mjs';
 
 const here = fileURLToPath(new URL('.', import.meta.url));
 const gate = join(here, 'ci-gate.mjs');
-const soundPath = join(here, 'models', 'storefront.dm.json');
+// The one committed fixture, owned by neither arm: `consumer-tests/shared/models`, staged as a sibling.
+const soundPath = join(here, '..', 'shared', 'models', 'storefront.dm.json');
 const soundModel = readFileSync(soundPath, 'utf8');
 
 /** A scratch directory, so the broken and unreadable sources are real files the gate opens by path. */

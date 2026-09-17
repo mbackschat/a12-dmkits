@@ -8,6 +8,25 @@ Dated measurements of the Kernel-free checker, newest first. **Every LATENCY her
 
 Results never land in a spec, and a measurement's home is not its explanation: the mechanism paragraphs below are marked as hypotheses where they are hypotheses.
 
+## 2026-09-17 — F's browser arm, replayed against the packed tarball in real Chrome <a id="browser-2026-09-17"></a>
+
+`:consistency:browserConsumerTest`, macOS 25.6 (arm64), node v24.18.0, pnpm 11.20.0, Vite 8.1.5, system **Google Chrome 153.0.8010.48**, headless. Packed `a12-consistency@0.13.0`.
+
+| what was measured | value |
+|---|---|
+| shared cases replayed in Chrome | **5**, all passing |
+| bundled JS | **654.88 kB**, 195.84 kB gzip, 10 modules transformed |
+| bundled HTML | 0.98 kB, 0.57 kB gzip |
+| host-API references in the packed ES modules (`require(`, `node:`, `process.`) | **0** across all 6 |
+| end to end, cold (pnpm install + pack + bundle + Chrome) | **21 s** |
+| end to end, warm store | **13 s** |
+
+**The zero in the third row is why this arm exists and is the one number that was taken FIRST.** The packed tarball is Kotlin/JS's *Node* production distribution, so the question ahead of any wiring was whether it names a host API — one `node:` import and a browser bundle could not have loaded it. It names none, in any of the six modules, which is what made the arm a wiring job rather than a porting job.
+
+**The mutant that controls both arms.** `put("start", located.start + 1)` in `ReportJson`'s span emission is asserted by the shared cases and by nothing else in either consumer project. It took the Node arm red (`the span sliced "oSuchField"`) and then Chrome red on the same case, `1 of 5 shared case(s) failed in the browser`. Both arms therefore fail on a real defect, and the shared module is demonstrably what each of them runs.
+
+**What the bundle size is NOT.** It is a dated observation of a test fixture's bundle, not a delivery bar: the page is a replay harness, Vite is configured with no code-splitting or manual chunking, and F's non-goals rule out any tree-shaking assumption. The checker's one absolute bar remains the packed tarball's byte count ([the delivery entry](#delivery-2026-09-16)). Read this row for the order of magnitude a browser consumer pays today, never as a ceiling anything holds.
+
 ## 2026-09-17 — the resources boundary's RETAINED-MEMORY half, which nobody had measured <a id="memory-2026-09-17"></a>
 
 **Lane:** `./build.sh :adapter:checkerMemoryPerfTest` (`adapter.perf.CheckerRetainedMemoryPerfTest`), one JVM at a fixed 1 GiB heap under `-XX:+UseSerialGC`, the same synthesized flat workload the growth lanes use, `JdkIdentity.requireSupported` gating it. **Both growth ratios are asserted** against `PerfBounds.SUB_QUADRATIC_MAX` as of 2026-09-17; no byte count is, and none will be ([the disposition](PORTABLE-CONSISTENCY-IMPLEMENTATION-PLAN.md#memory-disposition)).

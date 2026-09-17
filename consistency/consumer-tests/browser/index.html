@@ -1,0 +1,22 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>A12 Consistency Checker — packaged browser replay</title>
+  </head>
+  <body>
+    <h1>A12 consistency checker — packaged browser replay</h1>
+    <!--
+      This page is a TEST FIXTURE, not a showcase. It exists so F's consumer corpus can be replayed against the
+      packed npm package inside a real browser, and the driver reads its results out of the DOM rather than off
+      a global, because reading the DOM proves the page also rendered them.
+
+      `data-state` starts at `running` and the driver waits for it to change, so a page that never finished
+      cannot be mistaken for one that found nothing wrong.
+    -->
+    <p id="status" data-state="running">Loading the packed checker…</p>
+    <pre id="outcomes"></pre>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
