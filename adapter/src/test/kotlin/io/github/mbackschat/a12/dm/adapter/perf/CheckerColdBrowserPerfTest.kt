@@ -21,9 +21,11 @@ import org.junit.jupiter.api.condition.EnabledIfSystemProperty
  * **The runtime these numbers describe is CHROME, and this arm closes H5's pinned-runtime point by ATTRIBUTION
  * rather than by a pin.** The other two arms pin theirs — [JdkIdentity] the JVM, [NodeIdentity] the Node major —
  * but the browser here is the SYSTEM browser on purpose, which no build file can pin, so instead every
- * observation carries the build it ran on and the lane refuses a set spanning two. That keeps a future Chrome
- * update from silently re-basing the published figures with nothing in the record naming which build produced
- * them. The `node` that drives Playwright is pinned all the same, and is not the runtime under observation.
+ * observation carries the build it ran on and the lane refuses a set that carries no single non-blank build.
+ * That keeps a future Chrome update from silently re-basing the published figures with nothing in the record
+ * naming which build produced them. What it deliberately does NOT claim is a refusal of two differing builds:
+ * the sampler launches Chrome once, so no input can produce a second value and such a check could not fail.
+ * The `node` that drives Playwright is pinned all the same, and is not the runtime under observation.
  *
  * **The measurement is taken in a fresh browsing CONTEXT per observation, not a fresh Chrome.** A new context
  * starts with an empty module registry and an empty HTTP cache, which is where the cold claim lives; relaunching
@@ -128,14 +130,29 @@ class CheckerColdBrowserPerfTest {
                     "under $MINIMUM_MODULE_MILLIS ms, which is what an INLINED chunk looks like — the page would " +
                     "then be timing a warm call, so the cold claim would be false rather than slow"
             }
+            // Per-scale, not just the total: a sampler emitting one extra small and one missing large keeps the
+            // total at `2 × pairs`, clears every preflight, and then dies on `removeFirst()` below with the bare
+            // `NoSuchElementException` this lane has already been fixed for once. The total cannot see that.
+            check(observations.size == pairs) {
+                "the sampler produced ${observations.size} observation(s) at $scale programs, not $pairs, so the " +
+                    "pairs the estimator is about to reconstruct do not exist"
+            }
             report("check", scale, observations.map { it.checkMillis })
             report("module", scale, observations.map { it.moduleMillis })
         }
-        // The browser build every observation actually ran on, checked here rather than probed once: these
-        // numbers describe CHROME, and a Chrome that changed mid-run would publish a ratio spanning two engines.
+        // The browser build these numbers describe, checked for PRESENCE rather than for multiplicity.
+        //
+        // An earlier version asserted `browsers.size == 1` and three surfaces advertised it as refusing "a set
+        // spanning two". It could not fail: the sampler launches Chrome ONCE and reads `browser.version()` once,
+        // so every line carries the same constant and no input can produce a second value. That is a guard by
+        // appearance only, and the Node arm's identical-looking check is honest solely because each of ITS
+        // children is a separate process that could resolve a different binary — the justification was carried
+        // across a carrier boundary where it stops being true. What can actually go wrong here is the version
+        // going missing, so that is what is checked.
         val browsers = samples.map { it.browserVersion }.distinct().sorted()
-        check(browsers.size == 1) {
-            "the observations ran on more than one browser build, so this ratio spans two engines: $browsers"
+        check(browsers.size == 1 && browsers.single().isNotBlank()) {
+            "the observations carry no single non-blank browser build, so these numbers are unattributable: " +
+                browsers
         }
         // Popped in FIFO order per scale, which reconstructs the pairs the sampler visited: the harness asks
         // for small then large, and the sampler was given exactly that order.
@@ -193,7 +210,7 @@ class CheckerColdBrowserPerfTest {
                     moduleMillis = requireNotNull(fields["moduleMillis"]) { "no moduleMillis in: $line" }.toDouble(),
                     checkMillis = requireNotNull(fields["checkMillis"]) { "no checkMillis in: $line" }.toDouble(),
                     status = requireNotNull(fields["status"]) { "no status in: $line" },
-                    complete = requireNotNull(fields["complete"]) { "no complete in: $line" }.toBoolean(),
+                    complete = strictBoolean(requireNotNull(fields["complete"]) { "no complete in: $line" }),
                     browserVersion = requireNotNull(fields["browserVersion"]) { "no browserVersion in: $line" },
                     rejecting = fields["rejecting"].orEmpty().split(',').filter { it.isNotBlank() },
                 )
@@ -244,6 +261,19 @@ class CheckerColdBrowserPerfTest {
         )
     }
 
+    /**
+     * A boolean that refuses anything else, because `String.toBoolean()` would not.
+     *
+     * Kotlin maps every string but a case-insensitive `"true"` to `false` — and `false` is exactly the value
+     * this lane EXPECTS for `complete`, so `undefined`, a renamed field or any garbage would land on the
+     * expected side and pass. `requireNotNull` covers an absent key; only this covers a meaningless value.
+     */
+    private fun strictBoolean(raw: String): Boolean = when (raw) {
+        "true" -> true
+        "false" -> false
+        else -> error("the sampler printed complete=$raw, which is not a boolean")
+    }
+
     private fun format(value: Double): String = "%.2f".format(Locale.ROOT, value)
 
     private fun requiredProperty(name: String): String =
@@ -260,7 +290,13 @@ class CheckerColdBrowserPerfTest {
     )
 
     private companion object {
-        /** The cold boundary's own floor on observations per scale; a smaller run is a different measurement. */
+        /**
+         * The smallest odd pair count that clears the cold boundary's floor of **50** observations per scale.
+         *
+         * The floor is 50, as in both other cold lanes; 51 rather than 50 because the ratified estimator medians
+         * the within-pair ratios and an even count would make that median the midpoint of two ratios nobody
+         * observed.
+         */
         const val MINIMUM_PAIRS = 51
 
         /** A bundle build, a tsc pass and a hundred navigations all live under this; a liveness fuse, not a bar. */

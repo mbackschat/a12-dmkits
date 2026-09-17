@@ -1,0 +1,20 @@
+{
+  // The project's BUILD configuration, which the other two tsconfigs deliberately cannot reach: `tsconfig.json`
+  // includes `src/**` under bundler resolution, and `tsconfig.scripts.json` roots at `scripts/`. So the one file
+  // that decides what gets emitted was type-checked by nothing until 2026-09-17 — a cold review found it, and
+  // the failure mode is silent: a typo in `rollupOptions.input` would drop the cold page and the lane would then
+  // 404 at measurement time rather than at build time.
+  "compilerOptions": {
+    "exactOptionalPropertyTypes": true,
+    "lib": ["ES2022"],
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "noEmit": true,
+    "noUncheckedIndexedAccess": true,
+    "skipLibCheck": false,
+    "strict": true,
+    "target": "ES2022",
+    "types": ["node"]
+  },
+  "include": ["vite.config.ts"]
+}

@@ -3,7 +3,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "check": "tsc --noEmit && tsc -p tsconfig.scripts.json --noEmit",
+    "check": "tsc --noEmit && tsc -p tsconfig.scripts.json --noEmit && tsc -p tsconfig.config.json --noEmit",
     "build:scripts": "tsc -p tsconfig.scripts.json",
     "build": "pnpm run check && vite build",
     "verify": "pnpm run build && pnpm run build:scripts && node build/browser-scripts/replay.js"

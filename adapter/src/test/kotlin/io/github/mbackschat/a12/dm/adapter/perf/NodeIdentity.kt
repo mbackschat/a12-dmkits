@@ -56,17 +56,19 @@ internal data class NodeIdentity(val major: String) {
         }
 
         /**
-         * The identity the gate JUDGES — normally the runtime the lane probed; a test may substitute one.
+         * Called by every Node lane before it records, so no lane can measure around the pin.
          *
-         * Without this seam the gate is unfalsifiable in exactly the way a cold review named for [JdkIdentity]
-         * on 2026-08-24: on the only runtime the task resolves, the check is provably a no-op and deleting it
-         * fails nothing. A substituting test must restore it.
+         * **No substitution seam, deliberately, and the contrast with [JdkIdentity] is the whole reason.** That
+         * class reads its runtime from the AMBIENT process — `System.getProperty` — so a test cannot hand it a
+         * different one and a mutable `judged` field is the only way to falsify it. Here both inputs arrive as
+         * parameters, because the version comes from a CHILD process the lane probed: `requireSupported("v26.5.0",
+         * "24")` drives the production path directly and throws. An earlier version of this class carried the
+         * seam anyway, copied across with the justification attached — untestable-by-construction is a property
+         * of `JdkIdentity`'s input, not of a pin, and reusing the remedy where the problem is absent bought
+         * unnecessary mutable static state plus a test that exercised the seam instead of the gate.
          */
-        internal var judged: NodeIdentity? = null
-
-        /** Called by every Node lane before it records, so no lane can measure around the pin. */
         fun requireSupported(reportedVersion: String, requiredMajor: String) {
-            refusalFor(judged ?: of(reportedVersion), requiredMajor)?.let { throw IllegalStateException(it) }
+            refusalFor(of(reportedVersion), requiredMajor)?.let { throw IllegalStateException(it) }
         }
 
         private val MAJOR = Regex("""^v?(\d+)\.""")

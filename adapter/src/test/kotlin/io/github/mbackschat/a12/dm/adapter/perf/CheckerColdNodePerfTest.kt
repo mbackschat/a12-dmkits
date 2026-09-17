@@ -119,6 +119,13 @@ class CheckerColdNodePerfTest {
                     "the checker REFUSED the synthesized model at $scale programs, so these processes timed the " +
                         "rejection path rather than a complete report: $refused"
                 }
+                // An empty rejecting set is ALSO what a report with no findings at all looks like, so the
+                // shape is pinned beside it — the same pair the browser arm asserts, for the same reason.
+                val shapes = runs.map { it.status to it.complete }.distinct()
+                check(shapes == listOf(EXPECTED_SHAPE)) {
+                    "the children did not all return the expected report shape at $scale programs, so this " +
+                        "quantity is not the one the other cold arms measure: $shapes"
+                }
                 report("check", scale, runs.map { it.checkNanos })
                 report("process", scale, runs.map { it.processNanos })
             }
@@ -177,6 +184,8 @@ class CheckerColdNodePerfTest {
             checkNanos = requireNotNull(printed["checkNanos"]) { "no checkNanos in: $output" }.toLong(),
             processNanos = requireNotNull(printed["processNanos"]) { "no processNanos in: $output" }.toLong(),
             rejecting = printed["rejecting"].orEmpty().split(',').filter { it.isNotBlank() },
+            status = requireNotNull(printed["status"]) { "no status in: $output" },
+            complete = strictBoolean(requireNotNull(printed["complete"]) { "no complete in: $output" }),
             nodeVersion = requireNotNull(printed["nodeVersion"]) { "no nodeVersion in: $output" },
         )
     }
@@ -188,7 +197,9 @@ class CheckerColdNodePerfTest {
      * dependencies, so the tarball is the whole production closure — which means a populated `node_modules`
      * holding anything besides `a12-consistency` is either a closure the delivery figure does not describe or a
      * consumer project that grew a dependency, and both make this load time an answer to a different question.
-     * npm's own bookkeeping files are skipped by name; a directory is not bookkeeping.
+     * Every DOT-prefixed entry is skipped, files and directories alike — `.package-lock.json` and the `.bin`
+     * directory npm creates for executables are its own bookkeeping, not installed packages. A scoped package
+     * would surface as its `@scope` directory and duly fail, since that is not dot-prefixed.
      */
     private fun requireInstalledCheckerOnly(consumer: Path) {
         val script = consumer.resolve(COLD_SCRIPT)
@@ -229,16 +240,40 @@ class CheckerColdNodePerfTest {
     private fun requiredProperty(name: String): String =
         requireNotNull(System.getProperty(name)) { "-D$name=<value> is required" }
 
+    /**
+     * A boolean that refuses anything else, because `String.toBoolean()` would not.
+     *
+     * Kotlin maps every string but a case-insensitive `"true"` to `false`, and `false` is the value this lane
+     * EXPECTS for `complete` — so `undefined`, a renamed field or any garbage would land on the expected side
+     * and pass silently. `requireNotNull` covers an absent key; only this covers a meaningless value.
+     */
+    private fun strictBoolean(raw: String): Boolean = when (raw) {
+        "true" -> true
+        "false" -> false
+        else -> error("a cold Node child printed complete=$raw, which is not a boolean")
+    }
+
     private data class ColdRun(
         val checkNanos: Long,
         val processNanos: Long,
         val rejecting: List<String>,
+        val status: String,
+        val complete: Boolean,
         val nodeVersion: String,
     )
 
     private companion object {
         /** The cold boundary's own floor on the sample count; a smaller run is a different measurement. */
         const val MINIMUM_PROCESSES = 50
+
+        /**
+         * The report the synthesized workload draws, asserted rather than assumed.
+         *
+         * `INCONCLUSIVE` and incomplete because the checker does not yet implement every family the model
+         * exercises — the point is not which shape it is but that it is the SAME one on every host, so the
+         * three cold arms are timing one quantity. The browser arm pins the identical pair.
+         */
+        val EXPECTED_SHAPE = "INCONCLUSIVE" to false
 
         /** Liveness fuse for a stuck child, not a latency bar. */
         const val PROCESS_TIMEOUT_SECONDS = 120L

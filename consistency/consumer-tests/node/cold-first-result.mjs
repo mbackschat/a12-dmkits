@@ -50,9 +50,15 @@ const rejecting = report.findings
   .map((finding) => `${finding.code}@${finding.at}`)
   .sort();
 
-// The same three keys the JVM child prints, so one parser in the lane reads both arms.
+// One `key=value` per line, which is all the lane's parser needs; it splits on the first `=` and keys a map.
+// Every line is load-bearing: the two timings are the measurement, `rejecting` and the report SHAPE are the
+// preflight, `nodeVersion` is the pin's per-child evidence, and `label` identifies the observation in a failure.
+// `status` and `complete` are published because an empty `findings` array would otherwise satisfy an
+// empty-`rejecting` check while describing a report that analysed nothing.
 console.log(`checkNanos=${checkNanos}`);
 console.log(`processNanos=${processNanos}`);
 console.log(`rejecting=${rejecting.join(',')}`);
+console.log(`status=${report.status}`);
+console.log(`complete=${report.complete}`);
 console.log(`nodeVersion=${process.version}`);
 console.log(`label=${label}`);

@@ -12,16 +12,30 @@
 // numbers the way a JIT change does on the JVM. So a pinned call names its major and a mismatch REFUSES rather
 // than measuring, exactly as `JdkIdentity.requireSupported` does for the JVM lanes.
 //
-// The unpinned form keeps its old behaviour verbatim, so the existing consumer tasks are unchanged by the
-// extraction. That the functional consumer tests therefore still run on whatever Node is newest is a real
-// exposure and a separate decision — it is recorded as a gap rather than fixed here, because choosing the
-// project's supported Node set is an owner call and not a side effect of adding a perf lane.
+// The unpinned form keeps its old CONTRACT — newest installed Node wins — but not its old code, and the
+// difference is a fixed defect rather than a refactor: the closure this replaced sorted the nvm directory
+// LEXICALLY (`a.name <=> b.name`), which ranks v9 above v24, while the sort below compares components. On the
+// measuring machine's six installs (v20.18.3, v22.14.0, v22.18.0, v24.16.0, v24.18.0, v26.5.0) both orderings
+// select v26.5.0, so the change is unobservable here and becomes observable the moment a one- or three-digit
+// major is installed. Stated because "unchanged by the extraction" was written here first and this file's own
+// sort comment contradicted it.
+//
+// That the functional consumer tests therefore still run on whatever Node is newest is a real exposure and a
+// separate decision — it is recorded as a gap rather than fixed here, because choosing the project's supported
+// Node set is an owner call and not a side effect of adding a perf lane.
 
 ext.resolveNodeToolDir = { String tool, String requiredMajor = null ->
     def majorOf = { String version -> (version =~ /v?(\d+)\./) ? (version =~ /v?(\d+)\./)[0][1] : null }
     def onPath = System.getenv('PATH')?.split(File.pathSeparator)?.findAll { new File(it, tool).canExecute() }
     // A pinned lookup must interrogate the candidate rather than trust its directory name: a `node` on PATH
     // carries no version in its path, so the only way to know its major is to ask it.
+    //
+    // **The probe is always `node`, whatever `tool` was asked for, and that is the intended semantics rather
+    // than an oversight.** `requiredMajor` pins the RUNTIME; a tool that ships beside it (`npm`, `pnpm`) has its
+    // own unrelated version, so asking `pnpm --version` would compare a package-manager version against a Node
+    // major and never match. What the pin means is "the directory whose node is major N, and the `tool` in it" —
+    // hence the `onPath` filter above is on `tool` while this probe is on `node`. Today only `node` itself is
+    // resolved pinned; the constraint is written down because the next pinned caller will not guess it.
     if (requiredMajor != null) {
         def matchingOnPath = onPath?.find { dir ->
             def probe = new File(dir, 'node')

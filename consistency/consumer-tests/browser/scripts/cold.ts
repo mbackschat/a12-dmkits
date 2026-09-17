@@ -189,12 +189,17 @@ if (models.length === 0) {
 
 const browser = await chromium.launch({ executablePath: await chromeExecutable(), headless: true });
 try {
-  // The runtime these numbers describe is CHROME, not the node process driving it — so every observation
+  // The runtime these numbers describe is CHROME, not the node process driving it, so every observation
   // carries the browser build that produced it. H5's per-number gate asks for a pinned runtime; a system
-  // browser cannot be pinned from here, and the project uses the system one deliberately, so this arm closes
-  // that point by ATTRIBUTION instead: the version is recorded per observation and the lane refuses a set
-  // spanning two of them. Recording it is what keeps a future Chrome update from silently re-basing the
-  // published figures with nothing in the record naming which build they came from.
+  // browser cannot be pinned from here and the project uses the system one deliberately, so this arm closes
+  // that point by ATTRIBUTION alone: recording the build is what keeps a future Chrome update from silently
+  // re-basing the published figures with nothing in the record naming which build they came from.
+  //
+  // ONE launch, so one build: this value is deliberately read once and stamped on every line, because every
+  // context comes from the same browser and no input can make two of them differ. An earlier version had the
+  // lane "refuse a set spanning two" builds, which was a check that could not fail for any input this sampler
+  // can produce — a guard by appearance only. Multiplicity is not a risk here; a MISSING version is, so the
+  // lane checks for that instead.
   const browserVersion = browser.version();
   await withStaticServer(async (base) => {
     for (const model of models) {

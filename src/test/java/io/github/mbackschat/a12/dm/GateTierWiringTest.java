@@ -69,6 +69,15 @@ class GateTierWiringTest {
         assertTrue(invocation.contains(":consistency:verifyConsistencyShippedFiles"),
                 "CI must run :consistency:verifyConsistencyShippedFiles — it is the only guard that closes the "
                         + "denominator on the published files, which a linkage or resolution guard cannot see");
+        // The lifecycle task itself, named because something now hangs off it that nothing else reaches.
+        // Kotlin does NOT put `checkLegacyAbi` on `check`, so `:consistency` wires it there explicitly — and
+        // that wiring is the checker ABI golden's whole enforcement path. Four `:consistency:*` lanes were
+        // named above and `check` was not, which left the committed `api/` directory reading as pinned while
+        // being verified by nobody on any push (2026-09-17). The comment further up already asserted that
+        // `:consistency:check` runs, in prose, which is exactly the shape this file exists to replace.
+        assertTrue(invocation.contains(":consistency:check"),
+                "CI must run :consistency:check — it carries the checker's ABI goldens via the explicitly "
+                        + "wired checkLegacyAbi, which Kotlin does not put on check by itself");
         assertFalse(ci.contains("schedule:"),
                 "main-push correctness CI must not rerun on the nightly schedule");
         assertTrue(ci.contains("uses: gradle/actions/setup-gradle@v6"),

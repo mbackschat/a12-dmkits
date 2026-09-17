@@ -11,8 +11,9 @@ plugins {
 // unsupported conversion fails loud. Most paths only parse/format/read. ReferenceRewriter is the deliberate narrow
 // exception: it mutates one deserialized internal model behind a JSON-in/JSON-out boundary. This module is not part
 // of the shipped, polyglot core.
-// Node discovery, for H5-f's cold-Node perf lane alone — the pinned form, which is the whole reason the
-// resolver is shared rather than duplicated (gradle/node-tools.gradle carries the reasoning).
+// Node discovery for this module's two JS perf lanes — H5-f's cold-Node children and H5-g's browser sampler.
+// Both use the PINNED form, which is the whole reason the resolver is shared rather than duplicated
+// (gradle/node-tools.gradle carries the reasoning).
 apply from: rootProject.file('gradle/node-tools.gradle')
 
 repositories {
@@ -960,8 +961,10 @@ tasks.register('checkerColdBrowserPerfTest', Test) {
         systemProperty 'perf.checker.coldbrowser.project',
             project(':consistency').layout.buildDirectory.dir('consumer-tests/browser').get().asFile.absolutePath
         // pnpm drives the project's own build scripts; node runs the compiled sampler. Both come from the
-        // shared resolver, and the sampler is pinned for the same reason H5-f's children are — a V8 change
-        // moves these numbers.
+        // shared resolver, and both are pinned — but NOT for H5-f's reason. The runtime under observation here
+        // is Chrome; this node only launches it and prints what it reports, so a V8 change in it moves nothing
+        // in the tables. It is pinned so the bundle and the driver are reproducible, which is a build-hygiene
+        // reason rather than a measurement one, and `CheckerColdBrowserPerfTest`'s class doc says the same.
         systemProperty 'perf.checker.coldbrowser.pnpm', resolveNodeTool('pnpm').absolutePath
         systemProperty 'perf.checker.coldbrowser.node',
             resolveNodeTool('node', checkerNodeMajor).absolutePath
