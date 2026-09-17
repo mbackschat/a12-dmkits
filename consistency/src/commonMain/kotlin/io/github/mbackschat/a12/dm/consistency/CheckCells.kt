@@ -69,7 +69,7 @@ internal fun cellOf(producer: CheckProducer, tracked: TrackedFactBase, model: Pr
  * validation to whichever producer happened to be running, and there is no producer running when a cell is
  * being validated. Nothing reachable from a family can call it, because no family holds a [PreparedModel].
  */
-private fun PreparedModel.valueOf(read: FactRead): Any? = when (read) {
+internal fun PreparedModel.valueOf(read: FactRead): Any? = when (read) {
     FactRead.DeclarationSetShape -> setShapeValue()
     // ALL bodies at that path, because the transcript names a path and a model may declare two elements at
     // one — A12 refuses such a model and this checker has to report on it rather than fail, so the path is

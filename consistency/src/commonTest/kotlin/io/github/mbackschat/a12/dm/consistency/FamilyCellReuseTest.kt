@@ -24,12 +24,12 @@ import kotlin.test.assertTrue
  */
 class FamilyCellReuseTest {
 
-    private fun model(condition: String) = """
+    private fun model(condition: String, tierFilter: String = "") = """
         {"header":{"id":"cells","locales":[{"code":"en_US"}]},
          "content":{"modelRoot":{"rootGroups":[
           {"type":"Group","id":"g0","name":"Order","Group":{"elements":[
             {"type":"Field","id":"f0","name":"Code","Field":{"fieldType":{"type":"StringType"}}},
-            {"type":"Field","id":"f1","name":"Tier","Field":{"fieldType":{
+            {"type":"Field","id":"f1","name":"Tier","Field":{$tierFilter"fieldType":{
               "type":"EnumerationType","EnumerationType":{"values":[{"value":"BASIC"}],
               "categories":[{"name":"Band","values":["A","B"]}]}}}},
             {"type":"Rule","id":"r0","name":"CodeRequired","Rule":{
@@ -39,10 +39,15 @@ class FamilyCellReuseTest {
          ]}}}
     """.trimIndent()
 
-    private fun prepared(condition: String): PreparedModel {
-        val admitted = admit(ModelSource(model(condition)))
+    private fun prepared(condition: String, tierFilter: String = ""): PreparedModel {
+        val admitted = admit(ModelSource(model(condition, tierFilter)))
         assertIs<Admission.Admitted>(admitted, "the fixture must be admissible")
         return prepare(admitted)
+    }
+
+    /** Every declaration as the SET SHAPE sees it — body excluded, which is what the control below needs. */
+    private fun PreparedModel.shapeRows() = elements.map {
+        listOf(it.path, it.name, it.kind, it.id, it.origin)
     }
 
     /** The cells one check of [condition] leaves behind. */
@@ -83,6 +88,34 @@ class FamilyCellReuseTest {
         // equal model is a different object with the same facts, which is exactly the case reuse is for.
         assertNotNull(cells.validIn(prepared("FieldFilled(Code)"), grammar),
             "an equal model must revalidate, or the row above passes by refusing everything")
+    }
+
+    @Test
+    fun aCellFallsWhenAVariantFilterDeletesAReferentThoughNoDeclarationRowMoved() {
+        val before = prepared("FieldFilled(Code)")
+        // `ONLY` on a FIELD DELETES it rather than suppressing verdicts about it (KF305), so `Tier` leaves
+        // the resolvable set while its path, name, kind, id and origin all stay exactly where they were.
+        val after = prepared("FieldFilled(Code)", tierFilter = """"variantFilter":{"filterType":"ONLY"},""")
+        val tracked = TrackedFactBase(before, ReadTranscript())
+        val store = CheckCells(CHECK_PRODUCERS.associateWith { cellOf(it, tracked, before) })
+
+        // The control that gives this row its meaning: the two models are indistinguishable on the shape's
+        // ROWS, so only the resolvable half of the shape value can tell them apart.
+        assertEquals(before.shapeRows(), after.shapeRows(),
+            "the filter must not move a declaration's row, or the rows would do this row's work")
+
+        // The producers blind to `Tier`'s body. For each of them EVERY charged value is unchanged except the
+        // resolvable set — so a shape value that left the resolvable set out would reuse a verdict reached
+        // when `Tier` still existed, which is the unsound direction and the one no end-to-end row can reach
+        // today: the only consumer carries cells across a DRAFT, and a draft can change a text member alone.
+        val blind = CHECK_PRODUCERS.filter { producer ->
+            val reads = tracked.observedWhileProducing(producer)
+            FactRead.DeclarationSetShape in reads && FactRead.DeclarationContent(TIER) !in reads
+        }
+
+        assertTrue(blind.isNotEmpty(), "no producer charged the set without Tier's body, so this is vacuous")
+        assertEquals(emptyList(), blind.filter { store.validIn(after, it) != null }.map { it.completes },
+            "a cell that read the declaration SET must fall when a variant filter changes what resolves")
     }
 
     @Test
@@ -138,5 +171,9 @@ class FamilyCellReuseTest {
         // check that BUILDS the store. Its counterpart is `preparationReused = false` on the same object.
         assertEquals(0, families.reused, "a first check has nothing to reuse")
         assertEquals(CHECK_PRODUCERS.size, families.recomputed, "so every producer ran")
+    }
+
+    private companion object {
+        const val TIER = "/Order/Tier"
     }
 }

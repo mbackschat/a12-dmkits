@@ -1,0 +1,127 @@
+package io.github.mbackschat.a12.dm.consistency
+
+import kotlin.test.Test
+import kotlin.test.assertEquals
+import kotlin.test.assertIs
+import kotlin.test.assertTrue
+
+/**
+ * That each fact in the transcript's alphabet is keyed on the model member it names, and on nothing else.
+ *
+ * **This is the store's own contract, and it is tested here rather than through a family for a measured
+ * reason.** A wrong key in either direction is a defect — too wide only loses reuse, too narrow reuses a
+ * verdict the model no longer supports — but neither is REACHABLE through the only consumer today:
+ * `ConsistencySnapshot.draft` carries cells across a DRAFT, and a draft changes one text member of one
+ * declaration, so no model-wide member and no variant filter can move under it. A mutant zeroing the
+ * resolvable half of the shape value duly survived every end-to-end row (2026-09-18) until the control in
+ * `FamilyCellReuseTest` was written for it. The grid below closes the rest of the alphabet the same way,
+ * at the level where the claim is made instead of waiting for a consumer that can reach it.
+ *
+ * The isolation is asserted rather than assumed: each pair must move the fact it is for and leave the other
+ * six alone, so a fixture that quietly changed two members could not pass as a test of one.
+ */
+class CheckCellKeyTest {
+
+    private fun prepared(
+        locales: String = """[{"code":"en_US"}]""",
+        modelConfig: String = "",
+        modelInfo: String = "",
+        typeDefinitions: String = "",
+        codeType: String = "StringType",
+        second: String = "",
+    ): PreparedModel {
+        val source = ModelSource(
+            """
+            {"header":{"id":"keys","locales":$locales},
+             "content":{$modelConfig$modelInfo$typeDefinitions
+              "modelRoot":{"rootGroups":[
+               {"type":"Group","id":"g0","name":"Order","Group":{"elements":[
+                 {"type":"Field","id":"f0","name":"Code","Field":{
+                   "fieldType":{"type":"$codeType"}}}$second
+               ]}}
+              ]}}}
+            """.trimIndent(),
+        )
+        val admitted = admit(source)
+        assertIs<Admission.Admitted>(admitted, "the fixture must be admissible: ${source.json}")
+        return prepare(admitted)
+    }
+
+    /** A field declared under [name] with [type], appended after `Code`. */
+    private fun field(name: String, type: String) =
+        """,{"type":"Field","id":"f1","name":"$name","Field":{"fieldType":{"type":"$type"}}}"""
+
+    /** One member moved, against the baseline every row shares. */
+    private val moved = mapOf(
+        ModelFact.CONDITION_LANGUAGE to
+            prepared(modelConfig = """"modelConfig":{"conditionLanguage":{"code":"de_DE"}},"""),
+        ModelFact.DECLARED_LOCALES to prepared(locales = """[{"code":"en_US"},{"code":"de_DE"}]"""),
+        ModelFact.FIELD_REF_BY_SHORT_NAME_ALLOWED to
+            prepared(modelConfig = """"modelConfig":{"fieldRefByShortNameAllowed":true},"""),
+        ModelFact.HAS_BASE_YEAR to prepared(modelInfo = """"modelInfo":{"baseYear":2024},"""),
+        ModelFact.SUPPORTED_CHARACTERS to
+            prepared(modelConfig = """"modelConfig":{"supportedCharacters":["A-Z"]},"""),
+        // A code A12's own reader yields no locale KEY for. It moves the unreadable list and leaves
+        // `declaredLocales` alone, which is what the isolation assertion below then confirms rather than
+        // takes on trust.
+        ModelFact.UNREADABLE_LOCALE_CODES to prepared(locales = """[{"code":"en_US"},{"code":"!!"}]"""),
+        ModelFact.DECLARED_TYPE_DEFINITION_IDS to prepared(
+            typeDefinitions =
+                """"typeDefinitions":[{"id":"Money","name":"Money","fieldType":{"type":"NumberType"}}],""",
+        ),
+    )
+
+    @Test
+    fun everyModelMemberIsKeyedOnItsOwnMemberAndOnNoOther() {
+        val baseline = prepared()
+        val wrong = ModelFact.entries.mapNotNull { fact ->
+            val other = moved.getValue(fact)
+            val differing = ModelFact.entries.filter { candidate ->
+                baseline.valueOf(FactRead.ModelMember(candidate)) !=
+                    other.valueOf(FactRead.ModelMember(candidate))
+            }
+            // The whole grid in one comparison: the fact the pair moved must differ, and it must be the ONLY
+            // one that differs. A mapping that read another member fails the first half; a fixture that
+            // moved two members fails the second, so the row cannot pass by being imprecise.
+            if (differing == listOf(fact)) null else "$fact: moved $differing"
+        }
+
+        assertEquals(emptyList(), wrong,
+            "each fact must be keyed on the member it names, and the fixture must move that member alone")
+        assertEquals(ModelFact.entries.size, moved.size,
+            "a new ModelFact needs a row in `moved`, or its key is unmeasured")
+    }
+
+    @Test
+    fun theContentValueCoversEveryDeclarationAtAPath() {
+        // A12 refuses a model that declares two elements at one path, and this checker REPORTS on it rather
+        // than failing — so a path is not a unique key here. A content value covering only the first body
+        // would make an edit to the second look like no change at all.
+        val twins = prepared(second = field("Code", "NumberType"))
+        val edited = prepared(second = field("Code", "ConfirmType"))
+        val content = FactRead.DeclarationContent("/Order/Code")
+
+        assertEquals(2, twins.elements.count { it.path == "/Order/Code" },
+            "the fixture must really declare the path twice, or this row is about one body")
+        assertTrue(twins.valueOf(content) != edited.valueOf(content),
+            "an edit to the SECOND declaration at a path must change that path's content value")
+    }
+
+    @Test
+    fun theShapeValueIgnoresBodiesEntirely() {
+        val shape = FactRead.DeclarationSetShape
+
+        // The other half of the alphabet's contract, and the failure it exists to prevent: a shape value
+        // that compared `elements` would carry every body, so one keystroke would fell every cell that
+        // merely iterated — collapsing reuse back to the per-source level L-a already reached.
+        assertEquals(
+            prepared(codeType = "StringType").valueOf(shape),
+            prepared(codeType = "NumberType").valueOf(shape),
+            "two models differing only in a body must share one shape value",
+        )
+        assertTrue(
+            prepared().valueOf(shape) != prepared(second = field("Extra", "StringType")).valueOf(shape),
+            "and a DECLARATION added must move it, or the row above passes on a constant",
+        )
+    }
+}
