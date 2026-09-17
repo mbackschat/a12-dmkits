@@ -124,6 +124,30 @@ internal class TrackedFactBase(
             transcript.record(FactRead.ModelMember(ModelFact.DECLARED_LOCALES))
             return model.declaredLocales
         }
+
+    val hasBaseYear: Boolean
+        get() {
+            transcript.record(FactRead.ModelMember(ModelFact.HAS_BASE_YEAR))
+            return model.hasBaseYear
+        }
+
+    val supportedCharacters: List<String>
+        get() {
+            transcript.record(FactRead.ModelMember(ModelFact.SUPPORTED_CHARACTERS))
+            return model.supportedCharacters
+        }
+
+    val unreadableLocaleCodes: List<String>
+        get() {
+            transcript.record(FactRead.ModelMember(ModelFact.UNREADABLE_LOCALE_CODES))
+            return model.unreadableLocaleCodes
+        }
+
+    val declaredTypeDefinitionIds: Set<String>
+        get() {
+            transcript.record(FactRead.ModelMember(ModelFact.DECLARED_TYPE_DEFINITION_IDS))
+            return model.declaredTypeDefinitionIds
+        }
 }
 
 /**

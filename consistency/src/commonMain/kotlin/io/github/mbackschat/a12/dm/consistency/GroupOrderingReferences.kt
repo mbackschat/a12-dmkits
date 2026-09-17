@@ -52,13 +52,13 @@ import kotlinx.serialization.json.contentOrNull
  * relPath" during conversion. The model is unusable, which is what this checker reports; that A12 reports it
  * as an untyped raise is [KF259]'s class, not something a consumer can act on differently.
  */
-fun PreparedModel.groupOrderingFindings(): List<Finding> =
-    elements.filter { it.declaredKind == DeclaredKind.GROUP }.flatMap { group ->
+internal fun TrackedFactBase.groupOrderingFindings(): List<Finding> =
+    declarations().filter { it.declaredKind == DeclaredKind.GROUP }.flatMap { group ->
         val body = group.body
         indexFindings(group, body) + sortFindings(group, body)
     }
 
-private fun PreparedModel.indexFindings(group: DeclaredElement, body: JsonObject?): List<Finding> {
+private fun TrackedFactBase.indexFindings(group: TrackedDeclaration, body: JsonObject?): List<Finding> {
     val declared = (body?.get("indexFieldName") as? JsonPrimitive)?.takeIf { it.isString }?.contentOrNull
         ?: return emptyList()
     return listOfNotNull(
@@ -69,7 +69,7 @@ private fun PreparedModel.indexFindings(group: DeclaredElement, body: JsonObject
     )
 }
 
-private fun PreparedModel.sortFindings(group: DeclaredElement, body: JsonObject?): List<Finding> {
+private fun TrackedFactBase.sortFindings(group: TrackedDeclaration, body: JsonObject?): List<Finding> {
     val entries = body?.get("sortFields") as? JsonArray ?: return emptyList()
     return group.unsortableCarrier(entries) + group.repeatedSortField(entries) + entries.flatMap { entry ->
         // A non-string primitive is COERCED to the String member, as a rule's `errorCode` is, so `5` is the
@@ -102,7 +102,7 @@ private fun PreparedModel.sortFindings(group: DeclaredElement, body: JsonObject?
  * position being derived from the list INDEX by `GroupWrapper.SortFieldWrapper` — a stored model has no
  * priority to duplicate, to overrun, or to leave a hole in.
  */
-private fun DeclaredElement.unsortableCarrier(entries: JsonArray): List<Finding> {
+private fun TrackedDeclaration.unsortableCarrier(entries: JsonArray): List<Finding> {
     if (entries.isEmpty() || isRepeatable) {
         return emptyList()
     }
@@ -129,7 +129,7 @@ private fun DeclaredElement.unsortableCarrier(entries: JsonArray): List<Finding>
  * It rides beside whatever the entries themselves draw — the duplicate does not withhold the type class, and
  * the type class does not withhold it.
  */
-private fun DeclaredElement.repeatedSortField(entries: JsonArray): List<Finding> {
+private fun TrackedDeclaration.repeatedSortField(entries: JsonArray): List<Finding> {
     val names = entries.mapNotNull { entry ->
         ((entry as? JsonObject)?.get("name") as? JsonPrimitive)?.contentOrNull
     }
@@ -157,8 +157,8 @@ private fun DeclaredElement.repeatedSortField(entries: JsonArray): List<Finding>
  *     transferred from the other.
  * @param noValueValidationCode the member's own code for the third gate, likewise unshared.
  */
-private fun PreparedModel.orderingFinding(
-    group: DeclaredElement,
+private fun TrackedFactBase.orderingFinding(
+    group: TrackedDeclaration,
     written: String,
     member: String,
     outsideCode: String,
@@ -170,7 +170,7 @@ private fun PreparedModel.orderingFinding(
     // GATE ONE — the spelling must land on a field at all. A climb past the root cannot reach one either:
     // the model root holds groups, so every clamped path names a group path, never a field.
     val landed = resolvePositionally(group.path, written)
-    val target = elements.firstOrNull { it.path == landed }
+    val target = declarations().firstOrNull { it.path == landed }
     if (target == null || target.declaredKind != DeclaredKind.FIELD) {
         return unbuildable(
             group,
@@ -181,7 +181,7 @@ private fun PreparedModel.orderingFinding(
     // GATE TWO — A12 keeps only the landed field's SHORT NAME and looks it up under this group, so what
     // decides is whether the group has a field of that NAME, not whether the path stayed inside it.
     val shortName = landed.substringAfterLast('/')
-    val own = elements.firstOrNull {
+    val own = declarations().firstOrNull {
         it.path == "${group.path}/$shortName" && it.declaredKind == DeclaredKind.FIELD
     }
     if (own != null) {
@@ -226,7 +226,7 @@ private fun JsonPrimitive.setsTheFlag(): Boolean {
  * field whose `fieldType` A12 cannot BIND at all is not judged here either: that model never loads, and
  * saying so is [fieldTypeBindingFindings]'s business rather than a second opinion from this family.
  */
-private fun noValueValidationFinding(field: DeclaredElement, member: String, code: String): Finding? {
+private fun noValueValidationFinding(field: TrackedDeclaration, member: String, code: String): Finding? {
     val string = (field.body?.get("fieldType") as? JsonObject)?.get("StringType") as? JsonObject
         ?: return null
     if ((string["noValueValidation"] as? JsonPrimitive)?.setsTheFlag() != true) {
@@ -260,7 +260,7 @@ private fun resolvePositionally(from: String, written: String): String {
     return "/" + segments.joinToString("/")
 }
 
-private fun unbuildable(group: DeclaredElement, explain: String) = Finding(
+private fun unbuildable(group: TrackedDeclaration, explain: String) = Finding(
     FindingCategory.A12_CONSTRAINT,
     FindingSeverity.ERROR,
     CK_MODEL_NOT_BUILDABLE,

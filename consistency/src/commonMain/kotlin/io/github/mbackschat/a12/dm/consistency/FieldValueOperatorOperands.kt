@@ -49,13 +49,13 @@ import kotlinx.serialization.json.intOrNull
  * **Silent on a declaration whose effective type this reader does not resolve** — a typedef, an unspecified
  * type — and on an enumeration whose declared values it cannot read as strings.
  */
-fun PreparedModel.fieldValueOperatorOperandFindings(): List<Finding> {
+internal fun TrackedFactBase.fieldValueOperatorOperandFindings(): List<Finding> {
     val keywords = CONDITION_OPERATOR_KEYWORDS[conditionLanguage] ?: return emptyList()
     val carriers = ARM_OF.mapNotNull { (id, arm) -> keywords[id]?.let { it to arm } }.toMap()
     if (carriers.isEmpty()) {
         return emptyList()
     }
-    return elements.flatMap { element ->
+    return declarations().flatMap { element ->
         val body = element.body ?: return@flatMap emptyList()
         val declaringGroup = element.path.substringBeforeLast('/', missingDelimiterValue = "")
         conditionTexts(element.kind, body).flatMap { (member, text) ->
@@ -104,16 +104,16 @@ private val PLAINLY_UNCONVERTIBLE_TYPES = setOf(
 private class ValueOperandDefect(val code: String, val detail: String)
 
 /** The first gate this call fails, in A12's own order, or null where none fails and where it may not judge. */
-private fun PreparedModel.valueOperandDefect(
+private fun TrackedFactBase.valueOperandDefect(
     call: ConditionCall,
     arm: ValueOperatorArm,
     declaringGroup: String,
-    element: DeclaredElement,
+    element: TrackedDeclaration,
 ): ValueOperandDefect? {
     val operand = call.operands.singleOrNull() ?: return null
     val (written, category) = operandSpec(operand) ?: return null
     val target = addressedTargetOf(written, declaringGroup, element) ?: return null
-    val declared = elements.firstOrNull { it.path == target } ?: return null
+    val declared = declarations().firstOrNull { it.path == target } ?: return null
     if (declared.declaredKind == DeclaredKind.GROUP) {
         return ValueOperandDefect("MVK_NO_GROUPS_ALLOWED", "reads `$target`, which is a group — read one field of it")
     }
@@ -158,7 +158,7 @@ private fun PreparedModel.valueOperandDefect(
 
 /** The conversion arm's three branches, in the order `checkIsConvertableToNumber` takes them. */
 private fun conversionDefect(
-    declared: DeclaredElement,
+    declared: TrackedDeclaration,
     type: String,
     category: String?,
     target: String,
@@ -198,7 +198,7 @@ private fun conversionDefect(
  * Null where the declaration is not the shape this reader knows, which leaves the call unjudged rather than
  * refusing on a reading.
  */
-private fun DeclaredElement.convertibleValues(category: String?): List<String>? {
+private fun TrackedDeclaration.convertibleValues(category: String?): List<String>? {
     val body = enumerationBody() ?: return null
     if (category == null) {
         return body.declaredEnumValues()
@@ -228,7 +228,7 @@ private fun String.readsAsANumber(): Boolean {
 private fun finding(
     defect: ValueOperandDefect,
     call: ConditionCall,
-    element: DeclaredElement,
+    element: TrackedDeclaration,
     member: String,
 ): Finding = Finding(
     FindingCategory.A12_CONSTRAINT,

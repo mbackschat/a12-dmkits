@@ -31,10 +31,6 @@ public final class io/github/mbackschat/a12/dm/consistency/AdmissionKt {
 	public static final fun admit (Lio/github/mbackschat/a12/dm/consistency/ModelSource;)Lio/github/mbackschat/a12/dm/consistency/Admission;
 }
 
-public final class io/github/mbackschat/a12/dm/consistency/ArithmeticOperationGatesKt {
-	public static final fun arithmeticOperationGateFindings (Lio/github/mbackschat/a12/dm/consistency/PreparedModel;)Ljava/util/List;
-}
-
 public final class io/github/mbackschat/a12/dm/consistency/BaseYearRequirementKt {
 	public static final fun baseYearRequirementFindings (Lio/github/mbackschat/a12/dm/consistency/PreparedModel;)Ljava/util/List;
 }
@@ -332,10 +328,6 @@ public final class io/github/mbackschat/a12/dm/consistency/DeclarationOrigin {
 	public fun toString ()Ljava/lang/String;
 }
 
-public final class io/github/mbackschat/a12/dm/consistency/DeclarationSlotsKt {
-	public static final fun declarationSlotFindings (Lio/github/mbackschat/a12/dm/consistency/PreparedModel;)Ljava/util/List;
-}
-
 public final class io/github/mbackschat/a12/dm/consistency/DeclaredElement {
 	public fun <init> (Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Lkotlinx/serialization/json/JsonObject;Lio/github/mbackschat/a12/dm/consistency/DeclarationOrigin;)V
 	public final fun component1 ()Ljava/lang/String;
@@ -514,18 +506,6 @@ public final class io/github/mbackschat/a12/dm/consistency/EditReport {
 	public fun toString ()Ljava/lang/String;
 }
 
-public final class io/github/mbackschat/a12/dm/consistency/ElementNameAlphabetKt {
-	public static final fun elementNameAlphabetFindings (Lio/github/mbackschat/a12/dm/consistency/PreparedModel;)Ljava/util/List;
-}
-
-public final class io/github/mbackschat/a12/dm/consistency/EmptyGroupOperandKt {
-	public static final fun emptyGroupOperandFindings (Lio/github/mbackschat/a12/dm/consistency/PreparedModel;)Ljava/util/List;
-}
-
-public final class io/github/mbackschat/a12/dm/consistency/EntityListPreGatesKt {
-	public static final fun entityListPreGateFindings (Lio/github/mbackschat/a12/dm/consistency/PreparedModel;)Ljava/util/List;
-}
-
 public final class io/github/mbackschat/a12/dm/consistency/EnumComputationSourceKt {
 	public static final fun enumComputationSourceFindings (Lio/github/mbackschat/a12/dm/consistency/PreparedModel;)Ljava/util/List;
 }
@@ -542,29 +522,12 @@ public final class io/github/mbackschat/a12/dm/consistency/ErrorTargetContainmen
 	public static final fun errorTargetContainmentFindings (Lio/github/mbackschat/a12/dm/consistency/PreparedModel;)Ljava/util/List;
 }
 
-public final class io/github/mbackschat/a12/dm/consistency/FieldListOperationOperandsKt {
-	public static final fun fieldListOperationOperandFindings (Lio/github/mbackschat/a12/dm/consistency/PreparedModel;)Ljava/util/List;
-}
-
 public final class io/github/mbackschat/a12/dm/consistency/FieldOperandKindKt {
 	public static final fun fieldOperandKindFindings (Lio/github/mbackschat/a12/dm/consistency/PreparedModel;)Ljava/util/List;
 }
 
-public final class io/github/mbackschat/a12/dm/consistency/FieldTypeBindingKt {
-	public static final fun fieldTypeBindingFindings (Lio/github/mbackschat/a12/dm/consistency/PreparedModel;)Ljava/util/List;
-	public static final fun fieldTypeBindingGaps (Lio/github/mbackschat/a12/dm/consistency/PreparedModel;)Ljava/util/List;
-}
-
-public final class io/github/mbackschat/a12/dm/consistency/FieldValueOperatorOperandsKt {
-	public static final fun fieldValueOperatorOperandFindings (Lio/github/mbackschat/a12/dm/consistency/PreparedModel;)Ljava/util/List;
-}
-
 public final class io/github/mbackschat/a12/dm/consistency/FieldValuesNotUniqueOperandKindKt {
 	public static final fun fieldValuesNotUniqueOperandKindFindings (Lio/github/mbackschat/a12/dm/consistency/PreparedModel;)Ljava/util/List;
-}
-
-public final class io/github/mbackschat/a12/dm/consistency/FilterBodyGatesKt {
-	public static final fun filterBodyGateFindings (Lio/github/mbackschat/a12/dm/consistency/PreparedModel;)Ljava/util/List;
 }
 
 public final class io/github/mbackschat/a12/dm/consistency/FilteredEntityIterationKt {
@@ -623,19 +586,6 @@ public final class io/github/mbackschat/a12/dm/consistency/FindingsKt {
 
 public final class io/github/mbackschat/a12/dm/consistency/GroupListOperandsKt {
 	public static final fun groupListOperandFindings (Lio/github/mbackschat/a12/dm/consistency/PreparedModel;)Ljava/util/List;
-}
-
-public final class io/github/mbackschat/a12/dm/consistency/GroupOrderingReferencesKt {
-	public static final fun groupOrderingFindings (Lio/github/mbackschat/a12/dm/consistency/PreparedModel;)Ljava/util/List;
-}
-
-public final class io/github/mbackschat/a12/dm/consistency/HModelPathSuffixKt {
-	public static final fun hModelPathSuffixFindings (Lio/github/mbackschat/a12/dm/consistency/PreparedModel;)Ljava/util/List;
-}
-
-public final class io/github/mbackschat/a12/dm/consistency/HintListValuesKt {
-	public static final fun hintListValueFindings (Lio/github/mbackschat/a12/dm/consistency/PreparedModel;)Ljava/util/List;
-	public static final fun hintListValueGaps (Lio/github/mbackschat/a12/dm/consistency/PreparedModel;)Ljava/util/List;
 }
 
 public final class io/github/mbackschat/a12/dm/consistency/Impact {
@@ -730,21 +680,12 @@ public final class io/github/mbackschat/a12/dm/consistency/NumberComparisonScale
 	public static final fun numberComparisonScaleFindings (Lio/github/mbackschat/a12/dm/consistency/PreparedModel;)Ljava/util/List;
 }
 
-public final class io/github/mbackschat/a12/dm/consistency/NumberTypeDigitsKt {
-	public static final fun numberTypeDigitFindings (Lio/github/mbackschat/a12/dm/consistency/PreparedModel;)Ljava/util/List;
-}
-
 public final class io/github/mbackschat/a12/dm/consistency/OperandRepetitionScopeKt {
 	public static final fun operandRepetitionScopeFindings (Lio/github/mbackschat/a12/dm/consistency/PreparedModel;)Ljava/util/List;
 }
 
 public final class io/github/mbackschat/a12/dm/consistency/OutcomeKt {
 	public static final fun getOutcome (Lio/github/mbackschat/a12/dm/consistency/ConsistencyReport;)Lio/github/mbackschat/a12/dm/consistency/CheckOutcome;
-}
-
-public final class io/github/mbackschat/a12/dm/consistency/PatternAdmissionKt {
-	public static final fun declaredPatternFindings (Lio/github/mbackschat/a12/dm/consistency/PreparedModel;)Ljava/util/List;
-	public static final fun declaredPatternGaps (Lio/github/mbackschat/a12/dm/consistency/PreparedModel;)Ljava/util/List;
 }
 
 public final class io/github/mbackschat/a12/dm/consistency/PatternComparisonOperandsKt {
@@ -787,10 +728,6 @@ public final class io/github/mbackschat/a12/dm/consistency/PreparedModel {
 	public final fun getUnsupportedConditionLanguage ()Ljava/lang/String;
 	public fun hashCode ()I
 	public fun toString ()Ljava/lang/String;
-}
-
-public final class io/github/mbackschat/a12/dm/consistency/RawTypeLengthKt {
-	public static final fun rawTypeLengthFindings (Lio/github/mbackschat/a12/dm/consistency/PreparedModel;)Ljava/util/List;
 }
 
 public abstract interface class io/github/mbackschat/a12/dm/consistency/Reference {
@@ -906,19 +843,6 @@ public final class io/github/mbackschat/a12/dm/consistency/StringEnumComparisonA
 	public static final fun stringEnumComparisonAgreementFindings (Lio/github/mbackschat/a12/dm/consistency/PreparedModel;)Ljava/util/List;
 }
 
-public final class io/github/mbackschat/a12/dm/consistency/StringTypeMessageKt {
-	public static final fun stringTypeMessageFindings (Lio/github/mbackschat/a12/dm/consistency/PreparedModel;)Ljava/util/List;
-}
-
-public final class io/github/mbackschat/a12/dm/consistency/StringTypeParametersKt {
-	public static final fun stringTypeParameterFindings (Lio/github/mbackschat/a12/dm/consistency/PreparedModel;)Ljava/util/List;
-}
-
-public final class io/github/mbackschat/a12/dm/consistency/SupportedCharactersKt {
-	public static final fun supportedCharacterFindings (Lio/github/mbackschat/a12/dm/consistency/PreparedModel;)Ljava/util/List;
-	public static final fun supportedCharacterGaps (Lio/github/mbackschat/a12/dm/consistency/PreparedModel;)Ljava/util/List;
-}
-
 public final class io/github/mbackschat/a12/dm/consistency/TemporalAggregateOperandsKt {
 	public static final fun temporalAggregateOperandFindings (Lio/github/mbackschat/a12/dm/consistency/PreparedModel;)Ljava/util/List;
 }
@@ -959,10 +883,6 @@ public final class io/github/mbackschat/a12/dm/consistency/UnexpandedMount {
 
 public final class io/github/mbackschat/a12/dm/consistency/ValidityConditionOperandsKt {
 	public static final fun validityConditionOperandFindings (Lio/github/mbackschat/a12/dm/consistency/PreparedModel;)Ljava/util/List;
-}
-
-public final class io/github/mbackschat/a12/dm/consistency/ValueInFieldsConstantKindKt {
-	public static final fun valueInFieldsConstantKindFindings (Lio/github/mbackschat/a12/dm/consistency/PreparedModel;)Ljava/util/List;
 }
 
 public final class io/github/mbackschat/a12/dm/consistency/ValueListConditionGatesKt {

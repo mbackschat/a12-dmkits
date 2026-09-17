@@ -59,7 +59,7 @@ import kotlinx.serialization.json.intOrNull
  * **Silent across any boundary it does not understand.** A name, a comparison, a connective and a comma all
  * end the current chain, which under-counts a chain that spans one of them and never over-counts.
  */
-fun PreparedModel.arithmeticOperationGateFindings(): List<Finding> = elements.mapNotNull { element ->
+internal fun TrackedFactBase.arithmeticOperationGateFindings(): List<Finding> = declarations().mapNotNull { element ->
     val body = element.body ?: return@mapNotNull null
     val group = element.path.substringBeforeLast('/', missingDelimiterValue = "")
     conditionTexts(element.kind, body).firstNotNullOfOrNull { (member, text) ->
@@ -104,10 +104,10 @@ private class LevelResult(val type: OperandBaseType?, val defects: List<Operatio
  * The arity gates are dropped wherever the type walk answered at THIS level, which is the pre-emption A12's
  * own method order produces and the grid measures.
  */
-private fun PreparedModel.walkOperation(
+private fun TrackedFactBase.walkOperation(
     tokens: List<Token>,
     group: String,
-    element: DeclaredElement,
+    element: TrackedDeclaration,
 ): LevelResult {
     val terms = termsOf(tokens)
     val defects = mutableListOf<OperationDefect>()
@@ -133,11 +133,11 @@ private fun PreparedModel.walkOperation(
  *
  * @return the level's result type, or null where this reader could not settle it.
  */
-private fun PreparedModel.typeWalk(
+private fun TrackedFactBase.typeWalk(
     terms: List<Term>,
     types: List<OperandBaseType?>,
     group: String,
-    element: DeclaredElement,
+    element: TrackedDeclaration,
     defects: MutableList<OperationDefect>,
 ): OperandBaseType? {
     multiplicativeDefects(terms, types, group, element, defects)
@@ -145,11 +145,11 @@ private fun PreparedModel.typeWalk(
 }
 
 /** `*`, `/` and `^` demand a number on each side, and `^` then demands a whole-number exponent. */
-private fun PreparedModel.multiplicativeDefects(
+private fun TrackedFactBase.multiplicativeDefects(
     terms: List<Term>,
     types: List<OperandBaseType?>,
     group: String,
-    element: DeclaredElement,
+    element: TrackedDeclaration,
     defects: MutableList<OperationDefect>,
 ) {
     terms.forEachIndexed { position, term ->
@@ -272,10 +272,10 @@ private fun additiveSegments(terms: List<Term>, types: List<OperandBaseType?>): 
 private val ADDITIVE = setOf("+", "-")
 
 /** The base type A12's operation-type map gives this operand, or null where this reader may not say. */
-private fun PreparedModel.operandType(
+private fun TrackedFactBase.operandType(
     operand: Term.Operand,
     group: String,
-    element: DeclaredElement,
+    element: TrackedDeclaration,
 ): OperandBaseType? {
     if (operand.digits != null) {
         return OperandBaseType.NUMBER
@@ -296,7 +296,7 @@ private val DECLARED_OTHER_BASE_TYPES = setOf("BooleanType", "ConfirmType", "Dat
     TEMPORAL_DECLARED_TYPES
 
 /** Whether any of this enumeration's values carries a display label, which is what `+` refuses. */
-private fun DeclaredElement.carriesDisplayLabels(): Boolean {
+private fun TrackedDeclaration.carriesDisplayLabels(): Boolean {
     val values = enumerationBody()?.get("values") as? JsonArray ?: return false
     return values.filterIsInstance<JsonObject>()
         .any { (it["label"] as? JsonArray)?.isNotEmpty() == true }
@@ -309,12 +309,12 @@ private fun DeclaredElement.carriesDisplayLabels(): Boolean {
  * ever fills with whole numbers is refused too — measured, and the reason this reads the declaration. It is
  * asked after the exponent's KIND, so a non-numeric one never reaches it.
  */
-private fun PreparedModel.exponentDefect(
+private fun TrackedFactBase.exponentDefect(
     term: Term?,
     type: OperandBaseType?,
     at: Int,
     group: String,
-    element: DeclaredElement,
+    element: TrackedDeclaration,
 ): OperationDefect? {
     val operand = term as? Term.Operand ?: return null
     if (type != null && !type.isNumberLike()) {
@@ -362,20 +362,20 @@ private fun arityDefects(terms: List<Term>): List<OperationDefect> {
 }
 
 /** The field a reference at this level names, or null for every shape this reader does not resolve. */
-private fun PreparedModel.declaredFieldAt(
+private fun TrackedFactBase.declaredFieldAt(
     path: String,
     group: String,
-    element: DeclaredElement,
-): DeclaredElement? {
+    element: TrackedDeclaration,
+): TrackedDeclaration? {
     val resolved = resolveEntity(group, path, element.origin) as? Reference.Resolved ?: return null
-    return elements.firstOrNull { it.path == resolved.path && it.declaredKind == DeclaredKind.FIELD }
+    return declarations().firstOrNull { it.path == resolved.path && it.declaredKind == DeclaredKind.FIELD }
 }
 
 /** The `maxFractionalDigits` a referenced number field declares, or null for every other shape. */
-private fun PreparedModel.declaredScaleOf(
+private fun TrackedFactBase.declaredScaleOf(
     path: String,
     group: String,
-    element: DeclaredElement,
+    element: TrackedDeclaration,
 ): Int? {
     val field = declaredFieldAt(path, group, element) ?: return null
     val type = (field.body?.get("fieldType") as? JsonObject) ?: return null
@@ -473,7 +473,7 @@ private fun matchingDelimiter(tokens: List<Token>, from: Int, opening: String, c
 
 private fun operationFinding(
     defect: OperationDefect,
-    element: DeclaredElement,
+    element: TrackedDeclaration,
     member: String,
 ): Finding = Finding(
     FindingCategory.A12_CONSTRAINT,

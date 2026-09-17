@@ -26,8 +26,8 @@ package io.github.mbackschat.a12.dm.consistency
  * That boundary is [authoredMessages]' and is measured on this carrier too, which is what lets one reader
  * serve both.
  */
-fun PreparedModel.stringTypeMessageFindings(): List<Finding> =
-    elements.filter { it.declaredKind == DeclaredKind.FIELD }.flatMap { field ->
+internal fun TrackedFactBase.stringTypeMessageFindings(): List<Finding> =
+    declarations().filter { it.declaredKind == DeclaredKind.FIELD }.flatMap { field ->
         val stringType = field.stringTypeBody() ?: return@flatMap emptyList()
         when (val read = stringType.authoredMessages()) {
             is AuthoredMessages.Refused -> listOf(
@@ -48,8 +48,8 @@ fun PreparedModel.stringTypeMessageFindings(): List<Finding> =
         }
     }
 
-private fun PreparedModel.patternMessageFindings(
-    field: DeclaredElement,
+private fun TrackedFactBase.patternMessageFindings(
+    field: TrackedDeclaration,
     declaresPattern: Boolean,
     covered: Set<String>,
 ): List<Finding> {

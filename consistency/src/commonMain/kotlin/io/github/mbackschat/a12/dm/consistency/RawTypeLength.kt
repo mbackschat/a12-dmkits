@@ -35,9 +35,9 @@ import kotlinx.serialization.json.booleanOrNull
  * reproduce, so the class is left to the Kernel and recorded as a gap rather than guessed at. Silence here
  * under-reports, which is safe; a guess would not be.
  */
-fun PreparedModel.rawTypeLengthFindings(): List<Finding> {
+internal fun TrackedFactBase.rawTypeLengthFindings(): List<Finding> {
     val length = CONDITION_OPERATOR_KEYWORDS[conditionLanguage]?.get("Length") ?: return emptyList()
-    return elements.flatMap { element ->
+    return declarations().flatMap { element ->
         val body = element.body ?: return@flatMap emptyList()
         val group = element.path.substringBeforeLast('/', missingDelimiterValue = "")
         conditionTexts(element.kind, body).mapNotNull { (member, text) ->
@@ -48,7 +48,7 @@ fun PreparedModel.rawTypeLengthFindings(): List<Finding> {
 }
 
 /** The raw-type field a `Length` call in [text] names, or null when none does. */
-private fun PreparedModel.rawTypeRead(
+private fun TrackedFactBase.rawTypeRead(
     text: String,
     member: String,
     declaringGroup: String,
@@ -64,8 +64,8 @@ private fun PreparedModel.rawTypeRead(
     }
 
 /** Whether [path] declares a STRING with `noValueValidation` — the only kind A12 treats as a raw type. */
-private fun PreparedModel.isRawType(path: String): Boolean {
-    val body = elements.firstOrNull { it.path == path && it.declaredKind == DeclaredKind.FIELD }
+private fun TrackedFactBase.isRawType(path: String): Boolean {
+    val body = declarations().firstOrNull { it.path == path && it.declaredKind == DeclaredKind.FIELD }
         ?.stringTypeBody() ?: return false
     return (body["noValueValidation"] as? JsonPrimitive)?.booleanOrNull == true
 }
@@ -75,7 +75,7 @@ private fun rawLengthOffence(
     member: String,
     raw: String,
     length: String,
-    element: DeclaredElement,
+    element: TrackedDeclaration,
 ): Finding? {
     // A computation may not reach a raw type through `Length` in ANY member — the max-length reading is
     // A12's rule-side gate alone, so the shape a rule admits is refused here.

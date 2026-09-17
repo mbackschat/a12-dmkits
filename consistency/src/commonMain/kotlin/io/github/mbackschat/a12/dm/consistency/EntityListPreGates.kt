@@ -47,14 +47,14 @@ import io.github.mbackschat.a12.dm.consistency.syntax.splitAtIn
  * comparing the semantic index and the category alongside the path, so two same-path operands under
  * different keys are not duplicates at all.
  */
-fun PreparedModel.entityListPreGateFindings(): List<Finding> {
+internal fun TrackedFactBase.entityListPreGateFindings(): List<Finding> {
     val keywords = CONDITION_OPERATOR_KEYWORDS[conditionLanguage] ?: return emptyList()
     val gates = ROOT_GROUP_GATE_OF.mapNotNull { (id, gate) -> keywords[id]?.let { it to gate } }.toMap()
     val infixCarrier = keywords[VALUE_IN_FIELDS]
     if (gates.isEmpty()) {
         return emptyList()
     }
-    return elements.mapNotNull { element ->
+    return declarations().mapNotNull { element ->
         val body = element.body ?: return@mapNotNull null
         val group = element.path.substringBeforeLast('/', missingDelimiterValue = "")
         conditionTexts(element.kind, body).firstNotNullOfOrNull { (member, text) ->
@@ -120,12 +120,12 @@ private const val NESTED_DUPLICATE = "MVK_DUPLICATE_PARAM2"
 
 private const val ROOT_GROUP = "MVK_ROOT_GROUP_REFERENCED"
 
-private fun PreparedModel.preGateFinding(
+private fun TrackedFactBase.preGateFinding(
     call: ConditionCall,
     gate: RootGroupGate,
     infixCarrier: String?,
     declaringGroup: String,
-    element: DeclaredElement,
+    element: TrackedDeclaration,
     member: String,
 ): Finding? {
     val written = call.entityListReferences(conditionLanguage, infixCarrier) ?: return null

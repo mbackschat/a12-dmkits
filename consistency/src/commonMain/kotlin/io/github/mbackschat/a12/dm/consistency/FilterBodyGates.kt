@@ -74,7 +74,7 @@ import io.github.mbackschat.a12.dm.consistency.syntax.semanticIndexUsesIn
  * all: [referencesIn] reports a marked reference without it, which is right for binding and wrong for this
  * walk. Judging the text either way would name a class on a shape the marker moves.
  */
-fun PreparedModel.filterBodyGateFindings(): List<Finding> {
+internal fun TrackedFactBase.filterBodyGateFindings(): List<Finding> {
     val keywords = CONDITION_OPERATOR_KEYWORDS[conditionLanguage] ?: return emptyList()
     val filterKeyword = keywords[HAVING] ?: return emptyList()
     val callable = keywords.values.toSet()
@@ -82,7 +82,7 @@ fun PreparedModel.filterBodyGateFindings(): List<Finding> {
     // is one — it has its own branch of the same walk.
     val clauseKeywords = setOfNotNull(keywords[HAVING], keywords[FROM])
     val indexKeyword = keywords[SEMANTIC_INDEX]
-    return elements.mapNotNull { element ->
+    return declarations().mapNotNull { element ->
         val body = element.body ?: return@mapNotNull null
         val group = element.path.substringBeforeLast('/', missingDelimiterValue = "")
         conditionTexts(element.kind, body).firstNotNullOfOrNull { (member, text) ->
@@ -111,7 +111,7 @@ private data class FilterDefect(val code: String, val wrote: String, val level: 
  * The walk runs reference by reference and level by level, so an out-of-path level anywhere pre-empts the
  * scope gate — which is checked only once every reference has been read, exactly as the kernel does.
  */
-private fun PreparedModel.filterDefectOf(
+private fun TrackedFactBase.filterDefectOf(
     operand: CallOperand,
     filterKeyword: String,
     indexKeyword: String?,
@@ -119,7 +119,7 @@ private fun PreparedModel.filterDefectOf(
     callable: Set<String>,
     keywords: Map<String, String>,
     group: String,
-    element: DeclaredElement,
+    element: TrackedDeclaration,
 ): FilterDefect? {
     val filter = operand.clauses.firstOrNull { it.keyword == filterKeyword } ?: return null
     val written = operand.base ?: return null
@@ -216,7 +216,7 @@ private const val CUSTOM_CONDITION = "CustomCondition"
 
 private const val REPETITION_NOT_UNIQUE = "RepetitionNotUnique"
 
-private fun filterFinding(defect: FilterDefect, element: DeclaredElement, member: String): Finding = Finding(
+private fun filterFinding(defect: FilterDefect, element: TrackedDeclaration, member: String): Finding = Finding(
     FindingCategory.A12_CONSTRAINT,
     FindingSeverity.ERROR,
     defect.code,

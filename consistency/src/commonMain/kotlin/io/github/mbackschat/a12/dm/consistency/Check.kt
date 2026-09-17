@@ -938,32 +938,32 @@ internal fun checkPrepared(
     val judged = (declared.mapNotNull { it.target.asFinding(it.role, it.declaredAt) } +
         prepared.conditionReferences().mapNotNull {
             it.target.asFinding(ReferenceRole.CONDITION_ENTITY, it.declaredAt, it.member, it.span)
-        } + prepared.declarationSlotFindings() + tracked.computationAlternativeFindings() +
+        } + tracked.declarationSlotFindings() + tracked.computationAlternativeFindings() +
         tracked.computationRoundingFindings() + tracked.suppressedWarningFindings() +
         tracked.ruleConditionAndTargetFindings() + tracked.variantFilterFindings() +
         tracked.conditionLexicalFindings() + tracked.conditionCompletenessFindings() +
         tracked.connectiveAgreementFindings() + tracked.conditionGrammarFindings() +
-        tracked.elementNameFindings() + prepared.groupOrderingFindings() +
+        tracked.elementNameFindings() + tracked.groupOrderingFindings() +
         tracked.groupRepetitionCountFindings() +
         tracked.presentationMemberFindings() + tracked.stringSlotFindings() +
-        prepared.fieldTypeBindingFindings() + tracked.temporalConfigFindings() +
+        tracked.fieldTypeBindingFindings() + tracked.temporalConfigFindings() +
         tracked.fieldNameReservedSegmentFindings() +
-        prepared.elementNameAlphabetFindings() + tracked.enumCategoryFindings() +
-        prepared.supportedCharacterFindings() + tracked.enumTextForbiddenCharacterFindings() +
-        prepared.hintListValueFindings() + tracked.tableEnumOperandFindings() +
+        tracked.elementNameAlphabetFindings() + tracked.enumCategoryFindings() +
+        tracked.supportedCharacterFindings() + tracked.enumTextForbiddenCharacterFindings() +
+        tracked.hintListValueFindings() + tracked.tableEnumOperandFindings() +
         tracked.hModelFormConstructFindings() +
-        prepared.declaredPatternFindings() +
-        prepared.emptyGroupOperandFindings() + prepared.errorFieldReferenceFindings() +
+        tracked.declaredPatternFindings() +
+        tracked.emptyGroupOperandFindings() + prepared.errorFieldReferenceFindings() +
         prepared.groupListOperandFindings() + tracked.repetitionWildcardFindings() +
         tracked.computedTargetKindFindings() + tracked.computedTargetIndexFieldFindings() +
-        prepared.rawTypeLengthFindings() + tracked.computationPreconditionFeatureFindings() +
+        tracked.rawTypeLengthFindings() + tracked.computationPreconditionFeatureFindings() +
         tracked.computationCycleFindings() +
         tracked.computationSelfReadFindings() +
         tracked.repetitionKeyPlacementFindings() +
         tracked.repetitionScopeGroupFindings() +
         tracked.repetitionKeyContainmentFindings() +
         tracked.filterWildcardFindings() +
-        prepared.filterBodyGateFindings() +
+        tracked.filterBodyGateFindings() +
         tracked.outerMarkerPositionFindings() +
         tracked.groupConditionWildcardFindings() +
         tracked.sumOfProductsOperandFindings() +
@@ -974,16 +974,16 @@ internal fun checkPrepared(
         tracked.repetitionNotUniqueCombinationFindings() +
         tracked.parallelIterationUniquenessFindings() +
         prepared.filteredEntityIterationFindings() +
-        prepared.arithmeticOperationGateFindings() +
-        prepared.valueInFieldsConstantKindFindings() +
+        tracked.arithmeticOperationGateFindings() +
+        tracked.valueInFieldsConstantKindFindings() +
         prepared.valueListConditionGateFindings() +
         tracked.entityListArityFindings() +
-        prepared.entityListPreGateFindings() +
+        tracked.entityListPreGateFindings() +
         prepared.fieldValuesNotUniqueOperandKindFindings() +
-        prepared.fieldListOperationOperandFindings() +
+        tracked.fieldListOperationOperandFindings() +
         prepared.dateArithmeticOperandFindings() +
         prepared.roundingOperandFindings() +
-        prepared.fieldValueOperatorOperandFindings() +
+        tracked.fieldValueOperatorOperandFindings() +
         prepared.comparisonOperatorOperandFindings() +
         prepared.booleanComparisonAgreementFindings() +
         prepared.stringEnumComparisonAgreementFindings() +
@@ -992,7 +992,7 @@ internal fun checkPrepared(
         prepared.patternComparisonOperandFindings() +
         prepared.operandRepetitionScopeFindings() +
         prepared.dateConstructionSlotFindings() +
-        prepared.hModelPathSuffixFindings() +
+        tracked.hModelPathSuffixFindings() +
         prepared.fieldOperandKindFindings() +
         prepared.filteredOperandKindFindings() +
         tracked.categoryReferenceFindings() +
@@ -1015,8 +1015,8 @@ internal fun checkPrepared(
         tracked.messageParameterSyntaxFindings() +
         tracked.messageGroupParameterFindings() +
         tracked.messageValueSuffixFindings() +
-        prepared.stringTypeMessageFindings() + prepared.stringTypeParameterFindings() +
-        prepared.numberTypeDigitFindings() + tracked.enumValueLabelFindings() +
+        tracked.stringTypeMessageFindings() + tracked.stringTypeParameterFindings() +
+        tracked.numberTypeDigitFindings() + tracked.enumValueLabelFindings() +
         tracked.enumSpecialValueFindings())
         .filterNot { it.at in stopped && it.code !in ERROR_TARGET_CODES }
         .filterNot { it.at in resolvedFirst && it.code in CONDITION_TEXT_CODES }
@@ -1090,10 +1090,10 @@ internal fun checkPrepared(
             CheckFamily.ERROR_TEXT_INDEX_TERMINAL),
         gaps = prepared.gaps() + prepared.emptyFactBase() + findings.buildBlocked() +
             tracked.variantFilterGaps() + tracked.enumCategoryGaps() +
-            prepared.supportedCharacterGaps() + tracked.enumTextForbiddenCharacterGaps() +
-            prepared.hintListValueGaps() + tracked.hModelFormConstructGaps() +
-            prepared.fieldTypeBindingGaps() +
-            prepared.typeDefinitionBodyGaps() + prepared.declaredPatternGaps() + UNREAD_MEMBERS + UNIMPLEMENTED_FAMILIES,
+            tracked.supportedCharacterGaps() + tracked.enumTextForbiddenCharacterGaps() +
+            tracked.hintListValueGaps() + tracked.hModelFormConstructGaps() +
+            tracked.fieldTypeBindingGaps() +
+            prepared.typeDefinitionBodyGaps() + tracked.declaredPatternGaps() + UNREAD_MEMBERS + UNIMPLEMENTED_FAMILIES,
     )
 }
 

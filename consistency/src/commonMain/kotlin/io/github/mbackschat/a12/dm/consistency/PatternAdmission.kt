@@ -22,8 +22,8 @@ import io.github.mbackschat.a12.dm.predicates.kernelPatternBlacklist
  * words swapped, measured rather than carried across, because the two loci share the check and nothing
  * about that suggests two codes.
  */
-fun PreparedModel.declaredPatternFindings(): List<Finding> =
-    elements.filter { it.declaredKind == DeclaredKind.FIELD }.mapNotNull { field ->
+internal fun TrackedFactBase.declaredPatternFindings(): List<Finding> =
+    declarations().filter { it.declaredKind == DeclaredKind.FIELD }.mapNotNull { field ->
         val pattern = field.declaredPattern() ?: return@mapNotNull null
         val listed = kernelPatternBlacklist(pattern) ?: return@mapNotNull null
         Finding(
@@ -44,8 +44,8 @@ fun PreparedModel.declaredPatternFindings(): List<Finding> =
  * checker's own hosts accepts and refuses a different set, so agreeing with it would be a coincidence. The
  * gap is raised only when the model actually declares a pattern — otherwise it would describe every model.
  */
-fun PreparedModel.declaredPatternGaps(): List<CoverageGap> =
-    if (elements.none { it.declaredKind == DeclaredKind.FIELD && it.declaredPattern() != null }) {
+internal fun TrackedFactBase.declaredPatternGaps(): List<CoverageGap> =
+    if (declarations().none { it.declaredKind == DeclaredKind.FIELD && it.declaredPattern() != null }) {
         emptyList()
     } else {
         listOf(
@@ -60,4 +60,4 @@ fun PreparedModel.declaredPatternGaps(): List<CoverageGap> =
     }
 
 /** The `pattern` this field declares on its `StringType`, or null when it declares none. */
-private fun DeclaredElement.declaredPattern(): String? = stringTypeBody()?.string("pattern")
+private fun TrackedDeclaration.declaredPattern(): String? = stringTypeBody()?.string("pattern")

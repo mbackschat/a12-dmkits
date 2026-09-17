@@ -188,12 +188,25 @@ class ReadTranscriptTest {
                 .filterIsInstance<FactRead.ModelMember>().toSet(),
             "declaredLocales" to transcriptOf(source) { declaredLocales }
                 .filterIsInstance<FactRead.ModelMember>().toSet(),
+            "hasBaseYear" to transcriptOf(source) { hasBaseYear }
+                .filterIsInstance<FactRead.ModelMember>().toSet(),
+            "supportedCharacters" to transcriptOf(source) { supportedCharacters }
+                .filterIsInstance<FactRead.ModelMember>().toSet(),
+            "unreadableLocaleCodes" to transcriptOf(source) { unreadableLocaleCodes }
+                .filterIsInstance<FactRead.ModelMember>().toSet(),
+            "declaredTypeDefinitionIds" to transcriptOf(source) { declaredTypeDefinitionIds }
+                .filterIsInstance<FactRead.ModelMember>().toSet(),
         )
 
         assertEquals(
             mapOf(
                 "conditionLanguage" to setOf(FactRead.ModelMember(ModelFact.CONDITION_LANGUAGE)),
                 "declaredLocales" to setOf(FactRead.ModelMember(ModelFact.DECLARED_LOCALES)),
+                "hasBaseYear" to setOf(FactRead.ModelMember(ModelFact.HAS_BASE_YEAR)),
+                "supportedCharacters" to setOf(FactRead.ModelMember(ModelFact.SUPPORTED_CHARACTERS)),
+                "unreadableLocaleCodes" to setOf(FactRead.ModelMember(ModelFact.UNREADABLE_LOCALE_CODES)),
+                "declaredTypeDefinitionIds" to
+                    setOf(FactRead.ModelMember(ModelFact.DECLARED_TYPE_DEFINITION_IDS)),
             ),
             actual,
             "every accessor must charge the fact it names, or a cell is keyed on a fact nobody read",

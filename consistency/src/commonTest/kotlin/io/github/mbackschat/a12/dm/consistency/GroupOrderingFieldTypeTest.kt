@@ -40,7 +40,7 @@ class GroupOrderingFieldTypeTest {
                 ),
             ),
         ),
-    ).groupOrderingFindings()
+    ).tracked().groupOrderingFindings()
 
     private fun codesFor(skuBody: String, ordering: String) = findingsFor(skuBody, ordering).map { it.code }
 

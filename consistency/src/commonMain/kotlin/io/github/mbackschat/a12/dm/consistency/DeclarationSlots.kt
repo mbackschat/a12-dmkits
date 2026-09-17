@@ -41,9 +41,9 @@ import kotlinx.serialization.json.contentOrNull
  * [FindingCategory.AUTHORING_POLICY], which cannot make a model invalid — presenting either as A12's verdict
  * would refuse a model the Kernel accepts, in the direction no consumer can detect.
  */
-fun PreparedModel.declarationSlotFindings(): List<Finding> =
+internal fun TrackedFactBase.declarationSlotFindings(): List<Finding> =
     declaredLocaleFindings() +
-        elements.filter { it.declaredKind in EXECUTABLE_KINDS }.flatMap { element ->
+        declarations().filter { it.declaredKind in EXECUTABLE_KINDS }.flatMap { element ->
             reservedNameFinding(element) + errorCodeFindings(element) + severityFindings(element) +
                 messageFindings(element, declaredLocales)
         }
@@ -58,7 +58,7 @@ private val EXECUTABLE_KINDS = setOf(DeclaredKind.RULE, DeclaredKind.COMPUTATION
  * answers to — a model with no usable declared locale collects no message at all, so its rules would
  * otherwise each report a missing message with nothing saying why.
  */
-private fun PreparedModel.declaredLocaleFindings(): List<Finding> = when {
+private fun TrackedFactBase.declaredLocaleFindings(): List<Finding> = when {
     unreadableLocaleCodes.isNotEmpty() -> unreadableLocaleCodes.map { code ->
         Finding(
             FindingCategory.A12_CONSTRAINT,
@@ -90,7 +90,7 @@ private fun PreparedModel.declaredLocaleFindings(): List<Finding> = when {
  * 2026-09-12, the code reading as a rule's law. The finding's WORDING is this checker's own; the predicate
  * that decides it is not.
  */
-private fun reservedNameFinding(element: DeclaredElement): List<Finding> =
+private fun reservedNameFinding(element: TrackedDeclaration): List<Finding> =
     if (!isReservedElementName(element.name)) {
         emptyList()
     } else {
@@ -116,7 +116,7 @@ private fun reservedNameFinding(element: DeclaredElement): List<Finding> =
  *
  * The `severity` slot beside it is [severityFindings].
  */
-private fun errorCodeFindings(element: DeclaredElement): List<Finding> {
+private fun errorCodeFindings(element: TrackedDeclaration): List<Finding> {
     if (element.kind != "Rule") {
         return emptyList()
     }
@@ -205,7 +205,7 @@ private val SEVERITIES = setOf("ERROR", "WARNING", "INFO")
  * A12's. The split above was measured on a model declaring one good locale, and that carrier is the
  * condition for applying it.
  */
-private fun DeclaredElement.unprefixedErrorTextFinding(
+private fun TrackedDeclaration.unprefixedErrorTextFinding(
     authored: List<AuthoredMessage>,
     declaredLocales: List<String>,
 ): List<Finding> {
@@ -236,7 +236,7 @@ private fun DeclaredElement.unprefixedErrorTextFinding(
     )
 }
 
-private fun severityFindings(element: DeclaredElement): List<Finding> {
+private fun severityFindings(element: TrackedDeclaration): List<Finding> {
     if (element.kind != "Rule") {
         return emptyList()
     }
@@ -259,7 +259,7 @@ private fun severityFindings(element: DeclaredElement): List<Finding> {
 }
 
 
-private fun messageFindings(element: DeclaredElement, declaredLocales: List<String>): List<Finding> {
+private fun messageFindings(element: TrackedDeclaration, declaredLocales: List<String>): List<Finding> {
     val authored = when (val read = element.authoredMessages() ?: return emptyList()) {
         is AuthoredMessages.Refused -> return listOf(
             Finding(
@@ -307,7 +307,7 @@ private fun messageFindings(element: DeclaredElement, declaredLocales: List<Stri
  * and an undeclared locale's entry is never collected at all.
  */
 private fun authoredLocalePolicyFindings(
-    element: DeclaredElement,
+    element: TrackedDeclaration,
     authored: List<AuthoredMessage>,
     declaredLocales: List<String>,
 ): List<Finding> {
@@ -343,9 +343,9 @@ private fun authoredLocalePolicyFindings(
  *
  * Three shapes of the `errorMessage` member itself are measured, and then source-located in
  * `LocalizedTextMapDeserializer.deserialize` ([KERNEL-FINDINGS KF290]): it loops `for (JsonNode entry :
- * parser.readValueAsTree())`, so an ARRAY yields its elements, an OBJECT its values, and a scalar or an
+ * parser.readValueAsTree())`, so an ARRAY yields its declarations(), an OBJECT its values, and a scalar or an
  * absent member yields none — leaving the declaration simply message-less. Only the ENTRIES have a shape the
  * reader refuses, and a refusal there is about the SOURCE rather than about this declaration, which is why
  * it stops the read instead of contributing an unusable entry.
  */
-private fun DeclaredElement.authoredMessages(): AuthoredMessages? = body?.authoredMessages()
+private fun TrackedDeclaration.authoredMessages(): AuthoredMessages? = body?.authoredMessages()

@@ -66,7 +66,7 @@ class DeclarationSlotTest {
         messages: String?,
         locales: String = EN_AND_DE,
         slots: String = legalSlotsFor(kind),
-    ) = model(kind, name, messages, locales, slots).declarationSlotFindings().map { it.code }
+    ) = model(kind, name, messages, locales, slots).tracked().declarationSlotFindings().map { it.code }
 
     @Test
     fun eachSlotShapeDrawsTheVerdictTheKernelGivesIt() {
@@ -316,7 +316,7 @@ class DeclarationSlotTest {
     @Test
     fun theAdmittedShapesAreAdvisoryRatherThanRejections() {
         for (kind in kinds) {
-            val advisory = model(kind, "PriceCheck", """[$EN,$EN,$DE,$FR]""").declarationSlotFindings()
+            val advisory = model(kind, "PriceCheck", """[$EN,$EN,$DE,$FR]""").tracked().declarationSlotFindings()
 
             assertEquals(2, advisory.size, "a duplicate and an undeclared locale on a $kind: $advisory")
             assertTrue(advisory.none { it.justifiesRejection }, "neither may reject on a $kind: $advisory")
@@ -331,7 +331,7 @@ class DeclarationSlotTest {
 
         assertEquals(
             listOf("/Catalog/PriceCheck"),
-            prepared.declarationSlotFindings().map { it.at } +
+            prepared.tracked().declarationSlotFindings().map { it.at } +
                 prepared.elements.filter { it.kind == "Rule" }.map { it.path },
             "the only executable in the fixture is the rule, and the control reports nothing about it",
         )
@@ -347,13 +347,13 @@ class DeclarationSlotTest {
      */
     @Test
     fun everyFindingNamesItsDeclaration() {
-        val findings = model("Computation", "vk_vk_probe", "[]").declarationSlotFindings()
+        val findings = model("Computation", "vk_vk_probe", "[]").tracked().declarationSlotFindings()
 
         assertEquals(listOf("MVK_RULE_NAME_INVALID", "MVK_ERROR_MESSAGE_MISSING", NO_ERROR_TEXT),
             findings.map { it.code })
         assertTrue(findings.all { it.at == "/Catalog/vk_vk_probe" }, "$findings")
 
-        val modelLevel = model("Computation", "PriceCheck", BOTH, locales = "").declarationSlotFindings()
+        val modelLevel = model("Computation", "PriceCheck", BOTH, locales = "").tracked().declarationSlotFindings()
         assertEquals(listOf(null, "/Catalog/PriceCheck"), modelLevel.map { it.at }, "$modelLevel")
     }
 

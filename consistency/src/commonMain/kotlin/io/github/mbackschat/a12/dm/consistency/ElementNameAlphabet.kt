@@ -34,7 +34,7 @@ package io.github.mbackschat.a12.dm.consistency
  * character; and a name that breaks its alphabet AND a prefix gate at once, which is reported for the
  * character alone because the pair has not been measured.
  */
-fun PreparedModel.elementNameAlphabetFindings(): List<Finding> = elements.flatMap { element ->
+internal fun TrackedFactBase.elementNameAlphabetFindings(): List<Finding> = declarations().flatMap { element ->
     when (element.declaredKind) {
         DeclaredKind.GROUP -> element.groupNameFindings()
         DeclaredKind.FIELD -> element.fieldNameFindings()
@@ -58,7 +58,7 @@ fun PreparedModel.elementNameAlphabetFindings(): List<Finding> = elements.flatMa
  * family is about an alphabet, which is why this one is asked first and separately: a reservation and a bad
  * character want different fixes.
  */
-private fun DeclaredElement.reservedRootNameFinding(): Finding? =
+private fun TrackedDeclaration.reservedRootNameFinding(): Finding? =
     if (path.count { it == '/' } != 1 || !name.equals(RESERVED_ROOT_GROUP_NAME, ignoreCase = true)) {
         null
     } else {
@@ -72,7 +72,7 @@ private fun DeclaredElement.reservedRootNameFinding(): Finding? =
 /** The reserved name itself, matched case-insensitively and in full. */
 private const val RESERVED_ROOT_GROUP_NAME = "Id"
 
-private fun DeclaredElement.reservedPrefixFinding(code: String, carrier: String): Finding? =
+private fun TrackedDeclaration.reservedPrefixFinding(code: String, carrier: String): Finding? =
     if (!name.lowercase().startsWith("xml")) {
         null
     } else {
@@ -83,7 +83,7 @@ private fun DeclaredElement.reservedPrefixFinding(code: String, carrier: String)
         )
     }
 
-private fun DeclaredElement.groupNameFindings(): List<Finding> {
+private fun TrackedDeclaration.groupNameFindings(): List<Finding> {
     reservedRootNameFinding()?.let { return listOf(it) }
     illegalCharacter()?.let { (at, character) ->
         return listOf(
@@ -131,10 +131,10 @@ private fun DeclaredElement.groupNameFindings(): List<Finding> {
  * One path segment says it: a mounted provider's own root group DISAPPEARS into the mounting group, so an
  * expanded include contributes no root group of its own and depth is what A12 sees.
  */
-private val DeclaredElement.isRootGroup: Boolean
+private val TrackedDeclaration.isRootGroup: Boolean
     get() = path.count { it == '/' } == 1
 
-private fun DeclaredElement.fieldNameFindings(): List<Finding> {
+private fun TrackedDeclaration.fieldNameFindings(): List<Finding> {
     illegalCharacter()?.let { (at, character) ->
         return listOf(
             nameFinding(
@@ -176,7 +176,7 @@ private fun DeclaredElement.fieldNameFindings(): List<Finding> {
  * Only ASCII is judged — see the class note. The offset is carried because a long name gives an author
  * nothing else to look at.
  */
-private fun DeclaredElement.illegalCharacter(): Pair<Int, Char>? = name
+private fun TrackedDeclaration.illegalCharacter(): Pair<Int, Char>? = name
     .withIndex()
     .firstOrNull { (_, character) -> character.code < 128 && !character.isAdmittedAscii() }
     ?.let { it.index to it.value }
@@ -187,7 +187,7 @@ private fun Char.isAdmittedAscii(): Boolean =
 /** The two names A12 exempts from its leading-underscore gate, the second as a prefix. */
 private val RESERVED_GROUP_NAMES = listOf("__meta", "__attachment_meta")
 
-private fun DeclaredElement.nameFinding(code: String, at: Int, character: Char) = nameFinding(
+private fun TrackedDeclaration.nameFinding(code: String, at: Int, character: Char) = nameFinding(
     code,
     if (character == '/') {
         "this name carries the path separator `/` at offset $at, so the element's own path disagrees with " +
@@ -197,7 +197,7 @@ private fun DeclaredElement.nameFinding(code: String, at: Int, character: Char) 
     },
 )
 
-private fun DeclaredElement.nameFinding(code: String, explain: String) = Finding(
+private fun TrackedDeclaration.nameFinding(code: String, explain: String) = Finding(
     FindingCategory.A12_CONSTRAINT,
     FindingSeverity.ERROR,
     code,

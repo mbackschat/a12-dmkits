@@ -74,13 +74,13 @@ import io.github.mbackschat.a12.dm.consistency.syntax.callsIn
  * here, measured, so refusing one would be an over-rejection. The walk continues past it: a later field's
  * class is the same class A12 would report at the typedef, so only the field a message names can differ.
  */
-fun PreparedModel.fieldListOperationOperandFindings(): List<Finding> {
+internal fun TrackedFactBase.fieldListOperationOperandFindings(): List<Finding> {
     val keywords = CONDITION_OPERATOR_KEYWORDS[conditionLanguage] ?: return emptyList()
     val arms = ARM_OF.mapNotNull { (id, arm) -> keywords[id]?.let { it to arm } }.toMap()
     if (arms.isEmpty()) {
         return emptyList()
     }
-    return elements.flatMap { element ->
+    return declarations().flatMap { element ->
         val body = element.body ?: return@flatMap emptyList()
         val declaringGroup = element.path.substringBeforeLast('/', missingDelimiterValue = "")
         conditionTexts(element.kind, body).flatMap { (member, text) ->
@@ -125,14 +125,14 @@ private val PLAINLY_NON_STRING_LIKE_TYPES =
     setOf(NUMBER_TYPE, "BooleanType", "ConfirmType", "DateRangeType") + TEMPORAL_DECLARED_TYPES
 
 /** What one arm's walk landed on: the class, the field that drew it, and what the operator wanted. */
-private class FieldListDefect(val code: String, val demand: String, val field: DeclaredElement)
+private class FieldListDefect(val code: String, val demand: String, val field: TrackedDeclaration)
 
 /** The first defect this arm finds, or null where it finds none and where it may not judge. */
-private fun PreparedModel.operandDefect(
+private fun TrackedFactBase.operandDefect(
     call: ConditionCall,
     arm: FieldListArm,
     declaringGroup: String,
-    element: DeclaredElement,
+    element: TrackedDeclaration,
 ): FieldListDefect? {
     val written = call.operands.map { operand -> operand.path ?: return null }
     val targets = written.map { addressedTargetOf(it, declaringGroup, element) ?: return null }
@@ -140,11 +140,11 @@ private fun PreparedModel.operandDefect(
         return null
     }
     val fields = targets.flatMap { target ->
-        val declared = elements.firstOrNull { it.path == target } ?: return null
+        val declared = declarations().firstOrNull { it.path == target } ?: return null
         when (declared.declaredKind) {
             DeclaredKind.FIELD -> listOf(declared)
             DeclaredKind.GROUP ->
-                elements.filter { it.declaredKind == DeclaredKind.FIELD && it.path.startsWith("$target/") }
+                declarations().filter { it.declaredKind == DeclaredKind.FIELD && it.path.startsWith("$target/") }
             else -> return null
         }
     }
@@ -186,7 +186,7 @@ private fun PreparedModel.operandDefect(
  * kind defect later than a waiving field still answers first — measured, and the reason the two walks here
  * are sequential rather than one pass.
  */
-private fun distinctDefect(fields: List<DeclaredElement>): FieldListDefect? {
+private fun distinctDefect(fields: List<TrackedDeclaration>): FieldListDefect? {
     val leader = fields.first().declaredFieldType() ?: return null
     return when {
         leader in STRING_LIKE_LEADERS ->
@@ -228,16 +228,16 @@ private fun distinctDefect(fields: List<DeclaredElement>): FieldListDefect? {
  * The shared pre-gates every entity list meets, plus the arity gate all four carriers here take, which
  * demands more than one field or one group.
  */
-private fun PreparedModel.preEmptedBeforeTheSwitch(written: List<String>, targets: List<String>): Boolean {
+private fun TrackedFactBase.preEmptedBeforeTheSwitch(written: List<String>, targets: List<String>): Boolean {
     val loneField = targets.size == 1 && '*' !in written.first() &&
-        elements.firstOrNull { it.path == targets.first() }?.declaredKind == DeclaredKind.FIELD
+        declarations().firstOrNull { it.path == targets.first() }?.declaredKind == DeclaredKind.FIELD
     return entityListPreGateAnswers(written, targets) || loneField
 }
 
 private fun finding(
     defect: FieldListDefect,
     call: ConditionCall,
-    element: DeclaredElement,
+    element: TrackedDeclaration,
     member: String,
 ): Finding = Finding(
     FindingCategory.A12_CONSTRAINT,

@@ -34,8 +34,8 @@ import kotlinx.serialization.json.intOrNull
  * stays silent on a stored hint list under three attacked spellings, so reproducing it would refuse models
  * A12 takes. Also any `hintList` entry whose shape this checker cannot read, published as a [CoverageGap].
  */
-fun PreparedModel.hintListValueFindings(): List<Finding> =
-    elements.filter { it.declaredKind == DeclaredKind.FIELD }.flatMap { field ->
+internal fun TrackedFactBase.hintListValueFindings(): List<Finding> =
+    declarations().filter { it.declaredKind == DeclaredKind.FIELD }.flatMap { field ->
         val body = field.stringTypeBody() ?: return@flatMap emptyList()
         judgedEntries(body).flatMap { values ->
             field.lengthFindings(values, body) + field.duplicateFindings(values)
@@ -47,8 +47,8 @@ fun PreparedModel.hintListValueFindings(): List<Finding> =
  *
  * Per DECLARATION, because that is what a consumer needs: which field's hint list was left to A12.
  */
-fun PreparedModel.hintListValueGaps(): List<CoverageGap> =
-    elements.filter { it.declaredKind == DeclaredKind.FIELD }.mapNotNull { field ->
+internal fun TrackedFactBase.hintListValueGaps(): List<CoverageGap> =
+    declarations().filter { it.declaredKind == DeclaredKind.FIELD }.mapNotNull { field ->
         val unread = field.stringTypeBody()?.unreadableHintEntry() ?: return@mapNotNull null
         CoverageGap(
             field.path,
@@ -58,7 +58,7 @@ fun PreparedModel.hintListValueGaps(): List<CoverageGap> =
     }
 
 /** One value list per hint entry whose locale the model declares — the others A12 never examines. */
-private fun PreparedModel.judgedEntries(body: JsonObject): List<List<String>> =
+private fun TrackedFactBase.judgedEntries(body: JsonObject): List<List<String>> =
     (body["hintList"] as? JsonArray).orEmpty().filterIsInstance<JsonObject>()
         .filter { entry -> entry.string("locale")?.let { localeKeyOrNull(it) } in declaredLocales }
         .map { entry ->
@@ -66,7 +66,7 @@ private fun PreparedModel.judgedEntries(body: JsonObject): List<List<String>> =
                 .mapNotNull { (it as? JsonPrimitive)?.takeIf { value -> value.isString }?.content }
         }
 
-private fun DeclaredElement.lengthFindings(values: List<String>, body: JsonObject): List<Finding> {
+private fun TrackedDeclaration.lengthFindings(values: List<String>, body: JsonObject): List<Finding> {
     val maximum = body.bound("maxLength")
     val minimum = body.bound("minLength")
     return values.flatMap { value ->
@@ -92,7 +92,7 @@ private fun DeclaredElement.lengthFindings(values: List<String>, body: JsonObjec
 }
 
 /** One finding per duplicated VALUE, which is the multiplicity A12 raises. */
-private fun DeclaredElement.duplicateFindings(values: List<String>): List<Finding> =
+private fun TrackedDeclaration.duplicateFindings(values: List<String>): List<Finding> =
     values.groupingBy { it }.eachCount().filterValues { it > 1 }.keys.map { duplicated ->
         hintFinding(
             "MVK_VALUES_DUPLICATE",
@@ -101,7 +101,7 @@ private fun DeclaredElement.duplicateFindings(values: List<String>): List<Findin
         )
     }
 
-private fun DeclaredElement.hintFinding(code: String, explain: String): Finding = Finding(
+private fun TrackedDeclaration.hintFinding(code: String, explain: String): Finding = Finding(
     FindingCategory.A12_CONSTRAINT,
     FindingSeverity.ERROR,
     code,

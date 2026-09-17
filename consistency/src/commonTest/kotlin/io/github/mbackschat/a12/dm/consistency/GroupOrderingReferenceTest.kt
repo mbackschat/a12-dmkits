@@ -40,7 +40,7 @@ class GroupOrderingReferenceTest {
                 ),
             ),
         ),
-    ).groupOrderingFindings().map { it.code }
+    ).tracked().groupOrderingFindings().map { it.code }
 
     private fun index(written: String) = """"indexFieldName":"$written","""
 
@@ -128,7 +128,7 @@ class GroupOrderingReferenceTest {
                     ),
                 ),
             ),
-        ).groupOrderingFindings().single().explain
+        ).tracked().groupOrderingFindings().single().explain
         assertTrue("illegal relative path" in explain, explain)
     }
 
@@ -184,7 +184,7 @@ class GroupOrderingReferenceTest {
                     ),
                 ),
             ),
-        ).groupOrderingFindings().single().explain
+        ).tracked().groupOrderingFindings().single().explain
         assertTrue("names no field at all" in explain, explain)
     }
 

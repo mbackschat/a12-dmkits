@@ -27,8 +27,8 @@ import kotlinx.serialization.json.intOrNull
  * deliberately silent — `MVK_AMOUNT_INT_PART_MISSING`, whose member A12 derives for every amount that
  * declares none, and the priority half of the sort block that has no DM-JSON member at all.
  */
-fun PreparedModel.numberTypeDigitFindings(): List<Finding> =
-    elements.filter { it.declaredKind == DeclaredKind.FIELD }.flatMap { field ->
+internal fun TrackedFactBase.numberTypeDigitFindings(): List<Finding> =
+    declarations().filter { it.declaredKind == DeclaredKind.FIELD }.flatMap { field ->
         val body = field.numberTypeBody() ?: return@flatMap emptyList()
         digitPairFindings(field, body) + valueRangeFindings(field, body) + budgetFindings(field, body)
     }
@@ -49,7 +49,7 @@ private const val DIGIT_BUDGET = 15
 /** A12's own "not declared" spelling for the two fractional counts, which are otherwise primitive. */
 private const val SUPPRESSED = -1
 
-private fun digitPairFindings(field: DeclaredElement, body: JsonObject): List<Finding> {
+private fun digitPairFindings(field: TrackedDeclaration, body: JsonObject): List<Finding> {
     val min = body.int("minFractionalDigits") ?: 0
     val max = body.int("maxFractionalDigits") ?: 0
     val findings = mutableListOf<Finding>()
@@ -79,7 +79,7 @@ private fun digitPairFindings(field: DeclaredElement, body: JsonObject): List<Fi
     return findings
 }
 
-private fun valueRangeFindings(field: DeclaredElement, body: JsonObject): List<Finding> {
+private fun valueRangeFindings(field: TrackedDeclaration, body: JsonObject): List<Finding> {
     val min = body.number("minValue") ?: return emptyList()
     val max = body.number("maxValue") ?: return emptyList()
     if (min <= max) {
@@ -104,7 +104,7 @@ private fun valueRangeFindings(field: DeclaredElement, body: JsonObject): List<F
  * suppressed member costs nothing in the length threshold — measured, because reading it as "some
  * fractional part" would allow one length too many.
  */
-private fun budgetFindings(field: DeclaredElement, body: JsonObject): List<Finding> {
+private fun budgetFindings(field: TrackedDeclaration, body: JsonObject): List<Finding> {
     val minFractional = body.int("minFractionalDigits") ?: 0
     val maxFractional = body.int("maxFractionalDigits") ?: 0
     val findings = mutableListOf<Finding>()
@@ -134,7 +134,7 @@ private fun budgetFindings(field: DeclaredElement, body: JsonObject): List<Findi
  * that sum is has not been measured. Under-reporting there is safe; guessing it is not.
  */
 private fun arityFindings(
-    field: DeclaredElement,
+    field: TrackedDeclaration,
     body: JsonObject,
     minFractional: Int,
     maxFractional: Int,
@@ -180,7 +180,7 @@ private fun arityFindings(
  * and at most 99999, and what A12 answers outside that has not been measured.
  */
 private fun lengthFindings(
-    field: DeclaredElement,
+    field: TrackedDeclaration,
     body: JsonObject,
     minFractional: Int,
     maxFractional: Int,
@@ -234,7 +234,7 @@ private fun JsonObject.declaredLength(member: String): Int? =
     (this[member] as? JsonPrimitive)?.intOrNull?.takeIf { it in 1..99999 }
 
 /** The `NumberType` body this field declares, or null when it declares another type or none. */
-private fun DeclaredElement.numberTypeBody(): JsonObject? {
+private fun TrackedDeclaration.numberTypeBody(): JsonObject? {
     val declared = body?.get("fieldType") as? JsonObject ?: return null
     if (declared.string("type") != "NumberType") {
         return null
@@ -254,5 +254,5 @@ private fun JsonObject.int(member: String): Int? = (this[member] as? JsonPrimiti
  */
 private fun JsonObject.number(member: String): Double? = (this[member] as? JsonPrimitive)?.doubleOrNull
 
-private fun finding(field: DeclaredElement, code: String, explain: String) =
+private fun finding(field: TrackedDeclaration, code: String, explain: String) =
     Finding(FindingCategory.A12_CONSTRAINT, FindingSeverity.ERROR, code, explain, field.path)

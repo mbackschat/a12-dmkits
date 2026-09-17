@@ -21,9 +21,9 @@ package io.github.mbackschat.a12.dm.consistency
  * group without knowing which operand position it sits in — the one thing a checker reading condition text
  * cannot recover.
  */
-fun PreparedModel.emptyGroupOperandFindings(): List<Finding> = conditionReferences().mapNotNull { reference ->
+internal fun TrackedFactBase.emptyGroupOperandFindings(): List<Finding> = conditionReferences().mapNotNull { reference ->
     val target = (reference.target as? Reference.Resolved)?.path ?: return@mapNotNull null
-    val group = elements.firstOrNull { it.path == target && it.declaredKind == DeclaredKind.GROUP }
+    val group = declarations().firstOrNull { it.path == target && it.declaredKind == DeclaredKind.GROUP }
         ?: return@mapNotNull null
     if (carriesAField(group.path)) {
         return@mapNotNull null
@@ -46,6 +46,6 @@ fun PreparedModel.emptyGroupOperandFindings(): List<Finding> = conditionReferenc
  * declaration with its canonical path, and the `/` guard keeps `/Store/Empty` from claiming the fields of a
  * sibling named `/Store/EmptyRows`.
  */
-private fun PreparedModel.carriesAField(path: String): Boolean = elements.any {
+private fun TrackedFactBase.carriesAField(path: String): Boolean = declarations().any {
     it.declaredKind == DeclaredKind.FIELD && it.path.startsWith("$path/")
 }

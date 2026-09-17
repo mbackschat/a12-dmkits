@@ -31,8 +31,8 @@ import kotlinx.serialization.json.intOrNull
  * this family has never been put to A12 on a custom type, and reusing it across the carrier would be a
  * refusal by analogy.
  */
-fun PreparedModel.stringTypeParameterFindings(): List<Finding> =
-    elements.filter { it.declaredKind == DeclaredKind.FIELD }.flatMap { field ->
+internal fun TrackedFactBase.stringTypeParameterFindings(): List<Finding> =
+    declarations().filter { it.declaredKind == DeclaredKind.FIELD }.flatMap { field ->
         field.stringTypeBody()?.let { body ->
             return@flatMap noValueValidationFindings(field, body) + lengthFindings(field, body)
         }
@@ -44,7 +44,7 @@ fun PreparedModel.stringTypeParameterFindings(): List<Finding> =
     }
 
 /** The four laws that hold only when the type declares `noValueValidation`. */
-private fun noValueValidationFindings(field: DeclaredElement, body: JsonObject): List<Finding> {
+private fun noValueValidationFindings(field: TrackedDeclaration, body: JsonObject): List<Finding> {
     if (body.flag("noValueValidation") != true) {
         return emptyList()
     }
@@ -88,7 +88,7 @@ private fun noValueValidationFindings(field: DeclaredElement, body: JsonObject):
  * asked only where a line-break flag is a member A12 reads.
  */
 private fun lengthFindings(
-    field: DeclaredElement,
+    field: TrackedDeclaration,
     body: JsonObject,
     orderingCode: String = "MVK_MIN_LENGTH_BIGGER_MAX_LENGTH",
 ): List<Finding> {
@@ -126,7 +126,7 @@ private val EXCLUDED_BY_NO_VALUE_VALIDATION = listOf("pattern", "minLength")
 private const val MIN_ABOVE_MAX_ON_A_CUSTOM_TYPE = "MIN_LENGTH_BIGGER_MAX_LENGTH"
 
 /** The custom type's body, or null when this field declares another type. */
-private fun DeclaredElement.customTypeBody(): JsonObject? {
+private fun TrackedDeclaration.customTypeBody(): JsonObject? {
     val declared = body?.get("fieldType") as? JsonObject ?: return null
     if ((declared["type"] as? JsonPrimitive)?.content != "CustomFieldType") {
         return null
@@ -151,5 +151,5 @@ private fun JsonObject.declaredLength(member: String): Int? =
 
 private fun JsonObject.hintList(): List<*> = (this["hintList"] as? JsonArray) ?: emptyList<Any>()
 
-private fun finding(field: DeclaredElement, code: String, explain: String) =
+private fun finding(field: TrackedDeclaration, code: String, explain: String) =
     Finding(FindingCategory.A12_CONSTRAINT, FindingSeverity.ERROR, code, explain, field.path)

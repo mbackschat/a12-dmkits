@@ -69,7 +69,7 @@ import kotlinx.serialization.json.contentOrNull
  * **Silent on a `TypeDefType` or `UnspecifiedType` declaration**, whose effective type this reader does not
  * resolve.
  */
-fun PreparedModel.valueInFieldsConstantKindFindings(): List<Finding> {
+internal fun TrackedFactBase.valueInFieldsConstantKindFindings(): List<Finding> {
     val keywords = CONDITION_OPERATOR_KEYWORDS[conditionLanguage] ?: return emptyList()
     val carrier = keywords[VALUE_IN_FIELDS] ?: return emptyList()
     val spellings = ConstantSpellings(
@@ -77,7 +77,7 @@ fun PreparedModel.valueInFieldsConstantKindFindings(): List<Finding> {
         keywords[FALSE_CONSTANT],
         listOfNotNull(keywords[TODAY_CONSTANT], keywords[NOW_CONSTANT]),
     )
-    return elements.mapNotNull { element ->
+    return declarations().mapNotNull { element ->
         val body = element.body ?: return@mapNotNull null
         val group = element.path.substringBeforeLast('/', missingDelimiterValue = "")
         conditionTexts(element.kind, body).firstNotNullOfOrNull { (member, text) ->
@@ -127,11 +127,11 @@ private enum class ConstantArm(val code: String, val admitted: Set<String>) {
 /** The declarations whose effective type this reader does not resolve, so no arm may judge them. */
 private val UNRESOLVED_TYPES = setOf("TypeDefType", "UnspecifiedType")
 
-private fun PreparedModel.constantKindFinding(
+private fun TrackedFactBase.constantKindFinding(
     call: ConditionCall,
     spellings: ConstantSpellings,
     declaringGroup: String,
-    element: DeclaredElement,
+    element: TrackedDeclaration,
     member: String,
 ): Finding? {
     val (constants, entities) = call.splitAtIn() ?: return null
@@ -165,11 +165,11 @@ private fun PreparedModel.constantKindFinding(
         )
     }
     val fields = targets.flatMap { target ->
-        val declared = elements.firstOrNull { it.path == target } ?: return null
+        val declared = declarations().firstOrNull { it.path == target } ?: return null
         when (declared.declaredKind) {
             DeclaredKind.FIELD -> listOf(declared)
             DeclaredKind.GROUP ->
-                elements.filter { it.declaredKind == DeclaredKind.FIELD && it.path.startsWith("$target/") }
+                declarations().filter { it.declaredKind == DeclaredKind.FIELD && it.path.startsWith("$target/") }
             else -> return null
         }
     }
@@ -197,7 +197,7 @@ private class ListDefect(val code: String, val detail: String)
 
 /** What the type walk found: a field this arm refuses, a class this family does not own, or neither. */
 private sealed interface ListVerdict {
-    data class Offender(val field: DeclaredElement) : ListVerdict
+    data class Offender(val field: TrackedDeclaration) : ListVerdict
 
     /** A12 answers with a class this family does not carry, so naming one of its own would be the wrong one. */
     data object Opaque : ListVerdict
@@ -213,7 +213,7 @@ private sealed interface ListVerdict {
  * exactly as `checkIsValueValidation` asks it, and the date gate of the constant alone.
  */
 private fun stringArmTailDefect(
-    fields: List<DeclaredElement>,
+    fields: List<TrackedDeclaration>,
     arm: ConstantArm,
     constantText: String,
 ): ListDefect? {
@@ -254,7 +254,7 @@ private fun stringArmTailDefect(
  * refused.
  */
 private fun typeWalkVerdict(
-    fields: List<DeclaredElement>,
+    fields: List<TrackedDeclaration>,
     arm: ConstantArm,
     constantText: String,
 ): ListVerdict {
@@ -283,9 +283,9 @@ private fun typeWalkVerdict(
  * Two of them are the shared pre-gates every entity list meets ([entityListPreGateAnswers]); the third is
  * this operator's own arity gate, which takes more than one field or one group.
  */
-private fun PreparedModel.preEmptedBeforeTheSwitch(written: List<String>, targets: List<String>): Boolean {
+private fun TrackedFactBase.preEmptedBeforeTheSwitch(written: List<String>, targets: List<String>): Boolean {
     val loneField = targets.size == 1 && '*' !in written.first() &&
-        elements.firstOrNull { it.path == targets.first() }?.declaredKind == DeclaredKind.FIELD
+        declarations().firstOrNull { it.path == targets.first() }?.declaredKind == DeclaredKind.FIELD
     return entityListPreGateAnswers(written, targets) || loneField
 }
 
@@ -328,10 +328,10 @@ private fun armOf(constantText: String, spellings: ConstantSpellings): ConstantA
  * name the author sees a resolution class where A12 reports the token. Closing it needs the reader to stop
  * resolving the slot at all, which needs offsets `ConditionCall` does not carry.
  */
-private fun PreparedModel.unexpectedConstantToken(
+private fun TrackedFactBase.unexpectedConstantToken(
     constantText: String,
     declaringGroup: String,
-    element: DeclaredElement,
+    element: TrackedDeclaration,
     member: String,
 ): Finding? {
     val unresolvable = referencesIn(constantText, conditionLanguage)

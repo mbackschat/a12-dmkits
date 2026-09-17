@@ -34,8 +34,8 @@ import kotlinx.serialization.json.JsonPrimitive
  * only after the checker's own fixtures were given types, because 73 of 74 field declarations in them
  * carried none, which means those fixtures had been models A12 could not have built.
  */
-fun PreparedModel.fieldTypeBindingFindings(): List<Finding> =
-    elements.filter { it.declaredKind == DeclaredKind.FIELD }.mapNotNull { field ->
+internal fun TrackedFactBase.fieldTypeBindingFindings(): List<Finding> =
+    declarations().filter { it.declaredKind == DeclaredKind.FIELD }.mapNotNull { field ->
         val declared = field.body?.get("fieldType")
             ?: return@mapNotNull unbuildable(
                 field,
@@ -52,8 +52,8 @@ fun PreparedModel.fieldTypeBindingFindings(): List<Finding> =
  * while the same report's `checksCompleted` names this family: a consumer would read "examined, nothing
  * found" for a declaration the family declined to judge.
  */
-fun PreparedModel.fieldTypeBindingGaps(): List<CoverageGap> =
-    elements.filter { it.declaredKind == DeclaredKind.FIELD }.mapNotNull { field ->
+internal fun TrackedFactBase.fieldTypeBindingGaps(): List<CoverageGap> =
+    declarations().filter { it.declaredKind == DeclaredKind.FIELD }.mapNotNull { field ->
         val declared = field.body?.get("fieldType") as? JsonObject ?: return@mapNotNull null
         if ((declared["type"] as? JsonPrimitive)?.content != "DateRangeType") {
             return@mapNotNull null
@@ -115,7 +115,7 @@ private val DECLARED_FIELD_TYPES = mapOf(
  * deserializer switches on, and a case that does not guard its body must find one.
  */
 private fun unbindableFieldType(
-    field: DeclaredElement,
+    field: TrackedDeclaration,
     declared: JsonElement,
     declaredTypeDefinitionIds: Set<String>,
 ): Finding? {
@@ -196,7 +196,7 @@ private fun unbindableFieldType(
  * not. An explicit `""` is a different declaration with admitted pairs of its own, so the two cannot be
  * folded.
  */
-private fun inadmissibleRangePair(field: DeclaredElement, body: JsonObject): Finding? {
+private fun inadmissibleRangePair(field: TrackedDeclaration, body: JsonObject): Finding? {
     val format = (body["format"] as? JsonPrimitive)?.takeIf { it.isString }?.content ?: return null
     val admitted = ADMITTED_RANGE_SEPARATORS[format] ?: return null
     val declared = body["rangeSeparator"]
@@ -246,7 +246,7 @@ private fun inadmissibleRangePair(field: DeclaredElement, body: JsonObject): Fin
  * declared-definition control that is ADMITTED.
  */
 private fun unresolvedTypeDefinition(
-    field: DeclaredElement,
+    field: TrackedDeclaration,
     declaredTypeDefinitionIds: Set<String>,
 ): Finding? {
     val named = field.boundTypeDefinitionId()
@@ -272,7 +272,12 @@ private fun unresolvedTypeDefinition(
  * kernel's own Java field is called `id`, and taking THAT for the wire name is what once made a probe measure
  * an unknown member and mistake the result for a law ([KERNEL-FINDINGS KF308], corrected).
  */
-internal fun DeclaredElement.boundTypeDefinitionId(): String? {
+internal fun TrackedDeclaration.boundTypeDefinitionId(): String? = boundTypeDefinitionIdIn(body)
+
+/** The same reading off an untracked declaration, sharing one implementation so the two cannot drift. */
+internal fun DeclaredElement.boundTypeDefinitionId(): String? = boundTypeDefinitionIdIn(body)
+
+private fun boundTypeDefinitionIdIn(body: JsonObject?): String? {
     val declared = body?.get("fieldType") as? JsonObject ?: return null
     if ((declared["type"] as? JsonPrimitive)?.content != "TypeDefType") {
         return null
@@ -397,7 +402,7 @@ private val ADMITTED_RANGE_SEPARATORS = mapOf(
 private fun JsonElement.asBoundText(): String? = (this as? JsonPrimitive)?.content
 
 /** Tier one: A12's reader never got past the bytes, so no declaration was examined at all. */
-private fun unbindable(field: DeclaredElement, complaint: String) = finding(
+private fun unbindable(field: TrackedDeclaration, complaint: String) = finding(
     field,
     "$complaint — A12's own reader refuses the source outright, so the model never loads and no " +
         "consistency verdict about it exists.",
@@ -409,12 +414,12 @@ private fun unbindable(field: DeclaredElement, complaint: String) = finding(
  * The same code, deliberately — both leave a consumer with no verdict — and a different sentence, because a
  * model that loads and fails to build has told A12 something, where one the reader refused has not.
  */
-private fun unbuildable(field: DeclaredElement, complaint: String) = finding(
+private fun unbuildable(field: TrackedDeclaration, complaint: String) = finding(
     field,
     "$complaint, so A12 reads the model and then fails to build it — no consistency verdict about it exists.",
 )
 
-private fun finding(field: DeclaredElement, explain: String) = Finding(
+private fun finding(field: TrackedDeclaration, explain: String) = Finding(
     FindingCategory.A12_CONSTRAINT,
     FindingSeverity.ERROR,
     CK_MODEL_NOT_BUILDABLE,
@@ -429,7 +434,7 @@ private fun finding(field: DeclaredElement, explain: String) = Finding(
  * it ([declaredPatternFindings], [stringTypeMessageFindings]) and a second copy of the unwrapping is how the
  * arms would drift apart.
  */
-internal fun DeclaredElement.stringTypeBody(): JsonObject? {
+internal fun TrackedDeclaration.stringTypeBody(): JsonObject? {
     val declared = body?.get("fieldType") as? JsonObject ?: return null
     if (declared.string("type") != "StringType") {
         return null

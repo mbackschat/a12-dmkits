@@ -38,9 +38,9 @@ import kotlinx.serialization.json.JsonPrimitive
  * reading of it would refuse values A12 admits — and any value carrying a surrogate code unit, which is a
  * supplementary-plane character nobody has put to this gate. Each silence is published as a [CoverageGap].
  */
-fun PreparedModel.supportedCharacterFindings(): List<Finding> {
+internal fun TrackedFactBase.supportedCharacterFindings(): List<Finding> {
     val admitted = admittedRanges(supportedCharacters) ?: return emptyList()
-    return elements.filter { it.declaredKind == DeclaredKind.FIELD }.flatMap { field ->
+    return declarations().filter { it.declaredKind == DeclaredKind.FIELD }.flatMap { field ->
         val values = field.enumerationBody()?.get("values") as? JsonArray ?: return@flatMap emptyList()
         // Distinct SPELLINGS, because A12 reports on the triple (field, value, character): a value declared
         // twice yields the same notification twice and A12 keeps one, so pairing per entry would over-count.
@@ -56,7 +56,7 @@ fun PreparedModel.supportedCharacterFindings(): List<Finding> {
  * the family over every declaration at once, so naming declarations would under-state it. The per-value
  * skips are declaration-level for the ordinary reason — a consumer needs to know which enum was left to A12.
  */
-fun PreparedModel.supportedCharacterGaps(): List<CoverageGap> {
+internal fun TrackedFactBase.supportedCharacterGaps(): List<CoverageGap> {
     if (supportedCharacters.isEmpty()) {
         return emptyList()
     }
@@ -71,7 +71,7 @@ fun PreparedModel.supportedCharacterGaps(): List<CoverageGap> {
             ),
         )
     }
-    return elements.filter { it.declaredKind == DeclaredKind.FIELD }.mapNotNull { field ->
+    return declarations().filter { it.declaredKind == DeclaredKind.FIELD }.mapNotNull { field ->
         val values = field.enumerationBody()?.get("values") as? JsonArray ?: return@mapNotNull null
         val unread = values.firstNotNullOfOrNull { it.unreadableValue() } ?: return@mapNotNull null
         CoverageGap(
@@ -120,7 +120,7 @@ private fun JsonElement.judgeableValue(): String? =
     declaredValue()?.takeUnless { spelling -> spelling.any { it.isSurrogate() } }
 
 /** One declared value's offending characters, each named once however often it occurs in that value. */
-private fun DeclaredElement.offendersIn(value: String, admitted: List<CharRange>): List<Finding> {
+private fun TrackedDeclaration.offendersIn(value: String, admitted: List<CharRange>): List<Finding> {
     return value.toCharArray().distinct()
         .filterNot { character -> admitted.any { character in it } }
         .map { character ->

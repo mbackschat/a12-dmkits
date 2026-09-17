@@ -18,7 +18,7 @@ package io.github.mbackschat.a12.dm.consistency
  * sent to the wrong repair. The checker names both there, because the landing-site defect survives fixing the
  * suffix — `Insured*` still stars a group that does not repeat.
  */
-fun PreparedModel.hModelPathSuffixFindings(): List<Finding> = conditionReferences()
+internal fun TrackedFactBase.hModelPathSuffixFindings(): List<Finding> = conditionReferences()
     .filter { it.target is Reference.Resolved && it.written.carriesTheSuffix() }
     .map { reference ->
         Finding(
