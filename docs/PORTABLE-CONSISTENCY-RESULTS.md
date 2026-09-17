@@ -8,6 +8,23 @@ Dated measurements of the Kernel-free checker, newest first. **Every LATENCY her
 
 Results never land in a spec, and a measurement's home is not its explanation: the mechanism paragraphs below are marked as hypotheses where they are hypotheses.
 
+## 2026-09-17 — two shipped POMs named a coordinate nothing publishes <a id="pom-closure-2026-09-17"></a>
+
+F's row 8 lists **Java API compatibility**, and its oracle asks for a "compiled public API comparison where relevant". Following that to the checker found something one layer below the API dumps.
+
+| what was measured | result |
+|---|---|
+| `dmkits-consistency-gate`'s generated POM | declares `io.github.mbackschat.a12.dm:consistency-jvm:0.13.0` at **compile** scope |
+| `dmkits-interpreter-preflight`'s generated POM | the same declaration |
+| `:consistency:tasks --all` | **no publishing tasks at all** — the module had no `maven-publish` block |
+| `api/dmkits-consistency-gate.api` | its public signatures name `…dm.consistency.ModelSource` and `…dm.consistency.ConsistencyReport` |
+
+So two published artifacts had an unresolvable compile dependency, on the module whose types their public API returns. Both expose those types deliberately — `PublicApiGuardTest.API_SCOPED_PUBLICATIONS` records the reason, that restating the checker's report in a second shape is worse than naming its type — so the fix is to publish the module, not to hide it. `:consistency` now publishes `dm-consistency` (the `dm-*` convention `:interpreter` and `:predicates` use for multiplatform artifacts), and both façade POMs name `dm-consistency-jvm`.
+
+**The estate had already met this exact constraint and written it down.** `predicates/build.gradle` says it in as many words — *"published so `:rulekit` can depend on it without an unresolvable coordinate in a shipped POM, which is precisely the constraint that blocked C1's extraction"* — and [RELEASE-SPEC](RELEASE-SPEC.md) §3 carries the consequence for mirrors. The rule was known; nothing enforced it. `verifyPublishedPomsResolveInRepoCoordinates` now reads the GENERATED POMs (a coordinate is decided by the target project's publication, so a build script says nothing about what a consumer will be asked to resolve) and refuses any in-repo dependency outside the published set. Green: **17 POMs against 17 published coordinates**; control: removing the module's publication reproduces `names io.github.mbackschat.a12.dm:consistency-jvm (compile), which nothing publishes`.
+
+**And adding the publication tripped the trap the repository documents, then showed the guard against it was disarmed.** A `publishing { }` block without `maven-publish` binds to the ROOT project — measured here for the second time, the first being `:predicates`. `verifyPublishingIsDeclaredLocally` exists for exactly that and **reported clean**: it tested `!(text =~ /maven-publish/)`, and the COMMENT explaining that this module had no maven-publish block contained the string. A guard whose subject is a plugin must look for the plugin being APPLIED, so it now matches `id 'maven-publish'` / `apply plugin: 'maven-publish'` at line start. Control: removing the application while leaving the comment names `[:consistency]`.
+
 ## 2026-09-17 — B0's reference grid, replayed through the packaged arms <a id="b0-replay-2026-09-17"></a>
 
 B0 hands this replay away in as many words — *"the packed Node/browser replay of these same cases belongs to F, which owns the delivery tooling, so B0 does not silently depend on a later slice's deliverable"* — and F's row 8 lists it. It had not run. `ReferenceBindingTest` drives `prepare(...).resolve(base, name)`, an **internal** API no consumer can reach, so it cannot say whether the packaged artifact carries the behaviour at all.

@@ -9,6 +9,12 @@
 // differentials live in :adapter.
 plugins {
     id 'org.jetbrains.kotlin.multiplatform'
+    // Applied HERE, not inherited, for the reason `:predicates` records: without it this project has no
+    // `publishing` extension and the Groovy DSL resolves `publishing { }` against the ROOT project instead of
+    // failing. Measured again on 2026-09-17 while adding this module's publication — the block silently
+    // reconfigured root, and `verifyPublishingIsDeclaredLocally` did not catch it, because the words
+    // "maven-publish" in the explanatory comment satisfied its string scan. Both were fixed together.
+    id 'maven-publish'
 }
 
 kotlin {
@@ -710,6 +716,32 @@ def generateCheckerIdentity = tasks.register('generateCheckerIdentity') {
 kotlin.sourceSets.commonMain.kotlin.srcDir(generatedIdentityDir)
 tasks.matching { it.name.startsWith('compileKotlin') || it.name.startsWith('compileCommonMainKotlinMetadata') }
         .configureEach { dependsOn generateCheckerIdentity }
+
+// Published for the reason `:predicates` is, and it is the same defect the same one line of reasoning caught
+// there: a shipped POM must not name a coordinate nothing publishes. Measured 2026-09-17 — this module had no
+// `maven-publish` block at all, while `dmkits-consistency-gate` and `dmkits-interpreter-preflight` both
+// declared `io.github.mbackschat.a12.dm:consistency-jvm:0.13.0` at COMPILE scope in their generated POMs, so
+// a Maven consumer of either façade could not resolve the very types their public API returns. Both expose
+// those types on purpose (`PublicApiGuardTest.API_SCOPED_PUBLICATIONS` records why: restating the checker's
+// report in a second shape is worse than naming its type), so the fix is to publish the module, not to hide it.
+//
+// Coordinates follow `:interpreter`'s and `:predicates`' `dm-*` convention rather than the Java kits'
+// `dmkits-*`: this is a multiplatform artifact with per-target variants, not one of the five kits the
+// `dmkits` aggregator POM enumerates.
+publishing {
+    publications.withType(MavenPublication).configureEach { publication ->
+        artifactId = publication.name == 'kotlinMultiplatform'
+                ? 'dm-consistency'
+                : "dm-consistency-${publication.name}"
+        pom {
+            name = artifactId
+            description = 'Standalone, Kernel-free consistency checker for A12 DocumentModel rules and ' +
+                    'computations. It reports INVALID or INCONCLUSIVE with its coverage evidence and cannot ' +
+                    'conclude VALID, so no finding is never a pass.'
+            rootProject.dmkitsPom(delegate)
+        }
+    }
+}
 
 // ─────────────────────────────────────────────────────────────────────────────────────────────────────────
 // The Node consumer test: the first end-to-end proof that the checker is CONSUMABLE, not only correct.

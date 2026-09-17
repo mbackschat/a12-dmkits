@@ -1300,7 +1300,12 @@ def verifyPublishingIsDeclaredLocally = tasks.register('verifyPublishingIsDeclar
                 return false
             }
             def text = buildFile.text
-            text =~ /(?m)^\s*publishing\s*\{/ && !(text =~ /maven-publish/)
+            // The application, never the bare string: this read `!(text =~ /maven-publish/)` until
+            // 2026-09-17, when a COMMENT in `:consistency` explaining that the module had no maven-publish
+            // block satisfied it — the block bound to root, the publications were never created, and this
+            // guard reported clean. A guard whose subject is a plugin must look for the plugin being applied.
+            text =~ /(?m)^\s*publishing\s*\{/ &&
+                    !(text =~ /(?m)^\s*(id\s+['"]maven-publish['"]|apply\s+plugin:\s*['"]maven-publish['"])/)
         }
         if (offenders) {
             throw new GradleException(
@@ -1316,6 +1321,83 @@ def verifyPublishingIsDeclaredLocally = tasks.register('verifyPublishingIsDeclar
         }
     }
 }
+
+// --- Every coordinate a shipped POM names must be one this build PUBLISHES --------------------------------
+//
+// The defect this catches shipped twice and was invisible both times, because a POM is generated output that
+// no test read. Measured 2026-09-17: `dmkits-consistency-gate` and `dmkits-interpreter-preflight` both
+// declared `io.github.mbackschat.a12.dm:consistency-jvm:0.13.0` at COMPILE scope, and `:consistency` had no
+// `maven-publish` block at all — so a Maven consumer of either façade could not resolve the very types their
+// public API returns. `:predicates` had met the identical constraint earlier and its build file records it
+// ("published so `:rulekit` can depend on it without an unresolvable coordinate in a shipped POM"), which is
+// what makes this a guard rather than a one-off fix: the rule was known and nothing enforced it.
+//
+// It reads the GENERATED POMs, not the build scripts. A declaration's coordinate is decided by the target
+// project's publication — Gradle rewrites a project dependency into whatever artifactId that project
+// publishes — so the build script says nothing about what a consumer will be asked to resolve.
+def verifyPublishedPomsResolveInRepoCoordinates = tasks.register('verifyPublishedPomsResolveInRepoCoordinates') {
+    group = 'verification'
+    description = 'Fail if a shipped POM names an in-repo coordinate this build does not publish.'
+    dependsOn subprojects.collect { sub -> sub.tasks.matching { it.name.startsWith('generatePomFileFor') } }
+    outputs.upToDateWhen { false }
+    doLast {
+        def ownGroup = rootProject.group.toString()
+        def published = [] as Set
+        def pomFiles = []
+        subprojects.each { sub ->
+            if (!sub.plugins.hasPlugin('maven-publish')) {
+                return
+            }
+            sub.extensions.getByType(PublishingExtension).publications
+                    .withType(MavenPublication).each { publication ->
+                published += "${publication.groupId}:${publication.artifactId}".toString()
+            }
+            sub.tasks.matching { it.name.startsWith('generatePomFileFor') }.each { task ->
+                pomFiles << task.destination
+            }
+        }
+        // Two non-vacuity conjuncts, because each failure mode reports clean on its own: no POMs at all means
+        // the task wiring moved, and no published coordinates means the extension lookup did.
+        def existing = pomFiles.findAll { it.isFile() }
+        if (existing.isEmpty()) {
+            throw new GradleException('found no generated POMs, so this guard read nothing; the ' +
+                    'generatePomFileFor* wiring moved')
+        }
+        if (published.isEmpty()) {
+            throw new GradleException('found no published Maven coordinates, so every absence below would ' +
+                    'be vacuous')
+        }
+        def seenInRepoDependency = false
+        def violations = []
+        existing.each { pom ->
+            def project = new groovy.xml.XmlSlurper().parse(pom)
+            project.dependencies.dependency.each { dependency ->
+                def group = dependency.groupId.text()
+                if (!group.startsWith(ownGroup)) {
+                    return
+                }
+                seenInRepoDependency = true
+                def coordinate = "${group}:${dependency.artifactId.text()}".toString()
+                if (!published.contains(coordinate)) {
+                    violations << ("${pom.parentFile.parentFile.parentFile.name}: names ${coordinate} " +
+                            "(${dependency.scope.text() ?: 'compile'}), which nothing publishes").toString()
+                }
+            }
+        }
+        if (!seenInRepoDependency) {
+            throw new GradleException('no shipped POM declared an in-repo dependency, so this guard cannot ' +
+                    'have compared anything; the group or the POM shape changed')
+        }
+        if (violations) {
+            throw new GradleException('a shipped POM names an in-repo coordinate nothing publishes, so a ' +
+                    "consumer cannot resolve it:\n  " + violations.toSorted().join('\n  ') +
+                    "\n  published: ${published.toSorted()}")
+        }
+        logger.lifecycle("[pom-closure] ${existing.size()} POM(s) against ${published.size()} published " +
+                'coordinate(s)')
+    }
+}
+tasks.named('check') { dependsOn verifyPublishedPomsResolveInRepoCoordinates }
 tasks.named('check') { dependsOn verifyPublishingIsDeclaredLocally }
 
 // --- The no-backend lane (kernel-decoupling §2c; the Stage-3 acceptance bar) -----------------------------
