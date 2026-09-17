@@ -1,0 +1,22 @@
+{
+  "modelId": null,
+  "status": "INCONCLUSIVE",
+  "complete": false,
+  "findings": [],
+  "diagnostics": [
+    {
+      "code": "SOURCE_NOT_WELL_FORMED",
+      "modelId": null,
+      "explain": "Unexpected JSON token at offset 5: Expected EOF after parsing, but had j instead at path: $\nJSON input: not json at all",
+      "at": null,
+      "diagnosticLabel": null
+    }
+  ],
+  "checksCompleted": [],
+  "gaps": [
+    {
+      "at": null,
+      "reason": "the source could not be admitted, so nothing was checked"
+    }
+  ]
+}

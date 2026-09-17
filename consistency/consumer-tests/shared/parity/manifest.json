@@ -1,0 +1,55 @@
+{
+  "sources": {
+    "sound": "storefront.dm.json",
+    "broken": "storefront-broken.dm.json",
+    "broken-plus-field": "storefront-broken-plus-field.dm.json",
+    "unreadable": "not-a-model.txt"
+  },
+  "cases": [
+    {
+      "name": "model-sound",
+      "call": "checkModel",
+      "sources": [
+        "sound"
+      ]
+    },
+    {
+      "name": "model-broken",
+      "call": "checkModel",
+      "sources": [
+        "broken"
+      ]
+    },
+    {
+      "name": "model-unreadable",
+      "call": "checkModel",
+      "sources": [
+        "unreadable"
+      ]
+    },
+    {
+      "name": "edit-unrelated-on-broken",
+      "call": "checkEdit",
+      "sources": [
+        "broken",
+        "broken-plus-field"
+      ]
+    },
+    {
+      "name": "edit-breaks-the-model",
+      "call": "checkEdit",
+      "sources": [
+        "sound",
+        "broken"
+      ]
+    },
+    {
+      "name": "edit-repairs-the-model",
+      "call": "checkEdit",
+      "sources": [
+        "broken",
+        "sound"
+      ]
+    }
+  ]
+}

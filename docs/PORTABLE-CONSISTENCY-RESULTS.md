@@ -8,6 +8,23 @@ Dated measurements of the Kernel-free checker, newest first. **Every LATENCY her
 
 Results never land in a spec, and a measurement's home is not its explanation: the mechanism paragraphs below are marked as hypotheses where they are hypotheses.
 
+## 2026-09-17 — the three arms compared on the FULL report, and they agree exactly <a id="parity-2026-09-17"></a>
+
+Same host as the browser entry below. Corpus: 6 cases over 4 stored inputs, 92 kB, generated from packed `a12-consistency@0.13.0`.
+
+| arm | how it reads the corpus | result |
+|---|---|---|
+| Java (Kotlin/JVM) | embedded by `:consistency:generateParityCorpus` | **6/6 identical** |
+| Kotlin/JS under Node (`jsNodeTest`) | the same embedding | **6/6 identical** |
+| packed Node consumer | read off disk | **6/6 identical** |
+| packed browser consumer, Chrome 153.0.8010.48 | fetched over HTTP | **6/6 identical** |
+
+**The result that was not safe to assume: the reports agree down to a THIRD-PARTY LIBRARY'S message text.** `model-unreadable`'s only content is kotlinx-serialization's own parse failure, `Unexpected JSON token at offset 5: Expected EOF after parsing, but had j instead at path: $`, and it is character-identical on Kotlin/JVM and Kotlin/JS. So is the family order in `checksCompleted` (103 entries), which is the other member a platform could plausibly have permuted — a `Set` iteration order is insertion order by convention, not by contract. Neither was predictable from source, which is why they were measured rather than argued.
+
+**The control, and it is four-way.** `put("complete", true)` in `ReportJson` — one boolean the corpus carries in nine places and no named assertion in either consumer project mentions. It took **all four** surfaces red with the same path: `$.complete: true, expected false` from `jvmTest`, from `jsNodeTest`, from the packed Node arm, and `4 of 12 shared case(s) failed in the browser`. That the same mutant reaches four independently-wired readers is the evidence that they share one corpus rather than three that happen to agree.
+
+**What this corpus is NOT.** It states no semantic expectation and cannot: every value in it was produced by the checker, so it cannot tell a right answer from a wrong one. Its job is the one F's oracle assigns it — the full contract across platforms — and the claim-per-case assertions stay in the module's family suites and in [`cases.ts`](../consistency/consumer-tests/shared/cases.ts). Regeneration is `./build.sh :consistency:syncCheckerParityCorpus`, and a stale corpus fails `:consistency:check`, which push CI runs.
+
 ## 2026-09-17 — F's browser arm, replayed against the packed tarball in real Chrome <a id="browser-2026-09-17"></a>
 
 `:consistency:browserConsumerTest`, macOS 25.6 (arm64), node v24.18.0, pnpm 11.20.0, Vite 8.1.5, system **Google Chrome 153.0.8010.48**, headless. Packed `a12-consistency@0.13.0`.

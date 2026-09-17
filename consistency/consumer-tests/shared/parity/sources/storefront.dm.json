@@ -1,0 +1,47 @@
+{
+  "header": {
+    "id": "storefront",
+    "locales": [{ "code": "en_US" }]
+  },
+  "content": {
+    "modelRoot": {
+      "rootGroups": [
+        {
+          "type": "Group",
+          "id": "/Storefront",
+          "name": "Storefront",
+          "Group": {
+            "elements": [
+              {
+                "type": "Field",
+                "id": "/Storefront/CustomerEmail",
+                "name": "CustomerEmail",
+                "Field": { "fieldType": { "type": "StringType", "StringType": { "maxLength": 120 } } }
+              },
+              {
+                "type": "Field",
+                "id": "/Storefront/OrderTotal",
+                "name": "OrderTotal",
+                "Field": { "fieldType": { "type": "NumberType", "NumberType": { "maxFractionalDigits": 2 } } }
+              },
+              {
+                "type": "Rule",
+                "id": "/Storefront/EmailRequiredForPaidOrder",
+                "name": "EmailRequiredForPaidOrder",
+                "Rule": {
+                  "errorCondition": "FieldNotFilled(CustomerEmail) And [OrderTotal] > 0",
+                  "errorEntityRelPath": "../CustomerEmail",
+                  "errorCode": "STOREFRONT_EMAIL_REQUIRED",
+                  "severity": "ERROR",
+                  "errorMessage": [
+                    { "locale": "en_US", "text": "An order with a total above zero needs a customer email." }
+                  ]
+                }
+              }
+            ]
+          }
+        }
+      ]
+    }
+  }
+}

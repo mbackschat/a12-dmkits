@@ -23,8 +23,13 @@ import process from 'node:process';
 
 import { chromium, type Browser } from 'playwright-core';
 
-/** The count the Node arm also guards: a corpus that silently emptied would report zero failures. */
-const MINIMUM_CASES = 5;
+/**
+ * The count the Node arm also guards: a corpus that silently emptied would report zero failures.
+ *
+ * It covers both shared suites — the named-field cases and the full-report parity corpus — because a
+ * browser fetches each of them, and a 404 that resolved to an empty set is exactly what this catches.
+ */
+const MINIMUM_CASES = 12;
 const DEADLINE_MILLIS = 30_000;
 const SHUTDOWN_DEADLINE_MILLIS = 30_000;
 
