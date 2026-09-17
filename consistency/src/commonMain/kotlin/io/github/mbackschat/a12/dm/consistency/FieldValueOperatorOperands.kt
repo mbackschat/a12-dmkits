@@ -113,7 +113,7 @@ private fun TrackedFactBase.valueOperandDefect(
     val operand = call.operands.singleOrNull() ?: return null
     val (written, category) = operandSpec(operand) ?: return null
     val target = addressedTargetOf(written, declaringGroup, element) ?: return null
-    val declared = declarations().firstOrNull { it.path == target } ?: return null
+    val declared = allDeclarations().firstOrNull { it.path == target } ?: return null
     if (declared.declaredKind == DeclaredKind.GROUP) {
         return ValueOperandDefect("MVK_NO_GROUPS_ALLOWED", "reads `$target`, which is a group — read one field of it")
     }

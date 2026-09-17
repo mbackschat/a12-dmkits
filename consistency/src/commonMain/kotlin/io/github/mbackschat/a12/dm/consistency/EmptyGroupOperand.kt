@@ -23,7 +23,7 @@ package io.github.mbackschat.a12.dm.consistency
  */
 internal fun TrackedFactBase.emptyGroupOperandFindings(): List<Finding> = conditionReferences().mapNotNull { reference ->
     val target = (reference.target as? Reference.Resolved)?.path ?: return@mapNotNull null
-    val group = declarations().firstOrNull { it.path == target && it.declaredKind == DeclaredKind.GROUP }
+    val group = allDeclarations().firstOrNull { it.path == target && it.declaredKind == DeclaredKind.GROUP }
         ?: return@mapNotNull null
     if (carriesAField(group.path)) {
         return@mapNotNull null
@@ -46,6 +46,6 @@ internal fun TrackedFactBase.emptyGroupOperandFindings(): List<Finding> = condit
  * declaration with its canonical path, and the `/` guard keeps `/Store/Empty` from claiming the fields of a
  * sibling named `/Store/EmptyRows`.
  */
-private fun TrackedFactBase.carriesAField(path: String): Boolean = declarations().any {
+private fun TrackedFactBase.carriesAField(path: String): Boolean = allDeclarations().any {
     it.declaredKind == DeclaredKind.FIELD && it.path.startsWith("$path/")
 }

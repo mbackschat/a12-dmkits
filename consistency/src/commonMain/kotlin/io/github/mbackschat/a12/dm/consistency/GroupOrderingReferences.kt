@@ -170,7 +170,7 @@ private fun TrackedFactBase.orderingFinding(
     // GATE ONE — the spelling must land on a field at all. A climb past the root cannot reach one either:
     // the model root holds groups, so every clamped path names a group path, never a field.
     val landed = resolvePositionally(group.path, written)
-    val target = declarations().firstOrNull { it.path == landed }
+    val target = allDeclarations().firstOrNull { it.path == landed }
     if (target == null || target.declaredKind != DeclaredKind.FIELD) {
         return unbuildable(
             group,
@@ -181,7 +181,7 @@ private fun TrackedFactBase.orderingFinding(
     // GATE TWO — A12 keeps only the landed field's SHORT NAME and looks it up under this group, so what
     // decides is whether the group has a field of that NAME, not whether the path stayed inside it.
     val shortName = landed.substringAfterLast('/')
-    val own = declarations().firstOrNull {
+    val own = allDeclarations().firstOrNull {
         it.path == "${group.path}/$shortName" && it.declaredKind == DeclaredKind.FIELD
     }
     if (own != null) {

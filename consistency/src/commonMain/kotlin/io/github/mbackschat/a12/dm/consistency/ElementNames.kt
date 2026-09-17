@@ -23,7 +23,7 @@ package io.github.mbackschat.a12.dm.consistency
 internal fun TrackedFactBase.elementNameFindings(): List<Finding> =
     // Keyed by PATH, which is the parent plus the name — so a collision is by construction between
     // declarations of one parent, and `at` names the collision itself rather than the parent it sits in.
-    declarations().groupBy { it.path }.filterValues { it.size > 1 }.map { (path, collided) ->
+    allDeclarations().groupBy { it.path }.filterValues { it.size > 1 }.map { (path, collided) ->
         Finding(
             FindingCategory.A12_CONSTRAINT,
             FindingSeverity.ERROR,

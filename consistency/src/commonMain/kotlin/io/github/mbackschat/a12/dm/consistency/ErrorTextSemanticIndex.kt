@@ -121,7 +121,7 @@ private fun TrackedFactBase.ridesAlong(asked: BoundPair, written: Set<BoundPair>
     if (!boundAtTheSameKey) {
         return false
     }
-    val group = declarations().firstOrNull { it.path == groupPath } ?: return false
+    val group = allDeclarations().firstOrNull { it.path == groupPath } ?: return false
     return asked.valuePath == "$groupPath/${indexFieldNameOf(group) ?: return false}"
 }
 

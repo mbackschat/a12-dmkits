@@ -123,10 +123,10 @@ private fun TrackedFactBase.operandFinding(
 }
 
 private fun TrackedFactBase.isGroupPath(path: String): Boolean =
-    declarations().any { it.path == path && it.declaredKind == DeclaredKind.GROUP }
+    allDeclarations().any { it.path == path && it.declaredKind == DeclaredKind.GROUP }
 
 private fun TrackedFactBase.isFieldPath(path: String): Boolean =
-    declarations().any { it.path == path && it.declaredKind == DeclaredKind.FIELD }
+    allDeclarations().any { it.path == path && it.declaredKind == DeclaredKind.FIELD }
 
 private fun finding(code: String, explain: String, at: String): Finding =
     Finding(FindingCategory.A12_CONSTRAINT, FindingSeverity.ERROR, code, explain, at)

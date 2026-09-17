@@ -89,7 +89,7 @@ private fun TrackedFactBase.subjectDefect(
     val reference = referencesIn(written, conditionLanguage).singleOrNull() ?: return null
     val resolved = resolveEntity(declaringGroup, reference.replace("*", ""), element.origin)
     val path = (resolved as? Reference.Resolved)?.path ?: return null
-    val target = declarations().firstOrNull { it.path == path } ?: return null
+    val target = allDeclarations().firstOrNull { it.path == path } ?: return null
     if (target.declaredKind == DeclaredKind.GROUP) {
         return finding(
             NO_GROUPS,

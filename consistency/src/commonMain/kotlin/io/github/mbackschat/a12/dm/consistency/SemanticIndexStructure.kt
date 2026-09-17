@@ -188,13 +188,13 @@ private val LENGTH_MEMBERS = listOf("minLength", "maxLength")
 
 /** The field a group declares as its index, or null where the declaration names none this reader can find. */
 private fun TrackedFactBase.indexFieldOf(indexGroup: String): TrackedDeclaration? {
-    val group = declarations().firstOrNull { it.path == indexGroup } ?: return null
+    val group = allDeclarations().firstOrNull { it.path == indexGroup } ?: return null
     val name = indexFieldNameOf(group) ?: return null
-    return declarations().firstOrNull { it.path == "$indexGroup/$name" && it.declaredKind == DeclaredKind.FIELD }
+    return allDeclarations().firstOrNull { it.path == "$indexGroup/$name" && it.declaredKind == DeclaredKind.FIELD }
 }
 
 private fun TrackedFactBase.element(path: String?): TrackedDeclaration? =
-    path?.let { resolved -> declarations().firstOrNull { it.path == resolved } }
+    path?.let { resolved -> allDeclarations().firstOrNull { it.path == resolved } }
 
 /** What the base-type comparison says about one key, or that this reader may not say. */
 private enum class KeyTypeVerdict { CONSISTENT, INCONSISTENT, UNSETTLED }
@@ -269,7 +269,7 @@ private fun TrackedFactBase.resolveField(
     val resolved = resolveEntity(declaringGroup, written.replace("*", ""), element.origin)
         as? Reference.Resolved ?: return null
     return resolved.path.takeIf { path ->
-        declarations().any { it.path == path && it.declaredKind == DeclaredKind.FIELD }
+        allDeclarations().any { it.path == path && it.declaredKind == DeclaredKind.FIELD }
     }
 }
 

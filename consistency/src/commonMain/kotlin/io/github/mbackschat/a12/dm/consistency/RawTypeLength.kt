@@ -65,7 +65,7 @@ private fun TrackedFactBase.rawTypeRead(
 
 /** Whether [path] declares a STRING with `noValueValidation` — the only kind A12 treats as a raw type. */
 private fun TrackedFactBase.isRawType(path: String): Boolean {
-    val body = declarations().firstOrNull { it.path == path && it.declaredKind == DeclaredKind.FIELD }
+    val body = allDeclarations().firstOrNull { it.path == path && it.declaredKind == DeclaredKind.FIELD }
         ?.stringTypeBody() ?: return false
     return (body["noValueValidation"] as? JsonPrimitive)?.booleanOrNull == true
 }

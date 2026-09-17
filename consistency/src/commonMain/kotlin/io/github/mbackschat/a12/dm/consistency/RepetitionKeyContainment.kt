@@ -161,7 +161,7 @@ private fun TrackedFactBase.lowestRepetitionOf(path: String): TrackedDeclaration
     .filter { it.isRepeatableGroup && path.startsWith("${it.path}/") }
     .maxByOrNull { it.path.length }
 
-private fun TrackedFactBase.repeatableGroupAt(path: String?): TrackedDeclaration? = declarations().firstOrNull {
+private fun TrackedFactBase.repeatableGroupAt(path: String?): TrackedDeclaration? = allDeclarations().firstOrNull {
     it.path == path && it.isRepeatableGroup
 }
 

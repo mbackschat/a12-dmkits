@@ -109,7 +109,7 @@ private fun TrackedFactBase.repeatabilityDefect(matched: IndexFieldOnPath, eleme
  * halves, and each was moved on its own: a second value refuses, and so does dropping the special value.
  */
 private fun TrackedFactBase.declaresASingleValuedEnumeration(fieldPath: String): Boolean {
-    val body = declarations().firstOrNull { it.path == fieldPath }?.enumerationBody() ?: return false
+    val body = allDeclarations().firstOrNull { it.path == fieldPath }?.enumerationBody() ?: return false
     return body.declaredEnumValues()?.size == 1 && !body.string("sValue").isNullOrEmpty()
 }
 
@@ -138,7 +138,7 @@ private fun TrackedFactBase.conditionRidesItWithoutIterating(
 
 /** How many GROUPS declare an index field of this short name — A12's list is not scoped to the path. */
 private fun TrackedFactBase.groupsDeclaringIndexFieldNamed(name: String): Int =
-    declarations().count { it.declaredKind == DeclaredKind.GROUP && indexFieldNameOf(it) == name }
+    allDeclarations().count { it.declaredKind == DeclaredKind.GROUP && indexFieldNameOf(it) == name }
 
 /** A12's own spelling of the semantic-index keyword, which only the catalog knows per language. */
 private const val SEMANTIC_INDEX = "SemanticIndex"
@@ -183,7 +183,7 @@ private fun TrackedFactBase.indexFieldsOnThePathTo(fieldPath: String): List<Inde
     val found = mutableListOf<IndexFieldOnPath>()
     var group = fieldPath.substringBeforeLast('/', missingDelimiterValue = "")
     while (group.isNotEmpty()) {
-        val declared = declarations().firstOrNull { it.path == group }
+        val declared = allDeclarations().firstOrNull { it.path == group }
         val name = declared?.let { indexFieldNameOf(it) }
         if (declared != null && name != null) {
             found += IndexFieldOnPath(name, "$group/$name", declared.isRepeatable)

@@ -56,7 +56,7 @@ internal fun TrackedFactBase.errorFieldReferenceFindings(): List<Finding> {
             // is about the filtered entity and does not iterate the rule — measured as the admitted control
             // of `AggregateSlotLawsTest`'s iteration grid, where an unstarred filter leaf crossing a
             // repetition the target sits outside of draws nothing at all.
-            val readsOutsideFilters = declarations().firstOrNull { it.path == declared.declaredAt }
+            val readsOutsideFilters = allDeclarations().firstOrNull { it.path == declared.declaredAt }
                 ?.let { referencesOutsideFilterBodies(it) }.orEmpty()
             // Three ways this rule is not this family's to judge. A rule with no condition at all belongs to
             // `MVK_CONDITION_MISSING`. An UNRESOLVABLE operand PRE-EMPTS the gate — A12 reports the entity
@@ -119,7 +119,7 @@ private fun TrackedFactBase.iteratesPastTheTarget(reference: ConditionReference,
     }
     val resolved = (reference.target as? Reference.Resolved)?.path ?: return false
     val targetGroup = groupOfTargetField(target)
-    return declarations().any { candidate ->
+    return allDeclarations().any { candidate ->
         candidate.isRepeatableGroup &&
             resolved.startsWith("${candidate.path}/") &&
             !(target == candidate.path || target.startsWith("${candidate.path}/")) &&
@@ -172,7 +172,7 @@ internal fun ConditionReference.reaches(target: String): Boolean {
  */
 private fun TrackedFactBase.mentions(declared: DeclaredReference, target: String): Boolean {
     val name = target.substringAfterLast('/')
-    val element = declarations().firstOrNull { it.path == declared.declaredAt } ?: return true
+    val element = allDeclarations().firstOrNull { it.path == declared.declaredAt } ?: return true
     val body = element.body ?: return true
     return conditionTexts(element.kind, body).any { (_, text) -> text.namesOtherThanAsAPrefix(name) }
 }

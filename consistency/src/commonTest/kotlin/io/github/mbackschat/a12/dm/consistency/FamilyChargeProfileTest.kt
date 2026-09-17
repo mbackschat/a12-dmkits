@@ -115,20 +115,25 @@ class FamilyChargeProfileTest {
     }
 
     @Test
-    fun aPerDeclarationFamilyChargesNoSetShapeAtAll() {
-        val profile = profile().filterKeys { it.producer is CheckProducer.PerDeclaration }
-        val charged = profile.filterValues { FactRead.DeclarationSetShape in it }.keys.map { it.label() }
+    fun aPerDeclarationFamilyChargesTheDeclarationItAnsweredAbout() {
+        val profile = profile().filterKeys { it.producer !is CheckProducer.ModelWide }
+        val unkeyed = profile.filterKeys { key ->
+            FactRead.DeclarationRow(key.at!!.path, key.at.amongSamePath) !in profile.getValue(key)
+        }.keys.map { it.label() }
 
-        // The exact inverse of the row above, and the soundness condition of the finer key rather than a
-        // second opinion about it: a per-declaration family is handed its declaration by the dispatcher, so
-        // it never walks the set — and a cell that charged the SHAPE would fall whenever any declaration was
-        // added or removed, which is the whole reuse the migration buys. The dispatcher's own walk charges
-        // the composition, deliberately ([ReadTranscript]).
-        assertEquals(emptyList(), charged,
-            "a per-declaration family charged the declaration set, undoing the key it was migrated for")
+        // The soundness half of the finer key, and the only half there is. A cursor's name, kind, id and
+        // origin are free reads — that is what charging the set once buys — so a cell that did not record
+        // WHICH declaration it answered about would be reused for a declaration whose kind had changed at
+        // that path. `CheckCellKeyTest` holds the pair that proves it; this holds the denominator.
+        assertEquals(emptyList(), unkeyed,
+            "a per-declaration cell must charge its own declaration's row, or it is keyed on less than it read")
 
-        // Two controls, because the row above is a negative existential twice over: it passes when no family
-        // is registered per declaration, and it passes when one is asked but reads nothing at all.
+        // **The claim this row does NOT make, corrected 2026-09-18.** It used to refuse a per-declaration
+        // cell that charged [FactRead.DeclarationSetShape] at all, on the reasoning that such a cell falls
+        // whenever any declaration is added or removed. That is a REUSE property and was mistaken for a
+        // soundness condition: a cell keyed on the shape, its own row and every body it opened is a
+        // function of everything it read, which is the store's whole argument. The refusal would have
+        // blocked every family that asks the set what an operand resolved to, and those are most of them.
         assertTrue(profile.isNotEmpty(), "no producer is registered per declaration, so this row is vacuous")
         assertTrue(
             profile.values.any { reads -> reads.any { it is FactRead.DeclarationContent } },

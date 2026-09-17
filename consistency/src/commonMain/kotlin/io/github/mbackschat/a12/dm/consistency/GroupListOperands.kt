@@ -206,7 +206,7 @@ private fun TrackedFactBase.isGroup(path: String): Boolean = declares(path, Decl
 private fun TrackedFactBase.isField(path: String): Boolean = declares(path, DeclaredKind.FIELD)
 
 private fun TrackedFactBase.declares(path: String, kind: DeclaredKind): Boolean =
-    declarations().any { it.path == path && it.declaredKind == kind }
+    allDeclarations().any { it.path == path && it.declaredKind == kind }
 
 private fun CallOperand.resolvedBy(
     model: TrackedFactBase,

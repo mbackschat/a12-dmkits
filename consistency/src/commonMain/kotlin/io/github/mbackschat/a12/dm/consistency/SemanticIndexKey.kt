@@ -112,7 +112,7 @@ private fun TrackedFactBase.keyFinding(
             element.path,
         )
     }
-    val named = declarations().firstOrNull { it.path == resolved.path && it.declaredKind == DeclaredKind.GROUP }
+    val named = allDeclarations().firstOrNull { it.path == resolved.path && it.declaredKind == DeclaredKind.GROUP }
         ?: return null
     if (repeatsAnywhereOnThePathTo(named.path)) {
         return null
@@ -140,5 +140,5 @@ private fun TrackedFactBase.iteratedBelow(path: String, targetGroup: String?): S
 
 /** Whether [path] or any group above it repeats, which is what makes a read of it iterate. */
 private fun TrackedFactBase.repeatsAnywhereOnThePathTo(path: String): Boolean =
-    declarations().any { it.isRepeatableGroup &&
+    allDeclarations().any { it.isRepeatableGroup &&
         (it.path == path || path.startsWith("${it.path}/")) }

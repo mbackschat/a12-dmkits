@@ -128,16 +128,24 @@ internal class TrackedFactBase private constructor(
      * [TrackedDeclaration.declaredReference] is what keeps that attribution; reading the model's own list
      * would give one opaque charge that no cell could ever narrow.
      */
-    fun declaredReferences(): List<DeclaredReference> = everyDeclaration().mapNotNull { it.declaredReference() }
+    fun declaredReferences(): List<DeclaredReference> =
+        allDeclarations().mapNotNull { it.declaredReference() }
 
     /**
-     * Every declaration, whatever this base is scoped to — the route a SET-level question takes.
+     * Every declaration in the model, whatever this base is scoped to — the route a SET question takes.
      *
-     * Kept apart from [declarations] so a scope cannot narrow an answer that is about the model: a scoped
-     * [declaredReferences] would hand back one reference and charge one row, which reads like an answer and
-     * is not one.
+     * **The distinction it draws is the one that decides whether a family can be asked per declaration.**
+     * [declarations] is "the declarations this pass is about"; this is "every declaration there is". A
+     * family asking the set what an operand resolved to wants THIS one, and the idiom it used to reach for
+     * — `declarations().firstOrNull { it.path == target }` — silently became a one-element search the
+     * moment the dispatcher narrowed the pass. So the two questions are two members, and a scope narrows
+     * only the first.
+     *
+     * It charges [FactRead.DeclarationSetShape], which is honest and cheap for the case reuse is for: a
+     * keystroke in a condition moves no declaration's row and no resolvable path, so a cell that asked a
+     * set question survives every edit that leaves the declarations where they are.
      */
-    private fun everyDeclaration(): List<TrackedDeclaration> {
+    fun allDeclarations(): List<TrackedDeclaration> {
         transcript.record(FactRead.DeclarationSetShape)
         return cursors
     }

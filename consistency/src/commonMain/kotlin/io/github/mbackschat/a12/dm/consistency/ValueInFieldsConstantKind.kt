@@ -165,7 +165,7 @@ private fun TrackedFactBase.constantKindFinding(
         )
     }
     val fields = targets.flatMap { target ->
-        val declared = declarations().firstOrNull { it.path == target } ?: return null
+        val declared = allDeclarations().firstOrNull { it.path == target } ?: return null
         when (declared.declaredKind) {
             DeclaredKind.FIELD -> listOf(declared)
             DeclaredKind.GROUP ->
@@ -285,7 +285,7 @@ private fun typeWalkVerdict(
  */
 private fun TrackedFactBase.preEmptedBeforeTheSwitch(written: List<String>, targets: List<String>): Boolean {
     val loneField = targets.size == 1 && '*' !in written.first() &&
-        declarations().firstOrNull { it.path == targets.first() }?.declaredKind == DeclaredKind.FIELD
+        allDeclarations().firstOrNull { it.path == targets.first() }?.declaredKind == DeclaredKind.FIELD
     return entityListPreGateAnswers(written, targets) || loneField
 }
 

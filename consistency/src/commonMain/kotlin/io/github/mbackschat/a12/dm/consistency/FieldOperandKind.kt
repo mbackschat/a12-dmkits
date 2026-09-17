@@ -58,7 +58,7 @@ private fun TrackedFactBase.groupFinding(
 ): Finding? {
     val path = written ?: return null
     val resolved = resolveEntity(declaringGroup, path, element.origin) as? Reference.Resolved ?: return null
-    val target = declarations().firstOrNull { it.path == resolved.path && it.declaredKind == DeclaredKind.GROUP }
+    val target = allDeclarations().firstOrNull { it.path == resolved.path && it.declaredKind == DeclaredKind.GROUP }
         ?: return null
     if (target.path.count { it == '/' } == 1) {
         return null

@@ -45,7 +45,7 @@ internal fun TrackedFactBase.declaredPatternFindings(): List<Finding> =
  * gap is raised only when the model actually declares a pattern — otherwise it would describe every model.
  */
 internal fun TrackedFactBase.declaredPatternGaps(): List<CoverageGap> =
-    if (declarations().none { it.declaredKind == DeclaredKind.FIELD && it.declaredPattern() != null }) {
+    if (allDeclarations().none { it.declaredKind == DeclaredKind.FIELD && it.declaredPattern() != null }) {
         emptyList()
     } else {
         listOf(

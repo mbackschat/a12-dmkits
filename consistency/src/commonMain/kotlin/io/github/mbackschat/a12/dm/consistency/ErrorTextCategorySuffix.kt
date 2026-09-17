@@ -78,7 +78,7 @@ private fun TrackedFactBase.suffixDefect(
     val written = access?.first ?: parameter.substringBefore(ARROW).trim().takeIf { it.isNotEmpty() }
         ?: return null
     val field = (resolveEntity(declaringGroup, written, element.origin) as? Reference.Resolved)
-        ?.let { resolved -> declarations().firstOrNull { it.path == resolved.path } }
+        ?.let { resolved -> allDeclarations().firstOrNull { it.path == resolved.path } }
         ?: return null
     if (field.path !in membership) {
         return null

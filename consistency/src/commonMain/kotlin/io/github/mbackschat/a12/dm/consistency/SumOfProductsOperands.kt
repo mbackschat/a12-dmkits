@@ -81,7 +81,7 @@ private fun TrackedFactBase.readOperand(
     }
     val resolved = resolveEntity(declaringGroup, written.replace("*", ""), element.origin)
         as? Reference.Resolved ?: return null
-    val field = declarations().firstOrNull { it.path == resolved.path && it.declaredKind == DeclaredKind.FIELD }
+    val field = allDeclarations().firstOrNull { it.path == resolved.path && it.declaredKind == DeclaredKind.FIELD }
         ?: return null
     if (!field.path.startsWith("$declaringGroup/")) {
         return null
@@ -100,7 +100,7 @@ private fun TrackedFactBase.readOperand(
 
 /** The repeatable groups strictly between [declaringGroup] and [fieldPath] — one star each is what A12 wants. */
 private fun TrackedFactBase.repeatableLevelsBetween(declaringGroup: String, fieldPath: String): Int =
-    declarations().count {
+    allDeclarations().count {
         it.isRepeatableGroup &&
             it.path.startsWith("$declaringGroup/") && fieldPath.startsWith("${it.path}/")
     }

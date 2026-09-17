@@ -759,6 +759,39 @@ The per-declaration cells reach exactly the 87 % [the partition projected](#l-b3
 
 Both carriers: **679 tests, 0 failures**; the report JSON unchanged (`ParityCorpusTest`).
 
+#### L-b3c-3 is partitioned, and the sub-populations were counted before either matrix was written (2026-09-18) <a id="l-b3c-3-partition"></a>
+
+The sixty-nine model-wide producers are not one population. Classified by what their entry point LOOPS over: **45 walk the declarations**, **8 loop over the composition's reference lists** (`conditionReferences()`, `declaredReferences()`), and the rest reach a walk behind a prelude or never walk at all. The two named groups need different work, so they are two commits.
+
+| commit | what it lands | acceptance |
+|---|---|---|
+| **L-b3c-3a** — **LANDED 2026-09-18, [below](#l-b3c-3a-landing)** | the set-question accessor, the invariant it makes obsolete, and the walking families it unlocks | the matrix below |
+| **L-b3c-3b** | a per-declaration reader for the reference loops, for the 8 that iterate references rather than declarations | its own matrix, written when 3a has landed |
+
+**What blocks the 45 is one idiom, and it is a by-path LOOKUP written as a walk.** `declarations().firstOrNull { it.path == target }` appears about thirty times across twenty-five files — a family iterating its own declarations, then asking the SET what an operand resolved to. Under a scoped walk it finds nothing, which is exactly the silent under-report [L-b3c-2](#l-b3c-2-landing)'s differential catches. The fix is not per family: a public `allDeclarations()` says "every declaration, whatever this pass is about", charges the set shape, and is never narrowed — so the set question is answered about the model and the family's own loop stays narrowed.
+
+**And that makes `aPerDeclarationFamilyChargesNoSetShapeAtAll` obsolete — an invariant this plan called a soundness condition and which is not one.** *Corrected 2026-09-18, from [L-b3c-1's record](#l-b3c-1-landing) and [the partition's caution](#l-b3c-partition):* soundness comes from the transcript, not from which facts a cell is allowed to read. A cell keyed on the set shape AND its own declaration's row AND every body it opened is a function of everything it read, which is the store's whole argument; what the shape costs is REUSE on a structural edit, and nothing else. The refusal was a reuse-quality rule wearing soundness' clothes, and keeping it would refuse the migration that most of the remaining families need. What the keystroke case — the ratified one — actually pays is nothing: a condition edit moves no row and no resolvable path, so a shape-charging cell survives it.
+
+**L-b3c-3a's acceptance matrix, frozen before code.** (1) On a SCOPED fact base, `allDeclarations()` answers for the whole model and charges `FactRead.DeclarationSetShape`, while `declarations()` stays narrowed to one declaration — both locked where the claim is made. (2) Every family moved to the scoped walk passes the equivalence differential, over both wiring fixtures and every parity-corpus model. (3) The no-shape invariant is REPLACED rather than deleted: a per-declaration cell must still charge its own declaration's row, and that claim keeps its own failing test. (4) No behaviour change: both carriers green, report JSON unchanged. (5) The keystroke reuse figure is re-measured on the same eight-declaration fixture, so the slice's effect is a number rather than a claim. **Non-goals:** the 8 reference loops (3b), the producers whose walk sits behind a prelude, and any latency claim.
+
+#### L-b3c-3a landed: one accessor unlocked twenty-five more families, and the gate that let them through is only partly mechanical (2026-09-18) <a id="l-b3c-3a-landing"></a>
+
+`TrackedFactBase.allDeclarations()` answers "every declaration there is" and is never narrowed by a scope; `declarations()` answers "the declarations this pass is about" and is. Fifty-eight call sites moved to it — every `firstOrNull`/`any`/`count`/`none`/`groupBy` over the walk, which are by-path lookups and subtree queries written as iterations rather than the pass's own subject. Fifty-four of ninety-eight producers are now per-declaration: fourteen taking the declaration as a parameter, forty as scoped walks.
+
+| the figure, on the 8-declaration fixture | L-b3c-1 | L-b3c-2 | now |
+|---|---|---|---|
+| cells scheduled | 126 | 301 | **476** = 44 model-wide + 54 × 8 |
+| a keystroke in a rule's condition, through `snapshot.draft` | 51 (40 %) | 226 (75 %) | **387 of 476 (81 %)** |
+| a draft that retypes the text it already had | 126 of 126 | 301 of 301 | **476 of 476** |
+
+**The invariant that refused this was replaced, not deleted, and the correction is the slice's substance.** `aPerDeclarationFamilyChargesNoSetShapeAtAll` is now `aPerDeclarationFamilyChargesTheDeclarationItAnsweredAbout`, which keeps the half that is a soundness condition — a cell must record WHICH declaration it answered about, or a kind change at that path reuses it — and drops the half that was a reuse-quality rule misread as one. A cell keyed on the set shape, its own row and every body it opened is a function of everything it read; what the shape costs is reuse on a structural edit, and a keystroke moves no row and no resolvable path. Both the old claim and its replacement are stated at the test, so a later reader meets the correction rather than the original reasoning.
+
+**How the twenty-five were chosen: all forty-eight candidates were flipped and the suite run, twice.** The first round rejected twenty-three. The honest part is WHICH gate rejected them: **the equivalence differential named 8**, and the other **15 were caught by their own family suites** — a duplicated verdict where the family's real loop is over the composition's reference list, or a missing one where the discriminating shape is absent from both wiring fixtures and every corpus model. So the differential is a real gate and it is not a complete one: its denominator is the fixtures it runs on. That matters for a family with a thin suite, and the mitigation available today is that this module keeps one test file per family; the stronger fix — a differential fixture built to discriminate rather than to trigger — is L-b3c-4's to consider.
+
+The eight the differential rejected are reference-loop families in disguise: their entry point walks declarations but their real subject is a reference list, so a scoped pass repeats the model-wide answer once per declaration. They join [3b](#l-b3c-3-partition)'s population rather than being forced.
+
+Both carriers: **679 tests, 0 failures**; report JSON unchanged (`ParityCorpusTest`).
+
 ### F3 record — the partition, one blocked acceptance clause, and F3-a's matrix frozen before code (2026-09-16) <a id="f3-partition"></a>
 
 **F3's row names THREE consumers with three different estates, so it is partitioned before anything is written.** [Its acceptance](PORTABLE-CONSISTENCY-PROPOSAL.md#7-implementation-slices-and-finite-acceptance-matrices) asks that "published dmkits expose portable profile verdicts; schemakit can use that gate under its purity guard; interpreter consumers can obtain an explicit consistency preflight". Those share a checker and nothing else: the first is a JVM library surface, the second is a build-guard boundary, the third is a new integration product with its own published-closure rule.

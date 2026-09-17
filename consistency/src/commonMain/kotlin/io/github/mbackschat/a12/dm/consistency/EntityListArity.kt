@@ -148,7 +148,7 @@ private fun TrackedFactBase.arityFinding(
     if (entityListPreGateAnswers(written, targets)) {
         return null
     }
-    val kinds = targets.map { target -> declarations().firstOrNull { it.path == target }?.declaredKind }
+    val kinds = targets.map { target -> allDeclarations().firstOrNull { it.path == target }?.declaredKind }
     // Three of the six operators run a KIND gate before their arity one, so a list of the wrong kind is
     // answered there — `MVK_NO_GROUPS_ALLOWED` or `MVK_NO_FIELDS_ALLOWED` — however wrong its count is.
     if (law.kindFirst != null && kinds.any { it != law.kindFirst }) {

@@ -127,7 +127,7 @@ private fun TrackedFactBase.iterationFinding(
  * or no class at all.
  */
 private fun TrackedFactBase.parallelToTheErrorField(path: String, errorFieldGroup: String): Boolean =
-    declarations().any { candidate ->
+    allDeclarations().any { candidate ->
         candidate.isRepeatableGroup &&
             (path == candidate.path || path.startsWith("${candidate.path}/")) &&
             !(errorFieldGroup == candidate.path || errorFieldGroup.startsWith("${candidate.path}/"))
@@ -144,4 +144,4 @@ private fun finding(code: String, explain: String, at: String) =
 
 /** Whether [path] names a group A12 gives repetitions — the ambiguity this family reports needs one. */
 private fun TrackedFactBase.repeats(path: String): Boolean =
-    declarations().any { it.path == path && it.isRepeatableGroup }
+    allDeclarations().any { it.path == path && it.isRepeatableGroup }
