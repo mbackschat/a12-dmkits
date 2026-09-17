@@ -17,8 +17,10 @@ import org.junit.jupiter.api.condition.EnabledIfSystemProperty
  *
  * **Why this lane exists at all.** `docs/PORTABLE-CONSISTENCY-PROPOSAL.md` §8
  * asks this boundary for four things — "retained memory, release behavior, supported peak observations and
- * installed/downloaded production closure size" — and only the last was ever measured, as the packed tarball's
- * 634 443 bytes. The stage read DONE because the *boundary* was counted rather than its required observations,
+ * installed/downloaded production closure size" — and only the last was ever measured, as the packed
+ * tarball's byte count (the figure lives in `docs/PORTABLE-CONSISTENCY-RESULTS.md`, which owns it; it is not
+ * restated here because it moves whenever the package does).
+ * The stage read DONE because the *boundary* was counted rather than its required observations,
  * and H5's blocking rule turns on the observation, not the count. See
  * `docs/PORTABLE-CONSISTENCY-IMPLEMENTATION-PLAN.md#stage-8`.
  *

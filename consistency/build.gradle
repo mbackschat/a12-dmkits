@@ -22,6 +22,18 @@ kotlin {
     js {
         outputModuleName = 'a12-consistency'
         nodejs()
+        // The BROWSER is a target H5/F require and this module did not declare until 2026-09-17, which is
+        // why F's "run the corpus through Java, packed Node and browser" could not have run its third arm:
+        // a target the module does not compile for cannot be replayed against
+        // (docs/PORTABLE-CONSISTENCY-IMPLEMENTATION-PLAN.md#stage-8-browser). Unlike `:interpreter`, whose
+        // `jsBrowserTest` is disabled because its commonTest imports `node:*` host probes, this module's
+        // sources touch no host API at all, so the shared suite COULD run in Karma here — and deliberately
+        // does not. Measured 2026-09-17: enabling `jsBrowserTest` grows the committed `kotlin-js-store/
+        // yarn.lock` from 524 to 2077 lines, pulling Karma and its transitive tree into a lock that carries
+        // no Karma today, and it would exercise the COMPILER'S OUTPUT rather than the packed tarball F's
+        // acceptance actually names. Browser assurance therefore comes from a packed-artifact consumer, which
+        // is the same trade `:interpreter` already made for the same two reasons.
+        browser()
         useEsModules()
         binaries.library()
         generateTypeScriptDefinitions()
@@ -46,6 +58,14 @@ kotlin {
             }
         }
     }
+}
+
+tasks.named('jsBrowserTest') {
+    // Disabled for the two reasons the `browser()` call above measures: Karma would quadruple the committed
+    // yarn lock, and the shared suite under Karma tests the compiler's output rather than the packed tarball
+    // F's acceptance names. The browser target still earns its place — it produces the browser library binary
+    // a bundler consumes, which is the artifact that replay needs to exist at all.
+    enabled = false
 }
 
 // --- The boundary guard (plan stage 2; the empty neutral-leaf allowlist's enforcement locus) -------------
