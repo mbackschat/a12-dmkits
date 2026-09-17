@@ -766,7 +766,7 @@ The sixty-nine model-wide producers are not one population. Classified by what t
 | commit | what it lands | acceptance |
 |---|---|---|
 | **L-b3c-3a** — **LANDED 2026-09-18, [below](#l-b3c-3a-landing)** | the set-question accessor, the invariant it makes obsolete, and the walking families it unlocks | the matrix below |
-| **L-b3c-3b** | a per-declaration reader for the reference loops, for the 8 that iterate references rather than declarations | its own matrix, written when 3a has landed |
+| **L-b3c-3b** — **LANDED 2026-09-18, [below](#l-b3c-3b-landing)** | a per-declaration reader for the reference loops, for the 8 that iterate references rather than declarations | 6 of the 8 followed from correcting one accessor; the other 2 depend on relations between declarations |
 
 **What blocks the 45 is one idiom, and it is a by-path LOOKUP written as a walk.** `declarations().firstOrNull { it.path == target }` appears about thirty times across twenty-five files — a family iterating its own declarations, then asking the SET what an operand resolved to. Under a scoped walk it finds nothing, which is exactly the silent under-report [L-b3c-2](#l-b3c-2-landing)'s differential catches. The fix is not per family: a public `allDeclarations()` says "every declaration, whatever this pass is about", charges the set shape, and is never narrowed — so the set question is answered about the model and the family's own loop stays narrowed.
 
@@ -791,6 +791,31 @@ The sixty-nine model-wide producers are not one population. Classified by what t
 The eight the differential rejected are reference-loop families in disguise: their entry point walks declarations but their real subject is a reference list, so a scoped pass repeats the model-wide answer once per declaration. They join [3b](#l-b3c-3-partition)'s population rather than being forced.
 
 **Two mutants, and the surviving one removed a line rather than adding a test.** `allDeclarations()` delegating to the scoped `declarations()` dies in the walk differential. The dispatcher's explicit row charge removed from the WALK arm SURVIVED every control — and rightly, because a scoped `declarations()` records the row itself, so the call was redundant there. It is gone: a line that cannot matter misleads the next reader about what holds the key together. What remains is loud rather than silent — a walk that returned before iterating would charge no row and be refused by the row invariant, and such a family decided on a model-wide fact and belongs in the parameter form, where the same mutant is still killed by `CheckCellKeyTest`.
+
+Both carriers: **679 tests, 0 failures**; report JSON unchanged (`ParityCorpusTest`).
+
+#### L-b3c-3b landed: an ASSEMBLY narrows with the pass, and my own correction was the whole of it (2026-09-18) <a id="l-b3c-3b-landing"></a>
+
+`declaredReferences()` is `declarations().mapNotNull { it.declaredReference() }` — an assembly over the walk, exactly like `conditionReferences()` — so it narrows when the dispatcher narrows the pass. [3a](#l-b3c-3a-landing) had routed it through the unnarrowable `allDeclarations()`, on the reasoning that handing back one reference "reads like an answer and is not one". **That mistook what the accessor is for.** Every family reading it loops over the references OF the declaration it is judging, so one declaration's references are exactly the answer; the unnarrowable route made a scoped family repeat the whole model's list once per declaration, which is how the equivalence differential found it. The correction is recorded at the accessor and at its test, not only here.
+
+So the vocabulary is now three-way, and the distinction is what decides whether a family can be asked per declaration:
+
+| the question | the route | narrows with the pass? |
+|---|---|---|
+| the declarations this pass is about | `declarations()` | **yes** — one, when scoped |
+| every declaration there is | `allDeclarations()` | no — charges the set shape |
+| one path's declaration | `declarationAt(path)` | no — charges the set shape |
+| an assembly over the pass's declarations | `declaredReferences()`, `conditionReferences()` | **yes**, being built on the first |
+
+Six of the eight reference-loop families follow from it — `COMPUTED_TARGET_KIND`, `COMPUTED_TARGET_INDEX_FIELD`, `EMPTY_GROUP_OPERAND`, `ENUM_COMPUTATION_SOURCE`, `ERROR_TARGET_ITERATION`, `H_MODEL_PATH_SUFFIX` — bringing the per-declaration population to **60 of 98**: 14 parameter-form, 46 scoped walks.
+
+| the figure, on the 8-declaration fixture | L-b3c-1 | L-b3c-2 | L-b3c-3a | now |
+|---|---|---|---|---|
+| cells scheduled | 126 | 301 | 476 | **518** = 38 model-wide + 60 × 8 |
+| a keystroke in a rule's condition | 51 (40 %) | 226 (75 %) | 387 (81 %) | **444 of 518 (86 %)** |
+| a draft that retypes the text it already had | 126/126 | 301/301 | 476/476 | **518/518** |
+
+**What stays model-wide, and why it is a stopping point rather than a remainder.** Thirty-eight producers are left, and the twenty-five refused in this round were refused by their own family suites and the differential together: a verdict that depends on *relations between* declarations — a dependency circle, a key's containment in an iteration scope, whether a filter body's reference rides a level the target crosses — is not a per-declaration question however it is written, and asking it per declaration is wrong rather than merely unhelpful. That is the same boundary [L3](#l-b-design) drew; the ones still worth revisiting are the ones whose suites, not the differential, did the refusing, and that is [L-b3c-4](#l-b3c-partition)'s question about the differential's fixtures rather than a family's.
 
 Both carriers: **679 tests, 0 failures**; report JSON unchanged (`ParityCorpusTest`).
 

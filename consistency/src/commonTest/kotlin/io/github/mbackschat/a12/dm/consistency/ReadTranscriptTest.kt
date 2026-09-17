@@ -242,8 +242,7 @@ class ReadTranscriptTest {
 
     @Test
     fun aScopedFactBaseNarrowsTheWALKAndNothingElse() {
-        // A rule, so `declaredReferences()` has something to find: it is the accessor that had to be moved
-        // off the public walk when the scope arrived, and an empty answer would pass either way.
+        // A rule, so the reference assembly has something to find: an empty answer would pass either way.
         val prepared = preparedOf(
             ModelSource(
                 """
@@ -271,7 +270,7 @@ class ReadTranscriptTest {
         val walk = CellKey(CHECK_PRODUCERS.first(), at)
         val setQuestion = CellKey(CHECK_PRODUCERS.last(), at)
         val walked = base.whileProducing(walk) { scoped.declarations() }
-        val references = base.whileProducing(setQuestion) { scoped.declaredReferences() }
+        val everything = base.whileProducing(setQuestion) { scoped.allDeclarations() }
 
         // The narrowing and its charge: the family's loop runs once, and the cell is keyed on that
         // declaration's row rather than on the set — which is the whole reason the scope exists.
@@ -279,13 +278,21 @@ class ReadTranscriptTest {
         assertEquals(setOf(FactRead.DeclarationRow(first.path, 0)), base.observedWhileProducing(walk),
             "and charges that declaration's row, and nothing else")
 
-        // …and the half that keeps the migration gate mechanical: a SET question is still answered about the
-        // whole model and still charges the shape, so a family asking one is refused by the charge-profile
-        // invariant instead of quietly receiving one declaration's worth of answer.
-        assertEquals(listOf("/Catalog/PriceRequired"), references.map { it.declaredAt },
-            "declaredReferences answers for the whole model, whatever the base is scoped to")
+        // …and the other half, which is the distinction the migration turns on. A SET question is answered
+        // about the whole model however the pass is narrowed, and charges the shape: its routes are
+        // `allDeclarations()` for the set and `declarationAt` for one path. An ASSEMBLY over the
+        // declarations — `declaredReferences()`, `conditionReferences()` — narrows WITH the pass, because
+        // every family reading one loops over the references OF the declaration it is judging.
+        assertEquals(prepared.elements.map { it.path }, everything.map { it.path },
+            "allDeclarations answers for the whole model, whatever the base is scoped to")
+        assertEquals("/Catalog/Price", scoped.declarationAt("/Catalog/Price")?.path,
+            "and declarationAt still finds a declaration the scope is not about")
         assertTrue(FactRead.DeclarationSetShape in base.observedWhileProducing(setQuestion),
-            "and charges the set shape, or the invariant that refuses a set-reading family cannot see it")
+            "a set question charges the shape, which is then what the cell asking it is keyed on")
+        assertEquals(listOf("/Catalog/PriceRequired"), base.declaredReferences().map { it.declaredAt },
+            "the unscoped assembly sees the model's references")
+        assertEquals(emptyList(), scoped.declaredReferences().map { it.declaredAt },
+            "and a scoped one only its own declaration's, which for the group `/Catalog` is none")
 
         // The group counts as a declaration, so the denominator is derived rather than written: `first` above
         // is `/Catalog` itself, which is also why the row assertion is about a group's row.

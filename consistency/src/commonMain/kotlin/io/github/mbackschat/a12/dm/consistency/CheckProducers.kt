@@ -283,7 +283,7 @@ internal val CHECK_PRODUCERS: List<CheckProducer> = listOf(
         findings = { it.declaredPatternFindings() },
         gaps = { it.declaredPatternGaps() },
     ),
-    produces(CheckFamily.EMPTY_GROUP_OPERAND) { it.emptyGroupOperandFindings() },
+    perDeclarationWalk(CheckFamily.EMPTY_GROUP_OPERAND) { it.emptyGroupOperandFindings() },
     produces(CheckFamily.ERROR_FIELD_REFERENCE) { it.errorFieldReferenceFindings() },
     CheckProducer.ModelWide(
         completes = setOf(
@@ -294,8 +294,8 @@ internal val CHECK_PRODUCERS: List<CheckProducer> = listOf(
         findings = { it.groupListOperandFindings() },
     ),
     perDeclarationWalk(CheckFamily.REPETITION_WILDCARD_TARGET) { it.repetitionWildcardFindings() },
-    produces(CheckFamily.COMPUTED_TARGET_KIND) { it.computedTargetKindFindings() },
-    produces(CheckFamily.COMPUTED_TARGET_INDEX_FIELD) { it.computedTargetIndexFieldFindings() },
+    perDeclarationWalk(CheckFamily.COMPUTED_TARGET_KIND) { it.computedTargetKindFindings() },
+    perDeclarationWalk(CheckFamily.COMPUTED_TARGET_INDEX_FIELD) { it.computedTargetIndexFieldFindings() },
     perDeclarationWalk(CheckFamily.RAW_TYPE_LENGTH) { it.rawTypeLengthFindings() },
     perDeclaration(CheckFamily.COMPUTATION_PRECONDITION_FEATURES) { base, at ->
         base.computationPreconditionFeatureFindings(at)
@@ -339,7 +339,7 @@ internal val CHECK_PRODUCERS: List<CheckProducer> = listOf(
     perDeclarationWalk(CheckFamily.PATTERN_COMPARISON_OPERANDS) { it.patternComparisonOperandFindings() },
     produces(CheckFamily.OPERAND_REPETITION_SCOPE) { it.operandRepetitionScopeFindings() },
     produces(CheckFamily.DATE_CONSTRUCTION_SLOT) { it.dateConstructionSlotFindings() },
-    produces(CheckFamily.H_MODEL_PATH_SUFFIX) { it.hModelPathSuffixFindings() },
+    perDeclarationWalk(CheckFamily.H_MODEL_PATH_SUFFIX) { it.hModelPathSuffixFindings() },
     produces(CheckFamily.FIELD_OPERAND_KIND) { it.fieldOperandKindFindings() },
     produces(CheckFamily.FILTERED_OPERAND_KIND) { it.filteredOperandKindFindings() },
     perDeclarationWalk(CheckFamily.CATEGORY_REFERENCE) { it.categoryReferenceFindings() },
@@ -351,8 +351,8 @@ internal val CHECK_PRODUCERS: List<CheckProducer> = listOf(
     produces(CheckFamily.RANGE_OPERAND_GATES) { it.rangeOperandGateFindings() },
     perDeclarationWalk(CheckFamily.ENUM_DISPLAY_COMPARABILITY) { it.enumDisplayComparabilityFindings() },
     produces(CheckFamily.VALUE_AS_DATE_OPERAND) { it.valueAsDateOperandFindings() },
-    produces(CheckFamily.ENUM_COMPUTATION_SOURCE) { it.enumComputationSourceFindings() },
-    produces(CheckFamily.ERROR_TARGET_ITERATION) { it.errorTargetIterationFindings() },
+    perDeclarationWalk(CheckFamily.ENUM_COMPUTATION_SOURCE) { it.enumComputationSourceFindings() },
+    perDeclarationWalk(CheckFamily.ERROR_TARGET_ITERATION) { it.errorTargetIterationFindings() },
     produces(CheckFamily.ERROR_TARGET_CONTAINMENT) { it.errorTargetContainmentFindings() },
     perDeclarationWalk(CheckFamily.MESSAGE_PARAMETER_REFERENCE) { it.messageParameterFindings() },
     perDeclarationWalk(CheckFamily.ERROR_TEXT_SEMANTIC_INDEX) { it.errorTextSemanticIndexFindings() },

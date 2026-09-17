@@ -127,9 +127,18 @@ internal class TrackedFactBase private constructor(
      * rather than from pretending the family read less than it did. Going through
      * [TrackedDeclaration.declaredReference] is what keeps that attribution; reading the model's own list
      * would give one opaque charge that no cell could ever narrow.
+     *
+     * **It is an ASSEMBLY over [declarations], so it narrows with the pass** — like
+     * [conditionReferencesOf]'s whole-model arm, and unlike [allDeclarations]. *Corrected 2026-09-18: it
+     * briefly went through the unnarrowable route, on the reasoning that one reference "reads like an
+     * answer and is not one". That mistook what the accessor is FOR: every family reading it loops over the
+     * references OF the declaration it is judging, so one declaration's references are exactly the answer,
+     * and the unnarrowable route made a scoped family repeat the whole model's list once per declaration.
+     * A family wanting a genuine set question over the references has no caller today and would use
+     * [allDeclarations] itself.*
      */
     fun declaredReferences(): List<DeclaredReference> =
-        allDeclarations().mapNotNull { it.declaredReference() }
+        declarations().mapNotNull { it.declaredReference() }
 
     /**
      * Every declaration in the model, whatever this base is scoped to — the route a SET question takes.
