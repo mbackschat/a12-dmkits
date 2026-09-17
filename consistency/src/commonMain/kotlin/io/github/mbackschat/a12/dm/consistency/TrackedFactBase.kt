@@ -49,6 +49,28 @@ internal class TrackedFactBase(
         return model.elements.firstOrNull { it.path == path }?.let { TrackedDeclaration(it, model, transcript) }
     }
 
+    /**
+     * Resolve a written entity path from [declaringGroup] — the reference reader, charged.
+     *
+     * **Resolution depends on the set's SHAPE and one model flag, and on no declaration's body**, which is
+     * what makes it cheap to charge and harmless to granularity: it consults the by-path index and the
+     * resolvable set, and reads `fieldRefByShortNameAllowed` for the short-name tier. No keystroke in a
+     * condition or a message changes any of those, so a cell that resolved a reference survives every edit
+     * that leaves the declarations where they are.
+     *
+     * Charges and then delegates, as [TrackedDeclaration.declaredReference] does: the barrier's job is to
+     * record the dependency, not to hold a second copy of a resolver whose behaviour is measured elsewhere.
+     */
+    fun resolveEntity(
+        declaringGroup: String,
+        written: String,
+        origin: DeclarationOrigin = DeclarationOrigin(""),
+    ): Reference {
+        transcript.record(FactRead.DeclarationSetShape)
+        transcript.record(FactRead.ModelMember(ModelFact.FIELD_REF_BY_SHORT_NAME_ALLOWED))
+        return model.resolveEntity(declaringGroup, written, origin)
+    }
+
     val conditionLanguage: ConditionLanguage
         get() {
             transcript.record(FactRead.ModelMember(ModelFact.CONDITION_LANGUAGE))

@@ -995,7 +995,7 @@ internal fun checkPrepared(
         prepared.hModelPathSuffixFindings() +
         prepared.fieldOperandKindFindings() +
         prepared.filteredOperandKindFindings() +
-        prepared.categoryReferenceFindings() +
+        tracked.categoryReferenceFindings() +
         prepared.scalarValueListGateFindings() +
         prepared.dateArgumentSlotFindings() +
         prepared.dateRangeOperandListFindings() +

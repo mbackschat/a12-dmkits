@@ -75,6 +75,36 @@ class ReadTranscriptTest {
     }
 
     /**
+     * Resolving a reference charges the SHAPE and the short-name flag, and no declaration's body.
+     *
+     * This is what makes the resolver — reached by 37 files — harmless to reuse granularity rather than the
+     * thing that destroys it. Resolution consults the by-path index and the resolvable set, and reads
+     * `fieldRefByShortNameAllowed` for the second tier; it never opens a body. So a cell that resolved a
+     * reference survives every edit that leaves the declarations where they are, which is every keystroke in
+     * a condition or a message.
+     *
+     * A body charge appearing here would mean the resolver had started reading declarations, and every
+     * reference-reading family would silently depend on the whole model again.
+     */
+    @Test
+    fun resolvingAReferenceChargesTheShapeAndTheFlagAlone() {
+        val source = twoFieldModel(""""fieldType":{"type":"StringType"}""")
+        var resolved: Reference? = null
+        val observed = transcriptOf(source) { resolved = resolveEntity("/Catalog", "Tier") }
+
+        assertEquals(Reference.Resolved("/Catalog/Tier"), resolved,
+            "the positive control: resolution must really have happened, or the charge is for nothing")
+        assertEquals(
+            setOf(
+                FactRead.DeclarationSetShape,
+                FactRead.ModelMember(ModelFact.FIELD_REF_BY_SHORT_NAME_ALLOWED),
+            ),
+            observed,
+            "resolution must charge no body, or every reference-reading family depends on the whole model",
+        )
+    }
+
+    /**
      * A DERIVED query is charged per declaration, which is the case the design record singles out.
      *
      * `declaredReferences()` on the fact base hands back every rule's and computation's reference at once,

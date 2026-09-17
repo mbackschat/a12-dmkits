@@ -27,7 +27,7 @@ import kotlinx.serialization.json.contentOrNull
  * draws `MVK_INVALID_STRING_CONSTANT_FOR_ENUM_COMPARISON`, measured in the same grid; it is about the
  * comparison's constant rather than about the arrow, so this family says nothing about it.
  */
-fun PreparedModel.categoryReferenceFindings(): List<Finding> = elements.flatMap { element ->
+internal fun TrackedFactBase.categoryReferenceFindings(): List<Finding> = declarations().flatMap { element ->
     val body = element.body ?: return@flatMap emptyList()
     val group = element.path.substringBeforeLast('/', missingDelimiterValue = "")
     conditionTexts(element.kind, body).flatMap { (member, text) ->
@@ -37,18 +37,18 @@ fun PreparedModel.categoryReferenceFindings(): List<Finding> = elements.flatMap 
     }
 }
 
-private fun PreparedModel.categoryFinding(
+private fun TrackedFactBase.categoryFinding(
     path: String,
     category: String,
     declaringGroup: String,
-    element: DeclaredElement,
+    element: TrackedDeclaration,
     member: String,
 ): Finding? {
     val resolved = resolveEntity(declaringGroup, path.replace("*", ""), element.origin)
     if (resolved !is Reference.Resolved) {
         return null
     }
-    val target = elements.firstOrNull { it.path == resolved.path && it.declaredKind == DeclaredKind.FIELD }
+    val target = declarationAt(resolved.path)?.takeIf { it.declaredKind == DeclaredKind.FIELD }
         ?: return null
     val declaredType = ((target.body?.get("fieldType") as? JsonObject)?.get("type") as? JsonPrimitive)
         ?.contentOrNull ?: return null

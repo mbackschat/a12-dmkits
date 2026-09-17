@@ -43,10 +43,6 @@ public final class io/github/mbackschat/a12/dm/consistency/BooleanComparisonAgre
 	public static final fun booleanComparisonAgreementFindings (Lio/github/mbackschat/a12/dm/consistency/PreparedModel;)Ljava/util/List;
 }
 
-public final class io/github/mbackschat/a12/dm/consistency/CategoryReferenceKt {
-	public static final fun categoryReferenceFindings (Lio/github/mbackschat/a12/dm/consistency/PreparedModel;)Ljava/util/List;
-}
-
 public final class io/github/mbackschat/a12/dm/consistency/CheckDraftKt {
 	public static final fun checkDraft (Lio/github/mbackschat/a12/dm/consistency/ModelSource;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;)Lio/github/mbackschat/a12/dm/consistency/EditReport;
 }
