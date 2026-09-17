@@ -592,10 +592,6 @@ public final class io/github/mbackschat/a12/dm/consistency/EnumDisplayComparabil
 	public static final fun enumDisplayComparabilityFindings (Lio/github/mbackschat/a12/dm/consistency/PreparedModel;)Ljava/util/List;
 }
 
-public final class io/github/mbackschat/a12/dm/consistency/EnumSpecialValueKt {
-	public static final fun enumSpecialValueFindings (Lio/github/mbackschat/a12/dm/consistency/PreparedModel;)Ljava/util/List;
-}
-
 public final class io/github/mbackschat/a12/dm/consistency/EnumTextForbiddenCharactersKt {
 	public static final fun enumTextForbiddenCharacterFindings (Lio/github/mbackschat/a12/dm/consistency/PreparedModel;)Ljava/util/List;
 	public static final fun enumTextForbiddenCharacterGaps (Lio/github/mbackschat/a12/dm/consistency/PreparedModel;)Ljava/util/List;

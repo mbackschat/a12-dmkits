@@ -15,8 +15,8 @@ import kotlinx.serialization.json.JsonObject
  * **A BLANK `sValue` is not a value outside the domain** — A12 reads an empty member as unset and never asks
  * the question, so reporting one would refuse a model A12 admits.
  */
-fun PreparedModel.enumSpecialValueFindings(): List<Finding> =
-    elements.filter { it.declaredKind == DeclaredKind.FIELD }.mapNotNull { field ->
+internal fun TrackedFactBase.enumSpecialValueFindings(): List<Finding> =
+    declarations().filter { it.declaredKind == DeclaredKind.FIELD }.mapNotNull { field ->
         val body = field.enumerationBody() ?: return@mapNotNull null
         val special = body.string("sValue")?.takeIf { it.isNotEmpty() } ?: return@mapNotNull null
         val declared = (body["values"] as? JsonArray)

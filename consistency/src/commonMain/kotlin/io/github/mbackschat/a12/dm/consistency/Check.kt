@@ -918,6 +918,11 @@ internal fun checkPrepared(
             gaps = prepared.gaps() + unmounted + UNIMPLEMENTED_FAMILIES,
         )
     }
+    // What a migrated family receives instead of the fact base itself, so that it cannot read a fact without
+    // the read being observable — the barrier's whole purpose, and a type rather than a lint because an
+    // untracked read then does not compile. One transcript per check, shared by every migrated family: a read
+    // is a property of the model, not of the family that happened to make it.
+    val tracked = TrackedFactBase(prepared, ReadTranscript())
     val declared = prepared.declaredReferences()
     // A12 examines a rule's error TARGET first and stops the whole declaration when it does not resolve —
     // the condition's own class and both error-text classes are withheld, leaving the target's two codes
@@ -1012,7 +1017,7 @@ internal fun checkPrepared(
         prepared.messageValueSuffixFindings() +
         prepared.stringTypeMessageFindings() + prepared.stringTypeParameterFindings() +
         prepared.numberTypeDigitFindings() + prepared.enumValueLabelFindings() +
-        prepared.enumSpecialValueFindings())
+        tracked.enumSpecialValueFindings())
         .filterNot { it.at in stopped && it.code !in ERROR_TARGET_CODES }
         .filterNot { it.at in resolvedFirst && it.code in CONDITION_TEXT_CODES }
                 .withoutPostParseClassesBehindAPositionedDefect()

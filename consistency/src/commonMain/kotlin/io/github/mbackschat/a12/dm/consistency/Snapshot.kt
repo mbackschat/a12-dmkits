@@ -45,8 +45,10 @@ data class DraftResult(val edit: EditReport, val reuse: Reuse)
  * **Reuse can never change an answer, and that is by construction rather than by care.** Everything reused
  * here is a pure function of inputs that did not change — a source's parse, the entry's fact base, the
  * baseline report — so there is no invalidation rule to get wrong. Per-declaration reuse INSIDE a check is a
- * different proposition and is deliberately not attempted: it would need every family to declare the model
- * footprint its verdict depends on (`PORTABLE-CONSISTENCY-IMPLEMENTATION-PLAN.md` "L record").
+ * different proposition, and it keeps that same property by a different route: a family's footprint is
+ * OBSERVED rather than declared, because [TrackedFactBase] records what the family read and a recorded read
+ * cannot be too narrow. A declared footprint could be, and its detector only ever proves one narrow — which is
+ * why that design was dropped (`PORTABLE-CONSISTENCY-IMPLEMENTATION-PLAN.md` "L-b's method was probed").
  *
  * A snapshot is a value. Every operation returns a new one and none writes into the receiver, so a consumer
  * may hold an old snapshot and keep getting the answer it already had.
