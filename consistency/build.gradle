@@ -771,8 +771,26 @@ def consistencyNpmPackDir = layout.buildDirectory.dir('consumer-tests/pack')
 // system PATH, so a bare `commandLine 'npm'` fails on a machine where Node is present and merely not
 // exported. This resolves the executable once and fails with what to do about it, instead of a bare
 // "command not found" from Exec.
-// Node discovery moved to a shared script on 2026-09-17, when `:adapter`'s cold-Node perf lane became its
-// second consumer and needed the version PIN this module's calls deliberately do not ask for.
+// The checker's published ABI, pinned the way `:interpreter` pins its own — Kotlin 2.2 installs ABI
+// validation as a nested extension of the multiplatform DSL, and Groovy cannot call the Kotlin-only
+// `abiValidation {}` shortcut, so configure the public extension directly.
+//
+// This module became a PUBLISHED artifact on 2026-09-17 (`dm-consistency`), and its report types already sit
+// on two published Java APIs whose own goldens name them — so a change here moves those two surfaces with
+// nothing recording that the checker was the cause. Deliberately UNFILTERED: the whole module is either
+// contract or accidentally public, and a dump that hides the difference answers neither question.
+def consistencyAbiValidation = kotlin.extensions
+        .getByType(org.jetbrains.kotlin.gradle.dsl.abi.AbiValidationMultiplatformExtension)
+consistencyAbiValidation.enabled.set(true)
+
+// Enabling validation only PRODUCES a dump; nothing verifies it. Kotlin does not put `checkLegacyAbi` on
+// `check`, so a committed `api/` directory would read as pinned and be checked by nobody — the
+// "parsed but never consumed" shape this repository has already shipped once. `:interpreter` reaches its own
+// gate through the custom test tasks that depend on it; this module has no such task, so wire it directly.
+tasks.named('check') {
+    dependsOn tasks.named('checkLegacyAbi')
+}
+
 apply from: rootProject.file('gradle/node-tools.gradle')
 
 // ─────────────────────────────────────────────────────────────────────────────────────────────────────────
