@@ -620,6 +620,11 @@ tasks.matching { it.name.startsWith('compileKotlin') || it.name.startsWith('comp
 // consumer project declares none either, so `npm install <tarball>` resolves entirely from disk.
 def nodeConsumerSourceDir = file('consumer-tests/node')
 def nodeConsumerBuildDir = layout.buildDirectory.dir('consumer-tests/node')
+// The consumer cases BOTH packaged arms run, staged as a SIBLING of each arm so the relative import a
+// committed file carries (`../shared/cases.ts`) means the same thing in the source tree and in the staged
+// copy. Staging it inside one arm instead would make the committed path correct only after a copy.
+def sharedConsumerSourceDir = file('consumer-tests/shared')
+def sharedConsumerBuildDir = layout.buildDirectory.dir('consumer-tests/shared')
 def consistencyNpmPackDir = layout.buildDirectory.dir('consumer-tests/pack')
 
 // node and npm are commonly installed per-user (nvm) rather than on the system PATH, so a bare `commandLine
@@ -774,6 +779,16 @@ tasks.register('verifyCheckerArtifactIdentity') {
     }
 }
 
+// F asks for "the same corpus" through Node and browser, so the cases are one file both arms import rather
+// than two files nothing compares. Staged by its own task because both arms depend on it and neither owns it.
+def prepareSharedConsumerCases = tasks.register('prepareSharedConsumerCases', Sync) {
+    group = 'verification'
+    description = 'Stage the consumer cases both packaged arms run.'
+    from sharedConsumerSourceDir
+    into sharedConsumerBuildDir
+    outputs.upToDateWhen { false }
+}
+
 def prepareNodeConsumer = tasks.register('prepareNodeConsumer', Sync) {
     group = 'verification'
     description = 'Stage a disposable copy of the Node consumer project, with no node_modules carried over.'
@@ -803,6 +818,7 @@ tasks.register('nodeConsumerTest', Exec) {
     group = 'verification'
     description = 'Check a model end to end from a plain Node project against the packed npm package.'
     dependsOn installPackedConsistencyInNodeConsumer
+    dependsOn prepareSharedConsumerCases
     workingDir nodeConsumerBuildDir
     doFirst {
         commandLine new File(resolveNodeBinDir(), 'npm').absolutePath, 'test'
