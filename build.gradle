@@ -715,6 +715,10 @@ tasks.register('docGuardTest', Test) {
         includeTestsMatching 'io.github.mbackschat.a12.dm.PerformanceRecordShapeGuardTest'
         includeTestsMatching 'io.github.mbackschat.a12.dm.KernelParityCoverageGuardTest'
         includeTestsMatching 'io.github.mbackschat.a12.dm.SurvivingDataNotInBuildGuardTest'
+        // Authored TypeScript against the tsconfigs a project's `check` actually invokes. The sibling Gradle
+        // guards refuse authored JavaScript, which says what the sources ARE and nothing about whether the
+        // compiler sees them — and `vite.config.ts` sat outside every `include` until 2026-09-17.
+        includeTestsMatching 'io.github.mbackschat.a12.dm.ConsumerTypeScriptCoverageGuardTest'
         includeTestsMatching 'io.github.mbackschat.a12.dm.AdmissionClaimIsAssertedGuardTest'
         includeTestsMatching 'io.github.mbackschat.a12.dm.VersionMentionFreshnessTest'
         includeTestsMatching 'io.github.mbackschat.a12.dm.PlanStageStatusAgreementGuardTest'
@@ -722,6 +726,18 @@ tasks.register('docGuardTest', Test) {
     }
     guardInputs(it, [
             'docs/API-GUIDE.md': file('docs/API-GUIDE.md'),
+            // Both halves of what the coverage guard compares: the authored sources and the configs plus the
+            // `check` script that decide which of them a compiler ever reads. Undeclared, adding an uncovered
+            // source would leave this task UP-TO-DATE and the guard would never see it.
+            'consumer typescript': fileTree('.') {
+                include 'consistency/consumer-tests/browser/**/*.ts'
+                include 'interpreter/consumer-tests/browser/**/*.ts'
+                include 'consistency/consumer-tests/browser/tsconfig*.json'
+                include 'interpreter/consumer-tests/browser/tsconfig*.json'
+                include 'consistency/consumer-tests/browser/package.json'
+                include 'interpreter/consumer-tests/browser/package.json'
+                exclude '**/node_modules/**', '**/build/**', '**/dist/**'
+            },
             // Derive from the conventional live test-source layout rather than duplicating the Lock registry's
             // file list. A future module/source lock is covered automatically; linked worktrees and generated
             // outputs are anchored exclusions.

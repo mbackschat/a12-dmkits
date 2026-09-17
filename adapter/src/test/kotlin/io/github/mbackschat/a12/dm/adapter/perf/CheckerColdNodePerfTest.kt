@@ -2,8 +2,6 @@ package io.github.mbackschat.a12.dm.adapter.perf
 
 import java.nio.file.Files
 import java.nio.file.Path
-import java.util.Locale
-import kotlin.math.ceil
 import org.junit.jupiter.api.Tag
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.condition.EnabledIfSystemProperty
@@ -121,7 +119,7 @@ class CheckerColdNodePerfTest {
                 // An empty rejecting set is ALSO what a report with no findings at all looks like, so the
                 // shape is pinned beside it — the same pair the browser arm asserts, for the same reason.
                 val shapes = runs.map { it.status to it.complete }.distinct()
-                check(shapes == listOf(EXPECTED_SHAPE)) {
+                check(shapes == listOf(ColdLane.EXPECTED_WIRE_SHAPE)) {
                     "the children did not all return the expected report shape at $scale programs, so this " +
                         "quantity is not the one the other cold arms measure: $shapes"
                 }
@@ -152,15 +150,8 @@ class CheckerColdNodePerfTest {
      * describes a different machine. Nearest rank needs no interpolation and therefore always names an
      * observation that actually happened.
      */
-    private fun report(quantity: String, programs: Int, nanos: List<Long>) {
-        val sorted = nanos.sorted()
-        val p95 = sorted[(ceil(0.95 * sorted.size).toInt() - 1).coerceIn(sorted.indices)]
-        PerfHarness.progress(
-            "[checker-cold-node] $quantity programs=$programs n=${sorted.size} " +
-                "median=${millis(sorted[sorted.size / 2])} p95=${millis(p95)} " +
-                "min=${millis(sorted.first())} max=${millis(sorted.last())} ms",
-        )
-    }
+    private fun report(quantity: String, programs: Int, nanos: List<Long>) =
+        ColdLane.reportNanos("checker-cold-node", quantity, programs, nanos)
 
     /** One child: a Node process whose whole program is [COLD_SCRIPT], run from the installed consumer tree. */
     private fun run(node: Path, consumer: Path, model: Path, label: String): ColdRun {
@@ -173,15 +164,13 @@ class CheckerColdNodePerfTest {
         ) { "a cold Node process" }
         val output = completed.output
         check(completed.exitCode == 0) { "a cold Node process exited ${completed.exitCode}: $output" }
-        val printed = output.lineSequence()
-            .mapNotNull { line -> line.split('=', limit = 2).takeIf { it.size == 2 } }
-            .associate { (key, value) -> key to value }
+        val printed = ColdLane.printedFields(output)
         return ColdRun(
             checkNanos = requireNotNull(printed["checkNanos"]) { "no checkNanos in: $output" }.toLong(),
             processNanos = requireNotNull(printed["processNanos"]) { "no processNanos in: $output" }.toLong(),
             rejecting = printed["rejecting"].orEmpty().split(',').filter { it.isNotBlank() },
             status = requireNotNull(printed["status"]) { "no status in: $output" },
-            complete = strictBoolean(requireNotNull(printed["complete"]) { "no complete in: $output" }),
+            complete = ColdLane.strictBoolean(requireNotNull(printed["complete"]) { "no complete in: $output" }),
             nodeVersion = requireNotNull(printed["nodeVersion"]) { "no nodeVersion in: $output" },
         )
     }
@@ -229,25 +218,9 @@ class CheckerColdNodePerfTest {
         return completed.output.trim()
     }
 
-    private fun millis(nanos: Long): String = format(nanos / 1_000_000.0)
+    private fun format(value: Double): String = ColdLane.format(value)
 
-    private fun format(value: Double): String = "%.2f".format(Locale.ROOT, value)
-
-    private fun requiredProperty(name: String): String =
-        requireNotNull(System.getProperty(name)) { "-D$name=<value> is required" }
-
-    /**
-     * A boolean that refuses anything else, because `String.toBoolean()` would not.
-     *
-     * Kotlin maps every string but a case-insensitive `"true"` to `false`, and `false` is the value this lane
-     * EXPECTS for `complete` — so `undefined`, a renamed field or any garbage would land on the expected side
-     * and pass silently. `requireNotNull` covers an absent key; only this covers a meaningless value.
-     */
-    private fun strictBoolean(raw: String): Boolean = when (raw) {
-        "true" -> true
-        "false" -> false
-        else -> error("a cold Node child printed complete=$raw, which is not a boolean")
-    }
+    private fun requiredProperty(name: String): String = ColdLane.requiredProperty(name)
 
     private data class ColdRun(
         val checkNanos: Long,
@@ -260,7 +233,7 @@ class CheckerColdNodePerfTest {
 
     private companion object {
         /** The cold boundary's own floor on the sample count; a smaller run is a different measurement. */
-        const val MINIMUM_PROCESSES = 50
+        const val MINIMUM_PROCESSES = ColdLane.MINIMUM_OBSERVATIONS
 
         /**
          * The report the synthesized workload draws, asserted rather than assumed.

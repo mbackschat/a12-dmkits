@@ -3,8 +3,6 @@ package io.github.mbackschat.a12.dm.adapter.perf
 import java.io.File
 import java.nio.file.Files
 import java.nio.file.Path
-import java.util.Locale
-import kotlin.math.ceil
 import org.junit.jupiter.api.Tag
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.condition.EnabledIfSystemProperty
@@ -134,6 +132,13 @@ class CheckerColdStartPerfTest {
                     "the checker REFUSED the synthesized model at $scale programs, so these processes timed the " +
                         "rejection path rather than a complete report: $refused"
                 }
+                // An empty rejecting set is ALSO what a report with no findings at all looks like, so the
+                // shape is pinned beside it — the same pair both JS arms assert, for the same reason.
+                val shapes = runs.map { it.status to it.complete }.distinct()
+                check(shapes == listOf(ColdLane.EXPECTED_OBJECT_SHAPE)) {
+                    "the children did not all return the expected report shape at $scale programs, so this " +
+                        "quantity is not the one the other cold arms measure: $shapes"
+                }
                 report("check", scale, runs.map { it.checkNanos })
                 report("process", scale, runs.map { it.processNanos })
             }
@@ -145,23 +150,10 @@ class CheckerColdStartPerfTest {
         }
     }
 
-    /**
-     * Nearest-rank p95 with the median beside it, which is the pair the plan's H5-b row asks for.
-     *
-     * The median says what the boundary usually costs and the p95 says what a user occasionally waits for; a
-     * cold lane spread over independent processes has a long right tail by construction, so either number alone
-     * describes a different machine. Nearest rank is the definition that needs no interpolation and therefore
-     * always names an observation that actually happened.
-     */
-    private fun report(quantity: String, programs: Int, nanos: List<Long>) {
-        val sorted = nanos.sorted()
-        val p95 = sorted[(ceil(0.95 * sorted.size).toInt() - 1).coerceIn(sorted.indices)]
-        PerfHarness.progress(
-            "[checker-cold] $quantity programs=$programs n=${sorted.size} " +
-                "median=${millis(sorted[sorted.size / 2])} p95=${millis(p95)} " +
-                "min=${millis(sorted.first())} max=${millis(sorted.last())} ms",
-        )
-    }
+    private fun report(quantity: String, programs: Int, nanos: List<Long>) =
+        ColdLane.reportNanos("checker-cold", quantity, programs, nanos)
+
+    private fun format(value: Double): String = ColdLane.format(value)
 
     /**
      * One child, launched with the pinned JVM and nothing else configured — except an optional `-Xmx`.
@@ -192,13 +184,13 @@ class CheckerColdStartPerfTest {
         ) { "a cold checker process" }
         val output = completed.output
         check(completed.exitCode == 0) { "a cold checker process exited ${completed.exitCode}: $output" }
-        val printed = output.lineSequence()
-            .mapNotNull { line -> line.split('=', limit = 2).takeIf { it.size == 2 } }
-            .associate { (key, value) -> key to value }
+        val printed = ColdLane.printedFields(output)
         return ColdRun(
             checkNanos = requireNotNull(printed["checkNanos"]) { "no checkNanos in: $output" }.toLong(),
             processNanos = requireNotNull(printed["processNanos"]) { "no processNanos in: $output" }.toLong(),
             rejecting = printed["rejecting"].orEmpty().split(',').filter { it.isNotBlank() },
+            status = requireNotNull(printed["status"]) { "no status in: $output" },
+            complete = ColdLane.strictBoolean(requireNotNull(printed["complete"]) { "no complete in: $output" }),
         )
     }
 
@@ -226,21 +218,22 @@ class CheckerColdStartPerfTest {
         }
     }
 
-    private fun millis(nanos: Long): String = format(nanos / 1_000_000.0)
-
-    private fun format(value: Double): String = "%.2f".format(Locale.ROOT, value)
-
-    private fun requiredProperty(name: String): String =
-        requireNotNull(System.getProperty(name)) { "-D$name=<value> is required" }
+    private fun requiredProperty(name: String): String = ColdLane.requiredProperty(name)
 
     /** Recording sequence, so each diagnostic child writes its own file rather than overwriting one. */
     private var recordings = 0
 
-    private data class ColdRun(val checkNanos: Long, val processNanos: Long, val rejecting: List<String>)
+    private data class ColdRun(
+        val checkNanos: Long,
+        val processNanos: Long,
+        val rejecting: List<String>,
+        val status: String,
+        val complete: Boolean,
+    )
 
     private companion object {
         /** H5-b's own floor on the sample count; a smaller run is a different measurement, not a cheaper one. */
-        const val MINIMUM_PROCESSES = 50
+        const val MINIMUM_PROCESSES = ColdLane.MINIMUM_OBSERVATIONS
 
         /** Liveness fuse for a stuck child, not a latency bar. */
         const val PROCESS_TIMEOUT_SECONDS = 120L

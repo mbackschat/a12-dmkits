@@ -24,9 +24,12 @@ import java.time.Instant
  * change to this code can shrink below the platform's floor. Reporting one without the other would either
  * overstate the checker's cost or hide the user's.
  *
- * **It also prints the report, not a count.** The silence claim is what makes a timing meaningful at all: a
- * checker that refused the model would be timing a different code path. The caller compares the printed codes
- * against the expected set rather than asserting how many there are.
+ * **It prints the report's codes AND its shape, not a count.** The silence claim is what makes a timing
+ * meaningful at all: a checker that refused the model would be timing a different code path, so the caller
+ * compares the printed codes against the expected set rather than asserting how many there are. The shape rides
+ * along because silence alone cannot distinguish "nothing was wrong" from "nothing was checked" — an empty
+ * `findings` list satisfies an empty rejecting set. Added 2026-09-17, after the same hole was closed on the Node
+ * and browser arms and this one turned out to be the third instance rather than the exception.
  */
 fun main(args: Array<String>) {
     require(args.size == 2) { "usage: CheckerColdStartMain <model.json> <diagnostic-label>" }
@@ -46,4 +49,13 @@ fun main(args: Array<String>) {
     println("checkNanos=$checkNanos")
     println("processNanos=$processNanos")
     println("rejecting=${rejecting.joinToString(",")}")
+    // The verdict straight off the report OBJECT, with no mapping written here. `ConsistencyStatus`'s members
+    // are `data object`s, so their `toString` is compiler-generated rather than a name this file chose, and
+    // `complete` is declared on the public interface. The two JS arms print the WIRE spelling instead
+    // ("INCONCLUSIVE"), because that is what their surface gives them — `ReportJson.wireName` is deliberately
+    // private, its own comment saying the mapping exists so nothing reflects over the class. Restating that
+    // mapping here to make the three arms print one string would be the invention that comment refuses, so the
+    // arms pin their own surface's spelling and `ColdLane` carries both constants.
+    println("status=${report.status}")
+    println("complete=${report.status.complete}")
 }

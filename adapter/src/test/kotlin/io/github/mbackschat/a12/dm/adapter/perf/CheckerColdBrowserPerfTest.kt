@@ -2,8 +2,6 @@ package io.github.mbackschat.a12.dm.adapter.perf
 
 import java.nio.file.Files
 import java.nio.file.Path
-import java.util.Locale
-import kotlin.math.ceil
 import org.junit.jupiter.api.Tag
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.condition.EnabledIfSystemProperty
@@ -120,7 +118,7 @@ class CheckerColdBrowserPerfTest {
             // INCONCLUSIVE-and-incomplete verdict is what a complete run over a silent model looks like. A
             // page that published a different shape measured something else.
             val shapes = observations.map { it.status to it.complete }.distinct()
-            check(shapes == listOf("INCONCLUSIVE" to false)) {
+            check(shapes == listOf(ColdLane.EXPECTED_WIRE_SHAPE)) {
                 "the browser reported $shapes at $scale programs, not one INCONCLUSIVE/incomplete shape"
             }
             val inlined = observations.count { it.moduleMillis < MINIMUM_MODULE_MILLIS }
@@ -209,7 +207,9 @@ class CheckerColdBrowserPerfTest {
                     moduleMillis = requireNotNull(fields["moduleMillis"]) { "no moduleMillis in: $line" }.toDouble(),
                     checkMillis = requireNotNull(fields["checkMillis"]) { "no checkMillis in: $line" }.toDouble(),
                     status = requireNotNull(fields["status"]) { "no status in: $line" },
-                    complete = strictBoolean(requireNotNull(fields["complete"]) { "no complete in: $line" }),
+                    complete = ColdLane.strictBoolean(
+                        requireNotNull(fields["complete"]) { "no complete in: $line" },
+                    ),
                     browserVersion = requireNotNull(fields["browserVersion"]) { "no browserVersion in: $line" },
                     rejecting = fields["rejecting"].orEmpty().split(',').filter { it.isNotBlank() },
                 )
@@ -248,33 +248,12 @@ class CheckerColdBrowserPerfTest {
      * describes a different machine. Nearest rank needs no interpolation and so always names an observation that
      * actually happened.
      */
-    private fun report(quantity: String, programs: Int, millis: List<Double>) {
-        val sorted = millis.sorted()
-        val p95 = sorted[(ceil(0.95 * sorted.size).toInt() - 1).coerceIn(sorted.indices)]
-        PerfHarness.progress(
-            "[checker-cold-browser] $quantity programs=$programs n=${sorted.size} " +
-                "median=${format(sorted[sorted.size / 2])} p95=${format(p95)} " +
-                "min=${format(sorted.first())} max=${format(sorted.last())} ms",
-        )
-    }
+    private fun report(quantity: String, programs: Int, millis: List<Double>) =
+        ColdLane.report("checker-cold-browser", quantity, programs, millis)
 
-    /**
-     * A boolean that refuses anything else, because `String.toBoolean()` would not.
-     *
-     * Kotlin maps every string but a case-insensitive `"true"` to `false` — and `false` is exactly the value
-     * this lane EXPECTS for `complete`, so `undefined`, a renamed field or any garbage would land on the
-     * expected side and pass. `requireNotNull` covers an absent key; only this covers a meaningless value.
-     */
-    private fun strictBoolean(raw: String): Boolean = when (raw) {
-        "true" -> true
-        "false" -> false
-        else -> error("the sampler printed complete=$raw, which is not a boolean")
-    }
+    private fun format(value: Double): String = ColdLane.format(value)
 
-    private fun format(value: Double): String = "%.2f".format(Locale.ROOT, value)
-
-    private fun requiredProperty(name: String): String =
-        requireNotNull(System.getProperty(name)) { "-D$name=<value> is required" }
+    private fun requiredProperty(name: String): String = ColdLane.requiredProperty(name)
 
     private data class ColdObservation(
         val model: String,
