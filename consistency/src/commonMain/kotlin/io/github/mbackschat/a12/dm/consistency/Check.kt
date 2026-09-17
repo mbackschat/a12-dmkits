@@ -938,162 +938,22 @@ internal fun checkPrepared(
     val judged = (declared.mapNotNull { it.target.asFinding(it.role, it.declaredAt) } +
         prepared.conditionReferences().mapNotNull {
             it.target.asFinding(ReferenceRole.CONDITION_ENTITY, it.declaredAt, it.member, it.span)
-        } + tracked.declarationSlotFindings() + tracked.computationAlternativeFindings() +
-        tracked.computationRoundingFindings() + tracked.suppressedWarningFindings() +
-        tracked.ruleConditionAndTargetFindings() + tracked.variantFilterFindings() +
-        tracked.conditionLexicalFindings() + tracked.conditionCompletenessFindings() +
-        tracked.connectiveAgreementFindings() + tracked.conditionGrammarFindings() +
-        tracked.elementNameFindings() + tracked.groupOrderingFindings() +
-        tracked.groupRepetitionCountFindings() +
-        tracked.presentationMemberFindings() + tracked.stringSlotFindings() +
-        tracked.fieldTypeBindingFindings() + tracked.temporalConfigFindings() +
-        tracked.fieldNameReservedSegmentFindings() +
-        tracked.elementNameAlphabetFindings() + tracked.enumCategoryFindings() +
-        tracked.supportedCharacterFindings() + tracked.enumTextForbiddenCharacterFindings() +
-        tracked.hintListValueFindings() + tracked.tableEnumOperandFindings() +
-        tracked.hModelFormConstructFindings() +
-        tracked.declaredPatternFindings() +
-        tracked.emptyGroupOperandFindings() + tracked.errorFieldReferenceFindings() +
-        tracked.groupListOperandFindings() + tracked.repetitionWildcardFindings() +
-        tracked.computedTargetKindFindings() + tracked.computedTargetIndexFieldFindings() +
-        tracked.rawTypeLengthFindings() + tracked.computationPreconditionFeatureFindings() +
-        tracked.computationCycleFindings() +
-        tracked.computationSelfReadFindings() +
-        tracked.repetitionKeyPlacementFindings() +
-        tracked.repetitionScopeGroupFindings() +
-        tracked.repetitionKeyContainmentFindings() +
-        tracked.filterWildcardFindings() +
-        tracked.filterBodyGateFindings() +
-        tracked.outerMarkerPositionFindings() +
-        tracked.groupConditionWildcardFindings() +
-        tracked.sumOfProductsOperandFindings() +
-        tracked.operandListConstantFindings() +
-        tracked.temporalAggregateOperandFindings() +
-        tracked.semanticIndexStructureFindings() +
-        tracked.semanticIndexKeyFindings() +
-        tracked.repetitionNotUniqueCombinationFindings() +
-        tracked.parallelIterationUniquenessFindings() +
-        tracked.filteredEntityIterationFindings() +
-        tracked.arithmeticOperationGateFindings() +
-        tracked.valueInFieldsConstantKindFindings() +
-        tracked.valueListConditionGateFindings() +
-        tracked.entityListArityFindings() +
-        tracked.entityListPreGateFindings() +
-        tracked.fieldValuesNotUniqueOperandKindFindings() +
-        tracked.fieldListOperationOperandFindings() +
-        tracked.dateArithmeticOperandFindings() +
-        tracked.roundingOperandFindings() +
-        tracked.fieldValueOperatorOperandFindings() +
-        tracked.comparisonOperatorOperandFindings() +
-        tracked.booleanComparisonAgreementFindings() +
-        tracked.stringEnumComparisonAgreementFindings() +
-        tracked.numberComparisonScaleFindings() +
-        tracked.temporalComparisonAgreementFindings() +
-        tracked.patternComparisonOperandFindings() +
-        tracked.operandRepetitionScopeFindings() +
-        tracked.dateConstructionSlotFindings() +
-        tracked.hModelPathSuffixFindings() +
-        tracked.fieldOperandKindFindings() +
-        tracked.filteredOperandKindFindings() +
-        tracked.categoryReferenceFindings() +
-        tracked.scalarValueListGateFindings() +
-        tracked.dateArgumentSlotFindings() +
-        tracked.dateRangeOperandListFindings() +
-        tracked.validityConditionOperandFindings() +
-        tracked.baseYearRequirementFindings() +
-        tracked.rangeOperandGateFindings() +
-        tracked.enumDisplayComparabilityFindings() +
-        tracked.valueAsDateOperandFindings() +
-        tracked.enumComputationSourceFindings() +
-        tracked.errorTargetIterationFindings() +
-        tracked.errorTargetContainmentFindings() +
-        tracked.messageParameterFindings() +
-        tracked.errorTextSemanticIndexFindings() +
-        tracked.errorTextCategorySuffixFindings() +
-        tracked.errorTextIndexTerminalFindings() +
-        tracked.messageTextCharacterFindings() +
-        tracked.messageParameterSyntaxFindings() +
-        tracked.messageGroupParameterFindings() +
-        tracked.messageValueSuffixFindings() +
-        tracked.stringTypeMessageFindings() + tracked.stringTypeParameterFindings() +
-        tracked.numberTypeDigitFindings() + tracked.enumValueLabelFindings() +
-        tracked.enumSpecialValueFindings())
+        } + CHECK_PRODUCERS.flatMap { it.findingsIn(tracked) })
         .filterNot { it.at in stopped && it.code !in ERROR_TARGET_CODES }
         .filterNot { it.at in resolvedFirst && it.code in CONDITION_TEXT_CODES }
-                .withoutPostParseClassesBehindAPositionedDefect()
+        .withoutPostParseClassesBehindAPositionedDefect()
     val findings = judged.notSuppressedBy(tracked.variantFilterSuppressed())
     return ConsistencyReport(
         modelId = modelId,
         status = statusOf(findings),
         findings = findings,
         diagnostics = inherited + prepared.diagnostics,
-        checksCompleted = setOf(CheckFamily.DECLARED_REFERENCES, CheckFamily.CONDITION_REFERENCES,
-            CheckFamily.DECLARATION_SLOTS, CheckFamily.COMPUTATION_ALTERNATIVES,
-            CheckFamily.RULE_CONDITION_AND_TARGET, CheckFamily.ELEMENT_NAME_UNIQUENESS,
-            CheckFamily.GROUP_ORDERING_REFERENCES, CheckFamily.GROUP_ORDERING_FIELD_TYPE,
-            CheckFamily.GROUP_ORDERING_CARRIER, CheckFamily.GROUP_REPETITION_COUNT,
-            CheckFamily.COMPUTATION_ROUNDING, CheckFamily.SUPPRESSED_WARNINGS,
-            CheckFamily.VARIANT_FILTER, CheckFamily.CONDITION_LEXICALITY,
-            CheckFamily.CONDITION_COMPLETENESS, CheckFamily.CONNECTIVE_AGREEMENT,
-            CheckFamily.CONDITION_GRAMMAR, CheckFamily.RULE_PRESENTATION_MEMBERS,
-            CheckFamily.STRING_SLOT_BINDING, CheckFamily.FIELD_TYPE_BINDING,
-            CheckFamily.TEMPORAL_CONFIG, CheckFamily.ELEMENT_NAME_ALPHABET,
-            CheckFamily.FIELD_NAME_RESERVED_SEGMENT,
-            CheckFamily.ENUM_CATEGORY_ALIGNMENT, CheckFamily.ENUM_VALUE_CHARACTERS,
-            CheckFamily.ENUM_TEXT_FORBIDDEN_CHARACTERS, CheckFamily.HINT_LIST_VALUES,
-            CheckFamily.TABLE_ENUM_OPERAND, CheckFamily.H_MODEL_FORM_CONSTRUCT,
-            CheckFamily.STRING_PATTERN_ADMISSION, CheckFamily.STRING_PATTERN_MESSAGE,
-            CheckFamily.STRING_TYPE_PARAMETERS, CheckFamily.NUMBER_TYPE_DIGITS,
-            CheckFamily.ENUM_VALUE_LABELS, CheckFamily.ENUM_S_VALUE_DOMAIN,
-            CheckFamily.EMPTY_GROUP_OPERAND,
-            CheckFamily.ERROR_FIELD_REFERENCE, CheckFamily.GROUP_LIST_OPERANDS,
-            CheckFamily.GROUP_LIST_ROOT_OPERAND, CheckFamily.GROUP_LIST_OPERAND_KIND,
-            CheckFamily.REPETITION_WILDCARD_TARGET, CheckFamily.COMPUTED_TARGET_KIND,
-            CheckFamily.RAW_TYPE_LENGTH, CheckFamily.COMPUTED_TARGET_INDEX_FIELD,
-            CheckFamily.COMPUTATION_PRECONDITION_FEATURES, CheckFamily.COMPUTATION_CYCLE,
-            CheckFamily.COMPUTATION_SELF_READ,
-            CheckFamily.REPETITION_KEY_PLACEMENT, CheckFamily.REPETITION_SCOPE_GROUP,
-            CheckFamily.REPETITION_KEY_CONTAINMENT,
-            CheckFamily.FILTER_WILDCARD, CheckFamily.FILTER_BODY_GATES,
-            CheckFamily.OUTER_MARKER_POSITION,
-            CheckFamily.GROUP_CONDITION_WILDCARD,
-            CheckFamily.SUM_OF_PRODUCTS_OPERANDS, CheckFamily.OPERAND_LIST_CONSTANT_BUDGET,
-            CheckFamily.TEMPORAL_AGGREGATE_OPERANDS,
-            CheckFamily.SEMANTIC_INDEX_STRUCTURE,
-            CheckFamily.SEMANTIC_INDEX_KEY,
-            CheckFamily.REPETITION_NOT_UNIQUE_COMBINATION,
-            CheckFamily.PARALLEL_ITERATION_UNIQUENESS, CheckFamily.FILTERED_ENTITY_ITERATION,
-            CheckFamily.ARITHMETIC_OPERATION_GATES, CheckFamily.VALUE_IN_FIELDS_CONSTANT_KIND,
-            CheckFamily.VALUE_LIST_CONDITION_GATES, CheckFamily.ENTITY_LIST_ARITY,
-            CheckFamily.ENTITY_LIST_PRE_GATES,
-            CheckFamily.FIELD_VALUES_NOT_UNIQUE_OPERAND_KIND,
-            CheckFamily.FIELD_LIST_OPERATION_OPERANDS,
-            CheckFamily.DATE_ARITHMETIC_OPERANDS, CheckFamily.ROUNDING_OPERANDS,
-            CheckFamily.FIELD_VALUE_OPERATOR_OPERANDS,
-            CheckFamily.COMPARISON_OPERATOR_OPERANDS, CheckFamily.BOOLEAN_COMPARISON_AGREEMENT,
-            CheckFamily.STRING_ENUM_COMPARISON_AGREEMENT, CheckFamily.NUMBER_COMPARISON_SCALE,
-            CheckFamily.TEMPORAL_COMPARISON_AGREEMENT, CheckFamily.PATTERN_COMPARISON_OPERANDS,
-            CheckFamily.OPERAND_REPETITION_SCOPE, CheckFamily.DATE_CONSTRUCTION_SLOT,
-            CheckFamily.H_MODEL_PATH_SUFFIX, CheckFamily.FIELD_OPERAND_KIND,
-            CheckFamily.FILTERED_OPERAND_KIND, CheckFamily.CATEGORY_REFERENCE,
-            CheckFamily.SCALAR_VALUE_LIST_GATES, CheckFamily.DATE_ARGUMENT_SLOT,
-            CheckFamily.DATE_RANGE_OPERAND_LIST, CheckFamily.VALIDITY_CONDITION_OPERANDS,
-            CheckFamily.BASE_YEAR_REQUIREMENT, CheckFamily.RANGE_OPERAND_GATES,
-            CheckFamily.ENUM_DISPLAY_COMPARABILITY,
-            CheckFamily.VALUE_AS_DATE_OPERAND,
-            CheckFamily.ENUM_COMPUTATION_SOURCE,
-            CheckFamily.ERROR_TARGET_ITERATION, CheckFamily.ERROR_TARGET_CONTAINMENT,
-            CheckFamily.MESSAGE_PARAMETER_REFERENCE, CheckFamily.MESSAGE_TEXT_CHARACTERS,
-            CheckFamily.MESSAGE_PARAMETER_SYNTAX, CheckFamily.MESSAGE_GROUP_PARAMETER,
-            CheckFamily.MESSAGE_VALUE_SUFFIX,
-            CheckFamily.ERROR_TEXT_SEMANTIC_INDEX, CheckFamily.ERROR_TEXT_CATEGORY_SUFFIX,
-            CheckFamily.ERROR_TEXT_INDEX_TERMINAL),
+        // The two the composition produced above, then everything the registry ran. Derived rather than
+        // listed: a family wired into the report while this set stayed silent about it was a live
+        // possibility, and the wiring guard could only catch the opposite direction.
+        checksCompleted = COMPOSED_FAMILIES + CHECK_PRODUCERS.flatMap { it.completes },
         gaps = prepared.gaps() + prepared.emptyFactBase() + findings.buildBlocked() +
-            tracked.variantFilterGaps() + tracked.enumCategoryGaps() +
-            tracked.supportedCharacterGaps() + tracked.enumTextForbiddenCharacterGaps() +
-            tracked.hintListValueGaps() + tracked.hModelFormConstructGaps() +
-            tracked.fieldTypeBindingGaps() +
-            tracked.typeDefinitionBodyGaps() + tracked.declaredPatternGaps() + UNREAD_MEMBERS + UNIMPLEMENTED_FAMILIES,
+            CHECK_PRODUCERS.flatMap { it.gapsIn(tracked) } + UNREAD_MEMBERS + UNIMPLEMENTED_FAMILIES,
     )
 }
 
@@ -1143,7 +1003,7 @@ private fun PreparedModel.emptyFactBase(): List<CoverageGap> = if (elements.isNo
  * keyed on a field's inline `fieldType`. The carrier is visibly in scope elsewhere in the same report, which
  * is exactly why its absence here has to be said rather than inferred.
  */
-private fun TrackedFactBase.typeDefinitionBodyGaps(): List<CoverageGap> = if (declaredTypeDefinitionIds.isEmpty()) {
+internal fun TrackedFactBase.typeDefinitionBodyGaps(): List<CoverageGap> = if (declaredTypeDefinitionIds.isEmpty()) {
     emptyList()
 } else {
     listOf(

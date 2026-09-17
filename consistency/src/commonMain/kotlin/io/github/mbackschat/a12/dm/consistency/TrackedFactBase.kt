@@ -148,6 +148,19 @@ internal class TrackedFactBase(
             transcript.record(FactRead.ModelMember(ModelFact.DECLARED_TYPE_DEFINITION_IDS))
             return model.declaredTypeDefinitionIds
         }
+
+    /**
+     * Run [produce] with every read it makes charged to [producer]'s own bucket.
+     *
+     * The transcript stays private, so this is the only route to a scope — a family cannot open one for
+     * itself, and the dispatcher is the single place that decides who is producing.
+     */
+    fun <T> whileProducing(producer: CheckProducer, produce: () -> T): T =
+        transcript.whileProducing(producer, produce)
+
+    /** What [producer] read out of this fact base — the key a per-family cell is keyed on. */
+    fun observedWhileProducing(producer: CheckProducer): Set<FactRead> =
+        transcript.observedWhileProducing(producer)
 }
 
 /**

@@ -2,6 +2,7 @@ package io.github.mbackschat.a12.dm.consistency
 
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertIs
 import kotlin.test.assertTrue
 
 /**
@@ -809,5 +810,49 @@ class CheckFamilyWiringTest {
     fun checksCompletedNamesTheFamiliesThatRan() {
         assertEquals(CheckFamily.entries.toSet(), check(source).checksCompleted,
             "checksCompleted is evidence, so it may not name a family the report never carried")
+    }
+
+    /**
+     * That each registration in [CHECK_PRODUCERS] produces the families it CLAIMS, and no others.
+     *
+     * **The guard the registry needs, and the reason the table above is what can supply it.** Pairing a
+     * hundred and three constants with ninety-eight producers is a hundred and three acts of care, and a
+     * mis-pairing is invisible to every other test here: `checksCompleted` would still name every family,
+     * because the UNION is right however the pairs are scrambled, and each family's own test calls its
+     * function directly and never asks who claims it. What discriminates is this file's (code, path)
+     * evidence, which already attributes one finding to one family — so running a single registration and
+     * asking which rows it carries settles the pairing mechanically.
+     *
+     * **Both directions, because they fail differently.** A family claimed by the wrong producer is keyed on
+     * the wrong transcript, so L-b3b would reuse its verdict across an edit that should have felled it —
+     * unsound. A family claimed by NO producer only under-reports, which is why it needs the inverse check
+     * to be seen at all.
+     *
+     * A registration is run raw here, ahead of `checkPrepared`'s post-filters, so its output is a superset
+     * of what the report carries — which is the right side to be on: a claimed row must appear, and a row
+     * belonging to another family must not, whether or not a later filter would have dropped it.
+     */
+    @Test
+    fun eachRegistrationProducesExactlyTheFamiliesItClaims() {
+        val misattributed = mutableListOf<String>()
+        listOf(source to evidence, germanSource to germanEvidence).forEach { (model, rows) ->
+            val admitted = admit(model)
+            assertIs<Admission.Admitted>(admitted, "the fixture must be admissible")
+            val tracked = TrackedFactBase(prepare(admitted), ReadTranscript())
+            CHECK_PRODUCERS.forEach { producer ->
+                val produced = producer.findingsIn(tracked).map { it.code to it.at }.toSet()
+                rows.forEach { (family, row) ->
+                    val claimed = family in producer.completes
+                    if (claimed && row !in produced) {
+                        misattributed += "$family is claimed by a producer that does not report it"
+                    }
+                    if (!claimed && row in produced) {
+                        misattributed += "$family is reported by a producer that claims ${producer.completes}"
+                    }
+                }
+            }
+        }
+        assertEquals(emptyList(), misattributed,
+            "a CheckFamily is paired with the wrong producer, so its cell would be keyed on the wrong reads")
     }
 }

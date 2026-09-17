@@ -59,18 +59,51 @@ internal enum class ModelFact {
 }
 
 /**
- * What one family read while producing its findings.
+ * What was read out of one fact base, bucketed by the producer that read it.
  *
- * A SET rather than a list: reuse asks whether a fact was read, never how often or in what order, so a family
- * that reads one declaration twice must not key differently from one that reads it once.
+ * A SET per bucket rather than a list: reuse asks whether a fact was read, never how often or in what order,
+ * so a family that reads one declaration twice must not key differently from one that reads it once.
+ *
+ * **The bucket lives here and not on the fact base, which is the design's own note rather than a
+ * preference.** The declaration cursors are memoized per [TrackedFactBase], so giving every producer its own
+ * fact base would rebuild the whole cursor list once per family. It is also the honest shape: a scope says
+ * who read a fact, not which model it came from.
+ *
+ * **A nested producer call charges the OUTER producer, deliberately.** A few families ask another family for
+ * its verdict rather than re-deriving its predicate ([errorFieldReferenceFindings] asks
+ * [filteredEntityIterationFindings] which declarations its gate already answered), and those reads are part
+ * of what the outer family depends on. Charging them to the inner one instead would leave the outer cell
+ * keyed on less than it read, which is the one direction that makes reuse UNSOUND. The inner family still
+ * gets its own bucket from its own registration.
  */
 internal class ReadTranscript {
-    private val reads = mutableSetOf<FactRead>()
+    /**
+     * The buckets. The `null` key is the COMPOSITION — [checkPrepared]'s own reads, which belong to no
+     * family and are never reused per family.
+     */
+    private val byProducer = mutableMapOf<CheckProducer?, MutableSet<FactRead>>()
+
+    private var producing: CheckProducer? = null
 
     fun record(read: FactRead) {
-        reads += read
+        byProducer.getOrPut(producing) { mutableSetOf() } += read
     }
 
-    /** A snapshot, so a later read cannot mutate a transcript a cell is already keyed on. */
-    fun observed(): Set<FactRead> = reads.toSet()
+    /** Run [produce] with every read it makes charged to [producer]. */
+    fun <T> whileProducing(producer: CheckProducer, produce: () -> T): T {
+        val outer = producing
+        producing = producer
+        try {
+            return produce()
+        } finally {
+            producing = outer
+        }
+    }
+
+    /** Every fact read through this transcript, whoever read it. */
+    fun observed(): Set<FactRead> = byProducer.values.flatMapTo(mutableSetOf()) { it }
+
+    /** A snapshot of one producer's bucket, so a later read cannot mutate a key a cell already holds. */
+    fun observedWhileProducing(producer: CheckProducer): Set<FactRead> =
+        byProducer[producer]?.toSet() ?: emptySet()
 }

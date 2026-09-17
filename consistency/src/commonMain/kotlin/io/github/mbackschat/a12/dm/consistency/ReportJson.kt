@@ -45,7 +45,14 @@ private fun ConsistencyReport.asJson(): JsonObject = buildJsonObject {
     put("complete", status.complete)
     put("findings", JsonArray(findings.map { it.asJson() }))
     put("diagnostics", JsonArray(diagnostics.map { it.asJson() }))
-    put("checksCompleted", buildJsonArray { checksCompleted.forEach { add(JsonPrimitive(it.name)) } })
+    // A JSON array of what is a SET in the API, so the order must come from somewhere stable. The enum's own
+    // declaration order is the only candidate that does not couple these bytes to something unrelated: the
+    // set used to arrive in the order a literal in `checkPrepared` happened to list its members, so a
+    // reshuffle of the dispatch moved the wire — measured when the registry replaced that literal and the
+    // parity corpus diffed on element 4 alone.
+    put("checksCompleted", buildJsonArray {
+        CheckFamily.entries.filter { it in checksCompleted }.forEach { add(JsonPrimitive(it.name)) }
+    })
     put("gaps", JsonArray(gaps.map { it.asJson() }))
 }
 
