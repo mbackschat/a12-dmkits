@@ -92,7 +92,14 @@ class SurvivingDataNotInBuildGuardTest {
             "build/classes/kotlin/main",
             new Declaration(BuildPathUse.READS_DERIVED_OUTPUT,
                     "the same dump, for the one published module the Kotlin compiler builds; its golden lives "
-                            + "beside the others in the committed api/ tree")));
+                            + "beside the others in the committed api/ tree"),
+            "build/prepared-models",
+            new Declaration(BuildPathUse.WRITES_TRANSIENT_OUTPUT,
+                    "the two synthesized workloads the prepared-Node perf lane hands its child, written inside "
+                            + "the installed consumer project so `import 'a12-consistency'` resolves to the "
+                            + "packed package; ProfileSynthesisTargetProfiles regenerates them at the head of "
+                            + "every run, and no observation is read back from them — the measurements go to "
+                            + "the committed perf-results tree")));
 
     /**
      * A string literal naming a path under {@code build/}. Bare {@code "build/"} is excluded by the trailing
