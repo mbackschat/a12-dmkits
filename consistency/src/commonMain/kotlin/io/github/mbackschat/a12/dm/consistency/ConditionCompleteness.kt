@@ -26,7 +26,7 @@ import io.github.mbackschat.a12.dm.consistency.syntax.lexicalFailure
  * [KERNEL-FINDINGS KF311]). Without this guard `FieldFilled('Tier) And` drew two findings with two codes, one
  * of them a code A12 does not give for that text.
  */
-fun PreparedModel.conditionCompletenessFindings(): List<Finding> = elements.flatMap { element ->
+internal fun TrackedFactBase.conditionCompletenessFindings(): List<Finding> = declarations().flatMap { element ->
     val body = element.body ?: return@flatMap emptyList()
     conditionTexts(element.kind, body).mapNotNull { (member, text) ->
         if (lexicalFailure(text) != null) {

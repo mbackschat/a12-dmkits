@@ -32,10 +32,10 @@ import io.github.mbackschat.a12.dm.consistency.syntax.callsIn
  * **Rules only.** A12's calculation module refuses `RepetitionNotUnique` in a computation outright
  * ([KERNEL-FINDINGS KF333]), so a computation carrying two has a different defect entirely.
  */
-fun PreparedModel.repetitionNotUniqueCombinationFindings(): List<Finding> {
+internal fun TrackedFactBase.repetitionNotUniqueCombinationFindings(): List<Finding> {
     val keywords = CONDITION_OPERATOR_KEYWORDS[conditionLanguage] ?: return emptyList()
     val spelling = keywords[REPETITION_NOT_UNIQUE_OPERATOR] ?: return emptyList()
-    return elements.filter { it.kind == "Rule" }.flatMap { element ->
+    return declarations().filter { it.kind == "Rule" }.flatMap { element ->
         val body = element.body ?: return@flatMap emptyList()
         val filterKeyword = keywords[FILTER]
         conditionTexts(element.kind, body).mapNotNull { (member, text) ->

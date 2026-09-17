@@ -20,10 +20,10 @@ package io.github.mbackschat.a12.dm.consistency
  * reports no `MVK_*` code at all, so every other finding in the same report is this checker's own reading —
  * which is what [CK_MODEL_NOT_BUILDABLE] and the coverage gap beside it say.
  */
-fun PreparedModel.elementNameFindings(): List<Finding> =
+internal fun TrackedFactBase.elementNameFindings(): List<Finding> =
     // Keyed by PATH, which is the parent plus the name — so a collision is by construction between
     // declarations of one parent, and `at` names the collision itself rather than the parent it sits in.
-    elements.groupBy { it.path }.filterValues { it.size > 1 }.map { (path, collided) ->
+    declarations().groupBy { it.path }.filterValues { it.size > 1 }.map { (path, collided) ->
         Finding(
             FindingCategory.A12_CONSTRAINT,
             FindingSeverity.ERROR,

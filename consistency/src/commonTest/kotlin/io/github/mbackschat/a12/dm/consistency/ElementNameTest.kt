@@ -35,7 +35,7 @@ class ElementNameTest {
                 ),
             ),
         ),
-    ).elementNameFindings().map { it.code }
+    ).tracked().elementNameFindings().map { it.code }
 
     private fun field(id: String, name: String) = """{"type":"Field","id":"$id","name":"$name","Field":{"fieldType":{"type":"StringType"}}}"""
 
@@ -95,7 +95,7 @@ class ElementNameTest {
                     ),
                 ),
             ),
-        ).elementNameFindings()
+        ).tracked().elementNameFindings()
         assertEquals(1, findings.size, "one shared name is one finding")
         assertEquals("/Catalog/Check", findings.single().at)
     }

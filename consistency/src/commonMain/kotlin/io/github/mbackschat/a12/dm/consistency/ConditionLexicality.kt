@@ -23,7 +23,7 @@ import io.github.mbackschat.a12.dm.consistency.syntax.shapeFailureAhead
  * `MVK_UNEXPECTED_TOKEN`. [shapeFailureAhead] is the single arbiter both families consult, so exactly one of
  * them speaks for any one text.
  */
-fun PreparedModel.conditionLexicalFindings(): List<Finding> = elements.flatMap { element ->
+internal fun TrackedFactBase.conditionLexicalFindings(): List<Finding> = declarations().flatMap { element ->
     val body = element.body ?: return@flatMap emptyList()
     conditionTexts(element.kind, body).mapNotNull { (member, text) ->
         val failure = lexicalFailure(text) ?: return@mapNotNull null

@@ -14,7 +14,7 @@ import io.github.mbackschat.a12.dm.consistency.syntax.connectiveDisagreement
  * not guess either, which is why the code exists — and nothing about text where a connective is spelled in a
  * case the keyword table does not carry, which it cannot see. Both are silence rather than a wrong verdict.
  */
-fun PreparedModel.connectiveAgreementFindings(): List<Finding> = elements.flatMap { element ->
+internal fun TrackedFactBase.connectiveAgreementFindings(): List<Finding> = declarations().flatMap { element ->
     val body = element.body ?: return@flatMap emptyList()
     conditionTexts(element.kind, body).mapNotNull { (member, text) ->
         connectiveDisagreement(text, conditionLanguage)?.let { mixed ->

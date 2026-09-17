@@ -37,7 +37,7 @@ class ConditionCompletenessTest {
         ),
     )
 
-    private fun codesFor(condition: String) = model(condition).conditionCompletenessFindings().map { it.code }
+    private fun codesFor(condition: String) = model(condition).tracked().conditionCompletenessFindings().map { it.code }
 
     @Test
     fun textThatEndsOnAnInfixOperatorIsReportedIncomplete() {
@@ -160,7 +160,7 @@ class ConditionCompletenessTest {
                 ),
             ),
         )
-        assertEquals(listOf("MVK_INCOMPLETE_INPUT"), german.conditionCompletenessFindings().map { it.code },
+        assertEquals(listOf("MVK_INCOMPLETE_INPUT"), german.tracked().conditionCompletenessFindings().map { it.code },
             "`Und` is the German And and must be recognised in a German model")
         assertEquals(emptyList(), codesFor("FieldFilled(Price) Und"),
             "`Und` is an ordinary name in an English model, so it does not end the text on an operator")
@@ -169,7 +169,7 @@ class ConditionCompletenessTest {
     /** The finding names the member, since a computation carries several DSL-bearing ones. */
     @Test
     fun theFindingNamesTheMemberThatEndsEarly() {
-        val finding = model("FieldFilled(Price) And").conditionCompletenessFindings().single()
+        val finding = model("FieldFilled(Price) And").tracked().conditionCompletenessFindings().single()
         assertEquals("/Catalog/PriceRule", finding.at)
         assertTrue(
             finding.explain.contains("errorCondition") && finding.explain.contains("And"),

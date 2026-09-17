@@ -25,11 +25,11 @@ import io.github.mbackschat.a12.dm.consistency.syntax.ConditionLanguage
  * different set there — `.Wert`, `.Vordruckzeile`, `.Vordruckname` — and nothing in this estate has measured
  * it, so a checker applying the German list would be reproducing a source read rather than a measurement.
  */
-fun PreparedModel.fieldNameReservedSegmentFindings(): List<Finding> {
+internal fun TrackedFactBase.fieldNameReservedSegmentFindings(): List<Finding> {
     if (conditionLanguage != ConditionLanguage.EN) {
         return emptyList()
     }
-    return elements.filter { it.declaredKind == DeclaredKind.FIELD }
+    return declarations().filter { it.declaredKind == DeclaredKind.FIELD }
         .filter { it.name.reservesItsFinalSegment() }
         .map { field ->
             Finding(

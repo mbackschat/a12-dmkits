@@ -52,17 +52,17 @@ class ConditionLexicalityTest {
     fun anUnterminatedStringLiteralIsReportedAsTheLexerErrorA12Raises() {
         val actual = mutableMapOf<String, List<String>>()
         actual["a well-formed condition — the control"] =
-            model("FieldFilled(Price)").conditionLexicalFindings().map { it.code }
+            model("FieldFilled(Price)").tracked().conditionLexicalFindings().map { it.code }
         actual["a well-formed string literal"] =
-            model("""FieldValueIncludedInValueList(Price, \"A\")""").conditionLexicalFindings().map { it.code }
+            model("""FieldValueIncludedInValueList(Price, \"A\")""").tracked().conditionLexicalFindings().map { it.code }
         actual["an unterminated literal"] =
-            model("""FieldFilled(\"Price)""").conditionLexicalFindings().map { it.code }
+            model("""FieldFilled(\"Price)""").tracked().conditionLexicalFindings().map { it.code }
         // A12's own escape is a DOUBLED quote, not a backslash, so this literal is closed and legal. A lexer
         // that read the C-style escape would end it early and report a failure that is not there.
         actual["a doubled quote inside a literal"] =
-            model("""FieldValueIncludedInValueList(Price, \"A\"\"B\")""").conditionLexicalFindings().map { it.code }
+            model("""FieldValueIncludedInValueList(Price, \"A\"\"B\")""").tracked().conditionLexicalFindings().map { it.code }
         actual["punctuation that is lexically fine but ungrammatical"] =
-            model("@@@").conditionLexicalFindings().map { it.code }
+            model("@@@").tracked().conditionLexicalFindings().map { it.code }
 
         val expected = mutableMapOf<String, List<String>>()
         expected["a well-formed condition — the control"] = emptyList()
@@ -78,7 +78,7 @@ class ConditionLexicalityTest {
     /** Every DSL-bearing member is covered, not only a rule's condition. */
     @Test
     fun aComputationsOperationIsLexedToo() {
-        val findings = model("FieldFilled(Price)", operation = """\"unterminated""").conditionLexicalFindings()
+        val findings = model("FieldFilled(Price)", operation = """\"unterminated""").tracked().conditionLexicalFindings()
         assertEquals(listOf("MVK_LEXER_STANDARD_ERROR"), findings.map { it.code })
         assertEquals("/Catalog/PriceCalc", findings.single().at)
         assertTrue(
@@ -100,15 +100,15 @@ class ConditionLexicalityTest {
     fun aQuotedNameTheTerminalCannotMatchIsReportedAsTheSameLexerError() {
         val actual = mutableMapOf<String, List<String>>()
         actual["a closed quoted name — the control"] =
-            model("""FieldFilled('Price')""").conditionLexicalFindings().map { it.code }
+            model("""FieldFilled('Price')""").tracked().conditionLexicalFindings().map { it.code }
         actual["a closed quoted name spelling a keyword"] =
-            model("""FieldFilled('And') Or FieldFilled(Price)""").conditionLexicalFindings().map { it.code }
-        actual["unclosed at the end"] = model("""FieldFilled('Price""").conditionLexicalFindings().map { it.code }
+            model("""FieldFilled('And') Or FieldFilled(Price)""").tracked().conditionLexicalFindings().map { it.code }
+        actual["unclosed at the end"] = model("""FieldFilled('Price""").tracked().conditionLexicalFindings().map { it.code }
         actual["unclosed with structure after it"] =
-            model("""FieldFilled('Price) And FieldFilled(Price)""").conditionLexicalFindings().map { it.code }
-        actual["an empty quoted name"] = model("""FieldFilled('')""").conditionLexicalFindings().map { it.code }
+            model("""FieldFilled('Price) And FieldFilled(Price)""").tracked().conditionLexicalFindings().map { it.code }
+        actual["an empty quoted name"] = model("""FieldFilled('')""").tracked().conditionLexicalFindings().map { it.code }
         actual["a digit-leading quoted name"] =
-            model("""FieldFilled('1City')""").conditionLexicalFindings().map { it.code }
+            model("""FieldFilled('1City')""").tracked().conditionLexicalFindings().map { it.code }
 
         val expected = mutableMapOf<String, List<String>>()
         expected["a closed quoted name — the control"] = emptyList()
@@ -169,7 +169,7 @@ class ConditionLexicalityTest {
         val actual = mutableMapOf<String, List<String>>()
         val expected = mutableMapOf<String, List<String>>()
         for (character in listOf("%", "&", "|", ";", "?", "~", "é", "€", "!", "#")) {
-            actual[character] = model("""[Price] == \"a${character}b\"""").conditionLexicalFindings()
+            actual[character] = model("""[Price] == \"a${character}b\"""").tracked().conditionLexicalFindings()
                 .map { it.code }
             expected[character] = emptyList()
         }
@@ -201,7 +201,7 @@ class ConditionLexicalityTest {
 
     private fun codesFor(character: String): List<String> =
         model("FieldFilled(Price) And $character FieldFilled(Price)")
-            .conditionLexicalFindings().map { it.code }
+            .tracked().conditionLexicalFindings().map { it.code }
 
     /**
      * The two lexical classes get DIFFERENT sentences, because A12's one code cannot tell them apart.
@@ -212,7 +212,7 @@ class ConditionLexicalityTest {
      */
     @Test
     fun eachLexicalClassExplainsItself() {
-        val quote = model("""FieldFilled(\"Price)""").conditionLexicalFindings().single().explain
+        val quote = model("""FieldFilled(\"Price)""").tracked().conditionLexicalFindings().single().explain
         val character = codesForExplain("%")
         assertTrue(quote.contains("never closed"), "the quote class must name the quote: $quote")
         assertTrue(!quote.contains("no part of A12"), "the quote class must not borrow the other: $quote")
@@ -225,12 +225,12 @@ class ConditionLexicalityTest {
 
     private fun codesForExplain(character: String): String =
         model("FieldFilled(Price) And $character FieldFilled(Price)")
-            .conditionLexicalFindings().single().explain
+            .tracked().conditionLexicalFindings().single().explain
 
     /** The finding names the offset, so an author can find the quote in a long condition. */
     @Test
     fun theFindingLocatesTheUnterminatedQuote() {
-        val finding = model("""FieldFilled(\"Price)""").conditionLexicalFindings().single()
+        val finding = model("""FieldFilled(\"Price)""").tracked().conditionLexicalFindings().single()
         assertTrue(
             finding.explain.contains("12"),
             "the explain must carry the quote's offset: ${finding.explain}",

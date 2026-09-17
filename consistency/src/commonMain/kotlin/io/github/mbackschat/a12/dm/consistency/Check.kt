@@ -941,13 +941,13 @@ internal fun checkPrepared(
         } + prepared.declarationSlotFindings() + prepared.computationAlternativeFindings() +
         prepared.computationRoundingFindings() + prepared.suppressedWarningFindings() +
         prepared.ruleConditionAndTargetFindings() + prepared.variantFilterFindings() +
-        prepared.conditionLexicalFindings() + prepared.conditionCompletenessFindings() +
-        prepared.connectiveAgreementFindings() + prepared.conditionGrammarFindings() +
-        prepared.elementNameFindings() + prepared.groupOrderingFindings() +
+        tracked.conditionLexicalFindings() + tracked.conditionCompletenessFindings() +
+        tracked.connectiveAgreementFindings() + prepared.conditionGrammarFindings() +
+        tracked.elementNameFindings() + prepared.groupOrderingFindings() +
         prepared.groupRepetitionCountFindings() +
         prepared.presentationMemberFindings() + prepared.stringSlotFindings() +
         prepared.fieldTypeBindingFindings() + prepared.temporalConfigFindings() +
-        prepared.fieldNameReservedSegmentFindings() +
+        tracked.fieldNameReservedSegmentFindings() +
         prepared.elementNameAlphabetFindings() + tracked.enumCategoryFindings() +
         prepared.supportedCharacterFindings() + tracked.enumTextForbiddenCharacterFindings() +
         prepared.hintListValueFindings() + prepared.tableEnumOperandFindings() +
@@ -956,7 +956,7 @@ internal fun checkPrepared(
         prepared.emptyGroupOperandFindings() + prepared.errorFieldReferenceFindings() +
         prepared.groupListOperandFindings() + prepared.repetitionWildcardFindings() +
         tracked.computedTargetKindFindings() + tracked.computedTargetIndexFieldFindings() +
-        prepared.rawTypeLengthFindings() + prepared.computationPreconditionFeatureFindings() +
+        prepared.rawTypeLengthFindings() + tracked.computationPreconditionFeatureFindings() +
         prepared.computationCycleFindings() +
         prepared.computationSelfReadFindings() +
         prepared.repetitionKeyPlacementFindings() +
@@ -967,11 +967,11 @@ internal fun checkPrepared(
         prepared.outerMarkerPositionFindings() +
         prepared.groupConditionWildcardFindings() +
         prepared.sumOfProductsOperandFindings() +
-        prepared.operandListConstantFindings() +
+        tracked.operandListConstantFindings() +
         prepared.temporalAggregateOperandFindings() +
         prepared.semanticIndexStructureFindings() +
         prepared.semanticIndexKeyFindings() +
-        prepared.repetitionNotUniqueCombinationFindings() +
+        tracked.repetitionNotUniqueCombinationFindings() +
         prepared.parallelIterationUniquenessFindings() +
         prepared.filteredEntityIterationFindings() +
         prepared.arithmeticOperationGateFindings() +

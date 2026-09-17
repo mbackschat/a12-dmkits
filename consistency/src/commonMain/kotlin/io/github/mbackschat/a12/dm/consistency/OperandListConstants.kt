@@ -21,13 +21,13 @@ import io.github.mbackschat.a12.dm.consistency.syntax.callsIn
  * constant — and that falls out of the same rule: an operand counts only when the WHOLE of it is one
  * literal, with any `{…}` grouping unwrapped.
  */
-fun PreparedModel.operandListConstantFindings(): List<Finding> {
+internal fun TrackedFactBase.operandListConstantFindings(): List<Finding> {
     val keywords = CONDITION_OPERATOR_KEYWORDS[conditionLanguage] ?: return emptyList()
     val carriers = OPERAND_LIST_MATH.mapNotNull { keywords[it] }.toSet()
     if (carriers.isEmpty()) {
         return emptyList()
     }
-    return elements.flatMap { element ->
+    return declarations().flatMap { element ->
         val body = element.body ?: return@flatMap emptyList()
         conditionTexts(element.kind, body).flatMap { (member, text) ->
             callsIn(text, conditionLanguage, syntaxEntryOf(member))
@@ -40,7 +40,7 @@ fun PreparedModel.operandListConstantFindings(): List<Finding> {
 /** The two operand-list selectors, named by their catalog ids; the aggregates `MinValue`/`MaxValue` differ. */
 private val OPERAND_LIST_MATH = listOf("Min", "Max")
 
-private fun budgetFinding(operator: String, element: DeclaredElement, member: String): Finding = Finding(
+private fun budgetFinding(operator: String, element: TrackedDeclaration, member: String): Finding = Finding(
     FindingCategory.A12_CONSTRAINT,
     FindingSeverity.ERROR,
     "MVK_TOO_MANY_CONST_FOR_CALC_OP",

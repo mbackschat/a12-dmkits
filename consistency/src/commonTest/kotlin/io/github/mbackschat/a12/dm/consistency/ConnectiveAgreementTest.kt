@@ -56,7 +56,7 @@ class ConnectiveAgreementTest {
     )
 
     private fun codesFor(condition: String, language: String? = null) =
-        model(condition, language).connectiveAgreementFindings().map { it.code }
+        model(condition, language).tracked().connectiveAgreementFindings().map { it.code }
 
     @Test
     fun aMixInsideOneBracketPairIsReportedAndOneAcrossLevelsIsNot() {
@@ -239,7 +239,7 @@ class ConnectiveAgreementTest {
     /** The finding names both spellings and the offset, so an author can see which pair to bracket. */
     @Test
     fun theFindingNamesBothSpellingsAndWhereTheSecondSits() {
-        val finding = model("$a And $b Or $c").connectiveAgreementFindings().single()
+        val finding = model("$a And $b Or $c").tracked().connectiveAgreementFindings().single()
         assertEquals("/Catalog/PriceRule", finding.at)
         assertTrue(finding.explain.contains("And") && finding.explain.contains("Or"), finding.explain)
         assertTrue(finding.explain.contains("${"$a And $b ".length}"), finding.explain)

@@ -25,10 +25,10 @@ import io.github.mbackschat.a12.dm.consistency.syntax.namesKeyword
  * measurement for it and does not report it. Silence there under-reports, which is safe; reporting a refusal
  * with no measured basis is the one thing this project forbids.
  */
-fun PreparedModel.computationPreconditionFeatureFindings(): List<Finding> {
+internal fun TrackedFactBase.computationPreconditionFeatureFindings(): List<Finding> {
     val spellings = CONDITION_OPERATOR_KEYWORDS.getValue(conditionLanguage)
     val prohibited = PROHIBITED_IN_A_PRECONDITION.map { spellings.getValue(it) }.toSet()
-    return elements.filter { it.kind == "Computation" }.flatMap { element ->
+    return declarations().filter { it.kind == "Computation" }.flatMap { element ->
         val body = element.body ?: return@flatMap emptyList()
         conditionTexts(element.kind, body)
             .filter { (member, _) -> syntaxEntryOf(member) == SyntaxEntry.CONDITION }
