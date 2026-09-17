@@ -260,11 +260,21 @@ internal fun PreparedModel.starredLevelsOf(
 internal const val OUTER_MARKER = "$"
 
 /** The index field [group] declares, or null when it declares none — A12 reads an empty name as none. */
-internal fun indexFieldNameOf(group: DeclaredElement): String? =
-    (group.body?.get("indexFieldName") as? JsonPrimitive)?.contentOrNull?.takeIf { it.isNotEmpty() }
+internal fun indexFieldNameOf(group: DeclaredElement): String? = indexFieldNameIn(group.body)
+
+/** The same reading through the read barrier, sharing one implementation so the two cannot drift. */
+internal fun indexFieldNameOf(group: TrackedDeclaration): String? = indexFieldNameIn(group.body)
+
+private fun indexFieldNameIn(body: JsonObject?): String? =
+    (body?.get("indexFieldName") as? JsonPrimitive)?.contentOrNull?.takeIf { it.isNotEmpty() }
 
 /** The `fieldType.type` discriminator a field declares, or null where it declares none this reader can see. */
-internal fun DeclaredElement.declaredFieldType(): String? =
+internal fun DeclaredElement.declaredFieldType(): String? = declaredFieldTypeIn(body)
+
+/** The same reading through the read barrier, sharing one implementation so the two cannot drift. */
+internal fun TrackedDeclaration.declaredFieldType(): String? = declaredFieldTypeIn(body)
+
+private fun declaredFieldTypeIn(body: JsonObject?): String? =
     ((body?.get("fieldType") as? JsonObject)?.get("type") as? JsonPrimitive)?.contentOrNull
 
 /**
@@ -489,7 +499,12 @@ internal fun PreparedModel.repeatingLevelsOnThePathTo(path: String): Int =
  * the gate that reads it, `checkIsValueValidation`, refuses the whole call with `MVK_INVALID_RAW_TYPE`. Two
  * families ask it, each at a different point of its own construct's order.
  */
-internal fun DeclaredElement.waivesValueValidation(): Boolean {
+internal fun DeclaredElement.waivesValueValidation(): Boolean = waivesValueValidationIn(body)
+
+/** The same reading through the read barrier, sharing one implementation so the two cannot drift. */
+internal fun TrackedDeclaration.waivesValueValidation(): Boolean = waivesValueValidationIn(body)
+
+private fun waivesValueValidationIn(body: JsonObject?): Boolean {
     val declared = body?.get("fieldType") as? JsonObject ?: return false
     if ((declared["type"] as? JsonPrimitive)?.contentOrNull != "StringType") {
         return false

@@ -36,10 +36,10 @@ import io.github.mbackschat.a12.dm.consistency.syntax.plainParameterName
  * parameter form beyond the plain one — the category suffix, the semantic-index key, the row specifier, the
  * base-year terminal. What this reader takes, and why it takes so little, is [plainMessageParameters].
  */
-fun PreparedModel.messageParameterFindings(): List<Finding> {
+internal fun TrackedFactBase.messageParameterFindings(): List<Finding> {
     val readBy = entitiesReadByDeclaration()
     val unsound = declarationsWithUnsoundDsl()
-    return elements.flatMap { element ->
+    return declarations().flatMap { element ->
         val body = element.body ?: return@flatMap emptyList()
         if (element.path in unsound) {
             return@flatMap emptyList()
@@ -100,15 +100,15 @@ fun PreparedModel.messageParameterFindings(): List<Finding> {
  * `getEntityRef`, which RAISES past every typed channel rather than composing a class ([KF259]), so there is
  * no verdict to reproduce.
  */
-private fun PreparedModel.formLineDefect(
+private fun TrackedFactBase.formLineDefect(
     addressed: String,
     group: String,
-    element: DeclaredElement,
+    element: TrackedDeclaration,
     parameter: String,
 ): Finding? {
     val resolved = (resolveEntity(group, addressed, element.origin) as? Reference.Resolved)?.path
         ?: return null
-    if (elements.firstOrNull { it.path == resolved }?.declaredKind != DeclaredKind.GROUP) {
+    if (declarations().firstOrNull { it.path == resolved }?.declaredKind != DeclaredKind.GROUP) {
         return null
     }
     return Finding(
@@ -129,7 +129,7 @@ private fun PreparedModel.formLineDefect(
  * instead. That pair is the instrument the language grid uses, and reporting the reference class on the
  * own-language spelling would name the wrong one of the two.
  */
-private fun ruleGroupFinding(parameter: String, element: DeclaredElement): Finding = Finding(
+private fun ruleGroupFinding(parameter: String, element: TrackedDeclaration): Finding = Finding(
     FindingCategory.A12_CONSTRAINT,
     FindingSeverity.ERROR,
     "INVALID_PARAMETER",
@@ -144,7 +144,7 @@ private fun ruleGroupFinding(parameter: String, element: DeclaredElement): Findi
  * Built once for the whole model rather than per declaration, because [conditionReferences] walks every
  * element's texts and asking it per declaration would rescan the model for each message.
  */
-internal fun PreparedModel.entitiesReadByDeclaration(): Map<String, Membership> {
+internal fun TrackedFactBase.entitiesReadByDeclaration(): Map<String, Membership> {
     val computedTarget = declaredReferences()
         .filter { it.role == ReferenceRole.COMPUTED_TARGET }
         .mapNotNull { d -> (d.target as? Reference.Resolved)?.path?.let { d.declaredAt to it } }
@@ -155,7 +155,7 @@ internal fun PreparedModel.entitiesReadByDeclaration(): Map<String, Membership> 
             read.getOrPut(reference.declaredAt) { mutableSetOf() }.add(it)
         }
     }
-    return elements.filter { it.kind == "Rule" || it.kind == "Computation" }.associate { element ->
+    return declarations().filter { it.kind == "Rule" || it.kind == "Computation" }.associate { element ->
         val paths = read[element.path].orEmpty() + listOfNotNull(computedTarget[element.path])
         val memberName = if (element.kind == "Rule") "errorCondition" else "computation's own members"
         element.path to Membership(paths, memberName)

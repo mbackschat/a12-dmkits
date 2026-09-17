@@ -36,10 +36,10 @@ import io.github.mbackschat.a12.dm.consistency.syntax.semanticIndexUsesIn
  * gate, and [messageParameterBodies] hands them over unrecognised. Silent too on a text A12 refuses for its
  * CHARACTERS and on an unterminated one, both of which end the parse before a parameter is read.
  */
-fun PreparedModel.errorTextSemanticIndexFindings(): List<Finding> {
+internal fun TrackedFactBase.errorTextSemanticIndexFindings(): List<Finding> {
     val keyword = CONDITION_OPERATOR_KEYWORDS[conditionLanguage]?.get(SEMANTIC_INDEX) ?: return emptyList()
     val unsound = declarationsWithUnsoundDsl()
-    return elements.flatMap { element ->
+    return declarations().flatMap { element ->
         val body = element.body ?: return@flatMap emptyList()
         if (element.path in unsound) {
             return@flatMap emptyList()
@@ -90,10 +90,10 @@ private data class BoundPair(val valuePath: String, val keySpec: String)
  * A NESTED index, a category-projected key and a key this reader cannot resolve all return null, because
  * each carries a structural class of its own that answers before this membership question is asked.
  */
-private fun PreparedModel.boundPair(
+private fun TrackedFactBase.boundPair(
     use: SemanticIndexUse,
     declaringGroup: String,
-    element: DeclaredElement,
+    element: TrackedDeclaration,
 ): BoundPair? {
     if (use.nested || use.keyCategory != null) {
         return null
@@ -112,7 +112,7 @@ private fun PreparedModel.boundPair(
  * that key without the condition referencing it, while every other field of the same group at the same key
  * is refused.
  */
-private fun PreparedModel.ridesAlong(asked: BoundPair, written: Set<BoundPair>): Boolean {
+private fun TrackedFactBase.ridesAlong(asked: BoundPair, written: Set<BoundPair>): Boolean {
     val groupPath = asked.valuePath.substringBeforeLast('/', missingDelimiterValue = "")
     val boundAtTheSameKey = written.any { bound ->
         bound.keySpec == asked.keySpec &&
@@ -121,7 +121,7 @@ private fun PreparedModel.ridesAlong(asked: BoundPair, written: Set<BoundPair>):
     if (!boundAtTheSameKey) {
         return false
     }
-    val group = elements.firstOrNull { it.path == groupPath } ?: return false
+    val group = declarations().firstOrNull { it.path == groupPath } ?: return false
     return asked.valuePath == "$groupPath/${indexFieldNameOf(group) ?: return false}"
 }
 
@@ -132,13 +132,13 @@ private fun PreparedModel.ridesAlong(asked: BoundPair, written: Set<BoundPair>):
  * on either surface (`Shipments/Weight`), and reducing one of them with a bare-name reader would leave every
  * nested read unjudged. An address that does not resolve is a class the reference families already own.
  */
-private fun PreparedModel.resolvedPath(
+private fun TrackedFactBase.resolvedPath(
     written: String,
     declaringGroup: String,
-    element: DeclaredElement,
+    element: TrackedDeclaration,
 ): String? = (resolveEntity(declaringGroup, written, element.origin) as? Reference.Resolved)?.path
 
-private fun nestedFinding(element: DeclaredElement): Finding = Finding(
+private fun nestedFinding(element: TrackedDeclaration): Finding = Finding(
     FindingCategory.A12_CONSTRAINT,
     FindingSeverity.ERROR,
     "ILLEGAL_SEMANTIC_INDEX",
@@ -147,7 +147,7 @@ private fun nestedFinding(element: DeclaredElement): Finding = Finding(
     element.path,
 )
 
-private fun finding(asked: BoundPair, keyword: String, element: DeclaredElement): Finding = Finding(
+private fun finding(asked: BoundPair, keyword: String, element: TrackedDeclaration): Finding = Finding(
     FindingCategory.A12_CONSTRAINT,
     FindingSeverity.ERROR,
     "MVK_INDEX_FOR_ERROR_TEXT_INVALID",

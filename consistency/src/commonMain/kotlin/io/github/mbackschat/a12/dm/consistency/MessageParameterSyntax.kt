@@ -27,9 +27,9 @@ import io.github.mbackschat.a12.dm.consistency.syntax.messageParametersAreUnterm
  * **A broken CONDITION withholds this verdict too**, as it does every class read out of a message member
  * ([declarationsWithUnsoundDsl]).
  */
-fun PreparedModel.messageParameterSyntaxFindings(): List<Finding> {
+internal fun TrackedFactBase.messageParameterSyntaxFindings(): List<Finding> {
     val unsound = declarationsWithUnsoundDsl()
-    return elements.filter { it.kind == "Rule" || it.kind == "Computation" }.flatMap { element ->
+    return declarations().filter { it.kind == "Rule" || it.kind == "Computation" }.flatMap { element ->
         val body = element.body ?: return@flatMap emptyList()
         if (element.path in unsound) {
             return@flatMap emptyList()
@@ -46,7 +46,7 @@ fun PreparedModel.messageParameterSyntaxFindings(): List<Finding> {
     }
 }
 
-private fun finding(message: AuthoredMessage, element: DeclaredElement): Finding = Finding(
+private fun finding(message: AuthoredMessage, element: TrackedDeclaration): Finding = Finding(
     FindingCategory.A12_CONSTRAINT,
     FindingSeverity.ERROR,
     "WRONG_NUMBER_OF_DOLLARS",

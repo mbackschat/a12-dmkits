@@ -566,18 +566,6 @@ public final class io/github/mbackschat/a12/dm/consistency/ErrorTargetIterationK
 	public static final fun errorTargetIterationFindings (Lio/github/mbackschat/a12/dm/consistency/PreparedModel;)Ljava/util/List;
 }
 
-public final class io/github/mbackschat/a12/dm/consistency/ErrorTextCategorySuffixKt {
-	public static final fun errorTextCategorySuffixFindings (Lio/github/mbackschat/a12/dm/consistency/PreparedModel;)Ljava/util/List;
-}
-
-public final class io/github/mbackschat/a12/dm/consistency/ErrorTextIndexTerminalKt {
-	public static final fun errorTextIndexTerminalFindings (Lio/github/mbackschat/a12/dm/consistency/PreparedModel;)Ljava/util/List;
-}
-
-public final class io/github/mbackschat/a12/dm/consistency/ErrorTextSemanticIndexKt {
-	public static final fun errorTextSemanticIndexFindings (Lio/github/mbackschat/a12/dm/consistency/PreparedModel;)Ljava/util/List;
-}
-
 public final class io/github/mbackschat/a12/dm/consistency/FieldListOperationOperandsKt {
 	public static final fun fieldListOperationOperandFindings (Lio/github/mbackschat/a12/dm/consistency/PreparedModel;)Ljava/util/List;
 }
@@ -731,26 +719,6 @@ public final class io/github/mbackschat/a12/dm/consistency/ImpactReport {
 	public final fun getImpacts ()Ljava/util/List;
 	public fun hashCode ()I
 	public fun toString ()Ljava/lang/String;
-}
-
-public final class io/github/mbackschat/a12/dm/consistency/MessageGroupParameterKt {
-	public static final fun messageGroupParameterFindings (Lio/github/mbackschat/a12/dm/consistency/PreparedModel;)Ljava/util/List;
-}
-
-public final class io/github/mbackschat/a12/dm/consistency/MessageParameterReferenceKt {
-	public static final fun messageParameterFindings (Lio/github/mbackschat/a12/dm/consistency/PreparedModel;)Ljava/util/List;
-}
-
-public final class io/github/mbackschat/a12/dm/consistency/MessageParameterSyntaxKt {
-	public static final fun messageParameterSyntaxFindings (Lio/github/mbackschat/a12/dm/consistency/PreparedModel;)Ljava/util/List;
-}
-
-public final class io/github/mbackschat/a12/dm/consistency/MessageTextCharactersKt {
-	public static final fun messageTextCharacterFindings (Lio/github/mbackschat/a12/dm/consistency/PreparedModel;)Ljava/util/List;
-}
-
-public final class io/github/mbackschat/a12/dm/consistency/MessageValueSuffixKt {
-	public static final fun messageValueSuffixFindings (Lio/github/mbackschat/a12/dm/consistency/PreparedModel;)Ljava/util/List;
 }
 
 public final class io/github/mbackschat/a12/dm/consistency/ModelDelta {

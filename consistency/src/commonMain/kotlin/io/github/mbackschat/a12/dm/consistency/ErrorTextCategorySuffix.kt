@@ -26,10 +26,10 @@ import kotlinx.serialization.json.JsonPrimitive
  * owns `INVALID_FIELD`, reads only the PLAIN form, so that row is an under-report both families disclose
  * rather than a class either of them reports.
  */
-fun PreparedModel.errorTextCategorySuffixFindings(): List<Finding> {
+internal fun TrackedFactBase.errorTextCategorySuffixFindings(): List<Finding> {
     val readBy = entitiesReadByDeclaration()
     val unsound = declarationsWithUnsoundDsl()
-    return elements.flatMap { element ->
+    return declarations().flatMap { element ->
         val body = element.body ?: return@flatMap emptyList()
         if (element.path in unsound) {
             return@flatMap emptyList()
@@ -65,10 +65,10 @@ private const val INDEX_TERMINAL = "index("
 private const val ENUMERATION = "EnumerationType"
 
 /** The class this parameter's suffix draws, or null where it carries none and where this may not judge. */
-private fun PreparedModel.suffixDefect(
+private fun TrackedFactBase.suffixDefect(
     parameter: String,
     declaringGroup: String,
-    element: DeclaredElement,
+    element: TrackedDeclaration,
     membership: Membership,
 ): String? {
     if (!parameter.contains(ARROW) || parameter.trimStart().startsWith(INDEX_TERMINAL)) {
@@ -78,7 +78,7 @@ private fun PreparedModel.suffixDefect(
     val written = access?.first ?: parameter.substringBefore(ARROW).trim().takeIf { it.isNotEmpty() }
         ?: return null
     val field = (resolveEntity(declaringGroup, written, element.origin) as? Reference.Resolved)
-        ?.let { resolved -> elements.firstOrNull { it.path == resolved.path } }
+        ?.let { resolved -> declarations().firstOrNull { it.path == resolved.path } }
         ?: return null
     if (field.path !in membership) {
         return null
@@ -101,7 +101,7 @@ private fun JsonObject.categoryNames(): Set<String> =
 
 private fun JsonArray?.orEmpty(): List<kotlinx.serialization.json.JsonElement> = this ?: emptyList()
 
-private fun finding(code: String, element: DeclaredElement): Finding = Finding(
+private fun finding(code: String, element: TrackedDeclaration): Finding = Finding(
     FindingCategory.A12_CONSTRAINT,
     FindingSeverity.ERROR,
     code,

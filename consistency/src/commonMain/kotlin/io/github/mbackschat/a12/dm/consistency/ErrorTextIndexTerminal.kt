@@ -44,12 +44,12 @@ import io.github.mbackschat.a12.dm.consistency.syntax.semanticIndexUsesIn
  * 30.8.1). Their two per-member siblings, `FIELD_NO_ENUM` and `INVALID_CATEGORY`, fire on a single member
  * and are already reported — by the category-suffix family, from the plain form.
  */
-fun PreparedModel.errorTextIndexTerminalFindings(): List<Finding> {
+internal fun TrackedFactBase.errorTextIndexTerminalFindings(): List<Finding> {
     val targets = declaredReferences()
         .filter { it.role == ReferenceRole.ERROR_TARGET }
         .associate { it.declaredAt to (it.target as? Reference.Resolved)?.path }
     val unsound = declarationsWithUnsoundDsl()
-    return elements.flatMap { element ->
+    return declarations().flatMap { element ->
         val body = element.body ?: return@flatMap emptyList()
         if (element.path in unsound) {
             return@flatMap emptyList()
@@ -82,10 +82,10 @@ fun PreparedModel.errorTextIndexTerminalFindings(): List<Finding> {
  * The uniqueness question comes first because it decides whether A12 is walking a list of one — every other
  * member of that list can answer `INVALID_INDEX_FIELD_REP`, which neither arm below would name.
  */
-private fun PreparedModel.gatesBehindTheArgument(
+private fun TrackedFactBase.gatesBehindTheArgument(
     matched: IndexFieldOnPath,
     terminal: IndexTerminal,
-    element: DeclaredElement,
+    element: TrackedDeclaration,
 ): Finding? {
     if (groupsDeclaringIndexFieldNamed(matched.name) > 1) {
         return null
@@ -95,7 +95,7 @@ private fun PreparedModel.gatesBehindTheArgument(
 }
 
 /** The fourth gate, whose two arms read different things — the declaration, or the condition. */
-private fun PreparedModel.repeatabilityDefect(matched: IndexFieldOnPath, element: DeclaredElement): String? =
+private fun TrackedFactBase.repeatabilityDefect(matched: IndexFieldOnPath, element: TrackedDeclaration): String? =
     if (matched.repeatable) {
         if (conditionRidesItWithoutIterating(matched.path, element)) REP_ITER else null
     } else {
@@ -108,8 +108,8 @@ private fun PreparedModel.repeatabilityDefect(matched: IndexFieldOnPath, element
  * An Enumeration carrying exactly one value and a non-empty `sValue` — `checkNonRepIndexFieldType` reads both
  * halves, and each was moved on its own: a second value refuses, and so does dropping the special value.
  */
-private fun PreparedModel.declaresASingleValuedEnumeration(fieldPath: String): Boolean {
-    val body = elements.firstOrNull { it.path == fieldPath }?.enumerationBody() ?: return false
+private fun TrackedFactBase.declaresASingleValuedEnumeration(fieldPath: String): Boolean {
+    val body = declarations().firstOrNull { it.path == fieldPath }?.enumerationBody() ?: return false
     return body.declaredEnumValues()?.size == 1 && !body.string("sValue").isNullOrEmpty()
 }
 
@@ -119,9 +119,9 @@ private fun PreparedModel.declaresASingleValuedEnumeration(fieldPath: String): B
  * A repetition wildcard and a semantic-index key are the two measured ones; every other form this reader
  * cannot tell apart from a plain read is left to iterate, which is the direction that under-reports.
  */
-private fun PreparedModel.conditionRidesItWithoutIterating(
+private fun TrackedFactBase.conditionRidesItWithoutIterating(
     fieldPath: String,
-    element: DeclaredElement,
+    element: TrackedDeclaration,
 ): Boolean {
     val body = element.body ?: return false
     val group = element.path.substringBeforeLast('/', missingDelimiterValue = "")
@@ -137,8 +137,8 @@ private fun PreparedModel.conditionRidesItWithoutIterating(
 }
 
 /** How many GROUPS declare an index field of this short name — A12's list is not scoped to the path. */
-private fun PreparedModel.groupsDeclaringIndexFieldNamed(name: String): Int =
-    elements.count { it.declaredKind == DeclaredKind.GROUP && indexFieldNameOf(it) == name }
+private fun TrackedFactBase.groupsDeclaringIndexFieldNamed(name: String): Int =
+    declarations().count { it.declaredKind == DeclaredKind.GROUP && indexFieldNameOf(it) == name }
 
 /** A12's own spelling of the semantic-index keyword, which only the catalog knows per language. */
 private const val SEMANTIC_INDEX = "SemanticIndex"
@@ -179,11 +179,11 @@ private class IndexFieldOnPath(val name: String, val path: String, val repeatabl
  * Every ancestor group counts, repeatable or not: a non-repeatable indexed group's field is on the path and
  * passes the argument gate, which is why the class it can draw belongs to the repeatability gate instead.
  */
-private fun PreparedModel.indexFieldsOnThePathTo(fieldPath: String): List<IndexFieldOnPath> {
+private fun TrackedFactBase.indexFieldsOnThePathTo(fieldPath: String): List<IndexFieldOnPath> {
     val found = mutableListOf<IndexFieldOnPath>()
     var group = fieldPath.substringBeforeLast('/', missingDelimiterValue = "")
     while (group.isNotEmpty()) {
-        val declared = elements.firstOrNull { it.path == group }
+        val declared = declarations().firstOrNull { it.path == group }
         val name = declared?.let { indexFieldNameOf(it) }
         if (declared != null && name != null) {
             found += IndexFieldOnPath(name, "$group/$name", declared.isRepeatable)
@@ -199,7 +199,7 @@ private const val NONREP_ENUM = "INVALID_INDEX_FIELD_NONREP_ENUM"
 
 private const val MISSING_SUFFIX = "INVALID_INDEX_FIELD_PARAMETER"
 
-private fun finding(code: String, argument: String, element: DeclaredElement): Finding = Finding(
+private fun finding(code: String, argument: String, element: TrackedDeclaration): Finding = Finding(
     FindingCategory.A12_CONSTRAINT,
     FindingSeverity.ERROR,
     code,
@@ -215,7 +215,7 @@ private fun finding(code: String, argument: String, element: DeclaredElement): F
     element.path,
 )
 
-private fun ambiguousFinding(argument: String, element: DeclaredElement): Finding = Finding(
+private fun ambiguousFinding(argument: String, element: TrackedDeclaration): Finding = Finding(
     FindingCategory.A12_CONSTRAINT,
     FindingSeverity.ERROR,
     "INVALID_INDEX_FIELD_AMBIGUOUS",
@@ -225,7 +225,7 @@ private fun ambiguousFinding(argument: String, element: DeclaredElement): Findin
     element.path,
 )
 
-private fun finding(argument: String, reachable: Set<String>, element: DeclaredElement): Finding = Finding(
+private fun finding(argument: String, reachable: Set<String>, element: TrackedDeclaration): Finding = Finding(
     FindingCategory.A12_CONSTRAINT,
     FindingSeverity.ERROR,
     "INVALID_INDEX_FIELD",

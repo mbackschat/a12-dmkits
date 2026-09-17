@@ -27,10 +27,10 @@ import io.github.mbackschat.a12.dm.consistency.syntax.referencesIn
  * forms, and [plainParameterName] hands those over unrecognised; judging one here would claim a gate that
  * form never reaches.
  */
-fun PreparedModel.messageValueSuffixFindings(): List<Finding> {
+internal fun TrackedFactBase.messageValueSuffixFindings(): List<Finding> {
     val unsound = declarationsWithUnsoundDsl()
     val membership = entitiesReadByDeclaration()
-    return elements.filter { it.kind == "Rule" || it.kind == "Computation" }.flatMap { element ->
+    return declarations().filter { it.kind == "Rule" || it.kind == "Computation" }.flatMap { element ->
         val body = element.body ?: return@flatMap emptyList()
         if (element.path in unsound) {
             return@flatMap emptyList()
@@ -62,9 +62,9 @@ fun PreparedModel.messageValueSuffixFindings(): List<Finding> {
 private const val VALUE_SUFFIX = ".value"
 
 /** The star gate first, then the declaration one — A12's order, measured on a field carrying both. */
-private fun PreparedModel.suffixDefect(path: String, starredOnly: Set<String>): String? = when {
+private fun TrackedFactBase.suffixDefect(path: String, starredOnly: Set<String>): String? = when {
     path in starredOnly -> STAR_REFERENCE
-    elements.firstOrNull { it.path == path }?.waivesValueValidation() == true -> NO_VALUE_VALIDATION
+    declarations().firstOrNull { it.path == path }?.waivesValueValidation() == true -> NO_VALUE_VALIDATION
     else -> null
 }
 
@@ -76,7 +76,7 @@ private fun PreparedModel.suffixDefect(path: String, starredOnly: Set<String>): 
  * field carries one. A single unstarred read anywhere clears it, which is why this collects both forms and
  * subtracts rather than testing the first read it finds.
  */
-private fun PreparedModel.pathsReadThroughAStarAlone(element: DeclaredElement, group: String): Set<String> {
+private fun TrackedFactBase.pathsReadThroughAStarAlone(element: TrackedDeclaration, group: String): Set<String> {
     val starred = mutableSetOf<String>()
     val plain = mutableSetOf<String>()
     val body = element.body ?: return emptySet()
@@ -94,7 +94,7 @@ private const val STAR_REFERENCE = "PARAM_VALUE_WITH_STARREFERENCE"
 
 private const val NO_VALUE_VALIDATION = "INVALID_NO_VALUE_VALIDATION"
 
-private fun finding(code: String, name: String, element: DeclaredElement): Finding = Finding(
+private fun finding(code: String, name: String, element: TrackedDeclaration): Finding = Finding(
     FindingCategory.A12_CONSTRAINT,
     FindingSeverity.ERROR,
     code,

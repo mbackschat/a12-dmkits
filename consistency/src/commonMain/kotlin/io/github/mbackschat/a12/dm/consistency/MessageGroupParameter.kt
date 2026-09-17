@@ -58,10 +58,10 @@ import io.github.mbackschat.a12.dm.consistency.syntax.referencesIn
  * **Rules only**, every measured row being a rule's message. The computation carrier was reported to us for
  * the `RuleGroup` locus by a12-kernel-lean and is not measured here.
  */
-fun PreparedModel.messageGroupParameterFindings(): List<Finding> {
+internal fun TrackedFactBase.messageGroupParameterFindings(): List<Finding> {
     val unsound = declarationsWithUnsoundDsl()
-    val roots = elements.filter { it.path.count { c -> c == '/' } == 1 }.map { it.path }.toSet()
-    return elements.filter { it.kind == "Rule" }.flatMap { element ->
+    val roots = declarations().filter { it.path.count { c -> c == '/' } == 1 }.map { it.path }.toSet()
+    return declarations().filter { it.kind == "Rule" }.flatMap { element ->
         val body = element.body ?: return@flatMap emptyList()
         if (element.path in unsound) {
             return@flatMap emptyList()
@@ -146,11 +146,11 @@ private fun groupArgumentDefect(
  * a second time here rather than carried out of [groupArgumentDefect]: a malformed segment is declined
  * rather than admitted, and a declined argument must stay silent through this gate too.
  */
-private fun PreparedModel.starredIterationDefect(
+private fun TrackedFactBase.starredIterationDefect(
     argument: String,
     ruleGroup: String,
     roots: Set<String>,
-    element: DeclaredElement,
+    element: TrackedDeclaration,
 ): String? {
     val named = namedGroup(argument, ruleGroup, roots, conditionLanguage) ?: return null
     return if (conditionRidesUnstarred(named, ruleGroup, element)) null else STARRED_ITERATION
@@ -181,10 +181,10 @@ private fun namedGroup(
  * prefix up to the starred segment, so relative spellings and `..` steps are handled by the resolver rather
  * than by arithmetic here — and a prefix that does not resolve counts as a ride, which under-reports.
  */
-private fun PreparedModel.conditionRidesUnstarred(
+private fun TrackedFactBase.conditionRidesUnstarred(
     group: String,
     ruleGroup: String,
-    element: DeclaredElement,
+    element: TrackedDeclaration,
 ): Boolean {
     val body = element.body ?: return true
     fun resolves(written: String): String? =
@@ -221,7 +221,7 @@ private const val IMMEDIATELY_BELOW_ROOT = "RULEGROUP_IMMEDIATELY_BELOW_ROOT"
 
 private const val STARRED_ITERATION = "ITER_PARAM_WITH_STARREFERENCE"
 
-private fun finding(code: String, argument: String, element: DeclaredElement): Finding = Finding(
+private fun finding(code: String, argument: String, element: TrackedDeclaration): Finding = Finding(
     FindingCategory.A12_CONSTRAINT,
     FindingSeverity.ERROR,
     code,

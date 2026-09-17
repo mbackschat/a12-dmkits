@@ -1007,14 +1007,14 @@ internal fun checkPrepared(
         prepared.enumComputationSourceFindings() +
         prepared.errorTargetIterationFindings() +
         prepared.errorTargetContainmentFindings() +
-        prepared.messageParameterFindings() +
-        prepared.errorTextSemanticIndexFindings() +
-        prepared.errorTextCategorySuffixFindings() +
-        prepared.errorTextIndexTerminalFindings() +
-        prepared.messageTextCharacterFindings() +
-        prepared.messageParameterSyntaxFindings() +
-        prepared.messageGroupParameterFindings() +
-        prepared.messageValueSuffixFindings() +
+        tracked.messageParameterFindings() +
+        tracked.errorTextSemanticIndexFindings() +
+        tracked.errorTextCategorySuffixFindings() +
+        tracked.errorTextIndexTerminalFindings() +
+        tracked.messageTextCharacterFindings() +
+        tracked.messageParameterSyntaxFindings() +
+        tracked.messageGroupParameterFindings() +
+        tracked.messageValueSuffixFindings() +
         prepared.stringTypeMessageFindings() + prepared.stringTypeParameterFindings() +
         prepared.numberTypeDigitFindings() + tracked.enumValueLabelFindings() +
         tracked.enumSpecialValueFindings())

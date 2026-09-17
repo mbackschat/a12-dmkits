@@ -21,9 +21,9 @@ package io.github.mbackschat.a12.dm.consistency
  * **A broken CONDITION withholds this verdict too**, which is A12 declining to examine the message member
  * at all rather than a rule about parameters ([declarationsWithUnsoundDsl], [KF338]).
  */
-fun PreparedModel.messageTextCharacterFindings(): List<Finding> {
+internal fun TrackedFactBase.messageTextCharacterFindings(): List<Finding> {
     val unsound = declarationsWithUnsoundDsl()
-    return elements.filter { it.kind == "Rule" || it.kind == "Computation" }.flatMap { element ->
+    return declarations().filter { it.kind == "Rule" || it.kind == "Computation" }.flatMap { element ->
         val body = element.body ?: return@flatMap emptyList()
         if (element.path in unsound) {
             return@flatMap emptyList()
@@ -34,7 +34,7 @@ fun PreparedModel.messageTextCharacterFindings(): List<Finding> {
 }
 
 /** Both carriers are measured: a computation's message meets the same two classes a rule's does. */
-private fun DeclaredElement.messageTextFinding(message: AuthoredMessage): Finding? {
+private fun TrackedDeclaration.messageTextFinding(message: AuthoredMessage): Finding? {
     val offending = message.text.firstOrNull { it.isLineBreak() }
         ?: message.text.firstOrNull { it.isIsoControl() }
         ?: return null
