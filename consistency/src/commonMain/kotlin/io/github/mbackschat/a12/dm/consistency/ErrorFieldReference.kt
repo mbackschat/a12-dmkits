@@ -120,7 +120,7 @@ private fun PreparedModel.iteratesPastTheTarget(reference: ConditionReference, t
     val resolved = (reference.target as? Reference.Resolved)?.path ?: return false
     val targetGroup = groupOfTargetField(target)
     return elements.any { candidate ->
-        candidate.declaredKind == DeclaredKind.GROUP && candidate.isRepeatable &&
+        candidate.isRepeatableGroup &&
             resolved.startsWith("${candidate.path}/") &&
             !(target == candidate.path || target.startsWith("${candidate.path}/")) &&
             !(targetGroup != null && parallelVerdictOf(candidate, targetGroup) == ParallelVerdict.Joint)

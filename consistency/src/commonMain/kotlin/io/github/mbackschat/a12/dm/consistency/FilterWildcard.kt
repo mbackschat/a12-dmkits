@@ -83,7 +83,7 @@ private fun TrackedFactBase.starredGroupsIn(
             val resolved = resolveEntity(group, starred, element.origin) as? Reference.Resolved
                 ?: return@mapNotNull null
             declarations().firstOrNull {
-                it.path == resolved.path && it.declaredKind == DeclaredKind.GROUP && it.isRepeatable
+                it.path == resolved.path && it.isRepeatableGroup
             }?.path
         }
 }

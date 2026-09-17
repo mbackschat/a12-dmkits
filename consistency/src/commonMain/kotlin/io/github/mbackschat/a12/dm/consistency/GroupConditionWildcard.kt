@@ -118,7 +118,7 @@ private fun TrackedFactBase.starsARepetition(
     return starredPrefixes.isNotEmpty() && starredPrefixes.all { prefix ->
         val resolved = resolveEntity(declaringGroup, prefix, element.origin) as? Reference.Resolved
         resolved != null && declarations().any {
-            it.path == resolved.path && it.declaredKind == DeclaredKind.GROUP && it.isRepeatable
+            it.path == resolved.path && it.isRepeatableGroup
         }
     }
 }

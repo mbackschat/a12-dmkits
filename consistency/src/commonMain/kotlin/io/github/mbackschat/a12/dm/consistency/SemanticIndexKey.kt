@@ -140,5 +140,5 @@ private fun TrackedFactBase.iteratedBelow(path: String, targetGroup: String?): S
 
 /** Whether [path] or any group above it repeats, which is what makes a read of it iterate. */
 private fun TrackedFactBase.repeatsAnywhereOnThePathTo(path: String): Boolean =
-    declarations().any { it.declaredKind == DeclaredKind.GROUP && it.isRepeatable &&
+    declarations().any { it.isRepeatableGroup &&
         (it.path == path || path.startsWith("${it.path}/")) }

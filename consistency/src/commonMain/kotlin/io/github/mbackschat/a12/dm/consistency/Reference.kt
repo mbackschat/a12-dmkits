@@ -207,7 +207,7 @@ fun PreparedModel.resolve(
  * marker is A12's `ITERATION`. That is the quantity three families ask for, so it is stated once here.
  */
 internal fun PreparedModel.crossedRepetitions(path: String): List<DeclaredElement> = elements
-    .filter { it.declaredKind == DeclaredKind.GROUP && it.isRepeatable && path.startsWith("${it.path}/") }
+    .filter { it.isRepeatableGroup && path.startsWith("${it.path}/") }
     .sortedBy { it.path.length }
 
 /**
@@ -235,11 +235,11 @@ private fun iteratedLevelsIn(repeatableGroups: List<String>, path: String): List
     .sortedBy { it.length }
 
 private fun PreparedModel.repeatableGroupPaths(): List<String> = elements
-    .filter { it.declaredKind == DeclaredKind.GROUP && it.isRepeatable }
+    .filter { it.isRepeatableGroup }
     .map { it.path }
 
 private fun TrackedFactBase.repeatableGroupPaths(): List<String> = declarations()
-    .filter { it.declaredKind == DeclaredKind.GROUP && it.isRepeatable }
+    .filter { it.isRepeatableGroup }
     .map { it.path }
 
 /**
@@ -571,7 +571,7 @@ private fun crossesARepetitionOutsideIn(
  */
 internal fun PreparedModel.repeatingLevelsOnThePathTo(path: String): Int =
     elements.count {
-        it.declaredKind == DeclaredKind.GROUP && it.isRepeatable &&
+        it.isRepeatableGroup &&
             (it.path == path || path.startsWith("${it.path}/"))
     }
 

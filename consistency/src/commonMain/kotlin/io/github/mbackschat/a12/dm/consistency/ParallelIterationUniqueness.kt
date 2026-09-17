@@ -76,7 +76,7 @@ private data class KeyedGroup(val path: String, val indexField: String, val inde
 /** The nearest index-keyed repeatable group at or above [path], or null when nothing above it is keyed. */
 private fun TrackedFactBase.keyedGroupOver(path: String): KeyedGroup? = declarations()
     .filter {
-        it.declaredKind == DeclaredKind.GROUP && it.isRepeatable &&
+        it.isRepeatableGroup &&
             (it.path == path || path.startsWith("${it.path}/"))
     }
     .sortedByDescending { it.path.length }

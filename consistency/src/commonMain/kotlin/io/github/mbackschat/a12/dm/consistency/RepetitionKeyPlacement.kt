@@ -110,8 +110,7 @@ private fun TrackedFactBase.placementFinding(
  */
 private fun TrackedFactBase.repeatableLiesBetween(declaringGroup: String, key: String): Boolean =
     declarations().any { candidate ->
-        candidate.declaredKind == DeclaredKind.GROUP &&
-            candidate.isRepeatable &&
+        candidate.isRepeatableGroup &&
             candidate.path.startsWith("$declaringGroup/") &&
             key.startsWith("${candidate.path}/")
     }
