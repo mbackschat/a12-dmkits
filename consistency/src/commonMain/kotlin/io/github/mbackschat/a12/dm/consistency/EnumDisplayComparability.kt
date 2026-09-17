@@ -42,7 +42,7 @@ import kotlinx.serialization.json.JsonObject
  *
  * **Silent on a TABLE-backed enumeration**, whose values live outside the model.
  */
-fun PreparedModel.enumDisplayComparabilityFindings(): List<Finding> = elements.mapNotNull { element ->
+internal fun TrackedFactBase.enumDisplayComparabilityFindings(): List<Finding> = declarations().mapNotNull { element ->
     val body = element.body ?: return@mapNotNull null
     val group = element.path.substringBeforeLast('/', missingDelimiterValue = "")
     conditionTexts(element.kind, body).firstNotNullOfOrNull { (member, text) ->
@@ -64,10 +64,10 @@ private sealed interface DisplaySide {
 private val DisplaySide.Enumeration.bearsDisplayValues: Boolean
     get() = labels.values.any { byToken -> byToken.any { (token, text) -> text != token } }
 
-private fun PreparedModel.displayFinding(
+private fun TrackedFactBase.displayFinding(
     comparison: ConditionComparison,
     declaringGroup: String,
-    element: DeclaredElement,
+    element: TrackedDeclaration,
     member: String,
 ): Finding? {
     // Only equality reaches this walk: a text or enumeration side cannot survive the ordering gate ahead of
@@ -108,7 +108,7 @@ private fun textPartnerDefect(enumeration: DisplaySide.Enumeration): DisplayDefe
  * The second is reached only when both label their values, so the two never contend — and the first is a
  * mismatch rather than a property of either side, which is why it is asked of the PAIR.
  */
-private fun PreparedModel.enumPairDefect(
+private fun TrackedFactBase.enumPairDefect(
     left: DisplaySide.Enumeration,
     right: DisplaySide.Enumeration,
 ): DisplayDefect? {
@@ -169,10 +169,10 @@ private fun clashingText(
 }
 
 /** What this side is to this gate, or null wherever the shared reader will not reduce it to one field. */
-private fun PreparedModel.displaySideOf(
+private fun TrackedFactBase.displaySideOf(
     side: String,
     declaringGroup: String,
-    element: DeclaredElement,
+    element: TrackedDeclaration,
 ): DisplaySide? {
     val declared = bareReferenceField(side, declaringGroup, element) ?: return null
     return when (declared.declaredFieldType()) {
@@ -190,7 +190,7 @@ private fun PreparedModel.displaySideOf(
  * own token, which is what makes "labelled as itself" indistinguishable from unlabelled, as A12's own
  * `hasDisplayValues` has it.
  */
-private fun PreparedModel.declaredLabels(field: DeclaredElement): Map<String, Map<String, String>>? {
+private fun TrackedFactBase.declaredLabels(field: TrackedDeclaration): Map<String, Map<String, String>>? {
     val body = field.enumerationBody() ?: return null
     if (body["tableName"] != null) {
         return null

@@ -32,13 +32,13 @@ import io.github.mbackschat.a12.dm.consistency.syntax.callsIn
  * never reported: A12 refuses it and this reader cannot see it, so the silence is an under-report rather
  * than a disagreement.
  */
-fun PreparedModel.roundingOperandFindings(): List<Finding> {
+internal fun TrackedFactBase.roundingOperandFindings(): List<Finding> {
     val keywords = CONDITION_OPERATOR_KEYWORDS[conditionLanguage] ?: return emptyList()
     val carriers = OPERAND_KIND_OF.mapNotNull { (id, kind) -> keywords[id]?.let { it to kind } }.toMap()
     if (carriers.isEmpty()) {
         return emptyList()
     }
-    return elements.flatMap { element ->
+    return declarations().flatMap { element ->
         val body = element.body ?: return@flatMap emptyList()
         val declaringGroup = element.path.substringBeforeLast('/', missingDelimiterValue = "")
         conditionTexts(element.kind, body).flatMap { (member, text) ->
@@ -71,11 +71,11 @@ private const val MOST_ROUNDED_DIGITS = 14
 private class RoundingDefect(val code: String, val detail: String)
 
 /** The first gate this call fails, in A12's own order, or null where none fails and where it may not judge. */
-private fun PreparedModel.roundingDefect(
+private fun TrackedFactBase.roundingDefect(
     call: ConditionCall,
     kind: RoundedOperand,
     declaringGroup: String,
-    element: DeclaredElement,
+    element: TrackedDeclaration,
 ): RoundingDefect? {
     val rounded = call.operands.firstOrNull() ?: return null
     val operandDefect = when (kind) {
@@ -86,14 +86,14 @@ private fun PreparedModel.roundingDefect(
 }
 
 /** The field construct's three shape gates and its type gate, in the order `CheckRundenOpImpl` calls them. */
-private fun PreparedModel.entitySpecDefect(
+private fun TrackedFactBase.entitySpecDefect(
     rounded: CallOperand,
     declaringGroup: String,
-    element: DeclaredElement,
+    element: TrackedDeclaration,
 ): RoundingDefect? {
     val written = rounded.path ?: return null
     val target = addressedTargetOf(written, declaringGroup, element) ?: return null
-    val declared = elements.firstOrNull { it.path == target } ?: return null
+    val declared = declarations().firstOrNull { it.path == target } ?: return null
     if (declared.declaredKind == DeclaredKind.GROUP) {
         return RoundingDefect("MVK_NO_GROUPS_ALLOWED", "rounds `$target`, which is a group — round one field of it")
     }
@@ -117,10 +117,10 @@ private fun PreparedModel.entitySpecDefect(
 }
 
 /** The operation construct's two gates, in the order `CheckRundenOperOpImpl` calls them. */
-private fun PreparedModel.operationDefect(
+private fun TrackedFactBase.operationDefect(
     rounded: CallOperand,
     declaringGroup: String,
-    element: DeclaredElement,
+    element: TrackedDeclaration,
 ): RoundingDefect? {
     if (rounded.constant) {
         return RoundingDefect(
@@ -169,7 +169,7 @@ private fun digitsDefect(call: ConditionCall): RoundingDefect? {
 private fun finding(
     defect: RoundingDefect,
     call: ConditionCall,
-    element: DeclaredElement,
+    element: TrackedDeclaration,
     member: String,
 ): Finding = Finding(
     FindingCategory.A12_CONSTRAINT,

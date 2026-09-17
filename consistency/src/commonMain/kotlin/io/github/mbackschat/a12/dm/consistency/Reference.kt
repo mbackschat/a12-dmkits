@@ -395,8 +395,21 @@ internal val PLAINLY_NON_NUMBER_TYPES = setOf(
 /** The token kinds one entity spec may be made of; anything else makes the text an expression. */
 private val REFERENCE_TOKENS = setOf(TokenKind.NAME, TokenKind.QUOTED_NAME, TokenKind.PUNCTUATION)
 
-/** The punctuation an entity spec may carry: its brackets, its path steps, and a repetition star. */
-private val SPEC_PUNCTUATION = setOf("[", "]", "/", "*", ".")
+/**
+ * The punctuation an entity spec may carry: its brackets and its path steps.
+ *
+ * **No repetition star, and that is measured rather than intended.** This set listed `"*"` and could never
+ * admit one: the tokenizer classifies a star as `OPERATOR_SYMBOL` (measured 2026-09-17,
+ * `BareEntitySpecStarTest`), which [isBareEntitySpec] refuses before any punctuation is examined. So the
+ * entry was dead data behind a comment that promised the opposite, and every family typing an operand
+ * through [bareReferenceField] is SILENT on a starred operand.
+ *
+ * The silence UNDER-reports and is therefore safe, so it is not widened here: admitting the star would make
+ * a dozen families judge an operand shape none of them has been measured against, which is the one direction
+ * that needs a kernel basis first
+ * (`docs/PORTABLE-CONSISTENCY-IMPLEMENTATION-PLAN.md` "a starred operand is never typed").
+ */
+private val SPEC_PUNCTUATION = setOf("[", "]", "/", ".")
 
 /**
  * The field declaration [text] names on its own, or null wherever this reader will not say.
@@ -417,12 +430,28 @@ internal fun PreparedModel.bareReferenceField(
     declaringGroup: String,
     element: DeclaredElement,
 ): DeclaredElement? {
+    val reference = bareReferenceIn(text, conditionLanguage) ?: return null
+    val target = addressedTargetOf(reference, declaringGroup, element) ?: return null
+    return elements.firstOrNull { it.path == target && it.declaredKind == DeclaredKind.FIELD }
+}
+
+/** The same reading through the read barrier, over the tracked arm of the chain it composes. */
+internal fun TrackedFactBase.bareReferenceField(
+    text: String,
+    declaringGroup: String,
+    element: TrackedDeclaration,
+): TrackedDeclaration? {
+    val reference = bareReferenceIn(text, conditionLanguage) ?: return null
+    val target = addressedTargetOf(reference, declaringGroup, element) ?: return null
+    return declarationAt(target)?.takeIf { it.declaredKind == DeclaredKind.FIELD }
+}
+
+/** The one reference a bare entity spec reduces to, or null for text that is not one — no model read. */
+private fun bareReferenceIn(text: String, language: ConditionLanguage): String? {
     if (!isBareEntitySpec(text)) {
         return null
     }
-    val reference = referencesIn(text, conditionLanguage).singleOrNull() ?: return null
-    val target = addressedTargetOf(reference, declaringGroup, element) ?: return null
-    return elements.firstOrNull { it.path == target && it.declaredKind == DeclaredKind.FIELD }
+    return referencesIn(text, language).singleOrNull()
 }
 
 /**

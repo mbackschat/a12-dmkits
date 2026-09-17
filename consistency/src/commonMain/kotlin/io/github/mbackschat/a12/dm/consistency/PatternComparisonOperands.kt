@@ -39,13 +39,13 @@ import io.github.mbackschat.a12.dm.predicates.kernelPatternBlacklist
  * measured on this carrier, and wherever both sides are written out — the constant gate answers that pair
  * ([comparisonOperatorOperandFindings]).
  */
-fun PreparedModel.patternComparisonOperandFindings(): List<Finding> {
+internal fun TrackedFactBase.patternComparisonOperandFindings(): List<Finding> {
     val keywords = CONDITION_OPERATOR_KEYWORDS[conditionLanguage] ?: return emptyList()
     val operators = PATTERN_OPERATORS.mapNotNull { keywords[it] }.toSet()
     if (operators.isEmpty()) {
         return emptyList()
     }
-    return elements.mapNotNull { element ->
+    return declarations().mapNotNull { element ->
         val body = element.body ?: return@mapNotNull null
         val group = element.path.substringBeforeLast('/', missingDelimiterValue = "")
         conditionTexts(element.kind, body).firstNotNullOfOrNull { (member, text) ->
@@ -83,10 +83,10 @@ private sealed interface PatternSide {
 /** The class this comparison fails on, the side that fails it, and why — where the class carries a why. */
 private data class PatternDefect(val code: String, val wrote: String, val listed: String? = null)
 
-private fun PreparedModel.patternFinding(
+private fun TrackedFactBase.patternFinding(
     comparison: ConditionComparison,
     declaringGroup: String,
-    element: DeclaredElement,
+    element: TrackedDeclaration,
     member: String,
 ): Finding? {
     val left = sideOf(comparison.left, declaringGroup, element) ?: return null
@@ -161,10 +161,10 @@ private val SPEC_PUNCTUATION = setOf("[", "]", "/", "*", ".")
  * to the reference family, which answers before this walk — reporting the shape class on it would name this
  * arm's class on a model A12 refuses for a missing declaration.
  */
-private fun PreparedModel.sideOf(
+private fun TrackedFactBase.sideOf(
     side: String,
     declaringGroup: String,
-    element: DeclaredElement,
+    element: TrackedDeclaration,
 ): PatternSide? {
     val tokens = tokenize(side)
     val single = tokens.singleOrNull()

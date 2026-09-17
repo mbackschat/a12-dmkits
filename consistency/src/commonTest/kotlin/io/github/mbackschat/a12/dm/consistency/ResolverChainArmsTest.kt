@@ -112,6 +112,38 @@ class ResolverChainArmsTest {
     }
 
     @Test
+    fun bothArmsReadTheSameBareReferenceField() {
+        val prepared = prepared()
+
+        // Six migrated families and seven unmigrated ones type their operand off this one reader, so its two
+        // arms disagreeing would split the estate's TYPING, not just its scope reading.
+        // Unstarred deliberately: a starred spelling is not a bare entity spec at all
+        // (`BareEntitySpecStarTest`), so it would make both arms answer null and prove nothing here.
+        val untracked = prepared.bareReferenceField(
+            "Claims/Amount", "/Policy", prepared.untracked("ClaimAmountRequired"))
+        val tracked = prepared.tracked().bareReferenceField(
+            "Claims/Amount", "/Policy", prepared.cursor("ClaimAmountRequired"))
+
+        assertEquals(
+            "/Policy/Claims/Amount",
+            untracked?.path,
+            "the bare spec must reduce to the claim amount, or both arms hand back null and nothing is read",
+        )
+        assertEquals(untracked?.path, tracked?.path, "the two arms must read the same field")
+
+        // Not a bare spec: an expression reduces to nothing, because typing an operand from the one field
+        // inside it would make a claim about a value A12 computes from the whole expression.
+        val expression = prepared.bareReferenceField(
+            "{[Claims/Amount] + 1}", "/Policy", prepared.untracked("ClaimAmountRequired"))
+        assertNull(expression, "an expression must not reduce to the field inside it")
+        assertNull(
+            prepared.tracked().bareReferenceField(
+                "{[Claims/Amount] + 1}", "/Policy", prepared.cursor("ClaimAmountRequired")),
+            "the two arms must refuse the same expression",
+        )
+    }
+
+    @Test
     fun bothArmsAddressTheSameTarget() {
         val prepared = prepared()
 

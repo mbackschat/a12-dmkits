@@ -37,16 +37,16 @@ import kotlinx.serialization.json.contentOrNull
  * some of them. Silent too on a table-backed enumeration, on a `TypeDefType` or `UnspecifiedType`, and
  * wherever the target or a source does not resolve.
  */
-fun PreparedModel.enumComputationSourceFindings(): List<Finding> = declaredReferences()
+internal fun TrackedFactBase.enumComputationSourceFindings(): List<Finding> = declaredReferences()
     .filter { it.role == ReferenceRole.COMPUTED_TARGET }
     .flatMap { declared ->
         val targetPath = (declared.target as? Reference.Resolved)?.path ?: return@flatMap emptyList()
-        val target = elements.firstOrNull { it.path == targetPath } ?: return@flatMap emptyList()
+        val target = declarations().firstOrNull { it.path == targetPath } ?: return@flatMap emptyList()
         if (target.declaredFieldType() != ENUMERATION) {
             return@flatMap emptyList()
         }
         val admitted = target.enumerationBody()?.declaredEnumValues()?.toSet() ?: return@flatMap emptyList()
-        val element = elements.firstOrNull { it.path == declared.declaredAt } ?: return@flatMap emptyList()
+        val element = declarations().firstOrNull { it.path == declared.declaredAt } ?: return@flatMap emptyList()
         val body = element.body ?: return@flatMap emptyList()
         val group = element.path.substringBeforeLast('/', missingDelimiterValue = "")
         conditionTexts(element.kind, body)
@@ -67,12 +67,12 @@ private const val FIRST_FILLED_VALUE = "FirstFilledValue"
  * The two arms are A12's own: one source read, or a `FirstFilledValue` over several. Every other shape is
  * left alone — see the family doc for why that silence is a disclosed under-report rather than a verdict.
  */
-private fun PreparedModel.sourceDefect(
+private fun TrackedFactBase.sourceDefect(
     operation: String,
     admitted: Set<String>,
-    target: DeclaredElement,
+    target: TrackedDeclaration,
     declaringGroup: String,
-    element: DeclaredElement,
+    element: TrackedDeclaration,
 ): String? {
     firstFilledOperands(operation, element)?.let { operands ->
         return operands.firstNotNullOfOrNull { operand ->
@@ -83,7 +83,7 @@ private fun PreparedModel.sourceDefect(
 }
 
 /** The operand texts of a sole `FirstFilledValue` call, or null when the operation is not one. */
-private fun PreparedModel.firstFilledOperands(operation: String, element: DeclaredElement): List<String>? {
+private fun TrackedFactBase.firstFilledOperands(operation: String, element: TrackedDeclaration): List<String>? {
     val carrier = CONDITION_OPERATOR_KEYWORDS[conditionLanguage]?.get(FIRST_FILLED_VALUE) ?: return null
     val call = callsIn(operation, conditionLanguage, syntaxEntryOf("operation")).singleOrNull() ?: return null
     if (call.operator != carrier) {
@@ -99,12 +99,12 @@ private fun PreparedModel.firstFilledOperands(operation: String, element: Declar
  * bearing mismatch is silence here rather than a refusal. That is the half a reader would most naturally
  * fold in, having the labels in hand already.
  */
-private fun PreparedModel.readDefect(
+private fun TrackedFactBase.readDefect(
     text: String,
     admitted: Set<String>,
-    target: DeclaredElement,
+    target: TrackedDeclaration,
     declaringGroup: String,
-    element: DeclaredElement,
+    element: TrackedDeclaration,
 ): String? {
     val (written, category) = categoryAccessesIn(text, conditionLanguage).singleOrNull() ?: (text to null)
     val source = bareReferenceField(written, declaringGroup, element) ?: return null
@@ -165,7 +165,7 @@ private fun sourceValues(body: JsonObject, category: String?): Set<String>? {
  * one holds a per-locale map it has already built, this one a raw declaration. The predicate is one line and
  * the shapes are not, so a shared reader would have to carry both.
  */
-private fun bearsDisplayValues(field: DeclaredElement): Boolean {
+private fun bearsDisplayValues(field: TrackedDeclaration): Boolean {
     val values = field.enumerationBody()?.get("values") as? JsonArray ?: return false
     return values.filterIsInstance<JsonObject>().any { entry ->
         val token = (entry["value"] as? JsonPrimitive)?.contentOrNull
@@ -176,7 +176,7 @@ private fun bearsDisplayValues(field: DeclaredElement): Boolean {
 
 private fun JsonArray?.orEmpty(): List<kotlinx.serialization.json.JsonElement> = this ?: emptyList()
 
-private fun finding(detail: String, member: String, element: DeclaredElement): Finding = Finding(
+private fun finding(detail: String, member: String, element: TrackedDeclaration): Finding = Finding(
     FindingCategory.A12_CONSTRAINT,
     FindingSeverity.ERROR,
     "MVK_ERROR_INVALID_ENUM_CALCULATION",

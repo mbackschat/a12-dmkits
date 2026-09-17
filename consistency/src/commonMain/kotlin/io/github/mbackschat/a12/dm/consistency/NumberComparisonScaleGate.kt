@@ -46,7 +46,7 @@ import kotlinx.serialization.json.intOrNull
  * [bareReferenceField] carries: an arithmetic side's scale is one A12 derives from the whole expression, and
  * it also carries the multiplicative-constant capability that relaxes this very gate.
  */
-fun PreparedModel.numberComparisonScaleFindings(): List<Finding> = elements.mapNotNull { element ->
+internal fun TrackedFactBase.numberComparisonScaleFindings(): List<Finding> = declarations().mapNotNull { element ->
     val body = element.body ?: return@mapNotNull null
     val group = element.path.substringBeforeLast('/', missingDelimiterValue = "")
     val suppressed = body.suppressesTheScaleGate()
@@ -80,11 +80,11 @@ private sealed interface NumberSide {
     data object BooleanConstant : NumberSide
 }
 
-private fun PreparedModel.scaleFinding(
+private fun TrackedFactBase.scaleFinding(
     comparison: ConditionComparison,
     suppressed: Boolean,
     declaringGroup: String,
-    element: DeclaredElement,
+    element: TrackedDeclaration,
     member: String,
 ): Finding? {
     if (comparison.operator != EQUAL && comparison.operator != NOT_EQUAL) {
@@ -125,7 +125,7 @@ private fun wrongTypeFinding(
     left: NumberSide,
     right: NumberSide,
     comparison: ConditionComparison,
-    element: DeclaredElement,
+    element: TrackedDeclaration,
     member: String,
 ): Finding? {
     val declared = (left as? NumberSide.Declared) ?: (right as? NumberSide.Declared) ?: return null
@@ -151,10 +151,10 @@ private fun JsonObject.suppressesTheScaleGate(): Boolean =
         ?.any { (it as? JsonPrimitive)?.content == SUPPRESSIBLE } == true
 
 /** What this side is, or null wherever this reader will not say — see [bareReferenceField]. */
-private fun PreparedModel.sideOf(
+private fun TrackedFactBase.sideOf(
     side: String,
     declaringGroup: String,
-    element: DeclaredElement,
+    element: TrackedDeclaration,
 ): NumberSide? {
     val tokens = tokenize(side)
     numberLiteralScale(tokens)?.let { return NumberSide.Written(it) }
@@ -169,6 +169,6 @@ private fun PreparedModel.sideOf(
 }
 
 /** The fractional digits this declaration carries; an omitted member is zero, measured rather than assumed. */
-private fun DeclaredElement.declaredScale(): Int =
+private fun TrackedDeclaration.declaredScale(): Int =
     (((body?.get("fieldType") as? JsonObject)?.get("NumberType") as? JsonObject)
         ?.get("maxFractionalDigits") as? JsonPrimitive)?.intOrNull ?: 0

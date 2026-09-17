@@ -982,14 +982,14 @@ internal fun checkPrepared(
         prepared.fieldValuesNotUniqueOperandKindFindings() +
         tracked.fieldListOperationOperandFindings() +
         prepared.dateArithmeticOperandFindings() +
-        prepared.roundingOperandFindings() +
+        tracked.roundingOperandFindings() +
         tracked.fieldValueOperatorOperandFindings() +
         prepared.comparisonOperatorOperandFindings() +
         prepared.booleanComparisonAgreementFindings() +
-        prepared.stringEnumComparisonAgreementFindings() +
-        prepared.numberComparisonScaleFindings() +
+        tracked.stringEnumComparisonAgreementFindings() +
+        tracked.numberComparisonScaleFindings() +
         prepared.temporalComparisonAgreementFindings() +
-        prepared.patternComparisonOperandFindings() +
+        tracked.patternComparisonOperandFindings() +
         prepared.operandRepetitionScopeFindings() +
         prepared.dateConstructionSlotFindings() +
         tracked.hModelPathSuffixFindings() +
@@ -1002,9 +1002,9 @@ internal fun checkPrepared(
         prepared.validityConditionOperandFindings() +
         prepared.baseYearRequirementFindings() +
         tracked.rangeOperandGateFindings() +
-        prepared.enumDisplayComparabilityFindings() +
+        tracked.enumDisplayComparabilityFindings() +
         tracked.valueAsDateOperandFindings() +
-        prepared.enumComputationSourceFindings() +
+        tracked.enumComputationSourceFindings() +
         tracked.errorTargetIterationFindings() +
         prepared.errorTargetContainmentFindings() +
         tracked.messageParameterFindings() +

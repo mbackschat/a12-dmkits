@@ -47,7 +47,7 @@ import io.github.mbackschat.a12.dm.consistency.syntax.tokenize
  * **Only `==` and `!=` are judged.** A text or enumeration side cannot survive the ordering gate, and the
  * tolerance and pattern arms return before this walk — so equality is the whole reachable population.
  */
-fun PreparedModel.stringEnumComparisonAgreementFindings(): List<Finding> = elements.mapNotNull { element ->
+internal fun TrackedFactBase.stringEnumComparisonAgreementFindings(): List<Finding> = declarations().mapNotNull { element ->
     val body = element.body ?: return@mapNotNull null
     val group = element.path.substringBeforeLast('/', missingDelimiterValue = "")
     conditionTexts(element.kind, body).firstNotNullOfOrNull { (member, text) ->
@@ -107,10 +107,10 @@ private val TextSide.isTextual: Boolean
 private val TextSide.isNumberLike: Boolean
     get() = this === TextSide.NumberField || this === TextSide.NumberConstant
 
-private fun PreparedModel.agreementFinding(
+private fun TrackedFactBase.agreementFinding(
     comparison: ConditionComparison,
     declaringGroup: String,
-    element: DeclaredElement,
+    element: TrackedDeclaration,
     member: String,
 ): Finding? {
     if (comparison.operator != EQUAL && comparison.operator != NOT_EQUAL) {
@@ -143,7 +143,7 @@ private fun wrongKindFinding(
     left: TextSide,
     right: TextSide,
     comparison: ConditionComparison,
-    element: DeclaredElement,
+    element: TrackedDeclaration,
     member: String,
 ): Finding? {
     val textual = when {
@@ -169,10 +169,10 @@ private fun wrongKindFinding(
 }
 
 /** What this side is, or null wherever this reader will not say — see [bareReferenceField]. */
-private fun PreparedModel.sideOf(
+private fun TrackedFactBase.sideOf(
     side: String,
     declaringGroup: String,
-    element: DeclaredElement,
+    element: TrackedDeclaration,
 ): TextSide? {
     val tokens = tokenize(side)
     if (isNumberLiteral(tokens)) {
