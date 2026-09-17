@@ -93,13 +93,18 @@ def verifyConsistencyPurity = tasks.register('verifyConsistencyPurity') {
     // so the JVM class output is what this instrument can read. The guard derives what exists and refuses
     // what NEITHER instrument reaches, rather than remembering a list that silently stops matching the tree.
     def jdepsCoveredSourceSets = ['commonMain', 'commonTest', 'jvmMain', 'jvmTest']
-    // `js*` compiles to `.mjs`, which jdeps cannot read — and does not need to, because the forbidden set is
-    // unreachable there by construction rather than by inspection. The kernel, `:interpreter` and Groovy are
-    // JVM artifacts: none can sit on a Kotlin/JS compile classpath, so JS code naming one does not compile at
-    // all, and `verifyConsistencyDependencies` independently allowlists `jsRuntimeClasspath` and
-    // `jsTestRuntimeClasspath` so a declared edge fails on arrival. Listing these here claims the second
-    // instrument covers them, NOT that this one does — a `nativeMain` would still be refused, because no
-    // instrument reaches it.
+    // `js*` compiles to `.mjs`, which jdeps cannot read, so the SECOND instrument is what covers them:
+    // `verifyConsistencyDependencies` reads `jsRuntimeClasspath` and `jsTestRuntimeClasspath` and is closed
+    // over intra-repo project edges as well as external groups. Listing these here claims that instrument
+    // covers them, NOT that this one does — a `nativeMain` would still be refused, because no instrument
+    // reaches it.
+    //
+    // Corrected 2026-09-17: this said the forbidden set was "unreachable there by construction", because the
+    // kernel, `:interpreter` and Groovy are JVM artifacts that "cannot sit on a Kotlin/JS compile classpath".
+    // That is false of `:interpreter`, which is Kotlin Multiplatform and publishes a JS target — and it was
+    // measured false: `implementation project(':interpreter')` on `jsMain` resolved onto
+    // `jsRuntimeClasspath` with both guards green, because a project edge carries no module coordinate for a
+    // group filter to see. The dependency guard is closed over project paths as of the same day.
     def classpathCoveredSourceSets = ['jsMain', 'jsTest']
     def coveredSourceSets = jdepsCoveredSourceSets + classpathCoveredSourceSets
     def classRoots = providers.provider {
@@ -139,11 +144,17 @@ def verifyConsistencyDependencies = tasks.register('verifyConsistencyDependencie
             ['com.mgmtp.'],
             'org.jetbrains.kotlin',
             ['org.jetbrains', 'org.jetbrains.kotlin', 'org.jetbrains.kotlinx', 'junit', 'org.hamcrest',
-             // The shared-predicate leaf. It is admitted as a GROUP like the others, and what keeps that from
-             // being a hole is the leaf's own `verifyPredicatesPurity`: it resolves nothing but the Kotlin
-             // stdlib, so nothing can arrive here THROUGH it. An intra-repo module that grew dependencies
-             // would fail on its own lane before reaching this allowlist.
-             'io.github.mbackschat.a12.dm'])
+             // Every module in this repository publishes under this ONE group, so admitting it by group
+             // admits `:interpreter` exactly as readily as the shared-predicate leaf — which is why the
+             // intra-repo claim is made by PROJECT PATH below and not here. What keeps the leaf itself from
+             // being a hole is its own `verifyPredicatesPurity`: it resolves nothing but the Kotlin stdlib,
+             // so nothing can arrive here THROUGH it.
+             'io.github.mbackschat.a12.dm'],
+            // CLOSED over intra-repo edges, and measured on 2026-09-17 to be the only instrument that is:
+            // `implementation project(':interpreter')` on `jsMain` resolved onto `jsRuntimeClasspath` while
+            // this guard and `verifyConsistencyPurity` both reported clean. jdeps cannot read `.mjs`, and a
+            // project edge is a `ProjectComponentIdentifier` that every group filter is blind to.
+            [':consistency', ':predicates'])
     }
 }
 
@@ -937,7 +948,10 @@ tasks.register('verifyCheckerArtifactIdentity') {
 //
 // So the test is CLOSED, not a required-set: every entry must be accounted for, and an unrecognised one is a
 // failure. A required-set check answers "is what I expect present", which stays green while something else
-// rides along — the shape `:interpreter`'s own npm guard still has, and the reason this one does not copy it.
+// rides along — the shape `verifyInterpreterNpmPackage` has, which is why it is not the guard to copy.
+// (`verifyInterpreterNpmPublication` IS closed, by exact text equality against committed
+// `api/{npm,maven}-package-files.txt` manifests; measured 2026-09-17. Two instruments, two shapes, and the
+// closed one is the one worth having.)
 //
 // Two carriers, because a claim measured on one is not measured on the other: the npm tarball a JS consumer
 // installs, and the jvm jar a Maven consumer resolves. The jar is enumerated by PACKAGE rather than by file,

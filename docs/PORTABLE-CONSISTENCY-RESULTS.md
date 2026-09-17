@@ -8,6 +8,29 @@ Dated measurements of the Kernel-free checker, newest first. **Every LATENCY her
 
 Results never land in a spec, and a measurement's home is not its explanation: the mechanism paragraphs below are marked as hypotheses where they are hypotheses.
 
+## 2026-09-17 — NFR #1 had no enforcement locus on the JS target, measured <a id="project-edge-2026-09-17"></a>
+
+The checker's central contract is that it depends on neither the Kernel (H1) nor `:interpreter` (NFR #1). Two instruments carry it, and the module's own build file said so. Planting the edge showed the claim was false where it mattered most.
+
+| what was planted | what happened |
+|---|---|
+| `implementation project(':interpreter')` on `:consistency`'s `jsMain` | `project :interpreter` resolved onto `jsRuntimeClasspath` **and** `jsTestRuntimeClasspath` |
+| `:consistency:verifyConsistencyDependencies` | **passed** |
+| `:consistency:verifyConsistencyPurity` | **passed** |
+
+**The mechanism, and it is one line.** `verifyKernelFreeClasspath` collected only `ModuleComponentIdentifier`s, so an intra-repo edge — a `ProjectComponentIdentifier` — was never examined at all. A group allowlist could not have covered it either: every module in this repository publishes under the single group `io.github.mbackschat.a12.dm`, so admitting `:predicates` by group admits `:interpreter` on identical terms. And jdeps cannot read `.mjs`, so `verifyConsistencyPurity` was never a candidate for the JS target — which the build file's comment had claimed was fine "by construction", on the false premise that `:interpreter` is a JVM-only artifact.
+
+**Fixed at the shared root, and swept.** The helper now takes an opt-in, fully explicit project-path allowlist and refuses any other intra-repo edge; `:consistency` declares `[':consistency', ':predicates']`. The sibling with the same blindness is `verifyPredicatesPurity`, whose `it.group != project.group` filter drops a project component *because* it carries this project's own group — the leaf that claims to depend on nothing at all. It gained its own project arm.
+
+| control | observed |
+|---|---|
+| `project(':interpreter')` on `:consistency`'s `jsMain` | `intra-repo project edge(s) outside its declared allowlist [:consistency, :predicates]`, on both JS configurations |
+| `project(':consistency')` on `:predicates`' `commonMain` | `resolves [project :consistency]` |
+
+**Both arms had to be REORDERED to be reachable, and that is the transferable part.** A project edge drags its own transitive modules in, so a module-level arm running first throws on the fallout and the project arm never executes. Measured: the `:predicates` control was initially reported as *five stray kotlinx modules* rather than as one project edge. `:consistency`'s control did print the project message — but only because its allowlist happens to admit `org.jetbrains*`, so it passed by luck rather than by design. Both now run the project arm first.
+
+**Two things this does not fix, stated rather than implied.** The mirror on the interpreter's side: `verifyInterpreterPurity` never names the checker, and only its `commonMain` rule carries an allowlist, so a `jvmMain`/`jsMain`/`commonTest` edge on `io.github.mbackschat.a12.dm.consistency` is unrefused — and its instrument is an import-TEXT scan, the shape this estate replaced with jdeps elsewhere. And `verifyPublishedClasspathsAreKernelFree` passes no project allowlist, deliberately: its claim is about raw Kernel jars, which arrive as modules even through a project edge, so the forbidden-group arm already covers it.
+
 ## 2026-09-17 — what the checker actually publishes, enumerated for the first time <a id="shipped-2026-09-17"></a>
 
 `:consistency:verifyConsistencyShippedFiles`. The denominator had never been closed on either carrier, and closing it found three things the required-set shape it replaces could not see.
@@ -17,7 +40,7 @@ Results never land in a spec, and a measurement's home is not its explanation: t
 | npm tarball | **16** files | it shipped a `devDependencies: {"typescript": "5.5.4"}` and **no licence at all** — no `license` field, no `LICENSE` file — because the pack ran over Kotlin's compiler output directory rather than over a staged set |
 | jvm jar | **2** class packages, both under `io/github/mbackschat/a12/dm/consistency/` | clean, and now closed by ROOT: a subpackage is ours by construction, a package outside the root is a shaded or copied dependency |
 
-**Why no existing guard could have found it.** `verifyConsistencyPurity` reads what the classes LINK and `verifyConsistencyDependencies` reads what a consumer RESOLVES. A file that was *copied in* declares neither, which is the reason [F's oracle](PORTABLE-CONSISTENCY-PROPOSAL.md) asks for a shipped-file enumeration in addition to both. The shape matters as much as the existence: a **required-set** check ("is what I expect present") stays green while something else rides along, and that is what `:interpreter:verifyInterpreterNpmPackage` still is.
+**Why no existing guard could have found it.** `verifyConsistencyPurity` reads what the classes LINK and `verifyConsistencyDependencies` reads what a consumer RESOLVES. A file that was *copied in* declares neither, which is the reason [F's oracle](PORTABLE-CONSISTENCY-PROPOSAL.md) asks for a shipped-file enumeration in addition to both. The shape matters as much as the existence: a **required-set** check ("is what I expect present") stays green while something else rides along, which is what `verifyInterpreterNpmPackage` is. *(Corrected 2026-09-17, within the hour: this first read "and that is what `:interpreter:verifyInterpreterNpmPackage` still is", which is true of that task and false of the module — `verifyInterpreterNpmPublication` compares committed `api/{npm,maven}-package-files.txt` manifests by **exact text equality** over the full sorted list, a closed enumeration for both carriers. One guard was read and the shape attributed to its neighbours, the sibling-unread register CLAUDE.md names.)*
 
 **Three positive controls, all fired.**
 

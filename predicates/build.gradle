@@ -53,6 +53,30 @@ def verifyPredicatesPurity = tasks.register('verifyPredicatesPurity') {
     group = 'verification'
     description = 'Fail if the shared predicate leaf resolves any dependency at all beyond the Kotlin stdlib.'
     doLast {
+        // An INTRA-REPO edge evades the module arm below, and it is the same class measured in `:consistency`
+        // on 2026-09-17: the `it.group != project.group` line is what does it there, because a project
+        // component's `moduleVersion` carries this project's own group, so `project(':interpreter')` would
+        // read as "ours" and be dropped. The leaf's claim is that it depends on NOTHING, so the permitted
+        // set is exactly itself.
+        //
+        // It runs FIRST, and the ordering is what makes it reachable: a project edge drags its own
+        // transitive modules in, so the module arm throws on those and this arm never runs. Measured
+        // 2026-09-17 — a planted `project(':consistency')` was reported as five stray kotlinx modules,
+        // which names the fallout instead of the edge.
+        ['jvmRuntimeClasspath', 'jsRuntimeClasspath'].each { name ->
+            def foreignProjects = configurations.getByName(name).incoming.resolutionResult.allComponents
+                    .collect { it.id }
+                    .findAll { it instanceof org.gradle.api.artifacts.component.ProjectComponentIdentifier }
+                    .findAll { it.projectPath != project.path }
+                    .collect { it.displayName }
+                    .unique().toSorted()
+            if (foreignProjects) {
+                throw new GradleException(
+                        "the shared predicate leaf must depend on nothing at all; ${name} resolves " +
+                        "${foreignProjects}. An intra-repo edge carries this project's own group, so the " +
+                        'module filter above cannot see it.')
+            }
+        }
         ['jvmRuntimeClasspath', 'jsRuntimeClasspath'].each { name ->
             def resolved = configurations.getByName(name).incoming.resolutionResult.allComponents
                     .collect { it.moduleVersion }

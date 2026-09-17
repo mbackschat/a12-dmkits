@@ -1136,11 +1136,14 @@ ext.verifyCompiledPurity = { String guardName, Collection<File> classRoots, Coll
 // fails on arrival rather than on someone thinking to forbid it. Groups match EXACTLY — `org.jetbrains` does
 // not admit `org.jetbrains.kotlinx` — because a prefix allowlist quietly widens as an ecosystem grows.
 ext.verifyKernelFreeClasspath = { String guardName, Collection<Configuration> configurations,
-        Collection<String> forbiddenGroups, String positiveControlGroup, Collection<String> allowedGroups = [] ->
-    def modules = configurations.collectMany { configuration ->
+        Collection<String> forbiddenGroups, String positiveControlGroup, Collection<String> allowedGroups = [],
+        Collection<String> allowedProjects = null ->
+    def components = configurations.collectMany { configuration ->
         configuration.incoming.resolutionResult.allComponents.collect { it.id }
-                .findAll { it instanceof org.gradle.api.artifacts.component.ModuleComponentIdentifier }
                 .collect { [configuration: configuration.name, id: it] }
+    }
+    def modules = components.findAll {
+        it.id instanceof org.gradle.api.artifacts.component.ModuleComponentIdentifier
     }
     if (modules.isEmpty()) {
         throw new GradleException("${guardName} resolved ZERO external modules — the configurations moved or emptied")
@@ -1156,6 +1159,41 @@ ext.verifyKernelFreeClasspath = { String guardName, Collection<Configuration> co
         throw new GradleException(
             "${guardName} violated — a consumer of the published artifact would receive raw kernel jars:\n  "
             + violations.join('\n  '))
+    }
+    // An INTRA-REPO edge is a `ProjectComponentIdentifier`, which every filter above is blind to — and that
+    // blindness was measured, not supposed (2026-09-17): with `implementation project(':interpreter')` planted
+    // on `:consistency`'s `jsMain`, the interpreter resolved onto `jsRuntimeClasspath` and this guard and
+    // `verifyConsistencyPurity` both reported clean, while the checker's build file claimed the opposite in as
+    // many words. A group allowlist cannot cover it either: every module here publishes under ONE group, so
+    // admitting `:predicates` by group would admit the interpreter too.
+    //
+    // It runs BEFORE the module allowlist, and the ordering is what keeps it reachable: a project edge
+    // drags its own transitive modules in, so an allowlist that did not happen to admit them would throw
+    // first and report the fallout instead of the edge. `:consistency`'s allowlist admits them today,
+    // which made the control pass by luck rather than by design — the same ordering defect measured in
+    // `verifyPredicatesPurity` on 2026-09-17, where it did fire.
+    //
+    // Opt-in, because a caller whose claim is about EXTERNAL jars has nothing to state here: a project edge
+    // onto a kernel-carrying module still drags the kernel in as a module, which the forbidden-group arm
+    // already catches. `null` means "this guard makes no claim about intra-repo edges"; a list means the claim
+    // is CLOSED over them.
+    //
+    // The list is fully explicit, INCLUDING the caller's own path, and that is not ceremony: this closure is
+    // declared on the root project, so a `project.path` default here resolves to `:` rather than to the
+    // module that called it — which is exactly what the first version did, and it refused `:consistency`'s own
+    // root on its own classpath.
+    if (allowedProjects != null) {
+        def permitted = allowedProjects as Set
+        def undeclaredProjects = components
+                .findAll { it.id instanceof org.gradle.api.artifacts.component.ProjectComponentIdentifier }
+                .findAll { !permitted.contains(it.id.projectPath) }
+                .collect { "${it.configuration}: ${it.id.displayName}".toString() }
+                .unique().sort()
+        if (undeclaredProjects) {
+            throw new GradleException(
+                "${guardName} resolved intra-repo project edge(s) outside its declared allowlist "
+                + "${permitted.toSorted()}:\n  " + undeclaredProjects.join('\n  '))
+        }
     }
     if (allowedGroups) {
         def undeclared = modules
