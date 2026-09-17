@@ -39,12 +39,12 @@ import io.github.mbackschat.a12.dm.consistency.syntax.tokenize
  * one exemption in the constant gate — two constants are admitted when exactly one of them is such a
  * keyword — and getting that arm wrong would refuse a legal comparison.
  */
-fun PreparedModel.comparisonOperatorOperandFindings(): List<Finding> {
+internal fun TrackedFactBase.comparisonOperatorOperandFindings(): List<Finding> {
     val keywords = CONDITION_OPERATOR_KEYWORDS[conditionLanguage] ?: return emptyList()
     val tolerance = TOLERANCE_OPERATORS.mapNotNull { keywords[it] }.toSet()
     val temporal = TEMPORAL_CONSTANTS.mapNotNull { keywords[it] }.toSet()
     val booleans = BOOLEAN_CONSTANTS.mapNotNull { keywords[it] }.toSet()
-    return elements.mapNotNull { element ->
+    return declarations().mapNotNull { element ->
         val body = element.body ?: return@mapNotNull null
         val group = element.path.substringBeforeLast('/', missingDelimiterValue = "")
         conditionTexts(element.kind, body).firstNotNullOfOrNull { (member, text) ->
@@ -88,13 +88,13 @@ private val NUMBER_LIKE = setOf(SideKind.NUMBER_CONSTANT, SideKind.NUMBER_FIELD)
 
 private val ORDERABLE = NUMBER_LIKE + SideKind.DATE_FIELD
 
-private fun PreparedModel.operandFinding(
+private fun TrackedFactBase.operandFinding(
     comparison: ConditionComparison,
     tolerance: Set<String>,
     temporal: Set<String>,
     booleans: Set<String>,
     declaringGroup: String,
-    element: DeclaredElement,
+    element: TrackedDeclaration,
     member: String,
 ): Finding? {
     if (namesATemporalConstant(comparison.left, temporal) ||
@@ -146,11 +146,11 @@ private fun namesATemporalConstant(side: String, temporal: Set<String>): Boolean
  *
  * Null is the common answer and the safe one — [bareReferenceField] carries the reasons.
  */
-private fun PreparedModel.sideKindOf(
+private fun TrackedFactBase.sideKindOf(
     side: String,
     booleans: Set<String>,
     declaringGroup: String,
-    element: DeclaredElement,
+    element: TrackedDeclaration,
 ): SideKind? {
     val tokens = tokenize(side)
     if (isNumberLiteral(tokens)) {

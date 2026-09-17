@@ -953,7 +953,7 @@ internal fun checkPrepared(
         tracked.hintListValueFindings() + tracked.tableEnumOperandFindings() +
         tracked.hModelFormConstructFindings() +
         tracked.declaredPatternFindings() +
-        tracked.emptyGroupOperandFindings() + prepared.errorFieldReferenceFindings() +
+        tracked.emptyGroupOperandFindings() + tracked.errorFieldReferenceFindings() +
         prepared.groupListOperandFindings() + tracked.repetitionWildcardFindings() +
         tracked.computedTargetKindFindings() + tracked.computedTargetIndexFieldFindings() +
         tracked.rawTypeLengthFindings() + tracked.computationPreconditionFeatureFindings() +
@@ -973,10 +973,10 @@ internal fun checkPrepared(
         tracked.semanticIndexKeyFindings() +
         tracked.repetitionNotUniqueCombinationFindings() +
         tracked.parallelIterationUniquenessFindings() +
-        prepared.filteredEntityIterationFindings() +
+        tracked.filteredEntityIterationFindings() +
         tracked.arithmeticOperationGateFindings() +
         tracked.valueInFieldsConstantKindFindings() +
-        prepared.valueListConditionGateFindings() +
+        tracked.valueListConditionGateFindings() +
         tracked.entityListArityFindings() +
         tracked.entityListPreGateFindings() +
         prepared.fieldValuesNotUniqueOperandKindFindings() +
@@ -984,8 +984,8 @@ internal fun checkPrepared(
         prepared.dateArithmeticOperandFindings() +
         tracked.roundingOperandFindings() +
         tracked.fieldValueOperatorOperandFindings() +
-        prepared.comparisonOperatorOperandFindings() +
-        prepared.booleanComparisonAgreementFindings() +
+        tracked.comparisonOperatorOperandFindings() +
+        tracked.booleanComparisonAgreementFindings() +
         tracked.stringEnumComparisonAgreementFindings() +
         tracked.numberComparisonScaleFindings() +
         prepared.temporalComparisonAgreementFindings() +
@@ -993,11 +993,11 @@ internal fun checkPrepared(
         prepared.operandRepetitionScopeFindings() +
         prepared.dateConstructionSlotFindings() +
         tracked.hModelPathSuffixFindings() +
-        prepared.fieldOperandKindFindings() +
-        prepared.filteredOperandKindFindings() +
+        tracked.fieldOperandKindFindings() +
+        tracked.filteredOperandKindFindings() +
         tracked.categoryReferenceFindings() +
-        prepared.scalarValueListGateFindings() +
-        prepared.dateArgumentSlotFindings() +
+        tracked.scalarValueListGateFindings() +
+        tracked.dateArgumentSlotFindings() +
         prepared.dateRangeOperandListFindings() +
         prepared.validityConditionOperandFindings() +
         prepared.baseYearRequirementFindings() +
@@ -1006,7 +1006,7 @@ internal fun checkPrepared(
         tracked.valueAsDateOperandFindings() +
         tracked.enumComputationSourceFindings() +
         tracked.errorTargetIterationFindings() +
-        prepared.errorTargetContainmentFindings() +
+        tracked.errorTargetContainmentFindings() +
         tracked.messageParameterFindings() +
         tracked.errorTextSemanticIndexFindings() +
         tracked.errorTextCategorySuffixFindings() +

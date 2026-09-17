@@ -36,12 +36,12 @@ import io.github.mbackschat.a12.dm.consistency.syntax.callsIn
  * cell silent. That row was measured rather than reasoned, on its own fixture, for the same reason the
  * carrier above had to be.
  */
-fun PreparedModel.filteredOperandKindFindings(): List<Finding> {
+internal fun TrackedFactBase.filteredOperandKindFindings(): List<Finding> {
     val keywords = CONDITION_OPERATOR_KEYWORDS[conditionLanguage] ?: return emptyList()
     val filterKeyword = keywords[HAVING] ?: return emptyList()
     val indexKeyword = keywords[SEMANTIC_INDEX]
     val targets = declaredReferences().associateBy { it.declaredAt }
-    return elements.flatMap { element ->
+    return declarations().flatMap { element ->
         val body = element.body ?: return@flatMap emptyList()
         val group = element.path.substringBeforeLast('/', missingDelimiterValue = "")
         conditionTexts(element.kind, body).flatMap { (member, text) ->
@@ -64,7 +64,7 @@ fun PreparedModel.filteredOperandKindFindings(): List<Finding> {
  * method and no later gate is reached. Null makes the wildcard gate below silent, which is the safe
  * direction: it can only under-report a class A12 states.
  */
-private fun PreparedModel.iterationScopeOf(declared: DeclaredReference?, declaringGroup: String): String? {
+private fun TrackedFactBase.iterationScopeOf(declared: DeclaredReference?, declaringGroup: String): String? {
     val target = (declared?.target as? Reference.Resolved)?.path ?: return null
     if (!(target == declaringGroup || target.startsWith("$declaringGroup/"))) {
         return null
@@ -76,12 +76,12 @@ private const val HAVING = "Having"
 
 private const val SEMANTIC_INDEX = "SemanticIndex"
 
-private fun PreparedModel.operandFinding(
+private fun TrackedFactBase.operandFinding(
     base: String?,
     indexed: Boolean,
     declaringGroup: String,
     targetGroup: String?,
-    element: DeclaredElement,
+    element: TrackedDeclaration,
     member: String,
 ): Finding? {
     if (indexed) {
@@ -122,11 +122,11 @@ private fun PreparedModel.operandFinding(
     )
 }
 
-private fun PreparedModel.isGroupPath(path: String): Boolean =
-    elements.any { it.path == path && it.declaredKind == DeclaredKind.GROUP }
+private fun TrackedFactBase.isGroupPath(path: String): Boolean =
+    declarations().any { it.path == path && it.declaredKind == DeclaredKind.GROUP }
 
-private fun PreparedModel.isFieldPath(path: String): Boolean =
-    elements.any { it.path == path && it.declaredKind == DeclaredKind.FIELD }
+private fun TrackedFactBase.isFieldPath(path: String): Boolean =
+    declarations().any { it.path == path && it.declaredKind == DeclaredKind.FIELD }
 
 private fun finding(code: String, explain: String, at: String): Finding =
     Finding(FindingCategory.A12_CONSTRAINT, FindingSeverity.ERROR, code, explain, at)

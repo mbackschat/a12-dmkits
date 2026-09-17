@@ -34,7 +34,7 @@ package io.github.mbackschat.a12.dm.consistency
  * That refusal is geometry alone, so it is NOT the predicate here — copying it would refuse the models A12
  * admits, which is exactly what it does on the authoring path.
  */
-fun PreparedModel.errorTargetContainmentFindings(): List<Finding> {
+internal fun TrackedFactBase.errorTargetContainmentFindings(): List<Finding> {
     val named = conditionReferences().groupBy { it.declaredAt }
     return declaredReferences()
         .filter { it.role == ReferenceRole.ERROR_TARGET || it.role == ReferenceRole.COMPUTED_TARGET }
@@ -65,7 +65,7 @@ fun PreparedModel.errorTargetContainmentFindings(): List<Finding> {
  * spelling is where that shows: the resolved path carries no star, so a family reading only the path cannot
  * tell the two apart and would refuse every aggregate.
  */
-private fun PreparedModel.readsOneRowAtATime(reference: ConditionReference): Boolean {
+private fun TrackedFactBase.readsOneRowAtATime(reference: ConditionReference): Boolean {
     val path = (reference.target as? Reference.Resolved)?.path ?: return false
     return '*' !in reference.written && repeatingLevelsOnThePathTo(path) > 0
 }

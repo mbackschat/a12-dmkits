@@ -49,13 +49,13 @@ import io.github.mbackschat.a12.dm.consistency.syntax.referencesIn
  * **Rules only.** The gate is `checkNormalRule`'s; a computation's operations are normalised by the
  * calculation module instead, whose own parallel-iteration treatment is unmeasured here.
  */
-fun PreparedModel.filteredEntityIterationFindings(): List<Finding> {
+internal fun TrackedFactBase.filteredEntityIterationFindings(): List<Finding> {
     val keywords = CONDITION_OPERATOR_KEYWORDS[conditionLanguage] ?: return emptyList()
     val filterKeyword = keywords[HAVING] ?: return emptyList()
     val indexKeyword = keywords[SEMANTIC_INDEX]
     val uniqueness = keywords[REPETITION_NOT_UNIQUE]
     val targets = declaredReferences().associateBy { it.declaredAt }
-    return elements.filter { it.kind == "Rule" }.mapNotNull { element ->
+    return declarations().filter { it.kind == "Rule" }.mapNotNull { element ->
         val body = element.body ?: return@mapNotNull null
         val target = (targets[element.path]?.target as? Reference.Resolved)?.path ?: return@mapNotNull null
         val targetGroup = groupOfTargetField(target) ?: return@mapNotNull null
@@ -81,12 +81,12 @@ private const val SEMANTIC_INDEX = "SemanticIndex"
 private const val REPETITION_NOT_UNIQUE = "RepetitionNotUnique"
 
 /** The first filtered operand A12 would find marked, or null when the condition draws no such class. */
-private fun PreparedModel.markedFilteredOperand(
+private fun TrackedFactBase.markedFilteredOperand(
     text: String,
     member: String,
     declaringGroup: String,
     targetGroup: String,
-    element: DeclaredElement,
+    element: TrackedDeclaration,
     filterKeyword: String,
     indexKeyword: String?,
     uniqueness: String?,
@@ -130,13 +130,13 @@ private fun PreparedModel.markedFilteredOperand(
  * safe direction, since a filter body that iterates a level of its own is
  * `MVK_INVALID_ITERATION_IN_FILTER_CONDITION` during the parse.
  */
-private fun PreparedModel.parallelIterates(
+private fun TrackedFactBase.parallelIterates(
     text: String,
     filtered: List<CallOperand>,
     filterKeyword: String,
     declaringGroup: String,
     targetGroup: String,
-    element: DeclaredElement,
+    element: TrackedDeclaration,
 ): Boolean {
     val insideFilters = filtered
         .flatMap { operand -> operand.clauses.filter { it.keyword == filterKeyword } }
@@ -159,11 +159,11 @@ private fun PreparedModel.parallelIterates(
 private data class MarkedLevels(val joint: List<String>, val marked: List<String>)
 
 /** Null wherever the scope chain refuses the reference outright, since A12 answers it during the parse. */
-private fun PreparedModel.markedLevelsOf(
+private fun TrackedFactBase.markedLevelsOf(
     written: String,
     declaringGroup: String,
     targetGroup: String,
-    element: DeclaredElement,
+    element: TrackedDeclaration,
 ): MarkedLevels? {
     val bare = written.replace("*", "")
     val resolved = resolveEntity(declaringGroup, bare, element.origin) as? Reference.Resolved ?: return null
@@ -192,7 +192,7 @@ private fun filteredEntityFinding(
     operand: String,
     filterKeyword: String,
     target: String,
-    element: DeclaredElement,
+    element: TrackedDeclaration,
     member: String,
 ) = Finding(
     FindingCategory.A12_CONSTRAINT,

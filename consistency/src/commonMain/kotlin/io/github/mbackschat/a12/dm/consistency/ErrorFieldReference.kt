@@ -40,7 +40,7 @@ import kotlinx.serialization.json.JsonObject
  * reference extractor does not recognise can never become a refusal here — the recall risk above is bounded
  * by a test the extractor is not involved in.
  */
-fun PreparedModel.errorFieldReferenceFindings(): List<Finding> {
+internal fun TrackedFactBase.errorFieldReferenceFindings(): List<Finding> {
     val named = conditionReferences().groupBy { it.declaredAt }
     // A filtered PARALLEL operand is refused by its own gate AHEAD of this one — measured, on a rule whose
     // error field is unreferenced, where A12 names that class and only that class
@@ -56,7 +56,7 @@ fun PreparedModel.errorFieldReferenceFindings(): List<Finding> {
             // is about the filtered entity and does not iterate the rule — measured as the admitted control
             // of `AggregateSlotLawsTest`'s iteration grid, where an unstarred filter leaf crossing a
             // repetition the target sits outside of draws nothing at all.
-            val readsOutsideFilters = elements.firstOrNull { it.path == declared.declaredAt }
+            val readsOutsideFilters = declarations().firstOrNull { it.path == declared.declaredAt }
                 ?.let { referencesOutsideFilterBodies(it) }.orEmpty()
             // Three ways this rule is not this family's to judge. A rule with no condition at all belongs to
             // `MVK_CONDITION_MISSING`. An UNRESOLVABLE operand PRE-EMPTS the gate — A12 reports the entity
@@ -113,13 +113,13 @@ fun PreparedModel.errorFieldReferenceFindings(): List<Finding> {
  * family's class where A12 may name the iteration one — a wrong class on a correct rejection, never an
  * over-rejection.
  */
-private fun PreparedModel.iteratesPastTheTarget(reference: ConditionReference, target: String): Boolean {
+private fun TrackedFactBase.iteratesPastTheTarget(reference: ConditionReference, target: String): Boolean {
     if ('*' in reference.written) {
         return false
     }
     val resolved = (reference.target as? Reference.Resolved)?.path ?: return false
     val targetGroup = groupOfTargetField(target)
-    return elements.any { candidate ->
+    return declarations().any { candidate ->
         candidate.isRepeatableGroup &&
             resolved.startsWith("${candidate.path}/") &&
             !(target == candidate.path || target.startsWith("${candidate.path}/")) &&
@@ -140,12 +140,6 @@ private fun PreparedModel.iteratesPastTheTarget(reference: ConditionReference, t
  * had the self-reference here carried it ALONE, so the two readings agreed on all of them; the reference
  * corpus supplied the row on the other side of that axis, on two models the Kernel builds.
  */
-internal fun PreparedModel.namesTheRulesOwnGroup(declared: DeclaredReference): Boolean {
-    val element = elements.firstOrNull { it.path == declared.declaredAt } ?: return false
-    return namesRuleContextIn(element.kind, element.body, conditionLanguage)
-}
-
-/** The same question through the read barrier; the declaration lookup and its body charge themselves. */
 internal fun TrackedFactBase.namesTheRulesOwnGroup(declared: DeclaredReference): Boolean {
     val element = declarationAt(declared.declaredAt) ?: return false
     return namesRuleContextIn(element.kind, element.body, conditionLanguage)
@@ -176,9 +170,9 @@ internal fun ConditionReference.reaches(target: String): Boolean {
  * mentions `Parcels`, and naming a field INSIDE a target group is exactly the shape A12 refuses, so an
  * occurrence followed by `/` names something under the target rather than the target.
  */
-private fun PreparedModel.mentions(declared: DeclaredReference, target: String): Boolean {
+private fun TrackedFactBase.mentions(declared: DeclaredReference, target: String): Boolean {
     val name = target.substringAfterLast('/')
-    val element = elements.firstOrNull { it.path == declared.declaredAt } ?: return true
+    val element = declarations().firstOrNull { it.path == declared.declaredAt } ?: return true
     val body = element.body ?: return true
     return conditionTexts(element.kind, body).any { (_, text) -> text.namesOtherThanAsAPrefix(name) }
 }

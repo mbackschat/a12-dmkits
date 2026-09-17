@@ -26,9 +26,9 @@ import io.github.mbackschat.a12.dm.consistency.syntax.callsIn
  *
  * **The root group is a third silence**, `MVK_ROOT_GROUP_REFERENCED` answering ahead of the kind class.
  */
-fun PreparedModel.fieldOperandKindFindings(): List<Finding> {
+internal fun TrackedFactBase.fieldOperandKindFindings(): List<Finding> {
     val carriers = spelledCarriers()
-    return elements.flatMap { element ->
+    return declarations().flatMap { element ->
         val body = element.body ?: return@flatMap emptyList()
         val group = element.path.substringBeforeLast('/', missingDelimiterValue = "")
         conditionTexts(element.kind, body).flatMap { (member, text) ->
@@ -46,19 +46,19 @@ fun PreparedModel.fieldOperandKindFindings(): List<Finding> {
 /** The two scalar field predicates, named by their catalog ids. */
 private val ENTITY_FIELD_OPERATORS = setOf("FieldFilled", "FieldNotFilled")
 
-private fun PreparedModel.spelledCarriers(): Set<String> =
+private fun TrackedFactBase.spelledCarriers(): Set<String> =
     ENTITY_FIELD_OPERATORS.mapNotNull { CONDITION_OPERATOR_KEYWORDS[conditionLanguage]?.get(it) }.toSet()
 
-private fun PreparedModel.groupFinding(
+private fun TrackedFactBase.groupFinding(
     written: String?,
     operator: String,
     declaringGroup: String,
-    element: DeclaredElement,
+    element: TrackedDeclaration,
     member: String,
 ): Finding? {
     val path = written ?: return null
     val resolved = resolveEntity(declaringGroup, path, element.origin) as? Reference.Resolved ?: return null
-    val target = elements.firstOrNull { it.path == resolved.path && it.declaredKind == DeclaredKind.GROUP }
+    val target = declarations().firstOrNull { it.path == resolved.path && it.declaredKind == DeclaredKind.GROUP }
         ?: return null
     if (target.path.count { it == '/' } == 1) {
         return null

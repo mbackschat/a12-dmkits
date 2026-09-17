@@ -210,6 +210,11 @@ internal fun PreparedModel.crossedRepetitions(path: String): List<DeclaredElemen
     .filter { it.isRepeatableGroup && path.startsWith("${it.path}/") }
     .sortedBy { it.path.length }
 
+/** The same walk through the read barrier; each group's repeatability charges its own declaration. */
+internal fun TrackedFactBase.crossedRepetitions(path: String): List<TrackedDeclaration> = declarations()
+    .filter { it.isRepeatableGroup && path.startsWith("${it.path}/") }
+    .sortedBy { it.path.length }
+
 /**
  * The same levels plus [path] itself when it names a repeatable group.
  *
@@ -368,6 +373,9 @@ private val BASE_TYPE_OF = mapOf(
  * rather than guessing at it.
  */
 internal fun DeclaredElement.baseTypeClass(): BaseTypeClass? = BASE_TYPE_OF[declaredFieldType()]
+
+/** The same reading through the read barrier — it rides [declaredFieldType], which already has both arms. */
+internal fun TrackedDeclaration.baseTypeClass(): BaseTypeClass? = BASE_TYPE_OF[declaredFieldType()]
 
 /**
  * The declared types this reader is CERTAIN A12 does not give the NUMBER operand type.
@@ -599,10 +607,14 @@ private fun crossesARepetitionOutsideIn(
  * later class on such an operand would send the author to the wrong repair.
  */
 internal fun PreparedModel.repeatingLevelsOnThePathTo(path: String): Int =
-    elements.count {
-        it.isRepeatableGroup &&
-            (it.path == path || path.startsWith("${it.path}/"))
-    }
+    repeatingLevelsIn(repeatableGroupPaths(), path)
+
+/** The same count through the read barrier; the charge rides the cursor, as on [iteratedLevels]. */
+internal fun TrackedFactBase.repeatingLevelsOnThePathTo(path: String): Int =
+    repeatingLevelsIn(repeatableGroupPaths(), path)
+
+private fun repeatingLevelsIn(repeatableGroups: List<String>, path: String): Int =
+    repeatableGroups.count { it == path || path.startsWith("$it/") }
 
 /**
  * Whether this STRING declaration waives A12's per-cell value validation.

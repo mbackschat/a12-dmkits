@@ -44,14 +44,14 @@ import io.github.mbackschat.a12.dm.consistency.syntax.tokenize
  * **Only a bare reference or a written-out constant is judged**, for the reason [bareReferenceField] carries:
  * a side that is arithmetic, a call or an aggregate has a result type A12 computes and this reader does not.
  */
-fun PreparedModel.booleanComparisonAgreementFindings(): List<Finding> {
+internal fun TrackedFactBase.booleanComparisonAgreementFindings(): List<Finding> {
     val keywords = CONDITION_OPERATOR_KEYWORDS[conditionLanguage] ?: return emptyList()
     val spellings = BooleanConstants(
         yes = keywords[TRUE_CONSTANT],
         no = keywords[FALSE_CONSTANT],
         temporal = TEMPORAL_CONSTANTS.mapNotNull { keywords[it] }.toSet(),
     )
-    return elements.mapNotNull { element ->
+    return declarations().mapNotNull { element ->
         val body = element.body ?: return@mapNotNull null
         val group = element.path.substringBeforeLast('/', missingDelimiterValue = "")
         conditionTexts(element.kind, body).firstNotNullOfOrNull { (member, text) ->
@@ -91,11 +91,11 @@ private enum class BooleanSide(val spoken: String) {
     OTHER_FIELD("a declaration of another kind"),
 }
 
-private fun PreparedModel.agreementFinding(
+private fun TrackedFactBase.agreementFinding(
     comparison: ConditionComparison,
     spellings: BooleanConstants,
     declaringGroup: String,
-    element: DeclaredElement,
+    element: TrackedDeclaration,
     member: String,
 ): Finding? {
     if (comparison.operator != EQUAL && comparison.operator != NOT_EQUAL) {
@@ -163,11 +163,11 @@ private val BOOLEAN_PARTNERS = setOf(
 )
 
 /** What this side is, or null wherever this reader will not say — see [bareReferenceField]. */
-private fun PreparedModel.sideOf(
+private fun TrackedFactBase.sideOf(
     side: String,
     spellings: BooleanConstants,
     declaringGroup: String,
-    element: DeclaredElement,
+    element: TrackedDeclaration,
 ): BooleanSide? {
     val tokens = tokenize(side)
     val single = tokens.singleOrNull()

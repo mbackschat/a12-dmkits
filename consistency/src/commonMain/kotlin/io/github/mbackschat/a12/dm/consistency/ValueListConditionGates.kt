@@ -60,7 +60,7 @@ import kotlinx.serialization.json.contentOrNull
  * [dateRangeOperandListFindings]; and on an enumeration declaring a `tableName`, which A12 exempts from the
  * domain check and which makes a model unreadable here anyway.
  */
-fun PreparedModel.valueListConditionGateFindings(): List<Finding> {
+internal fun TrackedFactBase.valueListConditionGateFindings(): List<Finding> {
     val keywords = CONDITION_OPERATOR_KEYWORDS[conditionLanguage] ?: return emptyList()
     val carriers = VALUE_LIST_CONDITIONS
         .mapNotNull { (id, dateRange) -> keywords[id]?.let { it to dateRange } }
@@ -68,7 +68,7 @@ fun PreparedModel.valueListConditionGateFindings(): List<Finding> {
     if (carriers.isEmpty()) {
         return emptyList()
     }
-    return elements.mapNotNull { element ->
+    return declarations().mapNotNull { element ->
         val body = element.body ?: return@mapNotNull null
         val group = element.path.substringBeforeLast('/', missingDelimiterValue = "")
         conditionTexts(element.kind, body).firstNotNullOfOrNull { (member, text) ->
@@ -111,14 +111,14 @@ private const val NO_CONST = "MVK_NO_CONST"
 private const val BAD_CONSTANT = "MVK_INVALID_STRING_CONSTANT_FOR_ENUMERATION_OR_CATEGORY"
 
 /** One entry of the field list: the declaration it reaches, and the category it reads it through. */
-private class ListedField(val field: DeclaredElement, val category: String?)
+private class ListedField(val field: TrackedDeclaration, val category: String?)
 
 /** The first gate this call fails, in A12's own order, or null where none fails and where it may not judge. */
-private fun PreparedModel.gateFinding(
+private fun TrackedFactBase.gateFinding(
     call: ConditionCall,
     dateRange: Boolean,
     declaringGroup: String,
-    element: DeclaredElement,
+    element: TrackedDeclaration,
     member: String,
 ): Finding? {
     val (written, opposite) = call.splitAtIn() ?: return null
@@ -179,26 +179,26 @@ private fun PreparedModel.gateFinding(
  * A12 asks it of the REFERENCE list rather than of the expansion — exactly one entry, naming a field, with
  * no repetition star — so a group holding a single field is refused here even though it expands to one.
  */
-private fun PreparedModel.rangeShapeDefect(
+private fun TrackedFactBase.rangeShapeDefect(
     written: List<String>,
     declaringGroup: String,
-    element: DeclaredElement,
-): DeclaredElement? {
+    element: TrackedDeclaration,
+): TrackedDeclaration? {
     val only = written.singleOrNull() ?: return declaredTargetOf(written.first(), declaringGroup, element)
     val declared = declaredTargetOf(only, declaringGroup, element) ?: return null
     return if (declared.declaredKind != DeclaredKind.FIELD || '*' in only) declared else null
 }
 
 /** The declaration one written operand names, whatever kind it is, or null where nothing resolves it. */
-private fun PreparedModel.declaredTargetOf(
+private fun TrackedFactBase.declaredTargetOf(
     operand: String,
     declaringGroup: String,
-    element: DeclaredElement,
-): DeclaredElement? {
+    element: TrackedDeclaration,
+): TrackedDeclaration? {
     val reference = referencesIn(operand, conditionLanguage).singleOrNull() ?: return null
     val resolved = resolveEntity(declaringGroup, reference.replace("*", ""), element.origin)
     val target = (resolved as? Reference.Resolved)?.path ?: return null
-    return elements.firstOrNull { it.path == target }
+    return declarations().firstOrNull { it.path == target }
 }
 
 /**
@@ -209,12 +209,12 @@ private fun PreparedModel.declaredTargetOf(
  * enumeration whose `values` it cannot read, a category the declaration does not name — abandons the whole
  * check rather than shortening the domain, since a short domain refuses a model A12 takes.
  */
-private fun PreparedModel.constantDomainFinding(
+private fun TrackedFactBase.constantDomainFinding(
     listed: List<ListedField>,
     opposite: List<String>,
     call: ConditionCall,
     member: String,
-    element: DeclaredElement,
+    element: TrackedDeclaration,
 ): Finding? {
     val domain = mutableSetOf<String>()
     listed.forEach { entry ->
@@ -257,39 +257,39 @@ private fun ListedField.contributedValues(): List<String>? {
  * (`rulekit.validate.laws.ValueInFieldsConstantKindLawsTest`). An expanded field inherits no category,
  * A12's own grouping being by the REFERENCE's category name.
  */
-private fun PreparedModel.listedFields(
+private fun TrackedFactBase.listedFields(
     operands: List<String>,
     declaringGroup: String,
-    element: DeclaredElement,
+    element: TrackedDeclaration,
 ): List<ListedField>? = operands.flatMap { operand ->
     val category = categoryAccessesIn(operand, conditionLanguage).singleOrNull()?.second
     val declared = declaredTargetOf(operand, declaringGroup, element) ?: return null
     when (declared.declaredKind) {
         DeclaredKind.FIELD -> listOf(ListedField(declared, category))
         DeclaredKind.GROUP ->
-            elements.filter { it.declaredKind == DeclaredKind.FIELD && it.path.startsWith("${declared.path}/") }
+            declarations().filter { it.declaredKind == DeclaredKind.FIELD && it.path.startsWith("${declared.path}/") }
                 .map { ListedField(it, null) }
         else -> return null
     }
 }
 
 /** The same expansion where only the declarations matter — the value list, which carries no category law. */
-private fun PreparedModel.expandedFields(
+private fun TrackedFactBase.expandedFields(
     operands: List<String>,
     declaringGroup: String,
-    element: DeclaredElement,
-): List<DeclaredElement>? = listedFields(operands, declaringGroup, element)?.map { it.field }
+    element: TrackedDeclaration,
+): List<TrackedDeclaration>? = listedFields(operands, declaringGroup, element)?.map { it.field }
 
 /** Whether any field is named twice across the two lists, which A12 answers as a duplicate parameter. */
-private fun repeated(fields: List<DeclaredElement>): Boolean =
+private fun repeated(fields: List<TrackedDeclaration>): Boolean =
     fields.map { it.path }.distinct().size != fields.size
 
 private fun gate(
     code: String,
     operator: String,
-    field: DeclaredElement,
+    field: TrackedDeclaration,
     member: String,
-    element: DeclaredElement,
+    element: TrackedDeclaration,
 ): Finding = Finding(
     FindingCategory.A12_CONSTRAINT,
     FindingSeverity.ERROR,

@@ -9,9 +9,9 @@ import kotlin.test.assertTrue
 /**
  * The repetition-scope helpers answer the same on both receivers while the estate is part-migrated.
  *
- * **Why these four need their own lock, when the shared core is structural.** Each helper keeps one
+ * **Why these three need their own lock, when the shared core is structural.** Each helper keeps one
  * implementation that both arms call, so the DECISION cannot diverge — what can is the INPUT each arm feeds
- * it, and three of these four feed a list the arms build separately (`elements` on one side, the cursors on
+ * it, and two of these three feed a list the arms build separately (`elements` on one side, the cursors on
  * the other). A divergence there is silent and splits the estate: the families still on [PreparedModel] would
  * answer one way about a repetition and the migrated ones the other, on the same model, with every family's
  * own test green because each family only ever calls one arm.
@@ -98,17 +98,5 @@ class RepetitionScopeArmsTest {
                 "two nulls and the category branch is never entered",
         )
         assertEquals(untracked, tracked, "the two arms must read the same operand spec")
-    }
-
-    @Test
-    fun bothArmsAgreeOnARuleNamingItsOwnGroup() {
-        val prepared = prepared()
-        val declared = prepared.declaredReferences().single { it.declaredAt == "/Policy/HolderNamed" }
-
-        val untracked = prepared.namesTheRulesOwnGroup(declared)
-        val tracked = prepared.tracked().namesTheRulesOwnGroup(declared)
-
-        assertTrue(untracked, "the fixture's rule must really name `RuleGroup`, or both arms answer false")
-        assertEquals(untracked, tracked, "the two arms must agree that the rule names its own group")
     }
 }

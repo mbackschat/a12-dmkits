@@ -57,14 +57,14 @@ import io.github.mbackschat.a12.dm.consistency.syntax.tokenize
  * the extractions typed here; and on a slot whose repetition stars do not match its repeating levels, where
  * a wildcard-validity class answers ahead of everything in this family.
  */
-fun PreparedModel.dateArgumentSlotFindings(): List<Finding> {
+internal fun TrackedFactBase.dateArgumentSlotFindings(): List<Finding> {
     val keywords = CONDITION_OPERATOR_KEYWORDS[conditionLanguage] ?: return emptyList()
     val carriers = DATE_SLOTS_OF.mapNotNull { (id, slots) -> keywords[id]?.let { it to slots } }.toMap()
     val numericExtractors = NUMERIC_EXTRACTIONS.mapNotNull { keywords[it] }.toSet()
     if (carriers.isEmpty()) {
         return emptyList()
     }
-    return elements.flatMap { element ->
+    return declarations().flatMap { element ->
         val body = element.body ?: return@flatMap emptyList()
         val group = element.path.substringBeforeLast('/', missingDelimiterValue = "")
         conditionTexts(element.kind, body).flatMap { (member, text) ->
@@ -101,11 +101,11 @@ private val DATE_SLOTS_OF: Map<String, List<Int>> = buildMap {
 private class DateArgumentDefect(val code: String, val said: String)
 
 /** The gate this slot fails, or null where it fails none and where this reader may not judge. */
-private fun PreparedModel.slotDefect(
+private fun TrackedFactBase.slotDefect(
     operand: CallOperand,
     numericExtractors: Set<String>,
     declaringGroup: String,
-    element: DeclaredElement,
+    element: TrackedDeclaration,
 ): DateArgumentDefect? {
     val leadingName = tokenize(operand.text).firstOrNull()?.takeIf { it.kind == TokenKind.NAME }?.text
     if (leadingName != null && operand.path == null) {
@@ -165,21 +165,21 @@ private fun PreparedModel.slotDefect(
 }
 
 /** The declaration one written operand names, whatever kind it is, or null where nothing resolves it. */
-private fun PreparedModel.declaredTargetOf(
+private fun TrackedFactBase.declaredTargetOf(
     operand: String,
     declaringGroup: String,
-    element: DeclaredElement,
-): DeclaredElement? {
+    element: TrackedDeclaration,
+): TrackedDeclaration? {
     val reference = referencesIn(operand, conditionLanguage).singleOrNull() ?: return null
     val resolved = resolveEntity(declaringGroup, reference.replace("*", ""), element.origin)
     val target = (resolved as? Reference.Resolved)?.path ?: return null
-    return elements.firstOrNull { it.path == target }
+    return declarations().firstOrNull { it.path == target }
 }
 
 private fun finding(
     defect: DateArgumentDefect,
     call: ConditionCall,
-    element: DeclaredElement,
+    element: TrackedDeclaration,
     member: String,
 ): Finding = Finding(
     FindingCategory.A12_CONSTRAINT,

@@ -65,13 +65,13 @@ import kotlinx.serialization.json.contentOrNull
  * subject whose repetition stars do not match its repeating levels, where a wildcard-validity class answers
  * ahead of every gate here.
  */
-fun PreparedModel.scalarValueListGateFindings(): List<Finding> {
+internal fun TrackedFactBase.scalarValueListGateFindings(): List<Finding> {
     val keywords = CONDITION_OPERATOR_KEYWORDS[conditionLanguage] ?: return emptyList()
     val carriers = SCALAR_VALUE_LISTS.mapNotNull { keywords[it] }.toSet()
     if (carriers.isEmpty()) {
         return emptyList()
     }
-    return elements.flatMap { element ->
+    return declarations().flatMap { element ->
         val body = element.body ?: return@flatMap emptyList()
         val group = element.path.substringBeforeLast('/', missingDelimiterValue = "")
         conditionTexts(element.kind, body).firstNotNullOfOrNull { (member, text) ->
@@ -116,10 +116,10 @@ private const val OUTSIDE_CATEGORY = "MVK_INVALID_STRING_CONSTANT_FOR_ENUMERATIO
  * offending constant, so several is this checker saying more than A12 does about one call, which costs an
  * author nothing and is the multiplicity the family has always had.
  */
-private fun PreparedModel.gateFindings(
+private fun TrackedFactBase.gateFindings(
     call: ConditionCall,
     declaringGroup: String,
-    element: DeclaredElement,
+    element: TrackedDeclaration,
     member: String,
 ): List<Finding>? {
     val subjectOperand = call.operands.firstOrNull() ?: return null
@@ -164,12 +164,12 @@ private fun PreparedModel.gateFindings(
  * duplicate parameter rather than a self-comparison — measured, and the reason this leaves such a call to
  * A12 rather than naming a type class on it.
  */
-private fun PreparedModel.entryListFindings(
-    subject: DeclaredElement,
+private fun TrackedFactBase.entryListFindings(
+    subject: TrackedDeclaration,
     entries: List<CallOperand>,
     call: ConditionCall,
     declaringGroup: String,
-    element: DeclaredElement,
+    element: TrackedDeclaration,
     member: String,
 ): List<Finding>? {
     val fields = entries.flatMap { entry ->
@@ -177,7 +177,7 @@ private fun PreparedModel.entryListFindings(
         when (declared.declaredKind) {
             DeclaredKind.FIELD -> listOf(declared)
             DeclaredKind.GROUP ->
-                elements.filter { it.declaredKind == DeclaredKind.FIELD && it.path.startsWith("${declared.path}/") }
+                declarations().filter { it.declaredKind == DeclaredKind.FIELD && it.path.startsWith("${declared.path}/") }
             else -> return null
         }
     }
@@ -207,13 +207,13 @@ private fun PreparedModel.entryListFindings(
  * The kind test is A12's own exclusive-or — a number subject demands a number list and every other subject
  * refuses one — so it is asked of the LIST's spelling rather than of each constant's type.
  */
-private fun PreparedModel.constantListFindings(
-    subject: DeclaredElement,
+private fun TrackedFactBase.constantListFindings(
+    subject: TrackedDeclaration,
     subjectOperand: CallOperand,
     entries: List<CallOperand>,
     call: ConditionCall,
     member: String,
-    element: DeclaredElement,
+    element: TrackedDeclaration,
 ): List<Finding>? {
     val numberList = entries.all { it.isNumberLiteral() }
     val stringList = entries.all { it.literal != null }
@@ -267,7 +267,7 @@ private fun JsonObject.lookupDomain(category: String?): List<String>? {
  * (`rulekit.validate.laws.ScalarValueListGateLawsTest`), and deliberately not folded into the shared
  * [baseTypeClass], whose other consumers ask the same question on carriers where the grouping is unmeasured.
  */
-private fun DeclaredElement.listBaseType(): BaseTypeClass? =
+private fun TrackedDeclaration.listBaseType(): BaseTypeClass? =
     if (declaredFieldType() == "CustomFieldType") BaseTypeClass.TEXT else baseTypeClass()
 
 /** Whether this operand is the list's `[entity]` spelling rather than a constant. */
@@ -278,23 +278,23 @@ private fun CallOperand.namesAFieldEntry(): Boolean =
 private fun CallOperand.isNumberLiteral(): Boolean = isNumberLiteral(tokenize(text))
 
 /** The declaration one written operand names, whatever kind it is, or null where nothing resolves it. */
-private fun PreparedModel.declaredTargetOf(
+private fun TrackedFactBase.declaredTargetOf(
     operand: String,
     declaringGroup: String,
-    element: DeclaredElement,
-): DeclaredElement? {
+    element: TrackedDeclaration,
+): TrackedDeclaration? {
     val reference = referencesIn(operand, conditionLanguage).singleOrNull() ?: return null
     val resolved = resolveEntity(declaringGroup, reference.replace("*", ""), element.origin)
     val target = (resolved as? Reference.Resolved)?.path ?: return null
-    return elements.firstOrNull { it.path == target }
+    return declarations().firstOrNull { it.path == target }
 }
 
 private fun gate(
     code: String,
     operator: String,
-    field: DeclaredElement,
+    field: TrackedDeclaration,
     member: String,
-    element: DeclaredElement,
+    element: TrackedDeclaration,
 ): Finding = Finding(
     FindingCategory.A12_CONSTRAINT,
     FindingSeverity.ERROR,
