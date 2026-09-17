@@ -806,10 +806,6 @@ public final class io/github/mbackschat/a12/dm/consistency/OutcomeKt {
 	public static final fun getOutcome (Lio/github/mbackschat/a12/dm/consistency/ConsistencyReport;)Lio/github/mbackschat/a12/dm/consistency/CheckOutcome;
 }
 
-public final class io/github/mbackschat/a12/dm/consistency/OuterMarkerPositionKt {
-	public static final fun outerMarkerPositionFindings (Lio/github/mbackschat/a12/dm/consistency/PreparedModel;)Ljava/util/List;
-}
-
 public final class io/github/mbackschat/a12/dm/consistency/ParallelIterationUniquenessKt {
 	public static final fun parallelIterationUniquenessFindings (Lio/github/mbackschat/a12/dm/consistency/PreparedModel;)Ljava/util/List;
 }

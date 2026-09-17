@@ -1,6 +1,7 @@
 package io.github.mbackschat.a12.dm.consistency
 
 import io.github.mbackschat.a12.dm.consistency.syntax.delimitersBalanced
+import kotlinx.serialization.json.JsonObject
 
 /**
  * The declarations whose own DSL is not sound, and whose error text is therefore not ours to judge.
@@ -32,14 +33,34 @@ import io.github.mbackschat.a12.dm.consistency.syntax.delimitersBalanced
  * which is not a rare shape: a half-typed condition is the ordinary state of a model being edited, and it is
  * exactly when a checker is asked.
  */
-internal fun PreparedModel.declarationsWithUnsoundDsl(): Set<String> {
-    val unresolved = conditionReferences()
+internal fun PreparedModel.declarationsWithUnsoundDsl(): Set<String> = unsoundDslIn(
+    conditionReferences(),
+    elements.map { DslCarrier(it.path, it.kind, it.body) },
+)
+
+/**
+ * The same gate behind the read barrier, for a family that has migrated.
+ *
+ * Both arms live while the estate is part-migrated — ten families still ask the untracked one — and both go
+ * through [unsoundDslIn], because the gate decides whether a whole class of families says anything at all and
+ * two copies of that decision could diverge without a single test noticing.
+ */
+internal fun TrackedFactBase.declarationsWithUnsoundDsl(): Set<String> = unsoundDslIn(
+    conditionReferences(),
+    declarations().map { DslCarrier(it.path, it.kind, it.body) },
+)
+
+/** What the gate reads of one declaration: enough to find its condition texts and name it. */
+private class DslCarrier(val path: String, val kind: String, val body: JsonObject?)
+
+private fun unsoundDslIn(references: List<ConditionReference>, declarations: List<DslCarrier>): Set<String> {
+    val unresolved = references
         .filter { it.target !is Reference.Resolved }
         .map { it.declaredAt }
-    val unparseable = elements.mapNotNull { element ->
-        val body = element.body ?: return@mapNotNull null
-        val broken = conditionTexts(element.kind, body).any { (_, text) -> !delimitersBalanced(text) }
-        element.path.takeIf { broken }
+    val unparseable = declarations.mapNotNull { declaration ->
+        val body = declaration.body ?: return@mapNotNull null
+        val broken = conditionTexts(declaration.kind, body).any { (_, text) -> !delimitersBalanced(text) }
+        declaration.path.takeIf { broken }
     }
     return (unresolved + unparseable).toSet()
 }

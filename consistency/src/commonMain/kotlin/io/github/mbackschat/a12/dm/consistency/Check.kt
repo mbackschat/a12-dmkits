@@ -964,7 +964,7 @@ internal fun checkPrepared(
         prepared.repetitionKeyContainmentFindings() +
         prepared.filterWildcardFindings() +
         prepared.filterBodyGateFindings() +
-        prepared.outerMarkerPositionFindings() +
+        tracked.outerMarkerPositionFindings() +
         prepared.groupConditionWildcardFindings() +
         prepared.sumOfProductsOperandFindings() +
         tracked.operandListConstantFindings() +

@@ -31,10 +31,10 @@ import io.github.mbackschat.a12.dm.consistency.syntax.tokenize
  * computation's own slots have not been measured against here, and the calculation module refuses several
  * constructs outright, so a computation carrying a marker is left alone rather than judged on transfer.
  */
-fun PreparedModel.outerMarkerPositionFindings(): List<Finding> {
+internal fun TrackedFactBase.outerMarkerPositionFindings(): List<Finding> {
     val filterKeyword = CONDITION_OPERATOR_KEYWORDS[conditionLanguage]?.get(HAVING) ?: return emptyList()
     val unsound = declarationsWithUnsoundDsl()
-    return elements.filter { it.kind == "Rule" }.flatMap { element ->
+    return declarations().filter { it.kind == "Rule" }.flatMap { element ->
         val body = element.body ?: return@flatMap emptyList()
         if (element.path in unsound) {
             return@flatMap emptyList()
@@ -61,7 +61,7 @@ private const val HAVING = "Having"
  * than just the one, which can only drop a marker from consideration — the safe direction for a gate whose
  * wrong answer would be an over-rejection.
  */
-private fun PreparedModel.markedPathsOutsideAFilter(
+private fun TrackedFactBase.markedPathsOutsideAFilter(
     text: String,
     member: String,
     filterKeyword: String,
@@ -78,7 +78,7 @@ private fun PreparedModel.markedPathsOutsideAFilter(
 }
 
 /** Every `Having` clause body this text carries, as the operand reader sees it. */
-private fun PreparedModel.filterClauseTextsIn(
+private fun TrackedFactBase.filterClauseTextsIn(
     text: String,
     member: String,
     filterKeyword: String,
@@ -113,7 +113,7 @@ private fun pathRunAt(tokens: List<Token>, from: Int): String? {
 
 private val PATH_STEPS = setOf("/", "..", ".", "*")
 
-private fun finding(written: String, member: String, element: DeclaredElement): Finding = Finding(
+private fun finding(written: String, member: String, element: TrackedDeclaration): Finding = Finding(
     FindingCategory.A12_CONSTRAINT,
     FindingSeverity.ERROR,
     "MVK_INVALID_OUTER_ITERATION",

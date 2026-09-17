@@ -1,5 +1,6 @@
 package io.github.mbackschat.a12.dm.consistency
 
+import io.github.mbackschat.a12.dm.consistency.syntax.ConditionLanguage
 import io.github.mbackschat.a12.dm.consistency.syntax.SyntaxEntry
 import io.github.mbackschat.a12.dm.consistency.syntax.ReferenceSpan
 import io.github.mbackschat.a12.dm.consistency.syntax.referenceSpansIn
@@ -39,19 +40,65 @@ data class ConditionReference(
  * still a reference here.
  */
 fun PreparedModel.conditionReferences(): List<ConditionReference> = elements.flatMap { element ->
-    val body = element.body ?: return@flatMap emptyList()
-    val group = element.path.substringBeforeLast('/', missingDelimiterValue = "")
-    conditionTexts(element.kind, body).flatMap { (member, text) ->
+    conditionReferencesIn(element.path, element.kind, element.body, element.origin, conditionLanguage) {
+        group, written, origin ->
+        resolveEntity(group, written, origin)
+    }
+}
+
+/**
+ * ONE declaration's condition references, behind the read barrier.
+ *
+ * Charged per declaration: this declaration's body for the DSL texts, plus whatever the language read and the
+ * resolution charge on the way through — the same decomposition [TrackedDeclaration.declaredReference] makes,
+ * and for the same reason. The whole-model list below it is the union.
+ *
+ * The reading itself is [conditionReferencesIn], shared with the untracked arm rather than restated: the
+ * first-occurrence rule is load-bearing and a second copy of it could drift silently.
+ */
+internal fun TrackedFactBase.conditionReferencesOf(
+    declaration: TrackedDeclaration,
+): List<ConditionReference> = conditionReferencesIn(
+    declaration.path,
+    declaration.kind,
+    declaration.body,
+    declaration.origin,
+    conditionLanguage,
+) { group, written, origin -> resolveEntity(group, written, origin) }
+
+/** Every declaration's condition references, assembled from the per-declaration arm. */
+internal fun TrackedFactBase.conditionReferences(): List<ConditionReference> =
+    declarations().flatMap { conditionReferencesOf(it) }
+
+/**
+ * The reading both arms share: which names one declaration's condition texts spell, and what each resolves to.
+ *
+ * Parameterized on the declaration's four readable facts and on the resolver, so the barrier can charge each
+ * of them while the reading stays in one place.
+ */
+private inline fun conditionReferencesIn(
+    path: String,
+    kind: String,
+    body: JsonObject?,
+    origin: DeclarationOrigin,
+    language: ConditionLanguage,
+    resolve: (String, String, DeclarationOrigin) -> Reference,
+): List<ConditionReference> {
+    if (body == null) {
+        return emptyList()
+    }
+    val group = path.substringBeforeLast('/', missingDelimiterValue = "")
+    return conditionTexts(kind, body).flatMap { (member, text) ->
         // One scan, keyed by name with the FIRST occurrence winning. `associateBy` would keep the last, and
         // the first is the one a report must point at, A12 stopping at the first defect in a text.
         val firstOccurrence = LinkedHashMap<String, ReferenceSpan>()
-        referenceSpansIn(text, conditionLanguage).forEach { firstOccurrence.getOrPut(it.written) { it } }
+        referenceSpansIn(text, language).forEach { firstOccurrence.getOrPut(it.written) { it } }
         firstOccurrence.values.map { occurrence ->
             ConditionReference(
-                element.path,
+                path,
                 member,
                 occurrence.written,
-                resolveEntity(group, occurrence.written, element.origin),
+                resolve(group, occurrence.written, origin),
                 TextSpan(member, occurrence.start, occurrence.end),
             )
         }
