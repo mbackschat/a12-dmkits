@@ -246,6 +246,22 @@ data class PreparedModel(
     }
 
     /**
+     * Every declaration's body keyed by path, for the cell store's per-path comparison ([CheckCell]).
+     *
+     * A LIST per path, and unfiltered by the variant deletion, because this index answers a different
+     * question from [resolvableByPath]: that one resolves a reference and so keeps one element per path,
+     * while this one has to reproduce what a family could have READ at a path. A model may declare two
+     * elements there — A12 refuses it and this checker reports on it rather than failing — so keeping the
+     * first would let an edit to the second look like no change at all.
+     *
+     * Lazy and built once, because validating the cells of one check asks about most of the model's paths
+     * and a scan per fact would make validation quadratic where the walk is linear.
+     */
+    internal val bodiesByPath: Map<String, List<JsonObject?>> by lazy {
+        elements.groupBy({ it.path }, { it.body })
+    }
+
+    /**
      * Every declaration's own target reference, computed ONCE per model.
      *
      * **This is where the checker's cost curve was, measured 2026-09-15.** `declaredReferences()` is a whole-

@@ -878,11 +878,29 @@ internal fun checkPrepared(
     prepared: PreparedModel,
     modelId: String?,
     inherited: List<Diagnostic>,
-): ConsistencyReport {
+): ConsistencyReport = checkRun(prepared, modelId, inherited, CheckCells.NONE).report
+
+/**
+ * The same check, plus the per-family cells a LATER check over a nearby model can answer from.
+ *
+ * Separate from [checkPrepared] rather than replacing it because the cells are of no use to a caller that
+ * will not ask again: every other call site wants the report and nothing else, and threading a store through
+ * them would put an unused parameter on the checker's own seam.
+ *
+ * @param carried cells from an earlier check, [CheckCells.NONE] for a first one. A cell is used only when
+ *     every fact it recorded still holds the same value in [prepared], so passing cells from an unrelated
+ *     model costs work and cannot change an answer.
+ */
+internal fun checkRun(
+    prepared: PreparedModel,
+    modelId: String?,
+    inherited: List<Diagnostic>,
+    carried: CheckCells,
+): CheckRun {
     prepared.unsupportedConditionLanguage?.let { code ->
         // A12 refuses the model rather than falling back to a language, so there is no reading of its
         // conditions to have — every keyword question would be answered in a language A12 never applies.
-        return ConsistencyReport(
+        return unexamined(ConsistencyReport(
             modelId = modelId,
             status = ConsistencyStatus.Invalid,
             findings = listOf(
@@ -896,7 +914,7 @@ internal fun checkPrepared(
             diagnostics = inherited + prepared.diagnostics,
             checksCompleted = emptySet(),
             gaps = prepared.gaps() + UNIMPLEMENTED_FAMILIES,
-        )
+        ))
     }
     val unmounted = prepared.unexpandedMounts.map {
         CoverageGap(
@@ -909,14 +927,14 @@ internal fun checkPrepared(
         // The fact base is INCOMPLETE, so "no declared element matches" is not a verdict this checker may
         // reach: the elements are declared, in a model this source does not carry. Reporting the references
         // anyway would reject a model A12 accepts, which is the one direction a checker must never take.
-        return ConsistencyReport(
+        return unexamined(ConsistencyReport(
             modelId = modelId,
             status = ConsistencyStatus.Inconclusive,
             findings = emptyList(),
             diagnostics = inherited + prepared.diagnostics,
             checksCompleted = emptySet(),
             gaps = prepared.gaps() + unmounted + UNIMPLEMENTED_FAMILIES,
-        )
+        ))
     }
     // What a migrated family receives instead of the fact base itself, so that it cannot read a fact without
     // the read being observable — the barrier's whole purpose, and a type rather than a lint because an
@@ -935,27 +953,52 @@ internal fun checkPrepared(
     // Eleven families read that text, so without this any condition carrying two defects — the normal state
     // of one being written — draws a class A12 withheld.
     val resolvedFirst = prepared.declarationsWithAnUnresolvableConditionReference()
+    // Validity is decided ONCE per producer and everything below reads that decision — both output channels
+    // and the counter. A producer asked twice could answer twice, and a producer whose findings were reused
+    // while its gaps were recomputed would report two halves of two different models.
+    val reusable = CHECK_PRODUCERS.associateWith { carried.validIn(prepared, it) }
+    val cells = CHECK_PRODUCERS.associateWith { reusable.getValue(it) ?: cellOf(it, tracked, prepared) }
+    val reused = reusable.count { it.value != null }
     val judged = (declared.mapNotNull { it.target.asFinding(it.role, it.declaredAt) } +
         prepared.conditionReferences().mapNotNull {
             it.target.asFinding(ReferenceRole.CONDITION_ENTITY, it.declaredAt, it.member, it.span)
-        } + CHECK_PRODUCERS.flatMap { it.findingsIn(tracked) })
+        } + CHECK_PRODUCERS.flatMap { cells.getValue(it).findings })
         .filterNot { it.at in stopped && it.code !in ERROR_TARGET_CODES }
         .filterNot { it.at in resolvedFirst && it.code in CONDITION_TEXT_CODES }
         .withoutPostParseClassesBehindAPositionedDefect()
     val findings = judged.notSuppressedBy(tracked.variantFilterSuppressed())
-    return ConsistencyReport(
-        modelId = modelId,
-        status = statusOf(findings),
-        findings = findings,
-        diagnostics = inherited + prepared.diagnostics,
-        // The two the composition produced above, then everything the registry ran. Derived rather than
-        // listed: a family wired into the report while this set stayed silent about it was a live
-        // possibility, and the wiring guard could only catch the opposite direction.
-        checksCompleted = COMPOSED_FAMILIES + CHECK_PRODUCERS.flatMap { it.completes },
-        gaps = prepared.gaps() + prepared.emptyFactBase() + findings.buildBlocked() +
-            CHECK_PRODUCERS.flatMap { it.gapsIn(tracked) } + UNREAD_MEMBERS + UNIMPLEMENTED_FAMILIES,
+    return CheckRun(
+        report = ConsistencyReport(
+            modelId = modelId,
+            status = statusOf(findings),
+            findings = findings,
+            diagnostics = inherited + prepared.diagnostics,
+            // The two the composition produced above, then everything the registry ran. Derived rather than
+            // listed: a family wired into the report while this set stayed silent about it was a live
+            // possibility, and the wiring guard could only catch the opposite direction.
+            checksCompleted = COMPOSED_FAMILIES + CHECK_PRODUCERS.flatMap { it.completes },
+            gaps = prepared.gaps() + prepared.emptyFactBase() + findings.buildBlocked() +
+                CHECK_PRODUCERS.flatMap { cells.getValue(it).gaps } + UNREAD_MEMBERS + UNIMPLEMENTED_FAMILIES,
+        ),
+        cells = CheckCells(cells),
+        families = FamilyReuse(reused = reused, recomputed = CHECK_PRODUCERS.size - reused),
     )
 }
+
+/**
+ * One check's report, and what a later check over a nearby model may answer from.
+ *
+ * @param families what this check reused from [checkRun]'s `carried` store — MEASURED from the decisions the
+ *     store actually made, so an implementation that revalidated nothing reports every family recomputed.
+ */
+internal class CheckRun(
+    val report: ConsistencyReport,
+    val cells: CheckCells,
+    val families: FamilyReuse,
+)
+
+/** A model nothing was examined in: a report, no cells to carry, and no family work to have reused. */
+private fun unexamined(report: ConsistencyReport) = CheckRun(report, CheckCells.NONE, FamilyReuse.NONE)
 
 /**
  * Drops the findings A12 never reaches, because a variant filter took the declaration out of its check.

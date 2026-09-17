@@ -923,6 +923,27 @@ final class io.github.mbackschat.a12.dm.consistency/EditReport { // io.github.mb
     final fun toString(): kotlin/String // io.github.mbackschat.a12.dm.consistency/EditReport.toString|toString(){}[0]
 }
 
+final class io.github.mbackschat.a12.dm.consistency/FamilyReuse { // io.github.mbackschat.a12.dm.consistency/FamilyReuse|null[0]
+    constructor <init>(kotlin/Int, kotlin/Int) // io.github.mbackschat.a12.dm.consistency/FamilyReuse.<init>|<init>(kotlin.Int;kotlin.Int){}[0]
+
+    final val recomputed // io.github.mbackschat.a12.dm.consistency/FamilyReuse.recomputed|{}recomputed[0]
+        final fun <get-recomputed>(): kotlin/Int // io.github.mbackschat.a12.dm.consistency/FamilyReuse.recomputed.<get-recomputed>|<get-recomputed>(){}[0]
+    final val reused // io.github.mbackschat.a12.dm.consistency/FamilyReuse.reused|{}reused[0]
+        final fun <get-reused>(): kotlin/Int // io.github.mbackschat.a12.dm.consistency/FamilyReuse.reused.<get-reused>|<get-reused>(){}[0]
+
+    final fun component1(): kotlin/Int // io.github.mbackschat.a12.dm.consistency/FamilyReuse.component1|component1(){}[0]
+    final fun component2(): kotlin/Int // io.github.mbackschat.a12.dm.consistency/FamilyReuse.component2|component2(){}[0]
+    final fun copy(kotlin/Int = ..., kotlin/Int = ...): io.github.mbackschat.a12.dm.consistency/FamilyReuse // io.github.mbackschat.a12.dm.consistency/FamilyReuse.copy|copy(kotlin.Int;kotlin.Int){}[0]
+    final fun equals(kotlin/Any?): kotlin/Boolean // io.github.mbackschat.a12.dm.consistency/FamilyReuse.equals|equals(kotlin.Any?){}[0]
+    final fun hashCode(): kotlin/Int // io.github.mbackschat.a12.dm.consistency/FamilyReuse.hashCode|hashCode(){}[0]
+    final fun toString(): kotlin/String // io.github.mbackschat.a12.dm.consistency/FamilyReuse.toString|toString(){}[0]
+
+    final object Companion { // io.github.mbackschat.a12.dm.consistency/FamilyReuse.Companion|null[0]
+        final val NONE // io.github.mbackschat.a12.dm.consistency/FamilyReuse.Companion.NONE|{}NONE[0]
+            final fun <get-NONE>(): io.github.mbackschat.a12.dm.consistency/FamilyReuse // io.github.mbackschat.a12.dm.consistency/FamilyReuse.Companion.NONE.<get-NONE>|<get-NONE>(){}[0]
+    }
+}
+
 final class io.github.mbackschat.a12.dm.consistency/Finding { // io.github.mbackschat.a12.dm.consistency/Finding|null[0]
     constructor <init>(io.github.mbackschat.a12.dm.consistency/FindingCategory, io.github.mbackschat.a12.dm.consistency/FindingSeverity, kotlin/String, kotlin/String, kotlin/String? = ..., io.github.mbackschat.a12.dm.consistency/TextSpan? = ...) // io.github.mbackschat.a12.dm.consistency/Finding.<init>|<init>(io.github.mbackschat.a12.dm.consistency.FindingCategory;io.github.mbackschat.a12.dm.consistency.FindingSeverity;kotlin.String;kotlin.String;kotlin.String?;io.github.mbackschat.a12.dm.consistency.TextSpan?){}[0]
 
@@ -1093,10 +1114,12 @@ final class io.github.mbackschat.a12.dm.consistency/PreparedModel { // io.github
 }
 
 final class io.github.mbackschat.a12.dm.consistency/Reuse { // io.github.mbackschat.a12.dm.consistency/Reuse|null[0]
-    constructor <init>(kotlin/Int, kotlin/Int, kotlin/Boolean, kotlin/Boolean) // io.github.mbackschat.a12.dm.consistency/Reuse.<init>|<init>(kotlin.Int;kotlin.Int;kotlin.Boolean;kotlin.Boolean){}[0]
+    constructor <init>(kotlin/Int, kotlin/Int, kotlin/Boolean, kotlin/Boolean, io.github.mbackschat.a12.dm.consistency/FamilyReuse) // io.github.mbackschat.a12.dm.consistency/Reuse.<init>|<init>(kotlin.Int;kotlin.Int;kotlin.Boolean;kotlin.Boolean;io.github.mbackschat.a12.dm.consistency.FamilyReuse){}[0]
 
     final val baselineReportReused // io.github.mbackschat.a12.dm.consistency/Reuse.baselineReportReused|{}baselineReportReused[0]
         final fun <get-baselineReportReused>(): kotlin/Boolean // io.github.mbackschat.a12.dm.consistency/Reuse.baselineReportReused.<get-baselineReportReused>|<get-baselineReportReused>(){}[0]
+    final val families // io.github.mbackschat.a12.dm.consistency/Reuse.families|{}families[0]
+        final fun <get-families>(): io.github.mbackschat.a12.dm.consistency/FamilyReuse // io.github.mbackschat.a12.dm.consistency/Reuse.families.<get-families>|<get-families>(){}[0]
     final val preparationReused // io.github.mbackschat.a12.dm.consistency/Reuse.preparationReused|{}preparationReused[0]
         final fun <get-preparationReused>(): kotlin/Boolean // io.github.mbackschat.a12.dm.consistency/Reuse.preparationReused.<get-preparationReused>|<get-preparationReused>(){}[0]
     final val sourcesAdmitted // io.github.mbackschat.a12.dm.consistency/Reuse.sourcesAdmitted|{}sourcesAdmitted[0]
@@ -1108,7 +1131,8 @@ final class io.github.mbackschat.a12.dm.consistency/Reuse { // io.github.mbacksc
     final fun component2(): kotlin/Int // io.github.mbackschat.a12.dm.consistency/Reuse.component2|component2(){}[0]
     final fun component3(): kotlin/Boolean // io.github.mbackschat.a12.dm.consistency/Reuse.component3|component3(){}[0]
     final fun component4(): kotlin/Boolean // io.github.mbackschat.a12.dm.consistency/Reuse.component4|component4(){}[0]
-    final fun copy(kotlin/Int = ..., kotlin/Int = ..., kotlin/Boolean = ..., kotlin/Boolean = ...): io.github.mbackschat.a12.dm.consistency/Reuse // io.github.mbackschat.a12.dm.consistency/Reuse.copy|copy(kotlin.Int;kotlin.Int;kotlin.Boolean;kotlin.Boolean){}[0]
+    final fun component5(): io.github.mbackschat.a12.dm.consistency/FamilyReuse // io.github.mbackschat.a12.dm.consistency/Reuse.component5|component5(){}[0]
+    final fun copy(kotlin/Int = ..., kotlin/Int = ..., kotlin/Boolean = ..., kotlin/Boolean = ..., io.github.mbackschat.a12.dm.consistency/FamilyReuse = ...): io.github.mbackschat.a12.dm.consistency/Reuse // io.github.mbackschat.a12.dm.consistency/Reuse.copy|copy(kotlin.Int;kotlin.Int;kotlin.Boolean;kotlin.Boolean;io.github.mbackschat.a12.dm.consistency.FamilyReuse){}[0]
     final fun equals(kotlin/Any?): kotlin/Boolean // io.github.mbackschat.a12.dm.consistency/Reuse.equals|equals(kotlin.Any?){}[0]
     final fun hashCode(): kotlin/Int // io.github.mbackschat.a12.dm.consistency/Reuse.hashCode|hashCode(){}[0]
     final fun toString(): kotlin/String // io.github.mbackschat.a12.dm.consistency/Reuse.toString|toString(){}[0]
