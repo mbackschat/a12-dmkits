@@ -269,13 +269,16 @@ tasks.named('compileTestKotlinJs') { dependsOn generateWorkspaceMatrix }
 // corpus that has never been generated fails here with that command named.
 def parityCorpusDir = file('consumer-tests/shared/parity')
 def parityCorpusManifest = new File(parityCorpusDir, 'manifest.json')
+// The manifest's source paths are relative to the SHARED tree, not to the corpus: a model committed for
+// another suite is referenced rather than copied, so a fixture has one live statement.
+def parityCorpusSharedDir = file('consumer-tests/shared')
 def generatedParityCorpusDir =
         layout.buildDirectory.dir('generated/parityCorpus/commonTest/kotlin').get().asFile
 def generatedParityCorpus = new File(generatedParityCorpusDir,
         'io/github/mbackschat/a12/dm/consistency/ParityCorpusJson.kt')
 def generateParityCorpus = tasks.register('generateParityCorpus') {
     description = 'Embeds the three-arm parity corpus so the JVM arm compares the packaged arms own bytes.'
-    inputs.files(fileTree(parityCorpusDir) { include '**/*.json'; include '**/*.txt' })
+    inputs.files(fileTree(parityCorpusSharedDir) { include '**/*.json'; include '**/*.txt' })
             .withPropertyName('parityCorpus')
             .withPathSensitivity(PathSensitivity.RELATIVE)
     outputs.file(generatedParityCorpus)
@@ -295,8 +298,8 @@ def generateParityCorpus = tasks.register('generateParityCorpus') {
             }
             return file.getText('UTF-8')
         }
-        def sourceArms = corpus.sources.collect { key, fileName ->
-            def text = readOrFail(new File(parityCorpusDir, "sources/$fileName"), 'source')
+        def sourceArms = corpus.sources.collect { key, relativePath ->
+            def text = readOrFail(new File(parityCorpusSharedDir, relativePath as String), 'source')
             "        ${literal(key)} -> ${literal(text)}"
         }.join('\n')
         def reportArms = corpus.cases.collect { kase ->
@@ -1126,8 +1129,7 @@ tasks.register('syncCheckerParityCorpus', Exec) {
     workingDir nodeConsumerBuildDir
     doFirst {
         commandLine resolveNodeTool('node').absolutePath, 'write-parity-corpus.mjs',
-                new File(sharedConsumerSourceDir, 'parity').absolutePath,
-                new File(sharedConsumerSourceDir, 'models/storefront.dm.json').absolutePath
+                sharedConsumerSourceDir.absolutePath
     }
     outputs.upToDateWhen { false }
 }

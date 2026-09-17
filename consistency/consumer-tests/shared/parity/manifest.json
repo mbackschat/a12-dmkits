@@ -1,9 +1,14 @@
 {
   "sources": {
-    "sound": "storefront.dm.json",
-    "broken": "storefront-broken.dm.json",
-    "broken-plus-field": "storefront-broken-plus-field.dm.json",
-    "unreadable": "not-a-model.txt"
+    "sound": "models/storefront.dm.json",
+    "catalog-resolved": "models/catalog-reference-resolved.dm.json",
+    "catalog-no-fallback": "models/catalog-reference-no-fallback.dm.json",
+    "catalog-absent": "models/catalog-reference-absent.dm.json",
+    "catalog-ambiguous": "models/catalog-reference-ambiguous.dm.json",
+    "catalog-declaring-wins": "models/catalog-reference-declaring-wins.dm.json",
+    "broken": "parity/sources/storefront-broken.dm.json",
+    "broken-plus-field": "parity/sources/storefront-broken-plus-field.dm.json",
+    "unreadable": "parity/sources/not-a-model.txt"
   },
   "cases": [
     {
@@ -49,6 +54,41 @@
       "sources": [
         "broken",
         "sound"
+      ]
+    },
+    {
+      "name": "catalog-resolved",
+      "call": "checkModel",
+      "sources": [
+        "catalog-resolved"
+      ]
+    },
+    {
+      "name": "catalog-no-fallback",
+      "call": "checkModel",
+      "sources": [
+        "catalog-no-fallback"
+      ]
+    },
+    {
+      "name": "catalog-absent",
+      "call": "checkModel",
+      "sources": [
+        "catalog-absent"
+      ]
+    },
+    {
+      "name": "catalog-ambiguous",
+      "call": "checkModel",
+      "sources": [
+        "catalog-ambiguous"
+      ]
+    },
+    {
+      "name": "catalog-declaring-wins",
+      "call": "checkModel",
+      "sources": [
+        "catalog-declaring-wins"
       ]
     }
   ]

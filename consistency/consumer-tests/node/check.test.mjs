@@ -15,10 +15,11 @@
 // and projects each shared verdict into `node:test`. The shared modules are TypeScript imported directly —
 // Node strips the types, so this arm still needs no build step.
 //
-// Two shared suites run here, and they answer different questions. `cases.ts` asserts NAMED fields, which is
-// what makes it readable and also what makes it blind to every member it does not name; `parity.ts` compares
-// the FULL report document against a committed corpus every arm reads, which is what F's "JS matches JVM"
-// oracle asks for and what no per-field assertion can give.
+// Three shared suites run here, and they answer different questions. `cases.ts` asserts NAMED fields, which
+// is what makes it readable and also what makes it blind to every member it does not name; `parity.ts`
+// compares the FULL report document against a committed corpus every arm reads, which is what F's "JS matches
+// JVM" oracle asks for and what no per-field assertion can give; `references.ts` replays B0's §3.4 grid,
+// which B0's own acceptance hands to F because B0 must not depend on a later slice's delivery tooling.
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
@@ -26,6 +27,7 @@ import { readFileSync } from 'node:fs';
 import { checkEditJson, checkModelJson } from 'a12-consistency';
 import { runCases } from '../shared/cases.ts';
 import { runParity } from '../shared/parity.ts';
+import { REFERENCE_MODELS, runReferenceControls } from '../shared/references.ts';
 
 const read = (relative) => readFileSync(new URL(relative, import.meta.url), 'utf8');
 const soundModel = read('../shared/models/storefront.dm.json');
@@ -37,21 +39,32 @@ const api = { checkModelJson, checkEditJson };
 const manifest = JSON.parse(read('../shared/parity/manifest.json'));
 const corpus = {
   manifest,
+  // The manifest's paths are relative to `consumer-tests/shared/`, so a model committed for another suite is
+  // referenced rather than copied — one source of bytes, not two that drift.
   sources: Object.fromEntries(
-    Object.entries(manifest.sources).map(([key, file]) => [key, read(`../shared/parity/sources/${file}`)]),
+    Object.entries(manifest.sources).map(([key, path]) => [key, read(`../shared/${path}`)]),
   ),
   reports: Object.fromEntries(
     manifest.cases.map(({ name }) => [name, read(`../shared/parity/reports/${name}.json`)]),
   ),
 };
 
-const outcomes = [...runCases(api, soundModel), ...runParity(api, corpus)];
+// B0's reference grid, whose packaged replay B0 explicitly hands to F rather than claiming itself.
+const referenceModels = Object.fromEntries(
+  REFERENCE_MODELS.map((key) => [key, read(`../shared/models/${key}.dm.json`)]),
+);
+
+const outcomes = [
+  ...runCases(api, soundModel),
+  ...runParity(api, corpus),
+  ...runReferenceControls(api, referenceModels),
+];
 
 // A case set that silently became empty would make every `test()` below vanish and the file still pass — the
 // vacuity this arm is most exposed to, since the count lives in another file. `runParity` carries the same
 // guard for its own half, because its corpus is loaded from paths this file resolves.
 test('the shared consumer corpus reached this arm', () => {
-  assert.ok(outcomes.length >= 12, `expected the shared cases and the parity corpus, got ${outcomes.length}`);
+  assert.ok(outcomes.length >= 18, `expected the three shared suites, got ${outcomes.length}`);
 });
 
 for (const { name, ok, detail } of outcomes) {

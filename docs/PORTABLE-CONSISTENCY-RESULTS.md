@@ -8,6 +8,28 @@ Dated measurements of the Kernel-free checker, newest first. **Every LATENCY her
 
 Results never land in a spec, and a measurement's home is not its explanation: the mechanism paragraphs below are marked as hypotheses where they are hypotheses.
 
+## 2026-09-17 — B0's reference grid, replayed through the packaged arms <a id="b0-replay-2026-09-17"></a>
+
+B0 hands this replay away in as many words — *"the packed Node/browser replay of these same cases belongs to F, which owns the delivery tooling, so B0 does not silently depend on a later slice's deliverable"* — and F's row 8 lists it. It had not run. `ReferenceBindingTest` drives `prepare(...).resolve(base, name)`, an **internal** API no consumer can reach, so it cannot say whether the packaged artifact carries the behaviour at all.
+
+Five models now drive the same grid end to end, through a rule whose condition names the field, which is the only way a resolution outcome becomes observable from outside. Measured through the packed tarball:
+
+| B0 row | model | observed |
+|---|---|---|
+| **the positive control** — one model-wide `Code`, fallback ON | `catalog-reference-resolved` | **INCONCLUSIVE, no findings, `complete: false`** |
+| row 1 — the same bytes, fallback OFF | `catalog-reference-no-fallback` | `MVK_INVALID_ENTITY` at `/Catalog/CodeRequired`, span slicing `Code` |
+| absent reference | `catalog-reference-absent` | `MVK_INVALID_ENTITY`, span slicing `Missing` |
+| ambiguous fallback | `catalog-reference-ambiguous` | `MVK_FIELDNAME_NOT_UNIQUE`, `explain` naming both `/Catalog/Warehouse/Code` and `/Catalog/Store/Code` |
+| declaring-group precedence | `catalog-reference-declaring-wins` | **INCONCLUSIVE, no findings** — the declaring group wins although two candidates exist |
+
+**B0's type-level clause had to be TRANSLATED, not transferred.** B0 establishes "the slice's type cannot emit VALID" by *the absence of a VALID factory* — a claim about a Kotlin API that no JSON string can carry. The packaged form is that no row reports `VALID` and every row reports `complete: false`, asserted over the whole grid rather than over the one row a reader might check. A control asserting only "no findings" would pass on a checker that had stopped checking.
+
+**Authoring the positive control was not trivial, and that is the useful finding.** The first version was **INVALID for a reason unrelated to references**: `MVK_ERROR_FIELD_NOT_REFERENCED`, because the rule's `errorEntityRelPath` pointed at a field its own condition never mentions. A12 requires the error field to be referenced by the condition, so "a model A12 accepts" is a conjunction, and a positive control is only a control once every other constraint is satisfied too. Had the row asserted a code rather than acceptance, it would have passed while measuring the wrong rejection.
+
+**The control, and it is the over-rejection direction.** Replacing the declaring-group tier (`candidate in resolvableByPath` → `candidate in emptySet<String>()`) makes the model-wide fallback run first. Observed: `catalog-reference-declaring-wins` reports `MVK_FIELDNAME_NOT_UNIQUE` on a model A12 accepts — **an over-rejection, the one forbidden direction** — and it is caught twice over, by B0's own row and independently by that model's full-report parity case.
+
+**The corpus grew while shedding a duplicate.** The parity manifest's source map now records a path relative to `consumer-tests/shared/`, so a model committed for another suite is REFERENCED rather than copied: the five catalog models joined the parity corpus for free, `storefront.dm.json` stopped existing twice, and the corpus went from 6 cases over 4 sources to **11 cases over 9 sources, 3 of them derived here**. Both packaged arms now run 23 shared cases; Chrome runs all of them.
+
 ## 2026-09-17 — the MIRROR, measured absent and then built <a id="mirror-2026-09-17"></a>
 
 F's oracle gives "ordinary evaluation is checker-independent" its own row and asks for *"the mirrored guard on the interpreter's published JVM/JavaScript production closure and shipped files, with its own forbidden-dependency positive control"*. Half of it already existed and half did not, and reading the guards would have got both halves wrong — which is why the edge was planted instead.

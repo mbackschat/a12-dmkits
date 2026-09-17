@@ -1,0 +1,102 @@
+{
+  "header": {
+    "id": "catalog-reference-no-fallback",
+    "locales": [
+      {
+        "code": "en_US"
+      }
+    ]
+  },
+  "content": {
+    "modelConfig": {
+      "fieldRefByShortNameAllowed": false
+    },
+    "modelRoot": {
+      "rootGroups": [
+        {
+          "type": "Group",
+          "id": "/Catalog",
+          "name": "Catalog",
+          "Group": {
+            "elements": [
+              {
+                "type": "Field",
+                "id": "/Catalog/Note",
+                "name": "Note",
+                "Field": {
+                  "fieldType": {
+                    "type": "StringType",
+                    "StringType": {
+                      "maxLength": 240
+                    }
+                  }
+                }
+              },
+              {
+                "type": "Group",
+                "id": "/Catalog/Warehouse",
+                "name": "Warehouse",
+                "Group": {
+                  "elements": [
+                    {
+                      "type": "Field",
+                      "id": "/Catalog/Warehouse/Code",
+                      "name": "Code",
+                      "Field": {
+                        "fieldType": {
+                          "type": "StringType",
+                          "StringType": {
+                            "maxLength": 24
+                          }
+                        }
+                      }
+                    }
+                  ]
+                }
+              },
+              {
+                "type": "Group",
+                "id": "/Catalog/Store",
+                "name": "Store",
+                "Group": {
+                  "elements": [
+                    {
+                      "type": "Field",
+                      "id": "/Catalog/Store/Other",
+                      "name": "Other",
+                      "Field": {
+                        "fieldType": {
+                          "type": "StringType",
+                          "StringType": {
+                            "maxLength": 24
+                          }
+                        }
+                      }
+                    }
+                  ]
+                }
+              },
+              {
+                "type": "Rule",
+                "id": "/Catalog/CodeRequired",
+                "name": "CodeRequired",
+                "Rule": {
+                  "errorCondition": "FieldNotFilled(Code)",
+                  "errorEntityRelPath": "../Warehouse/Code",
+                  "errorCode": "CATALOG_CODE_REQUIRED",
+                  "severity": "ERROR",
+                  "errorMessage": [
+                    {
+                      "locale": "en_US",
+                      "text": "Every catalogued item needs a warehouse code."
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        }
+      ]
+    }
+  }
+}

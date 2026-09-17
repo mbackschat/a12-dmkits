@@ -14,6 +14,7 @@ import { checkEditJson, checkModelJson } from 'a12-consistency';
 
 import { runCases, type CaseOutcome } from '../../shared/cases.ts';
 import { runParity, type ParityCorpus, type ParityManifest } from '../../shared/parity.ts';
+import { REFERENCE_MODELS, runReferenceControls } from '../../shared/references.ts';
 
 const status = document.querySelector<HTMLElement>('#status');
 const outcomes = document.querySelector<HTMLElement>('#outcomes');
@@ -47,9 +48,11 @@ const fetchText = async (path: string): Promise<string> => {
 /** The parity corpus, resolved from the manifest — a file the manifest does not list is not fetched. */
 const fetchCorpus = async (): Promise<ParityCorpus> => {
   const manifest = JSON.parse(await fetchText('parity/manifest.json')) as ParityManifest;
+  // The manifest's paths are relative to `consumer-tests/shared/`, and Vite serves that tree's data
+  // directories at the site root, so the path is already the URL.
   const sources: Record<string, string> = {};
-  for (const [key, file] of Object.entries(manifest.sources)) {
-    sources[key] = await fetchText(`parity/sources/${file}`);
+  for (const [key, path] of Object.entries(manifest.sources)) {
+    sources[key] = await fetchText(path);
   }
   const reports: Record<string, string> = {};
   for (const { name } of manifest.cases) {
@@ -61,7 +64,15 @@ const fetchCorpus = async (): Promise<ParityCorpus> => {
 try {
   const api = { checkModelJson, checkEditJson };
   const soundModel = await fetchText('models/storefront.dm.json');
-  const results = [...runCases(api, soundModel), ...runParity(api, await fetchCorpus())];
+  const referenceModels: Record<string, string> = {};
+  for (const key of REFERENCE_MODELS) {
+    referenceModels[key] = await fetchText(`models/${key}.dm.json`);
+  }
+  const results = [
+    ...runCases(api, soundModel),
+    ...runParity(api, await fetchCorpus()),
+    ...runReferenceControls(api, referenceModels),
+  ];
   const failed = results.filter((result) => !result.ok);
   publish(
     failed.length === 0 ? 'passed' : 'failed',
