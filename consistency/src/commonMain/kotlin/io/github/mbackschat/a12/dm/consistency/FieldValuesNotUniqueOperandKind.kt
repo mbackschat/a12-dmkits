@@ -36,10 +36,10 @@ import io.github.mbackschat.a12.dm.consistency.syntax.callsIn
  * `UnspecifiedType` and the two boolean kinds — because the refusal set is an allow-list of what was
  * measured, never the complement of the admitted one.
  */
-fun PreparedModel.fieldValuesNotUniqueOperandKindFindings(): List<Finding> {
+internal fun TrackedFactBase.fieldValuesNotUniqueOperandKindFindings(): List<Finding> {
     val keywords = CONDITION_OPERATOR_KEYWORDS[conditionLanguage] ?: return emptyList()
     val carrier = keywords[FIELD_VALUES_NOT_UNIQUE] ?: return emptyList()
-    return elements.mapNotNull { element ->
+    return declarations().mapNotNull { element ->
         val body = element.body ?: return@mapNotNull null
         val declaringGroup = element.path.substringBeforeLast('/', missingDelimiterValue = "")
         conditionTexts(element.kind, body).firstNotNullOfOrNull { (member, text) ->
@@ -57,10 +57,10 @@ private const val KIND_REFUSED = "MVK_ONLY_STRING_ENUM_NUMBER_DATE_ALLOWED"
 /** The one declared type measured as refused by this gate; every other refusal belongs to a later one. */
 private const val DATE_RANGE = "DateRangeType"
 
-private fun PreparedModel.operandKindFinding(
+private fun TrackedFactBase.operandKindFinding(
     call: ConditionCall,
     declaringGroup: String,
-    element: DeclaredElement,
+    element: TrackedDeclaration,
     member: String,
 ): Finding? {
     // The list is taken whole or not at all: an operand this reader cannot reduce is one whose kind it
@@ -95,5 +95,5 @@ private fun PreparedModel.operandKindFinding(
     return null
 }
 
-private fun finding(explain: String, element: DeclaredElement): Finding =
+private fun finding(explain: String, element: TrackedDeclaration): Finding =
     Finding(FindingCategory.A12_CONSTRAINT, FindingSeverity.ERROR, KIND_REFUSED, explain, element.path)

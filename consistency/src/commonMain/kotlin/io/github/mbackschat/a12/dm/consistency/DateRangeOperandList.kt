@@ -45,7 +45,7 @@ import io.github.mbackschat.a12.dm.consistency.syntax.splitAtIn
  * **Silent where the pre-gates answer**, therefore, and on a reference this reader cannot resolve, on a
  * `DateRangeType` declaring no format, and on a repeated entity, whose duplicate class A12 draws first.
  */
-fun PreparedModel.dateRangeOperandListFindings(): List<Finding> {
+internal fun TrackedFactBase.dateRangeOperandListFindings(): List<Finding> {
     val keywords = CONDITION_OPERATOR_KEYWORDS[conditionLanguage] ?: return emptyList()
     val carriers = RANGE_OVERLAP_CARRIERS
         .mapNotNull { (id, carrier) -> keywords[id]?.let { it to carrier } }
@@ -53,7 +53,7 @@ fun PreparedModel.dateRangeOperandListFindings(): List<Finding> {
     if (carriers.isEmpty()) {
         return emptyList()
     }
-    return elements.mapNotNull { element ->
+    return declarations().mapNotNull { element ->
         val body = element.body ?: return@mapNotNull null
         val group = element.path.substringBeforeLast('/', missingDelimiterValue = "")
         conditionTexts(element.kind, body).firstNotNullOfOrNull { (member, text) ->
@@ -79,16 +79,16 @@ private val RANGE_OVERLAP_CARRIERS = mapOf(
 private val YEAR_INTERPRETING = setOf("FROM", "TO")
 
 /** One written reference and the fields A12's `expandToFieldList` takes for it, in declaration order. */
-private class ListedReference(val written: String, val fields: List<DeclaredElement>)
+private class ListedReference(val written: String, val fields: List<TrackedDeclaration>)
 
 private class RangeDefect(val code: String, val at: String, val because: String)
 
 /** The first gate this call fails, in A12's own order, or null where none fails and where it may not judge. */
-private fun PreparedModel.rangeListDefect(
+private fun TrackedFactBase.rangeListDefect(
     call: ConditionCall,
     carrier: RangeCarrier,
     declaringGroup: String,
-    element: DeclaredElement,
+    element: TrackedDeclaration,
 ): RangeDefect? {
     val listed = when (carrier) {
         RangeCarrier.PLAIN_LIST -> {
@@ -159,10 +159,10 @@ private fun yearDisagreement(listed: List<ListedReference>): RangeDefect? {
  * ([valueListConditionGateFindings], `MVK_INVALID_PARAMETER_FOR_DATE_RANGE_COMPARISON`), and its VALUE list
  * takes a group outright — the two differ, so neither carrier may borrow the other's answer.
  */
-private fun PreparedModel.groupOperandDefect(
+private fun TrackedFactBase.groupOperandDefect(
     call: ConditionCall,
     declaringGroup: String,
-    element: DeclaredElement,
+    element: TrackedDeclaration,
 ): RangeDefect? = call.operands.firstNotNullOfOrNull { operand ->
     val target = resolvedTarget(operand.text, declaringGroup, element) ?: return null
     if (target.declaredKind == DeclaredKind.GROUP) {
@@ -181,10 +181,10 @@ private fun PreparedModel.groupOperandDefect(
  * A lone operand is `MVK_PARAMSIZE_INVALIDFN`, which `ENTITY_LIST_ARITY` owns and A12 asks after the group
  * gate above — so this reader declines rather than reproducing it.
  */
-private fun PreparedModel.plainList(
+private fun TrackedFactBase.plainList(
     call: ConditionCall,
     declaringGroup: String,
-    element: DeclaredElement,
+    element: TrackedDeclaration,
 ): List<ListedReference>? {
     if (call.operands.size < 2) {
         return null
@@ -201,10 +201,10 @@ private fun PreparedModel.plainList(
  * The subject must already be one plain unstarred field and every value must already share its base type;
  * both are [valueListConditionGateFindings]' classes, so a call failing either never reaches here.
  */
-private fun PreparedModel.valueList(
+private fun TrackedFactBase.valueList(
     call: ConditionCall,
     declaringGroup: String,
-    element: DeclaredElement,
+    element: TrackedDeclaration,
 ): List<ListedReference>? {
     val (written, opposite) = call.splitAtIn() ?: return null
     val subject = bareReferenceField(written.singleOrNull() ?: return null, declaringGroup, element)
@@ -217,10 +217,10 @@ private fun PreparedModel.valueList(
 }
 
 /** One written operand and the fields beneath it, groups expanded — A12's own `expandToFieldList`. */
-private fun PreparedModel.expandedReference(
+private fun TrackedFactBase.expandedReference(
     operand: String,
     declaringGroup: String,
-    element: DeclaredElement,
+    element: TrackedDeclaration,
 ): ListedReference? {
     val target = resolvedTarget(operand, declaringGroup, element) ?: return null
     val fields = expandToFields(target.path) ?: return null
@@ -228,15 +228,15 @@ private fun PreparedModel.expandedReference(
 }
 
 /** The declaration one written operand names, whatever kind it is, or null where nothing resolves it. */
-private fun PreparedModel.resolvedTarget(
+private fun TrackedFactBase.resolvedTarget(
     operand: String,
     declaringGroup: String,
-    element: DeclaredElement,
-): DeclaredElement? {
+    element: TrackedDeclaration,
+): TrackedDeclaration? {
     val reference = referencesIn(operand, conditionLanguage).singleOrNull() ?: return null
     val resolved = resolveEntity(declaringGroup, reference.replace("*", ""), element.origin)
     val path = (resolved as? Reference.Resolved)?.path ?: return null
-    return elements.firstOrNull { it.path == path }
+    return declarations().firstOrNull { it.path == path }
 }
 
 private const val DATE_RANGE_TYPE = "DateRangeType"
@@ -244,7 +244,7 @@ private const val DATE_RANGE_TYPE = "DateRangeType"
 private fun finding(
     defect: RangeDefect,
     call: ConditionCall,
-    element: DeclaredElement,
+    element: TrackedDeclaration,
     member: String,
 ): Finding = Finding(
     FindingCategory.A12_CONSTRAINT,

@@ -954,7 +954,7 @@ internal fun checkPrepared(
         tracked.hModelFormConstructFindings() +
         tracked.declaredPatternFindings() +
         tracked.emptyGroupOperandFindings() + tracked.errorFieldReferenceFindings() +
-        prepared.groupListOperandFindings() + tracked.repetitionWildcardFindings() +
+        tracked.groupListOperandFindings() + tracked.repetitionWildcardFindings() +
         tracked.computedTargetKindFindings() + tracked.computedTargetIndexFieldFindings() +
         tracked.rawTypeLengthFindings() + tracked.computationPreconditionFeatureFindings() +
         tracked.computationCycleFindings() +
@@ -968,7 +968,7 @@ internal fun checkPrepared(
         tracked.groupConditionWildcardFindings() +
         tracked.sumOfProductsOperandFindings() +
         tracked.operandListConstantFindings() +
-        prepared.temporalAggregateOperandFindings() +
+        tracked.temporalAggregateOperandFindings() +
         tracked.semanticIndexStructureFindings() +
         tracked.semanticIndexKeyFindings() +
         tracked.repetitionNotUniqueCombinationFindings() +
@@ -979,28 +979,28 @@ internal fun checkPrepared(
         tracked.valueListConditionGateFindings() +
         tracked.entityListArityFindings() +
         tracked.entityListPreGateFindings() +
-        prepared.fieldValuesNotUniqueOperandKindFindings() +
+        tracked.fieldValuesNotUniqueOperandKindFindings() +
         tracked.fieldListOperationOperandFindings() +
-        prepared.dateArithmeticOperandFindings() +
+        tracked.dateArithmeticOperandFindings() +
         tracked.roundingOperandFindings() +
         tracked.fieldValueOperatorOperandFindings() +
         tracked.comparisonOperatorOperandFindings() +
         tracked.booleanComparisonAgreementFindings() +
         tracked.stringEnumComparisonAgreementFindings() +
         tracked.numberComparisonScaleFindings() +
-        prepared.temporalComparisonAgreementFindings() +
+        tracked.temporalComparisonAgreementFindings() +
         tracked.patternComparisonOperandFindings() +
-        prepared.operandRepetitionScopeFindings() +
-        prepared.dateConstructionSlotFindings() +
+        tracked.operandRepetitionScopeFindings() +
+        tracked.dateConstructionSlotFindings() +
         tracked.hModelPathSuffixFindings() +
         tracked.fieldOperandKindFindings() +
         tracked.filteredOperandKindFindings() +
         tracked.categoryReferenceFindings() +
         tracked.scalarValueListGateFindings() +
         tracked.dateArgumentSlotFindings() +
-        prepared.dateRangeOperandListFindings() +
-        prepared.validityConditionOperandFindings() +
-        prepared.baseYearRequirementFindings() +
+        tracked.dateRangeOperandListFindings() +
+        tracked.validityConditionOperandFindings() +
+        tracked.baseYearRequirementFindings() +
         tracked.rangeOperandGateFindings() +
         tracked.enumDisplayComparabilityFindings() +
         tracked.valueAsDateOperandFindings() +
@@ -1093,7 +1093,7 @@ internal fun checkPrepared(
             tracked.supportedCharacterGaps() + tracked.enumTextForbiddenCharacterGaps() +
             tracked.hintListValueGaps() + tracked.hModelFormConstructGaps() +
             tracked.fieldTypeBindingGaps() +
-            prepared.typeDefinitionBodyGaps() + tracked.declaredPatternGaps() + UNREAD_MEMBERS + UNIMPLEMENTED_FAMILIES,
+            tracked.typeDefinitionBodyGaps() + tracked.declaredPatternGaps() + UNREAD_MEMBERS + UNIMPLEMENTED_FAMILIES,
     )
 }
 
@@ -1143,7 +1143,7 @@ private fun PreparedModel.emptyFactBase(): List<CoverageGap> = if (elements.isNo
  * keyed on a field's inline `fieldType`. The carrier is visibly in scope elsewhere in the same report, which
  * is exactly why its absence here has to be said rather than inferred.
  */
-private fun PreparedModel.typeDefinitionBodyGaps(): List<CoverageGap> = if (declaredTypeDefinitionIds.isEmpty()) {
+private fun TrackedFactBase.typeDefinitionBodyGaps(): List<CoverageGap> = if (declaredTypeDefinitionIds.isEmpty()) {
     emptyList()
 } else {
     listOf(

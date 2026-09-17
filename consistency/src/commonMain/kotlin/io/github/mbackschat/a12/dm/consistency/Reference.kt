@@ -433,17 +433,6 @@ private val SPEC_PUNCTUATION = setOf("[", "]", "/", ".")
  * refuses for something else, which is the defect corpus mutation found in the arity gates
  * ([KERNEL-FINDINGS KF381]).
  */
-internal fun PreparedModel.bareReferenceField(
-    text: String,
-    declaringGroup: String,
-    element: DeclaredElement,
-): DeclaredElement? {
-    val reference = bareReferenceIn(text, conditionLanguage) ?: return null
-    val target = addressedTargetOf(reference, declaringGroup, element) ?: return null
-    return elements.firstOrNull { it.path == target && it.declaredKind == DeclaredKind.FIELD }
-}
-
-/** The same reading through the read barrier, over the tracked arm of the chain it composes. */
 internal fun TrackedFactBase.bareReferenceField(
     text: String,
     declaringGroup: String,
@@ -485,18 +474,6 @@ internal fun isBareEntitySpec(text: String): Boolean {
  * a family that judged such an operand would name its own class on a model A12 refuses for something else —
  * the defect the corpus mutation found in the arity gates ([KERNEL-FINDINGS KF381]).
  */
-internal fun PreparedModel.addressedTargetOf(
-    reference: String,
-    declaringGroup: String,
-    element: DeclaredElement,
-): String? {
-    val target = (resolveEntity(declaringGroup, reference.replace("*", ""), element.origin)
-        as? Reference.Resolved)?.path ?: return null
-    val starred = starredLevelsOf(reference, declaringGroup, element) ?: return null
-    return addressedTargetIn(target, starred, iterationGroupOf(element) ?: declaringGroup, iteratedLevels(target))
-}
-
-/** The same question through the read barrier, over the tracked arm of each helper it composes. */
 internal fun TrackedFactBase.addressedTargetOf(
     reference: String,
     declaringGroup: String,
@@ -638,12 +615,12 @@ internal fun numberLiteralScale(tokens: List<Token>): Int? {
  *
  * Null where the operand names a group with no field beneath it, which A12 refuses under its own class.
  */
-internal fun PreparedModel.expandToFields(path: String): List<DeclaredElement>? {
-    val target = elements.firstOrNull { it.path == path } ?: return null
+internal fun TrackedFactBase.expandToFields(path: String): List<TrackedDeclaration>? {
+    val target = declarationAt(path) ?: return null
     if (target.declaredKind == DeclaredKind.FIELD) {
         return listOf(target)
     }
-    return elements
-        .filter { it.declaredKind == DeclaredKind.FIELD && it.path.startsWith("${target.path}/") }
+    return declarations()
+        .filter { it.declaredKind == DeclaredKind.FIELD && it.path.startsWith("$path/") }
         .takeIf { it.isNotEmpty() }
 }

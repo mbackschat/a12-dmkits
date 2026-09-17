@@ -58,7 +58,7 @@ internal val TEMPORAL_DECLARED_TYPES: Set<String> = TEMPORAL_FORMAT_MEMBERS.keys
  * typed as temporal at all — a format A12 does not recognise is a separate answer, handled where a caller
  * needs it.
  */
-internal fun declaredTemporalFormatOf(field: DeclaredElement): String? =
+internal fun declaredTemporalFormatOf(field: TrackedDeclaration): String? =
     field.declaredFormat(TEMPORAL_FORMAT_MEMBERS)
 
 /**
@@ -77,7 +77,7 @@ internal val PLAINLY_NON_TEMPORAL_TYPES = setOf(
 )
 
 /** The format a `DateRangeType` declares, or null when this field is not one. */
-internal fun declaredDateRangeFormatOf(field: DeclaredElement): String? =
+internal fun declaredDateRangeFormatOf(field: TrackedDeclaration): String? =
     field.declaredFormat(mapOf("DateRangeType" to "format"))
 
 /**
@@ -86,10 +86,10 @@ internal fun declaredDateRangeFormatOf(field: DeclaredElement): String? =
  * An absent key is A12's `STANDARD`, which is why null and `"STANDARD"` mean the same thing to every caller:
  * the declaration expresses the default by omitting the property.
  */
-internal fun declaredRangeYearInterpretationOf(field: DeclaredElement): String? =
+internal fun declaredRangeYearInterpretationOf(field: TrackedDeclaration): String? =
     field.declaredFormat(mapOf("DateRangeType" to "interpretationOfYear"))
 
-private fun DeclaredElement.declaredFormat(members: Map<String, String>): String? {
+private fun TrackedDeclaration.declaredFormat(members: Map<String, String>): String? {
     val declared = body?.get("fieldType") as? JsonObject ?: return null
     val type = (declared["type"] as? JsonPrimitive)?.contentOrNull ?: return null
     val member = members[type] ?: return null
@@ -103,10 +103,6 @@ private fun DeclaredElement.declaredFormat(members: Map<String, String>): String
  * Only a `DateType` carries the member, so every other declaration answers false rather than unknown: the
  * precision is a `DateType` body key and its absence there is A12's own default.
  */
-internal fun declaresAPartialPrecision(field: DeclaredElement): Boolean =
-    declaresAPartialPrecisionIn(field.body)
-
-/** The same reading through the read barrier, sharing one implementation so the two cannot drift. */
 internal fun declaresAPartialPrecision(field: TrackedDeclaration): Boolean =
     declaresAPartialPrecisionIn(field.body)
 

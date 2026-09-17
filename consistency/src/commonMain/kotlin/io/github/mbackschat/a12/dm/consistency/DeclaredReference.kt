@@ -111,13 +111,6 @@ private inline fun resolveRelativeIn(
  * @return null for a declaration that names no target, one that resolves to nothing, and one whose target is
  *   not a FIELD — in each case the caller falls back to the declaring group, which is what it asked before.
  */
-internal fun PreparedModel.iterationGroupOf(element: DeclaredElement): String? {
-    val relative = declaredTargetRelPathOf(element.kind, element.body) ?: return null
-    val target = (resolveRelative(element.path, relative) as? Reference.Resolved)?.path ?: return null
-    return groupOfTargetField(target)
-}
-
-/** The same question through the read barrier; the declaration's body and the resolvable set charge themselves. */
 internal fun TrackedFactBase.iterationGroupOf(element: TrackedDeclaration): String? {
     val relative = declaredTargetRelPathOf(element.kind, element.body) ?: return null
     val target = (resolveRelative(element.path, relative) as? Reference.Resolved)?.path ?: return null

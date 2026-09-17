@@ -41,13 +41,13 @@ import io.github.mbackschat.a12.dm.consistency.syntax.callsIn
  * operand would be a claim with nothing behind it. A numeric literal needs no judgement and a computed amount
  * is left alone.
  */
-fun PreparedModel.dateArithmeticOperandFindings(): List<Finding> {
+internal fun TrackedFactBase.dateArithmeticOperandFindings(): List<Finding> {
     val keywords = CONDITION_OPERATOR_KEYWORDS[conditionLanguage] ?: return emptyList()
     val carriers = ADDED_COMPONENT_OF.mapNotNull { (id, unit) -> keywords[id]?.let { it to unit } }.toMap()
     if (carriers.isEmpty()) {
         return emptyList()
     }
-    return elements.flatMap { element ->
+    return declarations().flatMap { element ->
         val body = element.body ?: return@flatMap emptyList()
         val declaringGroup = element.path.substringBeforeLast('/', missingDelimiterValue = "")
         conditionTexts(element.kind, body).flatMap { (member, text) ->
@@ -77,11 +77,11 @@ private val REFUSE_A_STAMP = setOf(Component.MONTH, Component.YEAR)
 private class ShiftDefect(val code: String, val at: String, val because: String)
 
 /** The first gate this call fails, in A12's own order, or null where none fails and where it may not judge. */
-private fun PreparedModel.shiftDefect(
+private fun TrackedFactBase.shiftDefect(
     call: ConditionCall,
     unit: Component,
     declaringGroup: String,
-    element: DeclaredElement,
+    element: TrackedDeclaration,
 ): ShiftDefect? {
     val date = call.operands.firstOrNull() ?: return null
     val field = bareReferenceField(date.text, declaringGroup, element) ?: return null
@@ -127,7 +127,7 @@ private fun PreparedModel.shiftDefect(
 private fun finding(
     defect: ShiftDefect,
     call: ConditionCall,
-    element: DeclaredElement,
+    element: TrackedDeclaration,
     member: String,
 ): Finding = Finding(
     FindingCategory.A12_CONSTRAINT,

@@ -69,9 +69,9 @@ import io.github.mbackschat.a12.dm.consistency.syntax.callsIn
  * On those three carriers the kind gate runs LAST of the gates this file judges and outruns only the arity
  * class, which is A12's order and is not reproduced by accident: the checks below are written in it.
  */
-fun PreparedModel.groupListOperandFindings(): List<Finding> {
+internal fun TrackedFactBase.groupListOperandFindings(): List<Finding> {
     val judged = spelled(GROUP_LIST_OPERATORS) + spelled(FIELD_REFUSING_OPERATORS)
-    return elements.flatMap { element ->
+    return declarations().flatMap { element ->
         val body = element.body ?: return@flatMap emptyList()
         val group = element.path.substringBeforeLast('/', missingDelimiterValue = "")
         conditionTexts(element.kind, body).flatMap { (member, text) ->
@@ -99,13 +99,13 @@ private val FIELD_REFUSING_OPERATORS = setOf("NumberOfFilledGroups", "GroupFille
 private val SOLE_ROOT_CARRIERS = setOf("AtLeastOneGroupFilled", "NoGroupFilled", "NumberOfFilledGroups")
 
 /** How this model's language spells each of [ids]; an id the catalog does not carry contributes nothing. */
-private fun PreparedModel.spelled(ids: Set<String>): Set<String> =
+private fun TrackedFactBase.spelled(ids: Set<String>): Set<String> =
     ids.mapNotNull { CONDITION_OPERATOR_KEYWORDS[conditionLanguage]?.get(it) }.toSet()
 
-private fun PreparedModel.operandFinding(
+private fun TrackedFactBase.operandFinding(
     call: ConditionCall,
     declaringGroup: String,
-    element: DeclaredElement,
+    element: TrackedDeclaration,
     member: String,
 ): Finding? {
     val bound = call.operands.map { it to it.resolvedBy(this, declaringGroup, element.origin) }
@@ -151,7 +151,7 @@ private fun PreparedModel.operandFinding(
  * The carrier set is the whole law: five group-list quantifiers ADMIT a field operand and only these three
  * refuse one, so widening it by analogy with the operators' names would refuse five shapes A12 takes.
  */
-private fun PreparedModel.kindFinding(
+private fun TrackedFactBase.kindFinding(
     call: ConditionCall,
     resolved: List<String>,
     member: String,
@@ -175,7 +175,7 @@ private fun PreparedModel.kindFinding(
  * The arity half counts the AUTHORED operands rather than the resolved ones: "a root beside another operand"
  * is a fact about the list, and an operand this reader could not reduce to a path is still an operand.
  */
-private fun PreparedModel.rootFinding(
+private fun TrackedFactBase.rootFinding(
     call: ConditionCall,
     resolved: List<String>,
     member: String,
@@ -199,17 +199,17 @@ private fun PreparedModel.rootFinding(
     }
 }
 
-private fun PreparedModel.soleRootCarriers(): Set<String> = spelled(SOLE_ROOT_CARRIERS)
+private fun TrackedFactBase.soleRootCarriers(): Set<String> = spelled(SOLE_ROOT_CARRIERS)
 
-private fun PreparedModel.isGroup(path: String): Boolean = declares(path, DeclaredKind.GROUP)
+private fun TrackedFactBase.isGroup(path: String): Boolean = declares(path, DeclaredKind.GROUP)
 
-private fun PreparedModel.isField(path: String): Boolean = declares(path, DeclaredKind.FIELD)
+private fun TrackedFactBase.isField(path: String): Boolean = declares(path, DeclaredKind.FIELD)
 
-private fun PreparedModel.declares(path: String, kind: DeclaredKind): Boolean =
-    elements.any { it.path == path && it.declaredKind == kind }
+private fun TrackedFactBase.declares(path: String, kind: DeclaredKind): Boolean =
+    declarations().any { it.path == path && it.declaredKind == kind }
 
 private fun CallOperand.resolvedBy(
-    model: PreparedModel,
+    model: TrackedFactBase,
     declaringGroup: String,
     origin: DeclarationOrigin,
 ): Reference? = path?.let { model.resolveEntity(declaringGroup, it, origin) }

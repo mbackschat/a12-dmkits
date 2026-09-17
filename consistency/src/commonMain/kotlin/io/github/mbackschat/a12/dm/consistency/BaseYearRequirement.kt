@@ -51,7 +51,7 @@ import io.github.mbackschat.a12.dm.consistency.syntax.tokenize
  * **Silent on everything when the model declares a base year**, which is the whole family's precondition,
  * and on a `Date` construction this reader cannot parse into slots.
  */
-fun PreparedModel.baseYearRequirementFindings(): List<Finding> {
+internal fun TrackedFactBase.baseYearRequirementFindings(): List<Finding> {
     if (hasBaseYear) {
         return emptyList()
     }
@@ -59,7 +59,7 @@ fun PreparedModel.baseYearRequirementFindings(): List<Finding> {
     val baseYear = keywords[BASE_YEAR_CONSTANT] ?: return emptyList()
     val dateConstruction = keywords[DATE_CONSTRUCTION] ?: return emptyList()
     val unsound = declarationsWithUnsoundDsl()
-    return elements.mapNotNull { element ->
+    return declarations().mapNotNull { element ->
         val body = element.body ?: return@mapNotNull null
         conditionTexts(element.kind, body).firstNotNullOfOrNull { (member, text) ->
             if (namesTheConstant(text, baseYear)) {
@@ -73,8 +73,8 @@ fun PreparedModel.baseYearRequirementFindings(): List<Finding> {
 }
 
 /** The same constant in an error message, which A12 refuses from its own error-text vocabulary. */
-private fun PreparedModel.messageConstantFinding(
-    element: DeclaredElement,
+private fun TrackedFactBase.messageConstantFinding(
+    element: TrackedDeclaration,
     body: kotlinx.serialization.json.JsonObject,
     unsound: Set<String>,
 ): Finding? {
@@ -112,10 +112,10 @@ private const val DATE_CONSTRUCTION = "Date"
  * Read off the token stream rather than the text so a field or a rule whose name merely contains the word
  * is not mistaken for it — the reason this is not a substring search.
  */
-private fun PreparedModel.namesTheConstant(text: String, baseYear: String): Boolean =
+private fun TrackedFactBase.namesTheConstant(text: String, baseYear: String): Boolean =
     tokenize(text).any { it.kind == TokenKind.NAME && it.text == baseYear }
 
-private fun constantFinding(baseYear: String, element: DeclaredElement, member: String): Finding = Finding(
+private fun constantFinding(baseYear: String, element: TrackedDeclaration, member: String): Finding = Finding(
     FindingCategory.A12_CONSTRAINT,
     FindingSeverity.ERROR,
     "MVK_NO_BASE_YEAR",
@@ -130,9 +130,9 @@ private fun constantFinding(baseYear: String, element: DeclaredElement, member: 
  * A12 reads the year from the model only when the parameter is absent, so a construction that spells one is
  * this family's business in neither direction.
  */
-private fun PreparedModel.yearlessFinding(
+private fun TrackedFactBase.yearlessFinding(
     shape: CallShape,
-    element: DeclaredElement,
+    element: TrackedDeclaration,
     member: String,
 ): Finding? {
     if (shape.operands.size != YEARLESS_ARITY || aDateSlotAnswersFirst(shape.operands, element)) {

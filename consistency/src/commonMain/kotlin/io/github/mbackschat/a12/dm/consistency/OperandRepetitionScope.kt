@@ -60,12 +60,12 @@ import kotlinx.serialization.json.contentOrNull
  * so a target outside it is never this family's to judge. Our own `Rule.build()` refuses that pair up front
  * and is measured OVER-REJECTING there ([KF212]), which is a second reason not to inherit the shape.
  */
-fun PreparedModel.operandRepetitionScopeFindings(): List<Finding> {
+internal fun TrackedFactBase.operandRepetitionScopeFindings(): List<Finding> {
     val keywords = CONDITION_OPERATOR_KEYWORDS[conditionLanguage] ?: return emptyList()
     val unjudgeable = setOfNotNull(keywords[SEMANTIC_INDEX])
     val filterKeyword = setOfNotNull(keywords[HAVING])
     val targets = declaredReferences().associateBy { it.declaredAt }
-    return elements.mapNotNull { element ->
+    return declarations().mapNotNull { element ->
         val body = element.body ?: return@mapNotNull null
         val target = (targets[element.path]?.target as? Reference.Resolved)?.path ?: return@mapNotNull null
         val targetGroup = groupOfTargetField(target) ?: return@mapNotNull null
@@ -121,91 +121,43 @@ private const val HAVING = "Having"
 private const val SEMANTIC_INDEX = "SemanticIndex"
 
 /** The group whose repetitions A12 addresses the target by, or null when the target is not a FIELD. */
-internal fun PreparedModel.groupOfTargetField(target: String): String? =
-    groupOfTargetFieldIn(elements.any { it.path == target && it.declaredKind == DeclaredKind.FIELD }, target)
-
-/** The same question through the read barrier; it reads the set's shape and no body. */
-internal fun TrackedFactBase.groupOfTargetField(target: String): String? = groupOfTargetFieldIn(
-    declarationAt(target)?.declaredKind == DeclaredKind.FIELD, target)
-
-private fun groupOfTargetFieldIn(namesAField: Boolean, target: String): String? =
-    if (namesAField) target.substringBeforeLast('/', missingDelimiterValue = "") else null
+internal fun TrackedFactBase.groupOfTargetField(target: String): String? =
+    if (declarationAt(target)?.declaredKind == DeclaredKind.FIELD) {
+        target.substringBeforeLast('/', missingDelimiterValue = "")
+    } else {
+        null
+    }
 
 /**
  * The class ONE reference draws, walking the repeatable levels it crosses from the outermost inwards.
  *
  * @return null wherever the reference is admitted, or is a shape another family owns.
  */
-internal fun PreparedModel.levelClassOf(
-    written: String,
-    declaringGroup: String,
-    targetGroup: String,
-    element: DeclaredElement,
-): String? = levelClassIn(
-    written,
-    targetGroup,
-    resolve = { bare -> resolveEntity(declaringGroup, bare, element.origin) },
-    namesAField = { path -> elements.any { it.path == path && it.declaredKind == DeclaredKind.FIELD } },
-    starredLevels = { starredLevelsOf(it, declaringGroup, element) },
-    crossedRepetitions = { crossedRepetitions(it) },
-    pathOf = { it.path },
-    parallelVerdict = { level, group -> parallelVerdictOf(level, group) },
-)
-
-/** The same ordered walk through the read barrier, over the tracked arm of every read it makes. */
 internal fun TrackedFactBase.levelClassOf(
     written: String,
     declaringGroup: String,
     targetGroup: String,
     element: TrackedDeclaration,
-): String? = levelClassIn(
-    written,
-    targetGroup,
-    resolve = { bare -> resolveEntity(declaringGroup, bare, element.origin) },
-    namesAField = { path -> declarationAt(path)?.declaredKind == DeclaredKind.FIELD },
-    starredLevels = { starredLevelsOf(it, declaringGroup, element) },
-    crossedRepetitions = { crossedRepetitions(it) },
-    pathOf = { it.path },
-    parallelVerdict = { level, group -> parallelVerdictOf(level, group) },
-)
-
-/**
- * The walk itself, kept as ONE implementation because its order is the law.
- *
- * Five gates answer in source order and three of them return a different class, so two copies of this — one
- * per carrier — could disagree about which class a level draws while each arm's own tests stayed green. The
- * lambdas are what let the two carriers share it; they also keep the walk LAZY, so the tracked arm charges
- * only the declarations an early return actually reached.
- */
-private inline fun <T> levelClassIn(
-    written: String,
-    targetGroup: String,
-    resolve: (String) -> Reference,
-    namesAField: (String) -> Boolean,
-    starredLevels: (String) -> Set<String>?,
-    crossedRepetitions: (String) -> List<T>,
-    pathOf: (T) -> String,
-    parallelVerdict: (T, String) -> ParallelVerdict,
 ): String? {
-    val resolved = resolve(written.replace("*", "")) as? Reference.Resolved ?: return null
+    val resolved = resolveEntity(declaringGroup, written.replace("*", ""), element.origin)
+        as? Reference.Resolved ?: return null
     // A reference naming a GROUP is judged by the group-condition families, whose operators run their own
     // wildcard gates ahead of this walk; only a FIELD read reaches it with nothing else to say about it.
-    if (!namesAField(resolved.path)) {
+    if (declarationAt(resolved.path)?.declaredKind != DeclaredKind.FIELD) {
         return null
     }
-    val starred = starredLevels(written) ?: return null
+    val starred = starredLevelsOf(written, declaringGroup, element) ?: return null
     var wildcardSeen = false
     crossedRepetitions(resolved.path).forEach { level ->
-        val levelPath = pathOf(level)
-        if (levelPath in starred) {
+        if (level.path in starred) {
             wildcardSeen = true
             return@forEach
         }
         when {
             wildcardSeen -> return NO_WILDCARD
-            levelPath.startsWith("$targetGroup/") -> return NO_WILDCARD
-            targetGroup == levelPath || targetGroup.startsWith("$levelPath/") -> Unit
-            else -> when (val verdict = parallelVerdict(level, targetGroup)) {
+            level.path.startsWith("$targetGroup/") -> return NO_WILDCARD
+            targetGroup == level.path || targetGroup.startsWith("${level.path}/") -> Unit
+            else -> when (val verdict = parallelVerdictOf(level, targetGroup)) {
                 is ParallelVerdict.Refused -> return verdict.code
                 ParallelVerdict.Joint, ParallelVerdict.Unjudged -> Unit
             }
@@ -247,71 +199,33 @@ internal sealed interface ParallelVerdict {
  * order, and the `getIndexGroup` walk that resolves each end is what can answer with the multiple-index
  * class before either error-field comparison happens.
  */
-internal fun PreparedModel.parallelVerdictOf(
-    level: DeclaredElement,
-    targetGroup: String,
-): ParallelVerdict = parallelVerdictIn(
-    level,
-    targetGroup,
-    pathOf = { it.path },
-    indexNameOf = { indexFieldNameOf(it) },
-    keyedGroupsAtOrAbove = { keyedGroupsAtOrAbove(it) },
-    indexFieldAt = { group, name -> indexFieldAt(group, name) },
-    baseFamilyOf = { baseFamilyOf(it.body) },
-)
-
-/**
- * The same verdict through the read barrier, over the tracked arm of every read it makes.
- *
- * Passed as lambdas rather than pre-computed values on purpose: the walk short-circuits at five points, and
- * pre-reading what an early return never reaches would charge a body this verdict did not depend on. Safe —
- * over-charging can only lose reuse — but the whole slice exists to keep the charge tight.
- */
 internal fun TrackedFactBase.parallelVerdictOf(
     level: TrackedDeclaration,
     targetGroup: String,
-): ParallelVerdict = parallelVerdictIn(
-    level,
-    targetGroup,
-    pathOf = { it.path },
-    indexNameOf = { indexFieldNameOf(it) },
-    keyedGroupsAtOrAbove = { keyedGroupsAtOrAbove(it) },
-    indexFieldAt = { group, name -> indexFieldAt(group, name) },
-    baseFamilyOf = { baseFamilyOf(it.body) },
-)
-
-private inline fun <T> parallelVerdictIn(
-    level: T,
-    targetGroup: String,
-    pathOf: (T) -> String,
-    indexNameOf: (T) -> String?,
-    keyedGroupsAtOrAbove: (String) -> List<T>,
-    indexFieldAt: (String, String) -> T?,
-    baseFamilyOf: (T) -> String?,
 ): ParallelVerdict {
-    val operandIndexName = indexNameOf(level) ?: return ParallelVerdict.Refused(NO_WILDCARD)
-    val operandChain = keyedGroupsAtOrAbove(pathOf(level))
+    val operandIndexName = indexFieldNameOf(level) ?: return ParallelVerdict.Refused(NO_WILDCARD)
+    val operandChain = keyedGroupsAtOrAbove(level.path)
     if (operandChain.size > 1) {
         return ParallelVerdict.Refused(MULTIPLE_INDEX_FIELDS)
     }
     // A declared index field that names nothing in its own group is A12's `MVK_INDEX_FIELD_INVALID`, and
     // that model shape is measured NOT BUILDABLE with no code at all (KF295) — so it cannot arrive here,
     // and silence is what a reader of a model that somehow carries it should get.
-    val operandIndex = indexFieldAt(pathOf(level), operandIndexName) ?: return ParallelVerdict.Unjudged
+    val operandIndex = indexFieldAt(level.path, operandIndexName) ?: return ParallelVerdict.Unjudged
     val targetChain = keyedGroupsAtOrAbove(targetGroup)
     if (targetChain.size > 1) {
         return ParallelVerdict.Refused(MULTIPLE_INDEX_FIELDS)
     }
     val keyedForTheTarget = targetChain.firstOrNull()
         ?: return ParallelVerdict.Refused("MVK_ERROR_FIELD_NO_INDEX")
-    val targetIndexName = indexNameOf(keyedForTheTarget) ?: return ParallelVerdict.Unjudged
+    val targetIndexName = indexFieldNameOf(keyedForTheTarget) ?: return ParallelVerdict.Unjudged
     if (targetIndexName != operandIndexName) {
         return ParallelVerdict.Refused("MVK_ERROR_FIELD_INVALID_INDEX")
     }
-    val targetIndex = indexFieldAt(pathOf(keyedForTheTarget), targetIndexName)
+    val targetIndex = indexFieldAt(keyedForTheTarget.path, targetIndexName)
         ?: return ParallelVerdict.Unjudged
-    val operandFamily = baseFamilyOf(operandIndex) ?: return ParallelVerdict.Unjudged
-    val targetFamily = baseFamilyOf(targetIndex) ?: return ParallelVerdict.Unjudged
+    val operandFamily = baseFamilyOf(operandIndex.body) ?: return ParallelVerdict.Unjudged
+    val targetFamily = baseFamilyOf(targetIndex.body) ?: return ParallelVerdict.Unjudged
     return if (operandFamily == targetFamily) {
         ParallelVerdict.Joint
     } else {
@@ -320,20 +234,11 @@ private inline fun <T> parallelVerdictIn(
 }
 
 /** Every group at or above [path] that declares an index field — A12's `getIndexGroup` walk. */
-private fun PreparedModel.keyedGroupsAtOrAbove(path: String): List<DeclaredElement> = elements
-    .filter { it.keysAGroupAtOrAbove(path) && indexFieldNameOf(it) != null }
-
 private fun TrackedFactBase.keyedGroupsAtOrAbove(path: String): List<TrackedDeclaration> = declarations()
     .filter { it.keysAGroupAtOrAbove(path) && indexFieldNameOf(it) != null }
 
-private fun DeclaredElement.keysAGroupAtOrAbove(path: String): Boolean =
-    declaredKind == DeclaredKind.GROUP && (path == this.path || path.startsWith("${this.path}/"))
-
 private fun TrackedDeclaration.keysAGroupAtOrAbove(path: String): Boolean =
     declaredKind == DeclaredKind.GROUP && (path == this.path || path.startsWith("${this.path}/"))
-
-private fun PreparedModel.indexFieldAt(group: String, name: String): DeclaredElement? =
-    elements.firstOrNull { it.path == "$group/$name" && it.declaredKind == DeclaredKind.FIELD }
 
 private fun TrackedFactBase.indexFieldAt(group: String, name: String): TrackedDeclaration? =
     declarationAt("$group/$name")?.takeIf { it.declaredKind == DeclaredKind.FIELD }
@@ -363,7 +268,7 @@ private fun scopeFinding(
     code: String,
     written: String,
     target: String,
-    element: DeclaredElement,
+    element: TrackedDeclaration,
     member: String,
 ) = Finding(
     FindingCategory.A12_CONSTRAINT,

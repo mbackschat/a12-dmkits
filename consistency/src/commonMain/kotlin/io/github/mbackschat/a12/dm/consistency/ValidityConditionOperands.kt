@@ -50,14 +50,14 @@ import io.github.mbackschat.a12.dm.consistency.syntax.normalizedPath
  * **Silent on a `TypeDefType` or `UnspecifiedType` subject**, whose effective type this reader does not
  * resolve, and on a subject shape it cannot reduce to one bare path.
  */
-fun PreparedModel.validityConditionOperandFindings(): List<Finding> {
+internal fun TrackedFactBase.validityConditionOperandFindings(): List<Finding> {
     val keywords = CONDITION_OPERATOR_KEYWORDS[conditionLanguage] ?: return emptyList()
     val carriers = VALIDITY_CONDITIONS.mapNotNull { keywords[it] }.toSet()
     val dateConstruction = keywords[DATE_CONSTRUCTION] ?: return emptyList()
     if (carriers.isEmpty()) {
         return emptyList()
     }
-    return elements.mapNotNull { element ->
+    return declarations().mapNotNull { element ->
         val body = element.body ?: return@mapNotNull null
         val group = element.path.substringBeforeLast('/', missingDelimiterValue = "")
         conditionTexts(element.kind, body).firstNotNullOfOrNull { (member, text) ->
@@ -88,12 +88,12 @@ private val SUBJECT_PATH_PUNCTUATION = setOf("/", "..")
 private class ValidityDefect(val code: String, val at: String, val because: String)
 
 /** The first gate this call fails, in A12's own order, or null where none fails and where it may not judge. */
-private fun PreparedModel.validityDefect(
+private fun TrackedFactBase.validityDefect(
     shape: CallShape,
     shapes: List<CallShape>,
     dateConstruction: String,
     declaringGroup: String,
-    element: DeclaredElement,
+    element: TrackedDeclaration,
 ): ValidityDefect? {
     val sole = shape.operands.singleOrNull()
     if (sole != null) {
@@ -113,11 +113,11 @@ private fun PreparedModel.validityDefect(
  * leave a model A12 refuses with no finding at all. The mirror measured that and the gates were added here
  * rather than disclosed.
  */
-private fun PreparedModel.predefinedTypeArmDefect(
+private fun TrackedFactBase.predefinedTypeArmDefect(
     subject: List<Token>,
     name: Token,
     declaringGroup: String,
-    element: DeclaredElement,
+    element: TrackedDeclaration,
 ): ValidityDefect? {
     if (!subject.all { it.isName() || it.text in SUBJECT_PATH_PUNCTUATION || it.text == "*" }) {
         return null
@@ -125,7 +125,7 @@ private fun PreparedModel.predefinedTypeArmDefect(
     val written = normalizedPath(subject)
     val resolved = resolveEntity(declaringGroup, written.replace("*", ""), element.origin)
         as? Reference.Resolved ?: return null
-    val target = elements.firstOrNull { it.path == resolved.path } ?: return null
+    val target = declarations().firstOrNull { it.path == resolved.path } ?: return null
     if (target.declaredKind != DeclaredKind.FIELD) {
         return ValidityDefect(
             "MVK_NO_GROUPS_ALLOWED", target.path,
@@ -176,11 +176,11 @@ private fun PreparedModel.predefinedTypeArmDefect(
  * The sole operand must BE a `Date` construction; the validity condition also spells a `Time` one, whose
  * grammar rule this reader does not cover, and anything else under the keyword is another law's.
  */
-private fun PreparedModel.dateArmDefect(
+private fun TrackedFactBase.dateArmDefect(
     sole: List<Token>,
     shapes: List<CallShape>,
     dateConstruction: String,
-    element: DeclaredElement,
+    element: TrackedDeclaration,
 ): ValidityDefect? {
     val head = sole.firstOrNull()?.takeIf { it.text == dateConstruction } ?: return null
     val construction = shapes.firstOrNull { it.operator == dateConstruction && it.at == head.start }
@@ -200,7 +200,7 @@ private fun PreparedModel.dateArmDefect(
 private fun finding(
     defect: ValidityDefect,
     shape: CallShape,
-    element: DeclaredElement,
+    element: TrackedDeclaration,
     member: String,
 ): Finding = Finding(
     FindingCategory.A12_CONSTRAINT,

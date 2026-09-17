@@ -6,19 +6,14 @@ import kotlin.test.assertIs
 import kotlin.test.assertNull
 
 /**
- * The parallel-level walk answers the same on both receivers while the estate is part-migrated.
+ * What the parallel-level walk answers, on the fixture that separates its two outcomes.
  *
  * **Why this chain earns its own lock rather than riding the families'.** `levelClassOf` is an ORDERED walk
  * whose five gates return three different classes, and it sits on `parallelVerdictOf`, which resolves an
- * index field at each end and compares their base families. Both are shared by migrated and unmigrated
- * families, so the two arms answering differently would make one half of the estate report
- * `MVK_ERROR_FIELD_INVALID_INDEX` where the other half stays silent — on one model, with every family's own
- * test green, because a family only ever calls one arm.
- *
- * The walk itself is one implementation shared by both arms, so what this test can still catch is the arms
- * feeding it different DECLARATIONS, which is exactly what the per-carrier index lookups do.
+ * index field at each end and compares their base families. Four families read it and none of their own
+ * tests reaches the index comparison, so a defect in it would show up as silence rather than as a failure.
  */
-class IndexChainArmsTest {
+class IndexChainTest {
 
     /**
      * Two repeatable branches under one claim, each keyed by its own declared index field.
@@ -56,37 +51,29 @@ class IndexChainArmsTest {
         return prepare(admitted)
     }
 
-    private fun PreparedModel.classOnBothArms(): Pair<String?, String?> {
-        val rule = "/Claim/ItemCovered"
-        val untracked = levelClassOf(
-            "Charges/Amount", "/Claim", "/Claim/Items", elements.single { it.path == rule })
-        val tracked = tracked().levelClassOf(
+    private fun PreparedModel.levelClass(): String? {
+        val tracked = tracked()
+        return tracked.levelClassOf(
             "Charges/Amount", "/Claim", "/Claim/Items",
-            tracked().declarations().single { it.path == rule })
-        return untracked to tracked
+            tracked.declarations().single { it.path == "/Claim/ItemCovered" })
     }
 
     @Test
-    fun bothArmsRefuseAParallelLevelWithADifferentIndexFieldAlike() {
+    fun aParallelLevelWithADifferentIndexFieldDrawsTheIndexClass() {
         // `RowNo` against the charges' `LineNo`: two keyed branches that do not correspond, which A12 refuses
         // by name — the one outcome of this walk that is neither silence nor a wildcard class.
-        val (untracked, tracked) = prepared("RowNo").classOnBothArms()
-
         assertEquals(
             "MVK_ERROR_FIELD_INVALID_INDEX",
-            untracked,
-            "the mismatched keys must draw the index class, or this test compares two silences",
+            prepared("RowNo").levelClass(),
+            "the mismatched keys must draw the index class",
         )
-        assertEquals(untracked, tracked, "the two arms must draw the same class")
     }
 
     @Test
-    fun bothArmsStaySilentWhereTheBranchesIterateJointly() {
+    fun theWalkStaysSilentWhereTheBranchesIterateJointly() {
         // The same model with one key renamed: both branches now resolve to `LineNo` over a number field, so
-        // A12 iterates them together and this walk has nothing to say.
-        val (untracked, tracked) = prepared("LineNo").classOnBothArms()
-
-        assertNull(untracked, "jointly iterated branches must draw nothing")
-        assertEquals(untracked, tracked, "the two arms must stay silent alike")
+        // A12 iterates them together and this walk has nothing to say. The control for the row above — the
+        // two differ in one character of the fixture.
+        assertNull(prepared("LineNo").levelClass(), "jointly iterated branches must draw nothing")
     }
 }

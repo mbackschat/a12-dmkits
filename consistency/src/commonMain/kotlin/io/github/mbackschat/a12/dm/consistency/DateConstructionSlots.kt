@@ -56,14 +56,14 @@ import kotlinx.serialization.json.intOrNull
  * ([KF423](../../../../../../../../../../docs/KERNEL-FINDINGS.md#kf423)). Only its measured law is reported — an extract operator in either
  * year slot — because the pair's constant and entity arms answer to gates this grid did not separate.
  */
-fun PreparedModel.dateConstructionSlotFindings(): List<Finding> {
+internal fun TrackedFactBase.dateConstructionSlotFindings(): List<Finding> {
     val keywords = CONDITION_OPERATOR_KEYWORDS[conditionLanguage] ?: return emptyList()
     val constructions = TemporalConstruction.entries.mapNotNull { c -> keywords[c.id]?.let { it to c } }.toMap()
     if (constructions.isEmpty()) {
         return emptyList()
     }
     val extractOps = EXTRACT_OPS.mapNotNull { (id, op) -> keywords[id]?.let { it to op } }.toMap()
-    return elements.mapNotNull { element ->
+    return declarations().mapNotNull { element ->
         val body = element.body ?: return@mapNotNull null
         conditionTexts(element.kind, body).firstNotNullOfOrNull { (member, text) ->
             callShapes(text, conditionLanguage, syntaxEntryOf(member))
@@ -97,9 +97,9 @@ internal data class DateConstructionReading(val aSlotAnswersFirst: Boolean, val 
  * know whether those answered — and the three-slot arity gate that [readDateConstruction] applies would hide
  * exactly the shape that law is about.
  */
-internal fun PreparedModel.aDateSlotAnswersFirst(
+internal fun TrackedFactBase.aDateSlotAnswersFirst(
     operands: List<List<Token>>,
-    element: DeclaredElement,
+    element: TrackedDeclaration,
 ): Boolean {
     val keywords = CONDITION_OPERATOR_KEYWORDS[conditionLanguage] ?: return false
     val extractOps = EXTRACT_OPS.mapNotNull { (id, op) -> keywords[id]?.let { it to op } }.toMap()
@@ -107,9 +107,9 @@ internal fun PreparedModel.aDateSlotAnswersFirst(
 }
 
 /** Read the `Date` construction written at [operands]; null where this reader does not judge that shape. */
-internal fun PreparedModel.readDateConstruction(
+internal fun TrackedFactBase.readDateConstruction(
     operands: List<List<Token>>,
-    element: DeclaredElement,
+    element: TrackedDeclaration,
 ): DateConstructionReading? {
     val keywords = CONDITION_OPERATOR_KEYWORDS[conditionLanguage] ?: return null
     val extractOps = EXTRACT_OPS.mapNotNull { (id, op) -> keywords[id]?.let { it to op } }.toMap()
@@ -212,8 +212,8 @@ private enum class TemporalConstruction(val id: String, val slots: List<Slot>, v
     }
 
     fun firstDefectiveSlot(
-        model: PreparedModel,
-        element: DeclaredElement,
+        model: TrackedFactBase,
+        element: TrackedDeclaration,
         operands: List<List<Token>>,
         extractOps: Map<String, String>,
     ): SlotDefect? =
@@ -227,8 +227,8 @@ private enum class TemporalConstruction(val id: String, val slots: List<Slot>, v
      * ([baseYearRequirementFindings]) and what [firstDefectiveSlot] deliberately declines to look at.
      */
     fun defectAmongSlots(
-        model: PreparedModel,
-        element: DeclaredElement,
+        model: TrackedFactBase,
+        element: TrackedDeclaration,
         operands: List<List<Token>>,
         extractOps: Map<String, String>,
     ): SlotDefect? {
@@ -365,7 +365,7 @@ private fun Slot.extractDefect(op: String, ownFamily: Set<String>): SlotDefect? 
 private fun slotFinding(
     defect: SlotDefect,
     construction: String,
-    element: DeclaredElement,
+    element: TrackedDeclaration,
     member: String,
 ): Finding = Finding(
     FindingCategory.A12_CONSTRAINT,
@@ -390,15 +390,14 @@ private fun slotFinding(
  * may not have, and that is the one type whose refusal cannot be told apart from the others by name.
  */
 private fun Slot.entityDefect(
-    model: PreparedModel,
-    element: DeclaredElement,
+    model: TrackedFactBase,
+    element: TrackedDeclaration,
     written: String,
 ): SlotDefect? {
     val declaringGroup = element.path.substringBeforeLast('/', missingDelimiterValue = "")
     val resolved = model.resolveEntity(declaringGroup, written, element.origin) as? Reference.Resolved
         ?: return null
-    val field = model.elements
-        .firstOrNull { it.path == resolved.path && it.declaredKind == DeclaredKind.FIELD }
+    val field = model.declarationAt(resolved.path)?.takeIf { it.declaredKind == DeclaredKind.FIELD }
         ?: return null
     // A12's reference reader answers BEFORE this gate. A component reached by crossing a repetition the
     // rule's own group does not sit in draws `MVK_NO_WILDCARD` there and the slot gate never runs — measured

@@ -58,13 +58,13 @@ import io.github.mbackschat.a12.dm.consistency.syntax.callsIn
  * the reader cannot tell apart from the rest. `Sum` is not a carrier at all — it refuses a temporal operand
  * outright with its own code.
  */
-fun PreparedModel.temporalAggregateOperandFindings(): List<Finding> {
+internal fun TrackedFactBase.temporalAggregateOperandFindings(): List<Finding> {
     val keywords = CONDITION_OPERATOR_KEYWORDS[conditionLanguage] ?: return emptyList()
     val carriers = ENTITY_LIST_AGGREGATES.mapNotNull { keywords[it] }.toSet()
     if (carriers.isEmpty()) {
         return emptyList()
     }
-    return elements.flatMap { element ->
+    return declarations().flatMap { element ->
         val body = element.body ?: return@flatMap emptyList()
         val declaringGroup = element.path.substringBeforeLast('/', missingDelimiterValue = "")
         conditionTexts(element.kind, body).flatMap { (member, text) ->
@@ -91,10 +91,10 @@ private data class TemporalOperand(val path: String, val format: String, val com
  * The list is taken whole or not at all: an operand this reader cannot reduce to one resolved entity is one
  * whose components it cannot know, and comparing the rest would judge a shorter list than A12 judged.
  */
-private fun PreparedModel.operandDefect(
+private fun TrackedFactBase.operandDefect(
     call: ConditionCall,
     declaringGroup: String,
-    element: DeclaredElement,
+    element: TrackedDeclaration,
 ): OperandDefect? {
     val fields = call.operands.flatMap { operand ->
         val written = operand.path ?: return null
@@ -160,7 +160,7 @@ private fun compatible(first: Set<Component>, other: Set<Component>, hasBaseYear
 private fun operandFinding(
     defect: OperandDefect,
     call: ConditionCall,
-    element: DeclaredElement,
+    element: TrackedDeclaration,
     member: String,
 ): Finding = Finding(
     FindingCategory.A12_CONSTRAINT,

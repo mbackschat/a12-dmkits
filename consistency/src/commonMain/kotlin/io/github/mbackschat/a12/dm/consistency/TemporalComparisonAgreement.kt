@@ -49,7 +49,7 @@ import io.github.mbackschat.a12.dm.consistency.syntax.comparisonsIn
  * admits — the one direction this project forbids. `Today`, `Now` and `BaseYear` are left alone for the
  * neighbouring reason, that their format is not one this reader can name.
  */
-fun PreparedModel.temporalComparisonAgreementFindings(): List<Finding> = elements.mapNotNull { element ->
+internal fun TrackedFactBase.temporalComparisonAgreementFindings(): List<Finding> = declarations().mapNotNull { element ->
     val body = element.body ?: return@mapNotNull null
     val group = element.path.substringBeforeLast('/', missingDelimiterValue = "")
     conditionTexts(element.kind, body).firstNotNullOfOrNull { (member, text) ->
@@ -91,10 +91,10 @@ private val TemporalSide.isOrderable: Boolean
 /** The class this comparison fails on, and the side that fails it as the author wrote it. */
 private data class TemporalDefect(val code: String, val wrote: String)
 
-private fun PreparedModel.temporalFinding(
+private fun TrackedFactBase.temporalFinding(
     comparison: ConditionComparison,
     declaringGroup: String,
-    element: DeclaredElement,
+    element: TrackedDeclaration,
     member: String,
 ): Finding? {
     val left = sideOf(comparison.left, declaringGroup, element) ?: return null
@@ -131,7 +131,7 @@ private fun PreparedModel.temporalFinding(
 }
 
 /** Why this pair fails the date arm, or null. */
-private fun PreparedModel.dateDefect(
+private fun TrackedFactBase.dateDefect(
     comparison: ConditionComparison,
     left: TemporalSide,
     right: TemporalSide,
@@ -171,10 +171,10 @@ private fun rangeDefect(
 }
 
 /** What this side is, or null wherever this reader will not say — see [bareReferenceField]. */
-private fun PreparedModel.sideOf(
+private fun TrackedFactBase.sideOf(
     side: String,
     declaringGroup: String,
-    element: DeclaredElement,
+    element: TrackedDeclaration,
 ): TemporalSide? {
     val declared = bareReferenceField(side, declaringGroup, element) ?: return null
     declaredTemporalFormatOf(declared)?.let {
