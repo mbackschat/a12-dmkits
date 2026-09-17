@@ -858,4 +858,53 @@ class CheckFamilyWiringTest {
         assertEquals(emptyList(), misattributed,
             "a CheckFamily is paired with the wrong producer, so its cell would be keyed on the wrong reads")
     }
+
+    @Test
+    fun aWalkingFamilyAskedPerDeclarationSaysWhatItSaidOverTheWholeModel() {
+        val differing = mutableListOf<String>()
+        // This class's own two fixtures, plus every model in the parity corpus: the fixtures guarantee each
+        // family is reached at all, and the corpus widens the shapes it is reached on — a family whose scoped
+        // pass differs only where a kind appears twice would pass on a fixture that declares it once.
+        val corpus = ParityCorpusJson.cases().flatMap { it.sources }.distinct()
+            .map { ModelSource(ParityCorpusJson.source(it)) }
+        var examined = 0
+        (listOf(source, germanSource) + corpus).forEach { model ->
+            val admitted = admit(model) as? Admission.Admitted ?: return@forEach
+            val prepared = prepare(admitted)
+            examined++
+            val scoped = TrackedFactBase(prepared, ReadTranscript())
+            val perDeclaration = schedule(scoped)
+                .filter { it.key.producer is CheckProducer.PerDeclarationWalk }
+                .groupBy({ it.key.producer }, { it.produce().first })
+                .mapValues { (_, passes) -> passes.flatten() }
+
+            perDeclaration.forEach { (producer, scopedFindings) ->
+                val walk = producer as CheckProducer.PerDeclarationWalk
+                val whole = walk.findings(TrackedFactBase(prepared, ReadTranscript()))
+                if (whole != scopedFindings) {
+                    differing += "${producer.completes}: whole model said $whole, " +
+                        "per declaration said $scopedFindings"
+                }
+            }
+        }
+
+        // The equivalence [CheckProducer.PerDeclarationWalk] CLAIMS, run as a differential rather than
+        // argued: a family narrowed to one declaration must produce, over the walk, exactly the list it
+        // produced over the model — same findings, same order. Nothing else can see the failure this
+        // catches. A family that uses the walk to look up ANOTHER declaration finds nothing in a scoped
+        // base, so it silently under-reports while charging no set shape, which is invisible to the
+        // charge-profile invariant.
+        assertEquals(emptyList(), differing,
+            "a family asked per declaration answered differently from the same family over the model")
+
+        // Two controls. Non-vacuity per FAMILY is supplied by `everyAdvertisedFamilyReachesTheReport`
+        // rather than asserted again here — it already fails unless every family reports its own row on one
+        // of the two fixtures, so no producer above is compared on two empty lists throughout. What that
+        // test cannot supply is that the registrations and the corpus are there at all.
+        assertTrue(
+            CHECK_PRODUCERS.any { it is CheckProducer.PerDeclarationWalk },
+            "no family is registered as a scoped walk, so this differential covers nothing",
+        )
+        assertTrue(examined > 2, "only the two fixtures were examined, so the corpus reached this arm empty")
+    }
 }

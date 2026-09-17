@@ -692,7 +692,7 @@ Both carriers: **673 tests, 0 failures**; the packed-Node and Chrome replays gre
 | commit | what it lands | acceptance |
 |---|---|---|
 | **L-b3c-1** — **LANDED 2026-09-18, [below](#l-b3c-1-landing)** (foundational — takes the earlier review) | the per-declaration producer shape, the dispatcher's walk, the `(producer, declaration)` cell key, and a proof set of families migrated to it | the matrix below |
-| **L-b3c-2** | the remaining own-walk families, in batches | L3 for the 42 |
+| **L-b3c-2** — **LANDED 2026-09-18, [below](#l-b3c-2-landing)** | the remaining own-walk families, in batches | L3 for the 42 — of which 15 proved own-walk and the rest resolve references, so they moved to L-b3c-3 |
 | **L-b3c-3** | the 25 model-wide-reader families narrowed to the per-declaration readers | L3 for the 25 |
 | **L-b3c-4** (terminal review) | the review, the public account of what reuse guarantees, and the guard that an added family cannot bypass a cell | — |
 
@@ -735,6 +735,27 @@ Both carriers: **676 tests, 0 failures**; `ParityCorpusTest` green, so the repor
 **The survivor: `declarations().reversed()` in the dispatcher.** It passed `ParityCorpusTest` and every family test in the module — 675 tests — because a corpus model carries at most one defective declaration per family, so no case can see a reversed walk *or* producer-major reporting. The only failure in a full-lane run was `FamilyCellReuseTest`'s, incidentally, because the paths in its diagnostic list came back the other way round; that is a control over which cells fall whose assertion happens to be a list, not a control over the report's order. So acceptance item (1)'s advertised order had **no enforcement locus at all** — an invariant this partition claimed and nothing held. `DispatchOrderTest` now holds it, on the smallest fixture that can fail: two declarations per family so a reversed walk shows, two families so producer-major shows.
 
 **And that new control's first fixture was itself confounded, which is the transferable half.** Its four rules were named `EndsEarlyFirst`, `MixesFirst`, `EndsEarlySecond`, `MixesSecond` — names that sort into their family groups — so a mutant reporting declaration-major *by path* produced the identical list and survived, while the KDoc asserted the interleaving ruled that out. The names now interleave alphabetically as well as in the model, and both reorderings die. *Generally: when a fixture's identifiers participate in the ordering under test, the names encode part of the answer, and the assertion cannot tell you so.*
+
+#### L-b3c-2 landed: twenty-five families per declaration, and the population is a third of what was projected (2026-09-18) <a id="l-b3c-2-landing"></a>
+
+Twenty-nine of ninety-eight producers are now asked once per declaration — fourteen taking the declaration as a PARAMETER, fifteen still writing their own walk through a fact base scoped to one declaration. Both reach the same cell granularity; the scope exists so a family need not be rewritten to get there.
+
+| the figure, on the 8-declaration fixture | after L-b3c-1 | now |
+|---|---|---|
+| cells scheduled | 126 | **301** = 69 model-wide + 29 × 8 |
+| a keystroke in a rule's condition, through `snapshot.draft` | 51 of 126 (40 %) | **226 of 301 (75 %)** |
+| the same keystroke, re-parsed model | 45 of 126 | **211 of 301** — 9 of 69 model-wide, **202 of 232 per-declaration (87 %)** |
+| a draft that retypes the text it already had | 126 of 126 | **301 of 301** |
+
+The per-declaration cells reach exactly the 87 % [the partition projected](#l-b3c-partition); what caps the total is the sixty-nine producers still answering about the model.
+
+**The projected population was 42 own-walk families and the real one is 15, measured by trying all of them.** Every remaining single-line registration — 49 of them — was flipped to the scoped walk in one experiment and the suite run. Two gates rejected 37 by name, and a further dozen family suites failed beside them; the batch was reverted. The reason is uniform and it is not fixable by moving a walk: those families walk the declarations to LOOK UP another declaration — an operand's field, to learn its type; a reference's target, to learn its kind — so their verdict about one declaration depends on the set. The charge profile could not distinguish them because opening every body and *needing* the set are different properties, and it only measured the first. They are [L-b3c-3](#l-b3c-partition)'s work, through the per-declaration readers, not L-b3c-2's.
+
+**The scoped walk's failure mode is SILENT, which is the whole reason it has its own producer kind and its own differential.** A family narrowed to one declaration still calls `declarations()`; it gets one element back, finds no operand field, and reports nothing — charging no set shape at all, so `FamilyChargeProfileTest`'s invariant cannot see it and only that family's own tests would. Four families flipped on the first attempt did exactly that and were caught by luck rather than by a denominator. `CheckProducer.PerDeclarationWalk` therefore states an equivalence — the concatenation of its scoped passes is the list it produced unscoped — and `CheckFamilyWiringTest.aWalkingFamilyAskedPerDeclarationSaysWhatItSaidOverTheWholeModel` runs it as a differential over both wiring fixtures **and every model in the parity corpus**, for every registration of that kind. Only `declarations()` narrows: `declarationAt`, `isResolvable`, `resolveEntity` and `declaredReferences` answer for the whole model and charge the shape, deliberately, so a set question is never answered with one declaration.
+
+**A lead for L-b3c-3, and it is a rule of ours that turns out to be about reuse rather than soundness.** `aPerDeclarationFamilyChargesNoSetShapeAtAll` refuses a per-declaration cell that charges [FactRead.DeclarationSetShape], and [the partition's caution](#l-b3c-partition) justified that by reuse: such a cell falls whenever any declaration is added or removed. Soundness does not need the refusal — a cell keyed on the shape AND its own body is a function of everything it read, which is the store's whole argument. And the edit the ratified target is about does not move the shape: a keystroke in a condition leaves every row and the resolvable set exactly where they were. So the reference-resolving families could be asked per declaration in the PARAMETER form, charge the shape, and still be reused for every declaration but the edited one — which is most of the remaining sixty-nine. Whether to relax the invariant is L-b3c-3's call, and it needs the reuse figure for a structural edit measured rather than argued; it is recorded here because the reasoning is what a later session would otherwise have to rediscover.
+
+Both carriers: **678 tests, 0 failures**; the report JSON unchanged (`ParityCorpusTest`).
 
 ### F3 record — the partition, one blocked acceptance clause, and F3-a's matrix frozen before code (2026-09-16) <a id="f3-partition"></a>
 

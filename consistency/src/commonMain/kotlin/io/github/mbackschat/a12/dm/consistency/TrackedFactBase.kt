@@ -21,20 +21,54 @@ import kotlinx.serialization.json.JsonObject
  *
  * It is a view, not a copy: constructing one allocates no facts, and several may share a [PreparedModel].
  */
-internal class TrackedFactBase(
+internal class TrackedFactBase private constructor(
     private val model: PreparedModel,
     private val transcript: ReadTranscript,
+    private val scope: Scope?,
 ) {
+    constructor(model: PreparedModel, transcript: ReadTranscript) : this(model, transcript, null)
+
+    /** The one declaration a scoped fact base answers for, with the key its cell is filed under. */
+    private class Scope(val at: DeclarationKey, val cursor: TrackedDeclaration)
+
     /**
-     * Every declaration, as cursors that record what is read THROUGH them.
+     * Every declaration, as cursors that record what is read THROUGH them — or, on a SCOPED fact base, the
+     * single declaration it was narrowed to.
      *
      * Records the set's shape alone — [FactRead.DeclarationSetShape] carries why that separation is the
-     * design rather than an optimization.
+     * design rather than an optimization. A scoped base records [FactRead.DeclarationRow] instead, which is
+     * the whole point of the narrowing: the family's loop runs once, over its own declaration, and its cell
+     * is keyed on that declaration rather than on the set. [scopedTo] says when the dispatcher does it.
      */
     fun declarations(): List<TrackedDeclaration> {
+        val scoped = scope
+        if (scoped != null) {
+            transcript.record(FactRead.DeclarationRow(scoped.at.path, scoped.at.amongSamePath))
+            return listOf(scoped.cursor)
+        }
         transcript.record(FactRead.DeclarationSetShape)
         return cursors
     }
+
+    /**
+     * This fact base narrowed to the declaration at [at], for a family the dispatcher asks per declaration.
+     *
+     * **It exists so a family whose body is a WALK can be asked per declaration without being rewritten.**
+     * Such a family iterates, filters by kind, and judges each declaration on its own facts — which is
+     * exactly what one pass over one declaration does, so the concatenation over the walk is the list the
+     * unscoped family produced, in the same order. Rewriting thirty bodies to take a parameter buys nothing
+     * the scope does not, and every rewrite is a chance to change a verdict.
+     *
+     * **Only [declarations] narrows. Everything else answers for the whole model and charges the set shape**
+     * — `declarationAt`, `isResolvable`, `resolveEntity`, `declaredReferences`. That is deliberate and it is
+     * what keeps the gate mechanical: a family reaching any of them charges
+     * [FactRead.DeclarationSetShape], and `FamilyChargeProfileTest` refuses a per-declaration cell that
+     * charges the shape. Narrowing those instead would silently answer a set question with one declaration.
+     *
+     * It shares this base's model, transcript and cursor list, so a scope allocates a view and no facts.
+     */
+    fun scopedTo(at: DeclarationKey, cursor: TrackedDeclaration): TrackedFactBase =
+        TrackedFactBase(model, transcript, Scope(at, cursor))
 
     /**
      * The cursors, built once per fact base rather than once per walk.
@@ -94,7 +128,19 @@ internal class TrackedFactBase(
      * [TrackedDeclaration.declaredReference] is what keeps that attribution; reading the model's own list
      * would give one opaque charge that no cell could ever narrow.
      */
-    fun declaredReferences(): List<DeclaredReference> = declarations().mapNotNull { it.declaredReference() }
+    fun declaredReferences(): List<DeclaredReference> = everyDeclaration().mapNotNull { it.declaredReference() }
+
+    /**
+     * Every declaration, whatever this base is scoped to — the route a SET-level question takes.
+     *
+     * Kept apart from [declarations] so a scope cannot narrow an answer that is about the model: a scoped
+     * [declaredReferences] would hand back one reference and charge one row, which reads like an answer and
+     * is not one.
+     */
+    private fun everyDeclaration(): List<TrackedDeclaration> {
+        transcript.record(FactRead.DeclarationSetShape)
+        return cursors
+    }
 
     /**
      * Whether [path] names a declaration a reference may resolve to.

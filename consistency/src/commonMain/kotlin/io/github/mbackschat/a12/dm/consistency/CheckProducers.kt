@@ -58,6 +58,27 @@ internal sealed interface CheckProducer {
         override val completes: Set<CheckFamily>,
         val findings: (TrackedFactBase, TrackedDeclaration) -> List<Finding>,
     ) : CheckProducer
+
+    /**
+     * A family that still WALKS, asked once per declaration through a fact base scoped to it.
+     *
+     * **It is the same granularity as [PerDeclaration] reached without rewriting the family**, and it is a
+     * separate kind rather than a flag because it is the kind that can be CHECKED: what it claims is an
+     * equivalence — the concatenation of its scoped passes is the list it produced unscoped — and that
+     * claim is only testable when the dispatcher knows which producers make it.
+     * `PerDeclarationWalkEquivalenceTest` runs exactly that differential over every registration here.
+     *
+     * The gate matters because the failure is SILENT otherwise. A family that uses the walk to look up
+     * ANOTHER declaration — an operand's field, to learn its type — gets one declaration from a scoped base
+     * and finds nothing, so it under-reports while charging no set shape at all: the charge-profile
+     * invariant cannot see it, and only that family's own tests would. Four families were flipped to this
+     * shape on 2026-09-18 and duly failed their own tests; the differential is what turns that luck into a
+     * denominator.
+     */
+    class PerDeclarationWalk(
+        override val completes: Set<CheckFamily>,
+        val findings: (TrackedFactBase) -> List<Finding>,
+    ) : CheckProducer
 }
 
 /**
@@ -71,6 +92,13 @@ internal sealed interface CheckProducer {
  * editor does.
  */
 internal data class DeclarationKey(val path: String, val amongSamePath: Int)
+
+/** One declaration as the dispatcher holds it: its key, its cursor, and the fact base scoped to it. */
+private data class Walked(
+    val at: DeclarationKey,
+    val cursor: TrackedDeclaration,
+    val scoped: TrackedFactBase,
+)
 
 /** What one cell is about: a producer, and for a per-declaration producer the declaration too. */
 internal data class CellKey(val producer: CheckProducer, val at: DeclarationKey? = null)
@@ -100,7 +128,10 @@ internal fun schedule(tracked: TrackedFactBase): List<ScheduledCell> {
     val walked = tracked.declarations().map { cursor ->
         val ordinal = seen.getOrElse(cursor.path) { 0 }
         seen[cursor.path] = ordinal + 1
-        DeclarationKey(cursor.path, ordinal) to cursor
+        val at = DeclarationKey(cursor.path, ordinal)
+        // One scoped view per declaration, shared by every per-declaration producer: the scope holds no
+        // facts, but a view per producer per declaration would allocate one for nothing.
+        Walked(at, cursor, tracked.scopedTo(at, cursor))
     }
     return CHECK_PRODUCERS.flatMap { producer ->
         when (producer) {
@@ -109,10 +140,19 @@ internal fun schedule(tracked: TrackedFactBase): List<ScheduledCell> {
                     producer.findings(tracked) to producer.gaps(tracked)
                 },
             )
-            is CheckProducer.PerDeclaration -> walked.map { (at, cursor) ->
+            is CheckProducer.PerDeclaration -> walked.map { (at, cursor, _) ->
                 ScheduledCell(CellKey(producer, at)) {
+                    // Charged here as well as by a walking family's own `declarations()`, because a family
+                    // that takes its declaration as a parameter never calls it and would otherwise key its
+                    // cell on nothing at all ([FactRead.DeclarationRow]).
                     tracked.chargeDeclarationRow(at)
                     producer.findings(tracked, cursor) to emptyList()
+                }
+            }
+            is CheckProducer.PerDeclarationWalk -> walked.map { (at, _, scoped) ->
+                ScheduledCell(CellKey(producer, at)) {
+                    tracked.chargeDeclarationRow(at)
+                    producer.findings(scoped) to emptyList()
                 }
             }
         }
@@ -142,6 +182,19 @@ private fun perDeclaration(
 ): CheckProducer = CheckProducer.PerDeclaration(setOf(family), findings)
 
 /**
+ * A family that still writes its own WALK, asked once per declaration through a fact base scoped to it.
+ *
+ * The migration shape, and it is not a lesser one: [TrackedFactBase.scopedTo] carries why one pass over one
+ * declaration is the same list, and what stops a set-reaching family from being registered this way. A
+ * family whose signature takes the declaration outright uses [perDeclaration]; that is the destination, and
+ * this is how a family gets there without its body being rewritten.
+ */
+private fun perDeclarationWalk(
+    family: CheckFamily,
+    findings: (TrackedFactBase) -> List<Finding>,
+): CheckProducer = CheckProducer.PerDeclarationWalk(setOf(family), findings)
+
+/**
  * Every family that runs, in the order their findings reach the report.
  *
  * **The order is load-bearing for the findings and not for the gaps.** A report's findings are read in the
@@ -156,9 +209,9 @@ private fun perDeclaration(
  */
 internal val CHECK_PRODUCERS: List<CheckProducer> = listOf(
     produces(CheckFamily.DECLARATION_SLOTS) { it.declarationSlotFindings() },
-    produces(CheckFamily.COMPUTATION_ALTERNATIVES) { it.computationAlternativeFindings() },
-    produces(CheckFamily.COMPUTATION_ROUNDING) { it.computationRoundingFindings() },
-    produces(CheckFamily.SUPPRESSED_WARNINGS) { it.suppressedWarningFindings() },
+    perDeclarationWalk(CheckFamily.COMPUTATION_ALTERNATIVES) { it.computationAlternativeFindings() },
+    perDeclarationWalk(CheckFamily.COMPUTATION_ROUNDING) { it.computationRoundingFindings() },
+    perDeclarationWalk(CheckFamily.SUPPRESSED_WARNINGS) { it.suppressedWarningFindings() },
     perDeclaration(CheckFamily.RULE_CONDITION_AND_TARGET) { base, at ->
         base.ruleConditionAndTargetFindings(at)
     },
@@ -183,7 +236,7 @@ internal val CHECK_PRODUCERS: List<CheckProducer> = listOf(
     perDeclaration(CheckFamily.GROUP_REPETITION_COUNT) { base, at ->
         listOfNotNull(base.groupRepetitionCountFinding(at))
     },
-    produces(CheckFamily.RULE_PRESENTATION_MEMBERS) { it.presentationMemberFindings() },
+    perDeclarationWalk(CheckFamily.RULE_PRESENTATION_MEMBERS) { it.presentationMemberFindings() },
     perDeclaration(CheckFamily.STRING_SLOT_BINDING) { base, at -> base.stringSlotFindings(at) },
     CheckProducer.ModelWide(
         completes = setOf(CheckFamily.FIELD_TYPE_BINDING),
@@ -273,15 +326,15 @@ internal val CHECK_PRODUCERS: List<CheckProducer> = listOf(
     produces(CheckFamily.ENTITY_LIST_PRE_GATES) { it.entityListPreGateFindings() },
     produces(CheckFamily.FIELD_VALUES_NOT_UNIQUE_OPERAND_KIND) { it.fieldValuesNotUniqueOperandKindFindings() },
     produces(CheckFamily.FIELD_LIST_OPERATION_OPERANDS) { it.fieldListOperationOperandFindings() },
-    produces(CheckFamily.DATE_ARITHMETIC_OPERANDS) { it.dateArithmeticOperandFindings() },
+    perDeclarationWalk(CheckFamily.DATE_ARITHMETIC_OPERANDS) { it.dateArithmeticOperandFindings() },
     produces(CheckFamily.ROUNDING_OPERANDS) { it.roundingOperandFindings() },
     produces(CheckFamily.FIELD_VALUE_OPERATOR_OPERANDS) { it.fieldValueOperatorOperandFindings() },
-    produces(CheckFamily.COMPARISON_OPERATOR_OPERANDS) { it.comparisonOperatorOperandFindings() },
-    produces(CheckFamily.BOOLEAN_COMPARISON_AGREEMENT) { it.booleanComparisonAgreementFindings() },
-    produces(CheckFamily.STRING_ENUM_COMPARISON_AGREEMENT) { it.stringEnumComparisonAgreementFindings() },
-    produces(CheckFamily.NUMBER_COMPARISON_SCALE) { it.numberComparisonScaleFindings() },
-    produces(CheckFamily.TEMPORAL_COMPARISON_AGREEMENT) { it.temporalComparisonAgreementFindings() },
-    produces(CheckFamily.PATTERN_COMPARISON_OPERANDS) { it.patternComparisonOperandFindings() },
+    perDeclarationWalk(CheckFamily.COMPARISON_OPERATOR_OPERANDS) { it.comparisonOperatorOperandFindings() },
+    perDeclarationWalk(CheckFamily.BOOLEAN_COMPARISON_AGREEMENT) { it.booleanComparisonAgreementFindings() },
+    perDeclarationWalk(CheckFamily.STRING_ENUM_COMPARISON_AGREEMENT) { it.stringEnumComparisonAgreementFindings() },
+    perDeclarationWalk(CheckFamily.NUMBER_COMPARISON_SCALE) { it.numberComparisonScaleFindings() },
+    perDeclarationWalk(CheckFamily.TEMPORAL_COMPARISON_AGREEMENT) { it.temporalComparisonAgreementFindings() },
+    perDeclarationWalk(CheckFamily.PATTERN_COMPARISON_OPERANDS) { it.patternComparisonOperandFindings() },
     produces(CheckFamily.OPERAND_REPETITION_SCOPE) { it.operandRepetitionScopeFindings() },
     produces(CheckFamily.DATE_CONSTRUCTION_SLOT) { it.dateConstructionSlotFindings() },
     produces(CheckFamily.H_MODEL_PATH_SUFFIX) { it.hModelPathSuffixFindings() },
@@ -310,10 +363,10 @@ internal val CHECK_PRODUCERS: List<CheckProducer> = listOf(
     perDeclaration(CheckFamily.STRING_PATTERN_MESSAGE) { base, at ->
         base.stringTypeMessageFindings(at)
     },
-    produces(CheckFamily.STRING_TYPE_PARAMETERS) { it.stringTypeParameterFindings() },
-    produces(CheckFamily.NUMBER_TYPE_DIGITS) { it.numberTypeDigitFindings() },
-    produces(CheckFamily.ENUM_VALUE_LABELS) { it.enumValueLabelFindings() },
-    produces(CheckFamily.ENUM_S_VALUE_DOMAIN) { it.enumSpecialValueFindings() },
+    perDeclarationWalk(CheckFamily.STRING_TYPE_PARAMETERS) { it.stringTypeParameterFindings() },
+    perDeclarationWalk(CheckFamily.NUMBER_TYPE_DIGITS) { it.numberTypeDigitFindings() },
+    perDeclarationWalk(CheckFamily.ENUM_VALUE_LABELS) { it.enumValueLabelFindings() },
+    perDeclarationWalk(CheckFamily.ENUM_S_VALUE_DOMAIN) { it.enumSpecialValueFindings() },
     // The one producer that completes no family: `content.typeDefinitions` declare field types no family
     // examines, so its whole output is the disclosure that they were not examined. It is registered rather
     // than called beside the loop so that its reads are attributed like every other producer's.
