@@ -215,12 +215,30 @@ internal fun PreparedModel.crossedRepetitions(path: String): List<DeclaredElemen
  * A reference that ENDS at a repeatable group iterates it too — `CurrentRepetition(Legs)` rides the same
  * marker a field beneath `Legs` does — so a walk that only looks at ancestors misses the group carrier.
  */
-internal fun PreparedModel.iteratedLevels(path: String): List<String> = elements
-    .filter {
-        it.declaredKind == DeclaredKind.GROUP && it.isRepeatable &&
-            (it.path == path || path.startsWith("${it.path}/"))
-    }
-    .sortedBy { it.path.length }
+internal fun PreparedModel.iteratedLevels(path: String): List<String> =
+    iteratedLevelsIn(repeatableGroupPaths(), path)
+
+/**
+ * The same walk through the read barrier.
+ *
+ * **The charge falls out of using the cursor rather than being written down**, which is what makes it right:
+ * the repeatable-group list is built through [TrackedDeclaration.isRepeatable], so every group's body this
+ * walk actually reads is charged, and a future change to what it reads charges itself. A hand-written charge
+ * beside a delegating call is the shape that goes stale and under-charges — the unsound direction.
+ */
+internal fun TrackedFactBase.iteratedLevels(path: String): List<String> =
+    iteratedLevelsIn(repeatableGroupPaths(), path)
+
+private fun iteratedLevelsIn(repeatableGroups: List<String>, path: String): List<String> = repeatableGroups
+    .filter { it == path || path.startsWith("$it/") }
+    .sortedBy { it.length }
+
+private fun PreparedModel.repeatableGroupPaths(): List<String> = elements
+    .filter { it.declaredKind == DeclaredKind.GROUP && it.isRepeatable }
+    .map { it.path }
+
+private fun TrackedFactBase.repeatableGroupPaths(): List<String> = declarations()
+    .filter { it.declaredKind == DeclaredKind.GROUP && it.isRepeatable }
     .map { it.path }
 
 /**
@@ -471,12 +489,16 @@ internal fun PreparedModel.operandSpec(operand: CallOperand): Pair<String, Strin
  * an anchored read opaque and lose every class behind it.
  */
 internal fun PreparedModel.crossesARepetitionOutside(declaringGroup: String, path: String): Boolean =
-    elements.any { candidate ->
-        candidate.declaredKind == DeclaredKind.GROUP &&
-            candidate.isRepeatable &&
-            path.startsWith("${candidate.path}/") &&
-            !(declaringGroup == candidate.path || declaringGroup.startsWith("${candidate.path}/"))
-    }
+    crossesARepetitionOutsideIn(repeatableGroupPaths(), declaringGroup, path)
+
+private fun crossesARepetitionOutsideIn(
+    repeatableGroups: List<String>,
+    declaringGroup: String,
+    path: String,
+): Boolean = repeatableGroups.any { candidate ->
+    path.startsWith("$candidate/") &&
+        !(declaringGroup == candidate || declaringGroup.startsWith("$candidate/"))
+}
 
 /**
  * How many groups on the path to [path], itself included, repeat — one star each is what A12 wants.

@@ -37,12 +37,12 @@ import io.github.mbackschat.a12.dm.consistency.syntax.semanticIndexKeysIn
  * **Silent on a key that does not resolve** (`MVK_INVALID_ENTITY`, the reference family's) and on a LITERAL
  * key, which puts a string in the key position and is subject to the value gates instead.
  */
-fun PreparedModel.semanticIndexKeyFindings(): List<Finding> {
+internal fun TrackedFactBase.semanticIndexKeyFindings(): List<Finding> {
     val keywords = CONDITION_OPERATOR_KEYWORDS[conditionLanguage] ?: return emptyList()
     val keyword = keywords[SEMANTIC_INDEX] ?: return emptyList()
     val filterKeyword = keywords[HAVING]
     val targets = declaredReferences().associateBy { it.declaredAt }
-    return elements.flatMap { element ->
+    return declarations().flatMap { element ->
         val body = element.body ?: return@flatMap emptyList()
         val group = element.path.substringBeforeLast('/', missingDelimiterValue = "")
         val targetGroup = (targets[element.path]?.target as? Reference.Resolved)?.path
@@ -67,7 +67,7 @@ fun PreparedModel.semanticIndexKeyFindings(): List<Finding> {
  * `rulekit.validate.laws.SemanticIndexInFilterLawsTest`), where outside one the iteration class pre-empts
  * both. So the gate below is asked only of a key the rule reads directly.
  */
-private fun PreparedModel.keysInsideAFilter(
+private fun TrackedFactBase.keysInsideAFilter(
     text: String,
     member: String,
     filterKeyword: String?,
@@ -87,11 +87,11 @@ private const val SEMANTIC_INDEX = "SemanticIndex"
 private const val HAVING = "Having"
 
 /** The finding one key draws, in A12's order, or null for every shape it answers with another class. */
-private fun PreparedModel.keyFinding(
+private fun TrackedFactBase.keyFinding(
     key: String,
     group: String,
     targetGroup: String?,
-    element: DeclaredElement,
+    element: TrackedDeclaration,
     member: String,
     insideAFilter: Boolean,
 ): Finding? {
@@ -112,7 +112,7 @@ private fun PreparedModel.keyFinding(
             element.path,
         )
     }
-    val named = elements.firstOrNull { it.path == resolved.path && it.declaredKind == DeclaredKind.GROUP }
+    val named = declarations().firstOrNull { it.path == resolved.path && it.declaredKind == DeclaredKind.GROUP }
         ?: return null
     if (repeatsAnywhereOnThePathTo(named.path)) {
         return null
@@ -131,7 +131,7 @@ private fun PreparedModel.keyFinding(
  * The outermost repeatable level [path] rides that the target's own coordinates cannot address — strictly
  * below [targetGroup] — or null where the read does not iterate or the anchoring is unknown.
  */
-private fun PreparedModel.iteratedBelow(path: String, targetGroup: String?): String? {
+private fun TrackedFactBase.iteratedBelow(path: String, targetGroup: String?): String? {
     if (targetGroup == null) {
         return null
     }
@@ -139,6 +139,6 @@ private fun PreparedModel.iteratedBelow(path: String, targetGroup: String?): Str
 }
 
 /** Whether [path] or any group above it repeats, which is what makes a read of it iterate. */
-private fun PreparedModel.repeatsAnywhereOnThePathTo(path: String): Boolean =
-    elements.any { it.declaredKind == DeclaredKind.GROUP && it.isRepeatable &&
+private fun TrackedFactBase.repeatsAnywhereOnThePathTo(path: String): Boolean =
+    declarations().any { it.declaredKind == DeclaredKind.GROUP && it.isRepeatable &&
         (it.path == path || path.startsWith("${it.path}/")) }

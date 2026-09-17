@@ -181,10 +181,6 @@ public final class io/github/mbackschat/a12/dm/consistency/ComparisonOperatorOpe
 	public static final fun comparisonOperatorOperandFindings (Lio/github/mbackschat/a12/dm/consistency/PreparedModel;)Ljava/util/List;
 }
 
-public final class io/github/mbackschat/a12/dm/consistency/ComputationSelfReadKt {
-	public static final fun computationSelfReadFindings (Lio/github/mbackschat/a12/dm/consistency/PreparedModel;)Ljava/util/List;
-}
-
 public final class io/github/mbackschat/a12/dm/consistency/ConditionReference {
 	public fun <init> (Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Lio/github/mbackschat/a12/dm/consistency/Reference;Lio/github/mbackschat/a12/dm/consistency/TextSpan;)V
 	public final fun component1 ()Ljava/lang/String;
@@ -550,10 +546,6 @@ public final class io/github/mbackschat/a12/dm/consistency/ErrorTargetContainmen
 	public static final fun errorTargetContainmentFindings (Lio/github/mbackschat/a12/dm/consistency/PreparedModel;)Ljava/util/List;
 }
 
-public final class io/github/mbackschat/a12/dm/consistency/ErrorTargetIterationKt {
-	public static final fun errorTargetIterationFindings (Lio/github/mbackschat/a12/dm/consistency/PreparedModel;)Ljava/util/List;
-}
-
 public final class io/github/mbackschat/a12/dm/consistency/FieldListOperationOperandsKt {
 	public static final fun fieldListOperationOperandFindings (Lio/github/mbackschat/a12/dm/consistency/PreparedModel;)Ljava/util/List;
 }
@@ -892,10 +884,6 @@ public final class io/github/mbackschat/a12/dm/consistency/ReferenceRole : java/
 	public static fun values ()[Lio/github/mbackschat/a12/dm/consistency/ReferenceRole;
 }
 
-public final class io/github/mbackschat/a12/dm/consistency/RepetitionKeyContainmentKt {
-	public static final fun repetitionKeyContainmentFindings (Lio/github/mbackschat/a12/dm/consistency/PreparedModel;)Ljava/util/List;
-}
-
 public final class io/github/mbackschat/a12/dm/consistency/ReportJsonKt {
 	public static final fun toJson (Lio/github/mbackschat/a12/dm/consistency/ConsistencyReport;)Ljava/lang/String;
 	public static final fun toJson (Lio/github/mbackschat/a12/dm/consistency/EditReport;)Ljava/lang/String;
@@ -924,10 +912,6 @@ public final class io/github/mbackschat/a12/dm/consistency/RoundingOperandsKt {
 
 public final class io/github/mbackschat/a12/dm/consistency/ScalarValueListGatesKt {
 	public static final fun scalarValueListGateFindings (Lio/github/mbackschat/a12/dm/consistency/PreparedModel;)Ljava/util/List;
-}
-
-public final class io/github/mbackschat/a12/dm/consistency/SemanticIndexKeyKt {
-	public static final fun semanticIndexKeyFindings (Lio/github/mbackschat/a12/dm/consistency/PreparedModel;)Ljava/util/List;
 }
 
 public final class io/github/mbackschat/a12/dm/consistency/SemanticIndexStructureKt {
@@ -1007,12 +991,6 @@ public final class io/github/mbackschat/a12/dm/consistency/ValueInFieldsConstant
 
 public final class io/github/mbackschat/a12/dm/consistency/ValueListConditionGatesKt {
 	public static final fun valueListConditionGateFindings (Lio/github/mbackschat/a12/dm/consistency/PreparedModel;)Ljava/util/List;
-}
-
-public final class io/github/mbackschat/a12/dm/consistency/VariantFilterKt {
-	public static final fun variantFilterFindings (Lio/github/mbackschat/a12/dm/consistency/PreparedModel;)Ljava/util/List;
-	public static final fun variantFilterGaps (Lio/github/mbackschat/a12/dm/consistency/PreparedModel;)Ljava/util/List;
-	public static final fun variantFilterSuppressed (Lio/github/mbackschat/a12/dm/consistency/PreparedModel;)Ljava/util/Set;
 }
 
 public final class io/github/mbackschat/a12/dm/consistency/syntax/CallOperand {

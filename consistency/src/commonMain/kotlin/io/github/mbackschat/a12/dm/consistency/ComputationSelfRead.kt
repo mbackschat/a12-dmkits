@@ -40,12 +40,12 @@ import kotlinx.serialization.json.JsonPrimitive
  * **One finding per computation, not per offending reference.** A12 answers a computation with one class
  * however many of its reads are self-reads, measured across both operand orders of a two-entry list.
  */
-fun PreparedModel.computationSelfReadFindings(): List<Finding> {
+internal fun TrackedFactBase.computationSelfReadFindings(): List<Finding> {
     val operators = CONDITION_OPERATOR_KEYWORDS[conditionLanguage] ?: return emptyList()
     val contextEscape = operators[GROUP_FILLED]
     val repetitionOf = operators[CURRENT_REPETITION]
     val indexKeyword = operators[SEMANTIC_INDEX]
-    return elements
+    return declarations()
         .filter { it.declaredKind == DeclaredKind.COMPUTATION }
         .mapNotNull { element ->
             val target = computedTargetOf(element) ?: return@mapNotNull null
@@ -74,7 +74,7 @@ private const val CURRENT_REPETITION = "CurrentRepetition"
 private const val SEMANTIC_INDEX = "SemanticIndex"
 
 /** The absolute path this computation writes, absent when the member does not resolve. */
-private fun PreparedModel.computedTargetOf(element: DeclaredElement): String? = declaredReferences()
+private fun TrackedFactBase.computedTargetOf(element: TrackedDeclaration): String? = declaredReferences()
     .firstOrNull { it.role == ReferenceRole.COMPUTED_TARGET && it.declaredAt == element.path }
     ?.let { (it.target as? Reference.Resolved)?.path }
 
@@ -84,8 +84,8 @@ private fun PreparedModel.computedTargetOf(element: DeclaredElement): String? = 
  * The declared type is read rather than inferred: a target this reader cannot type is left to the gate, the
  * same direction every other silence here takes.
  */
-private fun PreparedModel.scaleGateStandsAside(target: String, element: DeclaredElement): Boolean {
-    val field = elements.firstOrNull { it.path == target && it.declaredKind == DeclaredKind.FIELD }
+private fun TrackedFactBase.scaleGateStandsAside(target: String, element: TrackedDeclaration): Boolean {
+    val field = declarations().firstOrNull { it.path == target && it.declaredKind == DeclaredKind.FIELD }
         ?: return false
     val declaredType = field.declaredFieldType() ?: return false
     if (declaredType != NUMBER_TYPE) {
@@ -98,11 +98,11 @@ private fun PreparedModel.scaleGateStandsAside(target: String, element: Declared
 private const val NUMBER_TYPE = "NumberType"
 
 /** Whether [written] names the computed field or a group that contains it. */
-private fun PreparedModel.readsTheTarget(
+private fun TrackedFactBase.readsTheTarget(
     written: String,
     target: String,
     declaringGroup: String,
-    element: DeclaredElement,
+    element: TrackedDeclaration,
 ): Boolean {
     val resolved = resolveEntity(declaringGroup, written.replace("*", ""), element.origin)
     val path = (resolved as? Reference.Resolved)?.path ?: return false
@@ -116,11 +116,11 @@ private fun PreparedModel.readsTheTarget(
  * as well as against its indexed value — a computation whose operation reads another field keyed by its own
  * target is this class even though the target is not the field being read ([KERNEL-FINDINGS KF182]).
  */
-private fun PreparedModel.projectedSelfReadIn(
+private fun TrackedFactBase.projectedSelfReadIn(
     text: String,
     target: String,
     declaringGroup: String,
-    element: DeclaredElement,
+    element: TrackedDeclaration,
     indexKeyword: String?,
 ): String? {
     categoryAccessesIn(text, conditionLanguage)
@@ -144,7 +144,7 @@ private fun PreparedModel.projectedSelfReadIn(
  * the laws twin, after a mutant dropping the branch survived and the row written to kill it showed the
  * branch could not be reached.
  */
-private fun PreparedModel.exemptOperandsIn(
+private fun TrackedFactBase.exemptOperandsIn(
     text: String,
     member: String,
     contextEscape: String?,
@@ -166,7 +166,7 @@ private fun PreparedModel.exemptOperandsIn(
  * @param projection the authored projection, which is what the repair has to remove — dropping only the
  *     reference's decoration leaves the plain self-read behind, so the message names the operand instead.
  */
-private fun projectedFinding(element: DeclaredElement, member: String, projection: String): Finding = Finding(
+private fun projectedFinding(element: TrackedDeclaration, member: String, projection: String): Finding = Finding(
     FindingCategory.A12_CONSTRAINT,
     FindingSeverity.ERROR,
     "MVK_ERROR_SEMANTIC_INDEX_OR_CATEGORY_FOR_ERRORFIELD",
@@ -178,7 +178,7 @@ private fun projectedFinding(element: DeclaredElement, member: String, projectio
 )
 
 private fun selfReadFinding(
-    element: DeclaredElement,
+    element: TrackedDeclaration,
     target: String,
     member: String,
     written: String,

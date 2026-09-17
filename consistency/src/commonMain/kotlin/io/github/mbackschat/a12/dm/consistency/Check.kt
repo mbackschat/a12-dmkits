@@ -940,7 +940,7 @@ internal fun checkPrepared(
             it.target.asFinding(ReferenceRole.CONDITION_ENTITY, it.declaredAt, it.member, it.span)
         } + prepared.declarationSlotFindings() + tracked.computationAlternativeFindings() +
         tracked.computationRoundingFindings() + tracked.suppressedWarningFindings() +
-        tracked.ruleConditionAndTargetFindings() + prepared.variantFilterFindings() +
+        tracked.ruleConditionAndTargetFindings() + tracked.variantFilterFindings() +
         tracked.conditionLexicalFindings() + tracked.conditionCompletenessFindings() +
         tracked.connectiveAgreementFindings() + tracked.conditionGrammarFindings() +
         tracked.elementNameFindings() + prepared.groupOrderingFindings() +
@@ -958,10 +958,10 @@ internal fun checkPrepared(
         tracked.computedTargetKindFindings() + tracked.computedTargetIndexFieldFindings() +
         prepared.rawTypeLengthFindings() + tracked.computationPreconditionFeatureFindings() +
         tracked.computationCycleFindings() +
-        prepared.computationSelfReadFindings() +
+        tracked.computationSelfReadFindings() +
         tracked.repetitionKeyPlacementFindings() +
         tracked.repetitionScopeGroupFindings() +
-        prepared.repetitionKeyContainmentFindings() +
+        tracked.repetitionKeyContainmentFindings() +
         prepared.filterWildcardFindings() +
         prepared.filterBodyGateFindings() +
         tracked.outerMarkerPositionFindings() +
@@ -970,7 +970,7 @@ internal fun checkPrepared(
         tracked.operandListConstantFindings() +
         prepared.temporalAggregateOperandFindings() +
         prepared.semanticIndexStructureFindings() +
-        prepared.semanticIndexKeyFindings() +
+        tracked.semanticIndexKeyFindings() +
         tracked.repetitionNotUniqueCombinationFindings() +
         prepared.parallelIterationUniquenessFindings() +
         prepared.filteredEntityIterationFindings() +
@@ -1005,7 +1005,7 @@ internal fun checkPrepared(
         prepared.enumDisplayComparabilityFindings() +
         prepared.valueAsDateOperandFindings() +
         prepared.enumComputationSourceFindings() +
-        prepared.errorTargetIterationFindings() +
+        tracked.errorTargetIterationFindings() +
         prepared.errorTargetContainmentFindings() +
         tracked.messageParameterFindings() +
         tracked.errorTextSemanticIndexFindings() +
@@ -1021,7 +1021,7 @@ internal fun checkPrepared(
         .filterNot { it.at in stopped && it.code !in ERROR_TARGET_CODES }
         .filterNot { it.at in resolvedFirst && it.code in CONDITION_TEXT_CODES }
                 .withoutPostParseClassesBehindAPositionedDefect()
-    val findings = judged.notSuppressedBy(prepared.variantFilterSuppressed())
+    val findings = judged.notSuppressedBy(tracked.variantFilterSuppressed())
     return ConsistencyReport(
         modelId = modelId,
         status = statusOf(findings),
@@ -1089,7 +1089,7 @@ internal fun checkPrepared(
             CheckFamily.ERROR_TEXT_SEMANTIC_INDEX, CheckFamily.ERROR_TEXT_CATEGORY_SUFFIX,
             CheckFamily.ERROR_TEXT_INDEX_TERMINAL),
         gaps = prepared.gaps() + prepared.emptyFactBase() + findings.buildBlocked() +
-            prepared.variantFilterGaps() + tracked.enumCategoryGaps() +
+            tracked.variantFilterGaps() + tracked.enumCategoryGaps() +
             prepared.supportedCharacterGaps() + tracked.enumTextForbiddenCharacterGaps() +
             prepared.hintListValueGaps() + tracked.hModelFormConstructGaps() +
             prepared.fieldTypeBindingGaps() +

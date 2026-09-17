@@ -1,6 +1,8 @@
 package io.github.mbackschat.a12.dm.consistency
 
+import io.github.mbackschat.a12.dm.consistency.syntax.ConditionLanguage
 import io.github.mbackschat.a12.dm.consistency.syntax.namesRuleContext
+import kotlinx.serialization.json.JsonObject
 
 /**
  * That a rule's condition REFERENCES the field its error is attached to.
@@ -140,8 +142,20 @@ private fun PreparedModel.iteratesPastTheTarget(reference: ConditionReference, t
  */
 internal fun PreparedModel.namesTheRulesOwnGroup(declared: DeclaredReference): Boolean {
     val element = elements.firstOrNull { it.path == declared.declaredAt } ?: return false
-    val body = element.body ?: return false
-    return conditionTexts(element.kind, body).any { (_, text) -> namesRuleContext(text, conditionLanguage) }
+    return namesRuleContextIn(element.kind, element.body, conditionLanguage)
+}
+
+/** The same question through the read barrier; the declaration lookup and its body charge themselves. */
+internal fun TrackedFactBase.namesTheRulesOwnGroup(declared: DeclaredReference): Boolean {
+    val element = declarationAt(declared.declaredAt) ?: return false
+    return namesRuleContextIn(element.kind, element.body, conditionLanguage)
+}
+
+private fun namesRuleContextIn(kind: String, body: JsonObject?, language: ConditionLanguage): Boolean {
+    if (body == null) {
+        return false
+    }
+    return conditionTexts(kind, body).any { (_, text) -> namesRuleContext(text, language) }
 }
 
 /** Whether this condition reference resolves to [target] or to a group containing it. */

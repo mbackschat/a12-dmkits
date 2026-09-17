@@ -33,7 +33,20 @@ internal class TrackedFactBase(
      */
     fun declarations(): List<TrackedDeclaration> {
         transcript.record(FactRead.DeclarationSetShape)
-        return model.elements.map { TrackedDeclaration(it, model, transcript) }
+        return cursors
+    }
+
+    /**
+     * The cursors, built once per fact base rather than once per walk.
+     *
+     * A migrated family asks for the declarations from inside a per-reference loop — `iteratedLevels` and
+     * `lowestRepetitionOf` are each asked once per operand — so rebuilding the list would allocate a cursor
+     * per declaration per call, where the untracked code it replaces read a list it already held. The charge
+     * deliberately stays outside this: [declarations] records the shape on EVERY call, because the transcript
+     * is what a cell is keyed on and a memoized list must not hide a read.
+     */
+    private val cursors: List<TrackedDeclaration> by lazy {
+        model.elements.map { TrackedDeclaration(it, model, transcript) }
     }
 
     /**
@@ -46,7 +59,7 @@ internal class TrackedFactBase(
      */
     fun declarationAt(path: String): TrackedDeclaration? {
         transcript.record(FactRead.DeclarationSetShape)
-        return model.elements.firstOrNull { it.path == path }?.let { TrackedDeclaration(it, model, transcript) }
+        return cursors.firstOrNull { it.path == path }
     }
 
     /**
@@ -146,4 +159,25 @@ internal class TrackedDeclaration(
         transcript.record(FactRead.DeclarationSetShape)
         return model.declaredReferenceList.firstOrNull { it.declaredAt == element.path }
     }
+
+    /**
+     * Two cursors are equal when they stand for the same declaration — structural, like the element they wrap.
+     *
+     * **A latent trap, removed rather than documented.** An inherited identity `equals` would make two
+     * cursors for the SAME declaration unequal, where the [DeclaredElement] data class they replace compares
+     * equal — so a family migrated by a receiver change would silently answer differently, and nothing
+     * catches it, because the families migrated so far all compare by `path` and that had to be established
+     * by hand-reading eight files. Delegating to the element makes `==` mean what every reader of the
+     * untracked code already assumed.
+     *
+     * [cursors] closes the same hole from the other side WITHIN one fact base, by handing out the same object
+     * twice; this covers the case it cannot — cursors from two fact bases over one model, which is exactly
+     * what a draft holds beside its baseline.
+     *
+     * Charges nothing: which declaration a cursor stands for is the set's shape, already paid by whoever
+     * obtained it — the same reason [path] and [kind] record nothing.
+     */
+    override fun equals(other: Any?): Boolean = other is TrackedDeclaration && element == other.element
+
+    override fun hashCode(): Int = element.hashCode()
 }

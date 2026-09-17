@@ -69,19 +69,19 @@ class VariantFilterTest {
     @Test
     fun anOnlyFilterIsReportedAsAnUnexaminedDeclaration() {
         val actual = mutableMapOf<String, List<String?>>()
-        actual["no filter at all — the control"] = model().variantFilterGaps().map { it.at }
-        actual["a rule filtered ONLY"] = model(ruleFilter = only).variantFilterGaps().map { it.at }
-        actual["a rule filtered ALL_EXCEPT"] = model(ruleFilter = allExcept).variantFilterGaps().map { it.at }
+        actual["no filter at all — the control"] = model().tracked().variantFilterGaps().map { it.at }
+        actual["a rule filtered ONLY"] = model(ruleFilter = only).tracked().variantFilterGaps().map { it.at }
+        actual["a rule filtered ALL_EXCEPT"] = model(ruleFilter = allExcept).tracked().variantFilterGaps().map { it.at }
         actual["a computation filtered ONLY"] =
-            model(computationFilter = only).variantFilterGaps().map { it.at }
+            model(computationFilter = only).tracked().variantFilterGaps().map { it.at }
         actual["a computation filtered ALL_EXCEPT"] =
-            model(computationFilter = allExcept).variantFilterGaps().map { it.at }
+            model(computationFilter = allExcept).tracked().variantFilterGaps().map { it.at }
         actual["both filtered ONLY"] =
-            model(ruleFilter = only, computationFilter = only).variantFilterGaps().map { it.at }
+            model(ruleFilter = only, computationFilter = only).tracked().variantFilterGaps().map { it.at }
         actual["ONLY naming an empty variants list"] =
-            model(ruleFilter = """{"filterType":"ONLY","variants":[]}""").variantFilterGaps().map { it.at }
+            model(ruleFilter = """{"filterType":"ONLY","variants":[]}""").tracked().variantFilterGaps().map { it.at }
         actual["ONLY with no variants member"] =
-            model(ruleFilter = """{"filterType":"ONLY"}""").variantFilterGaps().map { it.at }
+            model(ruleFilter = """{"filterType":"ONLY"}""").tracked().variantFilterGaps().map { it.at }
 
         val expected = mutableMapOf<String, List<String?>>()
         expected["no filter at all — the control"] = emptyList()
@@ -104,10 +104,10 @@ class VariantFilterTest {
      */
     @Test
     fun aSuppressedDeclarationProducesNoFinding() {
-        assertEquals(emptyList(), model(ruleFilter = only).variantFilterFindings().map { it.code },
+        assertEquals(emptyList(), model(ruleFilter = only).tracked().variantFilterFindings().map { it.code },
             "an ONLY filter is a coverage gap, never a rejection")
         assertTrue(
-            model(ruleFilter = only).variantFilterGaps().single().reason.contains("ONLY"),
+            model(ruleFilter = only).tracked().variantFilterGaps().single().reason.contains("ONLY"),
             "the gap must name the filter that caused it so an author can act on it",
         )
     }
@@ -120,7 +120,7 @@ class VariantFilterTest {
             "no filterType" to """{"variants":["premium"]}""",
             "a string instead of an object" to """"ONLY"""",
         )
-        val actual = refused.mapValues { (_, json) -> model(ruleFilter = json).variantFilterFindings().map { it.code } }
+        val actual = refused.mapValues { (_, json) -> model(ruleFilter = json).tracked().variantFilterFindings().map { it.code } }
         val expected = refused.mapValues { listOf(CK_MODEL_NOT_BUILDABLE) }
         assertEquals(expected, actual, "the shapes A12 cannot bind")
     }
@@ -143,7 +143,7 @@ class VariantFilterTest {
             "a number" to """{"filterType":9}""",
             "JSON null" to """{"filterType":null}""",
             "an unknown spelling" to """{"filterType":"SOMETIMES"}""",
-        ).mapValues { (_, json) -> model(ruleFilter = json).variantFilterFindings().single().explain }
+        ).mapValues { (_, json) -> model(ruleFilter = json).tracked().variantFilterFindings().single().explain }
 
         assertTrue(explain.getValue("absent").contains("declares no `filterType`"), explain.toString())
         for (shape in listOf("an object", "a number", "JSON null")) {
@@ -163,8 +163,8 @@ class VariantFilterTest {
      */
     @Test
     fun anExplicitNullIsAdmittedAndSaysNothingAboutCoverage() {
-        assertEquals(emptyList(), model(ruleFilter = "null").variantFilterFindings().map { it.code })
-        assertEquals(emptyList(), model(ruleFilter = "null").variantFilterGaps())
+        assertEquals(emptyList(), model(ruleFilter = "null").tracked().variantFilterFindings().map { it.code })
+        assertEquals(emptyList(), model(ruleFilter = "null").tracked().variantFilterGaps())
     }
 
     /**
@@ -176,10 +176,10 @@ class VariantFilterTest {
      */
     @Test
     fun theFamilyJudgesOnlyRulesAndComputations() {
-        val gaps = model(ruleFilter = only, computationFilter = only, fieldFilter = only).variantFilterGaps()
+        val gaps = model(ruleFilter = only, computationFilter = only, fieldFilter = only).tracked().variantFilterGaps()
         assertEquals(listOf("/Catalog/PriceRule", "/Catalog/PriceCalc"), gaps.map { it.at },
             "no field or group declaration may appear here")
-        assertEquals(emptyList(), model(fieldFilter = only).variantFilterFindings().map { it.code },
+        assertEquals(emptyList(), model(fieldFilter = only).tracked().variantFilterFindings().map { it.code },
             "a field's filter is unmeasured, so it draws no finding either")
     }
 

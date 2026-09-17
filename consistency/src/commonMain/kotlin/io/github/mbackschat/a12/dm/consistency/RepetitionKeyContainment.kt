@@ -42,11 +42,11 @@ import io.github.mbackschat.a12.dm.consistency.syntax.callsIn
  * **Rules only**, for the reason its two siblings are: A12's calculation module refuses the operator in a
  * computation outright ([KERNEL-FINDINGS KF333]), so a computation carrying one has a different defect.
  */
-fun PreparedModel.repetitionKeyContainmentFindings(): List<Finding> {
+internal fun TrackedFactBase.repetitionKeyContainmentFindings(): List<Finding> {
     val keywords = CONDITION_OPERATOR_KEYWORDS[conditionLanguage] ?: return emptyList()
     val spelling = keywords[REPETITION_NOT_UNIQUE] ?: return emptyList()
     val scopeKeyword = keywords[FROM_SCOPE] ?: return emptyList()
-    return elements.filter { it.kind == "Rule" }.flatMap { element ->
+    return declarations().filter { it.kind == "Rule" }.flatMap { element ->
         val body = element.body ?: return@flatMap emptyList()
         val declaringGroup = element.path.substringBeforeLast('/', missingDelimiterValue = "")
         conditionTexts(element.kind, body).flatMap { (member, text) ->
@@ -72,11 +72,11 @@ private data class ContainmentDefect(val code: String, val key: String, val boun
  * The key list is taken whole or not at all: a shape this reader cannot reduce to a resolved path is one A12
  * answers with its own class, and guessing which would attach a containment fix to a different defect.
  */
-private fun PreparedModel.containmentDefect(
+private fun TrackedFactBase.containmentDefect(
     call: ConditionCall,
     scopeKeyword: String,
     declaringGroup: String,
-    element: DeclaredElement,
+    element: TrackedDeclaration,
 ): ContainmentDefect? {
     if (call.operands.isEmpty()) {
         return null
@@ -107,7 +107,7 @@ private fun PreparedModel.containmentDefect(
  * A key outside it is only ASKED where the two branches iterate jointly; otherwise the wildcard gate has
  * already answered, which is the measured difference between an index-keyed pair and an index-free one.
  */
-private fun PreparedModel.outsideScope(keys: List<String>, scope: DeclaredElement): ContainmentDefect? {
+private fun TrackedFactBase.outsideScope(keys: List<String>, scope: TrackedDeclaration): ContainmentDefect? {
     val outside = keys.firstOrNull { !parentOf(it).startsWith("${scope.path}/") } ?: return null
     return if (iteratesJointlyWith(lowestRepetitionOf(outside), scope)) {
         ContainmentDefect("MVK_NOT_IN_GROUP", outside, scope.path)
@@ -122,8 +122,8 @@ private fun PreparedModel.outsideScope(keys: List<String>, scope: DeclaredElemen
  * The chain test walks the keys in authored order and keeps the longest path seen, exactly as A12 does, so
  * the key REPORTED is the first one that cannot extend it rather than the pair that disagrees.
  */
-private fun PreparedModel.withoutScope(keys: List<String>, declaringGroup: String): ContainmentDefect? {
-    var chain: DeclaredElement? = null
+private fun TrackedFactBase.withoutScope(keys: List<String>, declaringGroup: String): ContainmentDefect? {
+    var chain: TrackedDeclaration? = null
     keys.forEach { key ->
         val repetition = lowestRepetitionOf(key) ?: return@forEach
         val held = chain
@@ -157,11 +157,11 @@ private fun PreparedModel.withoutScope(keys: List<String>, declaringGroup: Strin
 private fun parentOf(path: String): String = "${path.substringBeforeLast('/', missingDelimiterValue = "")}/"
 
 /** The innermost repeatable group [path] lies under, which is the level A12 compares. */
-private fun PreparedModel.lowestRepetitionOf(path: String): DeclaredElement? = elements
+private fun TrackedFactBase.lowestRepetitionOf(path: String): TrackedDeclaration? = declarations()
     .filter { it.declaredKind == DeclaredKind.GROUP && it.isRepeatable && path.startsWith("${it.path}/") }
     .maxByOrNull { it.path.length }
 
-private fun PreparedModel.repeatableGroupAt(path: String?): DeclaredElement? = elements.firstOrNull {
+private fun TrackedFactBase.repeatableGroupAt(path: String?): TrackedDeclaration? = declarations().firstOrNull {
     it.path == path && it.declaredKind == DeclaredKind.GROUP && it.isRepeatable
 }
 
@@ -172,7 +172,7 @@ private fun PreparedModel.repeatableGroupAt(path: String?): DeclaredElement? = e
  * Absent that, the pair draws `MVK_NO_WILDCARD` before any containment question, so this predicate is the
  * whole reachability of the three classes above rather than a refinement of them.
  */
-private fun iteratesJointlyWith(one: DeclaredElement?, other: DeclaredElement): Boolean {
+private fun iteratesJointlyWith(one: TrackedDeclaration?, other: TrackedDeclaration): Boolean {
     val name = indexFieldNameOf(one ?: return false) ?: return false
     return name == indexFieldNameOf(other)
 }
@@ -180,7 +180,7 @@ private fun iteratesJointlyWith(one: DeclaredElement?, other: DeclaredElement): 
 private fun containmentFinding(
     defect: ContainmentDefect,
     call: ConditionCall,
-    element: DeclaredElement,
+    element: TrackedDeclaration,
     member: String,
 ): Finding = Finding(
     FindingCategory.A12_CONSTRAINT,

@@ -37,7 +37,7 @@ package io.github.mbackschat.a12.dm.consistency
  * already treats it as reaching. An unresolvable operand pre-empts A12's own gate, so reporting would name a
  * second fix for one typo. A computation carries no error field and is not judged at all.
  */
-fun PreparedModel.errorTargetIterationFindings(): List<Finding> {
+internal fun TrackedFactBase.errorTargetIterationFindings(): List<Finding> {
     val named = conditionReferences().groupBy { it.declaredAt }
     return declaredReferences()
         .filter { it.role == ReferenceRole.ERROR_TARGET }
@@ -92,7 +92,7 @@ fun PreparedModel.errorTargetIterationFindings(): List<Finding> {
  *     since a reference that reaches the target is excluded from the own-group arm by [reaches] and cannot
  *     be parallel to the group it contains.
  */
-private fun PreparedModel.iterationFinding(
+private fun TrackedFactBase.iterationFinding(
     read: List<String>,
     target: String,
     errorFieldGroup: String,
@@ -126,8 +126,8 @@ private fun PreparedModel.iterationFinding(
  * a repeatable ancestor of the error field's group repeats WITH it, so a read beneath one is the other class
  * or no class at all.
  */
-private fun PreparedModel.parallelToTheErrorField(path: String, errorFieldGroup: String): Boolean =
-    elements.any { candidate ->
+private fun TrackedFactBase.parallelToTheErrorField(path: String, errorFieldGroup: String): Boolean =
+    declarations().any { candidate ->
         candidate.declaredKind == DeclaredKind.GROUP &&
             candidate.isRepeatable &&
             (path == candidate.path || path.startsWith("${candidate.path}/")) &&
@@ -144,5 +144,5 @@ private fun finding(code: String, explain: String, at: String) =
     Finding(FindingCategory.A12_CONSTRAINT, FindingSeverity.ERROR, code, explain, at)
 
 /** Whether [path] names a group A12 gives repetitions — the ambiguity this family reports needs one. */
-private fun PreparedModel.repeats(path: String): Boolean =
-    elements.any { it.path == path && it.declaredKind == DeclaredKind.GROUP && it.isRepeatable }
+private fun TrackedFactBase.repeats(path: String): Boolean =
+    declarations().any { it.path == path && it.declaredKind == DeclaredKind.GROUP && it.isRepeatable }

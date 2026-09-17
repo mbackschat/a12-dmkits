@@ -29,7 +29,7 @@ import kotlinx.serialization.json.JsonPrimitive
  * `ONLY [""]`. This code therefore keys on the type and never inspects the list — reading the list would
  * reintroduce exactly the account the measurement killed.
  */
-fun PreparedModel.variantFilterGaps(): List<CoverageGap> =
+internal fun TrackedFactBase.variantFilterGaps(): List<CoverageGap> =
     suppressed().map { element ->
         CoverageGap(
             at = element.path,
@@ -55,9 +55,9 @@ fun PreparedModel.variantFilterGaps(): List<CoverageGap> =
  * declaration; it cannot rescue a model that fails to BUILD — so a finding that the model does not load is
  * not a verdict this filter can hide, and dropping it would report a model A12 refuses as merely unexamined.
  */
-fun PreparedModel.variantFilterSuppressed(): Set<String> = suppressed().map { it.path }.toSet()
+internal fun TrackedFactBase.variantFilterSuppressed(): Set<String> = suppressed().map { it.path }.toSet()
 
-private fun PreparedModel.suppressed(): List<DeclaredElement> = suppressible().filter { element ->
+private fun TrackedFactBase.suppressed(): List<TrackedDeclaration> = suppressible().filter { element ->
     val declared = element.body?.get("variantFilter")
     declared is JsonObject && declared.filterType() == FilterType.Spelled(SUPPRESSING_FILTER)
 }
@@ -73,7 +73,7 @@ private fun PreparedModel.suppressed(): List<DeclaredElement> = suppressible().f
  * member's semantic law already proved carrier-specific, so nothing about it is uniform by default
  * (`rulekit.validate.laws.FieldVariantFilterLawsTest`, `RuleVariantFilterLawsTest`).
  */
-fun PreparedModel.variantFilterFindings(): List<Finding> =
+internal fun TrackedFactBase.variantFilterFindings(): List<Finding> =
     bindable().mapNotNull { element ->
         when (val declared = element.body?.get("variantFilter")) {
             // Absent, and an explicit `null`, are both ADMITTED: the member is reached through an `Optional`
@@ -139,7 +139,7 @@ private sealed interface FilterType {
  * says MORE about such a model rather than less, and that is handled where references resolve rather than by
  * suppressing anything. Including fields here would silence findings A12 actually makes.
  */
-private fun PreparedModel.suppressible(): List<DeclaredElement> = elements.filter {
+private fun TrackedFactBase.suppressible(): List<TrackedDeclaration> = declarations().filter {
     it.declaredKind == DeclaredKind.RULE || it.declaredKind == DeclaredKind.COMPUTATION
 }
 
@@ -152,7 +152,7 @@ private fun PreparedModel.suppressible(): List<DeclaredElement> = elements.filte
  * three files, all three read; there is no group carrier, which is why a group's stray `variantFilter` is
  * left alone here exactly as its stray `fieldType` is.
  */
-private fun PreparedModel.bindable(): List<DeclaredElement> = elements.filter {
+private fun TrackedFactBase.bindable(): List<TrackedDeclaration> = declarations().filter {
     it.declaredKind == DeclaredKind.RULE || it.declaredKind == DeclaredKind.COMPUTATION ||
         it.declaredKind == DeclaredKind.FIELD
 }
@@ -166,7 +166,7 @@ private fun JsonObject.filterType(): FilterType = when (val declared = this["fil
     else -> FilterType.NotAString
 }
 
-private fun unbuildable(element: DeclaredElement, explain: String): Finding = Finding(
+private fun unbuildable(element: TrackedDeclaration, explain: String): Finding = Finding(
     FindingCategory.A12_CONSTRAINT,
     FindingSeverity.ERROR,
     CK_MODEL_NOT_BUILDABLE,
