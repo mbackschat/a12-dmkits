@@ -975,6 +975,46 @@ tasks.register('checkerPreparedNodePerfTest', Test) {
     outputs.cacheIf { false }
 }
 
+// H5-h's BROWSER arm: the prepared boundary's third host. One warm CONTEXT runs the whole campaign, which is
+// the opposite of H5-g's fresh context per observation and the reason it is a separate page. Off every
+// automated lane for the same two reasons as the other browser lane: it needs pnpm and a system Chrome.
+tasks.register('checkerPreparedBrowserPerfTest', Test) {
+    description = 'Measure the checker\'s PREPARED growth in one warm browser context against the packed bundle.'
+    group = 'measurement'
+    dependsOn ':consistency:installPackedConsistencyInBrowserConsumer'
+    dependsOn ':consistency:prepareSharedConsumerCases'
+    // The project-level invariant, not this task's: every executable source in that project is TypeScript, and
+    // this lane adds two more authored files to it.
+    dependsOn ':consistency:verifyConsistencyBrowserTypeScriptSources'
+    testClassesDirs = sourceSets.test.output.classesDirs
+    classpath = sourceSets.test.runtimeClasspath
+    useJUnitPlatform()
+    maxParallelForks = 1
+    failFast = true
+    systemProperty 'perf.checker.preparedbrowser', 'true'
+    doFirst {
+        systemProperty 'perf.checker.preparedbrowser.project',
+            project(':consistency').layout.buildDirectory.dir('consumer-tests/browser').get().asFile.absolutePath
+        // pnpm drives the project's own build scripts; node runs the compiled sampler. Neither is the runtime
+        // under observation — Chrome is — so both are pinned for reproducibility of the DRIVER rather than of
+        // the measurement, exactly as H5-g's task explains.
+        systemProperty 'perf.checker.preparedbrowser.pnpm', resolveNodeTool('pnpm').absolutePath
+        systemProperty 'perf.checker.preparedbrowser.node',
+            resolveNodeTool('node', checkerNodeMajor).absolutePath
+    }
+    // 51: odd so the paired median names an observed ratio, and at or above the boundary's floor of 50.
+    systemProperty 'perf.checker.preparedbrowser.pairs',
+        providers.gradleProperty('checkerPreparedBrowserPairs').getOrElse('51')
+    systemProperty 'perf.checker.preparedbrowser.n',
+        providers.gradleProperty('checkerPreparedBrowserN').getOrElse('200')
+    filter {
+        includeTestsMatching 'io.github.mbackschat.a12.dm.adapter.perf.CheckerPreparedBrowserPerfTest'
+    }
+    // Measurements are observations, never reusable task outputs.
+    outputs.upToDateWhen { false }
+    outputs.cacheIf { false }
+}
+
 // H5-g: the cold boundary's BROWSER arm — the third host §8's cold row names, and with H5-f the one that closes
 // that row's host grid. It orchestrates the bundle build rather than `:consistency` doing so, because the
 // workload comes from the typed synthesizer here and `:adapter` already depends on `:consistency`, so the

@@ -30,6 +30,28 @@ Row 8 lists **Java API compatibility**, and its oracle asks for a "compiled publ
 
 **The first reading of the dump is itself the finding: 183 public classes against two shipped functions.** Almost all of it is public by omission — Kotlin's default visibility is public, and the module was written as internal implementation before it became a published artifact. The gate is deliberately **unfiltered** so this stays visible; a filter drawn today would encode the accident as the contract. What the checker's contract *should* be is a design call, not a side effect of adding a gate, so it is recorded with a re-open trigger rather than decided here ([the disposition](PORTABLE-CONSISTENCY-IMPLEMENTATION-PLAN.md#stage-8-abi)).
 
+## 2026-09-17 — H5-h's browser arm closes the prepared row's host grid <a id="prepared-browser-2026-09-17"></a>
+
+With the Node arm below, §8's prepared row is now measured on all three hosts the owner's hard-acceptance line names. **One warm browsing context runs the entire campaign**, which is the exact opposite of what the cold browser arm does with a fresh context per observation — and the reason this is a separate page rather than a parameter. §8 asks for the cold and prepared costs "reported separately"; one page cannot be both a context that has never loaded the checker and one that has loaded and warmed it.
+
+**Lane:** `./build.sh :adapter:checkerPreparedBrowserPerfTest` (`adapter.perf.CheckerPreparedBrowserPerfTest`), 51 interleaved N/4N pairs inside one warm context in a system Chrome driven by Playwright, the ratified paired estimator. Runtime **Chrome/153.0.8010.48**, recorded rather than pinned, as the cold browser arm explains. Same machine, workload and generator as the two prepared arms below. **Revision:** `8eaa8a059` plus this lane.
+
+| quantity | 200 programs | 800 programs |
+|---|---|---|
+| `check` median — warm whole-model check through report text | 104.30 ms | 691.60 ms |
+| `check` p95 | 121.70 ms | 729.00 ms |
+| `check` min–max | 101.10–130.70 ms | 667.00–797.00 ms |
+| `reportChars` — the serialized report's length | **4 892** (1 distinct value) | **4 892** (1 distinct value) |
+| **median within-pair ratio** | — | **6.59×** |
+
+**The bar is the ratio and nothing else.** 6.59× sits under the ratified `PerfBounds.SUB_QUADRATIC_MAX` floor of 9.0 with **1.37× of headroom — the thinnest of any checker lane**, narrowly under the Node arm's 1.40×. No duration is asserted and no anchor written; a browser millisecond has no basis that survives another machine, another Chrome or another bundler.
+
+**The three prepared ratios rise with distance from the JVM, and no mechanism is offered.** JVM **5.33×**, plain Node **6.42×**, browser **6.59×**, on one workload at one pair of scales. What CAN be said is what the rival mechanism is not: this arm's `check` renders the report to JSON inside the call where the JVM quantity stops at the object, and `reportChars` is **4 892 at both scales on both JS hosts** — so the serialization is a fixed per-call cost, cannot scale with the model, and in any case a fixed cost *depresses* a ratio rather than raising it. The remaining candidates (engine, bundler output, a different growth constant) are unmeasured, and the discriminator would be a JS entry point returning a report without serializing it, which the published surface deliberately does not offer.
+
+**Its own toolchain defect, found by running it rather than by reading it.** The first run failed with `locator.waitFor: Timeout 30000ms exceeded`. Playwright's own locator timeout is 30 s and fires *before* the harness's `withDeadline` wrapper — so the wrapper looked like the bound and was not. The cold arm never exposed it because each of its waits is sub-second, while this page reports once after roughly 100 s. The wait now carries an explicit bound and the wrapper stays strictly looser as a backstop. **A wrapper that cannot fire before the thing it wraps is not a deadline** — the same shape as the unreachable child-process fuse found hours earlier, in a different library.
+
+**The assertion is controlled rather than assumed.** With the floor lowered to 2.0, the lane refused across all three independent re-measurements — **6.576×, 6.585×, 6.591×** (107.5→709.4, 110.8→726.4, 109.7→725.5 ms) — failing on their median. **Four independent estimates spanning 0.2 %**, which is the tightest spread on this page and exactly what one warm context should give: no process launches and no fresh-context variance enter the numbers at all.
+
 ## 2026-09-17 — H5-h: the PREPARED boundary on plain Node, and the rival mechanism ruled out <a id="prepared-node-2026-09-17"></a>
 
 §8's prepared row reads host-neutral, but the owner's hard-acceptance section attaches "JVM, plain Node and browser consumers" to the whole budget list, so this cell was one of six the [host-axis record](PORTABLE-CONSISTENCY-IMPLEMENTATION-PLAN.md#stage-8-h5-host-axis) names. **What made it schedulable was reading the JVM lane rather than assuming what it measures:** `CheckerGrowthPerfTest` times `check(ModelSource(text))` on a warmed runtime — a repeated whole-model check, *not* a snapshot-reuse call. So the analogue is `checkModelJson` after a per-scale warm-up, which the checker's published two-function JS surface already supports. Had "prepared" meant snapshot reuse, this arm would have been blocked on publishing a prepared API to JavaScript, which `JsApi.kt` declines for stated reasons.

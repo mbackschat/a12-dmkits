@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>A12 Consistency Checker — prepared growth</title>
+  </head>
+  <body>
+    <h1>A12 consistency checker — prepared growth</h1>
+    <!--
+      A third page, and separate from `cold.html` for the reason that page gives about `index.html`: the cold
+      page's whole job is to be a context that has never loaded the checker, and this page's whole job is the
+      opposite — it loads and warms the checker before anything is timed, then runs the entire campaign in that
+      one warm context. §8 asks for those two costs "reported separately", and one page cannot be both.
+
+      The two models and the visit order arrive as query parameters, so one built page serves every scale and
+      every pair count the driver asks for and nothing is baked into the bundle. The order is the CALLER's
+      because the caller owns the ratified estimator; this page only visits and records.
+
+      `data-state` starts at `running` and the driver waits for it to change, so a page that never finished
+      cannot read as a fast one.
+    -->
+    <p id="status" data-state="running">Loading and warming the packed checker…</p>
+    <pre id="measurement"></pre>
+    <script type="module" src="/src/prepared.ts"></script>
+  </body>
+</html>

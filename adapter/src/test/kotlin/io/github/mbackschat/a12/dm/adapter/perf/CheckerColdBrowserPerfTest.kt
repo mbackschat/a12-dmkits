@@ -65,10 +65,10 @@ class CheckerColdBrowserPerfTest {
         require(programs > 0) { "perf.checker.coldbrowser.n must be positive" }
 
         val scales = listOf(programs, programs * 4)
-        val served = stageWorkloads(consumer, scales)
+        val served = BrowserConsumerLane.stageWorkloads(consumer, scales)
         // The bundle build is OUTSIDE the estimate: it is not part of any observation, and rebuilding it per
         // attempt would only add a minute to a re-measurement.
-        buildBundle(consumer, pnpm)
+        BrowserConsumerLane.buildBundle(consumer, pnpm, CHILD_TIMEOUT_SECONDS)
 
         PerfHarness.assertGrowthBelowCatastropheFloor(
             "portable checker COLD N/4N over model declarations, real browser",
@@ -165,36 +165,14 @@ class CheckerColdBrowserPerfTest {
         }
     }
 
-    /**
-     * Write the synthesized models where Vite will serve them, and return the URL each scale is served at.
-     *
-     * `public/` is copied to the site root by the bundle build, so these become `/perf/synth-<n>.dm.json`. The
-     * models come from the SAME generator the JVM and Node arms use, so the three hosts are compared on one
-     * workload rather than on three that share a name.
-     */
-    private fun stageWorkloads(consumer: Path, scales: List<Int>): Map<Int, String> {
-        val servedDir = consumer.resolve("public").resolve("perf")
-        Files.createDirectories(servedDir)
-        return scales.associateWith { scale ->
-            val name = "synth-$scale.dm.json"
-            Files.writeString(servedDir.resolve(name), ProfileSynthesisTargetProfiles.modelJson(scale))
-            "perf/$name"
-        }
-    }
-
-    /** Build the bundle and the sampler, through the consumer project's own scripts. */
-    private fun buildBundle(consumer: Path, pnpm: Path) {
-        runToCompletion(consumer, listOf(pnpm.toString(), "run", "build"), "the browser bundle build", pnpm)
-        runToCompletion(consumer, listOf(pnpm.toString(), "run", "build:scripts"), "the sampler build", pnpm)
-    }
-
     /** Run the sampler once, and parse its observation lines in the order it printed them. */
     private fun sample(consumer: Path, node: Path, visits: List<String>): List<ColdObservation> {
-        val output = runToCompletion(
+        val output = BrowserConsumerLane.runToCompletion(
             consumer,
             listOf(node.toString(), SAMPLER) + visits,
             "the browser cold sampler",
             node,
+            CHILD_TIMEOUT_SECONDS,
         )
         return output.lineSequence()
             .filter { it.startsWith("observation ") }
@@ -213,30 +191,6 @@ class CheckerColdBrowserPerfTest {
                 )
             }
             .toList()
-    }
-
-    /**
-     * One child, with the resolved tool's directory prepended to `PATH`.
-     *
-     * pnpm's launcher is itself a node script, so a child that cannot find `node` fails in a way that reads as a
-     * project error rather than a toolchain one — which is why the directory goes on `PATH` rather than only the
-     * executable being named.
-     */
-    private fun runToCompletion(
-        workingDir: Path,
-        command: List<String>,
-        what: String,
-        tool: Path,
-    ): String {
-        val toolDir = requireNotNull(tool.parent) { "$tool has no parent directory" }
-        val completed = ChildProcess.runWithFuse(
-            command = command,
-            directory = workingDir,
-            environment = mapOf("PATH" to "$toolDir${java.io.File.pathSeparator}${System.getenv("PATH")}"),
-            timeoutSeconds = CHILD_TIMEOUT_SECONDS,
-        ) { what }
-        check(completed.exitCode == 0) { "$what exited ${completed.exitCode}: ${completed.output}" }
-        return completed.output
     }
 
     /**
