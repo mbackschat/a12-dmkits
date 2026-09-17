@@ -8,6 +8,28 @@ Dated measurements of the Kernel-free checker, newest first. **Every LATENCY her
 
 Results never land in a spec, and a measurement's home is not its explanation: the mechanism paragraphs below are marked as hypotheses where they are hypotheses.
 
+## 2026-09-17 — the MIRROR, measured absent and then built <a id="mirror-2026-09-17"></a>
+
+F's oracle gives "ordinary evaluation is checker-independent" its own row and asks for *"the mirrored guard on the interpreter's published JVM/JavaScript production closure and shipped files, with its own forbidden-dependency positive control"*. Half of it already existed and half did not, and reading the guards would have got both halves wrong — which is why the edge was planted instead.
+
+| the mirror's half | state before 2026-09-17 |
+|---|---|
+| shipped files | **already closed.** `verifyInterpreterNpmPublication` compares committed `api/npm-package-files.txt` and `api/maven-package-files.txt` by exact text equality over the full sorted list, in both carriers, so a copied checker file fails on arrival |
+| forbidden dependency | **absent.** With `implementation project(':consistency')` planted on `jsMain`, `verifyInterpreterPurity` **and** `interpreterRuntimeClosurePolicyTest` both passed — the latter under `--rerun`, because the first attempt went up-to-date in 2 s and a green up-to-date task is not a measurement |
+
+**Why the existing instruments could not see it.** `verifyInterpreterPurity` is an import-TEXT scan, so a declared-but-unimported edge is invisible to it by construction, and only its `commonMain` rule carried an allowlist — `jvmMain`, `jsMain` and `commonTest` were denylists that never named the checker. `interpreterRuntimeClosurePolicyTest` does read project components, but its subject is the runtime closure's shape, not an allowlist of who may be in it.
+
+**Built both arms, each with a control.**
+
+| instrument | control | observed |
+|---|---|---|
+| `verifyInterpreterDependencies` (new, on `check` and in push CI) | `project(':consistency')` on `jsMain` | `intra-repo project edge(s) outside its declared allowlist [:interpreter]`, on both JS configurations |
+| `verifyInterpreterPurity`, forbidden set extended | `import io.github.mbackschat.a12.dm.consistency.ConsistencyStatus` in `Dec.js.kt` | `jsMain/Dec.js.kt:2: import io.github.mbackschat.a12.dm.consistency.ConsistencyStatus` |
+
+**The new guard declares NO module allowlist, deliberately.** The interpreter's external denominator — kotlinx, `big.js`, the test stack across four configurations — is a separate slice with its own risk of a wrong row, and passing an empty list would claim a closed external denominator nobody has established. The kernel-forbidden arm supplies this guard's own positive control meanwhile. The checker's side is closed over both axes because its external set is small and already enumerated.
+
+**One documentation obligation is OPEN and cannot be discharged here.** [`interpreter/CLAUDE.md`](../interpreter/CLAUDE.md) states the purity lint's contract verbatim — *"`commonMain` may not import `java.*`/`com.mgmtp.*`/`groovy.*`; `jvmMain`/`jsMain` may not import `com.mgmtp.*`/`groovy.*`"* — and that sentence is now short by the checker prefix and says nothing of the new dependency gate. That file is owner-protected in this session, so the amendment is named here rather than made.
+
 ## 2026-09-17 — NFR #1 had no enforcement locus on the JS target, measured <a id="project-edge-2026-09-17"></a>
 
 The checker's central contract is that it depends on neither the Kernel (H1) nor `:interpreter` (NFR #1). Two instruments carry it, and the module's own build file said so. Planting the edge showed the claim was false where it mattered most.

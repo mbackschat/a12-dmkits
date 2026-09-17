@@ -149,12 +149,18 @@ jobs:
         working-directory: a12-dmkits
         env:
           JAVA_HOME: ${{ env.JAVA_HOME_21_X64 }}
+        # `:interpreter:verifyInterpreterDependencies` is the MIRROR of the checker's NFR #1: ordinary
+        # evaluation must not depend on consistency checking. It landed 2026-09-17 because the claim had no
+        # enforcement locus — a planted `project(':consistency')` on `jsMain` passed both existing interpreter
+        # gates under forced execution. The purity lint reads import TEXT and so cannot see a declared-but-
+        # unimported edge; this one reads the resolved graph, including intra-repo project components, which no
+        # group filter sees.
         # The `:interpreter:*` gates are named individually because this workflow runs `:interpreter:allTests`,
         # not `:interpreter:check` — that lifecycle also drags in dokka, npm packing and Maven staging, which
         # belong to the release rehearsal. Naming them is what GateTierWiringTest derives and enforces; five of
         # them ran nowhere at all until 2026-09-12, `verifyInterpreterPurity` — the EUPL import boundary —
         # among them.
-        run: ./gradlew --no-daemon test :adapter:test :cli:test :cli:publicContractTest :interpreter:allTests :interpreter:verifyInterpreterPurity :interpreter:interpreterRuntimeClosurePolicyTest :interpreter:interpreterAbiGoldenDepthTest :interpreter:verifyInterpreterVersionAlignment :interpreter:verifyInterpreterPerformanceClaims :interpreter-bridge:check :consistency-gate:check :interpreter-preflight:check :consistency:check :consistency:nodeConsumerTest :consistency:verifyConsistencyDeliveryCeiling :consistency:verifyCheckerArtifactIdentity :consistency:verifyConsistencyShippedFiles :schemakit:check :verifyKitPurity :verifyPublishedClasspathsAreKernelFree :noBackendTest -PrunFuzz
+        run: ./gradlew --no-daemon test :adapter:test :cli:test :cli:publicContractTest :interpreter:allTests :interpreter:verifyInterpreterPurity :interpreter:verifyInterpreterDependencies :interpreter:interpreterRuntimeClosurePolicyTest :interpreter:interpreterAbiGoldenDepthTest :interpreter:verifyInterpreterVersionAlignment :interpreter:verifyInterpreterPerformanceClaims :interpreter-bridge:check :consistency-gate:check :interpreter-preflight:check :consistency:check :consistency:nodeConsumerTest :consistency:verifyConsistencyDeliveryCeiling :consistency:verifyCheckerArtifactIdentity :consistency:verifyConsistencyShippedFiles :schemakit:check :verifyKitPurity :verifyPublishedClasspathsAreKernelFree :noBackendTest -PrunFuzz
 
       # Both agent plugins (Claude Code, Codex) bundle COPIES of the single-source assets — the skills,
       # installer, and release-asset manifest — synced by scripts/sync-plugin-assets.sh. Fail loudly if any

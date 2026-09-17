@@ -541,12 +541,19 @@ def verifyInterpreterPurity = tasks.register('verifyInterpreterPurity') {
             commonMain: [forbidden: ['java.', 'javax.', 'com.mgmtp.', 'groovy.', 'kotlinx.coroutines.'],
                          allowed: commonAllowedPrefixes,
                          why: 'must be pure common Kotlin with no JVM/kernel/groovy/coroutine-library types'],
-            jvmMain   : [forbidden: ['com.mgmtp.', 'groovy.', 'kotlinx.coroutines.'],
-                         why: 'the JVM shim may use java.* but never the kernel/groovy/coroutine library'],
-            jsMain    : [forbidden: ['java.', 'javax.', 'com.mgmtp.', 'groovy.', 'kotlinx.coroutines.'],
-                         why: 'the JS shim is pure Kotlin/JS + externals with no coroutine-library ABI'],
-            commonTest: [forbidden: ['com.mgmtp.', 'groovy.'],
-                         why: 'the kernel differential tests live in :adapter, not here — keep this module kernel-free'],
+            // The CHECKER is forbidden here and not in commonMain, where `commonAllowedPrefixes` already
+            // refuses it: adding it there would report one import twice, once specifically and once as an
+            // undeclared third party. The claim is the mirror of `:consistency`'s NFR #1 — ordinary
+            // evaluation must not depend on consistency checking — and this text scan is its weaker arm;
+            // `verifyInterpreterDependencies` is the one that sees a declared-but-unimported edge.
+            jvmMain   : [forbidden: ['com.mgmtp.', 'groovy.', 'kotlinx.coroutines.',
+                                     'io.github.mbackschat.a12.dm.consistency.'],
+                         why: 'the JVM shim may use java.* but never the kernel/groovy/coroutines/checker'],
+            jsMain    : [forbidden: ['java.', 'javax.', 'com.mgmtp.', 'groovy.', 'kotlinx.coroutines.',
+                                     'io.github.mbackschat.a12.dm.consistency.'],
+                         why: 'the JS shim is pure Kotlin/JS + externals, with no coroutine-library ABI or checker'],
+            commonTest: [forbidden: ['com.mgmtp.', 'groovy.', 'io.github.mbackschat.a12.dm.consistency.'],
+                         why: 'the kernel differential tests live in :adapter, not here — keep this module kernel- and checker-free'],
         ]
         def violations = []
         rules.each { sourceSet, rule ->
@@ -593,9 +600,45 @@ def verifyInterpreterPurity = tasks.register('verifyInterpreterPurity') {
         }
     }
 }
+
+// --- The mirror of the checker's NFR #1: ordinary evaluation is CHECKER-independent -----------------------
+//
+// F's claim-specific oracle asks for this in its own row — "the mirrored guard on the interpreter's published
+// JVM/JavaScript production closure and shipped files, with its own forbidden-dependency positive control" —
+// and until 2026-09-17 the forbidden-dependency half did not exist here. Measured, not supposed: with
+// `implementation project(':consistency')` planted on `jsMain`, `verifyInterpreterPurity` and
+// `interpreterRuntimeClosurePolicyTest` both passed under forced execution.
+//
+// The instrument is the one `:consistency` uses for the same claim in the other direction, and the part that
+// matters is the project-path arm: an intra-repo edge is a `ProjectComponentIdentifier` that no group filter
+// sees, and a group allowlist could not help anyway because every module here publishes under one group.
+//
+// It deliberately declares NO module allowlist. The interpreter's external denominator (kotlinx, big.js, the
+// test stack across four configurations) is real work with its own risk of a wrong row, and it is a separate
+// slice; the kernel-forbidden arm carries this guard's own positive control in the meantime. Passing an empty
+// allowlist here would claim a closed external denominator that has not been established.
+def verifyInterpreterDependencies = tasks.register('verifyInterpreterDependencies') {
+    group = 'verification'
+    description = 'Fail if the interpreter resolves the kernel, or any intra-repo module, on JVM or JS.'
+    doLast {
+        rootProject.verifyKernelFreeClasspath(
+            'interpreter dependencies — jvm and js, main and test',
+            ['jvmRuntimeClasspath', 'jvmTestRuntimeClasspath', 'jsRuntimeClasspath', 'jsTestRuntimeClasspath']
+                    .collect { configurations.getByName(it) },
+            ['com.mgmtp.'],
+            'org.jetbrains.kotlin',
+            [],
+            // Closed and fully explicit: the interpreter is the publishable standalone artifact and depends on
+            // no module in this repository — not the kits, not `:adapter`, not `:cli`, and not `:consistency`,
+            // whose independence from evaluation is the mirror of the checker's independence from it.
+            [':interpreter'])
+    }
+}
+
 tasks.named('check') {
     dependsOn verifyInterpreterPurity
     dependsOn verifyInterpreterVersionAlignment
+    dependsOn verifyInterpreterDependencies
 }
 
 // --- Relative footprint: the NFR-F1 hard-zero + a reproducible runtime-closure measurement (IG79 → IF160) ---
