@@ -59,7 +59,7 @@ internal enum class ModelFact {
 }
 
 /**
- * What was read out of one fact base, bucketed by the producer that read it.
+ * What was read out of one fact base, bucketed by the CELL that read it.
  *
  * A SET per bucket rather than a list: reuse asks whether a fact was read, never how often or in what order,
  * so a family that reads one declaration twice must not key differently from one that reads it once.
@@ -78,21 +78,24 @@ internal enum class ModelFact {
  */
 internal class ReadTranscript {
     /**
-     * The buckets. The `null` key is the COMPOSITION — [checkPrepared]'s own reads, which belong to no
-     * family and are never reused per family.
+     * The buckets. The `null` key is the COMPOSITION — [checkRun]'s own reads, which belong to no cell and
+     * are never reused. **The dispatcher's own walk of the declarations charges there, deliberately**: a
+     * per-declaration bucket that recorded the set's shape would fall whenever any declaration was added or
+     * removed, undoing the per-declaration key's whole point. What makes that sound is the walk itself —
+     * a declaration that is gone is never asked for, and a new one has no cell.
      */
-    private val byProducer = mutableMapOf<CheckProducer?, MutableSet<FactRead>>()
+    private val byCell = mutableMapOf<CellKey?, MutableSet<FactRead>>()
 
-    private var producing: CheckProducer? = null
+    private var producing: CellKey? = null
 
     fun record(read: FactRead) {
-        byProducer.getOrPut(producing) { mutableSetOf() } += read
+        byCell.getOrPut(producing) { mutableSetOf() } += read
     }
 
-    /** Run [produce] with every read it makes charged to [producer]. */
-    fun <T> whileProducing(producer: CheckProducer, produce: () -> T): T {
+    /** Run [produce] with every read it makes charged to [key]. */
+    fun <T> whileProducing(key: CellKey, produce: () -> T): T {
         val outer = producing
-        producing = producer
+        producing = key
         try {
             return produce()
         } finally {
@@ -101,9 +104,8 @@ internal class ReadTranscript {
     }
 
     /** Every fact read through this transcript, whoever read it. */
-    fun observed(): Set<FactRead> = byProducer.values.flatMapTo(mutableSetOf()) { it }
+    fun observed(): Set<FactRead> = byCell.values.flatMapTo(mutableSetOf()) { it }
 
-    /** A snapshot of one producer's bucket, so a later read cannot mutate a key a cell already holds. */
-    fun observedWhileProducing(producer: CheckProducer): Set<FactRead> =
-        byProducer[producer]?.toSet() ?: emptySet()
+    /** A snapshot of one cell's bucket, so a later read cannot mutate a key a cell already holds. */
+    fun observedWhileProducing(key: CellKey): Set<FactRead> = byCell[key]?.toSet() ?: emptySet()
 }

@@ -20,7 +20,8 @@ import kotlin.test.assertTrue
  * calls — a second copy of `checkPrepared`'s dispatch, kept by care. Now [CHECK_PRODUCERS] runs every
  * producer against ONE fact base, each in its own bucket, exactly as a check does; so the thing measured is
  * the attribution the report is actually built on, and a family added to the dispatch is measured here
- * without anyone remembering to add a row.
+ * without anyone remembering to add a row. Since the walk moved into the dispatcher a row is one CELL
+ * rather than one family, so a per-declaration family contributes one row per declaration.
  *
  * **Its fixture is deliberately the whole shape rather than a minimal one.** A model with one field of each
  * kind makes every family charge one body and hides the distribution; this one carries four kinds of
@@ -61,16 +62,20 @@ class FamilyChargeProfileTest {
      * them, so a producer that reads different facts on its two channels is charged for both, as it is
      * there.
      */
-    private fun profile(): Map<CheckProducer, Set<FactRead>> {
+    private fun profile(): Map<CellKey, Set<FactRead>> {
         val tracked = TrackedFactBase(prepared(), ReadTranscript())
-        CHECK_PRODUCERS.forEach { it.findingsIn(tracked) }
-        CHECK_PRODUCERS.forEach { it.gapsIn(tracked) }
-        return CHECK_PRODUCERS.associateWith { tracked.observedWhileProducing(it) }
+        val scheduled = schedule(tracked)
+        // Through `whileProducing`, because `ScheduledCell.produce` is the raw lambda: the bucketing lives on
+        // the store's side, so calling it directly would charge everything to the composition and measure a
+        // profile of nothing.
+        scheduled.forEach { cell -> tracked.whileProducing(cell.key) { cell.produce() } }
+        return scheduled.associate { it.key to tracked.observedWhileProducing(it.key) }
     }
 
     /** How a failing row names itself, there being no name in the registry to name it by. */
-    private fun CheckProducer.label(): String =
-        completes.joinToString(", ").ifEmpty { "the type-definition disclosure" }
+    private fun CellKey.label(): String =
+        (producer.completes.joinToString(", ").ifEmpty { "the type-definition disclosure" }) +
+            (at?.let { " @${it.path}" } ?: "")
 
     @Test
     fun everyProducerChargesSomething() {
@@ -84,8 +89,8 @@ class FamilyChargeProfileTest {
     }
 
     @Test
-    fun noFamilyChargesABodyWithoutHavingChargedTheSetShape() {
-        val profile = profile()
+    fun aModelWideFamilyChargesTheSetItFoundEveryBodyIn() {
+        val profile = profile().filterKeys { it.producer is CheckProducer.ModelWide }
         val bodyWithoutShape = profile.filterValues { reads ->
             reads.any { it is FactRead.DeclarationContent } && FactRead.DeclarationSetShape !in reads
         }.keys.map { it.label() }
@@ -105,7 +110,29 @@ class FamilyChargeProfileTest {
         // The positive control: an assertion over families that charge no body at all would hold vacuously.
         assertTrue(
             profile.values.any { reads -> reads.any { it is FactRead.DeclarationContent } },
-            "no family charged any body on this fixture, so the case above is vacuous",
+            "no model-wide family charged any body on this fixture, so the case above is vacuous",
+        )
+    }
+
+    @Test
+    fun aPerDeclarationFamilyChargesNoSetShapeAtAll() {
+        val profile = profile().filterKeys { it.producer is CheckProducer.PerDeclaration }
+        val charged = profile.filterValues { FactRead.DeclarationSetShape in it }.keys.map { it.label() }
+
+        // The exact inverse of the row above, and the soundness condition of the finer key rather than a
+        // second opinion about it: a per-declaration family is handed its declaration by the dispatcher, so
+        // it never walks the set — and a cell that charged the SHAPE would fall whenever any declaration was
+        // added or removed, which is the whole reuse the migration buys. The dispatcher's own walk charges
+        // the composition, deliberately ([ReadTranscript]).
+        assertEquals(emptyList(), charged,
+            "a per-declaration family charged the declaration set, undoing the key it was migrated for")
+
+        // Two controls, because the row above is a negative existential twice over: it passes when no family
+        // is registered per declaration, and it passes when one is asked but reads nothing at all.
+        assertTrue(profile.isNotEmpty(), "no producer is registered per declaration, so this row is vacuous")
+        assertTrue(
+            profile.values.any { reads -> reads.any { it is FactRead.DeclarationContent } },
+            "no per-declaration family charged a body, so it cannot have looked at its declaration",
         )
     }
 
@@ -113,7 +140,7 @@ class FamilyChargeProfileTest {
     fun aFieldScopedFamilyLeavesTheRuleAndComputationBodiesAlone() {
         val charged = profile()
             .entries
-            .single { CheckFamily.ENUM_CATEGORY_ALIGNMENT in it.key.completes }
+            .single { CheckFamily.ENUM_CATEGORY_ALIGNMENT in it.key.producer.completes }
             .value
             .filterIsInstance<FactRead.DeclarationContent>()
             .map { it.path }

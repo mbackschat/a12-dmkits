@@ -953,16 +953,18 @@ internal fun checkRun(
     // Eleven families read that text, so without this any condition carrying two defects — the normal state
     // of one being written — draws a class A12 withheld.
     val resolvedFirst = prepared.declarationsWithAnUnresolvableConditionReference()
-    // Validity is decided ONCE per producer and everything below reads that decision — both output channels
-    // and the counter. A producer asked twice could answer twice, and a producer whose findings were reused
-    // while its gaps were recomputed would report two halves of two different models.
-    val reusable = CHECK_PRODUCERS.associateWith { carried.validIn(prepared, it) }
-    val cells = CHECK_PRODUCERS.associateWith { reusable.getValue(it) ?: cellOf(it, tracked, prepared) }
+    // Every cell this check must produce, in dispatch order. Validity is decided ONCE per cell and
+    // everything below reads that decision — both output channels and the counter.
+    val scheduled = schedule(tracked)
+    val reusable = scheduled.associate { it.key to carried.validIn(prepared, it.key) }
+    val cells = scheduled.associate {
+        it.key to (reusable.getValue(it.key) ?: tracked.cellFor(it.key, prepared, it.produce))
+    }
     val reused = reusable.count { it.value != null }
     val judged = (declared.mapNotNull { it.target.asFinding(it.role, it.declaredAt) } +
         prepared.conditionReferences().mapNotNull {
             it.target.asFinding(ReferenceRole.CONDITION_ENTITY, it.declaredAt, it.member, it.span)
-        } + CHECK_PRODUCERS.flatMap { cells.getValue(it).findings })
+        } + scheduled.flatMap { cells.getValue(it.key).findings })
         .filterNot { it.at in stopped && it.code !in ERROR_TARGET_CODES }
         .filterNot { it.at in resolvedFirst && it.code in CONDITION_TEXT_CODES }
         .withoutPostParseClassesBehindAPositionedDefect()
@@ -978,10 +980,11 @@ internal fun checkRun(
             // possibility, and the wiring guard could only catch the opposite direction.
             checksCompleted = COMPOSED_FAMILIES + CHECK_PRODUCERS.flatMap { it.completes },
             gaps = prepared.gaps() + prepared.emptyFactBase() + findings.buildBlocked() +
-                CHECK_PRODUCERS.flatMap { cells.getValue(it).gaps } + UNREAD_MEMBERS + UNIMPLEMENTED_FAMILIES,
+                scheduled.flatMap { cells.getValue(it.key).gaps } + UNREAD_MEMBERS +
+                UNIMPLEMENTED_FAMILIES,
         ),
         cells = CheckCells(cells),
-        families = FamilyReuse(reused = reused, recomputed = CHECK_PRODUCERS.size - reused),
+        families = FamilyReuse(reused = reused, recomputed = scheduled.size - reused),
     )
 }
 

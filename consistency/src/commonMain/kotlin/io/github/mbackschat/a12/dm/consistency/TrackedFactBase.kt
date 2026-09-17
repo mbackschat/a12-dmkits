@@ -150,17 +150,15 @@ internal class TrackedFactBase(
         }
 
     /**
-     * Run [produce] with every read it makes charged to [producer]'s own bucket.
+     * Run [produce] with every read it makes charged to [key]'s own bucket.
      *
      * The transcript stays private, so this is the only route to a scope — a family cannot open one for
      * itself, and the dispatcher is the single place that decides who is producing.
      */
-    fun <T> whileProducing(producer: CheckProducer, produce: () -> T): T =
-        transcript.whileProducing(producer, produce)
+    fun <T> whileProducing(key: CellKey, produce: () -> T): T = transcript.whileProducing(key, produce)
 
-    /** What [producer] read out of this fact base — the key a per-family cell is keyed on. */
-    fun observedWhileProducing(producer: CheckProducer): Set<FactRead> =
-        transcript.observedWhileProducing(producer)
+    /** What the cell at [key] read out of this fact base — what that cell is then keyed on. */
+    fun observedWhileProducing(key: CellKey): Set<FactRead> = transcript.observedWhileProducing(key)
 }
 
 /**

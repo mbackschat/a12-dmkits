@@ -30,9 +30,9 @@ import io.github.mbackschat.a12.dm.consistency.syntax.shapeFailureAhead
  * and not a legal condition, so running one text through the other's entry would report a defect that is not
  * there.
  */
-internal fun TrackedFactBase.conditionGrammarFindings(): List<Finding> = declarations().flatMap { element ->
-    val body = element.body ?: return@flatMap emptyList()
-    conditionTexts(element.kind, body).mapNotNull { (member, text) ->
+internal fun TrackedFactBase.conditionGrammarFindings(element: TrackedDeclaration): List<Finding> {
+    val body = element.body ?: return emptyList()
+    return conditionTexts(element.kind, body).mapNotNull { (member, text) ->
         val entry = syntaxEntryOf(member)
         val lexical = lexicalFailure(text)
         val failure = if (lexical != null) {

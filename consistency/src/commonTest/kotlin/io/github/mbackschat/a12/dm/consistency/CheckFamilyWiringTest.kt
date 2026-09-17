@@ -839,8 +839,11 @@ class CheckFamilyWiringTest {
             val admitted = admit(model)
             assertIs<Admission.Admitted>(admitted, "the fixture must be admissible")
             val tracked = TrackedFactBase(prepare(admitted), ReadTranscript())
-            CHECK_PRODUCERS.forEach { producer ->
-                val produced = producer.findingsIn(tracked).map { it.code to it.at }.toSet()
+            val byProducer = schedule(tracked)
+                .groupBy({ it.key.producer }, { it.produce().first })
+                .mapValues { (_, runs) -> runs.flatten() }
+            byProducer.forEach { (producer, findings) ->
+                val produced = findings.map { it.code to it.at }.toSet()
                 rows.forEach { (family, row) ->
                     val claimed = family in producer.completes
                     if (claimed && row !in produced) {

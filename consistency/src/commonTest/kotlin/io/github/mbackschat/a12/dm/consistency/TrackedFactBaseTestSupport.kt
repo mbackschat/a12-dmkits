@@ -9,3 +9,16 @@ package io.github.mbackschat.a12.dm.consistency
  * their own oracle in [ReadTranscriptTest], where a fixture can be built to make one read distinguishable.
  */
 internal fun PreparedModel.tracked(): TrackedFactBase = TrackedFactBase(this, ReadTranscript())
+
+/**
+ * One PER-DECLARATION family run over every declaration, which is exactly what the dispatcher does for it.
+ *
+ * It lives in the test source set deliberately, and not as a convenience on the family itself. A family
+ * registered as [CheckProducer.PerDeclaration] is asked once per declaration precisely so its cell keys on
+ * that declaration's body alone; a zero-argument form would have to walk the set, charge
+ * [FactRead.DeclarationSetShape], and undo the key it was migrated for — so the shape must not exist in
+ * production, while a test that asserts a verdict over a whole fixture still wants it.
+ */
+internal fun TrackedFactBase.everyDeclaration(
+    family: TrackedFactBase.(TrackedDeclaration) -> List<Finding>,
+): List<Finding> = declarations().flatMap { this.family(it) }

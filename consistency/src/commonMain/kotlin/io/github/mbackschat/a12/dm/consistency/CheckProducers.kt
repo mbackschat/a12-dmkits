@@ -14,21 +14,108 @@ package io.github.mbackschat.a12.dm.consistency
  * registration object itself is the bucket's key: it is a singleton in [CHECK_PRODUCERS], compares by
  * identity, and needs no name that could be spelled two ways.
  *
- * @param completes the families this producer answers for — a SET because one walk can settle several
- *     independent claims, as a group's ordering members do.
- * @param findings its findings, empty for a producer whose whole output is a coverage gap.
- * @param gaps its gaps, empty for the great majority that report none.
+ * **Two shapes, because two granularities of cell are.** A [ModelWide] producer answers about the model and
+ * is cached once; a [PerDeclaration] producer is asked once per declaration by the dispatcher and is cached
+ * per declaration, so a keystroke fells one declaration's cell instead of the family's whole verdict. The
+ * split is a sealed hierarchy rather than a nullable lambda so the dispatcher's `when` is exhaustive and a
+ * third shape cannot be added without every dispatch site being made to account for it.
  */
-internal class CheckProducer(
-    val completes: Set<CheckFamily>,
-    private val findings: (TrackedFactBase) -> List<Finding> = { emptyList() },
-    private val gaps: (TrackedFactBase) -> List<CoverageGap> = { emptyList() },
-) {
-    fun findingsIn(tracked: TrackedFactBase): List<Finding> =
-        tracked.whileProducing(this) { findings(tracked) }
+internal sealed interface CheckProducer {
 
-    fun gapsIn(tracked: TrackedFactBase): List<CoverageGap> =
-        tracked.whileProducing(this) { gaps(tracked) }
+    /**
+     * The families this producer answers for — a SET because one walk can settle several independent claims,
+     * as a group's ordering members do.
+     */
+    val completes: Set<CheckFamily>
+
+    /**
+     * A family whose verdict is about the whole model, cached against one transcript.
+     *
+     * @param findings its findings, empty for a producer whose whole output is a coverage gap.
+     * @param gaps its gaps, empty for the great majority that report none.
+     */
+    class ModelWide(
+        override val completes: Set<CheckFamily>,
+        val findings: (TrackedFactBase) -> List<Finding> = { emptyList() },
+        val gaps: (TrackedFactBase) -> List<CoverageGap> = { emptyList() },
+    ) : CheckProducer
+
+    /**
+     * A family asked once per declaration, with the WALK moved out of it into the dispatcher.
+     *
+     * That move is the point rather than a tidy-up: while the family walked, its transcript named every
+     * declaration it opened, so one cell depended on every body and a keystroke anywhere felled it. Asked
+     * per declaration, each cell records that declaration's body alone — and the dispatcher's own walk is
+     * what handles set membership, since a declaration that is gone is never asked for and a new one has no
+     * cell to be wrong.
+     *
+     * **Which families may take this shape is a per-family claim, not a refactor.** It holds only where the
+     * verdict about one declaration does not depend on the SET, because the shape is deliberately charged to
+     * the composition instead of to each declaration's bucket. A family that resolves a reference, or that
+     * compares declarations with each other, stays [ModelWide].
+     */
+    class PerDeclaration(
+        override val completes: Set<CheckFamily>,
+        val findings: (TrackedFactBase, TrackedDeclaration) -> List<Finding>,
+    ) : CheckProducer
+}
+
+/**
+ * Which declaration a [CheckProducer.PerDeclaration] cell is about.
+ *
+ * **The ordinal is not defensive, it is required.** A model may declare two elements at one path — A12
+ * refuses such a model and this checker has to report on it rather than fail — so a key of the path alone
+ * would give both declarations one cell, and the second would overwrite the first's findings. That drops a
+ * finding from the report rather than merely losing reuse. An INDEX into the declaration list would key them
+ * apart too and would move every later declaration's key when one is inserted, which is most of what an
+ * editor does.
+ */
+internal data class DeclarationKey(val path: String, val amongSamePath: Int)
+
+/** What one cell is about: a producer, and for a per-declaration producer the declaration too. */
+internal data class CellKey(val producer: CheckProducer, val at: DeclarationKey? = null)
+
+/** One cell a check must produce: what it is about, and how to produce it. */
+internal class ScheduledCell(
+    val key: CellKey,
+    val produce: () -> Pair<List<Finding>, List<CoverageGap>>,
+)
+
+/**
+ * Every cell one check over [tracked] must produce, in the order their output reaches the report.
+ *
+ * Producer-major, declarations in declaration order — which is exactly the order a per-declaration family
+ * produced while it walked itself, so moving the walk out here changes no report.
+ *
+ * **The walk charges the COMPOSITION and not any cell**, which `ReadTranscript` argues is sound as well as
+ * necessary: set membership is handled by this list existing, since a declaration that is gone is never
+ * scheduled and a new one has no cell to be stale.
+ *
+ * **The ordinal is computed here because this is the only place that sees the whole list.** Two declarations
+ * at one path — a model A12 refuses and this checker still reports on — must get two keys, or the second's
+ * findings would overwrite the first's and leave the report short.
+ */
+internal fun schedule(tracked: TrackedFactBase): List<ScheduledCell> {
+    val seen = mutableMapOf<String, Int>()
+    val walked = tracked.declarations().map { cursor ->
+        val ordinal = seen.getOrElse(cursor.path) { 0 }
+        seen[cursor.path] = ordinal + 1
+        DeclarationKey(cursor.path, ordinal) to cursor
+    }
+    return CHECK_PRODUCERS.flatMap { producer ->
+        when (producer) {
+            is CheckProducer.ModelWide -> listOf(
+                ScheduledCell(CellKey(producer)) {
+                    producer.findings(tracked) to producer.gaps(tracked)
+                },
+            )
+            is CheckProducer.PerDeclaration -> walked.map { (at, cursor) ->
+                ScheduledCell(CellKey(producer, at)) {
+                    producer.findings(tracked, cursor) to emptyList()
+                }
+            }
+        }
+    }
 }
 
 /**
@@ -45,7 +132,13 @@ internal val COMPOSED_FAMILIES = setOf(CheckFamily.DECLARED_REFERENCES, CheckFam
 private fun produces(
     family: CheckFamily,
     findings: (TrackedFactBase) -> List<Finding>,
-): CheckProducer = CheckProducer(setOf(family), findings)
+): CheckProducer = CheckProducer.ModelWide(setOf(family), findings)
+
+/** …and its per-declaration twin, for a family whose verdict is about one declaration at a time. */
+private fun perDeclaration(
+    family: CheckFamily,
+    findings: (TrackedFactBase, TrackedDeclaration) -> List<Finding>,
+): CheckProducer = CheckProducer.PerDeclaration(setOf(family), findings)
 
 /**
  * Every family that runs, in the order their findings reach the report.
@@ -66,17 +159,17 @@ internal val CHECK_PRODUCERS: List<CheckProducer> = listOf(
     produces(CheckFamily.COMPUTATION_ROUNDING) { it.computationRoundingFindings() },
     produces(CheckFamily.SUPPRESSED_WARNINGS) { it.suppressedWarningFindings() },
     produces(CheckFamily.RULE_CONDITION_AND_TARGET) { it.ruleConditionAndTargetFindings() },
-    CheckProducer(
+    CheckProducer.ModelWide(
         completes = setOf(CheckFamily.VARIANT_FILTER),
         findings = { it.variantFilterFindings() },
         gaps = { it.variantFilterGaps() },
     ),
-    produces(CheckFamily.CONDITION_LEXICALITY) { it.conditionLexicalFindings() },
-    produces(CheckFamily.CONDITION_COMPLETENESS) { it.conditionCompletenessFindings() },
-    produces(CheckFamily.CONNECTIVE_AGREEMENT) { it.connectiveAgreementFindings() },
-    produces(CheckFamily.CONDITION_GRAMMAR) { it.conditionGrammarFindings() },
+    perDeclaration(CheckFamily.CONDITION_LEXICALITY) { base, at -> base.conditionLexicalFindings(at) },
+    perDeclaration(CheckFamily.CONDITION_COMPLETENESS) { base, at -> base.conditionCompletenessFindings(at) },
+    perDeclaration(CheckFamily.CONNECTIVE_AGREEMENT) { base, at -> base.connectiveAgreementFindings(at) },
+    perDeclaration(CheckFamily.CONDITION_GRAMMAR) { base, at -> base.conditionGrammarFindings(at) },
     produces(CheckFamily.ELEMENT_NAME_UNIQUENESS) { it.elementNameFindings() },
-    CheckProducer(
+    CheckProducer.ModelWide(
         completes = setOf(
             CheckFamily.GROUP_ORDERING_REFERENCES,
             CheckFamily.GROUP_ORDERING_FIELD_TYPE,
@@ -87,7 +180,7 @@ internal val CHECK_PRODUCERS: List<CheckProducer> = listOf(
     produces(CheckFamily.GROUP_REPETITION_COUNT) { it.groupRepetitionCountFindings() },
     produces(CheckFamily.RULE_PRESENTATION_MEMBERS) { it.presentationMemberFindings() },
     produces(CheckFamily.STRING_SLOT_BINDING) { it.stringSlotFindings() },
-    CheckProducer(
+    CheckProducer.ModelWide(
         completes = setOf(CheckFamily.FIELD_TYPE_BINDING),
         findings = { it.fieldTypeBindingFindings() },
         gaps = { it.fieldTypeBindingGaps() },
@@ -95,40 +188,40 @@ internal val CHECK_PRODUCERS: List<CheckProducer> = listOf(
     produces(CheckFamily.TEMPORAL_CONFIG) { it.temporalConfigFindings() },
     produces(CheckFamily.FIELD_NAME_RESERVED_SEGMENT) { it.fieldNameReservedSegmentFindings() },
     produces(CheckFamily.ELEMENT_NAME_ALPHABET) { it.elementNameAlphabetFindings() },
-    CheckProducer(
+    CheckProducer.ModelWide(
         completes = setOf(CheckFamily.ENUM_CATEGORY_ALIGNMENT),
         findings = { it.enumCategoryFindings() },
         gaps = { it.enumCategoryGaps() },
     ),
-    CheckProducer(
+    CheckProducer.ModelWide(
         completes = setOf(CheckFamily.ENUM_VALUE_CHARACTERS),
         findings = { it.supportedCharacterFindings() },
         gaps = { it.supportedCharacterGaps() },
     ),
-    CheckProducer(
+    CheckProducer.ModelWide(
         completes = setOf(CheckFamily.ENUM_TEXT_FORBIDDEN_CHARACTERS),
         findings = { it.enumTextForbiddenCharacterFindings() },
         gaps = { it.enumTextForbiddenCharacterGaps() },
     ),
-    CheckProducer(
+    CheckProducer.ModelWide(
         completes = setOf(CheckFamily.HINT_LIST_VALUES),
         findings = { it.hintListValueFindings() },
         gaps = { it.hintListValueGaps() },
     ),
     produces(CheckFamily.TABLE_ENUM_OPERAND) { it.tableEnumOperandFindings() },
-    CheckProducer(
+    CheckProducer.ModelWide(
         completes = setOf(CheckFamily.H_MODEL_FORM_CONSTRUCT),
         findings = { it.hModelFormConstructFindings() },
         gaps = { it.hModelFormConstructGaps() },
     ),
-    CheckProducer(
+    CheckProducer.ModelWide(
         completes = setOf(CheckFamily.STRING_PATTERN_ADMISSION),
         findings = { it.declaredPatternFindings() },
         gaps = { it.declaredPatternGaps() },
     ),
     produces(CheckFamily.EMPTY_GROUP_OPERAND) { it.emptyGroupOperandFindings() },
     produces(CheckFamily.ERROR_FIELD_REFERENCE) { it.errorFieldReferenceFindings() },
-    CheckProducer(
+    CheckProducer.ModelWide(
         completes = setOf(
             CheckFamily.GROUP_LIST_OPERANDS,
             CheckFamily.GROUP_LIST_ROOT_OPERAND,
@@ -207,5 +300,5 @@ internal val CHECK_PRODUCERS: List<CheckProducer> = listOf(
     // The one producer that completes no family: `content.typeDefinitions` declare field types no family
     // examines, so its whole output is the disclosure that they were not examined. It is registered rather
     // than called beside the loop so that its reads are attributed like every other producer's.
-    CheckProducer(completes = emptySet(), gaps = { it.typeDefinitionBodyGaps() }),
+    CheckProducer.ModelWide(completes = emptySet(), gaps = { it.typeDefinitionBodyGaps() }),
 )

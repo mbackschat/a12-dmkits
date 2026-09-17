@@ -116,6 +116,54 @@ class CheckCellKeyTest {
     }
 
     @Test
+    fun twoDeclarationsAtOnePathGetTwoCellsAndBothVerdictsReachTheReport() {
+        val source = ModelSource(
+            """
+            {"header":{"id":"twins","locales":[{"code":"en_US"}]},
+             "content":{"modelRoot":{"rootGroups":[
+              {"type":"Group","id":"g0","name":"Order","Group":{"elements":[
+                {"type":"Field","id":"f0","name":"Code","Field":{"fieldType":{"type":"StringType"}}},
+                {"type":"Rule","id":"r0","name":"Twin","Rule":{
+                  "errorCondition":"FieldFilled(Code) And","errorEntityRelPath":"../Code",
+                  "errorCode":"C1","errorMessage":[{"locale":"en_US","text":"x"}]}},
+                {"type":"Rule","id":"r1","name":"Twin","Rule":{
+                  "errorCondition":"FieldFilled(Code))","errorEntityRelPath":"../Code",
+                  "errorCode":"C2","errorMessage":[{"locale":"en_US","text":"x"}]}}
+              ]}}
+             ]}}}
+            """.trimIndent(),
+        )
+        val admitted = admit(source)
+        assertIs<Admission.Admitted>(admitted, "the fixture must be admissible")
+        val tracked = TrackedFactBase(prepare(admitted), ReadTranscript())
+
+        // The key's ORDINAL half, which the row above does not reach: a path is not unique, so a
+        // per-declaration key made of the path alone would collide — and the dispatcher keys its cells in a
+        // MAP, so a collision does not merely lose reuse, it drops one of the two declarations from the
+        // report entirely. Two cells at the twinned path is the precondition; the codes below are the
+        // consequence a reader cares about.
+        val atTwin = schedule(tracked)
+            .filter { it.key.producer is CheckProducer.PerDeclaration && it.key.at?.path == TWIN }
+            .groupBy { it.key.producer }
+        assertTrue(atTwin.isNotEmpty(), "no family is keyed per declaration, so this row is vacuous")
+        assertEquals(
+            emptyList(),
+            atTwin.filterValues { cells -> cells.map { it.key }.toSet().size != 2 }
+                .map { (_, cells) -> cells.first().key.producer.completes },
+            "two declarations at one path must key two distinct cells for each per-declaration family",
+        )
+
+        // Each twin carries a defect of a DIFFERENT family, so the pair cannot pass by reporting one
+        // declaration twice: a collapsed key would drop whichever code the surviving cell does not make.
+        val reported = check(source).findings.filter { it.at == TWIN }.map { it.code }.toSet()
+        assertEquals(
+            emptyList(),
+            listOf("MVK_INCOMPLETE_INPUT", "MVK_UNEXPECTED_TOKEN").filterNot { it in reported },
+            "both twins' condition verdicts must reach the report, which carried $reported",
+        )
+    }
+
+    @Test
     fun theShapeValueIgnoresBodiesEntirely() {
         val shape = FactRead.DeclarationSetShape
 
@@ -131,5 +179,9 @@ class CheckCellKeyTest {
             prepared().valueOf(shape) != prepared(second = field("Extra", "StringType")).valueOf(shape),
             "and a DECLARATION added must move it, or the row above passes on a constant",
         )
+    }
+
+    private companion object {
+        const val TWIN = "/Order/Twin"
     }
 }

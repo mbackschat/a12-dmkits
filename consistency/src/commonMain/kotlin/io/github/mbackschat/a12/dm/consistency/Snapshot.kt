@@ -22,7 +22,8 @@ package io.github.mbackschat.a12.dm.consistency
  * @param preparationReused whether the entry model's fact base is the previous snapshot's own — false
  *     whenever the entry or anything it mounts changed, because the fact base then describes the old model.
  * @param baselineReportReused whether the report an answer was attributed against was already computed.
- * @param families what the check INSIDE this operation reused, family by family.
+ * @param families what the check INSIDE this operation reused, cell by cell — [FamilyReuse] says what a
+ *     cell is, because it is no longer one family.
  */
 data class Reuse(
     val sourcesReused: Int,
@@ -35,9 +36,12 @@ data class Reuse(
 /**
  * What one check answered from an earlier check's cached verdicts, and what it had to redo.
  *
- * **The unit is one check family's verdict about one model.** A family is answered from the cache only when
- * every fact it read last time still has the same value, so [recomputed] counts the families an edit could
- * have changed the answer for — which is the pair [L's acceptance](
+ * **The unit is one CELL, which is a family's verdict about one model — or, for a family the checker asks
+ * once per declaration, about one declaration.** So the two numbers sum to the cells a check scheduled and
+ * not to the family count: the same model can report a larger denominator as more families move to the finer
+ * key, which is the reuse growing rather than the checker doing more work. A cell is answered from the cache
+ * only when every fact it read last time still has the same value, so [recomputed] counts the cells an edit
+ * could have changed the answer for — which is the pair [L's acceptance](
  * ../docs/PORTABLE-CONSISTENCY-PROPOSAL.md) asks for: reuse of unaffected work AND recomputation of what the
  * edit affects. An always-full-recheck implementation reports `reused = 0`, which is what makes this pair a
  * control rather than a statistic.

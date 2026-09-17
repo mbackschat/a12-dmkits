@@ -3,8 +3,6 @@ package io.github.mbackschat.a12.dm.consistency
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertIs
-import kotlin.test.assertNotNull
-import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 /**
@@ -50,44 +48,78 @@ class FamilyCellReuseTest {
         listOf(it.path, it.name, it.kind, it.id, it.origin)
     }
 
-    /** The cells one check of [condition] leaves behind. */
-    private fun cellsOf(condition: String): Pair<PreparedModel, CheckCells> {
-        val base = prepared(condition)
-        val tracked = TrackedFactBase(base, ReadTranscript())
-        return base to CheckCells(CHECK_PRODUCERS.associateWith { cellOf(it, tracked, base) })
+    /** One check of [condition], as the store it leaves behind and the keys each family owns. */
+    private class Checked(val cells: CheckCells, private val keys: List<CellKey>) {
+        /** Every key [family] owns — one for a model-wide family, one per declaration for the others. */
+        fun keysOf(family: CheckFamily) = keys.filter { family in it.producer.completes }
     }
 
-    private fun producerOf(family: CheckFamily) = CHECK_PRODUCERS.single { family in it.completes }
+    private fun checked(condition: String, tierFilter: String = ""): Checked {
+        val base = prepared(condition, tierFilter)
+        val tracked = TrackedFactBase(base, ReadTranscript())
+        val scheduled = schedule(tracked)
+        return Checked(
+            CheckCells(scheduled.associate { it.key to tracked.cellFor(it.key, base, it.produce) }),
+            scheduled.map { it.key },
+        )
+    }
 
     @Test
     fun aCellSurvivesAnEditToADeclarationItNeverRead() {
-        val (_, cells) = cellsOf("FieldFilled(Code)")
+        val baseline = checked("FieldFilled(Code)")
         val edited = prepared("FieldFilled(Code) And FieldFilled(Tier)")
-        val enumPairing = producerOf(CheckFamily.ENUM_CATEGORY_ALIGNMENT)
+        val enumPairing = baseline.keysOf(CheckFamily.ENUM_CATEGORY_ALIGNMENT)
 
-        val reusable = cells.validIn(edited, enumPairing)
+        val reusable = enumPairing.mapNotNull { baseline.cells.validIn(edited, it) }
 
         // The whole premise of per-family reuse, at the family whose scope is least arguable: the enum
         // pairing law reads a field's own `fieldType` and has no question about a rule at all.
-        assertNotNull(reusable, "an enum family read no rule body, so a condition edit cannot fell its cell")
-        assertEquals(listOf("MVK_MISSING_INTERNAL_VALUE"), reusable.findings.map { it.code },
+        assertEquals(enumPairing.size, reusable.size,
+            "an enum family read no rule body, so a condition edit cannot fell any of its cells")
+        assertEquals(listOf("MVK_MISSING_INTERNAL_VALUE"), reusable.flatMap { it.findings }.map { it.code },
             "and the reused verdict must be the finding the broken fixture draws, not an empty list")
     }
 
     @Test
-    fun aCellFallsWhenTheDeclarationItReadIsEdited() {
-        val (_, cells) = cellsOf("FieldFilled(Code)")
+    fun eachMigratedFamilyFallsAtTheEditedDeclarationAndSurvivesAtTheOthers() {
+        val baseline = checked("FieldFilled(Code)")
         val edited = prepared("FieldFilled(Code) And FieldFilled(Tier)")
-        val grammar = producerOf(CheckFamily.CONDITION_GRAMMAR)
+        val declarations = prepared("FieldFilled(Code)").elements.size
 
         // The other direction, which is the one that would be UNSOUND to get wrong: a family that read the
-        // edited body must not be answered from a verdict about the text before the keystroke.
-        assertNull(cells.validIn(edited, grammar), "a family that read the rule's body must be recomputed")
+        // edited body must not be answered from a verdict about the text before the keystroke. Three things
+        // are asserted per family rather than in aggregate, because an aggregate count lets one family's
+        // correct behaviour stand in for another's.
+        //
+        // WHICH cells fall is asserted rather than how many, and the answer is not the obvious one: a
+        // GROUP's body nests its `elements`, so the rule's text is part of `/Order`'s body too and the
+        // containing group's cell falls with it. That is sound, and it caps what a per-declaration key can
+        // buy — every ancestor of an edit is recomputed, the root group on every keystroke — so it is
+        // measured here rather than discovered while sizing the next batch.
+        val wrong = MIGRATED.mapNotNull { family ->
+            val keys = baseline.keysOf(family)
+            val fell = keys.filter { baseline.cells.validIn(edited, it) == null }.mapNotNull { it.at?.path }
+            // The positive control, per family, because a store that refused every cell would pass the row
+            // above. An equal model is a different object with the same facts, which is the case reuse is for.
+            val revalidated = keys.count { baseline.cells.validIn(prepared("FieldFilled(Code)"), it) != null }
+            when {
+                keys.size != declarations -> "$family owns ${keys.size} cells, not one per declaration"
+                fell != EDIT_TOUCHES -> "$family fell at $fell"
+                revalidated != keys.size -> "$family revalidated $revalidated of ${keys.size} on an equal model"
+                else -> null
+            }
+        }
 
-        // …and the positive control, because a store that refused every cell would pass the row above. An
-        // equal model is a different object with the same facts, which is exactly the case reuse is for.
-        assertNotNull(cells.validIn(prepared("FieldFilled(Code)"), grammar),
-            "an equal model must revalidate, or the row above passes by refusing everything")
+        assertEquals(emptyList(), wrong,
+            "a migrated family's cells must fall at the edited declaration and its ancestors, and nowhere else")
+
+        // …and the registration control, without which every row above passes on a family that never moved:
+        // asked once per model, a family owns ONE cell, so `keys.size != declarations` would be the only
+        // failure and the two interesting assertions would never be reached.
+        val perDeclaration = CHECK_PRODUCERS.filterIsInstance<CheckProducer.PerDeclaration>()
+            .flatMap { it.completes }
+        assertEquals(emptyList(), MIGRATED.filterNot { it in perDeclaration },
+            "a family this row measures per declaration is no longer registered that way")
     }
 
     @Test
@@ -97,25 +129,29 @@ class FamilyCellReuseTest {
         // the resolvable set while its path, name, kind, id and origin all stay exactly where they were.
         val after = prepared("FieldFilled(Code)", tierFilter = """"variantFilter":{"filterType":"ONLY"},""")
         val tracked = TrackedFactBase(before, ReadTranscript())
-        val store = CheckCells(CHECK_PRODUCERS.associateWith { cellOf(it, tracked, before) })
+        val scheduled = schedule(tracked)
+        val store = CheckCells(scheduled.associate { it.key to tracked.cellFor(it.key, before, it.produce) })
 
         // The control that gives this row its meaning: the two models are indistinguishable on the shape's
         // ROWS, so only the resolvable half of the shape value can tell them apart.
         assertEquals(before.shapeRows(), after.shapeRows(),
             "the filter must not move a declaration's row, or the rows would do this row's work")
 
-        // The producers blind to `Tier`'s body. For each of them EVERY charged value is unchanged except the
+        // The cells blind to `Tier`'s body. For each of them EVERY charged value is unchanged except the
         // resolvable set — so a shape value that left the resolvable set out would reuse a verdict reached
         // when `Tier` still existed, which is the unsound direction and the one no end-to-end row can reach
         // today: the only consumer carries cells across a DRAFT, and a draft can change a text member alone.
-        val blind = CHECK_PRODUCERS.filter { producer ->
-            val reads = tracked.observedWhileProducing(producer)
+        val blind = scheduled.map { it.key }.filter { key ->
+            val reads = tracked.observedWhileProducing(key)
             FactRead.DeclarationSetShape in reads && FactRead.DeclarationContent(TIER) !in reads
         }
 
-        assertTrue(blind.isNotEmpty(), "no producer charged the set without Tier's body, so this is vacuous")
-        assertEquals(emptyList(), blind.filter { store.validIn(after, it) != null }.map { it.completes },
-            "a cell that read the declaration SET must fall when a variant filter changes what resolves")
+        assertTrue(blind.isNotEmpty(), "no cell charged the set without Tier's body, so this is vacuous")
+        assertEquals(
+            emptyList(),
+            blind.filter { store.validIn(after, it) != null }.map { it.producer.completes to it.at },
+            "a cell that read the declaration SET must fall when a variant filter changes what resolves",
+        )
     }
 
     @Test
@@ -127,8 +163,8 @@ class FamilyCellReuseTest {
         assertTrue(families.reused > 0, "a keystroke in one rule must not fell every family's cell")
         assertTrue(families.recomputed > 0,
             "and the families that read that rule must be redone — ${families.reused} reused")
-        assertEquals(CHECK_PRODUCERS.size, families.reused + families.recomputed,
-            "every producer is either reused or recomputed; a counter that drops one is not a denominator")
+        assertEquals(cellCount(), families.reused + families.recomputed,
+            "every cell is either reused or recomputed; a counter that drops one is not a denominator")
     }
 
     @Test
@@ -144,7 +180,7 @@ class FamilyCellReuseTest {
         val families = snapshot.draft("/Order/CodeRequired", "errorCondition", "FieldFilled(Code)")
             .reuse.families
 
-        assertEquals(CHECK_PRODUCERS.size, families.reused,
+        assertEquals(cellCount(), families.reused,
             "an unchanged model must revalidate every cell; ${families.recomputed} were recomputed")
     }
 
@@ -170,10 +206,31 @@ class FamilyCellReuseTest {
         // Structural rather than measured, and stated so a reader does not read `0` as a defect: this is the
         // check that BUILDS the store. Its counterpart is `preparationReused = false` on the same object.
         assertEquals(0, families.reused, "a first check has nothing to reuse")
-        assertEquals(CHECK_PRODUCERS.size, families.recomputed, "so every producer ran")
+        assertEquals(cellCount(), families.recomputed, "so every cell was produced")
     }
+
+    /** How many cells one check of the fixture schedules — the denominator the counters must add up to. */
+    private fun cellCount() = schedule(
+        TrackedFactBase(prepared("FieldFilled(Code)"), ReadTranscript()),
+    ).size
 
     private companion object {
         const val TIER = "/Order/Tier"
+
+        /**
+         * The families L-b3c-1 moved to a per-declaration key — the condition text ones, the dominant
+         * editor case. Named rather than derived: the row above asserts the CONCRETE paths a condition
+         * edit fells, which is only right for a family that reads condition text, and a derived
+         * denominator would silently extend that claim to the next batch's field-scoped families.
+         */
+        val MIGRATED = listOf(
+            CheckFamily.CONDITION_LEXICALITY,
+            CheckFamily.CONDITION_COMPLETENESS,
+            CheckFamily.CONNECTIVE_AGREEMENT,
+            CheckFamily.CONDITION_GRAMMAR,
+        )
+
+        /** The bodies a keystroke in the rule's condition moves: its own, and the group that nests it. */
+        val EDIT_TOUCHES = listOf("/Order", "/Order/CodeRequired")
     }
 }

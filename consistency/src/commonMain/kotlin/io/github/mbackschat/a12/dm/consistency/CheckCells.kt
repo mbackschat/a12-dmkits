@@ -31,17 +31,17 @@ internal class CheckCell(
  * simply run — so a family added later is slow rather than wrong, and there is no state in which this store
  * can answer for a producer it has not seen.
  */
-internal class CheckCells(private val byProducer: Map<CheckProducer, CheckCell>) {
+internal class CheckCells(private val byKey: Map<CellKey, CheckCell>) {
 
     /**
-     * [producer]'s cell when every fact it read still has the value it had, else null.
+     * The cell at [key] when every fact it read still has the value it had, else null.
      *
      * The comparison is by VALUE and not by the fact's identity, which is the difference between a cache and
      * a bug: two models name the same facts and that is precisely when reuse must be decided on their
      * contents.
      */
-    fun validIn(model: PreparedModel, producer: CheckProducer): CheckCell? {
-        val cell = byProducer[producer] ?: return null
+    fun validIn(model: PreparedModel, key: CellKey): CheckCell? {
+        val cell = byKey[key] ?: return null
         return cell.takeIf { it.readValues.all { (read, had) -> model.valueOf(read) == had } }
     }
 
@@ -51,14 +51,23 @@ internal class CheckCells(private val byProducer: Map<CheckProducer, CheckCell>)
     }
 }
 
-/** What [producer] produced against [tracked], as a cell keyed on the values it read out of [model]. */
-internal fun cellOf(producer: CheckProducer, tracked: TrackedFactBase, model: PreparedModel): CheckCell {
-    val findings = producer.findingsIn(tracked)
-    val gaps = producer.gapsIn(tracked)
+/**
+ * Run [produce] in [key]'s own bucket and key what it produced on the values it read out of [model].
+ *
+ * The two output channels ride one [Pair] rather than two calls because a cell is one decision: a producer
+ * whose findings were reused while its gaps were recomputed would report two halves of two different models.
+ * They cannot be swapped by accident — `List<Finding>` and `List<CoverageGap>` are different types.
+ */
+internal fun TrackedFactBase.cellFor(
+    key: CellKey,
+    model: PreparedModel,
+    produce: () -> Pair<List<Finding>, List<CoverageGap>>,
+): CheckCell {
+    val (findings, gaps) = whileProducing(key, produce)
     return CheckCell(
         findings = findings,
         gaps = gaps,
-        readValues = tracked.observedWhileProducing(producer).associateWith { model.valueOf(it) },
+        readValues = observedWhileProducing(key).associateWith { model.valueOf(it) },
     )
 }
 
