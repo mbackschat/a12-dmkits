@@ -177,24 +177,25 @@ fun PreparedModel.resolve(
     // index; and one provider mounted at two points is two separate indexes, so the second copy must not make
     // the first ambiguous. Keying on the authoring model instead got both cases wrong, in the direction that
     // rejects a model A12 accepts — measured 2026-09-12 through `ModelLoader.loadAndCheck` on both shapes.
-    // Named ONCE and then narrowed, rather than as two arms each naming the list: written as a two-arm `if`,
-    // one arm can silently stop honouring the variant deletion while the other keeps it, and a mutant doing
-    // exactly that survived every control here (2026-09-13) because the provider-bound arm needs a mounted
-    // model with its own flag on to be reached at all. One expression cannot diverge from itself.
+    // The variant deletion is honoured at ONE site — [PreparedModel.fieldPathsByShortName] is built from
+    // `resolvableElements` — so neither arm below can stop honouring it. That property used to rest on
+    // naming the list once and narrowing it, because a two-arm `if` let one arm keep the deletion while the
+    // other dropped it, and a mutant doing exactly that survived every control here (2026-09-13); the
+    // provider-bound arm needs a mounted model with its own flag on to be reached at all. The control it
+    // lacked now exists (`ShortNameFallbackScopeTest`) and kills that mutant, and the index makes the
+    // divergence unrepresentable rather than merely measured.
     // A MODEL_ROOT mount places several prefixes and is still ONE instance, so the denominator is the union
     // of what this mount placed rather than a single subtree.
-    val scope = resolvableElements.let { visible ->
-        if (boundInProvider) {
-            visible.filter { element -> origin.mountedPrefixes.values.any { element.path.startsWith("$it/") } }
-        } else {
-            visible
-        }
+    val named = fieldPathsByShortName[name].orEmpty()
+    val matches = if (boundInProvider) {
+        named.filter { path -> origin.mountedPrefixes.values.any { path.startsWith("$it/") } }
+    } else {
+        named
     }
-    val matches = scope.filter { it.declaredKind == DeclaredKind.FIELD && it.path.substringAfterLast('/') == name }
     return when (matches.size) {
         0 -> Reference.Undeclared(candidate)
-        1 -> Reference.Resolved(matches.single().path)
-        else -> Reference.Ambiguous(name, matches.map { it.path })
+        1 -> Reference.Resolved(matches.single())
+        else -> Reference.Ambiguous(name, matches)
     }
 }
 

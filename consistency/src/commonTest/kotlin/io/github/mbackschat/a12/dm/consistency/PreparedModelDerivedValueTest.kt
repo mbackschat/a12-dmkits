@@ -54,6 +54,12 @@ class PreparedModelDerivedValueTest {
             "the condition-reference walk is rebuilt per call — it parses every declaration's DSL and " +
                 "resolves each reference, and three untracked readers ask for it",
         )
+        assertSame(
+            prepared.fieldPathsByShortName,
+            prepared.fieldPathsByShortName,
+            "fieldPathsByShortName is rebuilt per call, which is the element filter and the per-element " +
+                "substringAfterLast it replaced in the short-name fallback",
+        )
     }
 
     /**

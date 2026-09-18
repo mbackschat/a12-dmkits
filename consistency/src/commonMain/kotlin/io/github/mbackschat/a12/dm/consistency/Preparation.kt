@@ -354,6 +354,31 @@ data class PreparedModel(
     internal val conditionReferenceList: List<ConditionReference> by lazy { computeConditionReferences() }
 
     /**
+     * Every resolvable FIELD's path, keyed by its short name — the bare-leaf fallback's lookup.
+     *
+     * **The last scan on the resolver, which the sibling sweep reached rather than a profile.**
+     * [resolvableByPath] says its job is to make resolving a reference "a lookup rather than a scan", and the
+     * short-name arm of `PreparedModel.resolve` was still filtering every element and allocating a
+     * `substringAfterLast` per one, on the resolver the [declaredReferenceList] note names as part of the
+     * measured 95 %. It runs only when a bare leaf misses its own group AND the model turns
+     * `fieldRefByShortNameAllowed` on, so it is a gated path rather than a hot one on every model — no timing
+     * claim rides on this.
+     *
+     * Values keep `resolvableElements` order, because the fallback reports an AMBIGUITY by listing the paths
+     * it found and a report's order should not depend on a map's. Built from `resolvableElements`, so the
+     * variant deletion is honoured here once instead of in each of the fallback's two arms.
+     */
+    internal val fieldPathsByShortName: Map<String, List<String>> by lazy {
+        val byName = LinkedHashMap<String, MutableList<String>>()
+        resolvableElements.forEach { element ->
+            if (element.declaredKind == DeclaredKind.FIELD) {
+                byName.getOrPut(element.path.substringAfterLast('/')) { mutableListOf() } += element.path
+            }
+        }
+        byName
+    }
+
+    /**
      * [declaredReferenceList] keyed by the path that declares it, so a cursor's own reference is a lookup.
      *
      * **FIRST occurrence wins, because that is the answer it replaces** — `TrackedDeclaration.declaredReference`
