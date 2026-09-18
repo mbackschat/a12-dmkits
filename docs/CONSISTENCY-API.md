@@ -2,9 +2,11 @@
 
 > **What this is.** The consumer-facing contract of `:consistency`, the Kernel-free consistency checker for a DocumentModel's rules and computations: the entry point, what a report means, and how to call it from Node. Design and scope live in [PORTABLE-CONSISTENCY-PROPOSAL.md](PORTABLE-CONSISTENCY-PROPOSAL.md); what has landed and what has not is the Status column of [PORTABLE-CONSISTENCY-IMPLEMENTATION-PLAN.md](PORTABLE-CONSISTENCY-IMPLEMENTATION-PLAN.md).
 
-## Read this first: the checker cannot tell you a model is VALID
+## Read this first: two different questions, and only one of them has a pass
 
-**A report with no findings does not mean the model is good.** It means this checker found nothing wrong in the families it has implemented, and it says so as `INCONCLUSIVE` — there is no `VALID` status, by construction and not by omission. Treating `INCONCLUSIVE` as a pass is the single most likely way to misuse this API, which is why the status is a word rather than a boolean and why `complete` sits beside it.
+**"Did everything I can check pass?" has an answer. "Would A12 accept this model?" does not.** The checker answers the first with `CheckOutcome.ALL_CHECKS_PASSED` — every family it implements ran and none rejected — because the families are a finite set and that claim is decidable. It cannot answer the second, so `ConsistencyStatus` has no `VALID`, by construction and not by omission.
+
+**Read `outcome` for the pass and `status` for A12's verdict; they are not interchangeable.** Treating `INCONCLUSIVE` as "valid" is the single most likely way to misuse this API, which is why the status is a word rather than a boolean and why `complete` sits beside it.
 
 Two statuses exist today:
 
@@ -13,7 +15,7 @@ Two statuses exist today:
 | `INVALID` | at least one measured A12 acceptance constraint is violated | the Kernel would reject this model; the findings say where |
 | `INCONCLUSIVE` | no violation was established, and coverage is incomplete | **not** "valid" — only "nothing this checker looked at was wrong" |
 
-`complete` is `false` on every report today and is published anyway, so that a consumer switching on it keeps working when it starts carrying information. `VALID` arrives with the coverage evidence that earns it, not with the next family.
+`complete` is `false` on every report today and is published anyway, so that a consumer switching on it keeps working when it starts carrying information. It tracks A12 coverage, not the checker's own — so it stays `false` on a report whose `outcome` is `ALL_CHECKS_PASSED`, and that combination is the normal, honest one rather than a contradiction. A `VALID` *status* arrives with the coverage evidence that earns it, not with the next family.
 
 **Every report also says what it did NOT check.** `checksCompleted` names the families that ran and `gaps` names what nobody examined — a measured storefront model returns 39 families and 5 gaps (2026-09-13). A consumer that shows a user "no problems found" without surfacing the gaps is reporting a verdict the checker did not give.
 
@@ -218,7 +220,11 @@ when (ConsistencyPreflight.of(sources, "orders").outcome) {
 
 It takes exactly the sources `ModelWorkspace.fromSources` takes, so asking the second question costs no second representation of the model. It builds no prepared graph, holds no interpreter, and changes no evaluator admission — the interpreter accepts and refuses precisely what it did before.
 
-`CheckOutcome` is the checker's own three-way classification (`ConsistencyReport.outcome`), and it exists because `ConsistencyStatus` answers a different question: `Inconclusive` covers both "every family ran and none rejected this" and "nothing ran at all", which are the same verdict and opposite instructions. None of the three is a pass, and no fourth value is coming until the coverage registry does.
+`CheckOutcome` is the checker's own classification (`ConsistencyReport.outcome`), and it exists because `ConsistencyStatus` answers a different question: `Inconclusive` covers both "every family ran and none rejected this" and "nothing ran at all", which are the same verdict and opposite instructions.
+
+**`ALL_CHECKS_PASSED` is the one pass, and it is scoped to the checker rather than to A12** (owner-decided 2026-09-18). It says every family this checker implements ran and none rejected the model — a claim over a finite, enumerable set, so it is decided rather than extrapolated. It does **not** say A12 would accept the model: that is the coverage registry's bar, and `MVK_INVALID_TIME_ZONE` is the measured witness that a model A12 rejects can pass every family here. Act on it; never record it as A12 validation. *(This paragraph replaces "none of the three is a pass, and no fourth value is coming until the coverage registry does" — which tied any pass to the registry, and so refused the weaker claim along with the strong one.)*
+
+**It is not called `VALID` on purpose.** `valid` already names the kernel's verdict on dmtool's envelope, and the two disagree on exactly that timezone model, so one word would carry two contracts across our own surfaces. The name states its own scope instead.
 
 ## Calling it from Node
 
@@ -226,11 +232,13 @@ The worked example is [`consistency/consumer-tests/node`](../consistency/consume
 
 That test is also the only thing in the build that can catch an unconsumable artifact. Every other test has the checker on the compile classpath by construction, and the JS target compiled green for the module's whole life while emitting nothing importable.
 
-### The CI gate — and why it has no pass
+### The CI gate — and why it has no pass YET
 
 [`ci-gate.mjs`](../consistency/consumer-tests/node/ci-gate.mjs) in that same project is a runnable pipeline step: `node ci-gate.mjs <sources…>` prints a structured result and exits `0`, `1` or `70`, reusing dmtool's own code contract ([CLI-SPEC](CLI-SPEC.md) §3b) rather than inventing a second numbering for the same three meanings.
 
 **Copy its shape rather than writing the obvious pipeline, because the obvious one is wrong.** "No findings, therefore green" is the silent pass this checker's report was designed to prevent, and a consumer who writes it will never be told. So the gate's payload carries `validated: false` with no code path that sets it true, and lists per source why nothing was validated. Exit `0` means *no rejection was found*, which is a weaker claim a CI job may still legitimately act on.
+
+> **The typed API now has a scoped pass and this gate does not yet, which is a real gap rather than a nuance.** `CheckOutcome.ALL_CHECKS_PASSED` is reachable from Kotlin; the gate classifies a **JSON payload** and so cannot call `outcome` at all — it re-derives its own verdict from `status` and `checksCompleted`, and the wire shape publishes no `outcome` and no family denominator for it to compare against. Giving the gate a pass therefore needs `outcome` published ON the report, which is the report-shape change `Outcome.kt` already names as the durable fix. Until then the four rows below are the gate's whole vocabulary, and `validated` stays constantly false.
 
 | the gate's outcome | what the report looked like | what a job should do |
 |---|---|---|

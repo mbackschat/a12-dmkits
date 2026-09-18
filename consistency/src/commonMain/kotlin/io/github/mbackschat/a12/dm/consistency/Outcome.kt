@@ -16,11 +16,33 @@ enum class CheckOutcome {
     /** A12 rejects a declaration. The verdict is established, and it is a no. */
     REJECTED,
 
-    /** Families ran and none rejected the model. **Not a pass** — nothing was validated, only not refused. */
+    /**
+     * Some families ran and none rejected the model, but not every family did. **Not a pass.**
+     *
+     * Reached when a source declares nothing a per-declaration producer can be asked about: the model-wide
+     * families still answer, so this is not [NOT_ESTABLISHED], while the run is too narrow to assert
+     * [ALL_CHECKS_PASSED].
+     */
     NO_REJECTION,
 
     /** Nothing was checked: the source did not reach the checker, or the checker could not admit it. */
     NOT_ESTABLISHED,
+
+    /**
+     * Every family this checker implements ran, and none rejected the model.
+     *
+     * **This is a pass, and it is the only one — scoped to what the checker verifies, never to A12.** The
+     * claim is "nothing I can check is wrong", which is decidable because the families are a finite
+     * enumerable set. It is deliberately NOT "A12 would accept this": that needs the coverage registry, and
+     * `MVK_INVALID_TIME_ZONE` is the measured witness that a model A12 rejects can pass every family here.
+     * A consumer may act on this; a consumer may not record it as A12 validation.
+     *
+     * Named `ALL_CHECKS_PASSED` rather than `VALID` because `valid` already names the kernel's verdict on
+     * dmtool's envelope, and the two disagree on exactly that timezone model — one word, two contracts
+     * (owner-decided 2026-09-18). Appended rather than slotted next to [NO_REJECTION] so no existing
+     * constant's ordinal moves.
+     */
+    ALL_CHECKS_PASSED,
 }
 
 /**
@@ -40,7 +62,14 @@ enum class CheckOutcome {
  */
 val ConsistencyReport.outcome: CheckOutcome
     get() = when {
+        // A rejection outranks completeness: a model may complete every family and still be refused, and
+        // reading the pass first would hide that.
         status is ConsistencyStatus.Invalid -> CheckOutcome.REJECTED
         checksCompleted.isEmpty() -> CheckOutcome.NOT_ESTABLISHED
+        // The denominator is the ENUM, not the schedule, and that asymmetry is deliberate: a family added to
+        // `CheckFamily` but never wired into a producer fails `containsAll` and degrades this to
+        // NO_REJECTION. Keying on the schedule instead would make every run complete by construction — the
+        // shape that cannot fail, and the one direction that turns a pass into an over-claim.
+        checksCompleted.containsAll(CheckFamily.entries) -> CheckOutcome.ALL_CHECKS_PASSED
         else -> CheckOutcome.NO_REJECTION
     }

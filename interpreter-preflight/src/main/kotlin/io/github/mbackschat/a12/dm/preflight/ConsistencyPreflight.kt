@@ -11,10 +11,15 @@ import kotlin.jvm.JvmStatic
 /**
  * What the preflight established, and the report it established it from.
  *
- * **[outcome] is not a validity claim and there is no value that would be one.** The checker publishes no VALID
- * verdict, so [CheckOutcome.NO_REJECTION] is the best answer available: the families that ran rejected nothing.
- * [report] carries how much ran — `checksCompleted` and `gaps` — which is the half that says how much weight
- * that answer can bear.
+ * **[outcome] is not an A12 validity claim, and no value of it is one.** The best answer available is
+ * [CheckOutcome.ALL_CHECKS_PASSED] — every family the checker implements ran and none rejected the model —
+ * which is a pass over the checker's own coverage and deliberately not over A12's constraints. [report]
+ * carries how much ran, `checksCompleted` and `gaps`, which is the half that says how much weight that
+ * answer can bear.
+ *
+ * *Amended 2026-09-18: this said "there is no value that would be one" and named [CheckOutcome.NO_REJECTION]
+ * as the ceiling, which stopped being true when the scoped pass landed. The distinction it was reaching for
+ * survives and is the one above — scoped to the checker, never to A12.*
  */
 class PreflightReport internal constructor(val outcome: CheckOutcome, val report: ConsistencyReport)
 
@@ -24,9 +29,10 @@ class PreflightReport internal constructor(val outcome: CheckOutcome, val report
  * ```kotlin
  * val sources = listOf(WorkspaceModelSource.builder().json(orderJson).build())
  * when (ConsistencyPreflight.of(sources, "orders").outcome) {
- *     CheckOutcome.REJECTED -> …        // A12 rejects a declaration: evaluating it answers about a broken model
- *     CheckOutcome.NO_REJECTION -> …    // nothing rejected it — NOT a pass
- *     CheckOutcome.NOT_ESTABLISHED -> … // nothing was checked; the report says why
+ *     CheckOutcome.REJECTED -> …          // A12 rejects a declaration: evaluating it answers about a broken model
+ *     CheckOutcome.ALL_CHECKS_PASSED -> … // every implemented family ran and none rejected — a scoped pass
+ *     CheckOutcome.NO_REJECTION -> …      // some families ran and none rejected — NOT a pass
+ *     CheckOutcome.NOT_ESTABLISHED -> …   // nothing was checked; the report says why
  * }
  * ```
  *

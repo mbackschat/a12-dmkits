@@ -195,6 +195,7 @@ final enum class io.github.mbackschat.a12.dm.consistency/CheckFamily : kotlin/En
 }
 
 final enum class io.github.mbackschat.a12.dm.consistency/CheckOutcome : kotlin/Enum<io.github.mbackschat.a12.dm.consistency/CheckOutcome> { // io.github.mbackschat.a12.dm.consistency/CheckOutcome|null[0]
+    enum entry ALL_CHECKS_PASSED // io.github.mbackschat.a12.dm.consistency/CheckOutcome.ALL_CHECKS_PASSED|null[0]
     enum entry NOT_ESTABLISHED // io.github.mbackschat.a12.dm.consistency/CheckOutcome.NOT_ESTABLISHED|null[0]
     enum entry NO_REJECTION // io.github.mbackschat.a12.dm.consistency/CheckOutcome.NO_REJECTION|null[0]
     enum entry REJECTED // io.github.mbackschat.a12.dm.consistency/CheckOutcome.REJECTED|null[0]

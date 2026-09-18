@@ -27,11 +27,20 @@ class ConsistencyPreflightTest {
     }
 
     @Test
-    fun anAcceptedModelIsNoRejectionRatherThanAPass() {
+    fun anAcceptedModelPassesEveryCheckTheCheckerImplements() {
         val result = ConsistencyPreflight.of(sources(order()), "orders")
 
-        assertEquals(CheckOutcome.NO_REJECTION, result.outcome)
+        // Renamed from `anAcceptedModelIsNoRejectionRatherThanAPass` on 2026-09-18: the old name asserted
+        // that no pass existed, which was the contract until `ALL_CHECKS_PASSED` landed. The distinction it
+        // protected is still real and still worth a row — it is `complete` below, which stays false because
+        // that one tracks A12's coverage rather than the checker's.
+        assertEquals(CheckOutcome.ALL_CHECKS_PASSED, result.outcome)
         assertTrue(result.report.checksCompleted.isNotEmpty(), "and something actually ran")
+        assertTrue(
+            !result.report.status.complete,
+            "the scoped pass must not be read as A12 coverage — `complete` is the field that would say so " +
+                "and it stays false",
+        )
     }
 
     @Test

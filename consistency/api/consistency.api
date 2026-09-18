@@ -153,6 +153,7 @@ public final class io/github/mbackschat/a12/dm/consistency/CheckKt {
 }
 
 public final class io/github/mbackschat/a12/dm/consistency/CheckOutcome : java/lang/Enum {
+	public static final field ALL_CHECKS_PASSED Lio/github/mbackschat/a12/dm/consistency/CheckOutcome;
 	public static final field NOT_ESTABLISHED Lio/github/mbackschat/a12/dm/consistency/CheckOutcome;
 	public static final field NO_REJECTION Lio/github/mbackschat/a12/dm/consistency/CheckOutcome;
 	public static final field REJECTED Lio/github/mbackschat/a12/dm/consistency/CheckOutcome;
