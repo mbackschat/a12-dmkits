@@ -1038,13 +1038,20 @@ tasks.named('check') { dependsOn 'verifyConsistencyJvmJarCeiling' }
 tasks.register('verifyCheckerArtifactIdentity') {
     group = 'verification'
     description = 'Refuse a published checker whose npm identity disagrees with the version baked into it.'
-    dependsOn 'jsNodeProductionLibraryDistribution', 'jvmJar'
+    dependsOn stageConsistencyNpmPackage, 'jvmJar'
     outputs.upToDateWhen { false }
     def jvmArtifact = tasks.named('jvmJar').flatMap { it.archiveFile }
+    def stagedManifest = consistencyNpmStageDir.map { it.file('package.json') }
     doLast {
-        def manifest = layout.buildDirectory.file('dist/js/productionLibrary/package.json').get().asFile
+        // The STAGED manifest, which is the one that ships. It read the Kotlin distribution's generated
+        // `dist/js/productionLibrary/package.json` until 2026-09-18 — a file `stageConsistencyNpmPackage`
+        // exists to REPLACE, carrying a `typescript` devDependency, no `license` and no `exports`. Both
+        // happened to spell one name and one version, so the check passed while verifying a file no consumer
+        // receives: the shipped manifest is written by hand below, and a wrong literal there would have
+        // shipped with every guard green. Read what ships.
+        def manifest = stagedManifest.get().asFile
         if (!manifest.file) {
-            throw new GradleException("no packaged manifest at $manifest — the JS distribution did not run")
+            throw new GradleException("no staged manifest at $manifest — the npm staging did not run")
         }
         def published = new groovy.json.JsonSlurper().parse(manifest)
         def jar = jvmArtifact.get().asFile
@@ -1173,6 +1180,34 @@ def verifyConsistencyShippedFiles = tasks.register('verifyConsistencyShippedFile
         if (packaged.types != './a12-consistency.d.ts' || packaged.main != './a12-consistency.mjs') {
             throw new GradleException("the published entry points moved: main=${packaged.main} " +
                     "types=${packaged.types}; a TypeScript consumer resolves both.")
+        }
+        // A modern ESM consumer and every bundler resolve through `exports` in PREFERENCE to `main`/`types`,
+        // so the two fields above can both be right while the package is unresolvable. Staged by hand below,
+        // and until 2026-09-18 read by nothing.
+        if (packaged.exports?.get('.')?.import != './a12-consistency.mjs' ||
+                packaged.exports?.get('.')?.types != './a12-consistency.d.ts') {
+            throw new GradleException("the published `exports` map does not resolve this package: " +
+                    "${packaged.exports}. A bundler prefers it over main/types, so a broken map ships a " +
+                    'package that cannot be imported while both of those fields still read correctly.')
+        }
+
+        // The BROWSER claim, on the shipped JavaScript rather than on the dependency graph. H2 promises a
+        // bundle a browser consumer takes unchanged, and `docs/CONSISTENCY-API.md` states it as "names no
+        // host API at all" — an invariant that was true and held by nothing until 2026-09-18, since every
+        // other arm here reads file NAMES or the manifest. A Kotlin/JS emit change or a new `js()`-target
+        // dependency is exactly what would introduce one, and neither moves a file name.
+        def hostApiUsers = [:]
+        archive.matching { include 'package/*.mjs' }.each { javascript ->
+            def source = javascript.text
+            def named = ['node:', "require('", 'require("', 'process.'].findAll { source.contains(it) }
+            if (named) {
+                hostApiUsers[javascript.name] = named
+            }
+        }
+        if (hostApiUsers) {
+            throw new GradleException("the published bundle names host APIs ${hostApiUsers}. H2's promise is " +
+                    'that a browser consumer takes this package unchanged, and a Node built-in makes that ' +
+                    'false for every bundler that does not shim it.')
         }
 
         // The jvm carrier, enumerated by package ROOT rather than by package: a subpackage of our own root is

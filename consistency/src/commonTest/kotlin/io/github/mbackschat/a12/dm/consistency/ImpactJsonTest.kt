@@ -146,10 +146,14 @@ class ImpactJsonTest {
      */
     @Test
     fun theNestedEditIsTheSameShapeCheckEditPublishes() {
-        val nested = parsed(RENAMED)["edit"]!!.jsonObject
+        // Compared as TEXT, because the claim this locks is about bytes. Parsing both sides first made the
+        // comparison `Map` equality, which is key-order-insensitive — so a re-ordered or re-serialized edit
+        // half would have satisfied a test whose own message said "byte-identical" (found by review,
+        // 2026-09-18). The doc states it at `docs/CONSISTENCY-API.md`, so a consumer may diff the two.
+        val nested = parsed(RENAMED).getValue("edit").toString()
 
         assertEquals(
-            Json.parseToJsonElement(checkEdit(ModelSource(BASE), ModelSource(RENAMED)).toJson()).jsonObject,
+            checkEdit(ModelSource(BASE), ModelSource(RENAMED)).toJson(),
             nested,
             "the edit half must be byte-identical to what checkEdit publishes",
         )

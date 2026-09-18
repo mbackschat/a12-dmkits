@@ -2,6 +2,7 @@ package io.github.mbackschat.a12.dm.consistency
 
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertIs
 import kotlin.test.assertTrue
 
@@ -17,11 +18,14 @@ import kotlin.test.assertTrue
  * after-edit keystroke ratio therefore MOVED with model size — 0.346x at 20 programs, 0.906x at 200, and
  * 1.279-1.529x at 400, breaching a ceiling the lane asserted at 200 and so never saw.
  *
- * **Why a count and not a clock.** The invariant is arithmetic — each distinct fact is compared once — so a
- * counter falsifies it deterministically on every carrier and in every lane, where a timing bar has to be
- * calibrated and can only fail once the constant is already large enough to hurt. [Sweep.comparisons] is the
+ * **Why a count and not a clock.** The invariant is arithmetic — one comparison per distinct (fact, recorded
+ * instance) pair, which is one per FACT for every store built against a single model — so a counter
+ * falsifies it deterministically on every carrier and in every lane, where a timing bar has to be calibrated
+ * and can only fail once the constant is already large enough to hurt. [Sweep.comparisons] is the
  * enforcement locus; [aSweepIsTheSameDecisionAsAPerKeyValidation] is what stops the memo from buying its
- * speed with a wrong answer, which is the only way this optimization could be worse than the defect.
+ * speed with a wrong answer, which is the only way this optimization could be worse than the defect, and
+ * [twoInstancesOfOneFactAreComparedOncePerInstanceRatherThanOncePerFact] is what keeps the two readings of
+ * the invariant apart rather than leaving the stronger one resting on an unstated precondition.
  */
 class CellValidationSweepTest {
 
@@ -41,6 +45,44 @@ class CellValidationSweepTest {
         keys.forEach { sweep.validIn(it) }
 
         assertEquals(1, sweep.comparisons, "the sweep compared one distinct fact more than once")
+    }
+
+    /**
+     * The memo's REAL unit, made executable so the precondition behind the stronger claim cannot go unstated.
+     *
+     * A hit requires identity on the recorded value, and `verdicts` overwrites — so cells alternating two
+     * equal-but-distinct instances of one fact miss on every call and the pass costs what it cost before the
+     * memo. That is sound (a miss recomputes) and it is a performance cliff, so the honest invariant is one
+     * comparison per distinct (fact, instance) pair. It collapses to one per FACT only because every store
+     * reaching a sweep today was built against a single model — which is wiring, not arithmetic. The
+     * sibling cases above hold the instance count constant at one and therefore cannot tell the two readings
+     * apart; this one separates them (found by review, 2026-09-18).
+     */
+    @Test
+    fun twoInstancesOfOneFactAreComparedOncePerInstanceRatherThanOncePerFact() {
+        val model = prepared(modelJson(60))
+        val keys = schedule(TrackedFactBase(model, ReadTranscript())).map { it.key }
+        // Equal to the model's own shape and not the same object, which is exactly what a cell built against
+        // a different generation of the model would hold.
+        val copy = prepared(modelJson(60)).declarationSetShape
+        assertEquals(model.declarationSetShape, copy, "the fixture needs two EQUAL instances to be a control")
+        assertFalse(model.declarationSetShape === copy, "the fixture needs two DISTINCT instances")
+
+        val alternating = CheckCells(
+            keys.withIndex().associate { (index, key) ->
+                val had = if (index % 2 == 0) model.declarationSetShape else copy
+                key to CheckCell(emptyList(), emptyList(), mapOf(FactRead.DeclarationSetShape to had))
+            },
+        )
+        val sweep = alternating.sweepOver(model)
+        keys.forEach { sweep.validIn(it) }
+
+        assertEquals(
+            keys.size,
+            sweep.comparisons,
+            "a store alternating two instances of one fact must miss on every call — if this ever drops to " +
+                "1, the memo stopped keying on identity and its soundness argument no longer holds",
+        )
     }
 
     @Test

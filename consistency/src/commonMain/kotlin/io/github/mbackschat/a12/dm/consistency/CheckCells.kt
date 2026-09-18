@@ -44,6 +44,12 @@ internal class CheckCells(private val byKey: Map<CellKey, CheckCell>) {
      *
      * One key at a time, so it opens a [Sweep] of its own and keeps nothing. A caller deciding a whole
      * schedule wants [sweepOver] instead — that is where the cost lives.
+     *
+     * **No production caller: this is the tests' reference arm, deliberately kept.** `checkRun` decides a
+     * schedule through [sweepOver], so every one of this overload's twelve call sites is in `commonTest`,
+     * where it is the per-key form a sweep's decisions are compared against. Kept rather than deleted because
+     * that comparison is what stops the memo buying speed with a wrong answer — but named here, because an
+     * arm with no production caller is otherwise indistinguishable from one whose callers went away.
      */
     fun validIn(model: PreparedModel, key: CellKey): CheckCell? = sweepOver(model).validIn(key)
 
@@ -71,9 +77,18 @@ internal class CheckCells(private val byKey: Map<CellKey, CheckCell>) {
      * One pass's cells, and what deciding them cost.
      *
      * [comparisons] against [examined] is the memo's does-fire evidence rather than a statistic: the
-     * invariant is arithmetic — each distinct fact is compared at most once — so a count falsifies it
-     * deterministically on every carrier, where a timing bar needs calibrating and only fails once the
-     * constant already hurts.
+     * invariant is arithmetic, so a count falsifies it deterministically on every carrier, where a timing bar
+     * needs calibrating and only fails once the constant already hurts.
+     *
+     * **Stated precisely, the invariant is one comparison per distinct (fact, recorded instance) PAIR** — not
+     * per distinct fact, because [verdicts] overwrites and a store whose cells alternate two instances of one
+     * fact would miss on every call and cost what it cost before the memo. That collapses to one per fact
+     * exactly when every cell was built against one model, which is true of every store reaching a sweep
+     * today: `checkRun` is handed `CheckCells.NONE` when a snapshot is built, and the heterogeneous store a
+     * draft produces is discarded rather than carried. So the stronger reading holds by that WIRING and not
+     * by anything here — the distinction is locked in `CellValidationSweepTest`, and the slice that would
+     * break it is the one `ConsistencySnapshot.of` already names, reuse across an updated source set
+     * (found by review, 2026-09-18).
      */
     internal class Sweep(private val byKey: Map<CellKey, CheckCell>, private val model: PreparedModel) {
 

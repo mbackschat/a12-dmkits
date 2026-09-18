@@ -1,7 +1,7 @@
 package io.github.mbackschat.a12.dm.consistency
 
 /**
- * What a report comes to for a consumer that has to ACT on it — three states, because there are three actions.
+ * What a report comes to for a consumer that has to ACT on it — one state per action a caller can take.
  *
  * **It exists because [ConsistencyStatus] answers a different question.** The status says what the checker
  * concluded about the model; this says what a caller can do about it, and the two part company on the case
@@ -9,8 +9,14 @@ package io.github.mbackschat.a12.dm.consistency
  * which are the same verdict and opposite instructions. A gate that conflates them either fails every accepted
  * model or passes every unreadable one.
  *
- * **None of the three is a pass**, and no fourth value is coming until the coverage registry does. [NO_REJECTION]
- * is the closest, and it says only what its name says.
+ * **Exactly one of the four is a pass, and it had to wait for the coverage registry.** [ALL_CHECKS_PASSED]
+ * requires that every family in [CheckFamily] completed and that no diagnostic rode along; [NO_REJECTION] is
+ * its weaker neighbour — something ran, nothing rejected, but the run was narrower than that — and it says
+ * only what its name says. Reading the two as interchangeable is the mistake this enum exists to prevent.
+ *
+ * *(Corrected 2026-09-18: this paragraph said "none of the three is a pass, and no fourth value is coming
+ * until the coverage registry does". The registry came, [ALL_CHECKS_PASSED] with it, and the markdown was
+ * swept while this KDoc — which ships to every JVM consumer's sources jar — was not.)*
  */
 enum class CheckOutcome {
     /** A12 rejects a declaration. The verdict is established, and it is a no. */
