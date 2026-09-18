@@ -17,7 +17,7 @@ import org.junit.jupiter.api.condition.EnabledIfSystemProperty
  *
  * **The quantity is the one [CheckerGrowthPerfTest] clocks**, established by reading that lane rather than
  * assumed: a repeated whole-model `check` on a warmed runtime, not a snapshot-reuse call. So `checkModelJson`
- * after a per-scale warm-up is the analogue, and the checker's published two-function JS surface suffices — a
+ * after a per-scale warm-up is the analogue, and the checker's published JS surface suffices — a
  * prepared entry point is deliberately unexported, and timing one through an unexported Kotlin function would
  * report a cost no browser consumer can obtain.
  *

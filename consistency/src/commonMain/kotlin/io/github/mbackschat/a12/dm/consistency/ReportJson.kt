@@ -88,6 +88,24 @@ fun EditReport.toJson(): String = buildJsonObject {
     put("edited", edited.asJson())
 }.toString()
 
+/**
+ * What a snapshot operation reused, as JSON — L's whole point, so a JS consumer must be able to see it.
+ *
+ * **Published because reuse is a CLAIM about work performed, and an unobservable claim is not one.** The
+ * typed API states it with measured members ([Reuse]); a consumer across the wire had no way to tell a
+ * snapshot that reused a preparation from one that silently rebuilt it, which is exactly the property L
+ * exists to deliver. The two family counts sum to the cells a check scheduled, so a reader can compute the
+ * ratio without knowing the family list.
+ */
+internal fun Reuse.asJson(): JsonObject = buildJsonObject {
+    put("sourcesReused", sourcesReused)
+    put("sourcesAdmitted", sourcesAdmitted)
+    put("preparationReused", preparationReused)
+    put("baselineReportReused", baselineReportReused)
+    put("familiesReused", families.reused)
+    put("familiesRecomputed", families.recomputed)
+}
+
 private fun Finding.asJson(): JsonObject = buildJsonObject {
     put("code", code)
     put("category", category.name)

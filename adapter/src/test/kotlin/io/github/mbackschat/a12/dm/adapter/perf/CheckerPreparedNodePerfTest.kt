@@ -19,7 +19,7 @@ import org.junit.jupiter.api.condition.EnabledIfSystemProperty
  * **It clocks the SAME quantity [CheckerGrowthPerfTest] does, which is what makes the two comparable.** That
  * lane times `check(ModelSource(text))` on a runtime whose class loading and reflective setup a preflight has
  * already paid for: a repeated whole-model check, not a snapshot-reuse call. So the analogue is
- * `checkModelJson` after a full warm-up per scale — reachable through the checker's published two-function JS
+ * `checkModelJson` after a full warm-up per scale — reachable through the checker's published JS
  * surface exactly as it stands. A prepared or snapshot entry point is deliberately NOT exported to JavaScript
  * (`JsApi.kt` carries the reasons), and timing one through an unexported Kotlin function would report a cost
  * no Node consumer can obtain.

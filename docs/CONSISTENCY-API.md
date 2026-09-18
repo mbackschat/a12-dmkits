@@ -21,7 +21,7 @@ Two statuses exist today:
 
 ## The entry point
 
-One function, strings in and strings out. It is deliberately the whole JavaScript surface: the checker is not feature-complete and its Kotlin types are still moving, so exporting them would publish an ABI that has to change under every consumer.
+Strings in, strings out — and that is the durable decision, not the number of calls. The checker's Kotlin types are still moving, so exporting *them* would publish an ABI that changes under every consumer; a JSON string commits to the wire shape below and to nothing else.
 
 ```js
 import { checkModelJson } from 'a12-consistency';
@@ -131,6 +131,8 @@ val report = checkDraft(ModelSource(modelJson), "/Order/CodeRequired", "errorCon
 
 A draft that could not be applied at all — an unreadable source, a path the model does not declare, a member the declaration cannot carry — attributes **nothing** and says why in `gaps`, naming the members the declaration can carry. It never raises.
 
+**From JavaScript it is `checkDraftJson(modelJson, at, member, text, diagnosticLabel?)`**, returning the same edit-shaped JSON `checkEditJson` returns. For an editor calling per keystroke, prefer the snapshot handle below: this function admits and prepares the source on every call.
+
 ## Which declarations a change reaches — `impactOf`, before you commit to it
 
 `checkEdit` says what your change broke. `impactOf(baseline, edited)` says what you now have to re-read, which is a different question and the one an author cannot answer by hand on a model of any size.
@@ -184,6 +186,25 @@ snapshot = snapshot.withoutSource("catalog")                         // and the 
 **What that buys today is measured rather than promised, and it is growing one batch of families at a time.** On an eight-declaration model, re-typing a rule's condition reuses **444 of 518** cells; re-typing text it already had reuses all 518, which is the validator's own ceiling and the control that makes the first figure mean something (2026-09-18). Both figures are dated evidence and move with the registry; what does not move is the form they come from — one cell per model-wide family plus one per declaration for the rest, `38 + 60 × 8` here — which `FamilyCellReuseTest.theCellDenominatorIsTheProductThePublishedFiguresAreDerivedFrom` holds, and which `./build.sh :consistency:jvmTest` re-derives. The cells that fall are the ones that read the edited declaration — and a group's body nests its elements, so an edit also fells every ancestor's cell. Most families still read every declaration and so still hold one model-wide cell; moving them to the finer key is where the rest of the reuse is. The [implementation plan](PORTABLE-CONSISTENCY-IMPLEMENTATION-PLAN.md) carries that as its own work items rather than a follow-up here. *(Corrected 2026-09-18: this paragraph previously said per-declaration reuse "is deliberately not attempted: it would need each of the 103 families to declare the model footprint its verdict depends on". Both halves are superseded — the footprint is observed, and the reuse now ships.)*
 
 **No latency is claimed here either.** `FamilyReuse` counts WORK, for the same reason the source counters do.
+
+**From JavaScript it is `snapshotOfJson(modelJsons, entryModelId)`**, returning an opaque `ConsistencySnapshotHandle`. The handle is the one exported *type* on this surface, and it carries no structure: every payload is still a JSON string.
+
+```ts
+import { snapshotOfJson } from 'a12-consistency';
+
+let held = snapshotOfJson([orderJson, catalogJson], 'orders');
+
+JSON.parse(held.reportJson());                                        // the entry model's report
+JSON.parse(held.draftJson('/Order/CodeRequired', 'errorCondition', typed));   // one check, nothing re-prepared
+JSON.parse(held.draftWithReuseJson(path, 'errorCondition', typed));   // `{ edit, reuse }` in one computation
+held = held.withSource(editedOrderJson);                              // a NEW handle; the old one still answers
+held = held.withoutSource('catalog');
+JSON.parse(held.reuseJson());                                         // what making THIS handle reused
+```
+
+`reuseJson()` and `draftWithReuseJson`'s `reuse` member carry the counters above with the family pair flattened to `familiesReused` and `familiesRecomputed`. The handle's constructor is declared `private` in the published `a12-consistency.d.ts`, so `snapshotOfJson` is the only way a TypeScript consumer can obtain one — a handle that analysed nothing cannot be fabricated. **That opacity is type-level**: Kotlin/JS emits an ordinary class, so a consumer bypassing TypeScript was never constrained by it.
+
+**Holding a handle retains the prepared model and its cell store**, which is the cost that buys the reuse. JavaScript gives no `close()` to enforce release, so a consumer that keeps handles it no longer needs keeps that memory live.
 
 ## Calling it from a JVM dmkits consumer — `dmkits-consistency-gate`
 
@@ -258,7 +279,7 @@ That test is also the only thing in the build that can catch an unconsumable art
 
 ## Calling it from a browser
 
-**Nothing changes, and that is the finding.** The published npm package is Kotlin/JS's Node production distribution, and it names no host API at all — zero `require(`, `node:` or `process.` references across its six ES modules — so a bundler consumes it unchanged. Import the same two functions, `fetch` the model text instead of reading a file, and call them:
+**Nothing changes, and that is the finding.** The published npm package is Kotlin/JS's Node production distribution, and it names no host API at all — zero `require(`, `node:` or `process.` references across its six ES modules — so a bundler consumes it unchanged. Import the same functions, `fetch` the model text instead of reading a file, and call them:
 
 ```ts
 import { checkEditJson, checkModelJson } from 'a12-consistency';

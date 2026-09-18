@@ -10,8 +10,11 @@ import kotlin.test.assertTrue
  *
  * **The cost is measured, not supposed.** Recording every fact a family reads and then capturing each read's
  * value is ~180 ms of a 509 ms 200-program check, and `check` discards the store the instant it has the
- * report — while the shipped JS surface exports two stateless functions, so a Node consumer cannot hold one
- * at all ([the plan's record](../../../../../../../../../../docs/PORTABLE-CONSISTENCY-IMPLEMENTATION-PLAN.md)).
+ * report. **The retention flag tracks the stateless/stateful split exactly, on every carrier**: `check` and
+ * `checkModelJson` discard, while `snapshotOf` and `snapshotOfJson` keep — so the cost is paid only by a
+ * caller that can receive the benefit. *(This clause once read "a Node consumer cannot hold one at all",
+ * which the shipped `snapshotOfJson` falsified on 2026-09-18; the optimization is unaffected, because what
+ * decides it is the call's own retention and not the carrier's surface.)*
  *
  * **The row that matters is the EQUALITY one.** An optimization on the check path is only safe if the report
  * is the same report, so the discarding run is compared against the keeping run over the same model rather

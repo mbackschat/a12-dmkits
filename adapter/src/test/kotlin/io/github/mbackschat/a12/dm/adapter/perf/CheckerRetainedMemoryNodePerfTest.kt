@@ -9,12 +9,17 @@ import org.junit.jupiter.api.condition.EnabledIfSystemProperty
 /**
  * H5-j's plain-Node arm: what a Node consumer's heap does across repeated checks.
  *
- * **Its subject is not the JVM arm's, and that is a consequence of the published surface rather than a
- * choice.** [CheckerRetainedMemoryPerfTest] holds a `ConsistencySnapshot` live and reads the post-GC heap; the
- * shipped `a12-consistency.d.ts` exports `checkModelJson` and `checkEditJson`, both string-in string-out, so
- * a Node consumer holds no analysis and that quantity has no analogue here. §8 asks the resources boundary for
- * release behaviour as well as retained bytes, and release is what a stateless surface can be asked: a heap
- * flat across many checks, or one growing per call.
+ * **Its subject is RELEASE, not retention.** [CheckerRetainedMemoryPerfTest] holds a `ConsistencySnapshot`
+ * live and reads the post-GC heap; this lane asks the other half of what §8 wants from the resources boundary
+ * — whether a heap stays flat across many stateless checks or grows per call.
+ *
+ * **The reason it asks only that half EXPIRED on 2026-09-18, and the row it blocked is now measurable.** This
+ * lane was scoped to release because the shipped `a12-consistency.d.ts` exported two string-in string-out
+ * functions, so a Node consumer could hold no analysis and retention had no analogue here. `snapshotOfJson`
+ * then shipped a holdable handle, which is exactly the JVM arm's subject on this carrier — the plan's H5-j row
+ * carries the re-opening (`PORTABLE-CONSISTENCY-IMPLEMENTATION-PLAN.md` "#h5j-node-retention").
+ * Nothing below is wrong; it is narrower than the carrier now allows, and a second arm is a perf slice of its
+ * own rather than an edit to this one.
  *
  * **It asserts no bound, deliberately.** Per H5's ordering rule the collector comes first and the bar is the
  * owner's to ratify through IF137's six points; a flatness bound taken from this lane's own first output is

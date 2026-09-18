@@ -976,7 +976,8 @@ tasks.register('checkerPreparedNodePerfTest', Test) {
 }
 
 // H5-j's plain-NODE arm of the resources boundary, and the one whose SUBJECT differs from the JVM lane's:
-// the shipped JS surface is two stateless functions, so a Node consumer holds no analysis and what §8's
+// the shipped JS surface had only stateless calls when this landed, so a Node consumer held no analysis (no
+// longer true since `snapshotOfJson` shipped on 2026-09-18 — see the lane's own KDoc) and what §8's
 // release half asks — is a consumer's heap flat across repeated checks — is what this can answer. Informative
 // by design, per H5's ordering rule: the collector comes first and the bar is the owner's to ratify
 // (docs/PORTABLE-CONSISTENCY-IMPLEMENTATION-PLAN.md, the H5-j row and #h5i-surface). Off every automated lane
