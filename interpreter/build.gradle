@@ -1743,6 +1743,20 @@ def verifyInterpreterNpmPackage = tasks.register('verifyInterpreterNpmPackage') 
                     "a reason it belongs in a published interpreter",
             )
         }
+        // And the OTHER direction, which nothing here held until 2026-09-18 while the checker's twin has
+        // checked both all along. The enumeration above refuses what nobody decided to ship; on its own it
+        // passes a package that ships SHORT, and `required` cannot cover that — it names 12 of the 59
+        // entries, so a dropped façade module beyond those 12 is invisible. It is exactly the derived half
+        // that needs it: `permittedDist` comes from the TypeScript sources rather than from a hand list, so
+        // an emit that stopped producing a module leaves its four artifacts listed here and absent there.
+        def absent = (permittedEntries - entries).toSorted()
+        if (absent) {
+            throw new GradleException(
+                "the interpreter npm tarball is missing ${absent} — the permitted set is the shipped set, " +
+                    "so an entry derived from a TypeScript source or listed in `permittedInternalModules` " +
+                    "and not packed means the emit or the staging changed under this guard",
+            )
+        }
         def packageJson = new groovy.json.JsonSlurper().parse(
             archive.matching { include 'package/package.json' }.singleFile,
         )
