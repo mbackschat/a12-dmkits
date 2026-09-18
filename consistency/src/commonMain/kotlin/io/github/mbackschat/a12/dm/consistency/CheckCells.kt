@@ -97,5 +97,6 @@ internal fun PreparedModel.valueOf(read: FactRead): Any? = when (read) {
         ModelFact.SUPPORTED_CHARACTERS -> supportedCharacters
         ModelFact.UNREADABLE_LOCALE_CODES -> unreadableLocaleCodes
         ModelFact.DECLARED_TYPE_DEFINITION_IDS -> declaredTypeDefinitionIds
+        ModelFact.REPEATABLE_GROUP_SET -> repeatableGroupPathList
     }
 }

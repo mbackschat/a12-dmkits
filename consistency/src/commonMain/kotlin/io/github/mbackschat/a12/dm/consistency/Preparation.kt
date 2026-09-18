@@ -309,6 +309,18 @@ data class PreparedModel(
     }
 
     /**
+     * Which groups repeat, as the value behind [ModelFact.REPEATABLE_GROUP_SET].
+     *
+     * Read off the UNTRACKED elements deliberately, which is the whole point rather than an optimization:
+     * the same question asked through a [TrackedDeclaration] opens each group's body at the barrier, and
+     * `TrackedFactBase`'s view of it is memoized, so those reads land on whichever producer forced the view
+     * first and no later producer records them (measured 2026-09-18, `MemoizedViewChargeTest`).
+     */
+    internal val repeatableGroupPathList: List<String> by lazy {
+        elements.filter { it.isRepeatableGroup }.map { it.path }
+    }
+
+    /**
      * Every declaration's own target reference, computed ONCE per model.
      *
      * **This is where the checker's cost curve was, measured 2026-09-15.** `declaredReferences()` is a whole-

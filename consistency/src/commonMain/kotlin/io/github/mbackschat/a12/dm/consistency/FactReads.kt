@@ -72,6 +72,17 @@ internal enum class ModelFact {
     SUPPORTED_CHARACTERS,
     UNREADABLE_LOCALE_CODES,
     DECLARED_TYPE_DEFINITION_IDS,
+
+    /**
+     * Which groups repeat — a model-wide fact rather than a set-shape one, because repeatability is a BODY
+     * member and the shape deliberately carries only path, name, kind, id and origin.
+     *
+     * It exists because [TrackedFactBase.repeatableGroups] charged [DeclarationSetShape], which a
+     * repeatability edit does not move: a cell answered from the repeatable-group list was keyed on less
+     * than it read, the one direction that makes reuse unsound. Charging this instead is also strictly more
+     * precise than the shape would be — adding an unrelated declaration no longer falls these cells.
+     */
+    REPEATABLE_GROUP_SET,
 }
 
 /**

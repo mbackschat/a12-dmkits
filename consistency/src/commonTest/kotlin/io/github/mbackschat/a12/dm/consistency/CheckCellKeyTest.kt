@@ -69,7 +69,17 @@ class CheckCellKeyTest {
             typeDefinitions =
                 """"typeDefinitions":[{"id":"Money","name":"Money","fieldType":{"type":"NumberType"}}],""",
         ),
+        // A repeatable group where the baseline has none. It is the body member `repeatability` that moves,
+        // which is exactly why this fact exists rather than riding the set's shape: the shape carries path,
+        // name, kind, id and origin, so it cannot see this edit at all.
+        ModelFact.REPEATABLE_GROUP_SET to prepared(second = repeatableGroup()),
     )
+
+    /** A repeatable group appended after `Code`, carrying one field so it is a group worth declaring. */
+    private fun repeatableGroup() =
+        """,{"type":"Group","id":"g9","name":"Lines","Group":{"repeatability":4,"elements":[
+             {"type":"Field","id":"f9","name":"Amount","Field":{"fieldType":{"type":"NumberType"}}}
+           ]}}"""
 
     @Test
     fun everyModelMemberIsKeyedOnItsOwnMemberAndOnNoOther() {

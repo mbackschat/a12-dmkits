@@ -67,8 +67,23 @@ internal class TrackedFactBase private constructor(
             byPath
         }
 
-        /** The repeatable groups among [cursors], for the set questions that ask only about them. */
-        val repeatable: List<TrackedDeclaration> by lazy { cursors.filter { it.isRepeatableGroup } }
+        /**
+         * The repeatable groups among [cursors], for the set questions that ask only about them.
+         *
+         * **Filtered over the UNTRACKED elements, and a memoized view has no other choice.** Asking
+         * `TrackedDeclaration.isRepeatableGroup` opens each group's body AT THE BARRIER, and this value is
+         * computed once per check — so those reads are charged to whichever producer happened to force it,
+         * and every later producer is answered from the same list while recording nothing for it. That is a
+         * charge narrower than what was read, which [ReadTranscript] and `isRepeatable` both name as the one
+         * direction that makes reuse unsound. Indexed rather than keyed by path so two declarations sharing
+         * a path cannot collapse into one.
+         *
+         * The dependency itself is not dropped, it MOVED: [repeatableGroups] charges
+         * [ModelFact.REPEATABLE_GROUP_SET], whose value is this question's own answer.
+         */
+        val repeatable: List<TrackedDeclaration> by lazy {
+            cursors.filterIndexed { index, _ -> model.elements[index].isRepeatableGroup }
+        }
     }
 
     /**
@@ -200,17 +215,24 @@ internal class TrackedFactBase private constructor(
     }
 
     /**
-     * The REPEATABLE groups the model declares, charged exactly as [allDeclarations] is.
+     * The REPEATABLE groups the model declares, charged as [ModelFact.REPEATABLE_GROUP_SET].
      *
      * **A fifth member of the access vocabulary, and it exists for cost rather than for meaning.** A caller
      * could filter [allDeclarations] and get the same list — that is what `crossedRepetitions` and
      * `repeatableGroupPaths` did — but the filter is linear and both are asked per operand, so on an
      * 800-program model they grew **16x and 39x** against the check's own 5.5x over a 4x scale-up (measured
-     * 2026-09-18). The charge is identical, so no cell key moves: the answer still depends on the set's shape
-     * and on nothing else.
+     * 2026-09-18).
+     *
+     * **Its charge is this question's own answer, and it took a second pass to get right.** It first charged
+     * [FactRead.DeclarationSetShape], on the reasoning that the answer depends on the set and nothing else.
+     * That is wrong in the unsound direction: repeatability is a BODY member, the shape carries only path,
+     * name, kind, id and origin, so an edit that stops a group repeating moves no shape member and a cell
+     * answered from this list would be revalidated unchanged. The dedicated fact is also strictly more
+     * precise than the shape — an unrelated declaration appearing no longer falls these cells. Locked by
+     * `MemoizedViewChargeTest`, which fails on any memoized view that charges less in company than alone.
      */
     fun repeatableGroups(): List<TrackedDeclaration> {
-        transcript.record(FactRead.DeclarationSetShape)
+        transcript.record(FactRead.ModelMember(ModelFact.REPEATABLE_GROUP_SET))
         return views.repeatable
     }
 

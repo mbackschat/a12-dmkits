@@ -53,9 +53,15 @@ class PreparedModelDerivedValueTest {
     /**
      * The fact base's own indexes, which are per CHECK rather than per model — same contract, different owner.
      *
-     * `repeatableGroups` is charged on every call like `allDeclarations`, so what is locked here is only that
-     * the LIST is handed out rather than refiltered: the charge is what a cell is keyed on and must not be
-     * memoized away, while the filter is what grew 39x over a 4x scale-up.
+     * `repeatableGroups` is charged on every call, so what is locked here is only that the LIST is handed out
+     * rather than refiltered: the charge is what a cell is keyed on and must not be memoized away, while the
+     * filter is what grew 39x over a 4x scale-up.
+     *
+     * *Corrected 2026-09-18: this first required [FactRead.DeclarationSetShape], and its own message said
+     * "a cell could survive an edit that ADDED a repeating group" — which the shape does catch, since a new
+     * declaration moves it. The edit it could not catch is flipping `repeatability` on a group that already
+     * exists: that moves a BODY member and no shape member. The charge is now the fact that answers this
+     * question, [ModelFact.REPEATABLE_GROUP_SET].*
      */
     @Test
     fun theFactBasesRepeatableListIsHandedOutAndStillChargedOnEveryCall() {
@@ -69,8 +75,9 @@ class PreparedModelDerivedValueTest {
         assertTrue(first.isNotEmpty(), "the fixture must declare a repeatable group, or this locks nothing")
         assertSame(first, second, "the repeatable list is refiltered per call")
         assertTrue(
-            FactRead.DeclarationSetShape in transcript.observed(),
-            "the shape was not charged, so a cell could survive an edit that added a repeating group",
+            FactRead.ModelMember(ModelFact.REPEATABLE_GROUP_SET) in transcript.observed(),
+            "the repeatable-group set was not charged, so a cell could survive an edit that stopped a group " +
+                "repeating — an edit the set's shape cannot see, repeatability being a body member",
         )
     }
 
