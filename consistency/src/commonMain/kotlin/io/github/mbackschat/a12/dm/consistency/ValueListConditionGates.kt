@@ -229,7 +229,7 @@ private fun TrackedFactBase.declaredTargetOf(
     val reference = referencesIn(operand, conditionLanguage).singleOrNull() ?: return null
     val resolved = resolveEntity(declaringGroup, reference.replace("*", ""), element.origin)
     val target = (resolved as? Reference.Resolved)?.path ?: return null
-    return allDeclarations().firstOrNull { it.path == target }
+    return declarationAt(target)
 }
 
 /**

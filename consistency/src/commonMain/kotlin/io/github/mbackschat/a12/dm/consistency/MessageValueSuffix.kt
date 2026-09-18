@@ -64,7 +64,7 @@ private const val VALUE_SUFFIX = ".value"
 /** The star gate first, then the declaration one — A12's order, measured on a field carrying both. */
 private fun TrackedFactBase.suffixDefect(path: String, starredOnly: Set<String>): String? = when {
     path in starredOnly -> STAR_REFERENCE
-    allDeclarations().firstOrNull { it.path == path }?.waivesValueValidation() == true -> NO_VALUE_VALIDATION
+    declarationAt(path)?.waivesValueValidation() == true -> NO_VALUE_VALIDATION
     else -> null
 }
 

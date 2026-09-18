@@ -109,7 +109,7 @@ private fun TrackedFactBase.repeatabilityDefect(matched: IndexFieldOnPath, eleme
  * halves, and each was moved on its own: a second value refuses, and so does dropping the special value.
  */
 private fun TrackedFactBase.declaresASingleValuedEnumeration(fieldPath: String): Boolean {
-    val body = allDeclarations().firstOrNull { it.path == fieldPath }?.enumerationBody() ?: return false
+    val body = declarationAt(fieldPath)?.enumerationBody() ?: return false
     return body.declaredEnumValues()?.size == 1 && !body.string("sValue").isNullOrEmpty()
 }
 
@@ -183,7 +183,7 @@ private fun TrackedFactBase.indexFieldsOnThePathTo(fieldPath: String): List<Inde
     val found = mutableListOf<IndexFieldOnPath>()
     var group = fieldPath.substringBeforeLast('/', missingDelimiterValue = "")
     while (group.isNotEmpty()) {
-        val declared = allDeclarations().firstOrNull { it.path == group }
+        val declared = declarationAt(group)
         val name = declared?.let { indexFieldNameOf(it) }
         if (declared != null && name != null) {
             found += IndexFieldOnPath(name, "$group/$name", declared.isRepeatable)

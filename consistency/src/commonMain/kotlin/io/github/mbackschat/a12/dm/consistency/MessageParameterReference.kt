@@ -108,7 +108,7 @@ private fun TrackedFactBase.formLineDefect(
 ): Finding? {
     val resolved = (resolveEntity(group, addressed, element.origin) as? Reference.Resolved)?.path
         ?: return null
-    if (allDeclarations().firstOrNull { it.path == resolved }?.declaredKind != DeclaredKind.GROUP) {
+    if (declarationAt(resolved)?.declaredKind != DeclaredKind.GROUP) {
         return null
     }
     return Finding(

@@ -141,7 +141,7 @@ private fun TrackedFactBase.namesNoRepetition(
     origin: DeclarationOrigin,
 ): Boolean {
     val path = (resolveEntity(declaringGroup, prefix, origin) as? Reference.Resolved)?.path ?: return false
-    val element = allDeclarations().firstOrNull { it.path == path } ?: return false
+    val element = declarationAt(path) ?: return false
     return !element.isRepeatable
 }
 

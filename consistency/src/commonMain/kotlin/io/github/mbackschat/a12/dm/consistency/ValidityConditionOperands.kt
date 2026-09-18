@@ -125,7 +125,7 @@ private fun TrackedFactBase.predefinedTypeArmDefect(
     val written = normalizedPath(subject)
     val resolved = resolveEntity(declaringGroup, written.replace("*", ""), element.origin)
         as? Reference.Resolved ?: return null
-    val target = allDeclarations().firstOrNull { it.path == resolved.path } ?: return null
+    val target = declarationAt(resolved.path) ?: return null
     if (target.declaredKind != DeclaredKind.FIELD) {
         return ValidityDefect(
             "MVK_NO_GROUPS_ALLOWED", target.path,

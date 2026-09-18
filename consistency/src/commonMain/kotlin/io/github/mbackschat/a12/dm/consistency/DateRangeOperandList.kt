@@ -236,7 +236,7 @@ private fun TrackedFactBase.resolvedTarget(
     val reference = referencesIn(operand, conditionLanguage).singleOrNull() ?: return null
     val resolved = resolveEntity(declaringGroup, reference.replace("*", ""), element.origin)
     val path = (resolved as? Reference.Resolved)?.path ?: return null
-    return allDeclarations().firstOrNull { it.path == path }
+    return declarationAt(path)
 }
 
 private const val DATE_RANGE_TYPE = "DateRangeType"

@@ -78,7 +78,7 @@ private fun TrackedFactBase.rangeDefect(
     }
     val (written, category) = operandSpec(call.operands[0]) ?: return null
     val target = addressedTargetOf(written, declaringGroup, element) ?: return null
-    val declared = allDeclarations().firstOrNull { it.path == target } ?: return null
+    val declared = declarationAt(target) ?: return null
     val starred = '*' in written
     if (declared.declaredKind == DeclaredKind.GROUP) {
         // A repeatable group read without its star iterates, and the gate outside this method answers there;

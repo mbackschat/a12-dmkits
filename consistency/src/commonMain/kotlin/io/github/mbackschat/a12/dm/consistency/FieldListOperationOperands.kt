@@ -140,7 +140,7 @@ private fun TrackedFactBase.operandDefect(
         return null
     }
     val fields = targets.flatMap { target ->
-        val declared = allDeclarations().firstOrNull { it.path == target } ?: return null
+        val declared = declarationAt(target) ?: return null
         fieldsUnder(declared) ?: return null
     }
     if (fields.isEmpty()) {
@@ -225,7 +225,7 @@ private fun distinctDefect(fields: List<TrackedDeclaration>): FieldListDefect? {
  */
 private fun TrackedFactBase.preEmptedBeforeTheSwitch(written: List<String>, targets: List<String>): Boolean {
     val loneField = targets.size == 1 && '*' !in written.first() &&
-        allDeclarations().firstOrNull { it.path == targets.first() }?.declaredKind == DeclaredKind.FIELD
+        declarationAt(targets.first())?.declaredKind == DeclaredKind.FIELD
     return entityListPreGateAnswers(written, targets) || loneField
 }
 

@@ -41,12 +41,12 @@ internal fun TrackedFactBase.enumComputationSourceFindings(): List<Finding> = de
     .filter { it.role == ReferenceRole.COMPUTED_TARGET }
     .flatMap { declared ->
         val targetPath = (declared.target as? Reference.Resolved)?.path ?: return@flatMap emptyList()
-        val target = allDeclarations().firstOrNull { it.path == targetPath } ?: return@flatMap emptyList()
+        val target = declarationAt(targetPath) ?: return@flatMap emptyList()
         if (target.declaredFieldType() != ENUMERATION) {
             return@flatMap emptyList()
         }
         val admitted = target.enumerationBody()?.declaredEnumValues()?.toSet() ?: return@flatMap emptyList()
-        val element = allDeclarations().firstOrNull { it.path == declared.declaredAt } ?: return@flatMap emptyList()
+        val element = declarationAt(declared.declaredAt) ?: return@flatMap emptyList()
         val body = element.body ?: return@flatMap emptyList()
         val group = element.path.substringBeforeLast('/', missingDelimiterValue = "")
         conditionTexts(element.kind, body)

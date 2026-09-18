@@ -170,7 +170,7 @@ private fun TrackedFactBase.orderingFinding(
     // GATE ONE — the spelling must land on a field at all. A climb past the root cannot reach one either:
     // the model root holds groups, so every clamped path names a group path, never a field.
     val landed = resolvePositionally(group.path, written)
-    val target = allDeclarations().firstOrNull { it.path == landed }
+    val target = declarationAt(landed)
     if (target == null || target.declaredKind != DeclaredKind.FIELD) {
         return unbuildable(
             group,
