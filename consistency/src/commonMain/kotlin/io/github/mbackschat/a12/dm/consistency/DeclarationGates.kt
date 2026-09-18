@@ -1,32 +1,29 @@
 package io.github.mbackschat.a12.dm.consistency
 
 import io.github.mbackschat.a12.dm.consistency.syntax.delimitersBalanced
-import kotlinx.serialization.json.JsonObject
-
 
 /**
- * The same gate behind the read barrier, for a family that has migrated.
+ * The declarations whose DSL cannot be trusted at all — a condition naming something that does not resolve, or
+ * a text whose delimiters do not balance.
  *
- * Both arms live while the estate is part-migrated — ten families still ask the untracked one — and both go
- * through [unsoundDslIn], because the gate decides whether a whole class of families says anything at all and
- * two copies of that decision could diverge without a single test noticing.
+ * **It gates a whole CLASS of families rather than one finding, which is why it is ONE expression of the
+ * decision and must stay one.** Ten families ask it whether a declaration's DSL says anything before they say
+ * anything themselves, so two copies of this could diverge without a single test noticing — each family's own
+ * tests would pass against whichever copy it happened to call.
+ *
+ * Every declaration's body is read, and that is the charge these families' cells are keyed on: a cursor's
+ * shape members are free and only `body` records, so the walk charges the set shape once plus one
+ * [FactRead.DeclarationContent] per declaration.
  */
-internal fun TrackedFactBase.declarationsWithUnsoundDsl(): Set<String> = unsoundDslIn(
-    conditionReferences(),
-    declarations().map { DslCarrier(it.path, it.kind, it.body) },
-)
-
-/** What the gate reads of one declaration: enough to find its condition texts and name it. */
-private class DslCarrier(val path: String, val kind: String, val body: JsonObject?)
-
-private fun unsoundDslIn(references: List<ConditionReference>, declarations: List<DslCarrier>): Set<String> {
-    val unresolved = references
+internal fun TrackedFactBase.declarationsWithUnsoundDsl(): Set<String> {
+    val unresolved = conditionReferences()
         .filter { it.target !is Reference.Resolved }
         .map { it.declaredAt }
-    val unparseable = declarations.mapNotNull { declaration ->
+    val unparseable = declarations().mapNotNull { declaration ->
         val body = declaration.body ?: return@mapNotNull null
-        val broken = conditionTexts(declaration.kind, body).any { (_, text) -> !delimitersBalanced(text) }
-        declaration.path.takeIf { broken }
+        declaration.path.takeIf {
+            conditionTexts(declaration.kind, body).any { (_, text) -> !delimitersBalanced(text) }
+        }
     }
     return (unresolved + unparseable).toSet()
 }
