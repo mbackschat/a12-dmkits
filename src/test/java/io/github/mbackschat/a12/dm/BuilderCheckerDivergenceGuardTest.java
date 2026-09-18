@@ -128,6 +128,15 @@ class BuilderCheckerDivergenceGuardTest {
             // checker reports nothing for an absent member. Prose on both sides, deliberately.
             Map.entry("MVK_SEVERITY_MISSING", Disposition.PROSE_ONLY),
 
+            // Same shape, and the checker's side is an UNDER-report it discloses rather than a gap: A12's
+            // admitted domain here is whatever tz database the running JVM carries (632 ids on the pin), so
+            // a portable check cannot be made safe and the checker reports nothing. `StructuralKernelFix`
+            // enriches the code when the KERNEL emits it, which is enrichment rather than enforcement, and
+            // `Outcome.kt` names it as the measured witness for why `ALL_CHECKS_PASSED` is scoped to the
+            // checker's own coverage and never to A12 acceptance. Prose on both sides, deliberately.
+            // Entered this map on 2026-09-18 — the checker had never named the code until that KDoc.
+            Map.entry("MVK_INVALID_TIME_ZONE", Disposition.PROSE_ONLY),
+
             // Both estates enforce A12's boolean-kind law, on carriers that cannot share a reader:
             // `Computation` refuses `False` into a CONFIRM computed field and the wrong constant into a
             // BOOLEAN one, each measured (`ConfirmComputationSourceKindLawsTest`), while
