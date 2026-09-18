@@ -290,6 +290,14 @@ internal class TrackedDeclaration(
      * entry point charges exactly what the answer depends on: THIS declaration's body, for the relative path
      * it spells, and the set's shape, because resolving that path consults the by-path index. Another
      * declaration's body cannot change this answer and is not charged for it.
+     *
+     * **Known limit, at a twinned path: the lookup is by PATH, so the second twin gets the first's
+     * reference.** A path is not a unique key here — that is why the cell key carries an ordinal — and this
+     * is the one place left that treats it as one. It is equivalence-preserving (the scoped concatenation
+     * equals the unscoped list, before and after the narrowing) and charged correctly, so reuse stays sound;
+     * what it can do is attribute one twin's error target to the other on a model A12 refuses anyway. Named
+     * rather than fixed: the fix needs `declaredReferenceList` keyed by (path, ordinal), which is a change to
+     * preparation rather than to the barrier (cold review, 2026-09-18).
      */
     fun declaredReference(): DeclaredReference? {
         transcript.record(FactRead.DeclarationContent(element.path))
