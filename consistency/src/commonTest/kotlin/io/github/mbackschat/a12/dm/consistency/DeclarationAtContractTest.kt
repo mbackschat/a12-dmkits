@@ -41,7 +41,9 @@ class DeclarationAtContractTest {
                   {"type":"Group","id":"g0","name":"Order","Group":{"elements":[
                     {"type":"Field","id":"f0","name":"Code","Field":{"fieldType":{"type":"StringType"}}},
                     {"type":"Field","id":"f1","name":"Twin","Field":{"fieldType":{"type":"StringType"}}},
-                    {"type":"Rule","id":"r0","name":"Twin","Rule":{"errorCode":"E1"}}
+                    {"type":"Rule","id":"r0","name":"Twin","Rule":{"errorCode":"E1"}},
+                    {"type":"Field","id":"f2","name":"Pair","Field":{"fieldType":{"type":"StringType"}}},
+                    {"type":"Field","id":"f3","name":"Pair","Field":{"fieldType":{"type":"NumberType"}}}
                   ]}}
                  ]}}}
                 """.trimIndent(),
@@ -137,7 +139,38 @@ class DeclarationAtContractTest {
         )
     }
 
+    /**
+     * The two-argument index keeps FIRST-wins among declarations sharing a path AND a kind.
+     *
+     * **The case [theKindQualifiedLookupAnswersOnTheTwinItsCallerAsked] cannot reach, and the reason it was
+     * written.** That test's twins differ in kind, so they land in different buckets of this index and a
+     * last-wins build answers identically — planting `byKey[key] = cursor` in place of `getOrPut` SURVIVED
+     * it. The blind spot is structural rather than careless: the fixture was built to make KIND observable,
+     * which is precisely what removes the collision this invariant is about. Two fields at one path restore
+     * it, and the mutant now dies here.
+     */
+    @Test
+    fun theKindQualifiedLookupKeepsFirstWinsAmongDeclarationsSharingPathAndKind() {
+        val base = TrackedFactBase(prepared(), ReadTranscript())
+
+        val pair = base.allDeclarations().filter { it.path == PAIR && it.declaredKind == DeclaredKind.FIELD }
+        assertEquals(
+            2,
+            pair.size,
+            "the fixture must declare TWO fields at one path, or first-wins and last-wins share a bucket " +
+                "of one and this test cannot fail",
+        )
+
+        assertSame(
+            pair.first(),
+            base.declarationAt(PAIR, DeclaredKind.FIELD),
+            "the index must answer with the FIRST of the two, as the scan it replaced did; a last-wins " +
+                "build silently hands every kind-qualified gate the other one",
+        )
+    }
+
     private companion object {
         const val TWIN = "/Order/Twin"
+        const val PAIR = "/Order/Pair"
     }
 }
