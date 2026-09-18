@@ -1059,6 +1059,42 @@ tasks.register('checkerMemoryNodePerfTest', Test) {
     outputs.cacheIf { false }
 }
 
+// H5-j's plain-NODE RETENTION arm — the sibling above measures RELEASE across repeated stateless checks, and
+// this measures what holding ONE analysis costs, which is the JVM arm's own subject. It is a separate lane
+// because it was a separate slice: the arm above was scoped to release while the shipped JS surface was
+// string-in string-out, and `snapshotOfJson` made retention reachable here on 2026-09-18. Off every automated
+// lane, like its Node siblings: it needs node, npm and the packed tarball.
+tasks.register('checkerRetainedSnapshotNodePerfTest', Test) {
+    description = 'Collect what holding one analysis costs a Node consumer\'s heap, at two model scales.'
+    group = 'measurement'
+    dependsOn ':consistency:installPackedConsistencyInNodeConsumer'
+    testClassesDirs = sourceSets.test.output.classesDirs
+    classpath = sourceSets.test.runtimeClasspath
+    useJUnitPlatform()
+    // Single-fork: a neighbouring fork's allocation lands in the child's machine, and the child's own readings
+    // are the whole quantity.
+    maxParallelForks = 1
+    failFast = true
+    systemProperty 'perf.checker.retainednode', 'true'
+    // One value drives the Gradle resolution and NodeIdentity's refusal both — see gradle.properties.
+    systemProperty 'perf.checker.retainednode.major', checkerNodeMajor
+    doFirst {
+        systemProperty 'perf.checker.retainednode.node',
+            resolveNodeTool('node', checkerNodeMajor).absolutePath
+        systemProperty 'perf.checker.retainednode.project',
+            project(':consistency').layout.buildDirectory.dir('consumer-tests/node').get().asFile.absolutePath
+    }
+    // The SMALL scale; the lane derives the large one as 4x, so the growth ratio is the JVM arm's own span.
+    systemProperty 'perf.checker.retainednode.n',
+        providers.gradleProperty('checkerRetainedSnapshotNodeN').getOrElse('200')
+    filter {
+        includeTestsMatching 'io.github.mbackschat.a12.dm.adapter.perf.CheckerRetainedSnapshotNodePerfTest'
+    }
+    // Measurements are observations, never reusable task outputs.
+    outputs.upToDateWhen { false }
+    outputs.cacheIf { false }
+}
+
 // H5-h's BROWSER arm: the prepared boundary's third host. One warm CONTEXT runs the whole campaign, which is
 // the opposite of H5-g's fresh context per observation and the reason it is a separate page. Off every
 // automated lane for the same two reasons as the other browser lane: it needs pnpm and a system Chrome.

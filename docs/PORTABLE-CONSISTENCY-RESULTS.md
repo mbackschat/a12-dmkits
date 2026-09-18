@@ -8,6 +8,21 @@ Dated measurements of the Kernel-free checker, newest first. **Every LATENCY her
 
 Results never land in a spec, and a measurement's home is not its explanation: the mechanism paragraphs below are marked as hypotheses where they are hypotheses.
 
+## 2026-09-18 — H5-j's RETENTION arm on Node: a held analysis is linear in model size and fully released <a id="retained-node-2026-09-18"></a>
+
+**Lane:** `./build.sh :adapter:checkerRetainedSnapshotNodePerfTest` (`adapter.perf.CheckerRetainedSnapshotNodePerfTest`), one `--expose-gc` child importing `a12-consistency` by package name out of the installed consumer project. It is the JVM arm's own subject on a second carrier — post-GC heap with one `ConsistencySnapshotHandle` held live — and it became measurable only when `snapshotOfJson` shipped a holdable handle earlier the same day. **Asserts no bound**, per H5's ordering rule.
+
+| carrier | retained at 200 programs | at 800 | growth | released on drop |
+|---|---|---|---|---|
+| JVM (`checkerMemoryPerfTest`) | 23 879 424 B | 95 676 400 B | **4.005x** | gated |
+| plain Node | 70 431 256 B | 279 753 152 B | **3.972x** | 70 078 976 B (99.5 %) / 279 574 168 B (99.9 %) |
+
+**Retention is LINEAR in model size on both carriers, which is the result.** 3.972x against a 4x scale-up matches the JVM's 4.005x, so the shape of the answer does not depend on the host: a consumer holding an analysis pays in proportion to the model rather than super-linearly, which is what makes holding one viable for an editor at all. Read the ratio and not the bytes — the byte counts are one machine's, and no duration or byte figure on this page is a bar.
+
+**A dropped handle gives essentially all of it back, and that gate is why the number means "footprint" rather than "leak".** 99.5 % and 99.9 % returned at the two scales; the lane requires at least half, deliberately loose because the question it settles has a right answer (released or permanent) while how much a snapshot may COST is the owner's to ratify. The slack absorbs what a settled heap legitimately keeps — interned strings, the module's warm state, and whatever the engine has not handed back to the allocator.
+
+**Node holds about 2.95x the JVM's bytes for the same analysis, and that is a SHAPE observation, not a mechanism.** 70.4 MB against 23.9 MB at 200 programs. Plausible contributors — boxed numbers, string representation, the absence of compressed references — are hypotheses and none was measured here; the lane reads a heap total and cannot attribute it. What the figure does support is that the ratio is stable across the pair (2.95x at 200 programs, 2.92x at 800), so whatever the constant is, it does not grow with the model.
+
 ## 2026-09-18 — reuse VALIDATION was quadratic in model size, and a ratio pinned at one scale could not see it <a id="sweep-2026-09-18"></a>
 
 **Found by the new Node after-edit arm, and it was never a Node problem.** That arm breached the ratified `1.0x` keystroke ceiling at **3.076–3.117x** over three estimates spanning 1.3 % — stateless 482 ms against a stateful 1477 ms — which reads as a carrier defect and is not one. The reuse counters, asserted by the lane rather than hoped for, said `familiesReused=48024 familiesRecomputed=74` with preparation and baseline both reused: the reuse was happening massively and still losing 3x, so the mechanism had to be the bookkeeping rather than a snapshot that fails to reuse.

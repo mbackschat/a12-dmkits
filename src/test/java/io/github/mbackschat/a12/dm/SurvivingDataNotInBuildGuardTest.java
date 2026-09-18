@@ -113,7 +113,14 @@ class SurvivingDataNotInBuildGuardTest {
                             + "build/prepared-models above; it is keyed by program count and rewritten at the "
                             + "head of every run, and the lane reads its observations off the child's stdout "
                             + "rather than off any file, so losing the tree costs a regeneration and nothing "
-                            + "else")));
+                            + "else"),
+            "build/retained-snapshot-models",
+            new Declaration(BuildPathUse.WRITES_TRANSIENT_OUTPUT,
+                    "the two synthesized workloads the Node retention lane hands its child, in the same "
+                            + "installed consumer project and for the same resolution reason as "
+                            + "build/prepared-models above; both are rewritten at the head of every run and "
+                            + "the heap readings come off the child's stdout, so the tree holds no "
+                            + "observation")));
 
     /**
      * A string literal naming a path under {@code build/}. Bare {@code "build/"} is excluded by the trailing
