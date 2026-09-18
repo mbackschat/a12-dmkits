@@ -368,7 +368,7 @@ private fun TrackedFactBase.declaredFieldAt(
     element: TrackedDeclaration,
 ): TrackedDeclaration? {
     val resolved = resolveEntity(group, path, element.origin) as? Reference.Resolved ?: return null
-    return allDeclarations().firstOrNull { it.path == resolved.path && it.declaredKind == DeclaredKind.FIELD }
+    return declarationAt(resolved.path, DeclaredKind.FIELD)
 }
 
 /** The `maxFractionalDigits` a referenced number field declares, or null for every other shape. */

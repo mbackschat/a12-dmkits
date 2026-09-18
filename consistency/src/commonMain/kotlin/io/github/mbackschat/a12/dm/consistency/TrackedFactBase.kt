@@ -34,7 +34,7 @@ internal class TrackedFactBase private constructor(
     private class Scope(val at: DeclarationKey, val cursor: TrackedDeclaration)
 
     /**
-     * The derived views every fact base of ONE check shares — the cursors and the two indexes over them.
+     * The derived views every fact base of ONE check shares — the cursors and the three views over them.
      *
      * **They live here because [scopedTo] makes a new fact base per declaration, and a per-instance `lazy`
      * is then per DECLARATION.** With N of them over an N-element model each rebuilding its own cursor list
@@ -83,6 +83,28 @@ internal class TrackedFactBase private constructor(
          */
         val repeatable: List<TrackedDeclaration> by lazy {
             cursors.filterIndexed { index, _ -> model.elements[index].isRepeatableGroup }
+        }
+
+        /**
+         * [cursors] keyed by path AND declared kind, for the gates that qualify a lookup by kind.
+         *
+         * First occurrence wins per key, on the same rule and for the same reason as [cursorsByPath]: it is
+         * the answer `firstOrNull` gave. A declaration with no declared kind is left out, because no
+         * `declaredKind == K` predicate could ever have matched it.
+         *
+         * **Safe to compute in a view, unlike [repeatable], and the difference is the whole invariant.**
+         * `TrackedDeclaration.declaredKind` records nothing — the set's shape already covers it — so forcing
+         * this map charges no fact to whichever producer happens to force it first. A view may read the
+         * uncharged shape members and only those; `isRepeatableGroup` is a BODY member, which is why
+         * [repeatable] has to go around the barrier and carry its own [ModelFact] instead.
+         */
+        val cursorsByPathAndKind: Map<PathAndKind, TrackedDeclaration> by lazy {
+            val byKey = LinkedHashMap<PathAndKind, TrackedDeclaration>(cursors.size)
+            cursors.forEach { cursor ->
+                val kind = cursor.declaredKind ?: return@forEach
+                byKey.getOrPut(PathAndKind(cursor.path, kind)) { cursor }
+            }
+            byKey
         }
     }
 
@@ -149,6 +171,26 @@ internal class TrackedFactBase private constructor(
     fun declarationAt(path: String): TrackedDeclaration? {
         transcript.record(FactRead.DeclarationSetShape)
         return views.cursorsByPath[path]
+    }
+
+    /**
+     * The declaration at [path] declared as [kind], or null when nothing there is of that kind.
+     *
+     * **Its own index, because filtering the path-only one is not the same question.** Fifteen gates ask
+     * `it.path == X && it.declaredKind == K`, and the obvious rewrite —
+     * `declarationAt(X)?.takeIf { it.declaredKind == K }` — answers differently wherever a path carries two
+     * declarations: the path-only index hands back the FIRST, so a rule-shaped question about a path whose
+     * field comes first returns null instead of the rule. A12 refuses to build such a model and this checker
+     * reports that (`CK_MODEL_NOT_BUILDABLE`) rather than declining to look, so those paths reach every
+     * other family and the difference is live rather than theoretical. Keyed by both, each gate keeps
+     * exactly the answer its scan gave.
+     *
+     * Charges the set's SHAPE alone, identically to [declarationAt] and to the scan both replace — the kind
+     * is a shape member that records nothing of its own, so no cell's key moves.
+     */
+    fun declarationAt(path: String, kind: DeclaredKind): TrackedDeclaration? {
+        transcript.record(FactRead.DeclarationSetShape)
+        return views.cursorsByPathAndKind[PathAndKind(path, kind)]
     }
 
     /**
@@ -392,3 +434,12 @@ internal class TrackedDeclaration(
 
     override fun hashCode(): Int = element.hashCode()
 }
+
+/**
+ * A (path, kind) lookup key, for the gates that ask about one kind of declaration at one path.
+ *
+ * A named type rather than a `Pair`, because a path alone is not a unique key here — the cell key carries an
+ * ordinal for the same reason — and a reader meeting `Pair<String, DeclaredKind>` at a call site has to
+ * reconstruct which half means what.
+ */
+private data class PathAndKind(val path: String, val kind: DeclaredKind)

@@ -23,7 +23,7 @@ package io.github.mbackschat.a12.dm.consistency
  */
 internal fun TrackedFactBase.emptyGroupOperandFindings(): List<Finding> = conditionReferences().mapNotNull { reference ->
     val target = (reference.target as? Reference.Resolved)?.path ?: return@mapNotNull null
-    val group = allDeclarations().firstOrNull { it.path == target && it.declaredKind == DeclaredKind.GROUP }
+    val group = declarationAt(target, DeclaredKind.GROUP)
         ?: return@mapNotNull null
     if (carriesAField(group.path)) {
         return@mapNotNull null

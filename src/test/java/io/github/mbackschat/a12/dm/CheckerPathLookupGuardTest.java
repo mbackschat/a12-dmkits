@@ -10,6 +10,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.function.Predicate;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Stream;
@@ -94,18 +95,31 @@ class CheckerPathLookupGuardTest {
     private static final int SOURCE_FLOOR = 100;
 
     /**
-     * Below this the scan is not reading the accessor's CALL sites, which is the subject rather than the
-     * tree. The accessor's own declaration is deliberately not one of them, because a walk that reached only
-     * the file declaring it would otherwise report clean.
+     * The barrier's set-and-lookup accessors, counted TOGETHER as this guard's tripwire.
      *
-     * <p>The live count is <b>19 call sites in the production source sets with comments blanked</b>
-     * (2026-09-18) — the quantity this floor governs, and not the same number as a plain {@code grep}, which
-     * returns 29 by also counting {@code commonTest} and prose. It stood at 20 against a live 34 until the
-     * eleven repeatability questions moved to {@code repeatableGroups()}, which took the population below
-     * the floor and failed this guard — the floor working as intended. It is deliberately well under the
-     * live count: it answers "did the scan happen", never "how big is the corpus".
+     * <p><b>Why the family and not {@code allDeclarations()} alone — a floor must not shrink as the guard
+     * succeeds.</b> A scan that saw no call site is a scan of the wrong tree and would report clean, so the
+     * tripwire is real; but keyed to the rejected accessor it counts down as sites are repaired, and it
+     * failed this guard twice in one day for that reason (20 against a live 34, then 10 against a live 19,
+     * as eleven repeatability questions and fifteen kind-qualified lookups moved off it — five remain).
+     * Editing the constant each time would make it track the corpus, which is exactly what its own note
+     * forbids. These three accessors are CONSERVED under the rewrite: a repaired site leaves the first and
+     * arrives at one of the others, so the sum answers "did the scan reach the families" and stays put.
      */
-    private static final int CALL_SITE_FLOOR = 10;
+    private static final List<String> ACCESSOR_FAMILY =
+            List.of("allDeclarations()", "declarationAt(", "repeatableGroups()");
+
+    /**
+     * Below this the scan is not reading the accessors' CALL sites, which is the subject rather than the
+     * tree. A declaring line is deliberately not one of them, because a walk that reached only the file
+     * declaring them would otherwise report clean.
+     *
+     * <p>The live count is <b>67 call sites of the family in the production source sets with comments
+     * blanked</b> (2026-09-18) — the quantity this floor governs, and not what a plain {@code grep} returns,
+     * which also counts {@code commonTest} and prose. Deliberately well under it: it answers "did the scan
+     * happen", never "how big is the corpus".
+     */
+    private static final int CALL_SITE_FLOOR = 40;
 
     /**
      * Every operator that takes a predicate over the whole result — wider than {@link #SCANNING_CALL},
@@ -116,6 +130,14 @@ class CheckerPathLookupGuardTest {
             "\\.\\s*(?:filter|filterNot|filterIndexed|any|none|all|count|partition|sumOf|maxByOrNull"
                     + "|minByOrNull|firstOrNull|find|first|single|singleOrNull|last|lastOrNull"
                     + "|indexOfFirst)\\s*\\{");
+
+    /**
+     * The operators for which a lookup is equivalent — "the one where", and existence.
+     *
+     * Narrower than {@link #PREDICATE_CALL} on purpose: see {@link #kindQualifiedScans}.
+     */
+    private static final Pattern SINGLE_ANSWER_CALL = Pattern.compile(
+            "\\.\\s*(?:firstOrNull|find|first|single|singleOrNull|any|none)\\s*\\{");
 
     /** The body member whose whole-model answer is a charged fact of its own. */
     private static final String REPEATABILITY_MEMBER = "isRepeatableGroup";
@@ -147,8 +169,8 @@ class CheckerPathLookupGuardTest {
         // defeat the point, so it is excluded.
         assertTrue(
                 callSites >= CALL_SITE_FLOOR,
-                "found only " + callSites + " call sites of " + ACCESSOR + " outside its own declaration, so "
-                        + "this did not read the families it exists to scan");
+                "found only " + callSites + " call sites of " + ACCESSOR_FAMILY + " outside their own "
+                        + "declarations, so this did not read the families it exists to scan");
 
         assertEquals(
                 List.of(),
@@ -188,9 +210,10 @@ class CheckerPathLookupGuardTest {
         assertTrue(bareScanIn("allDeclarations().single { it.path == path }"),
                 "the operator set must cover more than firstOrNull and find");
 
-        // Must be SPARED.
+        // Must be SPARED by THIS reader — the kind-qualified one below owns them.
         assertFalse(bareScanIn("allDeclarations().firstOrNull { it.path == p && it.declaredKind == FIELD }"),
-                "a compound predicate is NOT equivalent to declarationAt and must not be flagged");
+                "a kind-qualified predicate is not the one-argument lookup's shape; it belongs to the "
+                        + "two-argument reader, which reports a different rewrite");
         assertFalse(
                 bareScanIn("allDeclarations().firstOrNull { it.path == \"${group.path}/$name\""
                         + " && it.declaredKind == FIELD }"),
@@ -284,6 +307,63 @@ class CheckerPathLookupGuardTest {
                 "a whole-set scan that never asks about repeatability is a different question");
     }
 
+    /**
+     * A kind-qualified lookup uses the two-argument index rather than scanning every declaration.
+     *
+     * <p>Fifteen gates asked {@code it.path == X && it.declaredKind == K} over the whole set, once per
+     * operand. The shape was recorded here as deliberately SPARED, on the reasoning that a compound
+     * predicate has no equivalent lookup — true only while the sole index was keyed by path, which made the
+     * collided-path behaviour look like a specification question about what a gate should report. Keyed by
+     * (path, kind) the question does not arise: every gate keeps the answer its scan gave, including on the
+     * twinned paths this checker exists to diagnose.
+     */
+    @Test
+    void aKindQualifiedLookupUsesTheTwoArgumentIndexRatherThanScanning() {
+        var offenders = checkerSources().stream()
+                .flatMap(source -> kindQualifiedScans(uncommented(source)).stream()
+                        .map(found -> source + ": " + found.predicate()))
+                .sorted()
+                .toList();
+
+        assertEquals(
+                List.of(),
+                offenders,
+                "these scans answer a kind-qualified lookup by walking every declaration; "
+                        + "declarationAt(path, kind) answers it from the second index, with the same "
+                        + "first-wins rule and the same charge");
+    }
+
+    @Test
+    void theKindQualifiedReaderCoversTheGatesSpellingsAndSparesTheRest() {
+        // The spellings the fifteen migrated gates used.
+        assertTrue(kindScanIn(
+                "allDeclarations().firstOrNull { it.path == target && it.declaredKind == DeclaredKind.FIELD }"));
+        assertTrue(kindScanIn("allDeclarations().any { it.path == path && it.declaredKind == kind }"),
+                "existence through any(), and a kind held in a variable, are the same lookup");
+        assertTrue(
+                kindScanIn("allDeclarations().firstOrNull { it.path == \"${group.path}/$short\""
+                        + " && it.declaredKind == DeclaredKind.FIELD }"),
+                "a string-template path operand is the same lookup — and this is the shape whose inner "
+                        + "brace once closed a character class early");
+        assertTrue(
+                kindScanIn("allDeclarations().firstOrNull { c -> c.path == p && c.declaredKind == FIELD }"),
+                "a named lambda parameter must be followed through both conjuncts, not just the first");
+
+        // Must be SPARED.
+        assertFalse(kindScanIn("declarationAt(target, DeclaredKind.FIELD)"),
+                "the replacement must not match, or the guard could never go green");
+        assertFalse(
+                kindScanIn("allDeclarations().filter { it.path == p && it.declaredKind == FIELD }"),
+                "filter is NOT equivalent: two declarations can share a path and a kind, so the scan can "
+                        + "return two where the index returns the first");
+        assertFalse(
+                kindScanIn("allDeclarations().firstOrNull { it.path == p && it.declaredKind == FIELD "
+                        + "&& it.origin == here }"),
+                "a THIRD conjunct is where equivalence ends again, exactly as it does for the bare shape");
+        assertFalse(kindScanIn("allDeclarations().firstOrNull { it.path == p }"),
+                "the bare shape belongs to the other reader, which reports the other rewrite");
+    }
+
     /** Whether [text] answers a repeatability question by scanning the accessor's whole result. */
     private static boolean readsRepeatabilityFromTheSet(String text) {
         var matcher = PREDICATE_CALL.matcher(text);
@@ -303,12 +383,32 @@ class CheckerPathLookupGuardTest {
         return !barePathScans(source).isEmpty();
     }
 
+    private static boolean kindScanIn(String source) {
+        return !kindQualifiedScans(source).isEmpty();
+    }
+
     /** One offending scan: where it starts, and its whole predicate on one line. */
     private record Found(int at, String predicate) {}
 
     private static List<Found> barePathScans(String text) {
+        return scansOf(text, SCANNING_CALL, CheckerPathLookupGuardTest::isBarePathEquality);
+    }
+
+    /**
+     * Kind-qualified scans, over the SINGLE-ANSWER operators only.
+     *
+     * {@code filter} and {@code count} are deliberately excluded although {@link #PREDICATE_CALL} knows
+     * them: two declarations can share a path AND a kind, so a filter over that predicate can return two
+     * where the index returns the first. The rewrite is equivalent for "the one where" and for existence,
+     * and not for "all of them".
+     */
+    private static List<Found> kindQualifiedScans(String text) {
+        return scansOf(text, SINGLE_ANSWER_CALL, CheckerPathLookupGuardTest::isKindQualifiedPathEquality);
+    }
+
+    private static List<Found> scansOf(String text, Pattern call, Predicate<String> offends) {
         var found = new ArrayList<Found>();
-        var matcher = SCANNING_CALL.matcher(text);
+        var matcher = call.matcher(text);
         while (matcher.find()) {
             int open = matcher.end() - 1;
             int close = closingBrace(text, open);
@@ -316,7 +416,7 @@ class CheckerPathLookupGuardTest {
                 continue;
             }
             var predicate = text.substring(open + 1, close).trim().replaceAll("\\s+", " ");
-            if (isBarePathEquality(predicate)) {
+            if (offends.test(predicate)) {
                 found.add(new Found(matcher.start(), predicate));
             }
         }
@@ -375,21 +475,53 @@ class CheckerPathLookupGuardTest {
         return (left.equals(path) && !right.isEmpty()) || (right.equals(path) && !left.isEmpty());
     }
 
-    /** Call sites of the accessor, excluding the line that declares it. */
+    /**
+     * A path equality qualified by declared KIND and nothing else — the two-argument lookup's shape.
+     *
+     * Split off from {@link #isBarePathEquality} rather than folded into it, because the two idioms have
+     * different replacements: a bare path equality becomes {@code declarationAt(path)} and this becomes
+     * {@code declarationAt(path, kind)}. Keying by path alone cannot answer this one, which is why the
+     * second index exists.
+     */
+    private static boolean isKindQualifiedPathEquality(String predicate) {
+        var parameter = "it";
+        var body = predicate;
+        Matcher named = NAMED_PARAMETER.matcher(predicate);
+        if (named.matches()) {
+            parameter = named.group(1);
+            body = named.group(2);
+        }
+        var conjunction = " && " + parameter + ".declaredKind == ";
+        int split = body.lastIndexOf(conjunction);
+        if (split < 0) {
+            return false;
+        }
+        var kind = body.substring(split + conjunction.length()).trim();
+        if (kind.isEmpty() || kind.contains("&&") || kind.contains("||")) {
+            return false;
+        }
+        var left = body.substring(0, split).trim();
+        return isBarePathEquality(parameter.equals("it") ? left : parameter + " -> " + left);
+    }
+
+    /** Call sites of the whole {@link #ACCESSOR_FAMILY}, excluding the lines that declare them. */
     private static int callSitesIn(String text) {
         var sites = 0;
-        int from = 0;
-        while (true) {
-            int at = text.indexOf(ACCESSOR, from);
-            if (at < 0) {
-                return sites;
+        for (var accessor : ACCESSOR_FAMILY) {
+            int from = 0;
+            while (true) {
+                int at = text.indexOf(accessor, from);
+                if (at < 0) {
+                    break;
+                }
+                int lineStart = text.lastIndexOf('\n', at) + 1;
+                if (!text.substring(lineStart, at).contains("fun ")) {
+                    sites++;
+                }
+                from = at + accessor.length();
             }
-            int lineStart = text.lastIndexOf('\n', at) + 1;
-            if (!text.substring(lineStart, at).contains("fun ")) {
-                sites++;
-            }
-            from = at + ACCESSOR.length();
         }
+        return sites;
     }
 
     /**

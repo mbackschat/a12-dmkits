@@ -190,7 +190,7 @@ private val LENGTH_MEMBERS = listOf("minLength", "maxLength")
 private fun TrackedFactBase.indexFieldOf(indexGroup: String): TrackedDeclaration? {
     val group = declarationAt(indexGroup) ?: return null
     val name = indexFieldNameOf(group) ?: return null
-    return allDeclarations().firstOrNull { it.path == "$indexGroup/$name" && it.declaredKind == DeclaredKind.FIELD }
+    return declarationAt("$indexGroup/$name", DeclaredKind.FIELD)
 }
 
 private fun TrackedFactBase.element(path: String?): TrackedDeclaration? =
@@ -269,7 +269,7 @@ private fun TrackedFactBase.resolveField(
     val resolved = resolveEntity(declaringGroup, written.replace("*", ""), element.origin)
         as? Reference.Resolved ?: return null
     return resolved.path.takeIf { path ->
-        allDeclarations().any { it.path == path && it.declaredKind == DeclaredKind.FIELD }
+        declarationAt(path, DeclaredKind.FIELD) != null
     }
 }
 

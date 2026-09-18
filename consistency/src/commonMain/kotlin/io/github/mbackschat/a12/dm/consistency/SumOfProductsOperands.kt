@@ -81,7 +81,7 @@ private fun TrackedFactBase.readOperand(
     }
     val resolved = resolveEntity(declaringGroup, written.replace("*", ""), element.origin)
         as? Reference.Resolved ?: return null
-    val field = allDeclarations().firstOrNull { it.path == resolved.path && it.declaredKind == DeclaredKind.FIELD }
+    val field = declarationAt(resolved.path, DeclaredKind.FIELD)
         ?: return null
     if (!field.path.startsWith("$declaringGroup/")) {
         return null

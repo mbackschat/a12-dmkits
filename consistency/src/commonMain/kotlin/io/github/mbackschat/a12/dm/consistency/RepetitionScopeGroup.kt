@@ -70,7 +70,7 @@ private fun TrackedFactBase.scopeFinding(
 ): Finding? {
     val resolved = resolveEntity(declaringGroup, scope, element.origin) as? Reference.Resolved
         ?: return null
-    val group = allDeclarations().firstOrNull { it.path == resolved.path && it.declaredKind == DeclaredKind.GROUP }
+    val group = declarationAt(resolved.path, DeclaredKind.GROUP)
         ?: return null
     if (group.isRepeatable) {
         return null

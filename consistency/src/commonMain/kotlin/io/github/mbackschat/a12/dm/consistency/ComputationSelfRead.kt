@@ -85,7 +85,7 @@ private fun TrackedFactBase.computedTargetOf(element: TrackedDeclaration): Strin
  * same direction every other silence here takes.
  */
 private fun TrackedFactBase.scaleGateStandsAside(target: String, element: TrackedDeclaration): Boolean {
-    val field = allDeclarations().firstOrNull { it.path == target && it.declaredKind == DeclaredKind.FIELD }
+    val field = declarationAt(target, DeclaredKind.FIELD)
         ?: return false
     val declaredType = field.declaredFieldType() ?: return false
     if (declaredType != NUMBER_TYPE) {

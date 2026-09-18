@@ -112,7 +112,7 @@ private fun TrackedFactBase.keyFinding(
             element.path,
         )
     }
-    val named = allDeclarations().firstOrNull { it.path == resolved.path && it.declaredKind == DeclaredKind.GROUP }
+    val named = declarationAt(resolved.path, DeclaredKind.GROUP)
         ?: return null
     if (repeatsAnywhereOnThePathTo(named.path)) {
         return null

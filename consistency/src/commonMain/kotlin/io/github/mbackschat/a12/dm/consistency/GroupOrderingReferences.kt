@@ -181,9 +181,7 @@ private fun TrackedFactBase.orderingFinding(
     // GATE TWO — A12 keeps only the landed field's SHORT NAME and looks it up under this group, so what
     // decides is whether the group has a field of that NAME, not whether the path stayed inside it.
     val shortName = landed.substringAfterLast('/')
-    val own = allDeclarations().firstOrNull {
-        it.path == "${group.path}/$shortName" && it.declaredKind == DeclaredKind.FIELD
-    }
+    val own = declarationAt("${group.path}/$shortName", DeclaredKind.FIELD)
     if (own != null) {
         // GATE THREE — the field A12 ends up with is this group's OWN field of that short name, which is
         // also the one it reports the type error against, so the finding is attached there and not at the

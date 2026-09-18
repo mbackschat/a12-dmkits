@@ -6,7 +6,10 @@ import kotlin.test.assertIs
 import kotlin.test.assertSame
 
 /**
- * What [TrackedFactBase.declarationAt] promises, on the two points 29 call sites now rest on (2026-09-18).
+ * What [TrackedFactBase.declarationAt]'s two overloads promise, on the points their call sites rest on.
+ *
+ * Both indexes were built to retire a whole-model scan: 29 bare path lookups moved onto the one-argument
+ * form, then 15 kind-qualified gates onto the two-argument one (2026-09-18).
  *
  * **Why this exists, and it is not the happy path.** The sweep that moved those sites off
  * `allDeclarations().firstOrNull { it.path == X }` argued equivalence from `cursorsByPath` being built with
@@ -80,6 +83,57 @@ class DeclarationAtContractTest {
             transcript.observed(),
             "the lookup must charge the set's shape and nothing else: without the charge a cell would be " +
                 "keyed on less than it read, and with a narrower one it would miss a declaration moving",
+        )
+    }
+
+    /**
+     * The kind-qualified lookup answers on the twin its caller asked about — the case that makes it a
+     * SEPARATE index rather than a filter over the path-only one.
+     *
+     * Fifteen gates ask `it.path == X && it.declaredKind == K`. Spelling that as
+     * `declarationAt(X)?.takeIf { it.declaredKind == K }` looks equivalent and is not: the path-only index
+     * answers with the FIRST declaration at the path, so on this fixture it hands back the field and the
+     * rule-shaped question goes unanswered. That non-equivalence was once recorded here as a specification
+     * question — what a gate *should* report for a collided path — when it is only an artefact of keying by
+     * path alone. Keyed by (path, kind), every one of those gates keeps the answer it has today and no
+     * question arises.
+     */
+    @Test
+    fun theKindQualifiedLookupAnswersOnTheTwinItsCallerAsked() {
+        val base = TrackedFactBase(prepared(), ReadTranscript())
+
+        assertEquals(
+            DeclaredKind.FIELD,
+            base.declarationAt(TWIN)?.declaredKind,
+            "the path-only lookup must still answer with the first twin, or the row below is not the " +
+                "discriminating case it claims to be",
+        )
+
+        assertEquals(
+            DeclaredKind.RULE,
+            base.declarationAt(TWIN, DeclaredKind.RULE)?.declaredKind,
+            "the kind-qualified lookup must reach the SECOND twin; a path-only index filtered by kind " +
+                "returns null here, which is how the fifteen gates would silently go quiet",
+        )
+        assertSame(
+            base.allDeclarations().first { it.path == TWIN && it.declaredKind == DeclaredKind.FIELD },
+            base.declarationAt(TWIN, DeclaredKind.FIELD),
+            "and it must agree with the scan it replaces, on the same first-wins rule",
+        )
+    }
+
+    @Test
+    fun theKindQualifiedLookupChargesTheSetsShapeAndNothingMore() {
+        val transcript = ReadTranscript()
+        val base = TrackedFactBase(prepared(), transcript)
+
+        base.declarationAt(TWIN, DeclaredKind.FIELD)
+
+        assertEquals(
+            setOf<FactRead>(FactRead.DeclarationSetShape),
+            transcript.observed(),
+            "the kind is a shape member that charges nothing on its own, so this lookup must charge " +
+                "exactly what the scan it replaces charged — no body, and nothing narrower than the set",
         )
     }
 

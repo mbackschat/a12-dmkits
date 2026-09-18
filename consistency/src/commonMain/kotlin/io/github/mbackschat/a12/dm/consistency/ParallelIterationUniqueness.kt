@@ -85,8 +85,7 @@ private fun TrackedFactBase.keyedGroupOver(path: String): KeyedGroup? = repeatab
     }
 
 /** The `fieldType.type` a field declares, or null when it declares none this reader can see. */
-private fun TrackedFactBase.declaredTypeOf(path: String): String? = allDeclarations()
-    .firstOrNull { it.path == path && it.declaredKind == DeclaredKind.FIELD }
+private fun TrackedFactBase.declaredTypeOf(path: String): String? = declarationAt(path, DeclaredKind.FIELD)
     ?.declaredFieldType()
 
 /**
