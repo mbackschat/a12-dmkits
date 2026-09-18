@@ -875,7 +875,7 @@ Both carriers: **679 tests, 0 failures**; report JSON unchanged (`ParityCorpusTe
 
 | what would settle what is left | why it is not done here |
 |---|---|
-| a clean-machine re-measurement of the JVM growth ratio | the machine was contended while the fix was measured, which the Node arm's own p95 (1 011 ms against 377 ms an hour earlier) shows; a ratio at 7.82x against a 9.0 floor deserves an uncontended number before anyone calls the bar comfortably met |
+| a clean-machine re-measurement of the JVM growth ratio | **the machine is the blocker, and it was identified rather than suspected**: `corespotlightd` at 85 % CPU with 66 hours accumulated, a Webex helper at 47 %, and 5.3 GB in the memory compressor, eight minutes after the last build — foreign load nobody here may kill. A ratio at 7.82x against a 9.0 floor deserves an uncontended number before anyone calls the bar comfortably met, and the [precondition rule](AGENT-RUN-DISCIPLINE.md) now says to check `uptime` rather than to measure and wonder |
 | attributing the hash-map traffic, ~33 % of an 800-program run, to a caller | self time in `s2`/`addKey`/`hashCode` names a data structure, not a phase. The 200-versus-800 SHARE comparison is what found the scan and would work here too; it needs one profile at each scale on a quiet machine |
 | ~~making the bookkeeping conditional on whether a caller will keep the store~~ | **done 2026-09-18** — `CellRetention`, and the enumeration that made it safe: `CheckCells.cellFor` is the only main-source reader of the transcript, every other caller being a test, so skipping a recorded read cannot reach a verdict |
 
