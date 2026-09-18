@@ -78,7 +78,17 @@ private fun ConsistencyReport.asJson(): JsonObject = buildJsonObject {
  * shape follows: absent and empty would otherwise mean the same thing for a consumer deciding whether an
  * edit is safe to save.
  */
-fun EditReport.toJson(): String = buildJsonObject {
+fun EditReport.toJson(): String = asJson().toString()
+
+/**
+ * The same tree, unrendered, so an edit can be NESTED — [ImpactReport.toJson] is the one caller.
+ *
+ * It exists for the reason [ConsistencyReport.asJson] does: `impactOf` delegates its verdict half to
+ * [checkEdit] rather than re-deriving it, so republishing a reduced edit inside an impact report would invent
+ * a second shape for facts that already have one, and a consumer moving between the two calls would need two
+ * readers.
+ */
+private fun EditReport.asJson(): JsonObject = buildJsonObject {
     put("status", status.wireName())
     put("complete", status.complete)
     put("introduced", JsonArray(introduced.map { it.asJson() }))
@@ -86,7 +96,69 @@ fun EditReport.toJson(): String = buildJsonObject {
     put("gaps", JsonArray(gaps.map { it.asJson() }))
     put("baseline", baseline.asJson())
     put("edited", edited.asJson())
+}
+
+/**
+ * Which declarations a change reaches, as JSON — slice J across the wire.
+ *
+ * **`affected` is DERIVED and published anyway**, because deriving it is a rule a consumer would get wrong:
+ * it is `impacts` mapped to its declaration and de-duplicated *while keeping the order they were reached in*.
+ * A consumer reaching for a set loses that order; one reaching for a plain map shows the same declaration
+ * once per dependency. Same reason `justifiesRejection` is published on a finding — the fields alone do not
+ * answer the question the consumer actually has.
+ *
+ * `edit` carries the whole edit shape rather than a summary, because [impactOf] does not re-derive validity;
+ * see [EditReport.asJson]. Every array is present when empty, on the rule the whole-model shape follows.
+ */
+fun ImpactReport.toJson(): String = buildJsonObject {
+    put("affected", JsonArray(affected.map { JsonPrimitive(it) }))
+    put("delta", delta.asJson())
+    put("impacts", JsonArray(impacts.map { it.asJson() }))
+    put("edit", edit.asJson())
+    put("gaps", JsonArray(gaps.map { it.asJson() }))
 }.toString()
+
+private fun ModelDelta.asJson(): JsonObject = buildJsonObject {
+    put("added", JsonArray(added.map { JsonPrimitive(it) }))
+    put("removed", JsonArray(removed.map { JsonPrimitive(it) }))
+    put("modified", JsonArray(modified.map { JsonPrimitive(it) }))
+    put("typeDefinitionsAdded", JsonArray(typeDefinitionsAdded.map { JsonPrimitive(it) }))
+    put("typeDefinitionsRemoved", JsonArray(typeDefinitionsRemoved.map { JsonPrimitive(it) }))
+    put("shortNamesMoved", JsonArray(shortNamesMoved.map { JsonPrimitive(it) }))
+    put("shortNameFallbackChanged", shortNameFallbackChanged)
+}
+
+private fun Impact.asJson(): JsonObject = buildJsonObject {
+    put("at", at)
+    put("on", on.asJson())
+    put("member", member)
+    put("written", written)
+    put("reason", reason.name)
+}
+
+/**
+ * A dependency as `{kind, value}`, which is a decision rather than a transcription.
+ *
+ * [DependencyOn]'s arms carry differently-named members — a path, an id, a name — so per-arm keys would make
+ * a consumer switch on the kind before it could read the value at all. A fixed key set with the type in
+ * `kind` lets a consumer that only displays the dependency skip the switch, while one that acts on it still
+ * has the discriminator. `value` is `null` for an arm that names nothing, rather than an omitted key.
+ *
+ * The `when` is exhaustive over the sealed interface, so a new arm fails compilation here rather than
+ * rendering as something a consumer silently mis-reads. [DependencyOn.Unfollowable] cannot currently reach a
+ * wire at all — `ChangeSet.reason` maps it to `null`, so no [Impact] carries one — and it is spelled out
+ * anyway, because "unreachable today" is not a property this function can rely on.
+ */
+private fun DependencyOn.asJson(): JsonObject = buildJsonObject {
+    val named: Pair<String, String?> = when (this@asJson) {
+        is DependencyOn.Element -> "ELEMENT" to path
+        is DependencyOn.TypeDefinition -> "TYPE_DEFINITION" to id
+        is DependencyOn.ShortName -> "SHORT_NAME" to name
+        DependencyOn.Unfollowable -> "UNFOLLOWABLE" to null
+    }
+    put("kind", named.first)
+    put("value", named.second)
+}
 
 /**
  * What a snapshot operation reused, as JSON — L's whole point, so a JS consumer must be able to see it.

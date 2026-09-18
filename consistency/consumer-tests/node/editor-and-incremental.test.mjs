@@ -1,4 +1,4 @@
-// N row 1's oracle for slices I and L: both features, reached through the PACKED package.
+// N row 1's oracle for slices I, J and L: each feature reached through the PACKED package.
 //
 // The plan's N matrix asks that every application feature G–J and L be "exported through the documented typed
 // package surface and exercised from a separate packed-package Node project", and says in the same breath that
@@ -18,7 +18,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { checkDraftJson, snapshotOfJson } from 'a12-consistency';
+import { checkDraftJson, checkEditJson, impactOfJson, snapshotOfJson } from 'a12-consistency';
 
 const read = (relative) => readFileSync(new URL(relative, import.meta.url), 'utf8');
 const soundModel = read('../shared/models/storefront.dm.json');
@@ -66,6 +66,38 @@ test('slice I: text that ends early is its own class, not a defect', () => {
     'and nothing promotes it to a rejection an author would see mid-word',
   );
   assert.equal(report.status, 'INCONCLUSIVE', 'so the draft is not condemned while it is being written');
+});
+
+test('slice J: an impact analysis is reachable, and answers a different question from the edit', () => {
+  // The rename is the case where the two questions part company: the rule below is REACHED by it without
+  // necessarily being reported as broken, which is the whole reason this export exists beside checkEditJson.
+  // Both the declaration id and the name, because a path is derived from the name and the id is what the
+  // fixture keys the declaration by — moving one and not the other would not be a rename of anything.
+  const renamed = soundModel
+    .replaceAll('"/Storefront/CustomerEmail"', '"/Storefront/BuyerEmail"')
+    .replaceAll('"CustomerEmail"', '"BuyerEmail"');
+  assert.notEqual(renamed, soundModel, 'the fixture must carry that field, or this row measures nothing');
+
+  const report = JSON.parse(impactOfJson(soundModel, renamed));
+
+  assert.deepEqual(report.delta.removed, ['/Storefront/CustomerEmail'], 'the delta names what went away');
+  assert.ok(report.affected.includes(RULE_PATH), `the rule reading it is reached: ${report.affected}`);
+  assert.deepEqual(
+    report.affected,
+    report.impacts.map((i) => i.at).filter((at, n, all) => all.indexOf(at) === n),
+    'affected is the de-duplicated impact order, which a consumer would otherwise have to derive',
+  );
+
+  // Each impact says WHY, with the dependency's type in `kind` so a consumer need not guess whether `value`
+  // is a path or a bare name.
+  for (const impact of report.impacts) {
+    assert.ok(['ELEMENT', 'TYPE_DEFINITION', 'SHORT_NAME', 'UNFOLLOWABLE'].includes(impact.on.kind),
+      `an unknown dependency kind crossed the wire: ${JSON.stringify(impact.on)}`);
+    assert.ok(impact.reason, 'and every impact states its reason');
+  }
+
+  // The verdict half is delegated, not re-derived, so it is the same document checkEditJson returns.
+  assert.deepEqual(report.edit, JSON.parse(checkEditJson(soundModel, renamed)));
 });
 
 test('slice L: a snapshot is holdable through the packed package, and reports its reuse', () => {

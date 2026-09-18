@@ -70,6 +70,22 @@ fun checkDraftJson(
 ): String = checkDraft(ModelSource(modelJson, diagnosticLabel), at, member, text).toJson()
 
 /**
+ * Which declarations a candidate edit REACHES, rather than which it broke — slice J's surface.
+ *
+ * [checkEditJson] answers "did my change break something"; this answers "what do I now have to re-read", and
+ * the two part company exactly where a declaration is reached without becoming invalid — the ordinary case
+ * for a rename. `affected` is the short answer; `impacts` says why each declaration is in it, and `edit`
+ * carries [checkEditJson]'s own result unchanged, because this call delegates its verdict rather than
+ * re-deriving one.
+ *
+ * The analysis may over-report and may not under-report. See [impactOf] for what that direction costs and
+ * for the test that holds it to the check's own verdict.
+ */
+@JsExport
+fun impactOfJson(baselineJson: String, editedJson: String, diagnosticLabel: String? = null): String =
+    impactOf(ModelSource(baselineJson, diagnosticLabel), ModelSource(editedJson, diagnosticLabel)).toJson()
+
+/**
  * A frozen analysis a JS consumer can HOLD and update — slice L's surface, and the reason it is a class.
  *
  * **Opaque on purpose.** The constructor is internal, which Kotlin/JS renders as TypeScript's

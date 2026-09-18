@@ -160,6 +160,20 @@ report.gaps           // what the ANALYSIS could not follow
 
 **No claim is made about runtime behaviour or intent.** A reached declaration is one whose consistency may have moved, never one whose computed values have — the transitive reason included, which reports a dependency on a computation's output rather than a change in it.
 
+**From JavaScript it is `impactOfJson(baselineJson, editedJson, diagnosticLabel?)`**, returning the same five members as JSON: `affected`, `delta`, `impacts`, `edit`, `gaps`. `edit` is byte-identical to what `checkEditJson` publishes for the same pair, because the verdict is delegated and not re-derived.
+
+A dependency crosses the wire as `{kind, value}` rather than with a key per arm — `kind` is `ELEMENT`, `TYPE_DEFINITION`, `SHORT_NAME` or `UNFOLLOWABLE`, and `value` is the path, the id or the bare name, `null` for an arm that names nothing. **The key set is deliberately fixed across arms**: a consumer that only displays the dependency needs no switch, and one that acts on it still has the discriminator. Read `value` as a path only when `kind` is `ELEMENT` — `SHORT_NAME` is the one dependency with no position at all, which is exactly where a consumer assuming a path goes wrong.
+
+```ts
+import { impactOfJson } from 'a12-consistency';
+
+const { affected, impacts } = JSON.parse(impactOfJson(before, after));
+impacts[0].on;      // e.g. { kind: 'SHORT_NAME', value: 'Code' }
+impacts[0].reason;  // 'RESOLVES_A_MOVED_SHORT_NAME'
+```
+
+**One declaration appears once per dependency in `impacts`**, so a rename can reach a declaration through both the element and the name. `affected` is the de-duplicated list in the order the declarations were reached, published rather than left derived because a consumer reaching for a set would lose that order and one reaching for a plain map would show the declaration twice.
+
 ## Holding one analysis across many questions — `snapshotOf`
 
 Every entry point above is stateless, and that is right for a gate and wrong for an editor: `checkDraft` performs one admission, one preparation and **two** checks per call, and an editor asks per keystroke while the baseline side cannot possibly have changed. A snapshot pays for the source parses and the fact base once.

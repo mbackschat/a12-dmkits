@@ -751,6 +751,7 @@ public final class io/github/mbackschat/a12/dm/consistency/ReferenceRole : java/
 public final class io/github/mbackschat/a12/dm/consistency/ReportJsonKt {
 	public static final fun toJson (Lio/github/mbackschat/a12/dm/consistency/ConsistencyReport;)Ljava/lang/String;
 	public static final fun toJson (Lio/github/mbackschat/a12/dm/consistency/EditReport;)Ljava/lang/String;
+	public static final fun toJson (Lio/github/mbackschat/a12/dm/consistency/ImpactReport;)Ljava/lang/String;
 }
 
 public final class io/github/mbackschat/a12/dm/consistency/Reuse {
