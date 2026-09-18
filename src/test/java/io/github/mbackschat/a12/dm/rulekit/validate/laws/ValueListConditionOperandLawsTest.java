@@ -35,6 +35,9 @@ class ValueListConditionOperandLawsTest {
     private static final String BAD_RANGE_OPERAND = "MVK_INVALID_PARAMETER_FOR_DATE_RANGE_COMPARISON";
     private static final String BAD_CONSTANT = "MVK_INVALID_STRING_CONSTANT_FOR_ENUMERATION_OR_CATEGORY";
     private static final String NO_GROUPS = "MVK_NO_GROUPS_ALLOWED";
+    private static final String NO_ENUMERATION = "MVK_NO_ENUMERATION";
+    /** The kernel's own spelling, typo included — `MVK_CATEGORY_UNKOWN` is what the code table carries. */
+    private static final String CATEGORY_UNKNOWN = "MVK_CATEGORY_UNKOWN";
 
     private static final String POLICY = DocumentModelDraft.named("policy-value-lists").locale("en_US")
             .rootGroup("Policy", policy -> policy
@@ -139,7 +142,13 @@ class ValueListConditionOperandLawsTest {
     }
 
     /**
-     * A category access on a GROUP operand is refused outright — the access is what makes the group illegal.
+     * What a category access DEMANDS of its operand: four arms, three of them classes of their own.
+     *
+     * <p>A group draws {@code MVK_NO_GROUPS_ALLOWED}; a field that is not an enumeration draws
+     * {@code MVK_NO_ENUMERATION}; an enumeration that declares no such category draws
+     * {@code MVK_CATEGORY_UNKOWN} (the kernel's spelling); and an enumeration that declares it has its
+     * domain SWAPPED to that category's values, which the rows above this method establish. Each arm is
+     * paired with the same operand minus the access, which is what charges the refusal to the access.
      *
      * <p>The grid was built to separate two candidate answers, and A12 gave a third. `Banded` holds one
      * enumeration declaring `BASIC`/`PLUS` and a `Band` category of `X`/`Y`, so if the access reached the
@@ -173,6 +182,25 @@ class ValueListConditionOperandLawsTest {
                 verdict("NoFieldValueIncludedInValueList(BandedTier In Banded -> Band)"));
         actual.put("the access on a FIELD in the value list, for contrast",
                 verdict("NoFieldValueIncludedInValueList(BandedTier In BandedTier -> Band)"));
+        // Which gate answers when BOTH could: the group-under-access beside a field of another base type,
+        // in both orders, so neither answer can come from the entry's position in the list.
+        actual.put("a group under an access BESIDE a number field",
+                verdict("NoFieldValueIncludedInValueList(Banded -> Band, Premium In \"X\")"));
+        actual.put("the same pair written the other way round",
+                verdict("NoFieldValueIncludedInValueList(Premium, Banded -> Band In \"X\")"));
+        // A STARRED group under an access: the mirror's refusal must not be broader than what is measured,
+        // and the star has its own class elsewhere in this estate.
+        actual.put("a starred group under an access",
+                verdict("NoFieldValueIncludedInValueList(Items* -> Band In \"X\")"));
+        actual.put("a starred FIELD under an access",
+                verdict("NoFieldValueIncludedInValueList(Items*/ItemCode -> Band In \"X\")"));
+        // What the access demands of a FIELD, which the starred row above turned out to be about: the three
+        // ways a field can fail to carry the named category.
+        actual.put("a TEXT field under an access", verdict("NoFieldValueIncludedInValueList(Holder -> Band In \"X\")"));
+        actual.put("a NUMBER field under an access",
+                verdict("NoFieldValueIncludedInValueList(Premium -> Band In \"1\")"));
+        actual.put("an ENUMERATION that declares no such category",
+                verdict("NoFieldValueIncludedInValueList(Tier -> Band In \"X\")"));
 
         Map<String, String> expected = new LinkedHashMap<>();
         expected.put("a category token, under an access on the GROUP", NO_GROUPS);
@@ -182,6 +210,13 @@ class ValueListConditionOperandLawsTest {
         expected.put("a group of TEXT fields under an access", NO_GROUPS);
         expected.put("the access on a group in the VALUE list instead", NO_GROUPS);
         expected.put("the access on a FIELD in the value list, for contrast", KernelLaws.ADMITTED);
+        expected.put("a group under an access BESIDE a number field", NO_GROUPS);
+        expected.put("the same pair written the other way round", NO_GROUPS);
+        expected.put("a starred group under an access", NO_GROUPS);
+        expected.put("a starred FIELD under an access", NO_ENUMERATION);
+        expected.put("a TEXT field under an access", NO_ENUMERATION);
+        expected.put("a NUMBER field under an access", NO_ENUMERATION);
+        expected.put("an ENUMERATION that declares no such category", CATEGORY_UNKNOWN);
         assertEquals(expected, actual, "a category access demands a field, on either side of the comparison");
     }
 

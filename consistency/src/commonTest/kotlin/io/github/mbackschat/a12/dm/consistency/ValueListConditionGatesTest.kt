@@ -41,6 +41,11 @@ class ValueListConditionGatesTest {
                   "DateRangeType":{"format":"yyyy-MM-dd","rangeSeparator":"/"}}}},
                 {"type":"Field","id":"f12","name":"ClaimWindow","Field":{"fieldType":{"type":"DateRangeType",
                   "DateRangeType":{"format":"yyyy-MM-dd","rangeSeparator":"/"}}}},
+                {"type":"Group","id":"g2","name":"Banded","Group":{"elements":[
+                  {"type":"Field","id":"f14","name":"InnerChannel","Field":{"fieldType":{
+                    "type":"EnumerationType","EnumerationType":{"values":[{"value":"WEB"},{"value":"STORE"}],
+                    "categories":[{"name":"Band","values":["X","Y"]}]}}}}
+                ]}},
                 {"type":"Group","id":"g1","name":"Broker","Group":{"elements":[
                   {"type":"Field","id":"f13","name":"BrokerWindow","Field":{"fieldType":{
                     "type":"DateRangeType","DateRangeType":{"format":"yyyy-MM-dd","rangeSeparator":"/"}}}}
@@ -206,5 +211,67 @@ class ValueListConditionGatesTest {
             listOf("MVK_INVALID_STRING_CONSTANT_FOR_ENUMERATION_OR_CATEGORY")
         expected["any value over a text declaration"] = emptyList()
         assertEquals(expected, actual, "the enum domain a written-out list is looked up in")
+    }
+
+    /**
+     * A category access demands a FIELD, so a group under one is refused before any kind or domain gate.
+     *
+     * Mirrors `rulekit.validate.laws.ValueListConditionOperandLawsTest`, whose grid was built to separate
+     * the two answers a reader expects — the access reaches the fields the group expands into, or it is
+     * ignored — and measured a third that neither produces. The access turns out to DEMAND an enumeration
+     * that declares the named category, and each way of failing that has a class of its own: a group, a
+     * field that is no enumeration, an enumeration without that category. The controls are the same
+     * operands minus the access, which is what charges each refusal to the access rather than to the operand.
+     */
+    @Test
+    fun aCategoryAccessDemandsAnEnumerationDeclaringThatCategory() {
+        val actual = mutableMapOf<String, List<String>>()
+        actual["a group under an access, category token"] =
+            quantifier("NoFieldValueIncludedInValueList(Banded -> Band In \\\"X\\\")")
+        actual["a group under an access, the enumeration's own value"] =
+            quantifier("NoFieldValueIncludedInValueList(Banded -> Band In \\\"WEB\\\")")
+        actual["a group whose field the operator would refuse anyway"] =
+            quantifier("NoFieldValueIncludedInValueList(Broker -> Band In \\\"x\\\")")
+        actual["a group under an access beside a number field"] =
+            quantifier("NoFieldValueIncludedInValueList(Banded -> Band, Quantity In \\\"X\\\")")
+        actual["the access on a group in the VALUE list"] =
+            quantifier("NoFieldValueIncludedInValueList(Channel In Banded -> Band)")
+        actual["the same group with NO access, category token"] =
+            quantifier("NoFieldValueIncludedInValueList(Banded In \\\"X\\\")")
+        actual["the same group with NO access, declared value"] =
+            quantifier("NoFieldValueIncludedInValueList(Banded In \\\"WEB\\\")")
+        actual["the access on a FIELD in the value list"] =
+            quantifier("NoFieldValueIncludedInValueList(Channel In BandedChannel -> Band)")
+        actual["a TEXT field under an access"] =
+            quantifier("NoFieldValueIncludedInValueList(GiftNote -> Band In \\\"X\\\")")
+        actual["a NUMBER field under an access"] =
+            quantifier("NoFieldValueIncludedInValueList(Quantity -> Band In \\\"1\\\")")
+        actual["an ENUMERATION declaring no such category"] =
+            quantifier("NoFieldValueIncludedInValueList(Channel -> Band In \\\"X\\\")")
+
+        val expected = mutableMapOf<String, List<String>>()
+        expected["a group under an access, category token"] = listOf(NO_GROUPS)
+        expected["a group under an access, the enumeration's own value"] = listOf(NO_GROUPS)
+        // Before the kind gate: without the access this group's date-range field draws its own class.
+        expected["a group whose field the operator would refuse anyway"] = listOf(NO_GROUPS)
+        // …and before the varying-types gate, measured in both operand orders on the kernel.
+        expected["a group under an access beside a number field"] = listOf(NO_GROUPS)
+        expected["the access on a group in the VALUE list"] = listOf(NO_GROUPS)
+        expected["the same group with NO access, category token"] =
+            listOf("MVK_INVALID_STRING_CONSTANT_FOR_ENUMERATION_OR_CATEGORY")
+        expected["the same group with NO access, declared value"] = emptyList()
+        expected["the access on a FIELD in the value list"] = emptyList()
+        expected["a TEXT field under an access"] = listOf(NO_ENUMERATION)
+        expected["a NUMBER field under an access"] = listOf(NO_ENUMERATION)
+        expected["an ENUMERATION declaring no such category"] = listOf(CATEGORY_UNKNOWN)
+        assertEquals(expected, actual, "a category access demands a field, on either side of the comparison")
+    }
+
+    private companion object {
+        private const val NO_GROUPS = "MVK_NO_GROUPS_ALLOWED"
+        private const val NO_ENUMERATION = "MVK_NO_ENUMERATION"
+
+        /** The kernel's own spelling, typo included. */
+        private const val CATEGORY_UNKNOWN = "MVK_CATEGORY_UNKOWN"
     }
 }
