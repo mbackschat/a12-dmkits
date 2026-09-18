@@ -36,11 +36,26 @@ internal external object NodePerformanceHooks {
     val performance: dynamic
 }
 
+/**
+ * `node:inspector`, reached through its module NAMESPACE like every binding above rather than as a class.
+ *
+ * **`@JsModule` on an external CLASS emits a DEFAULT import**, and a Node built-in's ESM default export is the
+ * module object, not any one of its exports — so the emitted `new <module>()` threw
+ * `TypeError: Session_… is not a constructor` and took the whole Node footprint arm down at its first
+ * allocation measurement. `@JsName("Session")` does not redirect that import; it names the declaration, not
+ * the binding, which is why the annotation pair read as correct. Declaring the module as an `external object`
+ * emits `import * as`, and the nested class resolves as a member of it.
+ *
+ * The shape was right under the previous CommonJS output (`require('node:inspector').Session`) and broke when
+ * the target moved to `useEsModules()`. Nothing caught it because this lane is local opt-in and the yarn-lock
+ * gate refused before the worker ever ran.
+ */
 @JsModule("node:inspector")
-@JsName("Session")
-internal external class NodeInspectorSession {
-    fun connect()
-    fun disconnect()
-    fun post(method: String, callback: (dynamic, dynamic) -> Unit)
-    fun post(method: String, parameters: dynamic, callback: (dynamic, dynamic) -> Unit)
+internal external object NodeInspector {
+    class Session {
+        fun connect()
+        fun disconnect()
+        fun post(method: String, callback: (dynamic, dynamic) -> Unit)
+        fun post(method: String, parameters: dynamic, callback: (dynamic, dynamic) -> Unit)
+    }
 }

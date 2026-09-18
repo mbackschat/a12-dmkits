@@ -4,7 +4,7 @@ package io.github.mbackschat.a12.dm.interpreter.footprint
 
 import io.github.mbackschat.a12.dm.interpreter.NodeCrypto
 import io.github.mbackschat.a12.dm.interpreter.NodeFileSystem
-import io.github.mbackschat.a12.dm.interpreter.NodeInspectorSession
+import io.github.mbackschat.a12.dm.interpreter.NodeInspector
 import io.github.mbackschat.a12.dm.interpreter.NodePath
 import io.github.mbackschat.a12.dm.interpreter.NodeV8
 import kotlin.coroutines.Continuation
@@ -88,7 +88,7 @@ private class NodeFootprintPlatform : FootprintPlatform {
         }.min()
 
     override suspend fun <T> measureAllocated(block: () -> T): FootprintAllocation<T> {
-        val session = NodeInspectorSession()
+        val session = NodeInspector.Session()
         session.connect()
         try {
             val parameters: dynamic = js("({})")
@@ -133,7 +133,7 @@ private class NodeFootprintPlatform : FootprintPlatform {
     }
 
     private suspend fun post(
-        session: NodeInspectorSession,
+        session: NodeInspector.Session,
         method: String,
         parameters: dynamic = undefined,
     ): dynamic =
