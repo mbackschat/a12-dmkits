@@ -8,6 +8,23 @@ Dated measurements of the Kernel-free checker, newest first. **Every LATENCY her
 
 Results never land in a spec, and a measurement's home is not its explanation: the mechanism paragraphs below are marked as hypotheses where they are hypotheses.
 
+## 2026-09-18 — the cell store cost 9.5x per check, and the growth gates could not see it <a id="cell-cost-2026-09-18"></a>
+
+**How it surfaced, which is the part worth carrying.** Nothing looked for this. The Node retained-memory collector (H5-j) took 7m51s for 401 checks, so one check cost ~1.16 s where [the prepared-Node arm](#prepared-node-2026-09-17) had published **129.05 ms** the day before on the same model — and the 800-program figure it published, 828.67 ms, was *lower than a 200-program check now*. Running that arm's own child by hand on the installed package reproduced it immediately: **1 231 / 1 158 / 1 405 / 1 073 ms**. A perf lane's own printed cost is a measurement whether or not the lane asserts on it; this one had been asserting a ratio and printing a 9.5x regression for nine commits.
+
+| state of the 200-program check | median | how |
+|---|---|---|
+| published 2026-09-17, before the cell store existed | **129.05 ms** | `:adapter:checkerPreparedNodePerfTest` |
+| as committed at `36c6766e6` | **~1 231 ms** | that lane's child, run by hand |
+| after the memoization fix below | **509.36 ms** (p95 610.17, min 471.44) | the lane, 51 warm observations |
+| with cell bookkeeping disabled as a probe | **~330 ms** (356.7 / 302.7 / 293.9 / 352.7) | the lane's child on a planted build |
+
+**The defect: a whole-model projection was rebuilt per cell.** `FactRead.DeclarationSetShape`'s value is every declaration's identity row plus the resolvable paths, and it lived in `CheckCells` as a FUNCTION. Every cell keyed on the set shape calls it twice — once when produced, once when validated against another model — so a 200-program check materialized that projection some hundreds of times. `node --cpu-prof` put `setShapeValue` at **0.532 s of self time plus 1.014 s of garbage collection in a 3.93 s** two-check run: the two largest frames in the profile, and the only two that named this checker rather than the standard library. The fix is `PreparedModel.declarationSetShape`, a `by lazy` beside `rowsByPath`, which projects the same members and was memoized from the start. Locked by `PreparedModelDerivedValueTest` on IDENTITY — the one oracle a rebuild cannot satisfy, where structural equality would pass either way.
+
+**What the remaining 3.9x is, and what it is not.** Memoization recovered 1 231 -> 509 ms; the published 129 ms does not come back, and the rest is the cell store's own bookkeeping plus something not yet attributed. Disabling both halves of that bookkeeping — the read transcript's `record` and the per-read value capture — puts the same check at ~330 ms, so **cell bookkeeping accounts for ~180 ms and roughly 200 ms is unexplained** (the families' own work, run per declaration rather than model-wide). The unexplained half is [a gap row](PORTABLE-CONSISTENCY-IMPLEMENTATION-PLAN.md#cell-tax) and not a mechanism here; what is measured is that ~75 % of a 200-program check is now work that only the snapshot path can ever use, since `check()` discards the store it built and the shipped JS surface has no snapshot at all.
+
+**It is NOT a complexity change, which is why the growth gate stayed green — and why it was never going to catch this.** The added work grows **5.5x over the 4x scale-up** (380 ms -> 2 096 ms after subtracting the published curve), so it is linear with a large constant. The lane's asserted quantity, the paired ratio, *fell* from **6.42x to 5.75x** while the absolute cost rose 9.5x: a large linear addition depresses a ratio, so the one certified bar on this lane moved in the reassuring direction. A ratio bound is blind to this whole class by construction, and no other lane on this page asserts a duration — by design, and correctly, since a millisecond figure has no cross-machine basis. The lever that remains is the printed output, which is why the [run-discipline trigger](AGENT-RUN-DISCIPLINE.md) now names this lane for any change to the check path: it costs 3m07s and prints the number.
+
 ## 2026-09-18 — what a JVM consumer of the checker actually resolves <a id="jvm-closure-2026-09-18"></a>
 
 H5-k names the reverse of the delivery gap: the packed npm tarball is bounded at 1 MiB and **nothing bounds what a Maven consumer pulls in**. So the first thing that row needs is the number, and it had never been printed. Measured by resolving `:consistency`'s own `jvmRuntimeClasspath` and adding the module's jar, which is what a consumer declaring the dependency gets:

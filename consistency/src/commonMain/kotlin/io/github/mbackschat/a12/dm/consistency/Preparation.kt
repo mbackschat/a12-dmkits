@@ -273,6 +273,42 @@ data class PreparedModel(
     }
 
     /**
+     * The set shape as a comparable value: every declaration but its body, plus which paths resolve.
+     *
+     * **The body must be OUT and the resolvable set must be IN, and both halves are the alphabet's contract**
+     * ([FactRead.DeclarationSetShape]). Comparing `elements` itself would drag every body in and collapse the
+     * shape onto the content, so one keystroke would fell every cell that merely iterated — the failure the
+     * alphabet exists to prevent. Leaving the resolvable set out would be the opposite and worse: a
+     * `variantFilter` decides which declarations EXIST for resolution, so a cell that resolved a reference would
+     * survive an edit that deleted its referent.
+     *
+     * The resolvable half is the resolvable elements' PATHS rather than the map's values, because resolution only
+     * ever hands back a path ([Reference.Resolved] carries one and nothing else) — so the elements behind them are
+     * reached through the cursor, and charged there, if a family reads them at all.
+     *
+     * *Corrected 2026-09-18: it was `resolvableByPath.keys`, and a key set cannot carry the one deletion that
+     * changes an answer. `resolvableByPath` keeps ONE entry per path while the short-name fallback counts over the
+     * resolvable LIST and says `Ambiguous` at two, so at a twinned path — a model A12 refuses and this checker
+     * reports on — deleting one twin left this value equal and moved what a bare name resolves to. A list of paths
+     * carries the multiplicity the fallback counts, and nothing more: every other change to the set already moves
+     * the rows above (`SetShapeCarriesResolutionTest`).*
+     *
+     * A [List] of anonymous rows rather than a record: nothing reads its members, so a type would add a name
+     * without adding a reader, and `List`'s structural equality is exactly the comparison wanted.
+     *
+     * **Lazy and computed once, which is the half that was missed and cost a 9x regression.** It lived in
+     * `CheckCells` as a function, and every cell keyed on the set shape calls it twice — once produced, once
+     * validated against another model — so a projection of the whole model was materialized per cell. On the
+     * 200-program synthesis profile `node --cpu-prof` put it at 0.53 s of self time plus ~1.0 s of collection
+     * inside a 1.2 s check, against the 129 ms that model's own lane published a day earlier (measured
+     * 2026-09-18, `PreparedModelDerivedValueTest`). It belongs beside [rowsByPath], which projects the same
+     * members and was memoized from the start.
+     */
+    internal val declarationSetShape: Any by lazy {
+        elements.map { listOf(it.path, it.name, it.kind, it.id, it.origin) } to resolvableElements.map { it.path }
+    }
+
+    /**
      * Every declaration's own target reference, computed ONCE per model.
      *
      * **This is where the checker's cost curve was, measured 2026-09-15.** `declaredReferences()` is a whole-

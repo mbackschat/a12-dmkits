@@ -81,7 +81,7 @@ internal fun TrackedFactBase.cellFor(
  * being validated. Nothing reachable from a family can call it, because no family holds a [PreparedModel].
  */
 internal fun PreparedModel.valueOf(read: FactRead): Any? = when (read) {
-    FactRead.DeclarationSetShape -> setShapeValue()
+    FactRead.DeclarationSetShape -> declarationSetShape
     // ALL bodies at that path, because the transcript names a path and a model may declare two elements at
     // one — A12 refuses such a model and this checker has to report on it rather than fail, so the path is
     // not a unique key and a value covering only the first body would miss an edit to the second.
@@ -99,31 +99,3 @@ internal fun PreparedModel.valueOf(read: FactRead): Any? = when (read) {
         ModelFact.DECLARED_TYPE_DEFINITION_IDS -> declaredTypeDefinitionIds
     }
 }
-
-/**
- * The set shape as a comparable value: every declaration but its body, plus which paths resolve.
- *
- * **The body must be OUT and the resolvable set must be IN, and both halves are the alphabet's contract**
- * ([FactRead.DeclarationSetShape]). Comparing `elements` itself would drag every body in and collapse the
- * shape onto the content, so one keystroke would fell every cell that merely iterated — the failure the
- * alphabet exists to prevent. Leaving the resolvable set out would be the opposite and worse: a
- * `variantFilter` decides which declarations EXIST for resolution, so a cell that resolved a reference would
- * survive an edit that deleted its referent.
- *
- * The resolvable half is the resolvable elements' PATHS rather than the map's values, because resolution only
- * ever hands back a path ([Reference.Resolved] carries one and nothing else) — so the elements behind them are
- * reached through the cursor, and charged there, if a family reads them at all.
- *
- * *Corrected 2026-09-18: it was `resolvableByPath.keys`, and a key set cannot carry the one deletion that
- * changes an answer. `resolvableByPath` keeps ONE entry per path while the short-name fallback counts over the
- * resolvable LIST and says `Ambiguous` at two, so at a twinned path — a model A12 refuses and this checker
- * reports on — deleting one twin left this value equal and moved what a bare name resolves to. A list of paths
- * carries the multiplicity the fallback counts, and nothing more: every other change to the set already moves
- * the rows above (`SetShapeCarriesResolutionTest`).*
- *
- * A [List] of anonymous rows rather than a record: nothing reads its members, so a type would add a name
- * without adding a reader, and `List`'s structural equality is exactly the comparison wanted.
- */
-private fun PreparedModel.setShapeValue(): Any = elements.map {
-    listOf(it.path, it.name, it.kind, it.id, it.origin)
-} to resolvableElements.map { it.path }
