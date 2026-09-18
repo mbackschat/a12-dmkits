@@ -79,6 +79,38 @@ class OutcomeAllChecksPassedTest {
         )
     }
 
+    /**
+     * A model A12 refuses outright reads as REJECTED, not as "nothing was checked".
+     *
+     * **Found by a surviving mutant, and it is not an equivalent one.** Swapping the first two branches of
+     * [outcome] leaves every other state alone, because a rejected model normally has a non-empty
+     * `checksCompleted` and reaches the rejection branch either way. The one state where the order decides is
+     * this one: an unsupported `conditionLanguage` returns `Invalid` **with `checksCompleted` empty**, since
+     * there is no reading of the model's conditions to have. Under the swap it would report
+     * [CheckOutcome.NOT_ESTABLISHED].
+     *
+     * That is not a cosmetic difference. `ci-gate.mjs` maps the not-established class to exit 70, an
+     * OPERATIONAL failure — "our tooling broke" — where a rejection is exit 1, "your model is refused". The
+     * swap would tell a CI job to go debug the checker about a model A12 simply rejects.
+     */
+    @Test
+    fun aModelA12RefusesOutrightIsRejectedRatherThanUnchecked() {
+        val report = check(ModelSource(UNSUPPORTED_LANGUAGE))
+
+        assertEquals(
+            CheckOutcome.REJECTED,
+            report.outcome,
+            "a model rejected before anything could run must still read as rejected",
+        )
+        // The discriminating property, asserted rather than assumed: without it this row would pass on any
+        // ordinary rejected model and would not cover the branch order at all.
+        assertTrue(
+            report.checksCompleted.isEmpty(),
+            "this row only discriminates while the rejection carries an EMPTY completed set — if that " +
+                "changes, the branch order stops being observable here and this test must be re-derived",
+        )
+    }
+
     private companion object {
 
         /** One group, one field, one rule, one computation, nothing wrong: every producer is asked. */
@@ -115,6 +147,17 @@ class OutcomeAllChecksPassedTest {
                   "errorMessage":[{"locale":"en_US","text":"The premium could not be computed."}]}}
               ]}}
              ]}}}
+        """.trimIndent()
+
+        /** A condition language A12 does not support: refused outright, so nothing is examined. */
+        private val UNSUPPORTED_LANGUAGE = """
+            {"header":{"id":"nolang","locales":[{"code":"en_US"}]},
+             "content":{"modelConfig":{"conditionLanguage":{"code":"xx_XX"}},
+              "modelRoot":{"rootGroups":[
+               {"type":"Group","id":"g0","name":"Policy","Group":{"elements":[
+                 {"type":"Field","id":"f0","name":"Holder","Field":{"fieldType":{"type":"StringType"}}}
+               ]}}
+              ]}}}
         """.trimIndent()
 
         /** Admitted, and declares nothing — the state `emptyFactBase` reports as a gap. */
