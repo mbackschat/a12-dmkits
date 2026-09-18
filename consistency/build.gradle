@@ -913,6 +913,65 @@ tasks.register('verifyConsistencyDeliveryCeiling') {
     }
 }
 
+// H5-k's collector half: what a JVM consumer of the checker RESOLVES, in bytes.
+//
+// The delivery boundary is bounded on the packed npm tarball above and on nothing the JVM ships, so a Maven
+// consumer's closure had no NUMBER at all — which is the gap, a missing observation rather than a missing bar
+// (docs/PORTABLE-CONSISTENCY-IMPLEMENTATION-PLAN.md, the H5 partition's H5-k row). This task prints it and
+// asserts nothing about it, deliberately: an absolute byte ceiling is a release bar, and a release bar takes
+// IF137's six points, of which (6) is the owner's ratification. COMPOSITION is already guarded —
+// `verifyConsistencyDependencies` refuses any resolved module outside the allowlist and any intra-repo
+// project edge — so size is the one thing about this graph nobody could see.
+//
+// It reports the two quantities separately because they would bear different bars, and the difference is
+// large: the module's own jar is what a change in this repository moves, while two thirds of the closure is
+// the Kotlin stdlib and kotlinx-serialization, whose size a checker-size bar has no business policing
+// (docs/PORTABLE-CONSISTENCY-RESULTS.md "what a JVM consumer of the checker actually resolves").
+//
+// A NON-FILE classpath entry is refused rather than measured: a directory is a class-output edge whose bytes
+// are not what a consumer downloads, and an absent one has no bytes at all, so letting either into the sum
+// would make one total mean two things.
+tasks.register('consistencyJvmClosureReport') {
+    group = 'verification'
+    description = 'Write the informative JVM consumer closure of the checker; this task promotes no ceiling.'
+    def runtime = configurations.named('jvmRuntimeClasspath')
+    def ownJar = tasks.named('jvmJar').flatMap { it.archiveFile }
+    def reportFile = layout.buildDirectory.file('reports/consistency-closure/jvm-consumer-closure.txt')
+    inputs.files(runtime)
+    inputs.files(ownJar)
+    outputs.file(reportFile)
+    doLast {
+        def artifacts = runtime.get().incoming.artifactView {}.artifacts.artifacts
+        def notFiles = artifacts.findAll { !it.file.isFile() }*.file*.name.toSorted()
+        if (notFiles) {
+            throw new GradleException("the checker's JVM runtime classpath carries entries that are not " +
+                    "files: ${notFiles}. A directory is a class-output edge, whose bytes are not what a " +
+                    'consumer downloads, and an absent artifact has none. Measure such an edge deliberately ' +
+                    'rather than letting it into a byte total.')
+        }
+        def rows = artifacts.collect { artifact ->
+            def component = artifact.id.componentIdentifier
+            def identity = component instanceof org.gradle.api.artifacts.component.ModuleComponentIdentifier
+                    ? "${component.group}:${component.module}:${component.version}".toString()
+                    : component.displayName
+            [identity: identity, file: artifact.file.name, bytes: artifact.file.length()]
+        }.sort { a, b -> a.identity <=> b.identity }
+        def own = ownJar.get().asFile
+        long dependencies = rows.sum { it.bytes as long } ?: 0L
+        long total = dependencies + own.length()
+        def report = reportFile.get().asFile
+        report.parentFile.mkdirs()
+        report.text = 'checker JVM consumer closure — INFORMATIVE ONLY; no ceiling promoted\n' +
+                "artifacts=${rows.size() + 1} closure-bytes=${total} own-jar-bytes=${own.length()} " +
+                "dependency-bytes=${dependencies}\n" +
+                "  ${own.length()} bytes  this module  (${own.name})\n" +
+                rows.collect { "  ${it.bytes} bytes  ${it.identity}  (${it.file})" }.join('\n') + '\n'
+        println "[closure] checker JVM consumer closure: ${total} bytes across ${rows.size() + 1} artifacts, " +
+                "of which ${own.length()} is this module → ${report}"
+    }
+}
+tasks.named('check') { dependsOn 'consistencyJvmClosureReport' }
+
 /**
  * F1-c: the identity a consumer INSTALLS must be the identity the checker REPORTS — on both packagings.
  *

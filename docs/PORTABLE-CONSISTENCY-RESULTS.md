@@ -8,6 +8,24 @@ Dated measurements of the Kernel-free checker, newest first. **Every LATENCY her
 
 Results never land in a spec, and a measurement's home is not its explanation: the mechanism paragraphs below are marked as hypotheses where they are hypotheses.
 
+## 2026-09-18 — what a JVM consumer of the checker actually resolves <a id="jvm-closure-2026-09-18"></a>
+
+H5-k names the reverse of the delivery gap: the packed npm tarball is bounded at 1 MiB and **nothing bounds what a Maven consumer pulls in**. So the first thing that row needs is the number, and it had never been printed. Measured by resolving `:consistency`'s own `jvmRuntimeClasspath` and adding the module's jar, which is what a consumer declaring the dependency gets:
+
+| artifact | bytes |
+|---|---|
+| `consistency-jvm-0.13.0.jar` | 1 188 850 |
+| `kotlin-stdlib-2.2.0.jar` | 1 750 373 |
+| `kotlinx-serialization-core-jvm-1.9.0.jar` | 399 128 |
+| `kotlinx-serialization-json-jvm-1.9.0.jar` | 278 414 |
+| `annotations-13.0.jar` | 17 536 |
+| `predicates-jvm-0.13.0.jar` | 4 109 |
+| **total** | **3 638 410 over six artifacts** |
+
+**Two readings, and the second is the one that matters for a ceiling.** The checker's own jar is 1 188 850 bytes — larger than the whole packed npm tarball's 1 MiB ceiling, which is not a contradiction: the JS artifact is a tree-shaken bundle of one target and the jar carries class files for the JVM target plus its resources. And **two thirds of what a consumer resolves is not the checker at all**: the Kotlin standard library with its `annotations` transitive, plus kotlinx-serialization, are 2 445 451 bytes of the 3 638 410, so a ceiling drawn over the closure would mostly bound dependencies whose size this project does not control, while a ceiling drawn over the module's own jar bounds the thing a change to this repository can move. Which of the two a bar should name is an owner decision and is not taken here.
+
+*Re-derive with `./build.sh :consistency:consistencyJvmClosureReport`, which landed with this measurement and writes `consistency/build/reports/consistency-closure/jvm-consumer-closure.txt`; the figures above are that report's, first taken at commit `7d5d95050`. No bar is asserted: a byte ceiling is a release bar and takes [IF137's six points](INTERPRETER-FINDINGS.md#if137), of which (6) is the owner's ratification.*
+
 ## 2026-09-17 — the checker's published ABI, enumerated for the first time <a id="abi-2026-09-17"></a>
 
 Row 8 lists **Java API compatibility**, and its oracle asks for a "compiled public API comparison where relevant". The checker became a published artifact earlier the same day, so the question is what its ABI actually is — and nothing had ever printed it.
