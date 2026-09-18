@@ -248,9 +248,10 @@ private fun iteratedLevelsIn(repeatableGroups: List<String>, path: String): List
     .filter { it == path || path.startsWith("$it/") }
     .sortedBy { it.length }
 
-private fun PreparedModel.repeatableGroupPaths(): List<String> = elements
-    .filter { it.isRepeatableGroup }
-    .map { it.path }
+// Delegates to the memoized list rather than repeating its expression: this walk and
+// `PreparedModel.repeatableGroupPathList` were the same two lines in two files from 2026-09-18, when the
+// latter was added for `ModelFact.REPEATABLE_GROUP_SET` without checking for an existing one.
+private fun PreparedModel.repeatableGroupPaths(): List<String> = repeatableGroupPathList
 
 // The whole model's repeatable groups: a SET question, so it reads through
 // [TrackedFactBase.repeatableGroups] and never narrows with a scoped pass. Under `declarations()` a scoped

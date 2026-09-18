@@ -39,12 +39,25 @@ data class ConditionReference(
  * [PreparedModel.conditionLanguage], so a field whose name spells an operator of the *other* language is
  * still a reference here.
  */
-fun PreparedModel.conditionReferences(): List<ConditionReference> = elements.flatMap { element ->
-    conditionReferencesIn(element.path, element.kind, element.body, element.origin, conditionLanguage) {
-        group, written, origin ->
-        resolveEntity(group, written, origin)
+fun PreparedModel.conditionReferences(): List<ConditionReference> = conditionReferenceList
+
+/**
+ * The walk itself, run ONCE per model behind [PreparedModel.conditionReferenceList].
+ *
+ * Memoized for the reason its sibling [computeDeclaredReferences] already is, stated there in full: the walk
+ * is a pure function of the model, so it is computed once here rather than by asking every caller to
+ * remember to hoist it. That sibling's un-hoisted form made the whole check cubic in declarations and took
+ * 95 % of a flight recorder's samples; this one was never cubic — every one of its callers hoists, checked
+ * across all of them — so what is removed here is repetition, not a complexity class, and no timing claim
+ * rides on it.
+ */
+internal fun PreparedModel.computeConditionReferences(): List<ConditionReference> =
+    elements.flatMap { element ->
+        conditionReferencesIn(element.path, element.kind, element.body, element.origin, conditionLanguage) {
+            group, written, origin ->
+            resolveEntity(group, written, origin)
+        }
     }
-}
 
 /**
  * ONE declaration's condition references, behind the read barrier.

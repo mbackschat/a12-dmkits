@@ -48,6 +48,12 @@ class PreparedModelDerivedValueTest {
             "declaredReferenceByPath is rebuilt per call, which is the quadratic scan it replaced")
         assertSame(prepared.bodiesByPath, prepared.bodiesByPath, "bodiesByPath is rebuilt per call")
         assertSame(prepared.rowsByPath, prepared.rowsByPath, "rowsByPath is rebuilt per call")
+        assertSame(
+            prepared.conditionReferences(),
+            prepared.conditionReferences(),
+            "the condition-reference walk is rebuilt per call — it parses every declaration's DSL and " +
+                "resolves each reference, and three untracked readers ask for it",
+        )
     }
 
     /**

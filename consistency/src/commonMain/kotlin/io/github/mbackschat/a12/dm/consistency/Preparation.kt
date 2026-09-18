@@ -332,8 +332,26 @@ data class PreparedModel(
      *
      * The walk is a pure function of the model, so the fix is to compute it once here rather than to make each
      * caller remember to hoist it — a rule no guard can enforce, and the reason the cubic arrived unnoticed.
+     *
+     * **That last clause was TESTED before being trusted, and it holds (2026-09-18).** The obvious guard —
+     * every parameterless pure whole-model walk on `PreparedModel` must be memoized — false-positives on
+     * `carriersByShortName`, which is called twice per impact report but on two DIFFERENT models (`before`
+     * and `after`), so one call per instance and nothing to memoize. Whether a walk is asked twice of the
+     * same instance is not decidable from source, and a guard that fails honest code gets disabled. What
+     * this class gets instead is the sibling sweep: [conditionReferenceList] was found and closed that way,
+     * having been left behind when this one was fixed.
      */
     internal val declaredReferenceList: List<DeclaredReference> by lazy { computeDeclaredReferences() }
+
+    /**
+     * Every declaration's condition references, computed ONCE per model.
+     *
+     * The same treatment as [declaredReferenceList] and for the same stated reason — a pure whole-model walk
+     * belongs here rather than in each caller's memory. It was NOT given that treatment when its sibling was
+     * (2026-09-15), which is how three untracked readers came to repeat a DSL parse and a resolution per
+     * call; found by sweeping the siblings of the fixed defect rather than by a profile.
+     */
+    internal val conditionReferenceList: List<ConditionReference> by lazy { computeConditionReferences() }
 
     /**
      * [declaredReferenceList] keyed by the path that declares it, so a cursor's own reference is a lookup.
