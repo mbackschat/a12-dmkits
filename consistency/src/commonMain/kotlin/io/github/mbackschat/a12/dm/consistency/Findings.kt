@@ -130,9 +130,19 @@ val Finding.corrective: Corrective?
  */
 sealed interface ConsistencyStatus {
     /**
-     * Whether every required check for this input and profile completed. Constant `false` today because no
-     * required check family is implemented, so it carries no information yet and cannot distinguish one
-     * reason for incompleteness from another — the coverage evidence that makes it informative is F's report.
+     * Whether every required check for this input and profile completed. Constant `false`, and it publishes
+     * anyway so that a consumer switching on it keeps working when it starts carrying information.
+     *
+     * **What holds it false is not a shortage of families but the absence of a coverage REGISTRY.** Families
+     * run in numbers (see [CheckFamily]); what nothing can yet state is that for a given model, every code
+     * A12 could report is either reported by a family that ran or cannot arise from stored DM-JSON. Until
+     * that holds, one reason for incompleteness cannot be told from another, and `complete` would be
+     * asserting the very thing it has no basis for.
+     *
+     * *Corrected 2026-09-18: this read "because no required check family is implemented", which was true
+     * when written and had become the kind of sentence a reader checks against the source and disbelieves.
+     * The blocker is enumerated in `PORTABLE-CONSISTENCY-IMPLEMENTATION-PLAN.md` "the residue is now
+     * DRAINED" — eleven codes, none of them closable by implementing another family.*
      */
     val complete: Boolean
 
