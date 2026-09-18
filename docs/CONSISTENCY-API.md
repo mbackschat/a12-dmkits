@@ -289,6 +289,8 @@ That test is also the only thing in the build that can catch an unconsumable art
 | `UNREADABLE` | no report at all: the gate could not open the file | fail the build as a TOOL failure. The library has no counterpart — this is the gate's own input failing |
 | `UNRECOGNIZED` | an `outcome` this gate does not know, or none at all | fail closed; a gate pinned to an older package must not read an unfamiliar value as a pass |
 
+> **`outcome` here is not `dmtool`'s envelope `outcome`.** The CLI result envelope carries a field of the same name whose vocabulary is what the *operation* did — `applied`, `preview`, `refused`, `rejected`, `read`, `staged`, `completed`, `error`, lower-cased — while this one says what the *check* concluded. They share the word and the value `rejected`, and nothing today conflates them because the CLI does not surface this field. It is stated so a consumer reading both does not join them, and so that surfacing the report through `model check --engine=portable` is recognised as needing a name for one of the two rather than a nested second `outcome`.
+
 **The operational test is `checksCompleted` being empty, never "a diagnostic arrived"** — the distinction a consumer is most likely to get wrong. A `DECLARATION_NOT_WELL_FORMED` diagnostic rides along with a fully completed run: one declaration could not be read and its siblings were checked anyway. Treating that as a tool failure would fail the build for the wrong reason and send the author looking in the wrong place, which is an over-rejection in the consumer rather than in the checker and lands on them just the same.
 
 ## Calling it from a browser
