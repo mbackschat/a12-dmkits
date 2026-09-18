@@ -882,11 +882,13 @@ Both carriers: **679 tests, 0 failures**; report JSON unchanged (`ParityCorpusTe
 **This row exists because nothing else would have caught it.** The lane that owns the curve asserts a RATIO, and the ratio *improved* (6.42x -> 5.75x) while the absolute rose 9.5x. The trigger that now names that lane for any check-path change is in [AGENT-RUN-DISCIPLINE](AGENT-RUN-DISCIPLINE.md); it is a printed number, not a gate, and this row is what stands in for the gate.
 
 
-#### The value list's CATEGORY arm has no control, found by a surviving mutant (2026-09-18) <a id="category-arm-uncontrolled"></a>
+#### The value list's CATEGORY arm, and why its mutant SHOULD survive (2026-09-18) <a id="category-arm-uncontrolled"></a>
 
-`listedFields` gives a category only to an operand that IS a field; the fields a group expands into get none. Replacing that branch with an unconditional `val referenced = category` **survives the whole `:consistency:jvmTest` estate** — 152 classes — so nothing distinguishes the two behaviours. It is not an equivalent mutant: a category access is `Tier -> Band` hanging off any recorded reference, and a GROUP name is a recorded reference, so `ValueInList(Lines -> Band, …)` reaches this branch with a non-null category and a group target.
+`listedFields` gives a category only to an operand that IS a field; the fields a group expands into get none. Replacing that branch with an unconditional `val referenced = category` **survives the whole `:consistency:jvmTest` estate** — 152 classes — so nothing distinguished the two behaviours.
 
-**Pre-existing, and the fix needs an oracle this slice does not have.** The arm predates the [expansion consolidation](#l-b3c-4-landing) that surfaced it — the refactor preserved the behaviour exactly — so what is missing is a test, and writing one first requires knowing what A12 says about a category on a group operand in a value list. That is a `rule check` question about a shape nobody has built, not a mirror question, which is why it is a row rather than a commit.
+**Answered 2026-09-18, and the mutant survives for a good reason: the arm is unreachable on an admissible model.** The kernel was asked directly, with a grid built so that either candidate answer would be pinned, and it gave a third: `-> Band` on a GROUP operand draws **`MVK_NO_GROUPS_ALLOWED`** whatever the group would expand to and on either side of the comparison, while the same operand without the access expands normally ([KERNEL-FINDINGS](KERNEL-FINDINGS.md), `validate.laws.ValueListConditionOperandLawsTest`). So no model A12 admits can reach the branch with a group and a category, the two behaviours are indistinguishable there, and the missing control was never a category test.
+
+**What the mirror owes instead is that class, and it is a real gap rather than this one.** The checker's value-list family has no group gate under an access, so it stays silent where A12 refuses — under-reporting, which is the safe direction, and a one-gate slice whose law is now measured and locked.
 
 
 ### F3 record — the partition, one blocked acceptance clause, and F3-a's matrix frozen before code (2026-09-16) <a id="f3-partition"></a>

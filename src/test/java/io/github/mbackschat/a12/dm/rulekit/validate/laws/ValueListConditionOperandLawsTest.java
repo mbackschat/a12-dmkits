@@ -34,6 +34,7 @@ class ValueListConditionOperandLawsTest {
 
     private static final String BAD_RANGE_OPERAND = "MVK_INVALID_PARAMETER_FOR_DATE_RANGE_COMPARISON";
     private static final String BAD_CONSTANT = "MVK_INVALID_STRING_CONSTANT_FOR_ENUMERATION_OR_CATEGORY";
+    private static final String NO_GROUPS = "MVK_NO_GROUPS_ALLOWED";
 
     private static final String POLICY = DocumentModelDraft.named("policy-value-lists").locale("en_US")
             .rootGroup("Policy", policy -> policy
@@ -46,6 +47,8 @@ class ValueListConditionOperandLawsTest {
                     .enumField("OtherTier", e -> e.value("PLUS").value("PREMIUM"))
                     .enumField("BandedTier", e -> e.value("BASIC").value("PLUS").category("Band", "X", "Y"))
                     .group("Broker", g -> g.stringField("BrokerName", f -> { }))
+                    .group("Banded", g -> g.enumField("InnerTier",
+                            e -> e.value("BASIC").value("PLUS").category("Band", "X", "Y")))
                     .group("Items", g -> g.repeatable(20)
                             .stringField("ItemCode", f -> { })
                             .dateRangeField("ItemCoverage", f -> f.format("yyyy-MM-dd").separator("/"))))
@@ -133,6 +136,53 @@ class ValueListConditionOperandLawsTest {
         expected.put("the same value with no category access", KernelLaws.ADMITTED);
         expected.put("any value over a TEXT field", KernelLaws.ADMITTED);
         assertEquals(expected, actual, "the enum domain the written-out value list is checked against");
+    }
+
+    /**
+     * A category access on a GROUP operand is refused outright — the access is what makes the group illegal.
+     *
+     * <p>The grid was built to separate two candidate answers, and A12 gave a third. `Banded` holds one
+     * enumeration declaring `BASIC`/`PLUS` and a `Band` category of `X`/`Y`, so if the access reached the
+     * expanded field then `X` would be in the domain and `BASIC` would not, and if it were ignored then
+     * exactly the opposite. Neither happens: both arms draw {@code MVK_NO_GROUPS_ALLOWED}, a class no domain
+     * check produces, while the SAME group without an access expands to its enumeration and draws the domain
+     * classes the rows above establish. So the access demands a field, and it is asked before the field
+     * list's own kind gates.
+     *
+     * <p>Asked because the checker's mirror decides it: it gives a category only to an operand that IS a
+     * field, and a mutant removing that distinction survived its whole module estate. The answer is that on
+     * an ADMISSIBLE model the distinction is unobservable — a group under an access never gets that far —
+     * which is why the mutant survives and what the mirror owes instead is this class.
+     */
+    @Test
+    void aCategoryAccessRefusesAGroupOperandOutrightWhicheverFieldsItWouldExpandTo() {
+        Map<String, String> actual = new LinkedHashMap<>();
+        actual.put("a category token, under an access on the GROUP",
+                verdict("NoFieldValueIncludedInValueList(Banded -> Band In \"X\")"));
+        actual.put("the enumeration's own value, under an access on the GROUP",
+                verdict("NoFieldValueIncludedInValueList(Banded -> Band In \"BASIC\")"));
+        actual.put("a category token, no access", verdict("NoFieldValueIncludedInValueList(Banded In \"X\")"));
+        actual.put("the enumeration's own value, no access",
+                verdict("NoFieldValueIncludedInValueList(Banded In \"BASIC\")"));
+        // Whether the class is about the CATEGORY's target or about this construct: a group of TEXT fields
+        // under an access has no domain to swap, and the value list's side is the same question one position
+        // over.
+        actual.put("a group of TEXT fields under an access",
+                verdict("NoFieldValueIncludedInValueList(Broker -> Band In \"x\")"));
+        actual.put("the access on a group in the VALUE list instead",
+                verdict("NoFieldValueIncludedInValueList(BandedTier In Banded -> Band)"));
+        actual.put("the access on a FIELD in the value list, for contrast",
+                verdict("NoFieldValueIncludedInValueList(BandedTier In BandedTier -> Band)"));
+
+        Map<String, String> expected = new LinkedHashMap<>();
+        expected.put("a category token, under an access on the GROUP", NO_GROUPS);
+        expected.put("the enumeration's own value, under an access on the GROUP", NO_GROUPS);
+        expected.put("a category token, no access", BAD_CONSTANT);
+        expected.put("the enumeration's own value, no access", KernelLaws.ADMITTED);
+        expected.put("a group of TEXT fields under an access", NO_GROUPS);
+        expected.put("the access on a group in the VALUE list instead", NO_GROUPS);
+        expected.put("the access on a FIELD in the value list, for contrast", KernelLaws.ADMITTED);
+        assertEquals(expected, actual, "a category access demands a field, on either side of the comparison");
     }
 
     /**
