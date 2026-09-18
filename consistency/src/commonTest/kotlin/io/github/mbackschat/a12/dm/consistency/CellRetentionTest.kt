@@ -66,7 +66,7 @@ class CellRetentionTest {
              "content":{"modelRoot":{"rootGroups":[
               {"type":"Group","id":"g0","name":"Order","Group":{"elements":[
                 {"type":"Field","id":"f0","name":"Total","Field":{"fieldType":{"type":"NumberType"}}},
-                {"type":"Group","id":"g1","name":"Lines","Group":{"repeatable":true,"elements":[
+                {"type":"Group","id":"g1","name":"Lines","Group":{"repeatability":5,"elements":[
                   {"type":"Field","id":"f1","name":"Amount","Field":{"fieldType":{"type":"NumberType"}}},
                   {"type":"Rule","id":"r0","name":"AmountRequired","Rule":{
                     "errorEntityRelPath":"Amount","errorCondition":"FieldFilled(Amount)",

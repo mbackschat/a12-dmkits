@@ -95,6 +95,22 @@ internal class TrackedFactBase private constructor(
     }
 
     /**
+     * [cursors] keyed by path, so [declarationAt] is a lookup rather than a scan.
+     *
+     * FIRST occurrence wins, because `firstOrNull` is the answer it replaces — the same rule, and the same
+     * reason, as `PreparedModel.resolvableByPath`. Measured: the scan was 29x growth over a 4x scale-up
+     * (2026-09-18), being linear per call and called once per declaration.
+     */
+    private val cursorsByPath: Map<String, TrackedDeclaration> by lazy {
+        val byPath = LinkedHashMap<String, TrackedDeclaration>(cursors.size)
+        cursors.forEach { cursor -> byPath.getOrPut(cursor.path) { cursor } }
+        byPath
+    }
+
+    /** The repeatable groups among [cursors], for the set questions that ask only about them. */
+    private val repeatableCursors: List<TrackedDeclaration> by lazy { cursors.filter { it.isRepeatableGroup } }
+
+    /**
      * The declaration at [path], or null when nothing declares it.
      *
      * Charges the set's SHAPE and not the found declaration's content, which is the split that matters: a
@@ -104,7 +120,7 @@ internal class TrackedFactBase private constructor(
      */
     fun declarationAt(path: String): TrackedDeclaration? {
         transcript.record(FactRead.DeclarationSetShape)
-        return cursors.firstOrNull { it.path == path }
+        return cursorsByPath[path]
     }
 
     /**
@@ -168,6 +184,21 @@ internal class TrackedFactBase private constructor(
     fun allDeclarations(): List<TrackedDeclaration> {
         transcript.record(FactRead.DeclarationSetShape)
         return cursors
+    }
+
+    /**
+     * The REPEATABLE groups the model declares, charged exactly as [allDeclarations] is.
+     *
+     * **A fifth member of the access vocabulary, and it exists for cost rather than for meaning.** A caller
+     * could filter [allDeclarations] and get the same list — that is what `crossedRepetitions` and
+     * `repeatableGroupPaths` did — but the filter is linear and both are asked per operand, so on an
+     * 800-program model they grew **16x and 39x** against the check's own 5.5x over a 4x scale-up (measured
+     * 2026-09-18). The charge is identical, so no cell key moves: the answer still depends on the set's shape
+     * and on nothing else.
+     */
+    fun repeatableGroups(): List<TrackedDeclaration> {
+        transcript.record(FactRead.DeclarationSetShape)
+        return repeatableCursors
     }
 
     /**
@@ -302,7 +333,7 @@ internal class TrackedDeclaration(
     fun declaredReference(): DeclaredReference? {
         transcript.record(FactRead.DeclarationContent(element.path))
         transcript.record(FactRead.DeclarationSetShape)
-        return model.declaredReferenceList.firstOrNull { it.declaredAt == element.path }
+        return model.declaredReferenceByPath[element.path]
     }
 
     /**

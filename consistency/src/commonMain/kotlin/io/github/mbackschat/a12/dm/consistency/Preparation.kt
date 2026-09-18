@@ -322,6 +322,26 @@ data class PreparedModel(
      * caller remember to hoist it — a rule no guard can enforce, and the reason the cubic arrived unnoticed.
      */
     internal val declaredReferenceList: List<DeclaredReference> by lazy { computeDeclaredReferences() }
+
+    /**
+     * [declaredReferenceList] keyed by the path that declares it, so a cursor's own reference is a lookup.
+     *
+     * **FIRST occurrence wins, because that is the answer it replaces** — `TrackedDeclaration.declaredReference`
+     * asked `firstOrNull`, and at a twinned path that hands the second twin the first's reference. The limit is
+     * named on that member and is deliberately not fixed here: changing which twin answers is a behaviour
+     * change, and this is not.
+     *
+     * **It is where the SECOND cost curve was, measured 2026-09-18.** The scan is per declaration and the list
+     * is the whole model's, so the check was quadratic again: `node --cpu-prof` put that one `firstOrNull` at
+     * **1 154 ms of an 800-program check, growing 19.5x against the check's own 5.5x** over the 4x scale-up —
+     * the largest single frame in the profile. The 2026-09-15 note above hoisted the WALK out of fifteen
+     * callers and left the per-caller LOOKUP linear, which is the same mistake one layer down.
+     */
+    internal val declaredReferenceByPath: Map<String, DeclaredReference> by lazy {
+        val byPath = LinkedHashMap<String, DeclaredReference>(declaredReferenceList.size)
+        declaredReferenceList.forEach { reference -> byPath.getOrPut(reference.declaredAt) { reference } }
+        byPath
+    }
 }
 
 /** Whether A12 drops this element before checking — see [PreparedModel.resolvableElements]. */

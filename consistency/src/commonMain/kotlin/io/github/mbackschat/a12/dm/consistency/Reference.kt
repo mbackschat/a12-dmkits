@@ -213,13 +213,15 @@ internal fun PreparedModel.crossedRepetitions(path: String): List<DeclaredElemen
 /**
  * The same walk through the read barrier; each group's repeatability charges its own declaration.
  *
- * [TrackedFactBase.allDeclarations], not `declarations()`, and the distinction is load-bearing rather than
+ * [TrackedFactBase.repeatableGroups], not `declarations()`, and the distinction is load-bearing rather than
  * stylistic: this asks which groups the MODEL repeats above a path, so under a scoped pass `declarations()`
  * would answer with the one declaration the pass is about and report that the path crosses nothing. Measured
- * 2026-09-18 — three families invented a verdict through exactly this reading.
+ * 2026-09-18 — three families invented a verdict through exactly this reading. It charges the set's shape
+ * exactly as `allDeclarations` does; what the narrower accessor saves is the linear filter, which this call
+ * pays per operand.
  */
-internal fun TrackedFactBase.crossedRepetitions(path: String): List<TrackedDeclaration> = allDeclarations()
-    .filter { it.isRepeatableGroup && path.startsWith("${it.path}/") }
+internal fun TrackedFactBase.crossedRepetitions(path: String): List<TrackedDeclaration> = repeatableGroups()
+    .filter { path.startsWith("${it.path}/") }
     .sortedBy { it.path.length }
 
 /**
@@ -250,12 +252,11 @@ private fun PreparedModel.repeatableGroupPaths(): List<String> = elements
     .filter { it.isRepeatableGroup }
     .map { it.path }
 
-// The whole model's repeatable groups: a SET question, so it reads through [TrackedFactBase.allDeclarations]
-// and never narrows with a scoped pass. Under `declarations()` a scoped pass saw an empty level list and
-// `addressedTargetIn` then handed back a target it used to refuse (measured 2026-09-18).
-private fun TrackedFactBase.repeatableGroupPaths(): List<String> = allDeclarations()
-    .filter { it.isRepeatableGroup }
-    .map { it.path }
+// The whole model's repeatable groups: a SET question, so it reads through
+// [TrackedFactBase.repeatableGroups] and never narrows with a scoped pass. Under `declarations()` a scoped
+// pass saw an empty level list and `addressedTargetIn` then handed back a target it used to refuse
+// (measured 2026-09-18).
+private fun TrackedFactBase.repeatableGroupPaths(): List<String> = repeatableGroups().map { it.path }
 
 /**
  * The resolved paths [written] stars, or null when a star lands anywhere but on a repeatable group.

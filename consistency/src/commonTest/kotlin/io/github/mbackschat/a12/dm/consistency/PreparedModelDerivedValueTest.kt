@@ -3,6 +3,7 @@ package io.github.mbackschat.a12.dm.consistency
 import kotlin.test.Test
 import kotlin.test.assertIs
 import kotlin.test.assertSame
+import kotlin.test.assertTrue
 
 /**
  * A value derived from the whole model is computed ONCE per model, not once per cell that reads it.
@@ -43,8 +44,34 @@ class PreparedModelDerivedValueTest {
         val prepared = prepare(admit(ModelSource(MODEL)) as Admission.Admitted)
 
         assertSame(prepared.resolvableByPath, prepared.resolvableByPath, "resolvableByPath is rebuilt per call")
+        assertSame(prepared.declaredReferenceByPath, prepared.declaredReferenceByPath,
+            "declaredReferenceByPath is rebuilt per call, which is the quadratic scan it replaced")
         assertSame(prepared.bodiesByPath, prepared.bodiesByPath, "bodiesByPath is rebuilt per call")
         assertSame(prepared.rowsByPath, prepared.rowsByPath, "rowsByPath is rebuilt per call")
+    }
+
+    /**
+     * The fact base's own indexes, which are per CHECK rather than per model — same contract, different owner.
+     *
+     * `repeatableGroups` is charged on every call like `allDeclarations`, so what is locked here is only that
+     * the LIST is handed out rather than refiltered: the charge is what a cell is keyed on and must not be
+     * memoized away, while the filter is what grew 39x over a 4x scale-up.
+     */
+    @Test
+    fun theFactBasesRepeatableListIsHandedOutAndStillChargedOnEveryCall() {
+        val prepared = prepare(admit(ModelSource(MODEL)) as Admission.Admitted)
+        val transcript = ReadTranscript()
+        val base = TrackedFactBase(prepared, transcript)
+
+        val first = base.repeatableGroups()
+        val second = base.repeatableGroups()
+
+        assertTrue(first.isNotEmpty(), "the fixture must declare a repeatable group, or this locks nothing")
+        assertSame(first, second, "the repeatable list is refiltered per call")
+        assertTrue(
+            FactRead.DeclarationSetShape in transcript.observed(),
+            "the shape was not charged, so a cell could survive an edit that added a repeating group",
+        )
     }
 
     private companion object {
@@ -55,7 +82,7 @@ class PreparedModelDerivedValueTest {
               {"type":"Group","id":"g0","name":"Basket","Group":{"elements":[
                 {"type":"Field","id":"f0","name":"Sku","Field":{"fieldType":{"type":"StringType"}}},
                 {"type":"Field","id":"f1","name":"Quantity","Field":{"fieldType":{"type":"NumberType"}}},
-                {"type":"Group","id":"g1","name":"Lines","Group":{"repeatable":true,"elements":[
+                {"type":"Group","id":"g1","name":"Lines","Group":{"repeatability":5,"elements":[
                   {"type":"Field","id":"f2","name":"Amount","Field":{"fieldType":{"type":"NumberType"}}}
                 ]}}
               ]}}
