@@ -52,6 +52,9 @@ class FamilyCellReuseTest {
     private class Checked(val cells: CheckCells, private val keys: List<CellKey>) {
         /** Every key [family] owns — one for a model-wide family, one per declaration for the others. */
         fun keysOf(family: CheckFamily) = keys.filter { family in it.producer.completes }
+
+        /** Every PER-DECLARATION key, whatever family owns it — the denominator a narrowness row needs. */
+        fun perDeclarationKeys() = keys.filter { it.at != null }
     }
 
     private fun checked(condition: String, tierFilter: String = ""): Checked {
@@ -116,10 +119,39 @@ class FamilyCellReuseTest {
         // …and the registration control, without which every row above passes on a family that never moved:
         // asked once per model, a family owns ONE cell, so `keys.size != declarations` would be the only
         // failure and the two interesting assertions would never be reached.
-        val perDeclaration = CHECK_PRODUCERS.filterIsInstance<CheckProducer.PerDeclaration>()
+        // EITHER per-declaration arm, corrected 2026-09-18: filtering on [CheckProducer.PerDeclaration]
+        // alone, a family moved to the scoped walk would drop out of this row's coverage while still
+        // passing it — the control would read as green for a family it no longer measures.
+        val perDeclaration = CHECK_PRODUCERS.filterNot { it is CheckProducer.ModelWide }
             .flatMap { it.completes }
         assertEquals(emptyList(), MIGRATED.filterNot { it in perDeclaration },
             "a family this row measures per declaration is no longer registered that way")
+    }
+
+    /**
+     * The narrowness claim over ALL sixty per-declaration families, not the four the row above names.
+     *
+     * The per-family row asserts an EQUALITY — fell exactly at the edit and its ancestor — and that only
+     * holds for a family which reads the edited rule's text; a field-scoped family reads no rule body and
+     * correctly falls nowhere, so the equality cannot be generalized. What generalizes is the subset: a cell
+     * at a declaration that is neither edited nor an ancestor of the edit must survive. That is the property
+     * the aggregate counters cannot see — they can tell you 444 of 518 were reused and not WHICH 444 (cold
+     * review, 2026-09-18, where "shown per family" covered 4 of 60).
+     */
+    @Test
+    fun noPerDeclarationCellFallsAtADeclarationTheEditCannotReach() {
+        val baseline = checked("FieldFilled(Code)")
+        val edited = prepared("FieldFilled(Code) And FieldFilled(Tier)")
+
+        val fallen = baseline.perDeclarationKeys().filter { baseline.cells.validIn(edited, it) == null }
+
+        assertEquals(emptyList(), fallen.filterNot { it.at?.path in EDIT_TOUCHES }.map {
+            "${it.producer.completes} @${it.at?.path}"
+        }, "a per-declaration cell fell at a declaration the edit neither touched nor contains")
+        // Non-vacuity, and in the direction that matters: a store refusing nothing would pass the assertion
+        // above trivially. Something must fall at the edited rule itself.
+        assertTrue(fallen.any { it.at?.path == "/Order/CodeRequired" },
+            "nothing fell at the edited declaration, so this row is measuring a store that reuses everything")
     }
 
     @Test
@@ -211,10 +243,40 @@ class FamilyCellReuseTest {
         assertEquals(cellCount(), families.recomputed, "so every cell was produced")
     }
 
-    /** How many cells one check of the fixture schedules — the denominator the counters must add up to. */
+    /**
+     * How many cells one check of the fixture schedules — the denominator the counters must add up to.
+     *
+     * Derived from a freshly prepared copy of the same fixture rather than from the snapshot under test,
+     * which is a coupling a reader should see: the two agree because both build the identical JSON, and the
+     * row below states the product this number IS so that the agreement is not the only thing holding it up.
+     */
     private fun cellCount() = schedule(
         TrackedFactBase(prepared("FieldFilled(Code)"), ReadTranscript()),
     ).size
+
+    /**
+     * The product the published reuse figures are derived from, so the arithmetic cannot rot silently.
+     *
+     * `docs/CONSISTENCY-API.md` and the implementation plan publish cell counts for an eight-declaration
+     * model — `38 + 60 × 8 = 518` on the day they were written. The FIGURES are dated evidence and move with
+     * the registry; the FORM does not, and it is the form that makes them re-derivable: one cell per
+     * model-wide producer plus one per per-declaration producer per declaration. Re-derive a current figure
+     * with `./build.sh :consistency:jvmTest` and this row's own terms.
+     */
+    @Test
+    fun theCellDenominatorIsTheProductThePublishedFiguresAreDerivedFrom() {
+        val declarations = prepared("FieldFilled(Code)").elements.size
+        val modelWide = CHECK_PRODUCERS.count { it is CheckProducer.ModelWide }
+        val perDeclaration = CHECK_PRODUCERS.count { it !is CheckProducer.ModelWide }
+
+        assertEquals(modelWide + perDeclaration * declarations, cellCount(),
+            "one cell per model-wide producer plus one per declaration for the rest — $modelWide + " +
+                "$perDeclaration x $declarations; a schedule that stopped obeying this makes every published " +
+                "reuse figure unreadable")
+        assertTrue(perDeclaration > modelWide,
+            "most producers are per-declaration today, which is what the published figures are ABOUT; " +
+                "$perDeclaration per declaration against $modelWide model-wide")
+    }
 
     private companion object {
         const val TIER = "/Order/Tier"
