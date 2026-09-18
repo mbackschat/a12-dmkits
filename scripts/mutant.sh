@@ -104,6 +104,21 @@ if old not in t:
              f"        unapplied mutant reports SURVIVED, which reads as a finding. Text was:\n          {old[:160]}")
 if old == new:
     sys.exit("mutant: old and new text are identical — that mutant tests nothing")
+# An AMBIGUOUS anchor is the same defect one step along, and it hides better: `replace(..., 1)` takes the
+# FIRST occurrence, so the mutation lands on a site you did not mean, the control has no reason to catch it,
+# and the run reports SURVIVED — which reads as a finding about your test rather than about your anchor.
+# Measured 2026-09-18: `resolvableElements.forEach { element ->` matched both the by-path index and the
+# short-name index in Preparation.kt, mutated the wrong one, and reported a control gap that did not exist.
+hits = t.count(old)
+if hits != 1:
+    # Offsets, not line comparison: the second site is usually a PREFIX match (the anchor's line plus a
+    # suffix), which a line-equality scan misses — so it would report "2 occurrences" and name one line.
+    at, offsets = -1, []
+    while (at := t.find(old, at + 1)) != -1:
+        offsets.append(t.count("\n", 0, at) + 1)
+    sys.exit(f"mutant: the text to replace appears {hits} times in {path}, so this would mutate the FIRST\n"
+             f"        one and report a verdict about the wrong site. Extend the anchor until it is unique —\n"
+             f"        another line of context is usually enough. It starts at lines: {offsets[:8]}")
 p.write_text(t.replace(old, new, 1))
 PY
 
