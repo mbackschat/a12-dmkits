@@ -21,6 +21,31 @@
 > enforcement, and its place in the docs router. The cleaner boundary is by AUTHOR, not by subject — `perf-results/`
 > is machine-written and self-pruning, this is hand-written and guard-verified.
 
+### Checkpoint 2026-09-18 — H4's memory and delivered-size halves, measured against the pre-plan checkout: no regression on either
+
+**H4 asks that the plan preserve the interpreter's latency, MEMORY and DELIVERED SIZE; latency was settled in the checkpoint below and these are the other two.** Both are byte quantities rather than durations, so neither needs a quiet machine and neither carries the timing caveats that entry does. Comparand is the `../a12-rulekit-measure` checkout at `ad4d5ff64`, main at `ae1c83599`, both at project version `0.13.0` so the asset names line up.
+
+**Delivered size: +11 825 bytes over 18 assets, +0.079 % of the total.** Both trees ran `:interpreter:generateInterpreterReleaseChecksums` and every asset named in the resulting `SHA256SUMS` was measured with `stat -f%z`. Eleven of the eighteen are byte-identical; the seven that moved are below, and the worst single row is +0.407 % against NFR #1's 5 % per-row allowance.
+
+| asset | `ad4d5ff64` | `ae1c83599` | delta |
+|---|---|---|---|
+| `npm/a12-interpreter-0.13.0.tgz` | 1 309 002 | 1 311 139 | +2 137 (+0.163 %) |
+| `dm-interpreter-jvm-0.13.0.jar` | 1 696 422 | 1 697 475 | +1 053 (+0.062 %) |
+| `dm-interpreter-js-0.13.0.klib` | 1 819 531 | 1 821 443 | +1 912 (+0.105 %) |
+| `dm-interpreter-0.13.0.jar` | 147 679 | 148 264 | +585 (+0.396 %) |
+| the three `-sources.jar`, summed | 1 530 859 | 1 536 997 | +6 138 (+2 046 each, +0.394 %/+0.402 %/+0.407 %) |
+| **total** | **14 993 093** | **15 004 918** | **+11 825 (+0.079 %)** |
+
+**Retained and allocated heap: 24 rows, worst +0.577 %, no row over the allowance.** Five independent `footprintJvmFork*` workers per tree at a fixed 512 MiB heap under `-XX:+UseSerialGC`, `-PfootprintScales=200,400,800,1600 -PfootprintWarmup=2 -PfootprintRepetitions=3`, median across the five forks per (scenario, scale, metric). Three scenarios × four scales × {retained, allocated} = 24 rows; 17 of them improved.
+
+| scenario | retained, worst row | allocated, worst row |
+|---|---|---|
+| `simple-validation` | +0.533 % at 400 | +0.227 % at 400 |
+| `equality-correlation` | +0.017 % at 800 | −0.306 % at 1600 (best −4.697 % at 800) |
+| `compute-overlay` | +0.577 % at 200 | −0.074 % at 200 |
+
+**Two limits on this reading, stated rather than left for a reader to find.** The comparand `ad4d5ff64` is an ANCESTOR of H4's named restart baseline `c8e3b997`, with one interpreter production commit between them, so this measures a superset window — conservative for a no-regression claim, but not literally the commit the NFR names. And the **Node carrier was not measured at all**: `scripts/interpreter-footprint.sh` runs five Node workers beside the five JVM ones, and `kotlinNpmInstall` cannot resolve yarn packages on a machine with no outbound network (verified with and without the tool sandbox — `registry.yarnpkg.com` times out either way). The JVM forks depend only on `jvmTestClasses`, which is why that half ran. The Node half is owed and is a run, not a decision.
+
 ### Checkpoint 2026-09-18 — the portable-consistency plan took NO interpreter measurement, and closing that gap cost one false regression
 
 **The hypothesis was that the plan regressed the interpreter, and it is refuted.** The plan ran 2026-09-11 → 2026-09-18 under NFR #1 ("the interpreter's performance is never compromised", 5 % per row against restart baseline `c8e3b997`, and **missing or inconclusive evidence fails rather than passes**) — and `perf-results/darwin-aarch64/` jumps from `2026-08-24` straight to today. Seven days of work, no interpreter evidence, against a requirement whose own clause says silence fails. That gap is the finding; the refutation below is what closing it produced.
