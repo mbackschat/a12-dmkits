@@ -298,7 +298,7 @@ tasks.register('leakGuardTest', Test) {
         // can see it. Both sides are read off source, so a new family's set arrives in the scan on its own.
         includeTestsMatching 'io.github.mbackschat.a12.dm.CheckerFieldTypeTokenGuardTest'
         // Same derived-denominator reason, on a COST class the instrument that found it cannot see: a CPU
-        // profile names its hottest frames, so three quadratic path scans surfaced and 29 siblings of the
+        // profile ranks frames by self time, so five quadratic path scans surfaced and 29 siblings of the
         // identical shape did not. The denominator is every checker source, and the site that re-opens the
         // class is the one a new family writes without knowing the memoized index exists.
         includeTestsMatching 'io.github.mbackschat.a12.dm.CheckerPathLookupGuardTest'

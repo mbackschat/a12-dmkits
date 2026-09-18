@@ -10,6 +10,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Stream;
 
@@ -20,10 +21,10 @@ import org.junit.jupiter.api.Test;
  *
  * <p><b>The defect class this closes, and why a guard rather than a review.</b> {@code allDeclarations()}
  * hands back every declaration the model holds, and the families are dispatched PER DECLARATION — so a
- * {@code firstOrNull} over that list, asked once per declaration, is quadratic in declarations. Three such
- * sites were found by a CPU profile on 2026-09-18 and closed by memoized indexes; a source sweep the same day
- * then found <b>29 more of the identical shape</b> that the profile had not named, because a profile names
- * only its hottest frames and this cost is spread thin across 63 call sites. That is the whole argument for
+ * {@code firstOrNull} over that list, asked once per declaration, is quadratic in declarations. Five such
+ * frames were found by a CPU profile on 2026-09-18 and closed by three memoized indexes; a source sweep the
+ * same day then found <b>29 more of the identical shape</b> that the profile had not named, because a profile
+ * ranks frames by self time and this cost is spread thin across 63 call sites. That is the whole argument for
  * scanning: the class is invisible to the instrument that found its first members, and a new family writing
  * the natural-looking idiom re-opens it silently.
  *
@@ -31,34 +32,67 @@ import org.junit.jupiter.api.Test;
  * reads {@code cursorsByPath}, built over the same {@code cursors} list with {@code getOrPut} — so FIRST
  * occurrence wins, which is precisely what {@code firstOrNull} returns. Declaration paths CAN collide (a
  * model declaring two members of one parent under one name draws {@code CK_MODEL_NOT_BUILDABLE}, and the
- * checker keeps judging it), and the two forms agree even there. Both accessors charge
- * {@code FactRead.DeclarationSetShape}, so no cell key moves either.
+ * checker keeps judging it), and the two forms agree even there — locked by
+ * {@code DeclarationAtContractTest}, because the first-wins rule is a choice a later refactor could reverse
+ * without any test noticing, as a cold review proved by mutation.
  *
  * <p><b>What it deliberately does NOT flag: a COMPOUND predicate.</b>
  * {@code firstOrNull } with {@code it.path == p && it.declaredKind == FIELD} is <i>not</i>
  * {@code declarationAt(p)} filtered by kind — on a collided path whose first member is a group and second a
  * field, the scan finds the field while the lookup finds the group and rejects it. Those sites are a separate
- * question with a reachability answer owed first, so this guard holds the line only where equivalence is
- * provable. Flagging them would push a session into a rewrite that changes verdicts.
+ * question, and this guard holds the line only where equivalence is provable. Flagging them would push a
+ * session into a rewrite that changes verdicts.
  *
- * <p><b>Why the lambda is brace-balanced in code instead of matched by one regex.</b> The first version of
- * this guard used a character class to end the predicate, and a Kotlin string-template operand
- * ({@code it.path == } a template interpolating a path) closed it early — so a compound predicate was
- * reported as a bare one, which is precisely the false positive that would drive the verdict-changing
- * rewrite. Balancing the braces cannot make that mistake, and the controls below now include a template
- * operand because the ones that passed while the regex was wrong did not.
+ * <p><b>Nor does it flag a scan of the UNTRACKED element list.</b> {@code declarationAt} is a member of the
+ * read barrier, so it is not available to code holding a {@code PreparedModel} — {@code CheckDraft} scans
+ * {@code elements} by path legitimately. The subject here is the barrier's accessor, which is why a match
+ * must have {@code allDeclarations()} in the same statement.
+ *
+ * <p><b>Three spellings a cold review defeated the first version with, all now covered.</b> It matched only
+ * an implicit {@code it}, only {@code it.path} on the left, and only a scan textually adjacent to the
+ * accessor — so a named lambda parameter, reversed operands, and an interposed {@code let} each re-opened the
+ * class with the guard green. The named-parameter form is not contrived: four predicates in the checker
+ * already spell {@code candidate ->}. The first version also matched the shape inside a KDoc, which matters
+ * because this repository documents the rejected idiom next to the accessor it belongs to; comments are
+ * blanked through {@link SourceText#uncommented(Path)} before anything is matched.
  */
 class CheckerPathLookupGuardTest {
 
     private static final Path CHECKER = Path.of(
             "consistency/src/commonMain/kotlin/io/github/mbackschat/a12/dm/consistency");
 
-    /** The call whose lambda is then read by balancing braces rather than by a character class. */
+    /** The barrier accessor whose result must not be searched by path. */
+    private static final String ACCESSOR = "allDeclarations()";
+
+    /**
+     * Every operator that answers "the one where …" — not just the two the first version knew. A scan spelled
+     * with any of them is the same cost and the same rewrite.
+     */
     private static final Pattern SCANNING_CALL = Pattern.compile(
-            "allDeclarations\\(\\)\\s*\\.\\s*(?:firstOrNull|find)\\s*\\{");
+            "\\.\\s*(?:firstOrNull|find|first|single|singleOrNull|last|lastOrNull|indexOfFirst)\\s*\\{");
+
+    /** {@code name ->}, when the lambda names its parameter instead of taking {@code it}. */
+    private static final Pattern NAMED_PARAMETER = Pattern.compile("^([A-Za-z_]\\w*)\\s*->\\s*(.*)$");
+
+    /**
+     * How far back the accessor may sit for the scan to count as searching ITS result.
+     *
+     * A bounded window rather than a parse: the scan can be inside a lambda whose receiver is the accessor
+     * ({@code allDeclarations().let { all -> all.firstOrNull { … } }}), which no backward walk of the
+     * receiver chain finds, because the scan's own receiver is a local. Both directions are controlled below
+     * — the interposed form must be caught, and a scan of the untracked {@code elements} must be spared.
+     */
+    private static final int STATEMENT_WINDOW = 240;
 
     /** Below this the scan is not reading the checker, whatever it reports. */
     private static final int SOURCE_FLOOR = 100;
+
+    /**
+     * Below this the scan is not reading the accessor's CALL sites, which is the subject rather than the
+     * tree. The live count is 34 call sites (2026-09-18); the accessor's own declaration is deliberately not
+     * one of them, because a walk that reached only the file declaring it would otherwise report clean.
+     */
+    private static final int CALL_SITE_FLOOR = 20;
 
     @Test
     void aLookupByPathUsesTheMemoizedIndexRatherThanScanningEveryDeclaration() {
@@ -69,87 +103,121 @@ class CheckerPathLookupGuardTest {
                         + ", so this scan proves nothing — a floor refuses an empty read that reports clean");
 
         var offenders = new ArrayList<String>();
-        var sawTheAccessor = false;
+        var callSites = 0;
         for (var source : sources) {
-            var text = read(source);
-            if (text.contains("allDeclarations()")) {
-                sawTheAccessor = true;
-            }
-            for (var body : scanningLambdas(text)) {
-                if (isBarePathEquality(body.predicate())) {
-                    offenders.add(source.getFileName() + ":" + lineOf(text, body.at()) + "  { "
-                            + body.predicate() + " }");
-                }
+            var text = uncommented(source);
+            callSites += callSitesIn(text);
+            for (var found : barePathScans(text)) {
+                offenders.add(source.getFileName() + ":" + lineOf(text, found.at()) + "  { "
+                        + found.predicate() + " }");
             }
         }
 
-        // Independent of the offender list: a scan whose subject token is absent is a scan of the wrong tree,
-        // and it would report clean. This is the half the offender assertion cannot check.
-        assertTrue(sawTheAccessor, "no checker source mentions allDeclarations(), so this scanned the wrong tree");
+        // Independent of the offender list, and about the SUBJECT rather than the tree: a scan that saw no
+        // call site is a scan of the wrong thing, and it would report clean. Counting the declaration would
+        // defeat the point, so it is excluded.
+        assertTrue(
+                callSites >= CALL_SITE_FLOOR,
+                "found only " + callSites + " call sites of " + ACCESSOR + " outside its own declaration, so "
+                        + "this did not read the families it exists to scan");
 
         assertEquals(
                 List.of(),
                 offenders,
                 offenders.size() + " lookup(s) by path scan every declaration instead of using the memoized "
-                        + "index. Replace `allDeclarations().firstOrNull { it.path == X }` with "
+                        + "index. Replace `" + ACCESSOR + ".firstOrNull { it.path == X }` with "
                         + "`declarationAt(X)` — same answer on every input including a collided path, same "
-                        + "DeclarationSetShape charge, and a map lookup rather than a scan the dispatcher "
-                        + "repeats once per declaration:\n  " + String.join("\n  ", offenders));
+                        + "charge, and a map lookup rather than a scan the dispatcher repeats once per "
+                        + "declaration:\n  " + String.join("\n  ", offenders));
     }
 
     /**
      * The reader itself, on fabricated text — because a reader that finds nothing reports every tree clean,
      * and that failure is indistinguishable from success on the live sources.
+     *
+     * <p>Every row below is a spelling that was live at some point in this guard's own history, or a shape it
+     * must spare. The three it once missed and the two false positives it once produced are marked.
      */
     @Test
-    void theReaderFindsTheBareShapeAndSparesTheCompoundOne() {
-        assertTrue(
-                isBareIn("val t = allDeclarations().firstOrNull { it.path == target }"),
-                "the reader does not find the shape it exists to find, so a clean report means nothing");
-        assertTrue(
-                isBareIn("allDeclarations().firstOrNull { it.path == targets.first() }"),
-                "a call-expression operand is the same bare shape and must be caught");
-        assertTrue(
-                isBareIn("allDeclarations().firstOrNull {\n        it.path == wrapped\n    }"),
-                "a wrapped lambda is the same shape and must be caught");
-        assertFalse(
-                isBareIn("allDeclarations().firstOrNull { it.path == p && it.declaredKind == FIELD }"),
+    void theReaderFindsEverySpellingOfTheBareShapeAndSparesTheRest() {
+        // The canonical form.
+        assertTrue(bareScanIn("val t = allDeclarations().firstOrNull { it.path == target }"));
+        assertTrue(bareScanIn("allDeclarations().firstOrNull { it.path == targets.first() }"),
+                "a call-expression operand is the same bare shape");
+        assertTrue(bareScanIn("allDeclarations().firstOrNull {\n        it.path == wrapped\n    }"),
+                "a wrapped lambda is the same shape");
+        assertTrue(bareScanIn("allDeclarations().firstOrNull { it.path == \"${group.path}/$name\" }"),
+                "a template operand on a genuinely bare predicate must still be caught");
+
+        // MISSED by the first version — a cold review's three surviving mutants.
+        assertTrue(bareScanIn("allDeclarations().firstOrNull { candidate -> candidate.path == path }"),
+                "a named lambda parameter is the same shape, and four checker predicates already spell it");
+        assertTrue(bareScanIn("allDeclarations().firstOrNull { path == it.path }"),
+                "reversed equality operands are the same shape");
+        assertTrue(bareScanIn("allDeclarations().let { all -> all.firstOrNull { it.path == path } }"),
+                "an interposed let still searches the accessor's result");
+        assertTrue(bareScanIn("allDeclarations().single { it.path == path }"),
+                "the operator set must cover more than firstOrNull and find");
+
+        // Must be SPARED.
+        assertFalse(bareScanIn("allDeclarations().firstOrNull { it.path == p && it.declaredKind == FIELD }"),
                 "a compound predicate is NOT equivalent to declarationAt and must not be flagged");
         assertFalse(
-                isBareIn("allDeclarations().firstOrNull { it.path == \"${group.path}/$name\""
+                bareScanIn("allDeclarations().firstOrNull { it.path == \"${group.path}/$name\""
                         + " && it.declaredKind == FIELD }"),
-                "a string-template operand closed the FIRST version of this reader early, turning a compound "
-                        + "predicate into a reported bare one — the false positive this control exists for");
-        assertTrue(
-                isBareIn("allDeclarations().firstOrNull { it.path == \"${group.path}/$name\" }"),
-                "a template operand on a genuinely bare predicate must still be caught");
-        assertFalse(
-                isBareIn("allDeclarations().firstOrNull { it.path.startsWith(prefix) }"),
-                "a prefix test is not a lookup by path and has no declarationAt equivalent");
-        assertFalse(
-                isBareIn("declarationAt(target)"),
+                "a string-template operand closed the FIRST version's character class early, turning a "
+                        + "compound predicate into a reported bare one");
+        assertFalse(bareScanIn("val element = elements.firstOrNull { it.path == at }"),
+                "a scan of the UNTRACKED element list has no declarationAt to reach — CheckDraft does this");
+        assertFalse(bareScanIn("allDeclarations().firstOrNull { it.path.startsWith(prefix) }"),
+                "a prefix test is not a lookup by path");
+        assertFalse(bareScanIn("declarationAt(target)"),
                 "the replacement must not match, or the guard could never go green");
     }
 
-    private static boolean isBareIn(String source) {
-        return scanningLambdas(source).stream().anyMatch(found -> isBarePathEquality(found.predicate()));
+    /** Comments are blanked before matching, so prose about the idiom is not a call site. */
+    @Test
+    void theShapeInsideACommentIsNotACallSite() {
+        var prose = "/** Never allDeclarations().firstOrNull { it.path == p } here. */\nval x = 1\n";
+
+        // The positive half first, or the row below passes on a reader that finds nothing anywhere.
+        assertTrue(bareScanIn(prose), "the raw text does contain the shape, or this row proves nothing");
+
+        assertEquals(
+                List.of(),
+                barePathScans(SourceText.uncommentedFragment(prose, true)).stream().map(Found::predicate)
+                        .toList(),
+                "blanking comments must leave nothing to flag, because this repository documents the "
+                        + "rejected idiom next to the accessor it belongs to");
     }
 
-    /** One {@code allDeclarations()} search call: where it starts, and its whole predicate on one line. */
-    private record ScanningLambda(int at, String predicate) {}
+    private static boolean bareScanIn(String source) {
+        return !barePathScans(source).isEmpty();
+    }
 
-    private static List<ScanningLambda> scanningLambdas(String text) {
-        var found = new ArrayList<ScanningLambda>();
+    /** One offending scan: where it starts, and its whole predicate on one line. */
+    private record Found(int at, String predicate) {}
+
+    private static List<Found> barePathScans(String text) {
+        var found = new ArrayList<Found>();
         var matcher = SCANNING_CALL.matcher(text);
         while (matcher.find()) {
             int open = matcher.end() - 1;
             int close = closingBrace(text, open);
-            if (close > open) {
-                found.add(new ScanningLambda(
-                        matcher.start(), text.substring(open + 1, close).trim().replaceAll("\\s+", " ")));
+            if (close <= open || !searchesTheAccessor(text, matcher.start())) {
+                continue;
+            }
+            var predicate = text.substring(open + 1, close).trim().replaceAll("\\s+", " ");
+            if (isBarePathEquality(predicate)) {
+                found.add(new Found(matcher.start(), predicate));
             }
         }
         return found;
+    }
+
+    /** Whether the accessor sits close enough before [at] for this scan to be searching its result. */
+    private static boolean searchesTheAccessor(String text, int at) {
+        return text.substring(Math.max(0, at - STATEMENT_WINDOW), at).contains(ACCESSOR);
     }
 
     /**
@@ -172,9 +240,48 @@ class CheckerPathLookupGuardTest {
         return -1;
     }
 
-    /** A path equality and nothing else — no second conjunct, which is where equivalence would end. */
+    /**
+     * A path equality and nothing else, whichever side the path sits on and whatever the parameter is called.
+     *
+     * A second conjunct is where equivalence ends, so {@code &&} and {@code ||} disqualify outright rather
+     * than being parsed.
+     */
     private static boolean isBarePathEquality(String predicate) {
-        return predicate.startsWith("it.path ==") && !predicate.contains("&&") && !predicate.contains("||");
+        if (predicate.contains("&&") || predicate.contains("||")) {
+            return false;
+        }
+        var parameter = "it";
+        var body = predicate;
+        Matcher named = NAMED_PARAMETER.matcher(predicate);
+        if (named.matches()) {
+            parameter = named.group(1);
+            body = named.group(2);
+        }
+        var path = parameter + ".path";
+        int equals = body.indexOf("==");
+        if (equals < 0) {
+            return false;
+        }
+        var left = body.substring(0, equals).trim();
+        var right = body.substring(equals + 2).trim();
+        return (left.equals(path) && !right.isEmpty()) || (right.equals(path) && !left.isEmpty());
+    }
+
+    /** Call sites of the accessor, excluding the line that declares it. */
+    private static int callSitesIn(String text) {
+        var sites = 0;
+        int from = 0;
+        while (true) {
+            int at = text.indexOf(ACCESSOR, from);
+            if (at < 0) {
+                return sites;
+            }
+            int lineStart = text.lastIndexOf('\n', at) + 1;
+            if (!text.substring(lineStart, at).contains("fun ")) {
+                sites++;
+            }
+            from = at + ACCESSOR.length();
+        }
     }
 
     private static List<Path> checkerSources() {
@@ -188,9 +295,9 @@ class CheckerPathLookupGuardTest {
         }
     }
 
-    private static String read(Path source) {
+    private static String uncommented(Path source) {
         try {
-            return Files.readString(source);
+            return SourceText.uncommented(source);
         } catch (IOException failure) {
             throw new UncheckedIOException("cannot read " + source, failure);
         }
