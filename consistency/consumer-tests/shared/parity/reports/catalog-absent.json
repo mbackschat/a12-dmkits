@@ -2,6 +2,7 @@
   "modelId": "catalog-reference-absent",
   "status": "INVALID",
   "complete": false,
+  "outcome": "REJECTED",
   "findings": [
     {
       "code": "MVK_INVALID_ENTITY",

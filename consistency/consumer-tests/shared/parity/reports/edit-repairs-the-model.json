@@ -26,6 +26,7 @@
     "modelId": "storefront",
     "status": "INVALID",
     "complete": false,
+    "outcome": "REJECTED",
     "findings": [
       {
         "code": "MVK_INVALID_ENTITY",
@@ -178,6 +179,7 @@
     "modelId": "storefront",
     "status": "INCONCLUSIVE",
     "complete": false,
+    "outcome": "ALL_CHECKS_PASSED",
     "findings": [],
     "diagnostics": [],
     "checksCompleted": [

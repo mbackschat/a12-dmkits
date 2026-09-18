@@ -2,6 +2,7 @@
   "modelId": "catalog-reference-ambiguous",
   "status": "INVALID",
   "complete": false,
+  "outcome": "REJECTED",
   "findings": [
     {
       "code": "MVK_FIELDNAME_NOT_UNIQUE",

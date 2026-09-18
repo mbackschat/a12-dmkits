@@ -19,8 +19,10 @@ import kotlinx.serialization.json.put
  *
  * **Four rules the shape follows, each because a consumer would otherwise draw the wrong conclusion.**
  *
- * `status` is a string, never a boolean: a checker that cannot emit VALID by construction has three states to
- * report and a boolean can carry two. `checksCompleted` and `gaps` are always present, never omitted when
+ * `status` is a string, never a boolean, and `outcome` rides beside it as a second string because the two
+ * answer different questions: `status` is A12's verdict, where there is no VALID to report, while `outcome`
+ * is the checker's own classification and is the only place a PASS appears — `ALL_CHECKS_PASSED`, scoped to
+ * what this checker implements. A boolean could carry neither, and one field could not carry both. `checksCompleted` and `gaps` are always present, never omitted when
  * empty, because their absence and their emptiness mean opposite things — no family ran, against no gap
  * remains. `findings` and `diagnostics` stay separate arrays, because a finding is A12's verdict on a
  * declaration and a diagnostic is this checker saying it could not read something; folding them together is
@@ -43,6 +45,13 @@ private fun ConsistencyReport.asJson(): JsonObject = buildJsonObject {
     // `complete` false means coverage ran out, and the field exists so the distinction stays available when
     // `complete` starts carrying information.
     put("complete", status.complete)
+    // The CHECKER's own classification, published 2026-09-18 so a non-JVM consumer can read the scoped pass
+    // instead of re-deriving it. It had to be re-derived before, and a JSON consumer cannot: deciding
+    // ALL_CHECKS_PASSED needs the family DENOMINATOR, which no other member of this shape carries, so
+    // `ci-gate.mjs` could only ever compute the three outcomes that do not need it. Publishing the answer
+    // also retires a duplicated rule — that gate mirrored `outcome`'s logic in JavaScript with this
+    // function's owner named as the durable fix.
+    put("outcome", outcome.name)
     put("findings", JsonArray(findings.map { it.asJson() }))
     put("diagnostics", JsonArray(diagnostics.map { it.asJson() }))
     // A JSON array of what is a SET in the API, so the order must come from somewhere stable. The enum's own

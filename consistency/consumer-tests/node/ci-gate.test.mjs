@@ -48,11 +48,13 @@ const missingPath = join(scratch, 'never-written.dm.json');
 const partiallyReadablePath = write('storefront-malformed-declaration.dm.json',
   soundModel.replace('"elements": [', '"elements": [{ "type": "Field", "id": "/Storefront/Nameless" },'));
 
-test('a model with no rejection is reported, and is still not validated', () => {
+test('a sound model passes every check, and is still not A12-validated', () => {
   const result = runGate([soundPath]);
 
   assert.equal(result.exitCode, ExitCode.NO_REJECTION);
-  assert.equal(result.results[0].outcome, Outcome.NOT_ESTABLISHED);
+  assert.equal(result.results[0].outcome, Outcome.ALL_CHECKS_PASSED);
+  assert.equal(result.allChecksPassed.length, 1, 'the scoped pass is published per source');
+  assert.match(result.allChecksPassed[0].source, /storefront\.dm\.json$/);
   assert.deepEqual(result.rejected, []);
   // The whole point of the slice: passing the gate is not a validation claim, and the payload says so with
   // the checker's own reasons rather than leaving a consumer to infer it from an empty findings array.
@@ -75,7 +77,7 @@ test('a source the checker cannot admit is an operational failure, never a rejec
   const result = runGate([garbagePath]);
 
   assert.equal(result.exitCode, ExitCode.OPERATIONAL);
-  assert.equal(result.results[0].outcome, Outcome.UNREADABLE);
+  assert.equal(result.results[0].outcome, Outcome.NOT_ESTABLISHED);
   assert.deepEqual(result.rejected, [], 'nothing was checked, so nothing can be rejected');
   assert.match(result.operational[0].failure, /SOURCE_NOT_WELL_FORMED/);
   // And no family ran, which is the structural fact the classification keys on.
@@ -99,7 +101,10 @@ test('one unreadable DECLARATION does not make the whole run a tool failure', ()
   // diagnostic. Exiting 70 here would tell a CI job its tooling was broken when its model was merely partly
   // unreadable, and the author would go looking in the wrong place.
   assert.equal(result.exitCode, ExitCode.NO_REJECTION);
-  assert.equal(result.results[0].outcome, Outcome.NOT_ESTABLISHED);
+  // And it is not a PASS either, which is the other half: every family completed, so the family count alone
+  // would have called this clean while nothing had read the skipped declaration.
+  assert.equal(result.results[0].outcome, Outcome.NO_REJECTION);
+  assert.deepEqual(result.allChecksPassed, [], 'a skipped declaration is not a clean model');
   assert.deepEqual(result.operational, []);
   assert.ok(result.results[0].report.diagnostics.length > 0, 'the diagnostic is present, and is not a verdict');
   assert.ok(result.results[0].report.checksCompleted.length > 0, 'and families ran, which is what decides it');
@@ -119,10 +124,13 @@ test('a status this gate does not model fails closed rather than passing', () =>
   // Today's package cannot produce this report — the checker has no VALID state — so the classifier is
   // exercised directly. That is the point of the row: it locks how a gate pinned to THIS package would read
   // a report from a later one, and no library call can stage that.
-  assert.equal(classify({ status: 'VALID', checksCompleted: ['A'], findings: [] }), Outcome.UNRECOGNIZED);
-  assert.equal(classify({ status: 'INCONCLUSIVE', checksCompleted: ['A'] }), Outcome.NOT_ESTABLISHED);
-  assert.equal(classify({ status: 'INCONCLUSIVE', checksCompleted: [] }), Outcome.UNREADABLE);
-  assert.equal(classify({ status: 'INVALID', checksCompleted: ['A'] }), Outcome.REJECTED);
+  assert.equal(classify({ outcome: 'SOMETHING_NEWER' }), Outcome.UNRECOGNIZED);
+  assert.equal(classify({}), Outcome.UNRECOGNIZED, 'an older report with no outcome member fails closed too');
+  assert.equal(classify({ outcome: 'ALL_CHECKS_PASSED' }), Outcome.ALL_CHECKS_PASSED);
+  assert.equal(classify({ outcome: 'NO_REJECTION' }), Outcome.NO_REJECTION);
+  assert.equal(classify({ outcome: 'NOT_ESTABLISHED' }), Outcome.NOT_ESTABLISHED);
+  assert.equal(classify({ outcome: 'INVALID' }), Outcome.UNRECOGNIZED, 'a STATUS is not an outcome');
+  assert.equal(classify({ outcome: 'REJECTED' }), Outcome.REJECTED);
 });
 
 test('the gate re-encodes nothing: every per-source report is the library call verbatim', () => {

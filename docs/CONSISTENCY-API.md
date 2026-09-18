@@ -46,6 +46,7 @@ From Kotlin or Java on the JVM the same check is `check(ModelSource(json))`, ret
   "modelId": "storefront",
   "status": "INVALID",
   "complete": false,
+  "outcome": "REJECTED",
   "findings": [ … ],
   "diagnostics": [ … ],
   "checksCompleted": [ "DECLARED_REFERENCES", "CONDITION_REFERENCES", … ],
@@ -53,7 +54,9 @@ From Kotlin or Java on the JVM the same check is `check(ModelSource(json))`, ret
 }
 ```
 
-All seven keys are always present. An empty array and an absent key would mean opposite things — no gap remains, against nothing was disclosed — so nothing is omitted when empty, and an absent path is JSON `null` rather than a dropped key or `""`.
+All eight keys are always present. An empty array and an absent key would mean opposite things — no gap remains, against nothing was disclosed — so nothing is omitted when empty, and an absent path is JSON `null` rather than a dropped key or `""`.
+
+**`status` and `outcome` answer different questions and are both published for that reason.** `status` is A12's verdict, where there is no `VALID`; `outcome` is the checker's own classification and the only place a pass appears. A sound model reports `status: "INCONCLUSIVE"` with `outcome: "ALL_CHECKS_PASSED"`, which is the normal, honest pairing rather than a contradiction.
 
 ### `findings` — what A12 says about a declaration
 
@@ -232,20 +235,24 @@ The worked example is [`consistency/consumer-tests/node`](../consistency/consume
 
 That test is also the only thing in the build that can catch an unconsumable artifact. Every other test has the checker on the compile classpath by construction, and the JS target compiled green for the module's whole life while emitting nothing importable.
 
-### The CI gate — and why it has no pass YET
+### The CI gate — what it passes on, and what it still never claims
 
 [`ci-gate.mjs`](../consistency/consumer-tests/node/ci-gate.mjs) in that same project is a runnable pipeline step: `node ci-gate.mjs <sources…>` prints a structured result and exits `0`, `1` or `70`, reusing dmtool's own code contract ([CLI-SPEC](CLI-SPEC.md) §3b) rather than inventing a second numbering for the same three meanings.
 
 **Copy its shape rather than writing the obvious pipeline, because the obvious one is wrong.** "No findings, therefore green" is the silent pass this checker's report was designed to prevent, and a consumer who writes it will never be told. So the gate's payload carries `validated: false` with no code path that sets it true, and lists per source why nothing was validated. Exit `0` means *no rejection was found*, which is a weaker claim a CI job may still legitimately act on.
 
-> **The typed API now has a scoped pass and this gate does not yet, which is a real gap rather than a nuance.** `CheckOutcome.ALL_CHECKS_PASSED` is reachable from Kotlin; the gate classifies a **JSON payload** and so cannot call `outcome` at all — it re-derives its own verdict from `status` and `checksCompleted`, and the wire shape publishes no `outcome` and no family denominator for it to compare against. Giving the gate a pass therefore needs `outcome` published ON the report, which is the report-shape change `Outcome.kt` already names as the durable fix. Until then the four rows below are the gate's whole vocabulary, and `validated` stays constantly false.
+> **The gate reports the scoped pass since 2026-09-18, and `validated` still never becomes true.** Those are different claims and the payload carries both: `allChecksPassed` lists the sources where every implemented family ran and none rejected, while `validated` stays constantly `false` because it is about A12 validation, which no amount of the checker's own coverage establishes. A source that passed every check appears in `notValidated` too, with its gaps — not a contradiction, but the distance between the two claims, stated.
+>
+> **This is also where a duplicated rule went away.** The gate used to mirror `outcome`'s logic in JavaScript, because it holds JSON rather than a typed report; the report now publishes `outcome` and the gate reads it. That bought the one outcome the mirror could never compute — deciding `ALL_CHECKS_PASSED` needs the family denominator, which no member of the wire shape carries. **It also removed a name inversion**: the gate had called "families ran, none rejected" `NOT_ESTABLISHED` and "nothing was checked" `UNREADABLE`, which are the library's `NO_REJECTION` and `NOT_ESTABLISHED` — two identical words meaning opposite things across two surfaces of one product. The gate now uses the library's names, and keeps `UNREADABLE` only for the case the library has no value for: a file the gate itself could not open.
 
-| the gate's outcome | what the report looked like | what a job should do |
+| the gate's outcome | what the report carried | what a job should do |
 |---|---|---|
-| `REJECTED` | `status: INVALID` | fail the build, and show the codes that justify rejection |
-| `NOT_ESTABLISHED` | `INCONCLUSIVE`, families ran | proceed if your policy allows it, but never record it as validated |
-| `UNREADABLE` | `INCONCLUSIVE`, `checksCompleted` empty — or the file never reached the checker | fail the build as a TOOL failure; nothing was checked |
-| `UNRECOGNIZED` | a `status` this gate does not know | fail closed; a gate pinned to an older package must not read an unfamiliar status as a pass |
+| `REJECTED` | `outcome: REJECTED` | fail the build, and show the codes that justify rejection |
+| `ALL_CHECKS_PASSED` | `outcome: ALL_CHECKS_PASSED` | proceed — every implemented family ran and none rejected. Still not A12 validation; never record it as such |
+| `NO_REJECTION` | `outcome: NO_REJECTION` | proceed if your policy allows it, but this is weaker than the row above: the run was too narrow to pass, or a declaration went unread |
+| `NOT_ESTABLISHED` | `outcome: NOT_ESTABLISHED` — the checker could not admit the source | fail the build as a TOOL failure; nothing was checked |
+| `UNREADABLE` | no report at all: the gate could not open the file | fail the build as a TOOL failure. The library has no counterpart — this is the gate's own input failing |
+| `UNRECOGNIZED` | an `outcome` this gate does not know, or none at all | fail closed; a gate pinned to an older package must not read an unfamiliar value as a pass |
 
 **The operational test is `checksCompleted` being empty, never "a diagnostic arrived"** — the distinction a consumer is most likely to get wrong. A `DECLARATION_NOT_WELL_FORMED` diagnostic rides along with a fully completed run: one declaration could not be read and its siblings were checked anyway. Treating that as a tool failure would fail the build for the wrong reason and send the author looking in the wrong place, which is an over-rejection in the consumer rather than in the checker and lands on them just the same.
 

@@ -1,16 +1,20 @@
 // Slice G: a Node CI gate over model sources, built on nothing but the published package.
 //
-// **The problem this example exists to solve is that the checker CANNOT SAY VALID.** A CI job wants one bit —
-// may this land? — and `checkModelJson` answers with three states, because a checker whose coverage registry
-// is incomplete has no honest way to emit a pass. So the naive pipeline ("no findings, therefore green") is
-// precisely the silent-green defect the report shape was designed to prevent, and a consumer writing that
-// pipeline would never learn they had. This gate is what the shape asks for instead: it FAILS on what the
-// checker can establish, and it reports without ever claiming validation on what it cannot.
+// **The problem this example exists to solve is that "may this land?" and "is this model valid?" are
+// different questions.** A CI job wants the first, and the checker answers it: `ALL_CHECKS_PASSED` says every
+// family it implements ran and none rejected the model. It cannot answer the second, because its coverage of
+// A12 is incomplete. The naive pipeline ("no findings, therefore green") conflates them and is precisely the
+// silent-green defect the report shape was designed to prevent — a consumer writing it would never learn.
 //
-// `validated` is therefore a constant `false` and has no code path that sets it true — not an oversight, and
-// not a placeholder for one. When the coverage registry starts emitting a complete verdict, that is the day
-// this file gains a fifth outcome and the constant becomes a computation; until then a consumer reading
-// `validated` gets the truth rather than a hopeful default.
+// So this gate reports BOTH, and never lets one stand in for the other. `validated` is a constant `false`
+// with no code path that sets it true — not an oversight and not a placeholder — because that field is about
+// A12 validation, which no amount of the checker's own coverage establishes. `allChecksPassed` is the signal
+// a job may legitimately act on.
+//
+// *Amended 2026-09-18: this file previously said the checker "CANNOT SAY VALID" full stop, and that the day a
+// pass arrived would be the day the constant became a computation. Half of that was right. The scoped pass
+// arrived without the coverage registry, because it is a different and decidable claim — so the gate gained
+// the outcome and `validated` stayed constant, which is the distinction the original wording could not make.*
 //
 // It uses the library ONLY — no JVM, no dmtool subprocess, no network — which is the arrangement a Node CI
 // job actually has.
@@ -21,17 +25,26 @@ import { fileURLToPath } from 'node:url';
 import { checkModelJson } from 'a12-consistency';
 
 /**
- * What one source can come to. Four, because a CI job needs three different ACTIONS out of them and the
- * fourth is the one that keeps an older gate from misreading a newer report.
+ * What one source can come to. Six values collapsing to three ACTIONS, which is what a CI job needs: stop
+ * because a model is refused, stop because nothing was established, or proceed. The last two exist for
+ * reasons no outcome of the checker's own covers — a file this gate could not read, and a value a newer
+ * package reports that an older gate must not translate.
  */
 export const Outcome = Object.freeze({
   /** A12 rejects a declaration. The verdict is established, and it is a no. */
   REJECTED: 'REJECTED',
-  /** Families ran and found no rejection. This is NOT a pass — nothing was validated, only not refused. */
+  /**
+   * Every family the checker implements ran and none rejected the model — the one PASS, and it is scoped to
+   * the checker's coverage, never to A12 acceptance. See `validated` in the payload, which stays false.
+   */
+  ALL_CHECKS_PASSED: 'ALL_CHECKS_PASSED',
+  /** Some families ran and none rejected. NOT a pass — the run was too narrow to be one. */
+  NO_REJECTION: 'NO_REJECTION',
+  /** Nothing was checked: the checker could not admit the source. */
   NOT_ESTABLISHED: 'NOT_ESTABLISHED',
-  /** Nothing was checked: the file did not reach the checker, or the checker could not admit it. */
+  /** This gate could not read the FILE — a failure of the gate's own input, before any checking. */
   UNREADABLE: 'UNREADABLE',
-  /** The report carries a status this gate does not know. Fails closed — see `classify`. */
+  /** The report carries an outcome this gate does not know. Fails closed — see `classify`. */
   UNRECOGNIZED: 'UNRECOGNIZED',
 });
 
@@ -47,27 +60,34 @@ export const ExitCode = Object.freeze({ NO_REJECTION: 0, REJECTED: 1, OPERATIONA
 /**
  * Classify one report from its WIRE shape alone.
  *
- * **The library owns this rule; this is its wire-level mirror.** `ConsistencyReport.outcome` in the checker
- * states the same three-way classification over a TYPED report, and a consumer holding one should call that
- * rather than reimplement it. A CI gate does not hold one: it reads the JSON `checkModelJson` returns, possibly
- * across a process or service boundary, where no typed report exists. The durable fix is to publish the outcome
- * ON the wire shape, which is a report-shape change with its own guards.
+ * **The library OWNS this rule and now publishes its answer, so this reads it instead of re-deriving it.**
+ * Until 2026-09-18 this function mirrored `ConsistencyReport.outcome` in JavaScript, because a CI gate holds
+ * JSON rather than a typed report — possibly across a process or service boundary. The durable fix named in
+ * that mirror was to publish the outcome ON the wire shape, and that has happened, so the duplicated rule is
+ * gone. It also bought the one outcome the mirror COULD NOT compute: deciding `ALL_CHECKS_PASSED` needs the
+ * family denominator, which the wire shape does not carry and a consumer cannot know.
  *
- * The operational test is `checksCompleted` being empty rather than the presence of a diagnostic, and that is
- * the load-bearing choice here. The report shape documents what the emptiness means — no family ran — while a
- * diagnostic may perfectly well ride along with a complete run: `DECLARATION_NOT_WELL_FORMED` reports one
- * unreadable declaration and the other families still answer about its siblings. Keying on "any diagnostic"
- * would turn every such model into a tool failure, which is an over-rejection in the gate rather than in the
- * checker but lands on the author just the same.
+ * **The names are the library's, deliberately, and two of them used to mean the opposite here.** This gate
+ * previously called "families ran, none rejected" `NOT_ESTABLISHED` and "nothing was checked" `UNREADABLE`,
+ * while the library uses `NO_REJECTION` and `NOT_ESTABLISHED` for those two. Mapping between the vocabularies
+ * would have inverted two identical words across two surfaces of one product, so the gate adopted the
+ * library's. `UNREADABLE` survives with a narrower and non-colliding meaning: this gate could not read the
+ * FILE, which is a failure of its own input and has no library counterpart.
  *
- * An unknown `status` fails closed. A gate pinned to an older package must never read a status it has never
- * heard of as a pass, and a future `VALID` is exactly that case: an old gate cannot verify what it does not
- * model, so it declines to translate it.
+ * An unknown outcome fails closed. A gate pinned to an older package must never read a value it has never
+ * heard of as a pass — and a future `VALID` status is exactly that case: an old gate cannot verify what it
+ * does not model, so it declines to translate it.
  */
 export function classify(report) {
-  if (report.status === 'INVALID') return Outcome.REJECTED;
-  if (report.status !== 'INCONCLUSIVE') return Outcome.UNRECOGNIZED;
-  return report.checksCompleted.length === 0 ? Outcome.UNREADABLE : Outcome.NOT_ESTABLISHED;
+  switch (report.outcome) {
+    case Outcome.REJECTED:
+    case Outcome.ALL_CHECKS_PASSED:
+    case Outcome.NO_REJECTION:
+    case Outcome.NOT_ESTABLISHED:
+      return report.outcome;
+    default:
+      return Outcome.UNRECOGNIZED;
+  }
 }
 
 /**
@@ -105,14 +125,21 @@ export function checkSource(path) {
 export function runGate(paths) {
   const results = paths.map(checkSource);
   const operational = results.filter((r) => r.outcome === Outcome.UNREADABLE
+      || r.outcome === Outcome.NOT_ESTABLISHED
       || r.outcome === Outcome.UNRECOGNIZED);
   const rejected = results.filter((r) => r.outcome === Outcome.REJECTED);
   let exitCode = ExitCode.NO_REJECTION;
   if (operational.length > 0) exitCode = ExitCode.OPERATIONAL;
   else if (rejected.length > 0) exitCode = ExitCode.REJECTED;
   return {
-    // Never true, by construction. See this file's header.
+    // Never true, by construction, and NOT the same claim as `allChecksPassed` below. See this file's header.
     validated: false,
+    // The scoped pass, per source: every family the checker implements ran and none rejected. This is the
+    // signal a CI job can legitimately act on, and it is published beside `validated: false` rather than
+    // folded into it precisely so the two cannot be confused — one is the checker's coverage, the other
+    // A12's.
+    allChecksPassed: results.filter((r) => r.outcome === Outcome.ALL_CHECKS_PASSED)
+      .map((r) => ({ source: r.source })),
     exitCode,
     checked: results.length,
     rejected: rejected.map((r) => ({
@@ -126,9 +153,12 @@ export function runGate(paths) {
       outcome: r.outcome,
       failure: r.failure ?? r.report.diagnostics.map((d) => `${d.code}: ${d.explain}`).join('; '),
     })),
-    // Why no source here is claimed validated, per source, so the absence of a pass is explicable rather
-    // than merely stated. `gaps` is the checker's own disclosure of what it did not reach.
-    notValidated: results.filter((r) => r.outcome === Outcome.NOT_ESTABLISHED).map((r) => ({
+    // Why no source is claimed A12-VALIDATED, per source, so the absence is explicable rather than merely
+    // stated. `gaps` is the checker's own disclosure of what it did not reach. A source that passed every
+    // check appears here TOO, and that is not a contradiction: passing the checker's own families is not
+    // A12 validation, and the gaps are what say how far apart those two are.
+    notValidated: results.filter((r) => r.outcome === Outcome.ALL_CHECKS_PASSED
+        || r.outcome === Outcome.NO_REJECTION).map((r) => ({
       source: r.source,
       gaps: r.report.gaps.map((g) => g.reason),
     })),

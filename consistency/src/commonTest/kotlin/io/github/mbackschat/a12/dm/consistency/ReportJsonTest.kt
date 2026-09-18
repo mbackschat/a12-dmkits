@@ -3,6 +3,7 @@ package io.github.mbackschat.a12.dm.consistency
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
@@ -43,9 +44,31 @@ class ReportJsonTest {
     @Test
     fun theTopLevelKeySetIsFixed() {
         assertEquals(
-            setOf("modelId", "status", "complete", "findings", "diagnostics", "checksCompleted", "gaps"),
+            setOf(
+                "modelId", "status", "complete", "outcome", "findings", "diagnostics", "checksCompleted",
+                "gaps",
+            ),
             parsed(sound).keys,
             "the top-level keys are the published contract — adding or renaming one is a consumer break",
+        )
+    }
+
+    /**
+     * `outcome` carries the checker's own classification, so a JSON consumer need not re-derive it.
+     *
+     * **It is published because a JSON consumer CANNOT derive it.** Deciding `ALL_CHECKS_PASSED` needs the
+     * family denominator, and no other member of this shape carries one — which is why `ci-gate.mjs` could
+     * compute the three outcomes that do not need it and never the pass.
+     *
+     * The value is asserted, not merely the key: a field present but constantly `NO_REJECTION` would satisfy
+     * a key-set pin and publish nothing.
+     */
+    @Test
+    fun theOutcomeIsPublishedAndNamesTheCheckersOwnClassification() {
+        assertEquals(
+            JsonPrimitive(CheckOutcome.ALL_CHECKS_PASSED.name),
+            parsed(sound)["outcome"],
+            "a sound model completes every family, so the wire must carry the scoped pass",
         )
     }
 

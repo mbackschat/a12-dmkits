@@ -70,6 +70,15 @@ val ConsistencyReport.outcome: CheckOutcome
         // `CheckFamily` but never wired into a producer fails `containsAll` and degrades this to
         // NO_REJECTION. Keying on the schedule instead would make every run complete by construction — the
         // shape that cannot fail, and the one direction that turns a pass into an over-claim.
-        checksCompleted.containsAll(CheckFamily.entries) -> CheckOutcome.ALL_CHECKS_PASSED
+        //
+        // `diagnostics` must be EMPTY too, and that second conjunct is not belt-and-braces. Every
+        // `DiagnosticCode` means the checker could not read something, and `DECLARATION_NOT_WELL_FORMED` is
+        // explicitly "reported and skipped" — so every family can complete while one declaration was never
+        // examined by any of them. `checksCompleted` cannot see that, because it counts families and the
+        // families did run. Claiming a pass there would tell a consumer their model is clean on the strength
+        // of a declaration nobody read. GAPS deliberately do NOT block it: gaps are the standing disclosure
+        // of what this checker does not implement, which is what makes the pass scoped rather than absolute.
+        checksCompleted.containsAll(CheckFamily.entries) && diagnostics.isEmpty() ->
+            CheckOutcome.ALL_CHECKS_PASSED
         else -> CheckOutcome.NO_REJECTION
     }

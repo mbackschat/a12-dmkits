@@ -2,6 +2,7 @@
   "modelId": null,
   "status": "INCONCLUSIVE",
   "complete": false,
+  "outcome": "NOT_ESTABLISHED",
   "findings": [],
   "diagnostics": [
     {

@@ -111,6 +111,42 @@ class OutcomeAllChecksPassedTest {
         )
     }
 
+    /**
+     * A declaration the checker could not READ blocks the pass, even though every family completed.
+     *
+     * **This is the over-claim the family denominator cannot see, and it is reachable on an ordinary model.**
+     * `DECLARATION_NOT_WELL_FORMED` is reported and **skipped** — deliberately, so one broken element cannot
+     * hide its siblings' real errors — so all 103 families run and none rejects, while nobody examined the
+     * skipped declaration. Keyed on `checksCompleted` alone this model reads as a clean pass, which would
+     * tell a consumer their model is fine on the strength of a declaration nothing read.
+     *
+     * Gaps are the deliberate opposite: every report carries them and they never block the pass, because
+     * they disclose what the checker does not implement rather than what it failed to read.
+     */
+    @Test
+    fun anUnreadableDeclarationBlocksThePassThoughEveryFamilyCompleted() {
+        val report = check(ModelSource(UNREADABLE_DECLARATION))
+
+        assertEquals(
+            CheckOutcome.NO_REJECTION,
+            report.outcome,
+            "a skipped declaration means something went unexamined, so this must not read as a pass",
+        )
+        // The three properties that make this the discriminating case rather than an ordinary narrow run.
+        assertTrue(
+            report.checksCompleted.containsAll(CheckFamily.entries),
+            "every family must have completed, or this row is about a narrow run and not about the diagnostic",
+        )
+        assertTrue(
+            report.diagnostics.any { it.code == DiagnosticCode.DECLARATION_NOT_WELL_FORMED },
+            "the skipped-declaration diagnostic is what this row turns on",
+        )
+        assertTrue(
+            report.findings.none { it.justifiesRejection },
+            "and nothing rejected it, so REJECTED is not what is keeping it off the pass",
+        )
+    }
+
     private companion object {
 
         /** One group, one field, one rule, one computation, nothing wrong: every producer is asked. */
@@ -140,6 +176,25 @@ class OutcomeAllChecksPassedTest {
                 {"type":"Field","id":"f1","name":"Premium","Field":{"fieldType":{"type":"NumberType"}}},
                 {"type":"Rule","id":"r0","name":"HolderRequired","Rule":{
                   "errorEntityRelPath":"../Holder","errorCondition":"FieldFilled(Nonexistent)",
+                  "errorCode":"holder.required",
+                  "errorMessage":[{"locale":"en_US","text":"A policy holder is required."}]}},
+                {"type":"Computation","id":"c0","name":"Doubled","Computation":{
+                  "computedFieldRelPath":"../Premium","computationAlternatives":[{"operation":"{1 + 1}"}],
+                  "errorMessage":[{"locale":"en_US","text":"The premium could not be computed."}]}}
+              ]}}
+             ]}}}
+        """.trimIndent()
+
+        /** The clean shape plus one element with no `type`/`id`/`name`: reported, and skipped. */
+        private val UNREADABLE_DECLARATION = """
+            {"header":{"id":"skipped","locales":[{"code":"en_US"}]},
+             "content":{"modelRoot":{"rootGroups":[
+              {"type":"Group","id":"g0","name":"Policy","Group":{"elements":[
+                {"id":"nameless"},
+                {"type":"Field","id":"f0","name":"Holder","Field":{"fieldType":{"type":"StringType"}}},
+                {"type":"Field","id":"f1","name":"Premium","Field":{"fieldType":{"type":"NumberType"}}},
+                {"type":"Rule","id":"r0","name":"HolderRequired","Rule":{
+                  "errorEntityRelPath":"../Holder","errorCondition":"FieldFilled(Holder)",
                   "errorCode":"holder.required",
                   "errorMessage":[{"locale":"en_US","text":"A policy holder is required."}]}},
                 {"type":"Computation","id":"c0","name":"Doubled","Computation":{

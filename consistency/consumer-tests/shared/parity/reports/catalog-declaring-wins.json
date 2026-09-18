@@ -2,6 +2,7 @@
   "modelId": "catalog-reference-declaring-wins",
   "status": "INCONCLUSIVE",
   "complete": false,
+  "outcome": "ALL_CHECKS_PASSED",
   "findings": [],
   "diagnostics": [],
   "checksCompleted": [
