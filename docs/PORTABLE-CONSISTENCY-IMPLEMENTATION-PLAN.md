@@ -3501,9 +3501,9 @@ Row 13's deliverable is a **terminal whole-product CONTRACT review** plus §5's 
 
 ### N record — the terminal review's adjacent residue (2026-09-18) <a id="n-row-13-residue"></a>
 
-Findings the round produced that violate no numbered matrix item, so none of them was allowed to grow the slice being reviewed. Four have since been settled in slices of their own and are recorded below as closed; the rest stay logged, each carrying the oracle that would settle it so a later slice does not re-derive it.
+Findings the round produced that violate no numbered matrix item, so none of them was allowed to grow the slice being reviewed. Five have since been settled in slices of their own and are recorded below as closed; the one that remains stays logged, each carrying the oracle that would settle it so a later slice does not re-derive it.
 
-**Four rows have since been closed, each in a slice of its own rather than by enlarging row 13's denominator.** Their rows are deleted per the ledger lifecycle — the rationale lives where the enforcement does — and what each one cost to settle is worth keeping, because three of the four were settled by running something rather than by reading it.
+**Five rows have since been closed, each in a slice of its own rather than by enlarging row 13's denominator.** Their rows are deleted per the ledger lifecycle — the rationale lives where the enforcement does — and what each one cost to settle is worth keeping, because three of the four were settled by running something rather than by reading it.
 
 | closed finding | how it was settled |
 |---|---|
@@ -3511,12 +3511,12 @@ Findings the round produced that violate no numbered matrix item, so none of the
 | bare `from 'fs'` uncovered on both sides | folded into that same expression, which also closed a third hole nobody had named — `from"node:fs"` with no space, which is what a minifier emits and what both `contains` arms missed |
 | `verifyInterpreterNpmPackage` had no `absent` arm | mirrored from the checker's twin over the DERIVED set, which is the half that needs it; it does not fire on the healthy package, and a planted permitted-but-unemitted module fails it by name |
 | the draft path recorded a store it discards | `ConsistencySnapshot.draft` now runs at `CellRetention.DISCARDED`, locked by a behavioural row proving retention cannot cost the incoming store's reuse and a wiring row that says it is a wiring row. Its reviewer-supplied ~180 ms did **not** transfer — that is the cost of recording every cell, where a draft records only what it recomputes — so no delta is claimed ([the lane](PORTABLE-CONSISTENCY-RESULTS.md#draft-retention-2026-09-18)) |
+| `FindingCategory.EVALUATOR_SUPPORT` published and never emitted | **kept, not retired.** The three-way split is what makes an evaluator limitation statable as something other than an A12 rejection, which is the enum's whole job, and §5.4's design names three categories — retiring one reverses a published design decision because no producer exists *yet*. The finding's "undocumented" half was already false when it was logged: [CONSISTENCY-API](CONSISTENCY-API.md) had gained the reserved-constant contract in the same slice. What was actually missing was the DECLARATION reading as live, which now says reserved and points at that doc rather than minting a second live copy of the same fact |
 
 **Each guard change got a wiring control, because a pattern proved correct in isolation still has to reach the shipped bytes.** Planting a specifier each bundle really imports (`big.js` for the interpreter, `./kotlin-kotlin-stdlib.mjs` for the checker) failed each guard with the offending files named; all three were restored byte-identical and re-run green. One of those mutants first failed on a raw `/` that closed the slashy string — **a broken mutant reads exactly like a firing guard**, which is why the message was read and not just the exit code.
 
 | finding | state | what would settle it |
 |---|---|---|
-| **`FindingCategory.EVALUATOR_SUPPORT` is published, never emitted, and undocumented.** One `commonMain` hit — the declaration; its only exerciser constructs one by hand | open | either document it as a reserved category with the state it is for, or retire it; a published enum constant no producer can reach is a contract nobody can consume |
 | **Two live expressions of one query** — `declarationsWithUnsoundDsl` and `declarationsWithAnUnresolvableConditionReference` both compute the unresolved-reference set, twenty-five lines from a `@param` warning that "two expressions of one query can drift apart while both stay green" | not a defect today | share the expression, or state why two are right |
 
 **And one process note worth keeping.** The reviewer read built artifacts under `consistency/build/` that it could not prove were of the reviewed revision, and said so rather than citing them as evidence about it. That is the right handling of the estate's own rule — a capability claim about a running surface is settled by executing the artifact — and it is why the findings resting on the packed bundle were re-derived here from a fresh pack before being acted on.

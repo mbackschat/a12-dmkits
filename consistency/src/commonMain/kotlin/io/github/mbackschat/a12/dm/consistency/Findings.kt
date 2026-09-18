@@ -18,6 +18,13 @@ enum class FindingCategory {
     /**
      * A runtime support limitation. It never affects validity; it limits *completeness*, and only when it
      * actually prevents an authoring check from running.
+     *
+     * **Reserved rather than live**, and deliberately kept so: the three-way split is what makes an
+     * evaluator limitation statable as something other than an A12 rejection, which is this enum's whole
+     * job, and a category that only appears once a producer needs it would have to be added to a published
+     * shape at exactly the wrong moment. Which producers emit one, and what a consumer does about it
+     * meanwhile, is `docs/CONSISTENCY-API.md`'s to say — it is the surface a consumer reads, and a second
+     * statement here would be the copy that goes stale.
      */
     EVALUATOR_SUPPORT,
 }
