@@ -6,6 +6,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.LinkedHashMap;
@@ -56,6 +57,35 @@ class MvkLedgerTest {
 
     private static final String KERNEL_MM_DIR =
             System.getProperty("a12.kernel.mm.dir", "../a12-kernel-mm/documentModels");
+
+    /**
+     * The codes whose ledger rows rest on the metamodel axis being unmeasured — seven of the eleven that
+     * block a portable VALID verdict.
+     */
+    private static final Set<String> UNMEASURED_ON_THE_METAMODEL_AXIS = Set.of(
+            "MVK_ERROR_FIELD_NOT_VALID",
+            "MVK_INVALID_PREDEFINED_TYPE",
+            "MVK_NOT_ON_ERRORFIELD_PATH",
+            "MVK_ONLY_STRING_ENUM_NUMBER_CMP_DATE_ALLOWED_NO_FIELD",
+            "MVK_RULE_GROUP_IS_EMPTY_OR_INVALID",
+            "MVK_CALCULATION_FIELD_AND_NO_CALCULATION_RULE",
+            "MVK_ERROR_ITERATION_UNCHECKED");
+
+    /**
+     * KF418's witness: measured FIRING while its raiser count is zero everywhere in the kernel checkout.
+     *
+     * That is the exact mechanism making a Java-source absence inconclusive, so a sweep that cannot see THIS
+     * code cannot support an absence claim about any code.
+     */
+    private static final String METAMODEL_AXIS_CONTROL = "MVK_INTERNAL_VALUE_INVALID";
+
+    /**
+     * Below this the corpus was not really read. The live count is <b>105 codes carried by a metamodel rule
+     * across the corpus's 59 JSON models</b> (2026-09-18) — the ledger's own long-standing figure for
+     * {@code MM_Common} carrier rules, which is what corroborates this sweep against an established
+     * measurement. The floor sits well under it because it answers "did the sweep happen".
+     */
+    private static final int METAMODEL_CODE_FLOOR = 60;
 
     @Test
     void ledgerCoversTheKernelEnumsExactly() throws IOException {
@@ -135,6 +165,115 @@ class MvkLedgerTest {
             mmCodes.add(m.group(1));
         }
         assertCovered(mmCodes, "MM_Common metamodel rules");
+    }
+
+    /**
+     * The seven codes the ledger leaves UNMEASURED on the metamodel axis carry no metamodel rule here.
+     *
+     * <p><b>It enforces a re-open trigger that was prose until now.</b> Those rows say no JAVA site in kernel
+     * {@code 30.8.1} raises the code, qualified by KF415: a zero raiser count over the kernel's Java sources
+     * is not dormancy, because the metamodel raises codes appearing in no file of that checkout. So the
+     * disposition rests on the metamodel axis being unmeasured, and
+     * {@code PORTABLE-CONSISTENCY-IMPLEMENTATION-PLAN.md} names reaching it as the re-open trigger for all
+     * seven — and for the VALID bar that seven of its eleven blocking codes sit on. A trigger nothing
+     * executes is the "parsed but never consumed" class, so it gets a test: should a corpus bump give any of
+     * the seven a carrier rule, that row's disposition is stale and the code becomes a candidate false-pass
+     * route, which this fails to say.
+     *
+     * <p><b>Wider than {@link #ledgerCoversTheMetamodelRuleCodesExactly}, deliberately.</b> That test reads
+     * the first canonical file of {@code MM_Common_v2} to check ledger COVERAGE; this sweeps every file of
+     * the corpus, because an absence claim may not rest on the one directory the codes were expected in.
+     *
+     * <p><b>The positive control is what makes the absence mean anything, and it is not decorative.</b>
+     * {@link #METAMODEL_AXIS_CONTROL} is KF418's witness — a code measured FIRING while its raiser count is
+     * zero everywhere in the kernel checkout, which is precisely the mechanism that makes a Java-source
+     * absence inconclusive. It is carried by a rule here, so this instrument can see a metamodel-axis raiser;
+     * without that row, a mis-scoped or empty read would report all seven absent and look like a result. The
+     * code floor guards the same failure from the other side. *Recall limit, stated because this is a
+     * negative existential: it measures THIS estate's corpus (60 files, 105 carried codes — the ledger's own
+     * long-standing figure), so it cannot exclude a metamodel we do not hold.*
+     */
+    @Test
+    void theMetamodelAxisCarriesNoRuleForTheCodesTheLedgerLeavesUnmeasuredThere() throws IOException {
+        Path root = Path.of(KERNEL_MM_DIR);
+        assumeTrue(Files.isDirectory(root), "a12-kernel-mm not present — skipping metamodel carrier sweep");
+
+        Set<String> carried = codesCarriedByAnyMetamodelRule(root);
+
+        assertTrue(
+                carried.contains(METAMODEL_AXIS_CONTROL),
+                "the positive control " + METAMODEL_AXIS_CONTROL + " is not carried by any rule in "
+                        + root.toAbsolutePath() + ", so this sweep cannot see a metamodel-axis raiser at all "
+                        + "and the absences below would be an artefact of the read rather than a measurement");
+        assertTrue(
+                carried.size() >= METAMODEL_CODE_FLOOR,
+                "swept only " + carried.size() + " carried codes, below the floor of " + METAMODEL_CODE_FLOOR
+                        + " — a partial read reports every code absent and looks clean");
+
+        var nowCarried = UNMEASURED_ON_THE_METAMODEL_AXIS.stream().filter(carried::contains).sorted().toList();
+        assertEquals(
+                java.util.List.of(),
+                nowCarried,
+                nowCarried.size() + " code(s) dispositioned as unmeasured on the metamodel axis now HAVE a "
+                        + "carrier rule in the corpus. The re-open trigger has fired: re-disposition each row "
+                        + "in docs/MVK-LEDGER.md, and re-check whether it is a live false-pass route the "
+                        + "checker should report — " + nowCarried);
+    }
+
+    /**
+     * The carrier reader detects a planted code, so the absence above is a measurement and not a blind read.
+     *
+     * <p>Independent of the sibling corpus on purpose: the sweep's own positive control needs the corpus to
+     * be present, and this one proves the READER works whether or not it is — the two failure modes are
+     * different, and only this one survives a machine without the clone. A negative row keeps it honest
+     * about the pattern rather than about the mere presence of the string.
+     */
+    @Test
+    void theCarrierReaderFindsAPlantedCodeAndIgnoresOneThatIsNotAnErrorCode() throws IOException {
+        Path planted = Files.createTempDirectory("mvk-carrier-control");
+        String subject = UNMEASURED_ON_THE_METAMODEL_AXIS.iterator().next();
+        Files.writeString(
+                planted.resolve("model.json"),
+                "{\"rules\":[{\"errorCode\": \"" + subject + "\"},"
+                        + "{\"comment\":\"MVK_NOT_AN_ERROR_CODE mentioned in prose\"}]}",
+                StandardCharsets.UTF_8);
+
+        Set<String> carried = codesCarriedByAnyMetamodelRule(planted);
+
+        assertTrue(
+                carried.contains(subject),
+                "the reader missed a planted errorCode, so every absence it reports is an artefact of the "
+                        + "reader rather than of the corpus");
+        assertFalse(
+                carried.contains("MVK_NOT_AN_ERROR_CODE"),
+                "a code named in prose is not a CARRIER, and counting it would make the sweep report "
+                        + "reachability that no rule actually declares");
+    }
+
+    /**
+     * Every {@code MVK_*} code any rule in the corpus names as its error code.
+     *
+     * <p>Scoped to {@code *.json}, which is a denominator decision and so is stated: a model IS a JSON
+     * document, and walking every regular file instead threw {@link java.nio.charset.MalformedInputException}
+     * on a stray {@code .DS_Store} — read lossily that file yields no {@code MVK_} occurrence, so the scope
+     * costs no recall while removing a crash on Finder metadata.
+     */
+    private static Set<String> codesCarriedByAnyMetamodelRule(Path root) throws IOException {
+        var carried = new LinkedHashSet<String>();
+        var errorCode = Pattern.compile("\"errorCode\"\\s*:\\s*\"(MVK_[A-Z_0-9]+)\"");
+        try (var files = Files.walk(root)) {
+            var models = files.filter(Files::isRegularFile)
+                    .filter(f -> f.getFileName().toString().endsWith(".json"))
+                    .sorted()
+                    .toList();
+            for (Path file : models) {
+                Matcher found = errorCode.matcher(Files.readString(file, StandardCharsets.UTF_8));
+                while (found.find()) {
+                    carried.add(found.group(1));
+                }
+            }
+        }
+        return carried;
     }
 
     private static void assertCovered(Set<String> sourceCodes, String sourceName) throws IOException {
