@@ -63,8 +63,12 @@ class CheckerPathLookupGuardTest {
      * The checker's source, walked across EVERY production source set rather than {@code commonMain} alone.
      *
      * A cold review pointed out that {@code jsMain} sits in the same package and was outside the scan. It
-     * holds only the two-function JS boundary today, so the hole was empty — and one walk closes it instead
-     * of a note saying it is empty, which would have to be re-checked to stay true.
+     * was near-empty then, and the choice was still to walk everything rather than leave a note saying the
+     * hole was empty, "which would have to be re-checked to stay true".
+     *
+     * <p><b>That reasoning has since been vindicated rather than merely preserved.</b> {@code jsMain} grew
+     * the draft, impact and snapshot surfaces on 2026-09-18, so a scan scoped to {@code commonMain} plus a
+     * note would now be silently wrong about the source set carrying the most recently added public code.
      */
     private static final Path CHECKER_SOURCE = Path.of("consistency/src");
 

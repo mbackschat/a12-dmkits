@@ -8,9 +8,9 @@
 // **This is the same quantity `CheckerGrowthPerfTest` clocks on the JVM, deliberately.** That lane times
 // `check(ModelSource(text))` on a runtime whose class loading and reflective setup a preflight already paid
 // for — a repeated whole-model check, not a snapshot-reuse call. So the analogue here is `checkModelJson` after
-// a full warm-up per scale, which the checker's published TWO-function JS surface supports as it stands. No
-// prepared or snapshot API is exported to JavaScript (`JsApi.kt` says why, and it is a deliberate posture), and
-// measuring one through an unexported Kotlin entry point would report a cost no Node consumer can obtain.
+// a full warm-up per scale. The analogue follows from WHAT the JVM lane clocks, not from what JavaScript
+// exports, so it survived the surface widening: `snapshotOfJson` shipped on 2026-09-18, and a snapshot-reuse
+// call is the AFTER-EDIT boundary's quantity (H5-i) rather than this row's.
 //
 // **One process for the whole run, where the cold arm pays a launch per observation.** Warmth is the subject
 // here, so relaunching would measure exactly what this boundary excludes. The cost is that machine drift now

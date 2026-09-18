@@ -76,7 +76,9 @@ The quiet window was used for the rest of what the banner voided. Same machine s
 
 **Lane:** `./build.sh :adapter:checkerMemoryNodePerfTest` (`adapter.perf.CheckerRetainedMemoryNodePerfTest`), one warm Node process, the same 200-program synthesis profile the growth lanes use, runtime **v24.18.0** pinned by `NodeIdentity`. **It asserts no bound and never will assert one taken from its own output** — per H5's ordering rule the collector comes first and the bar is the owner's through [IF137](INTERPRETER-FINDINGS.md#if137)'s six points.
 
-**Its subject is not the JVM arm's, and that follows from the published surface rather than from a choice.** [`CheckerRetainedMemoryPerfTest`](#memory-2026-09-17) holds a `ConsistencySnapshot` live and reads the post-GC heap; the shipped `a12-consistency.d.ts` exports two string-in string-out functions, so a Node consumer holds no analysis and that quantity has no analogue here ([the surface, read off the artifact](PORTABLE-CONSISTENCY-IMPLEMENTATION-PLAN.md#h5i-surface)). What a stateless surface can be asked is §8's other clause, RELEASE behaviour: a heap flat across repeated checks, or one growing per call.
+**Its subject is RELEASE behaviour** — a heap flat across repeated checks, or one growing per call — which is §8's other clause beside the retained-bytes one [`CheckerRetainedMemoryPerfTest`](#memory-2026-09-17) answers on the JVM by holding a `ConsistencySnapshot` live.
+
+*Corrected 2026-09-18: this paragraph said the subject "follows from the published surface rather than from a choice", because `a12-consistency.d.ts` then exported only string-in string-out calls and a Node consumer could hold no analysis. `snapshotOfJson` shipped a holdable handle later the same day, so retained bytes ARE now measurable on this carrier and H5-j re-opens for that arm ([the record](PORTABLE-CONSISTENCY-IMPLEMENTATION-PLAN.md#h5i-trigger-fired)). The measurements below are unaffected — they measure release, which is what they always measured.*
 
 | settled post-GC heap | run 1 | run 2 |
 |---|---|---|

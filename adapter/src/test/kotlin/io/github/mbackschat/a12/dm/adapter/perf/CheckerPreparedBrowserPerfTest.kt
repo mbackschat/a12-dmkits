@@ -17,9 +17,9 @@ import org.junit.jupiter.api.condition.EnabledIfSystemProperty
  *
  * **The quantity is the one [CheckerGrowthPerfTest] clocks**, established by reading that lane rather than
  * assumed: a repeated whole-model `check` on a warmed runtime, not a snapshot-reuse call. So `checkModelJson`
- * after a per-scale warm-up is the analogue, and the checker's published JS surface suffices — a
- * prepared entry point is deliberately unexported, and timing one through an unexported Kotlin function would
- * report a cost no browser consumer can obtain.
+ * after a per-scale warm-up is the analogue. The choice rests on what the JVM lane clocks rather than on
+ * what JavaScript happened to export, so the surface widening on 2026-09-18 leaves it untouched: a
+ * snapshot-reuse call is the after-edit boundary's quantity (H5-i), not this row's.
  *
  * **The bar is the already-ratified growth ratio and nothing else.** `PerfBounds.SUB_QUADRATIC_MAX` was
  * ratified as a mechanism on 2026-09-16, before either JS host had a lane. No duration is asserted and no

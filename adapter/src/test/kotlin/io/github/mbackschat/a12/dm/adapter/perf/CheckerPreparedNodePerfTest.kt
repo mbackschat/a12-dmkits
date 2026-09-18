@@ -19,10 +19,9 @@ import org.junit.jupiter.api.condition.EnabledIfSystemProperty
  * **It clocks the SAME quantity [CheckerGrowthPerfTest] does, which is what makes the two comparable.** That
  * lane times `check(ModelSource(text))` on a runtime whose class loading and reflective setup a preflight has
  * already paid for: a repeated whole-model check, not a snapshot-reuse call. So the analogue is
- * `checkModelJson` after a full warm-up per scale — reachable through the checker's published JS
- * surface exactly as it stands. A prepared or snapshot entry point is deliberately NOT exported to JavaScript
- * (`JsApi.kt` carries the reasons), and timing one through an unexported Kotlin function would report a cost
- * no Node consumer can obtain.
+ * `checkModelJson` after a full warm-up per scale. That choice rests on WHAT the JVM lane clocks, so it is
+ * unaffected by the surface having since widened: `snapshotOfJson` shipped on 2026-09-18, and a snapshot-reuse
+ * call is the AFTER-EDIT boundary's quantity (H5-i), not this row's.
  *
  * **ONE warm process for the whole run**, where the cold arm pays a launch per observation: warmth is this
  * boundary's subject, so relaunching would measure precisely what it excludes. Drift therefore lands inside a
