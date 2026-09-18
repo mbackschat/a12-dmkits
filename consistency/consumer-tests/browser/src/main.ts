@@ -10,7 +10,13 @@
 // The verdicts are written into the DOM as JSON. The driver could have read a global, but a global proves only
 // that the module ran; the DOM proves the page got as far as showing a consumer what it found.
 
-import { checkEditJson, checkModelJson } from 'a12-consistency';
+import {
+  checkDraftJson,
+  checkEditJson,
+  checkModelJson,
+  impactOfJson,
+  snapshotOfJson,
+} from 'a12-consistency';
 
 import type { CaseOutcome } from '../../shared/cases.ts';
 import type { ParityCorpus, ParityManifest } from '../../shared/parity.ts';
@@ -63,7 +69,7 @@ const fetchCorpus = async (): Promise<ParityCorpus> => {
 };
 
 try {
-  const api = { checkModelJson, checkEditJson };
+  const api = { checkModelJson, checkEditJson, checkDraftJson, impactOfJson, snapshotOfJson };
   const soundModel = await fetchText('models/storefront.dm.json');
   const referenceModels: Record<string, string> = {};
   for (const key of REFERENCE_MODELS) {

@@ -17,10 +17,34 @@
 // by native type stripping", so no build step for the Node arm) and Vite compiles it for the browser arm. One
 // file, two hosts, no compilation asymmetry.
 
-/** The packaged surface these cases exercise — the two exports H2 and H promise a consumer. */
+/**
+ * The packaged surface the shared suites exercise — every export a consumer of this package reaches for.
+ *
+ * Declared structurally rather than imported, for this module's own reason: it imports nothing, so that each
+ * host resolves `a12-consistency` its own way. That also makes this interface a second, independent statement
+ * of the published surface — a host whose package no longer exports one of these fails to satisfy it.
+ */
 export interface CheckerApi {
   checkModelJson(source: string): string;
   checkEditJson(baseline: string, edited: string): string;
+  checkDraftJson(source: string, at: string, member: string, text: string): string;
+  impactOfJson(baseline: string, edited: string): string;
+  snapshotOfJson(sources: string[], entryModelId: string): SnapshotHandle;
+}
+
+/**
+ * The opaque handle `snapshotOfJson` returns, in the shape these suites use it.
+ *
+ * Structural for the same reason as [CheckerApi], and deliberately not the whole class: a suite asserts what
+ * it exercises, and the published `.d.ts` is where the full surface is pinned.
+ */
+export interface SnapshotHandle {
+  reportJson(): string;
+  reuseJson(): string;
+  draftJson(at: string, member: string, text: string): string;
+  draftWithReuseJson(at: string, member: string, text: string): string;
+  withSource(modelJson: string): SnapshotHandle;
+  withoutSource(modelId: string): SnapshotHandle;
 }
 
 /** One case's verdict. `detail` is only read when `ok` is false, and must name the observed value. */
@@ -51,11 +75,11 @@ function withUnrelatedField(modelJson: string): string {
 }
 
 /** A self-checking assertion that reads as a sentence in a failure. */
-function expect(ok: boolean, detail: string): string | null {
+export function expect(ok: boolean, detail: string): string | null {
   return ok ? null : detail;
 }
 
-function outcome(name: string, checks: readonly (string | null)[]): CaseOutcome {
+export function outcome(name: string, checks: readonly (string | null)[]): CaseOutcome {
   const failures = checks.filter((check): check is string => check !== null);
   return { name, ok: failures.length === 0, detail: failures.join('; ') };
 }

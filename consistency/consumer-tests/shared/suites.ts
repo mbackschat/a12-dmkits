@@ -1,4 +1,4 @@
-// The three shared suites, as data, so a host runs them without knowing how many cases any of them has.
+// The shared suites, as data, so a host runs them without knowing how many cases any of them has.
 //
 // This exists because the alternative was a maintenance defect I paid for three times: each host carried a
 // hand-written floor (`outcomes.length >= 18`, `MINIMUM_CASES = 18`) that had to be bumped in two files
@@ -11,10 +11,11 @@
 // supplies the package and the inputs.
 
 import { runCases, type CaseOutcome, type CheckerApi } from './cases.ts';
+import { runEditorCases } from './editor.ts';
 import { runParity, type ParityCorpus } from './parity.ts';
 import { runReferenceControls } from './references.ts';
 
-/** Everything a host loads, in the one shape all three suites are driven from. */
+/** Everything a host loads, in the one shape every suite is driven from. */
 export interface SharedInputs {
   /** The sound storefront model's text, for the named-field cases. */
   readonly soundModel: string;
@@ -30,13 +31,15 @@ export interface SharedSuite {
 }
 
 /**
- * The suites, in the order a reader should meet them: the readable claims, then the whole-document parity,
- * then B0's grid.
+ * The suites, in the order a reader should meet them: the readable claims, the whole-document parity, B0's
+ * grid, then the editor sequence.
  *
  * Each answers a different question, and the ordering is the only thing shared: `cases.ts` asserts NAMED
  * fields and is blind to every member it does not name; `parity.ts` compares the FULL report against a
  * committed corpus, which is what F's "JS matches JVM" oracle asks for; `references.ts` replays B0's §3.4
- * grid, which B0's own acceptance hands to F.
+ * grid, which B0's own acceptance hands to F; `editor.ts` is the only one that runs a SEQUENCE rather than
+ * independent cases, because N's row 2 asks whether H, I and L work together and no single-call case can
+ * answer that.
  */
 export const SHARED_SUITES: readonly SharedSuite[] = [
   {
@@ -50,6 +53,10 @@ export const SHARED_SUITES: readonly SharedSuite[] = [
   {
     name: 'B0 reference controls',
     run: (api, inputs) => runReferenceControls(api, inputs.referenceModels),
+  },
+  {
+    name: 'editor capabilities together',
+    run: (api, inputs) => runEditorCases(api, inputs.soundModel),
   },
 ];
 

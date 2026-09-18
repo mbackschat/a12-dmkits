@@ -23,13 +23,19 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { checkEditJson, checkModelJson } from 'a12-consistency';
+import {
+  checkDraftJson,
+  checkEditJson,
+  checkModelJson,
+  impactOfJson,
+  snapshotOfJson,
+} from 'a12-consistency';
 import { REFERENCE_MODELS } from '../shared/references.ts';
 import { runSharedSuites } from '../shared/suites.ts';
 
 const read = (relative) => readFileSync(new URL(relative, import.meta.url), 'utf8');
 const soundModel = read('../shared/models/storefront.dm.json');
-const api = { checkModelJson, checkEditJson };
+const api = { checkModelJson, checkEditJson, checkDraftJson, impactOfJson, snapshotOfJson };
 
 // The parity corpus is DATA, so this host only has to resolve paths. Reading the manifest first is what makes
 // the set of files a corpus rather than a directory: a case the manifest does not list is not run, and a case
