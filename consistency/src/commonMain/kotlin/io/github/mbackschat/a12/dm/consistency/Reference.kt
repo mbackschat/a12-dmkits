@@ -620,20 +620,33 @@ internal fun numberLiteralScale(tokens: List<Token>): Int? {
 }
 
 /**
- * The fields A12's `expandToFieldList` would take for one operand — the field itself, or every field under a
- * group, in declaration order.
+ * A12's `expandToFieldList` for ONE declaration — the field itself, or every field under a group, in
+ * declaration order. Null where the declaration is neither a field nor a group, which is the operand A12
+ * refuses before any list law applies.
  *
- * Null where the operand names a group with no field beneath it, which A12 refuses under its own class.
+ * **An empty list is a group with no field beneath it, and the callers do not agree on what that means**, so
+ * this reports it as empty rather than as null: the operand-list families let such a group contribute nothing
+ * and keep walking their other operands, while [expandToFields] turns it into A12's own refusal. Collapsing
+ * the two here would make one operand's emptiness drop a verdict about the rest.
+ *
+ * [TrackedFactBase.allDeclarations] rather than `declarations`, and that is load-bearing: the subtree belongs
+ * to a DIFFERENT declaration than the one a scoped pass is about, so a scoped `declarations()` expands the
+ * group against that single declaration, finds nothing, and the family reads the empty result as "no field
+ * beneath it" and drops its verdict (measured 2026-09-18, `ScopedWalkBranchDiscriminatorsTest`).
  */
-internal fun TrackedFactBase.expandToFields(path: String): List<TrackedDeclaration>? {
-    val target = declarationAt(path) ?: return null
-    if (target.declaredKind == DeclaredKind.FIELD) {
-        return listOf(target)
+internal fun TrackedFactBase.fieldsUnder(declared: TrackedDeclaration): List<TrackedDeclaration>? =
+    when (declared.declaredKind) {
+        DeclaredKind.FIELD -> listOf(declared)
+        DeclaredKind.GROUP -> allDeclarations()
+            .filter { it.declaredKind == DeclaredKind.FIELD && it.path.startsWith("${declared.path}/") }
+        else -> null
     }
-    // The fields beneath ANOTHER declaration, so [TrackedFactBase.allDeclarations]: a scoped pass asking
-    // `declarations()` expands the group against the one declaration it is about, finds nothing, and returns
-    // null — which this family reads as "no field beneath it" and drops its verdict (measured 2026-09-18).
-    return allDeclarations()
-        .filter { it.declaredKind == DeclaredKind.FIELD && it.path.startsWith("$path/") }
-        .takeIf { it.isNotEmpty() }
-}
+
+/**
+ * The fields A12's `expandToFieldList` would take for one operand, addressed by path.
+ *
+ * Null where the operand names a group with no field beneath it, which A12 refuses under its own class — the
+ * one caller of [fieldsUnder] that reads an empty expansion as a refusal rather than as nothing to say.
+ */
+internal fun TrackedFactBase.expandToFields(path: String): List<TrackedDeclaration>? =
+    declarationAt(path)?.let { fieldsUnder(it) }?.takeIf { it.isNotEmpty() }

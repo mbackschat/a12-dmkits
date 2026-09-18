@@ -174,12 +174,7 @@ private fun TrackedFactBase.entryListFindings(
 ): List<Finding>? {
     val fields = entries.flatMap { entry ->
         val declared = declaredTargetOf(entry.text, declaringGroup, element) ?: return null
-        when (declared.declaredKind) {
-            DeclaredKind.FIELD -> listOf(declared)
-            DeclaredKind.GROUP ->
-                allDeclarations().filter { it.declaredKind == DeclaredKind.FIELD && it.path.startsWith("${declared.path}/") }
-            else -> return null
-        }
+        fieldsUnder(declared) ?: return null
     }
     val walked = listOf(subject) + fields
     if (walked.map { it.path }.distinct().size != walked.size) {

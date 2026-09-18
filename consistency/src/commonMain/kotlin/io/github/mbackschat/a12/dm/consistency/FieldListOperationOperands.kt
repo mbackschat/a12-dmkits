@@ -141,12 +141,7 @@ private fun TrackedFactBase.operandDefect(
     }
     val fields = targets.flatMap { target ->
         val declared = allDeclarations().firstOrNull { it.path == target } ?: return null
-        when (declared.declaredKind) {
-            DeclaredKind.FIELD -> listOf(declared)
-            DeclaredKind.GROUP ->
-                allDeclarations().filter { it.declaredKind == DeclaredKind.FIELD && it.path.startsWith("$target/") }
-            else -> return null
-        }
+        fieldsUnder(declared) ?: return null
     }
     if (fields.isEmpty()) {
         return null

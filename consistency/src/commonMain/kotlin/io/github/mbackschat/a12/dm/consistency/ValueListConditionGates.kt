@@ -264,13 +264,10 @@ private fun TrackedFactBase.listedFields(
 ): List<ListedField>? = operands.flatMap { operand ->
     val category = categoryAccessesIn(operand, conditionLanguage).singleOrNull()?.second
     val declared = declaredTargetOf(operand, declaringGroup, element) ?: return null
-    when (declared.declaredKind) {
-        DeclaredKind.FIELD -> listOf(ListedField(declared, category))
-        DeclaredKind.GROUP ->
-            allDeclarations().filter { it.declaredKind == DeclaredKind.FIELD && it.path.startsWith("${declared.path}/") }
-                .map { ListedField(it, null) }
-        else -> return null
-    }
+    // The category rides the REFERENCE, so only an operand that IS a field carries one: the fields a group
+    // expands into were never named, and A12 groups by the name it was given.
+    val referenced = if (declared.declaredKind == DeclaredKind.FIELD) category else null
+    fieldsUnder(declared)?.map { ListedField(it, referenced) } ?: return null
 }
 
 /** The same expansion where only the declarations matter — the value list, which carries no category law. */

@@ -166,12 +166,7 @@ private fun TrackedFactBase.constantKindFinding(
     }
     val fields = targets.flatMap { target ->
         val declared = allDeclarations().firstOrNull { it.path == target } ?: return null
-        when (declared.declaredKind) {
-            DeclaredKind.FIELD -> listOf(declared)
-            DeclaredKind.GROUP ->
-                allDeclarations().filter { it.declaredKind == DeclaredKind.FIELD && it.path.startsWith("$target/") }
-            else -> return null
-        }
+        fieldsUnder(declared) ?: return null
     }
     val defect = when (val verdict = typeWalkVerdict(fields, arm, constantText)) {
         is ListVerdict.Offender -> ListDefect(
