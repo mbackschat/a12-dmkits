@@ -58,8 +58,14 @@ import org.junit.jupiter.api.Test;
  */
 class CheckerPathLookupGuardTest {
 
-    private static final Path CHECKER = Path.of(
-            "consistency/src/commonMain/kotlin/io/github/mbackschat/a12/dm/consistency");
+    /**
+     * The checker's source, walked across EVERY production source set rather than {@code commonMain} alone.
+     *
+     * A cold review pointed out that {@code jsMain} sits in the same package and was outside the scan. It
+     * holds only the two-function JS boundary today, so the hole was empty — and one walk closes it instead
+     * of a note saying it is empty, which would have to be re-checked to stay true.
+     */
+    private static final Path CHECKER_SOURCE = Path.of("consistency/src");
 
     /** The barrier accessor whose result must not be searched by path. */
     private static final String ACCESSOR = "allDeclarations()";
@@ -99,7 +105,7 @@ class CheckerPathLookupGuardTest {
         var sources = checkerSources();
         assertTrue(
                 sources.size() >= SOURCE_FLOOR,
-                "read only " + sources.size() + " checker sources from " + CHECKER.toAbsolutePath()
+                "read only " + sources.size() + " checker sources from " + CHECKER_SOURCE.toAbsolutePath()
                         + ", so this scan proves nothing — a floor refuses an empty read that reports clean");
 
         var offenders = new ArrayList<String>();
@@ -284,14 +290,30 @@ class CheckerPathLookupGuardTest {
         }
     }
 
+    /**
+     * A {@code *Main} source set — production families, not the tests that legitimately discuss the idiom.
+     *
+     * Scoping by source set rather than by excluding {@code commonTest} by name: a source set added later is
+     * then covered or excluded by what it IS, without anyone remembering to extend a list.
+     */
+    private static boolean isProductionSourceSet(Path source) {
+        for (Path segment : source) {
+            if (segment.toString().endsWith("Main")) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     private static List<Path> checkerSources() {
-        try (Stream<Path> tree = Files.walk(CHECKER)) {
+        try (Stream<Path> tree = Files.walk(CHECKER_SOURCE)) {
             return tree.filter(Files::isRegularFile)
                     .filter(path -> path.getFileName().toString().endsWith(".kt"))
+                    .filter(CheckerPathLookupGuardTest::isProductionSourceSet)
                     .sorted()
                     .toList();
         } catch (IOException failure) {
-            throw new UncheckedIOException("cannot read the checker sources under " + CHECKER, failure);
+            throw new UncheckedIOException("cannot read the checker sources under " + CHECKER_SOURCE, failure);
         }
     }
 
