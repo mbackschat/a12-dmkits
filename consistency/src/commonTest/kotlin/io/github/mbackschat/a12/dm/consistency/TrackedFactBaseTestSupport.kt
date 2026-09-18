@@ -22,3 +22,32 @@ internal fun PreparedModel.tracked(): TrackedFactBase = TrackedFactBase(this, Re
 internal fun TrackedFactBase.everyDeclaration(
     family: TrackedFactBase.(TrackedDeclaration) -> List<Finding>,
 ): List<Finding> = declarations().flatMap { this.family(it) }
+
+/**
+ * The equivalence every [CheckProducer.PerDeclarationWalk] CLAIMS, measured on one model.
+ *
+ * Shared because two rows need it on different populations and the comparison must be the same one: the
+ * corpus-wide differential asks whether any family diverges on the shapes we already carry, while
+ * `ScopedWalkBranchDiscriminatorsTest` asks it on models built to reach a family's SECOND branch. Splitting
+ * the comparison would let the two drift, and it is the comparison — not the population — that is the claim.
+ *
+ * Returns one line per diverging producer, empty when the family answers identically either way.
+ */
+internal fun scopedWalkDivergences(model: ModelSource): List<String> {
+    val admitted = admit(model) as? Admission.Admitted ?: return emptyList()
+    val prepared = prepare(admitted)
+    return schedule(TrackedFactBase(prepared, ReadTranscript()))
+        .filter { it.key.producer is CheckProducer.PerDeclarationWalk }
+        .groupBy({ it.key.producer }, { it.produce().first })
+        .mapValues { (_, passes) -> passes.flatten() }
+        .mapNotNull { (producer, scopedFindings) ->
+            val whole = (producer as CheckProducer.PerDeclarationWalk)
+                .findings(TrackedFactBase(prepared, ReadTranscript()))
+            if (whole == scopedFindings) {
+                null
+            } else {
+                "${producer.completes}: whole model said ${whole.map { it.code to it.at }}, " +
+                    "per declaration said ${scopedFindings.map { it.code to it.at }}"
+            }
+        }
+}

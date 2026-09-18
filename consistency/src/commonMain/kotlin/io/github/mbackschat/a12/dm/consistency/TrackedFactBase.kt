@@ -59,11 +59,22 @@ internal class TrackedFactBase private constructor(
      * unscoped family produced, in the same order. Rewriting thirty bodies to take a parameter buys nothing
      * the scope does not, and every rewrite is a chance to change a verdict.
      *
-     * **Only [declarations] narrows. Everything else answers for the whole model and charges the set shape**
-     * — `declarationAt`, `isResolvable`, `resolveEntity`, `declaredReferences`. That is deliberate and it is
-     * what keeps the gate mechanical: a family reaching any of them charges
-     * [FactRead.DeclarationSetShape], and `FamilyChargeProfileTest` refuses a per-declaration cell that
-     * charges the shape. Narrowing those instead would silently answer a set question with one declaration.
+     * **[declarations] and the ASSEMBLIES over it narrow; the set questions do not.** Narrowing reaches
+     * `declarations`, `declaredReferences` and `conditionReferences` — the last two are built ON the walk, so
+     * they narrow with the pass by construction and their scoped concatenation is the unscoped list.
+     * [allDeclarations], `declarationAt`, `isResolvable` and `resolveEntity` answer for the whole model and
+     * charge the set shape, because narrowing them would answer a set question with one declaration.
+     *
+     * **And no gate makes that mechanical — a helper reads whichever it was written against, however many
+     * frames below the family's entry point it sits.** Corrected 2026-09-18, after a cold review measured
+     * four families answering differently under the scope: three invented a verdict and one dropped one, all
+     * through set helpers in `Reference.kt` that read `declarations()` two or three frames down
+     * (`ScopedWalkBranchDiscriminatorsTest`). This paragraph previously claimed the gate WAS mechanical,
+     * naming `FamilyChargeProfileTest` as the enforcement locus and listing `declaredReferences` as
+     * non-narrowing; the first is not what that test asserts and the second is the opposite of what it does.
+     * What actually catches this class is the equivalence differential, and only on a model that reaches the
+     * branch — so a new set helper gets [allDeclarations] because it MEANS the set, not because a build step
+     * will say so.
      *
      * It shares this base's model, transcript and cursor list, so a scope allocates a view and no facts.
      */

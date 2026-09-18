@@ -173,10 +173,12 @@ class FamilyCellReuseTest {
         val snapshot = snapshotOf(listOf(source), "cells")
 
         // Re-typing the text it already has leaves the drafted fact base equal to the baseline's, so every
-        // one of the 98 cells must revalidate. It is the validator's own ceiling, and the row that makes the
+        // scheduled cell must revalidate. It is the validator's own ceiling, and the row that makes the
         // partial figure above meaningful: a comparison that was subtly wrong — the shape value dragging in
-        // bodies, a member left out of it — would fell cells here too, and 24-of-98 alone cannot tell a
-        // correctly narrow store from a carelessly wide one.
+        // bodies, a member left out of it — would fell cells here too, and a partial figure alone cannot
+        // tell a correctly narrow store from a carelessly wide one. The denominator is `cellCount()` rather
+        // than a literal because it is now `model-wide + per-declaration × declarations` and moves with the
+        // fixture, so a migrated family changes it.
         val families = snapshot.draft("/Order/CodeRequired", "errorCondition", "FieldFilled(Code)")
             .reuse.families
 

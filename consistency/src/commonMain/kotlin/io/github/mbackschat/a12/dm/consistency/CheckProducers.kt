@@ -14,11 +14,13 @@ package io.github.mbackschat.a12.dm.consistency
  * registration object itself is the bucket's key: it is a singleton in [CHECK_PRODUCERS], compares by
  * identity, and needs no name that could be spelled two ways.
  *
- * **Two shapes, because two granularities of cell are.** A [ModelWide] producer answers about the model and
- * is cached once; a [PerDeclaration] producer is asked once per declaration by the dispatcher and is cached
- * per declaration, so a keystroke fells one declaration's cell instead of the family's whole verdict. The
- * split is a sealed hierarchy rather than a nullable lambda so the dispatcher's `when` is exhaustive and a
- * third shape cannot be added without every dispatch site being made to account for it.
+ * **Three shapes for two granularities of cell.** A [ModelWide] producer answers about the model and is
+ * cached once. [PerDeclaration] and [PerDeclarationWalk] are both asked once per declaration and cached per
+ * declaration, so a keystroke fells one declaration's cell instead of the family's whole verdict; they
+ * differ in HOW the subject reaches the family — as a parameter, or as a fact base scoped to it — and that
+ * difference is what the walk's equivalence claim is about. The split is a sealed hierarchy rather than a
+ * nullable lambda so the dispatcher's `when` is exhaustive and a fourth shape cannot be added without every
+ * dispatch site being made to account for it.
  */
 internal sealed interface CheckProducer {
 
@@ -49,10 +51,13 @@ internal sealed interface CheckProducer {
      * what handles set membership, since a declaration that is gone is never asked for and a new one has no
      * cell to be wrong.
      *
-     * **Which families may take this shape is a per-family claim, not a refactor.** It holds only where the
-     * verdict about one declaration does not depend on the SET, because the shape is deliberately charged to
-     * the composition instead of to each declaration's bucket. A family that resolves a reference, or that
-     * compares declarations with each other, stays [ModelWide].
+     * **Which families may take this shape is a per-family claim, not a refactor.** It holds where the
+     * verdict about one declaration is a function of that declaration plus facts the pass charges — and a
+     * set fact read through [TrackedFactBase.allDeclarations] charges the set shape, so reading one is
+     * sound and merely wide. *Corrected 2026-09-18: this said a family that RESOLVES A REFERENCE stays
+     * [ModelWide]. Such families are per-declaration today (L-b3c-3a/3b) and the ones that moved read their
+     * set facts through `allDeclarations`; what stays [ModelWide] is a family whose subject IS a relation
+     * between declarations — a dependency circle, a key's containment in an iteration scope.*
      */
     class PerDeclaration(
         override val completes: Set<CheckFamily>,
@@ -66,7 +71,11 @@ internal sealed interface CheckProducer {
      * separate kind rather than a flag because it is the kind that can be CHECKED: what it claims is an
      * equivalence — the concatenation of its scoped passes is the list it produced unscoped — and that
      * claim is only testable when the dispatcher knows which producers make it.
-     * `PerDeclarationWalkEquivalenceTest` runs exactly that differential over every registration here.
+     * `CheckFamilyWiringTest.aWalkingFamilyAskedPerDeclarationSaysWhatItSaidOverTheWholeModel` runs that
+     * differential over every registration here on this module's fixtures and the parity corpus, and
+     * `ScopedWalkBranchDiscriminatorsTest` runs it on models built to reach a family's SECOND branch —
+     * which is the population that matters, because per-producer non-vacuity is not per-BRANCH coverage and
+     * four families were wrong under the first alone (2026-09-18).
      *
      * The gate matters because the failure is SILENT otherwise. A family that uses the walk to look up
      * ANOTHER declaration — an operand's field, to learn its type — gets one declaration from a scoped base

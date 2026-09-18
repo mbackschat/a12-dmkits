@@ -177,7 +177,7 @@ private fun TrackedFactBase.entryListFindings(
         when (declared.declaredKind) {
             DeclaredKind.FIELD -> listOf(declared)
             DeclaredKind.GROUP ->
-                declarations().filter { it.declaredKind == DeclaredKind.FIELD && it.path.startsWith("${declared.path}/") }
+                allDeclarations().filter { it.declaredKind == DeclaredKind.FIELD && it.path.startsWith("${declared.path}/") }
             else -> return null
         }
     }

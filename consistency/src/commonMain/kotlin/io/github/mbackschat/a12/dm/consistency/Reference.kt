@@ -210,8 +210,15 @@ internal fun PreparedModel.crossedRepetitions(path: String): List<DeclaredElemen
     .filter { it.isRepeatableGroup && path.startsWith("${it.path}/") }
     .sortedBy { it.path.length }
 
-/** The same walk through the read barrier; each group's repeatability charges its own declaration. */
-internal fun TrackedFactBase.crossedRepetitions(path: String): List<TrackedDeclaration> = declarations()
+/**
+ * The same walk through the read barrier; each group's repeatability charges its own declaration.
+ *
+ * [TrackedFactBase.allDeclarations], not `declarations()`, and the distinction is load-bearing rather than
+ * stylistic: this asks which groups the MODEL repeats above a path, so under a scoped pass `declarations()`
+ * would answer with the one declaration the pass is about and report that the path crosses nothing. Measured
+ * 2026-09-18 — three families invented a verdict through exactly this reading.
+ */
+internal fun TrackedFactBase.crossedRepetitions(path: String): List<TrackedDeclaration> = allDeclarations()
     .filter { it.isRepeatableGroup && path.startsWith("${it.path}/") }
     .sortedBy { it.path.length }
 
@@ -243,7 +250,10 @@ private fun PreparedModel.repeatableGroupPaths(): List<String> = elements
     .filter { it.isRepeatableGroup }
     .map { it.path }
 
-private fun TrackedFactBase.repeatableGroupPaths(): List<String> = declarations()
+// The whole model's repeatable groups: a SET question, so it reads through [TrackedFactBase.allDeclarations]
+// and never narrows with a scoped pass. Under `declarations()` a scoped pass saw an empty level list and
+// `addressedTargetIn` then handed back a target it used to refuse (measured 2026-09-18).
+private fun TrackedFactBase.repeatableGroupPaths(): List<String> = allDeclarations()
     .filter { it.isRepeatableGroup }
     .map { it.path }
 
@@ -620,7 +630,10 @@ internal fun TrackedFactBase.expandToFields(path: String): List<TrackedDeclarati
     if (target.declaredKind == DeclaredKind.FIELD) {
         return listOf(target)
     }
-    return declarations()
+    // The fields beneath ANOTHER declaration, so [TrackedFactBase.allDeclarations]: a scoped pass asking
+    // `declarations()` expands the group against the one declaration it is about, finds nothing, and returns
+    // null — which this family reads as "no field beneath it" and drops its verdict (measured 2026-09-18).
+    return allDeclarations()
         .filter { it.declaredKind == DeclaredKind.FIELD && it.path.startsWith("$path/") }
         .takeIf { it.isNotEmpty() }
 }

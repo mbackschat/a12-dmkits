@@ -234,7 +234,7 @@ internal fun TrackedFactBase.parallelVerdictOf(
 }
 
 /** Every group at or above [path] that declares an index field — A12's `getIndexGroup` walk. */
-private fun TrackedFactBase.keyedGroupsAtOrAbove(path: String): List<TrackedDeclaration> = declarations()
+private fun TrackedFactBase.keyedGroupsAtOrAbove(path: String): List<TrackedDeclaration> = allDeclarations()
     .filter { it.keysAGroupAtOrAbove(path) && indexFieldNameOf(it) != null }
 
 private fun TrackedDeclaration.keysAGroupAtOrAbove(path: String): Boolean =

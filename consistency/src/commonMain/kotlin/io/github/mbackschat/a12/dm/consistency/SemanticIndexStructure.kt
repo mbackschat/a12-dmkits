@@ -274,7 +274,7 @@ private fun TrackedFactBase.resolveField(
 }
 
 /** The innermost group above [fieldPath] that declares an index field — the one A12 indexes on. */
-private fun TrackedFactBase.indexGroupOf(fieldPath: String): String? = declarations()
+private fun TrackedFactBase.indexGroupOf(fieldPath: String): String? = allDeclarations()
     .filter {
         it.declaredKind == DeclaredKind.GROUP && fieldPath.startsWith("${it.path}/") &&
             indexFieldNameOf(it) != null

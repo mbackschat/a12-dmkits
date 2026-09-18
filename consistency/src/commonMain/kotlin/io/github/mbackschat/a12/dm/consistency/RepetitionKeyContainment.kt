@@ -157,7 +157,7 @@ private fun TrackedFactBase.withoutScope(keys: List<String>, declaringGroup: Str
 private fun parentOf(path: String): String = "${path.substringBeforeLast('/', missingDelimiterValue = "")}/"
 
 /** The innermost repeatable group [path] lies under, which is the level A12 compares. */
-private fun TrackedFactBase.lowestRepetitionOf(path: String): TrackedDeclaration? = declarations()
+private fun TrackedFactBase.lowestRepetitionOf(path: String): TrackedDeclaration? = allDeclarations()
     .filter { it.isRepeatableGroup && path.startsWith("${it.path}/") }
     .maxByOrNull { it.path.length }
 

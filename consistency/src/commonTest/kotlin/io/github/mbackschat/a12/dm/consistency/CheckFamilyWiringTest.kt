@@ -869,23 +869,12 @@ class CheckFamilyWiringTest {
             .map { ModelSource(ParityCorpusJson.source(it)) }
         var examined = 0
         (listOf(source, germanSource) + corpus).forEach { model ->
-            val admitted = admit(model) as? Admission.Admitted ?: return@forEach
-            val prepared = prepare(admitted)
+            if (admit(model) !is Admission.Admitted) return@forEach
             examined++
-            val scoped = TrackedFactBase(prepared, ReadTranscript())
-            val perDeclaration = schedule(scoped)
-                .filter { it.key.producer is CheckProducer.PerDeclarationWalk }
-                .groupBy({ it.key.producer }, { it.produce().first })
-                .mapValues { (_, passes) -> passes.flatten() }
-
-            perDeclaration.forEach { (producer, scopedFindings) ->
-                val walk = producer as CheckProducer.PerDeclarationWalk
-                val whole = walk.findings(TrackedFactBase(prepared, ReadTranscript()))
-                if (whole != scopedFindings) {
-                    differing += "${producer.completes}: whole model said $whole, " +
-                        "per declaration said $scopedFindings"
-                }
-            }
+            // The comparison itself lives in [scopedWalkDivergences], shared with
+            // `ScopedWalkBranchDiscriminatorsTest`: this row varies the POPULATION and that one varies the
+            // BRANCH, and two copies of the comparison could have drifted on what "differently" means.
+            differing += scopedWalkDivergences(model)
         }
 
         // The equivalence [CheckProducer.PerDeclarationWalk] CLAIMS, run as a differential rather than

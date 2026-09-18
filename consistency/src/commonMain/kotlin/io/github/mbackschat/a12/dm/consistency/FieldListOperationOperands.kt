@@ -144,7 +144,7 @@ private fun TrackedFactBase.operandDefect(
         when (declared.declaredKind) {
             DeclaredKind.FIELD -> listOf(declared)
             DeclaredKind.GROUP ->
-                declarations().filter { it.declaredKind == DeclaredKind.FIELD && it.path.startsWith("$target/") }
+                allDeclarations().filter { it.declaredKind == DeclaredKind.FIELD && it.path.startsWith("$target/") }
             else -> return null
         }
     }

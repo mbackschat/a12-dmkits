@@ -24,8 +24,10 @@ internal class CheckCell(
 /**
  * The cells one check can hand to the next check over a NEARBY model — an editor's keystroke, in practice.
  *
- * Keyed by the registration object, which is a singleton in [CHECK_PRODUCERS] and compares by identity, so
- * there is no name to spell two ways and no key to collide.
+ * Keyed by [CellKey] — the registration object, which is a singleton in [CHECK_PRODUCERS] and compares by
+ * identity, plus the [DeclarationKey] a per-declaration cell answers about. So there is no name to spell two
+ * ways, and the one collision a path alone would allow (two declarations at one path, which A12 refuses and
+ * this checker reports on) is separated by that key's ordinal.
  *
  * **Absence means work, never a guess.** A producer with no cell, or one whose recorded facts have moved, is
  * simply run — so a family added later is slow rather than wrong, and there is no state in which this store

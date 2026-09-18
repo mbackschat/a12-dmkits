@@ -267,7 +267,7 @@ private fun TrackedFactBase.listedFields(
     when (declared.declaredKind) {
         DeclaredKind.FIELD -> listOf(ListedField(declared, category))
         DeclaredKind.GROUP ->
-            declarations().filter { it.declaredKind == DeclaredKind.FIELD && it.path.startsWith("${declared.path}/") }
+            allDeclarations().filter { it.declaredKind == DeclaredKind.FIELD && it.path.startsWith("${declared.path}/") }
                 .map { ListedField(it, null) }
         else -> return null
     }

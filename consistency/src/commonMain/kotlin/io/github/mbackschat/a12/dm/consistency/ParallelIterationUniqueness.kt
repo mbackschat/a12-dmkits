@@ -74,7 +74,7 @@ private const val REPETITION_NOT_UNIQUE_CALL = "RepetitionNotUnique"
 private data class KeyedGroup(val path: String, val indexField: String, val indexType: String)
 
 /** The nearest index-keyed repeatable group at or above [path], or null when nothing above it is keyed. */
-private fun TrackedFactBase.keyedGroupOver(path: String): KeyedGroup? = declarations()
+private fun TrackedFactBase.keyedGroupOver(path: String): KeyedGroup? = allDeclarations()
     .filter {
         it.isRepeatableGroup &&
             (it.path == path || path.startsWith("${it.path}/"))
