@@ -1196,10 +1196,18 @@ def verifyConsistencyShippedFiles = tasks.register('verifyConsistencyShippedFile
         // host API at all" — an invariant that was true and held by nothing until 2026-09-18, since every
         // other arm here reads file NAMES or the manifest. A Kotlin/JS emit change or a new `js()`-target
         // dependency is exactly what would introduce one, and neither moves a file name.
+        // The bare form needs a pattern rather than a substring, and it is the one a bundler actually
+        // produces: rewriting `node:fs` to `fs` is a routine interop step, and the result is just as
+        // unresolvable in a browser while naming none of the tokens above. `[^\w$.]` before `from` is what
+        // keeps `Array.from('path')` out; the interpreter's own import guard carries the executed case set.
+        def bareNodeImport = ~/(?s).*(?:^|[^\w$.])from\s*['"](?:fs|path|process|buffer)['"].*/
         def hostApiUsers = [:]
         archive.matching { include 'package/*.mjs' }.each { javascript ->
             def source = javascript.text
             def named = ['node:', "require('", 'require("', 'process.'].findAll { source.contains(it) }
+            if (source ==~ bareNodeImport) {
+                named += 'a bare Node built-in import'
+            }
             if (named) {
                 hostApiUsers[javascript.name] = named
             }

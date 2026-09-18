@@ -1777,14 +1777,28 @@ def verifyInterpreterNpmPackage = tasks.register('verifyInterpreterNpmPackage') 
                 }
             }
         }
+        // One expression for all three spellings, because the three-arm form it replaces could not reach two
+        // of them and nothing said so. Verified 2026-09-18 against Groovy 4.0.27 itself — the version that
+        // parses this file — over 11 Node-only and 9 innocent lines:
+        //
+        //  - the `require(...)` arm was VACUOUS. In a slashy string `\\` survives as two characters, so the
+        //    pattern demanded a literal backslash before the paren and matched no JavaScript that exists. It
+        //    had never caught anything and could not have.
+        //  - a BARE specifier (`from 'fs'`) was uncovered on both arms. It is as unresolvable in a browser as
+        //    `node:fs` and is what a bundler emits when it rewrites the prefix away.
+        //  - `from"node:fs"` with no space, which is what a minifier emits, slipped past the two `contains`
+        //    arms as well.
+        //
+        // `node:` stays open to ANY builtin while the bare form is limited to the four that were already
+        // named: a bare specifier is only a defect because nothing in a browser resolves it, and widening
+        // that list would start refusing package names. `[^\w$.]` before `from` is what keeps
+        // `Array.from('path')` out.
+        def nodeOnlyImport = ~/(?s).*(?:^|[^\w$.])(?:from|require\()\s*['"](?:node:[\w\/.-]+|fs|path|process|buffer)['"].*/
         archive.matching {
             include 'package/**/*.js'
             include 'package/**/*.mjs'
         }.files.each { javascript ->
-            def source = javascript.getText('UTF-8')
-            if (source.contains("from 'node:") ||
-                source.contains('from "node:') ||
-                source ==~ /(?s).*require\\(['\"](?:fs|path|process|buffer)['\"]\\).*/) {
+            if (javascript.getText('UTF-8') ==~ nodeOnlyImport) {
                 throw new GradleException(
                     "browser package contains a Node-only import in ${javascript.name}",
                 )
