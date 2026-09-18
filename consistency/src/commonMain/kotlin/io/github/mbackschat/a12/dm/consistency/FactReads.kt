@@ -92,7 +92,7 @@ internal enum class ModelFact {
  * keyed on less than it read, which is the one direction that makes reuse UNSOUND. The inner family still
  * gets its own bucket from its own registration.
  */
-internal class ReadTranscript {
+internal class ReadTranscript(private val retention: CellRetention = CellRetention.KEPT) {
     /**
      * The buckets. The `null` key is the COMPOSITION — [checkRun]'s own reads, which belong to no cell and
      * are never reused. **The dispatcher's own walk of the declarations charges there, deliberately**: a
@@ -105,7 +105,12 @@ internal class ReadTranscript {
     private var producing: CellKey? = null
 
     fun record(read: FactRead) {
-        byCell.getOrPut(producing) { mutableSetOf() } += read
+        when (retention) {
+            CellRetention.KEPT -> byCell.getOrPut(producing) { mutableSetOf() } += read
+            // Nothing will read it back: [checkRun] hands this run's store away as `CheckCells.NONE`, so a
+            // recorded read could only be paid for and then dropped.
+            CellRetention.DISCARDED -> Unit
+        }
     }
 
     /** Run [produce] with every read it makes charged to [key]. */

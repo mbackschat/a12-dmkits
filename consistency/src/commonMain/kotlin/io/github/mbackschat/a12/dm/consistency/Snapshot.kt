@@ -143,7 +143,7 @@ class ConsistencySnapshot private constructor(
             )
             // The cells this snapshot holds are what make a keystroke cheap: the draft changes one
             // declaration's text, so every family that never read it answers from the baseline's verdict.
-            is Drafted.Applied -> checkRun(drafted.prepared, baseline.modelId, emptyList(), cells)
+            is Drafted.Applied -> checkRun(drafted.prepared, baseline.modelId, emptyList(), cells, CellRetention.KEPT)
         }
         return DraftResult(attribute(baseline, run.report), reuseOf(base, baseline, run.families))
     }
@@ -192,7 +192,7 @@ class ConsistencySnapshot private constructor(
             // — so its cells would describe a different object than the one a draft is applied to. An
             // unknown entry has no fact base, and the workspace owns that envelope.
             val run = prepared?.let {
-                checkRun(it, entryModelId, workspace.sourceDiagnostics, CheckCells.NONE)
+                checkRun(it, entryModelId, workspace.sourceDiagnostics, CheckCells.NONE, CellRetention.KEPT)
             }
             val reused = workspace.admittedSources.count { (id, admitted) ->
                 previous?.workspace?.admittedSources?.get(id) === admitted

@@ -878,7 +878,28 @@ internal fun checkPrepared(
     prepared: PreparedModel,
     modelId: String?,
     inherited: List<Diagnostic>,
-): ConsistencyReport = checkRun(prepared, modelId, inherited, CheckCells.NONE).report
+): ConsistencyReport = checkRun(prepared, modelId, inherited, CheckCells.NONE, CellRetention.DISCARDED).report
+
+/**
+ * Whether a check must leave a store a LATER check can answer from.
+ *
+ * **A parameter rather than something read off `carried`, because the two are independent.** Making a
+ * snapshot carries nothing and keeps everything; [checkPrepared] carries nothing and keeps nothing; a drafted
+ * edit carries a store and keeps the next one. Only the caller knows which it is.
+ *
+ * **What `DISCARDED` buys, measured.** Recording each fact a family reads and capturing each read's value is
+ * ~180 ms of a 509 ms 200-program check, and the stateless path throws the result away the instant it has the
+ * report. Nothing else consumes a recorded read — `CheckCells.cellFor` is the only main-source reader of the
+ * transcript — so skipping it cannot change a verdict, which `CellRetentionTest` locks by comparing the two
+ * runs' reports rather than by matching a recorded expectation.
+ */
+internal enum class CellRetention {
+    /** Record the reads and keep the store: a snapshot will be asked again. */
+    KEPT,
+
+    /** Record nothing and hand back [CheckCells.NONE]: this report is the whole answer. */
+    DISCARDED,
+}
 
 /**
  * The same check, plus the per-family cells a LATER check over a nearby model can answer from.
@@ -896,6 +917,7 @@ internal fun checkRun(
     modelId: String?,
     inherited: List<Diagnostic>,
     carried: CheckCells,
+    retention: CellRetention,
 ): CheckRun {
     prepared.unsupportedConditionLanguage?.let { code ->
         // A12 refuses the model rather than falling back to a language, so there is no reading of its
@@ -940,7 +962,7 @@ internal fun checkRun(
     // the read being observable — the barrier's whole purpose, and a type rather than a lint because an
     // untracked read then does not compile. One transcript per check, shared by every migrated family: a read
     // is a property of the model, not of the family that happened to make it.
-    val tracked = TrackedFactBase(prepared, ReadTranscript())
+    val tracked = TrackedFactBase(prepared, ReadTranscript(retention))
     val declared = prepared.declaredReferences()
     // A12 examines a rule's error TARGET first and stops the whole declaration when it does not resolve —
     // the condition's own class and both error-text classes are withheld, leaving the target's two codes
@@ -990,7 +1012,10 @@ internal fun checkRun(
                 scheduled.flatMap { cells.getValue(it.key).gaps } + UNREAD_MEMBERS +
                 UNIMPLEMENTED_FAMILIES,
         ),
-        cells = CheckCells(cells),
+        cells = when (retention) {
+            CellRetention.KEPT -> CheckCells(cells)
+            CellRetention.DISCARDED -> CheckCells.NONE
+        },
         families = FamilyReuse(reused = reused, recomputed = scheduled.size - reused),
     )
 }
