@@ -78,7 +78,7 @@ All eight keys are always present. An empty array and an absent key would mean o
 
 `code` is A12's own `MVK_*` code wherever the Kernel has one, so it joins against A12 diagnostics directly. Codes beginning `CK_` are this checker's own and mark a tier A12 has no code for — `CK_MODEL_NOT_BUILDABLE` means the source never loads at all, so no consistency verdict about that model exists in either direction.
 
-**Read `justifiesRejection`, not `severity`, to decide whether a model is rejected.** The two come apart on purpose: `category` is `A12_CONSTRAINT` for a measured Kernel verdict and `AUTHORING_POLICY` for a house rule that the Kernel accepts, and an `AUTHORING_POLICY` finding at `ERROR` deliberately does not make a model invalid. `justifiesRejection` is the conjunction, published because a consumer cannot derive it from the fields without knowing that rule.
+**Read `justifiesRejection`, not `severity`, to decide whether a model is rejected.** The two come apart on purpose: `category` is `A12_CONSTRAINT` for a measured Kernel verdict and `AUTHORING_POLICY` for a house rule that the Kernel accepts (a third constant, `EVALUATOR_SUPPORT`, is published for a gap in what an evaluator can support and **no producer currently emits it** — handle it as you would a house rule, and do not expect it on the wire), and an `AUTHORING_POLICY` finding at `ERROR` deliberately does not make a model invalid. `justifiesRejection` is the conjunction, published because a consumer cannot derive it from the fields without knowing that rule.
 
 `at` is the declaration's model path, or `null` for a finding about the model as a whole.
 
@@ -112,6 +112,8 @@ report.resolved      // the findings the edit removed, so a repair is visible as
 report.baseline      // the full report for the model as it stood: a DISCLOSURE, never part of the verdict
 report.edited        // the full report for the model as edited
 ```
+
+**From JavaScript it is `checkEditJson(baselineJson, editedJson, diagnosticLabel?)`**, returning that wire shape as text — the parameter order is baseline first, as in the Kotlin call above.
 
 `report.toJson()` gives the wire shape, with `introduced` and `resolved` always present rather than omitted when empty — absent and empty would otherwise mean the same thing to a consumer deciding whether an edit is safe to save.
 
@@ -162,7 +164,7 @@ report.gaps           // what the ANALYSIS could not follow
 
 **From JavaScript it is `impactOfJson(baselineJson, editedJson, diagnosticLabel?)`**, returning the same five members as JSON: `affected`, `delta`, `impacts`, `edit`, `gaps`. `edit` is byte-identical to what `checkEditJson` publishes for the same pair, because the verdict is delegated and not re-derived.
 
-A dependency crosses the wire as `{kind, value}` rather than with a key per arm — `kind` is `ELEMENT`, `TYPE_DEFINITION`, `SHORT_NAME` or `UNFOLLOWABLE`, and `value` is the path, the id or the bare name, `null` for an arm that names nothing. **The key set is deliberately fixed across arms**: a consumer that only displays the dependency needs no switch, and one that acts on it still has the discriminator. Read `value` as a path only when `kind` is `ELEMENT` — `SHORT_NAME` is the one dependency with no position at all, which is exactly where a consumer assuming a path goes wrong.
+A dependency crosses the wire as `{kind, value}` rather than with a key per arm — `kind` is `ELEMENT`, `TYPE_DEFINITION`, `SHORT_NAME` or `UNFOLLOWABLE`, and `value` is the path, the id or the bare name, `null` for an arm that names nothing. **`UNFOLLOWABLE` is spelled out but cannot currently arrive**: a change set maps that arm to no reason, so no impact carries one. It is published so a consumer's switch is total over the sealed type rather than over what today happens to reach the wire. **The key set is deliberately fixed across arms**: a consumer that only displays the dependency needs no switch, and one that acts on it still has the discriminator. Read `value` as a path only when `kind` is `ELEMENT` — `SHORT_NAME` is the one dependency with no position at all, which is exactly where a consumer assuming a path goes wrong.
 
 ```ts
 import { impactOfJson } from 'a12-consistency';
@@ -201,7 +203,7 @@ snapshot = snapshot.withoutSource("catalog")                         // and the 
 
 **No latency is claimed here either.** `FamilyReuse` counts WORK, for the same reason the source counters do.
 
-**From JavaScript it is `snapshotOfJson(modelJsons, entryModelId)`**, returning an opaque `ConsistencySnapshotHandle`. The handle is the one exported *type* on this surface, and it carries no structure: every payload is still a JSON string.
+**From JavaScript it is `snapshotOfJson(modelJsons, entryModelId)`**, returning an opaque `ConsistencySnapshotHandle`. The handle is the one exported *type* on this surface, and it carries no structure: every payload is still a JSON string. (Kotlin/JS also emits a `ConsistencySnapshotHandle.$metadata$` namespace beside it, carrying an `abstract new ()` construct signature. It is a compiler artifact, not part of this contract, and it does not defeat the opacity — an abstract construct signature is not newable.)
 
 ```ts
 import { snapshotOfJson } from 'a12-consistency';

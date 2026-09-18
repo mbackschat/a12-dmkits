@@ -206,13 +206,8 @@ fun PreparedModel.resolve(
  *
  * A reference's index vector carries one entry per level, and every repeatable level it crosses without a
  * marker is A12's `ITERATION`. That is the quantity three families ask for, so it is stated once here.
- */
-internal fun PreparedModel.crossedRepetitions(path: String): List<DeclaredElement> = elements
-    .filter { it.isRepeatableGroup && path.startsWith("${it.path}/") }
-    .sortedBy { it.path.length }
-
-/**
- * The same walk through the read barrier; each group's repeatability charges its own declaration.
+ *
+ * Each group's repeatability charges its own declaration.
  *
  * [TrackedFactBase.repeatableGroups], not `declarations()`, and the distinction is load-bearing rather than
  * stylistic: this asks which groups the MODEL repeats above a path, so under a scoped pass `declarations()`
@@ -226,33 +221,19 @@ internal fun TrackedFactBase.crossedRepetitions(path: String): List<TrackedDecla
     .sortedBy { it.path.length }
 
 /**
- * The same levels plus [path] itself when it names a repeatable group.
+ * The repeatable levels above [path], plus [path] itself when it names a repeatable group.
  *
  * A reference that ENDS at a repeatable group iterates it too — `CurrentRepetition(Legs)` rides the same
  * marker a field beneath `Legs` does — so a walk that only looks at ancestors misses the group carrier.
- */
-internal fun PreparedModel.iteratedLevels(path: String): List<String> =
-    iteratedLevelsIn(repeatableGroupPaths(), path)
-
-/**
- * The same walk through the read barrier.
  *
  * **The charge falls out of using the cursor rather than being written down**, which is what makes it right:
  * the repeatable-group list is built through [TrackedDeclaration.isRepeatable], so every group's body this
  * walk actually reads is charged, and a future change to what it reads charges itself. A hand-written charge
  * beside a delegating call is the shape that goes stale and under-charges — the unsound direction.
  */
-internal fun TrackedFactBase.iteratedLevels(path: String): List<String> =
-    iteratedLevelsIn(repeatableGroupPaths(), path)
-
-private fun iteratedLevelsIn(repeatableGroups: List<String>, path: String): List<String> = repeatableGroups
+internal fun TrackedFactBase.iteratedLevels(path: String): List<String> = repeatableGroupPaths()
     .filter { it == path || path.startsWith("$it/") }
     .sortedBy { it.length }
-
-// Delegates to the memoized list rather than repeating its expression: this walk and
-// `PreparedModel.repeatableGroupPathList` were the same two lines in two files from 2026-09-18, when the
-// latter was added for `ModelFact.REPEATABLE_GROUP_SET` without checking for an existing one.
-private fun PreparedModel.repeatableGroupPaths(): List<String> = repeatableGroupPathList
 
 // The whole model's repeatable groups: a SET question, so it reads through
 // [TrackedFactBase.repeatableGroups] and never narrows with a scoped pass. Under `declarations()` a scoped
@@ -266,26 +247,11 @@ private fun TrackedFactBase.repeatableGroupPaths(): List<String> = repeatableGro
  * A star on a non-repeatable level is `MVK_INVALID_WILDCARD` and outruns every slot gate ([KF328]), so such
  * a reference belongs to [repetitionWildcardFindings] and is not judged by a scope law at all — including
  * the case where the starred prefix does not resolve, which is the reference family's.
- */
-internal fun PreparedModel.starredLevelsOf(
-    written: String,
-    declaringGroup: String,
-    element: DeclaredElement,
-): Set<String>? = starredLevelsIn(
-    written,
-    resolve = { prefix -> resolveEntity(declaringGroup, prefix, element.origin) },
-    // Asked per starred segment, so it stays a direct lookup rather than a list of every repeatable group:
-    // the common reference carries no star at all and must pay for no walk.
-    repeats = { path -> elements.any { it.path == path && it.isRepeatableGroup } },
-)
-
-/**
- * The same walk through the read barrier; both of its reads charge themselves through the cursor.
  *
- * The repeatability lookup charges TIGHTER here than the untracked arm reads: [TrackedFactBase.declarationAt]
- * takes the set's shape and then one declaration's content, where a repeatable-group list would have charged
- * every group's body. Narrower than what is read would be unsound; narrower than what the other ARM reads is
- * just a better question.
+ * Both of its reads charge themselves through the cursor, and the repeatability lookup is asked per starred
+ * segment so it stays a direct lookup rather than a list of every repeatable group — the common reference
+ * carries no star at all and must pay for no walk. [TrackedFactBase.declarationAt] takes the set's shape and
+ * then one declaration's content; narrower than what is read would be unsound, and this is not that.
  */
 internal fun TrackedFactBase.starredLevelsOf(
     written: String,
@@ -557,22 +523,14 @@ internal fun TrackedFactBase.operandSpec(operand: CallOperand): Pair<String, Str
  * a rule written inside a repetition reads that repetition's own row, so the same reference iterates or does
  * not depending on where the rule sits — which is why a reader that only counted repeating levels would call
  * an anchored read opaque and lose every class behind it.
+ *
+ * The charge rides the cursor, as on [iteratedLevels].
  */
-internal fun PreparedModel.crossesARepetitionOutside(declaringGroup: String, path: String): Boolean =
-    crossesARepetitionOutsideIn(repeatableGroupPaths(), declaringGroup, path)
-
-/** The same question through the read barrier; the charge rides the cursor, as on [iteratedLevels]. */
 internal fun TrackedFactBase.crossesARepetitionOutside(declaringGroup: String, path: String): Boolean =
-    crossesARepetitionOutsideIn(repeatableGroupPaths(), declaringGroup, path)
-
-private fun crossesARepetitionOutsideIn(
-    repeatableGroups: List<String>,
-    declaringGroup: String,
-    path: String,
-): Boolean = repeatableGroups.any { candidate ->
-    path.startsWith("$candidate/") &&
-        !(declaringGroup == candidate || declaringGroup.startsWith("$candidate/"))
-}
+    repeatableGroupPaths().any { candidate ->
+        path.startsWith("$candidate/") &&
+            !(declaringGroup == candidate || declaringGroup.startsWith("$candidate/"))
+    }
 
 internal fun TrackedFactBase.repeatingLevelsOnThePathTo(path: String): Int =
     repeatableGroupPaths().count { it == path || path.startsWith("$it/") }
