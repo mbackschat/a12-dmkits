@@ -21,6 +21,28 @@
 > enforcement, and its place in the docs router. The cleaner boundary is by AUTHOR, not by subject — `perf-results/`
 > is machine-written and self-pruning, this is hand-written and guard-verified.
 
+### Checkpoint 2026-09-18 — the portable-consistency plan took NO interpreter measurement, and closing that gap cost one false regression
+
+**The hypothesis was that the plan regressed the interpreter, and it is refuted.** The plan ran 2026-09-11 → 2026-09-18 under NFR #1 ("the interpreter's performance is never compromised", 5 % per row against restart baseline `c8e3b997`, and **missing or inconclusive evidence fails rather than passes**) — and `perf-results/darwin-aarch64/` jumps from `2026-08-24` straight to today. Seven days of work, no interpreter evidence, against a requirement whose own clause says silence fails. That gap is the finding; the refutation below is what closing it produced.
+
+**The discriminator was a second checkout, not a second opinion.** `../a12-rulekit-measure` is an independent clone parked at `ad4d5ff64` (2026-09-08, pre-plan) and resolves to the same `.gradle-isolated` home and pinned JDK, so the same lane runs on one machine against two trees with the identical committed anchor (`charset-grapheme@1` fingerprint `098088bc…`, n=32000, 65.16 ms × `ANCHOR_TOLERANCE`).
+
+| tree | estimates (ms) | median | breaches |
+|---|---|---|---|
+| pre-plan `ad4d5ff64` | 82.109 / 62.350 / 71.064 | **71.064** | none |
+| current `5a54058de` | 122.934 / 57.432 / 65.265 | **65.265** | one |
+
+**The single breach was a GC storm, and the counters say so rather than the story.** The 122.934 observation carries `gcCountInWindow=76`, `gcMsInWindow=261`; every other observation on either tree carries 0–6 collections and 0–6 ms. Its load average (11.22) was *lower* than the baseline reading it was first compared against (14.42), so contention of the ordinary kind does not explain it either. The lane spans 57→123 ms across clean-and-dirty runs, which is why `ANCHOR_TOLERANCE` is ~1.665 rather than tight.
+
+**What this cost, and the rule it re-proves.** On one estimate each side the comparison read `82.109 → 122.934`, "+49.7 %, ten times NFR #1's allowance", and was reported as a probable shipped breach. Two more estimates per side reversed the sign. The estate's own clause — *"a red exit is an event rather than a number"* — was written for exactly this and was quoted while the single-estimate claim was being made. **A breach is a hypothesis until it reproduces; three estimates is the cheapest thing that settles it.**
+
+**The comparison moves TWO variables and its result must be read accordingly.** `PerfHarness.kt` changed by 115 insertions / 26 deletions between `ad4d5ff64` and HEAD, part of it this session's own `median` promotion — so the instrument is not held fixed. The honest reading is **"no regression detected"**, not "no regression": a harness that had become systematically more favourable could mask one, and that direction was not checked. Separating them needs the current interpreter measured under the baseline harness.
+
+**Source evidence, as the independent arm.** Exactly one commit touched interpreter production source (`commonMain`/`jvmMain`/`jsMain`) in the whole plan — `2cae70192`, reading `fieldRefByShortNameAllowed` the way A12's POJO binding does — and it lands on the model LOAD path, not evaluation. The other four commits under `interpreter/src` touched test sources only.
+
+**Two enforcement gaps stay open and are NOT closed by this checkpoint.** H4's mechanical discriminator — the interpreter's resolved production dependency set plus its built-artifact digests, which the plan says "decides whether a checker-only edit requires an interpreter sweep" — **does not exist**: no task, no guard, only the prose describing it. And nothing makes the `@Tag("perf-bench")` kernel-ratio tier owed when interpreter production source changes; the release gate covers `@Tag("perf")` only, by design. Records: `perf-results/darwin-aarch64/2026-09-18T19{2650,3451,3826,3834}Z.jsonl` here and `2026-09-18T19{3617,3925,3933}Z.jsonl` in the measure clone.
+
+
 ### Checkpoint 2026-08-23 — the build JDK changed under us, and it read as an interpreter regression for a day
 
 `scripts/perf.sh gate` breached on `charset-grapheme@1` at n=32000. The lane had measured **53.9–68.1 ms** across six full gates on 2026-08-14/16 and now measured **119.4** and **108.6 ms**, against a 92.53 ms budget. Nothing about the framing was right at first: the machine was idle (load 1.40), the observation denominator was identical (355 records every run), and three retries clustered tightly, so it read as a genuine step change in our own code.

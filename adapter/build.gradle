@@ -592,6 +592,28 @@ def footprintFixtureOutputs = [
     'compute-overlay.dm.json',
 ].collect { new File(footprintFixtureDirectory, it) }
 
+// NFR #1's evidence clause, made mechanical: "missing or inconclusive evidence fails rather than passes".
+// Nothing enforced it, and the portable-consistency plan then ran seven days with one interpreter production
+// commit and zero measurements while every gate stayed green (the record jumps 2026-08-24 -> 2026-09-18).
+//
+// It reads git and `perf-results/` at RUN time rather than a declared file set, so it is its own always-running
+// task: a repo-state guard wired into the broad suite would go up-to-date on an unrelated cache hit and report a
+// stale answer as a pass, which is the failure mode this exists to end. Cheap enough to always run — a handful
+// of `git rev-list` calls.
+def interpreterMeasurementCurrencyGuardTest = tasks.register('interpreterMeasurementCurrencyGuardTest', Test) {
+    description = 'Refuse interpreter production source that has outrun every recorded measurement.'
+    group = 'verification'
+    testClassesDirs = sourceSets.test.output.classesDirs
+    classpath = sourceSets.test.runtimeClasspath
+    useJUnitPlatform()
+    filter {
+        includeTestsMatching 'io.github.mbackschat.a12.dm.adapter.perf.InterpreterMeasurementCurrencyGuardTest'
+    }
+    outputs.upToDateWhen { false }
+    outputs.cacheIf { false }
+}
+tasks.named('check').configure { dependsOn interpreterMeasurementCurrencyGuardTest }
+
 tasks.register('footprintFixtureGuardTest', Test) {
     description = 'Verify the shared JVM/Node footprint models match their typed kit author.'
     group = 'verification'

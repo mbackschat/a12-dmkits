@@ -2,6 +2,7 @@ package io.github.mbackschat.a12.dm.adapter.perf
 
 import java.nio.file.Files
 import java.nio.file.Path
+import java.util.Locale
 import org.junit.jupiter.api.Tag
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.condition.EnabledIfSystemProperty
@@ -184,7 +185,7 @@ class CheckerAfterEditNodePerfTest {
         return completed.output.trim()
     }
 
-    private fun format(value: Double): String = "%.3f".format(java.util.Locale.ROOT, value)
+    private fun format(value: Double): String = "%.3f".format(Locale.ROOT, value)
 
     private data class Observation(val statelessNanos: Long, val statefulNanos: Long)
 
