@@ -146,9 +146,9 @@ private fun TrackedFactBase.gateFinding(
 
     // …and where the access names a FIELD it cannot ride, the class is the ACCESS's own
     // (`MVK_NO_ENUMERATION`, `MVK_CATEGORY_UNKOWN` — the kernel's spelling) and A12 reports nothing after
-    // it, so this family must stay SILENT rather than add the class its own lists would draw. Measured: a
-    // number field under an access draws only the access's class, where this family had also reported
-    // `MVK_INVALID_TYPES_FOR_COMPARISON` behind it.
+    // it, so this family must stay SILENT rather than add the class its own lists would draw. Both field
+    // arms were measured beside a number field, where the varying-types gate would otherwise answer, and
+    // both still draw the access's class — so the silence is as wide as the pre-emption, not wider.
     if (aCategoryAccessAnotherFamilyOwns(written + opposite, declaringGroup, element)) {
         return null
     }

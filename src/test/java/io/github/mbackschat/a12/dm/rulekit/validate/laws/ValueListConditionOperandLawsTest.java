@@ -201,6 +201,12 @@ class ValueListConditionOperandLawsTest {
                 verdict("NoFieldValueIncludedInValueList(Premium -> Band In \"1\")"));
         actual.put("an ENUMERATION that declares no such category",
                 verdict("NoFieldValueIncludedInValueList(Tier -> Band In \"X\")"));
+        // Whether the FIELD arms pre-empt the field list's own gates the way the group arm does — the
+        // mirror stays silent behind them, so this is the row that row rests on.
+        actual.put("a TEXT field under an access BESIDE a number field",
+                verdict("NoFieldValueIncludedInValueList(Holder -> Band, Premium In \"X\")"));
+        actual.put("an unknown category BESIDE a number field",
+                verdict("NoFieldValueIncludedInValueList(Tier -> Band, Premium In \"X\")"));
 
         Map<String, String> expected = new LinkedHashMap<>();
         expected.put("a category token, under an access on the GROUP", NO_GROUPS);
@@ -217,6 +223,8 @@ class ValueListConditionOperandLawsTest {
         expected.put("a TEXT field under an access", NO_ENUMERATION);
         expected.put("a NUMBER field under an access", NO_ENUMERATION);
         expected.put("an ENUMERATION that declares no such category", CATEGORY_UNKNOWN);
+        expected.put("a TEXT field under an access BESIDE a number field", NO_ENUMERATION);
+        expected.put("an unknown category BESIDE a number field", CATEGORY_UNKNOWN);
         assertEquals(expected, actual, "a category access demands a field, on either side of the comparison");
     }
 
