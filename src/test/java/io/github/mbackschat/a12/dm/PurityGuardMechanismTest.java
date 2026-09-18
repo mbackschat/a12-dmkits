@@ -46,6 +46,27 @@ class PurityGuardMechanismTest {
                         + "they install — the compiled gate alone cannot see a dependency nothing imports");
     }
 
+    /**
+     * <b>A closed claim has to be closed over the route that never enters the graph.</b> The resolution guard
+     * reads {@code resolutionResult}, and a {@code files(…)} dependency is not a component there at all — so
+     * it is invisible by denominator rather than by filter, which no allowlist can fix. Measured 2026-09-18:
+     * with a source directory planted on {@code :consistency}'s {@code jvmMain}, the guard reported BUILD
+     * SUCCESSFUL. Asserted on the script's text because the arm is a Groovy closure on the root project with
+     * no seam a JUnit test can drive; the does-fire evidence is the planted control recorded in
+     * {@code docs/PORTABLE-CONSISTENCY-IMPLEMENTATION-PLAN.md}.
+     */
+    @Test
+    void theClosedClaimAlsoRefusesAFileDependencyBecauseNoResolutionFilterCanClassifyOne() throws IOException {
+        String build = Files.readString(CHECKOUT.resolve("build.gradle"));
+        assertTrue(build.contains("FileCollectionDependency"),
+                "the closed-claim arm must refuse a file dependency — it reaches a consumer's classpath while "
+                        + "naming neither a coordinate nor a project path, so every other arm is blind to it");
+        assertTrue(build.contains("permittedBuildRoots"),
+                "it must discriminate by the OWNING BUILD DIRECTORY: the Kotlin plugin itself puts a module's "
+                        + "own main output on its test classpaths this way, so refusing the declaration SHAPE "
+                        + "would refuse the plugin");
+    }
+
     @Test
     void bridgePlantKeepsDelimiterTextNextToAForbiddenNameDecoy() throws IOException {
         Path plant = CHECKOUT.resolve(

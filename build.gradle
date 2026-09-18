@@ -1218,6 +1218,41 @@ ext.verifyKernelFreeClasspath = { String guardName, Collection<Configuration> co
                 "${guardName} resolved intra-repo project edge(s) outside its declared allowlist "
                 + "${permitted.toSorted()}:\n  " + undeclaredProjects.join('\n  '))
         }
+        // A FILE dependency reaches the classpath without entering the resolution graph at all, so every arm
+        // above is blind to it by DENOMINATOR rather than by filter — `allComponents` never lists it. Measured
+        // 2026-09-18: with `implementation files("$projectDir/src")` planted on `:consistency`'s `jvmMain`,
+        // this guard reported BUILD SUCCESSFUL, and only the delivery collector beside it objected, for the
+        // unrelated reason that a directory has no meaningful byte count. Refused only under a CLOSED claim
+        // (`allowedProjects != null`), because a caller that names forbidden groups states nothing about how
+        // else something may arrive; a closed claim has to be closed over every route, and this is one.
+        //
+        // The discriminator is the OWNING BUILD DIRECTORY rather than the shape of the declaration, because
+        // the Kotlin plugin declares file edges itself: measured the same day, `:consistency`'s four TEST
+        // classpaths each carry this module's own main compilation output that way
+        // (`build/classes/kotlin/jvm/main`, `build/classes/java/jvmMain`, `build/processedResources/**` and
+        // the JS equivalents). That is how a test sees its own main source, and it is not a route anything
+        // can arrive by. So what this refuses is a file under no build directory of a project the claim
+        // ALREADY admits — the same denominator the project-edge arm uses, rather than a carve-out naming the
+        // plugin's paths, which would go stale the next time the plugin renames one.
+        def permittedBuildRoots = permitted
+                .collect { rootProject.project(it).layout.buildDirectory.get().asFile.canonicalFile.toPath() }
+        def fileEdges = configurations.collectMany { configuration ->
+            configuration.allDependencies
+                    .findAll { it instanceof org.gradle.api.artifacts.FileCollectionDependency }
+                    .collectMany { it.files.files.toList() }
+                    .findAll { file ->
+                        def path = file.canonicalFile.toPath()
+                        !permittedBuildRoots.any { path.startsWith(it) }
+                    }
+                    .collect { "${configuration.name}: ${it}".toString() }
+        }.unique().sort()
+        if (fileEdges) {
+            throw new GradleException(
+                "${guardName} carries file dependenc(ies) that no resolution filter can classify — a jar or "
+                + "class directory added this way is on a consumer's classpath while naming neither a "
+                + "coordinate nor a project path:\n  " + fileEdges.join('\n  ')
+                + "\nDeclare the artifact as a module or a project so the claim can see it.")
+        }
     }
     if (allowedGroups) {
         def undeclared = modules
