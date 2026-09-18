@@ -145,7 +145,9 @@ class ConsistencySnapshot private constructor(
             // declaration's text, so every family that never read it answers from the baseline's verdict.
             is Drafted.Applied -> checkRun(drafted.prepared, baseline.modelId, emptyList(), cells, CellRetention.KEPT)
         }
-        return DraftResult(attribute(baseline, run.report), reuseOf(base, baseline, run.families))
+        // The same draft reading the stateless call applies — incompleteness reported, not condemning. Both
+        // arms route through one function so this contract cannot hold on one and lapse on the other.
+        return DraftResult(asDraftVerdict(attribute(baseline, run.report)), reuseOf(base, baseline, run.families))
     }
 
     /**

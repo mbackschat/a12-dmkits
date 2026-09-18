@@ -41,9 +41,54 @@ fun checkDraft(source: ModelSource, at: String, member: String, text: String): E
     val baseline = checkPrepared(prepared, admitted.modelId, inherited = emptyList())
     return when (val drafted = prepared.draftedWith(at, member, text)) {
         is Drafted.Refused -> refusedDraft(baseline, drafted.gap)
-        is Drafted.Applied ->
-            attribute(baseline, checkPrepared(drafted.prepared, admitted.modelId, inherited = emptyList()))
+        is Drafted.Applied -> asDraftVerdict(
+            attribute(baseline, checkPrepared(drafted.prepared, admitted.modelId, inherited = emptyList())),
+        )
     }
+}
+
+/**
+ * The code A12 gives text that simply ran out — the one class a DRAFT must not be condemned for.
+ *
+ * Deliberately this one code and no other. An unbalanced parenthesis is `MVK_EXPECTED_TOKEN_NOT_FOUND`, a
+ * separately measured class (the plan's 12-input parser probe), and widening this set to "anything that looks
+ * unfinished" would be a refusal-shaped decision with no measured basis. If another code earns a place here
+ * it arrives with its own measurement.
+ */
+private const val INCOMPLETE_INPUT = "MVK_INCOMPLETE_INPUT"
+
+/**
+ * Turn an attribution into a DRAFT's verdict: incompleteness is reported, and stops condemning the draft.
+ *
+ * **This exists because the contract was advertised four times and enforced nowhere.** [checkDraft]'s own
+ * KDoc says in bold that half-typed text "is INCOMPLETE, not invalid" and that "nothing here promotes that to
+ * a rejection"; `CheckDraftTest.anIncompleteDraftIsNotBlamedOnTheAuthorAsAnInvalidOne` says it in its NAME
+ * while asserting only the code; and [CONSISTENCY-API] published it to consumers. Measured 2026-09-18 through
+ * the packed package, a draft ending in `And` returned `status: INVALID` with the finding at
+ * `justifiesRejection: true` — the exact over-rejection all four statements forbid, on every keystroke an
+ * author spends mid-expression.
+ *
+ * **The demotion is the SEVERITY, not the category, and that distinction is the honest one.** The code is
+ * A12's and the category says so; what changes is the consequence, because a draft is not a save. A12 would
+ * indeed reject this text if it were stored, which is why [checkEdit] — whose subject IS stored text — gets
+ * no such treatment and must not: an edit that saves unfinished text is invalid, and saying otherwise would
+ * be the mirror over-acceptance.
+ *
+ * Applying it here rather than in each caller is deliberate: the stateless [checkDraft] and
+ * [ConsistencySnapshot.draft] build their input differently and would otherwise be two arms of one contract,
+ * which is how this estate's paired arms have diverged before.
+ */
+internal fun asDraftVerdict(attributed: EditReport): EditReport {
+    val introduced = attributed.introduced.map { finding ->
+        if (finding.code == INCOMPLETE_INPUT && finding.severity == FindingSeverity.ERROR) {
+            finding.copy(severity = FindingSeverity.WARNING)
+        } else {
+            finding
+        }
+    }
+    // Recomputed from the demoted findings rather than patched, so the status cannot disagree with the
+    // `justifiesRejection` a consumer is told to read instead of it.
+    return attributed.copy(introduced = introduced, status = statusOf(introduced))
 }
 
 /** Either the fact base with the draft in it, or the reason the draft was not applied. */
