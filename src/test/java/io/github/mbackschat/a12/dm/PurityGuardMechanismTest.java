@@ -67,6 +67,38 @@ class PurityGuardMechanismTest {
                         + "would refuse the plugin");
     }
 
+    /**
+     * <b>Independence is claimed in both directions, so both directions need a SHIPPED-FILE guard.</b> A
+     * closure gate reads declared and resolved edges; the interpreter's npm staging copies {@code internal/}
+     * with {@code include '*.mjs'}, a wildcard, so a file that reached the Kotlin/JS distribution directory
+     * ships whether or not any classpath declared it. Measured 2026-09-18: the tarball carried 59 entries
+     * while its verification named 12 as required and closed nothing, so a checker module file would have
+     * shipped unremarked — the mirror of a check {@code :consistency} had and {@code :interpreter} did not.
+     *
+     * <p>Asserted on the script's text because the arm is a Groovy closure inside a Gradle task with no seam
+     * a JUnit test can drive. Its does-fire evidence is the pair of planted controls recorded in
+     * {@code docs/PORTABLE-CONSISTENCY-IMPLEMENTATION-PLAN.md}: a planted {@code a12-consistency.mjs} is
+     * refused BY NAME, and an unrelated planted module is refused as undecided.
+     */
+    @Test
+    void bothIndependenceDirectionsCloseTheirShippedFileSetAndNotOnlyTheirClosures() throws IOException {
+        String interpreter = Files.readString(CHECKOUT.resolve("interpreter/build.gradle"));
+        assertTrue(interpreter.contains("checkerModules"),
+                "the interpreter must refuse a checker-owned shipped file BY NAME, so a failure says which "
+                        + "invariant broke rather than only that an unexpected file appeared");
+        assertTrue(interpreter.contains("nobody decided to ship"),
+                "and it must CLOSE its shipped-file denominator — a required-entries list can only report a "
+                        + "file that went missing, never one that arrived");
+        assertTrue(interpreter.contains("permittedInternalModules"),
+                "the permitted owners must be named: Kotlin's JS linker names each module file after the "
+                        + "Gradle module it came from, which is what makes ownership readable at all");
+
+        String checker = Files.readString(CHECKOUT.resolve("consistency/build.gradle"));
+        assertTrue(checker.contains("verifyConsistencyShippedFiles"),
+                "the other direction must keep its own shipped-file guard — F asks for the two directions "
+                        + "separately, and one of them passing says nothing about the other");
+    }
+
     @Test
     void bridgePlantKeepsDelimiterTextNextToAForbiddenNameDecoy() throws IOException {
         Path plant = CHECKOUT.resolve(

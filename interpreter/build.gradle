@@ -1682,6 +1682,67 @@ def verifyInterpreterNpmPackage = tasks.register('verifyInterpreterNpmPackage') 
         if (missing) {
             throw new GradleException("interpreter npm tarball misses ${missing}")
         }
+        // The NAMED claim goes FIRST, and the order is deliberate on the same reasoning
+        // `:consistency`'s own shipped-file guard records: the closed enumeration below already refuses a
+        // checker-owned file, since no checker name is permitted, so this check would be dead code behind it
+        // and would advertise an invariant nothing could ever reach. Ahead of it, it earns its place by
+        // naming WHICH invariant broke.
+        //
+        // F asks for independence in both directions SEPARATELY, and this is the interpreter's half over
+        // shipped files. Its other half is a closure gate (`verifyInterpreterDependencies`), which cannot see
+        // this route at all: `stageInterpreterNpmPackage` copies `internal/` with `include '*.mjs'`, a
+        // wildcard, so a file that reached the Kotlin/JS distribution directory ships whether or not any
+        // classpath declared it.
+        // Named precisely rather than by prefix: these are the two module files the checker's own JS
+        // distribution produces (`:consistency` and the `:predicates` leaf it shares with the kits). A
+        // broader `a12-dmkits-` match would also catch this module's excluded duplicate and report it as
+        // checker-owned, which is a wrong diagnosis of a real problem — the enumeration below refuses that
+        // one anyway, and says the true thing about it.
+        def checkerModules = ['a12-consistency', 'a12-dmkits-predicates']
+        def checkerOwned = entries.findAll { entry -> checkerModules.any { entry.contains(it) } }
+        if (checkerOwned) {
+            throw new GradleException(
+                "the published interpreter ships checker-owned files ${checkerOwned.toSorted()} — F's " +
+                    "independence claim is that the interpreter carries no checker implementation, and " +
+                    "this module may carry no intra-repo edge at all",
+            )
+        }
+        // Then the closed denominator, DERIVED rather than authored, because an authored list can only ever
+        // cover the files someone remembered. Two naming facts make the derivation exact: `tsc` emits four
+        // artifacts per TypeScript source, and Kotlin's JS linker names each module file after the Gradle
+        // module it came from — so the OWNER of every shipped file is readable, and anything else is a file
+        // nobody decided to ship. Measured 2026-09-18: 11 façade sources and 5 runtime modules account for
+        // all 59 entries, where `required` above had named 12.
+        def typeScriptSrc = new File(interpreterTypeScriptSourceDir, 'src')
+        def permittedDist = fileTree(typeScriptSrc) { include '**/*.ts' }.files.collectMany { ts ->
+            def stem = typeScriptSrc.toPath().relativize(ts.toPath()).toString()
+                .replace(File.separator, '/')
+                .replaceFirst(/\.ts$/, '')
+            ['js', 'js.map', 'd.ts', 'd.ts.map'].collect { "package/dist/${stem}.${it}".toString() }
+        } as Set
+        def permittedInternalModules = [
+            'a12-interpreter-core',                                   // this module
+            'kotlin-kotlin-stdlib',                                   // Kotlin/JS runtime
+            'kotlin_org_jetbrains_kotlin_kotlin_dom_api_compat',       // arrived with the browser target
+            'kotlinx-serialization-kotlinx-serialization-core',
+            'kotlinx-serialization-kotlinx-serialization-json',
+        ]
+        def permittedEntries = permittedDist +
+            (['package/package.json', 'package/README.md', 'package/LICENSE',
+              'package/internal/a12-interpreter-core.d.ts',
+              'package/internal/a12-interpreter-core.d.mts'] as Set) +
+            (permittedInternalModules.collectMany {
+                ["package/internal/${it}.mjs".toString(), "package/internal/${it}.mjs.map".toString()]
+            } as Set)
+        def undecided = (entries - permittedEntries).toSorted()
+        if (undecided) {
+            throw new GradleException(
+                "the interpreter npm tarball ships ${undecided.size()} file(s) nobody decided to ship: " +
+                    "${undecided}. A new façade module is permitted by adding its source under " +
+                    "`typescript/src`; a new runtime module needs a line in `permittedInternalModules` and " +
+                    "a reason it belongs in a published interpreter",
+            )
+        }
         def packageJson = new groovy.json.JsonSlurper().parse(
             archive.matching { include 'package/package.json' }.singleFile,
         )
