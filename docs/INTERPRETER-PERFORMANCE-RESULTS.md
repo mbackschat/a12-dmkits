@@ -36,7 +36,7 @@
 | the three `-sources.jar`, summed | 1 530 859 | 1 536 997 | +6 138 (+2 046 each, +0.394 %/+0.402 %/+0.407 %) |
 | **total** | **14 993 093** | **15 004 918** | **+11 825 (+0.079 %)** |
 
-**Retained and allocated heap: 24 rows, worst +0.577 %, no row over the allowance.** Five independent `footprintJvmFork*` workers per tree at a fixed 512 MiB heap under `-XX:+UseSerialGC`, `-PfootprintScales=200,400,800,1600 -PfootprintWarmup=2 -PfootprintRepetitions=3`, median across the five forks per (scenario, scale, metric). Three scenarios × four scales × {retained, allocated} = 24 rows; 17 of them improved.
+**Retained and allocated heap on the JVM: 24 rows, worst +0.577 %, no row over the allowance.** Five independent `footprintJvmFork*` workers per tree at a fixed 512 MiB heap under `-XX:+UseSerialGC`, `-PfootprintScales=200,400,800,1600 -PfootprintWarmup=2 -PfootprintRepetitions=3`, median across the five forks per (scenario, scale, metric). Three scenarios × four scales × {retained, allocated} = 24 rows; 17 of them improved.
 
 | scenario | retained, worst row | allocated, worst row |
 |---|---|---|
@@ -44,14 +44,23 @@
 | `equality-correlation` | +0.017 % at 800 | −0.306 % at 1600 (best −4.697 % at 800) |
 | `compute-overlay` | +0.577 % at 200 | −0.074 % at 200 |
 
-**Two limits on this reading, stated rather than left for a reader to find.** The comparand `ad4d5ff64` is an ANCESTOR of H4's named restart baseline `c8e3b997`, with one interpreter production commit between them, so this measures a superset window — conservative for a no-regression claim, but not literally the commit the NFR names. And the **Node carrier was not measured at all**, for two reasons stacked — the second only visible once the first was worked around, and it is the one that matters.
+**One limit on this reading, stated rather than left for a reader to find.** The comparand `ad4d5ff64` is an ANCESTOR of H4's named restart baseline `c8e3b997`, with one interpreter production commit between them, so this measures a superset window — conservative for a no-regression claim, but not literally the commit the NFR names. **The Node carrier is measured too, and getting to it took fixing a defect that had made the arm unrunnable on BOTH sides of this window.** 24 rows, worst **+1.152 %** (`simple-validation`/400 allocated), no row over the allowance; retained moves by at most 0.226 % anywhere.
 
-| what was tried | where it stopped | measured |
+| scenario | retained, worst row | allocated, worst row |
 |---|---|---|
-| `scripts/interpreter-footprint.sh 5 200 2 3` | `:kotlinNpmInstall`, yarn "trouble with your network connection" ×5 | `registry.yarnpkg.com` times out with AND without the tool sandbox, so the machine is offline rather than the sandbox restrictive |
-| `:interpreter:jsNodeFootprintNodeFork1Test` directly | `:kotlinStoreYarnLock` — "Lock file was changed. Run the `kotlinUpgradeYarnLock` task" — **after `kotlinNpmInstall` succeeded** | the generated `build/js/yarn.lock` is **2 077 lines** against the committed `kotlin-js-store/yarn.lock`'s **524** |
+| `simple-validation` | +0.200 % at 200 | +1.152 % at 400 |
+| `equality-correlation` | +0.226 % at 400 | +0.643 % at 400 |
+| `compute-overlay` | +0.145 % at 400 | +0.059 % at 800 |
 
-**So the Node arm is not simply owed a quiet moment with a network.** Taking it means regenerating a committed lock file that gates every JS lane in the repository, which is a repo-wide change made to enable one measurement — an owner's call, not a step. *(Hypothesis, NOT measured, and flagged as such: the 1 553-line gap looks like the npm toolchain the five extra `jsTarget.testRuns.create` registrations pull in, since the JVM forks need none of it. What is measured is the gap and where each attempt stopped; why the committed lock does not carry those entries has not been established, and the discriminating run — registering the test runs with network available — is exactly the one that cannot be made here.)* The JVM forks depend only on `jvmTestClasses`, which is why that half ran on both trees without touching any of this.
+**Three things stood between the lane and a number, and only the first was the machine.** <a id="node-footprint-unblocked"></a>
+
+| what was tried | where it stopped | what settled it |
+|---|---|---|
+| `scripts/interpreter-footprint.sh 5 200 2 3` | `:kotlinNpmInstall`, yarn "trouble with your network connection" ×5 | the machine was offline — `registry.yarnpkg.com` timed out with AND without the tool sandbox. It later returned, and the retry succeeded |
+| the fork task directly | `:kotlinStoreYarnLock` — "Lock file was changed" — **after `kotlinNpmInstall` succeeded** | **measured with a control**: generated `build/js/yarn.lock` is **2 077** lines with `-PfootprintForks=5` and **byte-identical to the committed 524** without it, so the five `jsTarget.testRuns.create` registrations are what add the entries. The script now excludes that gate, because the lane is opt-in exactly so `check` and CI stay unchanged |
+| the worker itself | `TypeError: Session_… is not a constructor` at its first allocation measurement | `@JsModule` on an external CLASS emits a **default** import, and `node:inspector`'s ESM default export is the module object rather than `Session`; `@JsName` names the declaration, not the binding. Rebinding the module as an `external object` — the shape its five sibling `node:` bindings already use — emits `import * as` and resolves the nested class |
+
+**The defect predates the plan and was invisible by construction.** `ad4d5ff64` carries the identical binding and already had `useEsModules()`, so the Node footprint arm produced no number on either side of this window; the lane is local opt-in, so no gate ran it, and the yarn-lock refusal stopped execution before the worker could throw. *(Method note: the baseline arm was measured by applying the same instrument fix to the parked checkout, taking the reading, and restoring it — the change is `jsTest`-only and cannot move a production byte, and an A/B needs the same instrument on both arms. The tree is back at `ad4d5ff64` clean.)* The JVM forks depend only on `jvmTestClasses`, which is why that half ran throughout without touching any of this.
 
 ### Checkpoint 2026-09-18 — the portable-consistency plan took NO interpreter measurement, and closing that gap cost one false regression
 
