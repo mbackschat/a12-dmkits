@@ -22,9 +22,14 @@ import org.junit.jupiter.api.condition.EnabledIfSystemProperty
  * narrower than the carrier now allows, which is why the pair exists rather than an edit
  * (`PORTABLE-CONSISTENCY-IMPLEMENTATION-PLAN.md` "#h5j-node-retention").
  *
- * **It asserts no bound, deliberately.** Per H5's ordering rule the collector comes first and the bar is the
- * owner's to ratify through IF137's six points; a flatness bound taken from this lane's own first output is
- * exactly what that rule forbids. What it does assert is everything that decides whether the numbers MEAN
+ * **It asserts no bound, and since 2026-09-18 that is DECIDED rather than pending.** Per H5's ordering rule
+ * the collector came first and the bar was the owner's through IF137's six points; a flatness bound taken
+ * from this lane's own first output is exactly what that rule forbids. The owner then declined a flatness
+ * bound outright, because the only readings that could have set one were taken on a machine later found
+ * contended — ratifying off them would repeat the error that voided that day's other figures. The trigger to
+ * re-open is a second reading on a quiet machine.
+ *
+ * What it does assert is everything that decides whether the numbers MEAN
  * anything: the runtime is the pinned one, explicit collection observably reclaims, the model is one the
  * checker accepts (a reading over a refused model would measure rejecting), the report has the shape the other
  * arms measure, and both phases ran.

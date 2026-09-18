@@ -16,11 +16,19 @@ import org.junit.jupiter.api.condition.EnabledIfSystemProperty
  * `ConsistencySnapshot` live and reads the post-GC heap at two scales; this asks the same question of a held
  * `ConsistencySnapshotHandle`, which did not exist in JavaScript until `snapshotOfJson` shipped on 2026-09-18.
  *
- * **Asserts no bound, and that is the ordering rule rather than a gap.** The collector comes first and a
- * footprint bar is the owner's to ratify through [IF137]'s six points; a bound read off this lane's own first
- * output is exactly what that rule forbids. What it does assert is everything deciding whether the numbers
- * MEAN anything — the pinned runtime, an observably reclaiming collector, a model the checker accepts, the
- * wire shape the other arms measure, both scales present, and the handle actually releasing.
+ * **Asserts no bound, and as of 2026-09-18 that is a DECIDED disposition rather than a pending one.** It was
+ * first the ordering rule — a bound read off this lane's own first output is what [IF137]'s six points forbid
+ * — and the owner then declined all four of this boundary's candidate budgets. The growth ratio was declined
+ * for a reason worth having here rather than only in the plan: the invariant a `SUB_QUADRATIC_MAX` bar would
+ * express is already decided by a COUNT. `Sweep.comparisons` is the enforcement locus and
+ * `CellValidationSweepTest` the test that fails, both in `commonTest`, so they settle it deterministically on
+ * every carrier — where this lane is `perf-bench`, property-gated, excluded from the release gate, and can
+ * only fail once a constant is already large enough to hurt. The absolute byte, release-ratio and
+ * heap-flatness candidates were declined with their own re-open triggers; see the plan's candidate table.
+ *
+ * What it does assert is everything deciding whether the numbers MEAN anything — the pinned runtime, an
+ * observably reclaiming collector, a model the checker accepts, the wire shape the other arms measure, both
+ * scales present, and the handle actually releasing.
  *
  * **Release is asserted here and is not a budget.** A held analysis that never comes back is a leak rather
  * than a footprint, and the two are indistinguishable from a retained byte count alone — so the child reads
