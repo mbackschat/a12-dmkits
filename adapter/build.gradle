@@ -1002,9 +1002,10 @@ tasks.register('checkerMemoryNodePerfTest', Test) {
             project(':consistency').layout.buildDirectory.dir('consumer-tests/node').get().asFile.absolutePath
     }
     // Two phases of this many checks each. Large enough that a per-call leak dwarfs the engine's own noise,
-    // small enough to stay inside the fuse: at 200 programs one check is ~509 ms, so the default is two
-    // phases of about 100 s (measured 2026-09-18 — it was ~1.2 s before the set shape was memoized, and a
-    // figure written from the pre-cell-store 129 ms would have been off by an order of magnitude).
+    // small enough to stay inside the fuse: at 200 programs one check is of the order of a few hundred
+    // milliseconds, so the default is two phases of a couple of minutes. Deliberately an ORDER rather than a
+    // figure — the only measurements of it were taken on a contended machine (docs/PORTABLE-CONSISTENCY-
+    // RESULTS.md, 2026-09-18), and a number pinned here would outlive the run that produced it.
     systemProperty 'perf.checker.memorynode.checks',
         providers.gradleProperty('checkerMemoryNodeChecks').getOrElse('200')
     systemProperty 'perf.checker.memorynode.n',

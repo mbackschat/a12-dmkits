@@ -24,12 +24,52 @@ import kotlinx.serialization.json.JsonObject
 internal class TrackedFactBase private constructor(
     private val model: PreparedModel,
     private val transcript: ReadTranscript,
+    private val views: Views,
     private val scope: Scope?,
 ) {
-    constructor(model: PreparedModel, transcript: ReadTranscript) : this(model, transcript, null)
+    constructor(model: PreparedModel, transcript: ReadTranscript) :
+        this(model, transcript, Views(model, transcript), null)
 
     /** The one declaration a scoped fact base answers for, with the key its cell is filed under. */
     private class Scope(val at: DeclarationKey, val cursor: TrackedDeclaration)
+
+    /**
+     * The derived views every fact base of ONE check shares — the cursors and the two indexes over them.
+     *
+     * **They live here because [scopedTo] makes a new fact base per declaration, and a per-instance `lazy`
+     * is then per DECLARATION.** With N of them over an N-element model each rebuilding its own cursor list
+     * and index, the check is quadratic in declarations and allocates N cursors N times; `getStringHashCode`
+     * under the index build alone was **15.6 % of an 800-program run, its share growing 88x** against the
+     * 4x scale-up (measured 2026-09-18). `scopedTo`'s own contract said it "shares this base's model,
+     * transcript and cursor list" — the first two were shared and the third was not, which is the kind of
+     * claim [ScopedFactBaseSharesItsViewsTest] now holds to.
+     *
+     * The CHARGE deliberately stays outside: each accessor records on every call, because the transcript is
+     * what a cell is keyed on and a shared view must not hide a read.
+     */
+    private class Views(private val model: PreparedModel, private val transcript: ReadTranscript) {
+
+        /** Every declaration as a cursor, allocated once per check. */
+        val cursors: List<TrackedDeclaration> by lazy {
+            model.elements.map { TrackedDeclaration(it, model, transcript) }
+        }
+
+        /**
+         * [cursors] keyed by path, so `declarationAt` is a lookup rather than a scan.
+         *
+         * FIRST occurrence wins, because `firstOrNull` is the answer it replaces — the same rule, and the
+         * same reason, as `PreparedModel.resolvableByPath`. Measured: the scan was 29x growth over a 4x
+         * scale-up (2026-09-18), being linear per call and called once per declaration.
+         */
+        val cursorsByPath: Map<String, TrackedDeclaration> by lazy {
+            val byPath = LinkedHashMap<String, TrackedDeclaration>(cursors.size)
+            cursors.forEach { cursor -> byPath.getOrPut(cursor.path) { cursor } }
+            byPath
+        }
+
+        /** The repeatable groups among [cursors], for the set questions that ask only about them. */
+        val repeatable: List<TrackedDeclaration> by lazy { cursors.filter { it.isRepeatableGroup } }
+    }
 
     /**
      * Every declaration, as cursors that record what is read THROUGH them — or, on a SCOPED fact base, the
@@ -47,7 +87,7 @@ internal class TrackedFactBase private constructor(
             return listOf(scoped.cursor)
         }
         transcript.record(FactRead.DeclarationSetShape)
-        return cursors
+        return views.cursors
     }
 
     /**
@@ -76,39 +116,12 @@ internal class TrackedFactBase private constructor(
      * branch — so a new set helper gets [allDeclarations] because it MEANS the set, not because a build step
      * will say so.
      *
-     * It shares this base's model, transcript and cursor list, so a scope allocates a view and no facts.
+     * It shares this base's model, transcript and derived [Views], so a scope allocates a view and no
+     * facts — which is a property of the code rather than of the prose, because those views were per
+     * INSTANCE until 2026-09-18 and this sentence was wrong about the third of the three.
      */
     fun scopedTo(at: DeclarationKey, cursor: TrackedDeclaration): TrackedFactBase =
-        TrackedFactBase(model, transcript, Scope(at, cursor))
-
-    /**
-     * The cursors, built once per fact base rather than once per walk.
-     *
-     * A migrated family asks for the declarations from inside a per-reference loop — `iteratedLevels` and
-     * `lowestRepetitionOf` are each asked once per operand — so rebuilding the list would allocate a cursor
-     * per declaration per call, where the untracked code it replaces read a list it already held. The charge
-     * deliberately stays outside this: [declarations] records the shape on EVERY call, because the transcript
-     * is what a cell is keyed on and a memoized list must not hide a read.
-     */
-    private val cursors: List<TrackedDeclaration> by lazy {
-        model.elements.map { TrackedDeclaration(it, model, transcript) }
-    }
-
-    /**
-     * [cursors] keyed by path, so [declarationAt] is a lookup rather than a scan.
-     *
-     * FIRST occurrence wins, because `firstOrNull` is the answer it replaces — the same rule, and the same
-     * reason, as `PreparedModel.resolvableByPath`. Measured: the scan was 29x growth over a 4x scale-up
-     * (2026-09-18), being linear per call and called once per declaration.
-     */
-    private val cursorsByPath: Map<String, TrackedDeclaration> by lazy {
-        val byPath = LinkedHashMap<String, TrackedDeclaration>(cursors.size)
-        cursors.forEach { cursor -> byPath.getOrPut(cursor.path) { cursor } }
-        byPath
-    }
-
-    /** The repeatable groups among [cursors], for the set questions that ask only about them. */
-    private val repeatableCursors: List<TrackedDeclaration> by lazy { cursors.filter { it.isRepeatableGroup } }
+        TrackedFactBase(model, transcript, views, Scope(at, cursor))
 
     /**
      * The declaration at [path], or null when nothing declares it.
@@ -120,7 +133,7 @@ internal class TrackedFactBase private constructor(
      */
     fun declarationAt(path: String): TrackedDeclaration? {
         transcript.record(FactRead.DeclarationSetShape)
-        return cursorsByPath[path]
+        return views.cursorsByPath[path]
     }
 
     /**
@@ -183,7 +196,7 @@ internal class TrackedFactBase private constructor(
      */
     fun allDeclarations(): List<TrackedDeclaration> {
         transcript.record(FactRead.DeclarationSetShape)
-        return cursors
+        return views.cursors
     }
 
     /**
@@ -198,7 +211,7 @@ internal class TrackedFactBase private constructor(
      */
     fun repeatableGroups(): List<TrackedDeclaration> {
         transcript.record(FactRead.DeclarationSetShape)
-        return repeatableCursors
+        return views.repeatable
     }
 
     /**
@@ -346,7 +359,7 @@ internal class TrackedDeclaration(
      * by hand-reading eight files. Delegating to the element makes `==` mean what every reader of the
      * untracked code already assumed.
      *
-     * [cursors] closes the same hole from the other side WITHIN one fact base, by handing out the same object
+     * [Views.cursors] closes the same hole from the other side WITHIN one check, by handing out the same object
      * twice; this covers the case it cannot — cursors from two fact bases over one model, which is exactly
      * what a draft holds beside its baseline.
      *
