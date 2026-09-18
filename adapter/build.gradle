@@ -975,6 +975,48 @@ tasks.register('checkerPreparedNodePerfTest', Test) {
     outputs.cacheIf { false }
 }
 
+// H5-j's plain-NODE arm of the resources boundary, and the one whose SUBJECT differs from the JVM lane's:
+// the shipped JS surface is two stateless functions, so a Node consumer holds no analysis and what §8's
+// release half asks — is a consumer's heap flat across repeated checks — is what this can answer. Informative
+// by design, per H5's ordering rule: the collector comes first and the bar is the owner's to ratify
+// (docs/PORTABLE-CONSISTENCY-IMPLEMENTATION-PLAN.md, the H5-j row and #h5i-surface). Off every automated lane
+// for the same reason as the sibling Node lanes — it needs node, npm and the packed tarball.
+tasks.register('checkerMemoryNodePerfTest', Test) {
+    description = 'Collect what a Node consumer\'s heap does across repeated checks of one model.'
+    group = 'measurement'
+    dependsOn ':consistency:installPackedConsistencyInNodeConsumer'
+    testClassesDirs = sourceSets.test.output.classesDirs
+    classpath = sourceSets.test.runtimeClasspath
+    useJUnitPlatform()
+    // Single-fork: a neighbouring fork's allocation lands in the child's machine, and the child's own readings
+    // are the whole quantity.
+    maxParallelForks = 1
+    failFast = true
+    systemProperty 'perf.checker.memorynode', 'true'
+    // One value drives the Gradle resolution and NodeIdentity's refusal both — see gradle.properties.
+    systemProperty 'perf.checker.memorynode.major', checkerNodeMajor
+    doFirst {
+        systemProperty 'perf.checker.memorynode.node',
+            resolveNodeTool('node', checkerNodeMajor).absolutePath
+        systemProperty 'perf.checker.memorynode.project',
+            project(':consistency').layout.buildDirectory.dir('consumer-tests/node').get().asFile.absolutePath
+    }
+    // Two phases of this many checks each. Large enough that a per-call leak dwarfs the engine's own noise,
+    // small enough to stay inside the fuse: at 200 programs one check is ~509 ms, so the default is two
+    // phases of about 100 s (measured 2026-09-18 — it was ~1.2 s before the set shape was memoized, and a
+    // figure written from the pre-cell-store 129 ms would have been off by an order of magnitude).
+    systemProperty 'perf.checker.memorynode.checks',
+        providers.gradleProperty('checkerMemoryNodeChecks').getOrElse('200')
+    systemProperty 'perf.checker.memorynode.n',
+        providers.gradleProperty('checkerMemoryNodeN').getOrElse('200')
+    filter {
+        includeTestsMatching 'io.github.mbackschat.a12.dm.adapter.perf.CheckerRetainedMemoryNodePerfTest'
+    }
+    // Measurements are observations, never reusable task outputs.
+    outputs.upToDateWhen { false }
+    outputs.cacheIf { false }
+}
+
 // H5-h's BROWSER arm: the prepared boundary's third host. One warm CONTEXT runs the whole campaign, which is
 // the opposite of H5-g's fresh context per observation and the reason it is a separate page. Off every
 // automated lane for the same two reasons as the other browser lane: it needs pnpm and a system Chrome.

@@ -8,6 +8,26 @@ Dated measurements of the Kernel-free checker, newest first. **Every LATENCY her
 
 Results never land in a spec, and a measurement's home is not its explanation: the mechanism paragraphs below are marked as hypotheses where they are hypotheses.
 
+## 2026-09-18 — H5-j: a Node consumer's heap across 400 checks, which does not move <a id="memory-node-2026-09-18"></a>
+
+**Lane:** `./build.sh :adapter:checkerMemoryNodePerfTest` (`adapter.perf.CheckerRetainedMemoryNodePerfTest`), one warm Node process, the same 200-program synthesis profile the growth lanes use, runtime **v24.18.0** pinned by `NodeIdentity`. **It asserts no bound and never will assert one taken from its own output** — per H5's ordering rule the collector comes first and the bar is the owner's through [IF137](INTERPRETER-FINDINGS.md#if137)'s six points.
+
+**Its subject is not the JVM arm's, and that follows from the published surface rather than from a choice.** [`CheckerRetainedMemoryPerfTest`](#memory-2026-09-17) holds a `ConsistencySnapshot` live and reads the post-GC heap; the shipped `a12-consistency.d.ts` exports two string-in string-out functions, so a Node consumer holds no analysis and that quantity has no analogue here ([the surface, read off the artifact](PORTABLE-CONSISTENCY-IMPLEMENTATION-PLAN.md#h5i-surface)). What a stateless surface can be asked is §8's other clause, RELEASE behaviour: a heap flat across repeated checks, or one growing per call.
+
+| settled post-GC heap | run 1 | run 2 |
+|---|---|---|
+| baseline, before any timed check | 11 560 928 | 11 574 496 |
+| after 200 checks | 11 440 384 | 11 399 264 |
+| after 400 checks | 11 599 072 | 11 516 440 |
+| **first phase's delta** | **−120 544** | **−175 232** |
+| **second phase's delta** | **+158 688** | **+117 176** |
+
+**400 checks retain nothing measurable, and the SHAPE is what says so rather than the size.** Two equal phases are run so a per-call leak and a one-off warm-up cost can be told apart without a bar: a leak makes the second delta match the first. Here the first delta is NEGATIVE in both runs and the second is a fifth of a percent of an ~11.5 MB heap, so the deltas are the engine's own noise. The resolution that gives is ~175 KB over 200 checks, i.e. **under ~0.9 KB per check** — a measurement floor, not a bound.
+
+**The two runs bracket the memoization defect, which makes them an unplanned control.** Run 1 ran the build committed at `36c6766e6`, where a check cost ~1.2 s; run 2 ran it at 509 ms ([the regression and its fix](#cell-cost-2026-09-18)), and the lane's own wall time fell from **466 s to 204 s**. The baseline heap moved 13 568 bytes between them, 0.1 %. So a 2.4× per-check cost difference left retention untouched: that defect was pure garbage, and this arm was blind to it — which is precisely why the retained-memory question and the per-call cost question need separate lanes.
+
+**Every precondition is read out of the child's own output, because a number here is worthless without them.** The child refuses without `--expose-gc`; it then proves explicit collection actually reclaims, by allocating a million objects, dropping them and requiring at least half back — a post-GC reading on an engine that ignored the request is a reading of whatever happened to be uncollected. The parent requires exactly one gate line, exactly one warm-up with no rejecting findings and the wire shape the other arms measure (a reading over a model the checker refuses would measure the cost of rejecting), exactly one observation, and all three heap figures positive — that last one is not a bound but a check that the quantity was read at all, since a missing field prints as a plausible collector line. **Each check gets a DISTINCT diagnostic label**, deliberately: identical calls could read flat because something recognised them rather than because nothing was retained.
+
 ## 2026-09-18 — the cell store cost 9.5x per check, and the growth gates could not see it <a id="cell-cost-2026-09-18"></a>
 
 **How it surfaced, which is the part worth carrying.** Nothing looked for this. The Node retained-memory collector (H5-j) took 7m51s for 401 checks, so one check cost ~1.16 s where [the prepared-Node arm](#prepared-node-2026-09-17) had published **129.05 ms** the day before on the same model — and the 800-program figure it published, 828.67 ms, was *lower than a 200-program check now*. Running that arm's own child by hand on the installed package reproduced it immediately: **1 231 / 1 158 / 1 405 / 1 073 ms**. A perf lane's own printed cost is a measurement whether or not the lane asserts on it; this one had been asserting a ratio and printing a 9.5x regression for nine commits.
