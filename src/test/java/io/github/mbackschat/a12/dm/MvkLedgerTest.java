@@ -183,6 +183,9 @@ class MvkLedgerTest {
      * <p><b>Wider than {@link #ledgerCoversTheMetamodelRuleCodesExactly}, deliberately.</b> That test reads
      * the first canonical file of {@code MM_Common_v2} to check ledger COVERAGE; this sweeps every file of
      * the corpus, because an absence claim may not rest on the one directory the codes were expected in.
+     * The breadth is DEFENSIVE rather than corrective, which is worth knowing: measured 2026-09-18, both
+     * scopes yield the same 105 codes and nothing is carried outside {@code MM_Common_v2}'s canonical
+     * files — so a future divergence between them is a real signal about where the laws moved, not noise.
      *
      * <p><b>The positive control is what makes the absence mean anything, and it is not decorative.</b>
      * {@link #METAMODEL_AXIS_CONTROL} is KF418's witness — a code measured FIRING while its raiser count is

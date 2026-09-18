@@ -32,6 +32,17 @@ import java.util.regex.Pattern;
  * misses stays in the residue, which OVERSTATES the work remaining. That is the safe direction — the figure
  * is an upper bound by construction, and a guard erring the other way would hide capacity.
  *
+ * <p><b>Two reported-code figures differ legitimately, so name the quantity before calling it drift
+ * (measured 2026-09-18).</b> This guard's arithmetic yields <b>207</b>, meaning LEDGER ROWS whose code the
+ * checker states, while {@code CheckerReportedCodes.all()} returns <b>215</b>, meaning every {@code MVK_}
+ * code the checker's sources state. The 8-code gap is exactly the {@code NoMetaModelCheckErrorType}
+ * codegen tier, which this ledger's own scope-boundary note places outside it: {@code
+ * MVK_ENUM_VALUE_WITH_INVALID_CHARACTER}, {@code MVK_INDEX_FIELD_NO_VALUE_VALIDATION}, {@code
+ * MVK_INVALID_INDEX_FIELD}, {@code MVK_INVALID_SORT_FIELD}, {@code MVK_MAX_VALUES_INVALID}, {@code
+ * MVK_PATHS_INCONSISTENT}, {@code MVK_PATH_INVALID}, {@code MVK_SORT_FIELD_NO_VALUE_VALIDATION} — the same
+ * 8 that {@code CodegenTierCodeDenominatorGuardTest} pins as its reported half. So 215 = 207 + 8 closes
+ * exactly, and neither number is wrong.
+ *
  * <p><b>What counts as reported is {@link CheckerReportedCodes}'</b>, the same reader
  * {@code CheckerLedgerDispositionGuardTest} and {@code CheckerCodeBasisGuardTest} ask — so a family landing
  * today moves this figure without anyone editing a list.
