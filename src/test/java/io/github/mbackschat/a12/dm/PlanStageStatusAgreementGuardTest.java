@@ -40,6 +40,18 @@ class PlanStageStatusAgreementGuardTest {
 
     private static final String PLAN = "docs/PORTABLE-CONSISTENCY-IMPLEMENTATION-PLAN.md";
 
+    /**
+     * The status table itself, located by its own header rather than by the shape of a row.
+     *
+     * <p>Anchoring is load-bearing, not tidiness. This read a bare {@code | <digits> | <cell> |} anywhere in
+     * the document, so ANY other numbered table was parsed as the status table and its later rows silently
+     * replaced the real ones — measured 2026-09-18, when a six-item acceptance matrix added near the end of
+     * the plan overwrote stages 4, 5 and 6 with the first word of its own cells. The floor below cannot catch
+     * that: the scan ran, found plenty of rows, and compared the wrong ones.
+     */
+    private static final Pattern STATUS_TABLE = Pattern.compile(
+            "^\\| Order \\| Status \\|[^\\n]*\\n\\|[-| ]+\\|\\n((?:\\|[^\\n]*\\n)+)", Pattern.MULTILINE);
+
     /** A row of the status table: its ordinal, then the status cell that follows it. */
     private static final Pattern ROW = Pattern.compile("^\\| (\\d+) \\| ([^|]+)\\|", Pattern.MULTILINE);
 
@@ -53,7 +65,11 @@ class PlanStageStatusAgreementGuardTest {
     @Test
     void everyStageNarrativeStatesTheStatusItsOwnRowStates() throws IOException {
         String plan = Files.readString(CHECKOUT.requireFile(PLAN));
-        Map<Integer, String> rows = statusesOf(ROW, plan);
+        Matcher table = STATUS_TABLE.matcher(plan);
+        assertTrue(table.find(),
+                "found no status table in " + PLAN + " — its header is what locates the rows, so without it "
+                        + "this guard would read some other table's rows as stage statuses");
+        Map<Integer, String> rows = statusesOf(ROW, table.group(1));
         Map<Integer, String> stages = statusesOf(STAGE, plan);
 
         assertTrue(rows.size() >= MINIMUM_PAIRS,

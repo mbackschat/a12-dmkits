@@ -3476,6 +3476,23 @@ The second is the one no amount of source reading would have found, because the 
 - **Java binding adoption:** investigate designating `ConditionBridge` alongside the relevant Java façades, because otherwise its resolver remains an additional owner. Record the actual decision and residual behavior after reading its closure; do not promise consolidation of `ParsedModel`.
 - **Checker budgets:** specify the candidate recommendation and calibration task in A, then bring its measured record to the owner at the start of F under §5's schedule and the proposal's H5 contract.
 
+### N record — row 13's terminal acceptance matrix, frozen before the review (2026-09-18) <a id="n-row-13-matrix"></a>
+
+Row 13's deliverable is a **terminal whole-product CONTRACT review** plus §5's closing work. The matrix is written before the reviewer is called, so a finding either violates a named item — and is fixed in this slice — or does not, and goes to the owning ledger for a later one. Frozen at `cb0b6120c`, a commit and never a `..HEAD` range, because a range moves under every commit made while the review runs.
+
+| # | acceptance item | oracle |
+|---|---|---|
+| 1 | Every **advertised** contract on the published JS/TS surface has an enforcement locus and a test that fails when it is violated — exports, wire shapes, the opaque handle, the empty dependency set | the guard named per claim; "Advertise nothing you cannot point at" |
+| 2 | The **documented** surface and the **shipped** surface agree in both directions: nothing in `docs/CONSISTENCY-API.md` or `consistency/README.md` names a capability the package does not export, and no export is undocumented | the published `a12-consistency.d.ts` and the packed tarball, read rather than inferred from source |
+| 3 | Independence holds in **both** directions over shipped files as well as closures, each with a positive control | `verifyConsistencyShippedFiles`, `verifyInterpreterNpmPackage`, `verifyKernelFreeClasspath`, `PurityGuardMechanismTest` |
+| 4 | Every H5 boundary is **measured**, and each one's disposition is either an IF137 ratification or a recorded decline with a re-open trigger — no boundary silently unbounded | the lane, plus [the ratification record](#h5-ratification) and [the open candidate](#h5j-ratification-candidate) |
+| 5 | No **migration-only** guardrail survives its migration, and every shared arm that is KEPT has a live non-migration caller | [the sweep](#migration-guardrail-sweep), caller enumeration resolved to a receiver |
+| 6 | Findings and gaps the checker **reports** are the checker's own: no claim that A12 accepts or refuses something without a kernel-oracled lock behind it | `rulekit.validate.laws.*`, the corpus replay |
+
+**Explicit non-goals for this slice**, so a finding against one of them is logged and not fixed here: the owner's H5 ratification (row 5's remaining blocker, [#44's subject](#h5j-ratification-candidate)); archiving the proposal and this plan, which §5 schedules *after* graduation; the deferred `crossedRepetitions` dead-arm removal already logged in [the sweep](#migration-guardrail-sweep); and any new capability, since N qualifies the listed features together without adding another product.
+
+**One review, one round.** A second call must name something the first could not have seen — a changed shape or a different high-risk category — and a contested finding is settled by its oracle rather than by a second opinion.
+
 ## 4. Verification and review protocol
 
 Each implementation task records: the frozen behavior/family set, source/test owners, selected fixture ids, expected results, enforcement locus, failing control, targeted command and non-goals. New Kernel-semantic claims add the [witness grid](TESTING-SPEC.md#witness-grid-design) before fixtures. Translation reuses the original cases; shared Java/JS agreement is parity, not an independent oracle.
