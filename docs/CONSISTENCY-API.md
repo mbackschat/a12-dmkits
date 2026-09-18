@@ -254,7 +254,7 @@ const report = JSON.parse(checkModelJson(source));
 
 The worked example is [`consistency/consumer-tests/browser`](../consistency/consumer-tests/browser), executable like the Node one: `./build.sh :consistency:browserConsumerTest` packs the tarball, installs it into a staged copy of that project, bundles it with Vite, and replays the shared cases in a real system Chrome. It needs `pnpm` and a browser, so it is off `:consistency:check` — and a missing browser fails it rather than skipping it, because a browser arm that passes without a browser establishes nothing.
 
-Two things the example deliberately does not offer. It is a **test fixture, not a showcase**: the page renders verdicts as JSON for its driver to read, and nothing more. And its bundle size is not a bar — the checker's one absolute bar is the packed tarball's byte count, and no tree-shaking is promised ([the measurement, with what it is not](PORTABLE-CONSISTENCY-RESULTS.md#browser-2026-09-17)).
+Two things the example deliberately does not offer. It is a **test fixture, not a showcase**: the page renders verdicts as JSON for its driver to read, and nothing more. And its bundle size is not a bar — the checker's absolute bars are byte counts on what it *publishes*, the packed tarball and the JVM jar, and no tree-shaking is promised ([the measurement, with what it is not](PORTABLE-CONSISTENCY-RESULTS.md#browser-2026-09-17)).
 
 ## What this API does not promise
 

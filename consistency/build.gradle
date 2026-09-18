@@ -893,7 +893,7 @@ def consistencyDeliveryCeilingBytes = 1_048_576L
 
 tasks.register('verifyConsistencyDeliveryCeiling') {
     group = 'verification'
-    description = 'Refuse a packed checker above the ratified 1 MiB ceiling — the only absolute checker bar.'
+    description = 'Refuse a packed checker above the ratified 1 MiB ceiling — the JS half of the delivery bar.'
     dependsOn packConsistencyNpmPackage
     outputs.upToDateWhen { false }
     doLast {
@@ -917,23 +917,23 @@ tasks.register('verifyConsistencyDeliveryCeiling') {
 //
 // The delivery boundary is bounded on the packed npm tarball above and on nothing the JVM ships, so a Maven
 // consumer's closure had no NUMBER at all — which is the gap, a missing observation rather than a missing bar
-// (docs/PORTABLE-CONSISTENCY-IMPLEMENTATION-PLAN.md, the H5 partition's H5-k row). This task prints it and
-// asserts nothing about it, deliberately: an absolute byte ceiling is a release bar, and a release bar takes
-// IF137's six points, of which (6) is the owner's ratification. COMPOSITION is already guarded —
-// `verifyConsistencyDependencies` refuses any resolved module outside the allowlist and any intra-repo
-// project edge — so size is the one thing about this graph nobody could see.
+// (docs/PORTABLE-CONSISTENCY-IMPLEMENTATION-PLAN.md, the H5 partition's H5-k row). COMPOSITION is already
+// guarded — `verifyConsistencyDependencies` refuses any resolved module outside the allowlist and any
+// intra-repo project edge — so size is the one thing about this graph nobody could see.
 //
-// It reports the two quantities separately because they would bear different bars, and the difference is
-// large: the module's own jar is what a change in this repository moves, while two thirds of the closure is
-// the Kotlin stdlib and kotlinx-serialization, whose size a checker-size bar has no business policing
-// (docs/PORTABLE-CONSISTENCY-RESULTS.md "what a JVM consumer of the checker actually resolves").
+// It reports the two quantities separately because they bear different bars, and the difference is what
+// decided which quantity the bar binds: the module's own jar is what a change in this repository moves, while
+// two thirds of the closure is the Kotlin stdlib and kotlinx-serialization, whose size a checker-size bar has
+// no business policing (docs/PORTABLE-CONSISTENCY-RESULTS.md "what a JVM consumer of the checker actually
+// resolves"). So the own jar carries the ratified ceiling, in `verifyConsistencyJvmJarCeiling` below, and this
+// task keeps printing the CLOSURE total informatively — the quantity the owner deliberately left unbounded.
 //
 // A NON-FILE classpath entry is refused rather than measured: a directory is a class-output edge whose bytes
 // are not what a consumer downloads, and an absent one has no bytes at all, so letting either into the sum
 // would make one total mean two things.
 tasks.register('consistencyJvmClosureReport') {
     group = 'verification'
-    description = 'Write the informative JVM consumer closure of the checker; this task promotes no ceiling.'
+    description = 'Write the JVM consumer closure of the checker; the closure TOTAL carries no ceiling.'
     def runtime = configurations.named('jvmRuntimeClasspath')
     def ownJar = tasks.named('jvmJar').flatMap { it.archiveFile }
     def reportFile = layout.buildDirectory.file('reports/consistency-closure/jvm-consumer-closure.txt')
@@ -961,7 +961,8 @@ tasks.register('consistencyJvmClosureReport') {
         long total = dependencies + own.length()
         def report = reportFile.get().asFile
         report.parentFile.mkdirs()
-        report.text = 'checker JVM consumer closure — INFORMATIVE ONLY; no ceiling promoted\n' +
+        report.text = 'checker JVM consumer closure — the TOTAL is informative; the own jar carries the ' +
+                'ratified ceiling (verifyConsistencyJvmJarCeiling)\n' +
                 "artifacts=${rows.size() + 1} closure-bytes=${total} own-jar-bytes=${own.length()} " +
                 "dependency-bytes=${dependencies}\n" +
                 "  ${own.length()} bytes  this module  (${own.name})\n" +
@@ -971,6 +972,47 @@ tasks.register('consistencyJvmClosureReport') {
     }
 }
 tasks.named('check') { dependsOn 'consistencyJvmClosureReport' }
+
+// The JVM half of the delivery boundary, ratified per-number by the owner on 2026-09-18 through IF137's six
+// points — the sixth being that ratification itself, which is why the collector above shipped bar-less for a
+// day (docs/PORTABLE-CONSISTENCY-IMPLEMENTATION-PLAN.md "H5-k's collector landed").
+//
+// It binds the module's OWN JAR and deliberately not the resolved closure. That is the decision the
+// measurement forced rather than a default: at 3 638 410 closure bytes against 1 188 850 of our own, a
+// closure bar would spend most of its authority on the Kotlin stdlib and kotlinx-serialization and would fire
+// on a stdlib bump — an alarm whose remedy is never in this repository. A bar on the own jar fires exactly
+// when a change here makes the checker bigger.
+//
+// Set from the measured 1 188 850 bytes at 1.76x, which is the posture the tarball ceiling already carries
+// (1 MiB against 634 443, 1.65x): it certifies BOUNDED GROWTH and never smallness, so a breach is answered by
+// finding what entered the jar, not by raising the number. Absolute is honest here for the same reason it is
+// there — bytes mean the same thing on every runner, unlike a latency, so this needs no sampling regime.
+def consistencyOwnJarCeilingBytes = 2_097_152L
+
+tasks.register('verifyConsistencyJvmJarCeiling') {
+    group = 'verification'
+    description = 'Refuse a checker jar above the ratified 2 MiB ceiling — the JVM half of the delivery bar.'
+    def ownJar = tasks.named('jvmJar').flatMap { it.archiveFile }
+    inputs.files(ownJar)
+    // Never up-to-date: a bar that Gradle can skip is a bar that reports green without comparing anything,
+    // and this one is cheap enough that always running it costs nothing worth saving.
+    outputs.upToDateWhen { false }
+    doLast {
+        def jar = ownJar.get().asFile
+        def bytes = jar.length()
+        logger.lifecycle(String.format(Locale.ROOT,
+                '[checker-delivery] %s is %d bytes against a %d ceiling (%.2fx headroom)',
+                jar.name, bytes, consistencyOwnJarCeilingBytes,
+                consistencyOwnJarCeilingBytes / (double) bytes))
+        if (bytes > consistencyOwnJarCeilingBytes) {
+            throw new GradleException("the checker's own jar is $bytes bytes, above the ratified " +
+                    "$consistencyOwnJarCeilingBytes-byte ceiling. A release bar is not raised to fit: read " +
+                    'the per-artifact breakdown `consistencyJvmClosureReport` writes to find what grew, or ' +
+                    "take the new number through IF137's six points if the growth is worth ratifying.")
+        }
+    }
+}
+tasks.named('check') { dependsOn 'verifyConsistencyJvmJarCeiling' }
 
 /**
  * F1-c: the identity a consumer INSTALLS must be the identity the checker REPORTS — on both packagings.

@@ -136,10 +136,13 @@ jobs:
       # compiled green for the module's whole life while emitting nothing importable. It is off
       # `:consistency:check` deliberately (it needs node and npm), so naming it here is what runs it at all —
       # the Node setup step above puts both on PATH. It reaches no network.
-      # `:consistency:verifyConsistencyDeliveryCeiling` is the checker's one ABSOLUTE release bar (owner-ratified
+      # `:consistency:verifyConsistencyDeliveryCeiling` is the JS half of the checker's ABSOLUTE release bar (owner-ratified
       # 2026-09-16): the packed tarball's byte count against a 1 MiB ceiling. It reuses the pack the consumer
       # test already performs, so it costs nothing extra here, and it needs a routine lane precisely because the
-      # cross-revision collector runs only at release — a doubled download would otherwise ship unnoticed.
+      # cross-revision collector runs only at release — a doubled download would otherwise ship unnoticed. Its
+      # JVM twin `verifyConsistencyJvmJarCeiling` (2 MiB on the jar, ratified 2026-09-18) is NOT named here
+      # because it rides `:consistency:check` below: it needs only `jvmJar`, which that lifecycle already
+      # builds, where the tarball bar needs a pack this workflow sets node and npm up for.
       # `:consistency:verifyConsistencyShippedFiles` closes the denominator on what the checker publishes, in
       # both carriers — every npm tarball entry and every jvm class package must be one something decided to
       # ship. F's oracle asks for exactly this and says why neither other guard can do it: a COPIED file
