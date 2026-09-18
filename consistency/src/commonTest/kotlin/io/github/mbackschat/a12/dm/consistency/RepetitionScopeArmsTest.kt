@@ -8,7 +8,7 @@ import kotlin.test.assertTrue
 /**
  * The repetition-scope helpers answer the same on both receivers while the estate is part-migrated.
  *
- * **Why these two need their own lock, when the shared core is structural.** Each helper keeps one
+ * **Why these three need their own lock, when the shared core is structural.** Each helper keeps one
  * implementation that both arms call, so the DECISION cannot diverge — what can is the INPUT each arm feeds
  * it, and both of them feed a list the arms build separately (`elements` on one side, the cursors on
  * the other). A divergence there is silent and splits the estate: the families still on [PreparedModel] would
@@ -80,5 +80,31 @@ class RepetitionScopeArmsTest {
             prepared.tracked().crossesARepetitionOutside("/Policy/Claims", "/Policy/Claims/Amount"),
             "the two arms must agree on the negative direction too",
         )
+    }
+
+    /**
+     * The third pair, added 2026-09-18 when its arms stopped building their input the same way.
+     *
+     * This helper was the one pair in the file that was neither pinned here nor called from untracked code,
+     * and it became the file's sharpest case that day: the barrier arm was rerouted to `repeatableGroups()`,
+     * the memoized cursor view, while the untracked arm still filters `elements` by `isRepeatableGroup`.
+     * That is exactly the divergence this class exists for — two arms feeding a separately built list to one
+     * shared decision — and nothing was measuring it. Compared by PATH because the arms return different
+     * element types, which is the same asymmetry.
+     */
+    @Test
+    fun bothArmsNameTheSameCrossedRepetitions() {
+        val prepared = prepared()
+
+        val untracked = prepared.crossedRepetitions("/Policy/Claims/Amount").map { it.path }
+        val tracked = prepared.tracked().crossedRepetitions("/Policy/Claims/Amount").map { it.path }
+
+        assertEquals(
+            listOf("/Policy/Claims"),
+            untracked,
+            "the fixture must really cross the claim list, or the equality below holds between two empty " +
+                "lists and either arm could have stopped reading the model",
+        )
+        assertEquals(untracked, tracked, "the two arms must name the same crossed repetitions")
     }
 }
