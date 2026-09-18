@@ -10,11 +10,14 @@ import kotlin.test.assertTrue
  *
  * **The cost is measured, not supposed.** Recording every fact a family reads and then capturing each read's
  * value is ~180 ms of a 509 ms 200-program check, and `check` discards the store the instant it has the
- * report. **The retention flag tracks the stateless/stateful split exactly, on every carrier**: `check` and
- * `checkModelJson` discard, while `snapshotOf` and `snapshotOfJson` keep — so the cost is paid only by a
- * caller that can receive the benefit. *(This clause once read "a Node consumer cannot hold one at all",
- * which the shipped `snapshotOfJson` falsified on 2026-09-18; the optimization is unaffected, because what
- * decides it is the call's own retention and not the carrier's surface.)*
+ * report. **The rule is that a call keeps a store exactly when it keeps the store** — `check` and
+ * `checkModelJson` discard, `snapshotOf` and `snapshotOfJson` keep, and [DRAFT_RETENTION] discards because a
+ * draft answers a hypothetical and leaves its snapshot unchanged. *(Corrected 2026-09-18: this read "tracks
+ * the stateless/stateful split exactly, on every carrier", which put `draft` on the keeping side by entry
+ * point while its caller collected nothing — the rule's letter agreeing with its reason on every call that
+ * had been examined. An earlier clause read "a Node consumer cannot hold one at all", which the shipped
+ * `snapshotOfJson` falsified the same day; the optimization survived both, because what decides it is the
+ * call's own retention and not the carrier's surface.)*
  *
  * **The row that matters is the EQUALITY one.** An optimization on the check path is only safe if the report
  * is the same report, so the discarding run is compared against the keeping run over the same model rather
@@ -63,6 +66,48 @@ class CellRetentionTest {
             emptyList(),
             keys.filter { discarded.cells.validIn(prepared, it) != null },
             "a discarded store answered for a key, so the check paid for cells nobody keeps",
+        )
+    }
+
+    /**
+     * The saving is free: what a check reuses is decided against the store it is HANDED, not the one it
+     * builds, so retention cannot cost a cell.
+     *
+     * This is the argument [DRAFT_RETENTION] rests on, made executable rather than reasoned — the two runs
+     * differ in exactly one builder argument, over one carried store, so nothing else can explain a
+     * difference. Without the positive control the row would pass on a build that reused nothing at all,
+     * which is the shape it is guarding against.
+     */
+    @Test
+    fun discardingTheOutgoingStoreCostsNoneOfTheIncomingReuse() {
+        val prepared = prepared(MODEL)
+        val carried = checkRun(prepared, "retention", emptyList(), CheckCells.NONE, CellRetention.KEPT).cells
+
+        val kept = checkRun(prepared, "retention", emptyList(), carried, CellRetention.KEPT)
+        val discarded = checkRun(prepared, "retention", emptyList(), carried, CellRetention.DISCARDED)
+
+        assertTrue(
+            kept.families.reused > 0,
+            "the carried store answered for no cell, so the equality below would hold for want of reuse",
+        )
+        assertEquals(kept.families, discarded.families, "discarding the outgoing store cost incoming reuse")
+        assertEquals(kept.report, discarded.report, "discarding the outgoing store changed the report")
+    }
+
+    /**
+     * A draft pays for no store, because it keeps none.
+     *
+     * A wiring pin rather than a behavioural one, and it says so: `draft` never exposes the run it makes, so
+     * there is no output through which the choice is observable, and the enforcement locus is the named
+     * constant itself. What makes the choice SOUND is the row above, which is behavioural.
+     */
+    @Test
+    fun aDraftDiscardsTheStoreItWouldOtherwiseThrowAway() {
+        assertEquals(
+            CellRetention.DISCARDED,
+            DRAFT_RETENTION,
+            "a draft reads only the run's report and reuse counts, so recording its transcript is work " +
+                "nobody collects — see DRAFT_RETENTION for the measurement",
         )
     }
 

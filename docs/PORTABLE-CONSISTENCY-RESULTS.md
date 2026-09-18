@@ -8,6 +8,14 @@ Dated measurements of the Kernel-free checker, newest first. **Every LATENCY her
 
 Results never land in a spec, and a measurement's home is not its explanation: the mechanism paragraphs below are marked as hypotheses where they are hypotheses.
 
+## 2026-09-18 — the draft path stopped recording a store it discards, and the lane is re-run WITHOUT a claimed delta <a id="draft-retention-2026-09-18"></a>
+
+**Lane:** `./build.sh :adapter:checkerAfterEditPerfTest` (`adapter.perf.CheckerAfterEditPerfTest`), 200 programs, 11 samples, its own invocation. Measured after `ConsistencySnapshot.draft` was switched to `CellRetention.DISCARDED`: build-snapshot stateless 63.027 → snapshot 97.367 ms (1.537x), **keystroke stateless 145.908 → snapshot 51.117 ms (0.319x)**, saved-edit 65.403 → 99.328 ms (1.513x). The keystroke arm's ratified `1.0x` ceiling holds.
+
+**The delta is NOT attributed, and that is the point of this entry.** The previous 200-program reading was `0.360x` ([the sweep finding](#sweep-2026-09-18)) and this one is `0.319x`, an ~11 % move that one paired run cannot separate from noise — so nothing here claims the change bought it. The change is justified by the work being discarded rather than by a ratio, and the lane was re-run to show the ceiling still holds.
+
+**Why a large saving was never expected, which is the part worth keeping.** `CellRetentionTest` measures recording at ~180 ms of a 509 ms 200-program check, and that is the cost of recording EVERY cell. A draft recomputes only the cells its one edited declaration touches and answers the rest from the store, so the recording it avoids is a fraction of that figure and not the figure itself. Carrying the full-check number onto a mostly-reusing path would have been a scope transfer with no measurement on the new carrier — it was written that way first and corrected before it left the session.
+
 ## 2026-09-18 — H5-j's RETENTION arm on Node: a held analysis is linear in model size and fully released <a id="retained-node-2026-09-18"></a>
 
 **Lane:** `./build.sh :adapter:checkerRetainedSnapshotNodePerfTest` (`adapter.perf.CheckerRetainedSnapshotNodePerfTest`), one `--expose-gc` child importing `a12-consistency` by package name out of the installed consumer project. It is the JVM arm's own subject on a second carrier — post-GC heap with one `ConsistencySnapshotHandle` held live — and it became measurable only when `snapshotOfJson` shipped a holdable handle earlier the same day. **Asserts no bound**, per H5's ordering rule.

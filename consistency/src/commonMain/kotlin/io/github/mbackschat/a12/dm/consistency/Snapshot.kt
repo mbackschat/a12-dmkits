@@ -1,6 +1,29 @@
 package io.github.mbackschat.a12.dm.consistency
 
 /**
+ * The retention a draft's check runs under — named because it is the one place the retention rule's letter
+ * and its reason part company.
+ *
+ * `CellRetentionTest` states the rule per ENTRY POINT — the stateless calls discard, the snapshot calls
+ * keep — and gives as its reason that "the cost is paid only by a caller that can receive the benefit". A
+ * draft is a snapshot call whose caller receives nothing: [ConsistencySnapshot.draft] reads the run's report
+ * and its reuse counts and never its store, because a draft answers a hypothetical and leaves the snapshot
+ * it was asked of unchanged. So it followed the letter and recorded a transcript it dropped (found by
+ * review, 2026-09-18).
+ *
+ * **No speedup is claimed for it, deliberately.** The ~180 ms of a 509 ms 200-program check that
+ * `CellRetentionTest` cites is the cost of recording EVERY cell, and a draft records only the cells it
+ * RECOMPUTES — one edited declaration's, with the rest answered from the store — so that figure is the full
+ * check's and does not transfer here. What justifies the change is that the output is discarded, which needs
+ * no ratio; the lane was re-run to show the ceiling still holds, not to attribute a delta to it.
+ *
+ * **Discarding costs no reuse, which is why the flip is free rather than a trade.** Reuse is decided against
+ * the store the caller CARRIES IN, and retention governs only the recording and the store handed back —
+ * locked by `CellRetentionTest`, whose positive control fails if the carried store answers nothing.
+ */
+internal val DRAFT_RETENTION = CellRetention.DISCARDED
+
+/**
  * What an operation REUSED rather than redid.
  *
  * **The load-bearing fields are measured by object IDENTITY, not assembled from a formula.** [sourcesReused]
@@ -143,7 +166,7 @@ class ConsistencySnapshot private constructor(
             )
             // The cells this snapshot holds are what make a keystroke cheap: the draft changes one
             // declaration's text, so every family that never read it answers from the baseline's verdict.
-            is Drafted.Applied -> checkRun(drafted.prepared, baseline.modelId, emptyList(), cells, CellRetention.KEPT)
+            is Drafted.Applied -> checkRun(drafted.prepared, baseline.modelId, emptyList(), cells, DRAFT_RETENTION)
         }
         // The same draft reading the stateless call applies — incompleteness reported, not condemning. Both
         // arms route through one function so this contract cannot hold on one and lapse on the other.
