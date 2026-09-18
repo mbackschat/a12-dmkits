@@ -44,7 +44,14 @@
 | `equality-correlation` | +0.017 % at 800 | −0.306 % at 1600 (best −4.697 % at 800) |
 | `compute-overlay` | +0.577 % at 200 | −0.074 % at 200 |
 
-**Two limits on this reading, stated rather than left for a reader to find.** The comparand `ad4d5ff64` is an ANCESTOR of H4's named restart baseline `c8e3b997`, with one interpreter production commit between them, so this measures a superset window — conservative for a no-regression claim, but not literally the commit the NFR names. And the **Node carrier was not measured at all**: `scripts/interpreter-footprint.sh` runs five Node workers beside the five JVM ones, and `kotlinNpmInstall` cannot resolve yarn packages on a machine with no outbound network (verified with and without the tool sandbox — `registry.yarnpkg.com` times out either way). The JVM forks depend only on `jvmTestClasses`, which is why that half ran. The Node half is owed and is a run, not a decision.
+**Two limits on this reading, stated rather than left for a reader to find.** The comparand `ad4d5ff64` is an ANCESTOR of H4's named restart baseline `c8e3b997`, with one interpreter production commit between them, so this measures a superset window — conservative for a no-regression claim, but not literally the commit the NFR names. And the **Node carrier was not measured at all**, for two reasons stacked — the second only visible once the first was worked around, and it is the one that matters.
+
+| what was tried | where it stopped | measured |
+|---|---|---|
+| `scripts/interpreter-footprint.sh 5 200 2 3` | `:kotlinNpmInstall`, yarn "trouble with your network connection" ×5 | `registry.yarnpkg.com` times out with AND without the tool sandbox, so the machine is offline rather than the sandbox restrictive |
+| `:interpreter:jsNodeFootprintNodeFork1Test` directly | `:kotlinStoreYarnLock` — "Lock file was changed. Run the `kotlinUpgradeYarnLock` task" — **after `kotlinNpmInstall` succeeded** | the generated `build/js/yarn.lock` is **2 077 lines** against the committed `kotlin-js-store/yarn.lock`'s **524** |
+
+**So the Node arm is not simply owed a quiet moment with a network.** Taking it means regenerating a committed lock file that gates every JS lane in the repository, which is a repo-wide change made to enable one measurement — an owner's call, not a step. *(Hypothesis, NOT measured, and flagged as such: the 1 553-line gap looks like the npm toolchain the five extra `jsTarget.testRuns.create` registrations pull in, since the JVM forks need none of it. What is measured is the gap and where each attempt stopped; why the committed lock does not carry those entries has not been established, and the discriminating run — registering the test runs with network available — is exactly the one that cannot be made here.)* The JVM forks depend only on `jvmTestClasses`, which is why that half ran on both trees without touching any of this.
 
 ### Checkpoint 2026-09-18 — the portable-consistency plan took NO interpreter measurement, and closing that gap cost one false regression
 
