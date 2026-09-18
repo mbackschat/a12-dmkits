@@ -9,14 +9,24 @@ package io.github.mbackschat.a12.dm.consistency
  * which are the same verdict and opposite instructions. A gate that conflates them either fails every accepted
  * model or passes every unreadable one.
  *
- * **Exactly one of the four is a pass, and it had to wait for the coverage registry.** [ALL_CHECKS_PASSED]
- * requires that every family in [CheckFamily] completed and that no diagnostic rode along; [NO_REJECTION] is
- * its weaker neighbour — something ran, nothing rejected, but the run was narrower than that — and it says
- * only what its name says. Reading the two as interchangeable is the mistake this enum exists to prevent.
+ * **Exactly one of the four is a pass, and it never needed the coverage registry — believing it did is what
+ * withheld it.** [ALL_CHECKS_PASSED] requires that every family in [CheckFamily] completed and that no
+ * diagnostic rode along; [NO_REJECTION] is its weaker neighbour — something ran, nothing rejected, but the
+ * run was narrower than that — and it says only what its name says. Reading the two as interchangeable is the
+ * mistake this enum exists to prevent.
  *
- * *(Corrected 2026-09-18: this paragraph said "none of the three is a pass, and no fourth value is coming
- * until the coverage registry does". The registry came, [ALL_CHECKS_PASSED] with it, and the markdown was
- * swept while this KDoc — which ships to every JVM consumer's sources jar — was not.)*
+ * **Two different things get called "the coverage registry", which is why the refusal looked sound.** THIS
+ * denominator is `CheckFamily.entries` — finite, enumerable, and known at compile time, so "all of them ran
+ * and none rejected" is decidable today. `ConsistencyStatus.complete`'s denominator is every code A12 could
+ * report on a given model, which needs a registry that does NOT exist and holds that property constant
+ * `false`. The original refusal was true of the second and applied to both, so the checker withheld a sound,
+ * useful verdict because an unsound one was unavailable.
+ *
+ * *(Corrected 2026-09-18, twice. It first said "none of the three is a pass, and no fourth value is coming
+ * until the coverage registry does"; the correction of that then said "the registry came, [ALL_CHECKS_PASSED]
+ * with it", which is false — no registry was built, the owner SPLIT the clause. Checking that sentence against
+ * `ConsistencyStatus.complete`, still constant `false` fifteen lines into another file, refutes it in one
+ * read — and this KDoc ships to every JVM consumer's sources jar, where the plan's own record does not.)*
  */
 enum class CheckOutcome {
     /** A12 rejects a declaration. The verdict is established, and it is a no. */

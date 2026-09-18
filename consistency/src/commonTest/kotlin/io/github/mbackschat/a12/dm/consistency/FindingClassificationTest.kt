@@ -82,7 +82,13 @@ class FindingClassificationTest {
         }
 
         (everyFinding.map { listOf(it) } + listOf(emptyList(), everyFinding)).forEach { findings ->
-            assertFalse(statusOf(findings).complete, "$findings must not assert completed coverage")
+            assertFalse(
+                statusOf(findings).complete,
+                "$findings must not assert completed coverage. If you are here because you BUILT the coverage " +
+                    "registry, this is the locus two KDocs point at while saying it does not exist — sweep " +
+                    "ConsistencyStatus.complete and CheckOutcome's 'two different things get called the " +
+                    "coverage registry' paragraph in the same change, or they ship stale to consumers",
+            )
         }
     }
 
