@@ -16,16 +16,14 @@ import io.github.mbackschat.a12.dm.consistency.syntax.delimitersBalanced
  * [FactRead.DeclarationContent] per declaration.
  */
 internal fun TrackedFactBase.declarationsWithUnsoundDsl(): Set<String> {
-    val unresolved = conditionReferences()
-        .filter { it.target !is Reference.Resolved }
-        .map { it.declaredAt }
+    val unresolved = conditionReferences().declarationsWithAnUnresolvedReference()
     val unparseable = declarations().mapNotNull { declaration ->
         val body = declaration.body ?: return@mapNotNull null
         declaration.path.takeIf {
             conditionTexts(declaration.kind, body).any { (_, text) -> !delimitersBalanced(text) }
         }
     }
-    return (unresolved + unparseable).toSet()
+    return unresolved + unparseable
 }
 
 /**
@@ -84,7 +82,19 @@ internal fun PreparedModel.declarationsWithABrokenErrorTarget(
  * would report that syntax class.
  */
 internal fun PreparedModel.declarationsWithAnUnresolvableConditionReference(): Set<String> =
-    conditionReferences()
-        .filter { it.target !is Reference.Resolved }
+    conditionReferences().declarationsWithAnUnresolvedReference()
+
+/**
+ * The declarations a condition reference fails to resolve in — the one expression of that question.
+ *
+ * It exists because there were two, written out identically in the two gates above, twenty-five lines from
+ * the `@param` note warning that "two expressions of one query can drift apart while both stay green"
+ * (found by review, 2026-09-18). Neither gate could have caught the drift: each is exercised through the
+ * families that call it, so each set of tests would pass against whichever copy its own gate used. Taking a
+ * `List<ConditionReference>` rather than a receiver is what lets both use it, since one gate reads through
+ * the charging barrier and the other does not.
+ */
+private fun List<ConditionReference>.declarationsWithAnUnresolvedReference(): Set<String> =
+    filter { it.target !is Reference.Resolved }
         .map { it.declaredAt }
         .toSet()
