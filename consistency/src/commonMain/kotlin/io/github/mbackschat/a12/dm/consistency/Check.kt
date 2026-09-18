@@ -978,7 +978,10 @@ internal fun checkRun(
     // Every cell this check must produce, in dispatch order. Validity is decided ONCE per cell and
     // everything below reads that decision — both output channels and the counter.
     val scheduled = schedule(tracked)
-    val reusable = scheduled.associate { it.key to carried.validIn(prepared, it.key) }
+    // One sweep for the whole schedule, not a decision per key: the facts these cells recorded overlap
+    // heavily, and a model-wide one is a single boolean for the entire pass — see `CheckCells.sweepOver`.
+    val sweep = carried.sweepOver(prepared)
+    val reusable = scheduled.associate { it.key to sweep.validIn(it.key) }
     val cells = scheduled.associate {
         it.key to (reusable.getValue(it.key) ?: tracked.cellFor(it.key, prepared, it.produce))
     }

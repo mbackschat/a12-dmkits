@@ -975,6 +975,46 @@ tasks.register('checkerPreparedNodePerfTest', Test) {
     outputs.cacheIf { false }
 }
 
+// H5-i's plain-NODE arm of the AFTER-EDIT boundary. It could not exist before 2026-09-18: its quantity is a
+// snapshot-reuse ratio, and no stateful entry point was exported to JavaScript, so the cell was deferred with
+// an exported handle named as its re-open trigger (docs/PORTABLE-CONSISTENCY-IMPLEMENTATION-PLAN.md
+// #h5i-trigger-fired). It asserts the already-ratified keystroke ceiling, whose basis is a work count written
+// before any lane existed — but on THIS carrier's own measurement, because a bar holding on a new carrier is
+// a claim rather than an inheritance. Off every automated lane, like its sibling Node lanes: it needs node,
+// npm and the packed tarball.
+tasks.register('checkerAfterEditNodePerfTest', Test) {
+    description = 'Measure what a held analysis saves a Node consumer per keystroke, against the packed package.'
+    group = 'measurement'
+    dependsOn ':consistency:installPackedConsistencyInNodeConsumer'
+    testClassesDirs = sourceSets.test.output.classesDirs
+    classpath = sourceSets.test.runtimeClasspath
+    useJUnitPlatform()
+    // Single-fork: a neighbouring fork's work lands in the child's machine, and both terms of the ratio are
+    // timed inside that child.
+    maxParallelForks = 1
+    failFast = true
+    systemProperty 'perf.checker.aftereditnode', 'true'
+    // One value drives the Gradle resolution and NodeIdentity's refusal both — see gradle.properties.
+    systemProperty 'perf.checker.aftereditnode.major', checkerNodeMajor
+    doFirst {
+        systemProperty 'perf.checker.aftereditnode.node',
+            resolveNodeTool('node', checkerNodeMajor).absolutePath
+        systemProperty 'perf.checker.aftereditnode.project',
+            project(':consistency').layout.buildDirectory.dir('consumer-tests/node').get().asFile.absolutePath
+    }
+    // 51: odd so the paired median names an observed ratio, and at or above the boundary's floor of 50.
+    systemProperty 'perf.checker.aftereditnode.pairs',
+        providers.gradleProperty('checkerAfterEditNodePairs').getOrElse('51')
+    systemProperty 'perf.checker.aftereditnode.n',
+        providers.gradleProperty('checkerAfterEditNodeN').getOrElse('200')
+    filter {
+        includeTestsMatching 'io.github.mbackschat.a12.dm.adapter.perf.CheckerAfterEditNodePerfTest'
+    }
+    // Measurements are observations, never reusable task outputs.
+    outputs.upToDateWhen { false }
+    outputs.cacheIf { false }
+}
+
 // H5-j's plain-NODE arm of the resources boundary, and the one whose SUBJECT differs from the JVM lane's:
 // the shipped JS surface had only stateless calls when this landed, so a Node consumer held no analysis (no
 // longer true since `snapshotOfJson` shipped on 2026-09-18 — see the lane's own KDoc) and what §8's
@@ -1053,6 +1093,48 @@ tasks.register('checkerPreparedBrowserPerfTest', Test) {
         providers.gradleProperty('checkerPreparedBrowserN').getOrElse('200')
     filter {
         includeTestsMatching 'io.github.mbackschat.a12.dm.adapter.perf.CheckerPreparedBrowserPerfTest'
+    }
+    // Measurements are observations, never reusable task outputs.
+    outputs.upToDateWhen { false }
+    outputs.cacheIf { false }
+}
+
+// H5-i's BROWSER arm of the AFTER-EDIT boundary — the second of the two cells that row left unmeasured, and
+// unmeasurable until `snapshotOfJson` shipped on 2026-09-18, since the quantity is a snapshot-reuse ratio and
+// there was no stateful entry point in JavaScript to hold anything with. It asserts the ratified keystroke
+// ceiling on THIS carrier's own measurement: a bar holding on the JVM and on Node is a claim about a browser
+// rather than an inheritance. Off every automated lane — it needs pnpm and a system Chrome.
+tasks.register('checkerAfterEditBrowserPerfTest', Test) {
+    description = 'Measure what a held analysis saves a browser consumer per keystroke, against the packed bundle.'
+    group = 'measurement'
+    dependsOn ':consistency:installPackedConsistencyInBrowserConsumer'
+    dependsOn ':consistency:prepareSharedConsumerCases'
+    // The project-level invariant, not this task's: every executable source in that project is TypeScript, and
+    // this lane adds two more authored files to it.
+    dependsOn ':consistency:verifyConsistencyBrowserTypeScriptSources'
+    testClassesDirs = sourceSets.test.output.classesDirs
+    classpath = sourceSets.test.runtimeClasspath
+    useJUnitPlatform()
+    maxParallelForks = 1
+    failFast = true
+    systemProperty 'perf.checker.aftereditbrowser', 'true'
+    doFirst {
+        systemProperty 'perf.checker.aftereditbrowser.project',
+            project(':consistency').layout.buildDirectory.dir('consumer-tests/browser').get().asFile.absolutePath
+        // pnpm drives the project's own build scripts; node runs the compiled sampler. Neither is the runtime
+        // under observation — Chrome is — so both are pinned for reproducibility of the DRIVER rather than of
+        // the measurement.
+        systemProperty 'perf.checker.aftereditbrowser.pnpm', resolveNodeTool('pnpm').absolutePath
+        systemProperty 'perf.checker.aftereditbrowser.node',
+            resolveNodeTool('node', checkerNodeMajor).absolutePath
+    }
+    // 51: odd so the paired median names an observed ratio, and at or above the boundary's floor of 50.
+    systemProperty 'perf.checker.aftereditbrowser.pairs',
+        providers.gradleProperty('checkerAfterEditBrowserPairs').getOrElse('51')
+    systemProperty 'perf.checker.aftereditbrowser.n',
+        providers.gradleProperty('checkerAfterEditBrowserN').getOrElse('200')
+    filter {
+        includeTestsMatching 'io.github.mbackschat.a12.dm.adapter.perf.CheckerAfterEditBrowserPerfTest'
     }
     // Measurements are observations, never reusable task outputs.
     outputs.upToDateWhen { false }

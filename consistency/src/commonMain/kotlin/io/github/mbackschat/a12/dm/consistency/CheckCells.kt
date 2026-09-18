@@ -41,10 +41,78 @@ internal class CheckCells(private val byKey: Map<CellKey, CheckCell>) {
      * The comparison is by VALUE and not by the fact's identity, which is the difference between a cache and
      * a bug: two models name the same facts and that is precisely when reuse must be decided on their
      * contents.
+     *
+     * One key at a time, so it opens a [Sweep] of its own and keeps nothing. A caller deciding a whole
+     * schedule wants [sweepOver] instead — that is where the cost lives.
      */
-    fun validIn(model: PreparedModel, key: CellKey): CheckCell? {
-        val cell = byKey[key] ?: return null
-        return cell.takeIf { it.readValues.all { (read, had) -> model.valueOf(read) == had } }
+    fun validIn(model: PreparedModel, key: CellKey): CheckCell? = sweepOver(model).validIn(key)
+
+    /**
+     * One pass over a schedule, deciding every cell against [model] and comparing each distinct fact once.
+     *
+     * **The scope exists because a fact's verdict belongs to the MODEL and the work was being charged per
+     * CELL.** Every cell records its own copy of what it read, so a model-wide fact — [FactRead.ModelMember],
+     * and above all [FactRead.DeclarationSetShape], whose value is the entire declaration set — was
+     * deep-compared once per cell although its answer is one boolean for the whole pass. Cells grow with the
+     * model and so does that value, making the pass `O(cells x declarations)`: measured 2026-09-18 at
+     * 100/200/400 declarations, a store whose every cell carries the shape decided in 25.8 / 96.6 / 373.3 ms,
+     * about 4x per doubling, against 1.3 / 1.6 / 2.7 ms for one [FactRead.DeclarationRow]. That term was 84 %
+     * of a keystroke at 400 declarations and pushed the after-edit ratio through its ceiling — which the lane
+     * could not see, because a ratio pinned at ONE model size cannot show a curve (`CellValidationSweepTest`,
+     * and `docs/PORTABLE-CONSISTENCY-RESULTS.md` for the lane figures).
+     *
+     * The memo is held HERE and not on the store, because the store is shared and immutable while a pass is
+     * neither — a cache on the store would have to be invalidated per model and would publish mutable state
+     * to every thread holding a snapshot.
+     */
+    fun sweepOver(model: PreparedModel): Sweep = Sweep(byKey, model)
+
+    /**
+     * One pass's cells, and what deciding them cost.
+     *
+     * [comparisons] against [examined] is the memo's does-fire evidence rather than a statistic: the
+     * invariant is arithmetic — each distinct fact is compared at most once — so a count falsifies it
+     * deterministically on every carrier, where a timing bar needs calibrating and only fails once the
+     * constant already hurts.
+     */
+    internal class Sweep(private val byKey: Map<CellKey, CheckCell>, private val model: PreparedModel) {
+
+        /** Each fact this pass has decided, against the value it was recorded with. */
+        private val verdicts = mutableMapOf<FactRead, Pair<Any?, Boolean>>()
+
+        /** Recorded reads this pass looked at, memo hits included. */
+        var examined: Int = 0
+            private set
+
+        /** Those it actually had to compare — one per distinct fact, and the quantity the scope exists for. */
+        var comparisons: Int = 0
+            private set
+
+        /** The cell at [key] when every fact it read still has the value it had, else null. */
+        fun validIn(key: CellKey): CheckCell? {
+            val cell = byKey[key] ?: return null
+            return cell.takeIf { it.readValues.all { (read, had) -> holds(read, had) } }
+        }
+
+        /**
+         * Whether [read] still has the [had] it was recorded with — comparing it at most once per pass.
+         *
+         * **A hit requires IDENTITY on the recorded value, which is what makes the memo sound rather than
+         * merely fast.** Identity implies equality, so a hit cannot decide a cell differently than the
+         * comparison would have; and a cell holding some other instance simply misses and is compared
+         * properly. That is not a rare path being tolerated — every fact [PreparedModel.valueOf] can name is
+         * a `by lazy` member, so one model hands out one instance and every cell built against it recorded
+         * that same one. The memo is therefore free of any assumption about what cells share.
+         */
+        private fun holds(read: FactRead, had: Any?): Boolean {
+            examined++
+            val decided = verdicts[read]
+            if (decided != null && decided.first === had) return decided.second
+            comparisons++
+            val verdict = model.valueOf(read) == had
+            verdicts[read] = had to verdict
+            return verdict
+        }
     }
 
     companion object {

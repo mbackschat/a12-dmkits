@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>A12 Consistency Checker — after-edit keystroke</title>
+  </head>
+  <body>
+    <h1>A12 consistency checker — after-edit keystroke</h1>
+    <!--
+      A fourth page, separate for the same reason `prepared.html` is separate from `cold.html`: each page's
+      CONTEXT is its subject. This one loads and warms the checker, then holds ONE analysis for the whole
+      campaign — which is the thing being measured, and which a page that re-created the handle per sample
+      would destroy while still producing plausible numbers.
+
+      The model and the pair count arrive as query parameters, so one built page serves every scale the driver
+      asks for and nothing is baked into the bundle. The page visits and records; the ratified paired estimator
+      belongs to the caller.
+
+      `data-state` starts at `running` and the driver waits for it to change, so a page that never finished
+      cannot read as a fast one.
+    -->
+    <p id="status" data-state="running">Loading and warming the packed checker…</p>
+    <pre id="measurement"></pre>
+    <script type="module" src="/src/after-edit.ts"></script>
+  </body>
+</html>

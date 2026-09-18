@@ -105,7 +105,15 @@ class SurvivingDataNotInBuildGuardTest {
                     "the one synthesized workload the Node retained-memory lane hands its child, in the same "
                             + "installed consumer project and for the same resolution reason as "
                             + "build/prepared-models above; the install task recreates that tree, so the model "
-                            + "is written fresh per run by construction and nothing could read it back")));
+                            + "is written fresh per run by construction and nothing could read it back"),
+            "build/after-edit-models",
+            new Declaration(BuildPathUse.WRITES_TRANSIENT_OUTPUT,
+                    "the one synthesized workload the Node after-edit lane hands its child, in the same "
+                            + "installed consumer project and for the same resolution reason as "
+                            + "build/prepared-models above; it is keyed by program count and rewritten at the "
+                            + "head of every run, and the lane reads its observations off the child's stdout "
+                            + "rather than off any file, so losing the tree costs a regeneration and nothing "
+                            + "else")));
 
     /**
      * A string literal naming a path under {@code build/}. Bare {@code "build/"} is excluded by the trailing
