@@ -2758,6 +2758,72 @@ def generateInterpreterReleaseChecksums = tasks.register(
     }
 }
 
+// --- H4's mechanical discriminator (portable-consistency plan) -------------------------------------------
+//
+// What it answers: did this commit change anything a consumer of the interpreter receives? The plan specifies
+// the comparison as "the interpreter's resolved production dependency set plus the digest of its built
+// artifacts", and both halves already existed separately — `generateInterpreterReleaseChecksums` writes the
+// digests and `verifyInterpreterDependencies` walks the resolved graph — so this joins them and introduces no
+// new digest mechanism. It was prose for the length of the plan, which is why a checker-only week could pass
+// with nobody able to say cheaply whether an interpreter sweep was owed.
+//
+// It is a COMPARISON instrument, not a gate: it asserts nothing about its own value, because the fingerprint
+// is supposed to change whenever the interpreter legitimately does. The question it answers is asked by
+// rendering it at two commits and diffing — a byte-identical fingerprint means a checker-only edit reached no
+// delivered byte and no resolved edge, and therefore owes no sweep.
+//
+// TEST configurations are deliberately absent. H4 is about what SHIPS, so a test-only dependency bump must not
+// demand an interpreter sweep it cannot possibly justify — the opposite choice from `verifyInterpreterDependencies`,
+// which includes them because a test classpath can still hide a forbidden edge. Same graph, different question.
+def interpreterFingerprintFile = rootProject.layout.buildDirectory.file(
+    'interpreter-release/PRODUCTION-FINGERPRINT',
+)
+def interpreterProductionFingerprint = tasks.register('interpreterProductionFingerprint') {
+    group = 'measurement'
+    description = 'Write the interpreter\'s resolved production closure plus delivered digests as one comparable fingerprint.'
+    dependsOn generateInterpreterReleaseChecksums
+    inputs.file(interpreterChecksums)
+    outputs.file(interpreterFingerprintFile)
+    doLast {
+        // Spelled out rather than derived from the configuration container: a sweep that silently dropped one
+        // would still render a fingerprint, and two commits differing only in the dropped configuration would
+        // compare equal — a false "no sweep needed", the one wrong answer this must never give.
+        def productionConfigurations = [
+            'jvmCompileClasspath',
+            'jvmRuntimeClasspath',
+            'jsCompileClasspath',
+            'jsRuntimeClasspath',
+        ]
+        def render = {
+            def lines = []
+            lines << '# resolved production closure'
+            productionConfigurations.toSorted().each { name ->
+                configurations.getByName(name)
+                    .incoming
+                    .resolutionResult
+                    .allComponents
+                    .collect { component -> component.id.displayName }
+                    .toSorted()
+                    .each { identity -> lines << "${name}  ${identity}".toString() }
+            }
+            lines << '# delivered artifact digests'
+            interpreterChecksums.get().asFile.readLines().each { line -> lines << line }
+            lines.join('\n') + '\n'
+        }
+        // Rendered twice for the same reason the checksum manifest is: a comparison across two checkouts is
+        // only evidence if the render is reproducible, and one render cannot tell an unstable fingerprint from
+        // a real difference. Resolution result order is not specified, which is what the sorts above answer.
+        def first = render()
+        def second = render()
+        if (first != second) {
+            throw new GradleException('interpreter production fingerprint is not deterministic')
+        }
+        def target = interpreterFingerprintFile.get().asFile
+        target.parentFile.mkdirs()
+        target.setText(first, 'UTF-8')
+    }
+}
+
 def verifyInterpreterReleaseArtifacts = tasks.register(
     'verifyInterpreterReleaseArtifacts',
 ) {
@@ -2767,6 +2833,10 @@ def verifyInterpreterReleaseArtifacts = tasks.register(
     dependsOn verifyInterpreterApiDocumentation
     dependsOn verifyInterpreterReleaseContracts
     dependsOn generateInterpreterReleaseChecksums
+    // Rendered on every `check` although it gates nothing, because a comparison instrument nobody runs is
+    // indistinguishable from one that throws: its own determinism refusal only fires when something executes it.
+    // The marginal cost is resolving four configurations whose digests this aggregate already builds.
+    dependsOn interpreterProductionFingerprint
     dependsOn verifyInterpreterMavenPublication
     dependsOn verifyInterpreterNpmPublication
     dependsOn verifyInterpreterPurity
