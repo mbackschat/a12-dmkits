@@ -100,9 +100,8 @@ private fun TrackedFactBase.readOperand(
 
 /** The repeatable groups strictly between [declaringGroup] and [fieldPath] — one star each is what A12 wants. */
 private fun TrackedFactBase.repeatableLevelsBetween(declaringGroup: String, fieldPath: String): Int =
-    allDeclarations().count {
-        it.isRepeatableGroup &&
-            it.path.startsWith("$declaringGroup/") && fieldPath.startsWith("${it.path}/")
+    repeatableGroups().count {
+        it.path.startsWith("$declaringGroup/") && fieldPath.startsWith("${it.path}/")
     }
 
 /** A12's class for this pair, in its own gate order, or null when the pair is legal. */

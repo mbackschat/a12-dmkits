@@ -109,8 +109,6 @@ private fun TrackedFactBase.placementFinding(
  * measured "rule group is the repeated group" row — and neither does anything at or below the key.
  */
 private fun TrackedFactBase.repeatableLiesBetween(declaringGroup: String, key: String): Boolean =
-    allDeclarations().any { candidate ->
-        candidate.isRepeatableGroup &&
-            candidate.path.startsWith("$declaringGroup/") &&
-            key.startsWith("${candidate.path}/")
+    repeatableGroups().any { candidate ->
+        candidate.path.startsWith("$declaringGroup/") && key.startsWith("${candidate.path}/")
     }

@@ -95,10 +95,33 @@ class CheckerPathLookupGuardTest {
 
     /**
      * Below this the scan is not reading the accessor's CALL sites, which is the subject rather than the
-     * tree. The live count is 34 call sites (2026-09-18); the accessor's own declaration is deliberately not
-     * one of them, because a walk that reached only the file declaring it would otherwise report clean.
+     * tree. The accessor's own declaration is deliberately not one of them, because a walk that reached only
+     * the file declaring it would otherwise report clean.
+     *
+     * <p>The live count is <b>19 call sites in the production source sets with comments blanked</b>
+     * (2026-09-18) — the quantity this floor governs, and not the same number as a plain {@code grep}, which
+     * returns 29 by also counting {@code commonTest} and prose. It stood at 20 against a live 34 until the
+     * eleven repeatability questions moved to {@code repeatableGroups()}, which took the population below
+     * the floor and failed this guard — the floor working as intended. It is deliberately well under the
+     * live count: it answers "did the scan happen", never "how big is the corpus".
      */
-    private static final int CALL_SITE_FLOOR = 20;
+    private static final int CALL_SITE_FLOOR = 10;
+
+    /**
+     * Every operator that takes a predicate over the whole result — wider than {@link #SCANNING_CALL},
+     * because a repeatability question is spelled with {@code filter}, {@code count} or {@code none} as
+     * readily as with {@code any}, and all of them cost the same walk.
+     */
+    private static final Pattern PREDICATE_CALL = Pattern.compile(
+            "\\.\\s*(?:filter|filterNot|filterIndexed|any|none|all|count|partition|sumOf|maxByOrNull"
+                    + "|minByOrNull|firstOrNull|find|first|single|singleOrNull|last|lastOrNull"
+                    + "|indexOfFirst)\\s*\\{");
+
+    /** The body member whose whole-model answer is a charged fact of its own. */
+    private static final String REPEATABILITY_MEMBER = "isRepeatableGroup";
+
+    /** The accessor that answers it from the memoized view, charging one model-wide fact. */
+    private static final String REPEATABILITY_ACCESSOR = "repeatableGroups()";
 
     @Test
     void aLookupByPathUsesTheMemoizedIndexRatherThanScanningEveryDeclaration() {
@@ -195,6 +218,85 @@ class CheckerPathLookupGuardTest {
                         .toList(),
                 "blanking comments must leave nothing to flag, because this repository documents the "
                         + "rejected idiom next to the accessor it belongs to");
+    }
+
+    /**
+     * A repeatability question reads the fact that answers it, not every declaration's body.
+     *
+     * <p><b>This is a COST guard, and deliberately not a soundness one.</b> The rejected idiom
+     * {@code allDeclarations().filter { it.isRepeatableGroup && … }} answers "which groups repeat" by
+     * touching every declaration's body JSON, where {@code repeatableGroups()} answers it from a memoized
+     * list — O(repeatable) with no body access — and charges the single model-wide fact designed for it.
+     *
+     * <p><b>What a green here does NOT mean.</b> Moving the eleven live call sites changed the transcript by
+     * exactly nothing: charge sets were measured identical before and after, 199 {@code DeclarationContent}
+     * charges either way across 38 model-wide producers on a seven-declaration fixture (2026-09-18). A
+     * model-wide family already charges every body through {@code declaredReferences()}, which is the
+     * design's own documented position rather than a defect, so reuse precision at that granularity comes
+     * from keying a cell per declaration and never from this rewrite. Read this guard as "the walk is
+     * gone", never as "the cell narrowed".
+     */
+    @Test
+    void aRepeatabilityQuestionReadsTheChargedFactRatherThanEveryBody() {
+        var offenders = checkerSources().stream()
+                .filter(source -> readsRepeatabilityFromTheSet(uncommented(source)))
+                .map(Path::toString)
+                .sorted()
+                .toList();
+
+        assertEquals(
+                List.of(),
+                offenders,
+                "these sources answer a repeatability question by scanning " + ACCESSOR + " and reading "
+                        + REPEATABILITY_MEMBER + " on every declaration; " + REPEATABILITY_ACCESSOR
+                        + " answers it from the memoized view with no body access");
+    }
+
+    @Test
+    void theRepeatabilityReaderCoversTheCheckersSpellingsAndSparesTheRest() {
+        // The four shapes the eleven migrated call sites actually used.
+        assertTrue(readsRepeatabilityFromTheSet(
+                "allDeclarations().filter { it.isRepeatableGroup && path.startsWith(\"${it.path}/\") }"));
+        assertTrue(
+                readsRepeatabilityFromTheSet(
+                        "allDeclarations().any { c -> c.isRepeatableGroup && k.startsWith(\"${c.path}/\") }"),
+                "a named lambda parameter and any() are the same scan");
+        assertTrue(readsRepeatabilityFromTheSet("allDeclarations().count {\n  it.isRepeatableGroup\n }"),
+                "count over a wrapped lambda is the same scan");
+        assertTrue(
+                readsRepeatabilityFromTheSet(
+                        "allDeclarations().firstOrNull { it.path == p && it.isRepeatableGroup }"),
+                "the conjunct may sit on either side of the predicate");
+
+        // Must be SPARED.
+        assertFalse(
+                readsRepeatabilityFromTheSet(
+                        "repeatableGroups().filter { path.startsWith(\"${it.path}/\") }"),
+                "the replacement must not match, or the guard could never go green");
+        assertFalse(readsRepeatabilityFromTheSet("elements.filter { it.isRepeatableGroup }"),
+                "Preparation computes the view itself from the UNTRACKED element list");
+        assertFalse(
+                readsRepeatabilityFromTheSet(
+                        "cursors.filterIndexed { i, _ -> model.elements[i].isRepeatableGroup }"),
+                "the view's own computation reads the untracked model on purpose — that is the fix, not "
+                        + "the idiom, and it must survive an operator set wide enough to include it");
+        assertFalse(readsRepeatabilityFromTheSet("allDeclarations().filter { it.declaredKind == FIELD }"),
+                "a whole-set scan that never asks about repeatability is a different question");
+    }
+
+    /** Whether [text] answers a repeatability question by scanning the accessor's whole result. */
+    private static boolean readsRepeatabilityFromTheSet(String text) {
+        var matcher = PREDICATE_CALL.matcher(text);
+        while (matcher.find()) {
+            int open = matcher.end() - 1;
+            int close = closingBrace(text, open);
+            if (close > open
+                    && searchesTheAccessor(text, matcher.start())
+                    && text.substring(open + 1, close).contains(REPEATABILITY_MEMBER)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private static boolean bareScanIn(String source) {
