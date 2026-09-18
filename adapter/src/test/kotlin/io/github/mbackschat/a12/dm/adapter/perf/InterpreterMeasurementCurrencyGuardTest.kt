@@ -1,6 +1,7 @@
 package io.github.mbackschat.a12.dm.adapter.perf
 
 import java.io.File
+import java.nio.file.Files
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
@@ -53,7 +54,10 @@ class InterpreterMeasurementCurrencyGuardTest {
      */
     @Test
     fun theGuardFiresWhenProductionMovesPastTheLastRecord() {
-        val scratch = File(System.getProperty("java.io.tmpdir"), "interp-currency-${System.nanoTime()}")
+        // Files.createTempDirectory rather than a name built from a clock: this test needs a unique directory,
+        // not an instant, and RawClockCensusTest reads the SOURCE — so a clock call here would have to be
+        // dispositioned as a measurement in a lane that cannot measure, which it is not.
+        val scratch = Files.createTempDirectory("interp-currency").toFile()
         try {
             val measured = InterpreterMeasurementCurrency.fabricateRepositoryWithUnmeasuredChange(scratch)
             assertTrue(measured.isNotEmpty(), "the fixture did not produce a commit, so it controls nothing")
