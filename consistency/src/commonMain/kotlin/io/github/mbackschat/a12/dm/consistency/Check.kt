@@ -975,10 +975,17 @@ internal fun checkRun(
             status = statusOf(findings),
             findings = findings,
             diagnostics = inherited + prepared.diagnostics,
-            // The two the composition produced above, then everything the registry ran. Derived rather than
+            // The two the composition produced above, then everything the SCHEDULE ran. Derived rather than
             // listed: a family wired into the report while this set stayed silent about it was a live
             // possibility, and the wiring guard could only catch the opposite direction.
-            checksCompleted = COMPOSED_FAMILIES + CHECK_PRODUCERS.flatMap { it.completes },
+            //
+            // From `scheduled` rather than from [CHECK_PRODUCERS], corrected 2026-09-18: a per-declaration
+            // producer is asked once per DECLARATION, so on a source that declares no elements it runs zero
+            // times while the registry still lists it. The report already discloses that state as a gap, so
+            // the over-claim was reachable, and `checksCompleted` is evidence — it may not offer a family
+            // that never ran (`ChecksCompletedScopeTest`). Whenever anything is declared the two derivations
+            // are the same set, which that test's populated row is the control for.
+            checksCompleted = COMPOSED_FAMILIES + scheduled.flatMap { it.key.producer.completes },
             gaps = prepared.gaps() + prepared.emptyFactBase() + findings.buildBlocked() +
                 scheduled.flatMap { cells.getValue(it.key).gaps } + UNREAD_MEMBERS +
                 UNIMPLEMENTED_FAMILIES,
