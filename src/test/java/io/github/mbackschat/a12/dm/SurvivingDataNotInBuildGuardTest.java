@@ -99,7 +99,13 @@ class SurvivingDataNotInBuildGuardTest {
                             + "the installed consumer project so `import 'a12-consistency'` resolves to the "
                             + "packed package; ProfileSynthesisTargetProfiles regenerates them at the head of "
                             + "every run, and no observation is read back from them — the measurements go to "
-                            + "the committed perf-results tree")));
+                            + "the committed perf-results tree"),
+            "build/retained-models",
+            new Declaration(BuildPathUse.WRITES_TRANSIENT_OUTPUT,
+                    "the one synthesized workload the Node retained-memory lane hands its child, in the same "
+                            + "installed consumer project and for the same resolution reason as "
+                            + "build/prepared-models above; the install task recreates that tree, so the model "
+                            + "is written fresh per run by construction and nothing could read it back")));
 
     /**
      * A string literal naming a path under {@code build/}. Bare {@code "build/"} is excluded by the trailing
