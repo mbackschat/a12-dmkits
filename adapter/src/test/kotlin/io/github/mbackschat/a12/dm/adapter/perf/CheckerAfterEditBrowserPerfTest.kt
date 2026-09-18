@@ -135,9 +135,9 @@ class CheckerAfterEditBrowserPerfTest {
 
         val ratios = campaign.observations.map { it.statefulMs / it.statelessMs }.toDoubleArray()
         return Reuse(
-            median(ratios),
-            median(campaign.observations.map { it.statelessMs }.toDoubleArray()),
-            median(campaign.observations.map { it.statefulMs }.toDoubleArray()),
+            PerfHarness.median(ratios),
+            PerfHarness.median(campaign.observations.map { it.statelessMs }.toDoubleArray()),
+            PerfHarness.median(campaign.observations.map { it.statefulMs }.toDoubleArray()),
         )
     }
 
@@ -182,12 +182,6 @@ class CheckerAfterEditBrowserPerfTest {
             observations = observations,
         )
     }
-
-    /**
-     * The sibling lanes' spelling exactly, which is correct here because [pairs] is required to be odd — so
-     * the value returned is one this run observed rather than the midpoint of two it did not.
-     */
-    private fun median(values: DoubleArray): Double = values.sortedArray().let { it[it.size / 2] }
 
     private data class Observation(
         val statelessMs: Double,

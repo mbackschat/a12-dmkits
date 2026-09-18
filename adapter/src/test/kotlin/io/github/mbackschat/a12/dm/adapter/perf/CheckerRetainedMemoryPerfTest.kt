@@ -125,9 +125,9 @@ class CheckerRetainedMemoryPerfTest {
             ratios[pair] = largeBytes[pair].toDouble() / smallBytes[pair]
         }
         return Growth(
-            ratio = median(ratios),
-            smallValue = median(smallBytes).toDouble(),
-            largeValue = median(largeBytes).toDouble(),
+            ratio = PerfHarness.median(ratios),
+            smallValue = PerfHarness.median(smallBytes).toDouble(),
+            largeValue = PerfHarness.median(largeBytes).toDouble(),
             smallN = small.programs,
             largeN = large.programs,
         )
@@ -216,10 +216,6 @@ class CheckerRetainedMemoryPerfTest {
         val heap = ManagementFactory.getMemoryMXBean().heapMemoryUsage
         return heap.used
     }
-
-    private fun median(values: LongArray): Long = values.sortedArray().let { it[it.size / 2] }
-
-    private fun median(values: DoubleArray): Double = values.sortedArray().let { it[it.size / 2] }
 
     private fun ratio(value: Double): String = "%.3fx".format(Locale.ROOT, value)
 

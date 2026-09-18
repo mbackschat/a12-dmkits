@@ -78,7 +78,7 @@ class CheckerAfterEditNodePerfTest {
         val ratios = DoubleArray(printed.size) { printed[it].statefulNanos / printed[it].statelessNanos.toDouble() }
         val statelessMs = DoubleArray(printed.size) { printed[it].statelessNanos / 1_000_000.0 }
         val statefulMs = DoubleArray(printed.size) { printed[it].statefulNanos / 1_000_000.0 }
-        return Reuse(median(ratios), median(statelessMs), median(statefulMs))
+        return Reuse(PerfHarness.median(ratios), PerfHarness.median(statelessMs), PerfHarness.median(statefulMs))
     }
 
     /**
@@ -183,12 +183,6 @@ class CheckerAfterEditNodePerfTest {
         check(completed.exitCode == 0) { "could not ask $node for its version: ${completed.output}" }
         return completed.output.trim()
     }
-
-    /**
-     * The sibling lanes' spelling exactly, which is correct here because [pairs] is required to be odd — so
-     * the value returned is one this run observed rather than the midpoint of two it did not.
-     */
-    private fun median(values: DoubleArray): Double = values.sortedArray().let { it[it.size / 2] }
 
     private fun format(value: Double): String = "%.3f".format(java.util.Locale.ROOT, value)
 

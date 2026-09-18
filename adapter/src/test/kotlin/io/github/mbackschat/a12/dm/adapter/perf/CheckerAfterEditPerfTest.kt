@@ -127,7 +127,7 @@ class CheckerAfterEditPerfTest {
             statefulMs[pair] = stateful()
             ratios[pair] = statefulMs[pair] / statelessMs[pair]
         }
-        return Reuse(median(ratios), median(statelessMs), median(statefulMs))
+        return Reuse(PerfHarness.median(ratios), PerfHarness.median(statelessMs), PerfHarness.median(statefulMs))
     }
 
     /**
@@ -144,8 +144,6 @@ class CheckerAfterEditPerfTest {
         require(observed >= 0) { "unreachable, and the reason the result is read at all" }
         return elapsed
     }
-
-    private fun median(values: DoubleArray): Double = values.sortedArray().let { it[it.size / 2] }
 
     private fun format(value: Double): String = "%.3f".format(Locale.ROOT, value)
 

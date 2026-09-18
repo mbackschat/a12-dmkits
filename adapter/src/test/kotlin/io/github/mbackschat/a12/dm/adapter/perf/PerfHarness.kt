@@ -1499,8 +1499,20 @@ object PerfHarness {
         return value
     }
 
-    /** The middle value of a sorted copy (does not mutate the caller's array). */
-    private fun median(a: DoubleArray): Double = a.sortedArray().let { it[it.size / 2] }
+    /**
+     * The middle value of a sorted copy (does not mutate the caller's array).
+     *
+     * **Public because it was copied into five lanes, and the copies had started to drift.** One of them
+     * carried a dead even-size branch its own caller made unreachable, which is how a spelling difference
+     * becomes a second definition of the estimator nobody compares. For an EVEN size this returns the upper
+     * middle rather than the mean of the two middles, so a lane whose result must name an observed value
+     * requires an odd count at its own boundary and says so there — that requirement belongs to the lane,
+     * because only the lane knows whether an interpolated value would be meaningful.
+     */
+    fun median(a: DoubleArray): Double = a.sortedArray().let { it[it.size / 2] }
+
+    /** [median] for a quantity counted in whole units — bytes, nanoseconds — which must not become a Double. */
+    fun median(a: LongArray): Long = a.sortedArray().let { it[it.size / 2] }
 
     /**
      * The median of [samples] independent measurements — the estimator [pairedGrowth] applies at one scale, exposed

@@ -126,7 +126,7 @@ class CheckerCombinedApplicationPerfTest {
             }
             ratios[pair] = bothMs[pair] / (consistencyMs[pair] + evaluationMs[pair])
         }
-        return Combined(median(consistencyMs), median(evaluationMs), median(bothMs), median(ratios))
+        return Combined(PerfHarness.median(consistencyMs), PerfHarness.median(evaluationMs), PerfHarness.median(bothMs), PerfHarness.median(ratios))
     }
 
     private data class Combined(
@@ -170,8 +170,6 @@ class CheckerCombinedApplicationPerfTest {
         require(observed >= 0) { "unreachable, and the reason the result is read at all" }
         return elapsed
     }
-
-    private fun median(values: DoubleArray): Double = values.sortedArray().let { it[it.size / 2] }
 
     private fun format(value: Double): String = "%.3f".format(Locale.ROOT, value)
 
