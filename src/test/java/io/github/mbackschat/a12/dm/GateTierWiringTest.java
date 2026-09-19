@@ -1,5 +1,6 @@
 package io.github.mbackschat.a12.dm;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -7,6 +8,10 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
+import java.util.Set;
+import java.util.TreeSet;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import org.junit.jupiter.api.Test;
 
@@ -615,6 +620,89 @@ class GateTierWiringTest {
                             + "they receive the same explicit review");
         }
     }
+
+    /**
+     * The doc-lane list is stated THREE times, and nothing held the statements together.
+     *
+     * <p>Root {@code docGuardTest} aggregates the cli doc lanes so that "run the doc guards" cannot select the
+     * wrong half; the hook checks one result directory per lane; and the hook PRINTS the command a human then
+     * runs. Adding a lane has updated one statement and left the others short twice — {@code referentGuardTest}
+     * and {@code staleGapGuardTest} on 2026-09-03, then {@code semanticsMapGuardTest} on 2026-09-04, which
+     * reached the hook alone. The aggregation stayed at three edges while its own comment, TESTING-SPEC and
+     * {@code docs/CLAUDE.md} each said the obvious command was the complete one, so the incomplete edge set was
+     * advertised as complete by three surfaces at once. Measured 2026-09-19: {@code :docGuardTest} left
+     * {@code :cli:semanticsMapGuardTest} unrun on a docs commit and only the hook noticed.
+     *
+     * <p>It compares the three literal lists rather than DERIVING the lane set from declared inputs, which was
+     * measured and rejected: a task whose inputs are assembled in a variable before registration declares no
+     * markdown input inside its own block, which is exactly how {@code :cli:staleGapGuardTest} declares
+     * INTERPRETER-GAPS. A derivation would silently drop it and report the pair in agreement.
+     *
+     * <p>The floor is the vacuity control: three empty sets compare equal, so a hook reformat or a renamed
+     * {@code dependsOn} would otherwise pass this by parsing nothing.
+     */
+    @Test
+    void everyDocLaneIsNamedByTheAggregationTheHookAndItsRemediationCommand() throws IOException {
+        String rootBuild = Files.readString(locate("build.gradle"));
+        String hook = Files.readString(locate(".githooks/pre-commit"));
+
+        Set<String> aggregated = new TreeSet<>(List.of(":docGuardTest"));
+        aggregated.addAll(matches(QUOTED_TASK, dependsOnStatement(gradleTask(rootBuild, "docGuardTest"))));
+        Set<String> checked = new TreeSet<>();
+        Matcher directory = EVIDENCE_DIRECTORY.matcher(hook);
+        while (directory.find()) {
+            checked.add(":" + (directory.group(1) == null ? "" : directory.group(1) + ":") + directory.group(2));
+        }
+        Set<String> prescribed = new TreeSet<>(matches(RERUN_TASK, hook));
+
+        assertTrue(checked.size() >= 4,
+                "parsed only " + checked.size() + " doc-lane result directories out of .githooks/pre-commit, so "
+                        + "its shape changed and this guard would have compared nothing");
+        assertEquals(checked, aggregated,
+                "the doc lanes the hook demands evidence from and the lanes root docGuardTest aggregates are one "
+                        + "list stated twice. A lane the aggregation misses is genuinely unrun by the command "
+                        + "every doc surface calls complete");
+        assertEquals(checked, prescribed,
+                "the hook checks a set of lanes and prints a different command to fix them, so following its own "
+                        + "advice cannot satisfy it");
+    }
+
+    /**
+     * The whole {@code dependsOn} statement of a task block, continuation lines included.
+     *
+     * <p>Reading one line was measured wrong the moment a fourth edge pushed the list onto a second line
+     * (2026-09-19): the guard then reported the aggregation short by exactly the edge that had just been added.
+     * A trailing comma is the only continuation this statement has, so the scan ends at the first line without
+     * one — which keeps it from swallowing the rest of the block, where other quoted strings live.
+     */
+    private static String dependsOnStatement(String task) {
+        int start = task.indexOf("dependsOn ");
+        if (start < 0) {
+            return "";
+        }
+        var statement = new StringBuilder();
+        for (String line : task.substring(start).lines().toList()) {
+            statement.append(line);
+            if (!line.stripTrailing().endsWith(",")) {
+                break;
+            }
+        }
+        return statement.toString();
+    }
+
+    private static List<String> matches(Pattern pattern, String text) {
+        return pattern.matcher(text).results().map(found -> found.group(1)).toList();
+    }
+
+    /** A task path in Gradle's quoted form, as the aggregation's {@code dependsOn} spells its edges. */
+    private static final Pattern QUOTED_TASK = Pattern.compile("'(:[A-Za-z0-9_:]+)'");
+
+    /** A lane's result directory, module-qualified when it is not the root module's. */
+    private static final Pattern EVIDENCE_DIRECTORY =
+            Pattern.compile("(?:([a-z]+)/)?build/test-results/([A-Za-z0-9_]+)");
+
+    /** A task the hook's printed command names, each carrying its own per-task rerun flag. */
+    private static final Pattern RERUN_TASK = Pattern.compile("(:[A-Za-z0-9_:]+) --rerun");
 
     /** The literal list of lanes that exclusively own their test classes, which the broad task derives from. */
     private static String dedicatedTaskList(String build) {

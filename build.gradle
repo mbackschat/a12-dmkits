@@ -694,7 +694,13 @@ tasks.register('docGuardTest', Test) {
     // docs-only checkpoint ran this task. Aggregating is preferred over asserting the ledger grammar twice — one
     // regex in two modules is the duplication-that-must-stay-in-sync smell. These are cross-module TASK edges (not
     // project edges) and both targets declare their inputs, so they cost nothing when no doc input changed.
-    dependsOn ':cli:docGuardTest', ':cli:staleGapGuardTest', ':cli:referentGuardTest'
+    //
+    // This edge set is the same list the pre-commit hook states twice — once as the result directories it wants
+    // evidence from, once as the command it prints — so `GateTierWiringTest` compares all three. It stood at
+    // three edges while the hook carried four, because adding `:cli:semanticsMapGuardTest` on 2026-09-04
+    // updated the hook alone and every surface describing this task kept calling the obvious command complete.
+    dependsOn ':cli:docGuardTest', ':cli:staleGapGuardTest', ':cli:referentGuardTest',
+            ':cli:semanticsMapGuardTest'
     useJUnitPlatform()
     testClassesDirs = sourceSets.test.output.classesDirs
     classpath = sourceSets.test.runtimeClasspath
@@ -730,6 +736,10 @@ tasks.register('docGuardTest', Test) {
     }
     guardInputs(it, [
             'docs/API-GUIDE.md': file('docs/API-GUIDE.md'),
+            // The hook states this task's own lane list twice, and the wiring guard holds both against the
+            // `dependsOn` above. Undeclared, a hook edit that dropped a lane would leave this task UP-TO-DATE
+            // and the disagreement would ship.
+            '.githooks/pre-commit': file('.githooks/pre-commit'),
             // Both halves of what the coverage guard compares: the authored sources and the configs plus the
             // `check` script that decide which of them a compiler ever reads. Undeclared, adding an uncovered
             // source would leave this task UP-TO-DATE and the guard would never see it.
