@@ -104,4 +104,13 @@ class EvalConfig(
      * False (the default) = validation semantics, unchanged.
      */
     val computeMode: Boolean = false,
-)
+) {
+
+    /**
+     * The call's deterministic work tally, or null in production — see [WorkLedger] for why a count and not a
+     * clock. It rides the config rather than the constructor because the config is allocated ONCE per call and
+     * reused wholesale by every sub-interpreter, so one ledger sees a whole `validate` / `compute` including
+     * its `Having` and overlap sub-evaluations. Internal, so it stays out of the published ABI.
+     */
+    internal var work: WorkLedger? = null
+}

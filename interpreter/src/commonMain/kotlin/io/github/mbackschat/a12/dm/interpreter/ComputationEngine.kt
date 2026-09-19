@@ -7,6 +7,7 @@ import io.github.mbackschat.a12.dm.interpreter.eval.CascadeOverlay
 import io.github.mbackschat.a12.dm.interpreter.eval.Document
 import io.github.mbackschat.a12.dm.interpreter.eval.EvalConfig
 import io.github.mbackschat.a12.dm.interpreter.eval.EvalContext
+import io.github.mbackschat.a12.dm.interpreter.eval.WorkLedger
 import io.github.mbackschat.a12.dm.interpreter.eval.IndexColumn
 import io.github.mbackschat.a12.dm.interpreter.eval.Interpreter
 import io.github.mbackschat.a12.dm.interpreter.eval.OverlayContext
@@ -55,6 +56,7 @@ internal class ComputationEngine(
     private val checks: AutoChecks,
     private val patterns: PatternRegistry,
     private val cacheObserver: () -> CacheObserver? = { null },
+    private val workLedger: () -> WorkLedger? = { null },
 ) {
 
     private val scopes: IterationScopes = plans.scopes
@@ -186,6 +188,8 @@ internal class ComputationEngine(
         // The compute-invariant config, built once for every instance's Interpreter (computeMode; no
         // CustomCondition / relevance seams on the compute path). Only the per-instance `invalid` poison gate
         // varies (it closes over the instance context), so it stays an Interpreter constructor arg.
+        // The compute path builds its own config, so it needs the ledger wired here too — counting only the
+        // validation config would have left COMPUTE_OVERLAY reporting zero evaluation work.
         val computeConfig = EvalConfig(
             clock,
             model.baseYear,
@@ -205,7 +209,7 @@ internal class ComputationEngine(
                 }
             },
             computeMode = true,
-        )
+        ).also { it.work = workLedger() }
         // A FILLED operand that is "not check-relevant" — formally invalid — makes a computation over it
         // non-evaluable (IF76, generalized IF78; poison semantics IF85). The gate is the SAME
         // operand-invalidity test full validation uses ([operandNotCheckRelevant] → [FormalResultCache]),

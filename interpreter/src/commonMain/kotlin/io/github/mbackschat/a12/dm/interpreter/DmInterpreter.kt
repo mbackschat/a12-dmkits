@@ -7,6 +7,7 @@ import io.github.mbackschat.a12.dm.interpreter.eval.Document
 import io.github.mbackschat.a12.dm.interpreter.eval.ComputationApplication
 import io.github.mbackschat.a12.dm.interpreter.eval.EvalConfig
 import io.github.mbackschat.a12.dm.interpreter.eval.EvalContext
+import io.github.mbackschat.a12.dm.interpreter.eval.WorkLedger
 import io.github.mbackschat.a12.dm.interpreter.eval.EffectiveRelevanceIndex
 import io.github.mbackschat.a12.dm.interpreter.eval.FunctionOp
 import io.github.mbackschat.a12.dm.interpreter.eval.GroupRelevance
@@ -187,6 +188,8 @@ class DmInterpreter private constructor(
     private val parsedModel = this.plans.parsed
     /** Nullable, instance-local structural seam used only by the cache-lifetime guard. */
     internal var cacheObserver: CacheObserver? = null
+    /** Nullable, instance-local work tally used only by the deterministic work guard ([WorkLedger]). */
+    internal var workLedger: WorkLedger? = null
     private val preparedModel = PreparedEvaluationPlan(
         model,
         this.plans,
@@ -208,6 +211,7 @@ class DmInterpreter private constructor(
         checks,
         patterns = patterns,
         cacheObserver = { cacheObserver },
+        workLedger = { workLedger },
     )
 
     /**
@@ -920,6 +924,7 @@ class DmInterpreter private constructor(
             starRelevant = starRelevant, starExtentKnown = starExtentKnown,
             starFullyEnumerated = starFullyEnumerated,
             customRelevant = customRelevant, groupPresence = groupPresence)
+            .also { it.work = workLedger }
 
     /** The kernel's allowed-and-eliminated raw-type length shape (see [rowOutcomes]): the whole condition is
      *  `Length(nvv) > constant` or the mirrored `constant < Length(nvv)` — GT/LT only (`>=`-style variants are
@@ -1007,6 +1012,9 @@ class DmInterpreter private constructor(
             if (prepared.semanticErrorIndex == null) contexts
             else contexts.distinctBy { context -> context.repsOf(errorPath) }
         }
+        // The iteration half of the work tally, counted after the early returns above so an eliminated or
+        // partial-skipped rule contributes the zero rows it actually evaluates (WorkLedger).
+        pass.config.work?.rowsEvaluated(iterationContexts.size)
         return iterationContexts.map { ctx ->
             // Partial validation: the kernel runs a rule only if its error field is relevant at this row —
             // else the rule is NOT executed for it (no message, not a suppression). "At this row" is the

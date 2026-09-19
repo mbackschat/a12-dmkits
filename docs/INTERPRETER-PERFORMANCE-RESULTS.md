@@ -21,6 +21,22 @@
 > enforcement, and its place in the docs router. The cleaner boundary is by AUTHOR, not by subject — `perf-results/`
 > is machine-written and self-pruning, this is hand-written and guard-verified.
 
+### Checkpoint 2026-09-19 — the interpreter's evaluation work is exactly linear in scale, so a count carries the bar a clock could not
+
+**Measured on both carriers** (`:interpreter:check`, JVM 1320 tests and Node 1298, 0 failures), with a `WorkLedger` installed on each footprint scenario at scales 200 / 400 / 800 / 1600. Every count is an exact integer multiple of the scale — the intercept is zero on every row, so scale 200 costs exactly 200 and never 201:
+
+| scenario | condition nodes | value-expression nodes | validation rule rows |
+|---|---|---|---|
+| `simple-validation` | 1 · scale | 0 | 1 · scale |
+| `equality-correlation` | 3 · scale | 0 | 1 · scale |
+| `compute-overlay` | 3 · scale | 9 · scale | 0 |
+
+The two zeros are real and were checked rather than assumed. `equality-correlation` resolves no value expressions because it fires on presence and duplicate predicates, which read no operand values; `compute-overlay` instantiates no *validation* rule row because the compute path iterates instances instead, and that iteration shows up as its expression work.
+
+**One instrumentation defect this measurement caught, which is why it was a probe before it was an assertion.** Counting at `evalCond` — the dispatch that looked like the one every condition node passes through — reported a 200-message validation as doing **zero** condition work. Validation does not walk there: `firedType` needs each node's polarity, so it uses `evalTypedLazy`, a separate walk. Had the per-row constants been written from reasoning instead of a run, the guard would have locked three zeros and passed forever.
+
+**Kill proof.** Making validation walk its condition tree twice (`evalTypedLazy(cond).also { evalTypedLazy(cond) }`) fails the guard at `simple-validation` scale 200 with `expected:<200> but was:<400>`.
+
 ### Checkpoint 2026-09-19 — the trend reader is ruled out for NFR #1's timed rows, and the margin does not rescue them either
 
 **The question was whether any existing instrument could carry a 5 % bar on the timed rows, and the answer is no — on the quietest quantity the estate has, not merely on the obvious one.** The checkpoint below establishes that absolute times spread far past 5 %. The natural rebuttal is that the estate does not gate absolute times: the early-warning band judges the **margin**, the kernel/interpreter ratio, and [`scripts/perf-trend.sh`](../scripts/perf-trend.sh)'s own header argues that a ratio's noise is not its operands' because both engines run in the same JVM on the same vCPUs, so a load excursion moves them together and largely cancels. That argument is **correct and still insufficient**.

@@ -219,7 +219,14 @@ private fun Interpreter.filledFieldsValue(args: List<Expr>): Val {
     return Val.Num(dec(count))
 }
 
-internal fun Interpreter.evalExpr(e: Expr): Val = when (e) {
+internal fun Interpreter.evalExpr(e: Expr): Val {
+    // Every value node, including those a sub-interpreter resolves, passes here — the compute path's whole
+    // evaluation volume, which the condition dispatch never sees (WorkLedger).
+    work?.expressionNode()
+    return evalExprNode(e)
+}
+
+private fun Interpreter.evalExprNode(e: Expr): Val = when (e) {
     is Expr.NumLit -> e.asVal
     is Expr.StrLit -> e.asVal
     is Expr.BoolLit -> e.asVal

@@ -80,7 +80,15 @@ internal fun Interpreter.evalTyped(c: Cond): Res = when (c) {
  * type, so their truth (the costly part) is still evaluated exactly once. Correctness is gated by the full
  * kernel differential (the rendered messages' polarity must match the kernel on the whole corpus).
  */
-internal fun Interpreter.evalTypedLazy(c: Cond): Res = when (c) {
+internal fun Interpreter.evalTypedLazy(c: Cond): Res {
+    // Validation walks HERE, not through the plain condition dispatch: `firedType` needs a node's polarity, so
+    // a rule evaluated by `validate` never reaches `evalCond`. Counting only there reported a 200-message
+    // validation as doing zero condition work (measured 2026-09-19, which is how this site was found).
+    work?.conditionNode()
+    return evalTypedLazyNode(c)
+}
+
+private fun Interpreter.evalTypedLazyNode(c: Cond): Res = when (c) {
     is Cond.Cmp -> evalCmp(c).let { Res.of(it, if (it == Tri.TRUE) leafType(c.op, c.left, c.right) else MsgType.VALUE) }
     is Cond.Tolerance -> evalTolerance(c).let { Res.of(it, if (it == Tri.TRUE) toleranceType(c) else MsgType.VALUE) }
     is Cond.ValueListQuant -> vlqRes(c)   // single pass; a non-firing result already carries the VALUE placeholder

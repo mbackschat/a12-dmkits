@@ -365,7 +365,17 @@ class Interpreter(
         return Tri.of(ToleranceOps.differs(a, b, c.tolerance))
     }
 
-    private fun evalCond(c: Cond): Tri = when (c) {
+    /** The call's work tally, reachable from the value-expression collaborator, which cannot see [config]. */
+    internal val work: WorkLedger? get() = config.work
+
+    private fun evalCond(c: Cond): Tri {
+        // Every condition node of every rule passes through this dispatch, including the nodes a sub-interpreter
+        // walks, so one increment here is the whole call's evaluation volume (WorkLedger).
+        work?.conditionNode()
+        return evalCondNode(c)
+    }
+
+    private fun evalCondNode(c: Cond): Tri = when (c) {
         is Cond.Cmp -> evalCmp(c)
         is Cond.Tolerance -> evalTolerance(c)
         is Cond.ValueListQuant -> evalValueListQuant(c)
