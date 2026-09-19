@@ -36,6 +36,24 @@ internal class JvmPerformancePlatform : PerformancePlatform {
 
     override fun nanoTime(): Long = System.nanoTime()
 
+    /**
+     * Measuring-thread CPU time from the platform MXBean.
+     *
+     * `getCurrentThreadCpuTime` returns -1 when thread CPU measurement is disabled, which would silently read
+     * as zero occupancy and fail every process. That is a broken instrument rather than a contended machine,
+     * so it is refused by name — the bar it feeds is worthless either way, and the two causes want different
+     * fixes.
+     */
+    override fun cpuNanoTime(): Long {
+        val threads = java.lang.management.ManagementFactory.getThreadMXBean()
+        require(threads.isCurrentThreadCpuTimeSupported) {
+            "this JVM does not support thread CPU time, so a sample's occupancy cannot be measured"
+        }
+        val cpu = threads.currentThreadCpuTime
+        require(cpu >= 0) { "thread CPU time is disabled on this JVM, so occupancy cannot be measured" }
+        return cpu
+    }
+
     override fun sha256(content: String): String =
         MessageDigest.getInstance("SHA-256")
             .digest(content.toByteArray(StandardCharsets.UTF_8))

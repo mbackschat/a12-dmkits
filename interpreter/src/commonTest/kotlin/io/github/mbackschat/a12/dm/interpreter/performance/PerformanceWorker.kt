@@ -45,6 +45,27 @@ internal interface PerformancePlatform {
     fun environment(name: String): String?
     fun runtime(): PerformanceRuntime
     fun nanoTime(): Long
+
+    /**
+     * CPU time consumed by the MEASURING thread, in nanoseconds — the numerator of this protocol's occupancy.
+     *
+     * **Why the protocol needs it (IG153, measured 2026-09-19).** A timed region's wall duration says nothing
+     * about whether the region *ran*. Two bundle invocations sixteen seconds apart once disagreed by 35–60 % on
+     * every JVM lane, and the report presented the difference as a 24–41 % improvement, because nothing in the
+     * record distinguished "this arm was slower" from "this arm was descheduled". Occupancy does: a thread that
+     * owned its core reads cpu ≈ wall, and one that waited on a busy machine or on cold I/O reads cpu < wall.
+     *
+     * **The JVM reports THREAD time; Node can only report process time, and the difference is measured.** On
+     * the JVM a thread clock is available and is the right numerator: process CPU there includes the JIT and GC
+     * threads, which legitimately push a total above wall, so a process-time ratio would read above 1.0 exactly
+     * when a first-answer measurement works hardest. Node has no per-thread CPU API in stable form, so
+     * `process.cpuUsage()` is all this carrier can give — and it counts the libuv pool and V8's background
+     * threads, which is why Node occupancy measures **1.041–2.355** on an idle machine against the JVM's
+     * **0.859–0.994** (2026-09-19). Both fall when the process is starved of cycles, which is the signal; they
+     * simply have different healthy baselines, so [PerformanceProtocol.minOccupancy] is keyed by host.
+     */
+    fun cpuNanoTime(): Long
+
     fun sha256(content: String): String
     fun write(path: String, content: String)
 }
@@ -65,7 +86,7 @@ internal object PerformanceWorker {
         val identity = platform.sha256(PerformanceScenarios.identityContent(fixtures))
         return PerformanceProtocol.validateFork(
             PerformanceFork(
-                protocolVersion = 1,
+                protocolVersion = 2,
                 commit = config.commit,
                 runner = config.runner,
                 invocationId = config.invocationId,
@@ -87,10 +108,12 @@ internal object PerformanceWorker {
         require(config.warmup == 0) { "first-answer workers cannot warm up" }
         require(config.repetitions == 1) { "first-answer workers emit exactly one sample" }
         val scale = config.scenario.scales.single()
+        val startedCpu = platform.cpuNanoTime()
         val started = platform.nanoTime()
         val result = fixture.evaluate(DmInterpreter(fixture.model))
         val elapsed = elapsedMillis(started, platform.nanoTime())
-        return listOf(result.toSample(scale, listOf(elapsed)))
+        val cpu = cpuMillis(startedCpu, platform.cpuNanoTime())
+        return listOf(result.toSample(scale, listOf(elapsed), listOf(cpu)))
     }
 
     private fun throughput(
@@ -106,20 +129,23 @@ internal object PerformanceWorker {
             val interpreter = DmInterpreter(fixture.model)
             val preflight = fixture.evaluate(interpreter)
             repeat(config.warmup) { fixture.evaluate(interpreter) }
-            PreparedScale(fixture.scale, fixture, interpreter, preflight, mutableListOf())
+            PreparedScale(fixture.scale, fixture, interpreter, preflight, mutableListOf(), mutableListOf())
         }
         repeat(config.repetitions) {
             prepared.forEach { sample ->
+                val startedCpu = platform.cpuNanoTime()
                 val started = platform.nanoTime()
                 val current = sample.fixture.evaluate(sample.interpreter)
                 val elapsed = elapsedMillis(started, platform.nanoTime())
+                val cpu = cpuMillis(startedCpu, platform.cpuNanoTime())
                 require(current == sample.preflight) {
                     "${config.scenario.id}/${sample.scale}: semantic outcome changed during measurement"
                 }
                 sample.timings += elapsed
+                sample.cpu += cpu
             }
         }
-        return prepared.map { it.preflight.toSample(it.scale, it.timings) }
+        return prepared.map { it.preflight.toSample(it.scale, it.timings, it.cpu) }
     }
 
     private fun elapsedMillis(started: Long, ended: Long): Double {
@@ -127,11 +153,23 @@ internal object PerformanceWorker {
         return (ended - started) / 1_000_000.0
     }
 
+    /**
+     * CPU milliseconds across the same region, floored at zero rather than required to advance.
+     *
+     * A thread CPU clock legitimately reports no progress where a wall clock must: its granularity is coarser
+     * than `nanoTime` on some platforms, so a very short region can read zero. Requiring advancement here would
+     * turn a resolution limit into a measurement failure — the occupancy that results is simply 0, which the
+     * bar below judges rather than crashes on.
+     */
+    private fun cpuMillis(started: Long, ended: Long): Double =
+        if (ended <= started) 0.0 else (ended - started) / 1_000_000.0
+
     private fun PerformanceSemanticResult.toSample(
         scale: Int,
         timings: List<Double>,
+        cpu: List<Double>,
     ): PerformanceScaleSample =
-        PerformanceScaleSample(scale, timings.toList(), cardinality, supported, outcome)
+        PerformanceScaleSample(scale, timings.toList(), cpu.toList(), cardinality, supported, outcome)
 
     private data class PreparedScale(
         val scale: Int,
@@ -139,5 +177,6 @@ internal object PerformanceWorker {
         val interpreter: DmInterpreter,
         val preflight: PerformanceSemanticResult,
         val timings: MutableList<Double>,
+        val cpu: MutableList<Double>,
     )
 }

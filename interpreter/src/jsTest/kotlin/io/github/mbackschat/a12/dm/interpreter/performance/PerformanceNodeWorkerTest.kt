@@ -40,6 +40,21 @@ private class NodePerformancePlatform : PerformancePlatform {
     override fun nanoTime(): Long =
         ((NodePerformanceHooks.performance.now() as Number).toDouble() * 1_000_000.0).toLong()
 
+    /**
+     * `process.cpuUsage()` — user plus system microseconds across EVERY thread of the process.
+     *
+     * Node exposes no per-thread CPU clock in stable form, so this is all the carrier can give, and it is not
+     * the JVM's quantity: the libuv pool and V8's background GC and compiler threads are included, which is
+     * why Node occupancy measures 1.041–2.355 on an idle machine rather than just under 1.0. It still falls
+     * when the process is starved of cycles, which is the signal the floor reads, so the floor is keyed by host
+     * rather than shared. Both halves are summed because a region that spent its time in the kernel still ran.
+     */
+    override fun cpuNanoTime(): Long {
+        val usage = process.cpuUsage()
+        val micros = (usage.user as Number).toDouble() + (usage.system as Number).toDouble()
+        return (micros * 1_000.0).toLong()
+    }
+
     override fun sha256(content: String): String =
         NodeCrypto.createHash("sha256").update(content, "utf8").digest("hex") as String
 

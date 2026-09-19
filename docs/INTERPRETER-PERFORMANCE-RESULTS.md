@@ -21,6 +21,34 @@
 > enforcement, and its place in the docs router. The cleaner boundary is by AUTHOR, not by subject — `perf-results/`
 > is machine-written and self-pruning, this is hand-written and guard-verified.
 
+### Checkpoint 2026-09-19 — IG153 closed: the bundle reproduces under pinned order, and every timed sample now carries its own contention evidence (proven to fire on real load)
+
+**The bundle now reproduces, which is the harm IG153 named.** Three invocations of `:interpreter:interpreterPerformance` on `3078b902f`, compilation deliberately outside the timed invocations, worker order pinned:
+
+| row | run 1 | run 2 | run 3 | spread |
+|---|---|---|---|---|
+| `jvm-192-rules-500-rows-first-answer` | 114.80 | 131.00 | 115.10 | **1.141×** |
+| `jvm-48-rules-500-rows-first-answer` | 86.45 | 85.38 | 81.07 | 1.066× |
+| `jvm-b1-100000-rows-first-answer` | 859.68 | 853.38 | 860.81 | 1.009× |
+| `jvm-b1-100000-rows-warm-throughput` | 224.26 | 216.64 | 221.17 | 1.035× |
+| `node-b1-10000-rows-first-answer` | 295.65 | 287.49 | 293.86 | 1.028× |
+| the four Node throughput rows | — | — | — | 1.013–1.034× |
+
+Median row-level spread **1.028×**, worst **1.141×**. The unpinned pair that opened the row put that same worst row at **1.61×** between invocations (184.97 against 114.53) and disagreed with isolated reruns by 27–42 points. All three invocations executed the identical 21-task sequence, verified from the build logs rather than from `--dry-run`. **What this does and does not establish:** the defect does not reproduce with the ordering variable removed, which is the operational answer. It is *not* an identification of the mechanism — there are three observations of the pinned condition against one of the unpinned, so the ordering hypothesis remains unproven and is recorded as such.
+
+**A rival mechanism I proposed was refuted by the same data.** From four hand-picked values it looked as though the first fork of an invocation systematically paid its warm-up, which would mean a median-of-three could be skewed by a contaminated member. Across all 27 scenario-invocations the median first-fork excess is **−0.6 %**, and the distribution is symmetric from −9.0 % to +26.0 %. There is no first-fork penalty; the four values were pattern-matching. The individual excursions up to ±26 % are real, and they are what the median-of-three exists to absorb — which it does, holding row-level spread at 1.028× while single forks move 26 %.
+
+**Every timed sample now carries its own contention evidence, and the single-floor design was refuted by its first measurement.** `PerformancePlatform.cpuNanoTime` records the measuring thread's CPU alongside each region's wall time, so a sample's *occupancy* — median CPU-over-wall — says whether the region ran or waited. The intended design used one floor for both carriers. Measured on an idle machine, one bundle invocation:
+
+| carrier | numerator | occupancy range | median | floor set |
+|---|---|---|---|---|
+| JVM (12 scale-samples) | measuring **thread** CPU | 0.859 – 0.994 | 0.903 | 0.70 |
+| Node (15 scale-samples) | **whole-process** CPU | **1.041 – 2.355** | 1.155 | 0.85 |
+
+Node exceeds 1.0 because `process.cpuUsage()` counts the libuv pool and V8's background GC and compiler threads; Node exposes no per-thread CPU clock in stable form. A comment asserting Node was single-threaded and could share the JVM's floor was written and then falsified by this measurement — a shared floor would have been either blind on Node or permanently red on the JVM. Both quantities fall when the process is starved of cycles, which is the signal, so the floor is keyed by host with ~18 % margin below each carrier's observed minimum.
+
+**It is proven to fire on real contention, not only on synthetic numbers.** A bundle run against a background load of roughly 53 % of the machine drove `jvm-b1-100000-rows-warm-throughput` to **65 % occupancy** and `performanceAggregateReport` refused the report by name: *"JVM occupancy 65% is below the 70% floor … its timings are the machine's, not the code's"*. The same bundle on an idle machine passes. That load is far milder than the 213 % `mediaanalysisd` pass which contaminated two capture sessions earlier the same day, so the instrument is sensitive well below the contamination that has actually cost measurements here. The refusal sits in `aggregate` rather than `validateFork` on purpose: a contended record is legitimate evidence of what that process saw, and must survive — what must not happen is that it becomes a *comparison*.
+
 ### Checkpoint 2026-09-19 — IG152: three candidate routes to a 5 % timed bar, ALL THREE refuted — and the third was refuted by the very capture meant to instantiate it
 
 **Name the quantities first, because three different ones are in play and an earlier pass compared two of them by accident.** *Worst-against-median spread* is per key `max/median − 1` over that key's accepted non-CI observations in [`../perf-results/darwin-aarch64/`](../perf-results/README.md), one machine; it answers *how far does a single run stray from this key's own centre*. *Null 95 % ratio interval* is a 20 000-iteration bootstrap of `(median of n draws) / (median of n draws)` with both arms drawn from the **same** commit's own samples; its upper bound is what a one-sided 5 % regression bar faces as a false-positive rate, so a bar is safe on a row exactly when that bound sits under +5 %. Every figure below is re-derived at `f5905bf9a`; the corpus is mutable, so figures carry their commit ([the method note](INTERPRETER-PERFORMANCE.md) on why).

@@ -3,6 +3,7 @@ package io.github.mbackschat.a12.dm.interpreter.performance
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
+import kotlin.test.assertTrue
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
@@ -136,6 +137,90 @@ class PerformanceProtocolTest {
         )
     }
 
+    /**
+     * A process that spent its elapsed time waiting cannot become a comparison.
+     *
+     * This is IG153's guard. Two bundle invocations sixteen seconds apart once disagreed by 35–60 % on every
+     * JVM lane and the report presented the difference as a 24–41 % improvement, because no field distinguished
+     * "slower code" from "descheduled process". Occupancy does, and the refusal sits in `aggregate` rather than
+     * `validateFork` so the contended record survives as evidence while never reaching a report.
+     */
+    @Test
+    fun aStarvedProcessIsRefusedOnBothCarriers() {
+        listOf(
+            PerformanceScenario.JVM_B1_ABSOLUTE_THROUGHPUT,
+            PerformanceScenario.NODE_B1_THROUGHPUT,
+        ).forEach { scenario ->
+            // A tenth of the wall time spent running, which is far below either carrier's healthy baseline.
+            val starved = scenario.scales.map { listOf(100.0, 100.0, 100.0) }
+            val fork = forkWithCpu(scenario, starved, starved.map { listOf(10.0, 10.0, 10.0) })
+
+            val failure = assertFailsWith<IllegalArgumentException> {
+                PerformanceProtocol.aggregate(listOf(fork), 1, listOf(scenario))
+            }
+
+            assertTrue(
+                failure.message!!.contains("occupancy"),
+                "${scenario.host}: the refusal must name occupancy, so a reader re-measures instead of hunting " +
+                    "a regression; was: ${failure.message}",
+            )
+        }
+    }
+
+    /**
+     * The vacuity control, and the only thing that stops a floor being decorative.
+     *
+     * A floor of zero would satisfy every assertion above while refusing nothing — which is precisely how the
+     * bundle came to carry no contamination check at all. Each carrier's floor is asserted to sit inside the
+     * band where it can bite: above total starvation, and below that carrier's own measured idle minimum. The
+     * two minima differ by more than the floors do, which is the whole reason the floor is keyed by host.
+     */
+    @Test
+    fun eachCarriersOccupancyFloorSitsWhereItCanFire() {
+        IDLE_MINIMUM.forEach { (host, idleMinimum) ->
+            val floor = PerformanceProtocol.minOccupancy(host)
+            assertTrue(
+                floor > 0.0,
+                "$host: a zero occupancy floor refuses nothing, so the contamination check is decorative",
+            )
+            assertTrue(
+                floor < idleMinimum,
+                "$host: the floor ($floor) must sit below the lowest occupancy measured on an idle machine " +
+                    "($idleMinimum), or it fires on healthy runs and gets removed",
+            )
+        }
+    }
+
+    /** A healthy capture is not refused — the other half of the bar, without which the floor could be 10.0. */
+    @Test
+    fun anIdleMachinesMeasuredOccupancyIsAccepted() {
+        IDLE_MINIMUM.forEach { (host, idleMinimum) ->
+            val scenario = PerformanceScenario.entries.first { it.host == host && it.mode == PerformanceMode.WARM_THROUGHPUT }
+            val wall = scenario.scales.map { listOf(100.0, 100.0, 100.0) }
+            val cpu = scenario.scales.map { List(3) { 100.0 * idleMinimum } }
+
+            PerformanceProtocol.aggregate(listOf(forkWithCpu(scenario, wall, cpu)), 1, listOf(scenario))
+        }
+    }
+
+    @Test
+    fun occupancyIsTheMedianRatioAcrossAScalesRegions() {
+        val sample = PerformanceScaleSample(
+            scale = 1,
+            elapsedMillis = listOf(100.0, 100.0, 100.0),
+            cpuMillis = listOf(10.0, 90.0, 50.0),
+            cardinality = 1,
+            supported = true,
+            outcome = "codes=X",
+        )
+
+        assertEquals(
+            0.5, sample.occupancy(),
+            "occupancy must be the MEDIAN per-region ratio {0.1, 0.9, 0.5}, so one descheduled region does not " +
+                "condemn a process and one healthy region does not excuse it",
+        )
+    }
+
     private fun fork(
         scenario: PerformanceScenario,
         pid: Long,
@@ -143,6 +228,7 @@ class PerformanceProtocolTest {
         timings: List<Double>,
         largeTimings: List<Double>? = null,
         warmup: Int = 0,
+        cpu: List<Double>? = null,
     ): PerformanceFork {
         val timingSets = if (largeTimings == null) {
             listOf(timings)
@@ -150,7 +236,7 @@ class PerformanceProtocolTest {
             listOf(timings, largeTimings)
         }
         return PerformanceFork(
-            protocolVersion = 1,
+            protocolVersion = 2,
             commit = "12345678",
             runner = "pinned-test-runner",
             invocationId = invocation,
@@ -160,8 +246,45 @@ class PerformanceProtocolTest {
             scenarioIdentity = "a".repeat(64),
             warmup = warmup,
             samples = scenario.scales.zip(timingSets).map { (scale, values) ->
-                PerformanceScaleSample(scale, values, 1, true, "codes=X")
+                // Full occupancy unless a test asks otherwise: every assertion here is about aggregation, and a
+                // fixture that quietly sat near the floor would make those assertions fail for the wrong reason.
+                PerformanceScaleSample(scale, values, cpu ?: values, 1, true, "codes=X")
             },
+        )
+    }
+
+    /** A fork with explicit per-scale wall and cpu series, for the occupancy bar's two directions. */
+    private fun forkWithCpu(
+        scenario: PerformanceScenario,
+        wall: List<List<Double>>,
+        cpu: List<List<Double>>,
+    ): PerformanceFork = PerformanceFork(
+        protocolVersion = 2,
+        commit = "12345678",
+        runner = "pinned-test-runner",
+        invocationId = "occupancy",
+        host = scenario.host,
+        runtime = PerformanceRuntime("runtime", "1", "os", "arch", 1, 1),
+        scenario = scenario,
+        scenarioIdentity = "a".repeat(64),
+        warmup = 3,
+        samples = scenario.scales.indices.map { index ->
+            PerformanceScaleSample(scenario.scales[index], wall[index], cpu[index], 1, true, "codes=X")
+        },
+    )
+
+    private companion object {
+        /**
+         * The lowest median occupancy measured per carrier on an IDLE machine — 12 JVM and 15 Node
+         * scale-samples of one bundle invocation, 2026-09-19. The floors must sit below these, and a healthy
+         * capture at exactly these values must be accepted; both directions are asserted above.
+         *
+         * They differ by more than either floor's margin, which is the measured reason the floor is keyed by
+         * host: the JVM numerator is the measuring thread's CPU, Node's is every thread's.
+         */
+        val IDLE_MINIMUM = mapOf(
+            PerformanceHost.JVM to 0.8588,
+            PerformanceHost.NODE to 1.0412,
         )
     }
 }

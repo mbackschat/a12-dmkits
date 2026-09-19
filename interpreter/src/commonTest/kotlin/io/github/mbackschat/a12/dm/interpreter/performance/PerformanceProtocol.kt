@@ -24,10 +24,28 @@ internal data class PerformanceRuntime(
 internal data class PerformanceScaleSample(
     val scale: Int,
     val elapsedMillis: List<Double>,
+    /** Measuring-thread CPU milliseconds for the same regions as [elapsedMillis], index for index. */
+    val cpuMillis: List<Double>,
     val cardinality: Int,
     val supported: Boolean,
     val outcome: String,
-)
+) {
+    /**
+     * Median CPU-over-wall ratio across this scale's regions — how much of its elapsed time the measuring
+     * thread actually spent running.
+     *
+     * Near 1.0 the thread owned its core and the elapsed time is the code's cost. Well below it the thread was
+     * descheduled or waiting, and the elapsed time is partly the machine's, which is the confusion that let a
+     * contaminated bundle arm read as a 24–41 % improvement (IG153).
+     */
+    fun occupancy(): Double {
+        require(elapsedMillis.size == cpuMillis.size) { "cpu and wall sample counts differ" }
+        val ratios = elapsedMillis.indices
+            .map { if (elapsedMillis[it] <= 0.0) 0.0 else cpuMillis[it] / elapsedMillis[it] }
+            .sorted()
+        return ratios[ratios.size / 2]
+    }
+}
 
 internal data class PerformanceFork(
     val protocolVersion: Int,
@@ -60,7 +78,38 @@ internal data class PerformanceRun(
 
 internal object PerformanceProtocol {
 
-    private const val VERSION = 1
+    /**
+     * 2 since 2026-09-19, when every sample gained its measuring-thread CPU time.
+     *
+     * A clean break rather than an optional field: a record without occupancy cannot be judged for
+     * contamination, so silently admitting one would reinstate exactly the blind spot IG153 names — and the
+     * raws are ephemeral build outputs, so nothing committed needs to be read back at version 1.
+     */
+    private const val VERSION = 2
+
+    /**
+     * The floor a process's median occupancy must clear — **per carrier, because it is not the same quantity
+     * on both**, and measured rather than chosen.
+     *
+     * On the JVM the numerator is the MEASURING THREAD's CPU time, so a healthy region sits just under 1.0:
+     * GC pauses and safepoints stop that thread while the wall clock runs. Measured on an idle machine
+     * (2026-09-19, 12 JVM scale-samples of one bundle invocation): **0.859 – 0.994, median 0.903**.
+     *
+     * On Node the numerator is `process.cpuUsage()`, which counts EVERY thread — the libuv pool and V8's
+     * background GC and compiler threads included — so a healthy region sits *above* 1.0. Measured in the same
+     * invocation (15 Node scale-samples): **1.041 – 2.355, median 1.155**. An earlier draft of this protocol
+     * asserted Node was single-threaded and could share the JVM's floor; the first measurement refuted it, and
+     * a shared floor would have been either blind on Node or permanently red on the JVM.
+     *
+     * Both fall when the process is starved of cycles, which is what the bar reads. The floors sit ~18 % below
+     * each carrier's observed minimum: the question is "did this region get the machine?", not "was the machine
+     * perfectly idle", and a floor that fires on healthy variation is a floor that gets removed. The margin is
+     * wide because the basis is one invocation; `aStarvedProcessIsRefusedOnBothCarriers` proves it still fires.
+     */
+    internal fun minOccupancy(host: PerformanceHost): Double = when (host) {
+        PerformanceHost.JVM -> 0.70
+        PerformanceHost.NODE -> 0.85
+    }
     private val COMMIT = Regex("[0-9a-f]{8,64}")
     private val SHA_256 = Regex("[0-9a-f]{64}")
 
@@ -82,6 +131,16 @@ internal object PerformanceProtocol {
             require(sample.elapsedMillis.isNotEmpty()) { "${fork.scenario.id}/${sample.scale}: no timings" }
             require(sample.elapsedMillis.all { it.isFinite() && it > 0.0 }) {
                 "${fork.scenario.id}/${sample.scale}: timings must be finite and positive"
+            }
+            // Index for index, because occupancy divides one by the other. A pair of arrays that merely happen
+            // to be the same length is the weaker property, but a length mismatch is the only misalignment a
+            // record can express, and it is the one a partly-written record produces.
+            require(sample.cpuMillis.size == sample.elapsedMillis.size) {
+                "${fork.scenario.id}/${sample.scale}: ${sample.cpuMillis.size} cpu samples against " +
+                    "${sample.elapsedMillis.size} wall samples, so occupancy cannot be computed"
+            }
+            require(sample.cpuMillis.all { it.isFinite() && it >= 0.0 }) {
+                "${fork.scenario.id}/${sample.scale}: cpu times must be finite and non-negative"
             }
             require(sample.supported) { "${fork.scenario.id}/${sample.scale}: unsupported semantics" }
             require(sample.cardinality >= 0) { "${fork.scenario.id}/${sample.scale}: negative cardinality" }
@@ -121,6 +180,22 @@ internal object PerformanceProtocol {
         }
         require(expectedScenarios.isNotEmpty() && expectedScenarios.distinct() == expectedScenarios) {
             "expectedScenarios must be non-empty and unique"
+        }
+        // Refused HERE rather than in validateFork, deliberately: a fork is a legitimate record of what a
+        // contended process measured, and throwing it away would destroy the evidence. What must not happen is
+        // that such a record becomes a COMPARISON — this function is where per-process numbers turn into a
+        // report someone reads as a delta, so this is where a descheduled process has to stop (IG153).
+        forks.forEach { fork ->
+            val floor = minOccupancy(fork.host)
+            fork.samples.forEach { sample ->
+                val occupancy = sample.occupancy()
+                require(occupancy >= floor) {
+                    "${fork.scenario.id}/${sample.scale} in ${fork.invocationId}: ${fork.host} occupancy " +
+                        "${(occupancy * 100).toInt()}% is below the ${(floor * 100).toInt()}% floor, so this " +
+                        "process spent its elapsed time waiting rather than running and its timings are the " +
+                        "machine's, not the code's — re-measure on an idle machine"
+                }
+            }
         }
         val summaries = expectedScenarios.map { scenario ->
             val matching = forks.filter { it.scenario == scenario }
@@ -214,6 +289,10 @@ internal object PerformanceProtocol {
                         timing.jsonPrimitive.doubleOrNull
                             ?: throw IllegalArgumentException("elapsedMillis[$index] must be a number")
                     },
+                    cpuMillis = sample.requiredArray("cpuMillis").mapIndexed { index, timing ->
+                        timing.jsonPrimitive.doubleOrNull
+                            ?: throw IllegalArgumentException("cpuMillis[$index] must be a number")
+                    },
                     cardinality = sample.requiredInt("cardinality"),
                     supported = sample.requiredBoolean("supported"),
                     outcome = sample.requiredString("outcome"),
@@ -270,6 +349,7 @@ internal object PerformanceProtocol {
         mapOf(
             "scale" to JsonPrimitive(sample.scale),
             "elapsedMillis" to JsonArray(sample.elapsedMillis.map(::JsonPrimitive)),
+            "cpuMillis" to JsonArray(sample.cpuMillis.map(::JsonPrimitive)),
             "cardinality" to JsonPrimitive(sample.cardinality),
             "supported" to JsonPrimitive(sample.supported),
             "outcome" to JsonPrimitive(sample.outcome),
