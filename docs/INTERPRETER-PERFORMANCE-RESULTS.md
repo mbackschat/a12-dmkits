@@ -21,6 +21,19 @@
 > enforcement, and its place in the docs router. The cleaner boundary is by AUTHOR, not by subject — `perf-results/`
 > is machine-written and self-pruning, this is hand-written and guard-verified.
 
+### Checkpoint 2026-09-19 — re-derived: the `group-star expansion` lane's anchor is not too loose but too TIGHT, and every figure IG139 recorded was wrong
+
+**Re-derived from the committed runs alone, no new measurement.** IG139 was opened on 10 darwin runs; there are now 22. Restricted to `lane=group-star expansion`, `engine=interpreter`, `clock=cpu`, `status=accepted`:
+
+| key | runs | observed | spread | live anchor | stale floor | ceiling |
+|---|---|---|---|---|---|---|
+| `n=8000` darwin, post-step regime | 14 | 22.02 – 37.13 ms | 1.69× | 22.23 | 12.34 | **37.68** |
+| `n=2000` darwin, post-step regime | 18 | 5.12 – 9.40 ms | 1.84× | 5.48 | 2.29 | 10.04 |
+
+**The band is two-sided, so an anchor is admissible only inside a window** — `[(hi − slack)/factor, (lo + slack)/staleFraction]`, non-empty exactly when the spread is under `factor/staleFraction` = `1.65/0.6` = **2.75×**. For `n=8000` that window is `[21.90, 38.37]` and the live anchor sits at its very bottom, which settles the STALE side (the floor is 9.7 ms below the lowest observation ever recorded) and leaves the ceiling side at **1.5 % of headroom**: 37.68 against a measured 37.13.
+
+**So the lane's risk inverted, and four recorded figures were wrong.** The anchor was 22.23, not the 45.28 the row carried — `9e4226b0b` re-levelled the darwin block onto OpenJDK 21 and IG139 was never revisited. The `@2000` sibling is not quiet at ±1.6 %; it spreads 1.84× over its own post-step regime. And the load-bearing claim that *re-anchoring cannot fix this at any value* was false even on the row's own numbers, whose window `[42.06, 45.17]` was narrow but non-empty with the stranded anchor 0.11 ms outside it. A negative existential was asserted without the enumeration it needs; `PerfStaleAnchorTest.anAnchorWindowIsNonEmptyExactlyWhenTheSpreadIsUnderTheBandsRatio` now runs that enumeration against the real ceiling and stale functions.
+
 ### Checkpoint 2026-09-19 — the interpreter's evaluation work is exactly linear in scale, so a count carries the bar a clock could not
 
 **Measured on both carriers** (`:interpreter:check`, JVM 1320 tests and Node 1298, 0 failures), with a `WorkLedger` installed on each footprint scenario at scales 200 / 400 / 800 / 1600. Every count is an exact integer multiple of the scale — the intercept is zero on every row, so scale 200 costs exactly 200 and never 201:

@@ -132,6 +132,46 @@ class PerfStaleAnchorTest {
         }
     }
 
+    /**
+     * The band is TWO-SIDED, so an observation set admits an anchor only inside a window — and whether that
+     * window exists is decided by the spread alone, not by any anchor value someone tries.
+     *
+     * **Why this is locked rather than left as arithmetic anyone can redo.** IG139 asserted that re-anchoring
+     * `group-star expansion @8000` "does not fix this, at any value" and deferred the lane on that basis. It was
+     * false on the row's own numbers: at a measured 2.70x spread the window was narrow but non-empty, and the
+     * stranded anchor sat 0.11 ms outside it. A claim about "no value works" is a negative existential, which is
+     * exactly the kind this estate requires an enumeration for — so here is the enumeration, run against the real
+     * [AnchorTolerance.ceilingFor] and [AnchorBudget.staleReportFor] rather than against a restatement of them.
+     */
+    @Test
+    fun anAnchorWindowIsNonEmptyExactlyWhenTheSpreadIsUnderTheBandsRatio() {
+        val ratio = tolerance.factor / tolerance.staleFraction
+
+        // Comfortably inside the ratio: some anchor must satisfy both sides at once.
+        val narrow = listOf(22.02, 26.66, 29.45, 37.13)
+        assertTrue(narrow.max() / narrow.min() < ratio, "the fixture must sit INSIDE the band's ratio to be a control")
+        assertTrue(anchorsAdmitting(narrow).isNotEmpty(),
+            "a spread of ${narrow.max() / narrow.min()}x is under ${ratio}x, so some anchor must admit it — " +
+                "the claim that re-anchoring cannot help is only ever true above that ratio")
+
+        // Beyond it, no anchor exists: every candidate either lets the maximum breach or reports the minimum stale.
+        val wide = listOf(10.0, 100.0)
+        assertTrue(wide.max() / wide.min() > ratio, "the fixture must sit OUTSIDE the band's ratio to discriminate")
+        assertTrue(anchorsAdmitting(wide).isEmpty(),
+            "a spread of ${wide.max() / wide.min()}x exceeds ${ratio}x, so no anchor can hold both sides")
+    }
+
+    /** Every candidate anchor, over a fine sweep, that neither lets [observations] breach nor reports one stale. */
+    private fun anchorsAdmitting(observations: List<Double>): List<Double> =
+        generateSequence(0.5) { it + 0.01 }
+            .takeWhile { it <= observations.max() * 3.0 }
+            .filter { candidate ->
+                val budget = budget(anchorMs = candidate)
+                observations.all { it <= tolerance.ceilingFor(candidate) } &&
+                    observations.all { budget.staleReportFor(key, it) == null }
+            }
+            .toList()
+
     private fun captureStdout(body: () -> Unit): String {
         val original = System.out
         val captured = java.io.ByteArrayOutputStream()
