@@ -41,6 +41,17 @@ class Nfr1StandingAnchorGateTest {
                 return@forEach
             }
 
+            // Checked BEFORE any row is compared. A median taken at a different warmup, heap or runtime major is
+            // a different quantity, so comparing it would still produce a percentage — and a percentage gets
+            // believed. Better to refuse than to report a number nobody can act on.
+            val expected = anchor.capture[collector.id]
+            val actual = collector.identityOf(directory)
+            if (expected != null && actual != null) {
+                expected.diff(actual).forEach {
+                    failures += "${collector.id}: this run was not measured under the baseline's conditions — $it"
+                }
+            }
+
             val measured = collector.read(directory, anchor, System.getenv(Nfr1Collector.VERSION_VARIABLE))
             anchor.missingRows(collector.id, measured).forEach {
                 failures += "${collector.id}: the anchor holds $it but this run did not measure it"

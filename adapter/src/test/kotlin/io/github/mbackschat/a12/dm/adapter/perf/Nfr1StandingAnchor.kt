@@ -35,6 +35,7 @@ internal class Nfr1StandingAnchor(
     val environment: String,
     val coveredCollectors: List<String>,
     val rows: Map<String, Long>,
+    val capture: Map<String, Nfr1MeasurementIdentity>,
 ) {
 
     /** Every row of [measured] that exceeds its baseline by more than the allowance. Unknown rows are not judged here. */
@@ -74,6 +75,63 @@ internal class Nfr1StandingAnchor(
                 environment = root.path("environment").asText(),
                 coveredCollectors = root.path("coveredCollectors").map { it.asText() },
                 rows = root.path("rows").properties().associate { (key, value) -> key to value.asLong() },
+                capture = root.path("capture").properties().associate { (collector, fields) ->
+                    collector to Nfr1MeasurementIdentity(
+                        fields.properties().associate { (field, value) -> field to value.asText() },
+                    )
+                },
+            )
+        }
+    }
+}
+
+/**
+ * The conditions a footprint median was taken under — the answer to "is this the same quantity?".
+ *
+ * **Why the bar needs one at all.** A retained-heap median is not a property of the code alone: it moves with
+ * warmup, repetition count, scale set, heap size, GC method, allocation instrument and runtime major. Comparing a
+ * run taken under different conditions against the baseline is comparing two different quantities while reporting
+ * a percentage, which is worse than not comparing at all — it produces a number, and a number gets believed.
+ *
+ * **The carrier that makes this concrete is the Node major, and it is not the operator's to choose.** The
+ * Kotlin/JS toolchain downloads its OWN runtime into the isolated Gradle home (`node-v22.0.0-darwin-arm64` there
+ * on 2026-09-19, which is what the baseline recorded), so a Kotlin plugin upgrade moves every Node heap row
+ * without a line of interpreter source changing — and nothing else in the estate would attribute that move
+ * correctly. A regression hunt would start in the interpreter and find nothing.
+ *
+ * **Major version, not patch** — the estate's existing reasoning for the JDK pin, applied here for the same
+ * reason: `java.version` cannot separate the vendors while a patch-exact rule would redden on every Temurin bump
+ * for a difference that moves nothing. Held as named fields rather than a record of ten accessors because the only
+ * operation is a field-wise diff, and a diff wants names.
+ */
+internal data class Nfr1MeasurementIdentity(val fields: Map<String, String>) {
+
+    /** Field-by-field disagreement with [other], as `field: expected ≠ actual`; empty when the quantities match. */
+    fun diff(other: Nfr1MeasurementIdentity): List<String> =
+        (fields.keys + other.fields.keys).sorted().mapNotNull { field ->
+            val mine = fields[field]
+            val theirs = other.fields[field]
+            if (mine == theirs) null else "$field: $mine ≠ $theirs"
+        }
+
+    companion object {
+
+        /** Derive the identity a fork record was produced under, keyed exactly as the committed anchor keys it. */
+        fun of(record: com.fasterxml.jackson.databind.JsonNode): Nfr1MeasurementIdentity {
+            val runtime = record.path("runtime")
+            return Nfr1MeasurementIdentity(
+                linkedMapOf(
+                    "warmup" to record.path("warmup").asText(),
+                    "repetitions" to record.path("repetitions").asText(),
+                    "scales" to record.path("scales").joinToString(",") { it.asText() },
+                    "runtimeName" to runtime.path("name").asText(),
+                    "runtimeMajor" to runtime.path("version").asText().removePrefix("v").substringBefore('.'),
+                    "os" to runtime.path("os").asText(),
+                    "arch" to runtime.path("arch").asText(),
+                    "maxHeapBytes" to runtime.path("maxHeapBytes").asText(),
+                    "gcMethod" to record.path("gc").path("method").asText(),
+                    "allocationMethod" to record.path("allocationMethod").asText(),
+                ),
             )
         }
     }
@@ -94,12 +152,16 @@ internal enum class Nfr1Collector(val id: String, val inputVariable: String) {
     JVM_FOOTPRINT("jvm-footprint", "NFR1_FOOTPRINT_RAW_DIR") {
         override fun read(input: File, anchor: Nfr1StandingAnchor, version: String?) =
             footprintMedians(input, "jvm-", id)
+
+        override fun identityOf(input: File) = identityAcross(input, "jvm-")
     },
 
     /** The `jsNodeFootprintNodeFork*` raws, written into the same directory by the same lane. */
     NODE_FOOTPRINT("node-footprint", "NFR1_FOOTPRINT_RAW_DIR") {
         override fun read(input: File, anchor: Nfr1StandingAnchor, version: String?) =
             footprintMedians(input, "node-", id)
+
+        override fun identityOf(input: File) = identityAcross(input, "node-")
     },
 
     /**
@@ -135,10 +197,42 @@ internal enum class Nfr1Collector(val id: String, val inputVariable: String) {
      */
     abstract fun read(input: File, anchor: Nfr1StandingAnchor, version: String?): Map<String, Long>
 
+    /**
+     * The conditions this run's records were produced under, or `null` for a collector whose rows carry no such
+     * identity — delivered size is file lengths, which no warmup or heap setting can move.
+     */
+    open fun identityOf(input: File): Nfr1MeasurementIdentity? = null
+
     companion object {
 
         const val VERSION_PLACEHOLDER = "<version>"
         const val VERSION_VARIABLE = "NFR1_DELIVERED_VERSION"
+
+        private fun forkRecords(rawDir: File, forkPrefix: String): List<File> =
+            rawDir.listFiles()
+                ?.filter { it.isFile && it.name.startsWith(forkPrefix) && it.name.endsWith(".json") }
+                ?.sortedBy { it.name }
+                .orEmpty()
+
+        /**
+         * One identity for the whole set of forks, or `null` when there are none.
+         *
+         * Forks that disagree with EACH OTHER get a synthetic identity that can match no anchor, so the gate
+         * reports it rather than silently picking the first: a set of forks measured under two different
+         * conditions is not a sample of one quantity, whatever the anchor says.
+         */
+        private fun identityAcross(rawDir: File, forkPrefix: String): Nfr1MeasurementIdentity? {
+            val identities = forkRecords(rawDir, forkPrefix)
+                .map { Nfr1MeasurementIdentity.of(PerfObservations.MAPPER.readTree(it)) }
+                .distinct()
+            return when (identities.size) {
+                0 -> null
+                1 -> identities.single()
+                else -> Nfr1MeasurementIdentity(
+                    mapOf("forksDisagree" to identities.joinToString(" | ") { it.fields.toString() }),
+                )
+            }
+        }
 
         fun of(id: String): Nfr1Collector = entries.firstOrNull { it.id == id }
             ?: error("$id is not a standing-anchor collector; known: ${entries.joinToString { it.id }}")

@@ -1,5 +1,5 @@
 {
-  "note": "NFR #1's standing anchor: H4's DETERMINISTIC byte rows measured at the restart baseline, with the per-row 5% bar the portable-consistency proposal converts into a permanent gate rather than letting it lapse. Bytes, never durations - a 5% bar on a shared-machine wall clock sits under the noise, which is why the timed rows keep the 1.665x absolute anchor in anchors.json and are NOT claimed here. The delivered-size rows address the asset by <version>, expanded to the project version when the bar runs, so a release does not read as 18 vanished rows. Regenerate only by measuring the baseline commit again; editing a value re-bases the bar, which the proposal reserves to the owner.",
+  "note": "NFR #1's standing anchor: H4's DETERMINISTIC byte rows measured at the restart baseline, with the per-row 5% bar the portable-consistency proposal converts into a permanent gate rather than letting it lapse. Bytes, never durations - a 5% bar on a shared-machine wall clock sits under the noise, which is why the timed rows keep the 1.665x absolute anchor in anchors.json and are NOT claimed here. The delivered-size rows address the asset by <version>, expanded to the project version when the bar runs, so a release does not read as 18 vanished rows. `capture` pins the measurement identity each footprint median was taken under, because a median is a different quantity at a different warmup, repetition count, heap or runtime major. The Node major is the one nobody chooses: the Kotlin/JS toolchain downloads its own runtime, so a plugin upgrade moves every Node heap row with no interpreter source change. Regenerate only by measuring the baseline commit again; editing a value re-bases the bar, which the proposal reserves to the owner.",
   "baselineCommit": "c8e3b99795fe9c2ce3e9db32632a6dd8f6537043",
   "maxRegressionPercent": 5.0,
   "capturedAt": "2026-09-18",
@@ -9,6 +9,32 @@
     "interpreterFootprint/jsNodeFootprintNodeFork*",
     "generateInterpreterReleaseChecksums"
   ],
+  "capture": {
+    "jvm-footprint": {
+      "warmup": "2",
+      "repetitions": "3",
+      "scales": "200,400,800,1600",
+      "runtimeName": "OpenJDK 64-Bit Server VM",
+      "runtimeMajor": "21",
+      "os": "Mac OS X",
+      "arch": "aarch64",
+      "maxHeapBytes": "518979584",
+      "gcMethod": "system-gc-reference-queue",
+      "allocationMethod": "thread-allocated-bytes"
+    },
+    "node-footprint": {
+      "warmup": "2",
+      "repetitions": "3",
+      "scales": "200,400,800,1600",
+      "runtimeName": "Node.js",
+      "runtimeMajor": "22",
+      "os": "darwin",
+      "arch": "arm64",
+      "maxHeapBytes": "587202560",
+      "gcMethod": "global-gc-weak-reference",
+      "allocationMethod": "v8-inspector-sampling-1024"
+    }
+  },
   "rows": {
     "delivered-size/api-docs/dm-interpreter-<version>-api-docs.zip": 2169111,
     "delivered-size/maven/io/github/mbackschat/a12/dm/dm-interpreter-js/<version>/dm-interpreter-js-<version>-javadoc.jar": 2100102,

@@ -26,6 +26,11 @@ class Nfr1StandingAnchorTest {
 
     private companion object {
         val METRICS = setOf("retainedBytes", "allocatedBytes")
+
+        /** The conditions that move a heap median, so an anchor missing any of them cannot claim comparability. */
+        val PINNED_CONDITIONS = setOf(
+            "warmup", "repetitions", "scales", "runtimeName", "runtimeMajor", "maxHeapBytes", "allocationMethod",
+        )
     }
 
     @Test
@@ -66,6 +71,47 @@ class Nfr1StandingAnchorTest {
             justOver.isNotEmpty(),
             "a +5.1% row did not breach the 5% allowance — the bar cannot fail, so every green reading it " +
                 "has ever produced proves nothing",
+        )
+    }
+
+    /**
+     * A footprint median is only comparable to one taken under the same conditions, so the anchor records them
+     * and the gate refuses a run that differs.
+     *
+     * The Node major is the case worth naming, because nobody chooses it: the Kotlin/JS toolchain downloads its
+     * own runtime, so a plugin upgrade would move every Node heap row with no interpreter source change and the
+     * bar would report it as a code regression — or, if it moved the other way, as a pass.
+     */
+    @Test
+    fun everyFootprintCollectorPinsTheConditionsItsMedianWasTakenUnder() {
+        val anchor = Nfr1StandingAnchor.load()
+
+        listOf(Nfr1Collector.JVM_FOOTPRINT, Nfr1Collector.NODE_FOOTPRINT).forEach { collector ->
+            val identity = anchor.capture[collector.id]
+            assertTrue(
+                identity != null && identity.fields.keys.containsAll(PINNED_CONDITIONS),
+                "${collector.id} has no pinned measurement identity covering $PINNED_CONDITIONS, so a run under " +
+                    "other conditions would be compared against it and reported as a percentage: $identity",
+            )
+        }
+        assertEquals(
+            "22", anchor.capture.getValue(Nfr1Collector.NODE_FOOTPRINT.id).fields["runtimeMajor"],
+            "the Node baseline's runtime major is the field this pin exists for; if it changed, the rows were " +
+                "re-measured and that is a re-base",
+        )
+    }
+
+    /** The identity comparison reports the field that differs, and says nothing when the conditions match. */
+    @Test
+    fun theIdentityComparisonNamesTheConditionThatDiffers() {
+        val baseline = Nfr1MeasurementIdentity(mapOf("runtimeMajor" to "22", "warmup" to "2"))
+
+        assertEquals(emptyList<String>(), baseline.diff(baseline), "identical conditions must compare equal")
+        assertEquals(
+            listOf("runtimeMajor: 22 ≠ 24"),
+            baseline.diff(Nfr1MeasurementIdentity(mapOf("runtimeMajor" to "24", "warmup" to "2"))),
+            "the diff must name the field and both values — a bare 'conditions differ' leaves the reader to " +
+                "hunt for which one",
         )
     }
 
