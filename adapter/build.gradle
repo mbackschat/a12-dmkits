@@ -466,6 +466,53 @@ tasks.register('perfScriptGuardTest', Test) {
         .withPropertyName('perfSources')
 }
 
+// NFR #1's standing anchor: hold a measured run against the byte rows captured at the restart baseline.
+//
+// A SEPARATE invocation from the lane that produces the numbers, on purpose. The footprint forks and the release
+// assembly each take minutes and are opt-in, so folding the comparison into them would tie the bar's fate to
+// whether someone remembered to run a long lane; as its own task it can also be pointed at records captured
+// earlier, which is how the baseline's own raws were used to prove the collector reproduces the anchor's keying.
+//
+// It FAILS without -Pnfr1Collectors rather than judging nothing: this task exists only to assert, so an
+// invocation that names no collector is a mistake, not a no-op. (The same test class is harmless on :adapter:test,
+// where the absent selection means "not the gate lane" and it says so.)
+tasks.register('verifyNfr1StandingAnchor', Test) {
+    description = "Hold measured footprint and delivered-size rows against NFR #1's standing anchor."
+    group = 'verification'
+    testClassesDirs = sourceSets.test.output.classesDirs
+    classpath = sourceSets.test.runtimeClasspath
+    useJUnitPlatform()
+    filter {
+        includeTestsMatching 'io.github.mbackschat.a12.dm.adapter.perf.Nfr1StandingAnchorGateTest'
+    }
+    // Forwarded EXPLICITLY rather than inherited from the daemon. A Test task does inherit the daemon's
+    // environment, but which daemon serves an invocation is not the caller's to decide, so a bar that depended on
+    // that would be a bar that sometimes measures nothing.
+    def collectors = providers.gradleProperty('nfr1Collectors')
+    def footprintRawDir = providers.gradleProperty('nfr1FootprintRawDir')
+    def deliveredSizeDir = providers.gradleProperty('nfr1DeliveredSizeDir')
+    doFirst {
+        if (!collectors.isPresent() || collectors.get().isBlank()) {
+            throw new GradleException(
+                'verifyNfr1StandingAnchor requires -Pnfr1Collectors=<comma-separated ids>, plus ' +
+                    '-Pnfr1FootprintRawDir=<dir> and/or -Pnfr1DeliveredSizeDir=<dir> for the ids named')
+        }
+    }
+    environment 'NFR1_COLLECTORS', collectors.getOrElse('')
+    environment 'NFR1_FOOTPRINT_RAW_DIR', footprintRawDir.getOrElse('')
+    environment 'NFR1_DELIVERED_SIZE_DIR', deliveredSizeDir.getOrElse('')
+    // Defaulted from the project rather than demanded from the caller: the delivered-size rows address their
+    // asset by placeholder so that a version bump is not a regression, and the version that expands it is a fact
+    // the build already holds. -Pnfr1DeliveredVersion overrides it, which is what judging an assembled mirror
+    // from another version needs.
+    environment 'NFR1_DELIVERED_VERSION',
+        providers.gradleProperty('nfr1DeliveredVersion').getOrElse(project.version.toString())
+    // The measured inputs live outside the project and change on every run; an up-to-date check on them would let
+    // a second invocation report the first run's verdict.
+    outputs.upToDateWhen { false }
+    outputs.cacheIf { false }
+}
+
 tasks.register('perfGateTest', Test) {
     description = 'Run the isolated routine interpreter performance gate.'
     group = 'verification'
