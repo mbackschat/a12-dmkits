@@ -116,7 +116,7 @@ public final class EditSession {
         return editStructure(d -> d.setRequiredErrorMessages(fieldPath, localeToText));
     }
 
-    /** Set a field's per-locale helper text (need not cover every locale, unlike a label). */
+    /** Set a field's per-locale helper text; no locale coverage is owed (nor by a label — KF406). */
     public EditSession setHelperText(String fieldPath, Map<String, String> localeToText) {
         return editStructure(d -> d.setHelperText(fieldPath, localeToText));
     }

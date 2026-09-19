@@ -55,7 +55,7 @@ public final class FieldEditor extends ElementMetadataEditor<FieldEditor> {
         return this;
     }
 
-    /** Set this field's per-locale helper text (need not cover every locale, unlike a label). Chains. */
+    /** Set this field's per-locale helper text; no locale coverage is owed (nor by a label — KF406). Chains. */
     public FieldEditor setHelperText(Map<String, String> localeToText) {
         session.setHelperText(location.path().value(), localeToText);
         return this;

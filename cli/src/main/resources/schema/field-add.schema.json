@@ -12,7 +12,7 @@
     "kind": { "type": "string", "description": "STRING | NUMBER | DATE | TIME | DATETIME | DATERANGE | DATEFRAGMENT | BOOLEAN | CONFIRM | ENUM | CUSTOM (omit when `typedef` is given)" },
     "typedef": { "type": "string", "description": "type the field by an existing type-definition id (wins over `kind`)" },
     "required": { "enum": [true, false, "ifParentPresent"], "description": "true (always required) | false (optional, default) | \"ifParentPresent\" (required only if the parent group is filled)" },
-    "label": { "type": "object", "description": "per-locale display label, { \"<locale>\": \"<text>\" }; once set, must cover every declared locale" },
+    "label": { "type": "object", "description": "per-locale display label, { \"<locale>\": \"<text>\" }; no locale coverage is owed — answering one of several declared locales is accepted, and a locale the model does not declare is kept rather than dropped" },
     "global": { "type": "boolean", "description": "the kernel `global` flag (relevant to partial validation)" },
     "transient": { "type": "boolean", "description": "the kernel `transient` flag (present at runtime, not persisted)" },
     "internalDescription": { "type": "object", "description": "per-locale INTERNAL description — maintenance/technical notes shown read-only to *Form modelers*, never surfaced to end users; { \"<locale>\": \"<text>\" }" },

@@ -266,8 +266,8 @@ class ConfigVerbTest {
 
     @Test
     void configReadEchoesTheModelLabel(@TempDir Path dir) throws Exception {
-        // the model-level label round-trips through config read (a per-locale label must cover every declared
-        // model locale, a kernel constraint — the en-only fixture keeps it a single locale)
+        // the model-level label round-trips through config read; the en-only fixture keeps the assertion to a
+        // single locale for readability, not because coverage is owed (a label owes none — KF406)
         Path model = enOnlyModel(dir);
         var res = CliTestSupport.run("-m", model.toString(), "config", "modify", "--label", "en_US=Orders");
         assertEquals(0, res.code(), res.err());

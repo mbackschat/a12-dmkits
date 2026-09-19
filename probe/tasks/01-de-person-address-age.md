@@ -26,7 +26,7 @@ After **turn 1** the model should have, regardless of exact spelling/operators:
 **German-specific gold (the point of this task) — all self-directed:**
 - the model **declares `de_DE`** (the agent chose it from the German prompt; `model new` requires a locale). An `en_US` model from a German prompt is itself a **finding** — does the surface nudge the locale choice, or did the agent default blindly?
 - **German element names** (e.g. `Person`, `Privatadresse`/`Geschäftsadresse` or `Wohnadresse`/`Arbeitsadresse`, `Strasse`, `PLZ`, `Ort`, `Geburtsdatum`/`Alter`) — not English identifiers under a German model;
-- any **labels / descriptions / helper text** the agent set are German and **cover the declared `de_DE`** (a label set must cover every declared locale — the kernel re-validates this);
+- any **labels / descriptions / helper text** the agent set are German and **cover the declared `de_DE`** (the task asks for German text; the kernel itself demands no locale coverage from a display label — [KF406](../../docs/KERNEL-FINDINGS.md#kf406) — so an English-only label would load and this criterion is about the agent's locale judgement, not about a rejection);
 - **German rule messages** covering `de_DE`.
 - *(metadata the agent set — labels/required/descriptions — must actually be present on the fields, not silently dropped. The value-shape gate now refuses a wrong-shaped metadata value with `RK_INVALID_VALUE`; a German session should never hit that on well-formed input.)*
 

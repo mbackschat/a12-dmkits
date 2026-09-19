@@ -26,7 +26,11 @@ public abstract class FieldAttrs<SELF extends FieldAttrs<SELF>> extends ElementM
         return self();
     }
 
-    /** A per-locale display label; once any locale is set, all declared locales are required. */
+    /**
+     * A per-locale display label. It owes no locale coverage: answering one of several declared locales is
+     * legal and the rest read back absent (KF406, AF149). The all-or-nothing law belongs to enum value
+     * labels (KF321).
+     */
     public SELF label(String locale, String text) {
         labels.put(locale, text);
         return self();

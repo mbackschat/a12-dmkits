@@ -699,19 +699,31 @@ public final class ModelDocument {
     }
 
     /**
-     * Set the per-locale display labels of a field or group. A label must cover <em>every</em> declared
-     * locale (the kernel's rule, uniform with the builder) — fails fast otherwise.
+     * Set the per-locale display labels of a field or group, replacing any existing set.
+     *
+     * <p>A label owes no locale coverage, and a locale the model does not declare is written through rather
+     * than dropped — both measured (KF406; the enum-value law that does demand coverage is KF321). This method
+     * kept both mistakes for five days after the draft emitter shed them (AF149): the refusal left a model A12
+     * accepts readable but not re-labellable, and the drop silently lost text the kernel would have taken.
+     * Declared locales are emitted first in declared order, then the rest, so an edited element is shaped
+     * identically to a built one — including the empty case, which drops the key rather than leaving an empty
+     * array the builder would never write.
      */
     public ModelDocument setLabel(String elementPath, Map<String, String> localeToText) {
         ObjectNode payload = elementPayload(elementPath);
-        ArrayNode label = payload.putArray(DmKeys.LABEL);
-        for (String loc : locales()) {
-            if (!localeToText.containsKey(loc)) {
-                throw new IllegalArgumentException("label for " + elementPath
-                        + " is missing the declared locale '" + loc + "'");
-            }
-            label.addObject().put(DmKeys.LOCALE, loc).put(DmKeys.TEXT, localeToText.get(loc));
+        if (localeToText.isEmpty()) {
+            payload.remove(DmKeys.LABEL);
+            return this;
         }
+        ArrayNode label = payload.putArray(DmKeys.LABEL);
+        List<String> declared = locales();
+        declared.stream().filter(localeToText::containsKey)
+                .forEach(loc -> label.addObject().put(DmKeys.LOCALE, loc).put(DmKeys.TEXT, localeToText.get(loc)));
+        localeToText.forEach((loc, text) -> {
+            if (!declared.contains(loc)) {
+                label.addObject().put(DmKeys.LOCALE, loc).put(DmKeys.TEXT, text);
+            }
+        });
         return this;
     }
 
@@ -918,7 +930,7 @@ public final class ModelDocument {
         return this;
     }
 
-    /** Set a field's per-locale helper text (replacing any existing). Unlike a label it need not cover every locale. */
+    /** Set a field's per-locale helper text (replacing any existing); no locale coverage is owed, as with a label. */
     public ModelDocument setHelperText(String fieldPath, Map<String, String> localeToText) {
         ObjectNode body = fieldBody(fieldPath);
         ArrayNode helper = body.putArray("helperText");

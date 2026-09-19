@@ -1,7 +1,6 @@
 package io.github.mbackschat.a12.dm.adapter;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.Locale;
@@ -18,10 +17,13 @@ import io.github.mbackschat.a12.dm.modelkit.ModelDocument;
 /**
  * A group's per-locale display <b>label</b> (the kernel's {@code ILabeled}, which {@code IGroup} carries via
  * {@code IEntity} — the same interface a field's label comes from). Authored on the group builder, uniform
- * with a field label, and — once present — required to cover every declared locale. Verified by kernel
- * read-back ({@code IGroup.getLabel()}), since the DM-JSON deserializer ignores unknown keys (KERNEL-FINDINGS),
- * so a clean load alone proves nothing. Re-homed to {@code :adapter} at decoupling Stage 2 (kernel-oracle
- * verification); {@code dm.core.ModelIndex} is kernel-free.
+ * with a field label. Verified by kernel read-back ({@code IGroup.getLabel()}), since the DM-JSON deserializer
+ * ignores unknown keys (KERNEL-FINDINGS), so a clean load alone proves nothing. Re-homed to {@code :adapter} at
+ * decoupling Stage 2 (kernel-oracle verification); {@code dm.core.ModelIndex} is kernel-free.
+ *
+ * <p>A label is <em>not</em> required to cover every declared locale — that law belongs to enum values alone
+ * (KERNEL-FINDINGS KF321/KF406, API-FINDINGS AF149). {@code ElementLabelLocaleTest} owns that measurement;
+ * a test demanding a builder refusal here was removed once the coverage demand was, on 2026-09-14.
  */
 class GroupLabelTest {
 
@@ -51,14 +53,6 @@ class GroupLabelTest {
                 .build().toJson();
 
         assertEquals("Order", load(json).group("/Order").getLabel().get(Locale.US), "root group label honored");
-    }
-
-    @Test
-    void groupLabelMustCoverEveryDeclaredLocale() {
-        // the de_DE label is missing — a SPEC error, uniform with field/enum labels
-        assertThrows(IllegalArgumentException.class, () -> DocumentModelDraft.named("m").locale("en_US").locale("de_DE")
-                .rootGroup("Order", o -> o.label("en_US", "only english").field("Ref", FieldKind.STRING))
-                .build().toJson());
     }
 
     @Test

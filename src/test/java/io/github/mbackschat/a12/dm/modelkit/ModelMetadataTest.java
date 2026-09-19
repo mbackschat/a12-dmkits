@@ -66,12 +66,6 @@ class ModelMetadataTest {
     }
 
     @Test
-    void labelMustCoverEveryDeclaredLocale() {
-        assertThrows(IllegalArgumentException.class,
-                () -> subscription().setLabel("/Subscription/Tier", Map.of("en_US", "only english")));
-    }
-
-    @Test
     void setsAnAnnotationOnAField() {
         ModelDocument doc = subscription()
                 .setAnnotation("/Subscription/Tier", "ui:widget", "dropdown")

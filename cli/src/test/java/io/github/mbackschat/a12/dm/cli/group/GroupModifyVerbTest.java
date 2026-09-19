@@ -65,7 +65,8 @@ class GroupModifyVerbTest {
     void setsAndReadsBackGroupMetadata(@TempDir Path dir) throws Exception {
         // G38 metadata remains readable from group read; G45 centralizes its post-creation write under meta.
         Path m = subscription(dir);
-        // the kernel requires a label to cover EVERY declared model locale (here en_US + de_DE), so supply both.
+        // both declared locales are supplied to exercise the bilingual write; the kernel requires no coverage
+        // from a display label (KF406), so a one-locale label would be legal here too.
         var res = CliTestSupport.run("-m", m.toString(), "meta", "/Subscription/Billing",
                 "--label", "en_US=Billing details", "--label", "de_DE=Rechnungsdaten",
                 "--annotation", "owner=billing-team",

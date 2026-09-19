@@ -3,6 +3,8 @@ package io.github.mbackschat.a12.dm.modelkit;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.util.Map;
+
 import org.junit.jupiter.api.Test;
 
 import io.github.mbackschat.a12.dm.edit.EditSession;
@@ -68,16 +70,52 @@ class ElementLabelLocaleTest {
     }
 
     /**
-     * The read model is the same draft, so a label it cannot write is one it cannot carry back either.
-     *
-     * <p>This is the half a write-only test misses: an over-strict writer makes an EXISTING model unreadable,
-     * which is why the project's refusal rule asks for a read test beside the authoring one.
+     * The EDIT path owes exactly what the write path owes, and it did not: {@code ModelDocument.setLabel} kept
+     * both defects removed from the draft emitter on 2026-09-14 — the coverage refusal, which left a model A12
+     * accepts readable but not re-labellable, and the silent drop of a locale the model does not declare, which
+     * lost text the kernel would have taken (KF406).
      */
+    @Test
+    void theEditPathTakesAPartialLabelAndWritesAnUndeclaredLocaleThrough() {
+        String base = DocumentModelDraft.named("labels").locale("en_US").locale("de_DE")
+                .rootGroup("Order", g -> g.stringField("Customer", f -> { }))
+                .build().toJson();
+
+        String edited = ModelDocument.read(base)
+                .setLabel("/Order/Customer", Map.of("en_US", "Customer", UNDECLARED, "Client"))
+                .toJson();
+
+        assertTrue(dense(edited).contains(
+                        "\"label\":[{\"locale\":\"en_US\",\"text\":\"Customer\"},{\"locale\":\"fr_FR\",\"text\":\"Client\"}]"),
+                () -> "declared-answered first, then the undeclared one, and no entry for the unanswered de_DE: "
+                        + edited);
+        BoundModel.ofJson(edited);
+    }
+
+    /** Clearing is the one case where "same shape as the builder" means writing no key at all, not an empty array. */
+    @Test
+    void clearingALabelRemovesTheKeyRatherThanLeavingAnEmptyArray() {
+        String base = DocumentModelDraft.named("labels").locale("en_US")
+                .rootGroup("Order", g -> g.stringField("Customer", f -> f.label("en_US", "Customer")))
+                .build().toJson();
+
+        String cleared = ModelDocument.read(base).setLabel("/Order/Customer", Map.of()).toJson();
+
+        assertTrue(!cleared.contains("\"label\""), () -> "no label key survives the clear: " + cleared);
+        BoundModel.ofJson(cleared);
+    }
+
     /** The writer pretty-prints, so every shape assertion above reads the same bytes without the spacing. */
     private static String dense(String json) {
         return json.replace(" ", "").replace("\n", "");
     }
 
+    /**
+     * The read model is the same draft, so a label it cannot write is one it cannot carry back either.
+     *
+     * <p>This is the half a write-only test misses: an over-strict writer makes an EXISTING model unreadable,
+     * which is why the project's refusal rule asks for a read test beside the authoring one.
+     */
     @Test
     void anUndeclaredLocaleLabelSurvivesAReadAndRewrite() {
         String written = DocumentModelDraft.named("labels").locale("en_US")

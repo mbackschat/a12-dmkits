@@ -957,8 +957,13 @@ public final class DocumentModelDraft {
 
         /**
          * Set this group's per-locale display {@code label} (its caption — the kernel's {@code ILabeled}, which
-         * a group carries via {@code IEntity} just like a field). Call once per locale; a label, once present,
-         * must cover every declared locale (checked at build, uniform with field/enum labels).
+         * a group carries via {@code IEntity} just like a field). Call once per locale.
+         *
+         * <p>A partial label is legal: the kernel accepts a label answering fewer than all declared locales and
+         * reads the uncovered ones back as absent (KF406, locked by {@code ElementLabelLocaleTest}). The
+         * all-or-nothing completeness law is the <em>enum value</em> one (KF321) and does not reach here — this
+         * javadoc claimed it did, "uniform with field/enum labels", after the demand itself was removed as
+         * unfounded (AF149).
          */
         public GroupBuilder label(String locale, String text) {
             labels.put(locale, text);
