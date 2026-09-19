@@ -1425,6 +1425,22 @@ def installPackedConsistencyInBrowserConsumer = tasks.register('installPackedCon
     outputs.upToDateWhen { false }
 }
 
+// RUNS BY HAND ONLY, and that leaves the browser arm without automatic coverage — stated here because the
+// asymmetry with its own node twin is invisible from either task alone (measured 2026-09-19).
+//
+// `nodeConsumerTest` is equally off `check`, but push CI names it and `GateTierWiringTest` asserts that it does.
+// This lane is named by no workflow: "browser" appears zero times across all three files in `.github/workflows/`
+// (control: "consistency" appears 13 times in `ci.yml`), and Gradle's graph for `:consistency:check` plus
+// `:consistency:nodeConsumerTest` is 78 tasks with the node lane present and this one absent. It cannot simply
+// be added either: `consumer-tests/browser` drives Chrome through `playwright-core`, which attaches to an
+// installed browser rather than downloading one, and push CI installs node and no browser.
+//
+// So the packed package's browser behaviour is exercised only when someone runs this, and `jsBrowserTest` is no
+// fallback — it is disabled for its own measured reasons above, and would test the compiler's output where F's
+// acceptance names the tarball. A guard was considered and NOT built: reachability in this estate flows through
+// Groovy task variables and shell scripts, so a static detector over build text reports preparation and
+// release-rehearsal lanes as stranded (measured: 37 false candidates against one real one), and a guard that
+// fails honest content gets disabled.
 tasks.register('browserConsumerTest', Exec) {
     group = 'verification'
     description = 'Replay the shared consumer cases against the packed npm package in a real Chrome.'
