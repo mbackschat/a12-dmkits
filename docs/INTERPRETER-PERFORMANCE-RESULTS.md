@@ -21,7 +21,7 @@
 > enforcement, and its place in the docs router. The cleaner boundary is by AUTHOR, not by subject — `perf-results/`
 > is machine-written and self-pruning, this is hand-written and guard-verified.
 
-### Checkpoint 2026-09-19 — IG153 closed: the bundle reproduces under pinned order, and every timed sample now carries its own contention evidence (proven to fire on real load)
+### Checkpoint 2026-09-19 — IG153 closed: the bundle reproduces under pinned order, and every sample of the interpreter protocol now carries its own contention evidence (proven to fire on real load)
 
 **The bundle now reproduces, which is the harm IG153 named.** Three invocations of `:interpreter:interpreterPerformance` on `3078b902f`, compilation deliberately outside the timed invocations, worker order pinned:
 
@@ -38,7 +38,7 @@ Median row-level spread **1.028×**, worst **1.141×**. The unpinned pair that o
 
 **A rival mechanism I proposed was refuted by the same data.** From four hand-picked values it looked as though the first fork of an invocation systematically paid its warm-up, which would mean a median-of-three could be skewed by a contaminated member. Across all 27 scenario-invocations the median first-fork excess is **−0.6 %**, and the distribution is symmetric from −9.0 % to +26.0 %. There is no first-fork penalty; the four values were pattern-matching. The individual excursions up to ±26 % are real, and they are what the median-of-three exists to absorb — which it does, holding row-level spread at 1.028× while single forks move 26 %.
 
-**Every timed sample now carries its own contention evidence, and the single-floor design was refuted by its first measurement.** `PerformancePlatform.cpuNanoTime` records the measuring thread's CPU alongside each region's wall time, so a sample's *occupancy* — median CPU-over-wall — says whether the region ran or waited. The intended design used one floor for both carriers. Measured on an idle machine, one bundle invocation:
+**Every sample of the interpreter protocol now carries its own contention evidence, and the single-floor design was refuted by its first measurement.** *(Corrected 2026-09-19, hours later: this read "every timed sample", which is a reach claim and was false — `:adapter:perfGateTest` and `:adapter:interpreterNativePerformance` do not share this protocol. What they carry instead, and why neither can simply adopt occupancy, is [IG154](INTERPRETER-GAPS.md).)* `PerformancePlatform.cpuNanoTime` records the measuring thread's CPU alongside each region's wall time, so a sample's *occupancy* — median CPU-over-wall — says whether the region ran or waited. The intended design used one floor for both carriers. Measured on an idle machine, one bundle invocation:
 
 | carrier | numerator | occupancy range | median | floor set |
 |---|---|---|---|---|
