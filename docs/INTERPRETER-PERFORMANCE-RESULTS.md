@@ -21,6 +21,61 @@
 > enforcement, and its place in the docs router. The cleaner boundary is by AUTHOR, not by subject — `perf-results/`
 > is machine-written and self-pruning, this is hand-written and guard-verified.
 
+### Checkpoint 2026-09-19 — IG152: two candidate routes to a 5 % timed bar REFUTED, one SUCCEEDS, and the bundle collector is disqualified as its input
+
+**Name the quantities first, because three different ones are in play and an earlier pass compared two of them by accident.** *Worst-against-median spread* is per key `max/median − 1` over that key's accepted non-CI observations in [`../perf-results/darwin-aarch64/`](../perf-results/README.md), one machine; it answers *how far does a single run stray from this key's own centre*. *Null 95 % ratio interval* is a 20 000-iteration bootstrap of `(median of n draws) / (median of n draws)` with both arms drawn from the **same** commit's own samples; its upper bound is what a one-sided 5 % regression bar faces as a false-positive rate, so a bar is safe on a row exactly when that bound sits under +5 %. Every figure below is re-derived at `f5905bf9a`; the corpus is mutable, so figures carry their commit ([the method note](INTERPRETER-PERFORMANCE.md) on why).
+
+**Route A — filter the gate-lane corpus on `gcCountInWindow` instead of averaging across it: REFUTED.** The checkpoint below established GC as *a* driver of the widest lane's two modes, and the obvious next move was to let a bar judge only the quiet observations. It buys nothing. Filtering halves the evidence and leaves the spread where it was, and **not one key crosses into gateable territory at any threshold**:
+
+| filter | keys with ≥3 runs | median worst-against-median | worst key | keys under 5 % |
+|---|---|---|---|---|
+| none | 66 | 28.5 % | 173.2 % | **0 of 66** |
+| `gc ≤ 40` | 48 | 28.5 % | 173.2 % | **0 of 48** |
+| `gc ≤ 20` | 39 | 27.8 % | 173.2 % | **0 of 39** |
+| `gc ≤ 6` | 36 | 28.5 % | 173.2 % | **0 of 36** |
+| `gc == 0` | 30 | 27.3 % | 156.9 % | **0 of 30** |
+
+**Route B — raise the per-side sample count on those same lanes: REFUTED, and this one is worth the arithmetic because it is the move everyone reaches for.** Every one of the 66 eligible keys carries 17–26 distinct runs (median 24), so the bootstrap resamples a genuinely rich population rather than extrapolating from three points. Even so the noise is so wide that averaging cannot get under the bar at any fork count a person would run:
+
+| forks per side | median null 95 % width | median upper bound | keys where a 5 % bar is safe |
+|---|---|---|---|
+| 1 | 69.7 pp | +40.7 % | 0 of 66 |
+| 3 | 47.5 pp | +26.3 % | 0 of 66 |
+| 5 | 37.8 pp | +21.0 % | 0 of 66 |
+| 10 | 26.2 pp | +14.7 % | 1 of 66 |
+| 20 | 18.8 pp | +9.8 % | 9 of 66 |
+| 40 | 13.7 pp | +7.1 % | 18 of 66 |
+
+At **40 forks per side — 80 fresh processes for one comparison — 48 of the 66 keys still cannot carry 5 %.** That settles the question these lanes have been carrying since the row opened: their `1.665×` anchor is not a tolerance anyone chose, it is the resolution the instrument has, and no amount of repetition converts it into 5 %.
+
+**Route D — the library throughput collector `performanceJvmThroughput`: SUCCEEDS, and it is the first timed row in the estate that can carry the bar.** Ten consecutive invocations at one commit, `-PperformanceWarmup=12 -PperformanceRepetitions=9`, JVM heap 1g, one fresh process each. Fork medians 212.91 / 212.73 / 210.06 / 213.24 / 212.99 / 213.09 / 219.15 / 211.36 / 211.71 / 222.51 ms — **spread 1.059×, stdev 3.83 ms, CV 1.79 %**:
+
+| forks per side | null 95 % ratio | upper bound | verdict at 5 % |
+|---|---|---|---|
+| 1 | [0.9515, 1.0510] | +5.1 % | fires on noise |
+| 3 | [0.9585, 1.0435] | +4.3 % | safe |
+| **5** | **[0.9715, 1.0293]** | **+2.9 %** | **safe** |
+| 10 | [0.9724, 1.0284] | +2.8 % | safe |
+
+**The structural reason it resolves where the gate lanes cannot is that it medians nine repetitions INSIDE each process.** Its own 90 within-run samples spread 1.465× — as noisy as anything in the gate lanes — but the per-process median of nine absorbs that before the number ever leaves the fork, which is the step the gate lanes have no equivalent of. So the difference is not that this lane is quieter; it is that it reports a statistic rather than a sample.
+
+**`n = 5` rather than 3, on the measured margin.** Both clear the bar, but n=3 leaves 0.7 pp of headroom against it and n=5 leaves 2.1 pp, and these ten forks came from one quiet session while the cross-session forks taken earlier the same evening spread 2.9–4.5 %. The extra two processes cost about 16 seconds and buy the difference between a gate that survives a mediocre day and one that does not.
+
+**And the collector that the bundle driver reports must NOT feed it: one invocation in two was uniformly inflated 35–60 % with nothing in the output saying so.** `scripts/interpreter-performance.sh` runs all sixteen workers in a single Gradle invocation. Two such invocations 16 seconds apart — HEAD `191ad9f9b` then baseline `ad4d5ff64` in the parked clone — disagree with the *same commits'* isolated per-task reruns like this:
+
+| row | bundle Δ | isolated Δ | disagreement |
+|---|---|---|---|
+| `jvm-192-rules-500-rows-first-answer` | **−38.08 %** | +3.95 % | 42.0 points |
+| `jvm-48-rules-500-rows-first-answer` | **−40.80 %** | −1.31 % | 39.5 points |
+| `jvm-b1-100000-rows-first-answer` | **−24.38 %** | +2.86 % | 27.2 points |
+| `jvm-b1-100000-rows-warm-throughput` | −19.79 % | −1.84 % | 18.0 points |
+| `node-b2-…-warm-throughput@10000` | −6.41 % | −0.69 % | 5.7 points |
+| `node-b1-…-warm-throughput@10000` | +3.26 % | −0.34 % | 3.6 points |
+
+The bundle manufactured a **24–41 % improvement** on three rows that isolation puts inside ±4 %. The inflation sits entirely in the baseline arm, is sustained across all nine of its forks (1251 / 1078 / 1145 ms where isolation reads 824 / 837 / 839), and does not decay — so it is not one slow fork that a median would absorb.
+
+**One uncontrolled variable is source-verified, and it is not a hypothesis: the workers carry no mutual ordering constraint, and the two invocations ran them in different orders.** `performanceAggregateReport dependsOn performanceWorkers` ([`interpreter/build.gradle:3770`](../interpreter/build.gradle)) is the only edge in the graph, so the scheduler is free to order the bag as it likes — and it did. HEAD ran the five Node tasks first and the ten JVM tasks after; the baseline ran the ten JVM tasks first and the Node tasks after. The arm whose JVM family was scheduled **first** is exactly the inflated one. **That the ordering CAUSED the inflation is a hypothesis, not a finding** — there is one invocation per order, so the correlation is 1-for-1 on a sample of two, and the discriminator nobody has run is to force each order and re-measure. The fix does not wait on it either way: an uncontrolled variable in a comparison instrument is a defect whether or not it is *this* run's culprit.
+
 ### Checkpoint 2026-09-19 — NFR #1's LATENCY half, measured against the pre-plan checkout for the first time: no regression, and the lane's two modes are a GC property of the run
 
 **The question was whether the interpreter's latency is regressed at HEAD against the fixed pre-plan baseline, and the answer is no.** Four captures on one machine in one 25-minute window, alternating trees, `:adapter:perfGateTest` in each: HEAD `191ad9f9b` against `ad4d5ff64` in the parked measurement clone, both gating the identical committed anchor (65.16 ms for `charset grapheme@32000`, verified in both trees before the run). Over the **168 comparable observation keys** the median delta is **−0.90 %** and the mean **−0.38 %**, with **28 keys above +5 % and 28 below −5 %** — a symmetric scatter rather than a shift, which is what distinguishes noise from a regression, and 112 keys sit inside ±5 %. The per-key range (−15.4 % … +21.5 %) is the run-to-run spread [IG152](INTERPRETER-GAPS.md) records, and it is why two runs per arm cannot resolve a 5 % bar even when the totals are clean.
