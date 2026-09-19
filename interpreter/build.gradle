@@ -3700,26 +3700,44 @@ if (!performanceForkCountProperty.isPresent()) {
         }
     }
 
+    // Fanned out across fresh processes since 2026-09-19, like the first-answer scenarios. The row is the
+    // median of the per-process medians, and it is that two-level shape that makes JVM warm throughput the
+    // one timed quantity in the estate resolvable at NFR #1's 5% (IG152): 1.465x spread within a run,
+    // 1.059x across ten of them. A single process could not carry a bar, however the bar was computed.
     def jvmThroughputScenario = 'jvm-b1-100000-rows-warm-throughput'
-    def jvmThroughputOutput = performanceRawDir.get().file('jvm-throughput.json').asFile
-    performanceWorkers << tasks.register('performanceJvmThroughput', Test) {
-        group = 'measurement'
-        description = 'Run the pinned JVM 100k-row absolute warm-throughput sample.'
-        dependsOn tasks.named('jvmTestClasses')
-        testClassesDirs = performanceJvmTest.get().testClassesDirs
-        classpath = performanceJvmTest.get().classpath
-        filter {
-            includeTestsMatching(
-                'io.github.mbackschat.a12.dm.interpreter.performance.PerformanceJvmWorkerTest')
+    def jvmThroughputForks = (1..performanceForks).collect { fork ->
+        def taskName = "performanceJvmThroughputFork${fork}"
+        def output = performanceRawDir.get().file("jvm-throughput-${fork}.json").asFile
+        def provider = tasks.register(taskName, Test) {
+            group = 'measurement'
+            description = "Run fresh JVM warm-throughput process ${fork} for ${jvmThroughputScenario}."
+            dependsOn tasks.named('jvmTestClasses')
+            testClassesDirs = performanceJvmTest.get().testClassesDirs
+            classpath = performanceJvmTest.get().classpath
+            filter {
+                includeTestsMatching(
+                    'io.github.mbackschat.a12.dm.interpreter.performance.PerformanceJvmWorkerTest')
+            }
+            maxParallelForks = 1
+            forkEvery = 1
+            failFast = true
+            minHeapSize = performanceJvmHeap
+            maxHeapSize = performanceJvmHeap
+            configurePerformanceWorker(
+                delegate, 'JVM', jvmThroughputScenario, "jvm-throughput-${fork}", output,
+                performanceWarmup, performanceRepetitions)
         }
-        maxParallelForks = 1
-        forkEvery = 1
-        failFast = true
-        minHeapSize = performanceJvmHeap
-        maxHeapSize = performanceJvmHeap
-        configurePerformanceWorker(
-            delegate, 'JVM', jvmThroughputScenario, 'jvm-throughput', jvmThroughputOutput,
-            performanceWarmup, performanceRepetitions)
+        performanceWorkers << provider
+        provider
+    }
+
+    // The collector keeps its published name (H4's row set and INTERPRETER-PERFORMANCE name it) while the
+    // measuring is done by the forks above, so `:interpreter:performanceJvmThroughput` still means "sample
+    // this lane" for a human and for the anchor gate.
+    tasks.register('performanceJvmThroughput') {
+        group = 'measurement'
+        description = "Sample the JVM warm-throughput lane across ${performanceForks} fresh processes."
+        dependsOn jvmThroughputForks
     }
 
     def performanceJsTarget = kotlin.targets.getByName('js')
@@ -3742,26 +3760,46 @@ if (!performanceForkCountProperty.isPresent()) {
                 output, 0, 1)
         }
     }
+    // Fanned out with the JVM lane for one reason only: the aggregate's required-process count governs every
+    // throughput scenario, so leaving Node at one process would fail the whole report. Whether the Node lane
+    // is ALSO resolvable at 5% is a separate question about a carrier nobody has measured, and the anchor
+    // gate deliberately claims no Node throughput row until that variance study exists (IG152).
     [
         'node-b1-2500-10000-rows-warm-throughput',
         'node-b2-2500-10000-rows-warm-throughput',
     ].eachWithIndex { scenario, index ->
-        def runName = "performanceNodeThroughput${index + 1}"
-        performanceJsTarget.testRuns.create(runName)
-        def output = performanceRawDir.get().file("node-throughput-${index + 1}.json").asFile
-        performanceWorkers << tasks.named(
-            "jsNode${runName.capitalize()}Test",
-            org.jetbrains.kotlin.gradle.targets.js.testing.KotlinJsTest,
-        ) {
-            group = 'measurement'
-            description = "Run pinned Node warm-throughput sample for ${scenario}."
-            filter.includeTestsMatching(
-                'io.github.mbackschat.a12.dm.interpreter.performance.PerformanceNodeWorkerTest')
-            useMocha { timeout = performanceNodeTimeout }
-            nodeJsArgs.add("--max-old-space-size=${performanceNodeHeapMb}")
-            configurePerformanceWorker(
-                delegate, 'NODE', scenario, "node-throughput-${index + 1}", output,
-                performanceWarmup, performanceRepetitions)
+        (1..performanceForks).each { fork ->
+            def runName = "performanceNodeThroughput${index + 1}Fork${fork}"
+            performanceJsTarget.testRuns.create(runName)
+            def output = performanceRawDir.get().file("node-throughput-${index + 1}-${fork}.json").asFile
+            performanceWorkers << tasks.named(
+                "jsNode${runName.capitalize()}Test",
+                org.jetbrains.kotlin.gradle.targets.js.testing.KotlinJsTest,
+            ) {
+                group = 'measurement'
+                description = "Run fresh Node warm-throughput process ${fork} for ${scenario}."
+                filter.includeTestsMatching(
+                    'io.github.mbackschat.a12.dm.interpreter.performance.PerformanceNodeWorkerTest')
+                useMocha { timeout = performanceNodeTimeout }
+                nodeJsArgs.add("--max-old-space-size=${performanceNodeHeapMb}")
+                configurePerformanceWorker(
+                    delegate, 'NODE', scenario, "node-throughput-${index + 1}-${fork}", output,
+                    performanceWarmup, performanceRepetitions)
+            }
+        }
+    }
+
+    // IG153: the workers used to carry no mutual ordering constraint — `performanceAggregateReport
+    // dependsOn performanceWorkers` was the only edge — so the scheduler ordered a dependency-free bag of
+    // sixteen timed tasks as it liked, and two invocations 16 seconds apart ordered it differently (Node
+    // family first, then JVM; versus the reverse). The arm whose JVM family ran first read 35-60% slow and
+    // the report presented the difference as a 24-41% improvement. Whether the ordering CAUSED that is
+    // unestablished — one invocation per order is a sample of two — but an uncontrolled variable in a
+    // comparison instrument is a defect either way, so the order is now pinned to registration order.
+    performanceWorkers.eachWithIndex { worker, index ->
+        if (index > 0) {
+            def predecessor = performanceWorkers[index - 1]
+            worker.configure { mustRunAfter predecessor }
         }
     }
 

@@ -108,11 +108,11 @@ internal object PerformanceProtocol {
 
     fun aggregate(
         forks: List<PerformanceFork>,
-        requiredFirstAnswerForks: Int,
+        requiredForks: Int,
         expectedScenarios: List<PerformanceScenario> = PerformanceScenario.entries,
     ): PerformanceRun {
         require(forks.isNotEmpty()) { "at least one performance fork is required" }
-        require(requiredFirstAnswerForks > 0) { "requiredFirstAnswerForks must be positive" }
+        require(requiredForks > 0) { "requiredForks must be positive" }
         forks.forEach(::validateFork)
         require(forks.map { it.commit }.distinct().size == 1) { "all forks must measure one commit" }
         require(forks.map { it.runner }.distinct().size == 1) { "all forks must name one pinned runner" }
@@ -130,8 +130,8 @@ internal object PerformanceProtocol {
             }
             when (scenario.mode) {
                 PerformanceMode.FIRST_ANSWER -> {
-                    require(matching.size >= requiredFirstAnswerForks) {
-                        "${scenario.id}: ${matching.size} forks < required $requiredFirstAnswerForks"
+                    require(matching.size >= requiredForks) {
+                        "${scenario.id}: ${matching.size} forks < required $requiredForks"
                     }
                     val values = matching.map { it.samples.single().elapsedMillis.single() }
                     PerformanceSummary(
@@ -140,17 +140,28 @@ internal object PerformanceProtocol {
                     )
                 }
                 PerformanceMode.WARM_THROUGHPUT -> {
-                    require(matching.size == 1) { "${scenario.id}: warm throughput needs one pinned process" }
-                    val samples = matching.single().samples
-                    val large = samples.last().elapsedMillis
-                    val growth = if (samples.size == 2) {
-                        median(samples[0].elapsedMillis.indices.map { index ->
-                            samples[1].elapsedMillis[index] / samples[0].elapsedMillis[index]
-                        })
-                    } else null
+                    require(matching.size >= requiredForks) {
+                        "${scenario.id}: ${matching.size} forks < required $requiredForks"
+                    }
+                    // Two levels, deliberately: each process reports the median of its own odd repetition
+                    // set, and the row is the median of those per-process medians. That inner median is
+                    // what makes this the one timed quantity in the estate whose run-to-run spread fits
+                    // under NFR #1's 5% bar — 1.465x within a run collapses to 1.059x across ten of them
+                    // (IG152, measured 2026-09-19). Until that date the protocol admitted exactly one
+                    // throughput process, so the outer median did not exist and no bar could be built.
+                    val perForkMedian = matching.map { median(it.samples.last().elapsedMillis) }
+                    val perForkGrowth = matching.mapNotNull { fork ->
+                        fork.samples.takeIf { it.size == 2 }?.let { samples ->
+                            median(
+                                samples[0].elapsedMillis.indices.map { index ->
+                                    samples[1].elapsedMillis[index] / samples[0].elapsedMillis[index]
+                                },
+                            )
+                        }
+                    }
                     PerformanceSummary(
-                        scenario, matching.first().scenarioIdentity, large.size,
-                        median(large), null, growth,
+                        scenario, matching.first().scenarioIdentity, perForkMedian.size,
+                        median(perForkMedian), null, perForkGrowth.takeIf { it.isNotEmpty() }?.let(::median),
                     )
                 }
             }

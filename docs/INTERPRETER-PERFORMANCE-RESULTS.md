@@ -21,7 +21,7 @@
 > enforcement, and its place in the docs router. The cleaner boundary is by AUTHOR, not by subject — `perf-results/`
 > is machine-written and self-pruning, this is hand-written and guard-verified.
 
-### Checkpoint 2026-09-19 — IG152: two candidate routes to a 5 % timed bar REFUTED, one SUCCEEDS, and the bundle collector is disqualified as its input
+### Checkpoint 2026-09-19 — IG152: three candidate routes to a 5 % timed bar, ALL THREE refuted — and the third was refuted by the very capture meant to instantiate it
 
 **Name the quantities first, because three different ones are in play and an earlier pass compared two of them by accident.** *Worst-against-median spread* is per key `max/median − 1` over that key's accepted non-CI observations in [`../perf-results/darwin-aarch64/`](../perf-results/README.md), one machine; it answers *how far does a single run stray from this key's own centre*. *Null 95 % ratio interval* is a 20 000-iteration bootstrap of `(median of n draws) / (median of n draws)` with both arms drawn from the **same** commit's own samples; its upper bound is what a one-sided 5 % regression bar faces as a false-positive rate, so a bar is safe on a row exactly when that bound sits under +5 %. Every figure below is re-derived at `f5905bf9a`; the corpus is mutable, so figures carry their commit ([the method note](INTERPRETER-PERFORMANCE.md) on why).
 
@@ -48,7 +48,7 @@
 
 At **40 forks per side — 80 fresh processes for one comparison — 48 of the 66 keys still cannot carry 5 %.** That settles the question these lanes have been carrying since the row opened: their `1.665×` anchor is not a tolerance anyone chose, it is the resolution the instrument has, and no amount of repetition converts it into 5 %.
 
-**Route D — the library throughput collector `performanceJvmThroughput`: SUCCEEDS, and it is the first timed row in the estate that can carry the bar.** Ten consecutive invocations at one commit, `-PperformanceWarmup=12 -PperformanceRepetitions=9`, JVM heap 1g, one fresh process each. Fork medians 212.91 / 212.73 / 210.06 / 213.24 / 212.99 / 213.09 / 219.15 / 211.36 / 211.71 / 222.51 ms — **spread 1.059×, stdev 3.83 ms, CV 1.79 %**:
+**Route D — the library throughput collector `performanceJvmThroughput`: REFUTED.** *(Corrected 2026-09-19, hours after this entry first read "SUCCEEDS, and it is the first timed row in the estate that can carry the bar". The correction and its cause are the block below; the original observation is kept here unedited because it is what was measured, and because the way it misled is the transferable part.)* Ten consecutive invocations at one commit, `-PperformanceWarmup=12 -PperformanceRepetitions=9`, JVM heap 1g, one fresh process each. Fork medians 212.91 / 212.73 / 210.06 / 213.24 / 212.99 / 213.09 / 219.15 / 211.36 / 211.71 / 222.51 ms — **spread 1.059×, stdev 3.83 ms, CV 1.79 %**:
 
 | forks per side | null 95 % ratio | upper bound | verdict at 5 % |
 |---|---|---|---|
@@ -60,6 +60,19 @@ At **40 forks per side — 80 fresh processes for one comparison — 48 of the 6
 **The structural reason it resolves where the gate lanes cannot is that it medians nine repetitions INSIDE each process.** Its own 90 within-run samples spread 1.465× — as noisy as anything in the gate lanes — but the per-process median of nine absorbs that before the number ever leaves the fork, which is the step the gate lanes have no equivalent of. So the difference is not that this lane is quieter; it is that it reports a statistic rather than a sample.
 
 **`n = 5` rather than 3, on the measured margin.** Both clear the bar, but n=3 leaves 0.7 pp of headroom against it and n=5 leaves 2.1 pp, and these ten forks came from one quiet session while the cross-session forks taken earlier the same evening spread 2.9–4.5 %. The extra two processes cost about 16 seconds and buy the difference between a gate that survives a mediocre day and one that does not.
+
+**THE REFUTATION, and it came from the capture that was supposed to instantiate the gate.** With the instrument built and the machine idle, ten fresh processes were taken for the anchor itself — five on `ad4d5ff64` in the parked clone, five on `421bf7c6d` here, back to back under the same protocol (warmup 12, repetitions 9, heap 1g). The two arms agree about the *code* — 221.77 ms against 219.86 ms, **−0.86 %** — and disagree with the study about the *instrument*:
+
+| population | processes | spread | CV | null upper bound at n=5 |
+|---|---|---|---|---|
+| the study above, one tight session, one tree | 10 | 1.059× | **1.79 %** | +2.9 % → safe |
+| the anchor capture, two arms, two trees | 10 | 1.184× | **5.98 %** | **+12.3 % → fires on noise** |
+
+At the capture's variance a 5 % bar needs **n = 40 per side** to reach +3.2 %, which is 80 processes and about 25 minutes for one comparison. So the gate was not built, the anchor was not committed, and `performanceJvmThroughput` stays on its absolute anchor with the rest.
+
+**Two distinct errors produced the wrong conclusion, and only the second is interesting.** The first is the ordinary one: the study's ten runs were consecutive invocations in one warm session in one tree, so "one tight session" was a constant across every row of the set, and the account "this lane has CV 1.79 %" was never tested against it. Measuring on a second occasion — the first time the question was asked — gave 4.13 % in the *same* tree and 7.05 % in the clone, so this is not a clone-versus-repo carrier effect; the session is implicated and the study was the outlier. **The second error is the one to carry forward: a bootstrap cannot manufacture the independence its input lacks.** Resampling n = 20 or n = 40 from ten observations drawn minutes apart reported +0.2 % and +0.1 %, numbers no timing instrument on a shared machine produces, and their absurdity was visible in the original table and went unremarked. The route-B bootstrap was sound for exactly the reason route D's was not — its keys carried 17–26 independent runs, which was noted at the time as a strength and not applied as a test to the sibling analysis in the same entry.
+
+**What would settle the lane honestly, stated so the next attempt does not repeat this one.** Thirty or more processes spread across several sessions and at least two days, sized *before* any gate is designed, with the session treated as a factor rather than held constant. Until that exists the lane's variance is unknown rather than small, and the difference between those two is the whole of this correction.
 
 **And the collector that the bundle driver reports must NOT feed it: one invocation in two was uniformly inflated 35–60 % with nothing in the output saying so.** `scripts/interpreter-performance.sh` runs all sixteen workers in a single Gradle invocation. Two such invocations 16 seconds apart — HEAD `191ad9f9b` then baseline `ad4d5ff64` in the parked clone — disagree with the *same commits'* isolated per-task reruns like this:
 

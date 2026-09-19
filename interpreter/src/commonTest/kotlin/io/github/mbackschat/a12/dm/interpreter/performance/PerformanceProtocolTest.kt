@@ -48,6 +48,54 @@ class PerformanceProtocolTest {
         assertEquals(4.0, summary.growthRatio)
     }
 
+    /**
+     * A warm-throughput row is a median across fresh processes, exactly like a first-answer row.
+     *
+     * The protocol refused a second throughput process until 2026-09-19, which is why the only timed
+     * quantity whose run-to-run variance is small enough to carry NFR #1's 5 % bar (IG152) could not be
+     * sampled more than once per invocation. One process is a sample; a bar needs a statistic.
+     */
+    @Test
+    fun warmThroughputMediansAcrossFreshProcesses() {
+        val scenario = PerformanceScenario.JVM_B1_ABSOLUTE_THROUGHPUT
+        val forks = listOf(
+            fork(scenario, 1, "thr-1", listOf(10.0, 20.0, 30.0), warmup = 2),
+            fork(scenario, 2, "thr-2", listOf(30.0, 40.0, 50.0), warmup = 2),
+            fork(scenario, 3, "thr-3", listOf(20.0, 30.0, 40.0), warmup = 2),
+        )
+
+        val summary = PerformanceProtocol.aggregate(forks, 3, listOf(scenario)).summaries.single()
+
+        assertEquals(30.0, summary.medianMillis)
+        assertEquals(3, summary.sampleCount)
+    }
+
+    @Test
+    fun pairedThroughputGrowthIsTheMedianAcrossFreshProcesses() {
+        val scenario = PerformanceScenario.NODE_B1_THROUGHPUT
+        val forks = listOf(
+            fork(scenario, 1, "n-1", listOf(1.0, 1.0, 1.0), listOf(2.0, 2.0, 2.0), warmup = 3),
+            fork(scenario, 2, "n-2", listOf(1.0, 1.0, 1.0), listOf(4.0, 4.0, 4.0), warmup = 3),
+            fork(scenario, 3, "n-3", listOf(1.0, 1.0, 1.0), listOf(8.0, 8.0, 8.0), warmup = 3),
+        )
+
+        val summary = PerformanceProtocol.aggregate(forks, 3, listOf(scenario)).summaries.single()
+
+        assertEquals(4.0, summary.medianMillis)
+        assertEquals(4.0, summary.growthRatio)
+    }
+
+    /** The required count governs BOTH modes, so a throughput row cannot pass on fewer processes than asked for. */
+    @Test
+    fun warmThroughputEnforcesTheRequiredProcessCount() {
+        val scenario = PerformanceScenario.JVM_B1_ABSOLUTE_THROUGHPUT
+        val forks = listOf(fork(scenario, 1, "thr-1", listOf(10.0, 20.0, 30.0), warmup = 2))
+
+        assertFailsWith<IllegalArgumentException> {
+            PerformanceProtocol.aggregate(forks, 5, listOf(scenario))
+        }
+    }
+
     @Test
     fun reusedProcessCannotMasqueradeAsIndependentSamples() {
         val scenario = PerformanceScenario.NODE_10K_ROWS_FIRST_ANSWER
