@@ -21,6 +21,23 @@
 > enforcement, and its place in the docs router. The cleaner boundary is by AUTHOR, not by subject — `perf-results/`
 > is machine-written and self-pruning, this is hand-written and guard-verified.
 
+### Checkpoint 2026-09-19 — the trend reader is ruled out for NFR #1's timed rows, and the margin does not rescue them either
+
+**The question was whether any existing instrument could carry a 5 % bar on the timed rows, and the answer is no — on the quietest quantity the estate has, not merely on the obvious one.** The checkpoint below establishes that absolute times spread far past 5 %. The natural rebuttal is that the estate does not gate absolute times: the early-warning band judges the **margin**, the kernel/interpreter ratio, and [`scripts/perf-trend.sh`](../scripts/perf-trend.sh)'s own header argues that a ratio's noise is not its operands' because both engines run in the same JVM on the same vCPUs, so a load excursion moves them together and largely cancels. That argument is **correct and still insufficient**.
+
+Measured over the committed `darwin-aarch64` record, one machine, non-CI, as a **within-row** control — the same paired rows read both ways, so the comparison moves one variable:
+
+| quantity | rows with ≥3 runs | median spread | p90 | worst | rows within 5 % | within 15 % |
+|---|---|---|---|---|---|---|
+| margin (kernel ÷ interpreter) | 68 | **17.2 %** | 40.3 % | 131.3 % | **0** | 24 |
+| absolute interpreter median, same rows | 100 | 33.0 % | 122.1 % | 363.3 % | 0 | 8 |
+
+So the ratio halves the noise — 33.0 % → 17.2 % at the median, and the within-15 % count triples from 8 to 24 — which confirms the cancellation claim quantitatively. It still leaves **zero of 68 rows** inside 5 %. And the trend reader would not report such a step anyway: its `MIN_SHIFT` defaults to `1.15`, so a sustained 5 % change is below the threshold at which it speaks, by design rather than by oversight.
+
+**Recall limit, stated because it is the obvious objection.** Every cross-engine observation in the record is `unasserted` — the status the harness writes outside the isolated single-fork lane, where an absolute time is a coin flip — so no isolated-lane MARGIN series exists to measure. What does exist is the isolated lane's own absolute rows (`accepted`, anchor-asserted), and those sit at 28.8 % median. Both available series are an order of magnitude above 5 %.
+
+**What this leaves, and the candidate worth naming.** The byte anchor works because bytes are deterministic, not because memory matters more than latency. The same move is available for time: bar a **deterministic counter of the work done** rather than the clock that measures it — which is exactly the arrangement the owner already accepted for the checker's growth invariant, where `Sweep.comparisons` decides deterministically on every carrier and in every lane, and a budget was declined as redundant to it. Tracked in [IG152](INTERPRETER-GAPS.md); no such counter exists for the interpreter's evaluation path today, so this is a named direction and not a plan.
+
 ### Checkpoint 2026-09-19 — a 5 % bar cannot ride the timed rows, so NFR #1's standing anchor carries bytes
 
 **The question was whether H4's whole row set could go under the converted 5 % bar, and the answer is no — measured rather than judged.** The proposal converts NFR #1's per-row rule into a permanent anchor over "the frozen H4 row set" at gate N, and that set names timed collectors alongside the byte ones. Across the 30 committed run files in [`../perf-results/`](../perf-results/README.md), restricted to one machine (`Macmini9,1 Apple M1`), non-CI, `status=accepted`: **66 observation keys appear in three or more distinct runs, and every one of the 66 already spreads more than 5 % run-to-run** — worst-against-median **28.8 %** at the median key, **60.3 %** at p90, **160.5 %** at the worst. A 5 % per-row bar there would fire on noise on every row it covered, which is not a stricter gate but a broken one. The worst key is the `group-star expansion` lane that [IG139](INTERPRETER-GAPS.md) independently records as too noisy to carry an absolute bar — corroboration for that row, not for the distribution.
