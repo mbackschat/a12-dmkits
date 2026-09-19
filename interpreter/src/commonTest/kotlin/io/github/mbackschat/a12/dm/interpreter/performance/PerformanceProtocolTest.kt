@@ -164,6 +164,16 @@ class PerformanceProtocolTest {
                 "${scenario.host}: the refusal must name occupancy, so a reader re-measures instead of hunting " +
                     "a regression; was: ${failure.message}",
             )
+            // The ratio cannot separate external contention from the code's own GC pauses, so the message must
+            // offer BOTH — a refusal that blames only the machine sends a reader to re-measure a reproducible
+            // allocation regression. Locked because guidance is the first thing a later edit drops.
+            listOf("contention", "GC").forEach { cause ->
+                assertTrue(
+                    failure.message!!.contains(cause),
+                    "${scenario.host}: the refusal must name $cause as a candidate cause, since occupancy " +
+                        "cannot discriminate the two; was: ${failure.message}",
+                )
+            }
         }
     }
 

@@ -191,9 +191,12 @@ internal object PerformanceProtocol {
                 val occupancy = sample.occupancy()
                 require(occupancy >= floor) {
                     "${fork.scenario.id}/${sample.scale} in ${fork.invocationId}: ${fork.host} occupancy " +
-                        "${(occupancy * 100).toInt()}% is below the ${(floor * 100).toInt()}% floor, so this " +
-                        "process spent its elapsed time waiting rather than running and its timings are the " +
-                        "machine's, not the code's — re-measure on an idle machine"
+                        "${(occupancy * 100).toInt()}% is below the ${(floor * 100).toInt()}% floor — the " +
+                        "region's elapsed time was not matched by CPU time, so these timings are not a clean " +
+                        "read of the code. TWO causes produce this and the ratio cannot tell them apart: " +
+                        "external CPU contention, and GC pauses from the code's OWN allocation, since GC runs " +
+                        "off the measuring thread. Re-measure on an idle machine — if it clears, it was " +
+                        "contention; if it reproduces, suspect allocation rather than the box"
                 }
             }
         }

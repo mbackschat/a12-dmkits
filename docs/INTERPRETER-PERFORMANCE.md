@@ -61,6 +61,8 @@ Node exposes no per-thread CPU clock in stable form, so its numerator includes t
 
 **Re-deriving a floor is a measurement, not a preference.** Run one bundle invocation on a quiet machine, take the lowest per-scale occupancy each carrier reports, and keep the floor below it with margin. A floor raised above a carrier's true idle minimum fires on healthy runs, which is how a contamination check comes to be deleted instead of fixed.
 
+**The hazard in the other direction, unmeasured (2026-09-19).** GC runs off the measuring thread, so an allocation regression inflates wall while leaving thread CPU flat and therefore *depresses* occupancy — the mechanism `PerfEnvironmentQuality` cites for never filtering on GC. This floor censors nothing, because it fails the aggregate by name instead of dropping a sample from a population; what it can do is **misattribute** a code-caused pause to a busy machine. Do not extend the instrument to the `:adapter` collectors before taking the run [IG154](INTERPRETER-GAPS.md#ig154) names.
+
 **What occupancy does NOT do.** It certifies that a capture ran; it does not shrink run-to-run spread. Machine state stops being an *unmeasured* confound, and the variance that defeats a 5 % timed bar is untouched — which is why [IG152](INTERPRETER-GAPS.md) is declined on its own measurements rather than reopened on the strength of this instrument.
 
 ## `perf-results/` is a MUTABLE corpus, so a figure derived from it is dated to a commit (measured 2026-09-19)
