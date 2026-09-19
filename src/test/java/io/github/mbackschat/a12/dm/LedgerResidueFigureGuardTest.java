@@ -27,7 +27,7 @@ import java.util.regex.Pattern;
  * <p><b>The exclusions are two different kinds of fact, and only one is mechanical.</b> A disposition CELL
  * saying {@code unreachable from stored DM-JSON} or {@code never reported} is a fixed marker. The second
  * exclusion is row PROSE saying the code fires for no reachable shape, which has no marker at all — the
- * [containment record](../../../../../../../../docs/PORTABLE-CONSISTENCY-IMPLEMENTATION-PLAN.md) names that as
+ * [containment record](../../../../../../../../docs/archived/PORTABLE-CONSISTENCY-IMPLEMENTATION-PLAN.md) names that as
  * the figure's own caveat. So {@link #NEVER_FIRES} is a phrase list and is deliberately narrow: a row it
  * misses stays in the residue, which OVERSTATES the work remaining. That is the safe direction — the figure
  * is an upper bound by construction, and a guard erring the other way would hide capacity.
@@ -53,7 +53,7 @@ class LedgerResidueFigureGuardTest {
 
     private static final String LEDGER = "docs/MVK-LEDGER.md";
 
-    private static final String PLAN = "docs/PORTABLE-CONSISTENCY-IMPLEMENTATION-PLAN.md";
+    private static final String PLAN = "docs/archived/PORTABLE-CONSISTENCY-IMPLEMENTATION-PLAN.md";
 
     /** A ledger row: the code, then its whole disposition cell. */
     private static final Pattern LEDGER_ROW =

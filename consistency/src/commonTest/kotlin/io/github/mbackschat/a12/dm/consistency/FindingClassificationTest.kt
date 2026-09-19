@@ -8,7 +8,7 @@ import kotlin.test.assertTrue
 /**
  * B2's remaining separation: which kind of finding may reject a model.
  *
- * [proposal §5.4](../../../../../../../../../../docs/PORTABLE-CONSISTENCY-PROPOSAL.md) admits exactly three kinds and
+ * [proposal §5.4](../../../../../../../../../../docs/archived/PORTABLE-CONSISTENCY-PROPOSAL.md) admits exactly three kinds and
  * gives only one of them that power. Every case below holds severity at ERROR where it can, so the category
  * is the single variable — a policy restriction stated as forcefully as an A12 rejection still is not one.
  */

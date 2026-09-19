@@ -65,7 +65,7 @@ data class Reuse(
  * key, which is the reuse growing rather than the checker doing more work. A cell is answered from the cache
  * only when every fact it read last time still has the same value, so [recomputed] counts the cells an edit
  * could have changed the answer for — which is the pair [L's acceptance](
- * ../docs/PORTABLE-CONSISTENCY-PROPOSAL.md) asks for: reuse of unaffected work AND recomputation of what the
+ * ../docs/archived/PORTABLE-CONSISTENCY-PROPOSAL.md) asks for: reuse of unaffected work AND recomputation of what the
  * edit affects. An always-full-recheck implementation reports `reused = 0`, which is what makes this pair a
  * control rather than a statistic.
  *

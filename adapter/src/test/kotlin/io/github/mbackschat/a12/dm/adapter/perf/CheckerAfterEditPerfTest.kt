@@ -15,7 +15,7 @@ import org.junit.jupiter.api.condition.EnabledIfSystemProperty
  * **Exactly ONE of its three arms carries a bar, and the other two never will.** H5 requires a budget to be
  * ratified before the implementation it gates is measured, and the owner's 2026-09-16 ratification left this
  * boundary UNSET because nothing existed to measure
- * (`docs/PORTABLE-CONSISTENCY-IMPLEMENTATION-PLAN.md#h5-ratification`). L-a then shipped the operations, the
+ * (`docs/archived/PORTABLE-CONSISTENCY-IMPLEMENTATION-PLAN.md#h5-ratification`). L-a then shipped the operations, the
  * collector ran, and the **keystroke** ratio was ratified on 2026-09-17 against [KEYSTROKE_CEILING] — whose
  * basis is a work count written before this lane existed, never a figure this lane produced, because asserting
  * a bar derived from a collector's own output is what H5's ordering rule forbids.
@@ -156,7 +156,7 @@ class CheckerAfterEditPerfTest {
          *
          * `checkDraft` performs one admission, one preparation and TWO checks per call; a snapshot makes the same
          * keystroke cost one check and nothing else. That count is L-a's stated reason to exist
-         * (`docs/PORTABLE-CONSISTENCY-IMPLEMENTATION-PLAN.md#l-partition`), so a ratio at or above `1.0` means the
+         * (`docs/archived/PORTABLE-CONSISTENCY-IMPLEMENTATION-PLAN.md#l-partition`), so a ratio at or above `1.0` means the
          * held analysis saves nothing and an editor has no reason to hold one — the feature, not a measurement,
          * is what fixes the number.
          *

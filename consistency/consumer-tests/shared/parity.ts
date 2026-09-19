@@ -1,6 +1,6 @@
 // The three-arm parity runner: one full report contract, compared identically on every host.
 //
-// [F's claim-specific oracle](../../../docs/PORTABLE-CONSISTENCY-PROPOSAL.md) for "JS matches JVM" asks to
+// [F's claim-specific oracle](../../../docs/archived/PORTABLE-CONSISTENCY-PROPOSAL.md) for "JS matches JVM" asks to
 // "execute the same fixtures through Java, packed Node and real-browser consumers, comparing the FULL portable
 // report contract". `cases.ts` cannot discharge that: it asserts named fields, which is what makes it
 // readable and also what makes it blind to every member it does not name. So this compares whole documents,

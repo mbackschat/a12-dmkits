@@ -38,7 +38,7 @@ class PlanStageStatusAgreementGuardTest {
 
     private static final Checkout CHECKOUT = Checkout.locate();
 
-    private static final String PLAN = "docs/PORTABLE-CONSISTENCY-IMPLEMENTATION-PLAN.md";
+    private static final String PLAN = "docs/archived/PORTABLE-CONSISTENCY-IMPLEMENTATION-PLAN.md";
 
     /**
      * The status table itself, located by its own header rather than by the shape of a row.

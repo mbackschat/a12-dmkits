@@ -7,7 +7,7 @@
 // The added capability is `requiredMajor`. Without it the resolver returns the NEWEST installed Node, which is
 // not a pin at all: on this machine `.last()` over the nvm directory selects v26.5.0 today and something else
 // after the next `nvm install`. That is tolerable for a functional consumer test, where the question is whether
-// the package resolves and runs, and inadmissible for a timing lane — [H5](../docs/PORTABLE-CONSISTENCY-PROPOSAL.md)
+// the package resolves and runs, and inadmissible for a timing lane — [H5](../docs/archived/PORTABLE-CONSISTENCY-PROPOSAL.md)
 // point (2) of IF137's per-number gate requires the runtime to be pinned, and a JS engine change moves absolute
 // numbers the way a JIT change does on the JVM. So a pinned call names its major and a mismatch REFUSES rather
 // than measuring, exactly as `JdkIdentity.requireSupported` does for the JVM lanes.

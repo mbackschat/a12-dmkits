@@ -27,7 +27,7 @@ import org.junit.jupiter.api.Test
  * **It reuses the profile benchmark's own synthesizer rather than growing a second one**
  * ([ProfileSynthesisTargetProfiles.modelJson]), which is what keeps this a population rather than a fixture
  * estate. The `N`/`4N` pair is the shape H5's growth work needs anyway
- * ([the plan's H5 partition](../../../../../../../../../../../docs/PORTABLE-CONSISTENCY-IMPLEMENTATION-PLAN.md#h5-ordering)),
+ * ([the plan's H5 partition](../../../../../../../../../../../docs/archived/PORTABLE-CONSISTENCY-IMPLEMENTATION-PLAN.md#h5-ordering)),
  * and asserting correctness over it now is what makes those later lanes measure a checker that is right.
  *
  * **No timing here, deliberately.** This is the semantic preflight H5 requires before any number is taken,

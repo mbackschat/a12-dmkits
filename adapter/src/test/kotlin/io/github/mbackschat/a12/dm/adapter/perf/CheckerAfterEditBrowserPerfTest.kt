@@ -11,7 +11,7 @@ import org.junit.jupiter.api.condition.EnabledIfSystemProperty
  * **The second of the two cells §8's after-edit row left unmeasured**, and like its Node sibling it could not
  * exist before 2026-09-18: the quantity is a snapshot-reuse ratio, and no stateful entry point was exported to
  * JavaScript to hold anything with ([the trigger firing](
- * ../../../../../../../../../../../docs/PORTABLE-CONSISTENCY-IMPLEMENTATION-PLAN.md)).
+ * ../../../../../../../../../../../docs/archived/PORTABLE-CONSISTENCY-IMPLEMENTATION-PLAN.md)).
  *
  * **It asserts the ratified keystroke ceiling on THIS carrier's own measurement.** A bar holding on the JVM
  * and on Node is a claim about a browser rather than an inheritance — a different engine moves more than one

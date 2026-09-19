@@ -14,7 +14,7 @@ import org.junit.jupiter.api.condition.EnabledIfSystemProperty
  * hosts is the weakest of the three statements that govern H5 — the owner's hard-acceptance section attaches
  * "JVM, plain Node and browser consumers" to the whole budget list, memory alone carrying a feasibility
  * qualifier. Under that reading H5 is a 5 × 3 grid, and this cell was one of six unmeasured
- * ([the record](../../../../../../../../../../../docs/PORTABLE-CONSISTENCY-IMPLEMENTATION-PLAN.md)).
+ * ([the record](../../../../../../../../../../../docs/archived/PORTABLE-CONSISTENCY-IMPLEMENTATION-PLAN.md)).
  *
  * **It clocks the SAME quantity [CheckerGrowthPerfTest] does, which is what makes the two comparable.** That
  * lane times `check(ModelSource(text))` on a runtime whose class loading and reflective setup a preflight has

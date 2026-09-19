@@ -8,7 +8,7 @@ package io.github.mbackschat.a12.dm.consistency
  * another model, the execution is identical — same branches, therefore the same reads, therefore the same
  * output. That argument needs no knowledge of what any family does, which is exactly what a hand-kept
  * footprint could not offer: a transcript cannot be too narrow, because it IS the read
- * (`docs/PORTABLE-CONSISTENCY-IMPLEMENTATION-PLAN.md` "L-b's design is DECIDED").
+ * (`docs/archived/PORTABLE-CONSISTENCY-IMPLEMENTATION-PLAN.md` "L-b's design is DECIDED").
  *
  * **It holds PRE-composition output, deliberately.** `checkPrepared` filters the composed finding list
  * through four model-wide passes, and those read state the producer never saw — so a cell of composed

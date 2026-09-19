@@ -7,7 +7,7 @@ import kotlin.test.assertIs
 /**
  * B1: resolving a bare reference, and telling ABSENCE apart from AMBIGUITY.
  *
- * The four rows are [proposal §3.4](../../../../../../../../../../docs/PORTABLE-CONSISTENCY-PROPOSAL.md)'s executed
+ * The four rows are [proposal §3.4](../../../../../../../../../../docs/archived/PORTABLE-CONSISTENCY-PROPOSAL.md)'s executed
  * grid — one axis changes only how many model-wide `Code` fields exist, the other only
  * `fieldRefByShortNameAllowed`, and the Kernel answers with two different codes. The existing static helper
  * collapses both into one unresolved-path report, which is exactly what this classification exists to fix:

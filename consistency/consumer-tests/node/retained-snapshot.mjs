@@ -1,6 +1,6 @@
 // H5-j's plain-Node RETENTION arm: what holding one analysis costs a Node consumer's heap.
 //
-// [§8](../../../docs/PORTABLE-CONSISTENCY-PROPOSAL.md) asks the resources boundary for retained memory AND
+// [§8](../../../docs/archived/PORTABLE-CONSISTENCY-PROPOSAL.md) asks the resources boundary for retained memory AND
 // release behaviour. Its sibling `retained-memory.mjs` answers release — a heap flat across repeated stateless
 // checks — because when that arm landed the shipped surface was string-in string-out and a Node consumer could
 // hold no analysis. `snapshotOfJson` shipped a holdable handle on 2026-09-18, so the JVM arm's own subject

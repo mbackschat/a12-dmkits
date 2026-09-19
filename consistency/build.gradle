@@ -1,4 +1,4 @@
-// The :consistency module (docs/PORTABLE-CONSISTENCY-PROPOSAL.md): the standalone, Kernel-free consistency
+// The :consistency module (docs/archived/PORTABLE-CONSISTENCY-PROPOSAL.md): the standalone, Kernel-free consistency
 // checker for a DocumentModel's RULES AND COMPUTATIONS — Kotlin Multiplatform (jvm + js), published for
 // TypeScript/Node consumers under H2.
 //
@@ -31,7 +31,7 @@ kotlin {
         // The BROWSER is a target H5/F require and this module did not declare until 2026-09-17, which is
         // why F's "run the corpus through Java, packed Node and browser" could not have run its third arm:
         // a target the module does not compile for cannot be replayed against
-        // (docs/PORTABLE-CONSISTENCY-IMPLEMENTATION-PLAN.md#stage-8-browser). Unlike `:interpreter`, whose
+        // (docs/archived/PORTABLE-CONSISTENCY-IMPLEMENTATION-PLAN.md#stage-8-browser). Unlike `:interpreter`, whose
         // `jsBrowserTest` is disabled because its commonTest imports `node:*` host probes, this module's
         // sources touch no host API at all, so the shared suite COULD run in Karma here — and deliberately
         // does not. Measured 2026-09-17: enabling `jsBrowserTest` grows the committed `kotlin-js-store/
@@ -265,7 +265,7 @@ tasks.named('compileTestKotlinJs') { dependsOn generateWorkspaceMatrix }
 // The three-arm parity corpus, embedded for the arm that is neither Node nor a browser.
 //
 // F's oracle for "JS matches JVM" wants the full report contract compared across Java, packed Node and a real
-// browser (docs/PORTABLE-CONSISTENCY-PROPOSAL.md, "Claim-specific oracles"). The two packaged arms read
+// browser (docs/archived/PORTABLE-CONSISTENCY-PROPOSAL.md, "Claim-specific oracles"). The two packaged arms read
 // `consumer-tests/shared/parity` at runtime; this target cannot — commonTest runs on Node as well as the JVM,
 // where a resource read costs an implementation per target — so the same committed bytes are embedded as
 // generated Kotlin, exactly as the workspace matrix above is. Embedding is what makes the JVM comparison run
@@ -882,7 +882,7 @@ def resolvePackedConsistencyTarball = {
 }
 
 // The checker's delivery bar, ratified per-number by the owner on 2026-09-16 through IF137's six points
-// (docs/PORTABLE-CONSISTENCY-IMPLEMENTATION-PLAN.md "H5 — the calibration ordering was overtaken by events").
+// (docs/archived/PORTABLE-CONSISTENCY-IMPLEMENTATION-PLAN.md "H5 — the calibration ordering was overtaken by events").
 // A byte count is the one checker quantity that can carry an ABSOLUTE bar, because it is machine-independent:
 // unlike a latency it means the same thing on every runner, and re-packing the same revision is bit-identical
 // (measured 2026-09-16, same sha256 across two packs). What it certifies is BOUNDED GROWTH, not smallness —
@@ -917,7 +917,7 @@ tasks.register('verifyConsistencyDeliveryCeiling') {
 //
 // The delivery boundary is bounded on the packed npm tarball above and on nothing the JVM ships, so a Maven
 // consumer's closure had no NUMBER at all — which is the gap, a missing observation rather than a missing bar
-// (docs/PORTABLE-CONSISTENCY-IMPLEMENTATION-PLAN.md, the H5 partition's H5-k row). COMPOSITION is already
+// (docs/archived/PORTABLE-CONSISTENCY-IMPLEMENTATION-PLAN.md, the H5 partition's H5-k row). COMPOSITION is already
 // guarded — `verifyConsistencyDependencies` refuses any resolved module outside the allowlist and any
 // intra-repo project edge — so size is the one thing about this graph nobody could see.
 //
@@ -975,7 +975,7 @@ tasks.named('check') { dependsOn 'consistencyJvmClosureReport' }
 
 // The JVM half of the delivery boundary, ratified per-number by the owner on 2026-09-18 through IF137's six
 // points — the sixth being that ratification itself, which is why the collector above shipped bar-less for a
-// day (docs/PORTABLE-CONSISTENCY-IMPLEMENTATION-PLAN.md "H5-k's collector landed").
+// day (docs/archived/PORTABLE-CONSISTENCY-IMPLEMENTATION-PLAN.md "H5-k's collector landed").
 //
 // It binds the module's OWN JAR and deliberately not the resolved closure. That is the decision the
 // measurement forced rather than a default: at 3 638 410 closure bytes against 1 188 850 of our own, a

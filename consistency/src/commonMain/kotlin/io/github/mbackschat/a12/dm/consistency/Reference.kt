@@ -394,7 +394,7 @@ private val REFERENCE_TOKENS = setOf(TokenKind.NAME, TokenKind.QUOTED_NAME, Toke
  * The silence UNDER-reports and is therefore safe, so it is not widened here: admitting the star would make
  * a dozen families judge an operand shape none of them has been measured against, which is the one direction
  * that needs a kernel basis first
- * (`docs/PORTABLE-CONSISTENCY-IMPLEMENTATION-PLAN.md` "a starred operand is never typed").
+ * (`docs/archived/PORTABLE-CONSISTENCY-IMPLEMENTATION-PLAN.md` "a starred operand is never typed").
  */
 private val SPEC_PUNCTUATION = setOf("[", "]", "/", ".")
 

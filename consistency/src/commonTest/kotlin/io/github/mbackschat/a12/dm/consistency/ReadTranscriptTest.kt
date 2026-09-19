@@ -220,7 +220,7 @@ class ReadTranscriptTest {
      * edit to a locale set, a condition language or a supported-character list can reach it. That is a claim
      * about the transcript's ALPHABET, and it is the half of granularity a whole-model family can carry: the
      * per-declaration half needs per-declaration cells, whose oracle arrives with them (L-b3 in
-     * `docs/PORTABLE-CONSISTENCY-IMPLEMENTATION-PLAN.md`).
+     * `docs/archived/PORTABLE-CONSISTENCY-IMPLEMENTATION-PLAN.md`).
      */
     @Test
     fun aBodyScopedFamilyChargesNoModelWideMember() {

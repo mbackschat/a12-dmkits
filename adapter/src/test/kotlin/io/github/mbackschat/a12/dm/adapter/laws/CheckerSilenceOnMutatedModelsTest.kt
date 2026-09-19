@@ -44,7 +44,7 @@ import kotlin.io.path.readText
  * **Deliberately NOT compared: the CLASSES both engines draw on a rejected mutant.** A12 stops at its first
  * refusal while the checker accumulates, so the two have different denominators there and a subset assertion
  * would fail on honest reporting. That comparison is its own slice
- * ([`docs/PORTABLE-CONSISTENCY-IMPLEMENTATION-PLAN.md`](../../../../../../../../../../../docs/PORTABLE-CONSISTENCY-IMPLEMENTATION-PLAN.md),
+ * ([`docs/archived/PORTABLE-CONSISTENCY-IMPLEMENTATION-PLAN.md`](../../../../../../../../../../../docs/archived/PORTABLE-CONSISTENCY-IMPLEMENTATION-PLAN.md),
  * the F2 record).
  */
 class CheckerSilenceOnMutatedModelsTest {

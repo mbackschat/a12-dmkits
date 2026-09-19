@@ -53,7 +53,7 @@ class PurityGuardMechanismTest {
      * with a source directory planted on {@code :consistency}'s {@code jvmMain}, the guard reported BUILD
      * SUCCESSFUL. Asserted on the script's text because the arm is a Groovy closure on the root project with
      * no seam a JUnit test can drive; the does-fire evidence is the planted control recorded in
-     * {@code docs/PORTABLE-CONSISTENCY-IMPLEMENTATION-PLAN.md}.
+     * {@code docs/archived/PORTABLE-CONSISTENCY-IMPLEMENTATION-PLAN.md}.
      */
     @Test
     void theClosedClaimAlsoRefusesAFileDependencyBecauseNoResolutionFilterCanClassifyOne() throws IOException {
@@ -77,7 +77,7 @@ class PurityGuardMechanismTest {
      *
      * <p>Asserted on the script's text because the arm is a Groovy closure inside a Gradle task with no seam
      * a JUnit test can drive. Its does-fire evidence is the pair of planted controls recorded in
-     * {@code docs/PORTABLE-CONSISTENCY-IMPLEMENTATION-PLAN.md}: a planted {@code a12-consistency.mjs} is
+     * {@code docs/archived/PORTABLE-CONSISTENCY-IMPLEMENTATION-PLAN.md}: a planted {@code a12-consistency.mjs} is
      * refused BY NAME, and an unrelated planted module is refused as undecided.
      */
     @Test

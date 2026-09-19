@@ -839,7 +839,7 @@ tasks.register('checkerGrowthPerfTest', Test) {
 // H5-e: the checker's AFTER-EDIT boundary — what holding one analysis saves against answering statelessly.
 // Records and prints; asserts no budget, for the same reason the cold lane did before H5-d: the owner's
 // ratification left this boundary UNSET because nothing existed to measure, and a bar taken from this lane's
-// own first figure is what H5's ordering rule forbids (docs/PORTABLE-CONSISTENCY-IMPLEMENTATION-PLAN.md
+// own first figure is what H5's ordering rule forbids (docs/archived/PORTABLE-CONSISTENCY-IMPLEMENTATION-PLAN.md
 // #h5-ratification). Deliberately NOT wired into any automated lane, because a schedule implies a bar.
 tasks.register('checkerAfterEditPerfTest', Test) {
     description = 'Measure what a held consistency analysis saves on a keystroke and on a saved edit.'
@@ -864,7 +864,7 @@ tasks.register('checkerAfterEditPerfTest', Test) {
 }
 
 // H5's resources boundary, RETAINED-MEMORY half — the required §8 observation the boundary count hid until
-// 2026-09-17 (docs/PORTABLE-CONSISTENCY-IMPLEMENTATION-PLAN.md#stage-8). Records and asserts nothing.
+// 2026-09-17 (docs/archived/PORTABLE-CONSISTENCY-IMPLEMENTATION-PLAN.md#stage-8). Records and asserts nothing.
 //
 // Serial GC and a fixed heap are not tuning: the lane reads post-GC used heap, so a concurrent collector makes
 // the reading depend on when a background cycle happened to finish, and a growing heap makes two samples
@@ -895,7 +895,7 @@ tasks.register('checkerMemoryPerfTest', Test) {
 
 // H5's COMBINED boundary — what holding BOTH prepared representations costs against holding each. Records and
 // prints; asserts no budget, because the owner's ratification left this boundary UNSET until F's package
-// existed (docs/PORTABLE-CONSISTENCY-IMPLEMENTATION-PLAN.md#h5-ratification), and a bar taken from this lane's
+// existed (docs/archived/PORTABLE-CONSISTENCY-IMPLEMENTATION-PLAN.md#h5-ratification), and a bar taken from this lane's
 // own first figure is what H5's ordering rule forbids. Deliberately NOT wired into any automated lane, because
 // a schedule implies a bar.
 tasks.register('checkerCombinedPerfTest', Test) {
@@ -921,7 +921,7 @@ tasks.register('checkerCombinedPerfTest', Test) {
 
 // H5-b: the checker's COLD first result, one fresh JVM per observation. It records and prints; it asserts no
 // budget, because H5 requires ratification before the implementation it gates is measured and no checker number
-// is ratified (docs/PORTABLE-CONSISTENCY-IMPLEMENTATION-PLAN.md#h5-ordering). Deliberately NOT wired into any
+// is ratified (docs/archived/PORTABLE-CONSISTENCY-IMPLEMENTATION-PLAN.md#h5-ordering). Deliberately NOT wired into any
 // automated lane for the same reason — a schedule implies a bar.
 tasks.register('checkerColdStartPerfTest', Test) {
     description = 'Measure the Kernel-free checker\'s cold first result over independent fresh processes.'
@@ -1046,7 +1046,7 @@ tasks.register('checkerPreparedNodePerfTest', Test) {
 
 // H5-i's plain-NODE arm of the AFTER-EDIT boundary. It could not exist before 2026-09-18: its quantity is a
 // snapshot-reuse ratio, and no stateful entry point was exported to JavaScript, so the cell was deferred with
-// an exported handle named as its re-open trigger (docs/PORTABLE-CONSISTENCY-IMPLEMENTATION-PLAN.md
+// an exported handle named as its re-open trigger (docs/archived/PORTABLE-CONSISTENCY-IMPLEMENTATION-PLAN.md
 // #h5i-trigger-fired). It asserts the already-ratified keystroke ceiling, whose basis is a work count written
 // before any lane existed — but on THIS carrier's own measurement, because a bar holding on a new carrier is
 // a claim rather than an inheritance. Off every automated lane, like its sibling Node lanes: it needs node,
@@ -1089,7 +1089,7 @@ tasks.register('checkerAfterEditNodePerfTest', Test) {
 // longer true since `snapshotOfJson` shipped on 2026-09-18 — see the lane's own KDoc) and what §8's
 // release half asks — is a consumer's heap flat across repeated checks — is what this can answer. Informative
 // by design, per H5's ordering rule: the collector comes first and the bar is the owner's to ratify
-// (docs/PORTABLE-CONSISTENCY-IMPLEMENTATION-PLAN.md, the H5-j row and #h5i-surface). Off every automated lane
+// (docs/archived/PORTABLE-CONSISTENCY-IMPLEMENTATION-PLAN.md, the H5-j row and #h5i-surface). Off every automated lane
 // for the same reason as the sibling Node lanes — it needs node, npm and the packed tarball.
 tasks.register('checkerMemoryNodePerfTest', Test) {
     description = 'Collect what a Node consumer\'s heap does across repeated checks of one model.'

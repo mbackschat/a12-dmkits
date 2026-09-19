@@ -4,7 +4,7 @@ package io.github.mbackschat.a12.dm.adapter.perf
  * The Node runtime a checker timing may be recorded on — [JdkIdentity]'s counterpart for the JS host.
  *
  * **It exists because H5's per-number gate requires a pinned runtime and this project had no Node pin at all.**
- * [H5](../../../../../../../../../../../docs/PORTABLE-CONSISTENCY-PROPOSAL.md) takes every checker budget through
+ * [H5](../../../../../../../../../../../docs/archived/PORTABLE-CONSISTENCY-PROPOSAL.md) takes every checker budget through
  * IF137's six points, of which (2) is "runner/runtime pinned". The estate's Node discovery selected the NEWEST
  * installed version — `.last()` over `~/.nvm/versions/node` — so a lane wired to it would have measured v26.5.0
  * today and something else after the next `nvm install`, with nothing in the record naming which. A JS engine

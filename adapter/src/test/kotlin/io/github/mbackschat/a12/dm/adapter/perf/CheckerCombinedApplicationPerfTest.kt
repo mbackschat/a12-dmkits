@@ -13,7 +13,7 @@ import org.junit.jupiter.api.condition.EnabledIfSystemProperty
  * H5's COMBINED boundary — what an application pays for choosing consistency *and* evaluation.
  *
  * **The quantity is ADDITIVITY, not latency, and the proposal fixes it rather than this lane choosing it.**
- * `docs/PORTABLE-CONSISTENCY-PROPOSAL.md` §4 says an
+ * `docs/archived/PORTABLE-CONSISTENCY-PROPOSAL.md` §4 says an
  * application choosing both "may hold two prepared representations and pay for two parses. Measure that
  * combined cost separately; no zero-copy integration, shared-program adapter or elimination of all
  * cross-component duplicate parsing is promised." So the question a consumer actually has is not "how many
@@ -31,7 +31,7 @@ import org.junit.jupiter.api.condition.EnabledIfSystemProperty
  *
  * **It records and asserts nothing.** H5 requires a budget to be ratified before the implementation it gates
  * is measured, and this boundary is explicitly UNSET in the owner's 2026-09-16 ratification
- * (`docs/PORTABLE-CONSISTENCY-IMPLEMENTATION-PLAN.md#h5-ratification`) because F's package had to exist first.
+ * (`docs/archived/PORTABLE-CONSISTENCY-IMPLEMENTATION-PLAN.md#h5-ratification`) because F's package had to exist first.
  * Its output is informative until per-number ratified, which is the sequence that record prescribes; a bar
  * taken from this lane's own first figure is what H5's ordering rule forbids. Deliberately NOT wired into any
  * automated lane, because a schedule implies a bar — the same posture the cold lane held before H5-d.

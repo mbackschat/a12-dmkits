@@ -1,6 +1,6 @@
 // ONE cold check in a plain Node process that will never run a second one — H5's cold boundary, plain-Node arm.
 //
-// [§8](../../../docs/PORTABLE-CONSISTENCY-PROPOSAL.md)'s cold row asks for "installed package load through
+// [§8](../../../docs/archived/PORTABLE-CONSISTENCY-PROPOSAL.md)'s cold row asks for "installed package load through
 // preparation and first complete consistency result, **on JVM, plain Node and browser**". Until 2026-09-17 only
 // the JVM host had a lane, and not even on an installed package — it resolved `:consistency` as a project
 // dependency. This file is the Node host's child process, launched once per observation by

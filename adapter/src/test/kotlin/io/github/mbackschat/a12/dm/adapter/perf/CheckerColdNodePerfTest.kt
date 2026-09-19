@@ -26,7 +26,7 @@ import org.junit.jupiter.api.io.TempDir
  *
  * **It asserts the ratified GROWTH ratio and no latency**, which is the posture the owner ratified on 2026-09-16
  * for both timing boundaries
- * ([the record](../../../../../../../../../../../docs/PORTABLE-CONSISTENCY-IMPLEMENTATION-PLAN.md#h5-ratification)).
+ * ([the record](../../../../../../../../../../../docs/archived/PORTABLE-CONSISTENCY-IMPLEMENTATION-PLAN.md#h5-ratification)).
  * A cold millisecond figure on a JS engine is machine-dependent and has no certified basis, and asserting one
  * would also breach H5's ordering rule — the bar would be fitted to this lane's own first run.
  * `PerfBounds.SUB_QUADRATIC_MAX` escapes that because it was ratified as a mechanism long before this host had a

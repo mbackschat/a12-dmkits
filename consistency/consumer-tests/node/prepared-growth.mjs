@@ -1,6 +1,6 @@
 // The PREPARED boundary in one warm Node process — H5-h's plain-Node arm, §8's prepared row.
 //
-// [§8](../../../docs/PORTABLE-CONSISTENCY-PROPOSAL.md)'s prepared row asks for "initial analysis work and
+// [§8](../../../docs/archived/PORTABLE-CONSISTENCY-PROPOSAL.md)'s prepared row asks for "initial analysis work and
 // repeated same-snapshot queries reported separately", and the owner's hard-acceptance line attaches its host
 // list to every budget rather than to the cold row alone. Until 2026-09-17 every prepared observation was on
 // the JVM.

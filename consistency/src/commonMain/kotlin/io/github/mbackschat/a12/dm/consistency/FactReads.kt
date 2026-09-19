@@ -12,7 +12,7 @@ package io.github.mbackschat.a12.dm.consistency
  * the cells that read the edited declaration.
  *
  * A transcript is what a family DID read, so it cannot be too narrow — the property a hand-kept footprint
- * could not have, measured by the probe in `docs/PORTABLE-CONSISTENCY-IMPLEMENTATION-PLAN.md` ("L-b's method
+ * could not have, measured by the probe in `docs/archived/PORTABLE-CONSISTENCY-IMPLEMENTATION-PLAN.md` ("L-b's method
  * was probed rather than assumed").
  */
 internal sealed interface FactRead {

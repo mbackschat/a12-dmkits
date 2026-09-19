@@ -13,7 +13,7 @@ import org.junit.jupiter.api.condition.EnabledIfSystemProperty
  * **This cell was not measurable until the surface widened, and the reason is worth keeping.** Its quantity is
  * a snapshot-reuse ratio, and until 2026-09-18 no stateful entry point was exported to JavaScript — so the
  * cell was recorded as deferred rather than measured, with an exported handle named as its re-open trigger
- * (`docs/PORTABLE-CONSISTENCY-IMPLEMENTATION-PLAN.md#h5i-trigger-fired`). Measuring `checkEditJson` instead
+ * (`docs/archived/PORTABLE-CONSISTENCY-IMPLEMENTATION-PLAN.md#h5i-trigger-fired`). Measuring `checkEditJson` instead
  * would have reported the cost of two checks: a number that looks like this cell and answers a different
  * question.
  *

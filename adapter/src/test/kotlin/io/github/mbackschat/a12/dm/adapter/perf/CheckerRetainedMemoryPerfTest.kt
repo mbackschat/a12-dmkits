@@ -15,14 +15,14 @@ import org.junit.jupiter.api.condition.EnabledIfSystemProperty
 /**
  * H5's resources boundary, RETAINED-MEMORY half — the observation the boundary count hid until 2026-09-17.
  *
- * **Why this lane exists at all.** `docs/PORTABLE-CONSISTENCY-PROPOSAL.md` §8
+ * **Why this lane exists at all.** `docs/archived/PORTABLE-CONSISTENCY-PROPOSAL.md` §8
  * asks this boundary for four things — "retained memory, release behavior, supported peak observations and
  * installed/downloaded production closure size" — and only the last was ever measured, as the packed
  * tarball's byte count (the figure lives in `docs/PORTABLE-CONSISTENCY-RESULTS.md`, which owns it; it is not
  * restated here because it moves whenever the package does).
  * The stage read DONE because the *boundary* was counted rather than its required observations,
  * and H5's blocking rule turns on the observation, not the count. See
- * `docs/PORTABLE-CONSISTENCY-IMPLEMENTATION-PLAN.md#stage-8`.
+ * `docs/archived/PORTABLE-CONSISTENCY-IMPLEMENTATION-PLAN.md#stage-8`.
  *
  * **The quantities are the estate's, not new ones.** `:interpreter`'s ratified footprint estate reports a pair
  * — post-GC used bytes with the owner held LIVE, and thread-allocated bytes during the operation — behind a GC

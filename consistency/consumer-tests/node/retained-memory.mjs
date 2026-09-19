@@ -1,6 +1,6 @@
 // H5-j's plain-Node arm: §8's RELEASE behaviour, on the host that can answer it.
 //
-// [§8](../../../docs/PORTABLE-CONSISTENCY-PROPOSAL.md) asks the resources boundary for "retained memory,
+// [§8](../../../docs/archived/PORTABLE-CONSISTENCY-PROPOSAL.md) asks the resources boundary for "retained memory,
 // release behavior, supported peak observations and installed/downloaded production closure size". The JVM arm
 // (`CheckerRetainedMemoryPerfTest`) answers the first by holding a `ConsistencySnapshot` live and reading the
 // post-GC heap. **A Node consumer cannot hold one**: the shipped `a12-consistency.d.ts` exports

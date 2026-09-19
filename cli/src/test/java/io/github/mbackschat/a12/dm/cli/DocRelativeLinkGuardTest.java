@@ -71,10 +71,11 @@ class DocRelativeLinkGuardTest {
      */
     private static final Set<String> UNVERIFIABLE_OUTSIDE_THE_REPO = Set.of(
             // KERNEL-31-UPGRADE-PROPOSAL names the sibling kit that publishes the kernel to mavenLocal.
-            "../../a12-kernel-bootstrap",
-            // PORTABLE-CONSISTENCY-PROPOSAL cites the consistency gate's source in the consult-only sibling.
-            "../../a12-kernel/kernel-md/kernel-md-model/src/main/java/com/mgmtp/a12/kernel/md/model/internal/service/consistency/DocumentModelConsistencyRulesProvider.java",
-            "../../a12-kernel/kernel-md/kernel-md-model/src/main/java/com/mgmtp/a12/kernel/md/model/internal/service/consistency/rules/CodeGenerationRule.java");
+            "../../a12-kernel-bootstrap");
+    // PORTABLE-CONSISTENCY-PROPOSAL's two consult-only `../../a12-kernel/...` citations were listed here until
+    // 2026-09-19, when that proposal was archived. They are not re-spelled one level deeper: `docs/archived/` is
+    // outside this guard's scan set by the scope rule above, so those targets are no longer parsed at all, and a
+    // literal nothing reads would be a pin on a file this guard cannot see.
 
     @Test
     void everyRelativeLinkTargetExists() throws IOException {

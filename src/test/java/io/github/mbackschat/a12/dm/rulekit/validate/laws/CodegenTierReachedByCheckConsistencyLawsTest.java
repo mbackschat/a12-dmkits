@@ -19,7 +19,7 @@ import org.junit.jupiter.api.Test;
  * 26 the portable checker does not report (2026-09-16, derived by
  * {@code CodegenTierCodeDenominatorGuardTest}, which pins both sets) are therefore each a candidate false
  * pass, which is what the coverage-residue record in
- * {@code docs/PORTABLE-CONSISTENCY-IMPLEMENTATION-PLAN.md} tracks.
+ * {@code docs/archived/PORTABLE-CONSISTENCY-IMPLEMENTATION-PLAN.md} tracks.
  *
  * <p><b>And the door has a name, which matters because the route is narrower than "consistency re-runs
  * codegen".</b> {@code ExternalDocumentModelService.checkConsistency} generates nothing itself; it runs

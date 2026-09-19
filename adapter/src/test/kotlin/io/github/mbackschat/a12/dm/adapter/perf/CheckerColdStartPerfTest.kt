@@ -13,7 +13,7 @@ import org.junit.jupiter.api.io.TempDir
  * checked anything.
  *
  * **It asserts the ratified GROWTH ratio and no latency — the split the owner ratified on 2026-09-16**
- * ([the record](../../../../../../../../../../../docs/PORTABLE-CONSISTENCY-IMPLEMENTATION-PLAN.md#h5-ratification)).
+ * ([the record](../../../../../../../../../../../docs/archived/PORTABLE-CONSISTENCY-IMPLEMENTATION-PLAN.md#h5-ratification)).
  * A cold millisecond figure is machine-dependent and has no certified basis, so no duration is asserted and no
  * anchor is written: an anchor IS a bar. A ratio is a different quantity — `PerfBounds.SUB_QUADRATIC_MAX` was
  * ratified as a mechanism long before this module existed — so the medians below stay informative while the

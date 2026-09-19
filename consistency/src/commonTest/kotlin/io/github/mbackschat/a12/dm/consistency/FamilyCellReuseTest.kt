@@ -9,7 +9,7 @@ import kotlin.test.assertTrue
  * That a family's verdict is answered from an earlier check when — and only when — every fact it read holds.
  *
  * **Two halves, and the pairing is the point.** L's acceptance in
- * `docs/PORTABLE-CONSISTENCY-PROPOSAL.md` asks for counters that show reuse on an edit AND recomputation
+ * `docs/archived/PORTABLE-CONSISTENCY-PROPOSAL.md` asks for counters that show reuse on an edit AND recomputation
  * of what the edit affects, and says an always-full-recheck implementation fails the control.
  * So a row asserting reuse needs a row asserting the answer is unchanged beside it, and each is the other's
  * control: reuse with a wrong answer is the defect the store can have, and a right answer with no reuse is

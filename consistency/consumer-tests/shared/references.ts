@@ -1,6 +1,6 @@
 // B0's retained reference controls, replayed through whatever host loaded the packed package.
 //
-// B0's acceptance locks [proposal §3.4](../../../docs/PORTABLE-CONSISTENCY-PROPOSAL.md)'s grid and then hands
+// B0's acceptance locks [proposal §3.4](../../../docs/archived/PORTABLE-CONSISTENCY-PROPOSAL.md)'s grid and then hands
 // this replay away explicitly: *"the packed Node/browser replay of these same cases belongs to F, which owns
 // the delivery tooling, so B0 does not silently depend on a later slice's deliverable"*. So these are B0's
 // rows, asserted here through the only surface a packaged consumer has — `checkModelJson` and its report.

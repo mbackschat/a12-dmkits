@@ -1,6 +1,6 @@
 // The consumer cases BOTH packaged arms run — Node and browser — so that "the same corpus" is structural.
 //
-// [F's acceptance](../../../docs/PORTABLE-CONSISTENCY-PROPOSAL.md) asks for "the same
+// [F's acceptance](../../../docs/archived/PORTABLE-CONSISTENCY-PROPOSAL.md) asks for "the same
 // accepted/rejected/inconclusive corpus through Java, packed Node and browser", and the plan adds that F owns
 // that replay "using the same inputs rather than inventing another matrix". Two arms asserting the same facts
 // in two hand-written files satisfies neither: they drift, and nothing says they have. So the cases live here

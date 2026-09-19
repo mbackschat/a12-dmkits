@@ -54,7 +54,7 @@ include 'interpreter-bridge'
 // kernel beyond kernel-md-facade (owner constraint; held by verifySchemakitPurity over its compiled classes
 // and by the root verifyPublishedClasspathsAreKernelFree over what its POM resolves). Spike under `.spike`.
 include 'schemakit'
-// The :consistency module (docs/PORTABLE-CONSISTENCY-PROPOSAL.md): the standalone Kernel-free consistency
+// The :consistency module (docs/archived/PORTABLE-CONSISTENCY-PROPOSAL.md): the standalone Kernel-free consistency
 // checker for rules and computations — Kotlin Multiplatform (jvm + js), the package published to
 // TypeScript/Node consumers. Depends on neither the kernel (H1) nor :interpreter (NFR #1); its Kernel
 // differentials live in :adapter so its own test source sets stay Kernel-free.

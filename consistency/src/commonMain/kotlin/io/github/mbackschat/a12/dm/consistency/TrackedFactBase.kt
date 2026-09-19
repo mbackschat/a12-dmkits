@@ -10,7 +10,7 @@ import kotlinx.serialization.json.JsonObject
  * fact, because the only route to one would be a member handing back the [PreparedModel] and none exists. The
  * design record originally assigned this invariant to a lint; the compiler enforces it strictly better, and
  * an untracked read is the one failure the recorded-reads design can still have
- * (`docs/PORTABLE-CONSISTENCY-IMPLEMENTATION-PLAN.md` "L-b is PARTITIONED"), so it is worth a type.
+ * (`docs/archived/PORTABLE-CONSISTENCY-IMPLEMENTATION-PLAN.md` "L-b is PARTITIONED"), so it is worth a type.
  *
  * **It carries the facts families actually read, and grows one member at a time.** Exposing the fact base's
  * whole surface up front would leave most accessors unexercised, and an unexercised accessor is an untested

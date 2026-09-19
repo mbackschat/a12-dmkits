@@ -1,6 +1,6 @@
 // The AFTER-EDIT boundary in one warm Node process — H5-i's plain-Node arm.
 //
-// [§8](../../../docs/PORTABLE-CONSISTENCY-PROPOSAL.md)'s after-edit row asks what holding one analysis across
+// [§8](../../../docs/archived/PORTABLE-CONSISTENCY-PROPOSAL.md)'s after-edit row asks what holding one analysis across
 // many questions saves, and the owner's hard-acceptance line attaches its host list to every budget rather
 // than to the cold row alone. This cell was unmeasurable until 2026-09-18: the quantity is a snapshot-reuse
 // ratio, and no stateful surface was exported to JavaScript at all. `snapshotOfJson` changed that.
