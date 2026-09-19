@@ -291,6 +291,67 @@ class PerfAnchorScriptTest {
         assertEquals(before, Files.readString(anchor), "show must leave the anchor byte-identical")
     }
 
+    /**
+     * **A contended capture is refused, because the median cannot undo it.** The script folds several runs to a
+     * per-key median precisely so one contended run cannot set a bar — but a capture SESSION on a busy machine
+     * inflates every input alike, and the median with it. Load rides every run record and was compared nowhere
+     * until 2026-09-19, so "the machine to itself" was enforced only by whoever remembered it. The bar is one
+     * runnable thread per core: above it there are more runnable threads than cores by definition.
+     */
+    @Test
+    fun aLocalRunCapturedOnAContendedMachineCannotSetAnAnchor() {
+        val anchor = anchorCarrying(laneA to 1.0, laneB to 2.0)
+
+        val run = refresh(anchor, observations("busy.jsonl", laneA to 2.0, laneB to 4.0,
+            environment = "darwin-aarch64", machine = "local-a", loadAverage = 9.0))
+
+        assertNotEquals(0, run.status, "a run captured at 2.25 threads per core measured a machine it competed with")
+        assertTrue("9.00" in run.stderr && "4 processors" in run.stderr) {
+            "the refusal must show the load it measured and what it was measured against: ${run.stderr}"
+        }
+        assertEquals(mapOf(laneA to 1.0, laneB to 2.0), observationsOf(anchor, "darwin-aarch64"),
+            "a refused refresh must write nothing")
+    }
+
+    /** The control: the same run at a quiet load folds normally, so the bar is the load and not the fixture. */
+    @Test
+    fun aLocalRunCapturedOnAQuietMachineStillSetsTheAnchor() {
+        val anchor = anchorCarrying(laneA to 1.0, laneB to 2.0)
+
+        val run = refresh(anchor, observations("quiet.jsonl", laneA to 2.0, laneB to 4.0,
+            environment = "darwin-aarch64", machine = "local-a", loadAverage = 3.0))
+
+        assertEquals(0, run.status, "0.75 threads per core is a quiet machine: ${run.stderr}")
+        assertEquals(mapOf(laneA to 2.0, laneB to 4.0), observationsOf(anchor, "darwin-aarch64"))
+    }
+
+    /**
+     * A HOSTED class is exempt, and not as a convenience: all ten committed CI runs sit between 1.01 and 1.43
+     * threads per core because a 2-core VM is at capacity from the job itself. Applying the local bar there would
+     * refuse every hosted refresh that has ever been taken.
+     */
+    @Test
+    fun aHostedRunIsNotHeldToTheLocalContentionBar() {
+        val anchor = anchorCarrying(laneA to 1.0, laneB to 2.0)
+
+        val run = refresh(anchor, observations("hosted.jsonl", laneA to 2.0, laneB to 4.0, loadAverage = 9.0))
+
+        assertEquals(0, run.status, "a hosted class is a bar over the runner CLASS, not over a quiet machine")
+        assertEquals(mapOf(laneA to 2.0, laneB to 4.0), observationsOf(anchor, "linux-amd64-ci"))
+    }
+
+    /** The escape hatch, for a load that was not CPU work — overridable, like the removals refusal beside it. */
+    @Test
+    fun theContentionRefusalIsOverridable() {
+        val anchor = anchorCarrying(laneA to 1.0, laneB to 2.0)
+
+        val run = refresh(anchor, observations("busy.jsonl", laneA to 2.0, laneB to 4.0,
+            environment = "darwin-aarch64", machine = "local-a", loadAverage = 9.0), allowContended = true)
+
+        assertEquals(0, run.status, "ALLOW_CONTENDED must let a deliberate refresh through: ${run.stderr}")
+        assertEquals(mapOf(laneA to 2.0, laneB to 4.0), observationsOf(anchor, "darwin-aarch64"))
+    }
+
     private fun anchorCarrying(vararg observations: Pair<String, Double>): Path =
         anchorWithBlocks("darwin-aarch64" to observations.toList())
 
@@ -369,12 +430,14 @@ $body
         environment: String = "linux-amd64-ci",
         machine: String? = "hosted-model-a",
         status: String? = null,
+        loadAverage: Double? = null,
     ): Path {
         val names = machine?.let { ""","machine":"$it"""" } ?: ""
         val marked = status?.let { ""","status":"$it"""" } ?: ""
+        val load = loadAverage?.let { ""","loadAverage":$it""" } ?: ""
         val lines = buildString {
             appendLine(
-                """{"kind":"run","environment":"$environment","os":"Linux","arch":"amd64","processors":4$names}""",
+                """{"kind":"run","environment":"$environment","os":"Linux","arch":"amd64","processors":4$load$names}""",
             )
             medians.forEach { (key, ms) ->
                 appendLine(
@@ -385,8 +448,12 @@ $body
         return Files.writeString(work.resolve(name), lines)
     }
 
-    private fun refresh(anchor: Path, vararg inputs: Path, allowRemovals: Boolean = false) =
-        run("refresh", anchor, inputs.toList(), allowRemovals)
+    private fun refresh(
+        anchor: Path,
+        vararg inputs: Path,
+        allowRemovals: Boolean = false,
+        allowContended: Boolean = false,
+    ) = run("refresh", anchor, inputs.toList(), allowRemovals, allowContended = allowContended)
 
     private fun run(
         mode: String,
@@ -394,6 +461,7 @@ $body
         inputs: List<Path>,
         allowRemovals: Boolean = false,
         resultsDirectory: Path? = null,
+        allowContended: Boolean = false,
     ): Result {
         val process = ProcessBuilder(listOf(script.toString(), mode) + inputs.map { it.toString() })
             .apply {
@@ -403,6 +471,10 @@ $body
                 // hypothetical — it happened while re-authoring anchors by hand (2026-08-13).
                 environment().remove("ALLOW_REMOVALS")
                 if (allowRemovals) environment()["ALLOW_REMOVALS"] = "1"
+                // Cleared for the same measured reason as ALLOW_REMOVALS above: an exported override in the
+                // caller's shell would turn the contention refusals below into silent passes.
+                environment().remove("ALLOW_CONTENDED")
+                if (allowContended) environment()["ALLOW_CONTENDED"] = "1"
                 resultsDirectory?.let { environment()["RESULTS_DIR"] = it.toString() }
             }
             .start()

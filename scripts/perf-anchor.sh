@@ -14,7 +14,9 @@
 #   scripts/perf-anchor.sh refresh [observations.jsonl ...]   fold run observations into the anchor
 #                                                            (refuses to leave a lane of THIS block without a bar —
 #                                                             of every anchored class when the block is new;
-#                                                             ALLOW_REMOVALS=1 overrides)
+#                                                             ALLOW_REMOVALS=1 overrides. Also refuses a LOCAL run
+#                                                             captured above 1.00 runnable threads per core;
+#                                                             ALLOW_CONTENDED=1 overrides)
 #   scripts/perf-anchor.sh show    [observations.jsonl ...]   print the diff a refresh WOULD make, change nothing
 #
 # PREFER SEVERAL RUNS. With more than one input the per-key anchor is their MEDIAN, which is what made the
@@ -149,6 +151,27 @@ for input_path in inputs:
                if not machine else
                " It reports machine='unknown', the probe's own failure sentinel rather than an identity, so"
                " re-measuring will produce it again: teach PerfAnchors.machine to name this machine first.")
+        )
+    # A CONTENDED capture is not a measurement, and the per-key median below does not rescue it. That median
+    # bounds ONE contended run among several; a capture SESSION on a busy machine inflates every input alike, so
+    # the median is inflated too. Load is recorded on every run record and, until 2026-09-19, compared nowhere —
+    # the "machine to itself" rule lived in prose and in whoever remembered it. Measured over the 30 committed
+    # darwin runs: the median run sits at 0.54 runnable threads per core, and six sit above 1.00 with the worst
+    # at 3.34. Above 1.00 there are more runnable threads than cores by definition, so the run was competing for
+    # the CPU it was measuring. HOSTED classes are exempt because the bar means something different there: all
+    # ten committed CI runs sit between 1.01 and 1.43, a 2-core VM being at capacity from the job itself, and
+    # that class is already a flag-not-fail bar over the runner CLASS rather than over a machine.
+    # An ABSENT loadAverage is trusted, on the same precedent as a record predating the status field: every
+    # current gate run writes it, so only imported history lacks it.
+    load, cores = header.get("loadAverage"), header.get("processors")
+    if not hosted and load is not None and cores and load / cores > 1.0 \
+            and not os.environ.get("ALLOW_CONTENDED"):
+        sys.exit(
+            f"{input_path} was captured at load {load:.2f} on {cores} processors"
+            f" ({load / cores:.2f} runnable threads per core), so it measured a machine it was competing with."
+            " Folding it would bar every later run against a contended number, and the per-key median cannot"
+            " undo that when the whole capture session was contended."
+            " Re-capture on a quiet machine, or re-run with ALLOW_CONTENDED=1 if that load was not CPU work."
         )
     identity = [("environment", "absolute times are only comparable within one runner class"),
                 ("commit", "folding revisions would average away the change one of them introduced")]
