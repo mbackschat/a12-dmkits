@@ -11,18 +11,18 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
- * The implementation plan's residue figure is DERIVED from the ledger, not remembered.
+ * The ledger's residue figure is DERIVED from its own rows, not remembered.
  *
- * <p><b>It is the project's own capacity signal, and it steers which family lands next.</b> Plan row 5 states
- * how many ledger rows still name a code the portable checker does not report, and a session picks its next
+ * <p><b>It is the project's own capacity signal, and it steers which family lands next.</b> The ledger states
+ * how many of its rows still name a code the portable checker does not report, and a session picks its next
  * block off that number. When it lags, the work is chosen against a picture of the estate that is no longer
  * true — measured 2026-09-15, when it read 31 with three blocks already closed and the derived value at 26.
  *
- * <p><b>Why a guard rather than the "re-derive rather than cite this" note the row already carries.</b> That
- * note is correct and was followed: each block that closed rewrote the number by hand, and the arithmetic
- * behind it lived only in the session that ran it. A figure nobody can recompute is not checkable, so the row
- * now states the whole derivation — total rows, rows naming an unreported code, the two exclusions — and this
- * guard recomputes all four. A stale figure fails with the recomputed sentence rather than with a diff.
+ * <p><b>Why a guard rather than the "re-derive rather than cite this" note the paragraph already carries.</b>
+ * That note is correct and was followed: each block that closed rewrote the number by hand, and the arithmetic
+ * behind it lived only in the session that ran it. A figure nobody can recompute is not checkable, so the
+ * paragraph now states the whole derivation — total rows, rows naming an unreported code, the two exclusions —
+ * and this guard recomputes all four. A stale figure fails with the recomputed sentence, not with a diff.
  *
  * <p><b>The exclusions are two different kinds of fact, and only one is mechanical.</b> A disposition CELL
  * saying {@code unreachable from stored DM-JSON} or {@code never reported} is a fixed marker. The second
@@ -51,9 +51,16 @@ class LedgerResidueFigureGuardTest {
 
     private static final Checkout CHECKOUT = Checkout.locate();
 
+    /**
+     * The ledger, which now carries BOTH the rows and the prose figure derived from them.
+     *
+     * <p>The prose half moved here on 2026-09-19, when the portable-consistency implementation plan was
+     * archived on completion. A figure derived from sources that keep changing is the one thing a frozen
+     * record must not state: this guard would have begun failing on the next checker edit with no legitimate
+     * remedy, because the only available fix would be editing the account of a finished program to track live
+     * numbers. Stating it in the document that owns the rows it counts also removes the second copy.
+     */
     private static final String LEDGER = "docs/MVK-LEDGER.md";
-
-    private static final String PLAN = "docs/archived/PORTABLE-CONSISTENCY-IMPLEMENTATION-PLAN.md";
 
     /** A ledger row: the code, then its whole disposition cell. */
     private static final Pattern LEDGER_ROW =
@@ -83,16 +90,16 @@ class LedgerResidueFigureGuardTest {
                     + "(\\d+) are excluded by their disposition CELL and (\\d+) by row PROSE");
 
     @org.junit.jupiter.api.Test
-    void thePlansResidueFigureMatchesWhatTheLedgerAndTheCheckerNowSay() {
+    void theLedgersResidueFigureMatchesWhatItsRowsAndTheCheckerNowSay() {
         Residue derived = derive();
-        String plan = read(PLAN);
-        Matcher residue = STATED_RESIDUE.matcher(plan);
-        assertTrue(residue.find(), () -> PLAN + " no longer states a residue figure in the guarded form");
-        Matcher arithmetic = STATED_ARITHMETIC.matcher(plan);
-        assertTrue(arithmetic.find(), () -> PLAN + " no longer states the residue's arithmetic");
+        String ledger = read(LEDGER);
+        Matcher residue = STATED_RESIDUE.matcher(ledger);
+        assertTrue(residue.find(), () -> LEDGER + " no longer states a residue figure in the guarded form");
+        Matcher arithmetic = STATED_ARITHMETIC.matcher(ledger);
+        assertTrue(arithmetic.find(), () -> LEDGER + " no longer states the residue's arithmetic");
 
         assertEquals(derived.sentence() + ", leaving " + derived.open(), stated(residue, arithmetic),
-                "the plan's residue figure has drifted from the ledger; the derived sentence is the expected one");
+                "the ledger's residue paragraph has drifted from its own rows; the derived sentence is expected");
     }
 
     /** A positive control on the reader: a residue nobody has closed is not zero, and the ledger is whole. */
