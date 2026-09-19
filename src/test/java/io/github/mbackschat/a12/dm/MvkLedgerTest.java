@@ -87,6 +87,43 @@ class MvkLedgerTest {
      */
     private static final int METAMODEL_CODE_FLOOR = 60;
 
+    /** The consult-only kernel checkout — the SOURCE oracle for whether a code has a Java raiser. */
+    private static final String KERNEL_DIR = System.getProperty("a12.kernel.dir", "../a12-kernel");
+
+    /**
+     * The four of the seven whose ledger rows claim no JAVA raiser — the claim this guard locks.
+     *
+     * <p><b>Three more rows claimed it and were wrong, which is why this exists</b> (measured 2026-09-19).
+     * {@code MVK_ERROR_FIELD_NOT_VALID} is raised at {@code ParserService:517}, which calls a
+     * {@code throwError} overload that does {@code throw new MVKParserError};
+     * {@code MVK_RULE_GROUP_IS_EMPTY_OR_INVALID} at {@code CheckRegelKontextEntityImpl:94}; and
+     * {@code MVK_ERROR_ITERATION_UNCHECKED} at {@code NormalisierteBerechnungsFormHelper:251} and
+     * {@code :463}, both behind {@code isHModel}. Three rows of a CI-locked ledger carried a false negative
+     * existential because the METAMODEL axis got a guard and the JAVA axis — the half asserted first and
+     * relied on most — got none. An absence nobody executes is an absence nobody re-checks.
+     */
+    private static final Set<String> NO_JAVA_RAISER = Set.of(
+            "MVK_INVALID_PREDEFINED_TYPE",
+            "MVK_NOT_ON_ERRORFIELD_PATH",
+            "MVK_ONLY_STRING_ENUM_NUMBER_CMP_DATE_ALLOWED_NO_FIELD",
+            "MVK_CALCULATION_FIELD_AND_NO_CALCULATION_RULE");
+
+    /**
+     * A code measured to HAVE a Java raiser, so a mis-scoped or empty walk cannot pass as an absence.
+     *
+     * <p>The metamodel sweep beside this one needs a control for the same reason; the difference is that this
+     * one is a REAL raiser rather than a witness borrowed from another axis, so it fails if the walk stops
+     * reaching {@code kernel-core-parser} at all.
+     */
+    private static final String JAVA_RAISER_CONTROL = "MVK_ERROR_FIELD_NOT_VALID";
+
+    /**
+     * Below this the checkout was not really walked. Live count <b>1821 non-generated {@code .java} files</b>
+     * (2026-09-19); the floor sits well under it because it answers "did the walk happen", not "how big is
+     * the kernel".
+     */
+    private static final int KERNEL_JAVA_FILE_FLOOR = 1200;
+
     @Test
     void ledgerCoversTheKernelEnumsExactly() throws IOException {
         Set<String> kernelCodes = new LinkedHashSet<>();
@@ -221,6 +258,98 @@ class MvkLedgerTest {
                         + "carrier rule in the corpus. The re-open trigger has fired: re-disposition each row "
                         + "in docs/MVK-LEDGER.md, and re-check whether it is a live false-pass route the "
                         + "checker should report — " + nowCarried);
+    }
+
+    /**
+     * The JAVA half of the same absence claim, which went unguarded until three rows of it turned out false.
+     *
+     * <p><b>What the rows assert.</b> Four of the seven say nothing in kernel {@code 30.8.1}'s Java sources
+     * raises the code, so the pre-flight they were credited with guards nothing. That is a negative
+     * existential over 1821 files, exactly the shape this estate requires an enumeration for — and it had
+     * none, while its metamodel sibling next door had a control, a floor and a reader test.
+     *
+     * <p><b>The discriminator is declaration versus use, because every one of the seven appears in Java.</b>
+     * Each is an enum constant somewhere ({@code ParserErrorTypesEnum}, {@code CalculationErrorType}), so
+     * "appears in a .java file" proves nothing. A DECLARATION is the enum-constant line itself; anything else
+     * naming the code is a USE, and a use in this estate is a raise — the three found on 2026-09-19 reach
+     * {@code throw new MVKParserError} or {@code errorLookup.reportError} within two frames. Measured that
+     * day: all seven have exactly one declaration, and the use counts are 1/0/0/0/1/0/2.
+     *
+     * <p><b>Reachability is deliberately NOT claimed.</b> Two of the three raisers sit behind a condition
+     * ({@code !parser.isLenient()}, {@code isHModel}), so this says a raiser EXISTS, never that a given model
+     * reaches it — the ledger's rows make the existence claim, and that is the one guarded here.
+     *
+     * <p><b>What this does NOT cover, stated because a sibling claim shape failed the same day.</b> Some rows
+     * do not say "no raiser exists" but "the raiser exists and nothing CALLS it" — a call-site absence, which
+     * needs a call graph rather than a token sweep and is not checked here. {@code MVK_INVALID_TABLE_ENUM}'s
+     * row carried exactly that claim about {@code CheckEntityUtils.checkNoTableEnum} and it was false
+     * ({@code CheckFeldOpImpl:105} calls it, live, in the {@code FELD_WERT_ALS_ZAHL} case; corrected
+     * 2026-09-19 in [KF422]). The hand list above is therefore deliberate rather than derived from the ledger
+     * prose: a regex over these cells cannot tell "no raiser" from "raiser never called", and mis-reading the
+     * second as the first is how a correct row nearly got "corrected" during this very sweep.
+     */
+    @Test
+    void theJavaAxisRaisesNoneOfTheCodesTheLedgerCallsDormantThere() throws IOException {
+        Path root = Path.of(KERNEL_DIR);
+        assumeTrue(Files.isDirectory(root), "a12-kernel not present — skipping the Java raiser sweep");
+
+        Map<String, Integer> declarations = new LinkedHashMap<>();
+        Map<String, Set<String>> uses = new LinkedHashMap<>();
+        Map<String, Pattern> declarationOf = new LinkedHashMap<>();
+        for (String code : UNMEASURED_ON_THE_METAMODEL_AXIS) {
+            declarations.put(code, 0);
+            uses.put(code, new LinkedHashSet<>());
+            declarationOf.put(code, Pattern.compile("^\\s*" + Pattern.quote(code) + "\\s*,"));
+        }
+
+        java.util.List<Path> sources;
+        try (var walk = Files.walk(root)) {
+            sources = walk.filter(Files::isRegularFile)
+                    .filter(p -> p.getFileName().toString().endsWith(".java"))
+                    .filter(p -> !p.toString().contains("/build/") && !p.toString().contains("delombok"))
+                    .toList();
+        }
+        for (Path source : sources) {
+            // Lenient decode: a stray non-UTF-8 byte must not abort a sweep whose whole job is completeness.
+            String[] lines = new String(Files.readAllBytes(source), StandardCharsets.UTF_8).split("\n", -1);
+            for (int i = 0; i < lines.length; i++) {
+                for (String code : UNMEASURED_ON_THE_METAMODEL_AXIS) {
+                    if (!lines[i].contains(code)) {
+                        continue;
+                    }
+                    if (declarationOf.get(code).matcher(lines[i]).find()) {
+                        declarations.merge(code, 1, Integer::sum);
+                    } else {
+                        uses.get(code).add(root.relativize(source) + ":" + (i + 1));
+                    }
+                }
+            }
+        }
+
+        assertTrue(
+                sources.size() >= KERNEL_JAVA_FILE_FLOOR,
+                "walked only " + sources.size() + " java files, below the floor of " + KERNEL_JAVA_FILE_FLOOR
+                        + " — a partial walk reports every code unraised and looks clean");
+        assertFalse(
+                uses.get(JAVA_RAISER_CONTROL).isEmpty(),
+                "the positive control " + JAVA_RAISER_CONTROL + " has no use site in " + root.toAbsolutePath()
+                        + ", so this sweep cannot see a Java raiser at all and the absences below would be an "
+                        + "artefact of the read rather than a measurement");
+        assertEquals(
+                java.util.List.of(),
+                declarations.entrySet().stream().filter(e -> e.getValue() != 1).map(Map.Entry::toString).sorted()
+                        .toList(),
+                "every code must be declared exactly once; a different count means the kernel renamed or "
+                        + "removed it and the ledger row is stale rather than merely unraised");
+
+        var raised = NO_JAVA_RAISER.stream().filter(c -> !uses.get(c).isEmpty()).sorted()
+                .map(c -> c + " -> " + uses.get(c)).toList();
+        assertEquals(
+                java.util.List.of(),
+                raised,
+                raised.size() + " code(s) dispositioned as having no JAVA raiser now have a use site. Correct "
+                        + "the row in docs/MVK-LEDGER.md and KF415 in docs/KERNEL-FINDINGS.md, and re-check "
+                        + "whether the code is a live false-pass route the checker should report — " + raised);
     }
 
     /**
