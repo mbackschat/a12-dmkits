@@ -21,6 +21,23 @@
 > enforcement, and its place in the docs router. The cleaner boundary is by AUTHOR, not by subject — `perf-results/`
 > is machine-written and self-pruning, this is hand-written and guard-verified.
 
+### Checkpoint 2026-09-19 — NFR #1's LATENCY half, measured against the pre-plan checkout for the first time: no regression, and the lane's two modes are a GC property of the run
+
+**The question was whether the interpreter's latency is regressed at HEAD against the fixed pre-plan baseline, and the answer is no.** Four captures on one machine in one 25-minute window, alternating trees, `:adapter:perfGateTest` in each: HEAD `191ad9f9b` against `ad4d5ff64` in the parked measurement clone, both gating the identical committed anchor (65.16 ms for `charset grapheme@32000`, verified in both trees before the run). Over the **168 comparable observation keys** the median delta is **−0.90 %** and the mean **−0.38 %**, with **28 keys above +5 % and 28 below −5 %** — a symmetric scatter rather than a shift, which is what distinguishes noise from a regression, and 112 keys sit inside ±5 %. The per-key range (−15.4 % … +21.5 %) is the run-to-run spread [IG152](INTERPRETER-GAPS.md) records, and it is why two runs per arm cannot resolve a 5 % bar even when the totals are clean.
+
+**The lane's two modes are discriminated by GC COUNT, not by the commit — a within-commit control on each arm separately.** This is the mechanism the previous entries declined to offer, and the HEAD pair is the case that settles it because load barely moves across it while GC moves from nothing to a storm:
+
+| arm | commit | loadAverage | `gcCountInWindow` | `charset grapheme@32000` | gate |
+|---|---|---|---|---|---|
+| HEAD | `191ad9f9b` | 2.26 | **0** | **62.52 ms** | accepted |
+| HEAD | `191ad9f9b` | 3.37 | **36** | **110.56 ms** | breached |
+| baseline | `ad4d5ff64` | 3.88 | **4** | **67.88 ms** | accepted |
+| baseline | `ad4d5ff64` | 6.90 | **35** | **122.57 ms** | breached |
+
+Both commits produce both modes, so the slow mode cannot have been introduced by any plan-era change — it is present at the NFR baseline itself. Within HEAD the swing is **1.77×** at an essentially unchanged load, which contention does not predict and a GC storm does. The archive agrees retrospectively: every darwin run at `gc` 35–76 sits at 101–138 ms and every run at `gc` 0–6 sits at 48–92 ms. In **both** regimes HEAD is the faster arm — −7.9 % clean (62.52 vs 67.88), −9.8 % in storm (110.56 vs 122.57) — so the direction of the residual also favours HEAD.
+
+**What this does NOT establish, stated because the same overreach already cost a day.** GC is shown to be *a* driver, not the sole one: four captures taken earlier the same afternoon recorded `gc=0` and still measured 88–119 ms, which no GC account explains and which external CPU load does. So there are at least two inflation paths and this window separates only one of them. The baseline breach at 122.57 is therefore a machine-state event, not evidence about `ad4d5ff64`'s cost, and the anchor is left where the 2026-08-23 capture put it. Records: `perf-results/darwin-aarch64/2026-09-19T17{5213}Z.jsonl` and `2026-09-19T18{1055}Z.jsonl` here, `2026-09-19T17{5824}Z.jsonl` and `2026-09-19T18{0426}Z.jsonl` in the measurement clone. Each capture carried a 5-second per-core idleness sample across its own window; the minimum idle was 26–31 % on every run, which is dominated by the measurement itself and so bounds external load only loosely — the instrument [INTERPRETER-PERFORMANCE](INTERPRETER-PERFORMANCE.md) asks for still does not exist.
+
 ### Checkpoint 2026-09-19 — re-derived: the `group-star expansion` lane's anchor is not too loose but too TIGHT, and every figure IG139 recorded was wrong
 
 **Re-derived from the committed runs alone, no new measurement.** IG139 was opened on 10 darwin runs; there are now 22. Restricted to `lane=group-star expansion`, `engine=interpreter`, `clock=cpu`, `status=accepted`:
