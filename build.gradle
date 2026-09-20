@@ -1400,8 +1400,8 @@ def verifyPublishingIsDeclaredLocally = tasks.register('verifyPublishingIsDeclar
 //
 // The defect this catches shipped twice and was invisible both times, because a POM is generated output that
 // no test read. Measured 2026-09-17, when the preflight was still its own module: `dmkits-consistency-gate`
-// and `dmkits-interpreter-preflight` both
-// declared `io.github.mbackschat.a12.dm:consistency-jvm:0.13.0` at COMPILE scope, and `:consistency` had no
+// and `dmkits-interpreter-preflight` both declared `io.github.mbackschat.a12.dm:consistency-jvm:0.13.0`
+// at COMPILE scope, and `:consistency` had no
 // `maven-publish` block at all — so a Maven consumer of either façade could not resolve the very types their
 // public API returns. `:predicates` had met the identical constraint earlier and its build file records it
 // ("published so `:rulekit` can depend on it without an unresolvable coordinate in a shipped POM"), which is
