@@ -730,8 +730,8 @@ Exact content:
 - Column header: "JAVA"
 - Column header: "KOTLIN"
 - Row label: "SIZE"
-- Java size: "47.7 kLOC"
-- Kotlin size: "19.1 kLOC"
+- Java size: "49.2 kLOC"
+- Kotlin size: "34.9 kLOC"
 - Row label: "STRUCTURE"
 - Java structure: "dmkits • adapter • cli"
 - Kotlin structure: "interpreter • adapter laws (tests)"
@@ -773,7 +773,7 @@ Layout-specific composition:
 - Keep common row labels at matching vertical positions and use additions only for technology-specific boundary or guardrail details.
 - Keep the upper cards visually equal; do not imply that one technology owns the others.
 - Make KOTLIN vs JAVA one compact full-width comparison table with a narrow row-label column and two equal language columns. Minimize row padding while keeping every value comfortably legible.
-- Align equivalent cells exactly. Put 47.7 kLOC and 19.1 kLOC in the largest type within the table.
+- Align equivalent cells exactly. Put 49.2 kLOC and 34.9 kLOC in the largest type within the table.
 - Keep each structure, function, technology, and runtime value to one or two lines. The technology arrows stay inside their own cells and never cross a column boundary.
 - Put the scope note in one restrained full-width footer inside the table boundary.
 - Put WHY THIS SPLIT SCALES in one compact full-width rounded band below the table. Use three equal columns with no arrows: portability, distribution, and trust.

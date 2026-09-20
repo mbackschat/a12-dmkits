@@ -11,6 +11,7 @@ Author, read, and safely edit the **rules** and **structure** of A12 Kernel docu
 - **dm.edit** — `EditSession`: structure + rule edits on one in-memory model, behind a single kernel gate
 - **schemakit** — JSON Schema / OpenAPI ⇄ document model, import and export
 - **the interpreter** — **[PUBLIC RELEASE REPOSITORY →](https://github.com/mbackschat/a12-interpreter-releases)** — kernel-free runtime evaluation (validate / compute); one engine for the JVM, native binary, Node.js, and browser, with a production browser JavaScript entry of about 250 kB gzip
+- **the portable checker** (`a12-consistency`) — kernel-free *consistency* checking: would A12 reject this model? One Kotlin Multiplatform implementation for the JVM, Node and the browser, answering `INVALID` or `INCONCLUSIVE` — and, deliberately, never `VALID`
 - **`dmtool`** — **[PUBLIC RELEASE REPOSITORY →](https://github.com/mbackschat/a12-dmtool-releases)** — the CLI over all of it: self-describing, machine-readable by default, explicitly profiled artifacts, agent-first
 
 <p align="center">
@@ -107,8 +108,9 @@ Prefer typed Java in your own JVM project? The same engine is a library — see 
 | a **modeller / BA**, or an **LLM agent** | **`dmtool`**, the CLI | verbs + profiled JSON/text I/O, single native binary, self-describing — no Java toolchain to install |
 | a **developer**, editing models in your own JVM project | **rulekit / modelkit** as a library | typed builders, kernel-checked, in your own code & compiler |
 | a **host that cannot execute a binary** — a web client, a hosted agent platform, a sandboxed integration | **`dmtool mcp`**, the MCP server ([contract](docs/MCP-SPEC.md)) | the same verbs as tools derived from the same command tree; every call carries its content both ways and the server keeps nothing |
+| a **TypeScript / Node / browser developer** who needs model *checking* with no kernel, server or licence | **`a12-consistency`**, the portable checker ([contract](docs/CONSISTENCY-API.md)) | one Kotlin Multiplatform implementation, strings in and out, nothing thrown; it reports `INVALID` or `INCONCLUSIVE` with its coverage evidence and never claims `VALID` |
 
-*(The kits — rulekit, modelkit, dm.edit, schemakit — are a **Java** library. The **interpreter** is Kotlin Multiplatform and its packed library is tested on JVM, Node.js, and Chrome.)*
+*(The kits — rulekit, modelkit, dm.edit, schemakit — are a **Java** library. The **interpreter** and the **portable checker** are Kotlin Multiplatform, and both packed libraries are tested on JVM, Node.js, and Chrome.)*
 
 ## Why Kotlin, GraalVM, and the A12 Kernel
 
@@ -401,6 +403,11 @@ dmtool -m order.dm.json rule check --field /Order/DeliveryDate \
 dmtool -m order.dm.json rule check --field /Order/DeliveryDate \
   --condition '…' --code DELIVERY_BEFORE_ORDER \
   --message 'en_US=Delivery $DeliveryDate.value$ precedes the order date.'
+
+# …or ask the kernel-free portable checker instead, which judges the candidate by what it INTRODUCES:
+# data.introduced / data.resolved, `verification: PORTABLE_CHECKED`, and exit 3 when it concludes nothing.
+dmtool -m order.dm.json rule check --engine portable --field /Order/DeliveryDate \
+  --condition '…' --code DELIVERY_BEFORE_ORDER
 
 dmtool -m order.dm.json rule add <rule-spec.json>          # persist it (kernel-checked before + after)
 dmtool -m sub.dm.json   computation add <comp-spec.json> --dry-run  # static preflight, writes nothing
@@ -954,6 +961,27 @@ The spread does not track model size: the widest margins were measured on comput
 
 ---
 
+## The portable checker — kernel-free consistency, without the kernel
+
+The interpreter answers *what happens when you run this model*. The **portable checker** (`a12-consistency`) answers the question before it: *would A12 reject this model at all?* — and it answers it with no server, no kernel and no licence, on the JVM, in Node and in the browser, from one Kotlin Multiplatform implementation.
+
+**It never says `VALID`, and that is the design rather than a shortfall.** "Would A12 accept this?" is a claim about every rule A12 has, and the checker implements a finite subset — 103 named check families today — so it reports `INVALID` or `INCONCLUSIVE` and publishes the coverage evidence (`checksCompleted`, `gaps`) that says how much weight the answer bears. What it *can* decide is its own scope, and that does have a pass: `outcome: ALL_CHECKS_PASSED` means every family this build implements ran and none rejected the model. Reading `INCONCLUSIVE` as "valid" is the one way to misuse it, which is why the status is a word rather than a boolean.
+
+```ts
+import { checkEditJson } from 'a12-consistency';
+
+// Gate a save by what the EDIT introduced, not by the state of the model it lands in.
+const edit = JSON.parse(checkEditJson(baselineJson, editedJson));
+edit.introduced;
+```
+
+- **Strings in, strings out, and nothing throws.** An unreadable source comes back as a report whose `diagnostics` explain the failure, so there is no `catch` branch to write. Beyond a whole-model check it answers an unsaved **draft**, the **impact** of a candidate change (which declarations it reaches, not which it broke), and holds one analysis across many questions through a **snapshot** — the editor path, where a keystroke costs one check rather than a full re-admission.
+- **The same answer from the CLI.** `dmtool model check --engine portable` runs exactly this checker; `--engine kernel` runs the real kernel. The engine you ask for is the engine that answers — neither ever falls back to the other, and the receipt names which one spoke.
+- **Worked, executable consumers.** A plain [Node project](consistency/consumer-tests/node) including a CI gate that cannot manufacture a pass, and a [browser consumer](consistency/consumer-tests/browser) replaying the same shared cases in real Chrome. Both install the packed tarball and import by package name.
+- **Read next:** the module front page [`consistency/README.md`](consistency/README.md) and the full contract [`docs/CONSISTENCY-API.md`](docs/CONSISTENCY-API.md). Two JVM façades sit on top for callers who already hold one of the other products — `PortableConsistencyGate` returns the verdict as a rulekit `ValidationResult`, and `ConsistencyPreflight` answers an interpreter consumer's static precondition.
+
+---
+
 <!-- source-statistics:root:start -->
 ## Source statistics
 
@@ -961,24 +989,24 @@ Generated with [Tokei](https://github.com/XAMPPRocky/tokei) from this repository
 
 ### Production
 
-The shipped product. Counted from `core/src/main/java`, `rulekit/src/main/java`, `modelkit/src/main/java`, `edit/src/main/java`, `schemakit/src/main/java`, `adapter/src/main/java`, `cli/src/main/java`, `interpreter/src/commonMain/kotlin`, `interpreter/src/jvmMain/kotlin`, `interpreter/src/jsMain/kotlin`, `interpreter/typescript/src`, `interpreter/consumer-tests/browser/src`, `cli/src/main/resources/io/github/mbackschat/a12/dm/cli/interp/custom-js-worker.mjs`.
+The shipped product. Counted from `core/src/main/java`, `rulekit/src/main/java`, `modelkit/src/main/java`, `edit/src/main/java`, `schemakit/src/main/java`, `adapter/src/main/java`, `cli/src/main/java`, `interpreter/src/commonMain/kotlin`, `interpreter/src/jvmMain/kotlin`, `interpreter/src/jsMain/kotlin`, `consistency/src/commonMain/kotlin`, `consistency/src/jsMain/kotlin`, `predicates/src/commonMain/kotlin`, `interpreter-bridge/src/main/kotlin`, `consistency-gate/src/main/kotlin`, `interpreter/typescript/src`, `interpreter/consumer-tests/browser/src`, `cli/src/main/resources/io/github/mbackschat/a12/dm/cli/interp/custom-js-worker.mjs`.
 
 | Language | Files | Lines | Code | Comments | Blanks |
 |---|---:|---:|---:|---:|---:|
-| Java | 479 | 68872 | 47746 | 14096 | 7030 |
-| Kotlin | 115 | 29388 | 19068 | 7908 | 2412 |
+| Java | 497 | 72278 | 49168 | 15844 | 7266 |
+| Kotlin | 270 | 58801 | 34892 | 19530 | 4379 |
 | TypeScript | 17 | 3762 | 3209 | 274 | 279 |
 | JavaScript | 1 | 107 | 72 | 25 | 10 |
 
 ### Verification
 
-Tests, laws, kernel differentials, fuzzers, conformance replay, and the external consumer programs compiled against the packed artifacts. Counted from `src/test/java`, `schemakit/src/test/java`, `adapter/src/test/java`, `cli/src/test/java`, `src/noBackendTest/java`, `src/releaseGuardTest/java`, `adapter/src/kernelClosureConsumer/java`, `interpreter/src/jvmTest/java`, `interpreter/consumer-tests/kotlin-jvm/src/main/java`, `adapter/src/test/kotlin`, `interpreter/src/commonTest/kotlin`, `interpreter/src/jvmTest/kotlin`, `interpreter/src/jsTest/kotlin`, `interpreter/consumer-tests/kotlin-jvm/src/main/kotlin`, `interpreter/consumer-tests/kotlin-js/src/jsMain/kotlin`, `interpreter/consumer-tests/typescript/src`, `interpreter/consumer-tests/browser/scripts`.
+Tests, laws, kernel differentials, fuzzers, conformance replay, and the external consumer programs compiled against the packed artifacts. Counted from `src/test/java`, `schemakit/src/test/java`, `adapter/src/test/java`, `cli/src/test/java`, `src/noBackendTest/java`, `src/releaseGuardTest/java`, `adapter/src/kernelClosureConsumer/java`, `adapter/src/testFixtures/java`, `interpreter/src/jvmTest/java`, `consistency-gate/src/test/java`, `interpreter/consumer-tests/kotlin-jvm/src/main/java`, `adapter/src/test/kotlin`, `interpreter/src/commonTest/kotlin`, `interpreter/src/jvmTest/kotlin`, `interpreter/src/jsTest/kotlin`, `consistency/src/commonTest/kotlin`, `predicates/src/commonTest/kotlin`, `interpreter-bridge/src/test/kotlin`, `consistency-gate/src/test/kotlin`, `interpreter/consumer-tests/kotlin-jvm/src/main/kotlin`, `interpreter/consumer-tests/kotlin-js/src/jsMain/kotlin`, `interpreter/consumer-tests/typescript/src`, `interpreter/consumer-tests/browser/scripts`.
 
 | Language | Files | Lines | Code | Comments | Blanks |
 |---|---:|---:|---:|---:|---:|
-| Java | 770 | 107912 | 78062 | 16484 | 13366 |
-| Kotlin | 743 | 104715 | 77588 | 16313 | 10814 |
-| TypeScript | 14 | 3285 | 3103 | 50 | 132 |
+| Java | 1039 | 159729 | 110190 | 30989 | 18550 |
+| Kotlin | 1013 | 153786 | 111144 | 27686 | 14956 |
+| TypeScript | 15 | 3372 | 3154 | 73 | 145 |
 
 ### Tooling
 
@@ -992,6 +1020,37 @@ Build scripts, build-time generators, and the evaluation harness — neither shi
 
 Maintainers regenerate these tables with the local statistics updater; both release publishers compare them with fresh counts before any public mutation.
 <!-- source-statistics:root:end -->
+
+---
+
+## Repository layout
+
+**A top-level directory is one of five things, and never two.** The rule is what the entry *produces*, not what it is about — so the checker's module, the checker's demos and the checker's docs live in three different categories on purpose.
+
+**1. Modules that produce a published artifact.** Each is a Gradle module with its own `build.gradle`, its own purity lint, and a committed public-API golden under [`api/`](api).
+
+| module | artifact | what it is |
+|---|---|---|
+| [`core`](core) | `dmkits-core` | the shared types and the SPI ports the kits reach the kernel through |
+| [`rulekit`](rulekit) | `dmkits-rulekit` | validation rules and computations as typed, model-bound Java |
+| [`modelkit`](modelkit) | `dmkits-modelkit` | the model's structure — fields, groups, type definitions, includes, config |
+| [`edit`](edit) | `dmkits-edit` | `EditSession`: structure + rule edits on one model behind a single kernel gate |
+| [`schemakit`](schemakit) | `dmkits-schemakit` | JSON Schema / OpenAPI ⇄ document model |
+| [`interpreter`](interpreter) | `dm-interpreter` | the kernel-free runtime evaluator (Kotlin Multiplatform: JVM + JS) |
+| [`consistency`](consistency) | `dm-consistency` / `a12-consistency` | the kernel-free consistency checker (Kotlin Multiplatform: JVM + JS) |
+| [`predicates`](predicates) | `dm-predicates` | the dependency-free leaf holding A12 laws the Java kits and the checker would otherwise each restate |
+| [`interpreter-bridge`](interpreter-bridge) | `dmkits-interpreter-bridge` | condition read-back with no kernel present — the one module depending on both `rulekit` and `interpreter` |
+| [`consistency-gate`](consistency-gate) | `dmkits-consistency-gate` | the two JVM façades over the checker, for a dmkits caller and for an interpreter consumer |
+
+**2. Modules that produce something other than a library.** [`cli`](cli) is the `dmtool` application, shipped as a native binary rather than a jar. [`adapter`](adapter) is the kernel backend — the only module that touches the kernel's internal read tier, deliberately unpublished so that tier can never reach a consumer. [`src`](src) is the root project's own source, and it is **test-only**: root has no main source at all, and hosts the cross-kit integration suite plus the public-API lock.
+
+**3. What ships to a coding agent.** [`skill`](skill) holds the two canonical skills — the authoring skill (the material the self-sufficiency eval measures) and the bug-report skill. [`plugin`](plugin) and [`plugin-codex`](plugin-codex) are the Claude Code and Codex plugin trees; their skill copies are generated from `skill/` by [`scripts/sync-plugin-assets.sh`](scripts/sync-plugin-assets.sh), never hand-edited.
+
+**4. How the claims get proved.** [`corpus`](corpus) is the kernel-verified conformance corpus the interpreter replays. [`eval`](eval) is the self-sufficiency benchmark harness that measures whether a cold agent can drive the tool. [`probe`](probe) drives a multi-prompt session against the *shipped* native binary and captures every friction. [`perf-results`](perf-results) holds the committed performance records, per platform. [`api`](api) holds the public-API goldens, one per published artifact.
+
+**5. What a reader or user meets.** [`docs`](docs) — every design document, spec, findings record and gap ledger, indexed by [`docs/README.md`](docs/README.md). [`examples`](examples) — the runnable `dmtool` walkthroughs, with their own sample models. [`assets`](assets) — the infographics this README embeds.
+
+**And the build itself:** [`gradle`](gradle) (the wrapper, the shared build fragments, and the Kotlin/JS yarn lockfile), [`scripts`](scripts) (every repository tool, indexed by [`scripts/README.md`](scripts/README.md)), and [`bin`](bin) — one launcher shim so a doc, demo or script writes `dmtool …` without naming a packaging artifact.
 
 ---
 

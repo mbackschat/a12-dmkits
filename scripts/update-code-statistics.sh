@@ -47,6 +47,9 @@ JAVA_SOURCES=(
 KOTLIN_SOURCES=(
   "$ROOT/interpreter/src/commonMain/kotlin" "$ROOT/interpreter/src/jvmMain/kotlin"
   "$ROOT/interpreter/src/jsMain/kotlin"
+  "$ROOT/consistency/src/commonMain/kotlin" "$ROOT/consistency/src/jsMain/kotlin"
+  "$ROOT/predicates/src/commonMain/kotlin"
+  "$ROOT/interpreter-bridge/src/main/kotlin" "$ROOT/consistency-gate/src/main/kotlin"
 )
 TYPESCRIPT_LIBRARY_SOURCES=("$ROOT/interpreter/typescript/src")
 TYPESCRIPT_SHOWCASE_SOURCES=("$ROOT/interpreter/consumer-tests/browser/src")
@@ -56,12 +59,15 @@ TYPESCRIPT_SHOWCASE_SOURCES=("$ROOT/interpreter/consumer-tests/browser/src")
 JAVA_TEST_SOURCES=(
   "$ROOT/src/test/java" "$ROOT/schemakit/src/test/java" "$ROOT/adapter/src/test/java"
   "$ROOT/cli/src/test/java" "$ROOT/src/noBackendTest/java" "$ROOT/src/releaseGuardTest/java"
-  "$ROOT/adapter/src/kernelClosureConsumer/java" "$ROOT/interpreter/src/jvmTest/java"
+  "$ROOT/adapter/src/kernelClosureConsumer/java" "$ROOT/adapter/src/testFixtures/java"
+  "$ROOT/interpreter/src/jvmTest/java" "$ROOT/consistency-gate/src/test/java"
   "$ROOT/interpreter/consumer-tests/kotlin-jvm/src/main/java"
 )
 KOTLIN_TEST_SOURCES=(
   "$ROOT/adapter/src/test/kotlin" "$ROOT/interpreter/src/commonTest/kotlin"
   "$ROOT/interpreter/src/jvmTest/kotlin" "$ROOT/interpreter/src/jsTest/kotlin"
+  "$ROOT/consistency/src/commonTest/kotlin" "$ROOT/predicates/src/commonTest/kotlin"
+  "$ROOT/interpreter-bridge/src/test/kotlin" "$ROOT/consistency-gate/src/test/kotlin"
   "$ROOT/interpreter/consumer-tests/kotlin-jvm/src/main/kotlin"
   "$ROOT/interpreter/consumer-tests/kotlin-js/src/jsMain/kotlin"
 )
