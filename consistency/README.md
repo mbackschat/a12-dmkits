@@ -4,21 +4,24 @@ A standalone, Kernel-free consistency checker for A12 **DocumentModels** — the
 
 **Read this first: there are two questions here, and only one of them has a pass.** *"Would A12 accept this model?"* is a claim about every rule A12 has, and this checker is not feature-complete, so it answers `INVALID` or `INCONCLUSIVE` and never `VALID`. *"Did everything this checker implements pass?"* is a question about a finite, known list — so it does have a pass, published as `outcome: 'ALL_CHECKS_PASSED'`. The two are not the same green light, and `complete: false` is what keeps them apart.
 
-## Install
+## Getting it
 
-For TypeScript, JavaScript and Node, the package is `a12-consistency`. It declares **no runtime dependencies**, so installing it pulls nothing else.
+**There is no public release yet, so `npm add a12-consistency` will not work and neither will a plain Maven coordinate.** The publish wiring exists and the *deploy* is deferred: [`../docs/RELEASE-SPEC.md`](../docs/RELEASE-SPEC.md) §11 lists `dm-consistency` with the developer-library wave whose Central-or-mirror deploy has not happened, and unlike [`../interpreter`](../interpreter) and `dmtool` this module has no release mirror or publisher script of its own. Until then you build the artifact rather than declare a dependency.
 
 ```sh
-npm add a12-consistency        # or pnpm add / yarn add
+./build.sh :consistency:packConsistencyNpmPackage   # → consistency/build/consumer-tests/pack/a12-consistency-<version>.tgz
+./build.sh :consistency:publishToMavenLocal         # → ~/.m2, as dm-consistency / dm-consistency-jvm
 ```
 
-For Kotlin or Java on the JVM, the Maven coordinate is `io.github.mbackschat.a12.dm:dm-consistency` (a Gradle-module marker; `dm-consistency-jvm` carries the classes, and Gradle metadata resolves it for you).
+Install the tarball by path — which is exactly what [`consumer-tests/node`](consumer-tests/node) does, so that project doubles as the worked example:
 
-```kotlin
-implementation("io.github.mbackschat.a12.dm:dm-consistency:0.13.0")
+```sh
+npm install /path/to/a12-consistency-<version>.tgz
 ```
 
-Both artifacts are built from the same Kotlin Multiplatform sources and answer identically — held by `:consistency:verifyCheckerArtifactIdentity`, which refuses a build where the npm version, the jar coordinate and the compiled `CHECKER_VERSION` constant disagree.
+From Gradle, add `mavenLocal()` and depend on `io.github.mbackschat.a12.dm:dm-consistency:<version>`. That root coordinate is a Gradle-module marker rather than a jar — Gradle metadata redirects it to `dm-consistency-jvm`, which carries the classes — so a Maven-only consumer names `dm-consistency-jvm` directly.
+
+**When it does ship, the two artifacts will be the same checker, and that is checked rather than intended.** `:consistency:verifyCheckerArtifactIdentity` refuses a build where the staged npm version, the jar coordinate and the compiled `CHECKER_VERSION` constant disagree — so a receipt naming a version and the package carrying it cannot drift apart. The package declares **no runtime dependencies**, so installing it pulls nothing else.
 
 ## Using it
 
@@ -54,7 +57,7 @@ From Kotlin or Java the same check is `check(ModelSource(json))`, returning the 
 
 **Every report also says what it did NOT check.** `gaps` names what nobody examined, and `complete` is `false` on every report today — published anyway, so a consumer switching on it keeps working when it starts carrying information. A consumer that shows a user "no problems found" without surfacing the gaps is reporting a verdict the checker did not give.
 
-The full contract — the report's members, each call's arguments, the JVM entry points, and the two JVM façades (`PortableConsistencyGate` for a dmkits caller, `ConsistencyPreflight` for an interpreter consumer) — is [`docs/CONSISTENCY-API.md`](https://github.com/mbackschat/a12-dmkits/blob/main/docs/CONSISTENCY-API.md).
+The full contract — the report's members, each call's arguments, the JVM entry points, and the two JVM façades (`PortableConsistencyGate` for a dmkits caller, `ConsistencyPreflight` for an interpreter consumer) — is [`docs/CONSISTENCY-API.md`](../docs/CONSISTENCY-API.md). Every `../` link here points into the source repository this package is built from; the npm tarball ships the README, the licence and the module itself, and nothing else.
 
 ## Worked consumers
 
