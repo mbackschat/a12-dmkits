@@ -26,22 +26,53 @@ internal data class PerformanceScaleSample(
     val elapsedMillis: List<Double>,
     /** Measuring-thread CPU milliseconds for the same regions as [elapsedMillis], index for index. */
     val cpuMillis: List<Double>,
+    /**
+     * GC milliseconds for the same regions, index for index, or `null` where the carrier cannot report it.
+     *
+     * Present on the JVM and absent on Node, for the reason [PerformancePlatform.cumulativeGcMillis] gives. It
+     * exists so a low [occupancy] can be attributed: collection the code itself caused, or a machine that was
+     * busy. `null` is "not observable", never "no GC".
+     */
+    val gcMillis: List<Double>?,
     val cardinality: Int,
     val supported: Boolean,
     val outcome: String,
 ) {
     /**
-     * Median CPU-over-wall ratio across this scale's regions — how much of its elapsed time the measuring
-     * thread actually spent running.
+     * Median share of this scale's regions that the measuring thread spent running, with **collection time
+     * removed from the denominator** where the carrier reports it.
      *
      * Near 1.0 the thread owned its core and the elapsed time is the code's cost. Well below it the thread was
-     * descheduled or waiting, and the elapsed time is partly the machine's, which is the confusion that let a
+     * descheduled or waiting, and the elapsed time is partly the machine's — the confusion that let a
      * contaminated bundle arm read as a 24–41 % improvement (IG153).
+     *
+     * **Why GC leaves the denominator, and why the plain ratio had to go (measured 2026-09-20, idle machine).**
+     * Collection runs on its own threads, so a pause inflates wall while leaving this numerator flat: a plain
+     * `cpu / wall` therefore falls when the code ALLOCATES more, which makes it partly a *post-treatment*
+     * quantity — the property `PerfEnvironmentQuality` cites for never filtering on GC at all. That is not a
+     * theoretical worry, it **inverts the ranking**. One scenario, the heap the only variable, nothing else on
+     * the box: at 1 g the plain ratio read 0.8745 and at 320 m it read **0.6868 — under the old 0.70 floor** —
+     * while a genuinely contaminated capture (four busy cores, wall inflated 37.5 %) read 0.8302, comfortably
+     * above it. The old bar would have refused the healthy capture and passed the contaminated one.
+     *
+     * With collection out of the denominator the same two idle arms read **0.9972** and **0.9962**, so a 3.6×
+     * change in GC time (27 → 98 ms per region) moves this quantity by 0.001. That is what makes it a contention
+     * signal rather than an allocation one.
+     *
+     * A region the carrier cannot report GC for keeps the plain ratio, which is right for Node: its numerator is
+     * whole-process CPU and already counts V8's collector, so allocation never depressed it.
      */
     fun occupancy(): Double {
         require(elapsedMillis.size == cpuMillis.size) { "cpu and wall sample counts differ" }
+        val gc = gcMillis
         val ratios = elapsedMillis.indices
-            .map { if (elapsedMillis[it] <= 0.0) 0.0 else cpuMillis[it] / elapsedMillis[it] }
+            .map { index ->
+                val wall = elapsedMillis[index] - (gc?.get(index) ?: 0.0)
+                // GC elapsed time is an UPPER bound on the pause charged to this thread, so the adjusted
+                // denominator can reach zero. A region wholly accounted for by collection carries no evidence
+                // that the machine was busy, and a contention floor must not refuse it as though it did.
+                if (wall <= 0.0) 1.0 else cpuMillis[index] / wall
+            }
             .sorted()
         return ratios[ratios.size / 2]
     }
@@ -79,35 +110,47 @@ internal data class PerformanceRun(
 internal object PerformanceProtocol {
 
     /**
-     * 2 since 2026-09-19, when every sample gained its measuring-thread CPU time.
+     * 3 since 2026-09-19, when a JVM sample gained the GC time behind its occupancy; 2 added occupancy itself.
      *
-     * A clean break rather than an optional field: a record without occupancy cannot be judged for
-     * contamination, so silently admitting one would reinstate exactly the blind spot IG153 names — and the
-     * raws are ephemeral build outputs, so nothing committed needs to be read back at version 1.
+     * A clean break rather than an optional field, both times: a record without occupancy cannot be judged for
+     * contamination and one without GC cannot have a low occupancy ATTRIBUTED, so silently admitting either
+     * reinstates a blind spot — and the raws are ephemeral build outputs, so nothing committed needs reading
+     * back at an older version. The per-sample series is separately nullable because a *carrier* may be unable
+     * to report GC; that is a different statement from a record predating the field.
      */
-    private const val VERSION = 2
+    private const val VERSION = 3
 
     /**
-     * The floor a process's median occupancy must clear — **per carrier, because it is not the same quantity
-     * on both**, and measured rather than chosen.
+     * The floor a process's median [PerformanceScaleSample.occupancy] must clear — **per carrier, because it is
+     * not the same quantity on both**, and measured rather than chosen.
      *
-     * On the JVM the numerator is the MEASURING THREAD's CPU time, so a healthy region sits just under 1.0:
-     * GC pauses and safepoints stop that thread while the wall clock runs. Measured on an idle machine
-     * (2026-09-19, 12 JVM scale-samples of one bundle invocation): **0.859 – 0.994, median 0.903**.
+     * **What this bar claims, stated narrowly because the measurement will not support more.** It asks *did
+     * this region get a core*, not *was the machine quiet*. Measured on an idle machine 2026-09-20 against the
+     * same scenario with four of eight cores busy: wall time inflated **+37.5 %** while the corrected ratio
+     * moved only **−4.0 %**, because stalled cycles are charged to the measuring thread and so land in the
+     * numerator too (+30.5 %). Two of that arm's three samples sit inside the idle band. So moderate contention
+     * is NOT detectable here and no floor on this quantity can catch it; what is detectable is starvation, and
+     * cleanly — two-times core oversubscription measured **0.313 – 0.348** against a healthy **0.833 – 1.000**.
+     * Covering the gap needs a different instrument, tracked as IG154.
      *
-     * On Node the numerator is `process.cpuUsage()`, which counts EVERY thread — the libuv pool and V8's
-     * background GC and compiler threads included — so a healthy region sits *above* 1.0. Measured in the same
-     * invocation (15 Node scale-samples): **1.041 – 2.355, median 1.155**. An earlier draft of this protocol
-     * asserted Node was single-threaded and could share the JVM's floor; the first measurement refuted it, and
-     * a shared floor would have been either blind on Node or permanently red on the JVM.
+     * **JVM — floor 0.75.** The numerator is the MEASURING THREAD's CPU and the denominator excludes collection,
+     * so a healthy warm region sits at essentially 1.0: **6 warm-throughput samples across the two heaps read
+     * 0.9924 – 1.0002** (the upper value above 1.0 because collector elapsed time is an upper bound on the pause
+     * this thread actually paid). The binding constraint is not throughput but a **cold first answer**: the first
+     * fork of a bundle's first scenario measured **0.8328** with no collection at all, the thread blocked on
+     * class loading rather than starved, while its sibling forks read 0.9944 and 0.9921. A floor must admit that
+     * sample, so it sits ~10 % below it and still 2.2× above the starved band.
      *
-     * Both fall when the process is starved of cycles, which is what the bar reads. The floors sit ~18 % below
-     * each carrier's observed minimum: the question is "did this region get the machine?", not "was the machine
-     * perfectly idle", and a floor that fires on healthy variation is a floor that gets removed. The margin is
-     * wide because the basis is one invocation; `aStarvedProcessIsRefusedOnBothCarriers` proves it still fires.
+     * **Node — floor 0.85, unchanged and re-confirmed.** The numerator is `process.cpuUsage()`, which counts
+     * EVERY thread — the libuv pool and V8's background GC and compiler threads included — so a healthy region
+     * sits *above* 1.0: 15 samples measured **1.041 – 2.250, median 1.154** (2026-09-20), against 1.041 – 2.355
+     * a day earlier. Node reports no GC, so its ratio is uncorrected; it never needed the correction, because a
+     * collector in the numerator cannot depress it. An early draft asserted Node was single-threaded and could
+     * share the JVM's floor; the first measurement refuted that, and a shared floor would have been either
+     * blind on Node or permanently red on the JVM.
      */
     internal fun minOccupancy(host: PerformanceHost): Double = when (host) {
-        PerformanceHost.JVM -> 0.70
+        PerformanceHost.JVM -> 0.75
         PerformanceHost.NODE -> 0.85
     }
     private val COMMIT = Regex("[0-9a-f]{8,64}")
@@ -141,6 +184,18 @@ internal object PerformanceProtocol {
             }
             require(sample.cpuMillis.all { it.isFinite() && it >= 0.0 }) {
                 "${fork.scenario.id}/${sample.scale}: cpu times must be finite and non-negative"
+            }
+            // A carrier may report no GC at all, which is absent rather than empty. What it may not do is report
+            // a series that does not line up with the regions: the whole point of recording GC is to attribute
+            // region i's low occupancy, and a misaligned series would attribute a neighbour's collection to it.
+            sample.gcMillis?.let { gc ->
+                require(gc.size == sample.elapsedMillis.size) {
+                    "${fork.scenario.id}/${sample.scale}: ${gc.size} gc samples against " +
+                        "${sample.elapsedMillis.size} wall samples, so a low occupancy could not be attributed"
+                }
+                require(gc.all { it.isFinite() && it >= 0.0 }) {
+                    "${fork.scenario.id}/${sample.scale}: gc times must be finite and non-negative"
+                }
             }
             require(sample.supported) { "${fork.scenario.id}/${sample.scale}: unsupported semantics" }
             require(sample.cardinality >= 0) { "${fork.scenario.id}/${sample.scale}: negative cardinality" }
@@ -296,6 +351,10 @@ internal object PerformanceProtocol {
                         timing.jsonPrimitive.doubleOrNull
                             ?: throw IllegalArgumentException("cpuMillis[$index] must be a number")
                     },
+                    gcMillis = (sample["gcMillis"] as? JsonArray)?.mapIndexed { index, timing ->
+                        timing.jsonPrimitive.doubleOrNull
+                            ?: throw IllegalArgumentException("gcMillis[$index] must be a number")
+                    },
                     cardinality = sample.requiredInt("cardinality"),
                     supported = sample.requiredBoolean("supported"),
                     outcome = sample.requiredString("outcome"),
@@ -349,14 +408,18 @@ internal object PerformanceProtocol {
     )
 
     private fun sampleJson(sample: PerformanceScaleSample): JsonObject = JsonObject(
-        mapOf(
-            "scale" to JsonPrimitive(sample.scale),
-            "elapsedMillis" to JsonArray(sample.elapsedMillis.map(::JsonPrimitive)),
-            "cpuMillis" to JsonArray(sample.cpuMillis.map(::JsonPrimitive)),
-            "cardinality" to JsonPrimitive(sample.cardinality),
-            "supported" to JsonPrimitive(sample.supported),
-            "outcome" to JsonPrimitive(sample.outcome),
-        ),
+        buildMap {
+            put("scale", JsonPrimitive(sample.scale))
+            put("elapsedMillis", JsonArray(sample.elapsedMillis.map(::JsonPrimitive)))
+            put("cpuMillis", JsonArray(sample.cpuMillis.map(::JsonPrimitive)))
+            // Omitted rather than written as null when the carrier cannot report: a key that is absent and a key
+            // whose value is `null` both parse back to absent, and the shorter form keeps the record honest
+            // about having nothing to say.
+            sample.gcMillis?.let { put("gcMillis", JsonArray(it.map(::JsonPrimitive))) }
+            put("cardinality", JsonPrimitive(sample.cardinality))
+            put("supported", JsonPrimitive(sample.supported))
+            put("outcome", JsonPrimitive(sample.outcome))
+        },
     )
 
     private fun JsonObject.requiredString(name: String): String =

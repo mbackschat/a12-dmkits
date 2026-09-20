@@ -45,7 +45,8 @@ private class NodePerformancePlatform : PerformancePlatform {
      *
      * Node exposes no per-thread CPU clock in stable form, so this is all the carrier can give, and it is not
      * the JVM's quantity: the libuv pool and V8's background GC and compiler threads are included, which is
-     * why Node occupancy measures 1.041–2.355 on an idle machine rather than just under 1.0. It still falls
+     * why Node occupancy measures 1.0407–2.2500 on an idle machine (15 scale-samples, 2026-09-20) rather than
+     * just under 1.0. It still falls
      * when the process is starved of cycles, which is the signal the floor reads, so the floor is keyed by host
      * rather than shared. Both halves are summed because a region that spent its time in the kernel still ran.
      */
@@ -54,6 +55,17 @@ private class NodePerformancePlatform : PerformancePlatform {
         val micros = (usage.user as Number).toDouble() + (usage.system as Number).toDouble()
         return (micros * 1_000.0).toLong()
     }
+
+    /**
+     * `null` — Node exposes no stable per-process GC accounting, and this carrier does not need it.
+     *
+     * The JVM records GC because its occupancy numerator EXCLUDES collection, which makes the ratio partly
+     * post-treatment. Node's numerator is `process.cpuUsage()` across every thread, so V8's collector lands in
+     * the numerator and the denominator alike and cannot depress the ratio the same way. Reporting `0.0` here
+     * would be the absence-versus-zero error (IF285): it would read as "this region saw no collection", which is
+     * not something this carrier measured.
+     */
+    override fun cumulativeGcMillis(): Double? = null
 
     override fun sha256(content: String): String =
         NodeCrypto.createHash("sha256").update(content, "utf8").digest("hex") as String

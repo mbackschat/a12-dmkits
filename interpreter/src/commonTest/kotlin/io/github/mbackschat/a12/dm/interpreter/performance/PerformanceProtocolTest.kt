@@ -201,6 +201,61 @@ class PerformanceProtocolTest {
         }
     }
 
+    /**
+     * The does-fire proof carried by REAL measured regions rather than by round synthetic numbers.
+     *
+     * These three wall/cpu/gc triples are verbatim from `jvm-throughput-1` of the 2026-09-20 starvation arm —
+     * sixteen busy loops on eight cores, two-times oversubscription — where the measuring thread got roughly a
+     * third of its elapsed time. The correction does not rescue them and must not: this is a genuinely starved
+     * capture, not an allocating one, and the difference is the whole point of the pair of tests here. Kept as
+     * literals because a fixture that merely *resembles* a starved capture would drift away from the band the
+     * floor was set against.
+     */
+    @Test
+    fun theMeasuredStarvationArmIsRefused() {
+        val scenario = PerformanceScenario.JVM_B1_ABSOLUTE_THROUGHPUT
+        val wall = listOf(766.60, 887.25, 805.94)
+        val fork = fork(
+            scenario, 1, "starved", wall, wall, warmup = 2,
+            cpu = listOf(278.32, 286.29, 290.54),
+            gc = listOf(48.0, 41.0, 49.0),
+        )
+
+        val failure = assertFailsWith<IllegalArgumentException> {
+            PerformanceProtocol.aggregate(listOf(fork), 1, listOf(scenario))
+        }
+        assertTrue(
+            failure.message!!.contains("occupancy"),
+            "the refusal must name occupancy; was: ${failure.message}",
+        )
+    }
+
+    /**
+     * The regression lock for the defect this protocol shipped: an ALLOCATING but healthy capture is accepted.
+     *
+     * Measured 2026-09-20 on an idle machine, one scenario, the heap the only variable: at 320 m the plain
+     * `cpu / wall` read 0.6868 — under the floor of the day — while the same capture's GC-corrected ratio read
+     * 0.9962. The aggregate therefore refused a capture taken on a machine with nothing else running and told
+     * the reader to re-measure on an idle one. The fixture below is that shape in round numbers: the plain
+     * ratio is asserted to sit under the live floor, so this test still means something if the floor moves,
+     * and the fork is nonetheless accepted.
+     */
+    @Test
+    fun anAllocationHeavyCaptureIsAcceptedAlthoughItsPlainRatioWouldNotBe() {
+        val scenario = PerformanceScenario.JVM_B1_ABSOLUTE_THROUGHPUT
+        val wall = listOf(100.0, 100.0, 100.0)
+        val fork = fork(
+            scenario, 1, "allocating", wall, wall,
+            warmup = 2, cpu = listOf(69.0, 69.0, 69.0), gc = listOf(30.0, 30.0, 30.0),
+        )
+
+        assertTrue(
+            0.69 < PerformanceProtocol.minOccupancy(PerformanceHost.JVM),
+            "the fixture must sit UNDER the live floor on the plain ratio, or it proves nothing",
+        )
+        PerformanceProtocol.aggregate(listOf(fork), 1, listOf(scenario))
+    }
+
     /** A healthy capture is not refused — the other half of the bar, without which the floor could be 10.0. */
     @Test
     fun anIdleMachinesMeasuredOccupancyIsAccepted() {
@@ -219,6 +274,7 @@ class PerformanceProtocolTest {
             scale = 1,
             elapsedMillis = listOf(100.0, 100.0, 100.0),
             cpuMillis = listOf(10.0, 90.0, 50.0),
+            gcMillis = null,
             cardinality = 1,
             supported = true,
             outcome = "codes=X",
@@ -231,6 +287,107 @@ class PerformanceProtocolTest {
         )
     }
 
+    /**
+     * A GC series that does not line up with the regions cannot attribute anything, so it is refused.
+     *
+     * Same reasoning as the cpu/wall length check: occupancy is a per-region ratio and the GC series exists to
+     * explain a low one, which needs region `i`'s collection beside region `i`'s times. A shorter series is what
+     * a partly-written record produces, and it would silently attribute one region's GC to another.
+     */
+    @Test
+    fun aGcSeriesThatDoesNotMatchTheRegionsIsRefused() {
+        val scenario = PerformanceScenario.JVM_B1_ABSOLUTE_THROUGHPUT
+        // Both scales supplied, so the scale check cannot fire first and steal the red — the GC length is the
+        // only thing wrong with this fork.
+        val fork = fork(
+            scenario, 1, "gc", listOf(10.0, 10.0, 10.0), listOf(20.0, 20.0, 20.0),
+            warmup = 2, gc = listOf(1.0, 1.0),
+        )
+
+        val failure = assertFailsWith<IllegalArgumentException> { PerformanceProtocol.validateFork(fork) }
+        assertTrue(
+            failure.message!!.contains("gc"),
+            "the refusal must name the GC series; was: ${failure.message}",
+        )
+    }
+
+    /** A negative collection time is not a smaller measurement, it is an unusable one. */
+    @Test
+    fun aNegativeGcTimeIsRefused() {
+        val scenario = PerformanceScenario.JVM_B1_ABSOLUTE_THROUGHPUT
+        val fork = fork(
+            scenario, 1, "gc", listOf(10.0, 10.0, 10.0), listOf(20.0, 20.0, 20.0),
+            warmup = 2, gc = listOf(1.0, -1.0, 1.0),
+        )
+
+        assertFailsWith<IllegalArgumentException> { PerformanceProtocol.validateFork(fork) }
+    }
+
+    /**
+     * The carrier that cannot report GC round-trips as ABSENT, not as zeros.
+     *
+     * `0.0` would read as "this region saw no collection", which Node never measured — the absence-versus-zero
+     * rule (IF285). Both directions are asserted here because the renderer omits the key entirely, and a parser
+     * that defaulted it to an empty list would turn "cannot say" into "said nothing happened".
+     */
+    @Test
+    fun anAbsentGcSeriesSurvivesTheRoundTripAsAbsent() {
+        val present = fork(
+            PerformanceScenario.JVM_B1_ABSOLUTE_THROUGHPUT, 7, "jvm", listOf(2.0, 1.0, 3.0),
+            warmup = 2, gc = listOf(0.0, 4.0, 0.0),
+        )
+        val absent = fork(PerformanceScenario.NODE_B1_THROUGHPUT, 8, "node", listOf(2.0, 1.0, 3.0), warmup = 2)
+
+        assertEquals(present, PerformanceProtocol.parse(PerformanceProtocol.render(present)))
+        assertEquals(absent, PerformanceProtocol.parse(PerformanceProtocol.render(absent)))
+        assertEquals(null, PerformanceProtocol.parse(PerformanceProtocol.render(absent)).samples.first().gcMillis)
+    }
+
+    /**
+     * GC leaves the denominator, so allocation cannot masquerade as contention.
+     *
+     * This case is arithmetic and stands on its own: 50 ms of CPU in a 100 ms region of which 50 ms was
+     * collection is a thread that used every cycle available to it. The field capture that motivated the change
+     * ran while the machine carried external load, so its figures are not quoted here and the arms are re-run on
+     * a quiet box before any go into the record.
+     */
+    @Test
+    fun occupancyTakesGcOutOfTheDenominator() {
+        val sample = PerformanceScaleSample(
+            scale = 1,
+            elapsedMillis = listOf(100.0),
+            cpuMillis = listOf(50.0),
+            gcMillis = listOf(50.0),
+            cardinality = 1, supported = true, outcome = "codes=X",
+        )
+
+        assertEquals(
+            1.0, sample.occupancy(),
+            "50 ms of CPU across 100 ms of wall of which 50 ms was collection is a thread that owned every " +
+                "cycle available to it",
+        )
+    }
+
+    /**
+     * A region whose elapsed time is entirely accounted for by collection yields no contention evidence.
+     *
+     * GC *elapsed* time is an upper bound on the pause charged to the measuring thread, so the adjusted
+     * denominator can reach zero. The conservative reading is the honest one for a contention floor: there is
+     * nothing here that says the machine was busy, so the region must not be refused as though there were.
+     */
+    @Test
+    fun aRegionFullyAccountedForByCollectionIsNotReadAsContention() {
+        val sample = PerformanceScaleSample(
+            scale = 1,
+            elapsedMillis = listOf(100.0),
+            cpuMillis = listOf(10.0),
+            gcMillis = listOf(100.0),
+            cardinality = 1, supported = true, outcome = "codes=X",
+        )
+
+        assertEquals(1.0, sample.occupancy(), "a wholly collecting region is not a starved one")
+    }
+
     private fun fork(
         scenario: PerformanceScenario,
         pid: Long,
@@ -239,6 +396,7 @@ class PerformanceProtocolTest {
         largeTimings: List<Double>? = null,
         warmup: Int = 0,
         cpu: List<Double>? = null,
+        gc: List<Double>? = null,
     ): PerformanceFork {
         val timingSets = if (largeTimings == null) {
             listOf(timings)
@@ -246,7 +404,7 @@ class PerformanceProtocolTest {
             listOf(timings, largeTimings)
         }
         return PerformanceFork(
-            protocolVersion = 2,
+            protocolVersion = 3,
             commit = "12345678",
             runner = "pinned-test-runner",
             invocationId = invocation,
@@ -258,7 +416,7 @@ class PerformanceProtocolTest {
             samples = scenario.scales.zip(timingSets).map { (scale, values) ->
                 // Full occupancy unless a test asks otherwise: every assertion here is about aggregation, and a
                 // fixture that quietly sat near the floor would make those assertions fail for the wrong reason.
-                PerformanceScaleSample(scale, values, cpu ?: values, 1, true, "codes=X")
+                PerformanceScaleSample(scale, values, cpu ?: values, gc, 1, true, "codes=X")
             },
         )
     }
@@ -269,7 +427,7 @@ class PerformanceProtocolTest {
         wall: List<List<Double>>,
         cpu: List<List<Double>>,
     ): PerformanceFork = PerformanceFork(
-        protocolVersion = 2,
+        protocolVersion = 3,
         commit = "12345678",
         runner = "pinned-test-runner",
         invocationId = "occupancy",
@@ -279,22 +437,26 @@ class PerformanceProtocolTest {
         scenarioIdentity = "a".repeat(64),
         warmup = 3,
         samples = scenario.scales.indices.map { index ->
-            PerformanceScaleSample(scenario.scales[index], wall[index], cpu[index], 1, true, "codes=X")
+            PerformanceScaleSample(scenario.scales[index], wall[index], cpu[index], null, 1, true, "codes=X")
         },
     )
 
     private companion object {
         /**
-         * The lowest median occupancy measured per carrier on an IDLE machine — 12 JVM and 15 Node
-         * scale-samples of one bundle invocation, 2026-09-19. The floors must sit below these, and a healthy
-         * capture at exactly these values must be accepted; both directions are asserted above.
+         * The lowest occupancy a HEALTHY capture produced per carrier — 12 JVM and 15 Node scale-samples of one
+         * idle-machine bundle invocation, 2026-09-20, on the GC-corrected quantity.
          *
-         * They differ by more than either floor's margin, which is the measured reason the floor is keyed by
-         * host: the JVM numerator is the measuring thread's CPU, Node's is every thread's.
+         * The floors must sit below these and a healthy capture at exactly these values must be accepted; both
+         * directions are asserted above. The JVM figure is deliberately the **cold first-answer** outlier
+         * (0.8328, no collection at all, the thread blocked on class loading while its sibling forks read
+         * 0.9944 and 0.9921) rather than the other eleven of that invocation's twelve, which span
+         * 0.9887 – 1.0000: a floor that admits only those would refuse an honest cold measurement. They differ by more than either floor's margin, which is the
+         * measured reason the floor is keyed by host — the JVM numerator is the measuring thread's CPU, Node's
+         * is every thread's.
          */
         val IDLE_MINIMUM = mapOf(
-            PerformanceHost.JVM to 0.8588,
-            PerformanceHost.NODE to 1.0412,
+            PerformanceHost.JVM to 0.8328,
+            PerformanceHost.NODE to 1.0407,
         )
     }
 }

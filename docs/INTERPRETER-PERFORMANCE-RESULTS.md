@@ -21,7 +21,39 @@
 > enforcement, and its place in the docs router. The cleaner boundary is by AUTHOR, not by subject — `perf-results/`
 > is machine-written and self-pruning, this is hand-written and guard-verified.
 
-### Checkpoint 2026-09-19 — IG153 closed: the bundle reproduces under pinned order, and every sample of the interpreter protocol now carries its own contention evidence (proven to fire on real load)
+### Checkpoint 2026-09-20 — the occupancy floor was reading ALLOCATION, not contention: the plain ratio INVERTS the ranking, and the corrected one is blind to moderate load
+
+**Why this was run.** [IF329](INTERPRETER-FINDINGS.md#if329) shipped a contention floor on `cpu / wall` the day before, and `PerfEnvironmentQuality`'s own rule — never filter on a post-treatment variable, because an allocation regression CAUSES GC — aimed squarely at it. The magnitude was unmeasured, so this session measured it. One scenario (`jvm-b1-100000-rows-warm-throughput`), three fresh processes per arm, warmup 12, 9 repetitions, pinned worker order, nothing else on the machine except where an arm deliberately loads it. A first pass on 2026-09-19 was discarded: the owner disclosed ~20 % standing external load, so "idle" was an unnamed constant under every row, and all arms were re-run on a quiet box.
+
+| arm | wall ms | cpu ms | gc ms | `cpu/wall` (shipped) | `cpu/(wall−gc)` (corrected) |
+|---|---|---|---|---|---|
+| idle, heap 1 g | 219.4 | 191.9 | 27.0 | 0.8745 | 0.9972 |
+| idle, heap 320 m — **only the heap differs** | 315.5 | 216.7 | 98.0 | **0.6868** | 0.9962 |
+| 4 of 8 cores busy, heap 1 g | 301.7 | 250.5 | 40.0 | 0.8302 | 0.9571 |
+| 16 busy loops (2× oversubscribed), 1 g | 766–887 | 278–291 | 41–49 | 0.304–0.330 | 0.313–0.348 |
+
+Per-sample medians — the quantity the floor actually judges, since it gates `sample.occupancy()` and not a pooled region:
+
+| arm | shipped | corrected |
+|---|---|---|
+| idle 1 g | 0.878 / 0.873 / 0.886 | 0.9992 / 1.0002 / 0.9995 |
+| idle 320 m | 0.707 / 0.682 / 0.697 | 0.9953 / 0.9924 / 0.9961 |
+| 4 cores busy | 0.845 / 0.837 / 0.836 | 0.9747 / 0.9963 / 0.9955 |
+| starved | 0.323 / 0.330 / 0.304 | 0.3383 / 0.3476 / 0.3130 |
+
+**Finding 1 — the shipped bar ranked the arms BACKWARDS, and that is a live defect rather than a risk.** A healthy capture at a tight heap reads **0.6868**, under the 0.70 floor of the day, so the aggregate refuses it and tells the reader to re-measure on an idle machine it is already running on. A capture whose wall time really was inflated **+37.5 %** reads 0.8302 and passes. Allocation was driving the bar, not contention. Two of the three 320 m samples tripped the floor on a machine with nothing else on it.
+
+**Finding 2 — the correction is close to exact.** With collection out of the denominator, a **3.6×** change in GC per region (27 → 98 ms) moves the quantity by **0.001** (0.9972 → 0.9962). The ratio stops tracking allocation and goes back to answering the question it is for.
+
+**Finding 3 — but it sees about a TENTH of a real contamination, and this is what bounds the whole instrument.** Against the idle 1 g arm, four busy cores inflated wall **+37.5 %** while CPU rose **+30.5 %** — stalled cycles are charged to the measuring thread, so they land in the numerator too — leaving the corrected ratio down just **−4.0 %**. Two of that arm's three samples sit INSIDE the idle band, so the distributions overlap and no floor on this quantity can separate moderate contention from a quiet machine. This is the same mechanism [INTERPRETER-PERFORMANCE](INTERPRETER-PERFORMANCE.md)'s `loadAverage` section already asserted about CPU-time clocks, now measured on the corrected quantity.
+
+**What it CAN do, cleanly: starvation.** Two-times core oversubscription measured 0.313 – 0.348 against a healthy 0.833 – 1.000 across the bundle's 12 JVM scale-samples — a 2.4× gap with nothing in between.
+
+**The floor that follows, and the constraint that set it.** JVM **0.75** on the corrected quantity. The binding sample is not a throughput one (the 6 warm-throughput samples across the two heaps read 0.9924 – 1.0002) but a **cold first answer**: the first fork of the bundle's first scenario measured **0.8328** with `gc = 0`, the thread blocked on class loading rather than starved, while its sibling forks read 0.9944 and 0.9921. A floor must admit that, so 0.75 sits ~10 % under it and still 2.2× above the starved band. Node keeps **0.85**, re-derived the same day over 15 samples at **1.041 – 2.250, median 1.154** (its numerator counts every thread, so it reads above 1.0 and never needed the correction).
+
+**Locks.** `PerformanceProtocolTest` — `theMeasuredStarvationArmIsRefused` carries three verbatim wall/cpu/gc triples from the starvation arm and proves the aggregate refuses them by name; `anAllocationHeavyCaptureIsAcceptedAlthoughItsPlainRatioWouldNotBe` is the regression lock for Finding 1 and asserts its own fixture sits under the live floor on the plain ratio, so it keeps meaning if the floor moves; `occupancyTakesGcOutOfTheDenominator` and `aRegionFullyAccountedForByCollectionIsNotReadAsContention` pin the formula. Rationale: [IF329](INTERPRETER-FINDINGS.md#if329). The residual exposure — moderate contention, invisible here — is [IG154](INTERPRETER-GAPS.md#ig154), whose instrument this measurement also selects.
+
+### Checkpoint 2026-09-19 — IG153 closed: the bundle reproduces under pinned order, and every sample of the interpreter protocol now carries its own contention evidence (its floor SUPERSEDED next day — see 2026-09-20)
 
 **The bundle now reproduces, which is the harm IG153 named.** Three invocations of `:interpreter:interpreterPerformance` on `3078b902f`, compilation deliberately outside the timed invocations, worker order pinned:
 
@@ -48,6 +80,8 @@ Median row-level spread **1.028×**, worst **1.141×**. The unpinned pair that o
 Node exceeds 1.0 because `process.cpuUsage()` counts the libuv pool and V8's background GC and compiler threads; Node exposes no per-thread CPU clock in stable form. A comment asserting Node was single-threaded and could share the JVM's floor was written and then falsified by this measurement — a shared floor would have been either blind on Node or permanently red on the JVM. Both quantities fall when the process is starved of cycles, which is the signal, so the floor is keyed by host with ~18 % margin below each carrier's observed minimum.
 
 **It is proven to fire on real contention, not only on synthetic numbers.** A bundle run against a background load of roughly 53 % of the machine drove `jvm-b1-100000-rows-warm-throughput` to **65 % occupancy** and `performanceAggregateReport` refused the report by name: *"JVM occupancy 65% is below the 70% floor … its timings are the machine's, not the code's"*. The same bundle on an idle machine passes. That load is far milder than the 213 % `mediaanalysisd` pass which contaminated two capture sessions earlier the same day, so the instrument is sensitive well below the contamination that has actually cost measurements here. The refusal sits in `aggregate` rather than `validateFork` on purpose: a contended record is legitimate evidence of what that process saw, and must survive — what must not happen is that it becomes a *comparison*.
+
+> **Superseded 2026-09-20, and read the two paragraphs above as the record of one day rather than as the live contract.** Every figure in them is on the **plain `cpu / wall`** quantity, which the 2026-09-20 checkpoint at the top of this file shows *inverts* the ranking of a healthy allocating capture against a contaminated one. The live quantity is `cpu / (wall − gc)`, the JVM floor is 0.75 against a re-derived idle band of 0.8328–1.0000, and the "65 % under real load" figure is not evidence for the live bar — that arm's contamination was never separated from its collection. The Node column survives unchanged in kind (no correction applies there), re-measured at 1.0407–2.2500.
 
 ### Checkpoint 2026-09-19 — IG152: three candidate routes to a 5 % timed bar, ALL THREE refuted — and the third was refuted by the very capture meant to instantiate it
 

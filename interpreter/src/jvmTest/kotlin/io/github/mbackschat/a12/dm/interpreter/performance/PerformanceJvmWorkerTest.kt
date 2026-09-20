@@ -54,6 +54,20 @@ internal class JvmPerformancePlatform : PerformancePlatform {
         return cpu
     }
 
+    /**
+     * The sum of every collector's accumulated elapsed time.
+     *
+     * A bean returns -1 when it cannot supply a figure, and adding that would silently shrink the total — the
+     * same guard `PerfEnvironmentQuality` applies to its own GC counters. This is collection ELAPSED time rather
+     * than stop-the-world pause time, which a concurrent collector reports for phases that never stopped the
+     * measuring thread, so it is an UPPER bound on the pause a region paid. That direction is the safe one here:
+     * it cannot hide GC, only overstate it.
+     */
+    override fun cumulativeGcMillis(): Double =
+        java.lang.management.ManagementFactory.getGarbageCollectorMXBeans()
+            .sumOf { bean -> bean.collectionTime.takeIf { it >= 0L } ?: 0L }
+            .toDouble()
+
     override fun sha256(content: String): String =
         MessageDigest.getInstance("SHA-256")
             .digest(content.toByteArray(StandardCharsets.UTF_8))

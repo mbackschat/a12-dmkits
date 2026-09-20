@@ -60,11 +60,29 @@ internal interface PerformancePlatform {
      * threads, which legitimately push a total above wall, so a process-time ratio would read above 1.0 exactly
      * when a first-answer measurement works hardest. Node has no per-thread CPU API in stable form, so
      * `process.cpuUsage()` is all this carrier can give — and it counts the libuv pool and V8's background
-     * threads, which is why Node occupancy measures **1.041–2.355** on an idle machine against the JVM's
-     * **0.859–0.994** (2026-09-19). Both fall when the process is starved of cycles, which is the signal; they
-     * simply have different healthy baselines, so [PerformanceProtocol.minOccupancy] is keyed by host.
+     * threads, which is why Node occupancy measures **1.0407–2.2500** on an idle machine against the JVM's
+     * **0.8328–1.0000** (15 and 12 scale-samples of one bundle invocation, 2026-09-20, on the GC-corrected
+     * quantity). Both fall when the process is starved of cycles, which is the signal; they simply have
+     * different healthy baselines, so [PerformanceProtocol.minOccupancy] is keyed by host.
      */
     fun cpuNanoTime(): Long
+
+    /**
+     * Cumulative garbage-collection elapsed milliseconds for this process, or `null` where the carrier cannot say.
+     *
+     * **Why occupancy needs it, and why it is not merely more provenance.** Occupancy's numerator excludes GC on
+     * the JVM — collection runs on its own threads while the measuring thread is stopped — so an allocation
+     * regression inflates wall without inflating CPU and *depresses* occupancy. That makes the JVM ratio partly a
+     * **post-treatment** quantity, the same property `PerfEnvironmentQuality` cites for never filtering on GC, and
+     * a contention floor that cannot see GC can misattribute the code's own pauses to a busy machine. Recording
+     * the per-region delta is what lets the two be separated rather than argued about.
+     *
+     * **`null` means "not observable here", never "no GC" — the absence-versus-zero rule (IF285).** Node returns
+     * `null`: it exposes no stable per-process GC accounting, and the hazard does not arise there anyway, because
+     * `process.cpuUsage()` counts EVERY thread, so V8's collector lands in the numerator and the denominator
+     * alike. A `0.0` from the JVM is a real measurement — that region saw no collection.
+     */
+    fun cumulativeGcMillis(): Double?
 
     fun sha256(content: String): String
     fun write(path: String, content: String)
@@ -86,7 +104,7 @@ internal object PerformanceWorker {
         val identity = platform.sha256(PerformanceScenarios.identityContent(fixtures))
         return PerformanceProtocol.validateFork(
             PerformanceFork(
-                protocolVersion = 2,
+                protocolVersion = 3,
                 commit = config.commit,
                 runner = config.runner,
                 invocationId = config.invocationId,
@@ -108,12 +126,14 @@ internal object PerformanceWorker {
         require(config.warmup == 0) { "first-answer workers cannot warm up" }
         require(config.repetitions == 1) { "first-answer workers emit exactly one sample" }
         val scale = config.scenario.scales.single()
+        val startedGc = platform.cumulativeGcMillis()
         val startedCpu = platform.cpuNanoTime()
         val started = platform.nanoTime()
         val result = fixture.evaluate(DmInterpreter(fixture.model))
         val elapsed = elapsedMillis(started, platform.nanoTime())
         val cpu = cpuMillis(startedCpu, platform.cpuNanoTime())
-        return listOf(result.toSample(scale, listOf(elapsed), listOf(cpu)))
+        val gc = gcMillis(startedGc, platform.cumulativeGcMillis())
+        return listOf(result.toSample(scale, listOf(elapsed), listOf(cpu), gc?.let { listOf(it) }))
     }
 
     private fun throughput(
@@ -129,23 +149,29 @@ internal object PerformanceWorker {
             val interpreter = DmInterpreter(fixture.model)
             val preflight = fixture.evaluate(interpreter)
             repeat(config.warmup) { fixture.evaluate(interpreter) }
-            PreparedScale(fixture.scale, fixture, interpreter, preflight, mutableListOf(), mutableListOf())
+            PreparedScale(
+                fixture.scale, fixture, interpreter, preflight,
+                mutableListOf(), mutableListOf(), mutableListOf(),
+            )
         }
         repeat(config.repetitions) {
             prepared.forEach { sample ->
+                val startedGc = platform.cumulativeGcMillis()
                 val startedCpu = platform.cpuNanoTime()
                 val started = platform.nanoTime()
                 val current = sample.fixture.evaluate(sample.interpreter)
                 val elapsed = elapsedMillis(started, platform.nanoTime())
                 val cpu = cpuMillis(startedCpu, platform.cpuNanoTime())
+                val gc = gcMillis(startedGc, platform.cumulativeGcMillis())
                 require(current == sample.preflight) {
                     "${config.scenario.id}/${sample.scale}: semantic outcome changed during measurement"
                 }
                 sample.timings += elapsed
                 sample.cpu += cpu
+                gc?.let { sample.gc += it }
             }
         }
-        return prepared.map { it.preflight.toSample(it.scale, it.timings, it.cpu) }
+        return prepared.map { it.preflight.toSample(it.scale, it.timings, it.cpu, it.gc.takeIf { g -> g.isNotEmpty() }) }
     }
 
     private fun elapsedMillis(started: Long, ended: Long): Double {
@@ -164,12 +190,25 @@ internal object PerformanceWorker {
     private fun cpuMillis(started: Long, ended: Long): Double =
         if (ended <= started) 0.0 else (ended - started) / 1_000_000.0
 
+    /**
+     * GC milliseconds across the region, or `null` when either end of the window could not report.
+     *
+     * A carrier that says nothing must not contribute a zero, which would read as "no collection" — so the whole
+     * series stays absent rather than gaining a fabricated member. Like CPU time this is floored rather than
+     * required to advance: a region with no collection legitimately reports no progress.
+     */
+    private fun gcMillis(started: Double?, ended: Double?): Double? {
+        if (started == null || ended == null) return null
+        return if (ended <= started) 0.0 else ended - started
+    }
+
     private fun PerformanceSemanticResult.toSample(
         scale: Int,
         timings: List<Double>,
         cpu: List<Double>,
+        gc: List<Double>?,
     ): PerformanceScaleSample =
-        PerformanceScaleSample(scale, timings.toList(), cpu.toList(), cardinality, supported, outcome)
+        PerformanceScaleSample(scale, timings.toList(), cpu.toList(), gc?.toList(), cardinality, supported, outcome)
 
     private data class PreparedScale(
         val scale: Int,
@@ -178,5 +217,6 @@ internal object PerformanceWorker {
         val preflight: PerformanceSemanticResult,
         val timings: MutableList<Double>,
         val cpu: MutableList<Double>,
+        val gc: MutableList<Double>,
     )
 }
