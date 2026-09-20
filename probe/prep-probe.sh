@@ -95,7 +95,7 @@ fi
 cp "$ROOT/skill/SKILL.md" "$SANDBOX/SKILL.md"
 # the SHIPPED bug-report skill (the same one plugin users get) — the probe's report pass points the agent at
 # it, so the report rigor has one source (no probe-only preamble) and the agent files exactly as a user would.
-cp "$ROOT/skill-bug-report/SKILL.md" "$SANDBOX/BUG-REPORT-SKILL.md"
+cp "$ROOT/skill/BUG-REPORT-SKILL.md" "$SANDBOX/BUG-REPORT-SKILL.md"
 
 echo "probe sandbox ready: $SANDBOX"
 echo "  native : $("$NATIVE" --version 2>/dev/null | head -1)"

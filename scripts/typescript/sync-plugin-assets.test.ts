@@ -13,7 +13,7 @@ function fixture(t: { after(callback: () => void): void }): string {
   t.after(() => fs.rmSync(root, { recursive: true, force: true }));
   const sources: Readonly<Record<string, { content: string; mode: number }>> = {
     "skill/SKILL.md": { content: "authoring\n", mode: 0o644 },
-    "skill-bug-report/SKILL.md": { content: "bug report\n", mode: 0o644 },
+    "skill/BUG-REPORT-SKILL.md": { content: "bug report\n", mode: 0o644 },
     "scripts/ensure-dmtool.sh": { content: "#!/bin/sh\ninstaller\n", mode: 0o755 },
     "scripts/release-assets.sh": { content: "#!/bin/sh\nassets\n", mode: 0o755 },
   };
@@ -80,10 +80,10 @@ test("check reports every stale copy without mutating it and passes after regene
 
 test("a missing canonical source is a setup error rather than an empty successful sync", t => {
   const root = fixture(t);
-  fs.rmSync(path.join(root, "skill-bug-report/SKILL.md"));
+  fs.rmSync(path.join(root, "skill/BUG-REPORT-SKILL.md"));
   const { messages, reporter } = capture();
 
   assert.equal(synchronizePluginAssets(root, true, reporter), 2);
   assert.deepEqual(messages.out, []);
-  assert.deepEqual(messages.error, [`canonical bug-report skill not found: ${root}/skill-bug-report/SKILL.md`]);
+  assert.deepEqual(messages.error, [`canonical bug-report skill not found: ${root}/skill/BUG-REPORT-SKILL.md`]);
 });

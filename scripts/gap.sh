@@ -44,7 +44,7 @@ usage() {
 # Files where a gap id is meaningful. Lockfiles are excluded because base64 integrity hashes
 # contain runs like `…0G76SLRO…` that read as an id to any regex; that inflated the `G` family by
 # 14 the first time this ran, so the exclusion is load-bearing, not tidiness.
-SCAN_PATHS=(':(exclude)*/build/*' ':(exclude)kotlin-js-store/*' ':(exclude)*.lock' ':(exclude)api/*.api')
+SCAN_PATHS=(':(exclude)*/build/*' ':(exclude)gradle/kotlin-js-store/*' ':(exclude)*.lock' ':(exclude)api/*.api')
 
 # Every id of a family that appears in a blob, one integer per line.
 #

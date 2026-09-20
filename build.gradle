@@ -1558,3 +1558,21 @@ publishing {
         }
     }
 }
+
+// --- The Kotlin/JS yarn lockfile lives under gradle/, not at the repository root -------------------------
+// The Kotlin Multiplatform plugin creates and requires a committed `yarn.lock` for the JS targets, and its
+// default home is a top-level `kotlin-js-store/`. That is a build-toolchain artifact sitting beside the
+// project's own source modules, where it reads as one more component to understand. `lockFileDirectory`
+// moves it next to the wrapper and the other build inputs; the plugin's `kotlinUpgradeYarnLock` and the
+// lock-consistency check follow the property, so nothing else changes.
+// The hook is `YarnPlugin` on the ROOT project, and neither half is interchangeable with something simpler.
+// Root declares the multiplatform plugin `apply false`, so a `plugins.withId('…multiplatform')` here would be
+// dead code that reports success by never running; hooking the same id on each SUBPROJECT runs too early
+// instead — `YarnRootExtension` does not exist yet when the multiplatform plugin is applied, because the
+// plugin that registers it is pulled in later, by a JS target being declared. Measured both ways
+// (2026-09-20): the first configured nothing silently, the second failed plugin application outright.
+rootProject.plugins.withType(org.jetbrains.kotlin.gradle.targets.js.yarn.YarnPlugin) {
+    rootProject.extensions.configure(org.jetbrains.kotlin.gradle.targets.js.yarn.YarnRootExtension) {
+        it.lockFileDirectory = rootProject.file('gradle/kotlin-js-store')
+    }
+}

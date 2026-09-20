@@ -27,7 +27,7 @@ const ASSETS: readonly Asset[] = [
   },
   {
     label: "canonical bug-report skill",
-    source: "skill-bug-report/SKILL.md",
+    source: "skill/BUG-REPORT-SKILL.md",
     destination: "skills/a12-dmtool-bug-report/SKILL.md",
   },
 ];
