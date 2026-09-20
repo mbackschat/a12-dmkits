@@ -93,6 +93,27 @@ class PerformanceRecordShapeGuardTest {
             "gcCountInWindow", "gcMsInWindow", "jitMsInWindow", "stealJiffiesInWindow",
             "cgroupThrottledUsecInWindow", "cgroupThrottledPeriodsInWindow");
 
+    /**
+     * The machine-demand fields (IG154a), which are the OPPOSITE case to the quality fields above and must not be
+     * added to that list.
+     *
+     * <p>Foreign CPU demand is <em>pre-treatment</em>: no change to our code can make another process busy, so
+     * judging a comparison on it removes a confound rather than censoring one. These are therefore <em>required</em>
+     * to have a consumer — {@link #theMachineDemandFieldsHaveAnEnforcementLocus()} — which is the inverse of the
+     * sweep that forbids the quality fields one.
+     *
+     * <p>All three travel together or none does, so a reader never mistakes an absent key for a quiet machine;
+     * the window they describe can legitimately produce no reading at all, which is why they are not in
+     * {@link #REQUIRED_OBSERVATION_FIELDS}.
+     *
+     * <p><b>The per-row checks on these are a BACKSTOP and are dormant until a record carries them</b> — the same
+     * state the Linux-only quality counters are in on darwin. The all-or-nothing rule is locked where it is
+     * produced, by {@code PerfMachineDemandTest}, so what the row arms add is cover for a hand-edited or imported
+     * record. Stated rather than left to be discovered, because a dormant branch reads exactly like a checked one.
+     */
+    private static final List<String> DEMAND_FIELD_NAMES =
+            List.of("systemCpuUtilisation", "processCpuUtilisation", "foreignCpuUtilisation");
+
     /** Every {@code kind} a record line may carry after the header. An unknown one is a producer/guard drift. */
     private static final Set<String> KNOWN_KINDS = Set.of("observation", "warm", "cost", "margin");
 
@@ -271,6 +292,21 @@ class PerformanceRecordShapeGuardTest {
                         .forEach(field -> problems.add(where + ": " + field + " is negative; a counter that went "
                                 + "backwards must be recorded as null, because a negative delta is not a smaller "
                                 + "measurement but an unusable one"));
+                long demandPresent = DEMAND_FIELD_NAMES.stream()
+                        .filter(field -> !observation.path(field).isMissingNode()).count();
+                if (demandPresent != 0 && demandPresent != DEMAND_FIELD_NAMES.size()) {
+                    problems.add(where + ": " + demandPresent + " of " + DEMAND_FIELD_NAMES.size() + " machine-demand"
+                            + " fields are present; they travel together or not at all, because a reader given one"
+                            + " of them would have to reconstruct the others and would read an absent key as a"
+                            + " quiet machine");
+                }
+                DEMAND_FIELD_NAMES.stream()
+                        .filter(field -> observation.path(field).isNumber()
+                                && (observation.path(field).asDouble() < 0 || observation.path(field).asDouble() > 1))
+                        .forEach(field -> problems.add(where + ": " + field + " is "
+                                + observation.path(field).asDouble() + ", outside 0..1; these are fractions of the"
+                                + " WHOLE machine, and a value outside that range means the sampler is being read"
+                                + " as something it is not"));
                 String reconstructed = "%s|%s|n=%d|%s|%s".formatted(
                         observation.path("lane").asText(),
                         observation.path("scenario").asText(),
@@ -407,5 +443,74 @@ class PerformanceRecordShapeGuardTest {
                 + "are post-treatment variables, so rejecting samples on them censors the evidence a regression "
                 + "produces. If a lane genuinely needs one, that is a decision to take deliberately and document "
                 + "in INTERPRETER-GAPS IG121 — not by adding a read here.");
+    }
+
+    /**
+     * The machine-demand fields have an enforcement locus, which is the exact inverse of the sweep above.
+     *
+     * <p>The quality fields are forbidden a consumer; these are <em>required</em> one, because a pre-treatment
+     * reading that nothing rejects on is the "parsed but never consumed" shape this estate has already shipped
+     * once. So this names the locus — {@code TimingEnforcement.forAbsoluteAnchor} reading the floor — rather than
+     * trusting that IG154a's row says so. {@code ForeignDemandEnforcementTest} is the test that fails when the
+     * rule itself changes; this is the one that fails when the wiring disappears.
+     */
+    @Test
+    void theMachineDemandFieldsHaveAnEnforcementLocus() throws IOException {
+        Path perf = CHECKOUT.resolve("adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/perf");
+        String enforcement = Files.readString(perf.resolve("TimingEnforcement.kt"));
+        String producer = Files.readString(perf.resolve("PerfMachineDemand.kt"));
+
+        assertTrue(enforcement.contains("PerfMachineDemand.MAX_FOREIGN_CPU_UTILISATION"),
+                "TimingEnforcement no longer reads the foreign-demand floor, so the recorded field gates nothing "
+                        + "and an absolute anchor can again be levelled from a contended capture (IG154a)");
+        assertTrue(enforcement.contains("foreignDemand"),
+                "the absolute-anchor rule no longer takes a foreign-demand argument");
+        assertTrue(producer.contains("foreignCpuUtilisation"),
+                "the recorder no longer writes the field the gate above is keyed on");
+    }
+
+    /**
+     * Both load accessors live in one file, because each computes its delta from its own previous call.
+     *
+     * <p>A second caller anywhere in this process would silently shorten the window an observation is credited
+     * with, and there is no runtime symptom: the reading stays well-formed and describes a span nobody intended.
+     * That is exactly the class a guard has to carry, since no test can see it.
+     */
+    @Test
+    void theMachineDemandAccessorsAreCentralised() throws IOException {
+        Path perf = CHECKOUT.resolve("adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/perf");
+        assertTrue(Files.isDirectory(perf), () -> "the perf source tree moved: " + perf);
+
+        List<String> offenders = new ArrayList<>();
+        try (var walk = Files.walk(perf)) {
+            for (Path source : walk.filter(p -> p.toString().endsWith(".kt")).toList()) {
+                if (source.getFileName().toString().equals("PerfMachineDemand.kt")) {
+                    continue;
+                }
+                List<String> lines = Files.readAllLines(source);
+                for (int i = 0; i < lines.size(); i++) {
+                    String line = lines.get(i);
+                    // COMMENTS ARE EXEMPT, and narrowing to code is the point rather than a convenience: the
+                    // hazard is a second CALL consuming the delta, and prose naming the accessor — which the
+                    // sibling tests do, because the absence rules cannot be explained without it — consumes
+                    // nothing. Both comment shapes, since a javadoc continuation and a `//` line are different
+                    // prefixes and filtering for one silently exempts the other.
+                    String code = line.trim();
+                    if (code.startsWith("*") || code.startsWith("//") || code.startsWith("/*")) {
+                        continue;
+                    }
+                    // `os.cpuLoad` / `os.processCpuLoad` in Kotlin property form, `getCpuLoad()` /
+                    // `getProcessCpuLoad()` in Java spelling — both, so a call written either way is caught.
+                    if (code.contains("cpuLoad") || code.contains("CpuLoad")) {
+                        offenders.add(source.getFileName() + ":" + (i + 1) + " " + code);
+                    }
+                }
+            }
+        }
+        assertEquals(List.of(), offenders, () -> "a CPU-load accessor is called outside PerfMachineDemand:\n  "
+                + String.join("\n  ", offenders)
+                + "\n\nBoth accessors measure from their OWN previous call, so a second caller shortens the window "
+                + "every observation is credited with — well-formed, wrong, and invisible at runtime. Route the "
+                + "reading through PerfMachineDemand.reading() and pass it where it is needed.");
     }
 }

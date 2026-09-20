@@ -21,7 +21,7 @@
 > enforcement, and its place in the docs router. The cleaner boundary is by AUTHOR, not by subject — `perf-results/`
 > is machine-written and self-pruning, this is hand-written and guard-verified.
 
-### Checkpoint 2026-09-20 — IG154's selected instrument PROBED before being trusted: a JVM does see system CPU demand on macOS, its readings are coherent, and it intermittently returns an impossible zero
+### Checkpoint 2026-09-20 — IG154's selected instrument PROBED before being trusted: it SEPARATES the contamination occupancy is blind to, clips where occupancy still ranks, and intermittently returns an impossible zero
 
 **Why this was run, and it is a correction of process as much as a measurement.** The checkpoint below revised [IG154](INTERPRETER-GAPS.md#ig154)'s closure plan to "system CPU demand sampled across the measurement window" — a **capability claim about a running surface**, which this project's own rule says is settled by executing the thing and never by reading the API that feeds it. It was written as *selected* before it had been run. So it was run: JDK 21.0.12.1 (the pinned toolchain), darwin-aarch64, 8 cores, `com.sun.management.OperatingSystemMXBean`, one thread burning CPU inside every window so a zero reading is physically impossible.
 
@@ -38,7 +38,31 @@
 
 **Finding 3 — load average overstates demand by 3–4×, measured side by side, which is the existing claim's first direct number.** In the same windows where system demand read **0.132–0.256** of eight cores, `getSystemLoadAverage()` reported **3.49–5.03** — that is 0.44–0.63 runnable threads per core against a true utilisation of 0.13–0.26. [`scripts/perf-anchor.sh`](../scripts/perf-anchor.sh)'s 1.0-per-core refusal admits both readings, so the pair is a worked instance of what [INTERPRETER-PERFORMANCE](INTERPRETER-PERFORMANCE.md)'s `loadAverage` section argues from mechanism: the lagging one-minute average is not a usable idleness gate, and the instrument that replaces it has to be the windowed one.
 
-**What this settles for the design, and what it leaves open.** Settled: the instrument is viable, coherent, portable across a wall-clocked lane and a cpu-clocked one, and needs an explicit unavailable state. Open, and to be measured when [IG154a](INTERPRETER-GAPS.md#ig154) lands rather than assumed now: whether a usable reading actually **separates** a contaminated capture from a quiet one at the magnitude the occupancy ratio missed — the four-busy-core arm of the checkpoint below is the discriminator, and this probe has not been run against it.
+**Finding 4 — it SEPARATES at the magnitude the occupancy ratio misses, measured the same day, and the two instruments turn out to be complementary rather than rival.** Four arms in one process, foreign busy processes the only variable, 24 wall-bounded 200 ms windows each, spinners owned by the measuring process and force-killed between arms:
+
+| applied load | utilisation median | utilisation range | unusable | occupancy median |
+|---|---|---|---|---|
+| none | 0.176 | 0.138 – 0.350 | 6 / 24 | 1.0001 |
+| 4 spinners | **0.675** | **0.644 – 0.841** | 0 / 24 | 0.9988 |
+| 16 spinners | 1.000 | 1.000 – 1.000 | 2 / 24 | 0.4063 |
+| none (return control) | 0.177 | 0.128 – 0.435 | 9 / 24 | 1.0001 |
+
+The four-spinner distribution does **not overlap** the unloaded one (0.644 against a worst unloaded 0.435) while that arm's occupancy — 0.9988 against 1.0001 — is indistinguishable from quiet. So utilisation detects precisely the contamination class the ratio is blind to, and the return-to-none control reproduces the unloaded median to 0.001, which is what says the separation is the applied load rather than drift. **The converse also holds and is the reason to keep both:** at two-times oversubscription utilisation **clips at exactly 1.000** and can no longer rank severity, where occupancy reads 0.406. One instrument sees moderate foreign load, the other sees starvation; neither subsumes the other. *(The windows here are wall-bounded — fixed elapsed time, variable work — so this probe says nothing about wall inflation and its occupancy column is not comparable to the fixed-work arms of the checkpoint below. It measures one thing: whether the utilisation reading discriminates.)*
+
+**One further observation about the zeros, recorded as observation only.** They cluster on a quiet machine — 6, 2 and 9 of 24 on the unloaded and starved arms against **0 of 24** under four spinners. That is a correlation with no mechanism attached and no discriminating case run; the operational rule is unchanged either way, because a zero is treated as absent regardless of why it appeared.
+
+**Finding 5 — the gated quantity is FOREIGN demand, so it was measured directly rather than derived, and the floor rests on this table and not on Finding 4's.** `system − process` is what a gate can act on, and subtracting an *assumed* process share from Finding 4's system column would have been a projection dressed as a measurement. So the arms were re-run reading both accessors per window:
+
+| applied load | foreign demand | unusable | occupancy median |
+|---|---|---|---|
+| none | 0.080 – 0.488 | 4 / 24 | 1.0001 |
+| 4 spinners | **0.851 – 0.896** | 1 / 24 | 0.9988 |
+| 16 spinners | 0.903 – 0.959 | 0 / 24 | 0.4381 |
+| none (return control) | 0.193 – 0.591 | 2 / 24 | 1.0001 |
+
+Still no overlap, and the separation is wider on this quantity than on the raw system column. **The floor is 0.70** — 18 % above the worst healthy reading (0.591) and 18 % below the best contaminated one (0.851), with `ForeignDemandEnforcementTest` asserting both directions plus the vacuity control that the constant sits strictly inside that gap, so a re-derivation on a quieter machine cannot silently land outside it.
+
+**And the two runs DISAGREE on the four-spinner system reading, which is worth stating rather than smoothing.** Finding 4 measured system utilisation at 0.644–0.841 on that arm; here `system − process` is 0.851–0.896, so system must have been near saturation. Both runs were internally controlled and each has a return-to-none control that reproduces its own baseline, so neither is refuted — the likely account is that background indexing differed between them, which is a *hypothesis* and not something either run controlled. What survives either way is the only claim the floor needs: within one run, with applied load the single variable, the distributions do not overlap. The absolute level of a foreign-demand reading is a property of the machine at that moment and is not comparable across runs, which is precisely why re-deriving the floor is a measurement on the machine in question.
 
 ### Checkpoint 2026-09-20 — the occupancy floor was reading ALLOCATION, not contention: the plain ratio INVERTS the ranking, and the corrected one is blind to moderate load
 

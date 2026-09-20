@@ -570,8 +570,20 @@ internal object PerfObservations {
      * record kind, which is pre-existing and left alone: a torn *line* is malformed JSON the record guard rejects
      * loudly, whereas a torn *delta* is well-formed and wrong, which is why only this one needs the lock.)
      */
+    /**
+     * [demand] is the foreign-CPU reading for the window this measurement ran in, or `null` where the caller
+     * has none — **passed in rather than sampled here, deliberately.** Both of its accessors measure from their own
+     * previous call, so sampling at the write would give the enforcement decision and the record two different
+     * windows and neither would be the one containing the measurement. The caller samples once, immediately after
+     * measuring, and the same reading decides the bar and lands in the row. See [PerfMachineDemand].
+     */
     @Synchronized
-    fun record(key: ObservationKey, medianMs: Double, status: String) {
+    fun record(
+        key: ObservationKey,
+        medianMs: Double,
+        status: String,
+        demand: PerfMachineDemand.Reading?,
+    ) {
         // BEFORE the snapshot, not at the append: `lastQuality` is shared fork state, so a refusal that fired
         // downstream would still have advanced the baseline and silently mis-widened the NEXT genuine
         // observation's window (cold review 2026-08-24). A refused call must leave nothing behind, in memory
@@ -595,7 +607,7 @@ internal object PerfObservations {
                 // Per observation, not per run: a machine that got busy halfway through is then visible in the
                 // record rather than showing up later as an unexplained outlier.
                 "loadAverage" to loadAverage(),
-            ) + window,
+            ) + window + (demand?.let(PerfMachineDemand::fields) ?: emptyMap()),
         )
     }
 
@@ -694,7 +706,14 @@ internal object PerfAnchors {
         check(environments.isObject && !environments.isEmpty) {
             "$ANCHOR_RESOURCE must anchor at least one runner class"
         }
-        observationsFor(root, PerfEnvironment.key, PerfEnvironment.machine, TimingEnforcement.forAbsoluteAnchor())
+        // `foreignDemand = null`: this decides which anchor BLOCK this run may be held against, from the machine's
+        // identity, and is taken once per JVM. It is structural rather than per-observation, so a contention
+        // reading has nothing to say about it — and sampling one here would consume the delta a real observation
+        // needs.
+        observationsFor(
+            root, PerfEnvironment.key, PerfEnvironment.machine,
+            TimingEnforcement.forAbsoluteAnchor(foreignDemand = null),
+        )
     }
 
     /**
@@ -740,7 +759,11 @@ internal object PerfAnchors {
      * clock; it is called only when the first observation breaches.
      */
     fun assertWithinBudget(key: ObservationKey, observedMs: Double, remeasure: () -> Double) {
-        val enforcement = TimingEnforcement.forAbsoluteAnchor()
+        // Sampled HERE, once, closing the window that contains the measurement `observedMs` came from — then used
+        // both to decide the bar and to describe the row. Sampling separately at each of those two points would
+        // give them different windows, because the accessors measure from their own previous call.
+        val demand = PerfMachineDemand.reading()
+        val enforcement = TimingEnforcement.forAbsoluteAnchor(demand.foreign)
         if (enforcement == TimingEnforcement.UNJUDGED) {
             // Not the isolated lane: an absolute-time bar measured under parallel forks would be a coin flip, so
             // record the observation and assert nothing. Announced, because a silently skipped bar is the defect
@@ -748,7 +771,7 @@ internal object PerfAnchors {
             println("[perf] anchor not asserted (-D$LANE_PROPERTY absent): ${key.text} measured $observedMs ms")
             // `unasserted`, not `accepted`: this ran outside the isolated single-fork lane, where an absolute time
             // is a coin flip, so the refresh must not fold it even though it is a real observation.
-            PerfObservations.record(key, observedMs, status = "unasserted")
+            PerfObservations.record(key, observedMs, status = "unasserted", demand = demand)
             return
         }
         // Recorded on BOTH paths, and the status says which. The accepted value is what `scripts/perf-anchor.sh`
@@ -765,7 +788,7 @@ internal object PerfAnchors {
             // observation is exactly what a refresh needs to AUTHOR the missing key, and `scripts/perf-anchor.sh`
             // folds it for that reason. Then rethrown unconditionally — see the type's own doc.
             try {
-                PerfObservations.record(key, observedMs, status = "unanchored")
+                PerfObservations.record(key, observedMs, status = "unanchored", demand = demand)
             } catch (unrecordable: Exception) {
                 // The JDK refusal is never demoted to a suppressed cause. Suppressing it would present an
                 // ANCHOR BREACH as the primary failure on a foreign JVM — precisely the "reads as a code
@@ -792,7 +815,7 @@ internal object PerfAnchors {
             // this separation risks is bounded by the refresh being a reviewed diff (`perf-anchor.sh show` first).
             val status = if (enforcement == TimingEnforcement.GATED) "breached" else "flagged"
             try {
-                PerfObservations.record(key, observedMs, status = status)
+                PerfObservations.record(key, observedMs, status = status, demand = demand)
             } catch (unrecordable: Exception) {
                 // The JDK refusal is never demoted to a suppressed cause. Suppressing it would present an
                 // ANCHOR BREACH as the primary failure on a foreign JVM — precisely the "reads as a code
@@ -808,10 +831,14 @@ internal object PerfAnchors {
             // over the enum. An absolute time on shared hosted hardware cannot separate a regression from a
             // neighbour's memory traffic, and the number is in the record either way (TimingEnforcement).
             if (enforcement == TimingEnforcement.GATED) throw failure
-            println(hostedFlagFor(failure))
+            // WHICH precondition downgraded the bar decides the message. A locally contended capture printed under
+            // the hosted wording would send the reader to look for a shared runner they are not on — the same
+            // class of defect as a refusal that names the wrong cause, fixed in the interpreter protocol's
+            // occupancy message on 2026-09-20.
+            println(contendedFlagFor(failure, demand.foreign) ?: hostedFlagFor(failure))
             return
         }
-        PerfObservations.record(key, accepted, status = "accepted")
+        PerfObservations.record(key, accepted, status = "accepted", demand = demand)
     }
 
     /**
@@ -833,6 +860,26 @@ internal object PerfAnchors {
      * The comparison is conservative in the safe direction — a run-to-run max/min spread is at least as large as
      * either run's deviation from the true level — so the band over-tolerates rather than crying wolf.
      */
+    /**
+     * The flag for a breach measured while ANOTHER PROCESS held this machine, or `null` when that is not why the
+     * bar was downgraded — in which case the caller falls back to [hostedFlagFor].
+     *
+     * Names the reading and the floor, so the reader can tell a contended capture from a regression without
+     * finding this file, and says what to do: re-measure, do not chase code. The corrective is the point — the
+     * breach itself is not evidence either way once the machine was not ours.
+     */
+    internal fun contendedFlagFor(failure: Throwable, foreignDemand: Double?): String? {
+        if (foreignDemand == null || foreignDemand <= PerfMachineDemand.MAX_FOREIGN_CPU_UTILISATION) {
+            return null
+        }
+        return "[perf][FLAG] anchor breach reported, not failed: another process held " +
+            "${"%.0f".format(Locale.ROOT, foreignDemand * 100)}% of this machine while the measurement ran, " +
+            "against a floor of ${"%.0f".format(Locale.ROOT, PerfMachineDemand.MAX_FOREIGN_CPU_UTILISATION * 100)}% " +
+            "(foreignCpuUtilisation in the observation record). Re-measure on an idle machine before reading this " +
+            "as a code regression — an absolute time taken under that load is the machine's number. " +
+            "${failure.message}"
+    }
+
     internal fun hostedFlagFor(failure: Throwable): String {
         val head = "[perf][FLAG] anchor breach reported, not failed on shared hosted hardware — see TimingEnforcement"
         val breach = failure as? AnchorBreachException

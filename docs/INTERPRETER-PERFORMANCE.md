@@ -77,6 +77,33 @@ Node exposes no per-thread CPU clock in stable form, so its numerator includes t
 
 **What occupancy does NOT do.** It certifies that a capture ran; it does not shrink run-to-run spread. Machine state stops being an *unmeasured* confound, and the variance that defeats a 5 % timed bar is untouched — which is why [IG152](INTERPRETER-GAPS.md) is declined on its own measurements rather than reopened on the strength of this instrument.
 
+## The `perfGateTest` lanes record FOREIGN CPU DEMAND, and an absolute-anchor bar is downgraded when the machine was not ours (contract, measured 2026-09-20)
+
+**Why a second instrument, when the section above just built one.** Occupancy answers *did this thread get scheduled*, and the measurement that fixed it also bounded it: four busy cores of eight inflate wall 37.5 % and move the corrected ratio only **−4.0 %**, because cycles stalled on a contended core are still charged to the measuring thread. Moderate contention is therefore invisible to any ratio — and moderate contention is exactly what damaged an artifact here, when a contended session re-levelled two anchors on 2026-09-19. The `perfGateTest` lanes also cannot form the ratio at all: each bar writes its clock as a literal, so a lane emits one clock by construction. So they get the complementary quantity instead.
+
+**The contract.** `PerfMachineDemand` reads system and process CPU utilisation from `com.sun.management.OperatingSystemMXBean` once per observation, closing the window that contains that measurement, and derives **foreign demand** = `system − process`: the share of the machine somebody else was using. All three land on the observation row, and `TimingEnforcement.forAbsoluteAnchor` downgrades a bar from `GATED` to `FLAGGED` above `PerfMachineDemand.MAX_FOREIGN_CPU_UTILISATION`. A downgraded breach is reported with its reading and the corrective, never failed — an absolute time taken under that load is the machine's number — and the observation still lands in the record with its status.
+
+**Unlike the quality counters beside it, this one is MEANT to gate, and that is a property of the quantity rather than a preference.** GC and JIT are *post-treatment*: an allocation regression causes them, so rejecting a sample on them censors the evidence of the regression, and `PerformanceRecordShapeGuardTest` forbids any consumer. Foreign demand is *pre-treatment* — no change to our code can make another process busy — so judging on it removes a confound. The same guard therefore **requires** this one to have an enforcement locus, which is the exact inverse sweep.
+
+| what | measured 2026-09-20 (darwin-aarch64, 8 cores, 24 wall-bounded 200 ms windows per arm) |
+|---|---|
+| no applied load | foreign 0.080 – 0.488, and 0.193 – 0.591 on the return control |
+| 4 spinners | **0.851 – 0.896** — no overlap with either unloaded arm |
+| 16 spinners | 0.903 – 0.959, saturating |
+| floor | **0.70**, 18 % above the worst healthy reading and 18 % below the best contaminated one |
+| what occupancy said in the same arms | 1.0001 unloaded, **0.9988** at 4 spinners — indistinguishable — and 0.4063 starved |
+
+The last row is the whole argument for keeping both: this quantity sees the contamination the ratio misses, and the ratio ranks the starvation this quantity saturates through.
+
+**Two properties of the instrument that a reader has to know.**
+
+- **A reading of `0.0` is ABSENT, never quiet.** Across 119 windows in which a thread held a core throughout, 17 returned exactly `0.0` — physically impossible — and the incidence was bursty rather than a rate (0 of 35 in one sweep against 13 of 60 in another, with short windows and call interleaving both refuted as causes). The cause is unknown and recorded as unknown; the row omits all three fields rather than writing a zero. **An absent reading leaves the bar at full strength**, because those failures cluster on a *quiet* machine — 0 of 24 windows unusable under four spinners against 4, 2 and 9 of 24 unloaded — so absence is weak evidence for quiet, and downgrading on it would switch the gate off where the instrument works.
+- **Both accessors measure from their own previous call, so there is exactly one sampling site.** A second caller anywhere in the process would silently shorten the window an observation is credited with: well-formed, wrong, invisible at runtime. The reading is taken once in `assertWithinBudget` and passed to both the decision and the row; `PerformanceRecordShapeGuardTest` holds the accessors to `PerfMachineDemand`.
+
+**Re-deriving the floor is a measurement, not a preference** — the same rule as the occupancy floors, and it matters more here because the baseline above is a *workstation*: OS metadata indexing alone took one to two cores throughout, which is why the worst healthy reading is as high as 0.591. Take the highest foreign reading a healthy capture produces on the machine in question, and keep the floor above it with margin. A quieter machine supports a tighter floor; a floor below that worst healthy reading turns the anchor gate off on honest runs, which is how a contamination check comes to be deleted instead of fixed.
+
+**What this does NOT reach.** `interpreterNativePerformance` times a child process, and system utilisation there counts the child's own work — so `system − process` would read the treatment as contamination. That half needs the child's own CPU subtracted and is [IG154](INTERPRETER-GAPS.md#ig154)'s remainder. Nor does this touch the growth floors: a growth ratio is taken within one run at two scales, where contention moves both arms, and no measurement here addresses that.
+
 ## `perf-results/` is a MUTABLE corpus, so a figure derived from it is dated to a commit (measured 2026-09-19)
 
 **Committing a capture changes the population that every derived figure was computed on, in both directions**: the new runs enter it, and the writer's own retention cap silently deletes the oldest records that are neither anchor inputs nor doc-cited. Both happened in one commit — four captures added, four GraalVM-era records pruned — which moved the worst-key spread from **160.5 %** (`group-star expansion@8000`) to **84.6 %** (`charset grapheme@32000`). Re-deriving after that commit and reading the difference as a *correction to the original figure* produced a wrong doc edit; reverting the capture commit restored the original figure exactly. So **re-derive against a named corpus state, and never treat a recompute that straddles a capture commit as falsifying the earlier number** — it is measuring a different population. The retention cap also means a run cited only in prose can vanish, so cite a record you depend on where the pruner can see the citation.

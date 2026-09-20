@@ -88,6 +88,12 @@ class RawClockCensusTest {
             Map.entry("PerfGrowthEstimatorTest.kt",
                     "protects the CPU-clock contract every growth floor rests on, and is contention-SAFE: load only adds "
                     + "wall time, so both of its assertions move further into passing"),
+            Map.entry("PerfMachineDemandTest.kt",
+                    "its clock only BOUNDS a busy-wait so the sampler has a window with work in it; nothing it "
+                    + "asserts is a duration. The live arm checks coherence — that a usable foreign-demand reading "
+                    + "exists and is non-negative — and deliberately asserts no magnitude, because the reading is "
+                    + "the machine's and a bar on it here would fail on a busy workstation, which is the very "
+                    + "instrument it is testing"),
             Map.entry("RawClockCensusTest.java",
                     "this census matches its own pattern literal — the same self-match that made every helper-name "
                     + "detector report KernelParityCoverageGuardTest, which scans the perf sources as text"));

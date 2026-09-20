@@ -117,14 +117,14 @@ class GrowthFloorRetryTest {
         assertEquals(TimingEnforcement.FLAGGED, TimingEnforcement.forGrowthFloor(sharedMachine = true))
 
         assertEquals(TimingEnforcement.GATED,
-            TimingEnforcement.forAbsoluteAnchor(isolatedLane = true, sharedMachine = false))
+            TimingEnforcement.forAbsoluteAnchor(isolatedLane = true, sharedMachine = false, foreignDemand = null))
         assertEquals(TimingEnforcement.FLAGGED,
-            TimingEnforcement.forAbsoluteAnchor(isolatedLane = true, sharedMachine = true))
+            TimingEnforcement.forAbsoluteAnchor(isolatedLane = true, sharedMachine = true, foreignDemand = null))
         assertEquals(TimingEnforcement.UNJUDGED,
-            TimingEnforcement.forAbsoluteAnchor(isolatedLane = false, sharedMachine = false),
+            TimingEnforcement.forAbsoluteAnchor(isolatedLane = false, sharedMachine = false, foreignDemand = null),
             "no clock filters a parallel-fork slice out of an ABSOLUTE time, so it cannot be judged there")
         assertEquals(TimingEnforcement.UNJUDGED,
-            TimingEnforcement.forAbsoluteAnchor(isolatedLane = false, sharedMachine = true))
+            TimingEnforcement.forAbsoluteAnchor(isolatedLane = false, sharedMachine = true, foreignDemand = null))
     }
 
     private fun gated(label: String, estimate: () -> Growth) =

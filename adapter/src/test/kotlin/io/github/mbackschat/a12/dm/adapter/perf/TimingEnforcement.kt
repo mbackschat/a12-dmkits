@@ -18,7 +18,10 @@ package io.github.mbackschat.a12.dm.adapter.perf
  *   a maintainer's own machine, which after this split is the only place they can still fail — a hosted push sets
  *   `CI` and therefore flags them like everything else. Only the machine matters: [forGrowthFloor].
  * - An **absolute time** against a stored number has no clock that filters anything out of it, so it needs the
- *   isolated single-fork lane as well as a dedicated machine: [forAbsoluteAnchor].
+ *   isolated single-fork lane as well as a dedicated machine — and, since 2026-09-20, it needs that machine to have
+ *   actually been idle *while this observation ran*, which is a third precondition and a measured one:
+ *   [forAbsoluteAnchor]. The isolated-lane flag rules out a sibling GRADLE fork; nothing before this ruled out
+ *   another process, and a contended session re-levelled two anchors on 2026-09-19 for want of it.
  *
  * **What the shared-machine axis is for, measured rather than assumed.** `perfGateTest` is single-fork and
  * non-cacheable, so it satisfies the lane axis on a hosted runner too — and the estate still red-lined there: the
@@ -59,17 +62,39 @@ enum class TimingEnforcement {
 
         /**
          * An absolute median against this runner class's committed number. Needs the isolated lane too: no clock
-         * filters a parallel-fork slice out of an absolute time.
+         * filters a parallel-fork slice out of an absolute time — and, since 2026-09-20, it needs the machine to
+         * have been ours while the measurement ran.
          */
-        fun forAbsoluteAnchor(): TimingEnforcement = forAbsoluteAnchor(
+        fun forAbsoluteAnchor(foreignDemand: Double?): TimingEnforcement = forAbsoluteAnchor(
             isolatedLane = System.getProperty(PerfAnchors.LANE_PROPERTY) == "true",
             sharedMachine = onSharedMachine(),
+            foreignDemand = foreignDemand,
         )
 
-        /** The rule itself, on scripted inputs. */
-        fun forAbsoluteAnchor(isolatedLane: Boolean, sharedMachine: Boolean): TimingEnforcement = when {
+        /**
+         * The rule itself, on scripted inputs.
+         *
+         * **[foreignDemand] is the third precondition, and it downgrades rather than refuses.** An absolute time
+         * measured while another process held most of the machine is the machine's number, not the code's, so it
+         * must not fail a build — but it is still a real observation and still belongs in the record with its
+         * status, which is exactly what [FLAGGED] already means for the shared-machine case. The floor and its
+         * measured basis are on [PerfMachineDemand.MAX_FOREIGN_CPU_UTILISATION].
+         *
+         * **An ABSENT reading leaves the gate at full strength, and that asymmetry is measured rather than
+         * cautious.** `null` means the sampler could not say, and the 2026-09-20 probe found those failures cluster
+         * on a QUIET machine — 0 of 24 windows unusable under four spinners against 4, 2 and 9 of 24 on the
+         * unloaded and starved arms — so absence is weak evidence *for* a quiet box, and treating it as grounds to
+         * downgrade would switch the anchor gate off precisely where it works. It can never be an excuse, either:
+         * a missing reading cannot license a breach.
+         */
+        fun forAbsoluteAnchor(
+            isolatedLane: Boolean,
+            sharedMachine: Boolean,
+            foreignDemand: Double?,
+        ): TimingEnforcement = when {
             !isolatedLane -> UNJUDGED
             sharedMachine -> FLAGGED
+            foreignDemand != null && foreignDemand > PerfMachineDemand.MAX_FOREIGN_CPU_UTILISATION -> FLAGGED
             else -> GATED
         }
 

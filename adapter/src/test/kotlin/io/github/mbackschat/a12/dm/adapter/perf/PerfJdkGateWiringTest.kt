@@ -69,7 +69,7 @@ class PerfJdkGateWiringTest {
         JdkIdentity.judged = graalvm
         // One case per write path. The first version of this gate would have passed the first and failed the
         // other three, which is exactly the defect that shipped.
-        assertThrows(IllegalStateException::class.java) { PerfObservations.record(key(), 1.0, "accepted") }
+        assertThrows(IllegalStateException::class.java) { PerfObservations.record(key(), 1.0, "accepted", demand = null) }
         assertThrows(IllegalStateException::class.java) { PerfObservations.recordWarm("l", "s", 1, "interpreter", 1, "cap") }
         assertThrows(IllegalStateException::class.java) { PerfObservations.recordCost("l", "s", 1.0) }
         assertThrows(IllegalStateException::class.java) { PerfObservations.recordMargin(key(), 1.0, null, "accepted") }
@@ -86,7 +86,7 @@ class PerfJdkGateWiringTest {
         val before = PerfObservations.lastQuality
         JdkIdentity.judged = graalvm
 
-        assertThrows(IllegalStateException::class.java) { PerfObservations.record(key(), 1.0, "accepted") }
+        assertThrows(IllegalStateException::class.java) { PerfObservations.record(key(), 1.0, "accepted", demand = null) }
 
         assertSame(before, PerfObservations.lastQuality,
             "a refused record must not advance the window baseline the next real observation is measured against")

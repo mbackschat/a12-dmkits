@@ -181,6 +181,10 @@ class KernelParityGateTest {
                 ObservationKey(lane = LANE, identityLabel = identity, n = row.n, engine = engine, clock = "wall"),
                 stats.medianMs,
                 status = "unasserted",
+                // The parity lane records rather than anchors, so no bar consumes a contention reading here —
+                // and sampling one would shorten the window the ANCHORED lanes measure, since both accessors
+                // read from their own previous call.
+                demand = null,
             )
         }
         // The early-warning band (IF292) lives HERE, not in the harness: this is where the lane and the
