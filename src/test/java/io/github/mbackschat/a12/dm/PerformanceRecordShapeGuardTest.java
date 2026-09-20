@@ -94,7 +94,7 @@ class PerformanceRecordShapeGuardTest {
             "cgroupThrottledUsecInWindow", "cgroupThrottledPeriodsInWindow");
 
     /**
-     * The machine-demand fields (IG154a), which are the OPPOSITE case to the quality fields above and must not be
+     * The machine-demand fields (IF330), which are the OPPOSITE case to the quality fields above and must not be
      * added to that list.
      *
      * <p>Foreign CPU demand is <em>pre-treatment</em>: no change to our code can make another process busy, so
@@ -451,7 +451,7 @@ class PerformanceRecordShapeGuardTest {
      * <p>The quality fields are forbidden a consumer; these are <em>required</em> one, because a pre-treatment
      * reading that nothing rejects on is the "parsed but never consumed" shape this estate has already shipped
      * once. So this names the locus — {@code TimingEnforcement.forAbsoluteAnchor} reading the floor — rather than
-     * trusting that IG154a's row says so. {@code ForeignDemandEnforcementTest} is the test that fails when the
+     * trusting that a doc says so. {@code ForeignDemandEnforcementTest} is the test that fails when the
      * rule itself changes; this is the one that fails when the wiring disappears.
      */
     @Test
@@ -462,7 +462,7 @@ class PerformanceRecordShapeGuardTest {
 
         assertTrue(enforcement.contains("PerfMachineDemand.MAX_FOREIGN_CPU_UTILISATION"),
                 "TimingEnforcement no longer reads the foreign-demand floor, so the recorded field gates nothing "
-                        + "and an absolute anchor can again be levelled from a contended capture (IG154a)");
+                        + "and an absolute anchor can again be levelled from a contended capture (IF330)");
         assertTrue(enforcement.contains("foreignDemand"),
                 "the absolute-anchor rule no longer takes a foreign-demand argument");
         assertTrue(producer.contains("foreignCpuUtilisation"),

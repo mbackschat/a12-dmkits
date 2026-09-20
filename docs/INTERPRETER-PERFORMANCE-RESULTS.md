@@ -21,9 +21,37 @@
 > enforcement, and its place in the docs router. The cleaner boundary is by AUTHOR, not by subject — `perf-results/`
 > is machine-written and self-pruning, this is hand-written and guard-verified.
 
+### Checkpoint 2026-09-20 — the NATIVE lane's contention instrument, measured on the real binary: the same arithmetic, a different quantity, because the child's own CPU is unreadable on this platform
+
+**The platform fact that decided the design, and it refuted the plan that had already been written down.** [IG154](INTERPRETER-GAPS.md)'s remainder was going to subtract the child process's own CPU and judge what was left. It cannot: `ProcessHandle.Info.totalCpuDuration()` returns **empty** on darwin for a child — measured while the child ran, in a poll loop immediately before it exited, and after it exited. So the parent can only form `system − parent`, which leaves the child's work in the remainder. That makes it **unattributed** demand rather than foreign demand: same formula, different meaning, because "this process" is now a parent waiting rather than the process doing the work.
+
+**The arms, on the real `dmtool` binary** (darwin-aarch64, 8 cores, 8 samples per arm, applied load the only variable, spinners owned by the measuring process and force-killed between arms, plus a return control):
+
+| applied load | wall median | unattributed readings | unusable |
+|---|---|---|---|
+| none | 77.9 ms | 0.257 – 0.327 | 5 / 8 |
+| 4 spinners | 101.5 ms | **0.883 – 0.928** | 6 / 8 |
+| 16 spinners | 100.6 ms | 0.993 – 0.998 | 5 / 8 |
+| none (return control) | 72.0 ms | 0.184 – 0.412 | 3 / 8 |
+
+No overlap between quiet (worst 0.412) and contaminated (best 0.883), and the control returns to the unloaded band. **Floor 0.70**, inside that gap, as its own constant — numerically equal to the sibling lanes' today and deliberately separate, since the two judge different quantities from different arms and re-deriving one must not move the other. Wall moved 77.9 → 101.5 ms under four spinners, which is the contamination the reading exists to make visible.
+
+**The readings are SPARSE, and the count is part of the verdict rather than metadata beside it.** Only 2 to 5 of every 8 samples produced a usable reading, because the parent spends each window blocked on the child and the accessor's own window is correspondingly short. So `contendedSamples=1` means one of one or one of five, which are different claims; the report carries `demandReadings` beside it, and `contended` is stated only on a **majority** of the readings — a single burst of foreign load lands in one window and should not condemn a run this thin. With no readings at all the verdict is `false` with `demandReadings: 0`, which says nothing was observed rather than asserting a quiet machine.
+
+**Verified end to end on the real lane, not inferred from unit tests** — `:adapter:interpreterNativePerformance` against the shipped binary, 8 samples, on a quiet machine:
+
+```
+"demandReadings": 5, "contendedSamples": 0, "contended": false
+unattributedCpuUtilisation: [0.202, 0.141, 0.123, 0.177, 0.191, null, null, null]
+```
+
+Five readings, all well under the floor, three nulls preserved as absence rather than written as zeros. *(The binary in this checkout predates the current source, which does not matter here: what is being verified is the report's shape and the verdict's arithmetic, neither of which depends on what the binary computes. A performance claim about the interpreter would need a re-built binary and the mtime gate that enforces it.)*
+
+**This lane reports and does not gate, which is a property of the lane rather than a compromise.** Its report is `informativeOnly` — there is no anchor and no bar a contended sample could corrupt. What a contended sample corrupts is the report's standing as evidence, so the reading rides every sample, the verdict sits in the summary, and a contended run prints a flag naming the count and the floor. Nothing is dropped: a contended record is evidence of the condition that produced it, the same reason the interpreter protocol refuses at aggregation rather than at the write.
+
 ### Checkpoint 2026-09-20 — IG154's selected instrument PROBED before being trusted: it SEPARATES the contamination occupancy is blind to, clips where occupancy still ranks, and intermittently returns an impossible zero
 
-**Why this was run, and it is a correction of process as much as a measurement.** The checkpoint below revised [IG154](INTERPRETER-GAPS.md#ig154)'s closure plan to "system CPU demand sampled across the measurement window" — a **capability claim about a running surface**, which this project's own rule says is settled by executing the thing and never by reading the API that feeds it. It was written as *selected* before it had been run. So it was run: JDK 21.0.12.1 (the pinned toolchain), darwin-aarch64, 8 cores, `com.sun.management.OperatingSystemMXBean`, one thread burning CPU inside every window so a zero reading is physically impossible.
+**Why this was run, and it is a correction of process as much as a measurement.** The checkpoint below revised IG154 (closed the same day, graduated to [IF330](INTERPRETER-FINDINGS.md#if330))'s closure plan to "system CPU demand sampled across the measurement window" — a **capability claim about a running surface**, which this project's own rule says is settled by executing the thing and never by reading the API that feeds it. It was written as *selected* before it had been run. So it was run: JDK 21.0.12.1 (the pinned toolchain), darwin-aarch64, 8 cores, `com.sun.management.OperatingSystemMXBean`, one thread burning CPU inside every window so a zero reading is physically impossible.
 
 | probe | windows | usable | returned `0.0` | notes |
 |---|---|---|---|---|
@@ -96,7 +124,7 @@ Per-sample medians — the quantity the floor actually judges, since it gates `s
 
 **The floor that follows, and the constraint that set it.** JVM **0.75** on the corrected quantity. The binding sample is not a throughput one (the 6 warm-throughput samples across the two heaps read 0.9924 – 1.0002) but a **cold first answer**: the first fork of the bundle's first scenario measured **0.8328** with `gc = 0`, the thread blocked on class loading rather than starved, while its sibling forks read 0.9944 and 0.9921. A floor must admit that, so 0.75 sits ~10 % under it and still 2.2× above the starved band. Node keeps **0.85**, re-derived the same day over 15 samples at **1.041 – 2.250, median 1.154** (its numerator counts every thread, so it reads above 1.0 and never needed the correction).
 
-**Locks.** `PerformanceProtocolTest` — `theMeasuredStarvationArmIsRefused` carries three verbatim wall/cpu/gc triples from the starvation arm and proves the aggregate refuses them by name; `anAllocationHeavyCaptureIsAcceptedAlthoughItsPlainRatioWouldNotBe` is the regression lock for Finding 1 and asserts its own fixture sits under the live floor on the plain ratio, so it keeps meaning if the floor moves; `occupancyTakesGcOutOfTheDenominator` and `aRegionFullyAccountedForByCollectionIsNotReadAsContention` pin the formula. Rationale: [IF329](INTERPRETER-FINDINGS.md#if329). The residual exposure — moderate contention, invisible here — is [IG154](INTERPRETER-GAPS.md#ig154), whose instrument this measurement also selects.
+**Locks.** `PerformanceProtocolTest` — `theMeasuredStarvationArmIsRefused` carries three verbatim wall/cpu/gc triples from the starvation arm and proves the aggregate refuses them by name; `anAllocationHeavyCaptureIsAcceptedAlthoughItsPlainRatioWouldNotBe` is the regression lock for Finding 1 and asserts its own fixture sits under the live floor on the plain ratio, so it keeps meaning if the floor moves; `occupancyTakesGcOutOfTheDenominator` and `aRegionFullyAccountedForByCollectionIsNotReadAsContention` pin the formula. Rationale: [IF329](INTERPRETER-FINDINGS.md#if329). The residual exposure — moderate contention, invisible here — is IG154 (closed the same day, graduated to [IF330](INTERPRETER-FINDINGS.md#if330)), whose instrument this measurement also selects.
 
 ### Checkpoint 2026-09-19 — IG153 closed: the bundle reproduces under pinned order, and every sample of the interpreter protocol now carries its own contention evidence (its floor SUPERSEDED next day — see 2026-09-20)
 

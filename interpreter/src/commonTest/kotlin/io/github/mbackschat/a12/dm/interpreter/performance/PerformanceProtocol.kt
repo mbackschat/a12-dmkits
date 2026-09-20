@@ -131,7 +131,7 @@ internal object PerformanceProtocol {
      * numerator too (+30.5 %). Two of that arm's three samples sit inside the idle band. So moderate contention
      * is NOT detectable here and no floor on this quantity can catch it; what is detectable is starvation, and
      * cleanly — two-times core oversubscription measured **0.313 – 0.348** against a healthy **0.833 – 1.000**.
-     * Covering the gap needs a different instrument, tracked as IG154.
+     * Covering the gap needs a different instrument per carrier, which is IF330.
      *
      * **JVM — floor 0.75.** The numerator is the MEASURING THREAD's CPU and the denominator excludes collection,
      * so a healthy warm region sits at essentially 1.0: **6 warm-throughput samples across the two heaps read

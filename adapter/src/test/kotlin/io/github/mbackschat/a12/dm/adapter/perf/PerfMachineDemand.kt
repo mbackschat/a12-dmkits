@@ -4,7 +4,7 @@ import com.sun.management.OperatingSystemMXBean
 import java.lang.management.ManagementFactory
 
 /**
- * How much of this machine somebody ELSE was using while an observation was measured — IG154's instrument.
+ * How much of this machine somebody ELSE was using while an observation was measured — the `perfGateTest` arm of IF330.
  *
  * **Unlike [PerfEnvironmentQuality] beside it, this one is MEANT to gate, and the difference is not a preference.**
  * GC and JIT counters are *post-treatment*: an allocation regression causes them, so rejecting a sample on them
