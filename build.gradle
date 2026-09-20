@@ -249,10 +249,26 @@ tasks.register('gateWiringGuardTest', Test) {
     filter {
         includeTestsMatching 'io.github.mbackschat.a12.dm.rulekit.dsl.PromotedGateIsReachedGuardTest'
         includeTestsMatching 'io.github.mbackschat.a12.dm.rulekit.dsl.DuplicateGateSiteDenominatorGuardTest'
+        // The refusal census joined 2026-09-20 with its ledger assertion. It reads five main-source trees,
+        // both law tiers, the claim probes and docs/MVK-LEDGER.md at RUNTIME, and it ran in the broad suite,
+        // which declares none of them — so a ledger-only edit left `test` UP-TO-DATE and the census unrun.
+        // A lock the build can skip is not a lock, which is the whole point of the gap it closes (DG56).
+        includeTestsMatching 'io.github.mbackschat.a12.dm.ClientRefusalKernelBasisCensusTest'
     }
     guardInputs(it, [
-            'rulekit main sources' : fileTree('rulekit/src/main') { include '**/*.java' },
+            'rulekit main sources' : fileTree('rulekit/src/main') { include '**/*.java', '**/*.kt' },
             'bridge main sources'  : fileTree('interpreter-bridge/src/main') { include '**/*.java', '**/*.kt' },
+            // The census's own runtime reads: every tree a refusal may be authored in, the two law tiers and
+            // the claim probes it calls a kernel basis, and the ledger column it now holds to that basis.
+            // Both extensions everywhere a refusal may be authored — the census scans `.java` AND `.kt`, and
+            // Kotlin is this estate's default for new code, so a Java-only filter would go stale silently.
+            'core main sources'    : fileTree('core/src/main') { include '**/*.java', '**/*.kt' },
+            'modelkit main sources': fileTree('modelkit/src/main') { include '**/*.java', '**/*.kt' },
+            'edit main sources'    : fileTree('edit/src/main') { include '**/*.java', '**/*.kt' },
+            // Unfiltered: the law-tier scan reads every tracked file under the root, not only sources.
+            'adapter law tier'     : fileTree('adapter/src/test/java/io/github/mbackschat/a12/dm/adapter/laws'),
+            'claim probes'         : file('src/test/resources/catalog/operator-claim-probes.json'),
+            'MVK ledger'           : file('docs/MVK-LEDGER.md'),
             // The site sweep and the launcher it runs through are read at runtime; undeclared, editing either
             // would leave this lane UP-TO-DATE with the denominator unchecked.
             'gate site sweep'      : file('scripts/typescript/gate-mutant-sweep.ts'),
@@ -261,7 +277,7 @@ tasks.register('gateWiringGuardTest', Test) {
             // The sweep DERIVES each site's control class from the test tree, so deleting a control is exactly
             // the edit that must re-run this lane — and it touches no main source, which is what would have
             // left it UP-TO-DATE.
-            'root test sources'    : fileTree('src/test/java') { include '**/*.java' },
+            'root test sources'    : fileTree('src/test/java') { include '**/*.java', '**/*.kt' },
     ])
 }
 

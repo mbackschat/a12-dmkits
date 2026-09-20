@@ -5,10 +5,12 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.IOException;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.regex.Matcher;
@@ -152,9 +154,14 @@ class ClientRefusalKernelBasisCensusTest {
     /**
      * THE DERIVATION, and what replaced an arbitrary {@code >= 20} coverage floor. A code the kits name in a
      * refusal must be one the ledger admits they act on — {@code pre-checked}, or {@code advisory} for the
-     * one channel that warns instead of refusing. The buckets live on {@link KernelCode} and are asserted
-     * equal to the ledger's column by {@code MvkLedgerTest}, so this closes the loop: the conformance claim
-     * is checked against the implementation rather than maintained by hand beside it.
+     * one channel that warns instead of refusing.
+     *
+     * <p><b>This half reads {@link KernelCode}'s buckets; the ledger's own column is locked by
+     * {@link #everyRefusedCodeIsBucketedPreCheckedInTheLedger} beside it.</b> Until 2026-09-20 this javadoc
+     * said the two were "asserted equal by MvkLedgerTest", and no such assertion existed — the lock was
+     * advertised, not built (DEV-API-GAPS DG56). Equality is also the wrong shape for it: {@code Bucket} has
+     * seven values and the ledger's column four atoms plus qualifiers, so they answer neighbouring questions
+     * rather than the same one. What IS decidable is the direction below, and that is what now runs.
      *
      * <p>The old floor was half of what the scan already saw, so a scan that silently halved still passed.
      * This has no such slack: it is a set difference, and every member of it is a real disagreement.
@@ -166,8 +173,8 @@ class ClientRefusalKernelBasisCensusTest {
      */
     @Test
     void everyCodeNamedInARefusalIsOneTheLedgerSaysWeActOn() throws IOException {
-        Map<String, String> mismatched = new java.util.LinkedHashMap<>();
-        for (Map.Entry<String, java.util.Set<String>> cited : citedByRefusals().entrySet()) {
+        Map<String, String> mismatched = new LinkedHashMap<>();
+        for (Map.Entry<String, Set<String>> cited : citedByRefusals().entrySet()) {
             KernelCode code = KernelCode.of(cited.getKey()).orElse(null);
             if (code == null) {
                 mismatched.put(cited.getKey(), "not in the KernelCode vocabulary at all — " + cited.getValue());
@@ -176,9 +183,61 @@ class ClientRefusalKernelBasisCensusTest {
                         + code.buckets() + " — a bucket that says the kernel decides, about a code we refuse on");
             }
         }
-        assertEquals(Map.of(), mismatched, () -> "the ledger's conformance column disagrees with what the kits"
-                + " actually refuse. Correct the bucket in docs/MVK-LEDGER.md AND on the KernelCode constant"
-                + " (MvkLedgerTest keeps them equal), or stop citing the code:\n  " + mismatched);
+        assertEquals(Map.of(), mismatched, () -> "KernelCode's bucket disagrees with what the kits actually"
+                + " refuse. Correct the bucket on the constant, or stop citing the code:\n  " + mismatched);
+    }
+
+    /**
+     * The ledger's OWN column, locked in the one direction a source read decides.
+     *
+     * <p>A {@code throw Refusals.of(CODE, …)} in main source is proof that the kits pre-check {@code CODE} —
+     * it is the refusal, not a claim about one. So the ledger's conformance cell for that code must name
+     * {@code pre-checked}. Twenty-seven rows did not when this landed (measured 2026-09-20), each contradicted by
+     * a live throw — and seven of those were found by this assertion itself, after a by-hand sweep had
+     * reported the class closed, which is the drift DG56 named and nothing could see.
+     *
+     * <p><b>The converse stays unasserted, for the reason the sibling above gives</b>: {@code pre-checked}
+     * in the ledger means the kits refuse the SHAPE, which they may do by making it unrepresentable or by
+     * citing an {@code RK_*} code of their own. So a ledger row may legitimately say {@code pre-checked}
+     * with no {@code Refusals.of} site, and demanding one would force citations the kits have no reason to
+     * make. This is a containment, deliberately, not an equality.
+     */
+    @Test
+    void everyRefusedCodeIsBucketedPreCheckedInTheLedger() throws IOException {
+        Map<String, String> conformance = ledgerConformanceByCode();
+        assertTrue(conformance.size() > 250,
+                "only " + conformance.size() + " ledger rows parsed — the row reader has stopped matching,"
+                        + " which would make this assertion vacuous rather than green");
+
+        Map<String, String> mismatched = new LinkedHashMap<>();
+        for (Map.Entry<String, Set<String>> cited : citedByRefusals().entrySet()) {
+            String cell = conformance.get(cited.getKey());
+            if (cell == null) {
+                mismatched.put(cited.getKey(), "refused at " + cited.getValue() + ", but no ledger row names it");
+            } else if (!cell.contains("pre-checked") && !cell.toLowerCase(Locale.ROOT).contains("advisory")) {
+                mismatched.put(cited.getKey(), "refused at " + cited.getValue() + ", but its ledger cell reads '"
+                        + cell + "'");
+            }
+        }
+        assertEquals(Map.of(), mismatched, () -> "docs/MVK-LEDGER.md's conformance column denies a pre-check"
+                + " the source demonstrably performs. Add `pre-checked` to the row (the estate spells a"
+                + " multi-atom cell `pre-checked + <other> / checker-reported`), or remove the refusal:\n  "
+                + mismatched);
+    }
+
+    /** Each ledger row's code and its conformance cell, read from the table's first two columns. */
+    private static Map<String, String> ledgerConformanceByCode() throws IOException {
+        Map<String, String> byCode = new LinkedHashMap<>();
+        for (String line : Files.readAllLines(CHECKOUT.resolve("docs/MVK-LEDGER.md"))) {
+            if (!line.startsWith("| `MVK_")) {
+                continue;
+            }
+            String[] columns = line.split("\\|");
+            if (columns.length > 2) {
+                byCode.put(columns[1].trim().replace("`", ""), columns[2].trim());
+            }
+        }
+        return byCode;
     }
 
     @Test

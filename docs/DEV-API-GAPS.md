@@ -40,7 +40,7 @@ The gaps below were the **ergonomic and consistency remainder** — what added f
 
 ## 2. Open
 
-- **DG56 — the conformance bucket is stated twice and locked in neither place (opened 2026-09-20).** `KernelCode.Bucket` and `docs/MVK-LEDGER.md`'s conformance column say the same thing about the same codes, so one of them can go stale without the other noticing — the drift class every other guard in this estate exists to stop. The migration that introduced the enum brought a bidirectional lock with it, and it does not fit: the ledger's column has since grown a `/ checker-reported` half that `CheckerLedgerDispositionGuardTest` derives from the portable checker's own sources, plus per-row reachability qualifiers. **Measured 2026-09-20, with each quantity named because the first attempt at this row stated two that were not reproducible:** the enum carries **307** codes and the ledger **306** `MVK_*` rows (`MVK_INVALID_TIME_ZONE` has an enum constant and no row); **45** of those rows name no conformance atom at all, and of the **261** that do, **32** carry an atom set the enum does not. **What would settle it** is a decision about what that column means — one cell carrying three orthogonal dimensions, or three columns — after which the lock is mechanical either way. **What it blocks:** nothing ships on it; the census already reads the enum's buckets, so a refusal citing a kernel-delegated code still fails the build. What stays unguarded is the ledger's own column.
+_None open._
 
 ---
 
