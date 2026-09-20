@@ -1,5 +1,13 @@
 # The canonical skills
 
+## The problem
+
+`dmtool` describes itself well — `manifest`, `operators`, `schema` and `diagnostics` tell an agent the verbs, the parameters and every output shape. None of that can teach **judgment**, and judgment is where an agent actually fails: writing a condition with the polarity inverted, choosing an error field outside the condition's scope, misjudging what one rule iterates over. Each of those produces a model the kernel *accepts*, so nothing contradicts the mistake.
+
+A skill is what covers that gap. And because a skill is prose rather than a program, it needs a single home and a discipline — two copies of it ship, and a wrong sentence in it misleads every agent that reads it.
+
+## What is here
+
 The two skills shipped to coding agents, authored **here** and copied everywhere else from here.
 
 | file | ships as | what it teaches |
