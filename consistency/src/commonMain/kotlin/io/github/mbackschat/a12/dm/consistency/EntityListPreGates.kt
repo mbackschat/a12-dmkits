@@ -128,27 +128,31 @@ private fun TrackedFactBase.preGateFinding(
     element: TrackedDeclaration,
     member: String,
 ): Finding? {
-    val written = call.entityListReferences(conditionLanguage, infixCarrier) ?: return null
-    val targets = written.map { addressedTargetOf(it, declaringGroup, element) ?: return null }
+    val written = call.entityListOperands(conditionLanguage, infixCarrier) ?: return null
+    val targets = written.map { it?.let { operand -> addressedTargetOf(operand.spec, declaringGroup, element) } }
     val direct = targets.firstDirectDuplicate(written)
     if (direct != null) {
         return finding(
             DIRECT_DUPLICATE,
-            "in `$member`: `${call.operator}` names `${written[direct]}` twice — one entity counts once " +
-                "however often it is listed, so drop the repeat",
+            "in `$member`: `${call.operator}` names `${written[direct]?.spec}` twice — one entity counts " +
+                "once however often it is listed, so drop the repeat",
             element.path,
         )
     }
-    val nested = targets.firstNestedEntity()
+    val nested = targets.firstNestedEntity(written)
     if (nested != null) {
         return finding(
             NESTED_DUPLICATE,
-            "in `$member`: `${call.operator}` names `${written[nested]}` and a group that already " +
+            "in `$member`: `${call.operator}` names `${written[nested]?.spec}` and a group that already " +
                 "contains it — drop whichever of the two you did not mean",
             element.path,
         )
     }
-    val rootGroup = targets.indexOfFirst { it.isRootGroup() }.takeIf { it >= 0 } ?: return null
+    // The root-group arm keeps its original all-or-nothing reading, deliberately: the kernel rows measured
+    // on 2026-09-20 cover the two DUPLICATE arms, and widening a third one on the same change would be a
+    // refusal reaching past its basis.
+    val resolved = targets.map { it ?: return null }
+    val rootGroup = resolved.indexOfFirst { it.isRootGroup() }.takeIf { it >= 0 } ?: return null
     val code = when (gate) {
         RootGroupGate.PLAIN -> ROOT_GROUP
         RootGroupGate.NONE -> return null
@@ -162,45 +166,92 @@ private fun TrackedFactBase.preGateFinding(
 }
 
 /**
- * The entity list's references as written, or null wherever this reader may not compare them.
+ * One entity-list operand as this reader can compare it: the spec it names, and the rest of its identity.
+ *
+ * @param spec the bare entity spec, for the star test and for the diagnostic's text.
+ * @param key everything A12 compares BESIDES the resolved path — the clauses as spelled. Empty for a plain
+ *     operand, so two plain operands compare on path alone exactly as before.
+ */
+private data class ListOperand(val spec: String, val key: String)
+
+/**
+ * The entity list's operands as written, or null wherever this reader may not read the list at all.
  *
  * The infix carrier keeps its entities after an `In` keyword rather than as its own operands, so its texts
- * are re-read here; every other carrier has already reduced each operand, and a null [CallOperand.path] is
- * precisely the clause-carrying or computed operand no duplicate test of this reader's may judge.
+ * are re-read here; every other carrier has already reduced each operand.
+ *
+ * **A CLAUSE-carrying operand yields itself rather than silencing the list.** Returning null for the whole
+ * list meant one such operand answered for its siblings: the plain duplicate in
+ * `Sum(Lines/Amount For "A", Quantity, Quantity)` went unreported although it needs no clause read at all
+ * (measured against the kernel 2026-09-20; the row is in the PR #3 review record under `docs/archived/`).
+ * A12's identity is four components rather than one — resolved path, category projection, semantic index and
+ * the `$` outer flag (KERNEL-FINDINGS kf439) — so such an operand is differently KEYED, not unjudgeable.
+ *
+ * **Every OTHER unreducible operand still silences the list, and that is the measured basis rather than
+ * caution.** A categorized operand is the case that proves it: A12 answers `MVK_CATEGORY_NOT_ALLOWED` for
+ * `NumberOfDifferentValues(Severity -> Band, Notes, Notes)` — its category bar runs ahead of the duplicate
+ * the list also carries — so reading the duplicate there would name a class A12 does not
+ * (`FieldListOperationOperandsTest` holds that row). The clause case was measured; this one was measured the
+ * other way, and the two are not the same operand.
  */
-private fun ConditionCall.entityListReferences(
+private fun ConditionCall.entityListOperands(
     language: ConditionLanguage,
     infixCarrier: String?,
-): List<String>? {
+): List<ListOperand?>? {
     if (operator == infixCarrier) {
         val texts = splitAtIn()?.second ?: return null
         return texts.map { text ->
             if (!isBareEntitySpec(text)) return null
-            referencesIn(text, language).singleOrNull() ?: return null
+            referencesIn(text, language).singleOrNull()?.let { ListOperand(it, "") } ?: return null
         }
     }
-    return operands.map { it.path ?: return null }
+    return operands.map { operand ->
+        if (operand.clauses.isEmpty()) {
+            return@map ListOperand(operand.path ?: return null, "")
+        }
+        ListOperand(operand.base ?: return null, operand.clauses.joinToString("|") { "${it.keyword} ${it.text}" })
+    }
 }
 
 /**
- * The index of the first reference that repeats an earlier one, or null.
+ * The index of the first identity that repeats an earlier one, or null.
  *
  * A starred reference is skipped exactly as `checkDuplicatesInDirectRefs` skips one, so the index this
- * returns is into the FULL list rather than into the unstarred part of it.
+ * returns is into the FULL list rather than into the unstarred part of it. An operand this reader could not
+ * reduce is skipped for itself alone.
  */
-private fun List<String>.firstDirectDuplicate(written: List<String>): Int? {
+private fun List<String?>.firstDirectDuplicate(written: List<ListOperand?>): Int? {
     val seen = mutableSetOf<String>()
     indices.forEach { at ->
-        if ('*' !in written[at] && !seen.add(this[at])) {
+        val operand = written[at]
+        val target = this[at]
+        if (operand != null && target != null && '*' !in operand.spec &&
+            !seen.add("$target\u0000${operand.key}")
+        ) {
             return at
         }
     }
     return null
 }
 
-/** The index of the first reference lying under another entity of the same list, or null. */
-private fun List<String>.firstNestedEntity(): Int? =
-    indexOfFirst { inner -> any { outer -> inner.startsWith("$outer/") } }.takeIf { it >= 0 }
+/**
+ * The index of the first entity lying under another of the same list, or null.
+ *
+ * **Containment holds between IDENTICALLY keyed operands only.** An index-selected ancestor does not contain
+ * a differently-keyed descendant — `Lines For "A"` beside `Lines/Amount For "B"` is admitted, while the same
+ * pair under one key is `MVK_DUPLICATE_PARAM2` (both measured at the kernel 2026-09-20). Equality is the
+ * whole test: where the keys merely differ this stays silent rather than deciding what the difference means,
+ * which under-reports and is the safe direction.
+ */
+private fun List<String?>.firstNestedEntity(written: List<ListOperand?>): Int? =
+    indices.firstOrNull { at ->
+        val inner = this[at] ?: return@firstOrNull false
+        val innerKey = written[at]?.key ?: return@firstOrNull false
+        indices.any { other ->
+            other != at && this[other] != null && written[other]?.key == innerKey &&
+                inner.startsWith("${this[other]}/")
+        }
+    }
 
 /** Whether this model path names a ROOT group — one step below the model, so one separator deep. */
 private fun String.isRootGroup(): Boolean = count { it == '/' } == 1
@@ -213,7 +264,12 @@ private fun String.isRootGroup(): Boolean = count { it == '/' } == 1
  * The root-group arm is read as PLAIN here because a family that yields on a root group is silent either
  * way — under-reporting where the caller asks no gate, never over-reporting.
  */
-internal fun entityListPreGateAnswers(written: List<String>, targets: List<String>): Boolean =
-    targets.firstDirectDuplicate(written) != null ||
-        targets.firstNestedEntity() != null ||
+internal fun entityListPreGateAnswers(written: List<String>, targets: List<String>): Boolean {
+    // These callers reduce their own operands to plain specs before asking, so every identity here carries an
+    // empty key — which is what makes the arms compare on path alone, exactly as they did for every list
+    // before clause-carrying operands became readable.
+    val operands = written.map { ListOperand(it, "") }
+    return targets.firstDirectDuplicate(operands) != null ||
+        targets.firstNestedEntity(operands) != null ||
         targets.any { it.isRootGroup() }
+}
