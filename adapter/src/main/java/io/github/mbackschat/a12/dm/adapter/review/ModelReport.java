@@ -422,6 +422,15 @@ public final class ModelReport {
                             .canonicalText(opaque.canonicalText())
                             .reason(opaque.reason())
                             .build();
+                // A refused rule reports as opaque HERE on purpose: this surface explains what a rule does,
+                // and neither state has a typed condition to explain. The distinction is a consumer's to
+                // act on (DG1001), and the reason carries its code, so nothing is lost by projecting them
+                // together in a report that has no branch to give it.
+                case ReadResult.Refused refused ->
+                    OpaqueExplanation.builder()
+                            .canonicalText(refused.canonicalText())
+                            .reason(refused.reason())
+                            .build();
             };
             out.add(RuleEntry.builder(name, scopeOf(name), explanation)
                     .severity(adapter.ruleSeverity(name))
@@ -441,26 +450,26 @@ public final class ModelReport {
         Map<String, List<String>> suppressions = new LinkedHashMap<>();
         for (String name : adapter.computationFullNames()) {
             ReadComputation read = adapter.readComputation(name);
-            if (read instanceof ReadComputation.Converted converted) {
-                suppressions.put(name, adapter.computationErrorCodesToSuppress(name));
-                ComputationExplanation ex = context.explainComputation(converted.computation());
-                // the (precondition?, operation) formulae — the SAME DraftComputation `computation read`
-                // emits, so the report and the per-computation read agree on when a field is filled
-                DraftComputation draft = converted.computation().draft();
-                out.add(ComputationEntry.builder(name, scopeOf(name))
-                        .explanation(new ExplainedComputation(
-                                ex, draft, computationMessages(ex.messages())))
-                        .build());
-            } else {
-                ReadComputation.Opaque opaque = (ReadComputation.Opaque) read;
-                suppressions.put(name, adapter.computationErrorCodesToSuppress(name));
-                out.add(ComputationEntry.builder(name, scopeOf(name))
-                        .explanation(OpaqueExplanation.builder()
-                                .canonicalText(opaque.canonicalText())
-                                .reason(opaque.reason())
-                                .build())
-                        .build());
-            }
+            suppressions.put(name, adapter.computationErrorCodesToSuppress(name));
+            // An exhaustive switch rather than the `instanceof`/cast it replaced: the cast silently meant
+            // "everything that is not Converted is Opaque", so a third state would have become a
+            // ClassCastException on a legal read rather than a compile error. A sealed type is only safe
+            // from a switch the compiler proves exhaustive.
+            ComputationExplanationOutcome explanation = switch (read) {
+                case ReadComputation.Converted converted -> {
+                    ComputationExplanation ex = context.explainComputation(converted.computation());
+                    // the (precondition?, operation) formulae — the SAME DraftComputation `computation read`
+                    // emits, so the report and the per-computation read agree on when a field is filled
+                    DraftComputation draft = converted.computation().draft();
+                    yield new ExplainedComputation(ex, draft, computationMessages(ex.messages()));
+                }
+                case ReadComputation.Opaque opaque ->
+                    OpaqueExplanation.builder()
+                            .canonicalText(opaque.canonicalText())
+                            .reason(opaque.reason())
+                            .build();
+            };
+            out.add(ComputationEntry.builder(name, scopeOf(name)).explanation(explanation).build());
         }
         return new ComputationCatalog(List.copyOf(out), Map.copyOf(suppressions));
     }

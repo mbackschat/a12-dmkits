@@ -163,20 +163,46 @@ public final class ReadPayloads {
         data.put("severity", adapter.ruleSeverity(rule));
         data.put("errorCode", adapter.ruleErrorCode(rule));
         adapter.ruleErrorField(rule).ifPresent(f -> data.put("errorField", f));
-        ReadResult read = adapter.read(rule);
-        if (read instanceof ReadResult.Converted converted) {
-            data.put("converted", true);
-            data.put("condition", EN.render(converted.condition()));
-        } else if (read instanceof ReadResult.Opaque opaque) {
-            data.put("converted", false);
-            data.put("canonicalText", opaque.canonicalText());
-            data.put("reason", opaque.reason());
-        }
+        putRuleRead(data, adapter.read(rule));
         RuleMessages.putInto(data, adapter.ruleMessages(rule));
         putIfNotEmpty(data, "annotations", doc.annotations(rule));
         putIfNotEmpty(data, "internalDescription", doc.internalDescription(rule));
         putIfNotEmpty(data, "externalDescription", doc.externalDescription(rule));
         return data;
+    }
+
+    /**
+     * The read outcome as output keys — one place, written as an exhaustive switch.
+     *
+     * <p>It was an {@code if}/{@code else if} chain over two states, which is the shape that silently emits
+     * NOTHING when a third arrives: {@code converted} would have gone missing altogether rather than
+     * reading false. The switch makes the compiler the guard for the next one.
+     *
+     * <p><b>The refused arm is compiler-mandated rather than reachable from here, and is NOT a documented
+     * output key.</b> {@code ReadResult} is shared with the kernel-free bridge, which is the only producer
+     * of {@code Refused} (DEV-API-GAPS DG1001); every CLI read goes through the kernel-backed adapter, whose
+     * own layer answers first. The branch emits the opaque shape plus {@code refusedCode} so it is correct
+     * if the CLI ever surfaces a bridge read — but until it does, that key stays out of the published
+     * schema, because advertising a field no run can produce is the defect this estate calls out by name.
+     */
+    private static void putRuleRead(ObjectNode data, ReadResult read) {
+        switch (read) {
+            case ReadResult.Converted converted -> {
+                data.put("converted", true);
+                data.put("condition", EN.render(converted.condition()));
+            }
+            case ReadResult.Opaque opaque -> {
+                data.put("converted", false);
+                data.put("canonicalText", opaque.canonicalText());
+                data.put("reason", opaque.reason());
+            }
+            case ReadResult.Refused refused -> {
+                data.put("converted", false);
+                data.put("canonicalText", refused.canonicalText());
+                data.put("reason", refused.reason());
+                data.put("refusedCode", refused.code().name());
+            }
+        }
     }
 
     /**
@@ -198,31 +224,35 @@ public final class ReadPayloads {
         data.put("group", computation.substring(0, computation.lastIndexOf('/')));
         ArrayNode suppressions = data.putArray("errorCodesToSuppress");
         adapter.computationErrorCodesToSuppress(computation).forEach(suppressions::add);
-        ReadComputation read = adapter.readComputation(computation);
-        if (read instanceof ReadComputation.Converted converted) {
-            data.put("converted", true);
-            Computation comp = converted.computation();
-            data.put("calculatedField", comp.computedField().path().value());
-            DraftComputation draft = comp.draft();
-            if (draft.commonPrecondition() != null) {
-                data.put("commonPrecondition", draft.commonPrecondition());
-            }
-            ArrayNode alternatives = data.putArray("alternatives");
-            for (DraftComputation.Alternative alt : draft.alternatives()) {
-                ObjectNode node = alternatives.addObject();
-                if (alt.precondition() != null) {
-                    node.put("precondition", alt.precondition());
+        switch (adapter.readComputation(computation)) {
+            case ReadComputation.Converted converted -> {
+                data.put("converted", true);
+                Computation comp = converted.computation();
+                data.put("calculatedField", comp.computedField().path().value());
+                DraftComputation draft = comp.draft();
+                if (draft.commonPrecondition() != null) {
+                    data.put("commonPrecondition", draft.commonPrecondition());
                 }
-                node.put("operation", alt.operation());
-                if (alt.toleranceRangeOp() != null) {
-                    node.put("toleranceRangeOp", alt.toleranceRangeOp().wire());
+                ArrayNode alternatives = data.putArray("alternatives");
+                for (DraftComputation.Alternative alt : draft.alternatives()) {
+                    ObjectNode node = alternatives.addObject();
+                    if (alt.precondition() != null) {
+                        node.put("precondition", alt.precondition());
+                    }
+                    node.put("operation", alt.operation());
+                    if (alt.toleranceRangeOp() != null) {
+                        node.put("toleranceRangeOp", alt.toleranceRangeOp().wire());
+                    }
                 }
+                RuleMessages.putInto(data, comp.messages());
             }
-            RuleMessages.putInto(data, comp.messages());
-        } else {
-            ReadComputation.Opaque opaque = (ReadComputation.Opaque) read;
-            data.put("converted", false);
-            data.put("reason", opaque.reason());
+            // Exhaustive for the reason putRuleRead states. The cast this replaced read "not Converted
+            // means Opaque", so a third state would have been a ClassCastException on a computation the
+            // kernel accepts — a crash, not a degraded read.
+            case ReadComputation.Opaque opaque -> {
+                data.put("converted", false);
+                data.put("reason", opaque.reason());
+            }
         }
         return data;
     }

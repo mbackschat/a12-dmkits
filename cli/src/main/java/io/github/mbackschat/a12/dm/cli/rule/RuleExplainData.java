@@ -35,29 +35,46 @@ public final class RuleExplainData {
 
     /**
      * Build the {@code data} payload for explaining the rule at {@code rulePath} (assumed already validated to
-     * exist). Covers both the Converted (modeled) and Opaque (unmodeled construct) cases; both carry
-     * {@code polarity} + {@code messages}.
+     * exist). Covers all three read outcomes — Converted (modeled), Opaque (unmodeled construct) and Refused
+     * (a gate rejects it on a measured kernel basis); all carry {@code polarity} + {@code messages}.
      */
     public static ObjectNode build(KernelAdapter adapter, BoundModel model, String rulePath) {
         ReadResult read = adapter.read(rulePath);
         ObjectNode data;
-        if (read instanceof ReadResult.Converted converted) {
-            data = (ObjectNode) parse(new ModelContext(model).explain(converted.condition()).toJson());
-        } else {
-            ReadResult.Opaque opaque = (ReadResult.Opaque) read;
-            data = MAPPER.createObjectNode();
-            data.put("rule", rulePath);
-            data.put("explained", false);
-            data.put("reason", opaque.reason());
-            data.put("canonicalText", opaque.canonicalText());
+        // Exhaustive over the sealed read: the cast this replaced meant "not Converted is Opaque", which a
+        // third arm turns into a ClassCastException on a rule the kernel accepts. The refused arm adds
+        // `refusedCode` to the same unexplained shape, strictly additively (DEV-API-GAPS DG1001).
+        switch (read) {
+            case ReadResult.Converted converted ->
+                data = (ObjectNode) parse(new ModelContext(model).explain(converted.condition()).toJson());
+            case ReadResult.Opaque opaque -> {
+                data = MAPPER.createObjectNode();
+                data.put("rule", rulePath);
+                data.put("explained", false);
+                data.put("reason", opaque.reason());
+                data.put("canonicalText", opaque.canonicalText());
+            }
+            case ReadResult.Refused refused -> {
+                data = MAPPER.createObjectNode();
+                data.put("rule", rulePath);
+                data.put("explained", false);
+                data.put("reason", refused.reason());
+                data.put("canonicalText", refused.canonicalText());
+                data.put("refusedCode", refused.code().name());
+            }
         }
         putPolarity(data);
         RuleMessages.putInto(data, adapter.ruleMessages(rulePath));
         return data;
     }
 
-    /** True iff the payload is the Opaque fallback (the converter didn't model the construct). */
-    public static boolean isOpaque(ObjectNode data) {
+    /**
+     * True iff the payload is an unexplained fallback rather than a structural explanation. It answers the
+     * shape question — {@code explained:false} — and deliberately does NOT say WHICH fallback set it. Named
+     * for the key it reads rather than for one of the states behind it, because the read outcome is sealed
+     * and gained an arm; a predicate named after one arm would have quietly started lying about the other.
+     */
+    public static boolean isUnexplained(ObjectNode data) {
         return data.path("explained").isBoolean() && !data.path("explained").asBoolean();
     }
 

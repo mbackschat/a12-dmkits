@@ -84,11 +84,17 @@ class CrossKindTemporalOperandReadTest {
         return BoundModel.ofJson(session.toJson());
     }
 
-    /** {@code Converted} or the reason the read gave up, so a failure names its own cause. */
+    /**
+     * {@code Converted} or the reason the read gave up, so a failure names its own cause — and the two ways
+     * of giving up stay apart. This file's whole subject is a kernel-admitted operand a rulekit gate might
+     * refuse, so collapsing "we don't model it" into "we refuse it" would erase the distinction the rows
+     * below are measuring (DEV-API-GAPS DG1001).
+     */
     private static String verdict(String name, String errorRel, String condition) {
         return switch (readRule(name, errorRel, condition)) {
             case ReadResult.Converted c -> "CONVERTED";
             case ReadResult.Opaque o -> "OPAQUE: " + o.reason();
+            case ReadResult.Refused r -> "REFUSED " + r.code().name() + ": " + r.reason();
         };
     }
 

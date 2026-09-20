@@ -43,14 +43,22 @@ class KernelMmReadCoverageTest {
                 String json = Files.readString(file, StandardCharsets.UTF_8);
                 Map<String, ReadResult> outcomes = KernelAdapter.ofJson(json).readAll();
                 int rules = 0, conv = 0, opq = 0;
+                // Switched for the reason Corpus1ReadCoverageTest states: a chain over a SEALED type counts
+                // an unnamed state into neither bucket, silently understating coverage (DG1001).
                 for (ReadResult read : outcomes.values()) {
                     rules++;
-                    if (read instanceof ReadResult.Converted) {
-                        conv++;
-                    } else if (read instanceof ReadResult.Opaque o) {
-                        opq++;
-                        opaqueReasons.merge(normalizeReason(o.reason()), 1, Integer::sum);
-                        distinctReasons.merge(o.reason(), 1, Integer::sum);
+                    switch (read) {
+                        case ReadResult.Converted ignored -> conv++;
+                        case ReadResult.Opaque o -> {
+                            opq++;
+                            opaqueReasons.merge(normalizeReason(o.reason()), 1, Integer::sum);
+                            distinctReasons.merge(o.reason(), 1, Integer::sum);
+                        }
+                        case ReadResult.Refused r -> {
+                            opq++;
+                            opaqueReasons.merge("refused: " + r.code().name(), 1, Integer::sum);
+                            distinctReasons.merge(r.reason(), 1, Integer::sum);
+                        }
                     }
                 }
                 totalRules += rules; converted += conv; opaque += opq;
@@ -116,12 +124,13 @@ class KernelMmReadCoverageTest {
                 int t = 0, c = 0, o = 0;
                 for (ReadComputation ic : outcomes.values()) {
                     t++;
-                    if (ic instanceof ReadComputation.Converted) {
-                        c++;
-                    } else if (ic instanceof ReadComputation.Opaque op) {
-                        o++;
-                        opaqueReasons.merge(normalizeReason(op.reason()), 1, Integer::sum);
-                        distinctReasons.merge(op.reason(), 1, Integer::sum);
+                    switch (ic) {
+                        case ReadComputation.Converted ignored -> c++;
+                        case ReadComputation.Opaque op -> {
+                            o++;
+                            opaqueReasons.merge(normalizeReason(op.reason()), 1, Integer::sum);
+                            distinctReasons.merge(op.reason(), 1, Integer::sum);
+                        }
                     }
                 }
                 total += t; converted += c; opaque += o;

@@ -74,24 +74,43 @@ final class ModelReadCommand extends BaseCommand {
         }
     }
 
+    /**
+     * An exhaustive switch rather than an {@code if}/{@code else if} chain, for the reason
+     * {@code ReadPayloads.putRuleRead} states: a chain over a SEALED type emits nothing at all for a state
+     * it does not name, so a reader would see no {@code converted} key rather than {@code false}. A refused
+     * rule keeps the opaque keys and adds {@code refusedCode} (DEV-API-GAPS DG1001).
+     */
     private static void putRuleOutcome(ObjectNode node, ReadResult read) {
-        if (read instanceof ReadResult.Converted converted) {
-            node.put("converted", true);
-            node.put("condition", EN.render(converted.condition()));
-        } else if (read instanceof ReadResult.Opaque opaque) {
-            node.put("converted", false);
-            node.put("canonicalText", opaque.canonicalText());
-            node.put("reason", opaque.reason());
+        switch (read) {
+            case ReadResult.Converted converted -> {
+                node.put("converted", true);
+                node.put("condition", EN.render(converted.condition()));
+            }
+            case ReadResult.Opaque opaque -> {
+                node.put("converted", false);
+                node.put("canonicalText", opaque.canonicalText());
+                node.put("reason", opaque.reason());
+            }
+            case ReadResult.Refused refused -> {
+                node.put("converted", false);
+                node.put("canonicalText", refused.canonicalText());
+                node.put("reason", refused.reason());
+                node.put("refusedCode", refused.code().name());
+            }
         }
     }
 
+    /** Exhaustive for the reason {@link #putRuleOutcome} states; a computation has no refused state. */
     private static void putComputationOutcome(ObjectNode node, ReadComputation read) {
-        if (read instanceof ReadComputation.Converted converted) {
-            node.put("converted", true);
-            node.put("calculatedField", converted.computation().computedField().path().value());
-        } else if (read instanceof ReadComputation.Opaque opaque) {
-            node.put("converted", false);
-            node.put("reason", opaque.reason());
+        switch (read) {
+            case ReadComputation.Converted converted -> {
+                node.put("converted", true);
+                node.put("calculatedField", converted.computation().computedField().path().value());
+            }
+            case ReadComputation.Opaque opaque -> {
+                node.put("converted", false);
+                node.put("reason", opaque.reason());
+            }
         }
     }
 }

@@ -19,6 +19,13 @@ import io.github.mbackschat.a12.dm.rulekit.dsl.Computation;
  * <p>Tolerant by design (N8): reading a model whose computations the kernel accepts never throws —
  * supported ones become typed {@code Computation}s, the rest are reported {@code Opaque}. Lives in
  * {@code rulekit} (kernel-decoupling stage 3), the peer of {@link ReadResult}.
+ *
+ * <p><b>It has no {@code Refused} arm, and the asymmetry with {@link ReadResult} is deliberate</b>
+ * (DEV-API-GAPS DG1001). {@code Refused} exists there because a KERNEL-FREE reader — the interpreter bridge
+ * — has no kernel to consult, so a rulekit gate's verdict is the only one available and is worth reporting
+ * as itself. Nothing reads computations that way: every computation read goes through the kernel-backed
+ * adapter, whose own layer answers first, so the arm would have had no producer. Adding it for symmetry
+ * would advertise a state that can never occur.
  */
 public sealed interface ReadComputation
         permits ReadComputation.Converted, ReadComputation.Opaque {

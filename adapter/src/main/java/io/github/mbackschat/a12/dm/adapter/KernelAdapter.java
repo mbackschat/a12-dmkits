@@ -444,6 +444,17 @@ public final class KernelAdapter {
         try {
             ConditionConverter converter = new ConditionConverter(model);
             ICondition parsed = parseCondition(ruleFullName);
+            if (parsed == null) {
+                // The kernel's parser is SILENT here, so it answers an unparseable stored condition with null
+                // rather than an exception, and every caller below dereferences it. Unguarded, the first
+                // dereference threw an NPE that opaqueFailureReason then labelled "converter error (…) at
+                // ConditionConverter.countEntities" — a MODEL problem reported as a bug in our own converter,
+                // the exact mislabel that method exists to prevent. Measured 2026-09-20 on two unrelated
+                // laws (a format-illegal extraction, a star on a non-repeatable group), so the null is the
+                // parser's general answer to "this text does not fit this model", not one law's quirk.
+                return new ReadResult.Opaque(verbatimConditionText(ruleFullName),
+                        "the kernel could not parse the stored condition against this model");
+            }
             int outerRefs = converter.countOuterRefs(parsed);   // $ correlations the source carries (N8)
             int categoryRefs = converter.countCategoryRefs(parsed);   // [field -> Cat] projections it carries
             int semanticIndexRefs = converter.countSemanticIndexRefs(parsed);   // [field For key] reads
@@ -454,6 +465,14 @@ public final class KernelAdapter {
             return new ReadResult.Converted(converted);
         } catch (UnsupportedConstructException unconverted) {
             return new ReadResult.Opaque(verbatimConditionText(ruleFullName), unconverted.getMessage());
+        // There is deliberately NO `catch (KernelCodeRefusal)` here, and it was tried (DG1001, 2026-09-20).
+        // A rulekit gate can only refuse what the converter has already begun rebuilding, and on this path
+        // the kernel answers first for every law measured — a format-illegal extraction, a star on a
+        // non-repeatable group, and duplicate operands all produced a null parse above, never a refusal. So
+        // the arm had no reachable case, and an unreachable arm claiming a behaviour is worse than none.
+        // Should a gate ever become stricter than the kernel, the tolerant arm below reports it as
+        // "converter error (KernelCodeRefusal): … MVK_*" — which is the honest label for that, because on
+        // this path the model has been read by the kernel and OUR gate is the thing that disagreed.
         } catch (RuntimeException unexpected) {
             // Tolerant-by-design: a rule the kernel accepts must never crash whole-DM read. But be
             // HONEST about why it didn't convert — opaqueFailureReason() keeps the benign
@@ -874,6 +893,9 @@ public final class KernelAdapter {
             return new ReadComputation.Converted(computation);
         } catch (UnsupportedConstructException unconverted) {
             return new ReadComputation.Opaque(verbatim, unconverted.getMessage());
+        // No refusal arm here either, for the reason {@link #read} states and on the same measurement: the
+        // kernel's calculation-info extraction is this path's first answer, and it returned empty for the
+        // same corruptions before any rulekit factory ran.
         } catch (RuntimeException unexpected) {
             return new ReadComputation.Opaque(verbatim, opaqueFailureReason(unexpected));
         }

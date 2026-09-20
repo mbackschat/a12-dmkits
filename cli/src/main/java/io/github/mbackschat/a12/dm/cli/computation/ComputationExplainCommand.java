@@ -64,17 +64,23 @@ final class ComputationExplainCommand extends BaseCommand {
             ReadComputation read = adapter.readComputation(computation);
             JsonNode data;
             String summary;
-            if (read instanceof ReadComputation.Converted converted) {
-                data = readGeneratedJson(new ModelContext(bound).explainComputation(converted.computation()).toJson());
-                summary = "explained " + computation;
-            } else {
-                ReadComputation.Opaque opaque = (ReadComputation.Opaque) read;
-                ObjectNode d = MAPPER.createObjectNode();
-                d.put("computation", computation);
-                d.put("explained", false);
-                d.put("reason", opaque.reason());
-                data = d;
-                summary = computation + " is Opaque (not modeled)";
+            // Exhaustive over the sealed read: the cast this replaced meant "not Converted is Opaque", so a
+            // third state would have been a ClassCastException on a computation the kernel accepts rather
+            // than a compile error.
+            switch (read) {
+                case ReadComputation.Converted converted -> {
+                    data = readGeneratedJson(
+                            new ModelContext(bound).explainComputation(converted.computation()).toJson());
+                    summary = "explained " + computation;
+                }
+                case ReadComputation.Opaque opaque -> {
+                    ObjectNode d = MAPPER.createObjectNode();
+                    d.put("computation", computation);
+                    d.put("explained", false);
+                    d.put("reason", opaque.reason());
+                    data = d;
+                    summary = computation + " is Opaque (not modeled)";
+                }
             }
             ObjectNode explained = (ObjectNode) data;
             var suppressions = explained.putArray("errorCodesToSuppress");

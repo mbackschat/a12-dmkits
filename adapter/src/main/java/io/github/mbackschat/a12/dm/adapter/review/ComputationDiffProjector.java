@@ -33,7 +33,7 @@ final class ComputationDiffProjector {
     static Map<String, String> aspects(ReadComputation read, List<String> suppressions) {
         return switch (read) {
             case ReadComputation.Converted converted -> convertedAspects(converted.computation());
-            case ReadComputation.Opaque opaque -> opaqueAspects(opaque, suppressions);
+            case ReadComputation.Opaque opaque -> opaqueAspects(opaque.canonicalText(), suppressions);
         };
     }
 
@@ -87,9 +87,9 @@ final class ComputationDiffProjector {
     }
 
     private static Map<String, String> opaqueAspects(
-            ReadComputation.Opaque computation, List<String> errorCodesToSuppress) {
+            String canonicalText, List<String> errorCodesToSuppress) {
         Map<String, String> aspects = new LinkedHashMap<>();
-        aspects.put("opaque", computation.canonicalText());
+        aspects.put("opaque", canonicalText);
         if (!errorCodesToSuppress.isEmpty()) {
             aspects.put("errorCodesToSuppress", String.join(",", errorCodesToSuppress));
         }

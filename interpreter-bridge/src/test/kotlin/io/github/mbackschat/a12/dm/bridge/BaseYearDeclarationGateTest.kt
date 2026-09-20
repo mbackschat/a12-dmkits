@@ -1,5 +1,6 @@
 package io.github.mbackschat.a12.dm.bridge
 
+import io.github.mbackschat.a12.dm.core.KernelCode
 import io.github.mbackschat.a12.dm.core.ModelIndex
 import io.github.mbackschat.a12.dm.core.ReferenceResolvers
 import io.github.mbackschat.a12.dm.interpreter.model.ConditionLanguage
@@ -10,6 +11,7 @@ import io.github.mbackschat.a12.dm.rulekit.dsl.ComparisonCondition
 import io.github.mbackschat.a12.dm.rulekit.dsl.Dsl
 import io.github.mbackschat.a12.dm.rulekit.dsl.Severity
 import io.github.mbackschat.a12.dm.rulekit.read.ReadResult
+import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertInstanceOf
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
@@ -88,8 +90,10 @@ class BaseYearDeclarationGateTest {
 
     /**
      * What the refusal costs a CONSUMER — the question a throw does not answer. `readAll` catches per rule, so
-     * a base-year-illegal condition becomes `Opaque` carrying the reason; the rest of the model still reads and
-     * nothing is lost or unreadable.
+     * a base-year-illegal condition becomes `Refused` carrying the CODE; the rest of the model still reads and
+     * nothing is lost or unreadable. It read `Opaque` until 2026-09-20 — see API-FINDINGS AF154 for why
+     * conflating that with an unmapped construct is opposite advice, and for why only this kernel-free path
+     * produces the state.
      *
      * The fixture is assembled rather than corrupted textually: the rule is built against the CONFIGURED model,
      * where the gate admits it, and then added to the UNCONFIGURED one. The gate fires when the condition is
@@ -97,7 +101,7 @@ class BaseYearDeclarationGateTest {
      * string surgery can get wrong.
      */
     @Test
-    fun `a stored base-year-illegal condition reads back as Opaque, not as a failure`() {
+    fun `a stored base-year-illegal condition reads back as Refused, not as a failure`() {
         val declared = BoundModel.ofJson(configured)
         val rule = declared.rule(declared.group("/Cover")).name("BaseYearRule")
             .errorField(declared.field("/Cover/Ref"))
@@ -108,7 +112,7 @@ class BaseYearDeclarationGateTest {
 
         val read = InterpreterConditionReadBack()
             .readAll(storedWithoutDeclaration, ReferenceResolvers.selfContained())
-        val opaque = assertInstanceOf(ReadResult.Opaque::class.java, read["/Cover/BaseYearRule"])
-        assertTrue(opaque.reason().contains("MVK_NO_BASE_YEAR"), opaque.reason())
+        val refused = assertInstanceOf(ReadResult.Refused::class.java, read["/Cover/BaseYearRule"])
+        assertEquals(KernelCode.MVK_NO_BASE_YEAR, refused.code())
     }
 }

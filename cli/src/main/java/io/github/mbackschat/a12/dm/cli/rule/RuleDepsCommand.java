@@ -76,23 +76,38 @@ final class RuleDepsCommand extends BaseCommand {
             ObjectNode data = MAPPER.createObjectNode();
             data.put("rule", rule);
             String summary;
-            if (read instanceof ReadResult.Converted converted) {
-                // Project the same explanation rule explain emits, keeping only the dependency facets.
-                JsonNode explanation = readGeneratedJson(new ModelContext(bound).explain(converted.condition()).toJson());
-                JsonNode references = explanation.get("references");
-                data.set("references", references);
-                data.set("iterates", explanation.get("iterates"));
-                if (explanation.has("iterationGroup")) {
-                    data.set("iterationGroup", explanation.get("iterationGroup"));
+            // Exhaustive over the sealed read: the cast this replaced meant "not Converted is Opaque", which
+            // a third arm turns into a ClassCastException on a rule the kernel accepts. Both unconverted
+            // arms give the same advice — `where-used` is the inverse that needs no typed condition — and
+            // the refused one additionally names its code, so a consumer can tell them apart (DG1001).
+            switch (read) {
+                case ReadResult.Converted converted -> {
+                    // Project the same explanation rule explain emits, keeping only the dependency facets.
+                    JsonNode explanation =
+                            readGeneratedJson(new ModelContext(bound).explain(converted.condition()).toJson());
+                    JsonNode references = explanation.get("references");
+                    data.set("references", references);
+                    data.set("iterates", explanation.get("iterates"));
+                    if (explanation.has("iterationGroup")) {
+                        data.set("iterationGroup", explanation.get("iterationGroup"));
+                    }
+                    data.put("count", references == null ? 0 : references.size());
+                    summary = "dependencies of " + rule;
                 }
-                data.put("count", references == null ? 0 : references.size());
-                summary = "dependencies of " + rule;
-            } else {
-                ReadResult.Opaque opaque = (ReadResult.Opaque) read;
-                data.put("explained", false);
-                data.put("reason", opaque.reason());
-                data.put("canonicalText", opaque.canonicalText());
-                summary = rule + " is Opaque (not modeled) — use `where-used` for the robust inverse";
+                case ReadResult.Opaque opaque -> {
+                    data.put("explained", false);
+                    data.put("reason", opaque.reason());
+                    data.put("canonicalText", opaque.canonicalText());
+                    summary = rule + " is Opaque (not modeled) — use `where-used` for the robust inverse";
+                }
+                case ReadResult.Refused refused -> {
+                    data.put("explained", false);
+                    data.put("reason", refused.reason());
+                    data.put("canonicalText", refused.canonicalText());
+                    data.put("refusedCode", refused.code().name());
+                    summary = rule + " is Refused (" + refused.code().name()
+                            + ") — use `where-used` for the robust inverse";
+                }
             }
             // `bound` is a gated ofJson bind; the adapter beside it is KernelAdapter.of (gate SKIPped), so the
             // BINDING is the witness here — the discriminating pair the derivation rule exists for.

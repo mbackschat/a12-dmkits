@@ -442,6 +442,9 @@ public static enum io.github.mbackschat.a12.dm.core.KernelCode.Bucket
   public static io.github.mbackschat.a12.dm.core.KernelCode.Bucket valueOf(java.lang.String)
   public static io.github.mbackschat.a12.dm.core.KernelCode.Bucket[] values()
 
+public final class io.github.mbackschat.a12.dm.core.KernelCodeRefusal extends java.lang.IllegalArgumentException
+  public io.github.mbackschat.a12.dm.core.KernelCode code()
+
 public final class io.github.mbackschat.a12.dm.core.KernelPatternPolicy
   public static java.util.Optional<io.github.mbackschat.a12.dm.core.KernelPatternPolicy.Rejection> rejection(java.lang.String)
   public static java.lang.String requireAccepted(java.lang.String)
@@ -533,7 +536,7 @@ public final class io.github.mbackschat.a12.dm.core.ReferenceResolvers
 
 public final class io.github.mbackschat.a12.dm.core.Refusals
   public static java.lang.String message(io.github.mbackschat.a12.dm.core.KernelCode, java.lang.String)
-  public static java.lang.IllegalArgumentException of(io.github.mbackschat.a12.dm.core.KernelCode, java.lang.String)
+  public static io.github.mbackschat.a12.dm.core.KernelCodeRefusal of(io.github.mbackschat.a12.dm.core.KernelCode, java.lang.String)
 
 public enum io.github.mbackschat.a12.dm.core.Severity
   public static final io.github.mbackschat.a12.dm.core.Severity ERROR

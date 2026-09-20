@@ -66,7 +66,9 @@ final class RuleExplainCommand extends BaseCommand {
                 return refuse(refusal.get());
             }
             ObjectNode data = RuleExplainData.build(adapter, bound, rule);
-            String summary = RuleExplainData.isOpaque(data) ? rule + " is Opaque (not modeled)" : "explained " + rule;
+            String summary = RuleExplainData.isUnexplained(data)
+                    ? rule + " is Opaque (not modeled)"
+                    : "explained " + rule;
             ResultEnvelope env = ResultEnvelope.queryResult(resultIdentity(), summary, data,
                     ConsistencyEvidence.of(bound));
             out().print(env.toJsonString());
@@ -75,4 +77,5 @@ final class RuleExplainCommand extends BaseCommand {
             throw withFailureContext("explain failed: ", e);
         }
     }
+
 }

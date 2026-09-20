@@ -58,25 +58,37 @@ class Corpus1ReadCoverageTest {
                 KernelAdapter adapter = KernelAdapter.ofJson(json, resolver);
                 Map<String, ReadResult> outcomes = adapter.readAll();
                 loaded++;
+                // Switched, not chained: this report's arithmetic is `converted + opaque == total`, and an
+                // `instanceof` chain over a SEALED type counts a state it does not name into NEITHER bucket
+                // — which understates the coverage percentage with no failure anywhere. A refusal is untyped
+                // for this report exactly as an opaque read is, so it rides the same tally, keyed by its
+                // CODE so the tail says a gate rejected the rule rather than that nothing models it (DG1001).
                 for (ReadResult read : outcomes.values()) {
                     totalRules++;
-                    if (read instanceof ReadResult.Converted) {
-                        converted++;
-                    } else if (read instanceof ReadResult.Opaque o) {
-                        opaque++;
-                        opaqueReasons.merge(bucketReason(o.reason()), 1, Integer::sum);
-                        if (o.reason() != null && o.reason().contains("outer correlation ($)")) {
-                            outerByModel.merge(file.getFileName().toString(), 1, Integer::sum);
+                    switch (read) {
+                        case ReadResult.Converted ignored -> converted++;
+                        case ReadResult.Opaque o -> {
+                            opaque++;
+                            opaqueReasons.merge(bucketReason(o.reason()), 1, Integer::sum);
+                            if (o.reason() != null && o.reason().contains("outer correlation ($)")) {
+                                outerByModel.merge(file.getFileName().toString(), 1, Integer::sum);
+                            }
+                        }
+                        case ReadResult.Refused r -> {
+                            opaque++;
+                            opaqueReasons.merge("refused: " + r.code().name(), 1, Integer::sum);
                         }
                     }
                 }
                 for (ReadComputation ic : adapter.readAllComputations().values()) {
                     compTotal++;
-                    if (ic instanceof ReadComputation.Converted) {
-                        compConverted++;
-                    } else if (ic instanceof ReadComputation.Opaque o) {
-                        compOpaque++;
-                        compOpaqueReasons.merge(o.reason(), 1, Integer::sum);   // full reason (small tail) → exact shape
+                    switch (ic) {
+                        case ReadComputation.Converted ignored -> compConverted++;
+                        // full reason (small tail) → exact shape
+                        case ReadComputation.Opaque o -> {
+                            compOpaque++;
+                            compOpaqueReasons.merge(o.reason(), 1, Integer::sum);
+                        }
                     }
                 }
             } catch (Exception e) {

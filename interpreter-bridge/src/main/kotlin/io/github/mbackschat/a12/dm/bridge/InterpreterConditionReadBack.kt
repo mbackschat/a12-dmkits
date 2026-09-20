@@ -7,6 +7,7 @@ import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.databind.cfg.JsonNodeFeature
 import com.fasterxml.jackson.databind.json.JsonMapper
 import io.github.mbackschat.a12.dm.core.ConfigFlag
+import io.github.mbackschat.a12.dm.core.KernelCodeRefusal
 import io.github.mbackschat.a12.dm.core.ModelIndex
 import io.github.mbackschat.a12.dm.core.ModelReader
 import io.github.mbackschat.a12.dm.core.ModelResolver
@@ -106,6 +107,11 @@ public class InterpreterConditionReadBack : ConditionReadBack {
             ReadResult.Converted(bridge.translate(condition, basePath, language))
         } catch (e: UnmappedConstructException) {
             ReadResult.Opaque(condition, "not mapped by the interpreter bridge: " + e.message)
+        } catch (e: KernelCodeRefusal) {
+            // The mapping SUCCEEDED and a rulekit gate refused what it built, which is the opposite message
+            // to an unmapped construct — this bridge's contract makes a refusal one of its legitimate
+            // outcomes rather than a failure (DEV-API-GAPS DG1001).
+            ReadResult.Refused(condition, e.message.orEmpty(), e.code())
         } catch (e: RuntimeException) {
             ReadResult.Opaque(condition, e.javaClass.simpleName + ": " + e.message)
         }

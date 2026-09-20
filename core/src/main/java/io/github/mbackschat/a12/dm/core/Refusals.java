@@ -22,12 +22,17 @@ public final class Refusals {
     /**
      * The refusal to throw: {@code throw Refusals.of(KernelCode.MVK_NO_DATE, "Sum needs number operands")}.
      *
+     * <p>Returns a {@link KernelCodeRefusal}, an {@link IllegalArgumentException} that also carries the code
+     * as a field. Callers that only throw it need not care; the kernel-free {@code ConditionReadBack} does,
+     * because it is what separates "this construct is not modeled yet" from "this rule is invalid" without
+     * parsing the message (API-FINDINGS AF154).
+     *
      * @param code the kernel code this refusal claims — it must have a measured kernel basis, which
      *     {@code ClientRefusalKernelBasisCensusTest} enforces
      * @param problem what is wrong, without the code; the code is appended
      */
-    public static IllegalArgumentException of(KernelCode code, String problem) {
-        return new IllegalArgumentException(message(code, problem));
+    public static KernelCodeRefusal of(KernelCode code, String problem) {
+        return new KernelCodeRefusal(code, message(code, problem));
     }
 
     /**
