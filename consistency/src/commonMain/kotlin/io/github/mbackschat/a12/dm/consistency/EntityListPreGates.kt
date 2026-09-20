@@ -80,6 +80,9 @@ private enum class RootGroupGate {
 /** `NumberOfValueInFields` lists its entities after an infix keyword rather than as its own operands. */
 private const val VALUE_IN_FIELDS = "NumberOfValueInFields"
 
+/** The catalog id of the semantic-index clause — `For` in English, `Fuer` in German. */
+private const val SEMANTIC_INDEX = "SemanticIndex"
+
 /**
  * Every operator that builds an entity list, and the root-group gate its construct class asks.
  *
@@ -129,12 +132,17 @@ private fun TrackedFactBase.preGateFinding(
     member: String,
 ): Finding? {
     val written = call.entityListOperands(conditionLanguage, infixCarrier) ?: return null
-    val targets = written.map { it?.let { operand -> addressedTargetOf(operand.spec, declaringGroup, element) } }
+    // ALL or nothing, and that is a measured rule rather than caution. One operand A12 cannot address makes
+    // the per-reference wildcard bar answer for the whole call — `MVK_NO_WILDCARD`, in BOTH operand orders
+    // (KERNEL-FINDINGS KF443, `validate.laws.DuplicateOverlapCarrierSweepLawsTest`) — so a duplicate sitting
+    // elsewhere in that list is not this family's to name. Judging each operand alone reported it, which is
+    // the shape of an over-rejection: a code A12 does not give, on a model it refuses for something else.
+    val targets = written.map { addressedTargetOf(it.spec, declaringGroup, element, it.indexSelected) ?: return null }
     val direct = targets.firstDirectDuplicate(written)
     if (direct != null) {
         return finding(
             DIRECT_DUPLICATE,
-            "in `$member`: `${call.operator}` names `${written[direct]?.spec}` twice — one entity counts " +
+            "in `$member`: `${call.operator}` names `${written[direct].spec}` twice — one entity counts " +
                 "once however often it is listed, so drop the repeat",
             element.path,
         )
@@ -143,16 +151,12 @@ private fun TrackedFactBase.preGateFinding(
     if (nested != null) {
         return finding(
             NESTED_DUPLICATE,
-            "in `$member`: `${call.operator}` names `${written[nested]?.spec}` and a group that already " +
+            "in `$member`: `${call.operator}` names `${written[nested].spec}` and a group that already " +
                 "contains it — drop whichever of the two you did not mean",
             element.path,
         )
     }
-    // The root-group arm keeps its original all-or-nothing reading, deliberately: the kernel rows measured
-    // on 2026-09-20 cover the two DUPLICATE arms, and widening a third one on the same change would be a
-    // refusal reaching past its basis.
-    val resolved = targets.map { it ?: return null }
-    val rootGroup = resolved.indexOfFirst { it.isRootGroup() }.takeIf { it >= 0 } ?: return null
+    val rootGroup = targets.indexOfFirst { it.isRootGroup() }.takeIf { it >= 0 } ?: return null
     val code = when (gate) {
         RootGroupGate.PLAIN -> ROOT_GROUP
         RootGroupGate.NONE -> return null
@@ -171,8 +175,10 @@ private fun TrackedFactBase.preGateFinding(
  * @param spec the bare entity spec, for the star test and for the diagnostic's text.
  * @param key everything A12 compares BESIDES the resolved path — the clauses as spelled. Empty for a plain
  *     operand, so two plain operands compare on path alone exactly as before.
+ * @param indexSelected whether a semantic-index key is among those clauses, which decides whether the
+ *     operand's repetition is ADDRESSED — a separate question from identity, and the one DG57 closed.
  */
-private data class ListOperand(val spec: String, val key: String)
+private data class ListOperand(val spec: String, val key: String, val indexSelected: Boolean = false)
 
 /**
  * The entity list's operands as written, or null wherever this reader may not read the list at all.
@@ -197,7 +203,7 @@ private data class ListOperand(val spec: String, val key: String)
 private fun ConditionCall.entityListOperands(
     language: ConditionLanguage,
     infixCarrier: String?,
-): List<ListOperand?>? {
+): List<ListOperand>? {
     if (operator == infixCarrier) {
         val texts = splitAtIn()?.second ?: return null
         return texts.map { text ->
@@ -205,11 +211,19 @@ private fun ConditionCall.entityListOperands(
             referencesIn(text, language).singleOrNull()?.let { ListOperand(it, "") } ?: return null
         }
     }
+    // By CATALOG ID, never by the literal: `For` is `Fuer` in German and a bare literal would read a German
+    // model's field of that name as a key — the same reasoning `repetitionScopeGroupFindings` states for
+    // `@From`, which is a PATH_OP alongside this one and means something else entirely.
+    val indexKeyword = CONDITION_OPERATOR_KEYWORDS[language]?.get(SEMANTIC_INDEX)
     return operands.map { operand ->
         if (operand.clauses.isEmpty()) {
             return@map ListOperand(operand.path ?: return null, "")
         }
-        ListOperand(operand.base ?: return null, operand.clauses.joinToString("|") { "${it.keyword} ${it.text}" })
+        ListOperand(
+            operand.base ?: return null,
+            operand.clauses.joinToString("|") { "${it.keyword} ${it.text}" },
+            indexSelected = operand.clauses.any { it.keyword == indexKeyword },
+        )
     }
 }
 
@@ -220,14 +234,11 @@ private fun ConditionCall.entityListOperands(
  * returns is into the FULL list rather than into the unstarred part of it. An operand this reader could not
  * reduce is skipped for itself alone.
  */
-private fun List<String?>.firstDirectDuplicate(written: List<ListOperand?>): Int? {
+private fun List<String>.firstDirectDuplicate(written: List<ListOperand>): Int? {
     val seen = mutableSetOf<String>()
     indices.forEach { at ->
         val operand = written[at]
-        val target = this[at]
-        if (operand != null && target != null && '*' !in operand.spec &&
-            !seen.add("$target\u0000${operand.key}")
-        ) {
+        if ('*' !in operand.spec && !seen.add("${this[at]}\u0000${operand.key}")) {
             return at
         }
     }
@@ -243,13 +254,11 @@ private fun List<String?>.firstDirectDuplicate(written: List<ListOperand?>): Int
  * whole test: where the keys merely differ this stays silent rather than deciding what the difference means,
  * which under-reports and is the safe direction.
  */
-private fun List<String?>.firstNestedEntity(written: List<ListOperand?>): Int? =
+private fun List<String>.firstNestedEntity(written: List<ListOperand>): Int? =
     indices.firstOrNull { at ->
-        val inner = this[at] ?: return@firstOrNull false
-        val innerKey = written[at]?.key ?: return@firstOrNull false
         indices.any { other ->
-            other != at && this[other] != null && written[other]?.key == innerKey &&
-                inner.startsWith("${this[other]}/")
+            other != at && written[other].key == written[at].key &&
+                this[at].startsWith("${this[other]}/")
         }
     }
 

@@ -9685,3 +9685,39 @@ Measured on a model declaring **no base year** (see the trap below), each shape 
 **A confound this table walked into and caught.** Declaring a base year on the probe model — added to make one control work — **supplements the YEAR component**, which admits `YearFromDate` over a format carrying no year and silently inverts every date-unit row. It was caught only because the resulting cells contradicted `TemporalExtractionFormatGateLawsTest`'s CI-green grid on an identical field construction. The row needing a base year now takes its own model. A control that fixes one row by changing the MODEL changes every other row with it.
 
 *(Locked: `validate.laws.DerivedTemporalOperandFormatLawsTest`. Promoted in `Dsl.declaredFormatOf`; the typed peer's delegate-branch row previously used a date SHIFT and so pinned one of these misses as correct — it now names a shape the grammar rejects.)*
+
+## §1 supplement: the per-reference wildcard bar pre-empts the duplicate arms for the WHOLE list, in both operand orders (kernel `checkConsistency`, 2026-09-20) <a id="kf443"></a>
+
+> Fold: pending — the ordering half of [KF441](#kf441), one bar further out.
+
+[KF441](#kf441) established that the duplicate arms speak before the operator's own operand-kind check. They do not speak before the bar that refuses an unaddressed repeatable reference. A three-operand list holding one unaddressed group and one exact duplicate answers `MVK_NO_WILDCARD`, never `MVK_DUPLICATE_PARAM1`:
+
+| condition | verdict |
+|---|---|
+| `NumberOfFilledFields(Items, Quantity, Quantity) > 1` | `MVK_NO_WILDCARD` |
+| `NumberOfFilledFields(Quantity, Quantity, Items) > 1` | `MVK_NO_WILDCARD` |
+
+**Both orders, because the alternative reading was positional.** A left-to-right evaluator would have reported the duplicate in the second row, where the offending pair comes first; it does not, so the bar is a property of the list rather than of the first operand to fail.
+
+**What it decides for a client gate, and this is why it was measured.** A checker that judges each operand on its own would report `MVK_DUPLICATE_PARAM1` for both rows — naming a class A12 does not, on a model A12 refuses for something else. That is an over-rejection in the one direction this project forbids, and it is invisible from the duplicate rows alone, every one of which has all operands addressed. The portable checker's list-wide abstention rests on exactly these two rows.
+
+*(Locked: `validate.laws.DuplicateOverlapCarrierSweepLawsTest`.)*
+
+## §1 supplement: a path crossing two INDEXED repeatable levels is unauthorable, so one `For` never has to reach past the level it selects (kernel `checkConsistency`, 2026-09-20) <a id="kf444"></a>
+
+> Fold: pending — the reach question [KF441](#kf441)'s single-level carrier could not ask.
+
+Every indexed row measured so far crosses exactly one repeatable level, where "a `For` addresses the level it selects" and "a `For` addresses every repeatable level the path crosses" fit the data equally. The nested carrier separates them — and answers that the question is moot, because the shape that would distinguish the two readings is refused before any duplicate arm runs:
+
+| condition on `Milestones/Tasks` (two repeatable levels) | verdict |
+|---|---|
+| `NumberOfFilledFields(Milestones/Tasks/Effort For "t", Milestones/Tasks/Effort For "t") > 1` | `MVK_MULTIPLE_INDEX_FIELDS` |
+| `NumberOfFilledFields(Milestones*/Tasks/Effort For "t", Milestones*/Tasks/Effort For "t") > 1` | `MVK_MULTIPLE_INDEX_FIELDS` |
+| `NumberOfFilledFields(Milestones*/Tasks/Effort For "t", Milestones*/Tasks/Effort For "u") > 1` | `MVK_MULTIPLE_INDEX_FIELDS` |
+| `NumberOfFilledFields(Milestones/Budget For "p", Milestones/Budget For "p") > 1` — one level, same fixture | `MVK_DUPLICATE_PARAM1` |
+
+Starring the outer level does not help, and differing keys do not either, so the bar is about the path crossing two indexed levels rather than about the keys colliding. A reader scoped to a single crossed repeatable level is therefore **complete** on this shape, not merely cautious.
+
+**The scope-transfer control is the fourth row, and it is the reason the carrier is not a confound.** The single-level rule was measured on the order fixture; row four re-measures it on the nested fixture and gets the same answer, so the rule is a property of the shape rather than of one model. **What it does NOT settle:** an UNINDEXED outer level, where the multiple-index bar has nothing to collide with — that shape is untested and the clause above must not be read onto it.
+
+*(Locked: `validate.laws.DuplicateOverlapCarrierSweepLawsTest`.)*

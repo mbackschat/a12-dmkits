@@ -452,16 +452,37 @@ internal fun isBareEntitySpec(text: String): Boolean {
  * `MVK_NO_WILDCARD` or `MVK_WILDCARDS_REQUIRED` from the reference reader before any later gate is asked, so
  * a family that judged such an operand would name its own class on a model A12 refuses for something else —
  * the defect the corpus mutation found in the arity gates ([KERNEL-FINDINGS KF381]).
+ *
+ * **A SEMANTIC INDEX addresses a repetition exactly as a star does**, which is what [indexSelected] says. The
+ * two differ in what they do with the level — a star iterates it, a key pins one row ([KF429]) — but both
+ * leave the reference addressed, so a keyed read is a resolvable operand rather than a wildcard defect. The
+ * discriminating pair is within one model: the same field named twice is `MVK_NO_WILDCARD` bare and
+ * `MVK_DUPLICATE_PARAM1` with a key on both sides (`validate.laws.DuplicateOverlapCarrierSweepLawsTest`).
+ *
+ * @param indexSelected whether the operand carries a semantic-index key. It addresses ONE crossed level, so
+ *     it is honoured only where the target crosses exactly one — a path crossing two INDEXED levels under a
+ *     single key is `MVK_MULTIPLE_INDEX_FIELDS` before any later gate ([KERNEL-FINDINGS KF444]), so on the
+ *     measured shape there is no second level for a key to reach and no verdict to be wrong about. An
+ *     UNINDEXED outer level is the shape that would separate "the level it selects" from "every level it
+ *     crosses", and it is unmeasured, so this yields there rather than choosing one.
  */
 internal fun TrackedFactBase.addressedTargetOf(
     reference: String,
     declaringGroup: String,
     element: TrackedDeclaration,
+    indexSelected: Boolean = false,
 ): String? {
     val target = (resolveEntity(declaringGroup, reference.replace("*", ""), element.origin)
         as? Reference.Resolved)?.path ?: return null
     val starred = starredLevelsOf(reference, declaringGroup, element) ?: return null
-    return addressedTargetIn(target, starred, iterationGroupOf(element) ?: declaringGroup, iteratedLevels(target))
+    val levels = iteratedLevels(target)
+    val pinned = if (indexSelected && levels.size == 1) levels.toSet() else emptySet()
+    return addressedTargetIn(
+        target,
+        starred + pinned,
+        iterationGroupOf(element) ?: declaringGroup,
+        levels,
+    )
 }
 
 /**

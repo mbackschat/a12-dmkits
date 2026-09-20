@@ -19,11 +19,19 @@ import kotlin.test.assertTrue
  * sharing a path under different index keys. The second row matters most here, because reporting it would be
  * an over-rejection — the checker answering invalid on a legal model, the one direction this project forbids.
  *
- * **What this does NOT close, stated so it is not a silent gap.** An operand whose path the reader cannot
- * resolve is still skipped, and an index-selected path into a repeatable group is one: two identically keyed
- * reads of `Lines/Amount For "SKU-1"` stay silent where A12 reports a duplicate. That is an under-report,
- * which is safe, and closing it is a change to path RESOLUTION rather than to the identity this class is
- * about — filed as DG57 in `docs/DEV-API-GAPS.md`.
+ * **The index-selected path resolves too, as of 2026-09-20 (DG57).** A semantic-index key ADDRESSES the
+ * repetition it selects — it pins one row rather than iterating ([KF429]) — so `Lines/Amount For "SKU-1"`
+ * is a resolvable read, not an unaddressed one, and the duplicate the kernel reports for two identical such
+ * reads is reported here. Scoped to a path crossing exactly ONE repeatable level, which is the whole
+ * authorable domain on the measured shape: two indexed levels under one key are
+ * `MVK_MULTIPLE_INDEX_FIELDS` before any duplicate arm is asked
+ * (`validate.laws.DuplicateOverlapCarrierSweepLawsTest`).
+ *
+ * **And the per-operand skip has a list-wide exception, which is the sharper half.** An operand that is
+ * genuinely UNADDRESSED — a repeatable level with neither a star nor a key — makes A12 answer
+ * `MVK_NO_WILDCARD` for the whole call, in both operand orders, so a duplicate elsewhere in that list is
+ * not this family's to report. Skipping such an operand individually and judging its siblings was an
+ * over-rejection; the two order rows that measure it are in the sweep above.
  */
 class ClauseCarryingOperandDuplicateTest {
 
@@ -87,6 +95,49 @@ class ClauseCarryingOperandDuplicateTest {
         expected["a plain duplicate, alone"] = listOf("MVK_DUPLICATE_PARAM1")
         expected["the same duplicate, behind an index-clause operand"] = listOf("MVK_DUPLICATE_PARAM1")
         assertEquals(expected, actual, "an operand the reader cannot reduce must not answer for its siblings")
+    }
+
+    /**
+     * DG57: an index-selected read is ADDRESSED, so its duplicate is reported rather than skipped.
+     *
+     * The key is what addresses the repetition here — a bare `Lines/Amount` twice is `MVK_NO_WILDCARD` at
+     * the kernel, not a duplicate — so the last row is the within-model control that isolates the clause as
+     * the operative variable rather than the path.
+     */
+    @Test
+    fun anIndexSelectedReadIsAddressedAndItsDuplicateIsReported() {
+        val actual = mutableMapOf<String, List<String>>()
+        actual["the same field under ONE key, twice"] =
+            subject("""AllFieldsFilled(Lines/Amount For "SKU-1", Lines/Amount For "SKU-1")""")
+        actual["a keyed read beside a plain duplicate elsewhere"] =
+            subject("""AllFieldsFilled(Lines/Amount For "SKU-1", Quantity, Quantity)""")
+        actual["the same field WITHOUT a key, twice"] =
+            subject("AllFieldsFilled(Lines/Amount, Lines/Amount)")
+
+        val expected = mutableMapOf<String, List<String>>()
+        expected["the same field under ONE key, twice"] = listOf("MVK_DUPLICATE_PARAM1")
+        expected["a keyed read beside a plain duplicate elsewhere"] = listOf("MVK_DUPLICATE_PARAM1")
+        expected["the same field WITHOUT a key, twice"] = emptyList()
+        assertEquals(expected, actual, "the semantic index addresses the repetition it selects")
+    }
+
+    /**
+     * The list-wide abstention an UNADDRESSED operand forces, measured in both orders at the kernel: A12
+     * answers `MVK_NO_WILDCARD` for the whole call, so the duplicate sitting elsewhere in it is not ours to
+     * name. Judging each operand on its own would report it — which is why this is a row and not a comment.
+     */
+    @Test
+    fun anUnaddressedOperandSilencesTheWholeListRatherThanItselfAlone() {
+        val actual = mutableMapOf<String, List<String>>()
+        actual["duplicate pair AFTER an unaddressed operand"] =
+            subject("AllFieldsFilled(Lines/Amount, Quantity, Quantity)")
+        actual["duplicate pair BEFORE an unaddressed operand"] =
+            subject("AllFieldsFilled(Quantity, Quantity, Lines/Amount)")
+
+        val expected = mutableMapOf<String, List<String>>()
+        expected["duplicate pair AFTER an unaddressed operand"] = emptyList()
+        expected["duplicate pair BEFORE an unaddressed operand"] = emptyList()
+        assertEquals(expected, actual, "the wildcard bar pre-empts the duplicate arms for the whole list")
     }
 
     /**

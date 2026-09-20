@@ -192,6 +192,17 @@ class DuplicateOverlapCarrierSweepLawsTest {
         actual.put("indexed group | same group, DIFFERENT keys",
                 order("NumberOfFilledFields(Items For \"a\", Items For \"b\") > 1"));
 
+        // --- Which answers when ONE operand is unaddressed and OTHERS duplicate? The rows above all move
+        // the key while every operand is addressed, so they cannot say whether the per-reference wildcard
+        // bar pre-empts a duplicate that sits elsewhere in the same list. A portable checker that judged
+        // each operand independently would report the duplicate; if the kernel reports the wildcard bar
+        // instead, judging per operand is an over-rejection. Both orders, because the answer may be
+        // positional.
+        actual.put("duplicate pair AFTER an unaddressed operand",
+                order("NumberOfFilledFields(Items, Quantity, Quantity) > 1"));
+        actual.put("duplicate pair BEFORE an unaddressed operand",
+                order("NumberOfFilledFields(Quantity, Quantity, Items) > 1"));
+
         // --- The TEMPORAL aggregate's containment arm, on the only fixture that can hold the shape.
         actual.put("temporal aggregate | group beside a date field inside it",
                 verdict(CALENDAR, "/Cal", "../Marker", "MaxValue(/Cal/Window, /Cal/Window/Opens) == [/Cal/Marker]"));
@@ -311,6 +322,11 @@ class DuplicateOverlapCarrierSweepLawsTest {
         expected.put("indexed field | same field, DIFFERENT keys", KernelLaws.ADMITTED);
         expected.put("indexed group | same group, same key, twice", P1);
         expected.put("indexed group | same group, DIFFERENT keys", KernelLaws.ADMITTED);
+        // The per-reference wildcard bar pre-empts the duplicate arms for the WHOLE list, in BOTH orders —
+        // so position is not the discriminator and a reader that judged each operand on its own would name
+        // a class A12 does not. The portable checker's own abstention rests on exactly these two rows.
+        expected.put("duplicate pair AFTER an unaddressed operand", "MVK_NO_WILDCARD");
+        expected.put("duplicate pair BEFORE an unaddressed operand", "MVK_NO_WILDCARD");
         expected.put("temporal aggregate | group beside a date field inside it", P2);
         expected.put("temporal aggregate | two disjoint date fields", KernelLaws.ADMITTED);
         expected.put("FirstFilledValue | indexed owner, same literal key twice", P1);
@@ -338,11 +354,41 @@ class DuplicateOverlapCarrierSweepLawsTest {
         actual.put("FFV | starred group beside its nested starred descendant",
                 project("FirstFilledValue(Milestones*, Milestones*/Tasks*/Effort) == \"x\""));
 
+        // --- How far does ONE index key reach when the path crosses TWO repeatable levels? Every indexed
+        // row on the order fixture crosses exactly one, so "a `For` addresses the level it selects" and "a
+        // `For` addresses every repeatable level the path crosses" fit all of them equally. This is the
+        // carrier that separates them: if one key is enough here, the reach is the whole path; if the outer
+        // level still needs its own star or key, it is the nearest level only.
+        actual.put("nested path, ONE index key, repeated",
+                project("NumberOfFilledFields(Milestones/Tasks/Effort For \"t\", "
+                        + "Milestones/Tasks/Effort For \"t\") > 1"));
+        actual.put("nested path, outer STARRED and inner keyed, repeated",
+                project("NumberOfFilledFields(Milestones*/Tasks/Effort For \"t\", "
+                        + "Milestones*/Tasks/Effort For \"t\") > 1"));
+        actual.put("nested path, outer starred and inner keyed, DIFFERENT keys",
+                project("NumberOfFilledFields(Milestones*/Tasks/Effort For \"t\", "
+                        + "Milestones*/Tasks/Effort For \"u\") > 1"));
+        actual.put("single level on the NESTED fixture, one key, repeated",
+                project("NumberOfFilledFields(Milestones/Budget For \"p\", "
+                        + "Milestones/Budget For \"p\") > 1"));
+
         Map<String, String> expected = new LinkedHashMap<>();
         expected.put("nested starred pair, repeated", KernelLaws.ADMITTED);
         expected.put("starred group beside its nested starred descendant", P2);
         expected.put("starred group beside its own starred subgroup", P2);
         expected.put("FFV | starred group beside its nested starred descendant", P2);
+        // A path crossing two INDEXED repeatable levels is not authorable with one key at all: the reach
+        // question is moot because `MVK_MULTIPLE_INDEX_FIELDS` answers ahead of it, and neither a star on
+        // the outer level nor differing keys changes that. So "one `For` addresses the level it selects" is
+        // the only reading a model can exhibit here, and a reader scoped to a single crossed repeatable
+        // level is complete rather than merely cautious — on this shape. The shape it does NOT settle is an
+        // UNINDEXED outer level, where the bar has nothing to collide with.
+        expected.put("nested path, ONE index key, repeated", "MVK_MULTIPLE_INDEX_FIELDS");
+        expected.put("nested path, outer STARRED and inner keyed, repeated", "MVK_MULTIPLE_INDEX_FIELDS");
+        expected.put("nested path, outer starred and inner keyed, DIFFERENT keys", "MVK_MULTIPLE_INDEX_FIELDS");
+        // The scope-transfer control for the single-level rule: it is the order fixture's carrier that
+        // measured it, and it holds on this one too, so the rule is not an artefact of one model.
+        expected.put("single level on the NESTED fixture, one key, repeated", P1);
 
         assertEquals(expected, actual, "complete overlap verdict for starred ancestry");
     }
