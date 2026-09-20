@@ -41,9 +41,19 @@ import org.junit.jupiter.api.io.TempDir;
  * outlived the evidence they cite. The repair keeps the run id (a record recovered later is still identifiable)
  * in the plain code-span form the same doc already uses elsewhere, and drops the link that cannot resolve.
  *
- * <p>Scope is {@code docs/*.md}, the tree {@code docGuardTest} declares as its inputs; {@code docs/archived/} is
- * a frozen record and out of scope, as it is for the anchor guard. Markdown elsewhere in the repo is not covered
- * — extending there means extending the task's declared inputs, which is a separate change.
+ * <p>Scope is {@code docs/*.md} for {@link #everyRelativeLinkTargetExists()}, plus every other tracked
+ * {@code .md} in the repository for {@link #everyRelativeLinkOutsideDocsAlsoResolves()}. {@code docs/archived/}
+ * is a frozen record and out of scope, as it is for the anchor guard.
+ *
+ * <p><i>Widened 2026-09-20, and the trigger is worth recording because it is this rule applied to itself.</i>
+ * This paragraph read "markdown elsewhere in the repo is not covered — extending there means extending the
+ * task's declared inputs, which is a separate change", and that separate change never came. A session then
+ * added <b>27 module and sub-project READMEs</b> carrying relative links, hand-checked them once, and landed
+ * them: 747 relative targets lived outside {@code docs/} with no enforcement locus at all, which is exactly
+ * the "advertise nothing you cannot point at" defect one layer out — a documentation surface whose own
+ * citations nothing re-checks. Measured through this class's rule at the widening: <b>zero</b> dead targets
+ * outside {@code docs/} once the mirror sources below are excluded, so the hand check had held and the gap was
+ * purely the absence of a repeat.
  */
 class DocRelativeLinkGuardTest {
 
@@ -105,6 +115,86 @@ class DocRelativeLinkGuardTest {
     }
 
     /**
+     * <b>Markdown that is a MIRROR SOURCE, excluded by name with its reason.</b> These two files are assembled
+     * into a public release tree, and their links resolve <em>there</em>: {@code assemble-release-repo.sh} places
+     * {@code LICENSE}, {@code NOTICE}, {@code examples/} and {@code codex/} beside them in the mirror, none of
+     * which sits beside them here. {@link Files#exists} against this checkout would therefore fail honest
+     * content — and a guard that fails honest content gets disabled, which is worse than no guard.
+     *
+     * <p>Their real oracle is the assembly: the mirror checkers verify the tree a consumer receives, where the
+     * targets exist. Named rather than pattern-skipped, so a third mirror source fails here by name instead of
+     * joining a silent exemption.
+     */
+    private static final Set<String> MIRROR_SOURCES_CHECKED_BY_THE_ASSEMBLER = Set.of(
+            "plugin/README.md",
+            "interpreter/public-release/README.md");
+
+    /** Trees with no tracked markdown of ours; walking them is slow and their contents are not ours to fix. */
+    private static final Set<String> NOT_OURS = Set.of("build", "node_modules", ".git", ".gradle",
+            ".gradle-isolated", ".kotlin", ".uv-cache", ".uv-tools");
+
+    /**
+     * <b>The other markdown in the repository — module READMEs, sub-project READMEs, the root README, the
+     * instruction files.</b> Same rule, same oracle, different denominator; see the widening note in the class
+     * javadoc for why this is a second test rather than a wider first one (the two have different exclusion
+     * sets and different floors, and collapsing them would hide which half a failure came from).
+     */
+    @Test
+    void everyRelativeLinkOutsideDocsAlsoResolves() throws IOException {
+        Path root = locate().toAbsolutePath().normalize().getParent();
+        List<Path> scanned = new ArrayList<>();
+        Set<String> mirrorSourcesSeen = new LinkedHashSet<>();
+        try (Stream<Path> files = Files.walk(root)) {
+            for (Path file : files.filter(Files::isRegularFile).sorted().toList()) {
+                String relative = root.relativize(file).toString();
+                if (!relative.endsWith(".md") || relative.startsWith("docs" + java.io.File.separator)) {
+                    continue;
+                }
+                if (NOT_OURS.stream().anyMatch(skip -> relative.contains(skip + java.io.File.separator))) {
+                    continue;
+                }
+                if (MIRROR_SOURCES_CHECKED_BY_THE_ASSEMBLER.contains(relative.replace(java.io.File.separator, "/"))) {
+                    mirrorSourcesSeen.add(relative.replace(java.io.File.separator, "/"));
+                    continue;
+                }
+                scanned.add(file);
+            }
+        }
+
+        assertEquals(MIRROR_SOURCES_CHECKED_BY_THE_ASSEMBLER, mirrorSourcesSeen,
+                "the set of mirror-source READMEs changed. Their links resolve in the ASSEMBLED tree, not here, "
+                + "so each needs a named exemption and the assembler as its oracle — never a silent skip");
+        assertTrue(scanned.size() >= MIN_MARKDOWN_OUTSIDE_DOCS,
+                () -> "scanned only " + scanned.size() + " markdown files outside docs/ (floor "
+                        + MIN_MARKDOWN_OUTSIDE_DOCS + ") — a skip filter or a moved tree shrinks the scan set, "
+                        + "and a green result then proves nothing");
+
+        List<String> targets = new ArrayList<>();
+        List<String> dead = new ArrayList<>();
+        Set<String> outside = new LinkedHashSet<>();
+        for (Path file : scanned) {
+            audit(root, file.getParent(), root.relativize(file).toString(), Files.readString(file),
+                    targets, dead, outside);
+        }
+
+        assertTrue(targets.size() >= MIN_TARGETS_OUTSIDE_DOCS,
+                () -> "parsed only " + targets.size() + " relative targets outside docs/ (floor "
+                        + MIN_TARGETS_OUTSIDE_DOCS + ") — the extractor or the scan broke");
+        assertTrue(outside.isEmpty(), () -> "a link outside docs/ leaves the repository, where `Files.exists` "
+                + "measures whichever sibling checkouts this machine happens to have rather than anything "
+                + "durable. Point it at a committed file, or name it as unverifiable:\n  " + outside);
+        assertTrue(dead.isEmpty(), () -> "links whose TARGET FILE does not exist. A module README's citations "
+                + "are read far more often than docs/, and nothing else checks them:\n  "
+                + String.join("\n  ", dead));
+    }
+
+    /** Sanity floor on the non-docs scan set — 60 tracked markdown files outside docs/ (2026-09-20). */
+    private static final int MIN_MARKDOWN_OUTSIDE_DOCS = 45;
+
+    /** Sanity floor on what the RULE parses there — 747 relative targets by a crude count (2026-09-20). */
+    private static final int MIN_TARGETS_OUTSIDE_DOCS = 500;
+
+    /**
      * Does-fire proof against a fabricated tree, through the method the real check calls: a dead relative path
      * fires; a live one, an external URL, a bare fragment, and a path inside a code span must all stay silent.
      */
@@ -131,9 +221,21 @@ class DocRelativeLinkGuardTest {
                         + "(a bare fragment and an external URL are neither checked nor counted), got " + targets);
     }
 
-    /** Collect every relative target, those that do not exist, and those that leave the repository. */
+    /**
+     * Collect every relative target, those that do not exist, and those that leave the repository.
+     *
+     * <p>Containment is judged against {@code base}'s parent, which is the repository root only because
+     * {@code base} is {@code docs/}. A README in a nested module needs the root passed explicitly — see the
+     * overload — or every one of its {@code ../..} citations reads as escaping a tree it is still inside.
+     */
     private static void audit(Path base, String name, String markdown, List<String> targets, List<String> dead,
             Set<String> outside) {
+        audit(base.toAbsolutePath().normalize().getParent(), base, name, markdown, targets, dead, outside);
+    }
+
+    /** As above, with the containment root stated rather than derived from the scanned file's own depth. */
+    private static void audit(Path root, Path base, String name, String markdown, List<String> targets,
+            List<String> dead, Set<String> outside) {
         Matcher link = LINK.matcher(withoutCode(markdown));
         while (link.find()) {
             String target = link.group(1);
@@ -143,7 +245,6 @@ class DocRelativeLinkGuardTest {
             targets.add(target);
             // normalize() AFTER toAbsolutePath(): a relative base like `../docs` keeps its `..` segment
             // otherwise, and every containment test then silently answers false.
-            Path root = base.toAbsolutePath().normalize().getParent();
             Path resolved = base.resolve(target).toAbsolutePath().normalize();
             if (!resolved.startsWith(root)) {
                 outside.add(target);

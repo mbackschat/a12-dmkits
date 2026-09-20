@@ -502,6 +502,16 @@ tasks.register('docGuardTest', Test) {
             // DocsIndexGuardTest reads docs/README.md (the index) + the whole docs/ + docs/archived/ md tree.
             'docs/README.md'     : rootProject.file('docs/README.md'),
             'docs/*.md tree'     : rootProject.fileTree('docs') { include '**/*.md' },
+            // DocRelativeLinkGuardTest's non-docs arm (widened 2026-09-20) resolves every relative link in the
+            // module and sub-project READMEs, so an edit to one must RE-RUN it rather than restore a green taken
+            // while its target still existed. Without this the task goes UP-TO-DATE on exactly the edit that can
+            // break it — the false green this repository has paid for before. `build/` is excluded because the
+            // Kotlin/JS and npm staging trees copy our markdown into it, and a stale copy there is not a defect.
+            'module READMEs'     : rootProject.fileTree('.') {
+                include '**/*.md'
+                exclude 'docs/**', 'build/**', '*/build/**', '**/node_modules/**',
+                        '.gradle*/**', '.kotlin/**', '.uv-cache/**', '.uv-tools/**'
+            },
             'eval workflow'      : rootProject.file('eval/benchmark.workflow.js'),
             'probe task 14'      : rootProject.file('probe/tasks/14-repeated-computation-outcomes.md'),
             'operator catalog'   : rootProject.fileTree('rulekit/src/main/resources/catalog'),
