@@ -15,6 +15,7 @@ build/
 .project
 bin/*
 !bin/dmtool
+!bin/README.md
 # Eclipse/IDE output inside a module. `bin/*` above carries a slash, so git anchors it to the repository
 # root and it never matches `adapter/bin/`; this pattern does, while leaving the tracked root `bin/dmtool`
 # alone.
