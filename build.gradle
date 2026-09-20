@@ -95,11 +95,11 @@ dependencies {
     // test classpath here (root is the cross-kit test host). It is the fifth kit's ONLY appearance at root
     // and stays test-scope — root publishes no jar, so this adds nothing to any consumer's classpath.
     testImplementation project(':schemakit')
-    // The F3 integration façade, on this classpath for the same reason and no other: the API-surface lock
-    // loads its classes to dump them, and they reference :consistency and :rulekit types that must resolve
-    // through this suite's own loader. It registers no ServiceLoader provider, so nothing else here changes.
+    // The F3/F3-c integration façades, on this classpath for the same reason and no other: the API-surface
+    // lock loads their classes to dump them, and they reference :consistency, :rulekit and :interpreter types
+    // that must resolve through this suite's own loader. It registers no ServiceLoader provider, so nothing
+    // else here changes.
     testImplementation project(':consistency-gate')
-    testImplementation project(':interpreter-preflight')
 
     // The kernel stays the oracle in TESTS (verification unchanged). :adapter supplies the real
     // ConsistencyOracle/BackendInfo ServiceLoader providers so the kernel gate actually runs in the
@@ -1311,11 +1311,12 @@ tasks.named('check') { dependsOn verifyKitPurity }
 // --- What the published POMs hand a consumer, locked (DEV-API-GAPS DG45) ---------------------------------
 // Every artifact below advertises a kernel-free consumer classpath — the kits behind their SPI ports,
 // dmkits-schemakit "never the raw kernel jars directly" (SCHEMAKIT-SPEC §1), dmkits-interpreter-bridge as the
-// no-kernel provider of ConditionReadBack, dmkits-consistency-gate and dmkits-interpreter-preflight as the
-// façades whose whole purpose is a verdict reached with no kernel present. Until this guard the whole class advertised that with only a
+// no-kernel provider of ConditionReadBack, dmkits-consistency-gate as the façade module whose whole purpose is
+// a verdict reached with no kernel present. Until this guard the whole class advertised that with only a
 // compiled-linkage lint behind it, which cannot see a declared-but-unimported dependency, so the guarantee a
-// consumer actually cares about was the one nothing checked. Six modules rather than the one gap that named
-// it: the claim, the POM mechanism and the blind spot are identical across them.
+// consumer actually cares about was the one nothing checked. EVERY published Java artifact is keyed below
+// rather than the one gap that named it: the claim, the POM mechanism and the blind spot are identical across
+// them, so a count here would only go stale — the map itself is the denominator.
 //
 // The published MULTIPLATFORM artifacts are deliberately absent, and not by oversight: `dm-interpreter`,
 // `a12-consistency` and `dm-predicates` register no `compileClasspath`/`runtimeClasspath` to hand this guard,
@@ -1330,16 +1331,16 @@ def verifyPublishedClasspathsAreKernelFree = tasks.register('verifyPublishedClas
     // control is what separates "no kernel here" from "this guard read nothing". A shared Jackson control was
     // right while every published artifact was a Java kit and became wrong the moment one sat on top of the
     // multiplatform modules, which carry kotlinx and no Jackson at all: the guard then failed a module it had
-    // nothing to say about, which reads as a finding (measured 2026-09-16, adding dmkits-interpreter-preflight).
+    // nothing to say about, which reads as a finding (measured 2026-09-16, adding dmkits-interpreter-preflight
+    // — folded into :consistency-gate 2026-09-20, whose own Jackson control still separates the two cases).
     def kernelFreePublications = [
-            'core'                 : 'com.fasterxml.jackson.',
-            'rulekit'              : 'com.fasterxml.jackson.',
-            'modelkit'             : 'com.fasterxml.jackson.',
-            'edit'                 : 'com.fasterxml.jackson.',
-            'schemakit'            : 'com.fasterxml.jackson.',
-            'interpreter-bridge'   : 'com.fasterxml.jackson.',
-            'consistency-gate'     : 'com.fasterxml.jackson.',
-            'interpreter-preflight': 'org.jetbrains.kotlinx',
+            'core'              : 'com.fasterxml.jackson.',
+            'rulekit'           : 'com.fasterxml.jackson.',
+            'modelkit'          : 'com.fasterxml.jackson.',
+            'edit'              : 'com.fasterxml.jackson.',
+            'schemakit'         : 'com.fasterxml.jackson.',
+            'interpreter-bridge': 'com.fasterxml.jackson.',
+            'consistency-gate'  : 'com.fasterxml.jackson.',
     ]
     doLast {
         kernelFreePublications.each { name, positiveControl ->
@@ -1398,7 +1399,8 @@ def verifyPublishingIsDeclaredLocally = tasks.register('verifyPublishingIsDeclar
 // --- Every coordinate a shipped POM names must be one this build PUBLISHES --------------------------------
 //
 // The defect this catches shipped twice and was invisible both times, because a POM is generated output that
-// no test read. Measured 2026-09-17: `dmkits-consistency-gate` and `dmkits-interpreter-preflight` both
+// no test read. Measured 2026-09-17, when the preflight was still its own module: `dmkits-consistency-gate`
+// and `dmkits-interpreter-preflight` both
 // declared `io.github.mbackschat.a12.dm:consistency-jvm:0.13.0` at COMPILE scope, and `:consistency` had no
 // `maven-publish` block at all — so a Maven consumer of either façade could not resolve the very types their
 // public API returns. `:predicates` had met the identical constraint earlier and its build file records it

@@ -17,8 +17,7 @@ class PurityGuardMechanismTest {
     void purityGatesDoNotApproximateEitherSourceLanguageWithCommentRegexes() throws IOException {
         for (String relative : new String[] {
                 "build.gradle", "interpreter-bridge/build.gradle", "schemakit/build.gradle",
-                "consistency/build.gradle", "consistency-gate/build.gradle",
-                "interpreter-preflight/build.gradle"}) {
+                "consistency/build.gradle", "consistency-gate/build.gradle"}) {
             String build = Files.readString(CHECKOUT.resolve(relative));
             assertTrue(build.contains("verifyCompiledPurity"), relative);
             assertFalse(build.contains("replaceAll(/(?s)\\/\\*.*?\\*\\//"), relative);

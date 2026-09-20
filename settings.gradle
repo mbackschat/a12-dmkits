@@ -68,15 +68,17 @@ include 'consistency'
 include 'predicates'
 
 
-// The :consistency-gate module (PORTABLE-CONSISTENCY-PROPOSAL §7 F3): the integration façade that lets a
-// published-dmkits caller ask the Kernel-free checker for a verdict in the shape it already consumes. It sits
-// BESIDE both products rather than inside either, for :interpreter-bridge's reason — the `api project(…)`
-// edge that folds an integration into a core's published POM works equally well in reverse, and §1 forbids
-// exactly that for this façade. Kernel-free, held by its own verifyConsistencyGatePurity.
+// The :consistency-gate module (PORTABLE-CONSISTENCY-PROPOSAL §7 F3 + F3-c): the integration façades over the
+// Kernel-free checker — `PortableConsistencyGate` for a published-dmkits caller who wants the verdict in the
+// rulekit shape they already consume, and `ConsistencyPreflight` for an interpreter consumer asking whether
+// A12 rejects a model, which is a question SEPARATE from whether the interpreter can prepare it. Both sit
+// BESIDE the products they join rather than inside either, for :interpreter-bridge's reason — the
+// `api project(…)` edge that folds an integration into a core's published POM works equally well in reverse,
+// and §1 forbids exactly that for these façades. Kernel-free, held by its own verifyConsistencyGatePurity.
+//
+// They were two modules until 2026-09-20, split so that each POM named only what its own consumer needs. That
+// separation buys nothing while the dmkit developer wave is deferred (RELEASE-SPEC §1/§11) — nobody can
+// resolve either coordinate — and it cost a second published artifact, purity lint, API golden and CI lane
+// for two source files. Re-split it if that wave ships and the over-declared dependency starts reaching a
+// real consumer; the rationale for splitting is recorded in RELEASE-SPEC §11's seventh artifact.
 include 'consistency-gate'
-
-// The :interpreter-preflight module (PORTABLE-CONSISTENCY-PROPOSAL §7 F3-c): an interpreter consumer asks the
-// Kernel-free checker whether a model is consistent, as a question SEPARATE from whether the interpreter can
-// prepare it and whether it supports every rule. Beside both products, never inside either (§1); it builds no
-// prepared graph and changes no evaluator admission.
-include 'interpreter-preflight'

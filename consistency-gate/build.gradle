@@ -1,17 +1,32 @@
-// :consistency-gate — the F3 integration façade (PORTABLE-CONSISTENCY-PROPOSAL §7): a published-dmkits caller
-// asks the Kernel-free portable checker for a verdict in the shape it already consumes, and the receipt says
-// PORTABLE_CHECKED rather than borrowing either neighbour's provenance.
+// :consistency-gate — the integration façades over the Kernel-free portable checker
+// (PORTABLE-CONSISTENCY-PROPOSAL §7 F3 and F3-c). Two entry points, one question each:
+//
+//   * `PortableConsistencyGate` (F3) — a published-dmkits caller asks the checker for a verdict in the shape
+//     it already consumes, and the receipt says PORTABLE_CHECKED rather than borrowing either neighbour's
+//     provenance.
+//   * `ConsistencyPreflight` (F3-c) — an interpreter consumer asks whether A12 rejects a model, which is a
+//     DIFFERENT question from whether the interpreter can prepare it (a model A12 rejects prepares perfectly
+//     well and reports full support, so gating on preparation evaluates a broken model).
 //
 // Its own module, beside :adapter and :interpreter-bridge rather than inside either product, for the reason
 // §1 states: an integration surface that depends on both must not be folded into either core's published
 // package, and the `api project(…)` edge that produced the archived coupling works equally well in reverse.
 // Kernel-free, held by verifyConsistencyGatePurity over its compiled classes and by the root
 // verifyPublishedClasspathsAreKernelFree over what its POM resolves.
+//
+// ONE artifact carries both façades, and the cost is stated rather than hidden: the preflight lived in its own
+// `:interpreter-preflight` module until 2026-09-20 so that a dmkits caller would not carry the interpreter and
+// an interpreter consumer would not carry rulekit and modelkit. That POM hygiene is worth exactly what
+// publication is worth, and the dmkit developer wave is deferred (RELEASE-SPEC §1/§11), so today it buys
+// nothing and costs a second artifact, lint, API golden and CI lane for two source files. Re-split when the
+// wave ships and a real consumer starts paying the over-declaration.
 plugins {
     id 'java-library'
-    // Kotlin JVM — this module's own sources, per the project default for new code. Its TESTS stay Java on
-    // purpose: every consumer of this artifact is a Java dmkits caller, so a Java suite is what proves the
-    // surface they actually meet (a Kotlin one would exercise property syntax no Java consumer can use).
+    // Kotlin JVM — this module's own sources, per the project default for new code. Each façade is tested in
+    // the LANGUAGE ITS CONSUMER WRITES, which is why the two suites differ: the dmkits gate's is Java, because
+    // every caller of it is a Java dmkits consumer and a Kotlin suite would exercise property syntax no Java
+    // consumer can use; the interpreter preflight's is Kotlin, because its consumers hold a
+    // `List<WorkspaceModelSource>` from Kotlin Multiplatform code.
     id 'org.jetbrains.kotlin.jvm'
     id 'maven-publish'
 }
@@ -39,6 +54,10 @@ dependencies {
     // (`ModelDocument.authoredReferences`), and restating it here would be a second live copy of a header
     // contract — `implementation`, because a caller of this façade never meets a ModelDocument.
     implementation project(':modelkit')
+    // The preflight's consumer vocabulary — it takes exactly what they already hand
+    // `ModelWorkspace.fromSources`, so asking the second question costs them no second representation of the
+    // model. `api` for that reason: `WorkspaceModelSource` is on the entry point's own signature.
+    api project(':interpreter')
 
     testImplementation platform('org.junit:junit-bom:5.11.4')
     testImplementation 'org.junit.jupiter:junit-jupiter'
@@ -80,11 +99,14 @@ publishing {
             artifactId = 'dmkits-consistency-gate'
             pom {
                 name = 'dmkits-consistency-gate'
-                description = 'a12-dmkits — the Kernel-free consistency gate for dmkits consumers: run the '\
-                        + 'portable checker over DM-JSON and read the verdict as a rulekit ValidationResult, '\
-                        + 'with a PORTABLE_CHECKED receipt that is never a kernel confirmation. The checker '\
-                        + 'cannot conclude VALID, so an accepted model comes back INCONCLUSIVE with its own '\
-                        + 'coverage evidence rather than a pass. MIT.'
+                description = 'a12-dmkits — the Kernel-free consistency façades. PortableConsistencyGate runs '\
+                        + 'the portable checker over DM-JSON and reads the verdict as a rulekit '\
+                        + 'ValidationResult, with a PORTABLE_CHECKED receipt that is never a kernel '\
+                        + 'confirmation. ConsistencyPreflight answers an interpreter consumer whether A12 '\
+                        + 'rejects a model, which is a DIFFERENT question from whether the interpreter can '\
+                        + 'prepare it — it builds no prepared graph and changes no evaluator admission. The '\
+                        + 'checker cannot conclude VALID, so an accepted model comes back INCONCLUSIVE with '\
+                        + 'its own coverage evidence rather than a pass. MIT.'
                 rootProject.dmkitsPom(delegate)
             }
         }

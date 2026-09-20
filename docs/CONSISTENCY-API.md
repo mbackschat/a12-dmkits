@@ -244,7 +244,9 @@ run.report()                          // this checker's own report: status, chec
 
 Includes and type-definition imports are resolved through the caller's own resolver, transitively: a provider that itself includes a third model is supplied too. A reference the resolver answers with `null` is simply not supplied and the mount is then reported as a coverage gap rather than as a missing reference — the same honest under-report every other entry point makes.
 
-## Calling it from an interpreter consumer — `dmkits-interpreter-preflight`
+## Calling it from an interpreter consumer — `ConsistencyPreflight`
+
+The preflight ships in the **same** `dmkits-consistency-gate` artifact as the gate above. It had its own `dmkits-interpreter-preflight` coordinate until 2026-09-20, so that a dmkits caller would not carry the interpreter and an interpreter consumer would not carry rulekit and modelkit; with the dmkit developer wave deferred ([RELEASE-SPEC](RELEASE-SPEC.md) §1), nobody could resolve either coordinate and the split bought that hygiene from no one. Its package is unchanged — `io.github.mbackschat.a12.dm.preflight` — so only the dependency line moves if the two are ever split again.
 
 Evaluating a model says nothing about whether A12 accepts it, and the two questions are easy to conflate because one of them answers first. `ModelWorkspace.prepare` says the interpreter can build an evaluator; `Interpreter.supportReport()` says which rules it can execute. **Neither consults A12's constraints**, so a model A12 rejects prepares perfectly well and reports full support — measured, and locked by `ConsistencyPreflightTest`. A consumer who gated evaluation on preparation would evaluate a broken model and get answers about it.
 

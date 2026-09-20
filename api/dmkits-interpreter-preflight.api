@@ -1,8 +1,0 @@
-public final class io.github.mbackschat.a12.dm.preflight.ConsistencyPreflight
-  public static final io.github.mbackschat.a12.dm.preflight.ConsistencyPreflight INSTANCE
-  public static final io.github.mbackschat.a12.dm.preflight.PreflightReport of(java.util.List<io.github.mbackschat.a12.dm.interpreter.WorkspaceModelSource>, java.lang.String)
-
-public final class io.github.mbackschat.a12.dm.preflight.PreflightReport
-  public PreflightReport(io.github.mbackschat.a12.dm.consistency.CheckOutcome, io.github.mbackschat.a12.dm.consistency.ConsistencyReport)
-  public final io.github.mbackschat.a12.dm.consistency.CheckOutcome getOutcome()
-  public final io.github.mbackschat.a12.dm.consistency.ConsistencyReport getReport()

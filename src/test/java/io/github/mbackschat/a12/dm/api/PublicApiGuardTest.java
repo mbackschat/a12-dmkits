@@ -69,8 +69,7 @@ class PublicApiGuardTest {
             // :adapter's would fail every kernel-oracle test here on resolution rather than on its subject.
             // It is loaded for the dump alone, by classLoader below.
             new Kit("dmkits-interpreter-bridge", "interpreter-bridge"),
-            new Kit("dmkits-consistency-gate", "consistency-gate"),
-            new Kit("dmkits-interpreter-preflight", "interpreter-preflight"));
+            new Kit("dmkits-consistency-gate", "consistency-gate"));
 
     @Test
     @DisabledIfSystemProperty(named = "api.fix", matches = "true")
@@ -155,12 +154,11 @@ class PublicApiGuardTest {
      * an allowance that stops matching a live signature is deleted, never left standing.
      */
     private static final Map<String, List<String>> API_SCOPED_PUBLICATIONS = Map.of(
-            "dmkits-consistency-gate", List.of("io.github.mbackschat.a12.dm.consistency."),
-            // Both of this façade's dependencies are `api`-scoped, and both have to be: it takes the
-            // interpreter's own source type so a consumer needs no second representation of their model, and
-            // it returns the checker's report because the coverage evidence is the half that says how much
-            // weight its answer bears.
-            "dmkits-interpreter-preflight", List.of("io.github.mbackschat.a12.dm.consistency.",
+            // All three of this module's `api`-scoped dependencies have to be, and each is on a signature: the
+            // gate returns the checker's report, and the preflight both takes the interpreter's own source
+            // type — so a consumer needs no second representation of their model — and returns that same
+            // report, because the coverage evidence is the half that says how much weight its answer bears.
+            "dmkits-consistency-gate", List.of("io.github.mbackschat.a12.dm.consistency.",
                     "io.github.mbackschat.a12.dm.interpreter."));
 
     /**
