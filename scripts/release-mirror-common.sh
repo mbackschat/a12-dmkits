@@ -42,8 +42,11 @@ release_require_safe_derived_directory() {
 
 release_public_files() {
   local root="${1:?public mirror root is required}"
+  # `cd || exit` rather than a bare cd: the find below is relative, so a failed cd would enumerate the
+  # CURRENT directory instead and hand the caller a plausible-looking inventory of the wrong tree. `exit`
+  # leaves the subshell, and a subshell's status is this function's, so the failure reaches the caller.
   (
-    cd "$root"
+    cd "$root" || exit 1
     find . -path './.git' -prune -o -type f ! -path './PUBLIC-FILES.sha256' -print |
       sed 's#^\./##' |
       LC_ALL=C sort
@@ -100,7 +103,17 @@ release_write_public_inventory() {
 
 release_check_interpreter_mirror_allowlist() {
   local root="${1:?public mirror root is required}"
-  local relative
+  local relative listing
+  # Materialized BEFORE the loop, and an empty listing is an ERROR rather than a pass. With the find inside
+  # a process substitution a failed `cd` yields no input, the loop body never runs, and the function returns
+  # 0 — an allowlist check that passed because it inspected nothing, which is the failure mode a bare `cd`
+  # here would have converted into. Every mirror this guards carries files, so empty means unreadable.
+  listing="$(cd "$root" && find . -path './.git' -prune -o -type f -print | sed 's#^\./##' | LC_ALL=C sort)" \
+    || return 1
+  if [[ -z "$listing" ]]; then
+    echo "public mirror is empty or unreadable: $root" >&2
+    return 1
+  fi
   while IFS= read -r relative; do
     case "$relative" in
       README.md|PERFORMANCE.md|CHANGELOG.md|LICENSE|DISCLAIMER.md|CLAUDE.md|AGENTS.md|release-manifest.json|PUBLIC-FILES.sha256)
@@ -118,12 +131,7 @@ release_check_interpreter_mirror_allowlist() {
         return 1
         ;;
     esac
-  done < <(
-    cd "$root"
-    find . -path './.git' -prune -o -type f -print |
-      sed 's#^\./##' |
-      LC_ALL=C sort
-  )
+  done <<< "$listing"
 }
 
 release_scan_public_tree() {
