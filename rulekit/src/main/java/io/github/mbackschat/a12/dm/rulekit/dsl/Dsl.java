@@ -1857,9 +1857,9 @@ public final class Dsl {
 
     private static FieldListRef checkedStringList(FieldListRef ref) {
         if (ref.kind() != io.github.mbackschat.a12.dm.core.ValueKind.STRING) {
-            throw new IllegalArgumentException("value-list quantifiers over repetition lists take"
-                    + " string fields here; " + ref.renderedPath() + " is " + ref.kind()
-                    + " (enum-kind lists are deferred — MVK_INVALID_TYPES_FOR_COMPARISON otherwise)");
+            throw Refusals.of(KernelCode.MVK_INVALID_TYPES_FOR_COMPARISON,
+                    "value-list quantifiers over repetition lists take string fields here; "
+                            + ref.renderedPath() + " is " + ref.kind() + " — enum-kind lists are deferred");
         }
         return ref;
     }

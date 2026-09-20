@@ -50,16 +50,18 @@ class KernelCodeLiteralRatchetTest {
      * had not seen every hint this repository carries, so {@code StructuralKernelFix}'s allowance was short
      * by the codes its newer entries name in prose — an allowance measured on a different estate is not a
      * ratchet, it is a guess that happens to fail. It ratchets downward from here.
+     *
+     * <p><b>{@code LocalizedText} is the one entry that is not simply unfinished, so its reason is written
+     * here rather than left to look like debt.</b> Its two refusals are thrown from a builder's
+     * {@code build()} as {@code IllegalStateException} — the type this estate uses for a builder in an
+     * inconsistent state, which {@code rulekit.dsl.RuleAuthoringTest} asserts — while
+     * {@code Refusals.of} returns an {@code IllegalArgumentException}. Routing them through it would change
+     * which exception a caller catches, for a gain that is only in how the code is spelled, so it wants its
+     * own decision about the right type and not a rider on a mechanical sweep. The other entries are
+     * {@code INTERPRET_ONLY} files in the census's sense: they describe codes rather than refuse on them.
      */
     private static final Map<String, Integer> REMAINING = Map.ofEntries(
-            Map.entry("rulekit/src/main/java/io/github/mbackschat/a12/dm/rulekit/dsl/BoundModel.java", 2),
-            Map.entry("rulekit/src/main/java/io/github/mbackschat/a12/dm/rulekit/dsl/CategoryRef.java", 1),
-            Map.entry("rulekit/src/main/java/io/github/mbackschat/a12/dm/rulekit/dsl/Dsl.java", 1),
-            Map.entry("rulekit/src/main/java/io/github/mbackschat/a12/dm/rulekit/dsl/FirstFilledOperand.java", 1),
             Map.entry("rulekit/src/main/java/io/github/mbackschat/a12/dm/rulekit/dsl/LocalizedText.java", 2),
-            Map.entry("rulekit/src/main/java/io/github/mbackschat/a12/dm/rulekit/dsl/NumericScaleSummary.java", 1),
-            Map.entry("rulekit/src/main/java/io/github/mbackschat/a12/dm/rulekit/dsl/RangeAsNumber.java", 1),
-            Map.entry("rulekit/src/main/java/io/github/mbackschat/a12/dm/rulekit/dsl/RangeAsString.java", 1),
             Map.entry("rulekit/src/main/java/io/github/mbackschat/a12/dm/rulekit/lint/ComputationLinter.java", 1),
             Map.entry("rulekit/src/main/java/io/github/mbackschat/a12/dm/rulekit/lint/Linter.java", 1),
             Map.entry("rulekit/src/main/java/io/github/mbackschat/a12/dm/rulekit/validate/DiagnosticEnricher.java", 1),

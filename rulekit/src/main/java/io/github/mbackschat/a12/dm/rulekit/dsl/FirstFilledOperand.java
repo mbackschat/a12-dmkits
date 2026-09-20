@@ -4,6 +4,8 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 
+import io.github.mbackschat.a12.dm.core.KernelCode;
+import io.github.mbackschat.a12.dm.core.Refusals;
 import io.github.mbackschat.a12.dm.core.ValueKind;
 
 /**
@@ -129,8 +131,8 @@ public final class FirstFilledOperand implements DuplicateOperand {
 
     private FirstFilledOperand withSemanticIndex(SemanticIndexKey key) {
         if (hasWildcard()) {
-            throw new IllegalArgumentException("a semantic index and wildcard may not address the same entity"
-                    + " (MVK_SEMANTIC_INDEX_AND_WILDCARD): " + renderedPath());
+            throw Refusals.of(KernelCode.MVK_SEMANTIC_INDEX_AND_WILDCARD,
+                    "a semantic index and wildcard may not address the same entity: " + renderedPath());
         }
         if (semanticIndex != null) {
             throw new IllegalStateException("FirstFilledValue target already has a semantic index");

@@ -67,8 +67,15 @@ class PromotedGateIsReachedGuardTest {
      * to, only that one appeared and the list needs a human look. Over-triggering costs one reading; the
      * alternative is a hand-written denominator nothing checks.
      */
+    /*
+     * Raised 2026-09-20 by three refusals that already existed and only changed SPELLING — the literal
+     * `new IllegalArgumentException("… (CODE)")` form moving onto `Refusals.of`. No new public gate appeared:
+     * `firstFilledGroupScope` and `requireExactSemanticIndexGroup` are reached through `firstFilledGroup` /
+     * `firstFilledGroupFor`, both already in GATES, and `Dsl.checkedStringList` is not a BoundModel gate at
+     * all. The reachability assertions above stayed green across the change, which is the evidence for that.
+     */
     private static final Map<String, Integer> REFUSAL_SITES =
-            Map.of("BoundModel.java", 7, "Dsl.java", 9, "DuplicateGate.java", 2);
+            Map.of("BoundModel.java", 9, "Dsl.java", 10, "DuplicateGate.java", 2);
 
     private static final Pattern REFUSAL = Pattern.compile("Refusals\\.of\\(");
 

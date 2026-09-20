@@ -2,6 +2,9 @@ package io.github.mbackschat.a12.dm.rulekit.dsl;
 
 import java.util.List;
 
+import io.github.mbackschat.a12.dm.core.KernelCode;
+import io.github.mbackschat.a12.dm.core.Refusals;
+
 /**
  * A typed handle to one category of an enumeration field — obtained via
  * {@link EnumRef#category(String)} (which fails fast on an unknown category,
@@ -102,11 +105,19 @@ public record CategoryRef(FieldRef field, String name, List<String> values, bool
         return isNot(other);
     }
 
+    /**
+     * The category twin of {@code EnumRef.compareTo}, and it cites the same code for the same measured
+     * reason: the single-comparison carrier reports
+     * {@code MVK_INVALID_STRING_CONSTANT_FOR_ENUM_COMPARISON} where the value-list one reports
+     * {@code MVK_INVALID_STRING_CONSTANT_FOR_ENUMERATION}
+     * ({@code validate.laws.UnbackedClientRefusalLawsTest}). The MVK-LEDGER row for that code names
+     * {@code EnumRef.is}/{@code CategoryRef.is} as its two pre-checks, so this is the second of the pair.
+     */
     private Condition compareTo(CompareOp op, String value) {
         if (!values.contains(value)) {
-            throw new IllegalArgumentException("'" + value + "' is not a value of category '" + name
-                    + "' on " + field.path() + " — allowed: " + values
-                    + " (comparing to a plain enum value is MVK_INVALID_STRING_CONSTANT_FOR_ENUM_COMPARISON)");
+            throw Refusals.of(KernelCode.MVK_INVALID_STRING_CONSTANT_FOR_ENUM_COMPARISON,
+                    "'" + value + "' is not a value of category '" + name + "' on " + field.path()
+                            + " — allowed: " + values);
         }
         return new ComparisonCondition(access(), op, new EnumValueLiteral(value));
     }

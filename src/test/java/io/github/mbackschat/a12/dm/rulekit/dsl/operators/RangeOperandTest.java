@@ -1,12 +1,15 @@
 package io.github.mbackschat.a12.dm.rulekit.dsl.operators;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import org.junit.jupiter.api.Test;
 
 import io.github.mbackschat.a12.dm.Fixtures;
+import io.github.mbackschat.a12.dm.core.KernelCode;
+import io.github.mbackschat.a12.dm.core.KernelCodeRefusal;
 import io.github.mbackschat.a12.dm.core.ValueKind;
 import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel;
 import io.github.mbackschat.a12.dm.rulekit.dsl.FieldRef;
@@ -36,6 +39,11 @@ class RangeOperandTest {
                 assertThrows(IllegalArgumentException.class, () -> new RangeAsString(EMAIL, 0, 2)),
                 assertThrows(IllegalArgumentException.class, () -> new RangeAsNumber(EMAIL, 0, 2))}) {
             assertTrue(ex.getMessage().contains("MVK_INVALID_INTERVAL"), ex::getMessage);
+            // The message keeps the code for a human; the TYPE carries it for a caller, which is the whole
+            // point of routing this through Refusals.of — a catch site no longer has to parse prose to
+            // learn which law it broke (API-FINDINGS AF154).
+            assertEquals(KernelCode.MVK_INVALID_INTERVAL,
+                    assertInstanceOf(KernelCodeRefusal.class, ex).code());
         }
     }
 

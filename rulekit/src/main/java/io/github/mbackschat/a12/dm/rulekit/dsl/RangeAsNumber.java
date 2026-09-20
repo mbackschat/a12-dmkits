@@ -1,5 +1,7 @@
 package io.github.mbackschat.a12.dm.rulekit.dsl;
 
+import io.github.mbackschat.a12.dm.core.KernelCode;
+import io.github.mbackschat.a12.dm.core.Refusals;
 import io.github.mbackschat.a12.dm.core.ValueKind;
 
 /**
@@ -13,9 +15,8 @@ public record RangeAsNumber(FieldRef field, int start, int end) implements Calcu
 
     public RangeAsNumber {
         if (start < 1 || end < start) {
-            throw new IllegalArgumentException("RangeAsNumber bounds are 1-based and must satisfy"
-                    + " 0 < start <= end (the kernel rejects others with MVK_INVALID_INTERVAL),"
-                    + " was " + start + ", " + end);
+            throw Refusals.of(KernelCode.MVK_INVALID_INTERVAL, "RangeAsNumber bounds are 1-based and must"
+                    + " satisfy 0 < start <= end, was " + start + ", " + end);
         }
     }
 

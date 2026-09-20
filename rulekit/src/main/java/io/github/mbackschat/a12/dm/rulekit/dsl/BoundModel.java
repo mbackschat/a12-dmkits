@@ -549,8 +549,8 @@ public final class BoundModel {
             throw new IllegalArgumentException(scope.path() + " is not a group");
         }
         if (scope.path().indexOf('/', 1) < 0) {
-            throw new IllegalArgumentException("FirstFilledValue does not accept a root group"
-                    + " (MVK_ROOT_GROUP_REFERENCED): " + scope.path());
+            throw Refusals.of(KernelCode.MVK_ROOT_GROUP_REFERENCED,
+                    "FirstFilledValue does not accept a root group: " + scope.path());
         }
         return scope;
     }
@@ -566,8 +566,8 @@ public final class BoundModel {
      *  the indexed group. */
     static void requireExactSemanticIndexGroup(GroupListRef scope) {
         if (!scope.flattened().isEmpty()) {
-            throw new IllegalArgumentException("a semantic index and wildcard may not address the same group"
-                    + " (MVK_SEMANTIC_INDEX_AND_WILDCARD): " + scope.renderedPath());
+            throw Refusals.of(KernelCode.MVK_SEMANTIC_INDEX_AND_WILDCARD,
+                    "a semantic index and wildcard may not address the same group: " + scope.renderedPath());
         }
     }
 

@@ -2,6 +2,10 @@ package io.github.mbackschat.a12.dm.rulekit.dsl;
 
 import java.math.BigDecimal;
 
+import io.github.mbackschat.a12.dm.core.KernelCode;
+import io.github.mbackschat.a12.dm.core.KernelCodeRefusal;
+import io.github.mbackschat.a12.dm.core.Refusals;
+
 /**
  * Parser-equivalent static metadata for the numeric equality gate. Scale and constant expandability
  * are independent: treating every literal as exempt loses the kernel's asymmetric smaller-side rule.
@@ -137,11 +141,11 @@ record NumericScaleSummary(State state, int scale, boolean expandable) {
         }
     }
 
-    private static IllegalArgumentException invalid(String left, String right) {
-        return new IllegalArgumentException("cannot compare numeric expressions with == / != at derived scales "
-                + left + " and " + right
-                + " — only a multiplicative-constant-capable smaller-scale side may be padded; "
-                + "MVK_INVALID_COMPARE_DEC_PLACES; ordering (< <= > >=) is exempt");
+    private static KernelCodeRefusal invalid(String left, String right) {
+        return Refusals.of(KernelCode.MVK_INVALID_COMPARE_DEC_PLACES,
+                "cannot compare numeric expressions with == / != at derived scales " + left + " and " + right
+                        + " — only a multiplicative-constant-capable smaller-scale side may be padded;"
+                        + " ordering (< <= > >=) is exempt");
     }
 
     private static String displayScale(NumericScaleSummary summary) {
