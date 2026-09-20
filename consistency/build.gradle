@@ -771,16 +771,17 @@ def consistencyNpmPackDir = layout.buildDirectory.dir('consumer-tests/pack')
 // system PATH, so a bare `commandLine 'npm'` fails on a machine where Node is present and merely not
 // exported. This resolves the executable once and fails with what to do about it, instead of a bare
 // "command not found" from Exec.
-// The checker's published ABI, pinned the way `:interpreter` pins its own — Kotlin 2.2 installs ABI
-// validation as a nested extension of the multiplatform DSL, and Groovy cannot call the Kotlin-only
-// `abiValidation {}` shortcut, so configure the public extension directly.
+// The checker's published ABI, pinned the way `:interpreter` pins its own — through the `abiValidation`
+// accessor on the Kotlin extension, because Groovy cannot call the Kotlin-only `abiValidation {}` shortcut.
+// Until Kotlin 2.4 this was a nested extension fetched by type; 2.4 removed that registration and the old
+// spelling fails at configuration time (measured on the 2.2 → 2.4 bump, 2026-09-20 — this module failed
+// first, because it is the one `:interpreter`'s own migration would not have covered).
 //
 // This module became a PUBLISHED artifact on 2026-09-17 (`dm-consistency`), and its report types already sit
 // on two published Java APIs whose own goldens name them — so a change here moves those two surfaces with
 // nothing recording that the checker was the cause. Deliberately UNFILTERED: the whole module is either
 // contract or accidentally public, and a dump that hides the difference answers neither question.
-def consistencyAbiValidation = kotlin.extensions
-        .getByType(org.jetbrains.kotlin.gradle.dsl.abi.AbiValidationMultiplatformExtension)
+def consistencyAbiValidation = kotlin.abiValidation
 consistencyAbiValidation.enabled.set(true)
 
 // Enabling validation only PRODUCES a dump; nothing verifies it. Kotlin does not put `checkLegacyAbi` on

@@ -11,10 +11,10 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 import kotlin.test.assertTrue
-import org.jetbrains.kotlin.abi.tools.api.AbiFilters
-import org.jetbrains.kotlin.abi.tools.api.AbiToolsFactory
-import org.jetbrains.kotlin.abi.tools.api.v2.AbiToolsV2
-import org.jetbrains.kotlin.abi.tools.api.v2.KlibTarget
+import org.jetbrains.kotlin.abi.tools.AbiFilters
+import org.jetbrains.kotlin.abi.tools.AbiTools
+import org.jetbrains.kotlin.abi.tools.AbiToolsFactory
+import org.jetbrains.kotlin.abi.tools.KlibTarget
 
 /**
  * Locks the scope of the reviewed Kotlin ABI goldens without implementing a second Kotlin ABI model.
@@ -36,9 +36,14 @@ class InterpreterAbiGoldenDepthTest {
     private val nonContractFacadeNames = requireNotNull(
         System.getProperty("interpreter.abi.non-contract-facade-names"),
     ).split(',').filter(String::isNotEmpty).toSet()
-    private val abiTools: AbiToolsV2 by lazy {
+    // `single()` is the assertion that one factory is on the classpath, so a second ABI engine could never
+    // decide this guard's denominator silently. Kotlin 2.4 flattened the package (`abi.tools.api[.v2]` →
+    // `abi.tools`) and dropped the version hop, so the factory now yields the tools interface directly;
+    // 2.4's own `AbiTools.getInstance()` accessor is deliberately not used because it would give up that
+    // cardinality check (measured on the 2.2 → 2.4 bump, 2026-09-20).
+    private val abiTools: AbiTools by lazy {
         ServiceLoader.load(AbiToolsFactory::class.java)
-            .map { it.get().v2 }
+            .map { it.get() }
             .single()
     }
 

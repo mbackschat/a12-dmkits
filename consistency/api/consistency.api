@@ -212,7 +212,6 @@ public final class io/github/mbackschat/a12/dm/consistency/ConsistencyReport {
 
 public final class io/github/mbackschat/a12/dm/consistency/ConsistencySnapshot {
 	public static final field Companion Lio/github/mbackschat/a12/dm/consistency/ConsistencySnapshot$Companion;
-	public synthetic fun <init> (Lio/github/mbackschat/a12/dm/consistency/ConsistencyWorkspace;Ljava/lang/String;Lio/github/mbackschat/a12/dm/consistency/PreparedModel;Lio/github/mbackschat/a12/dm/consistency/CheckCells;Lio/github/mbackschat/a12/dm/consistency/ConsistencyReport;Lio/github/mbackschat/a12/dm/consistency/Reuse;Lkotlin/jvm/internal/DefaultConstructorMarker;)V
 	public final fun draft (Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;)Lio/github/mbackschat/a12/dm/consistency/DraftResult;
 	public final fun getReport ()Lio/github/mbackschat/a12/dm/consistency/ConsistencyReport;
 	public final fun getReuse ()Lio/github/mbackschat/a12/dm/consistency/Reuse;
@@ -246,7 +245,6 @@ public final class io/github/mbackschat/a12/dm/consistency/ConsistencyStatus$Inv
 
 public final class io/github/mbackschat/a12/dm/consistency/ConsistencyWorkspace {
 	public static final field Companion Lio/github/mbackschat/a12/dm/consistency/ConsistencyWorkspace$Companion;
-	public synthetic fun <init> (Ljava/util/Map;Ljava/util/List;Lkotlin/jvm/internal/DefaultConstructorMarker;)V
 	public final fun check (Ljava/lang/String;)Lio/github/mbackschat/a12/dm/consistency/ConsistencyReport;
 	public final fun getModelIds ()Ljava/util/List;
 	public final fun with (Lio/github/mbackschat/a12/dm/consistency/ModelSource;)Lio/github/mbackschat/a12/dm/consistency/ConsistencyWorkspace;

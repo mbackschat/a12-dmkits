@@ -66,6 +66,15 @@ sourceSets {
 }
 
 dependencies {
+    // The kernel is a Lombok codebase, and Lombok's `@NonNull` is CLASS-retention — so it is baked into the
+    // published kernel bytecode (107 `Llombok/NonNull;` descriptors in kernel-md-a12internal-30.8.1.jar alone)
+    // while the kernel POMs never declare it. javac ignores an unresolvable CLASS-retention annotation; Kotlin
+    // 2.4 does not, and refuses a type it infers from such a signature. Measured on the 2.2 → 2.4 bump
+    // (2026-09-20), which is the only variable that moved — the kernel pin is unchanged:
+    //   CorpusModelPreparer.kt:56:33 Type annotation class 'lombok.NonNull' of the inferred type is inaccessible.
+    // `testCompileOnly` is the exact scope: adapter/src/main holds no Kotlin at all, and this is an annotation
+    // the compiler must resolve, never something this module ships or runs against.
+    testCompileOnly 'org.projectlombok:lombok:1.18.42'
     // The kernel-free kits — BoundModel/Rule/Dsl + ReferenceResolvers + the SPI ports this backend implements.
     // Stage-4 module cut: the single root project split into per-kit modules, so `api project(':')` becomes an
     // `api` edge to each kit (re-exported to consumers — :cli/:schemakit — exactly as `project(':')` was).

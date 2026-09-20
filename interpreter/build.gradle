@@ -99,7 +99,7 @@ kotlin {
             dependencies {
                 // The ABI-depth guard asks the same engine that writes the reviewed dumps for an unfiltered
                 // dump, then projects the exact root package without modelling Kotlin declaration kinds.
-                implementation 'org.jetbrains.kotlin:abi-tools:2.2.0'
+                implementation 'org.jetbrains.kotlin:abi-tools:2.4.0'
             }
         }
     }
@@ -111,8 +111,11 @@ tasks.named('jsBrowserTest') {
     enabled = false
 }
 
-// Kotlin 2.2 installs ABI validation as a nested extension of the multiplatform DSL. Configure that public
-// extension directly because Groovy cannot call the Kotlin-only `abiValidation {}` shortcut.
+// ABI validation is reached through the `abiValidation` accessor on the Kotlin extension. Until Kotlin 2.4 it
+// was a nested extension fetched by type; 2.4 removed that registration, so the old spelling fails at
+// configuration time with "Extension of type 'AbiValidationMultiplatformExtension' does not exist" (measured
+// on the 2.2 → 2.4 bump, 2026-09-20). The accessor is used rather than the `abiValidation { }` block because
+// Groovy cannot call the Kotlin-only shortcut.
 def interpreterRootPackage = 'io.github.mbackschat.a12.dm.interpreter'
 // A file facade can acquire unrelated top-level declarations while retaining the same JVM owner. Keep those
 // owner-wide exclusions separate so the ABI-depth guard can lock their complete unfiltered blocks.
@@ -154,11 +157,10 @@ def interpreterEngineSubpackages = { ->
     }
     names
 }
-def interpreterAbiValidation = kotlin.extensions
-    .getByType(org.jetbrains.kotlin.gradle.dsl.abi.AbiValidationMultiplatformExtension)
+def interpreterAbiValidation = kotlin.abiValidation
 interpreterAbiValidation.enabled.set(true)
 interpreterAbiValidation.filters {
-    included {
+    include {
         // The release contract is the root-package façade, expressed as "the whole tree minus the engine
         // packages" rather than as a root-package-only pattern. That is not cosmetic: a `byNames` pattern
         // never crosses a `.`, and the KLIB filter is applied to EVERY declaration, whereas the JVM filter is
@@ -169,7 +171,7 @@ interpreterAbiValidation.filters {
         // member-level. `InterpreterAbiGoldenDepthTest` fails the build if this ever regresses.
         byNames.add("${interpreterRootPackage}.**".toString())
     }
-    excluded {
+    exclude {
         interpreterEngineSubpackages().each { subpackage ->
             byNames.add("${interpreterRootPackage}.${subpackage}.**".toString())
         }
@@ -2418,15 +2420,15 @@ def verifyInterpreterReleaseContracts = tasks.register(
         def poms = fileTree(mavenRoot) { include '**/*.pom' }.files
         def expectedPomDependencies = [
             'dm-interpreter': [
-                'org.jetbrains.kotlin:kotlin-stdlib:2.2.0:runtime',
+                'org.jetbrains.kotlin:kotlin-stdlib:2.4.0:runtime',
             ] as Set,
             'dm-interpreter-jvm': [
-                'org.jetbrains.kotlin:kotlin-stdlib:2.2.0:compile',
+                'org.jetbrains.kotlin:kotlin-stdlib:2.4.0:compile',
                 'org.jetbrains.kotlinx:kotlinx-serialization-json-jvm:1.9.0:runtime',
             ] as Set,
             'dm-interpreter-js': [
-                'org.jetbrains.kotlin:kotlin-dom-api-compat:2.2.0:compile',
-                'org.jetbrains.kotlin:kotlin-stdlib-js:2.2.0:compile',
+                'org.jetbrains.kotlin:kotlin-dom-api-compat:2.4.0:compile',
+                'org.jetbrains.kotlin:kotlin-stdlib-js:2.4.0:compile',
                 'org.jetbrains.kotlinx:kotlinx-serialization-json-js:1.9.0:runtime',
             ] as Set,
         ]

@@ -13,7 +13,6 @@ public final class io.github.mbackschat.a12.dm.bridge.ConditionBridge implements
   public io.github.mbackschat.a12.dm.core.ModelIndex index()
   public io.github.mbackschat.a12.dm.rulekit.dsl.IndexedGroupValue indexedGroup(io.github.mbackschat.a12.dm.interpreter.ast.Expr)
   public io.github.mbackschat.a12.dm.rulekit.dsl.IndexedFieldValue indexedValue(io.github.mbackschat.a12.dm.interpreter.ast.Expr)
-  public boolean isGroup(java.lang.String)
   public io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel model()
   public io.github.mbackschat.a12.dm.core.ValueKind operandTemporalClass(io.github.mbackschat.a12.dm.rulekit.dsl.FieldOperand)
   public io.github.mbackschat.a12.dm.rulekit.dsl.SemanticIndex semanticIndex(io.github.mbackschat.a12.dm.interpreter.ast.Expr)
