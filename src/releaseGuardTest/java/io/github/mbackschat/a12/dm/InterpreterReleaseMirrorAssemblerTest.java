@@ -114,6 +114,34 @@ class InterpreterReleaseMirrorAssemblerTest {
         assertFalse(Files.exists(secretMirror.resolve("PUBLIC-FILES.sha256")));
     }
 
+    /**
+     * The scan classifies what it finds, and only the machine-local arm was covered — so a credential or a
+     * private key could have been reported as the wrong kind, or the arm could have stopped firing, without
+     * any test noticing. Both markers that reach the other arm are asserted, and each is checked to report
+     * as a secret rather than as a path.
+     */
+    @Test
+    void credentialAndPrivateKeyMarkersAreRejectedAsSecretsRatherThanAsPaths() throws Exception {
+        // Both literals are split so this source file carries neither marker itself: the leak guard scans
+        // source text, while the assembler under test sees the joined value.
+        var markers = List.of(
+                "token: ghp_" + "A".repeat(25) + "\n",
+                "-----BEGIN OPENSSH PRIVATE" + " KEY-----\n");
+        for (var marker : markers) {
+            var inputs = releaseInputs(VERSION);
+            Files.writeString(inputs.showcase().resolve("leaked.txt"), marker);
+            var mirror = temporaryDirectory.resolve("secret-" + markers.indexOf(marker));
+
+            var refused = runAssembler(inputs, mirror, temporaryDirectory.resolve(
+                    "secret-assets-" + markers.indexOf(marker)));
+
+            assertEquals(1, refused.exitCode(), refused::output);
+            assertTrue(refused.output().contains("secret/private-source marker"), refused::output);
+            assertFalse(refused.output().contains("machine-local path"), refused::output);
+            assertFalse(Files.exists(mirror.resolve("PUBLIC-FILES.sha256")), refused::output);
+        }
+    }
+
     @Test
     void refusedCumulativeAssemblyLeavesTheVerifiedMirrorUnchanged() throws Exception {
         var mirror = temporaryDirectory.resolve("transactional-mirror");

@@ -292,6 +292,10 @@ release_scan_public_tree "$MIRROR_STAGE"
 release_write_public_inventory "$MIRROR_STAGE"
 "$ROOT/scripts/check-interpreter-release-repo.sh" "$MIRROR_STAGE" >/dev/null
 
+# --checksum, not the default size-and-mtime: the stage is rebuilt from scratch on every run, so its mtimes
+# are always newer and a size-and-mtime sync would copy every file while still being unable to tell an
+# unchanged file from a changed one. Content comparison is also what keeps the sync honest for reproducible
+# artifacts, whose bytes may differ while their timestamps are identical by construction.
 rsync -a --checksum --delete --exclude='.git/' "$MIRROR_STAGE/" "$DESTINATION/"
 release_verify_public_inventory "$DESTINATION"
 mkdir -p "$ASSETS_DIRECTORY"
