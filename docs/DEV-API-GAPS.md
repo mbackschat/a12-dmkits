@@ -6,6 +6,10 @@
 >
 > **Current state.** §2 lists what is open; read it rather than this paragraph. A row lands there only when a new developer-facing authoring friction is both surfaced and queued, and it is deleted when it ships — so a closed gap's *why* is its [API-FINDINGS](API-FINDINGS.md) finding, not a line here.
 >
+> **Id allocation — one CHUNK per author, declared here and nowhere else.** Two branches appending from one base allocate the same next id, so a merge has to renumber whichever side is smaller and move every citation with it — and a citation rewritten to the *wrong* entry still resolves, so no guard can see that mistake. Not hypothetical: `DG47` was allocated on both sides of the 2026-09-20 harvest and named two different gaps, one of which this repository had already closed. The same collision hit that harvest's kernel findings and API findings, each of which had appended from a shared base into ids this repository had since issued to other entries, so every one had to be renumbered by hand against its heading and every citation moved with it. Allocating from a per-author range removes the collision, and ids are dense within a range rather than globally. The boundaries live on the line below and nowhere else; an open upper bound means the range has no declared end.
+>
+> `dg-id-chunks: 1-999 = Martin Backschat; 1001- = Alexander Ried`
+>
 > **Scope — the filter that matters.** dmkits has **model-authoring scope**: it defines, edits, validates, reads, and tests a document **model** — its fields/groups/type-defs/includes/config and its **rules + computations** (the condition-language DSL). It is **not** a runtime form engine, a document-instance data-binding layer, a rendering/UI toolkit, or a persistence/service layer. The kernel dev doc is ~80% about the *runtime consumer* (manipulating document *instances*); those concerns are deliberately **out of scope** (§3).
 
 ---
@@ -36,7 +40,9 @@ The gaps below were the **ergonomic and consistency remainder** — what added f
 
 ## 2. Open
 
-_None open._
+- **DG1001 — `ReadResult.Opaque` now carries two different answers, and a consumer cannot tell them apart** (surfaced 2026-09-02 while widening the bridge's format gate; confirmed here 2026-09-20 at `InterpreterConditionReadBack.kt:108-110`). `Opaque` is documented as "a construct the converter doesn't model yet", and the bridge catches every `RuntimeException` into it — so it also means "mapped fine, but a rulekit check rejected it". Those are opposite messages to a consumer: the first says *the bridge cannot do this yet*, the second says *this condition is invalid*. Distinguishing them today means parsing the `reason` string. The conflation predates the promoted gates, but each gate promoted into the typed surface widens it. **Why filed rather than fixed:** the fix is a third `ReadResult` state, a published SPI change on a type both providers implement, and no consumer has yet asked to tell the two apart. **What would settle it:** a consumer that needs to distinguish "retry when the bridge learns this" from "this rule is broken".
+
+- **DG56 — the conformance bucket is stated twice and locked in neither place (opened 2026-09-20).** `KernelCode.Bucket` and `docs/MVK-LEDGER.md`'s conformance column say the same thing about the same 306 codes, so one of them can go stale without the other noticing — the drift class every other guard in this estate exists to stop. The migration that introduced the enum brought a bidirectional lock with it, and it does not fit: the ledger's column has since grown a `/ checker-reported` half that `CheckerLedgerDispositionGuardTest` derives from the portable checker's own sources, plus per-row reachability qualifiers, so 43 rows carry `checker-reported` with no conformance atom at all and 76 disagree with the enum's seeding. **What would settle it** is a decision about what that column means — one cell carrying three orthogonal dimensions, or three columns — after which the lock is mechanical either way. **What it blocks:** nothing ships on it; the census already reads the enum's buckets, so a refusal citing a kernel-delegated code still fails the build. What stays unguarded is the ledger's own column.
 
 
 ---

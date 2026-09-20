@@ -1,5 +1,7 @@
 package io.github.mbackschat.a12.dm.rulekit.dsl;
 
+import java.util.Optional;
+
 /**
  * The enum-category navigation {@code [field -> Category]} — maps the field's enum value to its
  * category value (positional mapping in the model: {@code categories[i].values[i]} pairs with
@@ -33,6 +35,18 @@ public record EnumCategoryAccess(FieldRef field, String category, boolean outer)
     @Override
     public String renderedPath() {
         return field.path() + " -> " + category;
+    }
+
+    /** A category projection is a distinct entity from a plain read of the same field, so the category
+     *  belongs in the identity — the kernel compares {@code categoryName} too. */
+    @Override
+    public Optional<String> exactIdentity() {
+        return Optional.of((outer ? "$" : "") + field.path() + " -> " + category);
+    }
+
+    @Override
+    public String overlapModifier() {
+        return "Cat:" + category;
     }
 
     /** The base field's path — a category projection references its underlying enum field. */

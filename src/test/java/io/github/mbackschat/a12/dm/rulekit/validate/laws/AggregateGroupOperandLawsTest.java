@@ -274,11 +274,16 @@ class AggregateGroupOperandLawsTest {
      * A group beside a DESCENDANT of itself is the indirect-overlap arm — the one duplicate gate a wildcard
      * does not escape, and the reason the typed dedup check cannot simply treat a group as wildcarded and
      * stop thinking about it.
+     *
+     * <p>Authored as a raw string, because the typed surface now pre-checks this arm and would refuse the
+     * shape before the kernel could be asked — the same reason {@code AggregateSlotLawsTest}'s
+     * repeated-direct-field row is a string. The kernel's verdict is what this tier exists to hold; the
+     * client refusal is locked separately in {@code dsl.EntityListDuplicateGateTest}.
      */
     @Test
     void aGroupScopeBesideItsOwnDescendantIsRejected() {
         KernelLaws.rejectsModel(INVOICE_JSON, "/Invoice", "../Reference",
-                guardedInvoice(Dsl.sum(lines(), INVOICE.flattenGroup("/Invoice/Lines*/Fees*"))),
+                "FieldFilled(Reference) And Sum(/Invoice/Lines*, /Invoice/Lines*/Fees*) > 0",
                 "MVK_DUPLICATE_PARAM2");
     }
 
@@ -290,8 +295,11 @@ class AggregateGroupOperandLawsTest {
      */
     @Test
     void theContainmentRefusalDoesNotDependOnWhichOperandComesFirst() {
+        // Authored as a raw string for the same reason as the parent-first row above: the typed surface now
+        // pre-checks this arm and would refuse the pair before the kernel could be asked. The client refusal
+        // is locked separately in dsl.EntityListDuplicateGateTest.
         KernelLaws.rejectsModel(INVOICE_JSON, "/Invoice", "../Reference",
-                guardedInvoice(Dsl.sum(INVOICE.flattenGroup("/Invoice/Lines*/Fees*"), lines())),
+                "FieldFilled(Reference) And Sum(/Invoice/Lines*/Fees*, /Invoice/Lines*) > 0",
                 "MVK_DUPLICATE_PARAM2");
     }
 }

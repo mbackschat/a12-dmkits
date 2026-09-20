@@ -12,7 +12,10 @@ import io.github.mbackschat.a12.dm.rulekit.dsl.Severity
 internal object BridgeModels {
 
     val orderJson: String by lazy {
-        DocumentModelDraft.named("order-code-equals").locale("en_US")
+        // Declares a base year because `BaseYear` is only legal in a model that does, and several tests
+        // here exercise it. Inert for the temporal component-set supplementation this also feeds: every
+        // temporal format below carries YEAR already, so there is nothing for it to supplement.
+        DocumentModelDraft.named("order-code-equals").locale("en_US").baseYear(2024)
             .rootGroup("Order") { order ->
                 order
                     .field("CustomerName", FieldKind.STRING)

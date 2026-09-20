@@ -1,5 +1,7 @@
 package io.github.mbackschat.a12.dm.rulekit.dsl;
 
+import java.util.Optional;
+
 /**
  * A group scope reached through a semantic index — {@code [Group For key]} — the group analog of
  * {@link IndexedFieldValue}: the literal-keyed {@link GroupSemanticIndexValue} or the field-keyed
@@ -44,7 +46,7 @@ public sealed interface IndexedGroupValue extends AggregateOperand, GroupListOpe
     /**
      * The compound identity for exact-duplicate detection ({@code MVK_DUPLICATE_PARAM1}) — group path,
      * index key, and the key's own {@code $} correlation if field-keyed. Shared with {@link
-     * IndexedFieldValue#duplicateIdentity()}'s callers ({@code ListAggregate.checkNoDuplicates})
+     * IndexedFieldValue#duplicateIdentity()}'s caller ({@code DuplicateGate})
      * rather than a second, independent identity switch. Deliberately excludes the indirect-overlap
      * case ({@code MVK_DUPLICATE_PARAM2} — an indexed field overlapping an indexed group over the same
      * repetition): that stays kernel-arbitrated, exactly as the plain group arm's own indirect-overlap
@@ -52,5 +54,26 @@ public sealed interface IndexedGroupValue extends AggregateOperand, GroupListOpe
      */
     default String duplicateIdentity() {
         return renderedPath();
+    }
+
+    @Override
+    default Optional<String> exactIdentity() {
+        return Optional.of(duplicateIdentity());
+    }
+
+    /** The base group this index selects a repetition of — the path the containment relation uses. */
+    @Override
+    default String fieldPath() {
+        return group().fieldPath();
+    }
+
+    /** See {@link IndexedFieldValue#overlapModifier()}. */
+    @Override
+    default String overlapModifier() {
+        return switch (this) {
+            case GroupSemanticIndexValue v -> "For:" + v.indexValue();
+            case GroupSemanticIndexFieldValue v -> "For:" + (v.indexField().correlated() ? "$" : "")
+                    + v.indexField().renderedPath();
+        };
     }
 }

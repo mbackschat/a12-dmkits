@@ -29,6 +29,7 @@ public record NumberOfValueInFields(Calculation value, List<AggregateOperand> fi
         if (fields.isEmpty()) {
             throw new IllegalArgumentException("NumberOfValueInFields needs at least one field");
         }
+        DuplicateGate.rejectDuplicates("NumberOfValueInFields", fields);
     }
 
     @Override

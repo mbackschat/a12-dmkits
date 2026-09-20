@@ -34,6 +34,7 @@ import io.github.mbackschat.a12.dm.rulekit.dsl.FieldValue;
 import io.github.mbackschat.a12.dm.rulekit.dsl.GroupListPredicate;
 import io.github.mbackschat.a12.dm.rulekit.dsl.GroupPresenceCondition;
 import io.github.mbackschat.a12.dm.rulekit.dsl.IndexedPresenceCondition;
+import io.github.mbackschat.a12.dm.rulekit.dsl.SemanticIndexFieldValue;
 import io.github.mbackschat.a12.dm.rulekit.dsl.RuleGroupPresenceCondition;
 import io.github.mbackschat.a12.dm.rulekit.dsl.LogicCondition;
 import io.github.mbackschat.a12.dm.rulekit.dsl.NumberLiteral;
@@ -60,9 +61,12 @@ import io.github.mbackschat.a12.dm.rulekit.validate.DiagnosticSource;
  */
 public final class Linter {
 
-    /** Positive presence predicates that count as guarding a negative condition under iteration. */
-    private static final Set<String> POSITIVE_PRESENCE = Set.of(
-            "FieldFilled", "GroupFilled",
+    /**
+     * The positive LIST quantifiers that count as guarding a negative condition under iteration. The singular
+     * {@code FieldFilled}/{@code GroupFilled} forms are not here: they are matched structurally, by their own
+     * record's {@code filled()} flag, so a name in this set would never be consulted for them.
+     */
+    private static final Set<String> POSITIVE_LIST_QUANTIFIERS = Set.of(
             "AllFieldsFilled", "AtLeastOneFieldFilled",
             "AllGroupsFilled", "AtLeastOneGroupFilled");
 
@@ -210,9 +214,8 @@ public final class Linter {
     private void negativeUnderIteration(Condition condition, String errorFieldPath, String ruleGroupPath,
             BoundModel model, String rulePath, List<Diagnostic> out) {
         List<String[]> negatives = new ArrayList<>();
-        boolean[] hasPositiveGuard = {false};
-        collectPresence(condition, negatives, hasPositiveGuard);
-        if (negatives.isEmpty() || hasPositiveGuard[0]) {
+        reportUnguarded(condition, java.util.Set.of(), model, ruleGroupPath, negatives);
+        if (negatives.isEmpty()) {
             return;
         }
         String[] negative = negatives.get(0);
@@ -229,54 +232,203 @@ public final class Linter {
                         + " the kernel can bound the iteration (MVK_NEG_CONDITION_IN_ITERATION; KERNEL-FINDINGS §9)")));
     }
 
-    /** Collect bare negative presence predicates and note whether any positive presence guard exists. */
-    private void collectPresence(Condition condition, List<String[]> negatives, boolean[] hasPositiveGuard) {
+    /**
+     * A positive presence guard licenses a negative only when it references the negative's OWN repeatable
+     * level and is CONJOINED with it. Both halves are measured — an ancestor-level guard and a direct
+     * {@code Or} sibling are each refused by the kernel
+     * ({@code validate.laws.IterationGuardLevelLawsTest}, {@code …IterationGuardCompositionLawsTest}).
+     *
+     * <p>Under {@code And}, either side's positives are available to both; under {@code Or}, neither side
+     * lends to the other — and that holds at every depth, not just between direct siblings. A positive reached
+     * through ANY {@code Or} is unavailable, so only one reached through {@code And} alone licenses
+     * ({@code validate.laws.IterationGuardNestedCompositionLawsTest}: the kernel refuses
+     * {@code (same-level positive Or anything) And negative}). This cannot introduce a false positive on a
+     * legal shape, because an admitted one still needs a same-level positive reached conjunctively, which is
+     * untouched.
+     */
+    private void reportUnguarded(Condition condition, java.util.Set<String> available, BoundModel model,
+            String ruleGroupPath, List<String[]> out) {
+        if (condition instanceof LogicCondition logic) {
+            java.util.Set<String> inner = available;
+            if (logic.op() == LogicCondition.Op.AND) {
+                inner = new java.util.HashSet<>(available);
+                inner.addAll(positiveLevels(logic.left(), model));
+                inner.addAll(positiveLevels(logic.right(), model));
+            }
+            reportUnguarded(logic.left(), inner, model, ruleGroupPath, out);
+            reportUnguarded(logic.right(), inner, model, ruleGroupPath, out);
+            return;
+        }
+        String[] negative = negativeOf(condition);
+        if (negative == null) {
+            return;
+        }
+        String level = negativeLevel(negative, model, ruleGroupPath);
+        // A negative that sits at NO repeatable level does not iterate, so it is not this rule's business at
+        // all. Distinguishing that from "a guard whose level could not be resolved" is why the two are
+        // separate values: conflating them warned on `FieldFilled(row) And FieldNotFilled(nonRepeating)`,
+        // which the kernel admits (under And, one admitted iterating child admits the condition).
+        if (level == null) {
+            return;
+        }
+        if (!available.contains(ANY_LEVEL) && !available.contains(level)) {
+            out.add(negative);
+        }
+    }
+
+    /**
+     * The repeatable level a negative occupies, or {@code null} when it occupies none.
+     *
+     * <p>A GROUP negative is levelled like its positive mirror — the group itself when it repeats — so
+     * {@code GroupNotFilled(X)} and {@code GroupFilled(X)} cannot disagree about X. A bare rule-group
+     * negative is levelled by the rule's own group for the same reason.
+     */
+    private String negativeLevel(String[] negative, BoundModel model, String ruleGroupPath) {
+        String path = negative[1];
+        if ("RuleGroup".equals(path)) {
+            path = ruleGroupPath;
+        }
+        boolean group = "GroupNotFilled".equals(negative[0]);
+        String level = group ? groupLevelOf(path, model) : levelOf(path, model);
+        if (ANY_LEVEL.equals(level)) {
+            return null;
+        }
+        // A bare negative over a repeatable group is admitted when that group DECLARES AN INDEX FIELD and
+        // its maximum repeatability is TWO. Both conjuncts are necessary and neither is sufficient, measured
+        // over the whole grid at both positions (validate.laws.IterationGuardAdmissionRoutesLawsTest): three
+        // repetitions refuse with an index, and two refuse without one. Conditioning on either alone loses
+        // agreeing refusals — which is how this arrived, as a count-only suppression corrected from a corpus.
+        // No mechanism is claimed for the boundary, only its location, so this reads the two facts.
+        if (model.maxRepetitions(level) == 2 && model.declaresIndexField(level)) {
+            return null;
+        }
+        return level;
+    }
+
+    /** The repeatable levels this subtree offers a positive presence for; {@link #ANY_LEVEL} when unknown. */
+    private java.util.Set<String> positiveLevels(Condition condition, BoundModel model) {
+        java.util.Set<String> levels = new java.util.HashSet<>();
+        collectPositiveLevels(condition, model, levels);
+        return levels;
+    }
+
+    private void collectPositiveLevels(Condition condition, BoundModel model, java.util.Set<String> out) {
         switch (condition) {
+            // An OR lends nothing: neither arm holds on its own, so a positive inside one is not available to
+            // a negative conjoined with the whole disjunction. Measured — the kernel refuses
+            // `(same-level positive Or anything) And negative` exactly as it refuses the unguarded form
+            // (`validate.laws.IterationGuardNestedCompositionLawsTest`).
+            case LogicCondition l -> {
+                if (l.op() == LogicCondition.Op.AND) {
+                    collectPositiveLevels(l.left(), model, out);
+                    collectPositiveLevels(l.right(), model, out);
+                }
+            }
+            // An UNSTARRED field presence licenses ANY level, measured: a plain read into a sibling repeatable
+            // group admits a negative at another level, while the STARRED quantifier over the same field does
+            // not (validate.laws.IterationGuardAdmissionRoutesLawsTest). A starred quantifier is a different
+            // condition record and reaches no arm here, so it contributes nothing and stays level-scoped —
+            // which is the whole distinction, and the reason the level rule reads as it does only for it.
             case FieldPresenceCondition f -> {
                 if (f.filled()) {
-                    hasPositiveGuard[0] = true;
-                } else {
-                    negatives.add(new String[] {"FieldNotFilled", f.field().path().value()});
+                    out.add(ANY_LEVEL);
                 }
             }
             case GroupPresenceCondition g -> {
                 if (g.filled()) {
-                    hasPositiveGuard[0] = true;
-                } else {
-                    negatives.add(new String[] {"GroupNotFilled", g.group().path().value()});
+                    String path = g.group().path().value();
+                    out.add(licensesAnyLevel(path, model) ? ANY_LEVEL : groupLevelOf(path, model));
                 }
             }
             case RuleGroupPresenceCondition r -> {
                 if (r.filled()) {
-                    hasPositiveGuard[0] = true;
-                } else {
-                    negatives.add(new String[] {"GroupNotFilled", "RuleGroup"});
+                    out.add(ANY_LEVEL);
                 }
+            }
+            // A value COMPARISON licenses as well as a presence check: the rule asks for a child that
+            // REFERENCES the level, not one that asserts presence at it, and a comparison on a field there
+            // does reference it (validate.laws.IterationGuardAdmissionRoutesLawsTest). Reading only presence
+            // predicates was one of the routes the advisory warned over.
+            case ComparisonCondition c -> {
+                comparisonLevel(c.left(), model, out);
+                comparisonLevel(c.right(), model, out);
             }
             case IndexedPresenceCondition p -> {
                 if (p.filled()) {
-                    hasPositiveGuard[0] = true;
-                } else {
-                    negatives.add(new String[] {"FieldNotFilled", p.index().field().path().value()});
+                    out.add(levelOf(p.index().field().path().value(), model));
                 }
             }
-            case EntityListPredicate p -> hasPositiveGuard[0] |= POSITIVE_PRESENCE.contains(p.operatorId());
-            case GroupListPredicate p -> hasPositiveGuard[0] |= POSITIVE_PRESENCE.contains(p.operatorId());
-            case LogicCondition l -> {
-                collectPresence(l.left(), negatives, hasPositiveGuard);
-                collectPresence(l.right(), negatives, hasPositiveGuard);
+            // A list predicate's operands are paths, but its admission rule at a level is the group-list
+            // topology of KERNEL-FINDINGS §9 rather than a plain reference — unmeasured for this lint, so it
+            // keeps the old blanket suppression rather than risking a false positive on a legal model.
+            case EntityListPredicate p -> {
+                if (POSITIVE_LIST_QUANTIFIERS.contains(p.operatorId())) {
+                    out.add(ANY_LEVEL);
+                }
             }
-            case ComparisonCondition ignored -> { }
-            case PatternCondition ignored -> { }
-            case ValueListCondition ignored -> { }
-            case FieldListValueListCondition ignored -> { }
-            case FieldListEntityListCondition ignored -> { }
-            case RepetitionNotUniqueCondition ignored -> { }
-            case CustomConditionRef ignored -> { }
-            case DateValidity ignored -> { }
-            case CustomTypeValidity ignored -> { }
+            case GroupListPredicate p -> {
+                if (POSITIVE_LIST_QUANTIFIERS.contains(p.operatorId())) {
+                    out.add(ANY_LEVEL);
+                }
+            }
+            default -> { }
         }
     }
+
+    /** The negative presence this condition IS, or {@code null}. */
+    private String[] negativeOf(Condition condition) {
+        return switch (condition) {
+            case FieldPresenceCondition f ->
+                    f.filled() ? null : new String[] {"FieldNotFilled", f.field().path().value()};
+            case GroupPresenceCondition g ->
+                    g.filled() ? null : new String[] {"GroupNotFilled", g.group().path().value()};
+            case RuleGroupPresenceCondition r ->
+                    r.filled() ? null : new String[] {"GroupNotFilled", "RuleGroup"};
+            // An index selection pins a row only when its KEY is a constant; a key read from a field at a
+            // repeatable level ITERATES, and the kernel refuses an unguarded negative over it
+            // (validate.laws.IndexedNegativeKeyFormLawsTest). So the suppression turns on the key's FORM, not
+            // on the selection: a constant-keyed negative is admitted and must not be flagged
+            // (validate.laws.IndexedOperandIterationLawsTest), a field-keyed one is levelled by its KEY.
+            // The POSITIVE arm still counts as a guard in collectPositiveLevels whatever the key, deliberately:
+            // whether an index selection can license a plain negative at that level is not measured, and
+            // counting it is the under-warning direction.
+            case IndexedPresenceCondition i when !i.filled() ->
+                    i.index() instanceof SemanticIndexFieldValue keyed
+                            ? new String[] {"FieldNotFilled", keyed.indexField().path().value()}
+                            : null;
+            case IndexedPresenceCondition ignored -> null;
+            default -> null;
+        };
+    }
+
+    /** The level a comparison operand references, when it is a plain field read. */
+    private void comparisonLevel(Calculation operand, BoundModel model, java.util.Set<String> out) {
+        if (operand instanceof FieldValue value) {
+            out.add(levelOf(value.field().path().value(), model));
+        }
+    }
+
+    /**
+     * An UNSTARRED reference to a repeatable group licenses a negative at ANY level, where the starred form
+     * licenses only its own — measured, and it is what admits a guard over a sibling repeatable group
+     * (validate.laws.IterationGuardAdmissionRoutesLawsTest). Root-versus-nested is not an axis for it.
+     */
+    private boolean licensesAnyLevel(String groupPath, BoundModel model) {
+        return model.isRepeatingGroup(groupPath);
+    }
+
+    /** A GROUP operand's level is the group itself when it repeats, else its nearest repeatable ancestor. */
+    private String groupLevelOf(String groupPath, BoundModel model) {
+        return model.isRepeatingGroup(groupPath) ? groupPath : levelOf(groupPath, model);
+    }
+
+    private String levelOf(String path, BoundModel model) {
+        return model.nearestRepeatableAncestor(path).orElse(ANY_LEVEL);
+    }
+
+    /** A guard whose level this lint cannot resolve; it suppresses, as it always did. */
+    private static final String ANY_LEVEL = "\u0000any";
+
 
     /**
      * Flags a <b>number</b> comparison where an <em>unguarded</em> empty field would make the rule fire.

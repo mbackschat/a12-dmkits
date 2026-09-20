@@ -556,24 +556,27 @@ class FunctionsTest {
     }
 
     /**
-     * Which extraction a TEMPORAL source answers is decided by its declared FORMAT, which condition text does
-     * not carry, so this boundary maps the shape and leaves the verdict to the kernel — a TIME field declared
-     * `yyyy-MM-dd` answers the date extractions and is refused the time ones, the mirror of what its kind
-     * says (KERNEL-FINDINGS KF211). Refusing on kind here made a stored rule of the legal shape UNREADABLE,
-     * which is the sharper half of API-FINDINGS 127. The kernel-side refusal of this particular pair is
-     * locked in `validate.laws.DateExtractionLawsTest.aWrongTemporalKindIsAFormatRefusal`.
+     * Which extraction a TEMPORAL source answers is decided by its declared FORMAT — never by its kind
+     * (KERNEL-FINDINGS KF211), which is why refusing on kind here once made a stored rule of a legal shape
+     * UNREADABLE (API-FINDINGS 127). Condition text does not carry the format, but the MODEL does and this
+     * boundary holds one, so the verdict is now stated rather than delegated: `OrderDate` is declared
+     * `yyyy-MM-dd`, which carries no second. The kernel agrees, over the whole vocabulary
+     * (`validate.laws.TemporalExtractionFormatGateLawsTest`, KF426).
      */
     @Test
-    fun aDateSecondsFromTimeOperandIsLeftToTheKernel() {
-        val extraction = assertInstanceOf(DateExtraction::class.java, left("SecondsFromTime(OrderDate) == 0"))
-        assertEquals(DateExtraction.Unit.SECONDS, extraction.unit())
+    fun aDateSecondsFromTimeOperandIsRefusedOnItsDeclaredFormat() {
+        assertRejectedWith("MVK_WRONG_DATE_FORMAT_FOR_OP") { translate("SecondsFromTime(OrderDate) == 0") }
     }
 
-    /** `BaseYear` resolves to a DATE-kind [Calculation], so it rides the same delegation, one operator over. */
+    /**
+     * `BaseYear` is DATE-kind and declares no format of its own, so it answers the kind DEFAULT — exactly what
+     * a date field declaring none answers — and lands on the same refusal as the row above rather than being
+     * delegated. Measured over the whole unit vocabulary for all three point-in-time constants
+     * (`validate.laws.BaseYearExtractionFormatLawsTest`): `Now` is DATE_TIME and keeps the hour, these do not.
+     */
     @Test
-    fun aBaseYearSecondsFromTimeOperandIsLeftToTheKernel() {
-        val extraction = assertInstanceOf(DateExtraction::class.java, left("SecondsFromTime(BaseYear) == 0"))
-        assertEquals(DateExtraction.Unit.SECONDS, extraction.unit())
+    fun aBaseYearSecondsFromTimeOperandIsRefusedOnItsKindDefault() {
+        assertRejectedWith("MVK_WRONG_DATE_FORMAT_FOR_OP") { translate("SecondsFromTime(BaseYear) == 0") }
     }
 
     // --- DateFromDateTime / TimeFromDateTime --------------------------------------------------------
@@ -594,14 +597,12 @@ class FunctionsTest {
     }
 
     /**
-     * Completeness is a property of the DECLARED FORMAT too, so the split family delegates on the same
-     * grounds as the extractions above; the kernel-side refusal of a plain date is locked in
-     * `validate.laws.DateExtractionLawsTest.splittingAPlainDateIntoItsDatePartIsAFormatRefusal`.
+     * Completeness is a property of the DECLARED FORMAT too, so the split family is stated on the same
+     * grounds as the extractions above: a plain date carries no time half.
      */
     @Test
-    fun aPlainDateDateFromDateTimeOperandIsLeftToTheKernel() {
-        val part = assertInstanceOf(DateTimePart::class.java, left("DateFromDateTime(OrderDate) > Today"))
-        assertEquals(DateTimePart.Unit.DATE, part.unit())
+    fun aPlainDateDateFromDateTimeOperandIsRefusedOnItsDeclaredFormat() {
+        assertRejectedWith("MVK_WRONG_DATE_FORMAT_FOR_OP") { translate("DateFromDateTime(OrderDate) > Today") }
     }
 
     /** But a NON-temporal split operand is still refused here, under the code the kernel reports for it. */
@@ -610,30 +611,31 @@ class FunctionsTest {
         assertRejectedWith("MVK_NO_DATE") { translate("DateFromDateTime(CustomerName) > Today") }
     }
 
-    /** A plain time rides the same delegation. */
+    /** A plain time is the mirror case — it carries no date half. */
     @Test
-    fun aPlainTimeTimeFromDateTimeOperandIsLeftToTheKernel() {
-        val part = assertInstanceOf(
-            DateTimePart::class.java,
-            left("TimeFromDateTime(PickupTime) > TimeFromDateTime(ScheduledAt)"),
-        )
-        assertEquals(DateTimePart.Unit.TIME, part.unit())
+    fun aPlainTimeTimeFromDateTimeOperandIsRefusedOnItsDeclaredFormat() {
+        assertRejectedWith("MVK_WRONG_DATE_FORMAT_FOR_OP") {
+            translate("TimeFromDateTime(PickupTime) > TimeFromDateTime(ScheduledAt)")
+        }
     }
 
-    /** `BaseYear` (kind DATE) likewise, on both sides of the split. */
+    /** `BaseYear` (kind DATE) carries no time half either, on both sides of the split. */
     @Test
-    fun aBaseYearDateFromDateTimeOperandIsLeftToTheKernel() {
-        val part = assertInstanceOf(DateTimePart::class.java, left("DateFromDateTime(BaseYear) > Today"))
-        assertEquals(DateTimePart.Unit.DATE, part.unit())
+    fun aBaseYearDateFromDateTimeOperandIsRefusedOnItsKindDefault() {
+        assertRejectedWith("MVK_WRONG_DATE_FORMAT_FOR_OP") { translate("DateFromDateTime(BaseYear) > Today") }
     }
 
     @Test
-    fun aBaseYearTimeFromDateTimeOperandIsLeftToTheKernel() {
-        val part = assertInstanceOf(
-            DateTimePart::class.java,
-            left("TimeFromDateTime(BaseYear) > TimeFromDateTime(ScheduledAt)"),
-        )
-        assertEquals(DateTimePart.Unit.TIME, part.unit())
+    fun aBaseYearTimeFromDateTimeOperandIsRefusedOnItsKindDefault() {
+        assertRejectedWith("MVK_WRONG_DATE_FORMAT_FOR_OP") {
+            translate("TimeFromDateTime(BaseYear) > TimeFromDateTime(ScheduledAt)")
+        }
+    }
+
+    /** `Now` is the discriminator for the kind-default account: DATE_TIME, so the split admits it. */
+    @Test
+    fun aNowDateFromDateTimeOperandConverts() {
+        assertInstanceOf(DateTimePart::class.java, left("DateFromDateTime(Now) > Today"))
     }
 
     // --- ValueAsDate ---------------------------------------------------------------------------------

@@ -14,6 +14,9 @@ import io.github.mbackschat.a12.dm.core.ValueKind;
  * MVK_NO_FIELDS_ALLOWED}); root groups are banned in both ({@code MVK_ROOT_GROUP_REFERENCED}). The
  * {@link Dsl} entry points enforce all of that by signature + pre-check; field kinds may be mixed.
  */
+import io.github.mbackschat.a12.dm.core.KernelCode;
+import io.github.mbackschat.a12.dm.core.Refusals;
+
 public record CountAggregate(CountOp op, List<AggregateOperand> fields, List<GroupRef> groups)
         implements Calculation {
 
@@ -36,39 +39,71 @@ public record CountAggregate(CountOp op, List<AggregateOperand> fields, List<Gro
     public CountAggregate {
         fields = List.copyOf(fields);
         groups = List.copyOf(groups);
+        // Ahead of the arity and kind gates, matching the kernel: its routine for this operator
+        // answers a duplicate before the param-size, fields-allowed and comparability bars, so our
+        // order reported those instead on input both sides refuse.
+        DuplicateGate.rejectDuplicates(op.operatorId(), allOperands(fields, groups));
         switch (op) {
             case FILLED_FIELDS, DIFFERENT_VALUES -> {
                 // a single flattened repetition list or group scope also satisfies the param law (verified)
                 if (fields.size() < 2 && groups.isEmpty()
                         && fields.stream().noneMatch(ListAggregate::satisfiesArityAlone)) {
-                    throw new IllegalArgumentException(op.operatorId() + " needs more than one field,"
-                            + " a repetition list, or a group (MVK_PARAMSIZE_INVALIDN)");
+                    throw Refusals.of(KernelCode.MVK_PARAMSIZE_INVALIDN, op.operatorId() + " needs more than one field,"
+                            + " a repetition list, or a group");
                 }
             }
             case FILLED_GROUPS -> {
                 if (!fields.isEmpty()) {
-                    throw new IllegalArgumentException(
-                            "NumberOfFilledGroups takes groups only, no fields (MVK_NO_FIELDS_ALLOWED)");
+                    throw Refusals.of(KernelCode.MVK_NO_FIELDS_ALLOWED,
+                            "NumberOfFilledGroups takes groups only, no fields");
                 }
                 // ≥2 distinct groups, OR a single repeatable group as a wildcard scope (Group*) —
                 // the latter counts that group's filled repetitions (kernel-accepted, verified).
                 boolean singleWildcard = groups.size() == 1 && groups.get(0).repeating();
                 if (groups.size() < 2 && !singleWildcard) {
-                    throw new IllegalArgumentException("NumberOfFilledGroups needs more than one group, or a"
-                            + " single repeatable group as a wildcard scope (MVK_PARAMSIZE_INVALIDGN)");
+                    throw Refusals.of(KernelCode.MVK_PARAMSIZE_INVALIDGN,
+                            "NumberOfFilledGroups needs more than one group, or a"
+                                    + " single repeatable group as a wildcard scope");
                 }
             }
         }
         if (op == CountOp.DIFFERENT_VALUES) {
             checkValueComparable(fields);
         }
-        ListAggregate.checkNoDuplicates(op.operatorId(), fields);
         for (GroupRef g : groups) {
             if (g.path().value().indexOf('/', 1) < 0) {
-                throw new IllegalArgumentException("a root group may not be referenced in "
-                        + op.operatorId() + ": " + g.path() + " (MVK_ROOT_GROUP_REFERENCED)");
+                throw Refusals.of(KernelCode.MVK_ROOT_GROUP_REFERENCED, "a root group may not be referenced in "
+                        + op.operatorId() + ": " + g.path());
             }
         }
+    }
+
+    /**
+     * Both lists as ONE list of operands, because the kernel's own {@code getRefList} sees one: a field in
+     * this record's field list and its containing group in the group list are an overlap, and checking the
+     * two lists separately would miss the pair. No factory populates both — each passes an empty list for
+     * the other — but the canonical constructor is public and the read path uses it.
+     */
+    private static List<DuplicateOperand> allOperands(List<AggregateOperand> fields, List<GroupRef> groups) {
+        var all = new java.util.ArrayList<DuplicateOperand>(fields);
+        all.addAll(groupOperands(groups));
+        return all;
+    }
+
+    /**
+     * This carrier's group list as duplicate operands, each starred exactly when the group repeats.
+     *
+     * <p>The star is applied here because it is applied when RENDERING — {@code countOperands} emits
+     * {@code path + "*"} for a repeatable group — and the kernel's exact-duplicate arm skips whatever carries
+     * a star in the emitted text. Projecting rather than gating the {@link GroupRef}s in place keeps one
+     * exemption rule: the group-list quantifiers wrap the same reference UNSTARRED and render it bare, so the
+     * identical {@link GroupRef} is exempt on this carrier and not on that one. Exemption belongs to the
+     * rendered operand.
+     */
+    private static List<GroupListRef> groupOperands(List<GroupRef> groups) {
+        return groups.stream()
+                .map(group -> new GroupListRef(group, group.repeating() ? List.of(group) : List.of()))
+                .toList();
     }
 
     /**
@@ -99,34 +134,33 @@ public record CountAggregate(CountOp op, List<AggregateOperand> fields, List<Gro
         for (FieldOperand f : fields) {
             switch (f.kind()) {
                 case STRING, ENUMERATION, CUSTOM, NUMBER, DATE, DATE_FRAGMENT, TIME, DATE_TIME -> { }
-                default -> throw new IllegalArgumentException("NumberOfDifferentValues cannot compare "
-                        + f.renderedPath() + " (" + f.kind()
-                        + ") — MVK_ONLY_STRING_ENUM_NUMBER_CMP_DATE_ALLOWED");
+                default -> throw Refusals.of(KernelCode.MVK_ONLY_STRING_ENUM_NUMBER_CMP_DATE_ALLOWED,
+                        "NumberOfDifferentValues cannot compare " + f.renderedPath() + " (" + f.kind() + ")");
             }
         }
         ValueClass first = ValueClass.of(fields.getFirst().kind());
         for (FieldOperand f : fields) {
             ValueClass actual = ValueClass.of(f.kind());
             if (actual != first) {
-                throw new IllegalArgumentException("NumberOfDifferentValues operands must be"
-                        + " type-homogeneous; " + f.renderedPath() + " breaks it (" + first.mismatchCode() + ")");
+                throw Refusals.of(first.mismatchCode(), "NumberOfDifferentValues operands must be"
+                        + " type-homogeneous; " + f.renderedPath() + " breaks it");
             }
         }
     }
 
     /** The three comparable value classes the kernel partitions {@code NumberOfDifferentValues} operands into. */
     private enum ValueClass {
-        NUMERIC("MVK_NUMBER_AND_NON_NUMBER"),
-        TEXTUAL("MVK_STRING_ENUM_AND_NON_STRING_ENUM"),
-        TEMPORAL("MVK_DATE_AND_NONDATE");
+        NUMERIC(KernelCode.MVK_NUMBER_AND_NON_NUMBER),
+        TEXTUAL(KernelCode.MVK_STRING_ENUM_AND_NON_STRING_ENUM),
+        TEMPORAL(KernelCode.MVK_DATE_AND_NONDATE);
 
-        private final String mismatchCode;
+        private final KernelCode mismatchCode;
 
-        ValueClass(String mismatchCode) {
+        ValueClass(KernelCode mismatchCode) {
             this.mismatchCode = mismatchCode;
         }
 
-        String mismatchCode() {
+        KernelCode mismatchCode() {
             return mismatchCode;
         }
 

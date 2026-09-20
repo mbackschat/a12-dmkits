@@ -173,6 +173,10 @@ tasks.named('test') {
     // it projects, and both sides are read as repo files, so an undeclared edit would leave this lane
     // UP-TO-DATE with the projection stale.
     dependsOn 'correctiveGuardTest'
+    // Same tier and for the same reason: both its classes read repo files — the bridge's Kotlin sources and
+    // the TypeScript site sweep — so in the broad suite a bridge-only or sweep-only edit would leave this
+    // lane UP-TO-DATE with the gate wiring unchecked.
+    dependsOn 'gateWiringGuardTest'
     if (!project.hasProperty('fast')) {
         dependsOn 'docGuardTest'
         dependsOn 'interpreterReleaseGuardTest'
@@ -193,7 +197,7 @@ tasks.named('test') {
     routeExclusivelyHostedTests(it, ['docGuardTest', 'jsonConstructionGuardTest', 'apiGuardTest',
                                      'catalogProseReviewGuardTest', 'deliveryGuardTest', 'releaseGapGuardTest',
                                      'leakGuardTest', 'vocabularyGuardTest', 'focusedSelectionGuardTest',
-                                     'keywordProjectionGuardTest', 'correctiveGuardTest'],
+                                     'keywordProjectionGuardTest', 'correctiveGuardTest', 'gateWiringGuardTest'],
             ['dumpKitApi'             : 'regenerator over apiGuardTest\'s class — writes the goldens instead of asserting',
              'syncDocSnippets'        : 'regenerator over docGuardTest\'s class — writes the snippets instead of asserting',
              'dumpTemporalVocabulary' : 'regenerator over vocabularyGuardTest\'s class — writes the derived '
@@ -227,6 +231,7 @@ tasks.register('jsonConstructionGuardTest', Test) {
             'interpreter commonMain'  : fileTree('interpreter/src/commonMain') { include '**/*.java', '**/*.kt' },
             'interpreter jvmMain'     : fileTree('interpreter/src/jvmMain') { include '**/*.java', '**/*.kt' },
             'interpreter jsMain'      : fileTree('interpreter/src/jsMain') { include '**/*.java', '**/*.kt' },
+            'bridge main sources'     : fileTree('interpreter-bridge/src/main') { include '**/*.java', '**/*.kt' },
     ])
 }
 
@@ -234,6 +239,32 @@ tasks.register('jsonConstructionGuardTest', Test) {
 // Gradle input can express: a newly tracked file under any excluded directory would leave the task UP-TO-DATE
 // and the scan silently unrun. A leak guard that can be stale is worse than no leak guard, so this one always
 // runs — a few hundred text files, costing about as much as the fork that hosts it.
+tasks.register('gateWiringGuardTest', Test) {
+    description = 'Every refusing BoundModel gate is reached by the condition-text consumer, and every ' +
+            'duplicate-gate decision site is named and controlled.'
+    group = 'verification'
+    useJUnitPlatform()
+    testClassesDirs = sourceSets.test.output.classesDirs
+    classpath = sourceSets.test.runtimeClasspath
+    filter {
+        includeTestsMatching 'io.github.mbackschat.a12.dm.rulekit.dsl.PromotedGateIsReachedGuardTest'
+        includeTestsMatching 'io.github.mbackschat.a12.dm.rulekit.dsl.DuplicateGateSiteDenominatorGuardTest'
+    }
+    guardInputs(it, [
+            'rulekit main sources' : fileTree('rulekit/src/main') { include '**/*.java' },
+            'bridge main sources'  : fileTree('interpreter-bridge/src/main') { include '**/*.java', '**/*.kt' },
+            // The site sweep and the launcher it runs through are read at runtime; undeclared, editing either
+            // would leave this lane UP-TO-DATE with the denominator unchecked.
+            'gate site sweep'      : file('scripts/typescript/gate-mutant-sweep.ts'),
+            'gate site sweep tests': file('scripts/typescript/gate-mutant-sweep.test.ts'),
+            'TypeScript runtime gate': file('scripts/run-typescript.sh'),
+            // The sweep DERIVES each site's control class from the test tree, so deleting a control is exactly
+            // the edit that must re-run this lane — and it touches no main source, which is what would have
+            // left it UP-TO-DATE.
+            'root test sources'    : fileTree('src/test/java') { include '**/*.java' },
+    ])
+}
+
 tasks.register('leakGuardTest', Test) {
     description = 'Repository-wide scan: no tracked file may publish a private registry, access token, or key.'
     group = 'verification'

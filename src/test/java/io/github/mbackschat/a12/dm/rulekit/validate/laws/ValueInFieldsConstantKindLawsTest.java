@@ -261,18 +261,21 @@ class ValueInFieldsConstantKindLawsTest {
     /**
      * The three gates that run BEFORE the constant branch, so a list failing one draws the earlier class.
      *
-     * <p>Two of the rows are written as raw condition text rather than through {@link Dsl}, because the
-     * typed builders cannot express them at all: the multi-field overloads require two operands, so a lone
-     * field and an unstarred root group are shapes only stored DM-JSON carries — which is exactly the input
-     * the portable checker reads.
+     * <p>Every row is written as raw condition text rather than through {@link Dsl}, for two distinct
+     * reasons. A lone field and an unstarred root group are shapes the typed builders cannot express at all
+     * — the multi-field overloads require two operands — so only stored DM-JSON carries them, which is
+     * exactly the input the portable checker reads. The two duplicate rows the builders CAN express are
+     * strings because the typed surface now pre-checks that arm and would refuse before the kernel could be
+     * asked; the kernel's verdict is what this tier exists to hold, and the client refusal is locked
+     * separately in {@code dsl.EntityListDuplicateGateTest}.
      */
     @Test
     void theArityDuplicateAndRootGroupGatesPreEmptTheConstantBranch() {
         Map<String, String> actual = new LinkedHashMap<>();
         actual.put("the same text declaration listed twice, under False",
-                verdict(Dsl.numberOfValueInFields(false, f("GiftNote"), f("GiftNote"))));
+                rawVerdict("NumberOfValueInFields(False In GiftNote, GiftNote) > 0"));
         actual.put("the same Boolean declaration listed twice, under False",
-                verdict(Dsl.numberOfValueInFields(false, f("Expedited"), f("Expedited"))));
+                rawVerdict("NumberOfValueInFields(False In Expedited, Expedited) > 0"));
         actual.put("a group beside a field it contains, under False",
                 rawVerdict("NumberOfValueInFields(False In Packing, Packing/Fragile) > 0"));
         actual.put("a LONE text declaration, under False",

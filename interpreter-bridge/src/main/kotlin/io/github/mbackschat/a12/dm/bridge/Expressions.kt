@@ -66,7 +66,8 @@ internal class Expressions(private val mapping: Mapping) {
     private fun constant(node: Expr.Const): Calculation = when (node.name) {
         "Today" -> Dsl.today().expression()
         "Now" -> Dsl.now().expression()
-        "BaseYear" -> Dsl.baseYear().expression()
+        // Through the model: the constant needs a DECLARED base year, which only the model knows.
+        "BaseYear" -> mapping.model().baseYear().expression()
         else -> throw UnmappedConstructException("constant " + node.name)
     }
 

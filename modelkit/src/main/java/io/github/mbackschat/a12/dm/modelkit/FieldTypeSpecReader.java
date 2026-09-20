@@ -60,6 +60,7 @@ final class FieldTypeSpecReader {
                 .minValue(decimal(config, "minValue"))
                 .maxValue(decimal(config, "maxValue"))
                 .zeroNotAllowed(config.path("zeroNotAllowed").asBoolean(false))
+                .positivesOnly(config.path("positivesOnly").asBoolean(false))
                 .leadingZerosAllowed(config.path("leadingZerosAllowed").asBoolean(false))
                 .trait(numberTrait(text(config, "trait")))
                 .minLength(integer(config, "minLength"))

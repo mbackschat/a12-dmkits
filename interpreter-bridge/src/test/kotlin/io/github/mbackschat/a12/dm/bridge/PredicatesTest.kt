@@ -278,12 +278,22 @@ class PredicatesTest {
     }
 
     /**
-     * MVK_ROOT_GROUP_WITH_OTHER_PARAMETERS is the kernel's, not rulekit's — the entity list represents the
-     * shape and lets the kernel refuse it. Reporting this as caught would claim coverage rulekit lacks.
+     * MVK_ROOT_GROUP_WITH_OTHER_PARAMETERS is still the kernel's, not rulekit's — but it cannot be reached on
+     * a SINGLE-root model, because every second operand is inside that root and containment refuses first.
+     *
+     * <p>The kernel answers `MVK_DUPLICATE_PARAM2` for this exact shape, so rulekit refusing it is agreement
+     * rather than over-reach; a witness for the root-group bar itself needs a two-root fixture, which is where
+     * `rulekit.validate.laws.GroupQuantifierLawsTest` keeps it. Measured in
+     * `rulekit.validate.laws.DuplicateOverlapCarrierSweepLawsTest`.
      */
     @Test
-    fun aRootGroupBesideAnotherOperandIsNotRulekitsToRefuse() {
-        assertNotNull(translate("AtLeastOneGroupFilled(/Order, CustomerName)"))
+    fun aRootGroupBesideAFieldInsideItIsTheOverlapRefusal() {
+        val thrown = assertThrows<IllegalArgumentException> {
+            translate("AtLeastOneGroupFilled(/Order, CustomerName)")
+        }
+        assertTrue(thrown.message!!.contains("MVK_DUPLICATE_PARAM2")) {
+            "expected the kernel's own overlap code in: ${thrown.message}"
+        }
     }
 
     /** `NoGroupFilled(G*)` takes the same starred single-group form as `AtLeastOneGroupFilled`. */

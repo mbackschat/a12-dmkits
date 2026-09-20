@@ -16,6 +16,9 @@ import io.github.mbackschat.a12.dm.core.ValueKind;
  * field ({@code MVK_WILDCARDS_REQUIRED} — satisfied structurally, since only {@code FieldListRef}
  * offers it).
  */
+import io.github.mbackschat.a12.dm.core.KernelCode;
+import io.github.mbackschat.a12.dm.core.Refusals;
+
 public record FieldListRef(FieldRef field, List<GroupRef> flattened, Optional<Condition> filter, boolean correlated)
         implements FieldOperand {
 
@@ -56,8 +59,8 @@ public record FieldListRef(FieldRef field, List<GroupRef> flattened, Optional<Co
      */
     public FieldListRef having(Condition filter) {
         if (OperatorUsage.of(filter).contains("SemanticIndex")) {
-            throw new IllegalArgumentException("a filter condition may not contain a semantic index"
-                    + " (MVK_SEMANTIC_INDEX_NOT_ALLOWED)");
+            throw Refusals.of(KernelCode.MVK_SEMANTIC_INDEX_NOT_ALLOWED,
+                    "a filter condition may not contain a semantic index");
         }
         rejectForbiddenInFilter(filter);
         return new FieldListRef(field, flattened, Optional.of(filter), correlated);
@@ -105,8 +108,8 @@ public record FieldListRef(FieldRef field, List<GroupRef> flattened, Optional<Co
     }
 
     private static void forbidden(String what) {
-        throw new IllegalArgumentException("a filter condition may not contain " + what
-                + " (MVK_DISALLOWED_CONSTRUCT_IN_FILTER_CONDITION)");
+        throw Refusals.of(KernelCode.MVK_DISALLOWED_CONSTRUCT_IN_FILTER_CONDITION,
+                "a filter condition may not contain " + what);
     }
 
     @Override
@@ -121,6 +124,14 @@ public record FieldListRef(FieldRef field, List<GroupRef> flattened, Optional<Co
         }
         rendered.append(path, from, path.length());
         return rendered.toString();
+    }
+
+    /** A wildcarded flattened repetition list is exempt from the exact-duplicate arm, so it contributes no
+     *  identity — the kernel skips such a ref and lets it occupy several authored slots. It still
+     *  participates in the containment arm, which has no such exemption. */
+    @Override
+    public Optional<String> exactIdentity() {
+        return Optional.empty();
     }
 
     @Override

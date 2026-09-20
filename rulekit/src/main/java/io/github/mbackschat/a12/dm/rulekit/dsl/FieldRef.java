@@ -1,5 +1,6 @@
 package io.github.mbackschat.a12.dm.rulekit.dsl;
 
+import java.util.Optional;
 import io.github.mbackschat.a12.dm.core.EntityPath;
 import io.github.mbackschat.a12.dm.core.HasEntityPath;
 
@@ -52,6 +53,13 @@ public record FieldRef(EntityPath path, ValueKind kind, PathStyle styleHint, boo
     @Override
     public String fieldPath() {
         return path.value();
+    }
+
+    /** A plain field entity: the resolved path, plus {@code $} because a correlated read addresses a
+     *  different repetition than an uncorrelated one and the two are distinct operands. */
+    @Override
+    public Optional<String> exactIdentity() {
+        return Optional.of((correlated ? "$" : "") + path.value());
     }
 
     /** {@code FieldFilled([path])} — this field currently holds a value. catalog:FieldFilled */

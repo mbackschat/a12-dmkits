@@ -15,8 +15,9 @@ package io.github.mbackschat.a12.dm.rulekit.dsl;
  * these GROUP-fill quantifiers admit an indexed group exactly as they admit a plain one. Duplicate/overlap
  * stays exactly as kernel-arbitrated here as it already is for the plain group arm: {@link
  * GroupListPredicate} pre-checks neither, so {@link IndexedGroupValue#duplicateIdentity()} is exercised
- * only where it already was — the entity-list aggregates ({@code ListAggregate.checkNoDuplicates}), via
+ * only where it already was — the entity-list aggregates ({@code DuplicateGate}), via
  * the {@link AggregateOperand} arm, not this one.
  */
-public sealed interface GroupListOperand permits FieldRef, GroupListRef, IndexedGroupValue {
+public sealed interface GroupListOperand extends DuplicateOperand
+        permits FieldRef, GroupListRef, IndexedGroupValue {
 }

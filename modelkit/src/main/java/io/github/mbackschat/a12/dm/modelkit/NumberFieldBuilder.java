@@ -39,6 +39,21 @@ public final class NumberFieldBuilder extends FieldAttrs<NumberFieldBuilder> {
         return this;
     }
 
+    /**
+     * Declare the field UNSIGNED (A12's {@code positivesOnly}; the kernel reads it inverted as
+     * {@code hasSign()}, so signed is the default). A minus on such a field is the formal error
+     * {@code zahlMitVorzeichen}, and the flag flips empty-operand fill polarity — an unsigned empty number
+     * can be filled bigger but never smaller.
+     *
+     * <p>Beyond input validation this decides slot eligibility in a date construction: a component satisfies
+     * the kernel's low-side requirement by declaring a non-negative minimum OR by being unsigned, so an
+     * unsigned field needs no minimum to be a legal day or month.
+     */
+    public NumberFieldBuilder positivesOnly() {
+        this.positivesOnly = true;
+        return this;
+    }
+
     /** Reject the value 0 (the kernel emits a dedicated zero-not-allowed error). */
     public NumberFieldBuilder zeroNotAllowed() {
         this.zeroNotAllowed = true;
@@ -72,16 +87,6 @@ public final class NumberFieldBuilder extends FieldAttrs<NumberFieldBuilder> {
     /** Cap the digits before the decimal separator; sign and fractional digits do not count. */
     public NumberFieldBuilder maxIntegerDigits(int n) {
         this.maxIntegerDigits = n;
-        return this;
-    }
-
-    /**
-     * Forbid a sign (A12's {@code NumberType.positivesOnly}): a minus makes the value the formal error
-     * {@code zahlMitVorzeichen}. The flag also makes the field <em>unsigned</em> for empty-operand fill
-     * polarity — an unsigned empty number can be filled bigger but never smaller.
-     */
-    public NumberFieldBuilder positivesOnly() {
-        this.positivesOnly = true;
         return this;
     }
 

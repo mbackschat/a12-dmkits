@@ -246,11 +246,23 @@ internal class Conditions(private val mapping: Mapping) {
         }
     }
 
-    /** A date range has no ordering — [DateRangeOperand] publishes equality only. */
-    private fun dateRangeComparison(op: CmpOp, left: Calculation, right: Calculation): Condition = when (op) {
-        CmpOp.EQ -> dateRangeOperand(op, left, right).eq(dateRangeOperand(op, right, left))
-        CmpOp.NE -> dateRangeOperand(op, left, right).ne(dateRangeOperand(op, right, left))
-        else -> throw noTypedComparison(op, left, right)
+    /**
+     * A date range has no ordering — [DateRangeOperand] publishes equality only.
+     *
+     * Routed through the model's checked forms rather than the bare `eq`/`ne`: both operands must expose the
+     * same declared date-component set, which is a CONTEXTUAL rule and so lives on the model. The ungated
+     * pair stays for `:adapter`'s converter, whose obligation is the opposite one — rebuild a kernel-accepted
+     * model without refusing it.
+     */
+    private fun dateRangeComparison(op: CmpOp, left: Calculation, right: Calculation): Condition {
+        val model = mapping.model()
+        val first = dateRangeOperand(op, left, right)
+        val second = dateRangeOperand(op, right, left)
+        return when (op) {
+            CmpOp.EQ -> model.rangesEqual(first, second)
+            CmpOp.NE -> model.rangesNotEqual(first, second)
+            else -> throw noTypedComparison(op, left, right)
+        }
     }
 
     // --- typed operands -------------------------------------------------------------------------
@@ -265,7 +277,7 @@ internal class Conditions(private val mapping: Mapping) {
      */
     private fun numberExpr(value: Calculation): NumberExpr {
         if (value is BaseYear) {
-            return Dsl.baseYearNumber()
+            return mapping.model().baseYearNumber()
         }
         if (value is FieldValue) {
             return mapping.model().num(value.field().path().value()).keeping(value) { outer() }.asNumber()

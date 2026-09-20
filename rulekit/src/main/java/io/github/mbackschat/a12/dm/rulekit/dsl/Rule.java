@@ -23,6 +23,10 @@ import io.github.mbackschat.a12.dm.rulekit.validate.PrecheckException;
  * later, on demand). Messages are plain localized texts; the typed interpolation helper is the F2a
  * follow-up.
  */
+import io.github.mbackschat.a12.dm.core.KernelCode;
+import io.github.mbackschat.a12.dm.core.Refusals;
+import io.github.mbackschat.a12.dm.rulekit.validate.RkCode;
+
 public record Rule(
         GroupRef group,
         String name,
@@ -94,10 +98,10 @@ public record Rule(
             return List.of();
         }
         return List.of(Diagnostic.precheckWarning(
-                Optional.of("MVK_ERROR_FIELD_NOT_REFERENCED"),
+                Optional.of(KernelCode.MVK_ERROR_FIELD_NOT_REFERENCED.name()),
                 "the error field " + errorField.path() + " appears unreferenced by the condition"
                         + " (directly or via an enclosing group reference); the kernel typically rejects"
-                        + " this with MVK_ERROR_FIELD_NOT_REFERENCED — if your kernel accepts it, this is"
+                        + " this — if your kernel accepts it, this is"
                         + " advisory only",
                 new Diagnostic.Where(group.path() + "/" + name, Optional.empty()),
                 Optional.of("reference " + errorField.path()
@@ -261,20 +265,20 @@ public record Rule(
          * {@code PrecheckException} (an {@code IllegalStateException}) naming the {@code MVK_*}/{@code RK_*} it prevents.
          */
         public Rule build() {
-            check(name != null && !name.isBlank(), "RK_INCOMPLETE_RULE",
+            check(name != null && !name.isBlank(), RkCode.INCOMPLETE_RULE,
                     "a rule needs a name (the element name in its group)", null);
             // The law itself is in the shared leaf, so this builder, Computation.Builder and the portable
             // checker cannot drift apart — which they already had: the computation copy was missing until
             // 2026-09-12, because the code reads as a rule's law.
-            check(!ElementNamePredicatesKt.isReservedElementName(name), "MVK_RULE_NAME_INVALID",
+            check(!ElementNamePredicatesKt.isReservedElementName(name), KernelCode.MVK_RULE_NAME_INVALID,
                     "rule names beginning with vk_vk (any letter case) are reserved by the kernel"
-                            + " (it rejects them with MVK_RULE_NAME_INVALID) — pick a different name",
+                            + " — pick a different name",
                     "name(...) without the vk_vk prefix");
-            check(errorField != null, "RK_INCOMPLETE_RULE",
+            check(errorField != null, RkCode.INCOMPLETE_RULE,
                     "a rule needs an error field — errorField(...)", "errorField(...)");
-            check(condition != null, "RK_INCOMPLETE_RULE",
+            check(condition != null, RkCode.INCOMPLETE_RULE,
                     "a rule needs an error condition — when(...)", "when(...)");
-            check(code != null && !code.isBlank(), "RK_INCOMPLETE_RULE",
+            check(code != null && !code.isBlank(), RkCode.INCOMPLETE_RULE,
                     "a rule needs an error code — code(...)", "code(...)");
             // NOT checked, and the refusal that used to stand here was an over-rejection: A12 ACCEPTS a
             // stored rule with no `severity` member, and no spelling of absent/null/empty fires
@@ -284,11 +288,11 @@ public record Rule(
             // no member at all is the other option and is declined while A12's runtime meaning for an absent
             // severity is unmeasured (locked: dsl.RuleSeverityDefaultTest).
             Severity declaredSeverity = severity != null ? severity : Severity.ERROR;
-            check(!messages.isEmpty(), "MVK_ERROR_MESSAGE_MISSING",
-                    "a rule needs at least one error message (the kernel rejects message-less rules"
-                            + " with MVK_ERROR_MESSAGE_MISSING) — message(en(...))", "message(en(...))");
+            check(!messages.isEmpty(), KernelCode.MVK_ERROR_MESSAGE_MISSING,
+                    "a rule needs at least one error message (the kernel rejects message-less rules)"
+                            + " — message(en(...))", "message(en(...))");
             LocalizedText.checkDeclared(declaredLocales, messages, "rule");
-            check(errorField.isStrictlyInside(group), "RK_ERROR_FIELD_OUTSIDE_GROUP",
+            check(errorField.isStrictlyInside(group), RkCode.ERROR_FIELD_OUTSIDE_GROUP,
                     "the error field " + errorField.path() + " must lie under the rule's group "
                             + group.path() + " — author the rule in a containing group",
                     "author the rule in a group that contains " + errorField.path());
@@ -306,6 +310,16 @@ public record Rule(
         }
 
         /** Fail fast with a structured PRECHECK diagnostic (still an {@code IllegalStateException}). */
+        /** A refusal naming the KERNEL code it prevents. */
+        private void check(boolean ok, KernelCode code, String summary, String fix) {
+            check(ok, code.name(), Refusals.message(code, summary), fix);
+        }
+
+        /** A refusal naming rulekit's OWN code — a shape the kernel has no diagnostic for. */
+        private void check(boolean ok, RkCode code, String summary, String fix) {
+            check(ok, code.code(), summary, fix);
+        }
+
         private void check(boolean ok, String code, String summary, String fix) {
             if (ok) {
                 return;

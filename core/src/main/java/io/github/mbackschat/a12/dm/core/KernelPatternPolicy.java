@@ -37,12 +37,13 @@ public final class KernelPatternPolicy {
     /** Return {@code regex}, or fail fast with the distinct rejecting stage in the message. */
     public static String requireAccepted(String regex) {
         return switch (rejection(regex).orElse(null)) {
-            case JAVA_SYNTAX -> throw new IllegalArgumentException(
-                    "invalid Java regular-expression syntax (MVK_INVALID_PATTERN): " + regex);
-            case KERNEL_ADMISSION -> throw new IllegalArgumentException(
+            case JAVA_SYNTAX -> throw Refusals.of(KernelCode.MVK_INVALID_PATTERN,
+                    "invalid Java regular-expression syntax: " + regex);
+            case KERNEL_ADMISSION -> throw Refusals.of(KernelCode.MVK_INVALID_PATTERN,
                     "Java-valid pattern is rejected by the kernel 30.8.x pattern-admission gate "
-                            + "(the A12K-30 source-text blacklist; MVK_INVALID_PATTERN in a condition, "
-                            + "MVK_PATTERN_INVALID on a declared field): " + regex);
+                            + "(the A12K-30 source-text blacklist; " + KernelCode.MVK_INVALID_PATTERN
+                            + " in a condition, " + KernelCode.MVK_PATTERN_INVALID
+                            + " on a declared field): " + regex);
             case null -> regex;
         };
     }

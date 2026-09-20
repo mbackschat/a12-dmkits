@@ -3,6 +3,8 @@ package io.github.mbackschat.a12.dm.rulekit.validate;
 import java.util.Map;
 import java.util.Optional;
 
+import io.github.mbackschat.a12.dm.core.KernelCode;
+
 /**
  * Curated {@code fix}/{@code explain} for kernel codes the operator catalog-join can't correctly serve.
  * {@link DiagnosticEnricher} consults this <b>first</b>, so these win over the join. Two kinds live here —
@@ -64,8 +66,8 @@ public final class StructuralKernelFix {
     public record Hint(String fix, String explain) {
     }
 
-    private static final Map<String, Hint> HINTS = Map.ofEntries(
-            Map.entry("MVK_INVALID_PATTERN", new Hint(
+    private static final Map<KernelCode, Hint> HINTS = Map.ofEntries(
+            Map.entry(KernelCode.MVK_INVALID_PATTERN, new Hint(
                     "Use a Java-valid regular expression that also avoids the kernel 30.8.x admission restrictions: "
                             + "possessive quantifiers, lookbehind/named-capture `(?<…`, atomic `(?>…)`, "
                             + "the A12K-30 escapes `\\A \\G \\Z \\z \\a \\e \\p \\Q \\E` (lowercase `\\p` only — "
@@ -78,7 +80,7 @@ public final class StructuralKernelFix {
                             + "kernel-rejected form; it is not a general cross-runtime portability check. A "
                             + "DECLARED field pattern raises MVK_PATTERN_INVALID instead — the same two words "
                             + "swapped, and a different code.")),
-            Map.entry("MVK_PATTERN_INVALID", new Hint(
+            Map.entry(KernelCode.MVK_PATTERN_INVALID, new Hint(
                     "A DECLARED field pattern (`StringType.pattern`, and the same slot on a type definition) "
                             + "goes through the identical gate as a condition's pattern literal: valid Java "
                             + "Pattern syntax, then the kernel's A12K-30 admission blacklist read on the "
@@ -91,7 +93,7 @@ public final class StructuralKernelFix {
                             + "here. Like it, it can mean invalid Java syntax or a Java-valid form the "
                             + "admission gate refuses, and passing it does not prove JavaScript "
                             + "portability.")),
-            Map.entry("MVK_ADDITIONAL_CHECK_INVALID", new Hint(
+            Map.entry(KernelCode.MVK_ADDITIONAL_CHECK_INVALID, new Hint(
                     "A DATE or DATEFRAGMENT field's opt-in pre-1900 check (`youngerThan1900Check`, our "
                             + "`dateField(…)`/`dateFragmentField(…).rejectBefore1900()`) requires the declared "
                             + "FORMAT to carry a YEAR. Over the kernel's admitted format vocabulary it is "
@@ -108,7 +110,7 @@ public final class StructuralKernelFix {
                             + "than on the field's kind — except that the DATERANGE kind is not gated at all — so "
                             + "the code means the format and the check disagree, never that the check is "
                             + "unsupported for this field type.")),
-            Map.entry("MVK_OPTIONAL_DATE_TYPE_INVALID", new Hint(
+            Map.entry(KernelCode.MVK_OPTIONAL_DATE_TYPE_INVALID, new Hint(
                     "A partially known date (`datePrecision` DAY_OPTIONAL / MONTH_OPTIONAL / YEAR_OPTIONAL) "
                             + "requires the declared FORMAT to be a COMPLETE date and nothing further. Over the "
                             + "kernel's admitted format vocabulary that is exactly `yyyy-MM-dd`, `dd.MM.yyyy` and "
@@ -123,7 +125,7 @@ public final class StructuralKernelFix {
                             + "and reports the conflict against the format rather than against the precision — the "
                             + "verdict is the same for all three partial values, so the code identifies the "
                             + "mismatch and not which side to edit.")),
-            Map.entry("MVK_INVALID_COMPARE_TO_DATE", new Hint(
+            Map.entry(KernelCode.MVK_INVALID_COMPARE_TO_DATE, new Hint(
                     "Check the LITERAL before the field. A double-quoted literal whose CONTENT parses as a date "
                             + "is a TEMPORAL constant — `\"05.03.2024\"` is one — and it reports this date class "
                             + "against whatever it meets, including a String, Enumeration or Number field with "
@@ -139,7 +141,7 @@ public final class StructuralKernelFix {
                             + "constant reports THIS code against every remaining kind; only then does the "
                             + "field's own kind decide. Measured in KERNEL-FINDINGS entry KF257, which carries "
                             + "the ladder and its controls.")),
-            Map.entry("MVK_NO_WILDCARD", new Hint(
+            Map.entry(KernelCode.MVK_NO_WILDCARD, new Hint(
                     "A repeatable group is referenced from a rule that does not iterate over it — the fix is "
                             + "operator-dependent. For an AGGREGATE, flatten the repetitions with the `*` wildcard: "
                             + "Sum(Lines*/Amount), NumberOfFilledFields(Lines*/Sku), NumberOfFilledGroups(Lines*). "
@@ -151,7 +153,7 @@ public final class StructuralKernelFix {
                             + "expected either a flattening `*` (aggregates) or a rule that iterates over that group "
                             + "(per-repetition predicates). The required form depends on the operator, so this code is "
                             + "not specific to any single one.")),
-            Map.entry("MVK_NO_GROUPS_ALLOWED", new Hint(
+            Map.entry(KernelCode.MVK_NO_GROUPS_ALLOWED, new Hint(
                     "A GROUP was supplied where a FIELD (or a flattened field list) is required — the fix depends "
                             + "on the construct. For an AGGREGATE or a `Having` filter, the operand is a FLATTENED "
                             + "repetition list (the repeatable group starred, then the field: `/Order/Lines*/Amount`), "
@@ -164,7 +166,7 @@ public final class StructuralKernelFix {
                             + "starred-group-then-field list (a bare group wildcard is not a value list), and a "
                             + "field-presence predicate (FieldFilled) must name a field, not a group. The required form "
                             + "depends on the operator, so this code is not specific to any single one.")),
-            Map.entry("MVK_REPEATABLE_GROUP_MISSING", new Hint(
+            Map.entry(KernelCode.MVK_REPEATABLE_GROUP_MISSING, new Hint(
                     "Check BOTH causes — this one code covers them and does not say which applies. (1) The rule sits "
                             + "INSIDE the repeated group: place it at the PARENT while keeping its error field inside "
                             + "that group — via the CLI, `rule check --group <parentGroup> "
@@ -177,7 +179,7 @@ public final class StructuralKernelFix {
                             + "Declaring the rule inside the repeated row removes that boundary, and a key in a "
                             + "non-repeatable group never had one; the kernel reports both as this single class, so "
                             + "the code identifies the missing boundary and not which edit restores it.")),
-            Map.entry("MVK_PARAMSIZE_INVALIDGN", new Hint(
+            Map.entry(KernelCode.MVK_PARAMSIZE_INVALIDGN, new Hint(
                     "If the sole operand is a REPEATABLE group, star it — NumberOfFilledGroups(Items*) — rather than "
                             + "adding a second group, which the kernel's own message suggests but which can then draw "
                             + "MVK_NEG_CONDITION_IN_ITERATION inside an iterating rule. Add a second distinct, "
@@ -188,13 +190,13 @@ public final class StructuralKernelFix {
                             + "sole unstarred repeatable operand draws depends on the rule's anchoring: "
                             + "MVK_NO_WILDCARD when the error field sits outside that group, this code when it sits "
                             + "inside — and the star satisfies both.")),
-            Map.entry("MVK_NOT_IN_SAME_PATH", new Hint(
+            Map.entry(KernelCode.MVK_NOT_IN_SAME_PATH, new Hint(
                     "Keep every RepetitionNotUnique key on one repetition path. Do not mix fields from sibling or "
                             + "parallel repeatable groups in one key; choose one path, or enforce the independent "
                             + "uniqueness constraints with separate rules.",
                     "A composite uniqueness key needs one shared repetition lineage so the kernel can form one row "
                             + "tuple. Fields from parallel repeatable groups do not identify a single correlated row.")),
-            Map.entry("MVK_ERROR_FIELD_NOT_IN_RULEGROUP", new Hint(
+            Map.entry(KernelCode.MVK_ERROR_FIELD_NOT_IN_RULEGROUP, new Hint(
                     "The declaration ITERATES and writes outside its own group, so there are three repairs and "
                             + "the first is usually the smallest: DECLARE it in a group that contains the field it "
                             + "writes — an ancestor will do, containment is what the kernel asks for, not membership "
@@ -207,7 +209,7 @@ public final class StructuralKernelFix {
                             + "unstarred per-row read does so for either, while a per-row COMPUTED field derives it "
                             + "with no operand at all and a per-row ERROR field does not (measured 2026-09-15, "
                             + "KERNEL-FINDINGS KF212). Crossing a root boundary is not itself a refusal.")),
-            Map.entry("MVK_ERROR_FIELD_NOT_REFERENCED", new Hint(
+            Map.entry(KernelCode.MVK_ERROR_FIELD_NOT_REFERENCED, new Hint(
                     "Name the rule's error field somewhere in the condition. Most often this is a model-level "
                             + "aggregate rule whose condition only references the aggregated per-row path — reference "
                             + "the error field by comparing the aggregate AGAINST it (`[FeeCap] < Sum(Lines*/Amount)` "
@@ -216,7 +218,7 @@ public final class StructuralKernelFix {
                             + "attaches the fired error to that field and rejects a condition that never names it. An "
                             + "aggregate's starred path does not reference the (non-repeatable) error field, so "
                             + "model-level aggregate rules hit this unless the error field is referenced explicitly.")),
-            Map.entry("MVK_NEG_CONDITION_IN_ITERATION", new Hint(
+            Map.entry(KernelCode.MVK_NEG_CONDITION_IN_ITERATION, new Hint(
                     "Guard the negative predicate with a positive existence check on the row: "
                             + "GroupFilled(<the repeatable group>) And <your negative condition> — so the rule fires "
                             + "only for rows that actually exist, not for the empty/absent repetitions. A negative "
@@ -230,14 +232,14 @@ public final class StructuralKernelFix {
                             + "accepted. The analysis is syntactic and kernel-owned, so add the guard rather than "
                             + "predicting the gate. This is a structural iteration law, not a restriction "
                             + "on RepetitionNotUnique composing as an ordinary leaf under a legal And/Or tree.")),
-            Map.entry("MVK_INVALID_COMBINATION_OF_REPETITON_NOT_UNIQUE", new Hint(
+            Map.entry(KernelCode.MVK_INVALID_COMBINATION_OF_REPETITON_NOT_UNIQUE, new Hint(
                     "Keep exactly one RepetitionNotUnique leaf in the condition. Put every component of the "
                             + "composite repetition key into that one call, then combine that leaf with ordinary "
                             + "conditions as needed.",
                     "The kernel's structural model gate permits at most one RepetitionNotUnique node in one "
                             + "condition tree. The restriction counts nodes, not key fields and not And/Or nesting; "
                             + "one leaf may carry a composite key and otherwise composes normally.")),
-            Map.entry("MVK_UNEXPECTED_TOKEN", new Hint(
+            Map.entry(KernelCode.MVK_UNEXPECTED_TOKEN, new Hint(
                     "The condition has a token the DSL parser did not expect (a syntax slip the kernel reports "
                             + "with no message of its own). The most common causes, in order: (1) a BOOLEAN literal "
                             + "must be CAPITALIZED — write `True` / `False`, not the JSON `true` / `false` "
@@ -250,7 +252,7 @@ public final class StructuralKernelFix {
                             + "did not allow it — and it is raised WITHOUT a message, so the likely cause has to be "
                             + "inferred from the DSL's literal/keyword conventions (capitalized booleans True/False, "
                             + "double-quoted strings, case-sensitive PascalCase operators).")),
-            Map.entry("MVK_INVALID_ENTITY", new Hint(
+            Map.entry(KernelCode.MVK_INVALID_ENTITY, new Hint(
                     "The group or field name in the condition could not be resolved in the rule's scope. Use its "
                             + "ABSOLUTE path (a leading `/`, e.g. `/Order/Items/Sku`) rather than a bare or relative "
                             + "name — a bare name binds against the rule's OWN group first, and reaches ANY other "
@@ -262,7 +264,7 @@ public final class StructuralKernelFix {
                     "MVK_INVALID_ENTITY (\"the group or field 'X' is not valid\") means the kernel could not resolve "
                             + "that name — almost always a bare/relative reference that does not bind across sibling "
                             + "groups, or a field outside the rule's iteration scope.")),
-            Map.entry("MVK_FIELDNAME_NOT_UNIQUE", new Hint(
+            Map.entry(KernelCode.MVK_FIELDNAME_NOT_UNIQUE, new Hint(
                     "The bare name resolved through the model-wide fallback, which found MORE THAN ONE field "
                             + "with that short name and will not choose between them. Qualify the reference "
                             + "instead of declaring anything: give it the ABSOLUTE path of the field you mean "
@@ -274,7 +276,7 @@ public final class StructuralKernelFix {
                     "MVK_FIELDNAME_NOT_UNIQUE means the rule's own group does not declare the name, so the "
                             + "kernel fell back to a model-wide lookup (which `fieldRefByShortNameAllowed` "
                             + "enables), and that lookup requires a UNIQUE match.")),
-            Map.entry("MVK_INTERNAL_VALUES_AND_DISPLAY_VALUES", new Hint(
+            Map.entry(KernelCode.MVK_INTERNAL_VALUES_AND_DISPLAY_VALUES, new Hint(
                     "An enum's display labels are STARTED and not finished: top each value's `labels` up so every "
                             + "value carries a NONBLANK text for every declared locale, or remove the label entries "
                             + "altogether — an unlabelled enum is accepted. Blanking a text does not remove it. This "
@@ -288,7 +290,7 @@ public final class StructuralKernelFix {
                             + "text blank is refused, so neither \"is the locale covered\" nor \"is any label there\" "
                             + "describes it (measured 2026-09-13, KERNEL-FINDINGS KF321). A value that carries no "
                             + "`labels` at all while a sibling does is a different code, MVK_COUNT_OF_VALUES_INVALID.")),
-            Map.entry("MVK_INVALID_TIME_ZONE", new Hint(
+            Map.entry(KernelCode.MVK_INVALID_TIME_ZONE, new Hint(
                     "Set modelConfig.timeZone to a nonblank Java time-zone id. Exact UTC, GMT, and Europe/Berlin "
                             + "are accepted by both the kernel and the interpreter-backed evaluator; another known "
                             + "Java id such as America/New_York is kernel-valid but the interpreter will refuse it. "
@@ -296,7 +298,7 @@ public final class StructuralKernelFix {
                     "The kernel resolves modelConfig.timeZone through java.util.TimeZone and rejects an explicit "
                             + "null, blank, or unknown/typo id that silently collapses to GMT. Absence is different: "
                             + "only a missing slot selects the UTC default.")),
-            Map.entry("MVK_INVALID_RAW_TYPE", new Hint(
+            Map.entry(KernelCode.MVK_INVALID_RAW_TYPE, new Hint(
                     "The condition (or computation) reads the VALUE of a field that declares noValueValidation "
                             + "(a raw-type string) — the kernel forbids every value use of such a field: comparisons, "
                             + "value lists, computations, even $field.value$ in a message. Test PRESENCE instead "
@@ -307,7 +309,7 @@ public final class StructuralKernelFix {
                             + "pseudo value — so no rule or computation can read it. The only value-shaped construct it "
                             + "permits is the whole-condition `Length(f) > <constant>`, and that is a disguised "
                             + "max-length declaration, not an evaluated rule.")),
-            Map.entry("MVK_INVALID_LENGTH_OF_RAW_TYPE", new Hint(
+            Map.entry(KernelCode.MVK_INVALID_LENGTH_OF_RAW_TYPE, new Hint(
                     "Length over a noValueValidation (raw-type) field is allowed ONLY as the WHOLE rule condition "
                             + "`Length(f) > <constant>` (or the mirrored `<constant> < Length(f)`), where the constant "
                             + "is a decimal-point-free signed-32-bit integer. Use no And/Or around it, strict > only "
@@ -320,7 +322,7 @@ public final class StructuralKernelFix {
                             + "accepts exactly that comparison as a meta-length restraint (codegen removes the rule and "
                             + "tightens the generated max length); every other Length use of a raw-type field is "
                             + "rejected because its value is never available to evaluation.")),
-            Map.entry("MVK_ERROR_SEMANTIC_INDEX_OR_CATEGORY_FOR_ERRORFIELD", new Hint(
+            Map.entry(KernelCode.MVK_ERROR_SEMANTIC_INDEX_OR_CATEGORY_FOR_ERRORFIELD, new Hint(
                     "Drop the PROJECTION from the read of the computed field, not just the reference: a computation "
                             + "may not read its own computed field through an enum category (`[Target -> Cat]`) or a "
                             + "semantic index (`[Group/Target For \"key\"]`), in an operation OR a precondition. "
@@ -333,7 +335,7 @@ public final class StructuralKernelFix {
                             + "calculated-field-reference ban, and it pre-empts the plain half when both readings occur "
                             + "in one operation — so this code identifies the reading MODE, while the plain code is what "
                             + "an unprojected self-read reports (kernel-measured, KF182).")),
-            Map.entry("MVK_INVALID_COMPARE_DEC_PLACES", new Hint(
+            Map.entry(KernelCode.MVK_INVALID_COMPARE_DEC_PLACES, new Hint(
                     "The kernel could not establish compatible DERIVED decimal scales here. Numeric == / != carries "
                             + "a known SIGNED scale or unknown plus an independent multiplicative-constant capability: "
                             + "when known scales differ, only a capable SMALLER-scale side may be padded; an unknown "
@@ -363,7 +365,7 @@ public final class StructuralKernelFix {
 
     /** The curated hint for {@code code}, when it is a known structural kernel code. */
     public static Optional<Hint> forCode(String code) {
-        return Optional.ofNullable(HINTS.get(code));
+        return KernelCode.of(code).map(HINTS::get);
     }
 
     /**
@@ -376,7 +378,8 @@ public final class StructuralKernelFix {
      * code to project onto.
      */
     public static java.util.Set<String> codes() {
-        return new java.util.TreeSet<>(HINTS.keySet());
+        return HINTS.keySet().stream().map(KernelCode::name)
+                .collect(java.util.stream.Collectors.toCollection(java.util.TreeSet::new));
     }
 
     /**

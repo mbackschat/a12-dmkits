@@ -15,6 +15,9 @@ import io.github.mbackschat.a12.dm.core.KernelPatternPolicy;
  * <p>{@code null} fields mean "slot not set" (the kernel's default applies). Value-range sanity
  * (min ≤ max) is checked where the builder constructs the record; full validity is the kernel's call.
  */
+import io.github.mbackschat.a12.dm.core.KernelCode;
+import io.github.mbackschat.a12.dm.core.Refusals;
+
 public sealed interface FieldTypeSpec {
 
     /** The kernel DM-JSON {@code fieldType.type} discriminator (e.g. {@code "StringType"}). */
@@ -138,8 +141,8 @@ public sealed interface FieldTypeSpec {
             // KERNEL-FINDINGS IF29: a no-value-validation string MUST permit line breaks — the kernel rejects
             // the pair otherwise (MVK_STRING_TYPE_NO_VAL_AND_NO_LINE_BREAK). Fail fast with our own message.
             if (noValueValidation && !lineBreaksPermitted) {
-                throw new IllegalArgumentException(
-                        "noValueValidation requires line breaks to be permitted (MVK_STRING_TYPE_NO_VAL_AND_NO_LINE_BREAK)");
+                throw Refusals.of(KernelCode.MVK_STRING_TYPE_NO_VAL_AND_NO_LINE_BREAK,
+                        "noValueValidation requires line breaks to be permitted");
             }
             // a LinkedHashMap copy keeps the per-locale hint-list emit deterministic (idempotent toJson)
             suggestions = suggestions == null
@@ -316,12 +319,17 @@ public sealed interface FieldTypeSpec {
                 return this;
             }
 
+
             /**
              * Forbid a sign — the kernel's {@code NumberType.positivesOnly}, which the model→runtime
              * conversion inverts into {@code hasSign} ({@code TypeConverter}: {@code hasSign(!positivesOnly)})
-             * and the runtime reads as {@code hatVorzeichen}. A minus on such a field is the formal error
-             * {@code zahlMitVorzeichen}; the flag also flips the empty-operand fill polarity, since an unsigned
-             * number cannot be filled smaller.
+             * and the runtime reads as {@code hatVorzeichen}, so the default is SIGNED. A minus on such a
+             * field is the formal error {@code zahlMitVorzeichen}; the flag also flips the empty-operand fill
+             * polarity, since an unsigned number cannot be filled smaller.
+             *
+             * <p>It also matters where no input is validated at all: a date construction's component satisfies
+             * the kernel's low-side requirement either by declaring a non-negative minimum OR by being
+             * unsigned, so a field can be a legal day or month slot with no minimum at all.
              */
             public Builder positivesOnly(boolean value) {
                 this.positivesOnly = value;

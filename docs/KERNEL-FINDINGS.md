@@ -8,6 +8,10 @@ Kernel-behavior facts **verified by experiment against kernel `30.8.1`**; we **c
 
 > **Fold status (the two-doc contract, 2026-07-11).** Every finding heading below carries a fold-status line as its first body line: `> Fold: folded → §n.` (the finding's canonical claim now lives in that [KERNEL-SEMANTICS](KERNEL-SEMANTICS.md) section — the entry here keeps the claim, the provenance, and the lock pointers; several targets join with ` + `), `> Fold: not-foldable — <reason>.` (nothing to fold — an authoring/structure/serialization/toolchain fact outside KERNEL-SEMANTICS's evaluation scope, or pure provenance), or `> Fold: pending — <reason>.` (genuinely unsettled content). A **folded** finding MAY be compressed to its evidence skeleton — claim + provenance (date, oracle, kernel version) + locks. **Retro-compressing the existing folded entries is DECLINED (2026-07-29), and new entries are authored at skeleton weight instead.** The reason is that these docs are read by grep/sed, never whole: the heading already carries claim + oracle + date and `grep -A1` adds the fold marker, so the only cost compression saves is a full-entry `sed` — which a reader performs precisely when they want the detail compression would delete. What a folded entry uniquely holds is the **worked measurement** (probe inputs, matrices, the readings ruled out); the canonical section holds the claim and the lock test holds the executable assertion, but neither narrates what else was measured. *Re-open trigger:* per-entry `sed` cost becomes a measured bottleneck. A finding is **never deleted or renumbered**: `-GAPS` deletions, code comments, and the SEMANTICS-MAP resolve through these headings, and the kernel-upgrade workflow re-verifies findings on a pin bump. A `folded` marker is a **live claim**: appending a new paragraph to an already-folded finding either folds the new claim upstream in the same commit or flips the marker back to `pending — <what still needs folding>`. The contract — markers, targets, the §-mirror, and the canonical **anchor set** (the 14 section slugs + the field-types table, every intra-doc link resolving) — is enforced by `cli … KernelDocsFoldContractTest` (the `semanticsMapGuardTest` lane).
 
+> **Id allocation — one CHUNK per author, declared here and nowhere else.** Two branches appending from one base allocate the same next id, so a merge has to renumber whichever side is smaller and move every citation with it — and a citation rewritten to the *wrong* entry still resolves, so no guard can see that mistake. It is not hypothetical: the 2026-09-20 harvest arrived carrying `KF1001`–`KF1017` against ids this doc had since issued to other findings, and all seventeen were renumbered by hand against their headings with every citation moved. Allocating from a per-author range removes the collision, and with it the sweep: ids are dense **within** a range rather than globally, and a merge integrates both sides untouched. `DocAnchorResolveGuardTest` reads the boundaries from the line below, which is the only place they are written — a second copy is the drift the guard exists to prevent. An open upper bound means the range has no declared end.
+>
+> `kf-id-chunks: 1-999 = Martin Backschat; 1001- = Alexander Ried`
+
 ## The canonical Document JSON and `DocumentPointer` string — A12 already defines both (source-verified 2026-07-28) <a id="kf1"></a>
 
 > Fold: not-foldable — serialization/addressing format, outside KERNEL-SEMANTICS's runtime-evaluation scope.
@@ -9656,3 +9660,28 @@ An external differential reported this code split 33 containing a star against 2
 **Fixture limit, stated because a silent one reads as a law:** `order.dm.json` carries exactly ONE fixed date-range field, so "repeated inside the value list" and "repeated across the two lists" are the same condition there; the row separating them needs a second fixed range and takes its own inline model.
 
 *(Locked: `validate.laws.EntityListQuantifierDuplicateSiblingLawsTest`, `validate.laws.ValueListQuantifierDuplicateSiblingLawsTest`.)*
+
+## §6 supplement: every derived temporal operand answers its kind's default too — the sibling sweep of KF432 (kernel `checkConsistency`, 2026-09-07) <a id="kf442"></a>
+
+> Fold: pending — closes the class [KF432](#kf432) opened, over the operands that are not field reads.
+
+[KF432](#kf432) found the three point-in-time constants wrongly delegated by the format gate. `Dsl.declaredFormatOf` resolves only a field read, so of `Calculation`'s 42 arms it answered for five and delegated the rest — and the constants were the one delegated case anybody had examined. The root-cause rule asks for the siblings before the class is closed, so here they are.
+
+Measured on a model declaring **no base year** (see the trap below), each shape asked a DATE unit and an HOUR:
+
+| derived shape | kind → default | `YearFromDate` | `HoursFromTime` |
+|---|---|---|---|
+| `AddDays(...)` | DATE → `yyyy-MM-dd` | admitted | `MVK_WRONG_DATE_FORMAT_FOR_OP` |
+| `AddHours(...)` | DATE_TIME → ISO | admitted | admitted |
+| `DateFromDateTime(...)` | DATE → `yyyy-MM-dd` | admitted | `MVK_WRONG_DATE_FORMAT_FOR_OP` |
+| `TimeFromDateTime(...)` | TIME → `HH:mm:ss` | `MVK_WRONG_DATE_FORMAT_FOR_OP` | admitted |
+| `StartOfDateRange(...)` | DATE → `yyyy-MM-dd` | admitted | `MVK_WRONG_DATE_FORMAT_FOR_OP` |
+| **controls** — a `yyyy-MM-dd` field, a DATE_TIME field, a TIME field, a DATE field declaring `HH:mm:ss` | — | as their formats allow | as their formats allow |
+
+**All five arms match their kind's default in BOTH directions**, the TIME arm inverting the pattern exactly as `HH:mm:ss` requires. So the gate was silent on five more operands of the same class, and the rule generalises without exception across every carrier the grammar admits.
+
+**Three shapes cannot reach the gate at all.** `FirstFilledValue`, the temporal extrema (`MaxValue`) and `ValueAsDate` render plausibly and the kernel's PARSER rejects each in an extraction slot (`MVK_UNEXPECTED_TOKEN`). Delegating them therefore costs nothing — the kernel never gets a chance to disagree — and that is why they are excluded by name rather than overlooked.
+
+**A confound this table walked into and caught.** Declaring a base year on the probe model — added to make one control work — **supplements the YEAR component**, which admits `YearFromDate` over a format carrying no year and silently inverts every date-unit row. It was caught only because the resulting cells contradicted `TemporalExtractionFormatGateLawsTest`'s CI-green grid on an identical field construction. The row needing a base year now takes its own model. A control that fixes one row by changing the MODEL changes every other row with it.
+
+*(Locked: `validate.laws.DerivedTemporalOperandFormatLawsTest`. Promoted in `Dsl.declaredFormatOf`; the typed peer's delegate-branch row previously used a date SHIFT and so pinned one of these misses as correct — it now names a shape the grammar rejects.)*

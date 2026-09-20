@@ -33,6 +33,7 @@ public final class GroupListPredicate implements Condition {
         if (this.operands.isEmpty()) {
             throw new IllegalArgumentException("a group-list predicate needs at least one operand");
         }
+        DuplicateGate.rejectDuplicates(quantifier.operatorId(), this.operands);
     }
 
     static GroupListPredicate overScopes(
@@ -40,7 +41,7 @@ public final class GroupListPredicate implements Condition {
         return overEntities(quantifier, first, rest);
     }
 
-    /** Build over the common field-or-group entity list (arity/duplicate/overlap gates stay kernel-arbitrated). */
+    /** Build over the common field-or-group entity list (the arity and root-group gates stay kernel-arbitrated). */
     static GroupListPredicate overEntities(
             GroupQuantifier quantifier, GroupListOperand first, GroupListOperand... rest) {
         var operands = new java.util.ArrayList<GroupListOperand>();

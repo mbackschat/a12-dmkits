@@ -68,13 +68,26 @@ class ConditionBridgeTest {
     }
 
     /**
-     * The complement, and it belongs in the suite rather than in a comment: rulekit gives a group operand no
-     * dedup identity on purpose, leaving overlap (MVK_DUPLICATE_PARAM2) to the kernel. A bridge that reported
-     * this as caught would be claiming coverage rulekit does not have.
+     * A repeated group operand is rulekit's to refuse, and it surfaces through the bridge with the kernel's
+     * own code.
+     *
+     * <p>The complement is the STARRED shape below: a repeatable group renders with a star on this carrier,
+     * and the kernel's exact-duplicate arm skips a wildcarded ref, so that pair must survive translation.
+     * Kernel rows: `rulekit.validate.laws.RootGroupCountLawsTest`,
+     * `rulekit.validate.laws.DuplicateOverlapCarrierSweepLawsTest`.
      */
     @Test
-    fun aDuplicateGroupOperandIsNotRulekitsToRefuse() {
-        assertNotNull(translate("NumberOfFilledGroups(ShippingAddress, ShippingAddress) < 1"))
+    fun aDuplicateGroupOperandIsRefusedWithTheKernelsCode() {
+        val e = assertThrows<IllegalArgumentException> {
+            translate("NumberOfFilledGroups(ShippingAddress, ShippingAddress) < 1")
+        }
+        assertTrue(e.message!!.contains("MVK_DUPLICATE_PARAM1")) { "expected the kernel's own code in: ${e.message}" }
+    }
+
+    /** The exemption, one variable apart: a repeatable group renders starred, and a starred ref may repeat. */
+    @Test
+    fun aRepeatedStarredGroupOperandSurvivesTranslation() {
+        assertNotNull(translate("NumberOfFilledGroups(Items*, Items*) < 1"))
     }
 
     /**

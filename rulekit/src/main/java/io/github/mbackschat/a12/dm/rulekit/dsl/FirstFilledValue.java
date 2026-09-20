@@ -20,6 +20,9 @@ import io.github.mbackschat.a12.dm.core.ValueKind;
  * while a scalar form needs a second operand. The owner groups String/Custom/Enumeration and
  * Date/DateFragment into result families, while the other kinds remain exact.
  */
+import io.github.mbackschat.a12.dm.core.KernelCode;
+import io.github.mbackschat.a12.dm.core.Refusals;
+
 public record FirstFilledValue(FirstFilledOperand firstOperand, List<FirstFilledOperand> trailingOperands)
         implements Calculation {
 
@@ -35,15 +38,14 @@ public record FirstFilledValue(FirstFilledOperand firstOperand, List<FirstFilled
 
     public FirstFilledValue {
         if (!firstOperand.expandsToList() && trailingOperands.isEmpty()) {
-            throw new IllegalArgumentException("FirstFilledValue needs at least two scalar fields"
-                    + " or one repetition list (MVK_PARAMSIZE_INVALIDN)");
+            throw Refusals.of(KernelCode.MVK_PARAMSIZE_INVALIDN, "FirstFilledValue needs at least two scalar fields"
+                    + " or one repetition list");
         }
         trailingOperands = List.copyOf(trailingOperands);
         List<FirstFilledOperand> all = operands(firstOperand, trailingOperands);
         for (FirstFilledOperand operand : all) {
             if (operand.kind() == ValueKind.CONFIRM) {
-                throw new IllegalArgumentException("FirstFilledValue does not accept CONFIRM operands"
-                        + " (MVK_NO_BOOLY_ALLOWED)");
+                throw Refusals.of(KernelCode.MVK_NO_BOOLY_ALLOWED, "FirstFilledValue does not accept CONFIRM operands");
             }
             if (!sameOwnerFamily(firstOperand.kind(), operand.kind())) {
                 throw new IllegalArgumentException("FirstFilledValue operands must have one owner result family; "
@@ -51,7 +53,10 @@ public record FirstFilledValue(FirstFilledOperand firstOperand, List<FirstFilled
                         + describe(firstOperand) + " is " + firstOperand.kind());
             }
         }
-        checkOwnerDuplicates(all);
+        // Both arms through the one shared gate: this carrier's operands are richer than the sealed
+        // unions' (an owner entity may be a field OR a group, keyed by a literal or by a field read), and
+        // FirstFilledOperand answers for that richness itself rather than a second predicate doing it here.
+        DuplicateGate.rejectDuplicates("FirstFilledValue", all);
     }
 
     /** Every operand in authored encounter order. */
@@ -101,58 +106,6 @@ public record FirstFilledValue(FirstFilledOperand firstOperand, List<FirstFilled
         return operand.renderedPath();
     }
 
-    /** Mirror A12's entity-list identity rule: wildcarded direct refs may repeat, while exact duplicate
-     *  entities and a plain group plus one of its plain descendants are refused. Category and semantic-index
-     *  modifiers are part of identity, as they are in the owner {@code EntityRef}. */
-    private static void checkOwnerDuplicates(List<FirstFilledOperand> operands) {
-        Set<EntityIdentity> seen = new HashSet<>();
-        for (FirstFilledOperand operand : operands) {
-            if (!hasWildcard(operand) && !seen.add(identity(operand))) {
-                throw new IllegalArgumentException("FirstFilledValue: '" + describe(operand)
-                        + "' is listed more than once (MVK_DUPLICATE_PARAM1)");
-            }
-        }
-        for (FirstFilledOperand child : operands) {
-            EntityIdentity childIdentity = identity(child);
-            for (FirstFilledOperand candidateParent : operands) {
-                if (candidateParent == child || candidateParent.group().isEmpty()) {
-                    continue;
-                }
-                EntityIdentity parentIdentity = identity(candidateParent);
-                if (childIdentity.isStrictlyInside(parentIdentity)
-                        && Objects.equals(childIdentity.category(), parentIdentity.category())
-                        && Objects.equals(childIdentity.semanticIndex(), parentIdentity.semanticIndex())) {
-                    throw new IllegalArgumentException("FirstFilledValue: '" + describe(child)
-                            + "' is already included through " + describe(candidateParent)
-                            + " (MVK_DUPLICATE_PARAM2)");
-                }
-            }
-        }
-    }
-
-    private static boolean hasWildcard(FirstFilledOperand operand) {
-        return operand.hasWildcard();
-    }
-
-    private static EntityIdentity identity(FirstFilledOperand operand) {
-        Object index = operand.semanticIndex().map(value -> switch (value) {
-            case FirstFilledOperand.LiteralIndex literal -> new LiteralIndex(literal.value());
-            case FirstFilledOperand.FieldIndex field ->
-                    new FieldIndex(field.field().path().value(), field.field().correlated());
-        }).orElse(null);
-        return new EntityIdentity(operand.identityPath(), operand.category().orElse(null), index,
-                operand.outerReference());
-    }
-
-    private record EntityIdentity(String path, String category, Object semanticIndex, boolean correlated)
-            implements HasEntityPath {
-        @Override
-        public EntityPath entityPath() {
-            return EntityPath.of(path);
-        }
-    }
-    private record LiteralIndex(String value) { }
-    private record FieldIndex(String path, boolean correlated) { }
 
     static boolean sameOwnerFamily(ValueKind left, ValueKind right) {
         return family(left) == family(right);

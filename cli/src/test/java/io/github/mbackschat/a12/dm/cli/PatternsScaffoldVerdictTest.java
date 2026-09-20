@@ -25,17 +25,24 @@ class PatternsScaffoldVerdictTest {
     private static final ObjectMapper M = new ObjectMapper();
 
     /**
-     * The rejected direction. {@code earlier == later} scaffolds a well-formed rule the kernel refuses
-     * ({@code MVK_DUPLICATE_PARAM1} — {@code AllFieldsFilled} named one field twice), so it clears the pattern's
-     * own pre-checks and is arbitrated by the oracle. That distinction is the point: a pre-check refusal is exit 2
-     * on stderr and would not exercise the verdict family at all.
+     * The rejected direction, and the witness has one hard requirement: the scaffold must be a shape the
+     * pattern's own pre-checks ADMIT and the kernel then refuses. A pre-check refusal is exit 2 on stderr and
+     * would not exercise the verdict family at all, so a witness that becomes client-checkable stops testing
+     * this contract — {@code verification} is asserted below precisely so that shows up as a failure rather
+     * than as a still-green test measuring the wrong route.
+     *
+     * <p>{@code /Order/ApproxDate} is a {@code DAY_OPTIONAL} date. It is a date field, so it passes the
+     * pattern's kind pre-check; {@code DifferenceInDays} over a partly known date is the kernel's own call
+     * ({@code MVK_INVALID_DATE_TYPE}), which is why the oracle is the one that decides here. Both methods use
+     * the broad operator-domain fixture rather than {@code order-ruled}, whose two dates share one format and
+     * so cannot express a kernel-only refusal at all.
      */
     @Test
     void aScaffoldTheKernelRejectsIsAVerdictAtExitOne(@TempDir Path dir) throws Exception {
-        Path model = CliTestSupport.orderRuled(dir);
+        Path model = CliTestSupport.order(dir);
 
         var res = CliTestSupport.run("-m", model.toString(), "patterns", "date-order",
-                "--arg", "earlier=/Order/OrderDate", "--arg", "later=/Order/OrderDate");
+                "--arg", "earlier=/Order/OrderDate", "--arg", "later=/Order/ApproxDate");
 
         assertEquals(1, res.code(), () -> "a verdict of valid:false is exit 1: " + res.out() + res.err());
         JsonNode env = M.readTree(res.out());
@@ -45,7 +52,9 @@ class PatternsScaffoldVerdictTest {
         assertEquals(false, env.path("valid").asBoolean(), res::out);
         assertEquals("KERNEL_CONFIRMED", env.path("verification").asText(),
                 () -> "the kernel arbitrated the refusal, so the receipt is published on it: " + res.out());
-        assertEquals("MVK_DUPLICATE_PARAM1", env.path("diagnostics").path(0).path("code").asText(), res::out);
+        assertEquals("MVK_INVALID_DATE_TYPE", env.path("diagnostics").path(0).path("code").asText(), res::out);
+        assertEquals("KERNEL", env.path("diagnostics").path(0).path("source").asText(),
+                () -> "a PRECHECK source here means the witness is no longer kernel-arbitrated: " + res.out());
         assertTrue(env.path("written").isBoolean() && !env.path("written").asBoolean(),
                 () -> "a review writes nothing: " + res.out());
     }
@@ -57,7 +66,7 @@ class PatternsScaffoldVerdictTest {
      */
     @Test
     void andAKernelValidScaffoldStaysExitZero(@TempDir Path dir) throws Exception {
-        Path model = CliTestSupport.orderRuled(dir);
+        Path model = CliTestSupport.order(dir);
 
         var res = CliTestSupport.run("-m", model.toString(), "patterns", "date-order",
                 "--arg", "earlier=/Order/OrderDate", "--arg", "later=/Order/DeliveryDate");

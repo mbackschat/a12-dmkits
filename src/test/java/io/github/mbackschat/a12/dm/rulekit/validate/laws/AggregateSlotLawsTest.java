@@ -30,8 +30,10 @@ import io.github.mbackschat.a12.dm.rulekit.dsl.NumberExpr;
  * {@code FirstFilledValue}, {@code NumberOfFilledFields}, {@code NumberOfDifferentValues} (SPEC-2026-07-22-07).
  *
  * <p>{@code NumberOfValueInFields} is the separate value-list operator that forbids listing a field more than
- * once ({@code MVK_DUPLICATE_PARAM1} directly, {@code MVK_DUPLICATE_PARAM2} via a group) — it does not share the
- * entity-list wildcard-skip.
+ * once ({@code MVK_DUPLICATE_PARAM1} directly, {@code MVK_DUPLICATE_PARAM2} via a group), and it carries the
+ * entity-list wildcard-skip as well: a repeated STARRED operand is admitted there too, so the skip is a
+ * property of the shared check rather than of the carrier
+ * ({@link DuplicateOverlapCarrierSweepLawsTest} measures it against this class's own control).
  *
  * <p><b>Typed-surface boundary.</b> The repeated-wildcard <em>acceptance</em> is authored through the typed DSL
  * (a {@link FieldListRef} operand). The indirect group/descendant overlap needs a GROUP operand, which the typed

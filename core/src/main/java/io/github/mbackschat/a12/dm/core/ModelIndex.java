@@ -81,6 +81,16 @@ public final class ModelIndex {
         return reader.locales();
     }
 
+    /**
+     * The model's declared base year, or empty when it declares none. Model-level state a temporal GATE reads,
+     * not only an arithmetic constant: the entity-list aggregates add YEAR to every operand's component set
+     * before comparing them when one is declared (KERNEL-FINDINGS KF193), which only ever admits more — so a
+     * check that cannot see this refuses pairs the kernel accepts.
+     */
+    public Optional<Integer> baseYear() {
+        return reader.baseYear();
+    }
+
     /** The {@link ValueKind} of the field at {@code fieldPath} (type-definitions resolved). */
     public ValueKind kindOf(String fieldPath) {
         return ValueKind.fromKernelType(fieldTypeNode(fieldPath).path(DmKeys.TYPE).asText(null));
@@ -116,6 +126,31 @@ public final class ModelIndex {
         return numberBound(fieldPath, "maxValue");
     }
 
+    /**
+     * Whether the number field at {@code fieldPath} declares itself UNSIGNED (A12's {@code positivesOnly}).
+     * {@code false} when the field is not a number or the key is absent, which is A12's own default — the
+     * kernel reads the same fact inverted, as {@code hasSign()}.
+     *
+     * <p>Needed beyond input validation because a date construction's component satisfies the kernel's
+     * low-side requirement either by declaring a non-negative minimum OR by being unsigned, so a gate that
+     * reads only the minimum refuses legal models (KERNEL-FINDINGS §6).
+     */
+    public boolean numberPositivesOnly(String fieldPath) {
+        JsonNode number = numberTypeOf(fieldPath);
+        return number != null && number.path("positivesOnly").asBoolean(false);
+    }
+
+    /** The declared {@code maxLength} of the number field, or empty when not a number / unset. */
+    public java.util.OptionalInt numberMaxLength(String fieldPath) {
+        JsonNode number = numberTypeOf(fieldPath);
+        if (number == null) {
+            return java.util.OptionalInt.empty();
+        }
+        JsonNode value = number.path("maxLength");
+        return value.isMissingNode() || value.isNull()
+                ? java.util.OptionalInt.empty() : java.util.OptionalInt.of(value.asInt());
+    }
+
     /** The declared {@code minLength} of the string field, or empty when not a string / unset. */
     public OptionalInt stringMinLength(String fieldPath) {
         return stringInt(fieldPath, "minLength");
@@ -137,8 +172,9 @@ public final class ModelIndex {
     }
 
     /**
-     * The declared temporal {@code format} of the field at {@code fieldPath} — the DateType/TimeType/
-     * DateTimeType/DateRangeType/DateFragmentType {@code format} string — or empty when the field carries none
+     * The declared temporal format of the field at {@code fieldPath} — the DateType/TimeType/DateTimeType/
+     * DateRangeType {@code format} string, or a DateFragmentType's {@code formatOfFragment}, which spells the
+     * same declaration under its own key — or empty when the field carries none
      * (a non-temporal kind, or a temporal one that declares no format and so takes its kind's default).
      *
      * <p>Worth reading rather than inferring from the kind: A12's temporal format vocabulary is
@@ -150,8 +186,30 @@ public final class ModelIndex {
     public Optional<String> temporalFormat(String fieldPath) {
         JsonNode fieldType = fieldTypeNode(fieldPath);
         String discriminator = fieldType.path(DmKeys.TYPE).asText("");
-        String format = fieldType.path(discriminator).path("format").asText("");
+        JsonNode config = fieldType.path(discriminator);
+        // A DateFragmentType spells the same declaration `formatOfFragment`; reading only `format` answers
+        // empty for a field that plainly declares one, which disables a format-keyed gate instead of failing it.
+        String format = config.path("DateFragmentType".equals(discriminator) ? "formatOfFragment" : "format")
+                .asText("");
         return format.isEmpty() ? Optional.empty() : Optional.of(format);
+    }
+
+    /**
+     * The field's declared {@code datePrecision} — {@code DAY_OPTIONAL}, {@code MONTH_OPTIONAL} or
+     * {@code YEAR_OPTIONAL} — or empty when it declares none.
+     *
+     * <p><b>Empty means FULL, not "unknown".</b> A12's own serializer omits the key for the kernel default, so
+     * a complete date field and a field whose precision was never written are the same document. A gate reading
+     * this must therefore treat absence as the full triple rather than as a reason to refuse.
+     *
+     * <p>A read-only config accessor like {@link #temporalFormat}: no throw on a non-date field, so any field
+     * can be probed.
+     */
+    public Optional<String> datePrecision(String fieldPath) {
+        JsonNode fieldType = fieldTypeNode(fieldPath);
+        String discriminator = fieldType.path(DmKeys.TYPE).asText("");
+        String precision = fieldType.path(discriminator).path("datePrecision").asText("");
+        return precision.isEmpty() ? Optional.empty() : Optional.of(precision);
     }
 
     /** Whether the string field declares {@code noValueValidation}; false for other kinds and an ordinary string. */
@@ -220,6 +278,18 @@ public final class ModelIndex {
     /** The group's maximum repetitions — the repeatability count ({@code 1} = non-repeatable). */
     public int maxRepetitions(String groupPath) {
         return groupNode(groupPath).path(ElementType.GROUP.wireName()).path(DmKeys.REPEATABILITY).asInt(1);
+    }
+
+    /**
+     * Whether the group at {@code groupPath} declares an INDEX FIELD ({@code indexFieldName}).
+     *
+     * <p>Read beyond semantic-index resolution because it is half of an iteration-admission rule: a bare
+     * negative over a repeatable group is admitted only when that group declares an index AND its maximum
+     * repeatability is two — neither alone (KERNEL-FINDINGS §9).
+     */
+    public boolean declaresIndexField(String groupPath) {
+        return !groupNode(groupPath).path(ElementType.GROUP.wireName())
+                .path(DmKeys.INDEX_FIELD_NAME).asText("").isBlank();
     }
 
     // --- navigation (Level 1, study finding 9): streams of facts in model order -----------------

@@ -1,18 +1,16 @@
 package io.github.mbackschat.a12.dm.bridge
 
-import java.util.Optional
 import io.github.mbackschat.a12.dm.core.ValueKind
 import io.github.mbackschat.a12.dm.interpreter.ast.Expr
 import io.github.mbackschat.a12.dm.rulekit.dsl.AggregateOperand
 import io.github.mbackschat.a12.dm.rulekit.dsl.Calculation
 import io.github.mbackschat.a12.dm.rulekit.dsl.CountAggregate
-import io.github.mbackschat.a12.dm.rulekit.dsl.DateConstruction
+
 import io.github.mbackschat.a12.dm.rulekit.dsl.DateDifference
 import io.github.mbackschat.a12.dm.rulekit.dsl.DateExpr
 import io.github.mbackschat.a12.dm.rulekit.dsl.DateExtraction
 import io.github.mbackschat.a12.dm.rulekit.dsl.DateLiteral
 import io.github.mbackschat.a12.dm.rulekit.dsl.DateOperand
-import io.github.mbackschat.a12.dm.rulekit.dsl.DateRangeConstruction
 import io.github.mbackschat.a12.dm.rulekit.dsl.DateRangeRef
 import io.github.mbackschat.a12.dm.rulekit.dsl.DateTimeConstruction
 import io.github.mbackschat.a12.dm.rulekit.dsl.DateTimeExpr
@@ -42,7 +40,13 @@ import io.github.mbackschat.a12.dm.rulekit.dsl.TimeConstruction
  * and the arithmetic helpers.
  *
  * This is where most of rulekit's operand laws are reachable: arity, operand kind, root-group bans, duplicate
- * operands and type homogeneity all live in the constructors these builders call.
+ * operands, type homogeneity and the temporal component/position rules all live in the constructors these
+ * builders call. Five further classes reach it only because this boundary holds a MODEL, so they are stated
+ * here rather than delegated to the kernel: an operand's declared FORMAT ([dateExtraction], [dateTimePart]),
+ * its declared PRECISION ([valueAsDate]), the agreement of a date range's two endpoint formats ([dateRange]),
+ * a date construction's per-slot NUMBER bounds ([date]), and whether the model DECLARES the base year a
+ * point-in-time constant needs ([dateRangeBound]) — each routed through the receiver that can read the
+ * declaration, never through the model-free `Dsl` factory of the same name.
  *
  * The name reaching [map] is the catalog's canonical ENGLISH keyword whatever language the condition was
  * authored in; the interpreter's parser canonicalises before the AST exists.
@@ -151,7 +155,7 @@ internal class Functions(private val mapping: Mapping) {
      */
     private fun countOfDifferentValues(args: List<Expr>): Calculation {
         val operands = aggregateOperands(args)
-        return Dsl.numberOfDifferentValues(operands[0], *rest(operands)).expression()
+        return mapping.model().numberOfDifferentValues(operands[0], *rest(operands)).expression()
     }
 
     /**
@@ -164,9 +168,9 @@ internal class Functions(private val mapping: Mapping) {
         val first = operands[0]
         val rest = rest(operands)
         return when (routingKind(operands, "MaxValue")) {
-            ValueKind.DATE, ValueKind.DATE_FRAGMENT -> Dsl.latestOf(first, *rest).expression()
-            ValueKind.TIME -> Dsl.latestTimeOf(first, *rest).expression()
-            ValueKind.DATE_TIME -> Dsl.latestDateTimeOf(first, *rest).expression()
+            ValueKind.DATE, ValueKind.DATE_FRAGMENT -> mapping.model().latestOf(first, *rest).expression()
+            ValueKind.TIME -> mapping.model().latestTimeOf(first, *rest).expression()
+            ValueKind.DATE_TIME -> mapping.model().latestDateTimeOf(first, *rest).expression()
             else -> Dsl.maxValue(first, *rest).expression()
         }
     }
@@ -177,9 +181,9 @@ internal class Functions(private val mapping: Mapping) {
         val first = operands[0]
         val rest = rest(operands)
         return when (routingKind(operands, "MinValue")) {
-            ValueKind.DATE, ValueKind.DATE_FRAGMENT -> Dsl.earliestOf(first, *rest).expression()
-            ValueKind.TIME -> Dsl.earliestTimeOf(first, *rest).expression()
-            ValueKind.DATE_TIME -> Dsl.earliestDateTimeOf(first, *rest).expression()
+            ValueKind.DATE, ValueKind.DATE_FRAGMENT -> mapping.model().earliestOf(first, *rest).expression()
+            ValueKind.TIME -> mapping.model().earliestTimeOf(first, *rest).expression()
+            ValueKind.DATE_TIME -> mapping.model().earliestDateTimeOf(first, *rest).expression()
             else -> Dsl.minValue(first, *rest).expression()
         }
     }
@@ -226,15 +230,16 @@ internal class Functions(private val mapping: Mapping) {
     }
 
     /**
-     * `DateRange(start, end)` — built through the dsl record rather than [Dsl.dateRange], whose `DateOperand`
-     * parameters would mean resolving each endpoint into a typed date handle here. The record's compact
-     * constructor is the same endpoint gate, and it accepts the [Calculation] the operand boundary yields.
+     * `DateRange(start, end)` — routed through the model's opaque-expression form, which carries the endpoint
+     * gate the record cannot: whether both endpoints declare the same date components is a property of the
+     * MODEL, and the kernel refuses a mismatch at the construction itself
+     * (`MVK_WRONG_DATE_FORMAT_FOR_OP`). The record's compact constructor still applies the intrinsic half.
      */
     private fun dateRange(args: List<Expr>): Calculation {
         if (args.size != 2) {
             throw UnmappedConstructException("DateRange with " + args.size + " operands")
         }
-        return DateRangeConstruction(mapping.calculation(args[0]), mapping.calculation(args[1]))
+        return mapping.model().dateRangeOf(mapping.calculation(args[0]), mapping.calculation(args[1]))
     }
 
     /**
@@ -270,12 +275,12 @@ internal class Functions(private val mapping: Mapping) {
      * constructor of its own to delegate to.
      */
     private fun date(args: List<Expr>): Calculation = when (args.size) {
-        3 -> DateConstruction(
+        3 -> mapping.model().dateOf(
             mapping.calculation(args[0]), mapping.calculation(args[1]), mapping.calculation(args[2])
         )
-        4 -> DateConstruction(
+        4 -> mapping.model().dateOf(
             mapping.calculation(args[0]), mapping.calculation(args[1]), mapping.calculation(args[2]),
-            Optional.of(mapping.calculation(args[3])),
+            mapping.calculation(args[3]),
         )
         else -> throw UnmappedConstructException("Date with " + args.size + " operands")
     }
@@ -440,36 +445,40 @@ internal class Functions(private val mapping: Mapping) {
     /**
      * `YearFromDate`/`MonthFromDate`/`DayFromDate`/`QuarterFromDate` (a date, date-fragment or date-time
      * source) and `HoursFromTime`/`MinutesFromTime`/`SecondsFromTime` (a time or date-time source) — a numeric
-     * component, built through the [DateExtraction] record directly: the catalog admits "a field or
-     * expression" here, wider than a typed handle, so there is no matching `Dsl.*FromDate`/`*FromTime` overload
-     * to route an arbitrary operand through. The exact kernel-measured non-point denominator lives on
-     * [DateExtraction]'s own compact constructor, so its [IllegalArgumentException] is rulekit's own verdict,
-     * not a bridge-authored one; temporal formats and an UNKNOWN kind remain delegated.
+     * component. The catalog admits "a field or expression" here, wider than a typed handle, so this routes
+     * through [Dsl.dateExtraction] — the family factory that takes the unit as a value and resolves the
+     * operand's DECLARED FORMAT through the model, refusing an extraction whose component that format does not
+     * carry. Both that refusal and the non-point one on [DateExtraction]'s own constructor are rulekit's
+     * verdicts, not bridge-authored; an operand with no declaration to read, and an UNKNOWN kind, stay
+     * delegated.
      */
     private fun dateExtraction(unit: DateExtraction.Unit, args: List<Expr>): Calculation {
         if (args.size != 1) {
             throw UnmappedConstructException(unit.operatorId() + " with " + args.size + " operands")
         }
-        return DateExtraction(unit, mapping.calculation(args[0]))
+        return Dsl.dateExtraction(mapping.model(), unit, mapping.calculation(args[0]))
     }
 
     /**
-     * `DateFromDateTime`/`TimeFromDateTime` — splits a date-time into its date or time part. [DateTimePart]
-     * refuses the same exact non-point denominator as [DateExtraction] and delegates completeness to the
-     * kernel because it is decided by the source's declared format, not its kind.
+     * `DateFromDateTime`/`TimeFromDateTime` — splits a date-time into its date or time part, through
+     * [Dsl.dateTimePart]. Completeness IS decided by the declared format rather than the kind, and that format
+     * is reachable from the model, so the factory states it: a source whose declaration carries only one half
+     * is refused, which over the admitted vocabulary is everything but the ISO date-time.
      */
     private fun dateTimePart(unit: DateTimePart.Unit, args: List<Expr>): Calculation {
         if (args.size != 1) {
             throw UnmappedConstructException(unit.operatorId() + " with " + args.size + " operands")
         }
-        return DateTimePart(unit, mapping.calculation(args[0]))
+        return Dsl.dateTimePart(mapping.model(), unit, mapping.calculation(args[0]))
     }
 
     /**
-     * `ValueAsDate(field, FirstDay|LastDay)` — resolves a partially known date field to a concrete date, via
-     * [Dsl.valueAsDateFirstDay]/[Dsl.valueAsDateLastDay]. The day-specification keyword is a bare `Expr.Const`
-     * the interpreter's parser emits structurally rather than an expression to recurse into, so its name is
-     * read directly here.
+     * `ValueAsDate(field, FirstDay|LastDay)` — resolves a partially known date field to a concrete date.
+     * Routed through the model-bound facade rather than [Dsl], because the operand's admissibility is a fact
+     * about its DECLARED PRECISION and this boundary holds the model: a field declaring no optional component
+     * is refused where the kernel refuses it, the same reasoning as [dateExtraction] and [dateTimePart]. The
+     * day-specification keyword is a bare `Expr.Const` the interpreter's parser emits structurally rather
+     * than an expression to recurse into, so its name is read directly here.
      */
     private fun valueAsDate(args: List<Expr>): Calculation {
         if (args.size != 2) {
@@ -488,8 +497,8 @@ internal class Functions(private val mapping: Mapping) {
             )
         }
         return when (dayKeyword.name) {
-            "FirstDay" -> Dsl.valueAsDateFirstDay(field).expression()
-            "LastDay" -> Dsl.valueAsDateLastDay(field).expression()
+            "FirstDay" -> mapping.model().valueAsDateFirstDay(field).expression()
+            "LastDay" -> mapping.model().valueAsDateLastDay(field).expression()
             else -> throw UnmappedConstructException("ValueAsDate day-keyword " + dayKeyword.name)
         }
     }
@@ -613,7 +622,8 @@ internal class Functions(private val mapping: Mapping) {
         }
         val arg = args[0]
         if (arg is Expr.Const && arg.name == "BaseYear") {
-            return (if (start) Dsl.startOfBaseYear() else Dsl.endOfBaseYear()).expression()
+            val model = mapping.model()
+            return (if (start) model.startOfBaseYear() else model.endOfBaseYear()).expression()
         }
         val field = mapping.fieldRef(arg)
         if (field.kind() != ValueKind.DATE_RANGE) {

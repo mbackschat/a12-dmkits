@@ -26,9 +26,13 @@ import io.github.mbackschat.a12.dm.core.ValueKind;
  * {@link FieldRef} cannot see a declaration, so the remaining conjunct is the kernel's — which is the safe
  * direction, since delegating can only under-report. {@code UNKNOWN} is the one refused kind with no measured
  * row: it has no authorable A12 counterpart to put through the oracle, so it is named here rather than counted
- * among the seven. Five further constraints ride there for the same reason:
- * a declared format with no date component, a date whose {@code datePrecision} is partial, a wildcard operand,
- * endpoints whose formats carry different date components, and — the one that is context-dependent rather than
+ * among the seven.
+ *
+ * <p>Endpoints whose formats carry different date components draw that same code, and that one IS pre-checked
+ * — on {@link BoundModel#dateRangeOf}, which can see the declarations this record cannot (locked by
+ * {@code validate.laws.DateRangeConstructionEndpointComponentLawsTest}). Four further constraints ride with
+ * the kernel for the same under-report reason: a declared format with no date component, a date whose
+ * {@code datePrecision} is partial, a wildcard operand, and — the one that is context-dependent rather than
  * local — the {@code $} outer-iteration marker, which is legal only where a {@code Having} filter supplies the
  * iteration to correlate with.
  */

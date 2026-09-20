@@ -37,8 +37,6 @@ package io.github.mbackschat.a12.dm.rulekit.dsl;
  * because that record is {@code final} — unlike {@link FieldOperand}'s own indexed-field arm, which
  * nested inside an existing sealed member.
  */
-public sealed interface AggregateOperand permits FieldOperand, GroupListRef, IndexedGroupValue {
-
-    /** The rendered path, with a {@code *} on every starred segment. */
-    String renderedPath();
+public sealed interface AggregateOperand extends DuplicateOperand
+        permits FieldOperand, GroupListRef, IndexedGroupValue {
 }

@@ -134,15 +134,27 @@ class SemanticIndexEntityListTest {
     }
 
     /**
-     * A field reached with an index, beside its OWN enclosing group reached with the same index — the
-     * indirect-overlap case (`MVK_DUPLICATE_PARAM2`) the design report calls out as staying
-     * kernel-arbitrated, exactly as it already does for a plain (unindexed) group's own indirect-overlap
-     * arm. Converting here rather than being caught is the correct, deliberate answer.
+     * A field reached with an index, beside its OWN enclosing group reached with the SAME index, is the
+     * containment arm and rulekit refuses it — the kernel answers `MVK_DUPLICATE_PARAM2` for exactly this
+     * shape.
+     *
+     * <p>The key is what decides, and the control below is one variable apart: under DIFFERENT keys the two
+     * operands address different repetitions, the kernel admits the pair, and refusing it would over-reject.
+     * Both measured in `rulekit.validate.laws.DuplicateOverlapCarrierSweepLawsTest`.
      */
     @Test
-    fun anIndexedFieldBesideItsOwnIndexedEnclosingGroupIsNotCaughtHere() {
-        assertDoesNotThrow {
+    fun anIndexedFieldBesideItsOwnIndexedEnclosingGroupIsTheOverlapRefusal() {
+        val e = assertThrows(IllegalArgumentException::class.java) {
             translate("NumberOfFilledFields(Items/Count For \"a\", Items For \"a\") > 1")
+        }
+        assertTrue(e.message!!.contains("MVK_DUPLICATE_PARAM2")) { "expected the overlap code in: ${e.message}" }
+    }
+
+    /** The control: different keys address different repetitions, so there is no containment. */
+    @Test
+    fun anIndexedFieldUnderADifferentKeyThanItsGroupIsNotAnOverlap() {
+        assertDoesNotThrow {
+            translate("NumberOfFilledFields(Items/Count For \"a\", Items For \"b\") > 1")
         }
     }
 

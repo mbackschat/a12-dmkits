@@ -25,6 +25,9 @@ import io.github.mbackschat.a12.dm.core.ValueKind;
  * group's contained fields; the two gates that behave differently for it, and why they are delegated rather
  * than pre-checked, are on {@link AggregateOperand}.
  */
+import io.github.mbackschat.a12.dm.core.KernelCode;
+import io.github.mbackschat.a12.dm.core.Refusals;
+
 public record ListAggregate(AggOp op, List<AggregateOperand> operands) implements Calculation {
 
     public enum AggOp {
@@ -46,9 +49,13 @@ public record ListAggregate(AggOp op, List<AggregateOperand> operands) implement
     public ListAggregate {
         operands = List.copyOf(operands);
         if (operands.size() < 2 && operands.stream().noneMatch(ListAggregate::satisfiesArityAlone)) {
-            throw new IllegalArgumentException(op.operatorId() + " needs more than one field, a"
-                    + " repetition list, or a group scope (MVK_PARAMSIZE_INVALIDN)");
+            throw Refusals.of(KernelCode.MVK_PARAMSIZE_INVALIDN, op.operatorId() + " needs more than one field, a"
+                    + " repetition list, or a group scope");
         }
+        // Ahead of the kind loop, because the kernel's own routine checks duplicates first: it answers
+        // MVK_DUPLICATE_PARAM2 for a group scope beside a field inside it even when that field is the wrong
+        // kind, and reporting the kind error there would disagree with it on input both refuse.
+        DuplicateGate.rejectDuplicates(op.operatorId(), operands);
         for (AggregateOperand o : operands) {
             switch (o) {
                 case FieldOperand f -> requireNumber(op, f);
@@ -60,15 +67,13 @@ public record ListAggregate(AggOp op, List<AggregateOperand> operands) implement
                 case IndexedGroupValue ignored -> { }
             }
         }
-        checkNoDuplicates(op.operatorId(), operands);
     }
 
     private static void requireNumber(AggOp op, FieldOperand operand) {
         if (operand.kind() != ValueKind.NUMBER) {
-            String code = op == AggOp.SUM ? "MVK_NO_NUMBER" : "MVK_NOT_SORTABLE";
-            throw new IllegalArgumentException(op.operatorId() + " takes number fields; "
-                    + operand.renderedPath() + " is " + operand.kind() + " (" + code
-                    + "; the date variant of Max/Min lands with the date family)");
+            KernelCode code = op == AggOp.SUM ? KernelCode.MVK_NO_NUMBER : KernelCode.MVK_NOT_SORTABLE;
+            throw Refusals.of(code, op.operatorId() + " takes number fields; " + operand.renderedPath()
+                    + " is " + operand.kind() + "; the date variant of Max/Min lands with the date family");
         }
     }
 
@@ -77,44 +82,6 @@ public record ListAggregate(AggOp op, List<AggregateOperand> operands) implement
         return operand instanceof FieldListRef || operand instanceof GroupListRef;
     }
 
-    static void checkNoDuplicates(String opName, List<AggregateOperand> operands) {
-        var seen = new java.util.HashSet<String>();
-        for (AggregateOperand o : operands) {
-            // The kernel's checkDuplicatesInDirectRefs continues past ref.hasWildCards() outside HModel, so a
-            // flattened repetition list may occupy several authored slots and is expanded and consumed again at
-            // each — only repeated DIRECT (non-wildcard) fields draw MVK_DUPLICATE_PARAM1. This mirrors the
-            // value-list identity in Dsl.referenceIdentity (a FieldListRef scope has no dedup identity).
-            //
-            // A GroupListRef has no dedup identity either, and the two halves of that are measured separately:
-            // the same starred group listed twice is ACCEPTED, while a group beside its own descendant is
-            // MVK_DUPLICATE_PARAM2 — an INDIRECT overlap this direct check never saw, and which stays
-            // kernel-arbitrated because deciding it here would mean owning the expansion's extent.
-            // The `$` outer-iteration correlation is part of the identity, exactly as it is in
-            // FirstFilledValue's richer EntityIdentity: `$path` reads the outer row and `path` the current
-            // one, so the two are different operands and may share a slot list.
-            //
-            // An indexed field (IndexedFieldValue) behaves like a single field entity here too: the same
-            // field under two different index keys is NOT a duplicate, so identity folds
-            // in the key (and every $ correlation in the shape) via the shared IndexedFieldValue#duplicateIdentity,
-            // rather than repeating that compound computation here (see Dsl.referenceIdentity's identical arm).
-            // An indexed GROUP (IndexedGroupValue) is the same shape one level up, sharing the identical
-            // duplicateIdentity contract.
-            String identity = switch (o) {
-                case FieldListRef ignored -> null;
-                case GroupListRef ignored -> null;
-                case FieldRef f -> (f.correlated() ? "$" : "") + f.renderedPath();
-                case IndexedFieldValue indexed -> indexed.duplicateIdentity();
-                case IndexedGroupValue indexed -> indexed.duplicateIdentity();
-            };
-            if (identity == null) {
-                continue;
-            }
-            if (!seen.add(identity)) {
-                throw new IllegalArgumentException(opName + ": '" + o.renderedPath()
-                        + "' is listed more than once (MVK_DUPLICATE_PARAM1)");
-            }
-        }
-    }
 
     @Override
     public ValueKind kind() {

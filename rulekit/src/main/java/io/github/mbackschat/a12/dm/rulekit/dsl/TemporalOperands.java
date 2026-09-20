@@ -16,6 +16,9 @@ import io.github.mbackschat.a12.dm.core.ValueKind;
  * authorable A12 counterpart for that oracle, so it is deliberately left kernel-arbitrated rather than
  * borrowing the measured kinds' authority.
  */
+import io.github.mbackschat.a12.dm.core.KernelCode;
+import io.github.mbackschat.a12.dm.core.Refusals;
+
 final class TemporalOperands {
 
     /** The complete owner-backed denominator measured under MVK_NO_DATE on both extraction carriers. */
@@ -29,8 +32,8 @@ final class TemporalOperands {
     /** @throws IllegalArgumentException if {@code source} is in the kernel-measured refusal denominator. */
     static void refuseMeasuredNonPointKind(String operatorId, Calculation source) {
         if (MEASURED_NON_POINT_KINDS.contains(source.kind())) {
-            throw new IllegalArgumentException(operatorId + " needs a date or time operand, but the source is "
-                    + source.kind() + " (MVK_NO_DATE)");
+            throw Refusals.of(KernelCode.MVK_NO_DATE, operatorId + " needs a date or time operand, but the source is "
+                    + source.kind());
         }
     }
 }

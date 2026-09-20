@@ -27,6 +27,7 @@ public record EntityListPredicate(Quantifier quantifier, List<AggregateOperand> 
         if (operands.isEmpty()) {
             throw new IllegalArgumentException(quantifier + " needs at least one operand");
         }
+        DuplicateGate.rejectDuplicates(quantifier.operatorId(), operands);
     }
 
     @Override

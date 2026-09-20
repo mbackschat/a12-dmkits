@@ -58,7 +58,7 @@ class FirstFilledValueDuplicatePrecedenceTest {
         FirstFilledOperand primary = MODEL.firstFilledGroup("/Claim/Primary");
         FirstFilledOperand detail = MODEL.firstFilledGroup("/Claim/Primary/Detail");
 
-        assertEquals("FirstFilledValue: '/Claim/Primary/Detail' is already included through /Claim/Primary"
+        assertEquals("FirstFilledValue: '/Claim/Primary/Detail' is already included through '/Claim/Primary'"
                 + " (MVK_DUPLICATE_PARAM2)", assertThrows(IllegalArgumentException.class,
                 () -> new FirstFilledValue(primary, List.of(detail))).getMessage());
     }

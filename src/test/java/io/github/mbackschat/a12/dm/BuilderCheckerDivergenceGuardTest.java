@@ -595,7 +595,38 @@ class BuilderCheckerDivergenceGuardTest {
             // projection out of a stored condition text and applies A12's containment predicate to what it
             // finds. Neither is stricter than A12.
             Map.entry("MVK_ERROR_SEMANTIC_INDEX_OR_CATEGORY_FOR_ERRORFIELD",
-                    Disposition.SAME_LAW_SEPARATE_CARRIERS));
+                    Disposition.SAME_LAW_SEPARATE_CARRIERS),
+
+            // --- the temporal-declaration gates promoted into the typed surface on 2026-09-20 -------------
+            //
+            // These eight arrived together and share one disposition, so they are grouped rather than
+            // restated eight times. The law each enforces is the same on both sides and reads a DECLARATION
+            // the operand itself does not carry — a temporal field's declared format, its date precision, a
+            // date-range's endpoint agreement — so the kit resolves it through `BoundModel` off typed
+            // handles while the checker resolves it out of stored DM-JSON. Neither carrier can read the
+            // other's input, which is what `SAME_LAW_SEPARATE_CARRIERS` names.
+            //
+            // The direction that would matter is a kit refusing what A12 admits, because the checker must
+            // not inherit that. It is not the case here and it is not an argument: every one of these gates
+            // has its accept/reject pair measured at the kernel — the extraction format gate in
+            // `validate.laws.TemporalExtractionFormatGateLawsTest` and `DerivedTemporalOperandFormatLawsTest`
+            // (KERNEL-FINDINGS kf426, kf432, kf442), the construction slots in
+            // `DateConstructionComponentDeclarationLawsTest` and `TemporalExtractorComponentLawsTest`, the
+            // date-range pair in `DateRangeComparabilityLawsTest` and `DateRangeOverlapParameterLawsTest`,
+            // the precision pair in `ValueAsDateOperandPrecisionLawsTest` and `PartialDateAggregateLawsTest`
+            // — and `UnbackedClientRefusalLawsTest` independently fails on any refusal the kernel does not
+            // make. Re-read both sites before trusting this block: a later edit to either can change the
+            // answer without touching this map.
+            Map.entry("MVK_DATE_OR_TIME_EXTRACT_OP_NOT_ALLOWED", Disposition.SAME_LAW_SEPARATE_CARRIERS),
+            Map.entry("MVK_EXTRACT_OP_NOT_ALLOWED_4_DATE_CONSTRUCT_WITH_4_PARAMS",
+                    Disposition.SAME_LAW_SEPARATE_CARRIERS),
+            Map.entry("MVK_INVALID_DATE_OR_TIME_EXTRACT_OP", Disposition.SAME_LAW_SEPARATE_CARRIERS),
+            Map.entry("MVK_INVALID_COMPARE_TO_DATE_RANGE", Disposition.SAME_LAW_SEPARATE_CARRIERS),
+            Map.entry("MVK_INVALID_PARAMETER_FOR_DATE_RANGE_COMPARISON",
+                    Disposition.SAME_LAW_SEPARATE_CARRIERS),
+            Map.entry("MVK_INVALID_DATE_TYPE", Disposition.SAME_LAW_SEPARATE_CARRIERS),
+            Map.entry("MVK_INVALID_DATE_TYPE_FOR_OP", Disposition.SAME_LAW_SEPARATE_CARRIERS),
+            Map.entry("MVK_PARTIAL_DATE_NOT_ALLOWED", Disposition.SAME_LAW_SEPARATE_CARRIERS));
 
     @Test
     void everyCodeStatedInBothEstatesCarriesADisposition() {
@@ -646,8 +677,20 @@ class BuilderCheckerDivergenceGuardTest {
                 + "so it did not reach the checker and a green result above proves nothing");
     }
 
+    /**
+     * The VOCABULARY, which names every A12 code by construction and so states none of them.
+     *
+     * <p>This guard's question is whether the two estates both ACT on a code, and it answers it by where the
+     * code's text appears. {@code KernelCode} broke that proxy the day it landed: as one enum constant per
+     * code it made all 306 "stated in the Java kits", and the intersection with the checker jumped from a
+     * handful of real divergences to 143 rows of nothing. The same exclusion, for the same reason, is in
+     * {@code ClientRefusalKernelBasisCensusTest}.
+     */
+    private static final String VOCABULARY = "core/src/main/java/io/github/mbackschat/a12/dm/core/KernelCode.java";
+
     private static Set<String> codesIn(List<String> relativeRoots) {
         Set<String> codes = new TreeSet<>();
+        Path vocabulary = CHECKOUT.resolve(VOCABULARY);
         for (String relative : relativeRoots) {
             Path root = CHECKOUT.resolve(relative);
             if (!Files.isDirectory(root)) {
@@ -655,6 +698,7 @@ class BuilderCheckerDivergenceGuardTest {
             }
             try (Stream<Path> files = Files.walk(root)) {
                 files.filter(Files::isRegularFile)
+                        .filter(p -> !p.equals(vocabulary))
                         .filter(p -> p.toString().endsWith(".java") || p.toString().endsWith(".kt"))
                         .forEach(p -> collectCodes(p, codes));
             } catch (IOException e) {

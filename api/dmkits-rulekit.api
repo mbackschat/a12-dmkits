@@ -504,8 +504,7 @@ public static record io.github.mbackschat.a12.dm.rulekit.context.RuleExplanation
   public java.lang.String path()
   public final java.lang.String toString()
 
-public sealed interface io.github.mbackschat.a12.dm.rulekit.dsl.AggregateOperand
-  public abstract java.lang.String renderedPath()
+public sealed interface io.github.mbackschat.a12.dm.rulekit.dsl.AggregateOperand extends io.github.mbackschat.a12.dm.rulekit.dsl.DuplicateOperand
 
 public record io.github.mbackschat.a12.dm.rulekit.dsl.Annotation
   public Annotation(java.lang.String, java.lang.String)
@@ -583,6 +582,8 @@ public final class io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel
   public io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel addAll(java.util.List<io.github.mbackschat.a12.dm.rulekit.dsl.Rule>, java.util.List<io.github.mbackschat.a12.dm.rulekit.dsl.Computation>)
   public io.github.mbackschat.a12.dm.rulekit.dsl.Condition allFieldsFilled(java.lang.String[])
   public io.github.mbackschat.a12.dm.rulekit.dsl.Condition atLeastOneFieldFilled(java.lang.String[])
+  public io.github.mbackschat.a12.dm.rulekit.dsl.DateExpr baseYear()
+  public io.github.mbackschat.a12.dm.rulekit.dsl.NumberExpr baseYearNumber()
   public io.github.mbackschat.a12.dm.rulekit.dsl.BoolRef bool(java.lang.String)
   public io.github.mbackschat.a12.dm.rulekit.dsl.Computation.Builder computation(io.github.mbackschat.a12.dm.rulekit.dsl.BoolRef)
   public io.github.mbackschat.a12.dm.rulekit.dsl.Computation.Builder computation(io.github.mbackschat.a12.dm.rulekit.dsl.ConfirmRef)
@@ -600,8 +601,17 @@ public final class io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel
   public io.github.mbackschat.a12.dm.rulekit.dsl.StringRef custom(java.lang.String)
   public io.github.mbackschat.a12.dm.rulekit.dsl.DateRef date(java.lang.String)
   public io.github.mbackschat.a12.dm.rulekit.dsl.DateFragmentRef dateFragment(java.lang.String)
+  public io.github.mbackschat.a12.dm.rulekit.dsl.DateConstruction dateOf(io.github.mbackschat.a12.dm.rulekit.dsl.Calculation, io.github.mbackschat.a12.dm.rulekit.dsl.Calculation, io.github.mbackschat.a12.dm.rulekit.dsl.Calculation)
+  public io.github.mbackschat.a12.dm.rulekit.dsl.DateConstruction dateOf(io.github.mbackschat.a12.dm.rulekit.dsl.Calculation, io.github.mbackschat.a12.dm.rulekit.dsl.Calculation, io.github.mbackschat.a12.dm.rulekit.dsl.Calculation, io.github.mbackschat.a12.dm.rulekit.dsl.Calculation)
   public io.github.mbackschat.a12.dm.rulekit.dsl.DateRangeRef dateRange(java.lang.String)
+  public io.github.mbackschat.a12.dm.rulekit.dsl.DateRangeConstruction dateRangeOf(io.github.mbackschat.a12.dm.rulekit.dsl.Calculation, io.github.mbackschat.a12.dm.rulekit.dsl.Calculation)
+  public io.github.mbackschat.a12.dm.rulekit.dsl.DateRangeConstruction dateRangeOf(io.github.mbackschat.a12.dm.rulekit.dsl.DateOperand, io.github.mbackschat.a12.dm.rulekit.dsl.DateOperand)
   public io.github.mbackschat.a12.dm.rulekit.dsl.DateTimeRef dateTime(java.lang.String)
+  public boolean declaresIndexField(java.lang.String)
+  public io.github.mbackschat.a12.dm.rulekit.dsl.DateTimeExpr earliestDateTimeOf(io.github.mbackschat.a12.dm.rulekit.dsl.AggregateOperand, io.github.mbackschat.a12.dm.rulekit.dsl.AggregateOperand[])
+  public io.github.mbackschat.a12.dm.rulekit.dsl.DateExpr earliestOf(io.github.mbackschat.a12.dm.rulekit.dsl.AggregateOperand, io.github.mbackschat.a12.dm.rulekit.dsl.AggregateOperand[])
+  public io.github.mbackschat.a12.dm.rulekit.dsl.TimeExpr earliestTimeOf(io.github.mbackschat.a12.dm.rulekit.dsl.AggregateOperand, io.github.mbackschat.a12.dm.rulekit.dsl.AggregateOperand[])
+  public io.github.mbackschat.a12.dm.rulekit.dsl.DateExpr endOfBaseYear()
   public io.github.mbackschat.a12.dm.rulekit.dsl.EnumRef enumOf(java.lang.String)
   public io.github.mbackschat.a12.dm.rulekit.dsl.FieldRef field(java.lang.String)
   public java.util.Optional<io.github.mbackschat.a12.dm.rulekit.dsl.FieldInfo> fieldAt(java.lang.String)
@@ -616,7 +626,11 @@ public final class io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel
   public io.github.mbackschat.a12.dm.rulekit.dsl.GroupRef group(java.lang.String)
   public java.util.Optional<io.github.mbackschat.a12.dm.rulekit.dsl.GroupInfo> groupAt(java.lang.String)
   public java.util.stream.Stream<io.github.mbackschat.a12.dm.rulekit.dsl.GroupInfo> groups()
+  public boolean isRepeatingGroup(java.lang.String)
   public boolean iteratesForErrorField(java.lang.String)
+  public io.github.mbackschat.a12.dm.rulekit.dsl.DateTimeExpr latestDateTimeOf(io.github.mbackschat.a12.dm.rulekit.dsl.AggregateOperand, io.github.mbackschat.a12.dm.rulekit.dsl.AggregateOperand[])
+  public io.github.mbackschat.a12.dm.rulekit.dsl.DateExpr latestOf(io.github.mbackschat.a12.dm.rulekit.dsl.AggregateOperand, io.github.mbackschat.a12.dm.rulekit.dsl.AggregateOperand[])
+  public io.github.mbackschat.a12.dm.rulekit.dsl.TimeExpr latestTimeOf(io.github.mbackschat.a12.dm.rulekit.dsl.AggregateOperand, io.github.mbackschat.a12.dm.rulekit.dsl.AggregateOperand[])
   public static io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel load(java.nio.file.Path)
   public java.util.List<java.lang.String> locales()
   public int maxRepetitions(java.lang.String)
@@ -626,19 +640,25 @@ public final class io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel
   public io.github.mbackschat.a12.dm.rulekit.dsl.Condition notAllFieldsFilled(java.lang.String[])
   public io.github.mbackschat.a12.dm.rulekit.dsl.Condition notExactlyOneFieldFilled(java.lang.String[])
   public io.github.mbackschat.a12.dm.rulekit.dsl.NumberRef num(java.lang.String)
+  public io.github.mbackschat.a12.dm.rulekit.dsl.NumberExpr numberOfDifferentValues(io.github.mbackschat.a12.dm.rulekit.dsl.AggregateOperand, io.github.mbackschat.a12.dm.rulekit.dsl.AggregateOperand[])
   public static io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel of(io.github.mbackschat.a12.dm.core.ModelIndex)
   public static io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel ofJson(java.lang.String)
   public static io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel ofJson(java.lang.String, io.github.mbackschat.a12.dm.core.ModelResolver)
   public static io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel ofJsonLenient(java.lang.String, io.github.mbackschat.a12.dm.core.ModelResolver)
+  public io.github.mbackschat.a12.dm.rulekit.dsl.Condition rangesEqual(io.github.mbackschat.a12.dm.rulekit.dsl.DateRangeOperand, io.github.mbackschat.a12.dm.rulekit.dsl.DateRangeOperand)
+  public io.github.mbackschat.a12.dm.rulekit.dsl.Condition rangesNotEqual(io.github.mbackschat.a12.dm.rulekit.dsl.DateRangeOperand, io.github.mbackschat.a12.dm.rulekit.dsl.DateRangeOperand)
   public io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel removeComputation(java.lang.String)
   public io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel removeRule(java.lang.String)
   public io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel replaceComputation(java.lang.String, io.github.mbackschat.a12.dm.rulekit.dsl.Computation)
   public io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel replaceCondition(java.lang.String, io.github.mbackschat.a12.dm.rulekit.dsl.Condition)
   public io.github.mbackschat.a12.dm.core.ModelResolver resolver()
   public io.github.mbackschat.a12.dm.rulekit.dsl.Rule.Builder rule(io.github.mbackschat.a12.dm.rulekit.dsl.GroupReference)
+  public io.github.mbackschat.a12.dm.rulekit.dsl.DateExpr startOfBaseYear()
   public io.github.mbackschat.a12.dm.rulekit.dsl.StringRef str(java.lang.String)
   public io.github.mbackschat.a12.dm.rulekit.dsl.TimeRef time(java.lang.String)
   public java.lang.String toJson()
+  public io.github.mbackschat.a12.dm.rulekit.dsl.DateExpr valueAsDateFirstDay(io.github.mbackschat.a12.dm.rulekit.dsl.FieldRef)
+  public io.github.mbackschat.a12.dm.rulekit.dsl.DateExpr valueAsDateLastDay(io.github.mbackschat.a12.dm.rulekit.dsl.FieldRef)
   public void writeTo(java.nio.file.Path)
 
 public sealed interface io.github.mbackschat.a12.dm.rulekit.dsl.Calculation
@@ -1253,10 +1273,12 @@ public final class io.github.mbackschat.a12.dm.rulekit.dsl.Dsl
   public static io.github.mbackschat.a12.dm.rulekit.dsl.DateExpr date(io.github.mbackschat.a12.dm.rulekit.dsl.NumberExpr, io.github.mbackschat.a12.dm.rulekit.dsl.NumberExpr, io.github.mbackschat.a12.dm.rulekit.dsl.NumberExpr, io.github.mbackschat.a12.dm.rulekit.dsl.NumberExpr)
   public static io.github.mbackschat.a12.dm.rulekit.dsl.DateExpr date(io.github.mbackschat.a12.dm.rulekit.dsl.TemporalComponent, io.github.mbackschat.a12.dm.rulekit.dsl.TemporalComponent, io.github.mbackschat.a12.dm.rulekit.dsl.TemporalComponent)
   public static io.github.mbackschat.a12.dm.rulekit.dsl.DateExpr date(io.github.mbackschat.a12.dm.rulekit.dsl.TemporalComponent, io.github.mbackschat.a12.dm.rulekit.dsl.TemporalComponent, io.github.mbackschat.a12.dm.rulekit.dsl.TemporalComponent, io.github.mbackschat.a12.dm.rulekit.dsl.TemporalComponent)
+  public static io.github.mbackschat.a12.dm.rulekit.dsl.DateExtraction dateExtraction(io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel, io.github.mbackschat.a12.dm.rulekit.dsl.DateExtraction.Unit, io.github.mbackschat.a12.dm.rulekit.dsl.Calculation)
   public static io.github.mbackschat.a12.dm.rulekit.dsl.DateExpr dateFromDateTime(io.github.mbackschat.a12.dm.rulekit.dsl.DateTimeOperand)
   public static io.github.mbackschat.a12.dm.rulekit.dsl.DateRangeConstruction dateRange(io.github.mbackschat.a12.dm.rulekit.dsl.DateOperand, io.github.mbackschat.a12.dm.rulekit.dsl.DateOperand)
   public static io.github.mbackschat.a12.dm.rulekit.dsl.Condition dateRangesOverlap(io.github.mbackschat.a12.dm.rulekit.dsl.FieldOperand, io.github.mbackschat.a12.dm.rulekit.dsl.FieldOperand[])
   public static io.github.mbackschat.a12.dm.rulekit.dsl.DateTimeExpr dateTime(io.github.mbackschat.a12.dm.rulekit.dsl.DateOperand, io.github.mbackschat.a12.dm.rulekit.dsl.TimeOperand)
+  public static io.github.mbackschat.a12.dm.rulekit.dsl.DateTimePart dateTimePart(io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel, io.github.mbackschat.a12.dm.rulekit.dsl.DateTimePart.Unit, io.github.mbackschat.a12.dm.rulekit.dsl.Calculation)
   public static io.github.mbackschat.a12.dm.rulekit.dsl.DateTimeExpr dateTimeValue(java.lang.String)
   public static io.github.mbackschat.a12.dm.rulekit.dsl.DateExpr dateValue(java.lang.String)
   public static io.github.mbackschat.a12.dm.rulekit.dsl.DateExpr dateValue(java.time.LocalDate)
@@ -1503,6 +1525,13 @@ public static record io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer.Rendere
   public java.lang.String text()
   public final java.lang.String toString()
 
+public sealed interface io.github.mbackschat.a12.dm.rulekit.dsl.DuplicateOperand extends io.github.mbackschat.a12.dm.core.HasEntityPath
+  public default io.github.mbackschat.a12.dm.core.EntityPath entityPath()
+  public abstract java.util.Optional<java.lang.String> exactIdentity()
+  public abstract java.lang.String fieldPath()
+  public default java.lang.String overlapModifier()
+  public abstract java.lang.String renderedPath()
+
 public record io.github.mbackschat.a12.dm.rulekit.dsl.EntityListPredicate implements io.github.mbackschat.a12.dm.rulekit.dsl.Condition
   public EntityListPredicate(io.github.mbackschat.a12.dm.rulekit.dsl.Quantifier, java.util.List<io.github.mbackschat.a12.dm.rulekit.dsl.AggregateOperand>)
   public final boolean equals(java.lang.Object)
@@ -1518,12 +1547,14 @@ public record io.github.mbackschat.a12.dm.rulekit.dsl.EnumCategoryAccess impleme
   public EnumCategoryAccess(io.github.mbackschat.a12.dm.rulekit.dsl.FieldRef, java.lang.String, boolean)
   public java.lang.String category()
   public final boolean equals(java.lang.Object)
+  public java.util.Optional<java.lang.String> exactIdentity()
   public io.github.mbackschat.a12.dm.rulekit.dsl.FieldRef field()
   public java.lang.String fieldPath()
   public final int hashCode()
   public io.github.mbackschat.a12.dm.core.ValueKind kind()
   public java.lang.String operatorId()
   public boolean outer()
+  public java.lang.String overlapModifier()
   public java.lang.String renderedPath()
   public final java.lang.String toString()
 
@@ -1635,6 +1666,7 @@ public record io.github.mbackschat.a12.dm.rulekit.dsl.FieldListRef implements io
   public FieldListRef(io.github.mbackschat.a12.dm.rulekit.dsl.FieldRef, java.util.List<io.github.mbackschat.a12.dm.rulekit.dsl.GroupRef>, java.util.Optional<io.github.mbackschat.a12.dm.rulekit.dsl.Condition>, boolean)
   public boolean correlated()
   public final boolean equals(java.lang.Object)
+  public java.util.Optional<java.lang.String> exactIdentity()
   public io.github.mbackschat.a12.dm.rulekit.dsl.FieldRef field()
   public java.lang.String fieldPath()
   public java.util.Optional<io.github.mbackschat.a12.dm.rulekit.dsl.Condition> filter()
@@ -1676,6 +1708,7 @@ public record io.github.mbackschat.a12.dm.rulekit.dsl.FieldRef implements io.git
   public boolean correlated()
   public io.github.mbackschat.a12.dm.core.EntityPath entityPath()
   public final boolean equals(java.lang.Object)
+  public java.util.Optional<java.lang.String> exactIdentity()
   public io.github.mbackschat.a12.dm.rulekit.dsl.Calculation expression()
   public io.github.mbackschat.a12.dm.rulekit.dsl.FieldRef field()
   public java.lang.String fieldPath()
@@ -1714,14 +1747,17 @@ public static enum io.github.mbackschat.a12.dm.rulekit.dsl.FieldRounding.Mode
   public static io.github.mbackschat.a12.dm.rulekit.dsl.FieldRounding.Mode valueOf(java.lang.String)
   public static io.github.mbackschat.a12.dm.rulekit.dsl.FieldRounding.Mode[] values()
 
-public record io.github.mbackschat.a12.dm.rulekit.dsl.FieldValue implements io.github.mbackschat.a12.dm.rulekit.dsl.Calculation
+public record io.github.mbackschat.a12.dm.rulekit.dsl.FieldValue implements io.github.mbackschat.a12.dm.rulekit.dsl.Calculation, io.github.mbackschat.a12.dm.rulekit.dsl.DuplicateOperand
   public FieldValue(io.github.mbackschat.a12.dm.rulekit.dsl.FieldRef)
   public FieldValue(io.github.mbackschat.a12.dm.rulekit.dsl.FieldRef, boolean)
   public final boolean equals(java.lang.Object)
+  public java.util.Optional<java.lang.String> exactIdentity()
   public io.github.mbackschat.a12.dm.rulekit.dsl.FieldRef field()
+  public java.lang.String fieldPath()
   public final int hashCode()
   public io.github.mbackschat.a12.dm.core.ValueKind kind()
   public boolean outer()
+  public java.lang.String renderedPath()
   public final java.lang.String toString()
 
 public record io.github.mbackschat.a12.dm.rulekit.dsl.FieldValueAsNumber implements io.github.mbackschat.a12.dm.rulekit.dsl.Calculation
@@ -1744,12 +1780,14 @@ public record io.github.mbackschat.a12.dm.rulekit.dsl.FieldValueAsString impleme
   public java.lang.String operatorId()
   public final java.lang.String toString()
 
-public final class io.github.mbackschat.a12.dm.rulekit.dsl.FirstFilledOperand
+public final class io.github.mbackschat.a12.dm.rulekit.dsl.FirstFilledOperand implements io.github.mbackschat.a12.dm.rulekit.dsl.DuplicateOperand
   public java.util.Optional<java.lang.String> category()
   public boolean equals(java.lang.Object)
+  public java.util.Optional<java.lang.String> exactIdentity()
   public java.util.List<io.github.mbackschat.a12.dm.rulekit.dsl.FieldRef> expandedGroupFields()
   public boolean expandsToList()
   public java.util.Optional<io.github.mbackschat.a12.dm.rulekit.dsl.FieldOperand> field()
+  public java.lang.String fieldPath()
   public io.github.mbackschat.a12.dm.rulekit.dsl.FirstFilledOperand forIndex(io.github.mbackschat.a12.dm.rulekit.dsl.FieldRef)
   public io.github.mbackschat.a12.dm.rulekit.dsl.FirstFilledOperand forIndex(java.lang.String)
   public java.util.Optional<io.github.mbackschat.a12.dm.rulekit.dsl.GroupListRef> group()
@@ -1759,6 +1797,7 @@ public final class io.github.mbackschat.a12.dm.rulekit.dsl.FirstFilledOperand
   public static io.github.mbackschat.a12.dm.rulekit.dsl.FirstFilledOperand of(io.github.mbackschat.a12.dm.rulekit.dsl.FieldOperand)
   public io.github.mbackschat.a12.dm.rulekit.dsl.FirstFilledOperand outer()
   public boolean outerReference()
+  public java.lang.String overlapModifier()
   public java.lang.String renderedPath()
   public java.util.Optional<io.github.mbackschat.a12.dm.rulekit.dsl.FirstFilledOperand.SemanticIndexKey> semanticIndex()
   public java.lang.String toString()
@@ -1818,7 +1857,7 @@ public final class io.github.mbackschat.a12.dm.rulekit.dsl.GroupInfo
   public java.lang.String toString()
   public java.util.Optional<java.lang.String> usageType()
 
-public sealed interface io.github.mbackschat.a12.dm.rulekit.dsl.GroupListOperand
+public sealed interface io.github.mbackschat.a12.dm.rulekit.dsl.GroupListOperand extends io.github.mbackschat.a12.dm.rulekit.dsl.DuplicateOperand
 
 public final class io.github.mbackschat.a12.dm.rulekit.dsl.GroupListPredicate implements io.github.mbackschat.a12.dm.rulekit.dsl.Condition
   public GroupListPredicate(io.github.mbackschat.a12.dm.rulekit.dsl.GroupQuantifier, java.util.List<io.github.mbackschat.a12.dm.rulekit.dsl.GroupRef>)
@@ -1835,6 +1874,7 @@ public record io.github.mbackschat.a12.dm.rulekit.dsl.GroupListRef implements io
   public GroupListRef(io.github.mbackschat.a12.dm.rulekit.dsl.GroupRef, java.util.List<io.github.mbackschat.a12.dm.rulekit.dsl.GroupRef>, boolean)
   public boolean correlated()
   public final boolean equals(java.lang.Object)
+  public java.util.Optional<java.lang.String> exactIdentity()
   public java.lang.String fieldPath()
   public java.util.List<io.github.mbackschat.a12.dm.rulekit.dsl.GroupRef> flattened()
   public io.github.mbackschat.a12.dm.rulekit.dsl.GroupRef group()
@@ -1898,10 +1938,12 @@ public record io.github.mbackschat.a12.dm.rulekit.dsl.GroupSemanticIndexValue im
 
 public sealed interface io.github.mbackschat.a12.dm.rulekit.dsl.IndexedFieldValue extends io.github.mbackschat.a12.dm.rulekit.dsl.Calculation, io.github.mbackschat.a12.dm.rulekit.dsl.FieldOperand
   public default java.lang.String duplicateIdentity()
+  public default java.util.Optional<java.lang.String> exactIdentity()
   public abstract io.github.mbackschat.a12.dm.rulekit.dsl.FieldRef field()
   public default java.lang.String fieldPath()
   public default io.github.mbackschat.a12.dm.rulekit.dsl.FirstFilledOperand firstFilledOperand()
   public abstract java.lang.String operatorId()
+  public default java.lang.String overlapModifier()
   public default java.lang.String renderedPath()
 
 public record io.github.mbackschat.a12.dm.rulekit.dsl.IndexedFieldValueAsString implements io.github.mbackschat.a12.dm.rulekit.dsl.Calculation
@@ -1915,7 +1957,10 @@ public record io.github.mbackschat.a12.dm.rulekit.dsl.IndexedFieldValueAsString 
 
 public sealed interface io.github.mbackschat.a12.dm.rulekit.dsl.IndexedGroupValue extends io.github.mbackschat.a12.dm.rulekit.dsl.AggregateOperand, io.github.mbackschat.a12.dm.rulekit.dsl.GroupListOperand
   public default java.lang.String duplicateIdentity()
+  public default java.util.Optional<java.lang.String> exactIdentity()
+  public default java.lang.String fieldPath()
   public abstract io.github.mbackschat.a12.dm.rulekit.dsl.GroupListRef group()
+  public default java.lang.String overlapModifier()
   public default java.lang.String renderedPath()
 
 public record io.github.mbackschat.a12.dm.rulekit.dsl.IndexedPresenceCondition implements io.github.mbackschat.a12.dm.rulekit.dsl.Condition
@@ -2505,9 +2550,7 @@ public record io.github.mbackschat.a12.dm.rulekit.dsl.ValueListCondition impleme
   public final java.lang.String toString()
   public java.util.List<io.github.mbackschat.a12.dm.rulekit.dsl.Calculation> values()
 
-public sealed interface io.github.mbackschat.a12.dm.rulekit.dsl.ValueListOperand
-  public abstract java.lang.String fieldPath()
-  public abstract java.lang.String renderedPath()
+public sealed interface io.github.mbackschat.a12.dm.rulekit.dsl.ValueListOperand extends io.github.mbackschat.a12.dm.rulekit.dsl.DuplicateOperand
 
 public enum io.github.mbackschat.a12.dm.rulekit.dsl.ValueListQuantifier
   public static final io.github.mbackschat.a12.dm.rulekit.dsl.ValueListQuantifier AT_LEAST_ONE_DATE_RANGE_OVERLAPS
@@ -2827,6 +2870,7 @@ public enum io.github.mbackschat.a12.dm.rulekit.validate.RkCode
   public java.lang.String code()
   public java.lang.String fix()
   public java.lang.String meaning()
+  public boolean predictsKernelRefusal()
   public io.github.mbackschat.a12.dm.core.Severity severity()
   public io.github.mbackschat.a12.dm.rulekit.validate.DiagnosticSource source()
   public static io.github.mbackschat.a12.dm.rulekit.validate.RkCode valueOf(java.lang.String)
