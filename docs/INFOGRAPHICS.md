@@ -734,7 +734,7 @@ Exact content:
 - Kotlin size: "34.9 kLOC"
 - Row label: "STRUCTURE"
 - Java structure: "dmkits • adapter • cli"
-- Kotlin structure: "interpreter • adapter laws (tests)"
+- Kotlin structure: "interpreter • consistency • predicates • façades"
 - Row label: "FUNCTION"
 - Java function: "Model tooling • Kernel integration • CLI/MCP"
 - Kotlin function: "Validation • computation"
@@ -1123,3 +1123,4 @@ Add one row per accepted generation or targeted edit. Record rejected attempts o
 | 2026-08-30 | JSON Schema functionality | Initial built-in ImageGen generation, then focused source-icon and exact-token edits | Accepted at 864 × 1821. Keep the asymmetric import/export columns, use neutral schema-document symbols instead of product logos, and spell code-shaped labels such as `array<object>` and `dependentRequired` exactly. |
 | 2026-08-30 | Semantic model diff | Initial built-in ImageGen generation, then a focused header-contrast edit | Accepted at 1024 × 1536. Keep the sequential review pipeline, preserve the distinct structural-versus-text comparison boundary, and render the title against a light header so it remains legible at README preview width. |
 | 2026-08-30 | JSON Schema functionality | Rebuilt as a wide four-column layout, corrected the export endpoint, then restored the exact `array<object>` token | Accepted at 1536 × 1024. Wide infographics are valid when the topology benefits; connect import and export to the same external-schema node so both direction and target remain explicit. |
+| 2026-09-20 | Kotlin, GraalVM, and A12 Kernel roles | Prompt-only edit: the SIZE row and the Kotlin STRUCTURE cell. **No generation ran, so the accepted PNG still carries the superseded `47.7`/`19.1 kLOC` and a Kotlin STRUCTURE cell reading "interpreter • adapter laws (tests)".** | Two reusable lessons, both about what the prompt-to-table binding cannot reach. (1) The kLOC row was wrong because the OWNING Source Statistics table had never counted `:consistency` or `:predicates` — the earlier note here said to run `update-code-statistics.sh --check` before freezing a count, and the gap it missed is that the table can be internally consistent and still omit whole modules, so check the updater's source-set LISTS too. (2) The Kotlin STRUCTURE cell had drifted silently: it named one of five Kotlin production modules and then named tests, contradicting this poster's own production-only caption and the explicit "do not imply that adapter laws are production Kotlin" constraint twenty lines below it. A cell that enumerates modules is as volatile as a count and has no binding at all. |

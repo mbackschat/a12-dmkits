@@ -158,6 +158,107 @@ class InfographicAssetGuardTest {
         }
     }
 
+    /**
+     * <b>The cell beside those counts enumerates modules, and it is exactly as volatile with no binding at
+     * all.</b> Measured 2026-09-20: while the kLOC row above was guarded and merely stale, the Kotlin
+     * {@code STRUCTURE} cell read {@code "interpreter • adapter laws (tests)"} — it named one of five Kotlin
+     * production modules and then named <em>tests</em>, contradicting both the poster's own production-only
+     * caption and the prompt's explicit "do not imply that adapter laws are production Kotlin" constraint
+     * twenty lines below it. Nothing could see that, because a count has an owning table and a prose cell
+     * does not.
+     *
+     * <p>So this binds the cell to the repository rather than to a table. It asserts the two things that
+     * failed and nothing more, because a guard demanding an exact module list would force a poster label
+     * nobody can read: the cell must name every <em>major</em> Kotlin production module, and it must not
+     * describe production Kotlin in test vocabulary. "Major" is a share of the Kotlin production files rather
+     * than a pinned list, so a new leaf module does not fail the build while a new engine does — which is the
+     * only case where the poster is actually wrong.
+     */
+    @Test
+    void theLanguageStructureCellNamesEveryMajorKotlinProductionModule() throws IOException {
+        var cell = languageStructureCell(Files.readString(SPECIFICATION), "Kotlin");
+
+        for (var module : majorKotlinProductionModules()) {
+            assertTrue(cell.contains(module), () ->
+                    "the language infographic's Kotlin STRUCTURE cell does not name the major Kotlin production "
+                    + "module '" + module + "'. A reader is shown a composition the repository contradicts, and "
+                    + "no count guard can see it. Cell: \"" + cell + "\"");
+        }
+        assertTrue(TEST_VOCABULARY.stream().noneMatch(cell::contains), () ->
+                "the language infographic's Kotlin STRUCTURE cell describes production Kotlin in test "
+                + "vocabulary, which the poster's own production-only caption and its \"do not imply that "
+                + "adapter laws are production Kotlin\" constraint both forbid. Cell: \"" + cell + "\"");
+    }
+
+    /**
+     * Does-fire proof on the exact text that shipped, because the live prompt is green and a green assertion
+     * proves only that it ran. Both arms must fire on {@code "interpreter • adapter laws (tests)"}: it omits
+     * {@code consistency} — 136 of the 274 Kotlin production files — and it names tests.
+     */
+    @Test
+    void theStructureCellGuardFiresOnTheCellThatShipped() throws IOException {
+        var shipped = "interpreter • adapter laws (tests)";
+
+        assertTrue(majorKotlinProductionModules().stream().anyMatch(module -> !shipped.contains(module)),
+                "the major-module arm must reject the cell that shipped, or it is checking nothing");
+        assertTrue(TEST_VOCABULARY.stream().anyMatch(shipped::contains),
+                "the test-vocabulary arm must reject the cell that shipped, or it is checking nothing");
+    }
+
+    /** Words that describe verification, which the production-only caption forbids in this cell. */
+    private static final List<String> TEST_VOCABULARY = List.of("test", "laws", "fixture");
+
+    /** The share of Kotlin production files above which a module must be named on the poster. */
+    private static final double MAJOR_MODULE_SHARE = 0.10;
+
+    /**
+     * Kotlin production modules carrying at least {@link #MAJOR_MODULE_SHARE} of the estate's Kotlin
+     * production files. Derived from the source tree, so it tracks a module being added or emptied. Only
+     * {@code main}/{@code commonMain}/{@code jvmMain}/{@code jsMain} count — the caption says production.
+     */
+    private static List<String> majorKotlinProductionModules() throws IOException {
+        var perModule = new java.util.TreeMap<String, Long>();
+        try (var modules = Files.list(ROOT)) {
+            for (var module : modules.filter(Files::isDirectory).toList()) {
+                var count = kotlinProductionFiles(module);
+                if (count > 0) {
+                    perModule.put(module.getFileName().toString(), count);
+                }
+            }
+        }
+        var total = perModule.values().stream().mapToLong(Long::longValue).sum();
+        assertTrue(total > 0, "found no Kotlin production source at all, so this scan broke");
+        return perModule.entrySet().stream()
+                .filter(entry -> entry.getValue() >= total * MAJOR_MODULE_SHARE)
+                .map(java.util.Map.Entry::getKey)
+                .toList();
+    }
+
+    private static long kotlinProductionFiles(Path module) throws IOException {
+        long count = 0;
+        for (var sourceSet : List.of("main", "commonMain", "jvmMain", "jsMain")) {
+            var root = module.resolve("src").resolve(sourceSet).resolve("kotlin");
+            if (!Files.isDirectory(root)) {
+                continue;
+            }
+            try (var files = Files.walk(root)) {
+                count += files.filter(Files::isRegularFile)
+                        .filter(file -> file.toString().endsWith(".kt"))
+                        .count();
+            }
+        }
+        return count;
+    }
+
+    /** The value of one column's {@code STRUCTURE} line in the language-comparison prompt. */
+    private static String languageStructureCell(String specification, String language) {
+        var prefix = "- " + language + " structure: \"";
+        var start = specification.indexOf(prefix);
+        assertTrue(start >= 0, () -> "the language infographic prompt has no '" + prefix + "…' line");
+        var from = start + prefix.length();
+        return specification.substring(from, specification.indexOf('"', from));
+    }
+
     private static boolean isPng(Path file) throws IOException {
         var bytes = Files.readAllBytes(file);
         return bytes.length >= 8
