@@ -6128,6 +6128,519 @@
         "dsl": "False",
         "verdict": "ACCEPTED"
       }
+    },
+    {
+      "id": "AllFieldsFilled.duplicate",
+      "operator": "AllFieldsFilled",
+      "kind": "CONDITION",
+      "fixture": "ORDER",
+      "trigger": {
+        "group": "/Order",
+        "field": "../CustomerName",
+        "dsl": "FieldFilled(CustomerName) And AllFieldsFilled(Quantity, Quantity)",
+        "verdict": "REJECTED",
+        "code": "MVK_DUPLICATE_PARAM1"
+      },
+      "control": {
+        "group": "/Order",
+        "field": "../CustomerName",
+        "dsl": "FieldFilled(CustomerName) And AllFieldsFilled(Items*/Count, Items*/Count)",
+        "verdict": "ACCEPTED"
+      }
+    },
+    {
+      "id": "AllFieldsFilled.containment",
+      "operator": "AllFieldsFilled",
+      "kind": "CONDITION",
+      "fixture": "ORDER",
+      "trigger": {
+        "group": "/Order",
+        "field": "../CustomerName",
+        "dsl": "FieldFilled(CustomerName) And AllFieldsFilled(ShippingAddress, ShippingAddress/City)",
+        "verdict": "REJECTED",
+        "code": "MVK_DUPLICATE_PARAM2"
+      },
+      "control": {
+        "group": "/Order",
+        "field": "../CustomerName",
+        "dsl": "FieldFilled(CustomerName) And AllFieldsFilled(ShippingAddress, BillingAddress)",
+        "verdict": "ACCEPTED"
+      }
+    },
+    {
+      "id": "NoFieldFilled.duplicate",
+      "operator": "NoFieldFilled",
+      "kind": "CONDITION",
+      "fixture": "ORDER",
+      "trigger": {
+        "group": "/Order",
+        "field": "../CustomerName",
+        "dsl": "FieldFilled(CustomerName) And NoFieldFilled(Quantity, Quantity)",
+        "verdict": "REJECTED",
+        "code": "MVK_DUPLICATE_PARAM1"
+      },
+      "control": {
+        "group": "/Order",
+        "field": "../CustomerName",
+        "dsl": "FieldFilled(CustomerName) And NoFieldFilled(Items*/Count, Items*/Count)",
+        "verdict": "ACCEPTED"
+      }
+    },
+    {
+      "id": "NoFieldFilled.containment",
+      "operator": "NoFieldFilled",
+      "kind": "CONDITION",
+      "fixture": "ORDER",
+      "trigger": {
+        "group": "/Order",
+        "field": "../CustomerName",
+        "dsl": "FieldFilled(CustomerName) And NoFieldFilled(ShippingAddress, ShippingAddress/City)",
+        "verdict": "REJECTED",
+        "code": "MVK_DUPLICATE_PARAM2"
+      },
+      "control": {
+        "group": "/Order",
+        "field": "../CustomerName",
+        "dsl": "FieldFilled(CustomerName) And NoFieldFilled(ShippingAddress, BillingAddress)",
+        "verdict": "ACCEPTED"
+      }
+    },
+    {
+      "id": "AtLeastOneFieldFilled.duplicate",
+      "operator": "AtLeastOneFieldFilled",
+      "kind": "CONDITION",
+      "fixture": "ORDER",
+      "trigger": {
+        "group": "/Order",
+        "field": "../CustomerName",
+        "dsl": "FieldFilled(CustomerName) And AtLeastOneFieldFilled(Quantity, Quantity)",
+        "verdict": "REJECTED",
+        "code": "MVK_DUPLICATE_PARAM1"
+      },
+      "control": {
+        "group": "/Order",
+        "field": "../CustomerName",
+        "dsl": "FieldFilled(CustomerName) And AtLeastOneFieldFilled(Items*/Count, Items*/Count)",
+        "verdict": "ACCEPTED"
+      }
+    },
+    {
+      "id": "AtLeastOneFieldFilled.containment",
+      "operator": "AtLeastOneFieldFilled",
+      "kind": "CONDITION",
+      "fixture": "ORDER",
+      "trigger": {
+        "group": "/Order",
+        "field": "../CustomerName",
+        "dsl": "FieldFilled(CustomerName) And AtLeastOneFieldFilled(ShippingAddress, ShippingAddress/City)",
+        "verdict": "REJECTED",
+        "code": "MVK_DUPLICATE_PARAM2"
+      },
+      "control": {
+        "group": "/Order",
+        "field": "../CustomerName",
+        "dsl": "FieldFilled(CustomerName) And AtLeastOneFieldFilled(ShippingAddress, BillingAddress)",
+        "verdict": "ACCEPTED"
+      }
+    },
+    {
+      "id": "NotAllFieldsFilled.duplicate",
+      "operator": "NotAllFieldsFilled",
+      "kind": "CONDITION",
+      "fixture": "ORDER",
+      "trigger": {
+        "group": "/Order",
+        "field": "../CustomerName",
+        "dsl": "FieldFilled(CustomerName) And NotAllFieldsFilled(Quantity, Quantity)",
+        "verdict": "REJECTED",
+        "code": "MVK_DUPLICATE_PARAM1"
+      },
+      "control": {
+        "group": "/Order",
+        "field": "../CustomerName",
+        "dsl": "FieldFilled(CustomerName) And NotAllFieldsFilled(Items*/Count, Items*/Count)",
+        "verdict": "ACCEPTED"
+      }
+    },
+    {
+      "id": "NotAllFieldsFilled.containment",
+      "operator": "NotAllFieldsFilled",
+      "kind": "CONDITION",
+      "fixture": "ORDER",
+      "trigger": {
+        "group": "/Order",
+        "field": "../CustomerName",
+        "dsl": "FieldFilled(CustomerName) And NotAllFieldsFilled(ShippingAddress, ShippingAddress/City)",
+        "verdict": "REJECTED",
+        "code": "MVK_DUPLICATE_PARAM2"
+      },
+      "control": {
+        "group": "/Order",
+        "field": "../CustomerName",
+        "dsl": "FieldFilled(CustomerName) And NotAllFieldsFilled(ShippingAddress, BillingAddress)",
+        "verdict": "ACCEPTED"
+      }
+    },
+    {
+      "id": "FieldsNotCollectivelyFilled.duplicate",
+      "operator": "FieldsNotCollectivelyFilled",
+      "kind": "CONDITION",
+      "fixture": "ORDER",
+      "trigger": {
+        "group": "/Order",
+        "field": "../CustomerName",
+        "dsl": "FieldFilled(CustomerName) And FieldsNotCollectivelyFilled(Quantity, Quantity)",
+        "verdict": "REJECTED",
+        "code": "MVK_DUPLICATE_PARAM1"
+      },
+      "control": {
+        "group": "/Order",
+        "field": "../CustomerName",
+        "dsl": "FieldFilled(CustomerName) And FieldsNotCollectivelyFilled(Items*/Count, Items*/Count)",
+        "verdict": "ACCEPTED"
+      }
+    },
+    {
+      "id": "FieldsNotCollectivelyFilled.containment",
+      "operator": "FieldsNotCollectivelyFilled",
+      "kind": "CONDITION",
+      "fixture": "ORDER",
+      "trigger": {
+        "group": "/Order",
+        "field": "../CustomerName",
+        "dsl": "FieldFilled(CustomerName) And FieldsNotCollectivelyFilled(ShippingAddress, ShippingAddress/City)",
+        "verdict": "REJECTED",
+        "code": "MVK_DUPLICATE_PARAM2"
+      },
+      "control": {
+        "group": "/Order",
+        "field": "../CustomerName",
+        "dsl": "FieldFilled(CustomerName) And FieldsNotCollectivelyFilled(ShippingAddress, BillingAddress)",
+        "verdict": "ACCEPTED"
+      }
+    },
+    {
+      "id": "NotExactlyOneFieldFilled.duplicate",
+      "operator": "NotExactlyOneFieldFilled",
+      "kind": "CONDITION",
+      "fixture": "ORDER",
+      "trigger": {
+        "group": "/Order",
+        "field": "../CustomerName",
+        "dsl": "FieldFilled(CustomerName) And NotExactlyOneFieldFilled(Quantity, Quantity)",
+        "verdict": "REJECTED",
+        "code": "MVK_DUPLICATE_PARAM1"
+      },
+      "control": {
+        "group": "/Order",
+        "field": "../CustomerName",
+        "dsl": "FieldFilled(CustomerName) And NotExactlyOneFieldFilled(Items*/Count, Items*/Count)",
+        "verdict": "ACCEPTED"
+      }
+    },
+    {
+      "id": "NotExactlyOneFieldFilled.containment",
+      "operator": "NotExactlyOneFieldFilled",
+      "kind": "CONDITION",
+      "fixture": "ORDER",
+      "trigger": {
+        "group": "/Order",
+        "field": "../CustomerName",
+        "dsl": "FieldFilled(CustomerName) And NotExactlyOneFieldFilled(ShippingAddress, ShippingAddress/City)",
+        "verdict": "REJECTED",
+        "code": "MVK_DUPLICATE_PARAM2"
+      },
+      "control": {
+        "group": "/Order",
+        "field": "../CustomerName",
+        "dsl": "FieldFilled(CustomerName) And NotExactlyOneFieldFilled(ShippingAddress, BillingAddress)",
+        "verdict": "ACCEPTED"
+      }
+    },
+    {
+      "id": "MoreThanOneFieldFilled.duplicate",
+      "operator": "MoreThanOneFieldFilled",
+      "kind": "CONDITION",
+      "fixture": "ORDER",
+      "trigger": {
+        "group": "/Order",
+        "field": "../CustomerName",
+        "dsl": "FieldFilled(CustomerName) And MoreThanOneFieldFilled(Quantity, Quantity)",
+        "verdict": "REJECTED",
+        "code": "MVK_DUPLICATE_PARAM1"
+      },
+      "control": {
+        "group": "/Order",
+        "field": "../CustomerName",
+        "dsl": "FieldFilled(CustomerName) And MoreThanOneFieldFilled(Items*/Count, Items*/Count)",
+        "verdict": "ACCEPTED"
+      }
+    },
+    {
+      "id": "MoreThanOneFieldFilled.containment",
+      "operator": "MoreThanOneFieldFilled",
+      "kind": "CONDITION",
+      "fixture": "ORDER",
+      "trigger": {
+        "group": "/Order",
+        "field": "../CustomerName",
+        "dsl": "FieldFilled(CustomerName) And MoreThanOneFieldFilled(ShippingAddress, ShippingAddress/City)",
+        "verdict": "REJECTED",
+        "code": "MVK_DUPLICATE_PARAM2"
+      },
+      "control": {
+        "group": "/Order",
+        "field": "../CustomerName",
+        "dsl": "FieldFilled(CustomerName) And MoreThanOneFieldFilled(ShippingAddress, BillingAddress)",
+        "verdict": "ACCEPTED"
+      }
+    },
+    {
+      "id": "FieldValuesNotUnique.duplicate",
+      "operator": "FieldValuesNotUnique",
+      "kind": "CONDITION",
+      "fixture": "ORDER",
+      "trigger": {
+        "group": "/Order",
+        "field": "../CustomerName",
+        "dsl": "FieldFilled(CustomerName) And FieldValuesNotUnique(Quantity, Quantity)",
+        "verdict": "REJECTED",
+        "code": "MVK_DUPLICATE_PARAM1"
+      },
+      "control": {
+        "group": "/Order",
+        "field": "../CustomerName",
+        "dsl": "FieldFilled(CustomerName) And FieldValuesNotUnique(Items*/Count, Items*/Count)",
+        "verdict": "ACCEPTED"
+      }
+    },
+    {
+      "id": "FieldValuesNotUnique.containment",
+      "operator": "FieldValuesNotUnique",
+      "kind": "CONDITION",
+      "fixture": "ORDER",
+      "trigger": {
+        "group": "/Order",
+        "field": "../CustomerName",
+        "dsl": "FieldFilled(CustomerName) And FieldValuesNotUnique(ShippingAddress, ShippingAddress/City)",
+        "verdict": "REJECTED",
+        "code": "MVK_DUPLICATE_PARAM2"
+      },
+      "control": {
+        "group": "/Order",
+        "field": "../CustomerName",
+        "dsl": "FieldFilled(CustomerName) And FieldValuesNotUnique(ShippingAddress/Street, ShippingAddress/City)",
+        "verdict": "ACCEPTED"
+      }
+    },
+    {
+      "id": "DateRangesOverlap.duplicate",
+      "operator": "DateRangesOverlap",
+      "kind": "CONDITION",
+      "fixture": "ORDER",
+      "trigger": {
+        "group": "/Order",
+        "field": "../CustomerName",
+        "dsl": "FieldFilled(CustomerName) And DateRangesOverlap(CoverageWindow, CoverageWindow)",
+        "verdict": "REJECTED",
+        "code": "MVK_DUPLICATE_PARAM1"
+      },
+      "control": {
+        "group": "/Order",
+        "field": "../CustomerName",
+        "dsl": "FieldFilled(CustomerName) And DateRangesOverlap(Items*/ItemCoverage, Items*/ItemCoverage)",
+        "verdict": "ACCEPTED"
+      }
+    },
+    {
+      "id": "DateRangesOverlap.containment",
+      "operator": "DateRangesOverlap",
+      "kind": "CONDITION",
+      "fixture": "ORDER",
+      "trigger": {
+        "group": "/Order",
+        "field": "../CustomerName",
+        "dsl": "FieldFilled(CustomerName) And DateRangesOverlap(Items*, Items*/ItemCoverage)",
+        "verdict": "REJECTED",
+        "code": "MVK_DUPLICATE_PARAM2"
+      },
+      "control": {
+        "group": "/Order",
+        "field": "../CustomerName",
+        "dsl": "FieldFilled(CustomerName) And DateRangesOverlap(CoverageWindow, Items*/ItemCoverage)",
+        "verdict": "ACCEPTED"
+      }
+    },
+    {
+      "id": "DateRangesOverlap.group-alone",
+      "operator": "DateRangesOverlap",
+      "kind": "CONDITION",
+      "fixture": "ORDER",
+      "trigger": {
+        "group": "/Order",
+        "field": "../CustomerName",
+        "dsl": "FieldFilled(CustomerName) And DateRangesOverlap(ShippingAddress, CoverageWindow)",
+        "verdict": "REJECTED",
+        "code": "MVK_NO_GROUPS_ALLOWED"
+      },
+      "control": {
+        "group": "/Order",
+        "field": "../CustomerName",
+        "dsl": "FieldFilled(CustomerName) And DateRangesOverlap(CoverageWindow, Items*/ItemCoverage)",
+        "verdict": "ACCEPTED"
+      }
+    },
+    {
+      "id": "AtLeastOneDateRangeOverlaps.cross-list-duplicate",
+      "operator": "AtLeastOneDateRangeOverlaps",
+      "kind": "CONDITION",
+      "fixture": "ORDER",
+      "trigger": {
+        "group": "/Order",
+        "field": "../CustomerName",
+        "dsl": "FieldFilled(CustomerName) And AtLeastOneDateRangeOverlaps(CoverageWindow In CoverageWindow)",
+        "verdict": "REJECTED",
+        "code": "MVK_DUPLICATE_PARAM1"
+      },
+      "control": {
+        "group": "/Order",
+        "field": "../CustomerName",
+        "dsl": "FieldFilled(CustomerName) And AtLeastOneDateRangeOverlaps(CoverageWindow In Items*/ItemCoverage)",
+        "verdict": "ACCEPTED"
+      }
+    },
+    {
+      "id": "AtLeastOneDateRangeOverlaps.starred-subject",
+      "operator": "AtLeastOneDateRangeOverlaps",
+      "kind": "CONDITION",
+      "fixture": "ORDER",
+      "trigger": {
+        "group": "/Order",
+        "field": "../CustomerName",
+        "dsl": "FieldFilled(CustomerName) And AtLeastOneDateRangeOverlaps(Items*/ItemCoverage In CoverageWindow)",
+        "verdict": "REJECTED",
+        "code": "MVK_INVALID_PARAMETER_FOR_DATE_RANGE_COMPARISON"
+      },
+      "control": {
+        "group": "/Order",
+        "field": "../CustomerName",
+        "dsl": "FieldFilled(CustomerName) And AtLeastOneDateRangeOverlaps(CoverageWindow In Items*/ItemCoverage, Items*/ItemCoverage)",
+        "verdict": "ACCEPTED"
+      }
+    },
+    {
+      "id": "RepetitionNotUnique.duplicate-key",
+      "operator": "RepetitionNotUnique",
+      "kind": "CONDITION",
+      "fixture": "ORDER",
+      "trigger": {
+        "group": "/Order",
+        "field": "../Items/Sku",
+        "dsl": "RepetitionNotUnique(Items/Sku, Items/Sku)",
+        "verdict": "REJECTED",
+        "code": "MVK_DUPLICATE_PARAM1"
+      },
+      "control": {
+        "group": "/Order",
+        "field": "../Items/Sku",
+        "dsl": "RepetitionNotUnique(Items/Sku, Items/Count)",
+        "verdict": "ACCEPTED"
+      }
+    },
+    {
+      "id": "RepetitionNotUnique.correlated-key-twin",
+      "operator": "RepetitionNotUnique",
+      "kind": "CONDITION",
+      "fixture": "ORDER",
+      "trigger": {
+        "group": "/Order",
+        "field": "../Items/Sku",
+        "dsl": "RepetitionNotUnique($Items/Sku, Items/Sku)",
+        "verdict": "REJECTED",
+        "code": "MVK_INVALID_OUTER_ITERATION"
+      },
+      "control": {
+        "group": "/Order",
+        "field": "../Items/Sku",
+        "dsl": "RepetitionNotUnique(Items/Sku, Items/Count)",
+        "verdict": "ACCEPTED"
+      }
+    },
+    {
+      "id": "FieldValueIncludedInValueList.subject-in-its-own-list",
+      "operator": "FieldValueIncludedInValueList",
+      "kind": "CONDITION",
+      "fixture": "ORDER",
+      "trigger": {
+        "group": "/Order",
+        "field": "../CustomerName",
+        "dsl": "FieldFilled(CustomerName) And FieldValueIncludedInValueList(CustomerName, [CustomerName])",
+        "verdict": "REJECTED",
+        "code": "MVK_DUPLICATE_PARAM1"
+      },
+      "control": {
+        "group": "/Order",
+        "field": "../CustomerName",
+        "dsl": "FieldFilled(CustomerName) And FieldValueIncludedInValueList(CustomerName, [ProductCode])",
+        "verdict": "ACCEPTED"
+      }
+    },
+    {
+      "id": "FieldValueIncludedInValueList.group-operand",
+      "operator": "FieldValueIncludedInValueList",
+      "kind": "CONDITION",
+      "fixture": "ORDER",
+      "trigger": {
+        "group": "/Order",
+        "field": "../CustomerName",
+        "dsl": "FieldFilled(CustomerName) And FieldValueIncludedInValueList(CustomerName, [ShippingAddress])",
+        "verdict": "REJECTED",
+        "code": "MVK_NO_GROUPS_ALLOWED"
+      },
+      "control": {
+        "group": "/Order",
+        "field": "../CustomerName",
+        "dsl": "FieldFilled(CustomerName) And FieldValueIncludedInValueList(CustomerName, [ProductCode])",
+        "verdict": "ACCEPTED"
+      }
+    },
+    {
+      "id": "AtLeastOneFieldValueIncludedInValueList.cross-list-duplicate",
+      "operator": "AtLeastOneFieldValueIncludedInValueList",
+      "kind": "CONDITION",
+      "fixture": "ORDER",
+      "trigger": {
+        "group": "/Order",
+        "field": "../CustomerName",
+        "dsl": "FieldFilled(CustomerName) And AtLeastOneFieldValueIncludedInValueList(Priority In Priority)",
+        "verdict": "REJECTED",
+        "code": "MVK_DUPLICATE_PARAM1"
+      },
+      "control": {
+        "group": "/Order",
+        "field": "../CustomerName",
+        "dsl": "FieldFilled(CustomerName) And AtLeastOneFieldValueIncludedInValueList(Priority In RushLevel)",
+        "verdict": "ACCEPTED"
+      }
+    },
+    {
+      "id": "AtLeastOneFieldValueIncludedInValueList.containment",
+      "operator": "AtLeastOneFieldValueIncludedInValueList",
+      "kind": "CONDITION",
+      "fixture": "ORDER",
+      "trigger": {
+        "group": "/Order",
+        "field": "../CustomerName",
+        "dsl": "FieldFilled(CustomerName) And NoFieldValueIncludedInValueList(ShippingAddress, ShippingAddress/City In \"x\")",
+        "verdict": "REJECTED",
+        "code": "MVK_DUPLICATE_PARAM2"
+      },
+      "control": {
+        "group": "/Order",
+        "field": "../CustomerName",
+        "dsl": "FieldFilled(CustomerName) And NoFieldValueIncludedInValueList(ShippingAddress/Street, ShippingAddress/City In \"x\")",
+        "verdict": "ACCEPTED"
+      }
     }
   ]
 }
