@@ -22,8 +22,10 @@ import java.util.Set;
  * They restate the same fact, so a lock belongs here — but the ledger's conformance column has since grown
  * two further dimensions this closed vocabulary cannot express: a {@code / checker-reported} half that
  * {@code CheckerLedgerDispositionGuardTest} derives from the portable checker's own sources, and per-row
- * reachability qualifiers. Forty-three rows carry {@code checker-reported} with no conformance atom beside
- * it, and 76 rows disagree with the seeding below. Reconciling the two taxonomies is a decision about what
+ * reachability qualifiers. Measured 2026-09-20, each quantity named because an earlier version of this
+ * paragraph stated two that could not be reproduced: this enum carries 307 codes against the ledger's 306
+ * {@code MVK_*} rows, 45 of those rows name no conformance atom at all, and of the 261 that do, 32 carry an
+ * atom set the seeding below does not. Reconciling the two taxonomies is a decision about what
  * that column means, not a merge; until it is taken, this enum's buckets are the kits' own statement and
  * {@code MVK-LEDGER.md} remains the measured record. Tracked in {@code docs/DEV-API-GAPS.md}.
  */
