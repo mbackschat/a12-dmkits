@@ -50,7 +50,7 @@ Its agreement with the kernel provider is held by `ConditionReadBackParityTest` 
 
 ## Reference
 
-Published as `io.github.mbackschat.a12.dm:dmkits-interpreter-bridge` (MIT). Kotlin/JVM, package `io.github.mbackschat.a12.dm.bridge`. The port is the only API; everything the mapping is built from is Kotlin `internal` — which is a compiler boundary, not a JVM one, so those classes are public in bytecode and appear in [`../api/dmkits-interpreter-bridge.api`](../api/dmkits-interpreter-bridge.api). They are implementation detail; the golden exists so movement in them is a reviewed diff.
+Its publication coordinate is `io.github.mbackschat.a12.dm:dmkits-interpreter-bridge` (MIT). Kotlin/JVM, package `io.github.mbackschat.a12.dm.bridge`. The port is the only API; everything the mapping is built from is Kotlin `internal` — which is a compiler boundary, not a JVM one, so those classes are public in bytecode and appear in [`../api/dmkits-interpreter-bridge.api`](../api/dmkits-interpreter-bridge.api). They are implementation detail; the golden exists so movement in them is a reviewed diff. The publish wiring is landed and the public deploy is **deferred** ([`../docs/RELEASE-SPEC.md`](../docs/RELEASE-SPEC.md) §11), so today you get it by `./build.sh publishToMavenLocal` and `mavenLocal()`, not from a registry.
 
 ```sh
 ./build.sh :interpreter-bridge:check   # check, not test — verifyInterpreterBridgePurity is the guard

@@ -32,7 +32,7 @@ It makes the condition typed, model-bound Java, so three of those four become co
 
 ## Reference
 
-Published as `io.github.mbackschat.a12.dm:dmkits-rulekit` (MIT). Packages `io.github.mbackschat.a12.dm.rulekit.*` (one strongly-connected component, deliberately). Depends on [`:core`](../core) and, for the laws it shares with the portable checker, [`:predicates`](../predicates). It has no dependency on [`:modelkit`](../modelkit) and modelkit has none on it — that boundary is a build-graph fact, not a convention.
+Its publication coordinate is `io.github.mbackschat.a12.dm:dmkits-rulekit` (MIT). Packages `io.github.mbackschat.a12.dm.rulekit.*` (one strongly-connected component, deliberately). Depends on [`:core`](../core) and, for the laws it shares with the portable checker, [`:predicates`](../predicates). It has no dependency on [`:modelkit`](../modelkit) and modelkit has none on it — that boundary is a build-graph fact, not a convention. The publish wiring is landed and the public deploy is **deferred** ([`../docs/RELEASE-SPEC.md`](../docs/RELEASE-SPEC.md) §11), so today you get it by `./build.sh publishToMavenLocal` and `mavenLocal()`, not from a registry.
 
 **Kernel-free:** no kernel type on any signature and none in the published POM (`verifyKitPurity` over compiled classes, `verifyPublishedClasspathsAreKernelFree` over what the POM resolves). Without a backend the kit still builds and renders, and reports `STRUCTURAL_ONLY` rather than claiming a confirmation.
 

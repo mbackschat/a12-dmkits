@@ -37,7 +37,7 @@ The reason is that a leaf which grows a dependency stops being a leaf and starts
 
 ## Reference
 
-Published as `io.github.mbackschat.a12.dm:dm-predicates` (MIT). Kotlin Multiplatform (JVM + JS), package `io.github.mbackschat.a12.dm.predicates`. It is published because `:rulekit`'s POM depends on it, and a shipped POM naming a coordinate nothing publishes is a consumer who cannot resolve the kit.
+Its publication coordinate is `io.github.mbackschat.a12.dm:dm-predicates` (MIT). Kotlin Multiplatform (JVM + JS), package `io.github.mbackschat.a12.dm.predicates`. It carries a coordinate of its own because `:rulekit`'s POM depends on it, and a shipped POM naming a coordinate nothing publishes is a consumer who cannot resolve the kit. Being multiplatform, that root coordinate is a Gradle-module marker; `dm-predicates-jvm` carries the JVM classes, so a mirror must ship both or resolution succeeds and links nothing usable. The publish wiring is landed and the public deploy is **deferred** ([`../docs/RELEASE-SPEC.md`](../docs/RELEASE-SPEC.md) §11), so today you get it by `./build.sh publishToMavenLocal` and `mavenLocal()`, not from a registry.
 
 ```sh
 ./build.sh :predicates:check   # check, not test

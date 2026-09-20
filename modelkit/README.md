@@ -24,7 +24,7 @@ This builds a model. To change one that already exists — add and remove fields
 
 ## Reference
 
-Published as `io.github.mbackschat.a12.dm:dmkits-modelkit` (MIT). Package `io.github.mbackschat.a12.dm.modelkit`. Depends on [`:core`](../core) and Jackson (`implementation`-scoped, so it never appears on a consumer's compile classpath). Kernel-free, guarded over both compiled classes and resolved POM.
+Its publication coordinate is `io.github.mbackschat.a12.dm:dmkits-modelkit` (MIT). Package `io.github.mbackschat.a12.dm.modelkit`. Depends on [`:core`](../core) and Jackson (`implementation`-scoped, so it never appears on a consumer's compile classpath). Kernel-free, guarded over both compiled classes and resolved POM. The publish wiring is landed and the public deploy is **deferred** ([`../docs/RELEASE-SPEC.md`](../docs/RELEASE-SPEC.md) §11), so today you get it by `./build.sh publishToMavenLocal` and `mavenLocal()`, not from a registry.
 
 ```sh
 ./build.sh :test   # the kits' suites span all four and run at the root project

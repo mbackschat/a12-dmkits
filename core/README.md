@@ -29,7 +29,7 @@ One law lives here rather than in a kit: `KernelPatternPolicy`, A12's pattern-ad
 
 ## Reference
 
-Published as `io.github.mbackschat.a12.dm:dmkits-core` (MIT). Package `io.github.mbackschat.a12.dm.core`. Layering is `core ← {rulekit, modelkit} ← edit`; consumed by every kit plus [`:schemakit`](../schemakit), [`:adapter`](../adapter) and [`:cli`](../cli).
+Its publication coordinate is `io.github.mbackschat.a12.dm:dmkits-core` (MIT). Package `io.github.mbackschat.a12.dm.core`. Layering is `core ← {rulekit, modelkit} ← edit`; consumed by every kit plus [`:schemakit`](../schemakit), [`:adapter`](../adapter) and [`:cli`](../cli). The publish wiring is landed and the public deploy is **deferred** ([`../docs/RELEASE-SPEC.md`](../docs/RELEASE-SPEC.md) §11), so today you get it by `./build.sh publishToMavenLocal` and `mavenLocal()`, not from a registry.
 
 ```sh
 ./build.sh :test           # the kits' tests live at the root project, not here

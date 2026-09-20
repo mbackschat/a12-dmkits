@@ -37,7 +37,7 @@ An integration that depends on two products must not live inside either: an `api
 
 ## Reference
 
-Published as `io.github.mbackschat.a12.dm:dmkits-consistency-gate` (MIT). Kotlin/JVM, packages `io.github.mbackschat.a12.dm.gate` and `…dm.preflight`.
+Its publication coordinate is `io.github.mbackschat.a12.dm:dmkits-consistency-gate` (MIT). Kotlin/JVM, packages `io.github.mbackschat.a12.dm.gate` and `…dm.preflight`. The publish wiring is landed and the public deploy is **deferred** ([`../docs/RELEASE-SPEC.md`](../docs/RELEASE-SPEC.md) §11), so today you get it by `./build.sh publishToMavenLocal` and `mavenLocal()`, not from a registry.
 
 ```sh
 ./build.sh :consistency-gate:check   # check, not test

@@ -27,7 +27,7 @@ It is the only module depending on both [`:modelkit`](../modelkit) and [`:ruleki
 
 ## Reference
 
-Published as `io.github.mbackschat.a12.dm:dmkits-edit` (MIT). Package `io.github.mbackschat.a12.dm.edit`. Depends on [`:core`](../core), [`:modelkit`](../modelkit) and [`:rulekit`](../rulekit). Kernel-free, guarded over both compiled classes and resolved POM.
+Its publication coordinate is `io.github.mbackschat.a12.dm:dmkits-edit` (MIT). Package `io.github.mbackschat.a12.dm.edit`. Depends on [`:core`](../core), [`:modelkit`](../modelkit) and [`:rulekit`](../rulekit). Kernel-free, guarded over both compiled classes and resolved POM. The publish wiring is landed and the public deploy is **deferred** ([`../docs/RELEASE-SPEC.md`](../docs/RELEASE-SPEC.md) §11), so today you get it by `./build.sh publishToMavenLocal` and `mavenLocal()`, not from a registry.
 
 ```sh
 ./build.sh :test   # the kits' suites span all four and run at the root project

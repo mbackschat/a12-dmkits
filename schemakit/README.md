@@ -24,7 +24,7 @@ It needs kernel *authority* (an imported model must be accepted, not merely prod
 
 ## Reference
 
-Published as `io.github.mbackschat.a12.dm:dmkits-schemakit` (MIT). Package `io.github.mbackschat.a12.dm.schemakit`.
+Its publication coordinate is `io.github.mbackschat.a12.dm:dmkits-schemakit` (MIT). Package `io.github.mbackschat.a12.dm.schemakit`. The publish wiring is landed and the public deploy is **deferred** ([`../docs/RELEASE-SPEC.md`](../docs/RELEASE-SPEC.md) §11), so today you get it by `./build.sh publishToMavenLocal` and `mavenLocal()`, not from a registry.
 
 ```sh
 ./build.sh :schemakit:check   # check, not test — verifySchemakitPurity is the guard behind the claim above
