@@ -24,9 +24,19 @@ import io.github.mbackschat.a12.dm.rulekit.validate.ValidationResult;
  * alone; {@code IYesNoType} is a sibling interface and not a subtype, so a BOOLEAN declaration clears this
  * gate entirely. Reading the code's name as "no boolean kinds" is wrong in exactly that cell.
  *
- * <p><b>After it, the list must be type-homogeneous</b> — {@code MVK_VARYING_TYPES_NOT_ALLOWED} — on the
- * operand BASE type, where ENUM is folded into STRING before the comparison and a CUSTOM declaration is a
- * string-like type to begin with. So the string-like block admits mixtures the declared kinds do not.
+ * <p><b>After it, the list must be type-homogeneous</b> — {@code MVK_VARYING_TYPES_NOT_ALLOWED} — and the
+ * unit compared is the OPERATION RESULT type rather than the declared kind: the arm calls
+ * {@code checkAllFieldsMatchingOperationType}, not {@code checkSameBaseType}, so every field is mapped through
+ * {@code OperationResultTypeMap.getOpTypeForField} and matched against the FIRST field's mapping. ENUM folds
+ * into STRING and a CUSTOM declaration is string-like to begin with, so the string-like block admits mixtures
+ * the declared kinds do not.
+ *
+ * <p><b>The temporal rows of this file's grid are CONFOUNDED and must not be read as a kind law.</b> That
+ * mapping sends every {@code IDateType} to one {@code DATETIME} result base type <i>carrying its declared
+ * format</i>, so inside the date-bearing family the format decides and the kind is not consulted — while
+ * {@code IDateRangeType} gets a result base type of its own. Every temporal field here happens to carry a
+ * format bound 1:1 to its kind, which makes the two readings indistinguishable from this grid alone.
+ * {@link FirstFilledValueFamilyLawsTest} owns that law and separates them.
  *
  * <p><b>{@code Sum} asks the flat numeric question</b> — every expanded field {@code INumberType}, otherwise
  * {@code MVK_NO_NUMBER} — with no leader and no escape arm, which is what separates it from the extrema.
@@ -169,8 +179,11 @@ class FieldListOperandKindLawsTest {
     }
 
     /**
-     * The type-matching gate behind the confirm one: the base type is what is compared, so the four
-     * string-like kinds mix freely while every other pair of distinct kinds is refused.
+     * The type-matching gate behind the confirm one: the four string-like kinds mix freely, and a pair drawn
+     * from two different result families is refused.
+     *
+     * <p><b>The two temporal rows at the end do NOT establish a kind law</b>, each moving the kind and the
+     * declared format together — see the class note and {@link FirstFilledValueFamilyLawsTest}.
      */
     @Test
     void firstFilledValueMatchesTheOperandBaseTypeAndFoldsEnumAndCustomIntoString() {

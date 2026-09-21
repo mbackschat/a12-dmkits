@@ -135,6 +135,15 @@ class DateRangeOperandListLawsTest {
                 withBaseYear("DateRangesOverlap(RollsForward, Window)"));
         actual.put("the control under a declared BASE YEAR",
                 withBaseYear("DateRangesOverlap(Season, Window)"));
+        // Distinct dated SPELLINGS across two references rather than inside one expansion — the boundary the
+        // group row below establishes nothing about, because the walk asks the two carriers different
+        // questions: `distinct()` runs on one reference's FORMAT STRINGS, while the cross-reference test
+        // compares year-bearing BOOLEANS. Same two declarations as `DateRangesOverlap(Renewals)`, with only
+        // the reference count moved.
+        actual.put("two explicit FIELDS, two dated spellings",
+                verdict("DateRangesOverlap(Season, Renewals/RenewalTwo)"));
+        actual.put("the Renewals pair named as two fields rather than as their group",
+                verdict("DateRangesOverlap(Renewals/RenewalOne, Renewals/RenewalTwo)"));
 
         Map<String, String> expected = new LinkedHashMap<>();
         expected.put("two year-less ranges", KernelLaws.ADMITTED);
@@ -150,6 +159,10 @@ class DateRangeOperandListLawsTest {
         expected.put("the same mismatch under a declared BASE YEAR", KernelLaws.ADMITTED);
         expected.put("a year-interpreting range under a declared BASE YEAR", BAD_RANGE_FORMAT);
         expected.put("the control under a declared BASE YEAR", KernelLaws.ADMITTED);
+        // The spelling refusal does NOT cross a reference boundary: both are year-bearing, so the boolean
+        // comparison admits the pair that the same two declarations under ONE group reference refuse.
+        expected.put("two explicit FIELDS, two dated spellings", KernelLaws.ADMITTED);
+        expected.put("the Renewals pair named as two fields rather than as their group", KernelLaws.ADMITTED);
         assertEquals(expected, actual, "when the list must agree about carrying a year");
     }
 

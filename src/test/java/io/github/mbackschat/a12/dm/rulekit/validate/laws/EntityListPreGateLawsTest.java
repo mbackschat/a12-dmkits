@@ -185,20 +185,33 @@ class EntityListPreGateLawsTest {
     /**
      * A SECOND root group — the only shape on which the more-than-one-parameter gate could speak.
      *
-     * <p>{@code NumberOfFilledGroups} asks {@code checkNoRootGroupWhenMoreThanOneParameter}, whose class is
+     * <p>{@code checkNoRootGroupWhenMoreThanOneParameter}'s class is
      * {@code MVK_ROOT_GROUP_WITH_OTHER_PARAMETERS}. Every entity of a model is under its own root group, so
      * the indirect-duplicate gate pre-empts that gate on a one-root model; a second root group is the only
      * way a list can hold a root group beside something not under it.
+     *
+     * <p><b>All THREE carriers that ask it are named here, because naming one made the finding wrong.</b>
+     * This grid originally held {@code NumberOfFilledGroups} alone against the two plain-class controls, and
+     * KF388 was written from it as "{@code NumberOfFilledGroups} alone" — contradicting
+     * {@link GroupListRootOperandLawsTest#whichClassARootBesideAnotherOperandDraws}, KF326 and the
+     * source-verified caller split, all of which carry {@code AtLeastOneGroupFilled} and
+     * {@code NoGroupFilled} too. The two rows below are those carriers measured on THIS fixture; the
+     * omission was invisible because the class-level {@code OPERATORS} denominator does not list them
+     * either. Caught by a12-kernel-lean reading our law test against our finding, 2026-09-21.
      */
     @Test
     void whetherTheMoreThanOneParameterRootGroupGateIsReachable() {
         Map<String, String> actual = new LinkedHashMap<>();
         actual.put("NumberOfFilledGroups", verdict("NumberOfFilledGroups(/Order, /Payment) > 0"));
+        actual.put("AtLeastOneGroupFilled", verdict("AtLeastOneGroupFilled(/Order, /Payment)"));
+        actual.put("NoGroupFilled", verdict("NoGroupFilled(/Order, /Payment)"));
         actual.put("AllGroupsFilled", verdict("AllGroupsFilled(/Order, /Payment)"));
         actual.put("AllFieldsFilled", verdict("AllFieldsFilled(/Order, /Payment)"));
 
         Map<String, String> expected = new LinkedHashMap<>();
         expected.put("NumberOfFilledGroups", "MVK_ROOT_GROUP_WITH_OTHER_PARAMETERS");
+        expected.put("AtLeastOneGroupFilled", "MVK_ROOT_GROUP_WITH_OTHER_PARAMETERS");
+        expected.put("NoGroupFilled", "MVK_ROOT_GROUP_WITH_OTHER_PARAMETERS");
         expected.put("AllGroupsFilled", "MVK_ROOT_GROUP_REFERENCED");
         expected.put("AllFieldsFilled", "MVK_ROOT_GROUP_REFERENCED");
         assertEquals(expected, actual, "a root group beside a second root group");

@@ -250,17 +250,28 @@ class FirstFilledValueFamilyLawsTest {
                 "FirstFilledValue(PromoWindow, AuditWindow) == [PromoWindow]"));
         actual.put("RANGE + DATE — two kinds", verdict("PromoWindow",
                 "FirstFilledValue(PromoWindow, ListedOn) == [PromoWindow]"));
+        // …and the same pair with the DATE declared at the RANGE's own format, which is what tells the range
+        // apart from a differently-spelled date: this row moves ONLY the kind, where the one above moves the
+        // format too. Added 2026-09-21 — the range is refused at its own format, so its separateness is a
+        // result-family fact rather than a format one, and the family claim above needed this to be sound.
+        actual.put("RANGE + DATE at the RANGE's own format — kind alone", verdict("PromoWindow",
+                "FirstFilledValue(PromoWindow, AuditedOn) == [PromoWindow]"));
         actual.put("[RANGE] == [RANGE] — operand control", verdict("PromoWindow",
                 "[PromoWindow] == [SaleWindow]"));
+        actual.put("[DATE dd.MM.yyyy] == [DATE dd.MM.yyyy] — operand control", verdict("AuditedOn",
+                "[AuditedOn] == [AuditedOn]"));
 
         Map<String, String> expected = new LinkedHashMap<>();
         expected.put("RANGE + RANGE, same (format, separator) — control", "admitted");
         expected.put("RANGE + RANGE, two legal pairs", "MVK_VARYING_TYPES_NOT_ALLOWED");
         expected.put("RANGE + DATE — two kinds", "MVK_VARYING_TYPES_NOT_ALLOWED");
+        expected.put("RANGE + DATE at the RANGE's own format — kind alone", "MVK_VARYING_TYPES_NOT_ALLOWED");
         expected.put("[RANGE] == [RANGE] — operand control", "admitted");
+        expected.put("[DATE dd.MM.yyyy] == [DATE dd.MM.yyyy] — operand control", "admitted");
         assertEquals(expected, actual,
                 "the declared-format rule holds on DATE_RANGE as well, so the family claim covers every temporal "
-                        + "kind rather than the four that happened to be measured");
+                        + "kind rather than the four that happened to be measured — and the range stays refused "
+                        + "beside a date of its OWN format, so it is a separate family and not a spelling");
     }
 
     // ── the string-side family, which the catalog had right ─────────────────────────────────────────
