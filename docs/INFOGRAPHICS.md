@@ -54,7 +54,7 @@ The table above is the single source for placement and copy checks. Both `check-
 - Use case: `infographic-diagram`.
 - Audience: software engineers, A12 model developers, technical decision-makers, and coding-agent users with general software architecture knowledge.
 - Format: original ByteByteGo-inspired information design without ByteByteGo branding or copied compositions.
-- Canvas: high-resolution portrait with a warm off-white background. Use 4:5 by default and 2:3 for the denser layered architectures and dmtool workbench.
+- Canvas: high-resolution, fully opaque warm off-white background. Use 4:5 or 2:3 portrait for vertical stories and 3:2 landscape when separate result lanes or a bidirectional bridge benefit from width.
 - Header: large left-aligned title with a short mint vertical accent bar and a clean upper-right corner.
 - Typography: bold geometric sans-serif, horizontal text only, short labels, no paragraphs inside the image.
 - Shapes: dark outlined rounded rectangles, pills, compact circular stage numbers, pale grouping fields, and saturated focal nodes.
@@ -65,6 +65,20 @@ The table above is the single source for placement and copy checks. Both `check-
 - Quality threshold: the takeaway, title, main path, and output must remain clear at README preview width. All exact labels and measurements must be readable at full size.
 
 ## Factual sources and freshness triggers
+
+### Content review — 2026-09-21
+
+Each poster owns one question; repeated components provide context rather than repeating another poster's explanation. These are documented capabilities, except the performance poster, which remains a dated measurement of the 2026-08-17 study. A new rendering does not make that study a current benchmark run.
+
+| Poster | Audience question and owned explanation | Current input and change |
+|---|---|---|
+| Toolchain | How do authoring, model checking, and Document evaluation fit together? | [Architecture](ARCHITECTURE.md) and [checker API](CONSISTENCY-API.md): add the optional kernel-free checker and its `INVALID` / `INCONCLUSIVE` boundary; retain the real Kernel as the acceptance authority. |
+| Workbench | What can an agent accomplish with dmtool? | [CLI contract](CLI-SPEC.md) and root [README](../README.md): show explicit checker selection and distinguish operationally declared output kinds from the usual result envelope. |
+| Interpreter runtime | What is reused, and what belongs to one evaluation call? | [Interpreter API §5](INTERPRETER-API-SPEC.md#5-interpreter-lifecycle-and-evaluation): the interpreter may be retained across successive snapshots; `compute` returns a retained report whose `applyTo` creates a new snapshot. No method named `apply` is advertised. |
+| Performance | What did the measured same-work comparison establish? | Public [performance report](../interpreter/public-release/PERFORMANCE.md): retain every dated measurement, make the study date prominent, and distinguish browser context from the JVM engine comparison. |
+| Technology roles | Which technology owns checking, evaluation, and delivery? | [Architecture](ARCHITECTURE.md), [checker API](CONSISTENCY-API.md), and freshly measured root [statistics](../README.md#source-statistics): separate portable evaluation from portable consistency, correct the module roles, and update the production counts. |
+| Schema exchange | Which semantics map natively, travel as metadata, or are omitted? | [Schemakit](SCHEMAKIT-SPEC.md): clarify that strict import omits uncertain mappings, and that `x-a12-*` carriage is not execution by a stock JSON Schema validator. |
+| Semantic diff | Which structural changes deserve review first? | [Model review](MODEL-REVIEW-SPEC.md): distinguish structure-based evidence from behavioral equivalence and state that impact tiers are review priority, not probability. |
 
 | Claim family | Current source | Regenerate when |
 |---|---|---|
@@ -100,7 +114,7 @@ The raster is intentionally not treated as machine-readable data. CI can prove t
 
 ### Content map
 
-- Ten-second takeaway: modelkit and rulekit author a DocumentModel, the real A12 Kernel confirms it, and the clean-room Interpreter evaluates Documents across runtimes.
+- Ten-second takeaway: typed kits author a DocumentModel, the Kernel confirms acceptance, the optional portable checker reports bounded consistency evidence, and the Interpreter evaluates Documents.
 - Exact title: `a12-dmkits: Author, Confirm, Run`
 - Primary layout: layered architecture.
 - Reading direction: top to bottom.
@@ -118,6 +132,8 @@ The raster is intentionally not treated as machine-readable data. CI can prove t
 - rulekit -> defines -> rules + computations.
 - modelkit + rulekit -> meet in -> EditSession.
 - EditSession -> submits -> Real A12 Kernel.
+- A DocumentModel -> may be checked by -> Portable consistency checker.
+- Portable consistency checker -> returns -> INVALID or INCONCLUSIVE, never VALID.
 - Real A12 Kernel -> accepts -> DocumentModel JSON.
 - DocumentModel JSON + A12 Document -> run on -> A12 Interpreter.
 - A12 Interpreter -> returns -> validation + computation.
@@ -131,13 +147,13 @@ Primary request: Create an original, polished portrait technical infographic abo
 
 Communication goal:
 - Audience: software engineers, A12 model developers, technical decision-makers, and coding-agent users.
-- Ten-second takeaway: modelkit and rulekit author a DocumentModel, the real A12 Kernel confirms it, and the clean-room Interpreter evaluates Documents across runtimes.
+- Ten-second takeaway: typed kits author a DocumentModel, the Kernel confirms acceptance, the optional portable checker reports bounded consistency evidence, and the Interpreter evaluates Documents.
 - Exact title: "a12-dmkits: Author, Confirm, Run".
 - Tone: technically precise, compact, approachable, and visually scannable.
 
 Canvas and header:
-- Tall 2:3 portrait composition at high resolution.
-- Very light warm-gray background.
+- Tall 2:3 portrait composition, exactly 1024 × 1536 pixels.
+- Fully opaque, flat warm off-white background, including every header, gutter, and footer.
 - Large bold sans-serif title at the top left.
 - Short mint-green vertical bar immediately left of the title.
 - Leave the opposite header corner clean.
@@ -147,7 +163,7 @@ Primary information structure:
 - Use a layered architecture as the single dominant layout skeleton.
 - Primary reading direction: top to bottom.
 - Focal mechanism: the typed authoring layer containing modelkit, rulekit, and EditSession.
-- Major regions in reading order: PEOPLE, ENTRY POINTS, TYPED AUTHORING, KERNEL ACCEPTANCE, RUNTIME EVALUATION, OUTPUTS.
+- Major regions in reading order: PEOPLE, ENTRY POINTS, TYPED AUTHORING, KERNEL ACCEPTANCE, RUNTIME EVALUATION, TOOLCHAIN OUTPUTS.
 - Final output: a kernel-accepted DocumentModel plus validation and computation results.
 
 Exact content:
@@ -168,12 +184,20 @@ Exact content:
 - Node: "Real A12 Kernel"
 - Caption: "Accepts the complete DocumentModel"
 - Output node: "Kernel-accepted DocumentModel JSON"
+- Side panel title: "OPTIONAL PORTABLE CHECK"
+- Side panel node: "a12-consistency"
+- Side panel input: "DocumentModel"
+- Side panel result: "INVALID • INCONCLUSIVE"
+- Side panel boundary: "Never VALID • coverage disclosed"
+- Side panel platform: "Kernel-free • JVM + JS"
 - Region: "RUNTIME EVALUATION"
 - Input node: "A12 Document"
 - Node: "A12 Interpreter"
 - Caption: "Clean-room • JVM + JS"
 - Final output node: "Validation + computation"
-- Arrow labels: "uses", "drives", "authors", "orchestrates", "confirm", "run", "return"
+- Bottom summary heading: "TOOLCHAIN OUTPUTS"
+- Bottom summary: "Kernel-accepted DocumentModel JSON + validation and computation results"
+- Arrow labels: "uses", "drives", "authors", "confirm", "run", "check", "accepts"
 
 Semantic mapping:
 - People = simple person or agent icon + pale cyan + rounded card.
@@ -189,8 +213,9 @@ Layout-specific composition:
 - Align the primary data path vertically.
 - Make each major layer a wide labeled container.
 - Expand TYPED AUTHORING to show modelkit and rulekit side by side, converging on EditSession.
+- Beside KERNEL ACCEPTANCE place the optional checker panel with its own DocumentModel input arrow labeled "check" and its own verdict output. Do not connect its verdict to kernel acceptance or portray INCONCLUSIVE as approval. The Kernel path remains the default dmtool edit gate; the side panel is an independently selected check.
 - Place auxiliary explanatory captions inside their owning nodes, not on the primary route.
-- Put the accepted model and runtime results in a conclusive bottom region.
+- Put the accepted model and runtime results in a conclusive bottom region titled TOOLCHAIN OUTPUTS. It is an unconnected summary of the whole toolchain, not the Interpreter's return value.
 
 Visual language:
 - Heavy near-black outlines, rounded rectangles, pill labels, and generous gutters.
@@ -203,6 +228,14 @@ Avoid:
 - No ByteByteGo logo, wordmark, watermark, A12 logo, mgm branding, or copied poster composition.
 - No photorealistic imagery, 3D icons, gradients, neon glow, glassmorphism, blurred shadows, decorative textures, or generic stock art.
 - No tiny paragraphs, illegible text, invented labels, duplicated words, random arrows, unlabeled crossings, ambiguous line endings, excessive nesting, inconsistent icons, or decorative charts.
+```
+
+### Connector correction — 2026-09-21
+
+```text
+Edit the supplied toolchain infographic. Preserve the entire canvas, layout, all nodes, palette, icons, title, and all unaffected text.
+
+Correct only the authoring and runtime connectors: Developer -> Typed Java API is labeled "uses"; Agent / BA -> dmtool CLI + MCP is labeled "drives". Remove the two separate entry-point arrows that imply Java only reaches modelkit and dmtool only reaches rulekit. Merge both entry-point routes into one arrow labeled "authors" entering the shared TYPED AUTHORING container, so both entry points reach both kits. Keep the two kit-to-EditSession connections. Relabel EditSession -> Real A12 Kernel as "confirm", and Real A12 Kernel -> Kernel-accepted DocumentModel JSON as "accepts". The arrow labeled "run" from that accepted model must visibly terminate on the A12 Interpreter node, not on a container border. Preserve the separate A12 Document -> A12 Interpreter input and the optional portable check's independent input and result. Replace the red failure icon beside "INVALID • INCONCLUSIVE" with a neutral report icon so INCONCLUSIVE is not depicted as rejection. Add no other text or connectors.
 ```
 
 ## Infographic 2: dmtool DocumentModel workbench
@@ -251,9 +284,10 @@ Avoid:
 - extract + inline -> refactor -> reusable model structure.
 - PREVIEW, REVIEW & VERIFY -> evaluates -> dry-run, semantic model diff, impact tiers, corrective diagnostics, safe refactor gates, and rollback.
 - Real A12 Kernel -> confirms -> complete model acceptance.
+- Explicit portable check -> returns -> INVALID or INCONCLUSIVE with coverage evidence, never kernel acceptance.
 - RUN & AUTOMATE -> creates and consumes -> canonical A12 Documents.
 - model seed -> creates -> canonical A12 Document JSON.
-- full or partial validation + compute/apply -> returns -> structured JSON result envelope.
+- full or partial validation + compute/apply -> returns -> structured results; other artifact modes declare their output kind.
 - A12 Interpreter -> provides -> runtime behavior differentially verified against the Kernel.
 
 ### Generation prompt
@@ -271,7 +305,7 @@ Communication goal:
 - Tone: technically precise, dense but orderly, approachable, and visually scannable.
 
 Canvas and header:
-- Tall 2:3 portrait composition at high resolution, preferably 1536 x 2304 or larger.
+- Tall 2:3 portrait composition, exactly 1024 × 1536 pixels.
 - Fully opaque warm off-white background extending to every canvas edge.
 - Large bold sans-serif title at the top left.
 - Short mint-green vertical bar immediately left of the title.
@@ -310,13 +344,15 @@ Exact content:
 - Card 4 labels: "structure + config", "rules + computations", "pattern scaffolds", "rename + move", "extract + inline", "atomic apply"
 - Card 4 foundation pill: "modelkit • rulekit • EditSession"
 - Card 5 title: "5  PREVIEW, REVIEW & VERIFY"
-- Card 5 labels: "dry-run", "semantic model diff", "impact tiers", "corrective diagnostics", "safe refactor gates", "rollback • no write"
+- Card 5 labels: "dry-run", "semantic model diff", "impact tiers", "kernel / portable check", "safe refactor gates", "rollback • no write"
 - Card 5 assurance badge: "Real A12 Kernel"
 - Card 5 assurance caption: "Complete model accepted"
+- Card 5 portable caption: "Portable: INVALID / INCONCLUSIVE"
 - Card 6 title: "6  RUN & AUTOMATE"
-- Card 6 labels: "seed canonical Documents", "full + partial validation", "compute + apply", "custom conditions + types", "explicit unsupported", "JSON result envelope"
+- Card 6 labels: "seed canonical Documents", "full + partial validation", "compute + apply", "custom conditions + types", "explicit unsupported", "declared output contracts"
 - Card 6 assurance badge: "A12 Interpreter"
 - Card 6 assurance caption: "Runtime differentially verified"
+- Bottom output note: "JSON envelopes • declared artifact modes"
 - Bottom evidence pills: "Self-describing", "Machine-readable", "Atomic writes", "Reviewable changes", "Portable runtime", "Corrective diagnostics"
 
 Semantic mapping:
@@ -365,120 +401,53 @@ Avoid:
 
 <p align="center">
   <a href="../assets/infographics/a12-interpreter-runtime.avif">
-    <img src="../assets/infographics/a12-interpreter-runtime.avif" alt="A12 Interpreter preparation, reusable request lifecycle, outputs, and Kernel conformance evidence" width="540">
+    <img src="../assets/infographics/a12-interpreter-runtime.avif" alt="A12 Interpreter preparation, reusable evaluator, distinct result lanes, and Kernel conformance evidence" width="540">
   </a>
 </p>
-<p align="center"><sub>1024 × 1536 AVIF. Click the preview to open the full-resolution image.</sub></p>
+<p align="center"><sub>1536 × 1024 AVIF. Click the preview to open the full-resolution image.</sub></p>
 
 ### Content map
 
-- Ten-second takeaway: a workspace becomes one reusable PreparedModel, while each request gets its own Interpreter and immutable Document snapshot across JVM, Node.js, browser, and native dmtool.
+- Ten-second takeaway: retain a PreparedModel and Interpreter across successive immutable Document snapshots; each call owns its transient evaluation state and detached result.
 - Exact title: `A12 Interpreter: Prepare Once, Run Everywhere`
-- Primary layout: layered architecture.
-- Reading direction: top to bottom.
-- Focal mechanism: the PreparedModel and per-request Interpreter boundary.
-- Major regions: workspace, preparation, request, operations, results, targets, verification.
-- Final output: ValidationReport and ComputationReport across four consumers.
+- Primary layout: landscape with three horizontal bands and separate validation/computation lanes.
+- Reading direction: top to bottom, then left to right within each band.
+- Focal mechanism: reusable preparation and evaluator versus per-call snapshots and results.
+- Major regions: workspace, reusable engine, each call, operations, results, targets, verification.
+- Final output: ValidationReport, retained ComputationReport, and a new snapshot from result application.
 
 ### Exact relationships
 
 - Workspace sources -> collect + expand -> ModelWorkspace.
 - ModelWorkspace -> prepare once -> PreparedModel.
-- PreparedModel -> creates -> per-request Interpreter.
+- PreparedModel -> creates -> reusable Interpreter.
 - A12 Document JSON -> decodes to -> immutable Document snapshot.
-- Interpreter + Document -> run -> validate + compute + apply.
-- Operations -> return -> ValidationReport + ComputationReport.
-- PreparedModel -> serves -> concurrent requests.
+- Interpreter + Document -> run -> validateFull + validatePart + compute.
+- validateFull + validatePart -> return -> ValidationReport.
+- compute -> returns -> ComputationReport.
+- ComputationReport.applyTo -> creates -> new immutable Document snapshot.
+- PreparedModel + Interpreter -> are retained across -> successive snapshots.
 - Differential verification -> compares with -> A12 Kernel 30.8.1.
 - One common engine -> runs on -> JVM + Node.js + browser + native dmtool.
 
 ### Generation prompt
 
+The first portrait and its connector edit were rejected because validation/computation report ownership remained ambiguous. This accepted landscape replacement preserves the API facts and separates the result lanes.
+
 ```text
-Use case: infographic-diagram
-Asset type: GitHub README technical infographic
-Primary request: Create an original, polished portrait technical infographic explaining the A12 Interpreter preparation and request lifecycle, using a clean ByteByteGo-inspired information-design language without copying an existing poster or using the ByteByteGo logo or wordmark.
+Create one original ByteByteGo-inspired technical infographic, landscape 1536 × 1024, fully opaque warm off-white canvas. Use bold geometric sans-serif text, a mint title accent at upper left, dark outlines, rounded cards, flat icons, pale cyan / lavender / yellow / mint fills, and a saturated-purple PreparedModel. No logos, gradients, texture, or invented text. Title exactly: "A12 Interpreter: Prepare Once, Run Everywhere". Subtitle exactly: "Reuse preparation • evaluate immutable snapshots • retain results".
 
-Communication goal:
-- Audience: TypeScript, Kotlin, Java, browser, and server developers evaluating the A12 Interpreter.
-- Ten-second takeaway: a workspace becomes one reusable PreparedModel, while each request gets its own Interpreter and immutable Document snapshot across JVM, Node.js, browser, and native dmtool.
-- Exact title: "A12 Interpreter: Prepare Once, Run Everywhere".
-- Tone: technically precise, compact, approachable, and visually scannable.
+Own one question: what is reused, and what does one evaluation return? Use three horizontal bands, each with a clear left-to-right reading order. Keep every connector away from text. Exact copy and topology follow; do not invent other arrows or stages.
 
-Canvas and header:
-- Tall 2:3 portrait composition at high resolution.
-- Very light warm-gray background.
-- Large bold sans-serif title at the top left.
-- Short mint-green vertical bar immediately left of the title.
-- Leave the opposite header corner clean.
-- Reserve a clear gap between the header and the diagram body.
+TOP BAND, heading "REUSABLE ENGINE": Four cards left to right. Card 1 "ModelWorkspace" with small caption "Finite collected sources". Card 2 "PreparedModel" with caption "ASTs • indexes • plans • dependencies". Card 3 "Interpreter" with caption "Retain for successive snapshots". Card 4 "JVM • Node.js • Browser • native dmtool" is a small context card with NO arrow. Draw ModelWorkspace -> PreparedModel labeled "prepare once" and PreparedModel -> Interpreter labeled "create". Put a short note below the band: "Each call owns transient evaluation state".
 
-Primary information structure:
-- Use a layered architecture as the single dominant layout skeleton.
-- Primary reading direction: top to bottom.
-- Focal mechanism: the boundary between the reusable PreparedModel and a per-request Interpreter.
-- Major regions in reading order: WORKSPACE, PREPARE ONCE, EACH REQUEST, OPERATIONS, RESULTS, RUNS ON.
-- Place a narrow VERIFICATION rail beside the main path.
-- Final output: ValidationReport and ComputationReport across four consumers.
+MIDDLE BAND, heading "ONE DOCUMENT SNAPSHOT": Draw "A12 Document JSON" -> "Immutable Document snapshot", labeled "decode". This snapshot feeds exactly TWO separated lanes in the lower band. The document is model-owned; do not draw Interpreter creating the snapshot.
 
-Exact content:
-- Use these labels exactly as written and add no other text.
-- Title: "A12 Interpreter: Prepare Once, Run Everywhere"
-- Region: "WORKSPACE"
-- Nodes: "Finite sources" and "On-demand provider"
-- Node: "ModelWorkspace"
-- Arrow label: "collect + expand"
-- Region: "PREPARE ONCE"
-- Focal node: "PreparedModel"
-- PreparedModel caption: "ASTs • indexes • plans • dependencies"
-- PreparedModel pill: "Shared across requests"
-- Region: "EACH REQUEST"
-- Input node: "A12 Document JSON"
-- Node: "Immutable Document snapshot"
-- Node: "Interpreter"
-- Interpreter pill: "Per request"
-- Region: "OPERATIONS"
-- Operation pills: "validateFull", "validatePart", "compute", "apply"
-- Region: "RESULTS"
-- Output nodes: "ValidationReport" and "ComputationReport"
-- Region: "RUNS ON"
-- Target pills: "JVM", "Node.js", "Browser", "native dmtool"
-- Side rail title: "VERIFICATION"
-- Side rail node: "A12 Kernel 30.8.1"
-- Side rail labels: "Differential tests", "Fuzzing", "Portable corpus", "Generated Java co-evidence"
-- Side rail conclusion: "Kernel-matched on the exercised surface"
-- Feature pills: "Canonical pointers", "Custom callbacks", "Explicit unsupported", "Limits + cancellation"
-- Main arrow labels: "collect + expand", "prepare once", "create", "decode", "run", "return"
+LOWER BAND, heading "DISTINCT RESULT LANES": The upper lane is "VALIDATE": "validateFull / validatePart" -> "ValidationReport", with the arrow labeled "return". The lower lane is "COMPUTE": "compute" -> "ComputationReport" -> "New immutable snapshot". Label compute-to-report "return" and report-to-new-snapshot "applyTo". Draw the middle band's input snapshot branching into the validateFull / validatePart node and the compute node only. Both operation nodes are called on the retained Interpreter, which is clear from a small label above these two nodes: "Interpreter operations". No arrow may connect validatePart to ComputationReport. No direct compute-to-new-snapshot arrow. No arrows between the validation and computation lanes. The applyTo arrow starts at ComputationReport only. Add two compact footer pills beneath the lanes: "No errors ≠ fully supported" and "Input snapshots stay immutable".
 
-Semantic mapping:
-- Workspace = folder and dependency-tree icon + pale cyan + rounded container.
-- PreparedModel = reusable model chip icon + saturated purple + large rounded container.
-- Document snapshot = document tree icon + pale yellow + rounded node.
-- Interpreter = evaluator chip icon + mint + rounded node.
-- Operations = compact dark-outlined pills with pale green fill.
-- Results = report icons + saturated blue + rounded nodes.
-- Runtime targets = platform icons in one pale lavender band.
-- Verification = shield and comparison icon + pale green rail + dashed purple connectors.
+BOTTOM CONTEXT RAIL: heading "VERIFICATION", followed by "A12 Kernel 30.8.1", "Differential tests • fuzzing • portable corpus", "Generated Java co-evidence", and the conclusion "Kernel-matched on the exercised surface". No directed flow through these evidence labels. A separate small feature row contains "Canonical pointers", "Custom callbacks", "Explicit unsupported", "Limits + cancellation".
 
-Layout-specific composition:
-- Align the primary lifecycle vertically.
-- Make each major layer a wide labeled container.
-- Expand PREPARE ONCE and EACH REQUEST to make their ownership boundary unmistakable.
-- Place the VERIFICATION rail beside, not on, the main lifecycle.
-- Put runtime targets and reports in a conclusive bottom region.
-
-Visual language:
-- Heavy near-black outlines, rounded rectangles, pill labels, and generous gutters.
-- Flat, colorful technical icons with consistent dark outlines and no realistic shading.
-- Neutral canvas with a mint accent, pale cyan, pale lavender, pale green, pale yellow, saturated purple, and saturated blue.
-- Keep all text horizontal and fully legible.
-
-Avoid:
-- No ByteByteGo logo, wordmark, watermark, A12 logo, mgm branding, or copied poster composition.
-- No photorealistic imagery, 3D icons, gradients, neon glow, glassmorphism, blurred shadows, decorative textures, or generic stock art.
-- Do not imply that PreparedModel and Interpreter have the same lifetime or thread-sharing contract.
-- Do not claim universal equivalence with every possible Kernel input.
-- No tiny paragraphs, illegible text, invented labels, duplicated words, random arrows, unlabeled crossings, ambiguous line endings, excessive nesting, inconsistent icons, or decorative charts.
+Keep the main mechanism at least 70% of the composition. The verification rail and runtime targets are subordinate context. All labels must be legible. Do not imply universal Kernel equivalence, a mutable input Document, a per-request-only Interpreter, an Interpreter.apply method, or that validation returns a computation report. Do not draw decorative or unrequested connectors.
 ```
 
 ## Infographic 4: Interpreter vs A12 Kernel
@@ -490,7 +459,7 @@ Avoid:
     <img src="../assets/infographics/interpreter-vs-kernel.avif" alt="Measured A12 Interpreter performance and resident memory compared with the A12 Kernel" width="540">
   </a>
 </p>
-<p align="center"><sub>1126 × 1397 AVIF. Click the preview to open the full-resolution image.</sub></p>
+<p align="center"><sub>1122 × 1402 AVIF. Click the preview to open the full-resolution image.</sub></p>
 
 ### Content map
 
@@ -526,8 +495,8 @@ Communication goal:
 - Tone: evidence-led, technically precise, compact, approachable, and visually scannable.
 
 Canvas and header:
-- Light 4:5 portrait composition at high resolution.
-- Very light warm-gray background.
+- Light 4:5 portrait composition, exactly 1024 × 1280 pixels.
+- Fully opaque, flat warm off-white background, including every header, gutter, and footer.
 - Large bold sans-serif title at the top left.
 - Short mint-green vertical bar immediately left of the title.
 - Leave the opposite header corner clean.
@@ -546,6 +515,7 @@ Exact content:
 - Top gate title: "ELIGIBILITY GATE"
 - Top gate text: "Same model • same Document • identical complete outcomes"
 - Top gate pill: "Only then compare"
+- Study badge: "DATED STUDY • 2026-08-17"
 - Section title: "WARM VALIDATION • 10,000 rows • 4,900 findings"
 - Bar label: "Interpreter • JVM"
 - Bar value: "17.5 ms"
@@ -576,6 +546,7 @@ Exact content:
 - Section title: "BROWSER CONTEXT • 200 rows"
 - Browser value: "11.55 ms first answer"
 - Browser value: "1.1 ms warm"
+- Browser scope: "Context only • separate runtime"
 - Bottom boundary: "Prepared engines • validation only • Kernel codegen outside the clock"
 - Bottom evidence: "Measured 2026-08-17 • Apple M1 • JDK 21 • Chrome 151"
 - Bottom qualifier: "Bounded same-machine measurements, not universal promises"
@@ -623,9 +594,9 @@ Avoid:
 
 ### Content map
 
-- Ten-second takeaway: Kotlin carries one portable evaluation engine, GraalVM delivers the complete JVM application as a native `dmtool`, and the real A12 Kernel remains the authority for model acceptance and conformance.
+- Ten-second takeaway: Kotlin carries separate portable evaluation and consistency engines, GraalVM delivers the JVM stack as native `dmtool`, and the Kernel remains the model-acceptance authority.
 - Exact title: `Kotlin, GraalVM & A12 Kernel`
-- Exact subtitle: `Portable engine • native delivery • authoritative acceptance`
+- Exact subtitle: `Portable engines • native delivery • authoritative acceptance`
 - Primary layout: comparative small multiples with one shared Kotlin-versus-Java table and one compact architectural-benefits band.
 - Reading direction: three role cards from left to right, the language table from top to bottom, then the benefits synthesis from left to right.
 - Focal mechanism: the three technology-role cards, supported by a compact structural and runtime comparison of the Java and Kotlin codebases.
@@ -635,7 +606,7 @@ Avoid:
 ### Exact relationships
 
 - Kotlin common code -> compiles to -> sibling JVM + JavaScript targets.
-- One Kotlin common codebase -> branches into -> multiple target environments.
+- Kotlin common -> compiles to -> JVM + JavaScript; Kotlin/JVM + GraalVM -> delivers -> native dmtool. Show these as separate text paths.
 - Kotlin/JVM Interpreter -> runs inside -> native dmtool.
 - Kotlin/JS Interpreter -> runs in -> Node.js + browser.
 - GraalVM Native Image -> AOT-compiles -> the `:cli` JVM application stack.
@@ -646,7 +617,7 @@ Avoid:
 - A12 Kernel JVM -> verifies semantics through -> differential tests -> Kotlin Interpreter.
 - `:adapter` -> confines -> Kernel types behind data and SPI boundaries.
 - Java production code -> implements -> dmkits + adapter + cli.
-- Kotlin production code -> implements -> interpreter.
+- Kotlin production code -> implements -> interpreter, consistency checker, shared predicates, and JVM façades.
 - Kotlin test code -> implements -> adapter differential laws.
 - Java 21 -> compiles to -> JVM bytecode -> GraalVM Native Image.
 - Kotlin Multiplatform -> compiles to -> Kotlin/JVM + Kotlin/JS.
@@ -663,13 +634,13 @@ Primary request: Create an original, polished portrait technical infographic exp
 
 Communication goal:
 - Audience: software engineers, solution architects, A12 model developers, and technical decision-makers.
-- Ten-second takeaway: Kotlin carries one portable evaluation engine, GraalVM delivers the complete JVM application as a native dmtool, and the real A12 Kernel remains the authority for model acceptance and conformance.
+- Ten-second takeaway: Kotlin carries separate portable evaluation and consistency engines, GraalVM delivers the JVM stack as native dmtool, and the Kernel remains the model-acceptance authority.
 - Exact title: "Kotlin, GraalVM & A12 Kernel".
-- Exact subtitle: "Portable engine • native delivery • authoritative acceptance".
+- Exact subtitle: "Portable engines • native delivery • authoritative acceptance".
 - Tone: technically precise, compact, approachable, and visually scannable.
 
 Canvas and header:
-- Tall 2:3 portrait composition at high resolution.
+- Tall 2:3 portrait composition, exactly 1024 × 1536 pixels.
 - Fully opaque warm off-white background extending to every canvas edge.
 - Large bold sans-serif title at the top left.
 - Short mint-green vertical bar immediately left of the title.
@@ -689,28 +660,29 @@ Primary information structure:
 Exact content:
 - Use these labels exactly as written and add no other text.
 - Title: "Kotlin, GraalVM & A12 Kernel"
-- Subtitle: "Portable engine • native delivery • authoritative acceptance"
+- Subtitle: "Portable engines • native delivery • authoritative acceptance"
 - Card title: "KOTLIN MULTIPLATFORM"
 - Card role tag: "Portable runtime"
 - Row label: "COMPONENTS"
-- Row value: ":interpreter"
-- Row value: ":adapter differential tests"
+- Row value: ":interpreter • :consistency • :predicates"
 - Row label: "TARGETS"
 - Row value: "JVM • JavaScript"
 - Row label: "RUNS IN"
 - Row value: "JVM • Node.js • Browser • native dmtool"
 - Row label: "USE CASE"
-- Row value: "Validate • compute • apply"
+- Row value: "Evaluate Documents • check models"
 - Row label: "WHY"
-- Row value: "One common semantics engine"
+- Row value: "Separate portable engines"
 - Row label: "PAYOFF"
 - Row value: "Portable APIs • less runtime drift"
+- Row label: "CHECKER BOUNDARY"
+- Row value: "INVALID / INCONCLUSIVE • never VALID"
 - Card title: "GRAALVM NATIVE IMAGE"
 - Card role tag: "Native delivery"
 - Row label: "COMPONENT"
 - Row value: ":cli / dmtool"
 - Row label: "COMPILES"
-- Row value: "Java kits • :adapter • Kotlin/JVM Interpreter • A12 Kernel"
+- Row value: "Java kits • adapter • Kotlin/JVM engines • A12 Kernel"
 - Row label: "SHIPS FOR"
 - Row value: "macOS arm64"
 - Row value: "Linux x64 + arm64"
@@ -742,24 +714,24 @@ Exact content:
 - Column header: "JAVA"
 - Column header: "KOTLIN"
 - Row label: "SIZE"
-- Java size: "49.2 kLOC"
+- Java size: "50.3 kLOC"
 - Kotlin size: "34.9 kLOC"
 - Row label: "STRUCTURE"
 - Java structure: "dmkits • adapter • cli"
 - Kotlin structure: "interpreter • consistency • predicates • façades"
 - Row label: "FUNCTION"
 - Java function: "Model tooling • Kernel integration • CLI/MCP"
-- Kotlin function: "Validation • computation"
+- Kotlin function: "Evaluation • consistency • shared predicates"
 - Row label: "TECHNOLOGY"
 - Java technology: "Java 21 → JVM bytecode → GraalVM Native Image"
 - Kotlin technology: "Kotlin Multiplatform → Kotlin/JVM + Kotlin/JS"
 - Row label: "RUNTIME"
 - Java runtime: "JVM • native dmtool"
 - Kotlin runtime: "JVM • native dmtool • Node.js • Browser"
-- Bottom scope note: "Production code • Tokei • generated/build/fixtures/dependencies excluded"
+- Bottom scope note: "Production code • Tokei • measured 2026-09-21"
 - Bottom band title: "WHY THIS SPLIT SCALES"
 - Benefits heading: "PORTABILITY"
-- Benefits line: "One semantics engine"
+- Benefits line: "Shared source per engine"
 - Benefits line: "More runtime integrations"
 - Benefits heading: "DISTRIBUTION"
 - Benefits line: "One native executable"
@@ -769,7 +741,7 @@ Exact content:
 - Benefits line: "Safe evolution with conformance evidence"
 
 Semantic mapping:
-- Kotlin Multiplatform = one purple source circle on the left branching into three right-pointing arrow paths + pale lavender card + saturated purple role tag.
+- Kotlin Multiplatform = two stacked text paths ("Kotlin common → JVM + JavaScript" and "Kotlin/JVM + GraalVM → native dmtool") + pale lavender card + saturated purple role tag. This incorporates the accepted target-diagram correction below.
 - GraalVM Native Image = compact executable cube or chip icon + pale cyan card + saturated blue role tag.
 - A12 Kernel = shield-check engine icon + pale green card + saturated green role tag.
 - Java comparison column = pale yellow field + dark header pill.
@@ -785,7 +757,7 @@ Layout-specific composition:
 - Keep common row labels at matching vertical positions and use additions only for technology-specific boundary or guardrail details.
 - Keep the upper cards visually equal; do not imply that one technology owns the others.
 - Make KOTLIN vs JAVA one compact full-width comparison table with a narrow row-label column and two equal language columns. Minimize row padding while keeping every value comfortably legible.
-- Align equivalent cells exactly. Put 49.2 kLOC and 34.9 kLOC in the largest type within the table.
+- Align equivalent cells exactly. Put 50.3 kLOC and 34.9 kLOC in the largest type within the table.
 - Keep each structure, function, technology, and runtime value to one or two lines. The technology arrows stay inside their own cells and never cross a column boundary.
 - Put the scope note in one restrained full-width footer inside the table boundary.
 - Put WHY THIS SPLIT SCALES in one compact full-width rounded band below the table. Use three equal columns with no arrows: portability, distribution, and trust.
@@ -801,9 +773,9 @@ Visual language:
 Avoid:
 - No ByteByteGo logo, wordmark, watermark, A12 logo, mgm branding, Kotlin logo, GraalVM logo, or copied poster composition.
 - No photorealistic imagery, 3D icons, gradients, neon glow, glassmorphism, blurred shadows, decorative textures, or generic stock art.
-- Do not imply that GraalVM provides model semantics, that Kotlin validates model structure, that the Kernel is the dmtool runtime evaluator, or that the standalone JavaScript package embeds the Kernel.
+- Do not imply that GraalVM provides model semantics, that portable consistency can certify VALID, that the Kernel is the dmtool runtime evaluator, or that either standalone JavaScript engine embeds the Kernel. The JVM façades in the lower Kotlin table are not Kotlin/JS artifacts.
 - Do not imply that adapter laws are production Kotlin or that the kLOC values include tests, generated code, fixtures, build output, or dependencies.
-- Do not reverse the Kotlin branching metaphor: it must show one source at the left branching into multiple right-pointing outputs.
+- Do not make native dmtool a third Kotlin compilation target: show JVM + JavaScript on the first text path and GraalVM delivery on the second.
 - Do not turn WHY THIS SPLIT SCALES into a workflow, runtime architecture, or benchmark panel.
 - No invented components, targets, platforms, performance numbers, tiny paragraphs, illegible text, duplicated words, random arrows, unlabeled crossings, ambiguous line endings, excessive nesting, inconsistent icons, or decorative charts.
 ```
@@ -846,6 +818,8 @@ Avoid:
 - groups, fields, requiredness, and typedefs -> export as -> native JSON Schema structure.
 - Tier-A rule shapes -> project to -> native JSON Schema keywords.
 - other rules and computations -> ride -> `x-a12-rule` and `x-a12-computation`.
+- strict import -> omits with a report -> uncertain mappings.
+- `x-a12-*` extensions -> preserve for a capable consumer -> rule/computation text; a stock validator does not execute it.
 - temporal and custom fields without a native export mapping -> fall back to -> string plus diagnostic.
 - verification -> checks -> Kernel acceptance, structural round-trip, meta-schema validity, and report accuracy.
 
@@ -864,7 +838,7 @@ Communication goal:
 - Tone: technically precise, compact, approachable, and visually scannable.
 
 Canvas and header:
-- Wide 3:2 landscape composition at high resolution, preferably 1536 × 1024 or larger.
+- Wide 3:2 landscape composition, exactly 1536 × 1024 pixels.
 - Fully opaque warm off-white background extending to every canvas edge.
 - Large bold sans-serif title at the top left.
 - Short mint-green vertical bar immediately left of the title.
@@ -900,7 +874,8 @@ Exact content:
 - Second column stage title: "2  MAP STRUCTURE"
 - Left stage lines: "object → group", "array<object> → repeatable group", "scalar → typed field", "leaf $ref → typedef", "bundle object ref → include"
 - Second column stage title: "3  MAP CONSTRAINTS"
-- Left stage lines: "direct → requiredness + field config", "composed → a12 rules", "choices → MappingProfile"
+- Left stage lines: "direct → requiredness + field config", "composed → A12 rules", "choices → MappingProfile"
+- Import scope pill: "strict = omit uncertain mappings"
 - Third column title: "RULE SYNTHESIS"
 - Third column stage title: "4  REPORT"
 - Left stage lines: "mapped • omitted • notes", "corrective TO-DO", "never silent"
@@ -912,6 +887,7 @@ Exact content:
 - Right stage line: "Tier-A rules → keywords"
 - Right stage title: "3  CARRY"
 - Right stage lines: "rules → x-a12-rule", "computations → x-a12-computation"
+- Carriage boundary: "Stock validators do not execute x-a12-*"
 - Right stage title: "4  DISCLOSE"
 - Right stage lines: "temporal + custom → string", "diagnostic for every loss"
 - Rule pills: "exclusive bounds", "multipleOf • const", "dependentRequired", "uniqueItems • minItems", "if / then / else", "not • contains", "union discriminators"
@@ -997,6 +973,7 @@ Avoid:
 - JSON output -> provides -> trusted machine contract.
 - `--text` -> provides -> impact-sorted human review.
 - `schema model diff` -> describes -> the output contract and reason codes.
+- structural delta and impact ranking -> support -> human review; they do not prove behavioral equivalence or estimate defect probability.
 
 ### Generation prompt
 
@@ -1013,7 +990,7 @@ Communication goal:
 - Tone: technically precise, trust-focused, compact, approachable, and visually scannable.
 
 Canvas and header:
-- Tall 2:3 portrait composition at high resolution, preferably 1024 × 1536 or larger.
+- Tall 2:3 portrait composition, exactly 1024 × 1536 pixels.
 - Fully opaque warm off-white background extending to every canvas edge.
 - Large bold sans-serif title at the top left.
 - Short mint-green vertical bar immediately left of the title.
@@ -1066,6 +1043,8 @@ Exact content:
 - Bottom rail title: "TRUSTED OUTPUT"
 - Bottom output pills: "JSON truth contract", "--text impact view", "schema model diff"
 - Bottom benefit pills: "No formatting noise", "Danger first", "Tool-computed trust"
+- Bottom scope note: "Structural evidence ≠ behavioral equivalence"
+- Impact qualifier: "Review priority, not probability"
 
 Semantic mapping:
 - Base snapshot = document-stack icon + pale cyan rounded card.
@@ -1117,35 +1096,98 @@ Avoid:
 6. Keep the accepted PNG under `assets/infographics/` as an ignored local master. Run `"$INFOGRAPHIC_SKILL_ROOT/scripts/png-to-avif" assets/infographics/<name>.png` from the repository root, where `INFOGRAPHIC_SKILL_ROOT` names the installed skill directory; use `--force` only when deliberately replacing a stale export. Track the accepted AVIF and synchronize only that AVIF to the release-source copies named in the registry. Record bytes and DSSIM below.
 7. Verify every README preview and click target, the byte identity of release copies, the dmtool shared README region, the Interpreter mirror assembly, and the documentation guards.
 
-## AVIF conversion record — 2026-09-21
+## Regeneration corrections — 2026-09-21
 
-Conversion only: no image generation, content correction, or factual revalidation ran. Every AVIF decoded successfully at its PNG dimensions and met the 150,000-byte and 0.006 DSSIM limits. The previously recorded stale Kotlin/GraalVM copy remains visible in this conversion; the 2026-09-20 refinement-log entry describes it. No fresh OCR or visual-content acceptance is claimed. PNG masters retain their original pixels and any embedded provenance; AVIF derivatives do not retain a PNG C2PA manifest.
+The following focused prompts are part of the generation record; each uses its own immediately preceding candidate as the edit target.
 
-The default encoder is the skill helper (`quality 55`, `speed 0`, `YUV444`). Two images failed its fidelity gate: Interpreter vs Kernel at DSSIM 0.00728822 and semantic model diff at 0.00802652. Following the Concept Graph series' measured export adjustment, both use `quality 60`, `speed 0`, `YUV444`, and AOM `tune=ssim`; their successful measurements are below. This changes encoder settings while preserving the same size, dimensions, and fidelity acceptance limits.
+### Toolchain output ownership
 
-Default reproduction from the repository root: `"$INFOGRAPHIC_SKILL_ROOT/scripts/png-to-avif" assets/infographics/<name>.png`. For the two tuned rows: `avifenc -q 60 -s 0 --yuv 444 -a tune=ssim --creation-time 0 --modification-time 0 assets/infographics/<name>.png assets/infographics/<name>.avif`. Existing exports must be deliberately replaced. Decode with `avifdec`, compare dimensions, check the byte count, and measure normalized ImageMagick `compare -metric DSSIM` against the PNG before accepting tuned output.
+```text
+Edit only the connector immediately below RUNTIME EVALUATION and the left heading of the bottom OUTPUTS panel. Remove the downward arrow and its "return" label that currently connect the A12 Interpreter to the bottom output summary. Fill that small gap with the same fully opaque warm off-white background as the neighboring gutter. Change the bottom panel's left heading from "OUTPUTS" to "TOOLCHAIN OUTPUTS", using two lines if needed. Keep this bottom panel as an unconnected summary of the whole toolchain. Preserve the summary's existing "Kernel-accepted DocumentModel JSON + validation and computation results" text and every other node, label, arrow, pixel, icon, dimension, and color. Do not connect the Interpreter to the summary again: it does not return a model JSON. Preserve the horizontal runtime arrow to validation and computation.
+```
+
+### Toolchain model input restoration
+
+The output-ownership edit also removed the independent model-to-runtime edge. Restore only that edge.
+
+```text
+Edit the supplied toolchain infographic by adding exactly ONE connector. Start at the bottom border of the "Kernel-accepted DocumentModel JSON" card in the KERNEL ACCEPTANCE panel (approximately x430 y1105). Route downward into the empty gutter between KERNEL ACCEPTANCE and RUNTIME EVALUATION, then right toward x585, then downward to terminate with an arrowhead at the top border of the "A12 Interpreter" card (approximately x585 y1203). Label this connector "run" in the gutter without touching any text. Use the same dark stroke and arrowhead style as the existing connectors. This shows the accepted model is an input to the Interpreter. Keep the existing A12 Document -> A12 Interpreter -> Validation + computation horizontal route. Keep TOOLCHAIN OUTPUTS completely unconnected. Preserve every other pixel, label, icon, panel, dimension, and fully opaque background; do not remove or add any other arrows.
+```
+
+### Runtime workspace lifetime
+
+```text
+Edit only the small caption inside the upper-left ModelWorkspace card of the supplied A12 Interpreter infographic. Replace "Finite sources / on-demand provider" with exactly "Finite collected sources", arranged on one or two lines below ModelWorkspace. The workspace is already an immutable finite snapshot after provider collection, so it must not advertise a retained on-demand provider. Preserve every other pixel, label, arrow, icon, card, dimension, and color, including the fully opaque background and separate result lanes. No new nodes or explanatory text.
+```
+
+### Performance range display
+
+```text
+Edit only the RESIDENT MODEL MEMORY region of the supplied performance infographic. Keep every printed label, range, ratio, timing bar, date, qualifier, icon, and all other regions unchanged. Remove the three horizontal memory bars and their gray tracks. These are ranges across different models, so there is no one scalar bar length to plot. Keep the three rows as aligned icon + engine label + printed memory range + existing ratio callout, using equal-width neutral cards rather than scaled bars. Preserve the warm-validation bars above, which do compare scalar timings. No new text or numbers.
+```
+
+### Technology background and target path
+
+```text
+Edit the supplied Kotlin, GraalVM & A12 Kernel infographic. Preserve every word, number, table cell, card, title, and icon except the target-arrow correction described below. Replace ALL dark, smoky, gradient, or translucent background areas outside and between cards with one fully opaque flat warm off-white color #F7F7F5, including the entire title area and every outer edge. Make the exact existing title "Kotlin, GraalVM & A12 Kernel" and subtitle crisp near-black on that light field. No dark header, glow, vignette, texture, or transparent pixel may remain. Keep the existing pale card colors.
+
+Inside the Kotlin card's small branching diagram, remove the direct Kotlin source -> native dmtool branch. Keep source -> JVM and source -> JavaScript. Connect JVM -> native dmtool with a small clean route labeled "via GraalVM", entirely within that small diagram. This must show native dmtool is delivered through Kotlin/JVM plus GraalVM, not a third Kotlin Multiplatform compilation target. Preserve all other content exactly, particularly 50.3 kLOC, 34.9 kLOC, the checker boundary, and the dated scope note.
+```
+
+### Technology target diagram replacement
+
+The first target-path edit dropped JavaScript and retained an ambiguous native branch. Replace that small diagram instead of refining the branching metaphor again.
+
+```text
+Edit only the small compilation-target diagram inside the upper-left KOTLIN card of the supplied infographic. Remove that entire little source-and-branch illustration, including its existing JVM, native dmtool, and via GraalVM labels and arrows. Replace it with two separate, clearly legible text paths in equal-width pale neutral boxes, stacked vertically:
+"Kotlin common → JVM + JavaScript"
+"Kotlin/JVM + GraalVM → native dmtool"
+Use those exact words, allowing a line break before each arrow if needed. Do not draw any branching connectors between the two boxes. Keep the boxes wholly inside the Kotlin card, above its portable-engine note. Preserve every other pixel, label, count, table cell, icon, layout, and the fully opaque warm off-white background. In particular, retain 50.3 kLOC, 34.9 kLOC, and all checker and Kernel boundaries.
+```
+
+### Schema background
+
+```text
+Edit only the outer background of the supplied JSON Schema ⇄ A12 DocumentModel infographic. Preserve all cards, labels, arrows, icons, exact text, dimensions, layout, and colors inside cards. Replace every dark, smoky, gradient, or translucent area outside cards with one fully opaque flat warm off-white #F7F7F5 background, including the entire header, bridge gutter, footer gutter, and all edges. Restore the existing title and subtitle as crisp near-black lettering on this flat light field. No dark header, glow, vignette, blur, texture, transparency, or changed technical content. Preserve both opposite bridge arrows and the exact array<object> text.
+```
+
+### Semantic diff background
+
+```text
+Edit only the outer background of the supplied Semantic Model Diff infographic. Preserve all panels, labels, arrows, icons, exact text, dimensions, layout, and colors inside cards. Replace every dark, smoky, gradient, or translucent area outside panels with one fully opaque flat warm off-white #F7F7F5 background, including the entire header, every gutter, and all edges. Restore the existing title and subtitle as crisp near-black lettering on this flat light field. No dark header, glow, vignette, blur, texture, transparency, or changed technical content. Preserve every delta family, impact tier, and the two bottom scope qualifiers.
+```
+
+## Accepted regeneration and AVIF export — 2026-09-21
+
+All seven posters were freshly generated with the built-in ImageGen tool after the content review above, then refined with the recorded corrections. The format-only migration was committed first as `ad7514d0c`; its original conversion measurements remain in that revision. This record identifies the regenerated artwork that supersedes it. PNG masters and pre-regeneration comparison masters remain local and Git-ignored; AVIF derivatives do not preserve a PNG C2PA manifest.
+
+All seven exports use the skill's unmodified `web-compact` helper: quality 55, speed 0, YUV444, unchanged source dimensions, at most 150,000 bytes, and normalized DSSIM ≤ 0.006 against the decoded export. No tuned encoder or relaxed limit was needed. Reproduce a deliberate replacement with `"$INFOGRAPHIC_SKILL_ROOT/scripts/png-to-avif" --force assets/infographics/<name>.png`.
+
+Acceptance used visual inspection of the generated masters and half-size AVIF previews, not OCR. Every image was checked for title and label readability, factual qualifiers, reading order, connector endpoints, result ownership, clipping, and unauthorized branding. ImageMagick reports every accepted PNG fully opaque; the helper verifies AVIF decode, dimensions, size, and DSSIM. The main paths remain clear at preview width; dense technical labels are intended to be read by opening the full image.
+
+Accepted rendering differences from the requested flat visual style: subtle shading inside colored cards, a horizontal mint title highlight on the runtime poster, and a compact isometric executable icon on the technology poster. The runtime includes the factual caption “Model-owned document snapshot”. The semantic-diff poster consolidates the two resolver boxes into one “Independently resolved” summary and repeats each stage number in its heading; independent BASE/HEAD inputs remain explicit. These are presentation deviations, not additional capability claims. The performance master is 1122 × 1402 rather than the requested 1024 × 1280; the AVIF preserves the actual master dimensions.
 
 | Accepted AVIF | Dimensions | Bytes | DSSIM | Encoder |
 |---|---|---:|---:|---|
-| [a12-dmkits-toolchain](../assets/infographics/a12-dmkits-toolchain.avif) | 1024 × 1536 | 59,888 | 0.00422000 | Default helper |
-| [a12-interpreter-runtime](../assets/infographics/a12-interpreter-runtime.avif) | 1024 × 1536 | 78,338 | 0.00474586 | Default helper |
-| [dmtool-model-workbench](../assets/infographics/dmtool-model-workbench.avif) | 1024 × 1536 | 91,684 | 0.00342182 | Default helper |
-| [interpreter-vs-kernel](../assets/infographics/interpreter-vs-kernel.avif) | 1126 × 1397 | 114,983 | 0.00477437 | SSIM-tuned |
-| [json-schema-document-model](../assets/infographics/json-schema-document-model.avif) | 1536 × 1024 | 69,086 | 0.00317348 | Default helper |
-| [kotlin-graalvm-kernel-roles](../assets/infographics/kotlin-graalvm-kernel-roles.avif) | 1024 × 1536 | 87,042 | 0.00438481 | Default helper |
-| [semantic-model-diff](../assets/infographics/semantic-model-diff.avif) | 1024 × 1536 | 129,769 | 0.00494193 | SSIM-tuned |
+| [a12-dmkits-toolchain](../assets/infographics/a12-dmkits-toolchain.avif) | 1024 × 1536 | 71,290 | 0.00411054 | Default helper |
+| [a12-interpreter-runtime](../assets/infographics/a12-interpreter-runtime.avif) | 1536 × 1024 | 72,823 | 0.00439815 | Default helper |
+| [dmtool-model-workbench](../assets/infographics/dmtool-model-workbench.avif) | 1024 × 1536 | 104,864 | 0.00562747 | Default helper |
+| [interpreter-vs-kernel](../assets/infographics/interpreter-vs-kernel.avif) | 1122 × 1402 | 84,157 | 0.00580269 | Default helper |
+| [json-schema-document-model](../assets/infographics/json-schema-document-model.avif) | 1536 × 1024 | 89,798 | 0.00536393 | Default helper |
+| [kotlin-graalvm-kernel-roles](../assets/infographics/kotlin-graalvm-kernel-roles.avif) | 1024 × 1536 | 96,762 | 0.00548745 | Default helper |
+| [semantic-model-diff](../assets/infographics/semantic-model-diff.avif) | 1024 × 1536 | 84,524 | 0.00521586 | Default helper |
 
-The seven canonical files total 630,790 bytes, down from 11,278,873 PNG bytes. The hashes identify the exact conversion inputs and accepted exports; update this record when those files change.
+The seven canonical AVIFs total 604,218 bytes, compared with 11,921,434 bytes for their PNG masters (94.9% smaller). The eight release-source AVIF copies are byte-identical to their canonical counterparts.
 
 | Image | Local PNG SHA-256 | Tracked AVIF SHA-256 |
 |---|---|---|
-| a12-dmkits-toolchain | `a2ca010c989536c093e97d40cd2010ff9f8674fdf5d8496dac5595863b2ccb01` | `057025f942cbf567c50a632c25332302fff77c592de4c0b95bdb6aaaa466fd9a` |
-| a12-interpreter-runtime | `aa5a83cc537fbd2c3ee3868b201c3b16d579dbc26fe7253ca43d84562993c2b2` | `0d59e21679b363d8b206f6e7e7017db7c42198b452843c1e73cb5494c8f8c948` |
-| dmtool-model-workbench | `6409782726acfa948c0d024cc585926a2a7b22dce994b47fd7c09397bc19014c` | `e0a2e36d62547089bed04ee58c1895620a1ec930010204e84f432cd53113021f` |
-| interpreter-vs-kernel | `98f42259052a1a2b1b71f005bd67eaf36d4d61c1ae0bb120a7d7212b9f282c63` | `a78965ea8ea91a9c0a19634b5e5d20a632eef271c256046462e76e1ab0deea34` |
-| json-schema-document-model | `a82f3edb38f9089db920b6f37cdb31bd51c2f3ff6ff99b83c0c39058ca680223` | `fad3593fe492a1d67c95e01a28d772d323f445ab6b4e95a9846cf785e6554041` |
-| kotlin-graalvm-kernel-roles | `36cbfe491d46d4ac205dcbc7192c56bd5cfe2f8fbb4ab88b4756948e9a2f7f64` | `299f2dc2ed9849e19b26691e87e3afeedd9d0cd41c5504c9a0d9cafee84eae4b` |
-| semantic-model-diff | `1e2371ee941bfc6f38cc466e646f27a4960d9a37d8adb560578f2f570e594dc5` | `fa02f7fde6c582352d0d2021a23cbad46e726645d81c7104b5c1bd13a1ae6ee2` |
+| a12-dmkits-toolchain | `772c0db672469a43aaa9e4f198e8fe5878443f8d06777cad62cefa49cceb8ab9` | `5f11e57e60c0fa2a375403569035926c0d6afe036a0bba037dbbb47a99ccf047` |
+| a12-interpreter-runtime | `c86da4fd114cdf1a5777f14717ce53f9b1b8fffc932f118cb5b409d4ff327f34` | `b24e66cab8acee4a37839f8c66a51adea02fd3663ffb9e4ed908cb02e25d59f3` |
+| dmtool-model-workbench | `ada23f513fd00903897c52e360726327693efcbf859cc0c0ecf084b5d967359c` | `baf6794ea055dcdeb87b9f8aa053de0830819fa0afd7a1062df443fcebac7095` |
+| interpreter-vs-kernel | `105f6545d3a34f3c663ec80e924eb201f4caea6955b66994ac7701388c9dfad8` | `e88e562617585c940aa1a0d1570b35e78f268b60edf77746d15042cea7f45a60` |
+| json-schema-document-model | `79c843665d7d4765cb4b53741f2d243d02cece925e1d0ebebedda0f4b780aa46` | `077a50e4953196964ef98f09a3a6e8d9d4ffb929e69292ae7a22f991641ff769` |
+| kotlin-graalvm-kernel-roles | `4d5092ce4323be8e72318a73e46de44e8b305ed331ed05957f80bee20dc04386` | `97fdb7aa3ab1c3e80822f8394a5e4405e9b72e4d286c383e9de506d2913ad453` |
+| semantic-model-diff | `3a588487d1278817f8a85c6cf1976c5085356b1c0af5afee6f2ec4c707e64a8b` | `af08969fca0eca16180c342fd9b1a7c90cfb5b1d2be30fbaa6ce753c74316ad5` |
 
 ## Refinement log
 
@@ -1165,4 +1207,11 @@ Add one row per accepted generation or targeted edit. Record rejected attempts o
 | 2026-08-30 | JSON Schema functionality | Initial built-in ImageGen generation, then focused source-icon and exact-token edits | Accepted at 864 × 1821. Keep the asymmetric import/export columns, use neutral schema-document symbols instead of product logos, and spell code-shaped labels such as `array<object>` and `dependentRequired` exactly. |
 | 2026-08-30 | Semantic model diff | Initial built-in ImageGen generation, then a focused header-contrast edit | Accepted at 1024 × 1536. Keep the sequential review pipeline, preserve the distinct structural-versus-text comparison boundary, and render the title against a light header so it remains legible at README preview width. |
 | 2026-08-30 | JSON Schema functionality | Rebuilt as a wide four-column layout, corrected the export endpoint, then restored the exact `array<object>` token | Accepted at 1536 × 1024. Wide infographics are valid when the topology benefits; connect import and export to the same external-schema node so both direction and target remain explicit. |
-| 2026-09-20 | Kotlin, GraalVM, and A12 Kernel roles | Prompt-only edit: the SIZE row and the Kotlin STRUCTURE cell. **No generation ran, so the accepted PNG still carries the superseded `47.7`/`19.1 kLOC` and a Kotlin STRUCTURE cell reading "interpreter • adapter laws (tests)".** | Two reusable lessons, both about what the prompt-to-table binding cannot reach. (1) The kLOC row was wrong because the OWNING Source Statistics table had never counted `:consistency` or `:predicates` — the earlier note here said to run `update-code-statistics.sh --check` before freezing a count, and the gap it missed is that the table can be internally consistent and still omit whole modules, so check the updater's source-set LISTS too. (2) The Kotlin STRUCTURE cell had drifted silently: it named one of five Kotlin production modules and then named tests, contradicting this poster's own production-only caption and the explicit "do not imply that adapter laws are production Kotlin" constraint twenty lines below it. A cell that enumerates modules is as volatile as a count and has no binding at all. |
+| 2026-09-20 | Kotlin, GraalVM, and A12 Kernel roles | Prompt-only edit: the SIZE row and the Kotlin STRUCTURE cell. **At that revision no generation ran, so the PNG still carried the superseded `47.7`/`19.1 kLOC` and a Kotlin STRUCTURE cell reading "interpreter • adapter laws (tests)".** | Two reusable lessons, both about what the prompt-to-table binding cannot reach. (1) The kLOC row was wrong because the OWNING Source Statistics table had never counted `:consistency` or `:predicates` — the earlier note here said to run `update-code-statistics.sh --check` before freezing a count, and the gap it missed is that the table can be internally consistent and still omit whole modules, so check the updater's source-set LISTS too. (2) The Kotlin STRUCTURE cell had drifted silently: it named one of five Kotlin production modules and then named tests, contradicting this poster's own production-only caption and the explicit "do not imply that adapter laws are production Kotlin" constraint twenty lines below it. A cell that enumerates modules is as volatile as a count and has no binding at all. |
+| 2026-09-21 | All seven posters | Fresh content review, separate built-in ImageGen generations, visual review, and AVIF export | Supersedes the earlier artwork and resolves the 2026-09-20 prompt/pixel mismatch. Seven default-profile AVIFs accepted; local PNGs and their pre-regeneration archive remain ignored. Current export measurements and hashes are above. |
+| 2026-09-21 | Toolchain and workbench | Added portable checking and its bounded verdict; corrected toolchain connectors | Keep the optional checker distinct from authoritative Kernel acceptance, and distinguish declared artifact outputs from usual JSON envelopes. |
+| 2026-09-21 | Interpreter runtime | Rejected the portrait plus connector edit; regenerated with separate landscape result lanes | Validation returns ValidationReport; compute returns ComputationReport; only the report's applyTo creates the new snapshot. Keep reusable Interpreter lifetime separate from per-call state. |
+| 2026-09-21 | Performance | Added the dated-study badge and browser scope qualifier; removed scalar-looking memory bars | The 2026-08-17 study was not rerun. Preserve exact timing/range values; use scaled bars only for scalar timing comparisons and equal-width cards for memory ranges across models. |
+| 2026-09-21 | Technology roles | Updated engine/module roles and 50.3/34.9 kLOC; corrected background and target diagram | Root source statistics were refreshed before generation. Replacing the ambiguous branch diagram with two explicit target/delivery paths retained JavaScript and prevented native dmtool appearing as a Kotlin compilation target. |
+| 2026-09-21 | Schema exchange and semantic diff | Clarified semantic boundaries; background-only corrections | Keep strict import's omission behavior and stock-validator carriage limit explicit. Diff evidence is structural, and impact is review priority. Reject translucent dark headers before export. |
+| 2026-09-21 | Toolchain and Interpreter runtime | Terminal review corrections | Make TOOLCHAIN OUTPUTS an unconnected summary, preserving the separate accepted-model input to the Interpreter. Label ModelWorkspace as finite collected sources: collection finishes before the immutable workspace exists. Re-exported both corrected masters through the same default quality gates. |

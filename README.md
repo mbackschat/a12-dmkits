@@ -994,8 +994,8 @@ The shipped product. Counted from `core/src/main/java`, `rulekit/src/main/java`,
 
 | Language | Files | Lines | Code | Comments | Blanks |
 |---|---:|---:|---:|---:|---:|
-| Java | 497 | 72278 | 49168 | 15844 | 7266 |
-| Kotlin | 270 | 58801 | 34892 | 19530 | 4379 |
+| Java | 503 | 74465 | 50347 | 16683 | 7435 |
+| Kotlin | 270 | 58916 | 34926 | 19608 | 4382 |
 | TypeScript | 17 | 3762 | 3209 | 274 | 279 |
 | JavaScript | 1 | 107 | 72 | 25 | 10 |
 
@@ -1005,8 +1005,8 @@ Tests, laws, kernel differentials, fuzzers, conformance replay, and the external
 
 | Language | Files | Lines | Code | Comments | Blanks |
 |---|---:|---:|---:|---:|---:|
-| Java | 1039 | 159729 | 110190 | 30989 | 18550 |
-| Kotlin | 1013 | 153786 | 111144 | 27686 | 14956 |
+| Java | 1099 | 167764 | 114990 | 33325 | 19449 |
+| Kotlin | 1017 | 154373 | 111518 | 27844 | 15011 |
 | TypeScript | 15 | 3372 | 3154 | 73 | 145 |
 
 ### Tooling
