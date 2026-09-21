@@ -4,6 +4,13 @@ A standalone, Kernel-free consistency checker for A12 **DocumentModels** — the
 
 **Read this first: there are two questions here, and only one of them has a pass.** *"Would A12 accept this model?"* is a claim about every rule A12 has, and this checker is not feature-complete, so it answers `INVALID` or `INCONCLUSIVE` and never `VALID`. *"Did everything this checker implements pass?"* is a question about a finite, known list — so it does have a pass, published as `outcome: 'ALL_CHECKS_PASSED'`. The two are not the same green light, and `complete: false` is what keeps them apart.
 
+<p align="center">
+  <a href="../assets/infographics/a12-consistency-checker.avif">
+    <img src="../assets/infographics/a12-consistency-checker.avif" alt="A12 Consistency Checker application inputs, checking operations, reports, snapshot reuse, and assurance boundaries" width="720">
+  </a>
+</p>
+<p align="center"><sub>Click the infographic to open the full-resolution image.</sub></p>
+
 ## Getting it
 
 **There is no public release yet, so `npm add a12-consistency` will not work and neither will a plain Maven coordinate.** The publish wiring exists and the *deploy* is deferred: [`../docs/RELEASE-SPEC.md`](../docs/RELEASE-SPEC.md) §11 lists `dm-consistency` with the developer-library wave whose Central-or-mirror deploy has not happened, and unlike [`../interpreter`](../interpreter) and `dmtool` this module has no release mirror or publisher script of its own. Until then you build the artifact rather than declare a dependency.

@@ -963,6 +963,13 @@ The spread does not track model size: the widest margins were measured on comput
 
 ## The portable checker — kernel-free consistency, without the kernel
 
+<p align="center">
+  <a href="assets/infographics/a12-consistency-checker.avif">
+    <img src="assets/infographics/a12-consistency-checker.avif" alt="A12 Consistency Checker application inputs, checking operations, reports, snapshot reuse, and assurance boundaries" width="720">
+  </a>
+</p>
+<p align="center"><sub>Click the infographic to open the full-resolution image.</sub></p>
+
 The interpreter answers *what happens when you run this model*. The **portable checker** (`a12-consistency`) answers the question before it: *would A12 reject this model at all?* — and it answers it with no server, no kernel and no licence, on the JVM, in Node and in the browser, from one Kotlin Multiplatform implementation.
 
 **It never says `VALID`, and that is the design rather than a shortfall.** "Would A12 accept this?" is a claim about every rule A12 has, and the checker implements a finite subset — 103 named check families today — so it reports `INVALID` or `INCONCLUSIVE` and publishes the coverage evidence (`checksCompleted`, `gaps`) that says how much weight the answer bears. What it *can* decide is its own scope, and that does have a pass: `outcome: ALL_CHECKS_PASSED` means every family this build implements ran and none rejected the model. Reading `INCONCLUSIVE` as "valid" is the one way to misuse it, which is why the status is a word rather than a boolean.

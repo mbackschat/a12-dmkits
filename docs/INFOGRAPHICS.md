@@ -43,6 +43,9 @@ The full-resolution AVIF assets live under `assets/infographics/`. Each table ro
 | Semantic model diff | `assets/infographics/semantic-model-diff.avif` | [root README](../README.md) | `assets/infographics/semantic-model-diff.avif` | `720` |
 | Semantic model diff | `assets/infographics/semantic-model-diff.avif` | [dmtool release README](../plugin/README.md) | `assets/infographics/semantic-model-diff.avif` | `720` |
 | Semantic model diff | `assets/infographics/semantic-model-diff.avif` | [infographic source](INFOGRAPHICS.md) | `../assets/infographics/semantic-model-diff.avif` | `540` |
+| A12 Consistency Checker | `assets/infographics/a12-consistency-checker.avif` | [root README](../README.md) | `assets/infographics/a12-consistency-checker.avif` | `720` |
+| A12 Consistency Checker | `assets/infographics/a12-consistency-checker.avif` | [checker README](../consistency/README.md) | `../assets/infographics/a12-consistency-checker.avif` | `720` |
+| A12 Consistency Checker | `assets/infographics/a12-consistency-checker.avif` | [infographic source](INFOGRAPHICS.md) | `../assets/infographics/a12-consistency-checker.avif` | `540` |
 <!-- infographic-registry:end -->
 
 Every README embeds a scaled preview using an HTML `img` element inside a link to the same full-resolution AVIF. The preview width is `720`, the image has descriptive alt text, and the adjacent caption tells the reader that the full image opens on click.
@@ -79,6 +82,7 @@ Each poster owns one question; repeated components provide context rather than r
 | Technology roles | Which technology owns checking, evaluation, and delivery? | [Architecture](ARCHITECTURE.md), [checker API](CONSISTENCY-API.md), and freshly measured root [statistics](../README.md#source-statistics): separate portable evaluation from portable consistency, correct the module roles, and update the production counts. |
 | Schema exchange | Which semantics map natively, travel as metadata, or are omitted? | [Schemakit](SCHEMAKIT-SPEC.md): clarify that strict import omits uncertain mappings, and that `x-a12-*` carriage is not execution by a stock JSON Schema validator. |
 | Semantic diff | Which structural changes deserve review first? | [Model review](MODEL-REVIEW-SPEC.md): distinguish structure-based evidence from behavioral equivalence and state that impact tiers are review priority, not probability. |
+| Consistency checker | How does an application supply models, check edits, and interpret the results? | [Checker API](CONSISTENCY-API.md) and [module README](../consistency/README.md): inputs, operation-specific results, immutable snapshots, limited assurance, and standalone deployment. |
 
 | Claim family | Current source | Regenerate when |
 |---|---|---|
@@ -87,6 +91,7 @@ Each poster owns one question; repeated components provide context rather than r
 | JSON Schema and OpenAPI transcoding | [SCHEMAKIT-SPEC.md](SCHEMAKIT-SPEC.md), the executable [JSON Schema walkthrough](../examples/cli-jsonschema.md), `dmtool model import-jsonschema --help`, and `dmtool model export-jsonschema --help` | a supported dialect, mapping tier, structural mapping, synthesized-rule family, MappingProfile choice, report contract, export projection/carriage rule, or verification gate changes |
 | Structural semantic diff | [MODEL-REVIEW-SPEC.md](MODEL-REVIEW-SPEC.md), the executable [review walkthrough](../examples/cli-review.md), `dmtool model diff --help`, and `dmtool schema model diff` | an input mode, independently resolved baseline rule, change family, delta type, condition-edit classifier, refactor matcher, review-impact tier, or output view changes |
 | Interpreter preparation, request lifecycle, targets, and public features | [INTERPRETER-API-SPEC.md](INTERPRETER-API-SPEC.md), [INTERPRETER-ARCHITECTURE.md](INTERPRETER-ARCHITECTURE.md), public Interpreter [`README.md`](../interpreter/public-release/README.md) | the public lifecycle, target set, concurrency contract, or supported result family changes |
+| Consistency checker inputs, operations, reports, reuse, and availability | [CONSISTENCY-API.md](CONSISTENCY-API.md), [checker README](../consistency/README.md), and [RELEASE-SPEC.md](RELEASE-SPEC.md) §11 | checking scope, an operation's result contract, reuse boundaries, verdict semantics, runtime targets, or public-release status changes |
 | Kernel-conformance claims | [TESTING-SPEC.md](TESTING-SPEC.md), [CONFORMANCE-CORPUS-SPEC.md](CONFORMANCE-CORPUS-SPEC.md), [INTERPRETER-SPEC.md](INTERPRETER-SPEC.md) | the semantics target, oracle hierarchy, differential policy, or portable corpus contract changes |
 | Kotlin, Java, GraalVM, and Kernel roles | [ARCHITECTURE.md](ARCHITECTURE.md), [INTERPRETER-ARCHITECTURE.md](INTERPRETER-ARCHITECTURE.md), [INTERPRETER-SPEC.md](INTERPRETER-SPEC.md), [NATIVE-IMAGE-GRAALVM.md](NATIVE-IMAGE-GRAALVM.md), [RELEASE-SPEC.md](RELEASE-SPEC.md), and the generated root [Source statistics](../README.md#source-statistics) | a component boundary, compile target, shipped platform, runtime owner, Kernel responsibility, native-delivery decision, or Java/Kotlin production count changes |
 | Performance and resident memory | public [PERFORMANCE.md](../interpreter/public-release/PERFORMANCE.md), [INTERPRETER-PERFORMANCE.md](INTERPRETER-PERFORMANCE.md), [INTERPRETER-PERFORMANCE-RESULTS.md](INTERPRETER-PERFORMANCE-RESULTS.md) | a qualifying benchmark rerun changes any displayed number, machine/runtime identity, timing boundary, or eligibility rule |
@@ -1086,13 +1091,104 @@ Avoid:
 - No invented change families, impact reasons, commands, output formats, tiny paragraphs, illegible text, duplicated words, random arrows, ambiguous connectors, excessive nesting, or decorative charts.
 ```
 
+## Infographic 8: A12 Consistency Checker
+
+### Accepted output
+
+<p align="center">
+  <a href="../assets/infographics/a12-consistency-checker.avif">
+    <img src="../assets/infographics/a12-consistency-checker.avif" alt="A12 Consistency Checker application inputs, checking operations, reports, snapshot reuse, and assurance boundaries" width="540">
+  </a>
+</p>
+<p align="center"><sub>1536 × 1024 AVIF. Click the preview to open the full-resolution image.</sub></p>
+
+### Content map
+
+- Audience question: how does this checker fit into my application, and what can I conclude from its reports?
+- Ten-second takeaway: applications supply model sources and candidate text to an independent checker; operation-specific reports disclose findings and coverage, while a scoped pass remains distinct from full A12 acceptance.
+- Exact title: `A12 Consistency Checker`.
+- Exact subtitle: `How model checking fits into your application`.
+- Primary layout: landscape architecture with sources → checker → results, followed by two explicit repeated-editing paths and a compact assurance boundary.
+- Major regions: your application, model sources, checking operations, operation results, repeated editing, reading the verdict.
+- Scope: rules and computations in their model context; model structure supplies context, not a claim that every structural declaration is validated. This is the consumer view, not a module dependency graph, marketing feature catalog, or exhaustive API reference.
+- Context-only entities: Kernel and Interpreter appear only to distinguish model acceptance from Document evaluation. JVM and JavaScript identify supported hosts, not extra processing stages.
+
+### Exact relationships and evidence
+
+All capability statements below are documented in the current repository as of 2026-09-21. No new Kernel-semantic or performance measurement is claimed. The archived implementation plan is historical context; the live consumer contract is the source for this poster.
+
+| Relationship or claim | Source and boundary |
+|---|---|
+| Application → supplies → model sources; sources → analysed by → checker; checker → returns → operation results | [Entry point and report](CONSISTENCY-API.md#the-entry-point); multiple supplied sources belong to the snapshot API, not an implicit provider or network fetch. |
+| Model check → reports → findings, diagnostics, and coverage | [Report](CONSISTENCY-API.md#the-report); findings and diagnostics remain distinct, and gaps describe unchecked work rather than model defects. |
+| Candidate edit → compares → introduced/resolved findings; draft → checked in → model context | [Edit checking](CONSISTENCY-API.md#checking-an-edit--checkedit-for-a-candidate-you-have-not-saved) and [draft checking](CONSISTENCY-API.md#checking-text-an-editor-has-not-saved--checkdraft); baseline defects do not become the edit's rejection. |
+| Impact analysis → identifies → affected declarations | [Impact report](CONSISTENCY-API.md#which-declarations-a-change-reaches--impactof-before-you-commit-to-it); affected does not mean invalid or behaviorally changed. |
+| Old snapshot + source update → creates → new snapshot; snapshot + draft → returns → draft report | [Snapshots](CONSISTENCY-API.md#holding-one-analysis-across-many-questions--snapshotof); source updates reuse unchanged parses, while draft checks reuse unaffected check results within their own snapshot. Do not imply check-result reuse across snapshots, automatic mutation, or a latency guarantee. |
+| Checker → runs on → JVM + JavaScript, independently of Kernel and Interpreter | [Module boundaries](../consistency/README.md); browser/Node/JVM are delivered repository-build consumer paths. Public release is pending, so no public package-install claim appears. |
+| Scoped pass ≠ full A12 acceptance | [Status and outcome](CONSISTENCY-API.md#read-this-first-two-different-questions-and-only-one-of-them-has-a-pass); the example pair is `ALL_CHECKS_PASSED` + `INCONCLUSIVE` + `complete: false`, not the only possible result. The checker can also establish `INVALID`. |
+
+### Generation prompt
+
+```text
+Use case: infographic-diagram.
+Create one original ByteByteGo-inspired technical infographic, landscape exactly 1536 × 1024 pixels, for an engineering README. Title exactly "A12 Consistency Checker". Subtitle exactly "How model checking fits into your application". This is a consumer-facing technical architecture explanation, not advertising and not an internal implementation diagram.
+
+Use a fully opaque flat warm off-white #F7F7F5 canvas, including all header, gutter and edge pixels. Large near-black geometric sans-serif title, short mint vertical bar to its left. Dark outlines, rounded cards, compact flat icons, horizontal text, generous arrow gutters. Use pale cyan for caller/input, pale lavender with a saturated purple heading for the checker, pale yellow for reports, pale mint for editing context. Preserve enough contrast for black text. No logos, brand marks, gradients, 3D, textures, glow, shadows, transparent areas or invented labels.
+
+One dominant landscape architecture: a slim application context rail, then a large three-column sources → checker → results band, then a repeated-editing band, then a compact assurance footer. The architecture and editing mechanism occupy at least 70% of the body. All visible text is specified below. Use short lines and a consistent readable type scale; never shrink a paragraph into a card. Do not add copy.
+
+APPLICATION RAIL (context only, no arrows): heading "YOUR APPLICATION" and three aligned icon + label groups: "Browser editor", "Node automation", "Java / Kotlin application". A small caption at the rail's right says "Caller supplies sources".
+
+MAIN BAND, three columns, reading left to right:
+
+LEFT CARD, title "MODEL SOURCES". Use a document-stack icon. Four aligned rows: "DocumentModel JSON", "Referenced models", "Candidate edits", "Unfinished rule text". A compact bottom note: "Inputs depend on operation". This card represents caller-supplied data, not a file server or network service.
+
+CENTRE CARD, title "CONSISTENCY CHECKER", package-name pill "a12-consistency". Four equal capability rows with small icons, not sequential numbered stages: "Check rules & computations", "Compare candidate edit", "Inspect unfinished text", "Trace change impact". Below the rows put the scope line "Syntax • references • measured constraints" and a second compact line "Model structure provides context". Bottom platform pill: "JVM + JavaScript".
+
+RIGHT CARD, title "OPERATION RESULTS". Five aligned rows, each a bold label and short description:
+"Findings" — "Locations + explanations"
+"Diagnostics" — "Unreadable source or declarations"
+"Edits" — "Introduced + resolved findings"
+"Impact" — "Affected declarations ≠ invalid declarations"
+"Coverage" — "Completed checks + gaps"
+Bottom note "Report contents depend on operation". Do not present all rows as one universal JSON object.
+
+Exactly two arrows in the main band, with clear whitespace between columns: MODEL SOURCES -> CONSISTENCY CHECKER labeled "analyse"; CONSISTENCY CHECKER -> OPERATION RESULTS labeled "return". Both arrowheads touch the intended owning card. No arrows between the capability rows or result rows. No arrow to a Kernel or Interpreter.
+
+REPEATED EDITING BAND, heading "REPEATED EDITING", two side-by-side small lanes with equal emphasis:
+Left lane: node "Snapshot + source update" -> node "New snapshot", arrow label "create"; caption below "Reuse unchanged source parses".
+Right lane: node "Snapshot + draft text" -> node "Draft report", arrow label "check"; caption below "Reuse unaffected check results".
+Below the lanes one full-width restrained note: "Snapshots stay immutable • checking does not save your edits". No arrow joining the left and right lanes. No circular loop or global cache symbol. Snapshot reuse counts work, not a speed claim.
+
+ASSURANCE FOOTER, two side-by-side cards, no arrows:
+Left title "READ THE VERDICT". First row "INVALID: a rejection was established". Next put a framed example labeled "Example: all implemented checks passed", followed by "ALL_CHECKS_PASSED + INCONCLUSIVE" and "complete: false • inspect coverage gaps". This is an example pairing, not the only possible outcome. Do not use a green VALID badge or imply INCONCLUSIVE is a rejection.
+Right title "SEPARATE RESPONSIBILITIES". Three lines: "Checker: model declarations", "Interpreter: Document evaluation", "Kernel: full A12 acceptance". Add one compact bold boundary below: "Checker needs neither Kernel nor Interpreter".
+
+At the bottom edge, one small but readable availability line: "Repository builds available • public release pending".
+
+Avoid marketing slogans, promises of complete coverage, universal correctness, performance numbers, automatic saving, automatic Kernel fallback, or automatic Document evaluation. Do not claim structural checks for every model element. Do not turn impact into a defect verdict. Do not confuse an A12 Document with its DocumentModel. Do not show old and new snapshots as the same mutable object. Do not imply check-result reuse across different snapshots. All arrows must express only the four named relationships above. No duplicate text, extra status terms, tiny body paragraphs or decorative connectors.
+```
+
+### Generation and acceptance — 2026-09-21
+
+Generated with the built-in ImageGen tool from the complete prompt above, then accepted without a correction pass. The new poster is placed in the root and checker module READMEs; both reference the canonical AVIF directly. There is no checker release mirror, and this consumer-level poster is not copied into the dmtool or Interpreter release trees.
+
+Visual-only; OCR unavailable. Inspected all six regions at full resolution and the decoded AVIF at 50% size: exact copy, the four directed edges, operation-specific result grouping, separate editing paths, verdict example, pending public-release qualifier, and independent engine boundaries. All planned labels are present without additional claims. The main route and section hierarchy remain legible at half size; full-size access carries the smaller details. ImageMagick reports an opaque 1536 × 1024 master. Slight shading inside the pale cards is an accepted style deviation; no transparency, unreadable header, unauthorized branding, or unresolved content discrepancy was observed.
+
+Export: `"$INFOGRAPHIC_SKILL_ROOT/scripts/png-to-avif" assets/infographics/a12-consistency-checker.png`. The unmodified `web-compact` profile succeeded: quality 55, speed 0, YUV444, decoded dimensions unchanged, 79,244 bytes, normalized DSSIM 0.00365925 ≤ 0.006. The PNG master is 1,618,124 bytes and is Git-ignored; only the AVIF is tracked.
+
+| Accepted file | Dimensions | SHA-256 |
+|---|---|---|
+| Local PNG master: `assets/infographics/a12-consistency-checker.png` | 1536 × 1024 | `12407d73387c406904b273e22415d1b69c5e4c66c76d57972b19de68ccb9309b` |
+| [Tracked AVIF](../assets/infographics/a12-consistency-checker.avif) | 1536 × 1024 | `b4577d434968aff448d0a2fe11a1a73980eef92d05f28532a5513e21820a44db` |
+
 ## Regeneration workflow
 
 1. Revalidate every factual input against the sources in the freshness table. Runtime behavior claims require the real Kernel differential; performance and memory figures require the owning measurement protocol and results record.
 2. Update the relevant content map and exact prompt in this file before generating. The prompt is the reviewable source, while the PNG is derived output.
 3. Use the `infographic-bytebytego-style` skill to generate each poster separately with the built-in ImageGen tool. Do not batch distinct posters into one prompt.
 4. Inspect the result at full resolution and 50% size for exact text, hierarchy, reading order, connector meaning, repeated-entity consistency, color discipline, mobile legibility, and unauthorized branding. Verify the opaque canvas. Use the skill's acceptance checklist, compare every region with its exact-copy and relationship manifest, and record the actual OCR or visual method rather than asserting an unperformed check.
-5. Refine with focused image edits that name only the failed gate and preserve all unaffected layout, copy, palette, and icons. Correct the node, boundary, or relationship that caused ambiguity instead of adding explanatory paragraphs. Keep useful correction prompts and optional versioned PNG comparison masters locally, but promote one unversioned AVIF per poster into Git.
+5. Refine with focused image edits that name only the failed gate and preserve all unaffected layout, copy, palette, and icons. Correct the node, boundary, or relationship that caused ambiguity instead of adding explanatory paragraphs. Keep useful correction prompts and optional versioned PNG comparison masters locally, but promote one unversioned AVIF per poster into Git. Retrieve older AVIF versions from Git history; do not store AVIF versions in `archive/`.
 6. Keep the accepted PNG under `assets/infographics/` as an ignored local master. Run `"$INFOGRAPHIC_SKILL_ROOT/scripts/png-to-avif" assets/infographics/<name>.png` from the repository root, where `INFOGRAPHIC_SKILL_ROOT` names the installed skill directory; use `--force` only when deliberately replacing a stale export. Track the accepted AVIF and synchronize only that AVIF to the release-source copies named in the registry. Record bytes and DSSIM below.
 7. Verify every README preview and click target, the byte identity of release copies, the dmtool shared README region, the Interpreter mirror assembly, and the documentation guards.
 
@@ -1157,7 +1253,7 @@ Edit only the outer background of the supplied JSON Schema ⇄ A12 DocumentModel
 Edit only the outer background of the supplied Semantic Model Diff infographic. Preserve all panels, labels, arrows, icons, exact text, dimensions, layout, and colors inside cards. Replace every dark, smoky, gradient, or translucent area outside panels with one fully opaque flat warm off-white #F7F7F5 background, including the entire header, every gutter, and all edges. Restore the existing title and subtitle as crisp near-black lettering on this flat light field. No dark header, glow, vignette, blur, texture, transparency, or changed technical content. Preserve every delta family, impact tier, and the two bottom scope qualifiers.
 ```
 
-## Accepted regeneration and AVIF export — 2026-09-21
+## Original seven-poster regeneration and AVIF export — 2026-09-21
 
 All seven posters were freshly generated with the built-in ImageGen tool after the content review above, then refined with the recorded corrections. The format-only migration was committed first as `ad7514d0c`; its original conversion measurements remain in that revision. This record identifies the regenerated artwork that supersedes it. PNG masters and pre-regeneration comparison masters remain local and Git-ignored; AVIF derivatives do not preserve a PNG C2PA manifest.
 
@@ -1177,7 +1273,7 @@ Accepted rendering differences from the requested flat visual style: subtle shad
 | [kotlin-graalvm-kernel-roles](../assets/infographics/kotlin-graalvm-kernel-roles.avif) | 1024 × 1536 | 96,762 | 0.00548745 | Default helper |
 | [semantic-model-diff](../assets/infographics/semantic-model-diff.avif) | 1024 × 1536 | 84,524 | 0.00521586 | Default helper |
 
-The seven canonical AVIFs total 604,218 bytes, compared with 11,921,434 bytes for their PNG masters (94.9% smaller). The eight release-source AVIF copies are byte-identical to their canonical counterparts.
+The seven AVIFs in this batch total 604,218 bytes, compared with 11,921,434 bytes for their PNG masters (94.9% smaller). The eight release-source AVIF copies are byte-identical to their canonical counterparts. The subsequently added checker poster has its own acceptance record above.
 
 | Image | Local PNG SHA-256 | Tracked AVIF SHA-256 |
 |---|---|---|
@@ -1215,3 +1311,4 @@ Add one row per accepted generation or targeted edit. Record rejected attempts o
 | 2026-09-21 | Technology roles | Updated engine/module roles and 50.3/34.9 kLOC; corrected background and target diagram | Root source statistics were refreshed before generation. Replacing the ambiguous branch diagram with two explicit target/delivery paths retained JavaScript and prevented native dmtool appearing as a Kotlin compilation target. |
 | 2026-09-21 | Schema exchange and semantic diff | Clarified semantic boundaries; background-only corrections | Keep strict import's omission behavior and stock-validator carriage limit explicit. Diff evidence is structural, and impact is review priority. Reject translucent dark headers before export. |
 | 2026-09-21 | Toolchain and Interpreter runtime | Terminal review corrections | Make TOOLCHAIN OUTPUTS an unconnected summary, preserving the separate accepted-model input to the Interpreter. Label ModelWorkspace as finite collected sources: collection finishes before the immutable workspace exists. Re-exported both corrected masters through the same default quality gates. |
+| 2026-09-21 | A12 Consistency Checker | New consumer-facing architecture poster, built-in ImageGen generation and default-profile AVIF export | Show supplied sources, operations, operation-specific reports, separate snapshot-update/draft paths, and the scoped-pass versus full-acceptance boundary. Root and checker README previews use one canonical AVIF. Keep public-release status visible until the owning release record changes. |

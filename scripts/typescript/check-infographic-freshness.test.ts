@@ -13,18 +13,20 @@ function fixture(t: { after(callback: () => void): void }): string {
   for (const relative of [
     "scripts/check-infographic-freshness.sh", "scripts/run-typescript.sh",
     "scripts/typescript/check-infographic-freshness.ts", ".github/workflows/ci.yml",
-    "README.md", "docs/INFOGRAPHICS.md", "plugin/README.md",
-    "interpreter/public-release/README.md", "interpreter/public-release/PERFORMANCE.md",
+    "README.md", "docs/INFOGRAPHICS.md", "interpreter/public-release/PERFORMANCE.md",
   ]) {
     const target = path.join(root, relative);
     fs.mkdirSync(path.dirname(target), { recursive: true });
     fs.copyFileSync(path.join(ROOT, relative), target);
-    if (relative.endsWith(".md")) {
-      fs.writeFileSync(target, fs.readFileSync(target, "utf8").replaceAll(".png", ".avif"));
-    }
   }
   const specification = fs.readFileSync(path.join(root, "docs/INFOGRAPHICS.md"), "utf8");
-  for (const match of specification.matchAll(/\| `([^`]+\.avif)` \| \[[^\]]+\]\(([^)]+)\) \| `([^`]+\.avif)`/g)) {
+  const placements = [...specification.matchAll(/\| `([^`]+\.avif)` \| \[[^\]]+\]\(([^)]+)\) \| `([^`]+\.avif)`/g)];
+  for (const relative of new Set(placements.map(match => path.join("docs", match[2])))) {
+    const target = path.join(root, relative);
+    fs.mkdirSync(path.dirname(target), { recursive: true });
+    fs.copyFileSync(path.join(ROOT, relative), target);
+  }
+  for (const match of placements) {
     for (const target of [path.join(root, match[1]), path.resolve(root, "docs", path.dirname(match[2]), match[3])]) {
       fs.mkdirSync(path.dirname(target), { recursive: true });
       fs.writeFileSync(target, "synthetic AVIF payload");
