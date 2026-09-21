@@ -12,6 +12,15 @@ pluginManagement {
     }
 }
 
+// Root-project repositories are not inherited: CI run 35601541478 failed on :predicates, and an init-free
+// probe reproduced it for :consistency. PREFER_PROJECT preserves each module's
+// explicit repositories (including mavenLocal for the bootstrapped Kernel); this is the shared default.
+dependencyResolutionManagement {
+    repositories {
+        mavenCentral()
+    }
+}
+
 rootProject.name = 'a12-dmkits'
 
 // The per-kit module cut (kernel-decoupling Stage 4, KERNEL-DECOUPLING-PROPOSAL §3a). Root's single source
