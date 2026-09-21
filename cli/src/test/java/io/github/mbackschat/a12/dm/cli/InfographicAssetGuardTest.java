@@ -16,7 +16,7 @@ import org.junit.jupiter.api.Test;
 /**
  * Keeps each public release's local infographic copy identical to the canonical source asset and locks the linked
  * scaled-preview contract in the READMEs and regeneration source. GitHub must be able to render each preview and
- * open the full PNG without depending on the private source repository or a mutable external URL.
+ * open the full AVIF without depending on the private source repository or a mutable external URL.
  */
 class InfographicAssetGuardTest {
 
@@ -24,11 +24,11 @@ class InfographicAssetGuardTest {
     private static final Path CANONICAL = ROOT.resolve("assets/infographics");
     private static final Path SPECIFICATION = ROOT.resolve("docs/INFOGRAPHICS.md");
     private static final Pattern REGISTRY_ROW = Pattern.compile(
-            "\\|\\s*[^|]+\\s*\\|\\s*`([^`]+\\.png)`\\s*\\|\\s*\\[[^]]+]\\(([^)]+\\.md)\\)\\s*\\|"
-                    + "\\s*`([^`]+\\.png)`\\s*\\|\\s*`?(\\d+)`?\\s*\\|");
+            "\\|\\s*[^|]+\\s*\\|\\s*`([^`]+\\.avif)`\\s*\\|\\s*\\[[^]]+]\\(([^)]+\\.md)\\)\\s*\\|"
+                    + "\\s*`([^`]+\\.avif)`\\s*\\|\\s*`?(\\d+)`?\\s*\\|");
 
     @Test
-    void everyPlacementUsesTheExpectedPreviewLinkedToTheFullPng() throws IOException {
+    void everyPlacementUsesTheExpectedPreviewLinkedToTheFullAvif() throws IOException {
         for (var placement : placements()) {
             var document = Files.readString(placement.document());
             var relative = placement.relativePath();
@@ -44,11 +44,11 @@ class InfographicAssetGuardTest {
     }
 
     @Test
-    void canonicalAssetsArePngsRegisteredAndEveryLinkedCopyIsByteIdentical() throws IOException {
+    void canonicalAssetsAreAvifsRegisteredAndEveryLinkedCopyIsByteIdentical() throws IOException {
         var placements = placements();
         var registered = placements.stream().map(Placement::fileName).collect(Collectors.toSet());
         try (var assets = Files.list(CANONICAL)) {
-            var actual = assets.filter(path -> path.getFileName().toString().endsWith(".png"))
+            var actual = assets.filter(path -> path.getFileName().toString().endsWith(".avif"))
                     .map(path -> path.getFileName().toString())
                     .collect(Collectors.toSet());
             assertTrue(actual.equals(registered),
@@ -61,7 +61,7 @@ class InfographicAssetGuardTest {
         for (var placement : placements) {
             var canonical = CANONICAL.resolve(placement.fileName());
             assertTrue(Files.isRegularFile(canonical), () -> "missing canonical infographic: " + canonical);
-            assertTrue(isPng(canonical), () -> "infographic is not a PNG: " + canonical);
+            assertTrue(isAvif(canonical), () -> "infographic has no AVIF file-type signature: " + canonical);
             assertTrue(placementKeys.add(placement.document() + "\0" + placement.relativePath()),
                     () -> "duplicate infographic registry placement: " + placement.document() + " -> "
                             + placement.relativePath());
@@ -259,17 +259,10 @@ class InfographicAssetGuardTest {
         return specification.substring(from, specification.indexOf('"', from));
     }
 
-    private static boolean isPng(Path file) throws IOException {
+    private static boolean isAvif(Path file) throws IOException {
         var bytes = Files.readAllBytes(file);
-        return bytes.length >= 8
-                && bytes[0] == (byte) 0x89
-                && bytes[1] == 0x50
-                && bytes[2] == 0x4e
-                && bytes[3] == 0x47
-                && bytes[4] == 0x0d
-                && bytes[5] == 0x0a
-                && bytes[6] == 0x1a
-                && bytes[7] == 0x0a;
+        return bytes.length >= 16
+                && new String(bytes, 4, 8, java.nio.charset.StandardCharsets.US_ASCII).equals("ftypavif");
     }
 
     private static List<Placement> placements() throws IOException {

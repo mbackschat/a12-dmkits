@@ -15,8 +15,8 @@ Author, read, and safely edit the **rules** and **structure** of A12 Kernel docu
 - **`dmtool`** — **[PUBLIC RELEASE REPOSITORY →](https://github.com/mbackschat/a12-dmtool-releases)** — the CLI over all of it: self-describing, machine-readable by default, explicitly profiled artifacts, agent-first
 
 <p align="center">
-  <a href="assets/infographics/a12-dmkits-toolchain.png">
-    <img src="assets/infographics/a12-dmkits-toolchain.png" alt="A12 dmkits toolchain from typed authoring through Kernel acceptance to runtime evaluation" width="720">
+  <a href="assets/infographics/a12-dmkits-toolchain.avif">
+    <img src="assets/infographics/a12-dmkits-toolchain.avif" alt="A12 dmkits toolchain from typed authoring through Kernel acceptance to runtime evaluation" width="720">
   </a>
 </p>
 <p align="center"><sub>Click the infographic to open the full-resolution image.</sub></p>
@@ -43,8 +43,8 @@ It is built **agent-first** — the #1 use is inside a coding-agent session (Cla
 - **Safe by construction.** Envelope-producing operations share one standard result shape, while raw artifact/catalog and text-view modes are explicit in the operational profile; deletes and structural refactors are **gated** (a referenced field won't silently vanish); a multi-op `apply` session is **atomic** (rollback on any failure).
 
 <p align="center">
-  <a href="assets/infographics/dmtool-model-workbench.png">
-    <img src="assets/infographics/dmtool-model-workbench.png" alt="dmtool DocumentModel workbench for discovery, schema exchange, understanding, authoring, review, and runtime automation" width="720">
+  <a href="assets/infographics/dmtool-model-workbench.avif">
+    <img src="assets/infographics/dmtool-model-workbench.avif" alt="dmtool DocumentModel workbench for discovery, schema exchange, understanding, authoring, review, and runtime automation" width="720">
   </a>
 </p>
 <p align="center"><sub>Click the infographic to open the full-resolution image.</sub></p>
@@ -117,8 +117,8 @@ Prefer typed Java in your own JVM project? The same engine is a library — see 
 The three technologies have separate jobs. Kotlin Multiplatform carries one portable runtime-evaluation engine across JVM and JavaScript. GraalVM turns the JVM application stack into the self-contained per-OS `dmtool` executable. The real A12 Kernel remains the authority for model acceptance, canonical read-back, safe rewrites, and the differential evidence that keeps the clean-room Interpreter aligned.
 
 <p align="center">
-  <a href="assets/infographics/kotlin-graalvm-kernel-roles.png">
-    <img src="assets/infographics/kotlin-graalvm-kernel-roles.png" alt="How Kotlin Multiplatform, GraalVM Native Image, and the A12 Kernel divide responsibilities across a12-dmkits" width="720">
+  <a href="assets/infographics/kotlin-graalvm-kernel-roles.avif">
+    <img src="assets/infographics/kotlin-graalvm-kernel-roles.avif" alt="How Kotlin Multiplatform, GraalVM Native Image, and the A12 Kernel divide responsibilities across a12-dmkits" width="720">
   </a>
 </p>
 <p align="center"><sub>Click the infographic to open the full-resolution image.</sub></p>
@@ -195,8 +195,8 @@ dmtool -m orders.dm.json field modify postal.spec.json
 Originate a model **from a JSON Schema or an OpenAPI document**, and export one back out — the same two verbs handle both, because OpenAPI's "Schema Object" *is* a dialect of JSON Schema:
 
 <p align="center">
-  <a href="assets/infographics/json-schema-document-model.png">
-    <img src="assets/infographics/json-schema-document-model.png" alt="How schemakit maps JSON Schema and OpenAPI to and from A12 DocumentModels with explicit fidelity" width="720">
+  <a href="assets/infographics/json-schema-document-model.avif">
+    <img src="assets/infographics/json-schema-document-model.avif" alt="How schemakit maps JSON Schema and OpenAPI to and from A12 DocumentModels with explicit fidelity" width="720">
   </a>
 </p>
 <p align="center"><sub>Click the infographic to open the full-resolution image.</sub></p>
@@ -288,8 +288,8 @@ dmtool --text -m order.dm.json model report --tree --root /Order --include rules
 When an agent has edited a model on your behalf, raw JSON diffs are unreadable. `model diff` compares two model files **structurally** (it parses and independently binds both, so a pure reformat is never reported) and reports field, group, rule, computation, typedef, authored include/import, and model-configuration changes with per-aspect deltas and a **review-impact tier**. Multi-model two-file diffs resolve each side from `-w` or its own folder; `--since` resolves the base model and dependencies at the Git ref, not from the edited worktree. Each delta keeps deterministic `before`/`after` strings and adds tagged `beforeValue`/`afterValue` scalars or string lists for typed consumers. Fields include complete typed config, requiredness, enum values, metadata, and flags; rules include their error entity, localized messages, and metadata. Removing or retyping a field still used by a rule/computation is HIGH and names `REFERENCED_ELEMENT_REMOVED`/`RETYPE_AFFECTS_READERS`. Groups cover repeatability, mounts, metadata, and mixed authored ordering; computations cover targets, preconditions, operations, tolerances, suppressions, and messages; typedefs carry full typed config and metadata; includes/imports carry their purpose and referenced model without conflating expanded content. The single `CONFIG model` element covers identity/version, locales, decimal/time-zone/language/short-name settings, supported characters, base year, labels, comment, annotations, and roles; set-like values are canonicalized so harmless ordering does not create noise. Review impact follows *loosening > tightening*: increasing a repetition cap, adding an enum value, expanding supported characters, or removing/loosening a rule is HIGH, while tightening is MEDIUM.
 
 <p align="center">
-  <a href="assets/infographics/semantic-model-diff.png">
-    <img src="assets/infographics/semantic-model-diff.png" alt="How dmtool compares two model snapshots structurally, classifies semantic changes, and ranks review impact" width="720">
+  <a href="assets/infographics/semantic-model-diff.avif">
+    <img src="assets/infographics/semantic-model-diff.avif" alt="How dmtool compares two model snapshots structurally, classifies semantic changes, and ranks review impact" width="720">
   </a>
 </p>
 <p align="center"><sub>Click the infographic to open the full-resolution image.</sub></p>
@@ -919,8 +919,8 @@ Runtime evaluation — *which rules fire on this document, what does each comput
 - **A developer-facing public release.** Start with the [public interpreter repository](https://github.com/mbackschat/a12-interpreter-releases), [try the live browser showcase](https://mbackschat.github.io/a12-interpreter-releases/showcase/), or browse the [version-matched API guide and references](https://mbackschat.github.io/a12-interpreter-releases/api/latest/). The packed-artifact-tested [source guide](docs/INTERPRETER-API-GUIDE.md) and [showcase source](interpreter/consumer-tests/browser/) remain here for contributors.
 
 <p align="center">
-  <a href="assets/infographics/a12-interpreter-runtime.png">
-    <img src="assets/infographics/a12-interpreter-runtime.png" alt="A12 Interpreter preparation, reusable request lifecycle, outputs, and Kernel conformance evidence" width="720">
+  <a href="assets/infographics/a12-interpreter-runtime.avif">
+    <img src="assets/infographics/a12-interpreter-runtime.avif" alt="A12 Interpreter preparation, reusable request lifecycle, outputs, and Kernel conformance evidence" width="720">
   </a>
 </p>
 <p align="center"><sub>Click the infographic to open the full-resolution image.</sub></p>
@@ -932,8 +932,8 @@ The same engine runs on the JVM, Node.js and in the browser, and the figures bel
 Small enough to ship to a browser — the production JavaScript entry is **240 kB gzip**, with no A12 Kernel bytecode — and quick enough to re-run on every keystroke.
 
 <p align="center">
-  <a href="assets/infographics/interpreter-vs-kernel.png">
-    <img src="assets/infographics/interpreter-vs-kernel.png" alt="Measured A12 Interpreter performance and resident memory compared with the A12 Kernel" width="720">
+  <a href="assets/infographics/interpreter-vs-kernel.avif">
+    <img src="assets/infographics/interpreter-vs-kernel.avif" alt="Measured A12 Interpreter performance and resident memory compared with the A12 Kernel" width="720">
   </a>
 </p>
 <p align="center"><sub>Click the infographic to open the full-resolution image.</sub></p>

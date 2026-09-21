@@ -491,9 +491,9 @@ tasks.register('docGuardTest', Test) {
             'plugin/CLAUDE.md'   : rootProject.file('plugin/CLAUDE.md'),
             'plugin/README.md'   : rootProject.file('plugin/README.md'),
             'infographic assets': rootProject.fileTree('.') {
-                include 'assets/infographics/*.png'
-                include 'plugin/assets/infographics/*.png'
-                include 'interpreter/public-release/assets/infographics/*.png'
+                include 'assets/infographics/*.avif'
+                include 'plugin/assets/infographics/*.avif'
+                include 'interpreter/public-release/assets/infographics/*.avif'
             },
             'interpreter release README': rootProject.file('interpreter/public-release/README.md'),
             'skill/SKILL.md'     : rootProject.file('skill/SKILL.md'),

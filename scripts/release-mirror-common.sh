@@ -118,7 +118,7 @@ release_check_interpreter_mirror_allowlist() {
     case "$relative" in
       README.md|PERFORMANCE.md|CHANGELOG.md|LICENSE|DISCLAIMER.md|CLAUDE.md|AGENTS.md|release-manifest.json|PUBLIC-FILES.sha256)
         ;;
-      assets/infographics/*.png)
+      assets/infographics/*.avif)
         ;;
       .github/workflows/build-release.yml|.github/workflows/deploy-pages.yml)
         ;;

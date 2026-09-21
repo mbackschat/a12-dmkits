@@ -269,9 +269,9 @@ class GateTierWiringTest {
                 "plugin/README.md",
                 "interpreter/public-release/README.md",
                 ".github/workflows/ci.yml",
-                "assets/infographics/*.png",
-                "plugin/assets/infographics/*.png",
-                "interpreter/public-release/assets/infographics/*.png")) {
+                "assets/infographics/*.avif",
+                "plugin/assets/infographics/*.avif",
+                "interpreter/public-release/assets/infographics/*.avif")) {
             assertTrue(delivery.contains(input),
                     "deliveryGuardTest executes the live infographic command, so it must invalidate on " + input);
         }

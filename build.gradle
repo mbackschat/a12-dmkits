@@ -669,9 +669,9 @@ tasks.register('deliveryGuardTest', Test) {
                     'interpreter/public-release/README.md',
                     '.github/workflows/ci.yml'),
             'infographic live assets': fileTree('.') {
-                include 'assets/infographics/*.png'
-                include 'plugin/assets/infographics/*.png'
-                include 'interpreter/public-release/assets/infographics/*.png'
+                include 'assets/infographics/*.avif'
+                include 'plugin/assets/infographics/*.avif'
+                include 'interpreter/public-release/assets/infographics/*.avif'
             },
             'Gradle environment'      : file('scripts/gradle-environment.sh'),
             // JdkPinScriptTest executes this selftest, which sources gradle-environment.sh and invokes the

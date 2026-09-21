@@ -35,8 +35,8 @@ It is built **agent-first** — the #1 use is inside a coding-agent session (Cla
 - **Safe by construction.** Envelope-producing operations share one standard result shape, while raw artifact/catalog and text-view modes are explicit in the operational profile; deletes and structural refactors are **gated** (a referenced field won't silently vanish); a multi-op `apply` session is **atomic** (rollback on any failure).
 
 <p align="center">
-  <a href="assets/infographics/dmtool-model-workbench.png">
-    <img src="assets/infographics/dmtool-model-workbench.png" alt="dmtool DocumentModel workbench for discovery, schema exchange, understanding, authoring, review, and runtime automation" width="720">
+  <a href="assets/infographics/dmtool-model-workbench.avif">
+    <img src="assets/infographics/dmtool-model-workbench.avif" alt="dmtool DocumentModel workbench for discovery, schema exchange, understanding, authoring, review, and runtime automation" width="720">
   </a>
 </p>
 <p align="center"><sub>Click the infographic to open the full-resolution image.</sub></p>
@@ -96,8 +96,8 @@ The whole verb surface arrives as tools, **derived from the same command tree th
 Kotlin Multiplatform supplies dmtool's portable runtime-evaluation engine. GraalVM compiles the JVM application stack into the self-contained per-OS executable. The embedded real A12 Kernel remains responsible for model acceptance, canonical read-back, and safe rewrites, while differential tests use the Kernel as the Interpreter's semantics oracle.
 
 <p align="center">
-  <a href="assets/infographics/kotlin-graalvm-kernel-roles.png">
-    <img src="assets/infographics/kotlin-graalvm-kernel-roles.png" alt="How Kotlin Multiplatform, GraalVM Native Image, and the A12 Kernel divide responsibilities inside dmtool" width="720">
+  <a href="assets/infographics/kotlin-graalvm-kernel-roles.avif">
+    <img src="assets/infographics/kotlin-graalvm-kernel-roles.avif" alt="How Kotlin Multiplatform, GraalVM Native Image, and the A12 Kernel divide responsibilities inside dmtool" width="720">
   </a>
 </p>
 <p align="center"><sub>Click the infographic to open the full-resolution image.</sub></p>
@@ -237,8 +237,8 @@ Envelope-producing invocations use the standard JSON result envelope (`{ok, vali
 `model diff` is a structural semantic diff: it independently binds both models, ignores formatting noise, and reports typed field, group, rule, computation, typedef, authored include/import, and model-configuration changes with per-aspect deltas, review-impact tiers, and reason codes. Multi-model two-file diffs resolve each side from `-w` or its own folder; `--since` resolves the base model and dependencies at the Git ref. Delta JSON preserves deterministic `before`/`after` strings and adds tagged `beforeValue`/`afterValue` scalars or string lists for typed consumers.
 
 <p align="center">
-  <a href="assets/infographics/semantic-model-diff.png">
-    <img src="assets/infographics/semantic-model-diff.png" alt="How dmtool compares two model snapshots structurally, classifies semantic changes, and ranks review impact" width="720">
+  <a href="assets/infographics/semantic-model-diff.avif">
+    <img src="assets/infographics/semantic-model-diff.avif" alt="How dmtool compares two model snapshots structurally, classifies semantic changes, and ranks review impact" width="720">
   </a>
 </p>
 <p align="center"><sub>Click the infographic to open the full-resolution image.</sub></p>
@@ -258,8 +258,8 @@ A field diff covers complete typed config, requiredness, enum values, metadata, 
 Originate a model from an existing **JSON Schema** or **OpenAPI** spec (3.0 / 3.1 / 3.2), and export one back out — the same two verbs handle both, because OpenAPI's Schema Object *is* a JSON-Schema dialect:
 
 <p align="center">
-  <a href="assets/infographics/json-schema-document-model.png">
-    <img src="assets/infographics/json-schema-document-model.png" alt="How schemakit maps JSON Schema and OpenAPI to and from A12 DocumentModels with explicit fidelity" width="720">
+  <a href="assets/infographics/json-schema-document-model.avif">
+    <img src="assets/infographics/json-schema-document-model.avif" alt="How schemakit maps JSON Schema and OpenAPI to and from A12 DocumentModels with explicit fidelity" width="720">
   </a>
 </p>
 <p align="center"><sub>Click the infographic to open the full-resolution image.</sub></p>
@@ -294,8 +294,8 @@ Want ideas for what to *ask*? [`SCENARIOS.md`](SCENARIOS.md) catalogues realisti
 The embedded Interpreter is the runtime engine behind dmtool's evaluation verbs. These measurements cover that in-process engine, not dmtool process startup or CLI parsing; the full method and boundaries are in the public Interpreter [performance report](https://github.com/mbackschat/a12-interpreter-releases/blob/main/PERFORMANCE.md).
 
 <p align="center">
-  <a href="assets/infographics/interpreter-vs-kernel.png">
-    <img src="assets/infographics/interpreter-vs-kernel.png" alt="Measured A12 Interpreter performance and resident memory compared with the A12 Kernel" width="720">
+  <a href="assets/infographics/interpreter-vs-kernel.avif">
+    <img src="assets/infographics/interpreter-vs-kernel.avif" alt="Measured A12 Interpreter performance and resident memory compared with the A12 Kernel" width="720">
   </a>
 </p>
 <p align="center"><sub>Click the infographic to open the full-resolution image.</sub></p>

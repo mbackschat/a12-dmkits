@@ -122,7 +122,7 @@ The mirror has two state classes:
 
 The cumulative assembler preserves all historical Maven and versioned API directories, refuses an already published target version, and updates only the mutable class. Assembly occurs in a temporary staging tree; a refusal leaves the previous verified mirror unchanged. Before writing its checksum-bound qualification receipt, the local publisher runs [`../scripts/update-code-statistics.sh`](../scripts/update-code-statistics.sh) with the maintainer's Tokei to compare fresh counts for the package and public-mirror READMEs. Release assembly and the public rebuild consume the immutable source tag and do not acquire the local-only tool.
 
-`PUBLIC-FILES.sha256` inventories every generated public file except itself. Before assembly or refresh, the publisher verifies both its exact path set and every digest. The root README's infographic PNGs are copied from `interpreter/public-release/assets/infographics/` into the same relative mirror path, so its scaled previews and full-image links remain repository-local. A structural allowlist and public-tree scan reject unexpected files, secrets, private repository material, user paths, and machine-local paths.
+`PUBLIC-FILES.sha256` inventories every generated public file except itself. Before assembly or refresh, the publisher verifies both its exact path set and every digest. The root README's infographic AVIFs are copied from `interpreter/public-release/assets/infographics/` into the same relative mirror path, so its scaled previews and full-image links remain repository-local. A structural allowlist and public-tree scan reject unexpected files, secrets, private repository material, user paths, and machine-local paths.
 
 ## 7. Documentation and browser surfaces
 

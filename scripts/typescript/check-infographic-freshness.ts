@@ -164,7 +164,7 @@ function registryRows(): RegistryRow[] {
     if (!inRegistry || !line.startsWith("|")) continue;
     const cells = line.split("|");
     const canonicalRelative = (cells[2] ?? "").trim().replaceAll("`", "");
-    if (!canonicalRelative.includes(".png")) continue;
+    if (canonicalRelative === "Canonical asset" || /^-+$/.test(canonicalRelative)) continue;
     rows.push({
       canonicalRelative,
       documentTarget: (cells[3] ?? "").replace(/^.*\]\(/, "").replace(/\).*$/, ""),
@@ -187,8 +187,8 @@ const registeredAssets = new Set<string>();
 const registeredPlacements = new Set<string>();
 const rows = registryRows();
 for (const row of rows) {
-  if (!row.canonicalRelative.startsWith("assets/infographics/") || !row.canonicalRelative.endsWith(".png")) {
-    fail(`registry canonical asset must be under assets/infographics: ${row.canonicalRelative}`);
+  if (!row.canonicalRelative.startsWith("assets/infographics/") || !row.canonicalRelative.endsWith(".avif")) {
+    fail(`registry canonical asset must be an AVIF under assets/infographics: ${row.canonicalRelative}`);
   }
   const canonical = path.join(ROOT, row.canonicalRelative);
   const document = resolveThroughExistingParent(
@@ -215,7 +215,7 @@ for (const row of rows) {
 
 if (rows.length === 0) fail("INFOGRAPHICS.md contains no parseable infographic registry placements");
 for (const name of fs.readdirSync(path.join(ROOT, "assets/infographics"))) {
-  if (!name.endsWith(".png")) continue;
+  if (!name.endsWith(".avif")) continue;
   const relative = `assets/infographics/${name}`;
   if (!registeredAssets.has(relative)) fail(`canonical infographic is not registered in INFOGRAPHICS.md: ${relative}`);
 }

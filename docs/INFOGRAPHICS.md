@@ -1,41 +1,53 @@
 # README infographics
 
-This document is the regeneration and refinement source for the raster infographics embedded in the main and public-release READMEs. It owns the content maps, exact generation prompts, asset registry, factual sources, placement map, visual acceptance gates, and refinement log. The PNG files are presentation artifacts derived from this document.
+This document is the regeneration and refinement source for the raster infographics embedded in the main and public-release READMEs. It owns the content maps, exact generation prompts, asset registry, factual sources, placement map, visual acceptance gates, and refinement log. The tracked AVIF files are presentation artifacts derived from this document; PNG masters remain local and Git-ignored.
+
+Regeneration and conversion use the [`infographic-bytebytego-style` skill](https://github.com/mbackschat/coding-setup/tree/main/skills/infographic-bytebytego-style). Its `scripts/png-to-avif` helper exports an accepted PNG to a same-basename AVIF with unchanged dimensions. Use the default `web-compact` profile: at most 150,000 bytes and DSSIM ≤ 0.006, checked against a decoded export. Record any measured encoder adjustment in the refinement log; never silently downscale or relax those limits. A fresh clone contains AVIFs only. If the local PNG master is unavailable, decode the AVIF as a refinement reference or regenerate from the prompt; decoding cannot recover the original PNG pixels.
+
+The record separates three ownership layers; update the narrowest layer that owns a change:
+
+| Layer | Home in this document | Changes when |
+|---|---|---|
+| Stable communication and design | Shared visual system and each poster's content map and relationships | Audience, teaching goal, topology, or recurring visual vocabulary changes |
+| Factual input | Factual sources and freshness triggers, exact copy in compiled prompts | A source changes a displayed capability, boundary, or dated measurement |
+| Generation and acceptance history | Accepted outputs, export record, and refinement log | An image is generated, refined, or re-encoded |
+
+An export changes delivery, not the evidence status of the pictured claims. Generative tools reproduce the recorded intent and copy without promising pixel-identical results; retained local PNGs preserve the exact accepted masters.
 
 ## Asset registry and README placement
 
-The full-resolution source assets live under `assets/infographics/`. Each table row is one guarded preview placement. `Canonical asset` is repository-relative; `Preview document` links from this file; `Preview path` is relative to that document. When the preview path resolves outside the canonical directory, the linked release-source copy must be byte-identical to the canonical PNG.
+The full-resolution AVIF assets live under `assets/infographics/`. Each table row is one guarded preview placement. `Canonical asset` is repository-relative; `Preview document` links from this file; `Preview path` is relative to that document. When the preview path resolves outside the canonical directory, the linked release-source copy must be byte-identical to the canonical AVIF.
 
 <!-- infographic-registry:start -->
 | Infographic | Canonical asset | Preview document | Preview path | Width |
 |---|---|---|---|---:|
-| A12 dmkits toolchain | `assets/infographics/a12-dmkits-toolchain.png` | [root README](../README.md) | `assets/infographics/a12-dmkits-toolchain.png` | `720` |
-| A12 dmkits toolchain | `assets/infographics/a12-dmkits-toolchain.png` | [infographic source](INFOGRAPHICS.md) | `../assets/infographics/a12-dmkits-toolchain.png` | `540` |
-| dmtool DocumentModel workbench | `assets/infographics/dmtool-model-workbench.png` | [root README](../README.md) | `assets/infographics/dmtool-model-workbench.png` | `720` |
-| dmtool DocumentModel workbench | `assets/infographics/dmtool-model-workbench.png` | [dmtool release README](../plugin/README.md) | `assets/infographics/dmtool-model-workbench.png` | `720` |
-| dmtool DocumentModel workbench | `assets/infographics/dmtool-model-workbench.png` | [infographic source](INFOGRAPHICS.md) | `../assets/infographics/dmtool-model-workbench.png` | `540` |
-| Interpreter runtime | `assets/infographics/a12-interpreter-runtime.png` | [root README](../README.md) | `assets/infographics/a12-interpreter-runtime.png` | `720` |
-| Interpreter runtime | `assets/infographics/a12-interpreter-runtime.png` | [Interpreter release README](../interpreter/public-release/README.md) | `assets/infographics/a12-interpreter-runtime.png` | `720` |
-| Interpreter runtime | `assets/infographics/a12-interpreter-runtime.png` | [infographic source](INFOGRAPHICS.md) | `../assets/infographics/a12-interpreter-runtime.png` | `540` |
-| Interpreter vs Kernel | `assets/infographics/interpreter-vs-kernel.png` | [root README](../README.md) | `assets/infographics/interpreter-vs-kernel.png` | `720` |
-| Interpreter vs Kernel | `assets/infographics/interpreter-vs-kernel.png` | [dmtool release README](../plugin/README.md) | `assets/infographics/interpreter-vs-kernel.png` | `720` |
-| Interpreter vs Kernel | `assets/infographics/interpreter-vs-kernel.png` | [Interpreter release README](../interpreter/public-release/README.md) | `assets/infographics/interpreter-vs-kernel.png` | `720` |
-| Interpreter vs Kernel | `assets/infographics/interpreter-vs-kernel.png` | [infographic source](INFOGRAPHICS.md) | `../assets/infographics/interpreter-vs-kernel.png` | `540` |
-| Kotlin, GraalVM, and A12 Kernel roles | `assets/infographics/kotlin-graalvm-kernel-roles.png` | [root README](../README.md) | `assets/infographics/kotlin-graalvm-kernel-roles.png` | `720` |
-| Kotlin, GraalVM, and A12 Kernel roles | `assets/infographics/kotlin-graalvm-kernel-roles.png` | [dmtool release README](../plugin/README.md) | `assets/infographics/kotlin-graalvm-kernel-roles.png` | `720` |
-| Kotlin, GraalVM, and A12 Kernel roles | `assets/infographics/kotlin-graalvm-kernel-roles.png` | [Interpreter release README](../interpreter/public-release/README.md) | `assets/infographics/kotlin-graalvm-kernel-roles.png` | `720` |
-| Kotlin, GraalVM, and A12 Kernel roles | `assets/infographics/kotlin-graalvm-kernel-roles.png` | [infographic source](INFOGRAPHICS.md) | `../assets/infographics/kotlin-graalvm-kernel-roles.png` | `540` |
-| JSON Schema functionality | `assets/infographics/json-schema-document-model.png` | [root README](../README.md) | `assets/infographics/json-schema-document-model.png` | `720` |
-| JSON Schema functionality | `assets/infographics/json-schema-document-model.png` | [dmtool release README](../plugin/README.md) | `assets/infographics/json-schema-document-model.png` | `720` |
-| JSON Schema functionality | `assets/infographics/json-schema-document-model.png` | [infographic source](INFOGRAPHICS.md) | `../assets/infographics/json-schema-document-model.png` | `540` |
-| Semantic model diff | `assets/infographics/semantic-model-diff.png` | [root README](../README.md) | `assets/infographics/semantic-model-diff.png` | `720` |
-| Semantic model diff | `assets/infographics/semantic-model-diff.png` | [dmtool release README](../plugin/README.md) | `assets/infographics/semantic-model-diff.png` | `720` |
-| Semantic model diff | `assets/infographics/semantic-model-diff.png` | [infographic source](INFOGRAPHICS.md) | `../assets/infographics/semantic-model-diff.png` | `540` |
+| A12 dmkits toolchain | `assets/infographics/a12-dmkits-toolchain.avif` | [root README](../README.md) | `assets/infographics/a12-dmkits-toolchain.avif` | `720` |
+| A12 dmkits toolchain | `assets/infographics/a12-dmkits-toolchain.avif` | [infographic source](INFOGRAPHICS.md) | `../assets/infographics/a12-dmkits-toolchain.avif` | `540` |
+| dmtool DocumentModel workbench | `assets/infographics/dmtool-model-workbench.avif` | [root README](../README.md) | `assets/infographics/dmtool-model-workbench.avif` | `720` |
+| dmtool DocumentModel workbench | `assets/infographics/dmtool-model-workbench.avif` | [dmtool release README](../plugin/README.md) | `assets/infographics/dmtool-model-workbench.avif` | `720` |
+| dmtool DocumentModel workbench | `assets/infographics/dmtool-model-workbench.avif` | [infographic source](INFOGRAPHICS.md) | `../assets/infographics/dmtool-model-workbench.avif` | `540` |
+| Interpreter runtime | `assets/infographics/a12-interpreter-runtime.avif` | [root README](../README.md) | `assets/infographics/a12-interpreter-runtime.avif` | `720` |
+| Interpreter runtime | `assets/infographics/a12-interpreter-runtime.avif` | [Interpreter release README](../interpreter/public-release/README.md) | `assets/infographics/a12-interpreter-runtime.avif` | `720` |
+| Interpreter runtime | `assets/infographics/a12-interpreter-runtime.avif` | [infographic source](INFOGRAPHICS.md) | `../assets/infographics/a12-interpreter-runtime.avif` | `540` |
+| Interpreter vs Kernel | `assets/infographics/interpreter-vs-kernel.avif` | [root README](../README.md) | `assets/infographics/interpreter-vs-kernel.avif` | `720` |
+| Interpreter vs Kernel | `assets/infographics/interpreter-vs-kernel.avif` | [dmtool release README](../plugin/README.md) | `assets/infographics/interpreter-vs-kernel.avif` | `720` |
+| Interpreter vs Kernel | `assets/infographics/interpreter-vs-kernel.avif` | [Interpreter release README](../interpreter/public-release/README.md) | `assets/infographics/interpreter-vs-kernel.avif` | `720` |
+| Interpreter vs Kernel | `assets/infographics/interpreter-vs-kernel.avif` | [infographic source](INFOGRAPHICS.md) | `../assets/infographics/interpreter-vs-kernel.avif` | `540` |
+| Kotlin, GraalVM, and A12 Kernel roles | `assets/infographics/kotlin-graalvm-kernel-roles.avif` | [root README](../README.md) | `assets/infographics/kotlin-graalvm-kernel-roles.avif` | `720` |
+| Kotlin, GraalVM, and A12 Kernel roles | `assets/infographics/kotlin-graalvm-kernel-roles.avif` | [dmtool release README](../plugin/README.md) | `assets/infographics/kotlin-graalvm-kernel-roles.avif` | `720` |
+| Kotlin, GraalVM, and A12 Kernel roles | `assets/infographics/kotlin-graalvm-kernel-roles.avif` | [Interpreter release README](../interpreter/public-release/README.md) | `assets/infographics/kotlin-graalvm-kernel-roles.avif` | `720` |
+| Kotlin, GraalVM, and A12 Kernel roles | `assets/infographics/kotlin-graalvm-kernel-roles.avif` | [infographic source](INFOGRAPHICS.md) | `../assets/infographics/kotlin-graalvm-kernel-roles.avif` | `540` |
+| JSON Schema functionality | `assets/infographics/json-schema-document-model.avif` | [root README](../README.md) | `assets/infographics/json-schema-document-model.avif` | `720` |
+| JSON Schema functionality | `assets/infographics/json-schema-document-model.avif` | [dmtool release README](../plugin/README.md) | `assets/infographics/json-schema-document-model.avif` | `720` |
+| JSON Schema functionality | `assets/infographics/json-schema-document-model.avif` | [infographic source](INFOGRAPHICS.md) | `../assets/infographics/json-schema-document-model.avif` | `540` |
+| Semantic model diff | `assets/infographics/semantic-model-diff.avif` | [root README](../README.md) | `assets/infographics/semantic-model-diff.avif` | `720` |
+| Semantic model diff | `assets/infographics/semantic-model-diff.avif` | [dmtool release README](../plugin/README.md) | `assets/infographics/semantic-model-diff.avif` | `720` |
+| Semantic model diff | `assets/infographics/semantic-model-diff.avif` | [infographic source](INFOGRAPHICS.md) | `../assets/infographics/semantic-model-diff.avif` | `540` |
 <!-- infographic-registry:end -->
 
-Every README embeds a scaled preview using an HTML `img` element inside a link to the same full-resolution PNG. The preview width is `720`, the image has descriptive alt text, and the adjacent caption tells the reader that the full image opens on click.
+Every README embeds a scaled preview using an HTML `img` element inside a link to the same full-resolution AVIF. The preview width is `720`, the image has descriptive alt text, and the adjacent caption tells the reader that the full image opens on click.
 
-The table above is the single source for placement and copy checks. Both `check-infographic-freshness.sh` and `InfographicAssetGuardTest` parse it; neither carries a second asset list. The guards also refuse an unregistered canonical PNG or a registered asset without an accepted-output preview in this document. The public dmtool mirror already copies the complete `plugin/` tree. The Interpreter mirror assembler copies `interpreter/public-release/assets/infographics/` beside its generated root README.
+The table above is the single source for placement and copy checks. Both `check-infographic-freshness.sh` and `InfographicAssetGuardTest` parse it; neither carries a second asset list. The guards also refuse an unregistered canonical AVIF or a registered asset without an accepted-output preview in this document. The public dmtool mirror copies the `plugin/` tree excluding infographic PNG masters. The Interpreter mirror assembler replaces its mutable infographic directory with AVIFs from `interpreter/public-release/assets/infographics/` beside its generated root README, removing legacy PNG copies while retaining historical Maven/API versions. `InterpreterReleaseMirrorAssemblerTest` locks that migration and the exclusion of local PNG inputs.
 
 ## Shared visual system
 
@@ -73,18 +85,18 @@ The public Interpreter [`PERFORMANCE.md`](../interpreter/public-release/PERFORMA
 
 GitHub CI checks out rulekit, sets up the repository-pinned Node runtime, and then runs that stable shell command before it checks out the Kernel bootstrap kit or installs Java and Gradle. Stale claims, broken previews, missing assets, or drifted public copies therefore stop the workflow before the expensive work begins. Keeping the check in the existing build job avoids paying for a second runner startup and duplicate repository checkout on every successful run. The committed [pre-push hook](../.githooks/pre-push) runs the same check locally and then runs `actionlint`, so any Git client gets the same pre-push verdict after `core.hooksPath` is configured. `InfographicAssetGuardTest` repeats the source-to-prompt and asset checks in the ordinary documentation suite, while `GateTierWiringTest` locks both this published ordering and the workflow itself and prevents a separate preflight job from being introduced silently.
 
-The PNG is intentionally not treated as machine-readable data. CI can prove that the owning reports and the exact generation prompts agree, but reliable raster-text verification would require brittle OCR. The public performance report owns the mutable benchmark figures. The generated root Source Statistics table owns the Java/Kotlin production counts; both guards derive the displayed one-decimal kLOC values from its `Code` column, while `update-code-statistics.sh --check` keeps that table measured before publication. When either guard fails after an owning-source refresh, update the content map and prompt, regenerate or focus-edit the image with built-in ImageGen, inspect it at full resolution, synchronize every public copy, and add a dated refinement-log row. The binary-copy check then proves that every public repository receives the accepted pixels.
+The raster is intentionally not treated as machine-readable data. CI can prove that the owning reports and the exact generation prompts agree, but reliable raster-text verification would require brittle OCR. The public performance report owns the mutable benchmark figures. The generated root Source Statistics table owns the Java/Kotlin production counts; both guards derive the displayed one-decimal kLOC values from its `Code` column, while `update-code-statistics.sh --check` keeps that table measured before publication. When either guard fails after an owning-source refresh, update the content map and prompt, regenerate or focus-edit the image with built-in ImageGen, inspect it at full resolution, export and verify its AVIF sibling, synchronize every public AVIF copy, and add a dated refinement-log row. The binary-copy check then proves that every public repository receives the accepted pixels.
 
 ## Infographic 1: A12 dmkits toolchain
 
 ### Accepted output
 
 <p align="center">
-  <a href="../assets/infographics/a12-dmkits-toolchain.png">
-    <img src="../assets/infographics/a12-dmkits-toolchain.png" alt="A12 dmkits toolchain from typed authoring through Kernel acceptance to runtime evaluation" width="540">
+  <a href="../assets/infographics/a12-dmkits-toolchain.avif">
+    <img src="../assets/infographics/a12-dmkits-toolchain.avif" alt="A12 dmkits toolchain from typed authoring through Kernel acceptance to runtime evaluation" width="540">
   </a>
 </p>
-<p align="center"><sub>1024 × 1536 PNG. Click the preview to open the full-resolution image.</sub></p>
+<p align="center"><sub>1024 × 1536 AVIF. Click the preview to open the full-resolution image.</sub></p>
 
 ### Content map
 
@@ -198,11 +210,11 @@ Avoid:
 ### Accepted output
 
 <p align="center">
-  <a href="../assets/infographics/dmtool-model-workbench.png">
-    <img src="../assets/infographics/dmtool-model-workbench.png" alt="dmtool DocumentModel workbench for discovery, schema exchange, understanding, authoring, review, and runtime automation" width="540">
+  <a href="../assets/infographics/dmtool-model-workbench.avif">
+    <img src="../assets/infographics/dmtool-model-workbench.avif" alt="dmtool DocumentModel workbench for discovery, schema exchange, understanding, authoring, review, and runtime automation" width="540">
   </a>
 </p>
-<p align="center"><sub>1024 × 1536 PNG. Click the preview to open the full-resolution image.</sub></p>
+<p align="center"><sub>1024 × 1536 AVIF. Click the preview to open the full-resolution image.</sub></p>
 
 ### Content map
 
@@ -352,11 +364,11 @@ Avoid:
 ### Accepted output
 
 <p align="center">
-  <a href="../assets/infographics/a12-interpreter-runtime.png">
-    <img src="../assets/infographics/a12-interpreter-runtime.png" alt="A12 Interpreter preparation, reusable request lifecycle, outputs, and Kernel conformance evidence" width="540">
+  <a href="../assets/infographics/a12-interpreter-runtime.avif">
+    <img src="../assets/infographics/a12-interpreter-runtime.avif" alt="A12 Interpreter preparation, reusable request lifecycle, outputs, and Kernel conformance evidence" width="540">
   </a>
 </p>
-<p align="center"><sub>1024 × 1536 PNG. Click the preview to open the full-resolution image.</sub></p>
+<p align="center"><sub>1024 × 1536 AVIF. Click the preview to open the full-resolution image.</sub></p>
 
 ### Content map
 
@@ -474,11 +486,11 @@ Avoid:
 ### Accepted output
 
 <p align="center">
-  <a href="../assets/infographics/interpreter-vs-kernel.png">
-    <img src="../assets/infographics/interpreter-vs-kernel.png" alt="Measured A12 Interpreter performance and resident memory compared with the A12 Kernel" width="540">
+  <a href="../assets/infographics/interpreter-vs-kernel.avif">
+    <img src="../assets/infographics/interpreter-vs-kernel.avif" alt="Measured A12 Interpreter performance and resident memory compared with the A12 Kernel" width="540">
   </a>
 </p>
-<p align="center"><sub>1126 × 1397 PNG. Click the preview to open the full-resolution image.</sub></p>
+<p align="center"><sub>1126 × 1397 AVIF. Click the preview to open the full-resolution image.</sub></p>
 
 ### Content map
 
@@ -603,11 +615,11 @@ Avoid:
 ### Accepted output
 
 <p align="center">
-  <a href="../assets/infographics/kotlin-graalvm-kernel-roles.png">
-    <img src="../assets/infographics/kotlin-graalvm-kernel-roles.png" alt="How Kotlin Multiplatform, GraalVM Native Image, and the A12 Kernel divide responsibilities across a12-dmkits" width="540">
+  <a href="../assets/infographics/kotlin-graalvm-kernel-roles.avif">
+    <img src="../assets/infographics/kotlin-graalvm-kernel-roles.avif" alt="How Kotlin Multiplatform, GraalVM Native Image, and the A12 Kernel divide responsibilities across a12-dmkits" width="540">
   </a>
 </p>
-<p align="center"><sub>1024 × 1536 PNG. Click the preview to open the full-resolution image.</sub></p>
+<p align="center"><sub>1024 × 1536 AVIF. Click the preview to open the full-resolution image.</sub></p>
 
 ### Content map
 
@@ -801,11 +813,11 @@ Avoid:
 ### Accepted output
 
 <p align="center">
-  <a href="../assets/infographics/json-schema-document-model.png">
-    <img src="../assets/infographics/json-schema-document-model.png" alt="How schemakit imports JSON Schema and OpenAPI into kernel-valid A12 DocumentModels and exports them with explicit fidelity" width="540">
+  <a href="../assets/infographics/json-schema-document-model.avif">
+    <img src="../assets/infographics/json-schema-document-model.avif" alt="How schemakit imports JSON Schema and OpenAPI into kernel-valid A12 DocumentModels and exports them with explicit fidelity" width="540">
   </a>
 </p>
-<p align="center"><sub>1536 × 1024 PNG. Click the preview to open the full-resolution image.</sub></p>
+<p align="center"><sub>1536 × 1024 AVIF. Click the preview to open the full-resolution image.</sub></p>
 
 ### Content map
 
@@ -950,11 +962,11 @@ Avoid:
 ### Accepted output
 
 <p align="center">
-  <a href="../assets/infographics/semantic-model-diff.png">
-    <img src="../assets/infographics/semantic-model-diff.png" alt="How dmtool binds two model snapshots, ignores formatting noise, classifies semantic changes, and ranks review impact" width="540">
+  <a href="../assets/infographics/semantic-model-diff.avif">
+    <img src="../assets/infographics/semantic-model-diff.avif" alt="How dmtool binds two model snapshots, ignores formatting noise, classifies semantic changes, and ranks review impact" width="540">
   </a>
 </p>
-<p align="center"><sub>1024 × 1536 PNG. Click the preview to open the full-resolution image.</sub></p>
+<p align="center"><sub>1024 × 1536 AVIF. Click the preview to open the full-resolution image.</sub></p>
 
 ### Content map
 
@@ -1099,11 +1111,41 @@ Avoid:
 
 1. Revalidate every factual input against the sources in the freshness table. Runtime behavior claims require the real Kernel differential; performance and memory figures require the owning measurement protocol and results record.
 2. Update the relevant content map and exact prompt in this file before generating. The prompt is the reviewable source, while the PNG is derived output.
-3. Generate each poster separately with the built-in ImageGen tool. Do not batch distinct posters into one prompt.
-4. Inspect the full-resolution result for exact text, hierarchy, reading order, connector meaning, repeated-entity consistency, color discipline, mobile legibility, and unauthorized branding.
-5. Refine with focused image edits that name only the failed gate and preserve all unaffected layout, copy, palette, and icons.
-6. Save the accepted image to its canonical path under `assets/infographics/`, then synchronize the release-source copies named in the registry.
+3. Use the `infographic-bytebytego-style` skill to generate each poster separately with the built-in ImageGen tool. Do not batch distinct posters into one prompt.
+4. Inspect the result at full resolution and 50% size for exact text, hierarchy, reading order, connector meaning, repeated-entity consistency, color discipline, mobile legibility, and unauthorized branding. Verify the opaque canvas. Use the skill's acceptance checklist, compare every region with its exact-copy and relationship manifest, and record the actual OCR or visual method rather than asserting an unperformed check.
+5. Refine with focused image edits that name only the failed gate and preserve all unaffected layout, copy, palette, and icons. Correct the node, boundary, or relationship that caused ambiguity instead of adding explanatory paragraphs. Keep useful correction prompts and optional versioned PNG comparison masters locally, but promote one unversioned AVIF per poster into Git.
+6. Keep the accepted PNG under `assets/infographics/` as an ignored local master. Run `"$INFOGRAPHIC_SKILL_ROOT/scripts/png-to-avif" assets/infographics/<name>.png` from the repository root, where `INFOGRAPHIC_SKILL_ROOT` names the installed skill directory; use `--force` only when deliberately replacing a stale export. Track the accepted AVIF and synchronize only that AVIF to the release-source copies named in the registry. Record bytes and DSSIM below.
 7. Verify every README preview and click target, the byte identity of release copies, the dmtool shared README region, the Interpreter mirror assembly, and the documentation guards.
+
+## AVIF conversion record — 2026-09-21
+
+Conversion only: no image generation, content correction, or factual revalidation ran. Every AVIF decoded successfully at its PNG dimensions and met the 150,000-byte and 0.006 DSSIM limits. The previously recorded stale Kotlin/GraalVM copy remains visible in this conversion; the 2026-09-20 refinement-log entry describes it. No fresh OCR or visual-content acceptance is claimed. PNG masters retain their original pixels and any embedded provenance; AVIF derivatives do not retain a PNG C2PA manifest.
+
+The default encoder is the skill helper (`quality 55`, `speed 0`, `YUV444`). Two images failed its fidelity gate: Interpreter vs Kernel at DSSIM 0.00728822 and semantic model diff at 0.00802652. Following the Concept Graph series' measured export adjustment, both use `quality 60`, `speed 0`, `YUV444`, and AOM `tune=ssim`; their successful measurements are below. This changes encoder settings while preserving the same size, dimensions, and fidelity acceptance limits.
+
+Default reproduction from the repository root: `"$INFOGRAPHIC_SKILL_ROOT/scripts/png-to-avif" assets/infographics/<name>.png`. For the two tuned rows: `avifenc -q 60 -s 0 --yuv 444 -a tune=ssim --creation-time 0 --modification-time 0 assets/infographics/<name>.png assets/infographics/<name>.avif`. Existing exports must be deliberately replaced. Decode with `avifdec`, compare dimensions, check the byte count, and measure normalized ImageMagick `compare -metric DSSIM` against the PNG before accepting tuned output.
+
+| Accepted AVIF | Dimensions | Bytes | DSSIM | Encoder |
+|---|---|---:|---:|---|
+| [a12-dmkits-toolchain](../assets/infographics/a12-dmkits-toolchain.avif) | 1024 × 1536 | 59,888 | 0.00422000 | Default helper |
+| [a12-interpreter-runtime](../assets/infographics/a12-interpreter-runtime.avif) | 1024 × 1536 | 78,338 | 0.00474586 | Default helper |
+| [dmtool-model-workbench](../assets/infographics/dmtool-model-workbench.avif) | 1024 × 1536 | 91,684 | 0.00342182 | Default helper |
+| [interpreter-vs-kernel](../assets/infographics/interpreter-vs-kernel.avif) | 1126 × 1397 | 114,983 | 0.00477437 | SSIM-tuned |
+| [json-schema-document-model](../assets/infographics/json-schema-document-model.avif) | 1536 × 1024 | 69,086 | 0.00317348 | Default helper |
+| [kotlin-graalvm-kernel-roles](../assets/infographics/kotlin-graalvm-kernel-roles.avif) | 1024 × 1536 | 87,042 | 0.00438481 | Default helper |
+| [semantic-model-diff](../assets/infographics/semantic-model-diff.avif) | 1024 × 1536 | 129,769 | 0.00494193 | SSIM-tuned |
+
+The seven canonical files total 630,790 bytes, down from 11,278,873 PNG bytes. The hashes identify the exact conversion inputs and accepted exports; update this record when those files change.
+
+| Image | Local PNG SHA-256 | Tracked AVIF SHA-256 |
+|---|---|---|
+| a12-dmkits-toolchain | `a2ca010c989536c093e97d40cd2010ff9f8674fdf5d8496dac5595863b2ccb01` | `057025f942cbf567c50a632c25332302fff77c592de4c0b95bdb6aaaa466fd9a` |
+| a12-interpreter-runtime | `aa5a83cc537fbd2c3ee3868b201c3b16d579dbc26fe7253ca43d84562993c2b2` | `0d59e21679b363d8b206f6e7e7017db7c42198b452843c1e73cb5494c8f8c948` |
+| dmtool-model-workbench | `6409782726acfa948c0d024cc585926a2a7b22dce994b47fd7c09397bc19014c` | `e0a2e36d62547089bed04ee58c1895620a1ec930010204e84f432cd53113021f` |
+| interpreter-vs-kernel | `98f42259052a1a2b1b71f005bd67eaf36d4d61c1ae0bb120a7d7212b9f282c63` | `a78965ea8ea91a9c0a19634b5e5d20a632eef271c256046462e76e1ab0deea34` |
+| json-schema-document-model | `a82f3edb38f9089db920b6f37cdb31bd51c2f3ff6ff99b83c0c39058ca680223` | `fad3593fe492a1d67c95e01a28d772d323f445ab6b4e95a9846cf785e6554041` |
+| kotlin-graalvm-kernel-roles | `36cbfe491d46d4ac205dcbc7192c56bd5cfe2f8fbb4ab88b4756948e9a2f7f64` | `299f2dc2ed9849e19b26691e87e3afeedd9d0cd41c5504c9a0d9cafee84eae4b` |
+| semantic-model-diff | `1e2371ee941bfc6f38cc466e646f27a4960d9a37d8adb560578f2f570e594dc5` | `fa02f7fde6c582352d0d2021a23cbad46e726645d81c7104b5c1bd13a1ae6ee2` |
 
 ## Refinement log
 

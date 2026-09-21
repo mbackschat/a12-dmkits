@@ -34,3 +34,6 @@ bin/*
 # (opening corpus models in the modeling tools is an intended workflow)
 corpus/**/settings.yaml
 __pycache__/
+
+# Infographic PNG masters stay local; browser-ready AVIFs are tracked.
+**/infographics/**/*.png

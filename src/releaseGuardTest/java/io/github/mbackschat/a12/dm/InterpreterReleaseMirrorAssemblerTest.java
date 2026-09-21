@@ -55,7 +55,8 @@ class InterpreterReleaseMirrorAssemblerTest {
         assertTrue(Files.readString(firstMirror.resolve("README.md")).contains(VERSION));
         assertTrue(Files.readString(firstMirror.resolve("PERFORMANCE.md")).contains(VERSION));
         assertEquals("interpreter infographic\n", Files.readString(firstMirror.resolve(
-                "assets/infographics/a12-interpreter-runtime.png")));
+                "assets/infographics/a12-interpreter-runtime.avif")));
+        assertFalse(Files.exists(firstMirror.resolve("assets/infographics/a12-interpreter-runtime.png")));
         assertTrue(Files.readString(firstMirror.resolve("site/privacy.html"))
                 .contains("Martin Backschat"));
         assertTrue(Files.readString(firstMirror.resolve("site/privacy.html"))
@@ -74,6 +75,10 @@ class InterpreterReleaseMirrorAssemblerTest {
         var assets = temporaryDirectory.resolve("cumulative-assets");
 
         assemble(oldInputs, mirror, assets);
+        var legacyPng = write(mirror.resolve("assets/infographics/legacy.png"), "legacy PNG\n");
+        Files.writeString(mirror.resolve("PUBLIC-FILES.sha256"),
+                sha256(legacyPng) + "  assets/infographics/legacy.png\n",
+                java.nio.file.StandardOpenOption.APPEND);
         var oldApi = mirror.resolve("site/api/v0.9.0/index.html");
         var oldMaven = mirror.resolve(
                 "site/maven/io/github/mbackschat/a12/dm/dm-interpreter/0.9.0/dm-interpreter-0.9.0.pom");
@@ -82,6 +87,7 @@ class InterpreterReleaseMirrorAssemblerTest {
 
         assemble(currentInputs, mirror, assets);
 
+        assertFalse(Files.exists(legacyPng));
         assertEquals(oldApiDigest, sha256(oldApi));
         assertEquals(oldMavenDigest, sha256(oldMaven));
         assertTrue(Files.readString(mirror.resolve("site/api/latest/index.html"))
@@ -189,8 +195,10 @@ class InterpreterReleaseMirrorAssemblerTest {
                 "# A12 Interpreter releases\n\nVersion @VERSION@ for developers.\n");
         write(root.resolve("public-sources/PERFORMANCE.md"),
                 "# Performance\n\nMeasurements for version @VERSION@.\n");
-        write(root.resolve("public-sources/assets/infographics/a12-interpreter-runtime.png"),
+        write(root.resolve("public-sources/assets/infographics/a12-interpreter-runtime.avif"),
                 "interpreter infographic\n");
+        write(root.resolve("public-sources/assets/infographics/a12-interpreter-runtime.png"),
+                "local PNG master\n");
         write(root.resolve("public-sources/CHANGELOG.md"),
                 "# Changelog\n\n## [@VERSION@]\n\nInitial release.\n");
         write(root.resolve("public-sources/DISCLAIMER.md"),

@@ -29,7 +29,7 @@ mkdir -p "$DEST/licenses"
 #     repo root. The mirror's AGENTS.md is a GENERATED tiny redirect to the mirror's own (public) CLAUDE.md —
 #     never copied from the source repo, where AGENTS.md is a SYMLINK to the internal CLAUDE.md (dual-runtime,
 #     2026-07-09): a dereferencing `cp` of that symlink would ship the internal instructions into the mirror.
-cp -Rf "$ROOT/plugin/." "$DEST/"
+rsync -a --exclude='assets/infographics/**/*.png' --exclude='assets/infographics/*.png' "$ROOT/plugin/" "$DEST/"
 cat > "$DEST/AGENTS.md" << 'AGENTS_EOF'
 # AGENTS.md
 
