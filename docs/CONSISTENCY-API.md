@@ -218,7 +218,7 @@ held = held.withoutSource('catalog');
 JSON.parse(held.reuseJson());                                         // what making THIS handle reused
 ```
 
-`reuseJson()` and `draftWithReuseJson`'s `reuse` member carry the counters above with the family pair flattened to `familiesReused` and `familiesRecomputed`. The handle's constructor is declared `private` in the published `a12-consistency.d.ts`, so `snapshotOfJson` is the only way a TypeScript consumer can obtain one — a handle that analysed nothing cannot be fabricated. **That opacity is type-level**: Kotlin/JS emits an ordinary class, so a consumer bypassing TypeScript was never constrained by it.
+`reuseJson()` and `draftWithReuseJson`'s `reuse` member carry the counters above with the family pair flattened to `familiesReused` and `familiesRecomputed`. The handle's constructor is declared `private` in the published `a12-consistency.d.mts`, so `snapshotOfJson` is the only way a TypeScript consumer can obtain one — a handle that analysed nothing cannot be fabricated. **That opacity is type-level**: Kotlin/JS emits an ordinary class, so a consumer bypassing TypeScript was never constrained by it.
 
 **Holding a handle retains the prepared model and its cell store**, which is the cost that buys the reuse. JavaScript gives no `close()` to enforce release, so a consumer that keeps handles it no longer needs keeps that memory live.
 

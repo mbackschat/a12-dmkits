@@ -818,23 +818,38 @@ def stageConsistencyNpmPackage = tasks.register('stageConsistencyNpmPackage', Sy
     from(consistencyJsDistribution) {
         include '*.mjs'
         include '*.mjs.map'
-        include 'a12-consistency.d.ts'
+        // `.d.mts`, not `.d.ts`: Kotlin/JS 2.4 names the declaration file after its ES-module output, where
+        // 2.2 emitted `.d.ts`. That is the same rename the PR3 cold review reasoned through for `:interpreter`
+        // on 2026-09-20 and did not carry to this module. A Copy `include` that stops matching is silent, and
+        // these distributions copy rather than sync, so `build/dist` kept the 2.2 file and every local build
+        // still staged one — the package shipped with no declarations at all and only a consumer reading the
+        // file by name noticed, 38 billable CI minutes in (2026-09-21).
+        include 'a12-consistency.d.mts'
     }
     from(file('README.md'))
     from(rootProject.file('LICENSE'))
     into(consistencyNpmStageDir)
     inputs.property('consistencyNpmIdentity', provider { "a12-consistency@${project.version}" })
     doLast {
+        // The declaration file is the one staged entry whose name the COMPILER chooses, so it is the one the
+        // pattern above can stop matching with no signal. Refusing here costs nothing and fires before the
+        // pack, the install and the consumer test that actually caught it.
+        if (!consistencyNpmStageDir.get().file('a12-consistency.d.mts').asFile.isFile()) {
+            throw new GradleException('staged no a12-consistency.d.mts, so this package would ship without ' +
+                    'the types it declares. Kotlin/JS owns that filename and a Copy `include` that matches ' +
+                    'nothing is silent — check the compiler\'s declaration extension. Staged: ' +
+                    "${consistencyNpmStageDir.get().asFile.list()?.sort()}")
+        }
         def packageJson = [
             name        : 'a12-consistency',
             version     : project.version.toString(),
             description : 'Kernel-free consistency checker for A12 DocumentModel rules and computations.',
             type        : 'module',
             main        : './a12-consistency.mjs',
-            types       : './a12-consistency.d.ts',
+            types       : './a12-consistency.d.mts',
             exports     : [
                 '.': [
-                    types  : './a12-consistency.d.ts',
+                    types  : './a12-consistency.d.mts',
                     import : './a12-consistency.mjs',
                     default: './a12-consistency.mjs',
                 ],
@@ -1130,7 +1145,7 @@ def verifyConsistencyShippedFiles = tasks.register('verifyConsistencyShippedFile
             'kotlinx-serialization-kotlinx-serialization-json',
         ]
         def permittedOther = ['package/package.json', 'package/README.md', 'package/LICENSE',
-                              'package/a12-consistency.d.ts'] as Set
+                              'package/a12-consistency.d.mts'] as Set
         def tarball = resolvePackedConsistencyTarball()
         def archive = tarTree(tarball)
         def entries = [] as Set
@@ -1178,7 +1193,7 @@ def verifyConsistencyShippedFiles = tasks.register('verifyConsistencyShippedFile
             throw new GradleException("unexpected npm dependency contract: dependencies=" +
                     "${packaged.dependencies} devDependencies=${packaged.devDependencies}")
         }
-        if (packaged.types != './a12-consistency.d.ts' || packaged.main != './a12-consistency.mjs') {
+        if (packaged.types != './a12-consistency.d.mts' || packaged.main != './a12-consistency.mjs') {
             throw new GradleException("the published entry points moved: main=${packaged.main} " +
                     "types=${packaged.types}; a TypeScript consumer resolves both.")
         }
@@ -1186,7 +1201,7 @@ def verifyConsistencyShippedFiles = tasks.register('verifyConsistencyShippedFile
         // so the two fields above can both be right while the package is unresolvable. Staged by hand below,
         // and until 2026-09-18 read by nothing.
         if (packaged.exports?.get('.')?.import != './a12-consistency.mjs' ||
-                packaged.exports?.get('.')?.types != './a12-consistency.d.ts') {
+                packaged.exports?.get('.')?.types != './a12-consistency.d.mts') {
             throw new GradleException("the published `exports` map does not resolve this package: " +
                     "${packaged.exports}. A bundler prefers it over main/types, so a broken map ships a " +
                     'package that cannot be imported while both of those fields still read correctly.')

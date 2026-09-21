@@ -3,7 +3,7 @@
 // [§8](../../../docs/archived/PORTABLE-CONSISTENCY-PROPOSAL.md) asks the resources boundary for "retained memory,
 // release behavior, supported peak observations and installed/downloaded production closure size". The JVM arm
 // (`CheckerRetainedMemoryPerfTest`) answers the first by holding a `ConsistencySnapshot` live and reading the
-// post-GC heap. **A Node consumer cannot hold one**: the shipped `a12-consistency.d.ts` exports
+// post-GC heap. **A Node consumer cannot hold one**: the shipped `a12-consistency.d.mts` exports
 // `checkModelJson` and `checkEditJson`, both taking and returning strings, so there is no analysis object and
 // no cell store on this host — which is why the quantity here is the OTHER half of the same row. What a
 // stateless surface can be asked is whether repeated use accumulates: a consumer's heap flat across many

@@ -45,7 +45,6 @@ package/dist/workspace.d.ts.map
 package/dist/workspace.js
 package/dist/workspace.js.map
 package/internal/a12-interpreter-core.d.mts
-package/internal/a12-interpreter-core.d.ts
 package/internal/a12-interpreter-core.mjs
 package/internal/a12-interpreter-core.mjs.map
 package/internal/kotlin-kotlin-stdlib.mjs

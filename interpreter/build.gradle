@@ -1493,13 +1493,13 @@ def stageInterpreterNpmPackage = tasks.register('stageInterpreterNpmPackage', Sy
     from(interpreterKotlinJsDistribution) {
         include '*.mjs'
         include '*.mjs.map'
-        include 'a12-interpreter-core.d.ts'
+        // Kotlin/JS 2.4 emits `a12-interpreter-core.d.mts` itself; 2.2 emitted `.d.ts` and this task staged a
+        // renamed second copy beside it. The façade imports through `.mjs` specifiers, which TypeScript
+        // resolves to the `.d.mts` sibling, so the `.d.ts` spelling had no consumer even before the rename —
+        // and after it the pattern matched nothing, leaving the package's declarations to a stale `build/dist`
+        // file that a clean checkout does not have (the defect `:consistency` shipped, 2026-09-21).
+        include 'a12-interpreter-core.d.mts'
         exclude 'a12-dmkits-interpreter.*'
-        into('internal')
-    }
-    from(interpreterKotlinJsDistribution) {
-        include 'a12-interpreter-core.d.ts'
-        rename { 'a12-interpreter-core.d.mts' }
         into('internal')
     }
     into(interpreterNpmPackageBuildDir)
@@ -1677,7 +1677,6 @@ def verifyInterpreterNpmPackage = tasks.register('verifyInterpreterNpmPackage') 
             'package/dist/index.d.ts.map',
             'package/internal/a12-interpreter-core.mjs',
             'package/internal/a12-interpreter-core.mjs.map',
-            'package/internal/a12-interpreter-core.d.ts',
             'package/internal/a12-interpreter-core.d.mts',
         ]
         def missing = required.findAll { !(it in entries) }
@@ -1731,7 +1730,6 @@ def verifyInterpreterNpmPackage = tasks.register('verifyInterpreterNpmPackage') 
         ]
         def permittedEntries = permittedDist +
             (['package/package.json', 'package/README.md', 'package/LICENSE',
-              'package/internal/a12-interpreter-core.d.ts',
               'package/internal/a12-interpreter-core.d.mts'] as Set) +
             (permittedInternalModules.collectMany {
                 ["package/internal/${it}.mjs".toString(), "package/internal/${it}.mjs.map".toString()]

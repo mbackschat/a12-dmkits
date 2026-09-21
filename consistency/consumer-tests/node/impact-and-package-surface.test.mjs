@@ -60,7 +60,7 @@ test('the published surface declares the snapshot handle opaque', () => {
   // is a declaration rather than a runtime guard. So the honest oracle is the shipped declaration file, which
   // the package names in its own `types` field — a consumer compiling against this package cannot mint a
   // handle, and a consumer bypassing TypeScript was never constrained by anything here.
-  const declarations = read('./node_modules/a12-consistency/a12-consistency.d.ts');
+  const declarations = read('./node_modules/a12-consistency/a12-consistency.d.mts');
 
   assert.match(declarations, /export declare class ConsistencySnapshotHandle \{\s*private constructor\(\);/,
     'the handle must be declared un-constructible, or a consumer can fabricate one that analysed nothing');
