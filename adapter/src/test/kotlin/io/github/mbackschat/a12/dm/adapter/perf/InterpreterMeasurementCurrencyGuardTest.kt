@@ -2,8 +2,9 @@ package io.github.mbackschat.a12.dm.adapter.perf
 
 import java.io.File
 import java.nio.file.Files
-import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertInstanceOf
 import org.junit.jupiter.api.Assertions.assertTrue
+import org.junit.jupiter.api.Assertions.fail
 import org.junit.jupiter.api.Test
 
 /**
@@ -26,22 +27,32 @@ import org.junit.jupiter.api.Test
  * PRODUCTION source is not covered by any recorded measurement. It says nothing about whether the numbers were
  * good — that is the anchor's job, and conflating the two would let a green guard imply a bar it never read.
  * Test-source and documentation commits under `interpreter/src` do not count, because they do not ship.
+ *
+ * **It also fails when it cannot DECIDE, and that arm is separate because conflating it shipped a false
+ * accusation (2026-09-21).** On a shallow checkout no record's commit resolves, and the rule used to answer by
+ * reporting the production history — which in a `--depth 1` clone is the single available commit. CI therefore
+ * named `9c86459b3`, a commit touching only `settings.gradle` and a doc. Both arms are red, as NFR #1 requires;
+ * only one of them is entitled to name a commit.
  */
 class InterpreterMeasurementCurrencyGuardTest {
 
     @Test
     fun everyInterpreterProductionCommitIsCoveredByARecordedMeasurement() {
-        val repo = repositoryRoot()
-        val unmeasured = InterpreterMeasurementCurrency.unmeasuredCommits(repo)
-
-        assertEquals(
-            emptyList<String>(), unmeasured,
-            "interpreter production source has moved past every recorded measurement, and NFR #1 says missing " +
-                "evidence FAILS rather than passes. Unmeasured commits (newest first):\n  " +
-                unmeasured.joinToString("\n  ") +
-                "\n\nTake a measurement and commit the record it writes:\n  ./scripts/perf.sh gate\n" +
-                "Records land in perf-results/<environment>/ and are committed, never under build/.",
-        )
+        when (val currency = InterpreterMeasurementCurrency.currency(repositoryRoot())) {
+            is InterpreterMeasurementCurrency.Currency.Current -> Unit
+            is InterpreterMeasurementCurrency.Currency.Unmeasured -> fail(
+                "interpreter production source has moved past every recorded measurement, and NFR #1 says " +
+                    "missing evidence FAILS rather than passes. Unmeasured commits (newest first):\n  " +
+                    currency.commits.joinToString("\n  ") +
+                    "\n\nTake a measurement and commit the record it writes:\n  ./scripts/perf.sh gate\n" +
+                    "Records land in perf-results/<environment>/ and are committed, never under build/.",
+            )
+            is InterpreterMeasurementCurrency.Currency.Undecidable -> fail(
+                "measurement currency could not be decided in this checkout, so NFR #1's refusal of " +
+                    "inconclusive evidence applies — but NOT to any commit, because none was examined.\n  " +
+                    currency.reason,
+            )
+        }
     }
 
     /**
@@ -62,12 +73,53 @@ class InterpreterMeasurementCurrencyGuardTest {
             val measured = InterpreterMeasurementCurrency.fabricateRepositoryWithUnmeasuredChange(scratch)
             assertTrue(measured.isNotEmpty(), "the fixture did not produce a commit, so it controls nothing")
 
-            val unmeasured = InterpreterMeasurementCurrency.unmeasuredCommits(scratch)
+            val currency = InterpreterMeasurementCurrency.currency(scratch)
 
-            assertTrue(
-                unmeasured.isNotEmpty(),
+            assertInstanceOf(
+                InterpreterMeasurementCurrency.Currency.Unmeasured::class.java, currency,
                 "the fabricated repository moved interpreter production source past its only record and the " +
-                    "guard reported nothing — it cannot fail, so the row above is vacuous",
+                    "guard did not report it — it cannot fail, so the row above is vacuous",
+            )
+        } finally {
+            scratch.deleteRecursively()
+        }
+    }
+
+    /**
+     * The control for the defect that shipped: a SHALLOW checkout must not be read as an unmeasured one.
+     *
+     * The fixture is current and its HEAD touches no production path, so there is exactly one right answer and
+     * two wrong ones. Cloned in full it is [Currency.Current]; cloned at `--depth 1` the records' commits stop
+     * resolving, and the old rule answered by reporting the whole production history — which a shallow clone
+     * collapses to its single commit, naming a commit that changed nothing this guard watches. Asserting
+     * [Currency.Undecidable] rather than merely "not Unmeasured" is deliberate: a pass would also satisfy the
+     * weaker claim, and NFR #1 refuses inconclusive evidence.
+     */
+    @Test
+    fun aShallowCheckoutIsUndecidableRatherThanUnmeasured() {
+        val scratch = Files.createTempDirectory("interp-currency-shallow").toFile()
+        try {
+            val origin = File(scratch, "origin")
+            origin.mkdirs()
+            InterpreterMeasurementCurrency.fabricateCurrentRepositoryWithNonProductionHead(origin)
+
+            assertInstanceOf(
+                InterpreterMeasurementCurrency.Currency.Current::class.java,
+                InterpreterMeasurementCurrency.currency(origin),
+                "the fixture is not current when its history IS readable, so it cannot isolate the depth",
+            )
+
+            val shallow = File(scratch, "shallow")
+            assertTrue(
+                InterpreterMeasurementCurrency.shallowClone(origin, shallow),
+                "could not create the shallow clone, so this control proves nothing",
+            )
+
+            assertInstanceOf(
+                InterpreterMeasurementCurrency.Currency.Undecidable::class.java,
+                InterpreterMeasurementCurrency.currency(shallow),
+                "a shallow checkout was not reported as undecidable — the shipped defect reported its single " +
+                    "commit as unmeasured instead, which accuses a commit the guard never examined",
             )
         } finally {
             scratch.deleteRecursively()

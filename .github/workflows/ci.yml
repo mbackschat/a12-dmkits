@@ -37,6 +37,17 @@ jobs:
         uses: actions/checkout@v4
         with:
           path: a12-dmkits
+          # NFR #1's currency guard resolves the commits that perf-results/**/*.jsonl name, and the action's
+          # default depth of 1 fetches none of them. At that depth the guard reached `:adapter:test` after 31
+          # billable minutes and reported HEAD as unmeasured — a commit that had touched only settings.gradle
+          # and a doc (2026-09-21). Full history is the input that check, and `git describe`, actually need.
+          fetch-depth: 0
+
+      # Seconds, and first, because the condition it catches is otherwise found half an hour in. The Kotlin
+      # guard still owns the invariant; this only refuses a checkout that cannot decide it.
+      - name: Verify measurement history is resolvable
+        working-directory: a12-dmkits
+        run: ./scripts/check-measurement-history.sh
 
       # `/bin/sh` is Bash in sh-mode on macOS and accepts extensions that Ubuntu's Dash rejects. The committed
       # command discovers every POSIX entrypoint and applies both the ShellCheck language oracle and Dash parser.

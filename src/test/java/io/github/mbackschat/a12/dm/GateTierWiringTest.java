@@ -234,6 +234,54 @@ class GateTierWiringTest {
                 "the infographic synchronization contract must publish the guarded CI ordering");
     }
 
+    /**
+     * NFR #1's currency guard reads history, so the checkout depth is one of its inputs — and at the action's
+     * default depth of 1 it cannot read any of it.
+     *
+     * <p>Both halves are asserted because either alone still costs the maintainer the lane. Without
+     * {@code fetch-depth: 0} the condition happens; without the preflight ordering it is discovered at
+     * {@code :adapter:test}, which on 2026-09-21 was <b>31 billable minutes</b> after checkout, and the message
+     * then named a commit that had touched only {@code settings.gradle} and a doc.
+     */
+    @Test
+    void ciFetchesFullHistoryAndRefusesAnUndecidableCheckoutBeforeAnySetup() throws IOException {
+        String ci = Files.readString(locate(".github/workflows/ci.yml"));
+        int buildStart = ci.indexOf("  build:");
+        assertTrue(buildStart >= 0, "missing CI build job");
+        String build = ci.substring(buildStart);
+
+        int checkout = build.indexOf("- name: Checkout rulekit");
+        int depth = build.indexOf("fetch-depth: 0");
+        int preflight = build.indexOf("- name: Verify measurement history is resolvable");
+        int kernelCheckout = build.indexOf("- name: Checkout the kernel bootstrap kit");
+        int javaSetup = build.indexOf("- name: Set up JDK 21 + 25");
+        int gradleSetup = build.indexOf("- name: Set up Gradle cache");
+
+        assertTrue(depth > checkout && depth < preflight,
+                "the rulekit checkout must request full history: at actions/checkout's default depth of 1 the "
+                        + "commits perf-results/**/*.jsonl name do not resolve, so NFR #1's currency guard "
+                        + "cannot read its own evidence and reports a commit it never examined");
+        assertTrue(preflight > checkout && preflight < kernelCheckout && preflight < javaSetup
+                        && preflight < gradleSetup,
+                "the measurement-history preflight must refuse an undecidable checkout before Kernel checkout, "
+                        + "JDK setup or Gradle cache restore — otherwise the same condition is found at "
+                        + ":adapter:test, half an hour of billable runner time later");
+        // Bounding the preflight by the Kernel checkout alone is too weak to carry the fail-fast claim: a
+        // mutant that moved it behind actions/setup-node satisfied every ordinal above and survived. The
+        // preflight's only input is the checkout, so nothing that PROVISIONS may precede it — and every such
+        // step in this job is a `uses:` action.
+        int selfCheckout = build.indexOf("uses: actions/checkout@v4", checkout);
+        int firstProvisioning = build.indexOf("uses:", selfCheckout + 1);
+        assertTrue(firstProvisioning > 0 && preflight < firstProvisioning,
+                "a 70 ms check that needs only the checkout must precede every provisioning action; the first "
+                        + "one here is '" + build.substring(firstProvisioning, build.indexOf('\n', firstProvisioning))
+                        + "', and paying for it before a decision this cheap is the billed cost NFR #1's "
+                        + "preflight exists to avoid");
+        assertTrue(build.substring(preflight, kernelCheckout)
+                        .contains("run: ./scripts/check-measurement-history.sh"),
+                "the preflight step must execute the committed launcher");
+    }
+
     @Test
     void ciChecksEveryPosixEntrypointThroughTheRepositoryWidePortabilityCommand() throws IOException {
         String ci = Files.readString(locate(".github/workflows/ci.yml"));
