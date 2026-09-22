@@ -221,8 +221,9 @@ final class BatchCommand extends BaseCommand {
         // G18: an op that omits its own -m inherits the batch-level one (the universal -m default); an op
         // carrying its own -m keeps it. Put the inherited global option before the child command's arguments:
         // appending it would place it after a child's `--`, where picocli correctly treats it as a positional.
-        // It goes after the WHOLE verb, never inside it — `model -m X check` would ask `model` for an option
-        // only its leaves define.
+        // With a multi-token verb that means after the whole verb. Position is not load-bearing here — `-m`
+        // is an INHERIT-scope root option, so `model -m X check` parses too (measured) — but keeping the
+        // inherited option out of the middle of the verb preserves this line's original intent exactly.
         if (!opHasModel && batchModel != null) {
             argv.add(verbTokens.size(), batchModel);
             argv.add(verbTokens.size(), "-m");

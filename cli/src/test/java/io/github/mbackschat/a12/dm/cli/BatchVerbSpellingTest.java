@@ -64,7 +64,11 @@ class BatchVerbSpellingTest {
                 "the result echoes the caller's spelling verbatim, so a correlation still matches");
     }
 
-    /** The batch-level {@code -m} default has to land after the whole verb, not inside it. */
+    /**
+     * A two-word verb still inherits the batch-level {@code -m}. The insertion POSITION is not what this
+     * locks and could not be: `-m` is an INHERIT-scope root option, so it parses on either side of the
+     * sub-verb (a mutant moving it back inside the verb survives this class, checked).
+     */
     @Test
     void aTwoWordVerbInheritsTheBatchLevelModel(@TempDir Path dir) throws Exception {
         Path opsFile = dir.resolve("ops.json");
