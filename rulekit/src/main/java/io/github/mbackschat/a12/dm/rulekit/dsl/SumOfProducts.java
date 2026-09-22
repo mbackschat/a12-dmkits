@@ -21,8 +21,6 @@ import io.github.mbackschat.a12.dm.core.ValueKind;
 public record SumOfProducts(FieldOperand left, FieldOperand right) implements Calculation {
 
     public SumOfProducts {
-        requireNumber(left);
-        requireNumber(right);
         if (!(left instanceof FieldListRef leftList) || !(right instanceof FieldListRef rightList)
                 || !owningGroup(left).equals(owningGroup(right))) {
             throw Refusals.of(mismatchCode(left, right),
@@ -31,8 +29,20 @@ public record SumOfProducts(FieldOperand left, FieldOperand right) implements Ca
         }
         requireLowestLevelStar(leftList);
         requireLowestLevelStar(rightList);
+        requireNumber(left);
+        requireNumber(right);
     }
 
+    /**
+     * Asked LAST, because the kernel asks it last: on a pair that also breaks a structural gate the kernel
+     * reports that gate and never the number one ({@code validate.laws.SumOfProductsLawsTest}), so asking it
+     * first quoted the wrong defect.
+     *
+     * <p>Deliberately uncoded, although a well-formed pair with a text list is {@code MVK_NO_NUMBER}. One of
+     * the gates ahead of it — a repeatable ancestor left unstarred, {@code MVK_NO_WILDCARD} — needs the model's
+     * repeatability, which an operand does not carry, so this refusal cannot know it is the kernel's answer.
+     * Citing it would quote {@code MVK_NO_NUMBER} for a pair the kernel reports as a missing wildcard.
+     */
     private static void requireNumber(FieldOperand operand) {
         if (operand.kind() != ValueKind.NUMBER) {
             throw new IllegalArgumentException("SumOfProducts takes number fields; "

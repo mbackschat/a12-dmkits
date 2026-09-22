@@ -8492,6 +8492,7 @@ A leading zero is optional (`Date("1","2","2024")` is admitted), so the day and 
 | an operand carrying a `Having` filter | `MVK_WILDCARD_AT_LOWEST_LEVEL_REQUIRED` |
 | an operand starring two levels | `MVK_WILDCARD_ONLY_AT_LOWEST_LEVEL_ALLOWED` |
 | neither operand has a repeatable level, and they share an owning group | `MVK_REPEATABLE_LEVEL_REQUIRED` |
+| a pair every row above admits, with a non-Number field in either position | `MVK_NO_NUMBER` |
 
 **The arity code is `MVK_PARAMSIZE_INVALID_2`, not `MVK_PARAMSIZE_INVALID2`** — two distinct members of one enum, and this operator's `checkParamSizeIs2` draws the underscored one. Recorded because a checker quoting the sibling would name a code the model never drew.
 
@@ -8500,6 +8501,8 @@ A leading zero is optional (`Date("1","2","2024")` is admitted), so the day and 
 **The second class is not the shape its name suggests, and this is the row that matters most.** `MVK_WILDCARD_AT_LOWEST_LEVEL_REQUIRED` reads as "a star above the lowest level", and that shape never reaches it: the reference reader answers a missing or misplaced star with `MVK_NO_WILDCARD` first. What does reach it is a FILTER — `isWildcardRestricted` returns `hasFilterCondition()` for every level, so a filtered operand fails at its lowest level. Measured on both sides of the pair, and measured against a multi-star operand, where the filter wins because the loop reaches the lowest level first.
 
 **The owning-group gate outranks every wildcard gate below it**, so a filtered operand whose owning group also differs draws `MVK_DIFFERENT_GROUPS`, and so does a pair with no repeatable level at all when the two groups differ — the cell that corrected this file's own earlier reading of `MVK_REPEATABLE_LEVEL_REQUIRED`.
+
+**The number question comes last** (*extended 2026-09-22*). On a text-bearing pair that also breaks a structural gate, the kernel reports that gate alone, for each of the five structural classes above. Each such pair was measured beside a number-only twin of the same structure, and the twin drew the same class. rulekit had asked the kind first, so a text list with a structural defect was refused as a kind error. Its check now runs last and cites no code, because one gate that outranks it (a repeatable ancestor left unstarred, `Lines/Parts*/Code, Lines/Parts*/Count` → `MVK_NO_WILDCARD`) depends on a repeatability that the operand does not carry.
 
 Reported by the portable checker under `CheckFamily.SUM_OF_PRODUCTS_OPERANDS`, which speaks only where each operand resolves to a FIELD inside the declaring group and stars exactly the repeatable levels between them — the condition that keeps the reference reader's three classes out of its way.
 

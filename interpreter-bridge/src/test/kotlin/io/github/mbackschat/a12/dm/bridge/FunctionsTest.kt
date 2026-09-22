@@ -306,10 +306,25 @@ class FunctionsTest {
         assertRejectedWith("MVK_REPEATABLE_LEVEL_REQUIRED") { translate("SumOfProducts(Quantity, UnitPrice) > 1") }
     }
 
-    /** Both operands are number fields; a string one is refused before the parallelism gate. */
+    /**
+     * The parallelism gate outranks the number question, as it does at the kernel: two direct text fields are
+     * refused for their structure first (validate.laws.SumOfProductsLawsTest).
+     */
     @Test
-    fun aNonNumberProductOperandIsRejected() {
-        assertRejectedWith("takes number fields") { translate("SumOfProducts(CustomerName, ProductCode) > 1") }
+    fun twoDirectTextFieldsAreRefusedForTheirStructureFirst() {
+        assertRejectedWith("MVK_REPEATABLE_LEVEL_REQUIRED") {
+            translate("SumOfProducts(CustomerName, ProductCode) > 1")
+        }
+    }
+
+    /**
+     * A well-formed pair with a text list reaches the number question, whose refusal cites no code: a gate the
+     * record cannot see (an unstarred repeatable ancestor) outranks it, so it cannot know MVK_NO_NUMBER is the
+     * kernel's answer.
+     */
+    @Test
+    fun aTextListInAParallelPairIsRefusedUncoded() {
+        assertRejectedWith("takes number fields") { translate("SumOfProducts(Items*/Sku, Items*/Count) > 1") }
     }
 
     @Test

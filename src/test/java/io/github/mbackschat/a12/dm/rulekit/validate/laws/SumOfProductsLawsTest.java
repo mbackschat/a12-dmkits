@@ -1,11 +1,22 @@
 package io.github.mbackschat.a12.dm.rulekit.validate.laws;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.function.Executable;
 
 import io.github.mbackschat.a12.dm.ModelDrafts;
+import io.github.mbackschat.a12.dm.core.KernelCodeRefusal;
+import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft;
+import io.github.mbackschat.a12.dm.modelkit.FieldKind;
+import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel;
+import io.github.mbackschat.a12.dm.rulekit.dsl.Dsl;
+import io.github.mbackschat.a12.dm.rulekit.dsl.FieldListRef;
 
 /**
  * KERNEL-FINDINGS §9 — the measured operand-pair boundary of {@code SumOfProducts}. Two facts the earlier
@@ -29,6 +40,85 @@ import io.github.mbackschat.a12.dm.ModelDrafts;
 class SumOfProductsLawsTest {
 
     private static final String BASKET = ModelDrafts.basket().toJson();
+
+    // The basket with one text field beside the numbers in each group, so the number question can be asked on
+    // a pair that is otherwise well formed, and on pairs that also break a structural gate.
+    private static final String BASKET_WITH_TEXT = DocumentModelDraft.named("basket-text").locale("en_US")
+            .rootGroup("Basket", b -> b
+                    .field("Total", FieldKind.NUMBER)
+                    .group("Lines", g -> g
+                            .repeatable(3)
+                            .field("Qty", FieldKind.NUMBER)
+                            .field("Label", FieldKind.STRING)
+                            .group("Packaging", pk -> pk.field("Weight", FieldKind.NUMBER))
+                            .group("Parts", pt -> pt.repeatable(5)
+                                    .field("Count", FieldKind.NUMBER)
+                                    .field("Code", FieldKind.STRING)))
+                    .group("Fees", g -> g
+                            .field("Handling", FieldKind.NUMBER)
+                            .field("Surcharge", FieldKind.NUMBER)
+                            .field("Note", FieldKind.STRING)))
+            .build().toJson();
+
+    @Test
+    void theNumberQuestionIsAskedLast() {
+        // A text field is MVK_NO_NUMBER only on a pair every structural gate accepts. Each text pair below sits
+        // beside a number-only twin of the same structure, so the text is the one variable between them: where
+        // the twin draws a structural class, the text pair draws that class alone and never the number one.
+        Map<String, String> expected = new LinkedHashMap<>();
+        expected.put("Lines*/Label, Lines*/Qty", "MVK_NO_NUMBER");
+        expected.put("Lines*/Qty, Lines*/Label", "MVK_NO_NUMBER");
+        expected.put("Lines*/Qty, Lines*/Qty", KernelLaws.ADMITTED);
+        expected.put("Lines*/Label, Fees/Handling", "MVK_DIFFERENT_GROUPS");
+        expected.put("Lines*/Qty, Fees/Note", "MVK_DIFFERENT_GROUPS");
+        expected.put("Lines*/Qty, Fees/Handling", "MVK_DIFFERENT_GROUPS");
+        expected.put("Lines*/Label, Lines/Packaging/Weight", "MVK_NO_WILDCARD");
+        expected.put("Lines*/Qty, Lines/Packaging/Weight", "MVK_NO_WILDCARD");
+        expected.put("Fees/Note, Fees/Handling", "MVK_REPEATABLE_LEVEL_REQUIRED");
+        expected.put("Fees/Surcharge, Fees/Handling", "MVK_REPEATABLE_LEVEL_REQUIRED");
+        expected.put("Lines*/Label Having [Lines/Qty] > 0, Lines*/Qty", "MVK_WILDCARD_AT_LOWEST_LEVEL_REQUIRED");
+        expected.put("Lines*/Qty Having [Lines/Qty] > 0, Lines*/Qty", "MVK_WILDCARD_AT_LOWEST_LEVEL_REQUIRED");
+        expected.put("Lines*/Parts*/Code, Lines*/Parts*/Count", "MVK_WILDCARD_ONLY_AT_LOWEST_LEVEL_ALLOWED");
+        expected.put("Lines*/Parts*/Count, Lines*/Parts*/Count", "MVK_WILDCARD_ONLY_AT_LOWEST_LEVEL_ALLOWED");
+        // the gate rulekit cannot see: Lines is repeatable and unstarred, which needs the model to know
+        expected.put("Lines/Parts*/Code, Lines/Parts*/Count", "MVK_NO_WILDCARD");
+        expected.put("Lines/Parts*/Count, Lines/Parts*/Count", "MVK_NO_WILDCARD");
+
+        Map<String, String> actual = new LinkedHashMap<>();
+        expected.keySet().forEach(pair -> actual.put(pair, KernelLaws.verdictModel(BASKET_WITH_TEXT, "/Basket",
+                "../Total", "FieldFilled(Total) And SumOfProducts(" + pair + ") > 0")));
+        assertEquals(expected, actual);
+    }
+
+    @Test
+    void rulekitAsksInTheSameOrder_andCitesNothingItCannotKnow() {
+        BoundModel m = BoundModel.ofJson(BASKET_WITH_TEXT);
+        FieldListRef labels = m.flatten("/Basket/Lines*/Label");
+        FieldListRef quantities = m.flatten("/Basket/Lines*/Qty");
+
+        assertEquals("MVK_DIFFERENT_GROUPS", code(() -> Dsl.sumOfProducts(labels, m.field("/Basket/Fees/Handling"))));
+        assertEquals("MVK_NO_WILDCARD",
+                code(() -> Dsl.sumOfProducts(labels, m.field("/Basket/Lines/Packaging/Weight"))));
+        assertEquals("MVK_REPEATABLE_LEVEL_REQUIRED",
+                code(() -> Dsl.sumOfProducts(m.field("/Basket/Fees/Note"), m.field("/Basket/Fees/Handling"))));
+        assertEquals("MVK_WILDCARD_AT_LOWEST_LEVEL_REQUIRED",
+                code(() -> Dsl.sumOfProducts(labels.having(m.num("/Basket/Lines/Qty").gt(0)), quantities)));
+        assertEquals("MVK_WILDCARD_ONLY_AT_LOWEST_LEVEL_ALLOWED", code(() -> Dsl.sumOfProducts(
+                m.flatten("/Basket/Lines*/Parts*/Code"), m.flatten("/Basket/Lines*/Parts*/Count"))));
+
+        // The number question itself cites nothing — on the well-formed pair, and on the pair whose outranking
+        // gate this record cannot see, where MVK_NO_NUMBER would be the wrong code.
+        for (var pair : List.of(List.of(labels, quantities), List.of(
+                m.flatten("/Basket/Lines/Parts*/Code"), m.flatten("/Basket/Lines/Parts*/Count")))) {
+            IllegalArgumentException refusal = assertThrows(IllegalArgumentException.class,
+                    () -> Dsl.sumOfProducts(pair.get(0), pair.get(1)));
+            assertFalse(refusal instanceof KernelCodeRefusal, refusal.getMessage());
+        }
+    }
+
+    private static String code(Executable authoring) {
+        return assertThrows(KernelCodeRefusal.class, authoring).code().name();
+    }
 
     @Test
     void twoParallelListsOverOneOwningGroupAreAccepted() {
