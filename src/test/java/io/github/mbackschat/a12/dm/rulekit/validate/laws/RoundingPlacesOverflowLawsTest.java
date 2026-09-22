@@ -134,4 +134,34 @@ class RoundingPlacesOverflowLawsTest {
                         Dsl.fieldFilled(SKU).and(Dsl.number(0).lt(Dsl.roundDownValue(UNIT_PRICE, 14))))),
                 "the sibling rounding operator carries the same bound and the same kernel row");
     }
+
+    /**
+     * <b>The same bound again, on the EXPRESSION arm, because it is a second copy in a second class.</b>
+     *
+     * <p>{@code roundUpValue(NumberRef, int)} builds a {@code FieldRounding} while {@code roundUp(NumberExpr,
+     * int)} builds a {@code Rounding}, and each class carries its own {@code 0..14} check with its own message.
+     * A mutant widening one of them to 15 survived a test that exercised only the other — so one row per class
+     * is the minimum here, and the duplication is the reason rather than thoroughness.
+     *
+     * <p>The two copies are a smell, not a design: one bound with one measured basis is stated twice and can
+     * drift silently. Recorded rather than fixed here, because merging them is a rulekit change and this file
+     * is a law.
+     */
+    @Test
+    void theExpressionArmCarriesItsOwnCopyOfThatBound() {
+        var expression = Dsl.number(1).plus(2);
+
+        assertEquals(KernelLaws.ADMITTED,
+                classes(KernelLaws.checkModel(PRICES, GROUP, "../Sku",
+                        Dsl.fieldFilled(SKU).and(Dsl.number(0).lt(Dsl.roundUp(expression, 14))))),
+                "14 is admitted by the kernel on this arm too");
+
+        var refusal = assertThrows(IllegalArgumentException.class, () -> Dsl.roundUp(expression, 15),
+                "the expression arm must refuse 15 as the field arm does");
+        assertEquals("rounding decimal places must be in 0..14, was 15", refusal.getMessage(),
+                "and name the same bound, since it is the same kernel row");
+
+        assertThrows(IllegalArgumentException.class, () -> Dsl.roundDown(expression, -1),
+                "the lower end, on a second mode of the same arm");
+    }
 }
