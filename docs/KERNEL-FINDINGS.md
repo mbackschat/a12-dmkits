@@ -9753,3 +9753,91 @@ A12 decides admission on the ANTLR contexts and hands consumers a semantic parse
 **What this does NOT settle:** whether a group on a simple operand is decisive anywhere other than the comparison's constant gate. `CheckOpUtils.isConstant` treats a `BRACKET_OP` wrapping a literal as a constant for the operand-list budget ([KF113](#kf113) — `Min([A], {1}, 2)` is refused exactly as `Min([A], 1, 2)` is), so at least one other gate reads through the group rather than around it. The backstop is deliberately blind to which gate decided; it asks only whether the kernel changed its answer.
 
 *(Locked: `adapter.GroupingPreservedReadTest` — the premise row, both carriers, and the redundant-group control that arbitration exists to keep typed.)*
+
+## §1 supplement — a `{ … }` group on a bare clock pushes the comparison's verdict in OPPOSITE directions depending on the partner (measured 2026-09-22) <a id="kf446"></a>
+
+> Fold: pending — it sharpens [KF445](#kf445)'s representation asymmetry into a rule about the comparison's entry gates, which §1 describes only in outline.
+
+[KF445](#kf445) measured that a group around a bare clock survives the checker and not the parse tree, on one carrier: `{Today} == Today` is admitted where bare `Today == Today` draws `MVK_INVALID_COMPARE_TO_CONST`. **Which direction that group moves the verdict turns entirely on what the clock is compared against**, and the two partners disagree:
+
+| condition | verdict | which gate answered |
+|---|---|---|
+| `[Quantity] < 1` — the liveness control | admitted | — |
+| `Today < 1` | `MVK_INVALID_COMPARE_TO_DATE` | the date-kind gate, because the bare clock is RECOGNIZED as a clock |
+| `{Today} < 1` | `MVK_INVALID_COMPARE_TO_CONST` | the constant gate: the group removes bare-clock recognition while constantness survives |
+| `{{Today}} < 1` | `MVK_INVALID_COMPARE_TO_CONST` | the same — a second group changes nothing further |
+| `1 < Today` | `MVK_INVALID_COMPARE_TO_CONST` | the date-kind gate reads the LEFT result, so a clock on the right leaves two constants |
+| `[PlacedOn] < 1` | `MVK_INVALID_COMPARE_TO_DATE` | the same gate a bare clock reaches, so it is about the left operand's KIND, not about clock-ness |
+| `Today == Today` | `MVK_INVALID_COMPARE_TO_CONST` | two bare clocks are two constants |
+| `{Today} == Today` / `{{Today}} == Today` | **admitted** | the group defeats the constant gate, at either depth |
+
+`Now` behaves identically to `Today` on every row. So **a group never admits against a Number constant and always admits against another clock**, which means "singly grouped admits, doubly grouped refuses" — the contrast a12-kernel-lean's `SPEC-2026-09-08-04` acceptance asks us to confirm — holds on neither partner. Their entry's own *delta* is what the number rows show and is confirmed: braces preserve constantness, remove bare-clock recognition, and swapping the clock and the constant changes the refusal class.
+
+*(Locked: `rulekit.validate.laws.ClockGroupingComparisonEntryLawsTest` — both partners in one model, each with its own liveness control.)*
+
+## §5 supplement — a DateTime PROJECTION takes a stamp literal where a numeric extractor refuses one, and three classes separate the ways a literal can fail (measured 2026-09-22) <a id="kf447"></a>
+
+> Fold: pending — it extends [KF398](#kf398)'s date-argument slot with the literal's *family* dimension, which that entry's table does not carry.
+
+Measured to discharge a12-kernel-lean's `SPEC-2026-09-08-05`, and it holds on every row:
+
+| operand | verdict |
+|---|---|
+| `DateFromDateTime(ScheduledAt) > Today` / `YearFromDate(OrderDate) < 2020` — the controls | admitted |
+| `DateFromDateTime("15.01.2026T10:30:00")`, `TimeFromDateTime("15.01.2026T10:30:00")` | **admitted** |
+| `YearFromDate("15.01.2026")`, `YearFromDate("15.01.2026T10:30:00")`, `HoursFromTime("10:30:00")` | `MVK_NO_CONST` |
+| `DateFromDateTime("not-a-datetime")` | `MVK_INVALID_DATE_STRING` |
+| `DateFromDateTime("2026-01-15T10:30:00")` — an ISO spelling | `MVK_INVALID_DATE_STRING` |
+| `DateFromDateTime("15.01.2026")`, `TimeFromDateTime("15.01.2026")` — recognized, wrong shape | `MVK_WRONG_DATE_FORMAT_FOR_OP` |
+
+So the split is by **extractor family**, not by the literal's completeness: the numeric component extractors refuse a direct literal whichever recognized shape it carries, while the two DateTime projections take a complete stamp. Recognition is asked first and is length-keyed ([KF398](#kf398)'s four shapes), which is why an ISO spelling is not a near miss — it never reaches either family gate, and a grid written with ISO literals reports one uniform class that says nothing about the boundary.
+
+*(Locked: `rulekit.validate.laws.DateTimeProjectionLiteralOperandLawsTest`.)*
+
+## §4 supplement — a rounding places token crosses TWO boundaries: the scale gate at 14, and a signed-64-bit read at `2^63` (measured 2026-09-22) <a id="kf448"></a>
+
+> Fold: pending — §4's rounding prose states the 0..14 scale gate and not the read that precedes it.
+
+| places | verdict |
+|---|---|
+| `14` | admitted |
+| `15` … `9223372036854775807` | `MVK_INVALID_DIGIT_FOR_ROUNDING` |
+| `9223372036854775808` and above | **`MVK_INTERNAL_ERROR`** |
+| `00000002` | admitted |
+| `0000000015` | `MVK_INVALID_DIGIT_FOR_ROUNDING` |
+
+The token is READ as a signed 64-bit integer before the scale gate sees it, so a value one above `Long.MAX_VALUE` fails inside the read and the kernel answers with an internal-error class rather than a domain one — a well-formed digit sequence to the grammar, and a static verdict a consumer will meet. Leading zeros change the token's length and not its value, so they cross neither boundary. Confirms a12-kernel-lean's `SPEC-2026-09-08-06` on every row. The ordinary range and the gate's position behind the operand gates stay with `RoundingOperandLawsTest`.
+
+*(Locked: `rulekit.validate.laws.RoundingPlacesOverflowLawsTest`.)*
+
+## §13 supplement — the message repertoire's CODELESS finding co-reports with every named failure, and it is not the only codeless one (measured 2026-09-22) <a id="kf449"></a>
+
+> Fold: pending — §13 describes the message checks individually and says nothing about how their findings combine.
+
+A supplementary-plane character in a rule message produces a finding carrying **no code**, identified only by its text (`The field contains one or several unsupported signs.`). Paired with each named message failure it is **retained**, and listed **first** in every envelope:
+
+| message text | envelope |
+|---|---|
+| `plain` — the control | admitted |
+| astral alone | the codeless repertoire finding |
+| astral + linebreak / control char / odd `$` / unknown entity | the codeless finding, then `INVALID_LINEBREAK` / `INVALID_CHARACTERS` / `WRONG_NUMBER_OF_DOLLARS` / `INVALID_ENTITY` |
+
+So there is no last-check or short-circuit behaviour to infer: confirms a12-kernel-lean's `SPEC-2026-09-08-07`. **Their entry names one codeless finding; there are at least two** — a linebreak ALONE reports a codeless `Only values without line breaks are allowed.` beside `INVALID_LINEBREAK`, so codelessness is a property several message checks share rather than the repertoire check's signature. A projection that prints codes alone renders both as `(no code)` and aliases them, which is how the short-circuit reading arose; print the text.
+
+*(Locked: `rulekit.validate.laws.MessageRepertoireCoReportingLawsTest`.)*
+
+## §13 supplement — an EMPTY message-category name is the last question asked, after entity resolution and condition membership (measured 2026-09-22) <a id="kf450"></a>
+
+> Fold: pending — the ordering belongs beside [KF449](#kf449) in §13's message-parameter account.
+
+| parameter | verdict |
+|---|---|
+| `$Grade -> Band$` — the control | admitted |
+| `$Grade ->$` | `NO_CATEGORY` |
+| `$Unread ->$` — a field the condition never reads | `INVALID_FIELD` |
+| `$NoSuchField ->$` — a name the model does not declare | `INVALID_ENTITY` |
+| the same three with a **doubled arrow** (`$X -> -> Band$`) | identical, row for row |
+
+An empty category name preempts nothing: entity resolution answers first, then condition membership, then the category name. The doubled-arrow rows behaving identically is what makes the condition "the first category name is empty" rather than "the suffix is malformed". Confirms a12-kernel-lean's `SPEC-2026-09-08-08`, whose acceptance also asks to keep the unkeyed membership gate distinct from the keyed index gate — the classes above are the unkeyed one; the keyed form's gate stays with [KF46](#kf46).
+
+*(Locked: `rulekit.validate.laws.EmptyCategoryNamePrerequisiteLawsTest`; the suffix's own classes stay with `ErrorTextCategorySuffixLawsTest`.)*
