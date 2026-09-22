@@ -1183,8 +1183,12 @@ public final class Dsl {
 
     private static Condition customTypeValidity(boolean valid, FieldRef field, String typeName) {
         if (field.kind() != ValueKind.STRING && field.kind() != ValueKind.ENUMERATION) {
-            throw new IllegalArgumentException("Valid/Invalid(field, \"Type\") needs a STRING or ENUMERATION field, but "
-                    + field.path() + " is " + field.kind());
+            // The admitted set is narrower than the code's name: `isStringEnumOrExtensibleEnum`'s third
+            // disjunct is a FLAG on a string type, not a kind, so an extensible enum arrives here as STRING
+            // and a CustomFieldType is refused by the kernel too (ValidityConditionOperandLawsTest).
+            throw Refusals.of(KernelCode.MVK_NO_STRING_OR_ENUM_OR_EXT_ENUM,
+                    "Valid/Invalid(field, \"Type\") needs a STRING or ENUMERATION field, but "
+                            + field.path() + " is " + field.kind());
         }
         return new CustomTypeValidity(valid, field, typeName);
     }

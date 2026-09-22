@@ -55,6 +55,11 @@ class PromotedGateIsReachedGuardTest {
             "rangesEqual", "rangesNotEqual", "dateRangeOf", "dateOf",
             "valueAsDateFirstDay", "valueAsDateLastDay");
 
+    // The 2026-09-22 bump to Dsl.java=11 added no row above: it promoted Dsl.validType/invalidType from a
+    // bare IllegalArgumentException to a coded refusal, and those are Dsl STATICS rather than BoundModel
+    // gates — which is the whole denominator of GATES, and why `reaches` excludes a Dsl receiver. The
+    // invariant still holds for them directly: interpreter-bridge's Predicates.kt calls Dsl.validType.
+
     /**
      * Gates the condition-text consumer legitimately cannot reach, each with the reason. A gate belongs here
      * only when no stored condition can produce its shape — never because wiring it looks awkward.
@@ -75,7 +80,7 @@ class PromotedGateIsReachedGuardTest {
      * all. The reachability assertions above stayed green across the change, which is the evidence for that.
      */
     private static final Map<String, Integer> REFUSAL_SITES =
-            Map.of("BoundModel.java", 9, "Dsl.java", 10, "DuplicateGate.java", 2);
+            Map.of("BoundModel.java", 9, "Dsl.java", 11, "DuplicateGate.java", 2);
 
     private static final Pattern REFUSAL = Pattern.compile("Refusals\\.of\\(");
 
