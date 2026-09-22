@@ -48,15 +48,24 @@ public record OpListMath(Op op, List<Calculation> operands) implements Calculati
         ValueKind kind = resultKind(operands.getFirst());
         // BaseYear's public node reports its primary DATE role, but Dsl.baseYearNumber() selects the
         // kernel's numeric role before reaching Abs (the same polymorphic exception Computation owns).
+        //
+        // Abs answers ONE code for every kind it turns away, temporal included — it takes exactly one
+        // operand, so the operand order that splits Min/Max below into three codes has nothing to vary.
+        // The class is the one MVK-LEDGER already records for the field-valued AbsValue (KF395); this is
+        // the expression form of the same demand, measured on the same carrier as the grid below.
         if (op == Op.ABS && kind != ValueKind.NUMBER && !(operands.getFirst() instanceof BaseYear)) {
-            throw new IllegalArgumentException("Abs needs a NUMBER operand, got " + kind);
+            throw Refusals.of(KernelCode.MVK_NO_NUMBER, "Abs needs a NUMBER operand, got " + kind);
         }
-        // The three refusals below each cite the code the kernel was OBSERVED to report for that exact
-        // shape, measured 2026-09-22 on a purpose-made carrier and locked by OpListMathKindGateLawsTest.
-        // They are separate codes rather than one because the kernel separates them, which a single
-        // homogeneity refusal would have flattened: a DATE beside a TIME is not the same rejection as a
-        // DATE beside a number. Four positive controls (NUMBER, DATE, TIME and DATE_TIME paired with
-        // themselves) are admitted, so none of this is a gate the kernel does not also apply.
+        // The refusals below cite the codes the kernel reports for these shapes, locked cell by cell in
+        // OpListMathKindGateLawsTest (KERNEL-FINDINGS KF457, carrying KF263's grid to this spelling) — read the
+        // lock rather than trusting this comment for coverage. They are separate codes because the kernel
+        // separates them, which one homogeneity refusal would have flattened: a DATE beside a TIME is not the
+        // same rejection as a DATE beside a number, and neither is a NUMBER beside a DATE.
+        //
+        // This gate compares declared KINDS; the kernel compares temporal COMPONENT SETS (KF263). So it goes
+        // quiet wherever the two disagree — a DateType carrying a datetime format, a fragment with fewer
+        // components than the date beside it — which under-reports and is safe. Refusing there would need
+        // the declared formats, which a Calculation does not carry.
         if (op != Op.ABS && !isSortable(kind)) {
             throw Refusals.of(KernelCode.MVK_NOT_SORTABLE,
                     op + " needs NUMBER or date-like operands, got " + kind);
@@ -64,19 +73,19 @@ public record OpListMath(Op op, List<Calculation> operands) implements Calculati
         for (Calculation operand : operands) {
             ValueKind operandKind = resultKind(operand);
             if (operandKind != kind) {
-                // Three codes, because the kernel reports three. The temporal axis decides: two temporal
-                // kinds that disagree are a FORMAT incompatibility, one temporal beside anything else is
-                // date-and-nondate, and with no temporal operand at all the offender is simply unsortable.
-                // The last arm is the one a first pass got wrong by reading only the gate above, where the
-                // unsortable kind sits FIRST: reversed, Min([Premium], [Holder]) reaches here instead, and
-                // the kernel still says NOT_SORTABLE. `kind` is NUMBER or temporal, the gate above ensures it.
+                // THE FIRST OPERAND'S KIND DECIDES, and nothing else does (KF249's position law). A
+                // non-temporal head is always MVK_NOT_SORTABLE whatever follows it — Min([Premium],
+                // [StartDate]) included, the cell an "either operand temporal" reading gets wrong; a temporal
+                // head asks only whether the offender is temporal too, which is a format incompatibility, or
+                // not, which is date-and-nondate. `kind` is NUMBER or temporal — the gate above ensures it — so
+                // !isTemporal means NUMBER.
                 KernelCode code;
-                if (isTemporal(kind) && isTemporal(operandKind)) {
-                    code = KernelCode.MVK_DATEFORMATS_NOT_COMPATIBLE;
-                } else if (isTemporal(kind) || isTemporal(operandKind)) {
-                    code = KernelCode.MVK_DATE_AND_NONDATE;
-                } else {
+                if (!isTemporal(kind)) {
                     code = KernelCode.MVK_NOT_SORTABLE;
+                } else if (isTemporal(operandKind)) {
+                    code = KernelCode.MVK_DATEFORMATS_NOT_COMPATIBLE;
+                } else {
+                    code = KernelCode.MVK_DATE_AND_NONDATE;
                 }
                 throw Refusals.of(code, op + " needs operands of one kind, got " + kind
                         + " and " + operandKind);

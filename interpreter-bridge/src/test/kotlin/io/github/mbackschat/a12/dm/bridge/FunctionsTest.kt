@@ -280,16 +280,18 @@ class FunctionsTest {
         assertEquals(ValueKind.DATE, max.kind())
     }
 
+    /**
+     * A NUMBER head decides: the date after it does not make this date-and-nondate (KERNEL-FINDINGS KF249).
+     * Pinned by code because this exact row matched on message text while rulekit cited the wrong code for it.
+     */
     @Test
     fun aMixedKindOperandListMaxIsRejected() {
-        assertRejectedWith("needs operands of one kind") { translate("Max([Quantity], [OrderDate]) > 1") }
+        assertRejectedWith("MVK_NOT_SORTABLE") { translate("Max([Quantity], [OrderDate]) > 1") }
     }
 
     @Test
     fun anUnorderableOperandListMinIsRejected() {
-        assertRejectedWith("needs NUMBER or date-like operands") {
-            translate("Min([CustomerName], [ProductCode]) > 1")
-        }
+        assertRejectedWith("MVK_NOT_SORTABLE") { translate("Min([CustomerName], [ProductCode]) > 1") }
     }
 
     // --- SumOfProducts --------------------------------------------------------------------------

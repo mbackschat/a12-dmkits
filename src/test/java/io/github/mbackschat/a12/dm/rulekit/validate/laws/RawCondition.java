@@ -18,7 +18,7 @@ package io.github.mbackschat.a12.dm.rulekit.validate.laws;
  * families were sampled and raw was legitimate in most of their rows, so wrapping all 675 call sites on
  * this class's String-condition entry points (453 on the nine names with no typed twin, 222 on the three
  * that overload-resolve against one; measured by signature 2026-09-22) would buy per-row ritual where
- * per-class prose already works (TESTING-SPEC). Three of ~50 families is a sample, not
+ * per-class prose already works (TESTING-SPEC). Three of the 288 law classes (2026-09-22) is a sample, not
  * a census — the decision rests on the cost being certain and the benefit speculative, not on a measured
  * estate. Nothing here makes the estate clean; it makes one row honest.
  */
