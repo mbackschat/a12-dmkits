@@ -40,7 +40,9 @@ The gaps below were the **ergonomic and consistency remainder** — what added f
 
 ## 2. Open
 
-_None open._
+- **DG58 — `RuntimeLaws` publishes a typed `Condition` entry point for `withRule` only, so part of the law estate cannot take the migration its own guard prescribes.** `withRuleMessages`, `withComputation` and `withTieredComputation` keep String-only signatures. `TypedConditionAuthoringRatchetTest`'s failure message tells an author to call the typed overload, and for a file whose splice helper has no typed twin that instruction cannot be followed — measured 2026-09-22: of the 250 files the ratchet counts, roughly 38 use one of those three helpers. `KernelLaws` needs nothing here; it already takes `Rule` and `Computation` directly. The computation twin should derive group, name, computed-field path, operation and suppress list from `computation.draft()` and refuse a multi-alternative draft rather than silently taking its first arm.
+
+- **DG59 — the two legitimate reasons for a raw-String condition are advertised in three places and enforced nowhere.** `KernelLaws`, `RuntimeLaws` and [TESTING-SPEC](TESTING-SPEC.md) all say a String row must name which reason applies — the typed surface erases the shape, or the law's subject is concrete syntax. Nothing checks it. The ratchet counts *renderers*, not hand-written conditions, so a law may pass a raw condition string through a typed harness entry point and trip nothing. A guard is feasible — require one of a small set of marker phrases in a file that passes a String condition inside the law trees — and until one exists the rule is documentation rather than a contract. Raised by the same cold review that found the ratchet's own blind spot, which is the argument for building it: an advertised invariant with no enforcement locus is the class both rules exist to catch.
 
 ---
 

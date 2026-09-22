@@ -62,6 +62,10 @@ class BaseYearDifferenceOperandClassLawsTest {
                         .dateField("Yearless", f -> f.format("dd.MM."))
                         .dateField("Dated", f -> f.format("dd.MM.yyyy"))
                         .timeField("Clock", f -> f.format("HH:mm:ss"))
+                        // The clock's own partner, so the clock rows can hold the PARTNER still the way the
+                        // yearless rows do. Without it every clock row is (Clock, Dated) and the partner is a
+                        // second variable in exactly the grid that declares partners must be controlled.
+                        .timeField("Clock2", f -> f.format("HH:mm:ss"))
                         .dateTimeField("Stamp", f -> f.format("yyyy-MM-dd'T'HH:mm:ss")))
                 .build().toJson();
     }
@@ -118,6 +122,13 @@ class BaseYearDifferenceOperandClassLawsTest {
         row(actual, "months over a stamp operand", "DifferenceInMonths(Stamp, Dated) > 1");
         row(actual, "days over a stamp operand", m -> Dsl.differenceInDays(m.dateTime("/Order/Stamp"), m.dateTime("/Order/Stamp")).gt(1));
         row(actual, "days over a clock operand", "DifferenceInDays(Clock, Dated) > 1");
+        // The homogeneous controls this file's own paragraph demands. Every clock row above pairs against a
+        // DATE, so the partner moves with the unit; these hold it at the operand's own kind.
+        row(actual, "years over TWO clock operands", "DifferenceInYears(Clock, Clock2) > 1");
+        row(actual, "months over TWO clock operands", "DifferenceInMonths(Clock, Clock2) > 1");
+        row(actual, "days over TWO clock operands", "DifferenceInDays(Clock, Clock2) > 1");
+        row(actual, "years over TWO stamp operands", "DifferenceInYears(Stamp, Stamp) > 1");
+        row(actual, "months over TWO stamp operands", "DifferenceInMonths(Stamp, Stamp) > 1");
 
         Map<String, String> expected = new LinkedHashMap<>();
         both(expected, "years over a dated operand — the control", KernelLaws.ADMITTED, KernelLaws.ADMITTED);
@@ -142,6 +153,18 @@ class BaseYearDifferenceOperandClassLawsTest {
         // Each family refuses the other's carrier: days takes the stamp and refuses the pure clock.
         both(expected, "days over a stamp operand", KernelLaws.ADMITTED, KernelLaws.ADMITTED);
         both(expected, "days over a clock operand",
+                "MVK_WRONG_DATE_FORMAT_FOR_OP", "MVK_WRONG_DATE_FORMAT_FOR_OP");
+        // With the partner held at the operand's own kind, every conclusion above survives — the clock rows
+        // were reporting the unit's gate, not a mixture with the DATE partner. `DifferenceInYears` keeps its
+        // Base-Year-only MVK_INVALID_TIME, which is the row the whole file turns on.
+        both(expected, "years over TWO clock operands", "MVK_INVALID_TIME", "MVK_WRONG_DATE_FORMAT_FOR_OP");
+        both(expected, "months over TWO clock operands",
+                "MVK_WRONG_DATE_FORMAT_FOR_OP", "MVK_WRONG_DATE_FORMAT_FOR_OP");
+        both(expected, "days over TWO clock operands",
+                "MVK_WRONG_DATE_FORMAT_FOR_OP", "MVK_WRONG_DATE_FORMAT_FOR_OP");
+        both(expected, "years over TWO stamp operands",
+                "MVK_WRONG_DATE_FORMAT_FOR_OP", "MVK_WRONG_DATE_FORMAT_FOR_OP");
+        both(expected, "months over TWO stamp operands",
                 "MVK_WRONG_DATE_FORMAT_FOR_OP", "MVK_WRONG_DATE_FORMAT_FOR_OP");
         assertEquals(expected, actual, "a Base Year moves both the admission and the class");
     }

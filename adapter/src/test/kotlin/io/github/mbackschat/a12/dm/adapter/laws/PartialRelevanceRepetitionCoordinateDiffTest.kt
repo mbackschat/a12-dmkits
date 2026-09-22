@@ -139,6 +139,22 @@ class PartialRelevanceRepetitionCoordinateDiffTest {
     }
 
     /**
+     * **THE PREMISE.** Both twins are spliced in as raw JSON, downstream of any gate that ran on the base, so
+     * "the kernel admits these models" is an assumption this file rests on rather than something it observes.
+     * A cold review checked it externally and it holds; asserted here so it stops being external.
+     *
+     * The masking result is only about masking if the masked model is legal — a model the kernel refuses
+     * would also produce an empty message set, and the discriminator could not tell the two apart.
+     */
+    @Test
+    fun bothSplicedModelsAreKernelAdmitted() {
+        assertEquals(emptyList<String>(), RuntimeLaws.consistencyMessages(modelWith(coordinate)),
+            "the coordinate-reading twin must be admitted")
+        assertEquals(emptyList<String>(), RuntimeLaws.consistencyMessages(modelWith(cell)),
+            "…and so must its cell-backed twin, or the silence below is a refusal rather than masking")
+    }
+
+    /**
      * **THE NON-VACUITY CONTROL.** The coordinate rule must fire in one row and not the other, so the equality
      * in the discriminator compares a shape rather than two empty sets — and so an engine that ignored the
      * coordinate entirely could not produce this table.

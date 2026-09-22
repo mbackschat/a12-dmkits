@@ -97,6 +97,11 @@ class ValueListSlotShapeBlindnessLawsTest {
                     .group("Serials", g -> g
                             .customField("Primary", f -> f.type("PolicySerial"))
                             .customField("Secondary", f -> f.type("PolicySerial")))
+                    // Two DIFFERENT registered type names, for the row that separates "CUSTOM enters through
+                    // isLikeString as a predefined type" from "CUSTOM is its own family keyed by type name".
+                    .group("Mixtures", g -> g
+                            .customField("Serial", f -> f.type("PolicySerial"))
+                            .customField("Account", f -> f.type("PolicyAccount")))
                     // The one REPEATABLE group, and the only respect in which it differs from `Dates`. Every
                     // other group above is non-repeatable, which was an unnamed constant across the whole
                     // grid until a cold review named it; `theScopeGateOutranksTheKindGate` is what keeps the
@@ -269,6 +274,34 @@ class ValueListSlotShapeBlindnessLawsTest {
         // is why it is measured here rather than inferred from the scalar carrier.
         expectThree(expected, "a CUSTOM-typed field", KernelLaws.ADMITTED);
         assertEquals(expected, actual, "NUMBER is in the set, and the class it draws is the later one");
+    }
+
+    /**
+     * <b>CUSTOM enters as a PREDEFINED TYPE, not as a family keyed by its registered type name.</b>
+     *
+     * <p>The rows above measure one custom type against String literals, which a "CUSTOM is its own family"
+     * account predicts just as well. Two DIFFERENT registered type names in one slot is what separates them:
+     * a name-keyed family would refuse the pair. The kernel's gate asks
+     * {@code isLikeString(f) = t instanceof IStringType || t instanceof IPredefinedType} per expanded field,
+     * so the type name is never consulted — this row is that reading's observable consequence.
+     */
+    @Test
+    void twoDifferentCustomTypeNamesShareTheSlotBecauseTheNameIsNotRead() {
+        Map<String, String> actual = new LinkedHashMap<>();
+        actual.put("a group of two DIFFERENT custom types", verdict(
+                Dsl.atLeastOneFieldValueIncludedInValueList(XY, C.flattenGroup("Mixtures"))));
+        actual.put("the same two listed out",
+                verdict("AtLeastOneFieldValueIncludedInValueList(Mixtures/Serial, Mixtures/Account"
+                        + " In \"x\", \"y\")"));
+        actual.put("a CUSTOM beside a STRING — across the kind boundary",
+                verdict("AtLeastOneFieldValueIncludedInValueList(Serials/Primary, Texts/Primary In \"x\", \"y\")"));
+
+        Map<String, String> expected = new LinkedHashMap<>();
+        expected.put("a group of two DIFFERENT custom types", KernelLaws.ADMITTED);
+        expected.put("the same two listed out", KernelLaws.ADMITTED);
+        // …and the disjunct is why this one passes too: both sides satisfy `isLikeString`, by different arms.
+        expected.put("a CUSTOM beside a STRING — across the kind boundary", KernelLaws.ADMITTED);
+        assertEquals(expected, actual, "the registered type name is not part of this gate");
     }
 
     /**
