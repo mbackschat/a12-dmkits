@@ -17,6 +17,7 @@ import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft;
 import io.github.mbackschat.a12.dm.modelkit.FieldKind;
 import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Dsl;
+import io.github.mbackschat.a12.dm.rulekit.dsl.FieldRef;
 import io.github.mbackschat.a12.dm.rulekit.dsl.FirstFilledOperand;
 import io.github.mbackschat.a12.dm.rulekit.dsl.FirstFilledValue;
 import io.github.mbackschat.a12.dm.rulekit.validate.ValidationResult;
@@ -174,17 +175,13 @@ class FirstFilledValueGateOrderLawsTest {
         assertEquals(ROOT_LISTS, actual);
     }
 
-    /**
-     * The same lists through rulekit. An indexed root is refused uncoded, since whether the index resolves is
-     * not the record's to see, and the indexed root beside a field belongs to the index gate's own precedence,
-     * which this record does not yet mirror.
-     */
+    /** The same lists through rulekit, where an indexed root is refused uncoded, as every indexed list is below. */
     @Test
     void rulekitAsksTheRootAfterADuplicate_andBehindTheOperandsOwnShape() {
         BoundModel m = BoundModel.ofJson(ROOTS);
         Map<String, String> expected = new LinkedHashMap<>(ROOT_LISTS);
         expected.put("/Item For \"k\"", UNCODED);
-        expected.remove("/Item For \"k\", Title");
+        expected.put("/Item For \"k\", Title", UNCODED);
 
         Map<String, String> actual = new LinkedHashMap<>();
         for (String list : expected.keySet()) {
@@ -195,6 +192,94 @@ class FirstFilledValueGateOrderLawsTest {
             }));
         }
         assertEquals(expected, actual);
+    }
+
+    /**
+     * A semantic index is checked while A12 reads its operand, so where the index does not resolve, or its key
+     * is empty or of the wrong type, that class answers ahead of every list gate, in either position. Where it
+     * resolves the list gates answer as usual, which the last rows show.
+     */
+    private static final String INDEXED = DocumentModelDraft.named("catalogue").locale("en_US")
+            .rootGroup("Item", i -> i
+                    .field("Title", FieldKind.STRING)
+                    .field("Weight", FieldKind.NUMBER)
+                    .field("InStock", FieldKind.CONFIRM)
+                    .group("Grading", g -> g.field("Grade", FieldKind.STRING))
+                    .group("Keyed", g -> g.repeatable(5).indexField("Key").field("Key", FieldKind.STRING)
+                            .field("Note", FieldKind.STRING)))
+            .build().toJson();
+
+    private static final Map<String, String> INDEXED_LISTS = indexedLists();
+
+    private static Map<String, String> indexedLists() {
+        Map<String, String> lists = new LinkedHashMap<>();
+        lists.put("Grading For \"k\", Grading/Grade", NO_INDEX_FIELD);
+        lists.put("Grading For \"k\", Title, Title", NO_INDEX_FIELD);
+        lists.put("Title, Title, Grading For \"k\"", NO_INDEX_FIELD);
+        lists.put("Grading For \"k\", Weight", NO_INDEX_FIELD);
+        lists.put("Grading/Grade For \"k\", Title", NO_INDEX_FIELD);
+        lists.put("Title, Title, Grading/Grade For \"k\"", NO_INDEX_FIELD);
+        lists.put("Keyed/Note For \"\", Weight", "MVK_INDEX_VALUE_INVALID");
+        lists.put("Keyed/Note For \"\", Title, Title", "MVK_INDEX_VALUE_INVALID");
+        lists.put("Keyed/Note For Weight, Weight", "MVK_INDEX_TYPE_INCONSISTENT");
+        // an index that resolves leaves the list gates to answer
+        lists.put("Keyed/Note For \"k\", Weight", VARYING);
+        lists.put("Keyed/Note For \"k\", InStock", BOOLY);
+        lists.put("Keyed/Note For \"k\", Keyed/Note For \"k\"", DUPLICATE);
+        lists.put("Keyed For \"k\", Keyed/Note For \"k\"", CONTAINED);
+        lists.put("Keyed/Note For \"k\", Keyed/Note For \"j\"", ADMITTED);
+        return lists;
+    }
+
+    @Test
+    void theKernelAsksAnIndexAheadOfEveryListGate() {
+        Map<String, String> actual = new LinkedHashMap<>();
+        INDEXED_LISTS.keySet().forEach(list -> actual.put(list,
+                verdict(INDEXED, "FirstFilledValue(" + list + ") == [Title]")));
+        assertEquals(INDEXED_LISTS, actual);
+    }
+
+    /**
+     * rulekit still refuses each list a gate of its own catches, but withholds the class, because its index
+     * handles never see the model and so cannot tell a resolving index from one A12 refuses first. That costs
+     * the code on the resolving rows too, which is the under-report this trade accepts; a list no gate of
+     * rulekit's catches is left to the kernel.
+     */
+    @Test
+    void rulekitWithholdsTheListGatesClassOnEveryIndexedList() {
+        BoundModel m = BoundModel.ofJson(INDEXED);
+        Map<String, String> expected = new LinkedHashMap<>();
+        INDEXED_LISTS.keySet().forEach(list -> expected.put(list, UNCODED));
+        expected.put("Grading For \"k\", Grading/Grade", ADMITTED);
+        expected.put("Grading/Grade For \"k\", Title", ADMITTED);
+        expected.put("Keyed/Note For \"k\", Keyed/Note For \"j\"", ADMITTED);
+
+        Map<String, String> actual = new LinkedHashMap<>();
+        for (String list : expected.keySet()) {
+            actual.put(list, clientVerdict(() -> {
+                List<FirstFilledOperand> operands = Arrays.stream(list.split(", "))
+                        .map(token -> indexedOperand(m, token)).toList();
+                return new FirstFilledValue(operands.getFirst(), operands.subList(1, operands.size()));
+            }));
+        }
+        assertEquals(expected, actual);
+    }
+
+    /** One token of an {@link #INDEXED_LISTS} key: a literal or field key on a group or field, or a plain field. */
+    private static FirstFilledOperand indexedOperand(BoundModel m, String token) {
+        int keyAt = token.indexOf(" For ");
+        String path = "/Item/" + (keyAt < 0 ? token : token.substring(0, keyAt));
+        boolean group = path.equals("/Item/Grading") || path.equals("/Item/Keyed");
+        if (keyAt < 0) {
+            return group ? m.firstFilledGroup(path) : FirstFilledOperand.of(m.field(path));
+        }
+        String key = token.substring(keyAt + " For ".length());
+        if (key.startsWith("\"")) {
+            String literal = key.substring(1, key.length() - 1);
+            return group ? m.firstFilledGroupFor(path, literal) : FirstFilledOperand.of(m.field(path)).forIndex(literal);
+        }
+        FieldRef keyField = m.field("/Item/" + key);
+        return group ? m.firstFilledGroupFor(path, keyField) : FirstFilledOperand.of(m.field(path)).forIndex(keyField);
     }
 
     /** The typed factories route by the first operand's kind, and must do so only after the list's own gates. */
@@ -294,4 +379,5 @@ class FirstFilledValueGateOrderLawsTest {
         return r.ok() ? ADMITTED : String.join(" + ", r.diagnostics().stream()
                 .map(d -> d.code().orElse("(no code: " + d.summary() + ")")).map(Object::toString).toList());
     }
+
 }

@@ -5,6 +5,7 @@ import java.util.List;
 import java.util.stream.Stream;
 
 import io.github.mbackschat.a12.dm.core.KernelCode;
+import io.github.mbackschat.a12.dm.core.KernelCodeRefusal;
 import io.github.mbackschat.a12.dm.core.Refusals;
 import io.github.mbackschat.a12.dm.core.ValueKind;
 
@@ -45,21 +46,22 @@ public record FirstFilledValue(FirstFilledOperand firstOperand, List<FirstFilled
         // measured in validate.laws.FirstFilledValueGateOrderLawsTest). Both duplicate arms go through the one
         // shared gate: this carrier's operands are richer than the sealed unions' (an owner entity may be a
         // field OR a group, keyed by a literal or by a field read), and FirstFilledOperand answers for that.
-        DuplicateGate.rejectDuplicates("FirstFilledValue", all);
-        all.forEach(FirstFilledValue::rejectRootGroup);
-        requireOneValueType(all.stream().flatMap(FirstFilledValue::expandedFields).toList());
+        try {
+            DuplicateGate.rejectDuplicates("FirstFilledValue", all);
+            all.forEach(FirstFilledValue::rejectRootGroup);
+            requireOneValueType(all.stream().flatMap(FirstFilledValue::expandedFields).toList());
+        } catch (KernelCodeRefusal refusal) {
+            // A semantic index is checked while A12 reads its operand (CheckSemanticIndexImpl), ahead of every
+            // list gate: a missing index field, an empty or ill-typed key. None of that is the record's to see, so
+            // on a list holding an index the refusal stands and its class does not (FirstFilledValueGateOrderLawsTest).
+            throw all.stream().anyMatch(operand -> operand.semanticIndex().isPresent()) ? refusal.withheld() : refusal;
+        }
     }
 
-    /**
-     * Uncoded on an indexed root, where the index gate ({@code MVK_NO_INDEX_FIELD}) answers first and the record
-     * cannot see whether the index resolves.
-     */
     private static void rejectRootGroup(FirstFilledOperand operand) {
         if (operand.rootGroup()) {
-            String problem = "FirstFilledValue does not accept a root group: " + operand.renderedPath();
-            throw operand.semanticIndex().isPresent()
-                    ? new IllegalArgumentException(problem)
-                    : Refusals.of(KernelCode.MVK_ROOT_GROUP_REFERENCED, problem);
+            throw Refusals.of(KernelCode.MVK_ROOT_GROUP_REFERENCED,
+                    "FirstFilledValue does not accept a root group: " + operand.renderedPath());
         }
     }
 
@@ -127,8 +129,8 @@ public record FirstFilledValue(FirstFilledOperand firstOperand, List<FirstFilled
         if (operands.isEmpty()) {
             throw new IllegalArgumentException("FirstFilledValue needs at least one operand");
         }
-        // A group operand is typed through here before any record exists (Dsl's factory routing asks its kind),
-        // so the list gates run here too, in the same order.
+        // A group operand's own kind is read through here with no record around it, so a group mixing base types
+        // is refused here by the same gates, in the same order.
         requireOneValueType(operands.stream().flatMap(FirstFilledValue::expandedFields).toList());
         ValueKind first = operands.getFirst().kind();
         if (operands.stream().allMatch(operand -> operand.kind() == first)) {

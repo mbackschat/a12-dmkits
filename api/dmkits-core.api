@@ -444,6 +444,7 @@ public static enum io.github.mbackschat.a12.dm.core.KernelCode.Bucket
 
 public final class io.github.mbackschat.a12.dm.core.KernelCodeRefusal extends java.lang.IllegalArgumentException
   public io.github.mbackschat.a12.dm.core.KernelCode code()
+  public java.lang.IllegalArgumentException withheld()
 
 public final class io.github.mbackschat.a12.dm.core.KernelPatternPolicy
   public static java.util.Optional<io.github.mbackschat.a12.dm.core.KernelPatternPolicy.Rejection> rejection(java.lang.String)

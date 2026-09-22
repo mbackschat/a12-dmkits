@@ -22,14 +22,25 @@ public final class KernelCodeRefusal extends IllegalArgumentException {
     /** Not {@code transient}: {@link KernelCode} is an enum and therefore serializable, so marking it so
      *  would silently drop the one thing this type exists to carry across a round trip. */
     private final KernelCode code;
+    private final String problem;
 
-    KernelCodeRefusal(KernelCode code, String message) {
-        super(message);
+    KernelCodeRefusal(KernelCode code, String problem) {
+        super(Refusals.message(code, problem));
         this.code = code;
+        this.problem = problem;
     }
 
     /** The kernel code this refusal claims — the same one rendered into {@link #getMessage()}. */
     public KernelCode code() {
         return code;
+    }
+
+    /**
+     * The same refusal with its code withheld, for a caller that learns only after its gate fired that a gate it
+     * cannot ask may answer first — so the input is still refused, but the class is no longer ours to claim. No
+     * cause is attached, because a reader walking the chain would lift the withheld code straight back out.
+     */
+    public IllegalArgumentException withheld() {
+        return new IllegalArgumentException(problem);
     }
 }

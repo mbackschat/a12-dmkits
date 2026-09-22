@@ -32,7 +32,7 @@ public final class Refusals {
      * @param problem what is wrong, without the code; the code is appended
      */
     public static KernelCodeRefusal of(KernelCode code, String problem) {
-        return new KernelCodeRefusal(code, message(code, problem));
+        return new KernelCodeRefusal(code, problem);
     }
 
     /**
