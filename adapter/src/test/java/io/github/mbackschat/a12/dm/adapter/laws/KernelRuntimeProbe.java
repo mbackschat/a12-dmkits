@@ -25,8 +25,11 @@ import java.util.function.Function;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
+import com.fasterxml.jackson.core.JsonGenerator;
+import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.cfg.JsonNodeFeature;
 import com.mgmtp.a12.kernel.core.customfieldtype.ICustomFieldTypeFactory;
 import com.mgmtp.a12.kernel.md.document.apiV2.DocumentPointer;
 import com.mgmtp.a12.kernel.md.document.apiV2.PartiallyKnownDocumentMultiPointer;
@@ -48,8 +51,9 @@ import io.github.mbackschat.a12.dm.rulekit.validate.KernelVersion;
  *
  * <p><b>What is observed is the request's choice</b> ({@link Observation}), and each observation is either
  * per-ROW or per-MODEL. The row observations are {@code validateFull} — required whenever any row is observed
- * — and {@code compute}; the model observations are {@code mandatoryInformation} and
- * {@code dynamicEnumerations}, which read no document and may be asked for alone, with no {@code rows} at all.
+ * — {@code compute}, {@code computeResults} and {@code validatePart}; the model observations are
+ * {@code mandatoryInformation} and {@code dynamicEnumerations}, which read no document and may be asked for
+ * alone, with no {@code rows} at all.
  * A request that does not ask for an optional block produces
  * the artifact it always produced, byte for byte, because consumers pin these bytes by SHA-256.
  *
@@ -90,6 +94,26 @@ public final class KernelRuntimeProbe {
     private static final String USAGE =
             "usage: ./gradlew :adapter:kernelProbe -Prequest=<request.json> -Pout=<artifact.json>";
 
+    /**
+     * Configured exactly like A12's own document mapper ({@code ObjectMapperProvider
+     * .createObjectMapperForDocSerializer()}) — {@code USE_BIG_DECIMAL_FOR_FLOATS} with
+     * {@code STRIP_TRAILING_BIGDECIMAL_ZEROES} disabled, written back plain — and used for EVERY JSON this
+     * class reads or writes.
+     *
+     * <p><b>A default mapper is a measurement defect here, not a style choice.</b> A row's
+     * {@code documentInline} is re-serialized out of the parsed request before the kernel ever sees it, so on a
+     * default mapper {@code 5.00} arrives as a {@code DoubleNode}, is written back {@code 5.0}, and the kernel
+     * then stores a differently-scaled value than the request wrote. The scale is not cosmetic: the runtime
+     * renders a NumberType's text from the stored {@code BigDecimal}, and its length bound counts the characters
+     * of that text, so a stored {@code 250} and a stored {@code 250.00} fire different codes on one field
+     * (KERNEL-FINDINGS KF1). A row given by PATH never had the defect, because the file's bytes reach the
+     * kernel unparsed — which is what makes the two ingresses a control pair.
+     */
+    private static final ObjectMapper DOCUMENT_MAPPER = new ObjectMapper()
+            .enable(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS)
+            .configure(JsonNodeFeature.STRIP_TRAILING_BIGDECIMAL_ZEROES, false)
+            .enable(JsonGenerator.Feature.WRITE_BIGDECIMAL_AS_PLAIN);
+
     private KernelRuntimeProbe() {
     }
 
@@ -120,6 +144,21 @@ public final class KernelRuntimeProbe {
 
         /** {@code IDocumentRtService.compute} — the computed-field outcomes and the operand formal errors. */
         COMPUTE("compute", Scope.ROW),
+
+        /**
+         * {@code IDocumentRtService.compute} again, read through the RESULT rather than through the change
+         * projection: the kernel's own successful-instance collection, the errored instances with their
+         * per-instance message, and the document after {@code IDocumentComputationResult.applyTo}.
+         *
+         * <p><b>It is a separate entry rather than more keys on {@code compute} because the two answer different
+         * questions and one of them is strictly bigger.</b> {@code getComputedFieldInstancesWithChanges} is a
+         * subset of {@code …WithoutErrors} by the kernel's own javadoc, so a computation that recomputed a value
+         * the document already held is a successful result that {@code computations} cannot show at all. And a
+         * computation whose destination differs from its source has no outcome-channel observable for what the
+         * document then holds — only the applied document has that. Both were asked for by a12-kernel-lean,
+         * whose carriers were marked {@code route-state: blocked} on them (their 2026-09-21 note §4).
+         */
+        COMPUTE_RESULTS("computeResults", Scope.ROW),
 
         /**
          * {@code IDocumentRtService.validatePart} — the message channel under a CALLER-SUPPLIED relevant set,
@@ -286,7 +325,7 @@ public final class KernelRuntimeProbe {
      * file's own directory, so a request plus its inputs is one movable bundle.
      */
     public static Request parse(Path requestFile) throws IOException {
-        JsonNode root = new ObjectMapper().readTree(Files.readString(requestFile, StandardCharsets.UTF_8));
+        JsonNode root = DOCUMENT_MAPPER.readTree(Files.readString(requestFile, StandardCharsets.UTF_8));
         Path base = requestFile.toAbsolutePath().getParent();
 
         String modelRef = required(root, "model").asText();
@@ -448,8 +487,12 @@ public final class KernelRuntimeProbe {
                     + "' must carry exactly one of 'document' (a path) or 'documentInline' (an embedded "
                     + "A12 Document JSON), not " + (hasPath ? "both" : "neither"));
         }
-        return hasPath ? read(base, rowNode.get("document").asText())
-                : rowNode.get("documentInline").toString();
+        // Written back through the configured mapper rather than JsonNode.toString(): toString() renders a
+        // BigDecimal with the generator's defaults, and a scientific spelling is not what A12 writes.
+        if (hasPath) {
+            return read(base, rowNode.get("document").asText());
+        }
+        return DOCUMENT_MAPPER.writeValueAsString(rowNode.get("documentInline"));
     }
 
     private static JsonNode required(JsonNode node, String key) {
@@ -508,6 +551,7 @@ public final class KernelRuntimeProbe {
         Locale locale = request.locale();
 
         boolean compute = request.observe().contains(Observation.COMPUTE);
+        boolean computeResults = request.observe().contains(Observation.COMPUTE_RESULTS);
         // Bound identically on both strategies, because a type resolvable on one and not the other would
         // report a split that is the harness's rather than the kernel's.
         ICustomFieldTypeFactory fieldTypes = request.fieldTypeFactory();
@@ -531,6 +575,10 @@ public final class KernelRuntimeProbe {
                                         channel(Observation.VALIDATE_PART, () -> project(engine
                                                 .partialValidationMessages(
                                                         instance, rel, clock, locale, fieldTypes)))))
+                                .computeResults(computeResults
+                                        ? Optional.of(channel(Observation.COMPUTE_RESULTS, () -> project(
+                                                engine.computeResults(instance, clock, locale, fieldTypes))))
+                                        : Optional.<KernelProbeArtifact.ComputeResults>empty())
                                 .build();
                     }),
                     observe(JAVA_STATIC, javaStatic, engine -> {
@@ -546,6 +594,10 @@ public final class KernelRuntimeProbe {
                                         channel(Observation.VALIDATE_PART, () -> project(engine
                                                 .partialValidationMessages(
                                                         instance, rel, clock, locale, fieldTypes)))))
+                                .computeResults(computeResults
+                                        ? Optional.of(channel(Observation.COMPUTE_RESULTS, () -> project(
+                                                engine.computeResults(instance, clock, locale, fieldTypes))))
+                                        : Optional.<KernelProbeArtifact.ComputeResults>empty())
                                 .build();
                     }))));
         }
@@ -761,6 +813,40 @@ public final class KernelRuntimeProbe {
     private static KernelProbeArtifact.Outcome project(RuntimeLaws.ComputedInstance instance) {
         return new KernelProbeArtifact.Outcome(
                 address(instance.pointer()), instance.value(), instance.cleared(), instance.errored());
+    }
+
+    /**
+     * One strategy's {@code compute()} run read through the RESULT. The applied document is re-parsed rather
+     * than embedded as a string: it is A12's canonical Document JSON, and a consumer of this artifact already
+     * has a JSON parser in hand, so a quoted blob would make them run a second one.
+     */
+    private static KernelProbeArtifact.ComputeResults project(RuntimeLaws.ComputeResultObservation observation) {
+        return new KernelProbeArtifact.ComputeResults(
+                observation.withoutErrors().stream().map(KernelRuntimeProbe::project).toList(),
+                observation.errored().stream().map(KernelRuntimeProbe::project).toList(),
+                readTree(observation.applied()));
+    }
+
+    private static KernelProbeArtifact.ResultInstance project(RuntimeLaws.ResultInstance instance) {
+        return new KernelProbeArtifact.ResultInstance(
+                address(instance.pointer()), instance.value(),
+                instance.errorMessage().map(KernelRuntimeProbe::project));
+    }
+
+    /**
+     * Re-parse A12's canonical Document JSON WITHOUT destroying a number's scale. A default mapper reads
+     * {@code 5.00} into a {@code double} and re-renders it {@code 5.0}, so an applied document would arrive in
+     * this artifact spelled differently from the one A12 wrote — the parse-stage half of the project's own
+     * number-fidelity rule (CLAUDE.md, "adopt A12's JSON I/O BEHAVIOUR exactly";
+     * KERNEL-FINDINGS KF1). {@code USE_BIG_DECIMAL_FOR_FLOATS} keeps the written scale, and
+     * {@code DecimalNode} writes it back verbatim.
+     */
+    private static JsonNode readTree(String json) {
+        try {
+            return DOCUMENT_MAPPER.readTree(json);
+        } catch (IOException cannotHappen) {
+            throw new UncheckedIOException("A12's own serializer wrote unparseable JSON", cannotHappen);
+        }
     }
 
     private static List<String> addresses(Collection<PartiallyKnownDocumentMultiPointer> pointers) {

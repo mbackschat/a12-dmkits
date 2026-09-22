@@ -13,7 +13,7 @@ The JVM-only, non-shipped route by which an external consumer asks the **real A1
 | Request shape | [`adapter/src/test/resources/kernel-probe/request.schema.json`](../adapter/src/test/resources/kernel-probe/request.schema.json) |
 | Artifact shape | [`adapter/src/test/resources/kernel-probe/artifact.schema.json`](../adapter/src/test/resources/kernel-probe/artifact.schema.json) |
 | Implementation | `adapter/src/test/java/…/adapter/laws/KernelRuntimeProbe.java` + `KernelProbeArtifact.java` |
-| Locks | `adapter.laws.KernelRuntimeProbeTest` + `KernelProbeComputeTest` + `KernelProbeMandatoryInformationTest` + `KernelProbeValidatePartTest` (kernel-backed), `adapter.laws.KernelProbeArtifactTest` + `KernelProbeComputeShapeTest` (shape), `GateTierWiringTest` (the task stays a measurement) |
+| Locks | `adapter.laws.KernelRuntimeProbeTest` + `KernelProbeComputeTest` + `KernelProbeComputeResultsTest` + `KernelProbeCustomFieldTypeTest` + `KernelProbeDocumentFidelityTest` + `KernelProbeMandatoryInformationTest` + `KernelProbeValidatePartTest` (kernel-backed), `adapter.laws.KernelProbeArtifactTest` + `KernelProbeComputeShapeTest` (shape), `GateTierWiringTest` (the task stays a measurement) |
 
 ## 1. Why a Gradle task and not a verb
 
@@ -38,6 +38,7 @@ Kernel runtime entry points over the supplied document, on **both** kernel codeg
 |---|---|---|---|
 | `validateFull` | per row | `IDocumentRtService.validateFull` | each engine block's `messages` |
 | `compute` | per row | `IDocumentRtService.compute` | each engine block's `computations` |
+| `computeResults` | per row | `IDocumentRtService.compute` (its RESULT, not the change projection) | each engine block's `computeResults` |
 | `validatePart` | per row | `IDocumentRtService.validatePart` | each engine block's `partialMessages` |
 | `mandatoryInformation` | **per model** | `IRuleCollectionMetaInformation.getMandatoryInformationFromRules` | the top-level `mandatoryInformation` |
 | `dynamicEnumerations` | **per model** | `IRuleCollectionMetaInformation.getDynamicEnumerationStringValues` | the top-level `dynamicEnumerations` |
@@ -117,6 +118,33 @@ Present on each engine block exactly when the request asked for `compute`; **abs
 
 **`value`'s absence on a clear is a deliberate normalization, not a passthrough.** Measured 2026-08-12 on **both codegen strategies**: a cleared instance's `getStringValue()` is `Optional.of("")` — *present and empty*, and not an echo of the input cell it erased (`ComputeResultChannelsLawsTest`). The two-strategy reading was added after a peer review noticed the measurement had run on the shared dynamic engine alone; a normalization the artifact applies unconditionally cannot rest on one generator. Forwarding it would publish `""` for every clear and alias a clear with a genuinely computed empty string; dropping a constant that carries no information is what keeps the two apart. Whether a *computed* empty string is reachable at all is per result type and not settled here — [IF123](INTERPRETER-FINDINGS.md#if123) measures the empty-store gate on the kernel's `VkString` arm and records that `VkBigDecimal` has no empty arm — so the two-state contract is a guarantee of the **shape**, held whether or not a given kernel reaches both states.
 
+### The `computeResults` block
+
+Present on each engine block exactly when the request asked for `computeResults`; **absent means not observed**. It reads the *same* `compute()` call as `computations`, through the kernel's own **result** rather than through the change projection built out of it.
+
+```jsonc
+"computeResults": {
+  "withoutErrors": [                                      // getComputedFieldInstancesWithoutErrors()
+    { "field": "Order/LineTotal", "value": "10.00" }
+  ],
+  "errored": [                                            // …WithErrors(), each with its OWN message
+    { "field": "Order/LoyaltyPoints", "value": "10",
+      "errorMessage": { "code": "zahlZuGross", "field": "Order/LoyaltyPoints", … } }
+  ],
+  "applied": { "Order": { "LineTotal": 10.00, "Quantity": 2, "UnitPrice": 5.00 } }
+}
+```
+
+**`withoutErrors` is a strict superset of what `computations` can show, and that difference is the whole point.** `getComputedFieldInstancesWithChanges()` is by the kernel's own javadoc a subset of `getComputedFieldInstancesWithoutErrors()` — the instances whose computed value *differs* from the document's — and `outcomes[]` is built from `WithChanges ∪ WithErrors ∪ Cleared`. So **a computation that successfully recomputed a value the document already held appears in no `computations` channel at all**, and only this block sees it. *(Measured on kernel 30.8.1, both strategies: a document seeding `LineTotal: 10.00` for a computation that yields `10.00` produces an empty `outcomes[]` for that field and a `withoutErrors` entry carrying `10.00`.)*
+
+**`applied` is the only observable a separate-destination computation has.** The outcome channels report what was *computed*; nothing in them reports what the document then *holds*. This is A12's canonical Document JSON after `IDocumentComputationResult.applyTo(DocumentV2)`, written by the kernel's own `IDocumentV2Serializer` and embedded as an object rather than a quoted string. `applyTo(DocumentV2)` returns an updated copy and leaves the row's instance untouched, so asking for this cannot perturb the row's other channels.
+
+**`errored[].errorMessage` closes the third channel** this spec used to name as unexposed — `IComputedFieldInstance.getErrorMessage()`, projected through the same `Message` shape the validation channel uses, so one parser reads both.
+
+**Read this block with a `BigDecimal`-configured parser.** `applied` carries A12's own decimals with their scale, and A12's scale *is* the value — the runtime re-renders a NumberType's text from the stored `BigDecimal` and its length bound counts that text's characters ([KF1](KERNEL-FINDINGS.md#kf1)). A default Jackson mapper reads `4.00` into a `double` and hands you back `4.0`. The artifact's bytes are correct either way; your reader decides whether you can see it. *(Locked: `adapter.laws.KernelProbeComputeResultsTest` — the superset instance with its change-projection control, the applied destination, the per-instance message, both strategies, byte identity, and the scale asserted on the artifact's text.)*
+
+**The same fidelity rule binds the request, and it did not always.** A `documentInline` row is re-serialized out of the parsed request before the kernel sees it, and until 2026-09-22 that parse used a default mapper — so an inline `5.00` reached the kernel as `5.0` while the identical document given by `document:` path reached it intact, because a path's bytes are never re-parsed. The two ingresses are now a locked control pair (`adapter.laws.KernelProbeDocumentFidelityTest`). If you pinned an artifact produced from an inline document carrying a scaled decimal before that date, re-run it: the observation may have been of a document you did not write.
+
 ### What `formalErrorsInOperands` is, exactly
 
 It is the kernel's **pre-computation formal validation of operand fields**, and the owner states its scope precisely (`IDocumentRtService.compute`): before any computation runs, *every non-computed field that is an operand of any computation* is formally validated, and **"Regardless of the formal errors found, computations will be performed. Any computations relying directly or indirectly on invalid fields will be skipped."**
@@ -124,7 +152,7 @@ It is the kernel's **pre-computation formal validation of operand fields**, and 
 So it is an **inventory, not a causal attribution** — emitted whether or not anything was skipped, and naming no edge to the outcome it explains. A consumer that wants the link joins the two channels itself and leans on the kernel's skip guarantee for the join; the edge is not published because the kernel does not publish it. Three consequences, each of which a "cause of a clear" reading gets wrong:
 
 - **It is a filter, not a copy of `messages`.** A field carrying the same formal-error code but which is an operand of *no* computation appears in `messages` and not here — measured on kernel 30.8.1 with two `zahlFalscheAnzahlNachkommastellen` in `messages` and one here. But "operand of" is **not** a runtime read trace: the operand set includes every field *contained by* a referenced group, which no evaluation need touch. The set is the kernel's `CalculationOperandsCollector`, locked by `adapter.laws.ComputationEagerPrepassLawsTest`.
-- **`non-computed` is load-bearing.** A field cleared because the computation it read was itself ERRORED names nothing here — a computed field is outside this channel's scope by the owner's own sentence, and the kernel additionally erases the cause across the dependency edge (`adapter.laws.ComputedDependencyCauseErasureDiffTest`). That clear is reported as a clear, naming nothing, which is the kernel's answer rather than a gap in the exposure. The per-instance `getErrorMessage()` on the ERRORED producer is the channel that would carry it, and it is **not** exposed today.
+- **`non-computed` is load-bearing.** A field cleared because the computation it read was itself ERRORED names nothing here — a computed field is outside this channel's scope by the owner's own sentence, and the kernel additionally erases the cause across the dependency edge (`adapter.laws.ComputedDependencyCauseErasureDiffTest`). That clear is reported as a clear, naming nothing, which is the kernel's answer rather than a gap in the exposure. The per-instance `getErrorMessage()` on the ERRORED producer is the channel that carries it, and since 2026-09-22 the `computeResults` block exposes it.
 - **A formal error here does not imply anything was skipped.** In the worked artifact, `Order/ShippingFee`'s error sits in this channel while `Order/LineTotal` — which does not read it — computes normally.
 
 **The `schemaVersion` stayed `1`, deliberately.** A consumer receives `computations` only by asking for it, so no artifact an existing consumer can obtain changes shape and no existing key changes meaning — while bumping would have broken the harder guarantee, that an unchanged request keeps producing bytes an already-pinned SHA-256 matches. **What that costs, stated rather than glossed:** `schemaVersion: 1` no longer determines the artifact's *shape*, only its key meanings, so §6's "an artifact carries its own version header" now means a consumer must also know what it asked for. The schema document itself was edited in place under an unversioned `$id`, so a cached copy and a re-fetched one differ. Both were judged cheaper than breaking a pin.

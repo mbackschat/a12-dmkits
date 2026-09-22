@@ -152,7 +152,8 @@
                 "not": { "anyOf": [
                   { "required": ["messages"] },
                   { "required": ["computations"] },
-                  { "required": ["partialMessages"] }
+                  { "required": ["partialMessages"] },
+                  { "required": ["computeResults"] }
                 ] }
               },
               "else": { "required": ["messages"] },
@@ -173,7 +174,7 @@
                   "description": "this strategy RAISED instead of observing this row, and the raise is published where the channels it prevented would have gone. PRESENT exactly when the kernel threw a RuntimeException, which is the class the measured reproducer belongs to (`FaultException`); an `Error` — an in-memory compilation failure, a `StackOverflowError` from a pathological model — is deliberately NOT caught and still ends the run with no artifact, because catching it would mean continuing on a JVM whose state we have not measured; a block that carries it carries NO channel key at all \u2014 `messages` absent rather than `[]`, because an empty message list beside a raise reads as `the kernel found no problem`, which is the misreading this artifact exists to prevent. The run keeps going: sibling rows and the other strategy are still observed, the artifact is still written and pinnable, and the process exits non-zero at the end. `enginesAgree` covers a fault like any other channel, so two strategies raising identically is a stated AGREEMENT rather than an unstated one.",
                   "properties": {
                     "observation": {
-                      "enum": ["validateFull", "compute", "validatePart", "documentInstance", "engineBuild"],
+                      "enum": ["validateFull", "compute", "computeResults", "validatePart", "documentInstance", "engineBuild"],
                       "description": "where the raise happened. The first three are the request's own `observe` names \u2014 the channel that threw, and the block ends there, because a strategy that cannot validate a document is not one whose compute answer means anything. `documentInstance` is a raise deserializing the row's document, before any channel could be read \u2014 **not observed on kernel 30.8.1**: two malformations (an object where a String field's value belongs, and the root group as a bare scalar) are both TOLERATED by the deserializer, which keeps unreadable content rather than refusing the document, so this locus is defensive rather than demonstrated (locked as a non-observation by `adapter.laws.KernelProbeFaultCaptureTest`). `engineBuild` is a raise building this strategy's engine, which is per REQUEST rather than per row, so it appears on every row of that strategy \u2014 that is the blast radius of one failed build, not a repeated measurement; it has no reproducer either, so the three CHANNEL loci are the observed ones."
                     },
                     "chain": {
@@ -196,6 +197,28 @@
                   "type": "array",
                   "description": "every message this strategy's `validatePart` raised under the row's declared `relevant` coverage, in the same total order as `messages`. PRESENT exactly when the request asked for `validatePart`; ABSENT otherwise. Unlike `messages`, an EMPTY array here is a measurement rather than a shape artifact: the `noneRelevant` coverage legitimately produces one, and that is one of the two things this observation exists to reach. Compare against `messages` on the same row to read what the caller's coverage gated: `validateFull` answers the document, `validatePart` answers the document AS SEEN BY a caller, and only the second can express a call-local partial coverage.",
                   "items": { "$ref": "#/$defs/message" }
+                },
+                "computeResults": {
+                  "type": "object",
+                  "required": ["withoutErrors", "errored", "applied"],
+                  "additionalProperties": false,
+                  "description": "what this strategy's `compute()` RESULT holds, as opposed to the change projection `computations` publishes. PRESENT exactly when the request asked for it (`observe: [\"validateFull\", \"computeResults\"]`); ABSENT otherwise, and absent means NOT OBSERVED. Both blocks read the SAME `compute()` call: ask for this one when you need a successful instance whose value did not change, the per-instance error message, or the document application produces. `enginesAgree` covers it like every other channel.",
+                  "properties": {
+                    "withoutErrors": {
+                      "type": "array",
+                      "description": "`getComputedFieldInstancesWithoutErrors()` — every successfully computed instance, whether or not its value differs from the document's, sorted by `field` then by value presence and text. This is a SUPERSET of what `computations.outcomes` can show: the kernel's own javadoc makes `getComputedFieldInstancesWithChanges()` a subset of this collection, so an instance that recomputed a value the document ALREADY HELD appears here and in no `computations` channel at all. It excludes cleared instances (the kernel's own contract) and errored ones (which are the sibling key).",
+                      "items": { "$ref": "#/$defs/resultInstance" }
+                    },
+                    "errored": {
+                      "type": "array",
+                      "description": "`getComputedFieldInstancesWithErrors()` — every instance whose computed value was formally invalid for its target, each carrying the per-instance `getErrorMessage()` that `computations.outcomes[].errored` records the existence of but cannot carry. Same total order as `withoutErrors`. An instance is never in both collections.",
+                      "items": { "$ref": "#/$defs/resultInstance" }
+                    },
+                    "applied": {
+                      "type": "object",
+                      "description": "the document AFTER `IDocumentComputationResult.applyTo(DocumentV2)`, in A12's canonical Document JSON — the same shape a row's `documentInline` takes, written by the kernel's own `IDocumentV2Serializer` and embedded as an object rather than a quoted string so one parser reads the whole artifact. A computation whose destination differs from its source has no other observable: the outcome channels report what was COMPUTED, never what the document then HOLDS. `applyTo` returns an updated copy and leaves the row's own instance untouched, so this observation cannot perturb the row's other channels."
+                    }
+                  }
                 },
                 "computations": {
                   "type": "object",
@@ -233,7 +256,7 @@
                     },
                     "formalErrorsInOperands": {
                       "type": "array",
-                      "description": "the kernel's PRE-COMPUTATION formal validation of operand fields (`getFormalErrorsInOperands`). Per `IDocumentRtService.compute`: before any computation runs, every NON-COMPUTED field that is an operand of any computation is formally validated, and `Regardless of the formal errors found, computations will be performed. Any computations relying directly or indirectly on invalid fields will be skipped.` So this is an INVENTORY, not a causal attribution: it is emitted whether or not a computation was skipped, and it names no edge to the outcome it explains — a consumer that wants the link joins the two channels itself, using the kernel's skip guarantee. Two consequences it is easy to get wrong. (1) It is NOT a projection of `outcomes`: a field cleared by an unmet precondition appears in `outcomes` and contributes nothing here, and a formal error on a field that is an operand of nothing appears in `messages` and not here. (2) `non-computed` is the owner's word and is load-bearing: a field cleared because the computation it read was itself ERRORED names nothing here, because a computed field is out of this channel's scope by definition (see `getComputedFieldInstancesWithErrors` + its `getErrorMessage`, which the probe does not publish). The exact operand set — including every field CONTAINED by a referenced group, which no runtime read need touch — is the kernel's `CalculationOperandsCollector`, locked by `adapter.laws.ComputationEagerPrepassLawsTest`. Same records and same ordering as `messages`, so one parser reads both — including the address form, so a formal error on an operand in the FIRST repetition is written bare (`Basket/Lines/Surcharge`) exactly as an outcome is; see `outcomes[].field`.",
+                      "description": "the kernel's PRE-COMPUTATION formal validation of operand fields (`getFormalErrorsInOperands`). Per `IDocumentRtService.compute`: before any computation runs, every NON-COMPUTED field that is an operand of any computation is formally validated, and `Regardless of the formal errors found, computations will be performed. Any computations relying directly or indirectly on invalid fields will be skipped.` So this is an INVENTORY, not a causal attribution: it is emitted whether or not a computation was skipped, and it names no edge to the outcome it explains — a consumer that wants the link joins the two channels itself, using the kernel's skip guarantee. Two consequences it is easy to get wrong. (1) It is NOT a projection of `outcomes`: a field cleared by an unmet precondition appears in `outcomes` and contributes nothing here, and a formal error on a field that is an operand of nothing appears in `messages` and not here. (2) `non-computed` is the owner's word and is load-bearing: a field cleared because the computation it read was itself ERRORED names nothing here, because a computed field is out of this channel's scope by definition (see `getComputedFieldInstancesWithErrors` + its `getErrorMessage`, which the `computeResults` block publishes). The exact operand set — including every field CONTAINED by a referenced group, which no runtime read need touch — is the kernel's `CalculationOperandsCollector`, locked by `adapter.laws.ComputationEagerPrepassLawsTest`. Same records and same ordering as `messages`, so one parser reads both — including the address form, so a formal error on an operand in the FIRST repetition is written bare (`Basket/Lines/Surcharge`) exactly as an outcome is; see `outcomes[].field`.",
                       "items": { "$ref": "#/$defs/message" }
                     }
                   }
@@ -246,6 +269,26 @@
     }
   },
   "$defs": {
+    "resultInstance": {
+      "type": "object",
+      "required": ["field"],
+      "additionalProperties": false,
+      "description": "one instance out of a result collection. `value` is the kernel's own computed text, forwarded rather than normalized — the normalization `computations.outcomes[].value` applies exists to keep a CLEAR distinguishable from a computed empty string, and neither collection here contains a cleared instance.",
+      "properties": {
+        "field": {
+          "type": "string",
+          "description": "the computed field instance's address, in the artifact's one published `a12-message-address` form — canonical A12 when it names exactly one cell (the implicit `[1]` omitted), the interpreter house form otherwise."
+        },
+        "value": {
+          "type": "string",
+          "description": "the computed text. ABSENT when the kernel reported none; `\"\"` really is a computed empty string."
+        },
+        "errorMessage": {
+          "$ref": "#/$defs/message",
+          "description": "`IComputedFieldInstance.getErrorMessage()`, projected through the same shape the validation channel uses. Present exactly on an `errored` entry."
+        }
+      }
+    },
     "message": {
       "type": "object",
       "required": ["code", "field", "severity", "type", "message", "referenced", "fillToFix"],

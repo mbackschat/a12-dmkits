@@ -203,7 +203,7 @@ class KernelProbeFaultCaptureTest {
         assertThrows(IllegalArgumentException::class.java) {
             KernelProbeArtifact.Engine(
                 KernelRuntimeProbe.GROOVY_DYNAMIC, listOf(message),
-                Optional.empty(), Optional.empty(), Optional.of(fault),
+                Optional.empty(), Optional.empty(), Optional.empty(), Optional.of(fault),
             )
         }
     }

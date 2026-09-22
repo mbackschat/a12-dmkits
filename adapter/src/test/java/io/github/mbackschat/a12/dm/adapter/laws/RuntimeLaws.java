@@ -730,6 +730,62 @@ public final class RuntimeLaws {
     }
 
     /**
+     * One instance out of a RESULT collection, carrying the per-instance message the three-bucket
+     * {@link ComputedInstance} has no room for. {@code errorMessage} is
+     * {@code IComputedFieldInstance.getErrorMessage()} — present exactly for an instance the kernel returned in
+     * its errored collection.
+     */
+    record ResultInstance(DocumentPointer pointer, Optional<String> value, Optional<IMessage> errorMessage) {
+    }
+
+    /**
+     * The <b>unprojected</b> result observation, as distinct from {@link ComputationObservation} as the kernel's
+     * own collections are from the change projection built out of them.
+     *
+     * <p><b>{@code withoutErrors} is a SUPERSET of what the change projection can show.</b> The kernel's
+     * {@code getComputedFieldInstancesWithChanges()} is by its own javadoc a subset of
+     * {@code getComputedFieldInstancesWithoutErrors()} — the instances whose computed value <em>differs</em>
+     * from the document's — so a computation that recomputed a value the document already held is a successful
+     * result that appears in no channel of {@link ComputationObservation} at all. That instance is the whole
+     * reason this observation exists.
+     *
+     * <p><b>{@code applied} is the document AFTER {@code applyTo}</b>, serialized as A12's canonical Document
+     * JSON by the kernel's own {@code IDocumentV2Serializer}. A computation whose destination differs from its
+     * source has no other observable: the outcome channels report what was computed, never what the document
+     * then holds. {@code applyTo(DocumentV2)} returns an updated copy and leaves the original alone, so the
+     * observation costs the row's other channels nothing.
+     */
+    record ComputeResultObservation(List<ResultInstance> withoutErrors, List<ResultInstance> errored,
+            String applied) {
+
+        ComputeResultObservation {
+            withoutErrors = List.copyOf(withoutErrors);
+            errored = List.copyOf(errored);
+        }
+    }
+
+    private static ComputeResultObservation resultObservationOf(
+            IDocumentComputationResult result, IDocumentModel model, DocumentV2 instance) {
+        return new ComputeResultObservation(
+                result.getComputedFieldInstancesWithoutErrors().stream().map(RuntimeLaws::resultInstance).toList(),
+                result.getComputedFieldInstancesWithErrors().stream().map(RuntimeLaws::resultInstance).toList(),
+                serializeV2(model, result.applyTo(instance)));
+    }
+
+    private static ResultInstance resultInstance(IComputedFieldInstance instance) {
+        return new ResultInstance(instance.pointer(), instance.getStringValue(), instance.getErrorMessage());
+    }
+
+    /** Write a {@link DocumentV2} back as A12's canonical Document JSON, through A12's own serializer. */
+    private static String serializeV2(IDocumentModel model, DocumentV2 document) {
+        IDocumentModelResolver resolver = id -> model;
+        StringWriter out = new StringWriter();
+        new MDSerializerFactory().createDocumentSerializerV2(resolver).serializeV2(document, out,
+                DocumentSerializationConfig.builder().prettyJsonPrinter(new MinimalPrettyPrinter()).build());
+        return out.toString();
+    }
+
+    /**
      * Run the kernel's {@code compute()} over an explicit document instance and return every
      * computed-field outcome (value / cleared / errored). The discriminator for "does an empty operand
      * yield a value or nothing": a field in {@link #cleared(List, String)} computed nothing, a field with
@@ -1188,6 +1244,13 @@ public final class RuntimeLaws {
             return observationOf(rt.compute(instance, config(clock, locale, Map.of(), fieldTypes)));
         }
 
+        /** The kernel's own result collections plus the applied document — see {@link ComputeResultObservation}. */
+        ComputeResultObservation computeResults(DocumentV2 instance, Date clock, Locale locale,
+                ICustomFieldTypeFactory fieldTypes) {
+            return resultObservationOf(
+                    rt.compute(instance, config(clock, locale, Map.of(), fieldTypes)), model, instance);
+        }
+
         /** Full signatures under explicit runtime bindings; model/document construction stays build-once. */
         public List<String> validationSignaturesSorted(DocumentV2 instance, Locale locale, Date clock,
                 Map<String, ICustomCondition> customConditions) {
@@ -1459,6 +1522,13 @@ public final class RuntimeLaws {
         ComputationObservation computation(DocumentV2 instance, Date clock, Locale locale,
                 ICustomFieldTypeFactory fieldTypes) {
             return observationOf(rt.compute(instance, config(clock, locale, Map.of(), fieldTypes)));
+        }
+
+        /** The static-JAVA twin of {@link KernelEngine#computeResults}. */
+        ComputeResultObservation computeResults(DocumentV2 instance, Date clock, Locale locale,
+                ICustomFieldTypeFactory fieldTypes) {
+            return resultObservationOf(
+                    rt.compute(instance, config(clock, locale, Map.of(), fieldTypes)), model, instance);
         }
 
         /** Full signatures under explicit runtime bindings; code generation remains outside every timed call. */

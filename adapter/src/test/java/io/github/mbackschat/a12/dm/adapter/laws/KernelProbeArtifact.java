@@ -5,8 +5,10 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
+import com.fasterxml.jackson.core.JsonGenerator;
 import com.fasterxml.jackson.core.util.DefaultIndenter;
 import com.fasterxml.jackson.core.util.DefaultPrettyPrinter;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
@@ -109,7 +111,8 @@ public record KernelProbeArtifact(Header header, List<Row> rows,
 
     /** What a strategy reported, minus which strategy reported it — the value {@link Row#enginesAgree} compares. */
     private record Observation(List<Message> messages, Optional<Computations> computations,
-            Optional<List<Message>> partialMessages, Optional<Fault> fault) {
+            Optional<List<Message>> partialMessages, Optional<ComputeResults> computeResults,
+            Optional<Fault> fault) {
     }
 
     /**
@@ -127,7 +130,8 @@ public record KernelProbeArtifact(Header header, List<Row> rows,
      * produces an EMPTY list — which is a measurement, not an absence.
      */
     public record Engine(String engine, List<Message> messages, Optional<Computations> computations,
-            Optional<List<Message>> partialMessages, Optional<Fault> fault) {
+            Optional<List<Message>> partialMessages, Optional<ComputeResults> computeResults,
+            Optional<Fault> fault) {
 
         public Engine {
             messages = messages.stream().sorted().toList();
@@ -135,12 +139,13 @@ public record KernelProbeArtifact(Header header, List<Row> rows,
             // A faulted strategy answered NOTHING, so it may not also carry a channel. Checked rather than
             // merely left unwritten: an empty message list beside a raise reads as "the kernel found no
             // problem", which is the one misreading this whole artifact is built to prevent.
-            if (fault.isPresent()
-                    && !(messages.isEmpty() && computations.isEmpty() && partialMessages.isEmpty())) {
+            if (fault.isPresent() && !(messages.isEmpty() && computations.isEmpty()
+                    && partialMessages.isEmpty() && computeResults.isEmpty())) {
                 throw new IllegalArgumentException("a faulted engine block carries no channel: " + engine
                         + " raised at " + fault.get().observation() + " yet reports " + messages.size()
                         + " message(s), computations=" + computations.isPresent()
-                        + ", partialMessages=" + partialMessages.isPresent());
+                        + ", partialMessages=" + partialMessages.isPresent()
+                        + ", computeResults=" + computeResults.isPresent());
             }
         }
 
@@ -155,7 +160,8 @@ public record KernelProbeArtifact(Header header, List<Row> rows,
 
         /** The strategy raised instead of observing — the whole block IS the fault. */
         public static Engine faulted(String engine, Fault fault) {
-            return new Engine(engine, List.of(), Optional.empty(), Optional.empty(), Optional.of(fault));
+            return new Engine(engine, List.of(), Optional.empty(), Optional.empty(), Optional.empty(),
+                    Optional.of(fault));
         }
 
         /** The public construction path for an observed block; an unset channel means "not observed". */
@@ -165,6 +171,7 @@ public record KernelProbeArtifact(Header header, List<Row> rows,
             private List<Message> messages = List.of();
             private Optional<Computations> computations = Optional.empty();
             private Optional<List<Message>> partialMessages = Optional.empty();
+            private Optional<ComputeResults> computeResults = Optional.empty();
 
             private Builder(String engine) {
                 this.engine = engine;
@@ -185,8 +192,14 @@ public record KernelProbeArtifact(Header header, List<Row> rows,
                 return this;
             }
 
+            public Builder computeResults(Optional<ComputeResults> observed) {
+                this.computeResults = observed;
+                return this;
+            }
+
             public Engine build() {
-                return new Engine(engine, messages, computations, partialMessages, Optional.empty());
+                return new Engine(engine, messages, computations, partialMessages, computeResults,
+                        Optional.empty());
             }
         }
 
@@ -196,7 +209,7 @@ public record KernelProbeArtifact(Header header, List<Row> rows,
         // for the same reason and one more: two strategies raising the same fault IS an agreement, and a run
         // that could not state it left the reader with "one of them faults" (a12-kernel-lean, 2026-09-04).
         private Observation observation() {
-            return new Observation(messages, computations, partialMessages, fault);
+            return new Observation(messages, computations, partialMessages, computeResults, fault);
         }
     }
 
@@ -252,6 +265,58 @@ public record KernelProbeArtifact(Header header, List<Row> rows,
         public Computations {
             outcomes = outcomes.stream().sorted().toList();
             formalErrorsInOperands = formalErrorsInOperands.stream().sorted().toList();
+        }
+    }
+
+    /**
+     * One strategy's {@code compute()} RESULT observation: the kernel's own instance collections, and the
+     * document those results apply to. Present exactly when the request asked for {@code computeResults}.
+     *
+     * <p><b>Why this is not a second view of {@link Computations}.</b> That block is the kernel's <em>change</em>
+     * projection: its {@code outcomes} come from {@code getComputedFieldInstancesWithChanges} ∪
+     * {@code …WithErrors} ∪ {@code getClearedFieldInstances}. The first of those is, per the kernel's own
+     * javadoc, a strict subset of {@code getComputedFieldInstancesWithoutErrors} — the instances whose computed
+     * value <em>differs</em> from the document's. So a computation that successfully recomputed a value the
+     * document already held appears in NO channel of {@code computations}, and {@link #withoutErrors} is the
+     * only place it is visible.
+     *
+     * <p><b>{@link #applied} is the observable a separate-destination computation otherwise has none of.</b>
+     * The outcome channels report what was computed; they never report what the document then holds. This is
+     * A12's canonical Document JSON after {@code IDocumentComputationResult.applyTo(DocumentV2)}, embedded as
+     * an object rather than a string so one JSON parser reads the whole artifact.
+     *
+     * <p><b>{@link #errored} carries the per-instance message</b> {@code IComputedFieldInstance.getErrorMessage()},
+     * which {@link Outcome}'s {@code errored} flag records the existence of but cannot carry — the channel
+     * KERNEL-PROBE-SPEC named as unexposed until this block existed.
+     */
+    public record ComputeResults(List<ResultInstance> withoutErrors, List<ResultInstance> errored,
+            JsonNode applied) {
+
+        public ComputeResults {
+            withoutErrors = withoutErrors.stream().sorted().toList();
+            errored = errored.stream().sorted().toList();
+        }
+    }
+
+    /**
+     * One instance out of a result collection: its published address, its computed text, and — for an errored
+     * instance — the kernel message that instance itself carries.
+     *
+     * <p>{@code value} is forwarded rather than normalized, unlike {@link Outcome}'s. The normalization there
+     * exists to keep a clear distinguishable from a computed empty string, and neither collection published
+     * here contains a cleared instance, so there is nothing to alias.
+     */
+    public record ResultInstance(String field, Optional<String> value, Optional<Message> errorMessage)
+            implements Comparable<ResultInstance> {
+
+        private static final Comparator<ResultInstance> ORDER = Comparator.comparing(ResultInstance::field)
+                .thenComparing(instance -> instance.value().isPresent())
+                .thenComparing(instance -> instance.value().orElse(""))
+                .thenComparing(instance -> instance.errorMessage().map(Message::code).orElse(""));
+
+        @Override
+        public int compareTo(ResultInstance other) {
+            return ORDER.compare(this, other);
         }
     }
 
@@ -340,7 +405,9 @@ public record KernelProbeArtifact(Header header, List<Row> rows,
 
     /** The artifact's exact bytes, as a UTF-8 string. */
     public String toJson() {
-        ObjectMapper mapper = new ObjectMapper();
+        // WRITE_BIGDECIMAL_AS_PLAIN because an embedded applied document carries the kernel's own decimals,
+        // and A12 never writes a number in scientific notation (KERNEL-FINDINGS kf1's write stage).
+        ObjectMapper mapper = new ObjectMapper().enable(JsonGenerator.Feature.WRITE_BIGDECIMAL_AS_PLAIN);
         ObjectNode root = mapper.createObjectNode();
         root.put("schemaVersion", SCHEMA_VERSION);
 
@@ -382,6 +449,8 @@ public record KernelProbeArtifact(Header header, List<Row> rows,
                     ArrayNode partialNodes = engineNode.putArray("partialMessages");
                     partial.forEach(message -> write(partialNodes.addObject(), message));
                 });
+                engine.computeResults().ifPresent(results -> write(
+                        engineNode.putObject("computeResults"), results));
             }
         }
 
@@ -454,6 +523,23 @@ public record KernelProbeArtifact(Header header, List<Row> rows,
         }
         ArrayNode formalErrors = node.putArray("formalErrorsInOperands");
         computations.formalErrorsInOperands().forEach(message -> write(formalErrors.addObject(), message));
+    }
+
+    private static void write(ObjectNode node, ComputeResults results) {
+        writeInstances(node.putArray("withoutErrors"), results.withoutErrors());
+        writeInstances(node.putArray("errored"), results.errored());
+        node.set("applied", results.applied());
+    }
+
+    private static void writeInstances(ArrayNode nodes, List<ResultInstance> instances) {
+        for (ResultInstance instance : instances) {
+            ObjectNode instanceNode = nodes.addObject();
+            instanceNode.put("field", instance.field());
+            // Conditional keys last, for the reason an Outcome's `value` is: absent and present-empty are
+            // different kernel facts, and keeping them at the end leaves the others' order the same either way.
+            instance.value().ifPresent(value -> instanceNode.put("value", value));
+            instance.errorMessage().ifPresent(message -> write(instanceNode.putObject("errorMessage"), message));
+        }
     }
 
     /**
