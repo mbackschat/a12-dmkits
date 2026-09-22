@@ -9841,3 +9841,82 @@ So there is no last-check or short-circuit behaviour to infer: confirms a12-kern
 An empty category name preempts nothing: entity resolution answers first, then condition membership, then the category name. The doubled-arrow rows behaving identically is what makes the condition "the first category name is empty" rather than "the suffix is malformed". Confirms a12-kernel-lean's `SPEC-2026-09-08-08`, whose acceptance also asks to keep the unkeyed membership gate distinct from the keyed index gate — the classes above are the unkeyed one; the keyed form's gate stays with [KF46](#kf46).
 
 *(Locked: `rulekit.validate.laws.EmptyCategoryNamePrerequisiteLawsTest`; the suffix's own classes stay with `ErrorTextCategorySuffixLawsTest`.)*
+
+## §1 supplement — the comparison's constant gate reads IMMEDIACY, and binding is asked before it (measured 2026-09-22) <a id="kf451"></a>
+
+> Fold: pending — belongs beside the comparison entry gates in §1, next to [KF445](#kf445).
+
+| comparison | verdict |
+|---|---|
+| `[Quantity] > 0` — the control | admitted |
+| `1 > 0` | `MVK_INVALID_COMPARE_TO_CONST` |
+| `-1 > 0` | `MVK_INVALID_COMPARE_TO_CONST` |
+| `1 + 2 > 0` · `1 > 1 + 2` | admitted, both |
+| `BaseYear > 1` · `YearFromDate(BaseYear) > 1` | admitted, both |
+| `CurrentRepetition(/Order/Lines) > 1`, rule on `/Order` | `MVK_NO_WILDCARD` |
+| `CurrentRepetition(/Order/Lines) > 1`, rule on `/Order/Lines` | admitted |
+
+The gate fires exactly when both sides are immediate written-out literals. A sign belongs to the literal rather than making it an operation, and one non-immediate side suffices on either side. Three operands that read no cell clear it: `BaseYear`, a Base-Year date part, and `CurrentRepetition`.
+
+**The last of those clears it only where it BINDS, which a12-kernel-lean's `SPEC-2026-09-22-01` does not say.** From outside its repeating group the coordinate draws `MVK_NO_WILDCARD` — a different gate, asked earlier — so "clears the constant gate" is a statement about the rule's scope as much as about the operand. Both scopes carry their own field-against-literal control, because a reading that took the outside row for this gate's answer would conclude the opposite of the truth.
+
+*(Locked: `rulekit.validate.laws.ConstantGateImmediacyLawsTest`; the gate's ORDER against the tolerance and ordering questions stays with `ComparisonOperatorOperandLawsTest`.)*
+
+## §6 supplement — a declared Base Year moves the difference family's ADMISSION, and separately its refusal CLASS (measured 2026-09-22) <a id="kf452"></a>
+
+> Fold: pending — belongs in §6 beside the date-family operand gates.
+
+| operands | Base Year declared | no Base Year |
+|---|---|---|
+| `DifferenceInYears(Dated, Dated)` — the control | admitted | admitted |
+| `DifferenceInYears(Yearless, Dated)` | admitted | `MVK_WRONG_DATE_FORMAT_FOR_OP` |
+| `DifferenceInMonths(Yearless, Dated)` | admitted | `MVK_DATE_WITH_AND_WITHOUT_YEAR` |
+| `DifferenceInYears(Yearless, Yearless)` | admitted | `MVK_WRONG_DATE_FORMAT_FOR_OP` |
+| `DifferenceInYears(Clock, Dated)` | `MVK_INVALID_TIME` | `MVK_WRONG_DATE_FORMAT_FOR_OP` |
+| `DifferenceInMonths(Clock, Dated)` | `MVK_WRONG_DATE_FORMAT_FOR_OP` | `MVK_WRONG_DATE_FORMAT_FOR_OP` |
+
+Two units of one family agree on every admitted operand and still answer different codes on a refused one: a pure clock at `DifferenceInYears` draws `MVK_INVALID_TIME` with a Base Year declared and `MVK_WRONG_DATE_FORMAT_FOR_OP` without, while `DifferenceInMonths` draws the latter in both models.
+
+**The PARTNER is a second variable, and holding it still is what makes the yearless rows readable.** "`DifferenceInMonths` over a yearless operand is admitted either way" is true of a homogeneous yearless pair and false of a yearless-against-dated one, which draws the year-MIXTURE gate — answering before the unit's own operand gate. Both pairs are measured, because a grid carrying only the mixed pair reports the mixture's class as the unit's. Confirms a12-kernel-lean's `SPEC-2026-09-21-03`.
+
+**A second result, about our own erasure.** The kit types these slots (`differenceInYears(DateOperand, DateOperand)`), so the clock and stamp rows have no typed spelling at all — and the kernel refuses exactly those operands, row for row. That is the measured basis a client-side refusal is required to have, rather than an analogy about the date family.
+
+*(Locked: `rulekit.validate.laws.BaseYearDifferenceOperandClassLawsTest`; where the `BaseYear` CONSTANT needs the declaration stays with `BaseYearRequirementLawsTest`.)*
+
+## §8 supplement — the value-list quantifier's kind gate is one class over seven kinds, SHAPE-BLIND, with NUMBER inside the admitted set (measured 2026-09-22) <a id="kf453"></a>
+
+> Fold: pending — belongs in §8 beside the scalar value-list gates ([KF109](#kf109)).
+
+Each kind measured in **three slot shapes** — a homogeneous group, the same two fields listed out, and a sole field of that kind — against one String literal list:
+
+| slot kind | all three shapes |
+|---|---|
+| STRING — the control | admitted |
+| DATE · TIME · DATETIME · DATEFRAGMENT · DATERANGE · BOOLEAN · CONFIRM | `MVK_ONLY_STRING_ENUM_NUMBER_ALLOWED` |
+| NUMBER, against those same String literals | `MVK_INVALID_TYPES_FOR_COMPARISON` |
+| NUMBER, against a number FIELD · ENUM, against its own member | admitted |
+
+The gate does not read the slot's shape: a group is expanded and its expansion judged, so all three spellings of one kind draw the identical class. **NUMBER is the separator, not an eighth refusal** — every refused row pairs a slot against String literals, so "the slot disagrees with the literals" predicts the whole refused half equally well; the Number rows clear this gate against those same literals and are refused one gate later, which no account keyed on disagreement can produce. The four temporal kinds and DATERANGE are each measured rather than transferred from DATE: the gate reads three POSITIVE predicates, so its refused half is a complement. Confirms a12-kernel-lean's `SPEC-2026-09-22-03`.
+
+**A carrier asymmetry found while building the positive control.** The QUANTIFIER's value list admits no number literal at all — after `In`, a bare `1` is read as a PATH (`MVK_INVALID_ENTITY`) and `1.00` does not survive the parser (`MVK_UNEXPECTED_TOKEN`) — while the SCALAR twin takes `FieldValueIncludedInValueList(Assessed, 1, 2)` in the same model. Invisible from either carrier alone, and the reason the admitted Number control has to be field-valued.
+
+*(Locked: `rulekit.validate.laws.ValueListSlotShapeBlindnessLawsTest`; the scalar carrier's own field-slot denominator stays with `ScalarValueListGateLawsTest`.)*
+
+## §12 supplement — partial validation masks a CELL-BACKED reference and not the structural repetition COORDINATE (differential, 2026-09-22) <a id="kf454"></a>
+
+> Fold: pending — belongs in §12's full-vs-partial account.
+
+Two rules identical in guard, error field, group, comparison operator and threshold, differing only in the operand left of `> 1`, on a two-row `/Src/Rows`:
+
+| coverage | `CurrentRepetition(/Src/Rows) > 1` | `[Level] > 1` |
+|---|---|---|
+| full validation | fires, second row | fires, both rows |
+| the error field, every row | fires, second row — as full | silent |
+| the OTHER field only | silent | silent |
+| empty | silent | silent |
+
+A relevant set cannot drive `CurrentRepetition(G)` to UNKNOWN, because it answers from the iterated row rather than from a cell. **The error-field gate is independent of this and still runs first, per row** — a coverage naming only the other field skips the coordinate-reading rule too, although the coordinate needed no coverage at all — so the correct reading is "not masked", never "always evaluated". Confirms a12-kernel-lean's `SPEC-2026-09-22-02`, whose portable route had refused such a rule as structurally unsupported.
+
+**The twin rule is the separator, not the coverage.** Comparing two coverages on ONE rule could not settle this: every coverage difference would also be a difference in what the rule reads. Both models are built from one base and differ in exactly one builder call, so the coverages ask about the operand and nothing else. Measured at one repetition level, and the interpreter agrees with both kernel codegen strategies on every row.
+
+*(Locked: `adapter.laws.PartialRelevanceRepetitionCoordinateDiffTest`.)*
