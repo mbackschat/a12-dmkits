@@ -53,6 +53,9 @@ public final class FirstFilledOperand implements DuplicateOperand {
         this.field = field;
         this.group = group;
         this.expandedGroupFields = List.copyOf(expandedGroupFields);
+        // Deliberately uncoded, like the category refusal on a group below: A12 answers MVK_GROUP_IS_EMPTY,
+        // except on an unstarred repeatable group, where the missing star (MVK_NO_WILDCARD) answers first, and
+        // a GroupListRef does not carry which of its levels repeat (validate.laws.FirstFilledOperandShapeLawsTest).
         if (group != null && this.expandedGroupFields.isEmpty()) {
             throw new IllegalArgumentException("FirstFilledValue group " + group.renderedPath()
                     + " must contain at least one field");
@@ -99,7 +102,8 @@ public final class FirstFilledOperand implements DuplicateOperand {
     /** Adds the checked category projection represented by {@code category}. */
     public FirstFilledOperand withCategory(CategoryRef category) {
         Objects.requireNonNull(category, "category");
-        if (field == null || !field.fieldPath().equals(category.field().path().value())) {
+        requireCategoryTarget();
+        if (!field.fieldPath().equals(category.field().path().value())) {
             throw new IllegalArgumentException("category " + category.name()
                     + " does not belong to FirstFilledValue target " + renderedPath());
         }
@@ -107,9 +111,7 @@ public final class FirstFilledOperand implements DuplicateOperand {
     }
 
     FirstFilledOperand withCategory(String category) {
-        if (field == null) {
-            throw new IllegalArgumentException("FirstFilledValue does not accept a category projection on a group");
-        }
+        requireCategoryTarget();
         if (category == null || category.isBlank()) {
             throw new IllegalArgumentException("a FirstFilledValue category must not be blank");
         }
@@ -142,10 +144,33 @@ public final class FirstFilledOperand implements DuplicateOperand {
 
     /** Adds the owner {@code Having} filter to a wildcard field target. */
     public FirstFilledOperand having(Condition filter) {
+        if (field == null) {
+            // Unlike the other two shape refusals, this class holds on every group shape and rule context
+            // measured, and outranks a duplicate or type mismatch anywhere in the list, so it may fire before
+            // any list exists (validate.laws.FirstFilledOperandShapeLawsTest).
+            throw Refusals.of(KernelCode.MVK_NO_GROUPS_ALLOWED,
+                    "FirstFilledValue does not accept a Having filter on the group " + renderedPath());
+        }
         if (!(field instanceof FieldListRef list)) {
-            throw new IllegalArgumentException("Having applies to a starred FirstFilledValue field target");
+            // Deliberately uncoded: A12's class here depends on context this operand cannot see — MVK_NO_WILDCARD
+            // where the field crosses a repeatable level the rule does not iterate, else MVK_WILDCARDS_REQUIRED
+            // (KERNEL-FINDINGS KF358, KF424; measured on this carrier in validate.laws.FirstFilledOperandShapeLawsTest).
+            throw new IllegalArgumentException("Having applies to a starred FirstFilledValue field target, not "
+                    + renderedPath());
         }
         return copy(category, semanticIndex, outer, list.having(filter));
+    }
+
+    /**
+     * Deliberately uncoded: A12 answers {@code MVK_NO_GROUPS_ALLOWED} for a category on a starred or
+     * non-repeatable group, but {@code MVK_NO_WILDCARD} on an unstarred repeatable one, and this operand does not
+     * carry which of its levels repeat ({@code validate.laws.FirstFilledOperandShapeLawsTest}).
+     */
+    private void requireCategoryTarget() {
+        if (field == null) {
+            throw new IllegalArgumentException(
+                    "FirstFilledValue does not accept a category projection on the group " + renderedPath());
+        }
     }
 
     /** Marks this operand as the {@code $} outer-iteration reference inside a filter. */
