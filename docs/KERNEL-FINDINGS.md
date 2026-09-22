@@ -9972,3 +9972,34 @@ A relevant set cannot drive `CurrentRepetition(G)` to UNKNOWN, because it answer
 **The twin rule is the separator, not the coverage.** Comparing two coverages on ONE rule could not settle this: every coverage difference would also be a difference in what the rule reads. Both models are built from one base and differ in exactly one builder call, so the coverages ask about the operand and nothing else. Measured at one repetition level, and the interpreter agrees with both kernel codegen strategies on every row.
 
 *(Locked: `adapter.laws.PartialRelevanceRepetitionCoordinateDiffTest`.)*
+
+## §8 supplement — the built-in custom-field-type error keys are a CLOSED set of 14, and the two date types split the key while sharing one message member (kernel SOURCE, 2026-09-22) <a id="kf455"></a>
+
+> Fold: pending — extends the custom-extensibility surface; folds into §8 on the next canonical KERNEL-SEMANTICS pass.
+
+**The denominator is the class, not a survey.** `CustomFieldTypeErrorKeys` (`kernel-core-customfieldtype-impl`, `…impl.internal.error`) is `public final` and holds nothing but `public static final String` constants, so reading it out *is* the complete set rather than a sample of one. At our pin (30.8.1) it holds **exactly 14**, enumerated here so a later reader can check the claim instead of trusting it:
+
+| key constant | wire value | note |
+|---|---|---|
+| `UNGUELTIGE_ID_NUMMER` | `ungueltigeIDNummer` | |
+| `TEST_ID_NUMMER` | `testIDNummer` | `@Deprecated(since = "30.6.0", forRemoval = true)` — the `A12K-3589` removal surface |
+| `UNGUELTIGE_STNR` | `ungueltigeSteuernummer` | |
+| `UNGUELTIGES_EWAZ` | `ungueltigesEinheitswertAktenzeichen` | |
+| `UNGUELTIGE_BUFANR` | `ungueltigeBundesfinanzamtsnummer` | |
+| `UNGUELTIGES_LAENDERKUERZEL` | `ungueltigesLaenderkuerzel` | |
+| `UNGUELTIGE_IBAN` | `ungueltigeIBAN` | |
+| `UNGUELTIGE_BIC` | `ungueltigeBIC` | |
+| `UNGUELTIGES_DATUM_MMJJ` | `ungueltigesDatumMMJJ` | |
+| `UNGUELTIGES_DATUM_TTMMJJ` | `ungueltigesDatumTTMMJJ` | |
+| `UNGUELTIGE_BUSTNR` | `ungueltigeBundessteuernummer` | |
+| `UNGUELTIGER_BICINTERNATIONAL` | `ungueltigerBICinternational` | |
+| `UNGUELTIGE_IBANINTERNATIONAL` | `ungueltigeIBANinternational` | |
+| `UNGUELTIGES_STRAFAZ` | `ungueltigesStrafAktenzeichen` | |
+
+So **13 live keys plus one deprecated**, and the deprecated one is the only member whose disappearance is already scheduled — worth stating separately, because "14" and "13" are both true answers to different questions and a bare count invites the wrong one.
+
+**The two date types split the KEY and share the MESSAGE member — a distinction that is invisible from the rendered text.** `DatumMMJJVerifier` and `DatumTTMMJJVerifier` both extend the abstract `DatumVerifier`, and each supplies its own `getErrorKey()` (`UNGUELTIGES_DATUM_MMJJ` / `UNGUELTIGES_DATUM_TTMMJJ`). But `DatumVerifier.checkDatum` returns a single member for every failure path, `CustomFieldTypeErrorEnum.DATUM_UNGUELTIG`, and the format only reaches the rendered message by **literal substitution** — `errorMsg.replace("<dateFormat>", getFormatFuerFehlermeldung())` — rather than through a parameter slot. A consumer that keys on the error KEY can therefore tell the two apart; one that keys on the message member, or that parses the text, cannot.
+
+**Basis, stated so it is not read as stronger than it is.** This is a SOURCE read of the consult-only `../a12-kernel` checkout at our pin — the class inventory above and the single `validate`/`checkDatum` pair — and it is **not** locked by a test here: `CustomFieldTypeErrorKeys` sits in an `internal` package of `kernel-core-customfieldtype-impl`, and only `kernel-core-customfieldtype-api` is on our classpath, so a reflective denominator lock would mean taking a dependency on kernel internals. The completeness claim needs no runtime (a closed final class is settled by reading it); the substitution mechanism is a local source read and has **not** been confirmed to manifest through the full validation path, which per DOC-DISCIPLINE keeps that half a source-read claim rather than a measured one.
+
+*(a12-kernel-lean's report that the German and international IBAN validators carry disjoint keys, and that the international one lacks a country-code key, is THEIR measurement and is deliberately not restated as ours — the key table above is what we read.)*
