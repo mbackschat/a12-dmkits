@@ -2,6 +2,8 @@ package io.github.mbackschat.a12.dm.rulekit.dsl;
 
 import java.util.List;
 
+import io.github.mbackschat.a12.dm.core.KernelCode;
+import io.github.mbackschat.a12.dm.core.Refusals;
 import io.github.mbackschat.a12.dm.core.ValueKind;
 
 /**
@@ -49,17 +51,46 @@ public record OpListMath(Op op, List<Calculation> operands) implements Calculati
         if (op == Op.ABS && kind != ValueKind.NUMBER && !(operands.getFirst() instanceof BaseYear)) {
             throw new IllegalArgumentException("Abs needs a NUMBER operand, got " + kind);
         }
-        if (op != Op.ABS && kind != ValueKind.NUMBER && kind != ValueKind.DATE
-                && kind != ValueKind.TIME && kind != ValueKind.DATE_TIME) {
-            throw new IllegalArgumentException(op + " needs NUMBER or date-like operands, got " + kind);
+        // The three refusals below each cite the code the kernel was OBSERVED to report for that exact
+        // shape, measured 2026-09-22 on a purpose-made carrier and locked by OpListMathKindGateLawsTest.
+        // They are separate codes rather than one because the kernel separates them, which a single
+        // homogeneity refusal would have flattened: a DATE beside a TIME is not the same rejection as a
+        // DATE beside a number. Four positive controls (NUMBER, DATE, TIME and DATE_TIME paired with
+        // themselves) are admitted, so none of this is a gate the kernel does not also apply.
+        if (op != Op.ABS && !isSortable(kind)) {
+            throw Refusals.of(KernelCode.MVK_NOT_SORTABLE,
+                    op + " needs NUMBER or date-like operands, got " + kind);
         }
         for (Calculation operand : operands) {
             ValueKind operandKind = resultKind(operand);
             if (operandKind != kind) {
-                throw new IllegalArgumentException(op + " needs operands of one kind, got " + kind
+                // Three codes, because the kernel reports three. The temporal axis decides: two temporal
+                // kinds that disagree are a FORMAT incompatibility, one temporal beside anything else is
+                // date-and-nondate, and with no temporal operand at all the offender is simply unsortable.
+                // The last arm is the one a first pass got wrong by reading only the gate above, where the
+                // unsortable kind sits FIRST: reversed, Min([Premium], [Holder]) reaches here instead, and
+                // the kernel still says NOT_SORTABLE. `kind` is NUMBER or temporal, the gate above ensures it.
+                KernelCode code;
+                if (isTemporal(kind) && isTemporal(operandKind)) {
+                    code = KernelCode.MVK_DATEFORMATS_NOT_COMPATIBLE;
+                } else if (isTemporal(kind) || isTemporal(operandKind)) {
+                    code = KernelCode.MVK_DATE_AND_NONDATE;
+                } else {
+                    code = KernelCode.MVK_NOT_SORTABLE;
+                }
+                throw Refusals.of(code, op + " needs operands of one kind, got " + kind
                         + " and " + operandKind);
             }
         }
+    }
+
+    /** The kernel's four admitted operand kinds here, each measured paired with itself (see the constructor). */
+    private static boolean isSortable(ValueKind kind) {
+        return kind == ValueKind.NUMBER || isTemporal(kind);
+    }
+
+    private static boolean isTemporal(ValueKind kind) {
+        return kind == ValueKind.DATE || kind == ValueKind.TIME || kind == ValueKind.DATE_TIME;
     }
 
     @Override

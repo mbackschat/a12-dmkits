@@ -10025,3 +10025,22 @@ So **13 live keys plus one deprecated**, and the deprecated one is the only memb
 They also reproduced the ADDRESS disagreement above on their carrier: their retained fault chain spells `Rows[0]` on both strategies while the same document's over-limit findings index the fourth row.
 
 **The `[0]` means the LIST, and that needed its own case, because both carriers shared a constant.** Our row and theirs each put the excess at exactly one row past the maximum, at the end of the list — so across two independent carriers "the serializer names index 0" and "it names the first offending row, which happened to render as 0" stayed indistinguishable. A document over capacity by **two** separates them, and it does: five rows against `max 3` gives `Max repetition exceeded: Order/Legs[0] (got 5 but max repetition is 3)` — the index is fixed at `[0]` while only the count tracks the excess. So the serializer's address carries no information about which row offends, which is the sharper form of the mismatch above. Locked by `…KernelProbeOverCapacityFaultTest.theSerializerNamesTheListRatherThanAnyOffendingRow`.
+
+## §6 supplement — `Min`/`Max` reject a mixed operand list with THREE different codes, split on the temporal axis (probe, 2026-09-22) <a id="kf457"></a>
+
+> Fold: pending — §6 states the DateCombiner's homogeneity requirement but not that the kernel splits its refusal across three codes, nor that operand order decides which; folding needs that paragraph rewritten rather than extended.
+
+`Min`/`Max` admit a homogeneous operand list of NUMBER, DATE, TIME or DATE_TIME — all four measured paired with themselves and ADMITTED, which is the control that keeps the rows below from passing because the operator was rejected anyway. Every way the list can be inhomogeneous is rejected, but not with one code, and the split is on whether **both** operands are temporal:
+
+| operand pair | verdict |
+|---|---|
+| NUMBER+NUMBER · DATE+DATE · TIME+TIME · DATE_TIME+DATE_TIME | ADMITTED |
+| DATE+TIME · DATE+DATE_TIME | `MVK_DATEFORMATS_NOT_COMPATIBLE` |
+| DATE+NUMBER · TIME+NUMBER · DATE+STRING | `MVK_DATE_AND_NONDATE` |
+| STRING+NUMBER · BOOLEAN+NUMBER · ENUMERATION+NUMBER, in **either** operand position | `MVK_NOT_SORTABLE` |
+
+**Operand ORDER is the row that matters, because it is the one that reads as inheritable and is not.** With the unsortable kind first the refusal is the operator's own kind gate; reversed — `Min([Premium], [Holder])` — it is a homogeneity mismatch instead, and the kernel still answers `MVK_NOT_SORTABLE` rather than the date-and-nondate code a "one temporal operand decides it" reading predicts. A client-side gate written from the first-position rows alone cited the wrong code on three of the eleven measured pairs; the reversed rows were what falsified it.
+
+**Two traps cost a measurement round each here, both of them fixture defects that present as kernel behaviour.** The project fixture's field named `Date` is a `StringType`, so a probe reaching for "a date field" measured the §10 keyword-quoting law instead (`MVK_UNEXPECTED_TOKEN`) and said nothing about kinds. And a DATE_TIME field needs its format's quoted `'T'` separator — `dd.MM.yyyy HH:mm:ss` is refused at declaration time, after which every row in the probe carries two codeless field errors and the datetime rows read as ADMITTED for the wrong reason. Both are the liveness lesson already recorded for mirror fixtures: when a grid's fixture is broken the rows do not fail, they go quiet.
+
+**Lock:** `rulekit.validate.laws.OpListMathKindGateLawsTest`, which pins the kernel grid, pins rulekit's own refusal codes against it in both directions, and records the single measured divergence — `ModelIndex.kindOf` keys on the declared kernel type, so a `DateType` field carrying a datetime format reads as DATE and the DATE+DATE_TIME pair is admitted client-side where the kernel refuses it. That is an under-report and therefore safe; it is written down because the opposite direction would not be, and because making `kindOf` format-aware turns the row into a refusal needing its own code. The typed accessors do not share the blind spot — `BoundModel.dateTime(path)` checks the format shape — so the divergence is the generic `field(path)` and read path only.
