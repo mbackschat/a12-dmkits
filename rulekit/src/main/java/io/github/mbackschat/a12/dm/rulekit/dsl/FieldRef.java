@@ -9,9 +9,15 @@ import io.github.mbackschat.a12.dm.core.ValueKind;
 /**
  * A model-resolved reference to a field — its absolute path plus the {@link ValueKind} read from the
  * model. Carrying the kind is what lets typed handles steer authors away from type-illegal
- * combinations (§5b); carrying the {@link PathStyle} provenance hint is the D14/F10 hook that lets
- * read references remember their authored notation. Obtain handles from {@link BoundModel}
- * (always {@link PathStyle#CANONICAL}); the read converter constructs the hinted form.
+ * combinations (§5b); carrying the {@link PathStyle} provenance hint is the D14/F10 hook that lets a
+ * reference choose its own path spelling. Obtain handles from {@link BoundModel} (always
+ * {@link PathStyle#CANONICAL}), and call {@link #absolute()} for the one that must not be relativized.
+ *
+ * <p><b>The read converter does NOT yet produce a hint</b> — corrected 2026-09-22, having claimed it did:
+ * {@code adapter.ConditionConverter} builds every reference through {@code BoundModel.field(…)}, so a
+ * re-rendered condition is canonicalized rather than preserving the author's notation. Preserving it is
+ * the remaining half of F10 and needs the converter to read {@code PathNotationConfig} off the kernel's
+ * parse tree; until it does, {@link PathStyle#SHORT} has no producer and the renderer refuses it.
  */
 public record FieldRef(EntityPath path, ValueKind kind, PathStyle styleHint, boolean correlated)
         implements FieldOperand, NumericTextSource, GroupListOperand, TemporalComponent, HasEntityPath {
@@ -38,6 +44,19 @@ public record FieldRef(EntityPath path, ValueKind kind, PathStyle styleHint, boo
      */
     public FieldRef outer() {
         return new FieldRef(path, kind, styleHint, true);
+    }
+
+    /**
+     * This reference spelled ABSOLUTE, whatever group the surrounding rule renders against — the one
+     * per-operand escape from the renderer's path policy (API-FINDINGS AF159).
+     *
+     * <p>Reach for it when the absolute spelling is the point rather than a preference: a rule authored on a
+     * deep group whose aggregate reads more clearly from the root, or a law whose subject IS which form was
+     * written. Everything else should stay {@link PathStyle#CANONICAL} and let the renderer choose, because
+     * the relative form is the kernel's preferred one and survives a group rename.
+     */
+    public FieldRef absolute() {
+        return new FieldRef(path, kind, PathStyle.ABSOLUTE, correlated);
     }
 
     @Override

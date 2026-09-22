@@ -112,6 +112,17 @@ public record FieldListRef(FieldRef field, List<GroupRef> flattened, Optional<Co
                 "a filter condition may not contain " + what);
     }
 
+    /** The inner field carries the hint for the whole list — the starred segments only decorate its path. */
+    @Override
+    public PathStyle styleHint() {
+        return field.styleHint();
+    }
+
+    /** This list spelled ABSOLUTE, by hinting the field it flattens. See {@link FieldRef#absolute()}. */
+    public FieldListRef absolute() {
+        return new FieldListRef(field.absolute(), flattened, filter, correlated);
+    }
+
     @Override
     public String renderedPath() {
         String path = field.path().value();

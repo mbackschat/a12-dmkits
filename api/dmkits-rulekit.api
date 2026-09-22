@@ -1668,6 +1668,7 @@ public record io.github.mbackschat.a12.dm.rulekit.dsl.FieldListRef implements io
   public FieldListRef(io.github.mbackschat.a12.dm.rulekit.dsl.FieldRef, java.util.List<io.github.mbackschat.a12.dm.rulekit.dsl.GroupRef>)
   public FieldListRef(io.github.mbackschat.a12.dm.rulekit.dsl.FieldRef, java.util.List<io.github.mbackschat.a12.dm.rulekit.dsl.GroupRef>, java.util.Optional<io.github.mbackschat.a12.dm.rulekit.dsl.Condition>)
   public FieldListRef(io.github.mbackschat.a12.dm.rulekit.dsl.FieldRef, java.util.List<io.github.mbackschat.a12.dm.rulekit.dsl.GroupRef>, java.util.Optional<io.github.mbackschat.a12.dm.rulekit.dsl.Condition>, boolean)
+  public io.github.mbackschat.a12.dm.rulekit.dsl.FieldListRef absolute()
   public boolean correlated()
   public final boolean equals(java.lang.Object)
   public java.util.Optional<java.lang.String> exactIdentity()
@@ -1680,6 +1681,7 @@ public record io.github.mbackschat.a12.dm.rulekit.dsl.FieldListRef implements io
   public io.github.mbackschat.a12.dm.core.ValueKind kind()
   public io.github.mbackschat.a12.dm.rulekit.dsl.FieldListRef outer()
   public java.lang.String renderedPath()
+  public io.github.mbackschat.a12.dm.rulekit.dsl.PathStyle styleHint()
   public final java.lang.String toString()
 
 public record io.github.mbackschat.a12.dm.rulekit.dsl.FieldListValueListCondition implements io.github.mbackschat.a12.dm.rulekit.dsl.Condition
@@ -1695,6 +1697,7 @@ public record io.github.mbackschat.a12.dm.rulekit.dsl.FieldListValueListConditio
 public sealed interface io.github.mbackschat.a12.dm.rulekit.dsl.FieldOperand extends io.github.mbackschat.a12.dm.rulekit.dsl.AggregateOperand, io.github.mbackschat.a12.dm.rulekit.dsl.ValueListOperand
   public default io.github.mbackschat.a12.dm.rulekit.dsl.FirstFilledOperand firstFilledOperand()
   public abstract io.github.mbackschat.a12.dm.core.ValueKind kind()
+  public default io.github.mbackschat.a12.dm.rulekit.dsl.PathStyle styleHint()
 
 public record io.github.mbackschat.a12.dm.rulekit.dsl.FieldPresenceCondition implements io.github.mbackschat.a12.dm.rulekit.dsl.Condition
   public FieldPresenceCondition(io.github.mbackschat.a12.dm.rulekit.dsl.FieldRef, boolean)
@@ -1709,6 +1712,7 @@ public record io.github.mbackschat.a12.dm.rulekit.dsl.FieldRef implements io.git
   public FieldRef(io.github.mbackschat.a12.dm.core.EntityPath, io.github.mbackschat.a12.dm.core.ValueKind, io.github.mbackschat.a12.dm.rulekit.dsl.PathStyle, boolean)
   public FieldRef(java.lang.String, io.github.mbackschat.a12.dm.core.ValueKind)
   public FieldRef(java.lang.String, io.github.mbackschat.a12.dm.core.ValueKind, io.github.mbackschat.a12.dm.rulekit.dsl.PathStyle)
+  public io.github.mbackschat.a12.dm.rulekit.dsl.FieldRef absolute()
   public boolean correlated()
   public io.github.mbackschat.a12.dm.core.EntityPath entityPath()
   public final boolean equals(java.lang.Object)

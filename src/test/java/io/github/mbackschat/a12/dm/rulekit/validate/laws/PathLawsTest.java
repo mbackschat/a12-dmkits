@@ -14,11 +14,12 @@ import org.junit.jupiter.api.Test;
  * wildcard-propagation rule.
  *
  * <p><b>Typed-surface boundary.</b> The project rows are where both legitimate reasons for a raw-String
- * condition genuinely live, so each was attempted typed on 2026-09-22 and the render compared. Four are
- * authored typed; the three that remain carry a {@link RawCondition} naming which reason applies and what
- * the typed surface emits instead — a star on {@code ..} has no typed form at all, and two rows have the
- * SPELLING as their subject, which a renderer normalizes away. The subscription/catalog rows above are
- * {@code acceptsModel} laws about name resolution and are untriaged.
+ * condition genuinely live, so each was attempted typed on 2026-09-22 and the render compared. Five are
+ * authored typed — one through a per-reference {@code absolute()} hint, because its subject is the
+ * absolute spelling of one operand beside a relative one; the two that remain carry a {@link RawCondition}
+ * naming which reason applies and what the typed surface emits instead — a star on {@code ..} has no typed
+ * form at all, and an unquoted keyword segment is a spelling the renderer always quotes. The
+ * subscription/catalog rows above are {@code acceptsModel} laws about name resolution and are untriaged.
  */
 class PathLawsTest {
 
@@ -123,13 +124,13 @@ class PathLawsTest {
                         "flatten refuses a relative path outright — \"flatten takes a MODEL-ABSOLUTE path\" — "
                                 + "so a star on '..' has no typed form at all, measured 2026-09-22"),
                 "MVK_INVALID_WILDCARD_REL");
-        // a star on a *named* segment (not the ..) is fine, and the absolute form expresses the intent
+        // a star on a *named* segment (not the ..) is fine, and the absolute form expresses the intent. The
+        // absolute spelling is this row's subject, so the aggregate is hinted absolute() while the error
+        // field stays relative: FieldFilled(Effort) And Sum(/Project/Milestones*/Budget) > 0
+        BoundModel m = Fixtures.project();
         KernelLaws.acceptsProject("/Project/Milestones/Tasks", "../Effort",
-                RawCondition.concreteSyntax("FieldFilled(Effort) And Sum(/Project/Milestones*/Budget) > 0",
-                        "the ABSOLUTE spelling is this row's subject, and render(group, …) emits "
-                                + "Sum(../../Milestones*/Budget) instead: path style is a renderer-wide "
-                                + "choice, so the mixed relative-error-field / absolute-aggregate text a "
-                                + "human writes here is unreachable typed (measured 2026-09-22, DG61)"));
+                m.field("/Project/Milestones/Tasks/Effort").filled()
+                        .and(Dsl.sum(m.flatten("/Project/Milestones*/Budget").absolute()).gt(0)));
     }
 
     @Test

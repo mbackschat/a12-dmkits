@@ -98,6 +98,8 @@ class DocSnippetFreshnessTest {
                     "src/test/java/io/github/mbackschat/a12/dm/edit/GroupEditorTest.java"),
             new Lock("model-computations", "docs/API-GUIDE.md",
                     "src/test/java/io/github/mbackschat/a12/dm/core/ModelIndexComputationsTest.java"),
+            new Lock("path-style-override", "docs/API-GUIDE.md",
+                    "src/test/java/io/github/mbackschat/a12/dm/rulekit/dsl/PathStyleHintRenderTest.java"),
             new Lock("date-minmax", "docs/API-GUIDE.md", NEW_SHAPES),
             new Lock("temporal-cross-ordering", "docs/API-GUIDE.md", NEW_SHAPES),
             new Lock("temporal-declared-format", "docs/API-GUIDE.md", NEW_SHAPES),

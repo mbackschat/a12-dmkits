@@ -28,6 +28,21 @@ public sealed interface FieldOperand extends ValueListOperand, AggregateOperand
      */
     io.github.mbackschat.a12.dm.core.ValueKind kind();
 
+    /**
+     * How this operand's path should be spelled, when the author cares. {@link DslRenderer} chooses the form
+     * per its path policy for a {@link PathStyle#CANONICAL} operand, which is every builder-made one; a
+     * hinted operand overrides that choice for itself alone. That per-operand scope is the point — path
+     * style used to be a renderer-wide switch, so a condition mixing a relative error field with an absolute
+     * aggregate had no typed form at all (API-FINDINGS AF159).
+     *
+     * <p>The default is {@code CANONICAL} because only a reference that wraps a {@link FieldRef} can carry a
+     * hint; {@link IndexedFieldValue} renders an index body rather than a plain path, so it has nowhere to
+     * put one.
+     */
+    default PathStyle styleHint() {
+        return PathStyle.CANONICAL;
+    }
+
     /** This checked field/list as one compositional {@code FirstFilledValue} owner entity. */
     default FirstFilledOperand firstFilledOperand() {
         return FirstFilledOperand.of(this);

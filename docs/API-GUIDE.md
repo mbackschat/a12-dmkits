@@ -962,6 +962,16 @@ Ancestor group operands end on the parent-navigation segment: from `/Shipment/Pa
 
 Relative paths never escape their root group: a rule under `/Dashboard` renders a typed reference to `/Dashboard/Status` as `Status`, while a typed reference to `/Application/Approved` remains `/Application/Approved`. The latter cannot be rendered as `../Application/Approved`; the DSL's parent navigation does not cross root-group boundaries.
 
+**One reference can override that choice.** `absolute()` on a field or list ref keeps that reference absolute while everything else in the condition follows the rule's group. Reach for it when the spelling is the point, as with an aggregate that reads more clearly from the root; otherwise leave the renderer to choose, because the relative form is the kernel's preferred one and survives a group rename. A `RELATIVE` hint with no group to relativize against, or a `SHORT` one, refuses rather than silently emitting another spelling ([AF159](API-FINDINGS.md#af159)).
+
+<!-- snippet: path-style-override -->
+```java
+// Rendered against /Project/Milestones/Tasks, only the hinted aggregate escapes relativization:
+//   FieldFilled(Effort) And Sum(/Project/Milestones*/Budget) > 0
+Condition mixed = m.field("/Project/Milestones/Tasks/Effort").filled()
+        .and(Dsl.sum(m.flatten("/Project/Milestones*/Budget").absolute()).gt(0));
+```
+
 Typed persistence takes the stored condition language from the destination model. The AST remains language-independent; `BoundModel.add`, typed `ModelWriter` operations, and typed replacements render English or German only at the write boundary. Raw string/draft overloads remain verbatim for callers that already provide stored DSL text.
 
 <!-- snippet: condition-language-write -->

@@ -20,8 +20,9 @@ import java.util.stream.Stream;
  * <em>relative</em> within that root group (bare under the group, {@code ../} up to a sibling — both
  * kernel-verified, KERNEL-FINDINGS §10 (paths)). A reference into another root group remains
  * absolute because the DSL's parent navigation cannot cross a root boundary. This is how
- * {@code Rule}/{@code Computation} render; without a base group every path is absolute.
- * Keyword-segment quoting and honoring read {@link PathStyle} hints are the remaining refinements.
+ * {@code Rule}/{@code Computation} render; without a base group every path is absolute. A reference may
+ * override that choice for itself with a {@link PathStyle} hint ({@link FieldRef#absolute()}); keyword-segment
+ * quoting is applied to whichever form results.
  */
 public final class DslRenderer {
 
@@ -75,7 +76,43 @@ public final class DslRenderer {
      * readable form; cross-root parent navigation is not legal DSL.
      */
     private String path(String absolute) {
-        String form = baseGroup == null ? absolute : relativize(baseGroup, absolute);
+        return path(absolute, PathStyle.CANONICAL);
+    }
+
+    /** A reference's path, honouring the spelling it asks for. The funnel every ref-rendering site uses. */
+    private String path(FieldRef ref) {
+        return path(ref.path().value(), ref.styleHint());
+    }
+
+    /**
+     * The same, for an operand that states how it wants to be spelled — the per-reference override that
+     * makes a mixed-style condition authorable (API-FINDINGS AF159). Path style used to be a property of the
+     * renderer, so {@code FieldFilled(Effort) And Sum(/Project/Milestones*}{@code /Budget) > 0} could not be
+     * built: relativizing rewrote the aggregate, and rendering absolute rewrote the error field too.
+     *
+     * <p>{@link PathStyle#RELATIVE} and {@link PathStyle#SHORT} REFUSE rather than fall back, because the
+     * fallback would silently emit a different spelling than the one asked for — and a hint exists precisely
+     * when the spelling is the point. {@code SHORT} has no producer, and the renderer could not honour one:
+     * a bare name is legal only when the model sets {@code fieldRefByShortNameAllowed} and the name
+     * is unique model-wide (KERNEL-FINDINGS §10), and the renderer holds a catalog, not a model.
+     */
+    private String path(String absolute, PathStyle style) {
+        String form = switch (style) {
+            case CANONICAL -> baseGroup == null ? absolute : relativize(baseGroup, absolute);
+            case ABSOLUTE -> absolute;
+            case RELATIVE -> {
+                if (baseGroup == null) {
+                    throw new IllegalArgumentException("a RELATIVE path hint needs a base group to "
+                            + "relativize against, and this renderer has none — build the renderer with the "
+                            + "rule's group, or leave the reference CANONICAL: " + absolute);
+                }
+                yield relativize(baseGroup, absolute);
+            }
+            case SHORT -> throw new IllegalArgumentException("a SHORT path hint cannot be rendered: a bare "
+                    + "name is legal only when the model allows short-name references and the name is unique "
+                    + "model-wide, and the renderer cannot see the model — use absolute() or CANONICAL: "
+                    + absolute);
+        };
         return quoteKeywordSegments(form);
     }
 
@@ -203,7 +240,7 @@ public final class DslRenderer {
     public String render(Condition condition) {
         return switch (condition) {
             case FieldPresenceCondition f ->
-                    keyword(f.operatorId()) + "(" + (f.field().correlated() ? "$" : "") + path(f.field().path().value()) + ")";
+                    keyword(f.operatorId()) + "(" + (f.field().correlated() ? "$" : "") + path(f.field()) + ")";
             case EntityListPredicate p -> keyword(p.operatorId()) + "("
                     + p.operands().stream().map(this::aggregateOperand)
                             .collect(Collectors.joining(", "))
@@ -221,8 +258,8 @@ public final class DslRenderer {
                             .collect(Collectors.joining(", "))
                     + ")";
             case PatternCondition p ->
-                    "[" + path(p.field().path().value()) + "] " + keyword(p.operatorId()) + " " + quote(p.regex());
-            case ValueListCondition v -> keyword(v.operatorId()) + "(" + path(v.field().path().value()) + ", "
+                    "[" + path(p.field()) + "] " + keyword(p.operatorId()) + " " + quote(p.regex());
+            case ValueListCondition v -> keyword(v.operatorId()) + "(" + path(v.field()) + ", "
                     + v.values().stream().map(this::render).collect(Collectors.joining(", "))
                     + ")";
             case CustomConditionRef c -> keyword(c.operatorId()) + " " + quoteSegment(c.name());
@@ -247,7 +284,7 @@ public final class DslRenderer {
                     + ")";
             case DateValidity v -> keyword(v.operatorId()) + "(" + renderArg(v.dateConstruct()) + ")";
             case CustomTypeValidity v ->
-                    keyword(v.operatorId()) + "(" + path(v.field().path().value()) + ", " + quote(v.typeName()) + ")";
+                    keyword(v.operatorId()) + "(" + path(v.field()) + ", " + quote(v.typeName()) + ")";
         };
     }
 
@@ -367,7 +404,7 @@ public final class DslRenderer {
         // brackets — the bracketed [field -> Cat] form is the comparison-operand rendering, not the
         // entity-list member form the kernel grammar uses here).
         if (op instanceof EnumCategoryAccess c) {
-            return (c.outer() ? "$" : "") + path(c.field().path().value()) + " " + keyword(c.operatorId()) + " " + c.category();
+            return (c.outer() ? "$" : "") + path(c.field()) + " " + keyword(c.operatorId()) + " " + c.category();
         }
         // An index-selected field entity renders the same bare "Field For key" body a presence condition
         // does — indexBody already folds correlation and localizes/quotes the key, so this must not fall
@@ -381,9 +418,11 @@ public final class DslRenderer {
         String dollar = (op instanceof FieldRef fr && fr.correlated()) || (op instanceof FieldListRef fl && fl.correlated())
                 ? "$" : "";
         if (op instanceof FieldListRef list && list.filter().isPresent()) {
-            return dollar + path(list.renderedPath()) + " " + keyword("Having") + " " + render(list.filter().get());
+            return dollar + path(list.renderedPath(), list.styleHint()) + " " + keyword("Having")
+                    + " " + render(list.filter().get());
         }
-        return dollar + path(op.renderedPath());
+        return dollar + path(op.renderedPath(),
+                op instanceof FieldOperand fo ? fo.styleHint() : PathStyle.CANONICAL);
     }
 
     private String child(LogicCondition parent, Condition child) {
@@ -414,7 +453,7 @@ public final class DslRenderer {
     /** Renders a value expression — e.g. a computation slot's {@code operation}. */
     public String render(Calculation calculation) {
         return switch (calculation) {
-            case FieldValue v -> "[" + (v.outer() ? "$" : "") + path(v.field().path().value()) + "]";
+            case FieldValue v -> "[" + (v.outer() ? "$" : "") + path(v.field()) + "]";
             case NumberLiteral n -> n.value().toPlainString();
             case StringLiteral s -> quote(s.value());
             case DateLiteral d -> quote(d.value());
@@ -422,9 +461,9 @@ public final class DslRenderer {
             case DateTimeLiteral dt -> quote(dt.value());
             case EnumValueLiteral e -> quote(e.value());
             case BoolLiteral b -> keyword(b.operatorId());
-            case LengthOf l -> keyword(l.operatorId()) + "(" + path(l.field().path().value()) + ")";
+            case LengthOf l -> keyword(l.operatorId()) + "(" + path(l.field()) + ")";
             case EnumCategoryAccess c ->
-                    "[" + (c.outer() ? "$" : "") + path(c.field().path().value()) + " " + keyword(c.operatorId())
+                    "[" + (c.outer() ? "$" : "") + path(c.field()) + " " + keyword(c.operatorId())
                             + " " + c.category() + "]";
             case ListAggregate a -> keyword(a.operatorId()) + "("
                     + a.operands().stream().map(this::aggregateOperand)
@@ -456,19 +495,19 @@ public final class DslRenderer {
                     + a.operands().stream().map(this::firstFilledOperand)
                             .collect(Collectors.joining(", "))
                     + ")";
-            case FieldValueAsString c -> keyword(c.operatorId()) + "(" + path(c.field().path().value()) + ")";
+            case FieldValueAsString c -> keyword(c.operatorId()) + "(" + path(c.field()) + ")";
             case IndexedFieldValueAsString c -> keyword(c.operatorId()) + "(" + indexBody(c.index()) + ")";
-            case RangeAsString c -> keyword(c.operatorId()) + "(" + path(c.field().path().value())
+            case RangeAsString c -> keyword(c.operatorId()) + "(" + path(c.field())
                     + ", " + c.start() + ", " + c.end() + ")";
             case FieldValueAsNumber c -> keyword(c.operatorId()) + "(" + numericTextSource(c.source()) + ")";
-            case RangeAsNumber c -> keyword(c.operatorId()) + "(" + path(c.field().path().value())
+            case RangeAsNumber c -> keyword(c.operatorId()) + "(" + path(c.field())
                     + ", " + c.start() + ", " + c.end() + ")";
             case OpListMath m -> keyword(m.operatorId()) + "("
                     + m.operands().stream().map(this::render).collect(Collectors.joining(", ")) + ")";
             case NumberOfValueInFields n -> keyword(n.operatorId()) + "(" + render(n.value()) + " In "
                     + n.fields().stream().map(this::aggregateOperand)
                             .collect(Collectors.joining(", ")) + ")";
-            case ValueAsDate v -> keyword(v.operatorId()) + "(" + path(v.field().path().value()) + ", "
+            case ValueAsDate v -> keyword(v.operatorId()) + "(" + path(v.field()) + ", "
                     + keyword(v.dayKeywordId()) + ")";
             case DateExtraction e -> keyword(e.operatorId()) + "(" + renderArg(e.source()) + ")";
             case DateTimePart e -> keyword(e.operatorId()) + "(" + renderArg(e.source()) + ")";
@@ -482,7 +521,7 @@ public final class DslRenderer {
                     + renderArg(dtc.time()) + ")";
             case DateRangeConstruction dr -> keyword(dr.operatorId()) + "(" + renderArg(dr.start()) + ", "
                     + renderArg(dr.end()) + ")";
-            case FieldRounding r -> keyword(r.operatorId()) + "(" + path(r.field().path().value())
+            case FieldRounding r -> keyword(r.operatorId()) + "(" + path(r.field())
                     + r.decimalPlaces().map(places -> ", " + places).orElse("") + ")";
             case DateRangeBound b -> keyword(b.operatorId()) + "(" + renderArg(b.source()) + ")";
             case RootGroupCount c -> keyword(c.operatorId()) + "(" + path(c.rootGroup().path().value()) + "*)";
@@ -492,8 +531,8 @@ public final class DslRenderer {
     private String numericTextSource(NumericTextSource source) {
         return switch (source) {
             case FieldRef field -> (field.correlated() ? "$" : "") + path(field.path().value());
-            case EnumRef field -> (field.correlated() ? "$" : "") + path(field.field().path().value());
-            case CategoryRef category -> (category.correlated() ? "$" : "") + path(category.field().path().value())
+            case EnumRef field -> (field.correlated() ? "$" : "") + path(field.field());
+            case CategoryRef category -> (category.correlated() ? "$" : "") + path(category.field())
                     + " " + keyword("EnumCategory") + " " + category.name();
         };
     }
@@ -518,7 +557,7 @@ public final class DslRenderer {
 
     private String renderArg(Calculation value) {
         if (value instanceof FieldValue v) {
-            return (v.outer() ? "$" : "") + path(v.field().path().value());
+            return (v.outer() ? "$" : "") + path(v.field());
         }
         if (value instanceof IndexedFieldValue indexed) {
             return indexBody(indexed);
@@ -554,10 +593,10 @@ public final class DslRenderer {
     private String indexBody(IndexedFieldValue index) {
         return switch (index) {
             case SemanticIndexValue v ->   // literal key: a quoted constant
-                    (v.field().correlated() ? "$" : "") + path(v.field().path().value()) + " "
+                    (v.field().correlated() ? "$" : "") + path(v.field()) + " "
                             + keyword(v.operatorId()) + " " + quote(v.indexValue());
             case SemanticIndexFieldValue v ->   // field key: a bare field path, not a quoted literal
-                    (v.field().correlated() ? "$" : "") + path(v.field().path().value()) + " "
+                    (v.field().correlated() ? "$" : "") + path(v.field()) + " "
                             + keyword(v.operatorId()) + " "
                             + (v.indexField().correlated() ? "$" : "") + path(v.indexField().path().value());
         };
@@ -596,7 +635,7 @@ public final class DslRenderer {
                     if (field.field().correlated()) {
                         rendered.append('$');
                     }
-                    rendered.append(path(field.field().path().value()));
+                    rendered.append(path(field.field()));
                 }
             }
         });
