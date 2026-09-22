@@ -121,11 +121,12 @@ class LockCitationResolvesTest {
         }
 
         assertEquals(Map.of(), unresolved,
-                () -> "a findings doc cites a test class that does not exist, so the claim it supports now rests "
-                        + "on nothing a reader can open. Either the class was renamed — update the prose — or it "
-                        + "was deleted, in which case the claim needs a live lock or an explicit retraction. This "
-                        + "is how a published clause and the test contradicting it drift apart unnoticed:\n  "
-                        + unresolved);
+                () -> "a findings doc cites a test class that is not in the git index. If the class is NEW, "
+                        + "`git add` it — the enumeration reads the index, not the working tree, and this is by far "
+                        + "the commonest cause. Otherwise the claim now rests on nothing a reader can open: the class "
+                        + "was renamed — update the prose — or deleted, in which case the claim needs a live lock or "
+                        + "an explicit retraction. This is how a published clause and the test contradicting it "
+                        + "drift apart unnoticed:\n  " + unresolved);
 
         assertTrue(seen.size() > 300,
                 "only " + seen.size() + " lock citations found — the context pattern has stopped matching, and "
