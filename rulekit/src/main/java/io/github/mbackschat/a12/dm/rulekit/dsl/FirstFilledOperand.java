@@ -62,7 +62,10 @@ public final class FirstFilledOperand implements DuplicateOperand {
         this.semanticIndex = semanticIndex;
         this.outer = outer;
         if (group != null && this.expandedGroupFields.isEmpty()) {
-            throw groupShapeRefusal(groupClassIsFixed(), KernelCode.MVK_GROUP_IS_EMPTY,
+            // An empty ROOT group has a class of its own, and like the other shape classes it outranks a
+            // duplicate (validate.laws.FirstFilledValueGateOrderLawsTest).
+            throw groupShapeRefusal(groupClassIsFixed(),
+                    rootGroup() ? KernelCode.MVK_ROOT_GROUP_IS_EMPTY : KernelCode.MVK_GROUP_IS_EMPTY,
                     "FirstFilledValue group " + group.renderedPath() + " must contain at least one field");
         }
     }
@@ -183,6 +186,11 @@ public final class FirstFilledOperand implements DuplicateOperand {
      */
     private boolean groupClassIsFixed() {
         return !unstarredRepetition && semanticIndex == null;
+    }
+
+    /** Whether the target is a root group, which the list's root gate refuses once no duplicate answers first. */
+    boolean rootGroup() {
+        return group != null && group.path().indexOf('/', 1) < 0;
     }
 
     /** The shape's own code where nothing can move it, else the same refusal deliberately uncoded. */

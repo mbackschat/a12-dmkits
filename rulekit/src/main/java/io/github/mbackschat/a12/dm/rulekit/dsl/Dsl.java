@@ -695,11 +695,14 @@ public final class Dsl {
     }
 
     private static FirstFilledValue firstFilledValue(FirstFilledOperand group, ValueKind expected, String method) {
+        // Built before the routing check, whose kind() of a group would run the list's type gate ahead of its
+        // root gate (the reason given in the list form below).
+        FirstFilledValue value = new FirstFilledValue(group, List.of());
         if (!compatibleFirstFilledKind(expected, group.kind())) {
             throw new IllegalArgumentException(method + " needs a group compatible with " + expected
                     + "; " + group.renderedPath() + " is " + group.kind());
         }
-        return new FirstFilledValue(group, List.of());
+        return value;
     }
 
     private static FirstFilledValue firstFilledValue(FieldOperand first, ValueKind expected, String method,
@@ -713,16 +716,19 @@ public final class Dsl {
 
     private static FirstFilledValue firstFilledValue(FirstFilledOperand first, ValueKind expected, String method,
             FirstFilledOperand second, FirstFilledOperand... rest) {
+        // The record's list gates answer first, in A12's order, and the routing check only after them: a group's
+        // kind() runs the type gate over that group alone, which would cite a type code on a list A12 refuses as
+        // a duplicate (validate.laws.FirstFilledValueGateOrderLawsTest). Whether the trailing operands may join
+        // the first is one kernel rule with one home, the record; the factory only routes the result family.
+        var trailing = new ArrayList<FirstFilledOperand>();
+        trailing.add(second);
+        trailing.addAll(List.of(rest));
+        FirstFilledValue value = new FirstFilledValue(first, trailing);
         if (!compatibleFirstFilledKind(expected, first.kind())) {
             throw new IllegalArgumentException(method + " needs a first operand compatible with " + expected + "; "
                     + "the first operand is " + first.kind());
         }
-        // The trailing operands answer to the record's own list gate, not to the factory: the first operand
-        // types the result, and whether the rest may join it is one kernel rule with one home.
-        var trailing = new ArrayList<FirstFilledOperand>();
-        trailing.add(second);
-        trailing.addAll(List.of(rest));
-        return new FirstFilledValue(first, trailing);
+        return value;
     }
 
     private static FirstFilledValue enumFirstFilledValue(FirstFilledValue value) {

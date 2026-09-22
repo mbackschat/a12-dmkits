@@ -78,9 +78,12 @@ class PromotedGateIsReachedGuardTest {
      * `firstFilledGroupScope` and `requireExactSemanticIndexGroup` are reached through `firstFilledGroup` /
      * `firstFilledGroupFor`, both already in GATES, and `Dsl.checkedStringList` is not a BoundModel gate at
      * all. The reachability assertions above stayed green across the change, which is the evidence for that.
+     *
+     * <p>Lowered 2026-09-23: the root-group refusal left {@code firstFilledGroupScope} for the
+     * {@code FirstFilledValue} record, which asks it after the duplicate gate, as A12 does.
      */
     private static final Map<String, Integer> REFUSAL_SITES =
-            Map.of("BoundModel.java", 9, "Dsl.java", 11, "DuplicateGate.java", 2);
+            Map.of("BoundModel.java", 8, "Dsl.java", 11, "DuplicateGate.java", 2);
 
     private static final Pattern REFUSAL = Pattern.compile("Refusals\\.of\\(");
 

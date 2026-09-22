@@ -41,12 +41,26 @@ public record FirstFilledValue(FirstFilledOperand firstOperand, List<FirstFilled
         trailingOperands = List.copyOf(trailingOperands);
         List<FirstFilledOperand> all = operands(firstOperand, trailingOperands);
         // The kernel's order, so a list breaking two gates is refused for the one A12 reports: duplicates, then
-        // the two gates over every field the operands expand to (CheckFeldListenOpImpl.check, measured in
-        // validate.laws.FirstFilledValueGateOrderLawsTest). Both arms go through the one shared duplicate gate:
-        // this carrier's operands are richer than the sealed unions' (an owner entity may be a field OR a
-        // group, keyed by a literal or by a field read), and FirstFilledOperand answers for that richness itself.
+        // a root group, then the two gates over every field the operands expand to (CheckFeldListenOpImpl.check,
+        // measured in validate.laws.FirstFilledValueGateOrderLawsTest). Both duplicate arms go through the one
+        // shared gate: this carrier's operands are richer than the sealed unions' (an owner entity may be a
+        // field OR a group, keyed by a literal or by a field read), and FirstFilledOperand answers for that.
         DuplicateGate.rejectDuplicates("FirstFilledValue", all);
+        all.forEach(FirstFilledValue::rejectRootGroup);
         requireOneValueType(all.stream().flatMap(FirstFilledValue::expandedFields).toList());
+    }
+
+    /**
+     * Uncoded on an indexed root, where the index gate ({@code MVK_NO_INDEX_FIELD}) answers first and the record
+     * cannot see whether the index resolves.
+     */
+    private static void rejectRootGroup(FirstFilledOperand operand) {
+        if (operand.rootGroup()) {
+            String problem = "FirstFilledValue does not accept a root group: " + operand.renderedPath();
+            throw operand.semanticIndex().isPresent()
+                    ? new IllegalArgumentException(problem)
+                    : Refusals.of(KernelCode.MVK_ROOT_GROUP_REFERENCED, problem);
+        }
     }
 
     /** One field an operand expands to — the unit both of the kernel's field-level list gates read. */

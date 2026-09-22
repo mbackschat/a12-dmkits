@@ -576,10 +576,8 @@ public final class BoundModel {
         if (groupAt(scope.path()).isEmpty()) {
             throw new IllegalArgumentException(scope.path() + " is not a group");
         }
-        if (scope.path().indexOf('/', 1) < 0) {
-            throw Refusals.of(KernelCode.MVK_ROOT_GROUP_REFERENCED,
-                    "FirstFilledValue does not accept a root group: " + scope.path());
-        }
+        // A root group is refused by the list, not here: A12 asks a duplicate first, and an empty root, a filter,
+        // a category or an index answers ahead of both (validate.laws.FirstFilledValueGateOrderLawsTest).
         return scope;
     }
 

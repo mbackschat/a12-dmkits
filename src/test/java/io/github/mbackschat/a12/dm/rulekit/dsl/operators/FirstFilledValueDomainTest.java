@@ -148,7 +148,8 @@ class FirstFilledValueDomainTest {
         assertThrows(IllegalArgumentException.class,
                 () -> new FirstFilledValue(model.firstFilledGroup("/Selection/Address"),
                         List.of(model.field("/Selection/Address/Street").firstFilledOperand())));
-        assertThrows(IllegalArgumentException.class, () -> model.firstFilledGroup("/Selection"));
+        assertThrows(IllegalArgumentException.class,
+                () -> new FirstFilledValue(model.firstFilledGroup("/Selection"), List.of()));
         assertThrows(IllegalArgumentException.class,
                 () -> model.firstFilledGroupFor("/Selection/IndexedNumbers*", "1"));
         assertThrows(IllegalArgumentException.class,
