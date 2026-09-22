@@ -541,6 +541,27 @@ final class CommandContracts {
         return new ParsedParameters(parsed.verb(), parsed.invocation().values());
     }
 
+    /**
+     * Whether {@code tokens} name a command in the live tree, resolved without executing or fully parsing
+     * one. A caller that holds a verb NAME and not yet an argv needs exactly this and nothing more: a full
+     * {@link #parse} would also reject a child whose own arguments are incomplete, which is the child's
+     * verdict to report rather than its dispatcher's.
+     */
+    static boolean namesACommand(List<String> tokens) {
+        if (tokens.isEmpty()) {
+            return false;
+        }
+        Map<String, CommandLine> subcommands = new CommandLine(new RootCommand()).getSubcommands();
+        for (String token : tokens) {
+            CommandLine command = subcommands.get(token);
+            if (command == null) {
+                return false;
+            }
+            subcommands = command.getSubcommands();
+        }
+        return true;
+    }
+
     private static ParsedInvocation parse(List<String> args) {
         CommandLine root = new CommandLine(new RootCommand()).setExpandAtFiles(false);
         ParseResult result = root.parseArgs(args.toArray(String[]::new));

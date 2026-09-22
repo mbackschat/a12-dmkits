@@ -94,6 +94,20 @@ final class BatchCommand extends BaseCommand {
         if (frameRejection.isPresent()) {
             return frameRejection.get();
         }
+        // A verb that names no command is wrong for EVERY child, so it is answered once, before child zero.
+        // Reporting it per child hid it: a batch written with a wrong verb fails uniformly, controls
+        // included, which reads as a route problem rather than a spelling one — and dispatch never rolls
+        // back, so the preflight is also the last point at which nothing has been written.
+        for (int index = 0; index < ops.size(); index++) {
+            String verb = ops.get(index).path("verb").asText("");
+            if (!verb.isBlank() && !CommandContracts.namesACommand(verbTokens(verb))) {
+                return refusePrecheck(ResultIdentity.BATCH_RUN, RkCode.UNKNOWN_ARG,
+                        "batch item " + index + "'s verb '" + verb + "' names no command",
+                        "/" + index,
+                        "pass a verb the manifest lists — either spelling works, `\"model check\"` or "
+                                + "`\"model\"` with `check` as the first args entry (`dmtool manifest`)");
+            }
+        }
         String batchModel = model();   // G18: the batch-level -m is the default for ops that omit their own
         BatchObservationCapture.Plan observationPlan = null;
         if (observationsFile != null && JsonInput.isStdin(opsFile)) {
@@ -178,7 +192,7 @@ final class BatchCommand extends BaseCommand {
             result.put("id", op.get("id").asText());
         }
         String verb = op.path("verb").asText(null);
-        result.put("verb", verb);
+        result.put("verb", verb);   // the caller's own spelling, echoed verbatim so a correlation still matches
         JsonNode argsNode = op.path("args");
         if (argsNode.isArray()) {
             result.set("args", argsNode);
@@ -191,12 +205,12 @@ final class BatchCommand extends BaseCommand {
             }
             return opError(result, "op is missing \"verb\"");
         }
-        if ("batch".equals(verb)) {
+        List<String> verbTokens = verbTokens(verb);
+        if ("batch".equals(verbTokens.get(0))) {
             return opError(result, "batch cannot nest");
         }
 
-        List<String> argv = new ArrayList<>();
-        argv.add(verb);
+        List<String> argv = new ArrayList<>(verbTokens);
         if (argsNode.isArray()) {
             for (JsonNode a : argsNode) {
                 String arg = a.asText();
@@ -207,9 +221,11 @@ final class BatchCommand extends BaseCommand {
         // G18: an op that omits its own -m inherits the batch-level one (the universal -m default); an op
         // carrying its own -m keeps it. Put the inherited global option before the child command's arguments:
         // appending it would place it after a child's `--`, where picocli correctly treats it as a positional.
+        // It goes after the WHOLE verb, never inside it — `model -m X check` would ask `model` for an option
+        // only its leaves define.
         if (!opHasModel && batchModel != null) {
-            argv.add(1, batchModel);
-            argv.add(1, "-m");
+            argv.add(verbTokens.size(), batchModel);
+            argv.add(verbTokens.size(), "-m");
         }
 
         StringBuilder opOut = new StringBuilder();
@@ -228,6 +244,17 @@ final class BatchCommand extends BaseCommand {
             result.put("stderr", opErr.toString());
         }
         return result;
+    }
+
+    /**
+     * The argv tokens a {@code verb} names. The manifest spells a two-word verb as ONE string
+     * ({@code "model check"}) and this frame's {@code verb} is that name, so it is split on whitespace
+     * rather than passed through as a single token — which is what used to fail every child of a batch
+     * written from the manifest with {@code Unmatched argument at index 0}. The two spellings cannot
+     * collide, since no single-token verb contains a space.
+     */
+    private static List<String> verbTokens(String verb) {
+        return List.of(verb.strip().split("\\s+"));
     }
 
     private static boolean hasOwnModel(List<String> argv) {

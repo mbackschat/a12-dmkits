@@ -9,7 +9,7 @@
     "required": ["verb"],
     "additionalProperties": false,
     "properties": {
-      "verb": { "type": "string", "description": "the verb to run (any except `batch`, which cannot nest)" },
+      "verb": { "type": "string", "description": "the verb to run, spelled either way: the manifest's own name for a two-word verb (`\"model check\"`) or its target alone (`\"model\"`) with the sub-verb as the first `args` entry. Any verb except `batch`, which cannot nest. A verb that names no command refuses the WHOLE batch before child zero, since it is wrong for every child and nothing has been written yet." },
       "args": { "type": "array", "items": { "type": "string" }, "description": "the verb's argv (as on the command line, minus the verb)" },
       "id": { "type": "string", "description": "optional caller tag, echoed back on the result for correlation; required and non-blank when --observations is used" }
     }
