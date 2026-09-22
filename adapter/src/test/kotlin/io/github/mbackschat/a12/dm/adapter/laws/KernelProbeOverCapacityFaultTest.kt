@@ -91,6 +91,27 @@ class KernelProbeOverCapacityFaultTest {
     }
 
     /**
+     * What the serializer's `[0]` actually means — the case that separates two readings nobody had run.
+     *
+     * Both this file's original row and a12-kernel-lean's independent carrier put the excess at exactly one
+     * row past the maximum, at the END of the list, so "the serializer names index 0" and "the serializer
+     * names the first offending row, which happened to render as 0" were indistinguishable across both. A
+     * document over capacity by TWO discriminates them: the index stays `[0]` and only the count moves, so
+     * `[0]` is the LIST and carries no information about which row offends.
+     */
+    @Test
+    fun theSerializerNamesTheListRatherThanAnyOffendingRow() {
+        val byTwo = run("bytwo", """ "observe": ["validateFull", "computeResults"], """)
+            .rowNamed(OVER_BY_TWO).anchor()
+
+        assertEquals(
+            "DocumentSerializationException: Following errors were found:\n"
+                + "Max repetition exceeded: Order/Legs[0] (got 5 but max repetition is 3)",
+            byTwo.path("fault").raise(),
+            "the index stays [0] while the count tracks the excess — so [0] addresses the list, not a row")
+    }
+
+    /**
      * The liveness control: `computeResults` really ran, and the row inside the maximum is untouched by it.
      *
      * Without the `applied` assertion the test above is satisfied by a `computeResults` that silently did
@@ -181,6 +202,7 @@ class KernelProbeOverCapacityFaultTest {
 
         private const val OVER_CAPACITY = "four-rows-against-a-maximum-of-three"
         private const val WITHIN_CAPACITY = "two-rows-well-inside-it"
+        private const val OVER_BY_TWO = "five-rows-against-a-maximum-of-three"
 
         /**
          * Both codes, each at its own address — the pair is the point. `zuGrosseKontextnummer` attaches to the
@@ -219,7 +241,10 @@ class KernelProbeOverCapacityFaultTest {
             { "name": "$OVER_CAPACITY", "documentInline": { "Order": {
                 "Legs": [ { "Distance": 1 }, { "Distance": 2 }, { "Distance": 3 }, { "Distance": 4 } ] } } },
             { "name": "$WITHIN_CAPACITY", "documentInline": { "Order": {
-                "Legs": [ { "Distance": 1 }, { "Distance": 2 } ] } } }
+                "Legs": [ { "Distance": 1 }, { "Distance": 2 } ] } } },
+            { "name": "$OVER_BY_TWO", "documentInline": { "Order": {
+                "Legs": [ { "Distance": 1 }, { "Distance": 2 }, { "Distance": 3 },
+                          { "Distance": 4 }, { "Distance": 5 } ] } } }
         """.trimIndent()
 
         private fun write(name: String, content: String): Path = Files.writeString(dir.resolve(name), content)
