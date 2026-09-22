@@ -95,4 +95,43 @@ class RoundingPlacesOverflowLawsTest {
         expected.put("leading zeros on an out-of-range value", "MVK_INVALID_DIGIT_FOR_ROUNDING");
         assertEquals(expected, actual, "the places ladder crosses two boundaries, not one");
     }
+
+    /**
+     * <b>The kit's own 0..14 refusal, pinned BESIDE the kernel row that is its basis.</b>
+     *
+     * <p>A client-side refusal may never be broader than something measured, and delegation is not available
+     * here: the kit throws before the kernel is asked, so nothing downstream can discover the bound is wrong.
+     * The two assertions are the whole contract — 14 reaches the kernel and is admitted, 15 never leaves the
+     * kit, and the ladder above shows the kernel independently refusing 15 with
+     * {@code MVK_INVALID_DIGIT_FOR_ROUNDING}. Same boundary, measured on both sides of the call.
+     *
+     * <p>The READ path is asserted too, because a bound in a constructor also fires when a kernel model is
+     * converted inbound: an over-strict check there makes a legal model unreadable rather than merely
+     * unauthorable, which is the sharper half and the one no authoring test would notice.
+     *
+     * <p><b>Why this test exists as a correction.</b> It was advertised by name from {@link #verdict(int)}'s
+     * javadoc and never written — a dangling {@code @link} and an unused {@code assertThrows} import were all
+     * that remained of it, and a session summary reported it as landed. A cold review found it by resolving
+     * the link.
+     */
+    @Test
+    void theKitsOwnPlacesBoundHasThisKernelRowAsItsBasis() {
+        assertEquals(KernelLaws.ADMITTED, verdict(14), "14 is admitted by the kernel, so the kit must build it");
+
+        var refusal = assertThrows(IllegalArgumentException.class,
+                () -> Dsl.roundUpValue(UNIT_PRICE, 15),
+                "the kit must refuse 15 rather than hand the kernel a token it rejects");
+        assertEquals("rounding decimal places must be in 0..14, was 15", refusal.getMessage(),
+                "the refusal names the bound and the offending value");
+
+        assertThrows(IllegalArgumentException.class, () -> Dsl.roundUpValue(UNIT_PRICE, -1),
+                "the lower end of the same bound");
+
+        // The inbound direction: the identical constructor runs when a kernel model is READ, so a bound that
+        // is too narrow silently costs readability. 14 must survive the round trip that 15 never enters.
+        assertEquals(KernelLaws.ADMITTED,
+                classes(KernelLaws.checkModel(PRICES, GROUP, "../Sku",
+                        Dsl.fieldFilled(SKU).and(Dsl.number(0).lt(Dsl.roundDownValue(UNIT_PRICE, 14))))),
+                "the sibling rounding operator carries the same bound and the same kernel row");
+    }
 }
