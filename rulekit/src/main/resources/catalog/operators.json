@@ -3636,6 +3636,14 @@
         "error": "MVK_NO_CONST",
         "fix": "the immediate operand may not be a literal — wrap a field or an expression over one: Abs([UnitPrice] - 1) < [Quantity]"
       },
+      "correctives": [
+        {
+          "code": "MVK_NO_NUMBER",
+          "whenOperands": [],
+          "fix": "Abs takes one number-valued operand, and every other kind draws this code, the temporal ones included. Pass a number field or a numeric expression over one",
+          "probe": { "dsl": "FieldFilled(CustomerName) And Abs([CustomerName]) > 0" }
+        }
+      ],
       "sinceKernel": "30.8.x",
       "computationExample": {
         "operation": "Abs([Quantity] - 1)",
@@ -3695,6 +3703,18 @@
           "whenOperands": [],
           "fix": "the FIRST operand fixes the expected class and the reported code names THAT class, not the offender's — a temporal leader beside a non-temporal operand is MVK_DATE_AND_NONDATE, while the same two operands in the other order are MVK_NOT_SORTABLE. Make the operand list family-homogeneous rather than reordering it",
           "probe": { "dsl": "FieldFilled(CustomerName) And Min([OrderDate], [Quantity]) > [DeliveryDate]" }
+        },
+        {
+          "code": "MVK_DATEFORMATS_NOT_COMPATIBLE",
+          "whenOperands": [],
+          "fix": "a temporal first operand requires every other operand to share its temporal components: a date beside a time or a datetime is refused, and so is a date fragment with fewer components than the date beside it. Use operands of one temporal kind, or a fragment that declares the date's full components",
+          "probe": { "dsl": "FieldFilled(OrderDate) And Min([OrderDate], [ScheduledAt]) > \"01.01.2020\"" }
+        },
+        {
+          "code": "MVK_NOT_SORTABLE",
+          "whenOperands": [],
+          "fix": "a NON-temporal first operand fixes this code whatever follows it: a NUMBER head beside a date is MVK_NOT_SORTABLE, not MVK_DATE_AND_NONDATE, and STRING, ENUMERATION, BOOLEAN and DATE_RANGE operands are refused in either position, even two DATE_RANGEs together. Min sorts NUMBER operands, or temporal operands of one component set; make every operand the first one's class",
+          "probe": { "dsl": "FieldFilled(Quantity) And Min([Quantity], [OrderDate]) > 0" }
         }
       ],
       "semantics": {
@@ -3854,6 +3874,18 @@
           "whenOperands": [],
           "fix": "the FIRST operand fixes the expected class and the reported code names THAT class, not the offender's — a temporal leader beside a non-temporal operand is MVK_DATE_AND_NONDATE, while the same two operands in the other order are MVK_NOT_SORTABLE. Make the operand list family-homogeneous rather than reordering it",
           "probe": { "dsl": "FieldFilled(CustomerName) And Max([OrderDate], [Quantity]) > [DeliveryDate]" }
+        },
+        {
+          "code": "MVK_DATEFORMATS_NOT_COMPATIBLE",
+          "whenOperands": [],
+          "fix": "a temporal first operand requires every other operand to share its temporal components: a date beside a time or a datetime is refused, and so is a date fragment with fewer components than the date beside it. Use operands of one temporal kind, or a fragment that declares the date's full components",
+          "probe": { "dsl": "FieldFilled(OrderDate) And Max([OrderDate], [ScheduledAt]) > \"01.01.2020\"" }
+        },
+        {
+          "code": "MVK_NOT_SORTABLE",
+          "whenOperands": [],
+          "fix": "a NON-temporal first operand fixes this code whatever follows it: a NUMBER head beside a date is MVK_NOT_SORTABLE, not MVK_DATE_AND_NONDATE, and STRING, ENUMERATION, BOOLEAN and DATE_RANGE operands are refused in either position, even two DATE_RANGEs together. Max sorts NUMBER operands, or temporal operands of one component set; make every operand the first one's class",
+          "probe": { "dsl": "FieldFilled(Quantity) And Max([Quantity], [OrderDate]) > 0" }
         }
       ],
       "semantics": {

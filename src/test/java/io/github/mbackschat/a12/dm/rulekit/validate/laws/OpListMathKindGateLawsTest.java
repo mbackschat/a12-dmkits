@@ -242,6 +242,31 @@ class OpListMathKindGateLawsTest {
     }
 
     @Test
+    void maxAnswersEveryCellAsMinDoes_measuredRatherThanCarriedOver() {
+        // The catalog's Max correctives state this grid, and KF249 measured Max on the NUMBER/DATE pair only,
+        // so each cell the Max text names is measured on Max itself: the reuse needs no branch in OpListMath,
+        // which is exactly why nothing would otherwise prompt the question.
+        String[][] cells = {
+                {"StartDate", "Cutoff", "MVK_DATEFORMATS_NOT_COMPATIBLE"},
+                {"StartDate", "FragMonth", "MVK_DATEFORMATS_NOT_COMPATIBLE"},
+                {"StartDate", "FragDay", KernelLaws.ADMITTED},
+                {"StartDate", "Premium", "MVK_DATE_AND_NONDATE"},
+                {"Premium", "StartDate", "MVK_NOT_SORTABLE"},
+                {"Holder", "Premium", "MVK_NOT_SORTABLE"},
+                {"Premium", "Holder", "MVK_NOT_SORTABLE"},
+                {"Renewed", "Premium", "MVK_NOT_SORTABLE"},
+                {"Premium", "Tier", "MVK_NOT_SORTABLE"},
+                {"Window", "Window2", "MVK_NOT_SORTABLE"},
+        };
+        for (String[] cell : cells) {
+            String head = cell[0];
+            String comparand = head.equals("StartDate") ? "[StartDate]" : "0";
+            verdict(cell[2], "../" + head,
+                    "FieldFilled(" + head + ") And Max([" + head + "], [" + cell[1] + "]) > " + comparand);
+        }
+    }
+
+    @Test
     void rulekitAdmitsEveryPairTheKernelAdmits() {
         // the direction that catches an OVER-rejection: our gate must not refuse a shape the kernel accepts
         new OpListMath(OpListMath.Op.MIN, List.of(value("Premium"), value("Excess")));

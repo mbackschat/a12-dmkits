@@ -639,6 +639,18 @@
     },
     {
       "locator": {
+        "operator": "Abs",
+        "source": "CORRECTIVE",
+        "ordinal": 0
+      },
+      "digest": "sha256:652783c34cbb6224fb76ac7f0a76f0eeff91a1bee8c0a7413c8a7f0632fb0c37",
+      "fixture": "ORDER",
+      "group": "/Order",
+      "field": "../Quantity",
+      "dsl": "FieldFilled(Quantity) And Abs([Quantity]) > 0"
+    },
+    {
+      "locator": {
         "operator": "Min",
         "source": "INVALID_EXAMPLE",
         "ordinal": 0
@@ -663,6 +675,30 @@
     },
     {
       "locator": {
+        "operator": "Min",
+        "source": "CORRECTIVE",
+        "ordinal": 1
+      },
+      "digest": "sha256:31fc5808be13f5182886fdcefb12505b7e0138c49ebbc28203462a219cfc74cc",
+      "fixture": "ORDER",
+      "group": "/Order",
+      "field": "../OrderDate",
+      "dsl": "FieldFilled(OrderDate) And Min([OrderDate], [DeliveryDate]) > \"01.01.2020\""
+    },
+    {
+      "locator": {
+        "operator": "Min",
+        "source": "CORRECTIVE",
+        "ordinal": 2
+      },
+      "digest": "sha256:e7645ca4aab7f1cae2ffef0c8527d077c6d0065a7df94f57f101686196f40be1",
+      "fixture": "ORDER",
+      "group": "/Order",
+      "field": "../Quantity",
+      "dsl": "FieldFilled(Quantity) And Min([Quantity], [BackorderQuantity]) > 0"
+    },
+    {
+      "locator": {
         "operator": "Max",
         "source": "INVALID_EXAMPLE",
         "ordinal": 0
@@ -684,6 +720,30 @@
       "group": "/Order",
       "field": "../CustomerName",
       "dsl": "FieldFilled(CustomerName) And Max([OrderDate], [DeliveryDate]) > \"01.01.2020\""
+    },
+    {
+      "locator": {
+        "operator": "Max",
+        "source": "CORRECTIVE",
+        "ordinal": 1
+      },
+      "digest": "sha256:31fc5808be13f5182886fdcefb12505b7e0138c49ebbc28203462a219cfc74cc",
+      "fixture": "ORDER",
+      "group": "/Order",
+      "field": "../OrderDate",
+      "dsl": "FieldFilled(OrderDate) And Max([OrderDate], [DeliveryDate]) > \"01.01.2020\""
+    },
+    {
+      "locator": {
+        "operator": "Max",
+        "source": "CORRECTIVE",
+        "ordinal": 2
+      },
+      "digest": "sha256:9472afad306ac892fc1abacc8df9f1c0fa5e889faf1d7249c1b20b85667c5793",
+      "fixture": "ORDER",
+      "group": "/Order",
+      "field": "../Quantity",
+      "dsl": "FieldFilled(Quantity) And Max([Quantity], [BackorderQuantity]) > 0"
     },
     {
       "locator": {
