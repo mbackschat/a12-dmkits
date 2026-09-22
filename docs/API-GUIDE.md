@@ -778,6 +778,15 @@ TimeExpr capturedClock = Dsl.time(
 
 **Time construction uses a prefix.** `Dsl.time()` through `Dsl.time(hour, minute, second)` preserve the kernel's four legal arities. Omitted trailing components are fixed zero: `Dsl.time()` is midnight, `Dsl.time(Dsl.temporalComponent("10"))` is 10:00:00, and the two-component form is 10:30:00. The public `TimeConstruction` node therefore carries a copied `List<Calculation>` rather than three mandatory record slots; its former three-argument constructor remains as the source-compatible full-form convenience (findings 105–106 / IF232–IF234).
 
+**Arithmetic on a kind-typed ref.** `plus`/`minus`/`times`/`dividedBy`/`toThePowerOf` sit directly on `NumberRef`, taking another ref, a `NumberExpr` or a `long`, and `Computation.Builder.calc` takes a `NumberExpr` beside its `Calculation` form. Both are sugar over `asNumber()`/`expression()` and render identically, so the calculation arm of a ref now reads like its comparison arm instead of widening to `NumberExpr` and back (DG60):
+
+<!-- snippet: ref-arithmetic -->
+```java
+// Arithmetic reads off a kind-typed ref, like comparison does — no asNumber()/expression() round trip.
+NumberExpr lineTotal = m.num("/Order/Quantity").times(m.num("/Order/UnitPrice"));
+Condition mostlyBackordered = m.num("/Order/BackorderQuantity").times(2).gt(m.num("/Order/Quantity"));
+```
+
 **Rounding with an optional scale.** Both the expression `roundDown`/`roundUp`/`roundAccounting` family and its bare-field `…Value` siblings retain the kernel's optional decimal-places argument on the typed AST. The domain is `0..14`; every one-argument form means zero places. `RoundDown` is floor, `RoundUp` is ceiling, and accounting is `HALF_UP`, each after the kernel's scale-19 pre-round:
 
 <!-- snippet: field-rounding -->

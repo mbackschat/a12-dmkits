@@ -216,6 +216,80 @@ public record NumberRef(FieldRef field, int scale, boolean correlated) {
         return asNumber().ne(other);
     }
 
+    // --- arithmetic — the calculation arm of the same ref, so it reads like the comparison arm above ---
+
+    /**
+     * {@code [a] + [b]} — addition over another field's value. catalog:Arithmetic
+     *
+     * <p>These delegate to {@link #asNumber()} exactly as the comparisons do. They exist because a kind-typed
+     * ref that has to be widened before it can be used is friction the comparison arm never imposed
+     * (DEV-API-GAPS DG60): the same field read {@code QUANTITY.gt(10)} in a condition and
+     * {@code QUANTITY.asNumber().times(UNIT_PRICE.asNumber())} in a calculation.
+     */
+    public NumberExpr plus(NumberRef other) {
+        return asNumber().plus(other.asNumber());
+    }
+
+    /** {@code [a] - [b]}. catalog:Arithmetic */
+    public NumberExpr minus(NumberRef other) {
+        return asNumber().minus(other.asNumber());
+    }
+
+    /** {@code [a] * [b]}. catalog:Arithmetic */
+    public NumberExpr times(NumberRef other) {
+        return asNumber().times(other.asNumber());
+    }
+
+    /** {@code [a] / [b]}. catalog:Arithmetic */
+    public NumberExpr dividedBy(NumberRef other) {
+        return asNumber().dividedBy(other.asNumber());
+    }
+
+    /** {@code [a] ^ [b]}. catalog:Arithmetic */
+    public NumberExpr toThePowerOf(NumberRef other) {
+        return asNumber().toThePowerOf(other.asNumber());
+    }
+
+    public NumberExpr plus(NumberExpr other) {
+        return asNumber().plus(other);
+    }
+
+    public NumberExpr minus(NumberExpr other) {
+        return asNumber().minus(other);
+    }
+
+    public NumberExpr times(NumberExpr other) {
+        return asNumber().times(other);
+    }
+
+    public NumberExpr dividedBy(NumberExpr other) {
+        return asNumber().dividedBy(other);
+    }
+
+    public NumberExpr toThePowerOf(NumberExpr other) {
+        return asNumber().toThePowerOf(other);
+    }
+
+    public NumberExpr plus(long literal) {
+        return asNumber().plus(literal);
+    }
+
+    public NumberExpr minus(long literal) {
+        return asNumber().minus(literal);
+    }
+
+    public NumberExpr times(long literal) {
+        return asNumber().times(literal);
+    }
+
+    public NumberExpr dividedBy(long literal) {
+        return asNumber().dividedBy(literal);
+    }
+
+    public NumberExpr toThePowerOf(long literal) {
+        return asNumber().toThePowerOf(literal);
+    }
+
     /**
      * {@code FieldValueIncludedInValueList(field, n1, …)} — membership in a literal list. The
      * {@code long} signature is the kernel law: value-list numbers are integer literals only

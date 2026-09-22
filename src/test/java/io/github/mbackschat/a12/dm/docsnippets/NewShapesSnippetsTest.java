@@ -181,6 +181,18 @@ class NewShapesSnippetsTest {
     }
 
     @Test
+    void refArithmeticSnippet() {
+        // tag::ref-arithmetic[]
+        // Arithmetic reads off a kind-typed ref, like comparison does — no asNumber()/expression() round trip.
+        NumberExpr lineTotal = m.num("/Order/Quantity").times(m.num("/Order/UnitPrice"));
+        Condition mostlyBackordered = m.num("/Order/BackorderQuantity").times(2).gt(m.num("/Order/Quantity"));
+        // end::ref-arithmetic[]
+        assertEquals("[/Order/Quantity] * [/Order/UnitPrice]", new DslRenderer().render(lineTotal.expression()));
+        assertEquals("[/Order/BackorderQuantity] * 2 > [/Order/Quantity]",
+                new DslRenderer().render(mostlyBackordered));
+    }
+
+    @Test
     void indexedPresenceSnippet() {
         // tag::indexed-presence[]
         // semanticIndex(key) is the presence handle for the field value a semantic index resolves to;

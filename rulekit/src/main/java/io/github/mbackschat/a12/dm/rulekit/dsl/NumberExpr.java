@@ -151,6 +151,35 @@ public final class NumberExpr implements TemporalComponent {
         return exprCmp(CompareOp.NE, other);
     }
 
+    // A kind-typed ref on the RIGHT of an expression. Without these the two types compose only one way —
+    // `ref.gt(expr)` existed, `expr.gt(ref)` did not — so an authored comparison could fail to compile purely
+    // on the side its operands happened to fall (found writing the DG60 snippet). They widen and delegate, so
+    // the scale gate on ==/!= is the same one the NumberExpr overloads apply.
+
+    public Condition lt(NumberRef other) {
+        return lt(other.asNumber());
+    }
+
+    public Condition le(NumberRef other) {
+        return le(other.asNumber());
+    }
+
+    public Condition gt(NumberRef other) {
+        return gt(other.asNumber());
+    }
+
+    public Condition ge(NumberRef other) {
+        return ge(other.asNumber());
+    }
+
+    public Condition eq(NumberRef other) {
+        return eq(other.asNumber());
+    }
+
+    public Condition ne(NumberRef other) {
+        return ne(other.asNumber());
+    }
+
     /**
      * {@code [a] DiffersWithToleranceRange{N} [b]} — true when the two numbers differ by more than the
      * tolerance {@code t} (the kernel's "unequal within a tolerance"). Only for numbers/amounts.
@@ -193,6 +222,18 @@ public final class NumberExpr implements TemporalComponent {
 
     public NumberExpr minus(long literal) {
         return minus(new NumberExpr(NumberLiteral.of(literal)));
+    }
+
+    public NumberExpr times(long literal) {
+        return times(new NumberExpr(NumberLiteral.of(literal)));
+    }
+
+    public NumberExpr dividedBy(long literal) {
+        return dividedBy(new NumberExpr(NumberLiteral.of(literal)));
+    }
+
+    public NumberExpr toThePowerOf(long literal) {
+        return toThePowerOf(new NumberExpr(NumberLiteral.of(literal)));
     }
 
     private NumberExpr arith(Arithmetic.Op op, NumberExpr other) {

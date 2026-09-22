@@ -115,6 +115,7 @@ class DocSnippetFreshnessTest {
                     "adapter/src/test/java/io/github/mbackschat/a12/dm/adapter/FieldConfigExtrasTest.java"),
             new Lock("date-range-year-interpretation", "docs/API-GUIDE.md",
                     "adapter/src/test/java/io/github/mbackschat/a12/dm/adapter/FieldConfigExtrasTest.java"),
+            new Lock("ref-arithmetic", "docs/API-GUIDE.md", NEW_SHAPES),
             new Lock("field-rounding", "docs/API-GUIDE.md", NEW_SHAPES),
             new Lock("category-number-coercion", "docs/API-GUIDE.md",
                     "adapter/src/test/java/io/github/mbackschat/a12/dm/adapter/FieldValueAsNumberCategoryReadTest.java"),

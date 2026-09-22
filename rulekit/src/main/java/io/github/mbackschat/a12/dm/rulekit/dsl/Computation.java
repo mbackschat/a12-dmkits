@@ -193,10 +193,25 @@ public record Computation(
             return this;
         }
 
+        /**
+         * The same alternative from a numeric expression, so the arithmetic arm needs no conversion.
+         *
+         * <p>Without it every typed computation ended in an {@code expression()} whose only job was to satisfy
+         * this signature — the second half of DEV-API-GAPS DG60, the first being arithmetic on the ref itself.
+         */
+        public Builder calc(NumberExpr operation) {
+            return calc(operation.expression());
+        }
+
         /** The single unconditional alternative with a closed implicit-validation tolerance band. */
         public Builder calc(Calculation operation, ToleranceBand toleranceRangeOp) {
             alternatives.add(new Alternative(Optional.empty(), operation, Optional.ofNullable(toleranceRangeOp)));
             return this;
+        }
+
+        /** As {@link #calc(NumberExpr)}, with a closed implicit-validation tolerance band. */
+        public Builder calc(NumberExpr operation, ToleranceBand toleranceRangeOp) {
+            return calc(operation.expression(), toleranceRangeOp);
         }
 
         /** A preconditioned alternative; preconditions must be mutually exclusive (kernel-judged). */
@@ -487,11 +502,21 @@ public record Computation(
             return builder;
         }
 
+        /** As {@link Builder#calc(NumberExpr)}, for a preconditioned alternative. */
+        public Builder calc(NumberExpr operation) {
+            return calc(operation.expression());
+        }
+
         /** A preconditioned alternative with its own closed implicit-validation tolerance band. */
         public Builder calc(Calculation operation, ToleranceBand toleranceRangeOp) {
             builder.alternatives.add(
                     new Alternative(Optional.of(precondition), operation, Optional.ofNullable(toleranceRangeOp)));
             return builder;
+        }
+
+        /** As {@link Builder#calc(NumberExpr, ToleranceBand)}, for a preconditioned alternative. */
+        public Builder calc(NumberExpr operation, ToleranceBand toleranceRangeOp) {
+            return calc(operation.expression(), toleranceRangeOp);
         }
     }
 }
