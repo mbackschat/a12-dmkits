@@ -13,8 +13,11 @@ import io.github.mbackschat.a12.dm.core.ValueKind;
  * skipped (KERNEL-SEMANTICS §9, a {@code feldListenOp} sibling of {@code Sum}). The owner admits fields,
  * wildcard lists, semantic-index entities, enum category projections, and groups; each authored entity
  * shape stays one operand. A single operand is legal when it expands to a list — a wildcard or group —
- * while a scalar form needs a second operand. The owner groups String/Custom/Enumeration and
- * Date/DateFragment into result families, while the other kinds remain exact.
+ * while a scalar form needs a second operand.
+ *
+ * <p>The operands must share one kernel base type: String/Custom/Enumeration are one, and so are all four
+ * date-bearing kinds, which the kernel tells apart only by declared format (KERNEL-FINDINGS KF71). A record
+ * holding kinds cannot see a format, so the format half of that gate is the kernel's.
  */
 public record FirstFilledValue(FirstFilledOperand firstOperand, List<FirstFilledOperand> trailingOperands)
         implements Calculation {
@@ -40,7 +43,7 @@ public record FirstFilledValue(FirstFilledOperand firstOperand, List<FirstFilled
             if (operand.kind() == ValueKind.CONFIRM) {
                 throw Refusals.of(KernelCode.MVK_NO_BOOLY_ALLOWED, "FirstFilledValue does not accept CONFIRM operands");
             }
-            if (!sameOwnerFamily(firstOperand.kind(), operand.kind())) {
+            if (!sameBaseType(firstOperand.kind(), operand.kind())) {
                 throw new IllegalArgumentException("FirstFilledValue operands must have one owner result family; "
                         + describe(operand) + " is " + operand.kind() + " but "
                         + describe(firstOperand) + " is " + firstOperand.kind());
@@ -80,12 +83,17 @@ public record FirstFilledValue(FirstFilledOperand firstOperand, List<FirstFilled
         }
         ValueKind first = operands.getFirst().kind();
         for (FirstFilledOperand operand : operands) {
-            if (!sameOwnerFamily(first, operand.kind())) {
+            if (!sameBaseType(first, operand.kind())) {
                 throw new IllegalArgumentException("FirstFilledValue operands must have one owner result family; "
                         + first + " and " + operand.kind() + " differ");
             }
         }
         if (operands.stream().allMatch(operand -> operand.kind() == first)) {
+            return first;
+        }
+        if (!operands.stream().allMatch(operand -> sameOwnerFamily(first, operand.kind()))) {
+            // Date-bearing kinds from different families: the kernel types the list as its first field
+            // (CheckEntityListenUtils.checkAllFieldsMatchingOperationType), so this does too.
             return first;
         }
         return switch (family(first)) {
@@ -99,9 +107,35 @@ public record FirstFilledValue(FirstFilledOperand firstOperand, List<FirstFilled
         return operand.renderedPath();
     }
 
+    /**
+     * Whether two kinds may share one operand list. This is the kernel's base type
+     * ({@code OperationResultTypeMap.getOpTypeForField}), which is coarser than {@link #sameOwnerFamily}: its one
+     * {@code DATETIME} covers every date-bearing kind, because the declared format tells them apart there. Keyed
+     * on the owner family instead, this refused a TIME beside a time-only DATE_TIME and a DATE beside a date-only
+     * TIME, both kernel-admitted ({@code validate.laws.FirstFilledValueCrossKindFormatLawsTest}).
+     */
+    static boolean sameBaseType(ValueKind left, ValueKind right) {
+        return baseType(left) == baseType(right);
+    }
+
+    /** Whether a list mixing these kinds keeps its family's own result type, and a result may be assigned. */
     static boolean sameOwnerFamily(ValueKind left, ValueKind right) {
         return family(left) == family(right);
     }
+
+    private static BaseType baseType(ValueKind kind) {
+        return switch (kind) {
+            case STRING, ENUMERATION, CUSTOM -> BaseType.STRING;
+            case DATE, DATE_FRAGMENT, TIME, DATE_TIME -> BaseType.DATETIME;
+            case NUMBER -> BaseType.NUMBER;
+            case BOOLEAN -> BaseType.BOOLEAN;
+            case CONFIRM -> BaseType.CONFIRM;
+            case DATE_RANGE -> BaseType.DATE_RANGE;
+            case UNKNOWN -> BaseType.UNKNOWN;
+        };
+    }
+
+    private enum BaseType { NUMBER, STRING, BOOLEAN, CONFIRM, DATETIME, DATE_RANGE, UNKNOWN }
 
     private static Family family(ValueKind kind) {
         return switch (kind) {

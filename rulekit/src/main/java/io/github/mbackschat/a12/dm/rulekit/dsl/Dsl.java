@@ -717,15 +717,11 @@ public final class Dsl {
             throw new IllegalArgumentException(method + " needs a first operand compatible with " + expected + "; "
                     + "the first operand is " + first.kind());
         }
+        // The trailing operands answer to the record's own list gate, not to the factory: the first operand
+        // types the result, and whether the rest may join it is one kernel rule with one home.
         var trailing = new ArrayList<FirstFilledOperand>();
         trailing.add(second);
         trailing.addAll(List.of(rest));
-        for (FirstFilledOperand operand : trailing) {
-            if (!compatibleFirstFilledKind(expected, operand.kind())) {
-                throw new IllegalArgumentException(method + " needs operands compatible with " + expected + "; "
-                        + "an operand is " + operand.kind());
-            }
-        }
         return new FirstFilledValue(first, trailing);
     }
 
@@ -737,16 +733,9 @@ public final class Dsl {
         return value;
     }
 
+    /** Whether a factory named for {@code expected} may build a list its first operand types as {@code actual}. */
     private static boolean compatibleFirstFilledKind(ValueKind expected, ValueKind actual) {
-        if (expected == actual) {
-            return true;
-        }
-        return switch (expected) {
-            case STRING, ENUMERATION, CUSTOM ->
-                actual == ValueKind.STRING || actual == ValueKind.ENUMERATION || actual == ValueKind.CUSTOM;
-            case DATE, DATE_FRAGMENT -> actual == ValueKind.DATE || actual == ValueKind.DATE_FRAGMENT;
-            default -> false;
-        };
+        return FirstFilledValue.sameOwnerFamily(expected, actual);
     }
 
     private static NumberExpr listAggregate(ListAggregate.AggOp op, AggregateOperand first,

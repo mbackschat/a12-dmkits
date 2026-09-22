@@ -53,8 +53,8 @@ class FirstFilledValueFamilyLawsTest {
                     .dateField("StocktakeYear", d -> d.format("yyyy"))
                     .dateFragmentField("ReportingYear", f -> f.fragmentFormat("yyyy"))
                     .dateField("AuditedOn", d -> d.format("dd.MM.yyyy"))
-                    // The rest of the temporal family. TIME has exactly one legal declared format; DATE_TIME
-                    // has two — see theLegalFormatSetPerTemporalKindIsAWhitelist.
+                    // The rest of the temporal family, each at its conventional format; every date-bearing kind
+                    // admits the whole vocabulary — see theLegalFormatSetPerTemporalKindIsAWhitelist.
                     .timeField("OpensAt", t -> t.format("HH:mm:ss"))
                     .timeField("ClosesAt", t -> t.format("HH:mm:ss"))
                     .timeField("ShiftEnd", t -> t.format("HH:mm:ss"))
@@ -140,10 +140,12 @@ class FirstFilledValueFamilyLawsTest {
      * 2026-06-26. The second format is exactly what makes
      * {@link #theFormatKeyingHoldsOnASecondKindPairSharingOneFormat} authorable.
      *
-     * <p>{@code DATE} and {@code DATE_FRAGMENT} carry richer sets still (KERNEL-FINDINGS: {@code yyyy-MM-dd},
-     * {@code dd.MM.yyyy}, {@code yyyy}, {@code yyyy-MM}, {@code yyyyMM}, {@code MM}); this test pins the two
-     * kinds whose sets are small enough to enumerate exhaustively against a candidate list, which is what the
-     * bounding argument rests on.
+     * <p><i>Corrected 2026-09-22:</i> the corrected bound — one {@code TIME} format, two {@code DATE_TIME} — was
+     * the same sample-based claim one level down. These candidates held no date format at all, and the model
+     * admits every vocabulary format on every date-bearing kind ({@code docs/TEMPORAL-FORMAT-VOCABULARY.md}),
+     * so a {@code TIME} declared {@code yyyy-MM-dd} is legal too. The last two rows show it; the vocabulary, not
+     * this list, is the enumeration. What it made askable is wider than this test says:
+     * {@code FirstFilledValueCrossKindFormatLawsTest} shares one list between any two date-bearing kinds.
      */
     @Test
     void theLegalFormatSetPerTemporalKindIsAWhitelist() {
@@ -156,6 +158,8 @@ class FirstFilledValueFamilyLawsTest {
                 "yyyy-MM-dd'T'HH:mm:ss.SSS")) {
             actual.put("DATE_TIME " + format, modelVerdict(g -> g.dateTimeField("D", d -> d.format(format))));
         }
+        actual.put("TIME yyyy-MM-dd", modelVerdict(g -> g.timeField("T", t -> t.format("yyyy-MM-dd"))));
+        actual.put("DATE_TIME yyyy-MM-dd", modelVerdict(g -> g.dateTimeField("D", d -> d.format("yyyy-MM-dd"))));
 
         Map<String, String> expected = new LinkedHashMap<>();
         expected.put("TIME HH:mm:ss", "model accepted");
@@ -172,9 +176,12 @@ class FirstFilledValueFamilyLawsTest {
         expected.put("DATE_TIME MM/dd/yyyy'T'HH:mm:ss", INVALID_FORMAT);
         expected.put("DATE_TIME yyyy-MM-dd'T'HH:mm", INVALID_FORMAT);
         expected.put("DATE_TIME yyyy-MM-dd'T'HH:mm:ss.SSS", INVALID_FORMAT);
+        // a date format on a clock kind — the candidates above never asked, and it is admitted
+        expected.put("TIME yyyy-MM-dd", "model accepted");
+        expected.put("DATE_TIME yyyy-MM-dd", "model accepted");
         assertEquals(expected, actual,
-                "TIME admits one declared format and DATE_TIME admits two — the second DATE_TIME format is what "
-                        + "keeps the format-vs-kind discrimination askable outside the DATE/DATE_FRAGMENT pair");
+                "a clock kind refuses the other clock spellings yet admits a date format, so no clock-only "
+                        + "candidate list bounds its set — the derived vocabulary does");
     }
 
     /**
