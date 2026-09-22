@@ -12,6 +12,12 @@ import org.junit.jupiter.api.Test;
  * KERNEL-FINDINGS §10 — path / wildcard laws (accept/reject, parse + consistency tier). Uses the
  * nested-repeatable {@code project} fixture (Milestones ▸ Tasks), the structure needed to exercise the
  * wildcard-propagation rule.
+ *
+ * <p>This file is also the worked example for DEV-API-GAPS DG59, because its project rows are where the
+ * two legitimate reasons for a raw-String condition genuinely live. Every one was attempted typed on
+ * 2026-09-22 and the render compared: four are authored typed and the three that remain carry a
+ * {@link RawCondition} naming which reason applies and what the typed surface produces instead. Read a
+ * bare condition string in this file as unexamined, not as sanctioned.
  */
 class PathLawsTest {
 
@@ -79,9 +85,14 @@ class PathLawsTest {
 
     @Test
     void anOuterWildcardRequiresEveryRepeatableGroupBelowItToAlsoWildcard() {
-        // outer * on Milestones but a plain (non-*) Tasks below it → rejected
+        // outer * on Milestones but a plain (non-*) Tasks below it → rejected. Authored TYPED on purpose:
+        // the builder constructs this shape happily, so the row also shows that rulekit does NOT pre-empt
+        // the kernel's wildcard-propagation rule client-side — the refusal measured here is the kernel's.
+        BoundModel m = Fixtures.project();
         KernelLaws.rejectsProject("/Project", "../ProjectName",
-                "FieldFilled(ProjectName) And Sum(Milestones*/Tasks/Effort) > 0", "MVK_NO_WILDCARD");
+                m.field("/Project/ProjectName").filled()
+                        .and(Dsl.sum(m.flatten("/Project/Milestones*/Tasks/Effort")).gt(0)),
+                "MVK_NO_WILDCARD");
     }
 
     @Test
@@ -98,8 +109,10 @@ class PathLawsTest {
     @Test
     void aSingleWildcardOverTheOuterRepeatableAggregatesItsOwnField() {
         // starring just the outer repeatable to aggregate its own (non-nested) field is fine
+        BoundModel m = Fixtures.project();
         KernelLaws.acceptsProject("/Project", "../ProjectName",
-                "FieldFilled(ProjectName) And Sum(Milestones*/Budget) > 0");
+                m.field("/Project/ProjectName").filled()
+                        .and(Dsl.sum(m.flatten("/Project/Milestones*/Budget")).gt(0)));
     }
 
     @Test
@@ -107,18 +120,31 @@ class PathLawsTest {
         // "In a relative path with ..-notation, the '..' parts may not use the '*'." Starring the ..
         // itself (to reach all repetitions of an ancestor repeatable) → rejected; use the absolute form.
         KernelLaws.rejectsProject("/Project/Milestones/Tasks", "../Effort",
-                "FieldFilled(Effort) And Sum(..*/Budget) > 0", "MVK_INVALID_WILDCARD_REL");
+                RawCondition.shapeErased("FieldFilled(Effort) And Sum(..*/Budget) > 0",
+                        "flatten refuses a relative path outright — \"flatten takes a MODEL-ABSOLUTE path\" — "
+                                + "so a star on '..' has no typed form at all, measured 2026-09-22"),
+                "MVK_INVALID_WILDCARD_REL");
         // a star on a *named* segment (not the ..) is fine, and the absolute form expresses the intent
         KernelLaws.acceptsProject("/Project/Milestones/Tasks", "../Effort",
-                "FieldFilled(Effort) And Sum(/Project/Milestones*/Budget) > 0");
+                RawCondition.concreteSyntax("FieldFilled(Effort) And Sum(/Project/Milestones*/Budget) > 0",
+                        "the ABSOLUTE spelling is this row's subject, and render(group, …) emits "
+                                + "Sum(../../Milestones*/Budget) instead: path style is a renderer-wide "
+                                + "choice, so the mixed relative-error-field / absolute-aggregate text a "
+                                + "human writes here is unreachable typed (measured 2026-09-22, DG61)"));
     }
 
     @Test
     void aFieldNamedLikeAKeywordMustBeSingleQuotedInAPath() {
         // the project fixture has a field literally named "Date" (a language keyword)
         // unquoted → the parser reads the keyword and rejects
-        KernelLaws.rejectsProject("/Project", "../Date", "FieldFilled(Date)", "MVK_UNEXPECTED_TOKEN");
-        // single-quoting it makes it a plain identifier → accepted
-        KernelLaws.acceptsProject("/Project", "../Date", "FieldFilled('Date')");
+        KernelLaws.rejectsProject("/Project", "../Date",
+                RawCondition.concreteSyntax("FieldFilled(Date)",
+                        "the UNQUOTED spelling is the subject, and it is exactly what the typed surface "
+                                + "will not produce: m.field(\"/Project/Date\").filled() renders "
+                                + "FieldFilled('Date'), i.e. the accepted arm below (measured 2026-09-22)"),
+                "MVK_UNEXPECTED_TOKEN");
+        // single-quoting it makes it a plain identifier → accepted; the typed surface quotes it for you,
+        // which is what makes the rejected arm above unreachable typed rather than merely inconvenient
+        KernelLaws.acceptsProject("/Project", "../Date", Fixtures.project().field("/Project/Date").filled());
     }
 }

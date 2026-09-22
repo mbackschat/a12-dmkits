@@ -258,6 +258,23 @@ final class KernelLaws {
         rejectsProject(group, errorField, render(group, condition), expectedCode);
     }
 
+    // ---- raw twins, for the rows the typed surface genuinely cannot author ------------------------------
+    //
+    // A {@link RawCondition} is text PLUS the reason it is text, so a row that must stay raw says which of
+    // DG59's two reasons applies instead of being indistinguishable from a row that is raw by habit. Only
+    // the names an already-triaged family needs carry a twin; the rest arrive with their own triage, since
+    // an overload nobody calls would be exactly the speculative surface this harness is trying to shed.
+
+    /** As {@link #acceptsProject}, for text the typed surface cannot produce — {@code raw} says why. */
+    static void acceptsProject(String group, String errorField, RawCondition raw) {
+        acceptsProject(group, errorField, raw.text());
+    }
+
+    /** As {@link #rejectsProject}, for text the typed surface cannot produce — {@code raw} says why. */
+    static void rejectsProject(String group, String errorField, RawCondition raw, String expectedCode) {
+        rejectsProject(group, errorField, raw.text(), expectedCode);
+    }
+
     /** As {@link #acceptsModel(String, String, String, String)}, authored typed. */
     static void acceptsModel(String json, String group, String errorField, Condition condition) {
         acceptsModel(json, group, errorField, render(group, condition));
