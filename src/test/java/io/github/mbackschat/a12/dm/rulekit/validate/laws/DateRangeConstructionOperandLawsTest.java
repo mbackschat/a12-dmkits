@@ -1,22 +1,27 @@
 package io.github.mbackschat.a12.dm.rulekit.validate.laws;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 
 import org.junit.jupiter.api.Test;
 
+import io.github.mbackschat.a12.dm.core.KernelCodeRefusal;
 import io.github.mbackschat.a12.dm.core.ValueKind;
 import io.github.mbackschat.a12.dm.modelkit.DatePrecision;
 import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft;
 import io.github.mbackschat.a12.dm.modelkit.FieldKind;
 import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel;
+import io.github.mbackschat.a12.dm.rulekit.dsl.DateRangeConstruction;
 import io.github.mbackschat.a12.dm.rulekit.dsl.DateRef;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Dsl;
 import io.github.mbackschat.a12.dm.rulekit.dsl.FieldRef;
+import io.github.mbackschat.a12.dm.rulekit.dsl.FieldValue;
 import io.github.mbackschat.a12.dm.rulekit.validate.DraftRule;
 import io.github.mbackschat.a12.dm.rulekit.validate.RuleValidator;
 
@@ -101,13 +106,47 @@ class DateRangeConstructionOperandLawsTest {
         // The finish slot is gated by the same grammar rule, not only the start slot.
         verdicts.put("Today as finish",
                 verdict("DateRange(/Policy/Start, Today) == [/Policy/Window]", "../Start"));
+        // Every other syntactic head a date-valued expression can render with, so rulekit's citation of this
+        // class covers what the typed surface can put here rather than the four spellings above.
+        verdicts.put("bracketed value", verdict("DateRange([/Policy/Start], /Policy/End) == [/Policy/Window]"));
+        verdicts.put("date aggregate",
+                verdict("DateRange(Max([/Policy/Start], [/Policy/End]), /Policy/End) == [/Policy/Window]"));
+        verdicts.put("parentheses", verdict("DateRange((/Policy/Start), /Policy/End) == [/Policy/Window]"));
+        verdicts.put("unquoted date", verdict("DateRange(01.01.2020, /Policy/End) == [/Policy/Window]"));
+        verdicts.put("time literal", verdict("DateRange(\"12:00:00\", /Policy/End) == [/Policy/Window]"));
+        verdicts.put("date-time literal",
+                verdict("DateRange(\"2020-01-01T12:00:00\", /Policy/End) == [/Policy/Window]"));
 
-        assertEquals(Map.of(
-                "Today", "MVK_UNEXPECTED_TOKEN",
-                "BaseYear", "MVK_UNEXPECTED_TOKEN",
-                "AddMonths", "MVK_UNEXPECTED_TOKEN",
-                "date literal", "MVK_UNEXPECTED_TOKEN",
-                "Today as finish", "MVK_UNEXPECTED_TOKEN"), verdicts);
+        Map<String, String> expected = new LinkedHashMap<>();
+        verdicts.keySet().forEach(shape -> expected.put(shape, "MVK_UNEXPECTED_TOKEN"));
+        assertEquals(expected, verdicts);
+    }
+
+    @Test
+    void aBareIntegerIsReadAsAnEntityName_soTheParseCodeDependsOnSpelling() {
+        // The one spelling that is NOT an unexpected token: a digit sequence is a legal entity-name start, so
+        // the parse succeeds and the name fails to resolve. It is why rulekit cites the parse class only for a
+        // date-valued operand, which never renders as a bare integer.
+        assertEquals("MVK_INVALID_ENTITY", verdict("DateRange(5, /Policy/End) == [/Policy/Window]"));
+    }
+
+    @Test
+    void rulekitCitesEachMeasuredClassAndNoneWhereTheClassDependsOnSpelling() {
+        BoundModel m = BoundModel.ofJson(MODEL);
+        DateRef end = m.date("/Policy/End");
+
+        for (var start : List.of(Dsl.today(), Dsl.addMonths(m.date("/Policy/Start"), 1))) {
+            KernelCodeRefusal refusal = assertThrows(KernelCodeRefusal.class, () -> Dsl.dateRange(start, end));
+            assertEquals("MVK_UNEXPECTED_TOKEN", refusal.code().name());
+        }
+        KernelCodeRefusal wrongKind = assertThrows(KernelCodeRefusal.class, () -> new DateRangeConstruction(
+                new FieldValue(m.field("/Policy/Qty")), end.expression()));
+        assertEquals("MVK_WRONG_DATE_FORMAT_FOR_OP", wrongKind.code().name());
+
+        IllegalArgumentException integer = assertThrows(IllegalArgumentException.class,
+                () -> new DateRangeConstruction(Dsl.number(5).expression(), end.expression()));
+        assertFalse(integer instanceof KernelCodeRefusal,
+                "a bare integer draws a different class than every other non-entity, so no code is cited");
     }
 
     @Test

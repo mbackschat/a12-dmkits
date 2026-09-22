@@ -1,5 +1,7 @@
 package io.github.mbackschat.a12.dm.rulekit.dsl;
 
+import io.github.mbackschat.a12.dm.core.KernelCode;
+import io.github.mbackschat.a12.dm.core.Refusals;
 import io.github.mbackschat.a12.dm.core.ValueKind;
 
 /**
@@ -15,9 +17,14 @@ import io.github.mbackschat.a12.dm.core.ValueKind;
  * <p><b>Each endpoint must be an entity reference of a date-bearing or date-fragment kind</b>, and both
  * refusals below are measured against the kernel rather than assumed — the construction's operand gates in
  * KERNEL-FINDINGS §6, locked by {@code validate.laws.DateRangeConstructionOperandLawsTest}. The kernel grammar
- * admits only an {@code entitySpec} in either slot, so a constant, a shifted date, or a literal is a parse
- * error there; and every kind outside the date-bearing set — NUMBER, STRING, ENUMERATION, BOOLEAN, CONFIRM,
- * CUSTOM and DATE_RANGE — draws {@code MVK_WRONG_DATE_FORMAT_FOR_OP}.
+ * admits only an {@code entitySpec} in either slot, so any other operand is a parse error there — and which
+ * one depends on its SPELLING. Every date-valued expression the typed surface can put in the slot (a constant,
+ * a shifted date, a date aggregate, a quoted or unquoted literal) is {@code MVK_UNEXPECTED_TOKEN}, and is
+ * refused citing it; a bare integer is instead read as an entity name and draws {@code MVK_INVALID_ENTITY}.
+ * A non-date operand arrives only through an opaque converter or a raw constructor call, where one code
+ * would be wrong for part of it, so that refusal cites none. Every kind outside the date-bearing set —
+ * NUMBER, STRING, ENUMERATION, BOOLEAN, CONFIRM, CUSTOM and DATE_RANGE — draws, and is refused citing,
+ * {@code MVK_WRONG_DATE_FORMAT_FOR_OP}.
  *
  * <p><b>What the endpoint gate actually reads is the DECLARED FORMAT, so the kind check stops where the
  * measurement does.</b> A TIME- or DATE_TIME-declared field carrying {@code yyyy-MM-dd} is admitted in either
@@ -48,14 +55,25 @@ public record DateRangeConstruction(Calculation start, Calculation end)
         FieldRef field = switch (expression) {
             case FieldValue value -> value.field();
             case IndexedFieldValue value -> value.field();
-            default -> throw new IllegalArgumentException("DateRange " + position
-                    + " must be a date or date-fragment entity reference");
+            default -> throw notAnEntity(expression, position);
         };
         if (!isDateBearingKind(field.kind())) {
-            throw new IllegalArgumentException("DateRange " + position + " field " + field.path()
-                    + " is " + field.kind() + ", expected a date-bearing or date-fragment field");
+            String problem = "DateRange " + position + " field " + field.path()
+                    + " is " + field.kind() + ", expected a date-bearing or date-fragment field";
+            // UNKNOWN has no authorable counterpart to measure, so it is the one refused kind left uncoded.
+            throw field.kind() == ValueKind.UNKNOWN
+                    ? new IllegalArgumentException(problem)
+                    : Refusals.of(KernelCode.MVK_WRONG_DATE_FORMAT_FOR_OP, problem);
         }
         return expression;
+    }
+
+    /** The slot's parse error, cited only where its code does not depend on spelling (see the class javadoc). */
+    private static IllegalArgumentException notAnEntity(Calculation expression, String position) {
+        String problem = "DateRange " + position + " must be a date or date-fragment entity reference";
+        return isDateBearingKind(expression.kind())
+                ? Refusals.of(KernelCode.MVK_UNEXPECTED_TOKEN, problem)
+                : new IllegalArgumentException(problem);
     }
 
     /**
