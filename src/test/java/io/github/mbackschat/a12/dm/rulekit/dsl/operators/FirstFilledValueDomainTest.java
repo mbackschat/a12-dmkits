@@ -152,8 +152,6 @@ class FirstFilledValueDomainTest {
                 () -> new FirstFilledValue(model.firstFilledGroup("/Selection"), List.of()));
         assertThrows(IllegalArgumentException.class,
                 () -> model.firstFilledGroupFor("/Selection/IndexedNumbers*", "1"));
-        assertThrows(IllegalArgumentException.class,
-                () -> model.flatten("/Selection/Rows*/Priority").firstFilledOperand().forIndex("A"));
 
         var filtered = model.flatten("/Selection/FilterRows*/Candidate");
         assertThrows(IllegalArgumentException.class, () -> filtered.having(

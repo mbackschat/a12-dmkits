@@ -337,9 +337,11 @@ internal class Functions(private val mapping: Mapping) {
 
     /**
      * `FirstFilledValue(Group For key)` — the resolved [IndexedGroupValue] already carries a validated group
-     * and key (existence, correlation, the `MVK_SEMANTIC_INDEX_AND_WILDCARD` guard all ran building it), so
-     * this just re-routes those components into `BoundModel.firstFilledGroupFor` — code that already exists,
-     * not new construction logic.
+     * and key (existence and correlation ran building it), so this just re-routes those components into
+     * `BoundModel.firstFilledGroupFor` — code that already exists, not new construction logic. The star-free
+     * [GroupListRef.path] is the whole scope only because a starred entity with an index never reaches here: it
+     * parses as an entity spec, which [Operands.fieldRef] leaves unmapped, although A12 admits a star below the
+     * index group (`rulekit.validate.laws.SemanticIndexWildcardPlacementLawsTest`).
      */
     private fun firstFilledIndexedGroup(indexed: IndexedGroupValue): FirstFilledOperand {
         val groupPath = indexed.group().path()

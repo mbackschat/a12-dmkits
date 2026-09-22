@@ -79,11 +79,13 @@ class PromotedGateIsReachedGuardTest {
      * `firstFilledGroupFor`, both already in GATES, and `Dsl.checkedStringList` is not a BoundModel gate at
      * all. The reachability assertions above stayed green across the change, which is the evidence for that.
      *
-     * <p>Lowered 2026-09-23: the root-group refusal left {@code firstFilledGroupScope} for the
-     * {@code FirstFilledValue} record, which asks it after the duplicate gate, as A12 does.
+     * <p>Lowered 2026-09-23, twice: the root-group refusal left {@code firstFilledGroupScope} for the
+     * {@code FirstFilledValue} record, which asks it after the duplicate gate, as A12 does; and the
+     * wildcard-and-index refusal stopped citing a code, since A12's class depends on where the star sits
+     * relative to the index group and a key gate can answer ahead of it.
      */
     private static final Map<String, Integer> REFUSAL_SITES =
-            Map.of("BoundModel.java", 8, "Dsl.java", 11, "DuplicateGate.java", 2);
+            Map.of("BoundModel.java", 7, "Dsl.java", 11, "DuplicateGate.java", 2);
 
     private static final Pattern REFUSAL = Pattern.compile("Refusals\\.of\\(");
 

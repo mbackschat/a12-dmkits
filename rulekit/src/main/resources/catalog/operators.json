@@ -4501,7 +4501,7 @@
         "the field's enclosing repeatable group must declare an indexFieldName (else MVK_NO_INDEX_FIELD)",
         "the key is EITHER a quoted string constant ([Field For \"x\"]) OR a field reference ([Field For KeyField], the current value of KeyField), matching the index field's type; an iterating entity key is restricted (MVK_SEMANTIC_INDEX_INVALID_ITER)",
         "accepted inside NumberOfFilledFields, but rejected inside NumberOfFilledGroups and RepetitionNotUnique (MVK_SEMANTIC_INDEX_NOT_ALLOWED)",
-        "not supported under a starred enclosing group (MVK_SEMANTIC_INDEX_AND_WILDCARD)"
+        "a star is judged against the index group (the nearest group on the path declaring an indexFieldName): a star on its own level is MVK_SEMANTIC_INDEX_AND_WILDCARD, a star above it MVK_SEMANTIC_INDEX_BELOW_WILDCARD, and a star below it is admitted (NoGroupFilled(Packages/Parcels* For \"P1\") where Packages declares the index)"
       ],
       "gotchas": [
         {

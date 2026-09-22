@@ -5599,11 +5599,18 @@
       "operator": "SemanticIndex",
       "lane": "CONSTRAINT",
       "ordinal": 3,
-      "digest": "sha256:3a18c914fca9999f598d5a20c0c948b043c2de23fb913827d8bf4a6537889048",
+      "digest": "sha256:c1bdf9163abbfa8b442976ec90756dd781959d276430c2a6665e3e857b38af53",
       "classifications": [
-        "REJECTION"
+        "REJECTION",
+        "ADMISSION"
       ],
-      "evidence": []
+      "evidence": [
+        {
+          "classification": "ADMISSION",
+          "type": "KERNEL_LAW",
+          "id": "rulekit.validate.laws.SemanticIndexWildcardPlacementLawsTest.theStarIsJudgedAgainstTheIndexGroup_onBothCarriers"
+        }
+      ]
     },
     {
       "operator": "SemanticIndex",
@@ -10801,6 +10808,27 @@
         {
           "type": "CLAIM_PROBE",
           "id": "SemanticIndex.under-wildcard"
+        }
+      ]
+    },
+    {
+      "id": "literal.SemanticIndex.constraint3.MVK_SEMANTIC_INDEX_BELOW_WILDCARD",
+      "operator": "SemanticIndex",
+      "kind": "CONDITION",
+      "units": [
+        {
+          "lane": "CONSTRAINT",
+          "ordinal": 3
+        }
+      ],
+      "expected": {
+        "verdict": "REJECTED",
+        "code": "MVK_SEMANTIC_INDEX_BELOW_WILDCARD"
+      },
+      "evidence": [
+        {
+          "type": "CLAIM_PROBE",
+          "id": "SemanticIndex.star-above-index-group"
         }
       ]
     },
@@ -22949,6 +22977,92 @@
         {
           "type": "CLAIM_PROBE",
           "id": "SemanticIndex.under-wildcard",
+          "side": "CONTROL"
+        }
+      ]
+    },
+    {
+      "id": "review.SemanticIndex.SemanticIndex.star-below-index-group.trigger",
+      "operator": "SemanticIndex",
+      "kind": "CONDITION",
+      "units": [
+        {
+          "lane": "CONSTRAINT",
+          "ordinal": 3
+        }
+      ],
+      "expected": {
+        "verdict": "REJECTED",
+        "code": "MVK_SEMANTIC_INDEX_AND_WILDCARD"
+      },
+      "evidence": [
+        {
+          "type": "CLAIM_PROBE",
+          "id": "SemanticIndex.star-below-index-group",
+          "side": "TRIGGER"
+        }
+      ]
+    },
+    {
+      "id": "review.SemanticIndex.SemanticIndex.star-below-index-group.control",
+      "operator": "SemanticIndex",
+      "kind": "CONDITION",
+      "units": [
+        {
+          "lane": "CONSTRAINT",
+          "ordinal": 3
+        }
+      ],
+      "expected": {
+        "verdict": "ACCEPTED"
+      },
+      "evidence": [
+        {
+          "type": "CLAIM_PROBE",
+          "id": "SemanticIndex.star-below-index-group",
+          "side": "CONTROL"
+        }
+      ]
+    },
+    {
+      "id": "review.SemanticIndex.SemanticIndex.star-above-index-group.trigger",
+      "operator": "SemanticIndex",
+      "kind": "CONDITION",
+      "units": [
+        {
+          "lane": "CONSTRAINT",
+          "ordinal": 3
+        }
+      ],
+      "expected": {
+        "verdict": "REJECTED",
+        "code": "MVK_SEMANTIC_INDEX_BELOW_WILDCARD"
+      },
+      "evidence": [
+        {
+          "type": "CLAIM_PROBE",
+          "id": "SemanticIndex.star-above-index-group",
+          "side": "TRIGGER"
+        }
+      ]
+    },
+    {
+      "id": "review.SemanticIndex.SemanticIndex.star-above-index-group.control",
+      "operator": "SemanticIndex",
+      "kind": "CONDITION",
+      "units": [
+        {
+          "lane": "CONSTRAINT",
+          "ordinal": 3
+        }
+      ],
+      "expected": {
+        "verdict": "ACCEPTED"
+      },
+      "evidence": [
+        {
+          "type": "CLAIM_PROBE",
+          "id": "SemanticIndex.star-above-index-group",
           "side": "CONTROL"
         }
       ]

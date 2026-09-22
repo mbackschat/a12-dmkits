@@ -158,6 +158,27 @@ public final class ModelDrafts {
                 .build();
     }
 
+    /**
+     * Shipping — an index group with a repeatable group BELOW it ({@code Packages}/{@code Parcels}), one with a
+     * repeatable group ABOVE it ({@code Regions}/{@code Stores}), and a repeatable group with no index group on
+     * its chain ({@code Lines}): the three star placements a semantic index is judged by (KERNEL-FINDINGS KF351).
+     */
+    public static DocumentModelDraft shipping() {
+        return DocumentModelDraft.named("shipping").locale("en_US")
+                .rootGroup("Order", o -> o
+                        .field("Title", FieldKind.STRING)
+                        .group("Packages", g -> g.repeatable(5).indexField("PackageCode")
+                                .field("PackageCode", FieldKind.STRING)
+                                .field("Carrier", FieldKind.STRING)
+                                .group("Parcels", p -> p.repeatable(5).field("Label", FieldKind.STRING)
+                                        .field("Tracking", FieldKind.STRING)))
+                        .group("Regions", g -> g.repeatable(5).field("RegionName", FieldKind.STRING)
+                                .group("Stores", s -> s.repeatable(5).indexField("StoreCode")
+                                        .field("StoreCode", FieldKind.STRING).field("Manager", FieldKind.STRING)))
+                        .group("Lines", g -> g.repeatable(5).field("Sku", FieldKind.STRING)))
+                .build();
+    }
+
     /** A repeatable root group (multi-form) + a plain root group — for the NumberOfFilledGroups root-group rule. */
     public static DocumentModelDraft repeatableRoot() {
         return DocumentModelDraft.named("multiform").locale("en_US")

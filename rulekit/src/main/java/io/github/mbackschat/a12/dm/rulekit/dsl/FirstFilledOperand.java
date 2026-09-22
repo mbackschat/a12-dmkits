@@ -141,11 +141,12 @@ public final class FirstFilledOperand implements DuplicateOperand {
         return withSemanticIndex(new FieldIndex(field));
     }
 
+    /**
+     * A star beside the index is left to the kernel: A12 admits one below the index group and refuses one on or
+     * above it, and this operand does not know which group that is ({@link BoundModel#firstFilledGroupFor}
+     * does, and refuses there; {@code validate.laws.SemanticIndexWildcardPlacementLawsTest}).
+     */
     private FirstFilledOperand withSemanticIndex(SemanticIndexKey key) {
-        if (hasWildcard()) {
-            throw Refusals.of(KernelCode.MVK_SEMANTIC_INDEX_AND_WILDCARD,
-                    "a semantic index and wildcard may not address the same entity: " + renderedPath());
-        }
         if (semanticIndex != null) {
             throw new IllegalStateException("FirstFilledValue target already has a semantic index");
         }

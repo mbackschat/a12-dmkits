@@ -526,14 +526,14 @@ public final class BoundModel {
     /** A group selected by a literal semantic-index key for {@code FirstFilledValue}. */
     public FirstFilledOperand firstFilledGroupFor(String groupPath, String indexValue) {
         GroupListRef scope = firstFilledGroupScope(groupPath);
-        requireExactSemanticIndexGroup(scope);
+        requireNoStarAtOrAboveIndexGroup(scope);
         return firstFilledGroupOperand(scope, new FirstFilledOperand.LiteralIndex(indexValue));
     }
 
     /** A group selected by a field-valued semantic-index key for {@code FirstFilledValue}. */
     public FirstFilledOperand firstFilledGroupFor(String groupPath, FieldRef indexField) {
         GroupListRef scope = firstFilledGroupScope(groupPath);
-        requireExactSemanticIndexGroup(scope);
+        requireNoStarAtOrAboveIndexGroup(scope);
         return firstFilledGroupOperand(scope, new FirstFilledOperand.FieldIndex(indexField));
     }
 
@@ -586,15 +586,35 @@ public final class BoundModel {
         return fields().filter(field -> field.path().startsWith(prefix)).map(FieldInfo::ref).toList();
     }
 
-    /** Package-visible so {@link IndexedGroupValue}'s leaf records share this guard rather than each
-     *  re-stating it — an index and a wildcard can never address the same group, regardless of which
-     *  construct (this class's own {@code firstFilledGroupFor}, or the general entity-list arm) builds
-     *  the indexed group. */
-    static void requireExactSemanticIndexGroup(GroupListRef scope) {
-        if (!scope.flattened().isEmpty()) {
-            throw Refusals.of(KernelCode.MVK_SEMANTIC_INDEX_AND_WILDCARD,
-                    "a semantic index and wildcard may not address the same group: " + scope.renderedPath());
+    /**
+     * A star beside a semantic index is judged against the INDEX GROUP, the nearest group on the scope's own
+     * chain that declares an index field ({@code CheckEntityUtils.getIndexGroup}): A12 refuses a star on its
+     * level or above it, and admits one below, where the index binds the index group's level and the star
+     * iterates beneath it ({@code validate.laws.SemanticIndexWildcardPlacementLawsTest}).
+     *
+     * <p>Uncoded, because a key, containment or iteration gate answers ahead of both star classes (KERNEL-FINDINGS
+     * KF351) and whether a literal key is applicable to the index field is not decided here. With no index group
+     * the index itself is refused, and that stays the kernel's, starred or not.
+     */
+    private void requireNoStarAtOrAboveIndexGroup(GroupListRef scope) {
+        Optional<String> indexGroup = indexGroupOf(scope.path());
+        for (GroupRef starred : scope.flattened()) {
+            String level = starred.path().value();
+            if (indexGroup.filter(group -> group.equals(level) || group.startsWith(level + "/")).isPresent()) {
+                throw new IllegalArgumentException("a semantic index may not sit beside a wildcard on or above its"
+                        + " index group " + indexGroup.get() + ": " + scope.renderedPath());
+            }
         }
+    }
+
+    /** The nearest group on {@code groupPath}'s own chain, itself included, that declares an index field. */
+    private Optional<String> indexGroupOf(String groupPath) {
+        for (String level = groupPath; !level.isEmpty(); level = level.substring(0, level.lastIndexOf('/'))) {
+            if (index.declaresIndexField(level)) {
+                return Optional.of(level);
+            }
+        }
+        return Optional.empty();
     }
 
     // --- navigation (Level 1, study finding 9): streams of info handles; filter is the matcher --

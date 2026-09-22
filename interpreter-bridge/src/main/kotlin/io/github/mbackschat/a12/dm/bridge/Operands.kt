@@ -242,8 +242,8 @@ internal class Operands(private val mapping: Mapping) {
      * (unindexed) group arm above: `flattenGroup` reads the model's own repeatability, and its result is never
      * re-guessed here. A group's own semantic INDEX has no marker slot, so an outer-marked target is refused
      * the same way — unlike a group-presence leaf, which carries one (see `Predicates.groupPresence`).
-     * The wildcard/index conflict (`MVK_SEMANTIC_INDEX_AND_WILDCARD`) is rulekit's own guard, in
-     * [IndexedGroupValue]'s leaf records — not pre-checked here.
+     * A star beside the index is not judged here, and rulekit's [IndexedGroupValue] records leave it to the
+     * kernel: which group is the index group is a model fact they never see.
      */
     fun indexedGroup(node: Expr): IndexedGroupValue {
         if (node is Expr.SemanticIndex) {

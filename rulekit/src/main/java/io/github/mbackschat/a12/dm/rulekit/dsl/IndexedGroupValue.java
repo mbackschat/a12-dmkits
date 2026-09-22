@@ -17,11 +17,10 @@ import java.util.Optional;
  * form's KEY can,
  * so the identity's correlation component is the key's alone.
  *
- * <p>No compact-constructor check for arity or duplicates, matching {@link IndexedFieldValue}'s own
- * discipline — those gates live in {@link #duplicateIdentity()} and the switches it feeds. The one
- * check both leaf records DO carry is {@link BoundModel#requireExactSemanticIndexGroup} — an index and
- * a wildcard can never address the same group, reusing the exact guard {@code firstFilledGroupFor}
- * already established for this construct's {@code FirstFilledValue} arm, not a new invention.
+ * <p>No compact-constructor check at all, matching {@link IndexedFieldValue}'s own discipline — arity and
+ * duplicates live in {@link #duplicateIdentity()} and the switches it feeds. A star in {@link #group()} is left
+ * to the kernel too: A12 admits one below the index group and refuses one on or above it, and which group is
+ * the index group is a model fact these records never see ({@code validate.laws.SemanticIndexWildcardPlacementLawsTest}).
  */
 public sealed interface IndexedGroupValue extends AggregateOperand, GroupListOperand
         permits GroupSemanticIndexValue, GroupSemanticIndexFieldValue {

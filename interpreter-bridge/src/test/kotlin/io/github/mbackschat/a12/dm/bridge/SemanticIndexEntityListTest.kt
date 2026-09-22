@@ -14,7 +14,6 @@ import io.github.mbackschat.a12.dm.rulekit.dsl.Calculation
 import io.github.mbackschat.a12.dm.rulekit.dsl.ComparisonCondition
 import io.github.mbackschat.a12.dm.rulekit.dsl.CountAggregate
 import io.github.mbackschat.a12.dm.rulekit.dsl.FirstFilledValue
-import io.github.mbackschat.a12.dm.rulekit.dsl.GroupListRef
 import io.github.mbackschat.a12.dm.rulekit.dsl.GroupSemanticIndexValue
 import io.github.mbackschat.a12.dm.rulekit.dsl.SemanticIndexValue
 
@@ -172,29 +171,6 @@ class SemanticIndexEntityListTest {
     fun twoIndexedGroupOperandsDifferingOnlyByIndexKeyAreNotADuplicate() {
         assertDoesNotThrow {
             translate("NumberOfFilledFields(Items For \"a\", Items For \"b\") > 1")
-        }
-    }
-
-    /**
-     * A starred group with an index is a contradiction — an index picks ONE repetition, a wildcard scans
-     * ALL of them — so rulekit's own guard (`BoundModel.requireExactSemanticIndexGroup`, reused
-     * unchanged from the `FirstFilledValue` arm this construct already had) refuses it.
-     *
-     * The bridge's own routing can never actually construct a starred scope here: a bare semantic
-     * index's target is never itself starred in the AST (that shape is `Expr.EntitySpec`, the
-     * out-of-scope entityspec-field-slot bucket), and `Operands.indexedGroup` passes the parsed
-     * path straight to `flattenGroup` with no `*` in it. So this proves the TYPE's own guard
-     * directly — the way `OperandsTest` already tests operand resolution below the parser — rather
-     * than asserting an end-to-end shape this bridge cannot currently produce.
-     */
-    @Test
-    fun aStarredGroupScopeWithAnIndexIsRejectedByTheTypeItself() {
-        val starred: GroupListRef = model.flattenGroup("/Order/Items*")
-        val e = assertThrows(IllegalArgumentException::class.java) {
-            GroupSemanticIndexValue(starred, "a")
-        }
-        assertTrue(e.message!!.contains("MVK_SEMANTIC_INDEX_AND_WILDCARD")) {
-            "expected the kernel's own code in: ${e.message}"
         }
     }
 

@@ -1751,6 +1751,44 @@
       }
     },
     {
+      "id": "SemanticIndex.star-below-index-group",
+      "operator": "SemanticIndex",
+      "kind": "CONDITION",
+      "fixture": "SHIPPING",
+      "trigger": {
+        "group": "/Order",
+        "field": "../Title",
+        "dsl": "FieldFilled(Title) And NoGroupFilled(Packages*/Parcels* For \"P1\")",
+        "verdict": "REJECTED",
+        "code": "MVK_SEMANTIC_INDEX_AND_WILDCARD"
+      },
+      "control": {
+        "group": "/Order",
+        "field": "../Title",
+        "dsl": "FieldFilled(Title) And NoGroupFilled(Packages/Parcels* For \"P1\")",
+        "verdict": "ACCEPTED"
+      }
+    },
+    {
+      "id": "SemanticIndex.star-above-index-group",
+      "operator": "SemanticIndex",
+      "kind": "CONDITION",
+      "fixture": "SHIPPING",
+      "trigger": {
+        "group": "/Order/Regions",
+        "field": "../RegionName",
+        "dsl": "FieldFilled(RegionName) And NoGroupFilled(/Order/Regions*/Stores For \"S1\")",
+        "verdict": "REJECTED",
+        "code": "MVK_SEMANTIC_INDEX_BELOW_WILDCARD"
+      },
+      "control": {
+        "group": "/Order/Regions",
+        "field": "../RegionName",
+        "dsl": "FieldFilled(RegionName) And NoGroupFilled(/Order/Regions/Stores For \"S1\")",
+        "verdict": "ACCEPTED"
+      }
+    },
+    {
       "id": "FieldValueAsString.non-number",
       "operator": "FieldValueAsString",
       "kind": "CONDITION",

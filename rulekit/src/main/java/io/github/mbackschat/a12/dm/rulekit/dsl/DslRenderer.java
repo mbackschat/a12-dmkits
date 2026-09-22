@@ -388,8 +388,9 @@ public final class DslRenderer {
      * An entity-list aggregate operand. A group scope renders as its starred path, plus its {@code $}
      * outer-iteration marker when it carries one, and no {@code Having} filter — the kernel rejects a filter
      * on a group operand outright ({@code MVK_NO_GROUPS_ALLOWED}, locked by
-     * {@code adapter.laws.GroupStarValueAggregateDiffTest}). An index-selected group is never starred (an
-     * index and a wildcard can't address the same group), so it renders its localized index body instead.
+     * {@code adapter.laws.GroupStarValueAggregateDiffTest}). An index-selected group renders its localized index
+     * body, stars included: A12 admits a star below the index group
+     * ({@code validate.laws.SemanticIndexWildcardPlacementLawsTest}).
      */
     private String aggregateOperand(AggregateOperand op) {
         return switch (op) {
@@ -610,9 +611,9 @@ public final class DslRenderer {
     private String groupIndexBody(IndexedGroupValue index) {
         return switch (index) {
             case GroupSemanticIndexValue v ->
-                    path(v.group().path()) + " " + keyword("SemanticIndex") + " " + quote(v.indexValue());
+                    path(v.group().renderedPath()) + " " + keyword("SemanticIndex") + " " + quote(v.indexValue());
             case GroupSemanticIndexFieldValue v ->
-                    path(v.group().path()) + " " + keyword("SemanticIndex") + " "
+                    path(v.group().renderedPath()) + " " + keyword("SemanticIndex") + " "
                             + (v.indexField().correlated() ? "$" : "") + path(v.indexField().path().value());
         };
     }

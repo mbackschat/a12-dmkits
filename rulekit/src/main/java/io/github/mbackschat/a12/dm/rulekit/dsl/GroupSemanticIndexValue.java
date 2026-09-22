@@ -7,8 +7,4 @@ package io.github.mbackschat.a12.dm.rulekit.dsl;
  * ({@code MVK_NO_INDEX_FIELD}, kernel-delegated, exactly as the field form's own doc notes).
  */
 public record GroupSemanticIndexValue(GroupListRef group, String indexValue) implements IndexedGroupValue {
-
-    public GroupSemanticIndexValue {
-        BoundModel.requireExactSemanticIndexGroup(group);
-    }
 }
