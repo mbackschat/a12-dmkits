@@ -822,6 +822,8 @@ How the kernel validates a field declared with a **`CustomFieldType{name, minLen
 
 This is the kernel truth behind the interpreter's treatment (auto-validate each filled custom cell against the consumer-registered predefined type; unregistered → report unsupported + degrade leniently, since the native runtime cannot host the validator) — INTERPRETER-FINDINGS IF26. JS/TS identical, so a Kotlin/JS consumer mirrors it.
 
+**Amended 2026-09-22 — three of the clauses above are now RUNTIME-measured on kernel 30.8.1, not only source-read.** A probe request can register a validator (`customFieldTypes`, [KERNEL-PROBE-SPEC](KERNEL-PROBE-SPEC.md) §3), so the delegation is observable rather than inferred: (a) the host's `getErrorKey()` arrives as the artifact's message `code` with its own text and `type: VALUE_ERROR`, identically on dynamic-Groovy and static-Java; (b) **full delegation is discriminated by message COUNT** — a value over a CUSTOM field's declared `maxLength` produces exactly **one** message, the host's, where a kernel that also checked would add its own, and the **within-model control** is a `StringType` field carrying the *same* declared bound in the *same* model, which does fire the kernel's `stringZuLang`; (c) an unregistered type's raise is the whole call's, so every other rule on that document is lost with it. The `1`/`999` normalization is unchanged and remains source-read. *(Locked: `adapter.laws.KernelProbeCustomFieldTypeTest`; the raise itself by `adapter.laws.KernelProbeFaultCaptureTest`.)*
+
 ## §12 supplement — a starred VALUE-LIST quantifier's complete extent needs wildcard coverage (source + differential, 2026-07-22, SPEC-2026-07-22-09) <a id="kf55"></a>
 
 > Fold: folded → §12.

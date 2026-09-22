@@ -23,6 +23,24 @@
       "format": "date-time",
       "description": "an ISO-8601 instant pinning the kernel's `currentDateForTest` (both Today and Now) on BOTH strategies. Required for a byte-reproducible artifact whenever any rule reads the current date; omitted, the real clock is used and only clock-independent models reproduce."
     },
+    "customFieldTypes": {
+      "type": "object",
+      "minProperties": 1,
+      "description": "the custom field types this request REGISTERS with the kernel, keyed by the technical type name a `CustomFieldType` field declares. Without it a FILLED custom cell is unobservable rather than merely unvalidated: the kernel resolves a validator from the per-call `DocumentProcessingConfig.customFieldTypeFactory` and falls back to the static `CustomFieldTypeService`, both empty unless a host registers one, and an unresolved type raises `ValidatorException: Custom field validator '<name>' missing.` out of the WHOLE `validateFull` call on both strategies — taking every other rule on that document with it. An empty cell short-circuits before the validator, so a model with custom fields observes cleanly until one is filled. The shape is dmtool's own `--predefined-types` registry, deliberately, rather than a second spelling of one concept; its imperative sibling (`--custom-field-types-js`) is NOT mirrored, because a probe artifact is pinned by SHA-256 and every input must be reproducible from the request bytes alone. OMIT the key to declare nothing — an empty object is refused, because it reads as a default while leaving the cell exactly as unobservable as its absence does.",
+      "additionalProperties": {
+        "type": "object",
+        "additionalProperties": false,
+        "description": "one declared type. Every constraint is optional and an absent one is unconstrained; the validator applies `pattern`, then these lengths, then the FIELD's own declared `minLength`/`maxLength`, which the kernel hands over through `ICustomFieldTypeValidationParam` — a CUSTOM field's declared bounds are enforced by nobody else (KERNEL-FINDINGS KF54), so a registry that ignores them makes them advisory. Each failure names the constraint that produced it in the message `code` (`customFieldType.pattern`, `customFieldType.minLength`, `field.maxLength`, …), which is A12's own rule that the code is the validator's `getErrorKey()` rather than a fixed kernel code.",
+        "properties": {
+          "minLength": { "type": "integer", "minimum": 0 },
+          "maxLength": { "type": "integer", "minimum": 0 },
+          "pattern": {
+            "type": "string",
+            "description": "a java.util.regex pattern the WHOLE value must match; an unparseable one is refused at request-read time rather than at the first row"
+          }
+        }
+      }
+    },
     "observe": {
       "type": "array",
       "minItems": 1,
@@ -98,6 +116,16 @@
     {
       "model": "order.dm.json",
       "observe": ["mandatoryInformation"]
+    },
+    {
+      "model": "order.dm.json",
+      "customFieldTypes": {
+        "CouponCode": { "pattern": "[A-Z]{4}-[0-9]{4}" },
+        "LoyaltyId": { "minLength": 4, "maxLength": 12 }
+      },
+      "rows": [
+        { "name": "malformed-coupon", "documentInline": { "Order": { "CouponCode": "save-2026" } } }
+      ]
     },
     {
       "model": "order.dm.json",

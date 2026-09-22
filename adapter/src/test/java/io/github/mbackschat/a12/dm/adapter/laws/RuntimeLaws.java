@@ -1138,7 +1138,18 @@ public final class RuntimeLaws {
          * of them reads — including the classes that share a Gradle task with a timing floor.
          */
         List<IMessage> validationMessages(DocumentV2 instance, Date clock, Locale locale) {
-            return List.copyOf(rt.validateFull(instance, config(clock, locale)).getMessages());
+            return validationMessages(instance, clock, locale, null);
+        }
+
+        /**
+         * As {@link #validationMessages(DocumentV2, Date, Locale)} but with a custom-field-type factory bound
+         * for the call. A model declaring a CUSTOM field validates only while that cell is empty unless one is
+         * supplied, so the factory is what makes a filled custom cell observable at all.
+         */
+        List<IMessage> validationMessages(DocumentV2 instance, Date clock, Locale locale,
+                ICustomFieldTypeFactory fieldTypes) {
+            return List.copyOf(
+                    rt.validateFull(instance, config(clock, locale, Map.of(), fieldTypes)).getMessages());
         }
 
         /**
@@ -1149,8 +1160,14 @@ public final class RuntimeLaws {
          */
         List<IMessage> partialValidationMessages(DocumentV2 instance, Set<Relevant> relevant, Date clock,
                 Locale locale) {
-            return List.copyOf(
-                    rt.validatePart(instance, relevantPointers(relevant), config(clock, locale)).getMessages());
+            return partialValidationMessages(instance, relevant, clock, locale, null);
+        }
+
+        /** As above, with a custom-field-type factory bound for the call. */
+        List<IMessage> partialValidationMessages(DocumentV2 instance, Set<Relevant> relevant, Date clock,
+                Locale locale, ICustomFieldTypeFactory fieldTypes) {
+            return List.copyOf(rt.validatePart(instance, relevantPointers(relevant),
+                    config(clock, locale, Map.of(), fieldTypes)).getMessages());
         }
 
         /**
@@ -1162,7 +1179,13 @@ public final class RuntimeLaws {
          * SHA-256 cannot read the wall clock, and a formal operand error carries localized text.
          */
         ComputationObservation computation(DocumentV2 instance, Date clock, Locale locale) {
-            return observationOf(rt.compute(instance, config(clock, locale)));
+            return computation(instance, clock, locale, null);
+        }
+
+        /** As above, with a custom-field-type factory bound for the call. */
+        ComputationObservation computation(DocumentV2 instance, Date clock, Locale locale,
+                ICustomFieldTypeFactory fieldTypes) {
+            return observationOf(rt.compute(instance, config(clock, locale, Map.of(), fieldTypes)));
         }
 
         /** Full signatures under explicit runtime bindings; model/document construction stays build-once. */
@@ -1400,7 +1423,14 @@ public final class RuntimeLaws {
 
         /** The static-JAVA twin of {@link KernelEngine#validationMessages} — same contract, same reason. */
         List<IMessage> validationMessages(DocumentV2 instance, Date clock, Locale locale) {
-            return List.copyOf(rt.validateFull(instance, config(clock, locale)).getMessages());
+            return validationMessages(instance, clock, locale, null);
+        }
+
+        /** The static-JAVA twin of the custom-field-type-bound overload — same contract, same reason. */
+        List<IMessage> validationMessages(DocumentV2 instance, Date clock, Locale locale,
+                ICustomFieldTypeFactory fieldTypes) {
+            return List.copyOf(
+                    rt.validateFull(instance, config(clock, locale, Map.of(), fieldTypes)).getMessages());
         }
 
         /**
@@ -1410,13 +1440,25 @@ public final class RuntimeLaws {
          */
         List<IMessage> partialValidationMessages(DocumentV2 instance, Set<Relevant> relevant, Date clock,
                 Locale locale) {
-            return List.copyOf(
-                    rt.validatePart(instance, relevantPointers(relevant), config(clock, locale)).getMessages());
+            return partialValidationMessages(instance, relevant, clock, locale, null);
+        }
+
+        /** The static-JAVA twin of the custom-field-type-bound overload — same contract, same reason. */
+        List<IMessage> partialValidationMessages(DocumentV2 instance, Set<Relevant> relevant, Date clock,
+                Locale locale, ICustomFieldTypeFactory fieldTypes) {
+            return List.copyOf(rt.validatePart(instance, relevantPointers(relevant),
+                    config(clock, locale, Map.of(), fieldTypes)).getMessages());
         }
 
         /** The static-JAVA twin of {@link KernelEngine#computation} — same contract, same reason. */
         ComputationObservation computation(DocumentV2 instance, Date clock, Locale locale) {
-            return observationOf(rt.compute(instance, config(clock, locale)));
+            return computation(instance, clock, locale, null);
+        }
+
+        /** The static-JAVA twin of the custom-field-type-bound overload — same contract, same reason. */
+        ComputationObservation computation(DocumentV2 instance, Date clock, Locale locale,
+                ICustomFieldTypeFactory fieldTypes) {
+            return observationOf(rt.compute(instance, config(clock, locale, Map.of(), fieldTypes)));
         }
 
         /** Full signatures under explicit runtime bindings; code generation remains outside every timed call. */

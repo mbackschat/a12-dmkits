@@ -14,6 +14,7 @@ import java.util.Collections;
 import java.util.Date;
 import java.util.EnumMap;
 import java.util.EnumSet;
+import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
@@ -26,6 +27,7 @@ import java.util.stream.Collectors;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.mgmtp.a12.kernel.core.customfieldtype.ICustomFieldTypeFactory;
 import com.mgmtp.a12.kernel.md.document.apiV2.DocumentPointer;
 import com.mgmtp.a12.kernel.md.document.apiV2.PartiallyKnownDocumentMultiPointer;
 import com.mgmtp.a12.kernel.md.rt.api.IMessage;
@@ -191,7 +193,14 @@ public final class KernelRuntimeProbe {
      * and the rows.
      */
     public record Request(String modelRef, String modelJson, Locale locale, Optional<Date> clock,
-            Set<Observation> observe, List<Row> rows) {
+            Set<Observation> observe, List<Row> rows,
+            Map<String, DeclarativeCustomFieldTypes.Declared> customFieldTypes) {
+
+        /** A request declaring no custom field type — the shape every request had before they were bindable. */
+        public Request(String modelRef, String modelJson, Locale locale, Optional<Date> clock,
+                Set<Observation> observe, List<Row> rows) {
+            this(modelRef, modelJson, locale, clock, observe, rows, Map.of());
+        }
 
         /**
          * The request contract lives HERE, not in the parser, because this record is public: a caller that
@@ -239,6 +248,12 @@ public final class KernelRuntimeProbe {
             }
             observe = Collections.unmodifiableSet(EnumSet.copyOf(observe));
             rows = List.copyOf(rows);
+            customFieldTypes = Map.copyOf(customFieldTypes);
+        }
+
+        /** The kernel binding for {@link #customFieldTypes}, or {@code null} when the request declares none. */
+        ICustomFieldTypeFactory fieldTypeFactory() {
+            return DeclarativeCustomFieldTypes.factoryOf(customFieldTypes);
         }
     }
 
@@ -298,7 +313,47 @@ public final class KernelRuntimeProbe {
             }
             rows.add(new Row(name, document(rowNode, base, name), relevant(rowNode, name)));
         }
-        return new Request(modelRef, read(base, modelRef), locale, clock, observe, rows);
+        return new Request(modelRef, read(base, modelRef), locale, clock, observe, rows,
+                customFieldTypes(root));
+    }
+
+    /**
+     * The request's declarative custom-field-type registry, in dmtool's own {@code --predefined-types} shape.
+     * Without it a filled CUSTOM cell is unobservable rather than merely unvalidated — see
+     * {@link DeclarativeCustomFieldTypes} for why both of A12's resolution routes are empty by default.
+     */
+    private static Map<String, DeclarativeCustomFieldTypes.Declared> customFieldTypes(JsonNode root) {
+        if (!root.hasNonNull("customFieldTypes")) {
+            return Map.of();
+        }
+        JsonNode node = root.get("customFieldTypes");
+        if (!node.isObject() || node.isEmpty()) {
+            throw new IllegalArgumentException("'customFieldTypes' must be a non-empty object "
+                    + "{\"<TypeName>\": {minLength?, maxLength?, pattern?}}, or be omitted; an empty one "
+                    + "declares nothing and would leave a filled CUSTOM cell unobservable exactly as its "
+                    + "absence does");
+        }
+        Map<String, DeclarativeCustomFieldTypes.Declared> declared = new LinkedHashMap<>();
+        node.fields().forEachRemaining(entry -> declared.put(entry.getKey(), declaredType(entry.getKey(),
+                entry.getValue())));
+        return declared;
+    }
+
+    private static DeclarativeCustomFieldTypes.Declared declaredType(String name, JsonNode spec) {
+        if (!spec.isObject()) {
+            throw new IllegalArgumentException("custom field type \"" + name
+                    + "\" must be an object with minLength / maxLength / pattern");
+        }
+        spec.fieldNames().forEachRemaining(key -> {
+            if (!Set.of("minLength", "maxLength", "pattern").contains(key)) {
+                throw new IllegalArgumentException("custom field type \"" + name + "\": unknown key \"" + key
+                        + "\" (allowed: minLength, maxLength, pattern)");
+            }
+        });
+        return DeclarativeCustomFieldTypes.Declared.of(name,
+                spec.hasNonNull("minLength") ? spec.get("minLength").asInt() : null,
+                spec.hasNonNull("maxLength") ? spec.get("maxLength").asInt() : null,
+                spec.hasNonNull("pattern") ? spec.get("pattern").asText() : null);
     }
 
     /**
@@ -453,6 +508,9 @@ public final class KernelRuntimeProbe {
         Locale locale = request.locale();
 
         boolean compute = request.observe().contains(Observation.COMPUTE);
+        // Bound identically on both strategies, because a type resolvable on one and not the other would
+        // report a split that is the harness's rather than the kernel's.
+        ICustomFieldTypeFactory fieldTypes = request.fieldTypeFactory();
 
         List<KernelProbeArtifact.Row> rows = new ArrayList<>();
         for (Row row : request.rows()) {
@@ -464,23 +522,25 @@ public final class KernelRuntimeProbe {
                         var instance = instance(() -> engine.instance(row.documentJson()));
                         return new KernelProbeArtifact.Engine(GROOVY_DYNAMIC,
                                 channel(Observation.VALIDATE_FULL,
-                                        () -> project(engine.validationMessages(instance, clock, locale))),
+                                        () -> project(engine.validationMessages(
+                                                instance, clock, locale, fieldTypes))),
                                 compute ? Optional.of(channel(Observation.COMPUTE,
-                                        () -> project(engine.computation(instance, clock, locale))))
+                                        () -> project(engine.computation(instance, clock, locale, fieldTypes))))
                                         : Optional.empty(),
                                 row.relevant().map(rel -> channel(Observation.VALIDATE_PART, () -> project(engine
-                                        .partialValidationMessages(instance, rel, clock, locale)))));
+                                        .partialValidationMessages(instance, rel, clock, locale, fieldTypes)))));
                     }),
                     observe(JAVA_STATIC, javaStatic, engine -> {
                         var instance = instance(() -> engine.instance(row.documentJson()));
                         return new KernelProbeArtifact.Engine(JAVA_STATIC,
                                 channel(Observation.VALIDATE_FULL,
-                                        () -> project(engine.validationMessages(instance, clock, locale))),
+                                        () -> project(engine.validationMessages(
+                                                instance, clock, locale, fieldTypes))),
                                 compute ? Optional.of(channel(Observation.COMPUTE,
-                                        () -> project(engine.computation(instance, clock, locale))))
+                                        () -> project(engine.computation(instance, clock, locale, fieldTypes))))
                                         : Optional.empty(),
                                 row.relevant().map(rel -> channel(Observation.VALIDATE_PART, () -> project(engine
-                                        .partialValidationMessages(instance, rel, clock, locale)))));
+                                        .partialValidationMessages(instance, rel, clock, locale, fieldTypes)))));
                     }))));
         }
         return new KernelProbeArtifact(header, rows, mandatory, dynamicEnumerations);
