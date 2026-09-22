@@ -13,7 +13,8 @@ import java.util.Optional;
  * participates in exact-duplicate detection keyed on group path AND index, never on path alone.
  *
  * <p>A group can never itself carry the {@code $} outer-iteration correlation ({@link GroupRef} has no
- * such flag, and {@link Operands#groupRef} already refuses one) — only the field-keyed form's KEY can,
+ * such flag, and the interpreter bridge's {@code Operands.groupRef} already refuses one) — only the field-keyed
+ * form's KEY can,
  * so the identity's correlation component is the key's alone.
  *
  * <p>No compact-constructor check for arity or duplicates, matching {@link IndexedFieldValue}'s own

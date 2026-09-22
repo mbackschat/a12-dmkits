@@ -1,14 +1,10 @@
 package io.github.mbackschat.a12.dm.rulekit.dsl;
 
-import io.github.mbackschat.a12.dm.core.EntityPath;
-import io.github.mbackschat.a12.dm.core.HasEntityPath;
-
 import java.util.ArrayList;
-import java.util.HashSet;
 import java.util.List;
-import java.util.Objects;
-import java.util.Set;
 
+import io.github.mbackschat.a12.dm.core.KernelCode;
+import io.github.mbackschat.a12.dm.core.Refusals;
 import io.github.mbackschat.a12.dm.core.ValueKind;
 
 /**
@@ -20,9 +16,6 @@ import io.github.mbackschat.a12.dm.core.ValueKind;
  * while a scalar form needs a second operand. The owner groups String/Custom/Enumeration and
  * Date/DateFragment into result families, while the other kinds remain exact.
  */
-import io.github.mbackschat.a12.dm.core.KernelCode;
-import io.github.mbackschat.a12.dm.core.Refusals;
-
 public record FirstFilledValue(FirstFilledOperand firstOperand, List<FirstFilledOperand> trailingOperands)
         implements Calculation {
 
@@ -105,7 +98,6 @@ public record FirstFilledValue(FirstFilledOperand firstOperand, List<FirstFilled
     private static String describe(FirstFilledOperand operand) {
         return operand.renderedPath();
     }
-
 
     static boolean sameOwnerFamily(ValueKind left, ValueKind right) {
         return family(left) == family(right);

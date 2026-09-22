@@ -120,7 +120,8 @@ public final class GroupInfo {
      * above. The {@code relativeStarPath} carries its own star on each repeatable segment (e.g. flattening a
      * child {@code Cost} across a repeatable {@code Subs} subgroup); this group's path is prepended, so the
      * call resolves {@code <thisPath>} then the relative portion. Equal to the by-path {@code model.flatten};
-     * the read peer of {@link io.github.mbackschat.a12.dm.edit.GroupEditor#flatten(String)}.
+     * the read peer of {@code io.github.mbackschat.a12.dm.edit.GroupEditor#flatten(String)}, which lives in a
+     * module rulekit does not depend on.
      */
     public FieldListRef flatten(String relativeStarPath) {
         return model.flatten(at(relativeStarPath));
