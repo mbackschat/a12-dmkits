@@ -29,10 +29,12 @@ import io.github.mbackschat.a12.dm.rulekit.validate.ValidationResult;
  * reports for them outranks a duplicate and a type mismatch in the same list, wherever the shape sits. That is
  * what lets an operand-level refusal cite a code at all, since rulekit builds the operand before any list exists.
  *
- * <p>Only the filter-on-a-group class is the same on every shape measured. The other three change once a level
- * repeats and is left unstarred, where the missing star ({@code MVK_NO_WILDCARD}) answers first. For the field
- * filter the class also depends on whether the rule iterates that level (KF358, KF424). An operand does not
- * carry which of its levels repeat, so those three refusals stay uncoded, and the mirror below locks that.
+ * <p>Two things move a group's class, and nothing else measured does. A repeatable level left unstarred is
+ * bound by the rule when the rule iterates it and is a missing star ({@code MVK_NO_WILDCARD}) when it does not,
+ * so the same operand answers differently on two rules. A semantic index answers {@code MVK_NO_INDEX_FIELD}
+ * first when it resolves to no index field, which the operand cannot see. A group with neither keeps its class
+ * on every rule context, inside a filter, and under the {@code $} marker, and only there does rulekit cite it.
+ * For a field filter the class also depends on whether the rule iterates the level (KF358, KF424).
  */
 class FirstFilledOperandShapeLawsTest {
 
@@ -49,7 +51,15 @@ class FirstFilledOperandShapeLawsTest {
                             .category("Band", "LOW", "HIGH")))
                     .group("Empty", g -> g.group("Inner", inner -> { }))
                     .group("Blank", g -> g.repeatable(5).group("Inner", inner -> { }))
-                    .group("Nested", g -> g.group("Deep", deep -> deep.field("Note", FieldKind.STRING))))
+                    .group("Nested", g -> g.group("Deep", deep -> deep.field("Note", FieldKind.STRING)))
+                    // the shapes one level down, under a repeatable level the rule may or may not iterate
+                    .group("Outer", g -> g.repeatable(5).field("Label", FieldKind.STRING)
+                            .group("Hollow", h -> h.group("Inner", inner -> { }))
+                            .group("Graded", gr -> gr.enumField("Grade", e -> e.value("NEW").value("USED")
+                                    .category("Band", "LOW", "HIGH"))))
+                    .group("Keyed", g -> g.repeatable(5).indexField("Key").field("Key", FieldKind.STRING)
+                            .field("Note", FieldKind.STRING)
+                            .group("Hollow", h -> h.group("Inner", inner -> { }))))
             .build().toJson();
 
     @Test
@@ -87,7 +97,7 @@ class FirstFilledOperandShapeLawsTest {
         expected.put("[Title] == \"x\"", ADMITTED);
 
         Map<String, String> actual = new LinkedHashMap<>();
-        expected.keySet().forEach(condition -> actual.put(condition, verdict("../Title", "Title", condition)));
+        expected.keySet().forEach(condition -> actual.put(condition, verdict("Title", condition)));
         assertEquals(expected, actual);
     }
 
@@ -102,24 +112,90 @@ class FirstFilledOperandShapeLawsTest {
         expected.put("[Lines/Sku] == \"x\"", ADMITTED);
 
         Map<String, String> actual = new LinkedHashMap<>();
-        expected.keySet().forEach(condition -> actual.put(condition,
-                verdict("../Lines/Sku", "Lines/Sku", condition)));
+        expected.keySet().forEach(condition -> actual.put(condition, verdict("Lines/Sku", condition)));
+        assertEquals(expected, actual);
+    }
+
+    /**
+     * The two things that move a group's class, each beside the twin that does not move: one operand on three
+     * rules (iterating nothing, the level it crosses, another level), then an index, then the {@code $} marker.
+     */
+    @Test
+    void anUnstarredRepetitionOrAnIndexMovesTheClass_andNothingElseDoes() {
+        Map<String, String> expected = new LinkedHashMap<>();
+        for (String rule : List.of("Title", "Outer/Label", "Lines/Sku")) {
+            // no unstarred repeatable level: one class on all three rules
+            expected.put(rule + " | FirstFilledValue(Empty) == \"x\"", EMPTY);
+            expected.put(rule + " | FirstFilledValue(Outer*/Hollow) == \"x\"", EMPTY);
+            expected.put(rule + " | FirstFilledValue(Grading -> Band) == \"LOW\"", NO_GROUPS);
+            expected.put(rule + " | FirstFilledValue(Outer*/Graded -> Band) == \"LOW\"", NO_GROUPS);
+            expected.put(rule + " | [" + rule + "] == \"x\"", ADMITTED);
+        }
+        // the same two groups with Outer left unstarred: the rule decides
+        expected.put("Title | FirstFilledValue(Outer/Hollow) == \"x\"", NO_WILDCARD);
+        expected.put("Outer/Label | FirstFilledValue(Outer/Hollow) == \"x\"", EMPTY);
+        expected.put("Lines/Sku | FirstFilledValue(Outer/Hollow) == \"x\"", NO_WILDCARD);
+        expected.put("Title | FirstFilledValue(Outer/Graded -> Band) == \"LOW\"", NO_WILDCARD);
+        expected.put("Outer/Label | FirstFilledValue(Outer/Graded -> Band) == \"LOW\"", NO_GROUPS);
+        expected.put("Lines/Sku | FirstFilledValue(Outer/Graded -> Band) == \"LOW\"", NO_WILDCARD);
+        // an index answers first where it resolves to no index field, and binds the level where it does
+        expected.put("Title | FirstFilledValue(Empty For \"k\") == \"x\"", NO_INDEX_FIELD);
+        expected.put("Title | FirstFilledValue(Grading For \"k\" -> Band) == \"LOW\"", NO_INDEX_FIELD);
+        expected.put("Title | FirstFilledValue(Grading For \"k\" Having [Title] == \"a\", Title) == \"x\"",
+                NO_INDEX_FIELD);
+        expected.put("Title | FirstFilledValue(Keyed For \"k\" Having [Keyed/Note] == \"a\", Title) == \"x\"",
+                NO_GROUPS);
+        expected.put("Title | FirstFilledValue(Keyed/Hollow For \"k\") == \"x\"", EMPTY);
+        expected.put("Title | FirstFilledValue(Keyed/Hollow) == \"x\"", NO_WILDCARD);
+        expected.put("Title | FirstFilledValue(Keyed For \"k\") == \"x\"", ADMITTED);
+        // inside a filter, with or without the outer marker: the classes of the bare shapes
+        for (String marker : List.of("", "$")) {
+            expected.put("Title | FirstFilledValue(Lines*/Sku Having FirstFilledValue(" + marker
+                    + "Grading -> Band) == \"LOW\", Title) == \"x\"", NO_GROUPS);
+            expected.put("Title | FirstFilledValue(Lines*/Sku Having FirstFilledValue(" + marker
+                    + "Empty) == \"x\", Title) == \"x\"", EMPTY);
+            expected.put("Title | FirstFilledValue(Lines*/Sku Having FirstFilledValue(" + marker
+                    + "Grading Having [Title] == \"a\", Title) == \"x\", Subtitle) == \"x\"", NO_GROUPS);
+        }
+
+        Map<String, String> actual = new LinkedHashMap<>();
+        expected.keySet().forEach(row -> {
+            int bar = row.indexOf(" | ");
+            actual.put(row, verdict(row.substring(0, bar), row.substring(bar + 3)));
+        });
         assertEquals(expected, actual);
     }
 
     @Test
-    void rulekitCitesOnlyTheClassNoGroupShapeChanges() {
+    void rulekitCitesEachClassExactlyWhereNeitherTheRuleNorAnIndexCanMoveIt() {
         BoundModel m = BoundModel.ofJson(MODEL);
         Condition filter = m.num("/Item/Weight").gt(0);
+        CategoryRef gradeBand = m.enumOf("/Item/Grading/Grade").category("Band");
+
         for (String group : List.of("/Item/Grading", "/Item/Lines", "/Item/Lines*")) {
-            assertEquals(NO_GROUPS, assertThrows(KernelCodeRefusal.class,
-                    () -> m.firstFilledGroup(group).having(filter)).code().name(), group);
+            assertCited(NO_GROUPS, () -> m.firstFilledGroup(group).having(filter));
+        }
+        assertCited(NO_GROUPS, () -> m.firstFilledGroup("/Item/Grading").outer().having(filter));
+        for (String group : List.of("/Item/Grading", "/Item/Reviews*", "/Item/Outer*/Graded")) {
+            assertCited(NO_GROUPS, () -> m.firstFilledGroup(group).withCategory(gradeBand));
+        }
+        assertCited(NO_GROUPS, () -> m.firstFilledGroup("/Item/Grading").outer().withCategory(gradeBand));
+        for (String group : List.of("/Item/Empty", "/Item/Blank*", "/Item/Outer*/Hollow")) {
+            assertCited(EMPTY, () -> m.firstFilledGroup(group));
         }
 
-        CategoryRef gradeBand = m.enumOf("/Item/Grading/Grade").category("Band");
-        assertUncoded(() -> m.firstFilledGroup("/Item/Grading").withCategory(gradeBand));
-        assertUncoded(() -> m.firstFilledGroup("/Item/Empty"));
+        // an unstarred repeatable level: the rule decides, and the operand has no rule yet
+        assertUncoded(() -> m.firstFilledGroup("/Item/Reviews").withCategory(gradeBand));
+        assertUncoded(() -> m.firstFilledGroup("/Item/Outer/Graded").withCategory(gradeBand));
         assertUncoded(() -> m.firstFilledGroup("/Item/Blank"));
+        assertUncoded(() -> m.firstFilledGroup("/Item/Outer/Hollow"));
+        // an index: whether it resolves to an index field decides, and MVK_NO_INDEX_FIELD is not ours to ask
+        assertUncoded(() -> m.firstFilledGroupFor("/Item/Empty", "k"));
+        assertUncoded(() -> m.firstFilledGroupFor("/Item/Empty", m.field("/Item/Title")));
+        assertUncoded(() -> m.firstFilledGroupFor("/Item/Grading", "k").having(filter));
+        assertUncoded(() -> m.firstFilledGroupFor("/Item/Grading", "k").withCategory(gradeBand));
+        assertUncoded(() -> m.firstFilledGroup("/Item/Grading").forIndex("k").withCategory(gradeBand));
+        // a field filter: the level it crosses, and then the rule, decide
         assertUncoded(() -> FirstFilledOperand.of(m.field("/Item/Title")).having(filter));
         assertUncoded(() -> FirstFilledOperand.of(m.field("/Item/Lines/Sku")).having(filter));
         // a category handle from a DIFFERENT field is a wrong pairing of handles, which A12 never sees
@@ -127,7 +203,12 @@ class FirstFilledOperandShapeLawsTest {
 
         // the admitted neighbours still build
         m.firstFilledGroup("/Item/Nested");
+        m.firstFilledGroupFor("/Item/Keyed", "k");
         FirstFilledOperand.of(m.flatten("/Item/Lines*/Sku")).having(m.num("/Item/Lines/Qty").gt(0));
+    }
+
+    private static void assertCited(String code, Executable authoring) {
+        assertEquals(code, assertThrows(KernelCodeRefusal.class, authoring).code().name());
     }
 
     private static void assertUncoded(Executable authoring) {
@@ -140,10 +221,14 @@ class FirstFilledOperandShapeLawsTest {
     private static final String NO_WILDCARD = "MVK_NO_WILDCARD";
     private static final String WILDCARDS = "MVK_WILDCARDS_REQUIRED";
     private static final String EMPTY = "MVK_GROUP_IS_EMPTY";
+    private static final String NO_INDEX_FIELD = "MVK_NO_INDEX_FIELD";
 
-    /** {@code admitted}, or the COMPLETE emitted code list — a partial list would hide a co-firing gate. */
-    private static String verdict(String errorRel, String errorField, String condition) {
-        ValidationResult r = KernelLaws.checkModel(MODEL, "/Item", errorRel,
+    /**
+     * {@code admitted}, or the COMPLETE emitted code list — a partial list would hide a co-firing gate. The
+     * error field sits in the level the rule iterates, so it also names the rule's context.
+     */
+    private static String verdict(String errorField, String condition) {
+        ValidationResult r = KernelLaws.checkModel(MODEL, "/Item", "../" + errorField,
                 "FieldFilled(" + errorField + ") And " + condition);
         return r.ok() ? ADMITTED : String.join(" + ", r.diagnostics().stream()
                 .map(d -> d.code().orElse("(no code: " + d.summary() + ")")).map(Object::toString).toList());

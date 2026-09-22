@@ -36,6 +36,9 @@ public final class FirstFilledOperand implements DuplicateOperand {
     private final FieldOperand field;
     private final GroupListRef group;
     private final List<FieldRef> expandedGroupFields;
+    /** Whether the group's path crosses a repeatable level, itself or an ancestor, without its star. A
+     *  {@link GroupListRef} records only the starred levels, so only {@link BoundModel} can tell. */
+    private final boolean unstarredRepetition;
     private final String category;
     private final SemanticIndexKey semanticIndex;
     private final boolean outer;
@@ -44,6 +47,7 @@ public final class FirstFilledOperand implements DuplicateOperand {
             FieldOperand field,
             GroupListRef group,
             List<FieldRef> expandedGroupFields,
+            boolean unstarredRepetition,
             String category,
             SemanticIndexKey semanticIndex,
             boolean outer) {
@@ -53,16 +57,14 @@ public final class FirstFilledOperand implements DuplicateOperand {
         this.field = field;
         this.group = group;
         this.expandedGroupFields = List.copyOf(expandedGroupFields);
-        // Deliberately uncoded, like the category refusal on a group below: A12 answers MVK_GROUP_IS_EMPTY,
-        // except on an unstarred repeatable group, where the missing star (MVK_NO_WILDCARD) answers first, and
-        // a GroupListRef does not carry which of its levels repeat (validate.laws.FirstFilledOperandShapeLawsTest).
-        if (group != null && this.expandedGroupFields.isEmpty()) {
-            throw new IllegalArgumentException("FirstFilledValue group " + group.renderedPath()
-                    + " must contain at least one field");
-        }
+        this.unstarredRepetition = unstarredRepetition;
         this.category = category;
         this.semanticIndex = semanticIndex;
         this.outer = outer;
+        if (group != null && this.expandedGroupFields.isEmpty()) {
+            throw groupShapeRefusal(groupClassIsFixed(), KernelCode.MVK_GROUP_IS_EMPTY,
+                    "FirstFilledValue group " + group.renderedPath() + " must contain at least one field");
+        }
     }
 
     /**
@@ -76,15 +78,20 @@ public final class FirstFilledOperand implements DuplicateOperand {
         return switch (field) {
             case IndexedFieldValue indexed -> of(indexed);
             case FieldRef ref ->
-                    new FirstFilledOperand(withoutOuter(ref), null, List.of(), null, null, ref.correlated());
+                    new FirstFilledOperand(withoutOuter(ref), null, List.of(), false, null, null, ref.correlated());
             case FieldListRef list ->
-                    new FirstFilledOperand(withoutOuter(list), null, List.of(), null, null, list.correlated());
+                    new FirstFilledOperand(withoutOuter(list), null, List.of(), false, null, null, list.correlated());
         };
     }
 
-    static FirstFilledOperand group(GroupListRef group, List<FieldRef> expandedFields) {
+    /**
+     * A group entity, built whole: {@code semanticIndex} is {@code null} for none, and is taken here rather
+     * than added afterwards because the empty-group refusal fires at construction, and an index moves its class.
+     */
+    static FirstFilledOperand group(GroupListRef group, List<FieldRef> expandedFields, boolean unstarredRepetition,
+            SemanticIndexKey semanticIndex) {
         return new FirstFilledOperand(null, Objects.requireNonNull(group, "group"), expandedFields,
-                null, null, false);
+                unstarredRepetition, null, semanticIndex, false);
     }
 
     static FirstFilledOperand of(EnumCategoryAccess category) {
@@ -145,10 +152,9 @@ public final class FirstFilledOperand implements DuplicateOperand {
     /** Adds the owner {@code Having} filter to a wildcard field target. */
     public FirstFilledOperand having(Condition filter) {
         if (field == null) {
-            // Unlike the other two shape refusals, this class holds on every group shape and rule context
-            // measured, and outranks a duplicate or type mismatch anywhere in the list, so it may fire before
-            // any list exists (validate.laws.FirstFilledOperandShapeLawsTest).
-            throw Refusals.of(KernelCode.MVK_NO_GROUPS_ALLOWED,
+            // Unlike the other two shape refusals, an unstarred repeatable level does not move this class, so
+            // only an index can (validate.laws.FirstFilledOperandShapeLawsTest).
+            throw groupShapeRefusal(semanticIndex == null, KernelCode.MVK_NO_GROUPS_ALLOWED,
                     "FirstFilledValue does not accept a Having filter on the group " + renderedPath());
         }
         if (!(field instanceof FieldListRef list)) {
@@ -161,16 +167,27 @@ public final class FirstFilledOperand implements DuplicateOperand {
         return copy(category, semanticIndex, outer, list.having(filter));
     }
 
-    /**
-     * Deliberately uncoded: A12 answers {@code MVK_NO_GROUPS_ALLOWED} for a category on a starred or
-     * non-repeatable group, but {@code MVK_NO_WILDCARD} on an unstarred repeatable one, and this operand does not
-     * carry which of its levels repeat ({@code validate.laws.FirstFilledOperandShapeLawsTest}).
-     */
     private void requireCategoryTarget() {
         if (field == null) {
-            throw new IllegalArgumentException(
+            throw groupShapeRefusal(groupClassIsFixed(), KernelCode.MVK_NO_GROUPS_ALLOWED,
                     "FirstFilledValue does not accept a category projection on the group " + renderedPath());
         }
+    }
+
+    /**
+     * Whether A12's class for the empty-group and group-category shapes is the shape's own. Two things move it,
+     * and the operand is built before the rule that decides either. A repeatable level left unstarred is bound
+     * when the rule iterates it and is a missing star ({@code MVK_NO_WILDCARD}) when it does not, and an index
+     * answers {@code MVK_NO_INDEX_FIELD} first when it resolves to no index field. Neither the {@code $} marker
+     * nor a position inside a filter moves it ({@code validate.laws.FirstFilledOperandShapeLawsTest}).
+     */
+    private boolean groupClassIsFixed() {
+        return !unstarredRepetition && semanticIndex == null;
+    }
+
+    /** The shape's own code where nothing can move it, else the same refusal deliberately uncoded. */
+    private static IllegalArgumentException groupShapeRefusal(boolean fixed, KernelCode code, String problem) {
+        return fixed ? Refusals.of(code, problem) : new IllegalArgumentException(problem);
     }
 
     /** Marks this operand as the {@code $} outer-iteration reference inside a filter. */
@@ -184,7 +201,7 @@ public final class FirstFilledOperand implements DuplicateOperand {
 
     private FirstFilledOperand copy(
             String newCategory, SemanticIndexKey newIndex, boolean newOuter, FieldOperand newField) {
-        return new FirstFilledOperand(newField, group, expandedGroupFields,
+        return new FirstFilledOperand(newField, group, expandedGroupFields, unstarredRepetition,
                 newCategory, newIndex, newOuter);
     }
 
@@ -297,6 +314,7 @@ public final class FirstFilledOperand implements DuplicateOperand {
                 && Objects.equals(field, operand.field)
                 && Objects.equals(group, operand.group)
                 && expandedGroupFields.equals(operand.expandedGroupFields)
+                && unstarredRepetition == operand.unstarredRepetition
                 && Objects.equals(category, operand.category)
                 && Objects.equals(semanticIndex, operand.semanticIndex)
                 && outer == operand.outer;
@@ -304,7 +322,7 @@ public final class FirstFilledOperand implements DuplicateOperand {
 
     @Override
     public int hashCode() {
-        return Objects.hash(field, group, expandedGroupFields, category, semanticIndex, outer);
+        return Objects.hash(field, group, expandedGroupFields, unstarredRepetition, category, semanticIndex, outer);
     }
 
     @Override

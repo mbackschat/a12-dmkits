@@ -520,22 +520,40 @@ public final class BoundModel {
      * repeatable segment is retained, so read-back does not replace one owner entity with another shape.
      */
     public FirstFilledOperand firstFilledGroup(String starGroupPath) {
-        GroupListRef scope = firstFilledGroupScope(starGroupPath);
-        return FirstFilledOperand.group(scope, firstFilledDescendants(scope));
+        return firstFilledGroupOperand(firstFilledGroupScope(starGroupPath), null);
     }
 
     /** A group selected by a literal semantic-index key for {@code FirstFilledValue}. */
     public FirstFilledOperand firstFilledGroupFor(String groupPath, String indexValue) {
         GroupListRef scope = firstFilledGroupScope(groupPath);
         requireExactSemanticIndexGroup(scope);
-        return FirstFilledOperand.group(scope, firstFilledDescendants(scope)).forIndex(indexValue);
+        return firstFilledGroupOperand(scope, new FirstFilledOperand.LiteralIndex(indexValue));
     }
 
     /** A group selected by a field-valued semantic-index key for {@code FirstFilledValue}. */
     public FirstFilledOperand firstFilledGroupFor(String groupPath, FieldRef indexField) {
         GroupListRef scope = firstFilledGroupScope(groupPath);
         requireExactSemanticIndexGroup(scope);
-        return FirstFilledOperand.group(scope, firstFilledDescendants(scope)).forIndex(indexField);
+        return firstFilledGroupOperand(scope, new FirstFilledOperand.FieldIndex(indexField));
+    }
+
+    private FirstFilledOperand firstFilledGroupOperand(GroupListRef scope,
+            FirstFilledOperand.SemanticIndexKey semanticIndex) {
+        return FirstFilledOperand.group(scope, firstFilledDescendants(scope), crossesUnstarredRepetition(scope),
+                semanticIndex);
+    }
+
+    /** Whether some level of {@code scope}, the group itself included, repeats but carries no star. */
+    private boolean crossesUnstarredRepetition(GroupListRef scope) {
+        var starred = scope.flattened().stream().map(level -> level.path().value()).toList();
+        StringBuilder level = new StringBuilder();
+        for (String segment : scope.path().substring(1).split("/")) {
+            level.append('/').append(segment);
+            if (index.isRepeating(level.toString()) && !starred.contains(level.toString())) {
+                return true;
+            }
+        }
+        return false;
     }
 
     /**
