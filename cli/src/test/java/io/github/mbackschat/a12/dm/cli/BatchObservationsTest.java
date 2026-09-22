@@ -256,7 +256,7 @@ class BatchObservationsTest {
     @Test
     void schemaBatchPublishesTheGeneratedArtifactShape(@TempDir Path dir) throws Exception {
         JsonNode batchSchema = MAPPER.readTree(CliTestSupport.run("schema", "batch").out());
-        JsonNode artifactSchema = batchSchema.path("observationArtifact");
+        JsonNode artifactSchema = batchSchema.path("input").path("observationArtifact");
         assertEquals("BatchObservations", artifactSchema.path("title").asText(), batchSchema::toPrettyString);
         assertTrue(artifactSchema.path("description").asText().contains("diagnostic codes only"));
         assertTrue(artifactSchema.path("required").toString().contains("schemaVersion"));

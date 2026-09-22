@@ -7,14 +7,15 @@ The **apply** verb is dmtool's *session* surface — the companion to the single
 
 ## Discover the frame — `schema apply`
 
-A cold agent learns the op-record frame **from the tool**. `schema apply` returns apply's directional **input** contract: an *array* of op-records, each requiring `target` + `op` (`additionalProperties: true` — the per-op keys are that verb's params, discovered from `manifest` + `schema <target> <op>`), plus a **worked example**. We project the frame and the example with `jq`.
+A cold agent learns the op-record frame **from the tool**. `schema apply` returns apply's directional contract in the same shape every verb's takes: the op-record frame under **`input`** — an *array* of op-records, each requiring `target` + `op` (`additionalProperties: true` — the per-op keys are that verb's params, discovered from `manifest` + `schema <target> <op>`) — plus a **worked example**. We project the frame and the example with `jq`.
 
 ```bash
-dmtool schema apply | jq "{title, type, item_required: .items.required, example: .examples[0]}"
+dmtool schema apply | jq "{op, title: .input.title, type: .input.type, item_required: .input.items.required, example: .input.examples[0]}"
 ```
 
 ```output
 {
+  "op": "apply",
   "title": "ApplyOps",
   "type": "array",
   "item_required": [

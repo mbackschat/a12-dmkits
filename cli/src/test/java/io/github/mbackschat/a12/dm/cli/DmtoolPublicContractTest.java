@@ -327,7 +327,8 @@ class DmtoolPublicContractTest {
         assertTrue(firstEnvelope.path("written").asBoolean());
         assertEquals(observations.toAbsolutePath().normalize().toString(), firstEnvelope.path("output").asText());
         assertFalse(firstBytes.contains(dir.toString()), "the packaged artifact must exclude local paths");
-        JsonNode served = MAPPER.readTree(dmtool.run("schema", "batch").out()).path("observationArtifact");
+        JsonNode served = MAPPER.readTree(dmtool.run("schema", "batch").out())
+                .path("input").path("observationArtifact");
         assertEquals("BatchObservations", served.path("title").asText());
 
         PackagedDmtool.Result second = dmtool.run("-m", model.toString(), "batch", ops.toString(),

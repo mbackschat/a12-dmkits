@@ -32,7 +32,7 @@ class SupportedCharactersVerbTest {
         assertTrue(option.path("description").asText().contains("full BMP"), option::toString);
 
         JsonNode schema = MAPPER.readTree(CliTestSupport.run("schema", "apply").out());
-        String description = schema.path("items").path("properties")
+        String description = schema.path("input").path("items").path("properties")
                 .path("supported-character").path("description").asText();
         assertTrue(description.contains("atomic combined grapheme"), schema::toString);
         assertTrue(description.contains("full BMP"), schema::toString);

@@ -37,6 +37,16 @@ class SchemaFlagParityTest {
 
     private static final Pattern LONG_FLAG = Pattern.compile("--[a-z][a-z0-9-]*");
 
+    /**
+     * The one schema whose flags are deliberately NOT its own verb's. A {@code batch} item's {@code args} is
+     * another verb's argv, so the frame's worked examples name {@code --field}/{@code --condition}/{@code
+     * --code}/{@code --dry-run} by design — this guard's premise ("a schema documents one verb's flags") is
+     * simply false for a dispatcher. The exemption is per-schema rather than a widened rule, so every other
+     * served document keeps the check; {@code apply} needs none, because an op-record spells parameters as
+     * keys and its schema names no flag at all.
+     */
+    private static final Set<String> DISPATCHER_SCHEMAS = Set.of("batch");
+
     @Test
     void everyServedSchemaNamesOnlyRealFlagsOfItsVerb() {
         CommandLine root = new CommandLine(new RootCommand());
@@ -49,6 +59,9 @@ class SchemaFlagParityTest {
 
         List<String> violations = new ArrayList<>();
         schemaVerbs.forEach((schema, verbs) -> {
+            if (DISPATCHER_SCHEMAS.contains(schema)) {
+                return;
+            }
             String text = resource("/schema/" + schema + ".schema.json");
             if (text == null) {
                 violations.add("served schema resource missing: " + schema);

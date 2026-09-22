@@ -212,9 +212,17 @@ class MutationTailSingleSourceTest {
         return mismatch;
     }
 
+    /**
+     * The rich-input model EDITORS, derived rather than listed — minus the two kinds of rich-input verb that
+     * edit nothing themselves. An artifact producer writes somewhere else entirely, and a DISPATCHER's input
+     * is other verbs' argv: {@code batch} owns no edit and correctly carries no {@code --dry-run}, since each
+     * child brings its own. ({@code apply} stays in, because its op-records ARE the edit and it previews them
+     * as one transaction — see its {@code CUSTOM_TAILS} row.)
+     */
     private static Set<String> schemaDemonstratedEditors() {
         Set<String> editors = new LinkedHashSet<>(SchemaCommand.INPUT_OPS.keySet());
         editors.removeAll(SchemaCommand.ARTIFACT_OPS.keySet());
+        editors.remove("batch");
         return editors;
     }
 

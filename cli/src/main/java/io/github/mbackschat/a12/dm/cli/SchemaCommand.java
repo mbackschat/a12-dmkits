@@ -49,7 +49,13 @@ final class SchemaCommand extends BaseCommand {
     /** The cross-cutting structures with a published raw JSON Schema (CI-locked against drift). */
     static final List<String> STRUCTURES = List.of("result", "diagnostic");
 
-    /** The batch op-record frames, served as raw JSON Schema (the list frame + a worked, CI-executed example). */
+    /**
+     * The two batch op-record frames. They are ordinary VERBS, so their schema is served as a verb contract
+     * like every other one — the frame document rides {@code input}, beside a worked, CI-executed example.
+     * It used to be served raw at the top level because the name resolved as a "frame" before it resolved as
+     * a verb, which left {@code .input} null on exactly the two responses whose shape is least guessable
+     * (reported by a12-kernel-lean, 2026-09-22). The list survives only to name them in the no-arg listing.
+     */
     static final List<String> FRAMES = List.of("apply", "batch");
 
     /** Schema resources embedded under a named property of another public schema response. */
@@ -67,7 +73,9 @@ final class SchemaCommand extends BaseCommand {
             "field modify", "field-modify",
             "typedef add", "typedef-add",
             "typedef modify", "typedef-add",
-            "profile synthesize", "profile");
+            "profile synthesize", "profile",
+            "apply", "apply",
+            "batch", "batch");
 
     /** One artifact route: its kind, optional output schema, and optional file-writing receipt branch. */
     record ArtifactContract(String kind, String schema, String outputOption) {
@@ -193,12 +201,13 @@ final class SchemaCommand extends BaseCommand {
         if (argv.isEmpty()) {
             out().print("Structure schemas: " + String.join(", ", STRUCTURES)
                     + "\nBatch frames: " + String.join(", ", FRAMES)
+                    + " (ordinary verb contracts — the op-record frame rides `input`, like every other verb)"
                     + "\nVerb contracts: pass a manifest pointer as one argument or tokenize it "
                     + "(e.g. `schema \"rule add\"` or `schema rule add`).\n"
                     + SELF_CONTAINED_NOTE);
             return 0;
         }
-        if (argv.size() == 1 && (STRUCTURES.contains(argv.get(0)) || FRAMES.contains(argv.get(0)))) {
+        if (argv.size() == 1 && STRUCTURES.contains(argv.get(0))) {
             return serveStructure(argv.get(0));
         }
         List<String> address = addressTokens(argv);
@@ -241,7 +250,6 @@ final class SchemaCommand extends BaseCommand {
     static Map<String, String> servedSchemas() {
         Map<String, String> served = new TreeMap<>();
         STRUCTURES.forEach(name -> serves(served, name, name));
-        FRAMES.forEach(name -> serves(served, name, name));
         EMBEDDED_SCHEMAS.forEach((frame, embedded) -> serves(served, embedded.schema(), frame));
         INPUT_OPS.forEach((verb, name) -> serves(served, name, verb));
         DOC_INPUT.forEach((verb, name) -> serves(served, name, verb));
@@ -319,35 +327,12 @@ final class SchemaCommand extends BaseCommand {
                 throw new IllegalStateException("bundled schema resource missing: " + resource);
             }
             String source = new String(in.readAllBytes(), StandardCharsets.UTF_8);
-            if (FRAMES.contains(name)) {
-                JsonNode parsed = MAPPER.readTree(source);
-                if (!(parsed instanceof ObjectNode frame)) {
-                    throw new IllegalStateException("bundled schema frame is not a JSON object: " + resource);
-                }
-                CommandSpec command = resolveLeaf(List.of(name));
-                if (command == null) {
-                    return fail("cannot resolve live command contract: " + name);
-                }
-                // A JSON-Schema annotation: the frame shape and its operational contract remain one response,
-                // rendered from the same owner as manifest/help rather than duplicated in schema prose.
-                EmbeddedSchema embedded = EMBEDDED_SCHEMAS.get(name);
-                if (embedded != null) {
-                    JsonNode embeddedSchema = readSchema(embedded.schema());
-                    if (embeddedSchema == null) {
-                        return fail("schema resource missing: " + embedded.schema());
-                    }
-                    frame.set(embedded.property(), bundle(embeddedSchema));
-                }
-                CommandContracts.attachTo(frame, name, command);
-                out().print(bundle(frame).toPrettyString() + "\n");
-            } else {
-                // A document with no sibling reference is emitted verbatim, so its served bytes stay exactly the
-                // authored file; only one that needs bundling is re-rendered.
-                JsonNode parsed = MAPPER.readTree(source);
-                Set<String> siblings = new TreeSet<>();
-                collectCrossReferences(parsed, siblings);
-                out().print(siblings.isEmpty() ? source : bundle(parsed).toPrettyString() + "\n");
-            }
+            // A document with no sibling reference is emitted verbatim, so its served bytes stay exactly the
+            // authored file; only one that needs bundling is re-rendered.
+            JsonNode parsed = MAPPER.readTree(source);
+            Set<String> siblings = new TreeSet<>();
+            collectCrossReferences(parsed, siblings);
+            out().print(siblings.isEmpty() ? source : bundle(parsed).toPrettyString() + "\n");
             return 0;
         } catch (IOException e) {
             // Same reasoning as the two throws above: the stream is over a classpath resource, so a read
@@ -364,6 +349,16 @@ final class SchemaCommand extends BaseCommand {
             JsonNode schema = readSchema(input);
             if (schema == null) {
                 return fail("schema resource missing: " + input);
+            }
+            // A JSON-Schema annotation on the input document itself — `batch`'s `observationArtifact`. It is
+            // attached BEFORE bundling so the referents the embedded schema pulls in are embedded too.
+            EmbeddedSchema embedded = EMBEDDED_SCHEMAS.get(verb);
+            if (embedded != null && schema instanceof ObjectNode frame) {
+                JsonNode embeddedSchema = readSchema(embedded.schema());
+                if (embeddedSchema == null) {
+                    return fail("schema resource missing: " + embedded.schema());
+                }
+                frame.set(embedded.property(), embeddedSchema);
             }
             c.set("input", bundle(schema));
         }

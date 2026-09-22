@@ -54,14 +54,26 @@ class SchemaVerbTest {
                         + res.out());
     }
 
+    /**
+     * A frame is a verb, so its schema arrives shaped like every other verb's: the op-record document under
+     * {@code input}, never at the top level. That used to be the one exception, and it cost an external
+     * consumer a round — a `.input` projection learned from `rule add` returned null on exactly the two
+     * responses whose shape is hardest to guess (a12-kernel-lean, 2026-09-22).
+     */
     @Test
-    void theApplyAndBatchFramesAreServedWithAWorkedExample() throws Exception {
+    void theApplyAndBatchFramesAreServedAsVerbContractsWithAWorkedExample() throws Exception {
         for (String frame : new String[] {"apply", "batch"}) {
             CliTestSupport.Result res = CliTestSupport.run("schema", frame);
             assertEquals(0, res.code(), res::err);
             JsonNode s = MAPPER.readTree(res.out());
-            assertTrue(s.path("examples").isArray() && s.path("examples").size() > 0,
+            assertEquals(frame, s.path("op").asText(),
+                    () -> frame + " is served as a verb contract: " + res.out());
+            assertEquals("array", s.path("input").path("type").asText(),
+                    () -> frame + "'s op-record frame rides `input`: " + res.out());
+            assertTrue(s.path("input").path("examples").isArray() && s.path("input").path("examples").size() > 0,
                     () -> frame + " frame carries a worked examples block: " + res.out());
+            assertTrue(s.path("examples").isMissingNode(),
+                    () -> frame + " must not ALSO publish the frame at the top level: " + res.out());
         }
     }
 

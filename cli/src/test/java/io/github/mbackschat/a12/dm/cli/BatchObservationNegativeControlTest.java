@@ -152,7 +152,7 @@ class BatchObservationNegativeControlTest {
 
         CliTestSupport.Result schema = CliTestSupport.run("schema", "batch");
         assertEquals(0, schema.code(), schema::err);
-        String description = M.readTree(schema.out()).path("description").asText();
+        String description = M.readTree(schema.out()).path("input").path("description").asText();
         assertTrue(description.contains("NONZERO CHILD IS NOT NECESSARILY A FAILED CHILD"),
                 () -> "`schema batch` must carry the same class-level rule: " + description);
         assertTrue(description.contains("data.allExitedZero"),
