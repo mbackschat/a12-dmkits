@@ -9,6 +9,12 @@ import org.junit.jupiter.api.Test;
 
 import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft;
 import io.github.mbackschat.a12.dm.modelkit.FieldKind;
+import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel;
+import io.github.mbackschat.a12.dm.rulekit.dsl.Condition;
+import io.github.mbackschat.a12.dm.rulekit.dsl.DateRef;
+import io.github.mbackschat.a12.dm.rulekit.dsl.Dsl;
+import io.github.mbackschat.a12.dm.rulekit.dsl.FieldRef;
+import io.github.mbackschat.a12.dm.rulekit.dsl.NumberRef;
 
 /**
  * How a BARE clock reaches the comparison's entry gates, and what a {@code { … }} group around it does — on
@@ -29,6 +35,12 @@ import io.github.mbackschat.a12.dm.modelkit.FieldKind;
  * <p><b>Both partners are measured HERE rather than one being inferred from the other.</b> KF445's rows are
  * on the clock-against-clock carrier; repeating them beside the number rows is what makes the opposite
  * directions a single observation instead of two facts a reader has to combine.
+ *
+ * <p><b>Authoring: this law's subject is concrete SYNTAX, so most rows cannot be an AST.</b> A brace group is
+ * not a node — the typed kit builds an expression tree and the renderer decides parenthesisation, so
+ * {@code Today} and {@code {Today}} have the same typed spelling and the variable under test would vanish.
+ * The rows that are ordinary comparisons are authored through the kit, and the rest carry the text this law
+ * exists to vary.
  */
 class ClockGroupingComparisonEntryLawsTest {
 
@@ -41,6 +53,20 @@ class ClockGroupingComparisonEntryLawsTest {
                 g.field("PlacedOn", FieldKind.DATE);
             }).build().toJson();
 
+    private static final BoundModel M = BoundModel.ofJson(ORDER_JSON);
+
+    // Each path resolved once into a typed handle, then reused by every row that needs it.
+    private static final FieldRef REFERENCE = M.field(GROUP + "/Reference");
+    private static final NumberRef QUANTITY = M.num(GROUP + "/Quantity");
+    private static final DateRef PLACED_ON = M.date(GROUP + "/PlacedOn");
+
+    /** The typed path, for the rows whose shape the kit can express. */
+    private static String verdict(Condition comparison) {
+        return KernelLaws.verdictModel(ORDER_JSON, GROUP, "../Reference",
+                Dsl.fieldFilled(REFERENCE).and(comparison));
+    }
+
+    /** The text path, for a brace depth or a wrong-kind partner that has no typed spelling. */
     private static String verdict(String comparison) {
         return KernelLaws.verdictModel(ORDER_JSON, GROUP, "../Reference",
                 "FieldFilled(Reference) And " + comparison);
@@ -53,7 +79,7 @@ class ClockGroupingComparisonEntryLawsTest {
     @Test
     void aGroupAroundAClockComparedToANumberConstantOnlyMovesWhichGateRefuses() {
         Map<String, String> actual = new LinkedHashMap<>();
-        actual.put("a field against a constant — the liveness control", verdict("[Quantity] < 1"));
+        actual.put("a field against a constant — the liveness control", verdict(QUANTITY.lt(1)));
         actual.put("bare Today", verdict("Today < 1"));
         actual.put("singly grouped Today", verdict("{Today} < 1"));
         actual.put("doubly grouped Today", verdict("{{Today}} < 1"));
@@ -82,10 +108,10 @@ class ClockGroupingComparisonEntryLawsTest {
     @Test
     void aGroupAroundAClockComparedToAnotherClockAdmitsAtEveryDepth() {
         Map<String, String> actual = new LinkedHashMap<>();
-        actual.put("bare on both sides", verdict("Today == Today"));
+        actual.put("bare on both sides", verdict(Dsl.today().eq(Dsl.today())));
         actual.put("singly grouped on the left", verdict("{Today} == Today"));
         actual.put("doubly grouped on the left", verdict("{{Today}} == Today"));
-        actual.put("a date field against a clock — the liveness control", verdict("[PlacedOn] == Today"));
+        actual.put("a date field against a clock — the liveness control", verdict(PLACED_ON.eq(Dsl.today())));
 
         Map<String, String> expected = new LinkedHashMap<>();
         // Two bare clocks are two constants, and the constant gate is asked first.

@@ -1,6 +1,7 @@
 package io.github.mbackschat.a12.dm.rulekit.validate.laws;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -10,6 +11,10 @@ import org.junit.jupiter.api.Test;
 
 import io.github.mbackschat.a12.dm.rulekit.validate.ValidationResult;
 import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft;
+import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel;
+import io.github.mbackschat.a12.dm.rulekit.dsl.Dsl;
+import io.github.mbackschat.a12.dm.rulekit.dsl.FieldRef;
+import io.github.mbackschat.a12.dm.rulekit.dsl.NumberRef;
 
 /**
  * What a rounding places token does ABOVE the 0..14 scale gate — where a SECOND boundary sits.
@@ -34,9 +39,33 @@ class RoundingPlacesOverflowLawsTest {
                     .numberField("UnitPrice", f -> f.fractionDigits(4)))
             .build().toJson();
 
+    private static final BoundModel M = BoundModel.ofJson(PRICES);
+
+    private static final FieldRef SKU = M.field("/PriceList/Sku");
+    private static final NumberRef UNIT_PRICE = M.num("/PriceList/UnitPrice");
+
+    /**
+     * The text path, and here it is the point rather than a fallback: this law's subject is the TOKEN in the
+     * places slot, and the typed slot is an {@code int} — so a value past a signed 64-bit read and a leading
+     * zero, the two shapes the grid exists to separate, have no typed spelling by construction.
+     */
     private static String verdict(String places) {
-        ValidationResult r = KernelLaws.checkModel(PRICES, GROUP, "../Sku",
-                "FieldFilled(Sku) And 0 < RoundUpValue(UnitPrice, " + places + ")");
+        return classes(KernelLaws.checkModel(PRICES, GROUP, "../Sku",
+                "FieldFilled(Sku) And 0 < RoundUpValue(UnitPrice, " + places + ")"));
+    }
+
+    /**
+     * The typed path, for the in-range places the kit will build — the ladder's live boundary. Only 14 comes
+     * through here: the kit refuses 15 itself, which {@link #theKitsOwnPlacesBoundHasThisKernelRowAsItsBasis}
+     * pins rather than leaving as an unstated reason for a text row.
+     */
+    private static String verdict(int places) {
+        return classes(KernelLaws.checkModel(PRICES, GROUP, "../Sku",
+                Dsl.fieldFilled(SKU)
+                        .and(Dsl.number(0).lt(Dsl.roundUpValue(UNIT_PRICE, places)))));
+    }
+
+    private static String classes(ValidationResult r) {
         return r.ok() ? KernelLaws.ADMITTED : r.diagnostics().stream()
                 .map(d -> d.code().orElse("(no code: " + d.summary() + ")"))
                 .collect(Collectors.joining(","));
@@ -45,7 +74,7 @@ class RoundingPlacesOverflowLawsTest {
     @Test
     void thePlacesLadder() {
         Map<String, String> actual = new LinkedHashMap<>();
-        actual.put("14 — the top of the scale gate", verdict("14"));
+        actual.put("14 — the top of the scale gate", verdict(14));
         actual.put("15 — one above it", verdict("15"));
         actual.put("Long.MAX_VALUE", verdict("9223372036854775807"));
         actual.put("Long.MAX_VALUE + 1", verdict("9223372036854775808"));

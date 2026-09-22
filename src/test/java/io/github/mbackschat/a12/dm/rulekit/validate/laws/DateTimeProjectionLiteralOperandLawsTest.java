@@ -11,6 +11,12 @@ import org.junit.jupiter.api.Test;
 import io.github.mbackschat.a12.dm.rulekit.validate.ValidationResult;
 import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft;
 import io.github.mbackschat.a12.dm.modelkit.FieldKind;
+import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel;
+import io.github.mbackschat.a12.dm.rulekit.dsl.Condition;
+import io.github.mbackschat.a12.dm.rulekit.dsl.DateRef;
+import io.github.mbackschat.a12.dm.rulekit.dsl.DateTimeRef;
+import io.github.mbackschat.a12.dm.rulekit.dsl.Dsl;
+import io.github.mbackschat.a12.dm.rulekit.dsl.FieldRef;
 
 /**
  * Whether a temporal extractor takes a direct LITERAL, measured per family.
@@ -36,9 +42,29 @@ class DateTimeProjectionLiteralOperandLawsTest {
                     .field("OrderDate", FieldKind.DATE))
             .build().toJson();
 
+    private static final BoundModel M = BoundModel.ofJson(BOOKINGS);
+
+    private static final FieldRef REFERENCE = M.field("/Booking/Reference");
+    private static final DateTimeRef SCHEDULED_AT = M.dateTime("/Booking/ScheduledAt");
+    private static final DateRef ORDER_DATE = M.date("/Booking/OrderDate");
+
+    /**
+     * The text path. Every LITERAL row takes it, and by construction: the kit composes a stamp from typed
+     * parts ({@code dateTime(DateOperand, TimeOperand)}) and has no string-literal temporal operand at all,
+     * which is exactly the slot this law varies.
+     */
     private static String verdict(String condition) {
-        ValidationResult r = KernelLaws.checkModel(BOOKINGS, GROUP, "../Reference",
-                "FieldFilled(Reference) And " + condition);
+        return classes(KernelLaws.checkModel(BOOKINGS, GROUP, "../Reference",
+                "FieldFilled(Reference) And " + condition));
+    }
+
+    /** The typed path, for the two FIELD controls that prove the ladder is live rather than uniformly refusing. */
+    private static String verdict(Condition condition) {
+        return classes(KernelLaws.checkModel(BOOKINGS, GROUP, "../Reference",
+                Dsl.fieldFilled(REFERENCE).and(condition)));
+    }
+
+    private static String classes(ValidationResult r) {
         return r.ok() ? KernelLaws.ADMITTED : r.diagnostics().stream()
                 .map(d -> d.code().orElse("(no code: " + d.summary() + ")"))
                 .collect(Collectors.joining(","));
@@ -47,12 +73,12 @@ class DateTimeProjectionLiteralOperandLawsTest {
     @Test
     void aProjectionTakesAStampLiteralAndANumericExtractorRefusesIt() {
         Map<String, String> actual = new LinkedHashMap<>();
-        actual.put("DateFromDateTime on the field — control", verdict("DateFromDateTime(ScheduledAt) > Today"));
+        actual.put("DateFromDateTime on the field — control", verdict(Dsl.dateFromDateTime(SCHEDULED_AT).after(Dsl.today())));
         actual.put("DateFromDateTime on a complete stamp literal",
                 verdict("DateFromDateTime(\"15.01.2026T10:30:00\") > Today"));
         actual.put("TimeFromDateTime on a complete stamp literal",
                 verdict("TimeFromDateTime(\"15.01.2026T10:30:00\") != [PickupTime]"));
-        actual.put("YearFromDate on the field — control", verdict("YearFromDate(OrderDate) < 2020"));
+        actual.put("YearFromDate on the field — control", verdict(Dsl.yearFromDate(ORDER_DATE).lt(2020)));
         actual.put("YearFromDate on a date literal", verdict("YearFromDate(\"15.01.2026\") < 2020"));
         actual.put("YearFromDate on a complete stamp literal",
                 verdict("YearFromDate(\"15.01.2026T10:30:00\") < 2020"));

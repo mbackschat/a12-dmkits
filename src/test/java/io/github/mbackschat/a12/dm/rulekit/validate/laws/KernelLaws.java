@@ -8,6 +8,9 @@ import java.util.stream.Collectors;
 import io.github.mbackschat.a12.dm.Fixtures;
 import io.github.mbackschat.a12.dm.ModelDrafts;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Computation;
+import io.github.mbackschat.a12.dm.rulekit.dsl.Condition;
+import io.github.mbackschat.a12.dm.rulekit.dsl.ConditionLanguage;
+import io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer;
 import io.github.mbackschat.a12.dm.rulekit.dsl.LocalizedText;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Rule;
 import io.github.mbackschat.a12.dm.rulekit.validate.DraftComputation;
@@ -332,6 +335,37 @@ final class KernelLaws {
         ValidationResult r = check(json, group, errorField, condition);
         return r.ok() ? ADMITTED : r.diagnostics().stream()
                 .map(d -> d.code().orElse("(no code: " + d.summary() + ")")).collect(Collectors.joining(","));
+    }
+
+    /**
+     * The TYPED entry point — the same verdict for a {@link Condition} built with the kit, rendered relative
+     * to {@code group}. Prefer it: the path is written once, checked at the call site, and the row shows the
+     * spelling a real consumer would ship.
+     *
+     * <p><b>Why this exists at all, and why its absence mattered.</b> Until 2026-09-22 a law that wanted to
+     * author typed had to hand-roll {@code new DslRenderer(ConditionLanguage.EN, group).render(…)} at every
+     * site, so the string overload was strictly cheaper and the estate drifted to text — which is how a law's
+     * rows stopped resembling anything a consumer writes. The kit's own harness making the typed path the
+     * expensive one is the friction, not the laws that took the cheap one.
+     *
+     * <p><b>A string row is still legitimate, for two reasons and no others.</b> The typed surface may ERASE
+     * the shape — a wrong-kind operand the kit refuses statically because the kernel refuses it, where the row
+     * exists to measure that the kernel does. Or the law's subject may be concrete SYNTAX that has no node —
+     * a brace depth, a malformed token, a literal form — where an AST cannot carry the variable under test.
+     * Say which one, at the row or at the helper that builds it.
+     */
+    static String verdictModel(String json, String group, String errorField, Condition condition) {
+        return verdictModel(json, group, errorField,
+                new DslRenderer(ConditionLanguage.EN, group).render(condition));
+    }
+
+    /**
+     * The typed twin of {@link #checkModel} — the raw {@link ValidationResult}, for a law that must see every
+     * co-firing class rather than a joined verdict string.
+     */
+    static ValidationResult checkModel(String json, String group, String errorField, Condition condition) {
+        return check(json, group, errorField,
+                new DslRenderer(ConditionLanguage.EN, group).render(condition));
     }
 
     /**

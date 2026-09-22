@@ -778,6 +778,7 @@ tasks.register('docGuardTest', Test) {
         // compiler sees them — and `vite.config.ts` sat outside every `include` until 2026-09-17.
         includeTestsMatching 'io.github.mbackschat.a12.dm.ConsumerTypeScriptCoverageGuardTest'
         includeTestsMatching 'io.github.mbackschat.a12.dm.AdmissionClaimIsAssertedGuardTest'
+        includeTestsMatching 'io.github.mbackschat.a12.dm.TypedConditionAuthoringRatchetTest'
         includeTestsMatching 'io.github.mbackschat.a12.dm.VersionMentionFreshnessTest'
         includeTestsMatching 'io.github.mbackschat.a12.dm.rulekit.catalog.DslCatalogBridgeTest'
     }

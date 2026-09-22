@@ -157,6 +157,29 @@ public final class RuntimeLaws {
         return withRuleMessages(modelJson, groupId, ruleName, errorEntityRelPath, errorCode, condition, "x", "x");
     }
 
+    /**
+     * As {@link #withRule}, taking the condition the kit BUILT rather than its text — rendered relative to
+     * {@code groupId}, which is the scope the spliced rule will be read in.
+     *
+     * <p><b>Why this overload exists (2026-09-22).</b> CLAUDE.md's dogfood rule makes every internal test a
+     * first-class consumer that must author through the typed surface, and this harness published only the
+     * String form — so the preferred spelling cost a private {@code new DslRenderer(…)} helper at each site
+     * while the discouraged one was a one-liner. 43 files in the sibling {@code validate/laws} tier had each
+     * built that helper independently, under nine different names, which is what showed the affordance rather
+     * than the discipline was the cause. Its twin is {@code KernelLaws.verdictModel(…, Condition)}.
+     *
+     * <p>A String condition stays legitimate for exactly two reasons: the typed surface ERASES the shape (a
+     * wrong-kind operand the kit refuses because the kernel does, where the row measures that refusal), or the
+     * law's subject is concrete SYNTAX with no node — a brace depth, a malformed token, a literal form. Say
+     * which, at the row or at the helper that builds it.
+     */
+    public static String withRule(String modelJson, String groupId, String ruleName, String errorEntityRelPath,
+            String errorCode, io.github.mbackschat.a12.dm.rulekit.dsl.Condition condition) {
+        return withRule(modelJson, groupId, ruleName, errorEntityRelPath, errorCode,
+                new io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer(
+                        io.github.mbackschat.a12.dm.rulekit.dsl.ConditionLanguage.EN, groupId).render(condition));
+    }
+
     /** As {@link #withRule}, but with explicit en_US / de_DE error-message texts (for localized-text laws). */
     static String withRuleMessages(String modelJson, String groupId, String ruleName, String errorEntityRelPath,
             String errorCode, String condition, String enText, String deText) {
