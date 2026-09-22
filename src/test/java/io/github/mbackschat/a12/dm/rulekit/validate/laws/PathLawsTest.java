@@ -13,11 +13,12 @@ import org.junit.jupiter.api.Test;
  * nested-repeatable {@code project} fixture (Milestones ▸ Tasks), the structure needed to exercise the
  * wildcard-propagation rule.
  *
- * <p>This file is also the worked example for DEV-API-GAPS DG59, because its project rows are where the
- * two legitimate reasons for a raw-String condition genuinely live. Every one was attempted typed on
- * 2026-09-22 and the render compared: four are authored typed and the three that remain carry a
- * {@link RawCondition} naming which reason applies and what the typed surface produces instead. Read a
- * bare condition string in this file as unexamined, not as sanctioned.
+ * <p><b>Typed-surface boundary.</b> The project rows are where both legitimate reasons for a raw-String
+ * condition genuinely live, so each was attempted typed on 2026-09-22 and the render compared. Four are
+ * authored typed; the three that remain carry a {@link RawCondition} naming which reason applies and what
+ * the typed surface emits instead — a star on {@code ..} has no typed form at all, and two rows have the
+ * SPELLING as their subject, which a renderer normalizes away. The subscription/catalog rows above are
+ * {@code acceptsModel} laws about name resolution and are untriaged.
  */
 class PathLawsTest {
 
@@ -97,9 +98,7 @@ class PathLawsTest {
 
     @Test
     void wildcardingEveryRepeatableLevelIsAccepted() {
-        // both repeatable levels starred → the flattened nested list is valid. Authored TYPED, unlike its
-        // siblings here: this is the one shape in this family the builder can represent, so it is the row that
-        // shows the others are raw by necessity rather than by habit (DEV-API-GAPS DG59).
+        // both repeatable levels starred → the flattened nested list is valid.
         BoundModel m = Fixtures.project();
         KernelLaws.acceptsProject("/Project", "../ProjectName",
                 m.field("/Project/ProjectName").filled()

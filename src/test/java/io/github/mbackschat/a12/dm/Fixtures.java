@@ -42,7 +42,8 @@ public final class Fixtures {
      *
      * <p>Added 2026-09-22 with {@link #logistics()}: {@code subscription()} and {@code order()} were bound and
      * these two were not, so a law against either fixture could only reach a typed condition by re-binding the
-     * JSON itself — which is the friction the raw-String rows in those families are made of (DEV-API-GAPS DG59).
+     * JSON itself — which is the friction the raw-String rows in those families are made of (TESTING-SPEC,
+     * "A String condition stays correct for exactly two reasons").
      */
     public static synchronized BoundModel project() {
         if (project == null) {

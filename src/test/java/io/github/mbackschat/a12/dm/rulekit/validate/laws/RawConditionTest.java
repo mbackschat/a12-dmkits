@@ -11,9 +11,9 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * lock the two ways that advertisement could be true on paper and empty in practice: a reason that is
  * absent, and text that the wrapper silently alters on its way to the kernel.
  *
- * <p>What no test here can lock is the part that matters most, and saying so is the point: nothing yet
- * forces a row to use this type at all. That arrives when the bare-{@code String} overloads retire and
- * javac becomes the enumerator (DEV-API-GAPS DG59); until then this is a floor, not a gate.
+ * <p>What no test here can lock is the part that matters most, and saying so is the point: nothing forces
+ * a row to use this type at all, and by decision nothing will — the reason a law is raw belongs in its
+ * class javadoc, which no guard can check either (TESTING-SPEC). This is a floor, not a gate.
  */
 class RawConditionTest {
 

@@ -179,8 +179,11 @@ public final class RuntimeLaws {
      *
      * <p>A String condition stays legitimate for exactly two reasons: the typed surface ERASES the shape (a
      * wrong-kind operand the kit refuses because the kernel does, where the row measures that refusal), or the
-     * law's subject is concrete SYNTAX with no node — a brace depth, a malformed token, a literal form. Say
-     * which, at the row or at the helper that builds it.
+     * law's subject is concrete SYNTAX with no node — a brace depth, a malformed token, a literal form.
+     *
+     * <p>Say which in the CLASS javadoc: the reason is nearly always a property of the law family rather than
+     * of the row, so one paragraph settles the file (measured 2026-09-22; TESTING-SPEC carries the
+     * disposition, and {@code AggregateSlotLawsTest}'s "Typed-surface boundary" is the model to copy).
      */
     public static String withRule(String modelJson, String groupId, String ruleName, String errorEntityRelPath,
             String errorCode, Condition condition) {

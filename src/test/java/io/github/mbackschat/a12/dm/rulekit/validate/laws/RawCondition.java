@@ -2,8 +2,8 @@ package io.github.mbackschat.a12.dm.rulekit.validate.laws;
 
 /**
  * A law's condition handed to the kernel as TEXT, together with the reason the typed surface cannot
- * author it. Only two reasons are legitimate (DEV-API-GAPS DG59), and they are the two factories below;
- * there is no third and no unexplained arm.
+ * author it. Only two reasons are legitimate (TESTING-SPEC, "A String condition stays correct for exactly
+ * two reasons"), and they are the two factories below; there is no third and no unexplained arm.
  *
  * <p>The type exists because those two reasons were advertised in three places and enforced nowhere.
  * Passing a bare {@code String} states nothing, so nothing can tell a row that is raw by necessity from
@@ -11,11 +11,16 @@ package io.github.mbackschat.a12.dm.rulekit.validate.laws;
  * access to why the author chose the spelling. Making the reason a constructor argument moves the
  * question to the call site, which is the only place that knows the answer.
  *
- * <p><strong>What this does and does not enforce today.</strong> It enforces that a row reaching a
- * {@code RawCondition} overload carries a reason. It does <em>not</em> yet force a row through this
- * type: the bare-{@code String} overloads still exist, and retiring them — so javac enumerates every
- * remaining raw site exactly — is the terminal step DG59 describes, cheap only once the backlog is
- * small. Do not read the existence of this type as a claim that the estate is clean.
+ * <p><strong>This is for the ODD ROW OUT.</strong> The reason a law is raw is nearly always a property of
+ * the whole family, so a class states it once in its javadoc and needs none of this ceremony; reach for
+ * {@code RawCondition} when a single row inside an otherwise-typed family needs its own. Retiring the
+ * bare-{@code String} overloads to force every site through here was considered and rejected: three
+ * families were sampled and raw was legitimate in most of their rows, so wrapping all 675 call sites on
+ * this class's String-condition entry points (453 on the nine names with no typed twin, 222 on the three
+ * that overload-resolve against one; measured by signature 2026-09-22) would buy per-row ritual where
+ * per-class prose already works (TESTING-SPEC). Three of ~50 families is a sample, not
+ * a census — the decision rests on the cost being certain and the benefit speculative, not on a measured
+ * estate. Nothing here makes the estate clean; it makes one row honest.
  */
 record RawCondition(String text, Reason reason, String why) {
 
@@ -32,7 +37,7 @@ record RawCondition(String text, Reason reason, String why) {
         }
         if (why == null || why.isBlank()) {
             throw new IllegalArgumentException(
-                    "a raw condition needs the reason it is raw — that is the whole point of this type (DG59)");
+                    "a raw condition needs the reason it is raw — that is the whole point of this type");
         }
     }
 

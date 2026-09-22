@@ -201,10 +201,11 @@ final class KernelLaws {
     // Every fixture-bound entry point above, taking a Condition instead of its rendered text. They exist
     // because the String form was the ONLY form here, which is the whole reason the accept/reject tier is
     // written in raw strings: a law that wanted to author typed had to abandon the convenience entry point
-    // and rebuild a model (DEV-API-GAPS DG59, measured 2026-09-22 — 453 call sites across these nine names).
-    // Each delegates through render(group, …), so a migrated row sends the kernel byte-identical text and a
-    // String row that stays is a row whose subject really is the concrete syntax, which is the distinction
-    // DG59 wants to become checkable. Fixtures.subscription()/order()/project()/logistics() bind the models
+    // and rebuild a model (measured 2026-09-22 — 453 call sites across these nine names).
+    // Each delegates through render(group, …), so a migrated row sends the kernel byte-identical text. A
+    // String row that STAYS is not thereby wrong: three families were sampled and raw proved legitimate in
+    // most of them, so the estate is not a migration backlog — the reason just has to be stated, at class
+    // level, per TESTING-SPEC. Fixtures.subscription()/order()/project()/logistics() bind the models
     // these methods assert against, so a caller authors against the same model the assertion uses.
 
     /** As {@link #accepts(String, String, String)}, authored typed. */
@@ -261,7 +262,8 @@ final class KernelLaws {
     // ---- raw twins, for the rows the typed surface genuinely cannot author ------------------------------
     //
     // A {@link RawCondition} is text PLUS the reason it is text, so a row that must stay raw says which of
-    // DG59's two reasons applies instead of being indistinguishable from a row that is raw by habit. Only
+    // the two legitimate reasons applies instead of being indistinguishable from one that is raw by habit.
+    // It is for the ODD ROW OUT: a whole family says it once in its class javadoc instead (TESTING-SPEC). Only
     // the names an already-triaged family needs carry a twin; the rest arrive with their own triage, since
     // an overload nobody calls would be exactly the speculative surface this harness is trying to shed.
 
@@ -449,7 +451,12 @@ final class KernelLaws {
      * the shape — a wrong-kind operand the kit refuses statically because the kernel refuses it, where the row
      * exists to measure that the kernel does. Or the law's subject may be concrete SYNTAX that has no node —
      * a brace depth, a malformed token, a literal form — where an AST cannot carry the variable under test.
-     * Say which one, at the row or at the helper that builds it.
+     *
+     * <p>Say which one <b>in the class javadoc</b>: the reason is nearly always a property of the law family,
+     * not of the row (§5's subject is literal scale and operand order, §10's is path spelling), so one
+     * paragraph settles every row in the file — {@code AggregateSlotLawsTest}'s "Typed-surface boundary" is
+     * the model. Use {@link RawCondition} only for a row that needs its own reason inside an otherwise-typed
+     * family. Measured 2026-09-22 across three families; the full disposition is in TESTING-SPEC.
      */
     static String verdictModel(String json, String group, String errorField, Condition condition) {
         return verdictModel(json, group, errorField, render(group, condition));
