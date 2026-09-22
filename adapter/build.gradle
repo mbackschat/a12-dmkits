@@ -269,6 +269,14 @@ tasks.named('test') {
     // wall time and leaves CPU-during-sleep near zero, so load pushes both of its assertions further into passing.
     // That reasoning is specific to its shape, not a general licence, and nothing mechanical stops a NEW
     // clock-reading assertion from landing in this lane — PerfTestClassificationTest is syntactic (IG131).
+    // Reuse the kernel's GENERATED code across runs (KernelModelCodeCache) — the kernel still evaluates every
+    // document live, so this lane stays an oracle; only the ~77% of per-model cost that is code GENERATION is
+    // skipped. Opted in here and nowhere else: every perf/measurement lane must generate what it times, and the
+    // cache defaults off so a new timing lane cannot inherit it by omission. A perf run through THIS task opts
+    // back out, because -PrunPerf pulls the timing bars into a lane that is otherwise cached.
+    if (!project.hasProperty('runPerf') && !project.hasProperty('allTests')) {
+        systemProperty 'rk.kernelCodeCache', 'true'
+    }
     useJUnitPlatform {
         def all = project.hasProperty('allTests')
         if (!all && !project.hasProperty('runPerf')) { excludeTags 'perf'; excludeTags 'perf-bench' }

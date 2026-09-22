@@ -69,6 +69,23 @@ Recorded so the question is not re-investigated. On the 8-processor darwin machi
 
 **The lever that does work is scope, not concurrency:** `-Pfast` plus a single class is ~8 s (see [TESTING-SPEC](TESTING-SPEC.md) "Test tiers"), and the full lane belongs to the session-end checkpoint.
 
+**Extended 2026-09-22 — the cost has a precise locus, and "shaving it means removing kernel work" is too strong.** Re-measured at 652 classes / 3321 tests / 1024 s of test time in 384 s wall (same machine, 2.7×), and then split cold from warm on one model, which the 2026-08-15 pass did not do:
+
+| rules in the model | engine object | **first evaluation** | warm evaluation |
+|---|---|---|---|
+| 1 | 13 ms | **800 ms** | 1.37 ms |
+| 5 | 1 ms | **224 ms** | 2.32 ms |
+| 20 | 1 ms | **298 ms** | 1.84 ms |
+| 50 | 3 ms | **437 ms** | 1.59 ms |
+
+Codegen is **lazy** — it happens inside the first `validationMessages`, not in the engine constructor, which is why a harness that warms up before timing hides it entirely (the first attempt at this measurement did exactly that and reported 1 ms engine builds). It is ~99.5 % of the per-model cost, it barely scales with rule count, and it is therefore fixed Groovy-compiler startup **per distinct model, per strategy**. At ~650 fixture models that is ≈650 s, which is the right order for the 1024 s measured.
+
+**The reducible part is code GENERATION, not compilation and not evaluation — and the kernel ships the seam for it.** Splitting the 1036 ms three ways on a 20-rule model: generate + compile **1036 ms**, revive the same `IModelCode` from disk and let Groovy compile it again **240 ms**, hold the live object **6 ms**. So a disk round trip removes **~77 %**. The reason is that the kernel's `ModelGroovyCode` serializes the generated *source* in a `String` and marks the compiled `GroovyObject` `transient`: generation persists, compilation repeats. And the SPI was already there — `RuntimeLaws.dynamicConfig()` was handing the kernel an `IModelCodeCache` backed by a **fresh `HashMap` per engine**, thrown away on eviction, while `IModelCode` is declared `extends Serializable` and carries a model hash "to determine if the model has changed".
+
+**Landed 2026-09-22 as `KernelModelCodeCache`.** Entries are keyed by (kernel runtime version, JDK, model JSON), written gzipped under `adapter/build/kernel-model-code.noindex/`, and the lane opts in — every `perf`/`measurement` lane must generate what it times, so the cache defaults **off** and a new timing lane cannot inherit it by omission. Measured on the full lane, same 3326 tests and the same result either way: **cold 5m30s → warm 3m21s** (and 4m22s → 2m57s/3m08s on the pre-gzip build). Two details that are not incidental. Gzip takes the populated cache from **94 MB to 18 MB** over 1805 entries, because the payload is generated Groovy source. And the `.noindex` suffix is load-bearing on macOS: before it, `mdfind -onlyin` found **134** of the cache files indexed with `corespotlightd` and `spotlightknowledged.updater` at 85 % and 106 % CPU — on a machine that also runs the timing lanes, that is CPU a measurement competes with. After: **0**.
+
+**What must NOT be cached is the kernel's ANSWERS.** Recording messages keyed by kernel version turns the oracle into a golden file, and the differential's question is whether the interpreter matches the *live* kernel. A recorded answer can go stale for reasons no practical key captures — JDK, timezone database, locale data, `Set` iteration order — and the test would then pass against something the kernel no longer says. A silent false green in the oracle is strictly worse than a slow lane.
+
 ## A failing test must say WHY in the build log (2026-08-22)
 
 Gradle's default console output for a failed test is one line — `SomeTest > case() FAILED` plus

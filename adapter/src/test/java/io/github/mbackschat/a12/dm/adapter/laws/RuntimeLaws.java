@@ -1266,12 +1266,16 @@ public final class RuntimeLaws {
         private final IDocumentFactory df;
 
         KernelEngine(String modelJson) {
+            this(modelJson, KernelModelCodeCache.forModel(modelJson));
+        }
+
+        KernelEngine(String modelJson, IModelCodeCache codeCache) {
             this.modelJson = modelJson;
             IDocumentModel model = expandedModel(modelJson);
             this.model = model;
             IDocumentModelResolver resolver = id -> model;
             this.dsf = new DocumentServiceFactory(resolver);
-            this.rt = new DocumentRtServiceFactory(resolver).createDocumentRtService(dynamicConfig());
+            this.rt = new DocumentRtServiceFactory(resolver).createDocumentRtService(dynamicConfig(codeCache));
             this.df = dsf.createDocumentFactory();
         }
 
@@ -1479,6 +1483,11 @@ public final class RuntimeLaws {
 
     public static KernelEngine kernelEngine(String modelJson) {
         return new KernelEngine(modelJson);
+    }
+
+    /** An engine whose generated code comes from, and is written back to, a caller-supplied cache. */
+    static KernelEngine kernelEngineWithCache(String modelJson, IModelCodeCache codeCache) {
+        return new KernelEngine(modelJson, codeCache);
     }
 
     private static KernelEngine sharedKernelEngine(String modelJson) {
@@ -2094,12 +2103,16 @@ public final class RuntimeLaws {
         return model;
     }
 
-    private static IDocumentDynamicServiceConfig dynamicConfig() {
-        IModelCodeCache cache = new IModelCodeCache() {
+    /** The kernel's own generated-code cache, per engine — the shape every engine had before one was injectable. */
+    static IModelCodeCache newModelCodeCache() {
+        return new IModelCodeCache() {
             private final Map<String, IModelCode> codes = new HashMap<>();
             public IModelCode getModelCode(String id) { return codes.get(id); }
             public void addModelCode(String id, IModelCode code) { codes.put(id, code); }
         };
+    }
+
+    private static IDocumentDynamicServiceConfig dynamicConfig(IModelCodeCache cache) {
         return new IDocumentDynamicServiceConfig() {
             public IModelCodeCache getCache() { return cache; }
             public Optional<String> getVariant() { return Optional.empty(); }
