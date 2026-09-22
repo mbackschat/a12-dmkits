@@ -10,9 +10,7 @@ import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft
 import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft.GroupBuilder
 import io.github.mbackschat.a12.dm.modelkit.FieldKind
 import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel
-import io.github.mbackschat.a12.dm.rulekit.dsl.ConditionLanguage
 import io.github.mbackschat.a12.dm.rulekit.dsl.Dsl
-import io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 import java.util.function.Consumer
@@ -41,7 +39,7 @@ class ComputeTargetFormatDiffTest {
         .build().toJson()
 
     private val m = BoundModel.ofJson(json)
-    private val op = DslRenderer(ConditionLanguage.EN, "/Cal").render(Dsl.addYears(m.date(ORDER), 2).expression())
+    private val op = RuntimeLaws.render("/Cal", Dsl.addYears(m.date(ORDER), 2).expression())
     private val def = ModelDef(
         listOf(FieldDef(ORDER, Kind.DATE, format = "yyyy-MM-dd"), FieldDef(MAT, Kind.DATE, format = "dd.MM.yyyy")),
         emptyList(),
@@ -67,7 +65,7 @@ class ComputeTargetFormatDiffTest {
         .build().toJson()
 
     private val dtM = BoundModel.ofJson(dtJson)
-    private val dtOp = DslRenderer(ConditionLanguage.EN, "/Dt").render(Dsl.dateTime(dtM.date(D), dtM.time(T)).expression())
+    private val dtOp = RuntimeLaws.render("/Dt", Dsl.dateTime(dtM.date(D), dtM.time(T)).expression())
     private val dtDef = ModelDef(
         listOf(
             FieldDef(D, Kind.DATE, format = "yyyy-MM-dd"),

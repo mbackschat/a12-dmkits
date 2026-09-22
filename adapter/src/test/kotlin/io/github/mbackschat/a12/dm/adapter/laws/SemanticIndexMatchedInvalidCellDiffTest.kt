@@ -8,9 +8,7 @@ import io.github.mbackschat.a12.dm.interpreter.model.ComputeOutcome
 import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft
 import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel
 import io.github.mbackschat.a12.dm.rulekit.dsl.Calculation
-import io.github.mbackschat.a12.dm.rulekit.dsl.ConditionLanguage
 import io.github.mbackschat.a12.dm.rulekit.dsl.Dsl
-import io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 
@@ -61,8 +59,7 @@ class SemanticIndexMatchedInvalidCellDiffTest {
     // so its column/matched-invalid arms pin THAT read site alone. `operationsRenderToTheKernelLegalShape`
     // pins the byte-identical rendered form.
     private val m = BoundModel.ofJson(base)
-    private val rel = DslRenderer(ConditionLanguage.EN, "/Shop")
-    private fun op(e: Calculation) = rel.render(e)
+    private fun op(e: Calculation) = RuntimeLaws.render("/Shop", e)
 
     private val labelForKey = m.str(LABEL).forIndex(m.field(KEY))                          // [Items/Label For LookupKey]
     private val priceForKey = m.num(PRICE).forIndex(m.field(KEY))                          // [Items/Price For LookupKey]

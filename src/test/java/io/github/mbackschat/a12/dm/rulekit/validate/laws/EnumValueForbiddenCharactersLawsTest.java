@@ -3,6 +3,7 @@ package io.github.mbackschat.a12.dm.rulekit.validate.laws;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
 
@@ -12,7 +13,9 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 
+import io.github.mbackschat.a12.dm.core.ModelConsistencyException;
 import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft;
+import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel;
 
 /**
  * KERNEL-FINDINGS §8 — the characters an enumeration's three value carriers refuse, and the predicate behind
@@ -228,9 +231,9 @@ class EnumValueForbiddenCharactersLawsTest {
     /** The classes A12 raised with their multiplicities, so a row can state a count rather than a set. */
     private static String raised(String body) {
         try {
-            io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel.ofJson(modelWith(body));
+            BoundModel.ofJson(modelWith(body));
             return KernelLaws.ADMITTED;
-        } catch (io.github.mbackschat.a12.dm.core.ModelConsistencyException rejected) {
+        } catch (ModelConsistencyException rejected) {
             Map<String, Integer> counted = new LinkedHashMap<>();
             for (var notification : rejected.notifications()) {
                 String message = notification.message().trim();
@@ -256,29 +259,29 @@ class EnumValueForbiddenCharactersLawsTest {
      */
     @Test
     void theTwoCodelessGatesStateTheirVerdictsInProse() {
-        Map<String, java.util.List<String>> actual = new LinkedHashMap<>();
+        Map<String, List<String>> actual = new LinkedHashMap<>();
         actual.put("a declared value carrying a newline", prose(internalValue("\\n")));
         actual.put("a category name carrying a tab",
                 prose("\"values\":[{\"value\":\"BASIC\"},{\"value\":\"PLUS\"}],"
                         + "\"categories\":[{\"name\":\"Ba\\tnd\",\"values\":[\"LOW\",\"HIGH\"]}]"));
 
-        Map<String, java.util.List<String>> expected = new LinkedHashMap<>();
-        expected.put("a declared value carrying a newline", java.util.List.of(
+        Map<String, List<String>> expected = new LinkedHashMap<>();
+        expected.put("a declared value carrying a newline", List.of(
                 "Field with path '/Policy/Tier': Only values without line breaks are allowed."));
         // A different gate entirely, and the sentence is what says so: the category's name answers to a NAME
         // alphabet, not to this family's four characters, so the tab is incidental to why it was refused.
-        expected.put("a category name carrying a tab", java.util.List.of(
+        expected.put("a category name carrying a tab", List.of(
                 "Field with path '/Policy/Tier': A category name starts with a letter and may contain only "
                         + "letters, digits and the underscore"));
         assertEquals(expected, actual, "the sentences the two codeless gates state");
     }
 
     /** Every sentence A12 raised, in order, so a codeless refusal can be told from an unrelated failure. */
-    private static java.util.List<String> prose(String body) {
+    private static List<String> prose(String body) {
         try {
-            io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel.ofJson(modelWith(body));
-            return java.util.List.of(KernelLaws.ADMITTED);
-        } catch (io.github.mbackschat.a12.dm.core.ModelConsistencyException rejected) {
+            BoundModel.ofJson(modelWith(body));
+            return List.of(KernelLaws.ADMITTED);
+        } catch (ModelConsistencyException rejected) {
             return rejected.notifications().stream().map(n -> n.message().trim()).toList();
         }
     }

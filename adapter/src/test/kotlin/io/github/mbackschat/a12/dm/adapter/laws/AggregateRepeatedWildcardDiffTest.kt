@@ -10,7 +10,6 @@ import io.github.mbackschat.a12.dm.interpreter.model.RuleDef
 import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel
 import io.github.mbackschat.a12.dm.rulekit.dsl.Condition
 import io.github.mbackschat.a12.dm.rulekit.dsl.Dsl
-import io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 
@@ -28,7 +27,7 @@ class AggregateRepeatedWildcardDiffTest {
         FieldDef(ITEM, Kind.STRING), FieldDef(QTY, Kind.NUMBER, scale = 0),
     )
     private val m = BoundModel.ofJson(fuzz)
-    private fun render(c: Condition): String = DslRenderer().render(c)
+    private fun render(c: Condition): String = RuntimeLaws.render(c)
 
     /** Place one Line per [qtys] entry (ItemId always filled; Qty placed when non-null), run the `/Cart`-level
      *  aggregate rule, and assert both engines fire identically (firing AND polarity; null = no fire). */

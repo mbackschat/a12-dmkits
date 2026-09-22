@@ -7,7 +7,6 @@ import io.github.mbackschat.a12.dm.interpreter.load.ModelLoader
 import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft
 import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel
 import io.github.mbackschat.a12.dm.rulekit.dsl.Dsl
-import io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 import java.util.function.Consumer
@@ -120,7 +119,7 @@ class CrlfLengthNormalizationDiffTest {
     @Test fun lengthOperatorReadsTheNormalizedText() {
         val json = noteModel(lineBreaks = true, max = 10)
         val m = BoundModel.ofJson(json)
-        val cond = DslRenderer().render(Dsl.length(m.str(NOTE)).gt(5))
+        val cond = RuntimeLaws.render(Dsl.length(m.str(NOTE)).gt(5))
         val model = RuntimeLaws.withRule(json, "/Claim", "R_LEN", "../IncidentNote", "LEN", cond)
         agree(model, NOTE, CRLF, emptyList(), "Length([IncidentNote]) > 5 over normalized CRLF")
     }
@@ -130,7 +129,7 @@ class CrlfLengthNormalizationDiffTest {
     @Test fun lengthOperatorFiresAtTheNormalizedLength() {
         val json = noteModel(lineBreaks = true, max = 10)
         val m = BoundModel.ofJson(json)
-        val cond = DslRenderer().render(Dsl.length(m.str(NOTE)).gt(4))
+        val cond = RuntimeLaws.render(Dsl.length(m.str(NOTE)).gt(4))
         val model = RuntimeLaws.withRule(json, "/Claim", "R_LEN", "../IncidentNote", "LEN", cond)
         agree(model, NOTE, CRLF, listOf("LEN"), "Length([IncidentNote]) > 4 fires at the normalized 5")
     }

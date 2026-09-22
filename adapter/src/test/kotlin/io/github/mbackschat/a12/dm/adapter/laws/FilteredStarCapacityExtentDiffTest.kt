@@ -9,9 +9,7 @@ import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft
 import io.github.mbackschat.a12.dm.modelkit.FieldKind
 import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel
 import io.github.mbackschat.a12.dm.rulekit.dsl.Condition
-import io.github.mbackschat.a12.dm.rulekit.dsl.ConditionLanguage
 import io.github.mbackschat.a12.dm.rulekit.dsl.Dsl
-import io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer
 import io.github.mbackschat.a12.dm.rulekit.dsl.FieldListRef
 import io.github.mbackschat.a12.dm.rulekit.dsl.Rule
 import io.github.mbackschat.a12.dm.rulekit.dsl.Severity
@@ -189,8 +187,7 @@ class FilteredStarCapacityExtentDiffTest {
     fun theProbeModelIsAdmittedAndEveryOperandCarriesItsFilter() {
         assertEquals(emptyList<String>(), RuntimeLaws.consistencyMessages(modelJson),
             "a refused model makes every UNAVAILABLE row in this file unfalsifiable")
-        val renderer = DslRenderer(ConditionLanguage.EN, PAYOUT)
-        val unfiltered = rules.map { renderer.render(it.condition()) }.filterNot { it.contains("Having") }
+        val unfiltered = rules.map { RuntimeLaws.render(PAYOUT, it.condition()) }.filterNot { it.contains("Having") }
         assertEquals(emptyList<String>(), unfiltered,
             "every carrier must be read through a Having filter, or this file duplicates the unfiltered locks")
     }

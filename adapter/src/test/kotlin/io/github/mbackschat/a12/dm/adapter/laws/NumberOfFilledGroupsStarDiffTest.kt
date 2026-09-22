@@ -9,7 +9,6 @@ import io.github.mbackschat.a12.dm.interpreter.model.RuleDef
 import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel
 import io.github.mbackschat.a12.dm.rulekit.dsl.Condition
 import io.github.mbackschat.a12.dm.rulekit.dsl.Dsl
-import io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 
@@ -34,7 +33,7 @@ class NumberOfFilledGroupsStarDiffTest {
     private val order = RuntimeLaws.model("models/order.dm.json")
     private val m = BoundModel.ofJson(order)
     private val items = m.group("/Order/Items")
-    private fun render(c: Condition): String = DslRenderer().render(c)
+    private fun render(c: Condition): String = RuntimeLaws.render(c)
 
     // A gate on a filled root field keeps the root row evaluated; the count is the comparison's left side.
     private fun cond(op: (io.github.mbackschat.a12.dm.rulekit.dsl.NumberExpr) -> Condition): String =

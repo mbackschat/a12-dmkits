@@ -10,7 +10,7 @@ import io.github.mbackschat.a12.dm.interpreter.parse.parseCondition
 import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel
 import io.github.mbackschat.a12.dm.rulekit.dsl.Condition
 import io.github.mbackschat.a12.dm.rulekit.dsl.Dsl
-import io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer
+import java.math.BigDecimal
 import org.junit.jupiter.api.Assertions.assertAll
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
@@ -31,7 +31,7 @@ class ArithmeticDiffTest {
     // engines (kernel injection + the interpreter parser) — no free-text condition literals; the renderer now
     // braces a looser-binding nested arithmetic operand (DG7), so precedence-overriding groups are expressible.
     private val m = BoundModel.ofJson(order)
-    private fun render(c: Condition): String = DslRenderer().render(c)
+    private fun render(c: Condition): String = RuntimeLaws.render(c)
 
     private data class Case(val text: String, val values: Map<String, String>)
 
@@ -104,7 +104,7 @@ class ArithmeticDiffTest {
     fun multiplicationCapsAtMathContext50LikeTheKernel() {
         val a = "12345678901234567890123457"
         val b = "98765432109876543210987649"
-        val exact = java.math.BigDecimal(a).multiply(java.math.BigDecimal(b)).toPlainString()  // 52 sig digits
+        val exact = BigDecimal(a).multiply(BigDecimal(b)).toPlainString()  // 52 sig digits
         val cond = render(m.num(Q).asNumber().times(m.num(BQ).asNumber()).eq(exact))
         val model = RuntimeLaws.withRule(order, "/Order", "Mul", "../Quantity", "MUL", cond)
         val values = mapOf(Q to a, BQ to b)

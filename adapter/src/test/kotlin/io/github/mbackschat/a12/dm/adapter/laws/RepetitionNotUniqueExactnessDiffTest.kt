@@ -12,7 +12,6 @@ import io.github.mbackschat.a12.dm.interpreter.model.RuleDef
 import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel
 import io.github.mbackschat.a12.dm.rulekit.dsl.Condition
 import io.github.mbackschat.a12.dm.rulekit.dsl.Dsl
-import io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 
@@ -46,7 +45,7 @@ class RepetitionNotUniqueExactnessDiffTest {
         FieldDef(WEIGHT, Kind.NUMBER),
     )
 
-    private fun render(condition: Condition): String = DslRenderer().render(condition)
+    private fun render(condition: Condition): String = RuntimeLaws.render(condition)
 
     private fun scenario(condition: String, errorRel: String, items: List<Item>): Scenario {
         val kernelModel = RuntimeLaws.withRule(order, "/Order", "RU", errorRel, "RU", condition)

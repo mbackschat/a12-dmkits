@@ -7,7 +7,6 @@ import io.github.mbackschat.a12.dm.modelkit.FieldKind;
 import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Condition;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Dsl;
-import io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer;
 import io.github.mbackschat.a12.dm.rulekit.dsl.GroupListRef;
 
 /**
@@ -45,7 +44,7 @@ class ValueInFieldsBooleanKindGateLawsTest {
 
     /** Guard the count so the probe rule references its own error field ({@code MVK_ERROR_FIELD_NOT_REFERENCED}). */
     private static String guarded(Condition c) {
-        return new DslRenderer().render(Dsl.fieldFilled(ORDER.field("/Order/Reference")).and(c));
+        return KernelLaws.render(Dsl.fieldFilled(ORDER.field("/Order/Reference")).and(c));
     }
 
     private static String count(boolean constant, String group) {

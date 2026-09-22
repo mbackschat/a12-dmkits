@@ -13,7 +13,6 @@ import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft;
 import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Condition;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Dsl;
-import io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer;
 import io.github.mbackschat.a12.dm.rulekit.validate.ValidationResult;
 
 /**
@@ -128,7 +127,7 @@ class TemporalAggregateComponentSetLawsTest {
      * ({@code MVK_ERROR_FIELD_NOT_REFERENCED}) — the same shape the catalog's published examples use.
      */
     private static String guarded(BoundModel m, Condition aggregate) {
-        return new DslRenderer().render(Dsl.fieldFilled(m.field(GROUP + "/Reference")).and(aggregate));
+        return KernelLaws.render(Dsl.fieldFilled(m.field(GROUP + "/Reference")).and(aggregate));
     }
 
     private static void admits(String json, BoundModel m, Condition aggregate) {
@@ -250,12 +249,11 @@ class TemporalAggregateComponentSetLawsTest {
      */
     @Test
     void theTypedSurfaceBuildsEveryCrossKindListTheKernelAdmits() {
-        DslRenderer renderer = new DslRenderer();
-        assertEquals("MaxValue(/Claim/AuditedOn, /Claim/FiledOn)", renderer.render(Dsl.latestOf(
+        assertEquals("MaxValue(/Claim/AuditedOn, /Claim/FiledOn)", KernelLaws.render(Dsl.latestOf(
                 UNCONFIGURED.field(GROUP + "/AuditedOn"), UNCONFIGURED.field(GROUP + "/FiledOn")).expression()));
-        assertEquals("MaxValue(/Claim/FiledAt, /Claim/FiledOn)", renderer.render(Dsl.latestOf(
+        assertEquals("MaxValue(/Claim/FiledAt, /Claim/FiledOn)", KernelLaws.render(Dsl.latestOf(
                 UNCONFIGURED.field(GROUP + "/FiledAt"), UNCONFIGURED.field(GROUP + "/FiledOn")).expression()));
-        assertEquals("MinValue(/Claim/AuditedOn, /Claim/FiledAt)", renderer.render(Dsl.earliestOf(
+        assertEquals("MinValue(/Claim/AuditedOn, /Claim/FiledAt)", KernelLaws.render(Dsl.earliestOf(
                 UNCONFIGURED.field(GROUP + "/AuditedOn"), UNCONFIGURED.field(GROUP + "/FiledAt")).expression()));
     }
 
@@ -435,12 +433,11 @@ class TemporalAggregateComponentSetLawsTest {
      */
     @Test
     void theTypedFactoryDelegatesTheClassBoundaryAndKeepsOnlyTheRoutingRefusal() {
-        DslRenderer renderer = new DslRenderer();
         assertEquals("MaxValue(/Claim/FiledOn, /Claim/ShiftStart)",
-                renderer.render(Dsl.latestOf(UNCONFIGURED.field(GROUP + "/FiledOn"),
+                KernelLaws.render(Dsl.latestOf(UNCONFIGURED.field(GROUP + "/FiledOn"),
                         UNCONFIGURED.field(GROUP + "/ShiftStart")).expression()));
         assertEquals("MaxValue(/Claim/FiledOn, /Claim/SealedAt)",
-                renderer.render(Dsl.latestOf(UNCONFIGURED.field(GROUP + "/FiledOn"),
+                KernelLaws.render(Dsl.latestOf(UNCONFIGURED.field(GROUP + "/FiledOn"),
                         UNCONFIGURED.field(GROUP + "/SealedAt")).expression()));
         assertThrows(IllegalArgumentException.class, () -> Dsl.latestOf(
                 UNCONFIGURED.field(GROUP + "/Reference"), UNCONFIGURED.field(GROUP + "/FiledOn")));

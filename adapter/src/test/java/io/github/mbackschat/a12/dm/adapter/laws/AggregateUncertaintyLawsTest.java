@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.util.Arrays;
 import java.util.Optional;
 
 import org.junit.jupiter.api.Test;
@@ -13,7 +14,6 @@ import com.mgmtp.a12.kernel.md.rt.api.IMessage.MessageType;
 import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Condition;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Dsl;
-import io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer;
 
 /**
  * Behavioral law — <b>aggregate uncertainty marking</b> (RT-SEMANTICS-LEDGER: {@code Combiner} +
@@ -45,7 +45,7 @@ class AggregateUncertaintyLawsTest {
     private static final BoundModel m = BoundModel.ofJson(ORDER);
 
     private static String render(Condition c) {
-        return new DslRenderer().render(c);
+        return RuntimeLaws.render(c);
     }
 
     /** The error field must be referenced in the condition — hence the CustomerName guard idiom. */
@@ -181,7 +181,7 @@ class AggregateUncertaintyLawsTest {
                         .after(m.date("/Order/DeliveryDate"))));
 
         String[] dates = new String[50];
-        java.util.Arrays.fill(dates, "2026-07-20");
+        Arrays.fill(dates, "2026-07-20");
         dates[24] = null;                                      // one present-but-empty operand
         assertEquals(Optional.of(MessageType.OMISSION_ERROR),
                 RuntimeLaws.typeOf(model, "LATE_PROMISE", dateRows(dates)),
@@ -195,7 +195,7 @@ class AggregateUncertaintyLawsTest {
                         .after(m.date("/Order/DeliveryDate"))));
 
         String[] dates = new String[50];
-        java.util.Arrays.fill(dates, "2026-07-20");
+        Arrays.fill(dates, "2026-07-20");
         assertEquals(Optional.of(MessageType.VALUE_ERROR),
                 RuntimeLaws.typeOf(model, "LATE_PROMISE", dateRows(dates)),
                 "all 50 rows instantiated and filled → no fillable tail → VALUE_ERROR");

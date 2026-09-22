@@ -6,9 +6,7 @@ import io.github.mbackschat.a12.dm.interpreter.load.ModelLoader
 import io.github.mbackschat.a12.dm.interpreter.model.ComputeOutcome
 import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft
 import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel
-import io.github.mbackschat.a12.dm.rulekit.dsl.ConditionLanguage
 import io.github.mbackschat.a12.dm.rulekit.dsl.Dsl
-import io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 
@@ -41,7 +39,7 @@ class DateRangeCrossedSpellingComputeDiffTest {
                 promo.dateRangeField("EffectiveRun") { it.format("MM").separator("/") }
             }.build().toJson()
         val m = BoundModel.ofJson(base)
-        val operation = DslRenderer(ConditionLanguage.EN, ROOT).render(
+        val operation = RuntimeLaws.render(ROOT, 
             Dsl.firstFilledDateRange(
                 m.dateRange("$ROOT/PrimaryRun").field(),
                 m.dateRange("$ROOT/FallbackRun").field(),

@@ -9,7 +9,6 @@ import io.github.mbackschat.a12.dm.interpreter.model.RuleDef
 import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel
 import io.github.mbackschat.a12.dm.rulekit.dsl.Condition
 import io.github.mbackschat.a12.dm.rulekit.dsl.Dsl
-import io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 
@@ -27,7 +26,7 @@ class PrecisionDiffTest {
     private val order = RuntimeLaws.model("models/order.dm.json")
     private val def = ModelDef(listOf(FieldDef(Q, Kind.NUMBER)), emptyList())
     private val m = BoundModel.ofJson(order)
-    private fun render(c: Condition): String = DslRenderer().render(c)
+    private fun render(c: Condition): String = RuntimeLaws.render(c)
 
     /** `[Quantity] + <tiny> <op> 0` over Quantity=0 — kernel and interpreter must agree on firing. (Arithmetic
      *  binds tighter than the comparison, so the bare operand is equivalent to the kernel's `{ … }` grouping.) */

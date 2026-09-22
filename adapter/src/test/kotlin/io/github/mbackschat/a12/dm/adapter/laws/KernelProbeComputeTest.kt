@@ -7,7 +7,6 @@ import com.networknt.schema.SpecVersion
 import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft
 import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel
 import io.github.mbackschat.a12.dm.rulekit.dsl.Dsl
-import io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer
 import io.github.mbackschat.a12.dm.rulekit.dsl.NumberExpr
 import io.github.mbackschat.a12.dm.rulekit.dsl.NumberLiteral
 import java.nio.file.Files
@@ -394,7 +393,7 @@ class KernelProbeComputeTest {
                 }.build().toJson()
             RuntimeLaws.withRule(
                 base, "/Order", "RUNREFERENCED", "../Quantity", "UNREF",
-                DslRenderer().render(BoundModel.ofJson(base).str("/Order/Reference").filled()),
+                RuntimeLaws.render(BoundModel.ofJson(base).str("/Order/Reference").filled()),
             )
         }
 

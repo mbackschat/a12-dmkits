@@ -13,7 +13,6 @@ import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel
 import io.github.mbackschat.a12.dm.rulekit.dsl.Comments
 import io.github.mbackschat.a12.dm.rulekit.dsl.Condition
 import io.github.mbackschat.a12.dm.rulekit.dsl.Dsl
-import io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 import java.util.function.Consumer
@@ -38,7 +37,7 @@ class CommentConditionDiffTest {
     private val m = BoundModel.ofJson(json)
 
     private val body: Condition = Dsl.fieldFilled(m.field(FEE)).and(m.num(FEE).gt(1000))
-    private val cond = DslRenderer().render(body, Comments.none().before(body, "cap the monthly fee"))
+    private val cond = RuntimeLaws.render(body, Comments.none().before(body, "cap the monthly fee"))
 
     private val authored = EditSession.read(json)
         .addRule("/Order", "CAP", "../MonthlyFee", "CAP", cond, "ERROR", listOf(Dsl.en("fee too high")))

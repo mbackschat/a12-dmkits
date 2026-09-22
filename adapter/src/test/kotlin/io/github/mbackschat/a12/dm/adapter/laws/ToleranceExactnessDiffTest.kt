@@ -10,7 +10,6 @@ import io.github.mbackschat.a12.dm.interpreter.model.RuleDef
 import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel
 import io.github.mbackschat.a12.dm.rulekit.dsl.Condition
 import io.github.mbackschat.a12.dm.rulekit.dsl.Dsl
-import io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer
 import io.github.mbackschat.a12.dm.rulekit.dsl.Tolerance
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
@@ -23,7 +22,6 @@ class ToleranceExactnessDiffTest {
 
     private val modelJson = RuntimeLaws.model("models/order.dm.json")
     private val model = BoundModel.ofJson(modelJson)
-    private val render = DslRenderer()
     private val fields = listOf(
         FieldDef(QTY, Kind.NUMBER, scale = 0),
         FieldDef(BACK, Kind.NUMBER, scale = 0),
@@ -83,7 +81,7 @@ class ToleranceExactnessDiffTest {
         clue: String,
         errorField: String = QTY,
     ) {
-        val dsl = render.render(condition)
+        val dsl = RuntimeLaws.render(condition)
         val code = "TOL_EXACT"
         val errorRel = "../${errorField.substringAfterLast('/')}"
         val kernelModel = RuntimeLaws.withRule(modelJson, "/Order", "ToleranceExact", errorRel, code, dsl)

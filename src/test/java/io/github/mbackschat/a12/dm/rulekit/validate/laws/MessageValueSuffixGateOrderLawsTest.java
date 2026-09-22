@@ -11,7 +11,6 @@ import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft;
 import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Condition;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Dsl;
-import io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer;
 
 /**
  * KERNEL-FINDINGS §13 — the ORDER of the {@code .value} suffix's two gates, and what pre-empts both.
@@ -59,7 +58,7 @@ class MessageValueSuffixGateOrderLawsTest {
             .and(Dsl.atLeastOneFieldFilled(M.flatten("/Order/Lines*/Comment"))));
 
     private static String render(Condition condition) {
-        return new DslRenderer().render(condition);
+        return KernelLaws.render(condition);
     }
 
     private static String verdict(String condition, String message) {

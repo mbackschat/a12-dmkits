@@ -13,7 +13,6 @@ import io.github.mbackschat.a12.dm.modelkit.FieldKind;
 import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Condition;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Dsl;
-import io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer;
 import io.github.mbackschat.a12.dm.rulekit.dsl.FieldListRef;
 import io.github.mbackschat.a12.dm.rulekit.dsl.NumberExpr;
 import io.github.mbackschat.a12.dm.rulekit.validate.ValidationResult;
@@ -126,7 +125,7 @@ class CurrentRepetitionBindingSourceLawsTest {
 
     /** {@code admitted}, or the COMPLETE emitted code list — a partial list would hide a co-firing gate. */
     private static String verdict(Condition condition) {
-        ValidationResult r = KernelLaws.checkModel(MODEL, GROUP, ERROR_FIELD, new DslRenderer().render(condition));
+        ValidationResult r = KernelLaws.checkModel(MODEL, GROUP, ERROR_FIELD, KernelLaws.render(condition));
         return r.ok() ? ADMITTED : r.diagnostics().stream()
                 .map(d -> d.code().orElse("(no code: " + d.summary() + ")")).collect(Collectors.joining(" + "));
     }

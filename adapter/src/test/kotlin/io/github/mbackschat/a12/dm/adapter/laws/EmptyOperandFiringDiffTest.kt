@@ -7,7 +7,6 @@ import io.github.mbackschat.a12.dm.interpreter.model.MsgType
 import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel
 import io.github.mbackschat.a12.dm.rulekit.dsl.Condition
 import io.github.mbackschat.a12.dm.rulekit.dsl.Dsl
-import io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 
@@ -24,7 +23,7 @@ class EmptyOperandFiringDiffTest {
 
     private val order = RuntimeLaws.model("models/order.dm.json")
     private val m = BoundModel.ofJson(order)
-    private fun render(c: Condition): String = DslRenderer().render(c)
+    private fun render(c: Condition): String = RuntimeLaws.render(c)
 
     /** Inject [cond] at /Order (error field [errRel] — referenced in the condition), fill CustomerName + the
      *  given [filled] cells, leave [empty] present-but-valueless; return kernel/interpreter fire counts. */

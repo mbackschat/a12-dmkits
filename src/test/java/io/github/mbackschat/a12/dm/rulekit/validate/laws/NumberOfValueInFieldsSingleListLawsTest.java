@@ -12,7 +12,6 @@ import io.github.mbackschat.a12.dm.modelkit.FieldKind;
 import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Condition;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Dsl;
-import io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer;
 import io.github.mbackschat.a12.dm.rulekit.dsl.FieldListRef;
 import io.github.mbackschat.a12.dm.rulekit.dsl.NumberExpr;
 
@@ -42,7 +41,7 @@ class NumberOfValueInFieldsSingleListLawsTest {
     private static final BoundModel M = BoundModel.ofJson(MODEL);
 
     private static String cond(Condition c) {
-        return new DslRenderer().render(c);
+        return KernelLaws.render(c);
     }
 
     /** Guard the aggregate with {@code FieldFilled(CustomerName) And …} so the probe rule references its own

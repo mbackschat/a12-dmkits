@@ -8,7 +8,6 @@ import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft
 import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel
 import io.github.mbackschat.a12.dm.rulekit.dsl.Condition
 import io.github.mbackschat.a12.dm.rulekit.dsl.Dsl
-import io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer
 import java.nio.file.Files
 import java.nio.file.Path
 import org.junit.jupiter.api.Assertions.assertEquals
@@ -329,7 +328,7 @@ class KernelRuntimeProbeTest {
             )
         }
 
-        private fun render(condition: Condition): String = DslRenderer().render(condition)
+        private fun render(condition: Condition): String = RuntimeLaws.render(condition)
 
         private fun write(name: String, content: String): Path =
             Files.writeString(dir.resolve(name), content)

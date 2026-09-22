@@ -10,6 +10,7 @@ import java.util.Map;
 import org.junit.jupiter.api.Test;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 
 import io.github.mbackschat.a12.dm.Fixtures;
@@ -56,7 +57,7 @@ class DeclaredNameShapeLawsTest {
             for (var element : root.path("content").path("modelRoot").path("rootGroups").get(0)
                     .path("Group").path("elements")) {
                 if ("ShippingAddress".equals(element.path("name").asText()) && element.has("Group")) {
-                    ObjectNode added = (ObjectNode) ((com.fasterxml.jackson.databind.node.ArrayNode)
+                    ObjectNode added = (ObjectNode) ((ArrayNode)
                             element.path("Group").path("elements")).addObject();
                     added.put("type", "Group").put("id", "deep").put("name", name);
                     ObjectNode field = (ObjectNode) added.putObject("Group").putArray("elements")
@@ -82,7 +83,7 @@ class DeclaredNameShapeLawsTest {
     private static String withRuleNamed(String name) {
         try {
             ObjectNode root = (ObjectNode) MAPPER.readTree(Fixtures.orderJson());
-            ObjectNode rule = (ObjectNode) ((com.fasterxml.jackson.databind.node.ArrayNode)
+            ObjectNode rule = (ObjectNode) ((ArrayNode)
                     root.path("content").path("modelRoot").path("rootGroups").get(0)
                             .path("Group").path("elements")).addObject();
             rule.put("type", "Rule").put("id", "rname").put("name", name);

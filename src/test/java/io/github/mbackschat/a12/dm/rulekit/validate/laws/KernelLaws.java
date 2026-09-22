@@ -3,10 +3,12 @@ package io.github.mbackschat.a12.dm.rulekit.validate.laws;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 import io.github.mbackschat.a12.dm.Fixtures;
 import io.github.mbackschat.a12.dm.ModelDrafts;
+import io.github.mbackschat.a12.dm.rulekit.dsl.Calculation;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Computation;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Condition;
 import io.github.mbackschat.a12.dm.rulekit.dsl.ConditionLanguage;
@@ -78,8 +80,8 @@ final class KernelLaws {
      * Reading the key off the notification cannot miss a class this way, because it keys on the Kernel's
      * format rather than on a family of names someone listed.
      */
-    private static final java.util.regex.Pattern CLASS_KEY =
-            java.util.regex.Pattern.compile(".*\\[(\\w+)]$");
+    private static final Pattern CLASS_KEY =
+            Pattern.compile(".*\\[(\\w+)]$");
 
     private KernelLaws() {
     }
@@ -368,6 +370,35 @@ final class KernelLaws {
      */
     static String render(String group, Condition condition) {
         return new DslRenderer(ConditionLanguage.EN, group).render(condition);
+    }
+
+    /**
+     * The condition TEXT with ABSOLUTE paths — the spelling a renderer built with no base group produces.
+     *
+     * <p>Published because it is what most of the estate actually wants: of the 250 law files that build their
+     * own renderer, 210 build the NO-ARG one (measured 2026-09-22). Sending them to {@link #render(String,
+     * Condition)} would relativize every path, which is a rewrite of the condition rather than of the spelling
+     * that produces it — and a law's text is frequently its subject. This overload lets those files drop their
+     * private renderer with byte-identical output, which is the only migration that is genuinely free.
+     */
+    static String render(Condition condition) {
+        return new DslRenderer(ConditionLanguage.EN).render(condition);
+    }
+
+    /**
+     * The same, for a CALCULATION — a computation's operation rather than a rule's condition.
+     *
+     * <p>Both arms need it: a law that measures an operation's text was hand-rolling a renderer for exactly the
+     * reason a law measuring a condition's was, and leaving one arm out would have sent those files back to
+     * {@code new DslRenderer()} the moment they needed it.
+     */
+    static String render(Calculation calculation) {
+        return new DslRenderer(ConditionLanguage.EN).render(calculation);
+    }
+
+    /** As {@link #render(Calculation)}, relative to {@code group}. */
+    static String render(String group, Calculation calculation) {
+        return new DslRenderer(ConditionLanguage.EN, group).render(calculation);
     }
 
     /**

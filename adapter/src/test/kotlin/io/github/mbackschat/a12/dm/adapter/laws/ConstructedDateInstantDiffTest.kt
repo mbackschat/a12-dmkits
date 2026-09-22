@@ -7,7 +7,6 @@ import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel
 import io.github.mbackschat.a12.dm.rulekit.dsl.Condition
 import io.github.mbackschat.a12.dm.rulekit.dsl.DateExpr
 import io.github.mbackschat.a12.dm.rulekit.dsl.Dsl
-import io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 
@@ -36,7 +35,7 @@ class ConstructedDateInstantDiffTest {
     private fun num(v: String) = Dsl.number(v)
     private fun octoberFirst(): DateExpr = Dsl.date(num("1"), num("10"), num("1916"))
 
-    private fun render(c: Condition): String = DslRenderer().render(c)
+    private fun render(c: Condition): String = RuntimeLaws.render(c)
     private fun guarded(c: Condition): Condition = m.field(NAME).filled().and(c)
 
     private val dayShift = Dsl.addDays(Dsl.date(num("30"), num("9"), num("1916")), 1L)

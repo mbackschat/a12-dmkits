@@ -10,7 +10,6 @@ import org.junit.jupiter.api.Test;
 import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft;
 import io.github.mbackschat.a12.dm.modelkit.FieldKind;
 import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel;
-import io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer;
 import io.github.mbackschat.a12.dm.rulekit.validate.DraftRule;
 import io.github.mbackschat.a12.dm.rulekit.validate.RuleValidator;
 import io.github.mbackschat.a12.dm.rulekit.validate.ValidationResult;
@@ -81,13 +80,12 @@ class CorrelatedBooleanComparisonLawsTest {
     @Test
     void theTypedBuilderRendersTheCorrelatedBooleanAndConfirmLeavesItRefusedBefore() {
         BoundModel model = BoundModel.ofJson(WAREHOUSE);
-        DslRenderer renderer = new DslRenderer();
 
         Map<String, String> actual = new LinkedHashMap<>();
-        actual.put("BOOLEAN", renderer.render(model.bool(BIN + "/Recounted").outer().isTrue()));
-        actual.put("CONFIRM", renderer.render(model.confirm(BIN + "/Signed").outer().confirmed()));
+        actual.put("BOOLEAN", KernelLaws.render(model.bool(BIN + "/Recounted").outer().isTrue()));
+        actual.put("CONFIRM", KernelLaws.render(model.confirm(BIN + "/Signed").outer().confirmed()));
         actual.put("BOOLEAN uncorrelated — the control",
-                renderer.render(model.bool(BIN + "/Recounted").isTrue()));
+                KernelLaws.render(model.bool(BIN + "/Recounted").isTrue()));
 
         Map<String, String> expected = new LinkedHashMap<>();
         expected.put("BOOLEAN", "[$" + BIN + "/Recounted] == True");

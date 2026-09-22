@@ -11,8 +11,6 @@ import io.github.mbackschat.a12.dm.interpreter.model.RuleDef
 import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel
 import io.github.mbackschat.a12.dm.rulekit.dsl.Calculation
 import io.github.mbackschat.a12.dm.rulekit.dsl.Condition
-import io.github.mbackschat.a12.dm.rulekit.dsl.ConditionLanguage
-import io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer
 import io.github.mbackschat.a12.dm.rulekit.dsl.NumberExpr
 import io.github.mbackschat.a12.dm.rulekit.dsl.NumberLiteral
 import java.util.Locale
@@ -38,8 +36,8 @@ class ComputeApplyDiffTest {
 
     private val order = RuntimeLaws.model("models/order.dm.json")
     private val m = BoundModel.ofJson(order)
-    private fun renderOp(c: Calculation): String = DslRenderer(ConditionLanguage.EN, "/Order").render(c)
-    private fun render(c: Condition): String = DslRenderer().render(c)
+    private fun renderOp(c: Calculation): String = RuntimeLaws.render("/Order", c)
+    private fun render(c: Condition): String = RuntimeLaws.render(c)
 
     // BackorderQuantity := Quantity * 2 (the proven scale-0 op shape from ComputeCascadeDiffTest).
     private val op = renderOp(m.num(Q).asNumber().times(NumberExpr(NumberLiteral.of(2))).expression())

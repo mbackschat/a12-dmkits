@@ -13,8 +13,6 @@ import io.github.mbackschat.a12.dm.bridge.InterpreterConditionReadBack;
 import io.github.mbackschat.a12.dm.core.ReferenceResolvers;
 import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft;
 import io.github.mbackschat.a12.dm.modelkit.FieldKind;
-import io.github.mbackschat.a12.dm.rulekit.dsl.ConditionLanguage;
-import io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer;
 import io.github.mbackschat.a12.dm.rulekit.read.ReadResult;
 import io.github.mbackschat.a12.dm.rulekit.spi.ConditionReadBack;
 
@@ -37,8 +35,7 @@ import io.github.mbackschat.a12.dm.rulekit.spi.ConditionReadBack;
  */
 class CorrelatedScalarComparisonReadTest {
 
-    private static final DslRenderer RENDER = new DslRenderer(ConditionLanguage.EN);
-    private static final String BIN = "/Warehouse/Aisles/Bins";
+        private static final String BIN = "/Warehouse/Aisles/Bins";
 
     private static final String WAREHOUSE = DocumentModelDraft.named("warehouse-read-correlated")
             .locale("en_US")
@@ -108,7 +105,7 @@ class CorrelatedScalarComparisonReadTest {
     private static String render(ConditionReadBack provider, String json, String ruleName) {
         ReadResult result = provider.readAll(json, ReferenceResolvers.selfContained())
                 .get("/Warehouse/" + ruleName);
-        return RENDER.render(assertInstanceOf(ReadResult.Converted.class, result,
+        return RuntimeLaws.render(assertInstanceOf(ReadResult.Converted.class, result,
                 () -> ruleName + " did not convert: " + result).condition());
     }
 }

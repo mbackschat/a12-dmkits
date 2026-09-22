@@ -9,7 +9,6 @@ import io.github.mbackschat.a12.dm.interpreter.model.MsgType
 import io.github.mbackschat.a12.dm.interpreter.model.RuleDef
 import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel
 import io.github.mbackschat.a12.dm.rulekit.dsl.Condition
-import io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 
@@ -29,7 +28,7 @@ class SemanticIndexFieldKeyedDiffTest {
     // Conditions authored via the rulekit DSL — the field-keyed semantic index `[Count For CustomerName]`
     // is `m.num(COUNT).forIndex(m.field(CN))` (DG8). Rendered to the canonical string fed to both engines.
     private val m = BoundModel.ofJson(order)
-    private fun render(c: Condition): String = DslRenderer().render(c)
+    private fun render(c: Condition): String = RuntimeLaws.render(c)
     private fun countForCustomer() = m.num(COUNT).forIndex(m.field(CN))
 
     /** [cond] over Items=[rows], with CustomerName=[key] (the field-keyed index value); kernel vs interp. */

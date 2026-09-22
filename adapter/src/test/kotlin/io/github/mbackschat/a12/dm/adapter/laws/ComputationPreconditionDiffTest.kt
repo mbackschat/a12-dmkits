@@ -10,8 +10,6 @@ import io.github.mbackschat.a12.dm.interpreter.model.ModelDef
 import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel
 import io.github.mbackschat.a12.dm.rulekit.dsl.Calculation
 import io.github.mbackschat.a12.dm.rulekit.dsl.Condition
-import io.github.mbackschat.a12.dm.rulekit.dsl.ConditionLanguage
-import io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer
 import io.github.mbackschat.a12.dm.rulekit.dsl.NumberLiteral
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
@@ -32,8 +30,8 @@ class ComputationPreconditionDiffTest {
     // Preconditions and operations are authored with the rulekit typed DSL ([m]) and rendered (relative to
     // the computation group /Order) to the canonical strings fed to BOTH engines — no free-text literals.
     private val m = BoundModel.ofJson(order)
-    private fun render(c: Condition): String = DslRenderer(ConditionLanguage.EN, "/Order").render(c)
-    private fun renderOp(c: Calculation): String = DslRenderer(ConditionLanguage.EN, "/Order").render(c)
+    private fun render(c: Condition): String = RuntimeLaws.render("/Order", c)
+    private fun renderOp(c: Calculation): String = RuntimeLaws.render("/Order", c)
     private fun op(value: String): String = renderOp(NumberLiteral.of(value))
 
     /** Compute UnitPrice for the given [quantity] under [common] + [alts] on BOTH engines; assert they agree. */

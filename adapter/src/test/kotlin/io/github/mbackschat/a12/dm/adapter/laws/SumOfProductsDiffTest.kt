@@ -9,7 +9,6 @@ import io.github.mbackschat.a12.dm.interpreter.model.RuleDef
 import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel
 import io.github.mbackschat.a12.dm.rulekit.dsl.Condition
 import io.github.mbackschat.a12.dm.rulekit.dsl.Dsl
-import io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 
@@ -30,7 +29,7 @@ class SumOfProductsDiffTest {
     // Conditions are authored with the rulekit typed DSL ([m]) and rendered to the canonical string fed to BOTH
     // engines — no free-text condition literals. `Dsl.sumOfProducts(qty*, price*)` pairs the two lists row-by-row.
     private val m = BoundModel.ofJson(fuzz)
-    private fun render(c: Condition): String = DslRenderer().render(c)
+    private fun render(c: Condition): String = RuntimeLaws.render(c)
     private val sopExpr = Dsl.sumOfProducts(m.flatten("/Cart/Lines*/Qty"), m.flatten("/Cart/Lines*/Price"))
 
     /** Place one Line per [rows] `(qty, price)` (ItemId always filled, distinct), run the `/Cart`-level rule. */

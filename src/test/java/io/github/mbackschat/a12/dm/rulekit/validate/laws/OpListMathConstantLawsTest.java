@@ -5,9 +5,7 @@ import org.junit.jupiter.api.Test;
 import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft;
 import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Condition;
-import io.github.mbackschat.a12.dm.rulekit.dsl.ConditionLanguage;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Dsl;
-import io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer;
 import io.github.mbackschat.a12.dm.rulekit.dsl.NumberExpr;
 
 /**
@@ -111,6 +109,6 @@ class OpListMathConstantLawsTest {
     }
 
     private static String render(Condition condition) {
-        return new DslRenderer(ConditionLanguage.EN, GROUP).render(condition);
+        return KernelLaws.render(GROUP, condition);
     }
 }

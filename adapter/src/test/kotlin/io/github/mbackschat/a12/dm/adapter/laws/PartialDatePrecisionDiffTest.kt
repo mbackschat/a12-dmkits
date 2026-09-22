@@ -10,7 +10,6 @@ import io.github.mbackschat.a12.dm.interpreter.model.RuleDef
 import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel
 import io.github.mbackschat.a12.dm.rulekit.dsl.Condition
 import io.github.mbackschat.a12.dm.rulekit.dsl.Dsl
-import io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 
@@ -24,7 +23,7 @@ class PartialDatePrecisionDiffTest {
     private val order = RuntimeLaws.model("models/order.dm.json")
     private val bound = BoundModel.ofJson(order)
     private val approx = bound.date(APPROX)
-    private fun render(condition: Condition): String = DslRenderer().render(condition)
+    private fun render(condition: Condition): String = RuntimeLaws.render(condition)
 
     private fun model(precision: String, condition: String): String =
         RuntimeLaws.withRule(

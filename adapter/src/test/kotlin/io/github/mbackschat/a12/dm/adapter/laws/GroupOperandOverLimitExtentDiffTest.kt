@@ -8,9 +8,7 @@ import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft
 import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft.GroupBuilder
 import io.github.mbackschat.a12.dm.modelkit.FieldKind
 import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel
-import io.github.mbackschat.a12.dm.rulekit.dsl.ConditionLanguage
 import io.github.mbackschat.a12.dm.rulekit.dsl.Dsl
-import io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer
 import io.github.mbackschat.a12.dm.rulekit.dsl.NumberExpr
 import java.util.Locale
 import java.util.function.Consumer
@@ -201,7 +199,7 @@ class GroupOperandOverLimitExtentDiffTest {
 
     /** The rule-group-RELATIVE spelling — `Sum(Amounts)`, which is what an author writing in `/Return` gets. */
     private fun read(expr: NumberExpr, candidates: List<String>, build: (Both) -> Unit): String =
-        read(DslRenderer(ConditionLanguage.EN, RETURN).render(expr.expression()), candidates, build)
+        read(RuntimeLaws.render(RETURN, expr.expression()), candidates, build)
 
     /**
      * The ABSOLUTE spelling of the same typed expression — `Sum(/Return/Amounts)`. The two differ only in the
@@ -209,7 +207,7 @@ class GroupOperandOverLimitExtentDiffTest {
      * difference in outcome cannot be a difference in what was referenced.
      */
     private fun readAbsolute(expr: NumberExpr, candidates: List<String>, build: (Both) -> Unit): String =
-        read(DslRenderer(ConditionLanguage.EN).render(expr.expression()), candidates, build)
+        read(RuntimeLaws.render(expr.expression()), candidates, build)
 
     // ---- the documents ----
 
@@ -595,7 +593,7 @@ class GroupOperandOverLimitExtentDiffTest {
      */
     @Test
     fun theLadderRefusesAModelTheKernelWouldNotAdmit() {
-        val sumOverStrings = DslRenderer(ConditionLanguage.EN, RETURN).render(Dsl.sum(notes).expression())
+        val sumOverStrings = RuntimeLaws.render(RETURN, Dsl.sum(notes).expression())
         val refused = assertThrows(IllegalStateException::class.java) {
             fires("$sumOverStrings == 0", ::feeBothInCapacity)
         }

@@ -7,8 +7,6 @@ import io.github.mbackschat.a12.dm.interpreter.model.ComputeOutcome
 import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft
 import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel
 import io.github.mbackschat.a12.dm.rulekit.dsl.Calculation
-import io.github.mbackschat.a12.dm.rulekit.dsl.ConditionLanguage
-import io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 
@@ -37,7 +35,7 @@ class ConcatInvalidOperandDiffTest {
     /** `[Code] + "-" + [Suffix]`, rendered relative to /Product through the typed DSL. */
     private fun operation(m: BoundModel): String {
         val c: Calculation = m.str(CODE).asString().plus("-").plus(m.str(SUFFIX).asString()).expression()
-        return DslRenderer(ConditionLanguage.EN, "/Product").render(c)
+        return RuntimeLaws.render("/Product", c)
     }
 
     /** The model JSON with a `Label` computation, [required] toggling whether `Code` is mandatory. */

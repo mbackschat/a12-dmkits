@@ -12,7 +12,6 @@ import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft
 import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel
 import io.github.mbackschat.a12.dm.rulekit.dsl.Calculation
 import io.github.mbackschat.a12.dm.rulekit.dsl.Condition
-import io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 import java.util.Optional
@@ -45,7 +44,6 @@ class SemanticIndexKindDiffTest {
                 })
         }).build().toJson()
     private val m = BoundModel.ofJson(base)
-    private val render = DslRenderer()
     private val customTypes = mapOf(CUSTOM_TYPE to CustomFieldType { _, _ -> null })
     private val kernelTypes = object : ICustomFieldTypeFactory {
         override fun createCustomFieldValidator(name: String): Optional<ICustomFieldValidator> =
@@ -107,7 +105,7 @@ class SemanticIndexKindDiffTest {
     }
 
     private fun assertCase(case: Case) {
-        val condition = render.render(case.condition)
+        val condition = RuntimeLaws.render(case.condition)
         val code = "SI_${case.name.uppercase()}"
         val model = RuntimeLaws.withRule(base, "/Policy", "R_${case.name}", "../PolicyNumber", code, condition)
         val definition = ModelLoader.load(model)

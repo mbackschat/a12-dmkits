@@ -8,7 +8,6 @@ import io.github.mbackschat.a12.dm.interpreter.model.MsgType
 import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel
 import io.github.mbackschat.a12.dm.rulekit.dsl.Condition
 import io.github.mbackschat.a12.dm.rulekit.dsl.Dsl
-import io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 
@@ -41,7 +40,7 @@ class DateRangeOverlapSemanticsDiffTest {
     private val model = BoundModel.ofJson(order)
     private val items = model.group("/Order/Items")
     private val itemCoverages get() = model.flatten("/Order/Items*/ItemCoverage")
-    private fun render(condition: Condition): String = DslRenderer().render(condition)
+    private fun render(condition: Condition): String = RuntimeLaws.render(condition)
 
     // Three item coverages: rows 1 & 2 OVERLAP (Jan and mid-Jan..mid-Feb), row 3 (March) is disjoint from both.
     private val cov = listOf<String?>("01.01.2026-31.01.2026", "15.01.2026-15.02.2026", "01.03.2026-31.03.2026")

@@ -8,7 +8,6 @@ import io.github.mbackschat.a12.dm.interpreter.model.MsgType
 import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft
 import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel
 import io.github.mbackschat.a12.dm.rulekit.dsl.Dsl
-import io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
@@ -105,12 +104,12 @@ class FirstFilledValueGroupOperandDiffTest {
     private val starredModel = BoundModel.ofJson(starredBase)
 
     /** `FieldFilled(Reference) And FirstFilledValue(/Return/Handling) == expected` — the GROUP operand, typed. */
-    private fun overGroup(expected: String): String = DslRenderer().render(
+    private fun overGroup(expected: String): String = RuntimeLaws.render(
         m.field(REF).filled().and(Dsl.firstFilledString(m.firstFilledGroup(HANDLING)).eq(expected)),
     )
 
     /** The control: the same two entities listed explicitly, so a disagreement cannot be about the fixture. */
-    private fun overExplicitFields(expected: String): String = DslRenderer().render(
+    private fun overExplicitFields(expected: String): String = RuntimeLaws.render(
         m.field(REF).filled().and(
             Dsl.firstFilledString(
                 m.field(PRIMARY_NOTE).firstFilledOperand(),
@@ -119,13 +118,13 @@ class FirstFilledValueGroupOperandDiffTest {
         ),
     )
 
-    private fun overFixedGroup(expected: String): String = DslRenderer().render(
+    private fun overFixedGroup(expected: String): String = RuntimeLaws.render(
         fixedModel.field(REF).filled().and(
             Dsl.firstFilledString(fixedModel.firstFilledGroup(ENCOUNTER)).eq(expected),
         ),
     )
 
-    private fun overStarredGroupAndFallback(expected: String): String = DslRenderer().render(
+    private fun overStarredGroupAndFallback(expected: String): String = RuntimeLaws.render(
         starredModel.field(REF).filled().and(
             Dsl.firstFilledString(
                 starredModel.firstFilledGroup("$ROWS*"),

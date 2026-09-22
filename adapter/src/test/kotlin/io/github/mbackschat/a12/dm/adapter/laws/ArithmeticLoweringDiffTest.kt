@@ -7,7 +7,6 @@ import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft
 import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel
 import io.github.mbackschat.a12.dm.rulekit.dsl.Condition
 import io.github.mbackschat.a12.dm.rulekit.dsl.Dsl
-import io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer
 import io.github.mbackschat.a12.dm.rulekit.validate.DraftRule
 import io.github.mbackschat.a12.dm.rulekit.validate.RuleValidator
 import org.junit.jupiter.api.Assertions.assertEquals
@@ -73,7 +72,7 @@ class ArithmeticLoweringDiffTest {
     }
 
     private fun agree(condition: Condition, expected: Boolean, label: String) {
-        val rendered = DslRenderer().render(condition)
+        val rendered = RuntimeLaws.render(condition)
         val kModel = RuntimeLaws.withRule(base, "/Probe", "R", "../Anchor", CODE, rendered)
         val authoring = RuleValidator().check(
             base,

@@ -6,7 +6,6 @@ import io.github.mbackschat.a12.dm.interpreter.load.ModelLoader
 import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel
 import io.github.mbackschat.a12.dm.rulekit.dsl.Condition
 import io.github.mbackschat.a12.dm.rulekit.dsl.Dsl
-import io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer
 import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
@@ -42,7 +41,7 @@ class DecimalPrecisionParityDiffTest {
         .build().toJson()
 
     private val m = BoundModel.ofJson(base)
-    private fun render(c: Condition): String = DslRenderer().render(c)
+    private fun render(c: Condition): String = RuntimeLaws.render(c)
 
     /** Tri-check a legal condition against both real kernel strategies and the interpreter. */
     private fun agree(condition: Condition, rate: String, msg: String, expected: Boolean? = null) {

@@ -6,7 +6,6 @@ import com.mgmtp.a12.kernel.md.rt.api.ICustomCondition
 import io.github.mbackschat.a12.dm.edit.EditSession
 import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel
 import io.github.mbackschat.a12.dm.rulekit.dsl.Dsl
-import io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer
 import io.github.mbackschat.a12.dm.rulekit.dsl.Severity
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Assertions.assertEquals
@@ -138,7 +137,7 @@ class RuntimeLawsEngineReuseTest {
             "Custom",
             "../Tier",
             "CUSTOM",
-            DslRenderer().render(
+            RuntimeLaws.render(
                 BoundModel.ofJson(base).field("/Subscription/Tier").filled()
                     .and(Dsl.customCondition(conditionName)),
             ),

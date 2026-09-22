@@ -14,7 +14,6 @@ import io.github.mbackschat.a12.dm.modelkit.FieldKind
 import io.github.mbackschat.a12.dm.modelkit.NumberFieldBuilder
 import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel
 import io.github.mbackschat.a12.dm.rulekit.dsl.Condition
-import io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
@@ -52,7 +51,7 @@ class FramedParallelIterationDiffTest {
     // engines — no free-text condition literals. Refs use ABSOLUTE paths; the renderer emits absolute and both
     // engines accept it (IF24). The cross-group join (A under frame X ⋈ shared B) is implicit in the field paths.
     private val m = BoundModel.ofJson(structureJson)
-    private fun render(c: Condition): String = DslRenderer().render(c)
+    private fun render(c: Condition): String = RuntimeLaws.render(c)
     private val cond = render(m.field("$A/Va").filled().and(m.field("$B/Vb").filled())
         .and(m.num("$A/Va").gt(m.num("$B/Vb"))))
     private val def = ModelDef(

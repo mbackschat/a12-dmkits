@@ -14,7 +14,6 @@ import io.github.mbackschat.a12.dm.interpreter.model.RelevantEntity
 import io.github.mbackschat.a12.dm.interpreter.model.RuleDef
 import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel
 import io.github.mbackschat.a12.dm.rulekit.dsl.Dsl
-import io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer
 import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft
 import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft.GroupBuilder
 import org.junit.jupiter.api.Tag
@@ -65,7 +64,7 @@ class PartialSumOfProductsPerfTest {
             })
             .build().toJson()
         val m = BoundModel.ofJson(json)
-        val rule = DslRenderer().render(
+        val rule = RuntimeLaws.render(
             Dsl.fieldFilled(m.field(TOTAL))
                 .and(Dsl.sumOfProducts(m.flatten("$LINES*/Qty"), m.flatten("$LINES*/Price")).gt(100000)))
         val kModel = RuntimeLaws.withRule(json, CART, "SOP", "../Total", "SOP", rule)

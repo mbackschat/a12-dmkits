@@ -9,7 +9,6 @@ import io.github.mbackschat.a12.dm.interpreter.model.MsgType
 import io.github.mbackschat.a12.dm.interpreter.model.RuleDef
 import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel
 import io.github.mbackschat.a12.dm.rulekit.dsl.Condition
-import io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 
@@ -35,7 +34,7 @@ class EnumCategoryDiffTest {
     // Conditions are authored with the rulekit typed DSL ([m]) and rendered to the canonical string fed to BOTH
     // engines. `m.enumOf(p).category("SpeedClass").is/isNot("FAST")` is the enum-category access `[field -> Cat]`.
     private val m = BoundModel.ofJson(order)
-    private fun render(c: Condition): String = DslRenderer().render(c)
+    private fun render(c: Condition): String = RuntimeLaws.render(c)
 
     /** [cond] with Priority = [priority] (null = empty); compare kernel vs interpreter (firing + polarity). */
     private fun agree(cond: String, priority: String?, msg: String) {

@@ -9,7 +9,6 @@ import io.github.mbackschat.a12.dm.interpreter.model.RuleDef
 import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel
 import io.github.mbackschat.a12.dm.rulekit.dsl.Condition
 import io.github.mbackschat.a12.dm.rulekit.dsl.Dsl
-import io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 
@@ -28,7 +27,7 @@ class OmittedYearDateDiffTest {
     private val order = RuntimeLaws.model("models/order.dm.json")   // modelInfo.baseYear = 2020
     private val m = BoundModel.ofJson(order)
     private val baseYear = 2020
-    private fun render(c: Condition) = DslRenderer().render(c)
+    private fun render(c: Condition) = RuntimeLaws.render(c)
 
     private val fields = listOf(FieldDef(OD, Kind.DATE))
     private val after = render(m.date(OD).filled().and(m.date(OD).after(Dsl.dateValue("13.07."))))

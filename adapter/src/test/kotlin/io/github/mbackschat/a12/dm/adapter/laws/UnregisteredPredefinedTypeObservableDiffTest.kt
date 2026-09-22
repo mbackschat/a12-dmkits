@@ -8,7 +8,6 @@ import io.github.mbackschat.a12.dm.interpreter.model.PredefinedTypeRegistry
 import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel
 import io.github.mbackschat.a12.dm.rulekit.dsl.Condition
 import io.github.mbackschat.a12.dm.rulekit.dsl.Dsl
-import io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 import java.util.Optional
@@ -46,7 +45,7 @@ class UnregisteredPredefinedTypeObservableDiffTest {
 
     private val order = RuntimeLaws.model("models/order.dm.json")
     private val m = BoundModel.ofJson(order)
-    private fun render(c: Condition): String = DslRenderer().render(c)
+    private fun render(c: Condition): String = RuntimeLaws.render(c)
     private val cn = m.field(NAME)
 
     /** A factory that answers for `EMail` only — so `Unregistered` reaches it and it returns nothing. */

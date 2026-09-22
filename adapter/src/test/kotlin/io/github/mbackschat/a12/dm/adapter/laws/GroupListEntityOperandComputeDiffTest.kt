@@ -7,9 +7,7 @@ import io.github.mbackschat.a12.dm.interpreter.model.ComputeOutcome
 import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft
 import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel
 import io.github.mbackschat.a12.dm.rulekit.dsl.Condition
-import io.github.mbackschat.a12.dm.rulekit.dsl.ConditionLanguage
 import io.github.mbackschat.a12.dm.rulekit.dsl.Dsl
-import io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 
@@ -48,7 +46,7 @@ class GroupListEntityOperandComputeDiffTest {
         .toJson()
 
     private val m = BoundModel.ofJson(base)
-    private fun render(c: Condition): String = DslRenderer(ConditionLanguage.EN, "/Claim").render(c)
+    private fun render(c: Condition): String = RuntimeLaws.render("/Claim", c)
 
     /** Inject `Payout` (gated by [precondition]) + the dependent `Audit = [Payout]`, then compute over a doc
      *  seeding both targets + the given operand [values]; assert groovy == java-static == interpreter. */

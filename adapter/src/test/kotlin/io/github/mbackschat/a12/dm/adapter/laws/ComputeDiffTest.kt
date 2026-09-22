@@ -9,8 +9,6 @@ import io.github.mbackschat.a12.dm.interpreter.model.Kind
 import io.github.mbackschat.a12.dm.interpreter.model.ModelDef
 import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel
 import io.github.mbackschat.a12.dm.rulekit.dsl.Calculation
-import io.github.mbackschat.a12.dm.rulekit.dsl.ConditionLanguage
-import io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 
@@ -26,7 +24,7 @@ class ComputeDiffTest {
     // Operations are authored with the rulekit typed DSL ([m]) and rendered (relative to the computation
     // group) to the canonical string fed to BOTH engines — no free-text operation literals.
     private val m = BoundModel.ofJson(subscription)
-    private fun renderOp(c: Calculation): String = DslRenderer(ConditionLanguage.EN, "/Subscription/Billing").render(c)
+    private fun renderOp(c: Calculation): String = RuntimeLaws.render("/Subscription/Billing", c)
     private val fields = listOf(FieldDef(BASE, Kind.NUMBER), FieldDef(EFF, Kind.NUMBER))
     private val operation = renderOp(m.num(BASE).asNumber().expression())
     private val comp = ComputationDef(EFF, "/Subscription/Billing", operation)

@@ -10,6 +10,7 @@ import io.github.mbackschat.a12.dm.interpreter.load.ModelLoader
 import io.github.mbackschat.a12.dm.interpreter.model.ComputeOutcome
 import io.github.mbackschat.a12.dm.interpreter.model.CustomFieldType
 import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft
+import io.github.mbackschat.a12.dm.modelkit.FieldKind
 import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel
 import io.github.mbackschat.a12.dm.rulekit.dsl.Computation
 import io.github.mbackschat.a12.dm.rulekit.dsl.Dsl
@@ -23,12 +24,12 @@ class FirstFilledValueAdditionalKindDiffTest {
 
     private val base = DocumentModelDraft.named("review").locale("en_US")
         .rootGroup("Review", Consumer { root ->
-            root.field("FirstApproved", io.github.mbackschat.a12.dm.modelkit.FieldKind.BOOLEAN)
+            root.field("FirstApproved", FieldKind.BOOLEAN)
                 .customField("FirstCode", Consumer { it.type(CUSTOM_TYPE) })
                 .dateFragmentField("FirstMonth", Consumer { it.fragmentFormat("MM") })
                 .group("Rows", Consumer { rows ->
                     rows.repeatable(10)
-                        .field("Approved", io.github.mbackschat.a12.dm.modelkit.FieldKind.BOOLEAN)
+                        .field("Approved", FieldKind.BOOLEAN)
                         .customField("Code", Consumer { it.type(CUSTOM_TYPE) })
                         .dateFragmentField("Month", Consumer { it.fragmentFormat("MM") })
                 })

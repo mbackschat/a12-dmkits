@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 import org.junit.jupiter.api.Test;
 
@@ -12,7 +13,6 @@ import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft;
 import io.github.mbackschat.a12.dm.modelkit.FieldKind;
 import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Calculation;
-import io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Dsl;
 
 /**
@@ -74,7 +74,6 @@ class DerivedTemporalOperandFormatLawsTest {
             .build().toJson();
 
     private static final BoundModel M = BoundModel.ofJson(MODEL);
-    private static final DslRenderer RENDERER = new DslRenderer();
 
     /** The temporal-valued derived shapes this DSL can build, by the KIND each carries. */
     private static Map<String, Calculation> shapes() {
@@ -106,11 +105,11 @@ class DerivedTemporalOperandFormatLawsTest {
                 .map(d -> d.code().orElse("NO_CODE"))
                 .distinct()
                 .sorted()
-                .collect(java.util.stream.Collectors.joining("+"));
+                .collect(Collectors.joining("+"));
     }
 
     private static String verdict(String unit, Calculation source) {
-        return verdictOf(unit + "(" + RENDERER.render(source) + ")");
+        return verdictOf(unit + "(" + KernelLaws.render(source) + ")");
     }
 
     /** One table, so a kernel shift shows every cell rather than aborting at the first. */
@@ -130,7 +129,7 @@ class DerivedTemporalOperandFormatLawsTest {
                 "HoursFromTime(BaseYear) > 1 And FieldFilled(N)");
         actual.put("BaseYear constant / HoursFromTime", byResult.ok() ? KernelLaws.ADMITTED
                 : byResult.diagnostics().stream().map(d -> d.code().orElse("NO_CODE")).distinct().sorted()
-                        .collect(java.util.stream.Collectors.joining("+")));
+                        .collect(Collectors.joining("+")));
         actual.put("a DATE_TIME field / HoursFromTime", verdictOf("HoursFromTime(Stamp)"));
         // THE DISCRIMINATOR for the TIME row above: a TIME FIELD, whose HH:mm:ss carries no year. If the
         // field refuses YearFromDate where the derived TIME operand admits it, the kind default does NOT

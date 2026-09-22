@@ -7,9 +7,7 @@ import io.github.mbackschat.a12.dm.interpreter.model.ComputeOutcome
 import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft
 import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel
 import io.github.mbackschat.a12.dm.rulekit.dsl.Calculation
-import io.github.mbackschat.a12.dm.rulekit.dsl.ConditionLanguage
 import io.github.mbackschat.a12.dm.rulekit.dsl.Dsl
-import io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 
@@ -39,7 +37,7 @@ class ConstructedRangeTargetDiffTest {
         }.build().toJson()
 
     private val m = BoundModel.ofJson(base)
-    private fun renderOp(c: Calculation): String = DslRenderer(ConditionLanguage.EN, ROOT).render(c)
+    private fun renderOp(c: Calculation): String = RuntimeLaws.render(ROOT, c)
 
     private val monthModel = RuntimeLaws.withComputation(base, ROOT, "MonthWindowComp", "../MonthWindow",
         renderOp(Dsl.dateRange(m.dateFragment("$ROOT/FromMonth"), m.dateFragment("$ROOT/ToMonth"))))

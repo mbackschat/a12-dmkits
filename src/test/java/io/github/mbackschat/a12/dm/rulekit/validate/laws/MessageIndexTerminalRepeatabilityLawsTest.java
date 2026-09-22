@@ -11,7 +11,6 @@ import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft;
 import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Condition;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Dsl;
-import io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer;
 
 /**
  * KERNEL-FINDINGS §13 — what the {@code $index(…)$} terminal's REPEATABILITY gate needs, and what it
@@ -96,7 +95,7 @@ class MessageIndexTerminalRepeatabilityLawsTest {
             .and(Dsl.atLeastOneFieldFilled(M.flatten("/Warehouse/Racks*/Tier"))));
 
     private static String render(Condition condition) {
-        return new DslRenderer().render(condition);
+        return KernelLaws.render(condition);
     }
 
     private static String inPallet(String condition, String message) {

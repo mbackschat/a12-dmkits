@@ -7,10 +7,9 @@ import io.github.mbackschat.a12.dm.interpreter.model.ComputeOutcome
 import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft
 import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft.GroupBuilder
 import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel
-import io.github.mbackschat.a12.dm.rulekit.dsl.ConditionLanguage
 import io.github.mbackschat.a12.dm.rulekit.dsl.Dsl
-import io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer
 import io.github.mbackschat.a12.dm.rulekit.dsl.NumberExpr
+import org.junit.jupiter.api.Assertions
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 import java.util.function.Consumer
@@ -61,7 +60,7 @@ class ComputedNumberDigitOverflowDiffTest {
      *  `errorCodesToSuppress: [MVK_INVALID_COMPARE_DEC_PLACES]` — the kernel's own escape hatch for the static
      *  assignment-scale gate, the ONLY way a scale-mismatched operation (the runtime no-fit arm) can load. */
     private fun model(op: NumberExpr, minFrac: Int, maxFrac: Int, suppressScaleGate: Boolean = false): String {
-        val rendered = DslRenderer(ConditionLanguage.EN, "/Order").render(op.expression())
+        val rendered = RuntimeLaws.render("/Order", op.expression())
         val suppress = if (suppressScaleGate) listOf("MVK_INVALID_COMPARE_DEC_PLACES") else listOf()
         return RuntimeLaws.withComputation(base(minFrac, maxFrac), "/Order", "ProjectedComp", "../Projected", rendered, suppress)
     }
@@ -167,10 +166,10 @@ class ComputedNumberDigitOverflowDiffTest {
      *  so the no-fit arm is unreachable on an unsuppressed model. */
     @Test fun scaleMismatchedAssignmentRejectedWithoutSuppression() {
         val m = model(unit.times(bulk), 0, 2)
-        val thrown = org.junit.jupiter.api.Assertions.assertThrows(Exception::class.java) {
+        val thrown = Assertions.assertThrows(Exception::class.java) {
             RuntimeLaws.compute(m, kdoc("1.23", "2.01"))
         }
-        org.junit.jupiter.api.Assertions.assertTrue(
+        Assertions.assertTrue(
             thrown.message.orEmpty().contains("MVK_INVALID_COMPARE_DEC_PLACES"),
             "expected the static scale gate, got: ${thrown.message}")
     }

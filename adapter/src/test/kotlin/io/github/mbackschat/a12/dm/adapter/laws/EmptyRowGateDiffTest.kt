@@ -9,7 +9,6 @@ import io.github.mbackschat.a12.dm.interpreter.model.RuleDef
 import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel
 import io.github.mbackschat.a12.dm.rulekit.dsl.Condition
 import io.github.mbackschat.a12.dm.rulekit.dsl.Dsl
-import io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 
@@ -29,7 +28,7 @@ class EmptyRowGateDiffTest {
     // Conditions are authored with the rulekit typed DSL ([m]) and rendered to the canonical string fed to BOTH
     // engines — no free-text condition literals.
     private val m = BoundModel.ofJson(order)
-    private fun render(c: Condition): String = DslRenderer().render(c)
+    private fun render(c: Condition): String = RuntimeLaws.render(c)
     private fun noneFilled() = Dsl.noFieldFilled(m.field(A), m.field(B))
     private fun notAllFilled() = Dsl.notAllFieldsFilled(m.field(A), m.field(B))
     private fun qtyUnder100() = m.num(Q).lt(100)

@@ -10,7 +10,7 @@ import io.github.mbackschat.a12.dm.interpreter.model.RuleDef
 import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel
 import io.github.mbackschat.a12.dm.rulekit.dsl.Condition
 import io.github.mbackschat.a12.dm.rulekit.dsl.Dsl
-import io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer
+import io.github.mbackschat.a12.dm.rulekit.dsl.ValueListOperand
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 
@@ -32,7 +32,7 @@ class EnumValueListUnionDiffTest {
         FieldDef(RUSH, Kind.STRING, enumValues = listOf("1", "2", "3")),
     )
     private val m = BoundModel.ofJson(order)
-    private fun render(c: Condition): String = DslRenderer().render(c)
+    private fun render(c: Condition): String = RuntimeLaws.render(c)
 
     /** Compare kernel (Groovy-dynamic) vs interpreter — firing AND polarity — for the rule under [priority]/[rush]. */
     private fun agree(cond: Condition, priority: String?, rush: String?, msg: String) {
@@ -116,10 +116,10 @@ class EnumValueListUnionDiffTest {
 
     // --- values side carries a category projection (entity-valued) — classification covered too -----
     @Test fun valuesSideCategoryNoFireDisjoint() =
-        agree(Dsl.atLeastOneFieldValueIncludedInValueList(listOf<io.github.mbackschat.a12.dm.rulekit.dsl.ValueListOperand>(cat().listOperand()),
+        agree(Dsl.atLeastOneFieldValueIncludedInValueList(listOf<ValueListOperand>(cat().listOperand()),
             m.enumOf(RUSH).field()), "STANDARD", "1", "RushLevel In Priority->SpeedClass — disjoint, no fire")
     @Test fun valuesSideCategoryEmptyNo() =
-        agree(Dsl.noFieldValueIncludedInValueList(listOf<io.github.mbackschat.a12.dm.rulekit.dsl.ValueListOperand>(cat().listOperand()),
+        agree(Dsl.noFieldValueIncludedInValueList(listOf<ValueListOperand>(cat().listOperand()),
             m.enumOf(RUSH).field()), null, "1", "No RushLevel In (empty Priority->SpeedClass)")
 
     private companion object {

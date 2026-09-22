@@ -6,6 +6,7 @@ import io.github.mbackschat.a12.dm.interpreter.eval.newDocument
 import io.github.mbackschat.a12.dm.interpreter.load.ModelLoader
 import io.github.mbackschat.a12.dm.interpreter.model.MsgType
 import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft
+import java.util.Locale
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
@@ -94,7 +95,7 @@ class OuterMarkedAggregateOperandDiffTest {
 
         val staticDoc = Both(RuntimeLaws.doc(), def.newDocument()).also(build).kDoc
         val javaStatic = RuntimeLaws.kernelJavaEngine(kModel)
-            .messagesModern(staticDoc, null, java.util.Locale.US)
+            .messagesModern(staticDoc, null, Locale.US)
             .filter { it.code() == CODE }.map { "${it.field()}|${it.type().name}" }.sorted()
 
         val interpreter = DmInterpreter(def).validateFull(dynamic.iDoc).filter { it.code == CODE }
@@ -238,7 +239,7 @@ class OuterMarkedAggregateOperandDiffTest {
 
         val staticDoc = Both(RuntimeLaws.doc(), def.newDocument()).also(build).kDoc
         val javaStatic = RuntimeLaws.kernelJavaEngine(kModel)
-            .messagesModern(staticDoc, null, java.util.Locale.US).filter { it.code() == CODE }
+            .messagesModern(staticDoc, null, Locale.US).filter { it.code() == CODE }
             .map { "${it.field()}|${it.type().name}|${it.referenced().sorted()}" }.sorted()
 
         val interpreter = DmInterpreter(def).validateFull(dynamic.iDoc).filter { it.code == CODE }

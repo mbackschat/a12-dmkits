@@ -10,7 +10,6 @@ import io.github.mbackschat.a12.dm.interpreter.model.ComputeOutcome
 import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft
 import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel
 import io.github.mbackschat.a12.dm.rulekit.dsl.Dsl
-import io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 
@@ -91,21 +90,20 @@ class EmptyCandidateSetOutcomeDiffTest {
         }.build().toJson()
 
     private val m = BoundModel.ofJson(base)
-    private val render = DslRenderer()
 
     /** `FirstFilledValue(the flatten of Lines* then Sku Having [Lines/Price] > [$Lines/Price])`. */
-    private val nextHigherSku = render.render(
+    private val nextHigherSku = RuntimeLaws.render(
         Dsl.firstFilledString(
             m.flatten("$LINES*/Sku").having(m.num(PRICE).gt(m.num(PRICE).outer())),
         ).expression(),
     )
 
     /** The dependent: the length of the computed cell above, so a no-value row is read one step further. */
-    private val nextHigherLen = render.render(m.str(NEXT_SKU).length().expression())
+    private val nextHigherLen = RuntimeLaws.render(m.str(NEXT_SKU).length().expression())
 
     /** The other no-value GROUND: a precondition no row satisfies, over the same carrier kind. */
-    private val flagPrecondition = render.render(Dsl.fieldFilled(m.field(MARKER)))
-    private val flagOperation = render.render(m.str(SKU).asString().expression())
+    private val flagPrecondition = RuntimeLaws.render(Dsl.fieldFilled(m.field(MARKER)))
+    private val flagOperation = RuntimeLaws.render(m.str(SKU).asString().expression())
 
     private val model: String = run {
         val withNext = RuntimeLaws.withComputation(base, LINES, "NextHigherComp", "../NextHigherSku", nextHigherSku)

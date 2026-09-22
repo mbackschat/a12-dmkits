@@ -14,7 +14,6 @@ import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft;
 import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Computation;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Dsl;
-import io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer;
 import io.github.mbackschat.a12.dm.rulekit.validate.DraftComputation;
 import io.github.mbackschat.a12.dm.rulekit.validate.RuleValidator;
 import io.github.mbackschat.a12.dm.rulekit.validate.ValidationResult;
@@ -282,46 +281,46 @@ class TemporalConstantAdmissionGateLawsTest {
     /** The kernel's verdict on assigning the date literal, reached through the untyped draft. */
     private static String kernelVerdict(String target, String literal) {
         return codes(new RuleValidator().check(MODEL, draft(target,
-                new DslRenderer().render(Dsl.dateValue(literal).expression()))));
+                KernelLaws.render(Dsl.dateValue(literal).expression()))));
     }
 
     private static String kernelTimeVerdict(String target) {
         return codes(new RuleValidator().check(MODEL, draft(target,
-                new DslRenderer().render(Dsl.timeValue("12:30:00").expression()))));
+                KernelLaws.render(Dsl.timeValue("12:30:00").expression()))));
     }
 
     /** The kernel's verdict on COMPARING the field against the literal, rather than assigning it. */
     private static String comparisonVerdict(String field, String literal) {
         return codes(KernelLaws.checkModel(MODEL, BOOKING, "../Reference",
-                new DslRenderer().render(Dsl.fieldFilled(M.field("/Booking/Reference"))
+                KernelLaws.render(Dsl.fieldFilled(M.field("/Booking/Reference"))
                         .and(M.date(field).after(Dsl.dateValue(literal))))));
     }
 
     /** The kernel's verdict on the literal as an operand of a temporal OPERATION. */
     private static String operationVerdict(String literal) {
         return codes(KernelLaws.checkModel(MODEL, BOOKING, "../Reference",
-                new DslRenderer().render(Dsl.fieldFilled(M.field("/Booking/Reference"))
+                KernelLaws.render(Dsl.fieldFilled(M.field("/Booking/Reference"))
                         .and(Dsl.differenceInDays(M.date(MONTH_ONLY), Dsl.dateValue(literal)).gt(0)))));
     }
 
     /** The same operation with NO field operand, so no declared format can be what the gate is reading. */
     private static String twoLiteralOperationVerdict() {
         return codes(KernelLaws.checkModel(MODEL, BOOKING, "../Reference",
-                new DslRenderer().render(Dsl.fieldFilled(M.field("/Booking/Reference"))
+                KernelLaws.render(Dsl.fieldFilled(M.field("/Booking/Reference"))
                         .and(Dsl.differenceInDays(Dsl.dateValue("05.03."), Dsl.dateValue("07.04.")).gt(0)))));
     }
 
     /** The literal reaching the operation through a SHIFT rather than directly. */
     private static String shiftedOperandVerdict() {
         return codes(KernelLaws.checkModel(MODEL, BOOKING, "../Reference",
-                new DslRenderer().render(Dsl.fieldFilled(M.field("/Booking/Reference"))
+                KernelLaws.render(Dsl.fieldFilled(M.field("/Booking/Reference"))
                         .and(M.date(MONTH_ONLY).after(Dsl.addDays(Dsl.dateValue("05.03."), 3))))));
     }
 
     /** The literal reaching the operation through an AGGREGATE rather than directly. */
     private static String aggregatedOperandVerdict() {
         return codes(KernelLaws.checkModel(MODEL, BOOKING, "../Reference",
-                new DslRenderer().render(Dsl.fieldFilled(M.field("/Booking/Reference"))
+                KernelLaws.render(Dsl.fieldFilled(M.field("/Booking/Reference"))
                         .and(M.date(MONTH_ONLY).after(
                                 Dsl.min(Dsl.dateValue("05.03."), Dsl.dateValue("07.04.")))))));
     }
@@ -329,14 +328,14 @@ class TemporalConstantAdmissionGateLawsTest {
     /** A DATE field of the given declared format as a DifferenceInDays operand, against the literal. */
     private static String operandVerdict(String field, String literal) {
         return codes(KernelLaws.checkModel(MODEL, BOOKING, "../Reference",
-                new DslRenderer().render(Dsl.fieldFilled(M.field("/Booking/Reference"))
+                KernelLaws.render(Dsl.fieldFilled(M.field("/Booking/Reference"))
                         .and(Dsl.differenceInDays(M.date(field), Dsl.dateValue(literal)).gt(0)))));
     }
 
     /** Reading the borrowed year back out of the anchored literal — the direct pin on the anchor year. */
     private static String extractedYearVerdict() {
         return codes(KernelLaws.checkModel(MODEL, BOOKING, "../Reference",
-                new DslRenderer().render(Dsl.fieldFilled(M.field("/Booking/Reference"))
+                KernelLaws.render(Dsl.fieldFilled(M.field("/Booking/Reference"))
                         .and(Dsl.yearFromDate(Dsl.dateValue("05.03.")).gt(1999)))));
     }
 

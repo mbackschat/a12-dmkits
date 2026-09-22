@@ -8,7 +8,6 @@ import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft
 import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel
 import io.github.mbackschat.a12.dm.rulekit.dsl.Condition
 import io.github.mbackschat.a12.dm.rulekit.dsl.Dsl
-import io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 
@@ -73,7 +72,7 @@ class UnstarredGroupReferenceDiffTest {
         val billing = m.group("/Order/Billing")
         val shipping = m.group("/Order/Shipping")
         val street = m.str("/Order/Billing/Street").filled()
-        fun render(condition: Condition): String = DslRenderer().render(condition)
+        fun render(condition: Condition): String = RuntimeLaws.render(condition)
         listOf(
             Lane("GRPFILLED", render(billing.filled()), "single-operand presence"),
             Lane("ANYFILLED", render(Dsl.atLeastOneGroupFilled(billing, shipping)), "entity-list"),

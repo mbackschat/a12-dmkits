@@ -11,12 +11,12 @@ import java.util.Map;
 import java.util.Set;
 import java.util.TreeSet;
 
+import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 
 import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Condition;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Dsl;
-import io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer;
 
 /**
  * WHICH text does each kernel evaluation channel read, when A12's two renderings of one stored decimal
@@ -53,7 +53,7 @@ class NumberRenderChannelKernelTest {
     private static final String CODE = "/Shipment/Crates/Code";
 
     private static String render(Condition c) {
-        return new DslRenderer().render(c);
+        return RuntimeLaws.render(c);
     }
 
     /** The error field must be referenced in the condition (MVK_ERROR_FIELD_NOT_REFERENCED). */
@@ -161,7 +161,7 @@ class NumberRenderChannelKernelTest {
     @Test
     void theSemanticIndexLiteralIsFormatCheckedAgainstTheIndexFieldsDeclaration() {
         String model = withRule(m.num(LOAD).forIndex("250").gt(0));
-        String message = org.junit.jupiter.api.Assertions.assertThrows(RuntimeException.class,
+        String message = Assertions.assertThrows(RuntimeException.class,
                 () -> RuntimeLaws.jsonIngress(model,
                         "{\"Shipment\":{\"Reference\":\"R\",\"Parcels\":[{\"Tag\":250,\"Load\":7}]}}")).getMessage();
         assertTrue(message.contains("MVK_INDEX_VALUE_INVALID"), message);
@@ -234,7 +234,7 @@ class NumberRenderChannelKernelTest {
                 "\"maxFractionalDigits\": 2,\n                      \"pattern\": \"250\"\n                    }");
         assertNotEquals(MODEL, patched, "the probe fixture patch must land");
         assertTrue(patched.contains("\"pattern\": \"250\""), "the probe fixture patch must land");
-        Throwable thrown = org.junit.jupiter.api.Assertions.assertThrows(RuntimeException.class,
+        Throwable thrown = Assertions.assertThrows(RuntimeException.class,
                 () -> RuntimeLaws.modelRoundTrip(patched));
         assertTrue(String.valueOf(thrown.getCause()).contains("pattern"),
                 "the kernel's model reader must name the rejected key: " + thrown.getCause());

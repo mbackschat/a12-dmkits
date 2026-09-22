@@ -10,7 +10,6 @@ import io.github.mbackschat.a12.dm.modelkit.FieldKind
 import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel
 import io.github.mbackschat.a12.dm.rulekit.dsl.Condition
 import io.github.mbackschat.a12.dm.rulekit.dsl.Dsl
-import io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 
@@ -173,7 +172,7 @@ class PartialCoverageGroupOperandDiffTest {
             val billing = base.group(BILLING)
             val shipping = base.group(SHIPPING)
             val guard = Dsl.fieldFilled(ref)
-            fun render(c: Condition) = DslRenderer().render(c)
+            fun render(c: Condition) = RuntimeLaws.render(c)
             var json = baseModel
             listOf(
                 COUNT to render(guard.and(Dsl.numberOfFilledGroups(billing, shipping).gt(0))),

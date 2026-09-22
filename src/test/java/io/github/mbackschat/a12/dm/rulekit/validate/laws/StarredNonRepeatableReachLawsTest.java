@@ -9,6 +9,7 @@ import java.util.Map;
 
 import org.junit.jupiter.api.Test;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 
@@ -235,8 +236,8 @@ class StarredNonRepeatableReachLawsTest {
         }
     }
 
-    private static final com.fasterxml.jackson.databind.ObjectMapper MAPPER =
-            new com.fasterxml.jackson.databind.ObjectMapper();
+    private static final ObjectMapper MAPPER =
+            new ObjectMapper();
 
     /** The model-level anchoring: the error field sits outside every repeatable group. */
     private static String guarded(String condition) {

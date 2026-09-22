@@ -24,7 +24,6 @@ import io.github.mbackschat.a12.dm.interpreter.model.MsgType
 import io.github.mbackschat.a12.dm.interpreter.model.RuleDef
 import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel
 import io.github.mbackschat.a12.dm.rulekit.dsl.Dsl
-import io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertSame
 import org.junit.jupiter.api.Assertions.assertThrows
@@ -52,7 +51,7 @@ class CustomConditionDiffTest {
     // The condition is authored with the rulekit typed DSL ([m]) and rendered to the canonical string fed to
     // BOTH engines (kernel injection + the interpreter) — no free-text condition literal.
     private val m = BoundModel.ofJson(order)
-    private val cond = DslRenderer().render(m.field(NAME).filled().and(Dsl.customCondition("NameIsAcme")))
+    private val cond = RuntimeLaws.render(m.field(NAME).filled().and(Dsl.customCondition("NameIsAcme")))
     private val kModel = RuntimeLaws.withRule(order, "/Order", "R", "../CustomerName", "CC", cond)
     private val javaEngine by lazy { RuntimeLaws.kernelJavaEngine(kModel) }
     private val def = ModelDef(

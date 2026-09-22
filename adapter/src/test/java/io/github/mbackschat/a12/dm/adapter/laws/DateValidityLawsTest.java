@@ -12,7 +12,6 @@ import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Condition;
 import io.github.mbackschat.a12.dm.rulekit.dsl.DateExpr;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Dsl;
-import io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer;
 
 /**
  * KERNEL-FINDINGS §6 — runtime behaviour of {@code Valid}/{@code Invalid} over a constructed date.
@@ -33,7 +32,7 @@ class DateValidityLawsTest {
             M.num("/Order/BirthDay").asNumber(), M.num("/Order/BirthMonth").asNumber(), M.num("/Order/BirthYear").asNumber());
 
     private static String render(Condition c) {
-        return new DslRenderer().render(c);
+        return RuntimeLaws.render(c);
     }
 
     private static final String INV =

@@ -3,9 +3,8 @@ package io.github.mbackschat.a12.dm.adapter.laws
 import io.github.mbackschat.a12.dm.interpreter.model.ComputationAlternative
 import io.github.mbackschat.a12.dm.interpreter.model.ComputationDef
 import io.github.mbackschat.a12.dm.interpreter.model.RuleDef
+import io.github.mbackschat.a12.dm.interpreter.model.ToleranceBand
 import io.github.mbackschat.a12.dm.rulekit.dsl.Computation
-import io.github.mbackschat.a12.dm.rulekit.dsl.ConditionLanguage
-import io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer
 import io.github.mbackschat.a12.dm.rulekit.dsl.Rule
 
 /**
@@ -41,50 +40,27 @@ object TypedRules {
             cond(rule), rule.code(), rule.errorEntityRelPath(),
         )
 
-    /** Inject the typed [comp] into [json] (simple or tiered — chosen by its alternatives) — the kernel side. */
-    fun inject(json: String, comp: Computation): String {
-        val r = DslRenderer(ConditionLanguage.EN, comp.groupPath())
-        val alts = comp.alternatives()
-        val common = comp.commonPrecondition().map { r.render(it) }.orElse(null)
-        val unconditional = alts.size == 1 &&
-            alts[0].precondition().orElse(null) == null &&
-            alts[0].toleranceRangeOp().isEmpty &&
-            common == null
-        return if (unconditional) {
-            RuntimeLaws.withComputation(
-                json, comp.groupPath(), comp.name(), comp.computedFieldRelPath(), r.render(alts[0].operation()),
-            )
-        } else {
-            RuntimeLaws.withTieredComputation(
-                json, comp.groupPath(), comp.name(), comp.computedFieldRelPath(), common,
-                alts.map {
-                    RuntimeLaws.CompAlt(
-                        it.precondition().map { p -> r.render(p) }.orElse(null),
-                        r.render(it.operation()),
-                        it.toleranceRangeOp().map { band -> band.wire() }.orElse(null),
-                    )
-                },
-            )
-        }
-    }
+    /**
+     * Inject the typed [comp] into [json] (simple or tiered — chosen by its alternatives) — the kernel side.
+     *
+     * The splice is [RuntimeLaws.withComputation]'s typed twin, which reads the same alternatives off the draft
+     * and picks the same arm; `TypedComputationSpliceTest` pins it byte-equal to the String overloads.
+     */
+    fun inject(json: String, comp: Computation): String = RuntimeLaws.withComputation(json, comp)
 
     /** The interpreter [ComputationDef] for the typed [comp] — the interpreter side. */
     fun def(comp: Computation): ComputationDef {
-        val r = DslRenderer(ConditionLanguage.EN, comp.groupPath())
+        val group = comp.groupPath()
         return ComputationDef(
-            comp.computedField().path().value(), comp.groupPath(),
+            comp.computedField().path().value(), group,
             comp.alternatives().map {
                 ComputationAlternative(
-                    it.precondition().map { p -> r.render(p) }.orElse(null),
-                    r.render(it.operation()),
-                    it.toleranceRangeOp()
-                        .map { band ->
-                            io.github.mbackschat.a12.dm.interpreter.model.ToleranceBand.ofWire(band.wire())
-                        }
-                        .orElse(null),
+                    it.precondition().map { p -> RuntimeLaws.render(group, p) }.orElse(null),
+                    RuntimeLaws.render(group, it.operation()),
+                    it.toleranceRangeOp().map { band -> ToleranceBand.ofWire(band.wire()) }.orElse(null),
                 )
             },
-            comp.commonPrecondition().map { r.render(it) }.orElse(null),
+            comp.commonPrecondition().map { RuntimeLaws.render(group, it) }.orElse(null),
         )
     }
 }

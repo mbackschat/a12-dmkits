@@ -12,7 +12,6 @@ import io.github.mbackschat.a12.dm.edit.EditSession;
 import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Condition;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Dsl;
-import io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer;
 
 /**
  * KERNEL-FINDINGS §13 — <b>the {@code $index(…)$} message-parameter terminal</b>, a positive surface neither
@@ -92,7 +91,7 @@ class RuleMessageIndexTerminalLawsTest {
     private static final String READS_ROOT = render(Dsl.fieldFilled(M.field("/Policy/Reference")));
 
     private static String render(Condition condition) {
-        return new DslRenderer().render(condition);
+        return KernelLaws.render(condition);
     }
 
     /** In the repeating group: rule group {@code /Policy/Claims}, error field one of its own fields. */

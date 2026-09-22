@@ -5,6 +5,7 @@ import com.mgmtp.a12.kernel.core.customfieldtype.ICustomFieldTypeFactory
 import com.mgmtp.a12.kernel.core.customfieldtype.ICustomFieldTypeValidationParam
 import com.mgmtp.a12.kernel.core.customfieldtype.ICustomFieldValidator
 import io.github.mbackschat.a12.dm.interpreter.DmInterpreter
+import io.github.mbackschat.a12.dm.interpreter.eval.Document
 import io.github.mbackschat.a12.dm.interpreter.eval.newDocument
 import io.github.mbackschat.a12.dm.interpreter.load.ModelLoader
 import io.github.mbackschat.a12.dm.interpreter.model.FieldDef
@@ -20,9 +21,9 @@ import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft
 import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel
 import io.github.mbackschat.a12.dm.rulekit.dsl.Condition
 import io.github.mbackschat.a12.dm.rulekit.dsl.Dsl
-import io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
+import java.util.Locale
 import java.util.Optional
 import java.util.function.Consumer
 
@@ -49,7 +50,7 @@ class FieldValuesNotUniqueDiffTest {
     // Conditions are authored with the rulekit typed DSL ([m]) and rendered to the canonical string fed to BOTH
     // engines — no free-text condition literals. ABSOLUTE paths; both engines accept them.
     private val m = BoundModel.ofJson(order)
-    private fun render(c: Condition): String = DslRenderer().render(c)
+    private fun render(c: Condition): String = RuntimeLaws.render(c)
 
     /** Inject [cond] at /Order (error field [errorRel] — must be referenced in the condition), set each
      *  (path → value) cell (null = leave empty), assert firing agrees with the kernel. */
@@ -146,7 +147,7 @@ class FieldValuesNotUniqueDiffTest {
                 val kModel = RuntimeLaws.withRule(order, group, "FU", errorRel, "FU", condition)
                 val def = ModelLoader.load(kModel)
 
-                fun documents(): Pair<RuntimeLaws.Doc, io.github.mbackschat.a12.dm.interpreter.eval.Document> {
+                fun documents(): Pair<RuntimeLaws.Doc, Document> {
                     val kDoc = RuntimeLaws.doc().group("/Order", 1)
                     val iDoc = def.newDocument().group("/Order", 1)
                     listOf("7", "5", "5").forEachIndexed { index, count ->
@@ -164,7 +165,7 @@ class FieldValuesNotUniqueDiffTest {
                     .map { "${it.field()}|${it.type().name}|${it.referenced().sorted()}" }
                 val (staticDoc, _) = documents()
                 val javaStatic = RuntimeLaws.kernelJavaEngine(kModel)
-                    .messagesModern(staticDoc, null, java.util.Locale.US).filter { it.code() == "FU" }
+                    .messagesModern(staticDoc, null, Locale.US).filter { it.code() == "FU" }
                     .map { "${it.field()}|${it.type().name}|${it.referenced().sorted()}" }
                 val interpreter = DmInterpreter(def).validateFull(interpreterDoc).filter { it.code == "FU" }
                     .map { "${it.errorPath}|${if (it.type.name == "OMISSION") "OMISSION_ERROR" else "VALUE_ERROR"}|${it.referenced.sorted()}" }
@@ -287,7 +288,7 @@ class FieldValuesNotUniqueDiffTest {
             val kModel = RuntimeLaws.withRule(order, "/Order", "FU", case.errorRel, "FU", case.condition)
             val def = ModelLoader.load(kModel)
 
-            fun documents(): Pair<RuntimeLaws.Doc, io.github.mbackschat.a12.dm.interpreter.eval.Document> {
+            fun documents(): Pair<RuntimeLaws.Doc, Document> {
                 val kDoc = RuntimeLaws.doc().group("/Order", 1)
                 val iDoc = def.newDocument().group("/Order", 1)
                 for ((path, value) in case.direct) if (value != null) {
@@ -309,7 +310,7 @@ class FieldValuesNotUniqueDiffTest {
                 .map { "${it.field()}|${it.type().name}|${it.referenced().sorted()}" }
             val (staticDoc, _) = documents()
             val javaStatic = RuntimeLaws.kernelJavaEngine(kModel)
-                .messagesModern(staticDoc, null, java.util.Locale.US).filter { it.code() == "FU" }
+                .messagesModern(staticDoc, null, Locale.US).filter { it.code() == "FU" }
                 .map { "${it.field()}|${it.type().name}|${it.referenced().sorted()}" }
             val interpreter = DmInterpreter(def).validateFull(interpreterDoc).filter { it.code == "FU" }
                 .map { "${it.errorPath}|${if (it.type.name == "OMISSION") "OMISSION_ERROR" else "VALUE_ERROR"}|${it.referenced.sorted()}" }

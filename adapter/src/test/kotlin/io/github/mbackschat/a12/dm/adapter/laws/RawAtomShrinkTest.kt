@@ -10,6 +10,7 @@ import org.junit.jupiter.api.Tag
 import org.junit.jupiter.api.Test
 import java.nio.file.Files
 import java.nio.file.Path
+import java.util.Locale
 
 /**
  * **The WI-T raw-outcome atom isolator** — the per-pointer compute-atom hunt+shrink that delivered the IF88
@@ -95,7 +96,7 @@ class RawAtomShrinkTest {
 
     /** Scan the model's seeds for a pointer whose RAW kernel/interp outcomes match the target — the kind pair,
      *  or in [valueDiff] mode a kind-equal `VALUE`-vs-`VALUE` pointer with differing value strings. */
-    private fun findAtom(model: ModelDef, kernelJson: String, interpJson: String, locale: java.util.Locale,
+    private fun findAtom(model: ModelDef, kernelJson: String, interpJson: String, locale: Locale,
                          seedFilter: Int?): Atom? {
         val seeds = seedFilter?.let { listOf(it) } ?: (0 until INSTANCES).toList()
         for (seed in seeds) {
@@ -123,7 +124,7 @@ class RawAtomShrinkTest {
         }
     }
 
-    private fun shrinkAndReport(kernelJson: String, atom: Atom, locale: java.util.Locale) {
+    private fun shrinkAndReport(kernelJson: String, atom: Atom, locale: Locale) {
         val shrinker = ModelShrinker({ candidate -> stillDiverges(candidate, atom, locale) })
         println("[atom] seed model shape:\n" + CorpusShrinkSupport.indented(ModelShrinker.redactedShape(kernelJson)))
         val minimal = shrinker.shrink(kernelJson)
@@ -146,7 +147,7 @@ class RawAtomShrinkTest {
      *  does [candidate] still show the target atom at [atom.pointer] — the kind pair, or in [valueDiff] mode the
      *  PINNED (kernel-value, interp-value) pair — reading the interpreter side RAW, with NO granularity
      *  projection (the whole point of this isolator)? */
-    private fun stillDiverges(candidate: String, atom: Atom, locale: java.util.Locale): Boolean {
+    private fun stillDiverges(candidate: String, atom: Atom, locale: Locale): Boolean {
         val interpJson = runCatching { CorpusModelPreparer.toInterpreterJson(candidate) }.getOrNull() ?: return false
         val model = runCatching { ModelLoader.load(interpJson) }.getOrNull() ?: return false
         val placements = CorpusShrinkSupport.filterPlacements(model, atom.placements)

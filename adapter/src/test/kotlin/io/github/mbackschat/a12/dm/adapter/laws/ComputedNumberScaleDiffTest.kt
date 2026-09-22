@@ -7,9 +7,7 @@ import io.github.mbackschat.a12.dm.interpreter.model.ComputeOutcome
 import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft
 import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft.GroupBuilder
 import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel
-import io.github.mbackschat.a12.dm.rulekit.dsl.ConditionLanguage
 import io.github.mbackschat.a12.dm.rulekit.dsl.Dsl
-import io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer
 import io.github.mbackschat.a12.dm.rulekit.dsl.NumberExpr
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
@@ -47,7 +45,7 @@ class ComputedNumberScaleDiffTest {
 
     /** A `Total` computed by [op], with the given target `(minFrac, maxFrac)`, over a scale-2 `Lines/Price` list. */
     private fun model(op: NumberExpr, minFrac: Int, maxFrac: Int): String {
-        val rendered = DslRenderer(ConditionLanguage.EN, "/Cart").render(op.expression())
+        val rendered = RuntimeLaws.render("/Cart", op.expression())
         return RuntimeLaws.withComputation(base(minFrac, maxFrac), "/Cart", "TotalComp", "../Total", rendered)
     }
 

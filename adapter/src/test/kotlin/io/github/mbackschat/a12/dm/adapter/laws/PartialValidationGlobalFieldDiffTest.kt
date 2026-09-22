@@ -12,7 +12,6 @@ import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft
 import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft.GroupBuilder
 import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel
 import io.github.mbackschat.a12.dm.rulekit.dsl.Dsl
-import io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
@@ -43,7 +42,7 @@ class PartialValidationGlobalFieldDiffTest {
     // FieldFilled(RiskScore) And [RiskScore] < 0 — authored with the typed DSL, rendered to both engines (dogfood).
     private fun cond(global: Boolean): String {
         val m = BoundModel.ofJson(json(global))
-        return DslRenderer().render(Dsl.fieldFilled(m.field(RISK)).and(m.num(RISK).lt(0)))
+        return RuntimeLaws.render(Dsl.fieldFilled(m.field(RISK)).and(m.num(RISK).lt(0)))
     }
 
     private fun kModel(global: Boolean) =

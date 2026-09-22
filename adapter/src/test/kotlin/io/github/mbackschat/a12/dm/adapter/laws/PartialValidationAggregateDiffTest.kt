@@ -10,7 +10,6 @@ import io.github.mbackschat.a12.dm.interpreter.model.RelevantEntity
 import io.github.mbackschat.a12.dm.interpreter.model.RuleDef
 import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel
 import io.github.mbackschat.a12.dm.rulekit.dsl.Dsl
-import io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer
 import io.github.mbackschat.a12.dm.rulekit.dsl.NumberExpr
 import io.github.mbackschat.a12.dm.rulekit.dsl.Severity
 import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft
@@ -44,10 +43,10 @@ class PartialValidationAggregateDiffTest {
         .build().toJson()
 
     private val m = BoundModel.ofJson(json)
-    private fun cond(agg: NumberExpr) = DslRenderer().render(Dsl.fieldFilled(m.field(TOTAL)).and(agg.gt(50)))
+    private fun cond(agg: NumberExpr) = RuntimeLaws.render(Dsl.fieldFilled(m.field(TOTAL)).and(agg.gt(50)))
 
     /** Same shape, but a threshold a DISTINCT COUNT can cross — `> 50` makes NumberOfDifferentValues vacuous. */
-    private fun condLow(agg: NumberExpr) = DslRenderer().render(Dsl.fieldFilled(m.field(TOTAL)).and(agg.gt(0)))
+    private fun condLow(agg: NumberExpr) = RuntimeLaws.render(Dsl.fieldFilled(m.field(TOTAL)).and(agg.gt(0)))
     private val sumOp = cond(Dsl.sum(m.flatten("$LINES*/Price")))
     private val ffOp = cond(Dsl.firstFilledNumber(m.flatten("$LINES*/Qty")))
     private val kModel = RuntimeLaws.withRule(RuntimeLaws.withRule(

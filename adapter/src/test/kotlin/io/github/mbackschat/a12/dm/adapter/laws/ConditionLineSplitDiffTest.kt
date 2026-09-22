@@ -6,7 +6,6 @@ import io.github.mbackschat.a12.dm.interpreter.load.ModelLoader
 import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft
 import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel
 import io.github.mbackschat.a12.dm.rulekit.dsl.Condition
-import io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer
 import io.github.mbackschat.a12.dm.rulekit.validate.DraftRule
 import io.github.mbackschat.a12.dm.rulekit.validate.RuleValidator
 import org.junit.jupiter.api.Assertions.assertEquals
@@ -114,10 +113,10 @@ class ConditionLineSplitDiffTest {
     }
 
     private fun kernelModel(condition: Condition): String =
-        RuntimeLaws.withRule(base, GROUP, "R", "../F1", CODE, DslRenderer().render(condition))
+        RuntimeLaws.withRule(base, GROUP, "R", "../F1", CODE, RuntimeLaws.render(condition))
 
     private fun agree(condition: Condition, filled: List<Int>, expected: Boolean, label: String) {
-        val rendered = DslRenderer().render(condition)
+        val rendered = RuntimeLaws.render(condition)
         val kModel = RuntimeLaws.withRule(base, GROUP, "R", "../F1", CODE, rendered)
 
         val authoring = RuleValidator().check(base, DraftRule(GROUP, "R", "../F1", rendered, CODE, "ERROR"))

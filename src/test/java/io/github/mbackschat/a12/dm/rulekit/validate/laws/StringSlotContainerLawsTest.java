@@ -12,6 +12,7 @@ import java.util.Map;
 
 import org.junit.jupiter.api.Test;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 
@@ -202,7 +203,7 @@ class StringSlotContainerLawsTest {
     }
 
     /** The probe computation, wherever the writer puts it — refusing rather than returning an unreached node. */
-    private static com.fasterxml.jackson.databind.JsonNode findComputation(com.fasterxml.jackson.databind.JsonNode node) {
+    private static JsonNode findComputation(JsonNode node) {
         if (node.isObject() && "ContainerProbe".equals(node.path("name").asText())
                 && node.has("Computation")) {
             return node.path("Computation");
@@ -224,7 +225,7 @@ class StringSlotContainerLawsTest {
     }
 
     /** The named element under the single root group, refusing rather than returning an unreached node. */
-    private static com.fasterxml.jackson.databind.JsonNode named(ObjectNode root, String name) {
+    private static JsonNode named(ObjectNode root, String name) {
         for (var element : root.path("content").path("modelRoot").path("rootGroups").get(0)
                 .path("Group").path("elements")) {
             if (name.equals(element.path("name").asText())) {

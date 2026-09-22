@@ -11,7 +11,6 @@ import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft;
 import io.github.mbackschat.a12.dm.modelkit.FieldKind;
 import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Condition;
-import io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Dsl;
 import io.github.mbackschat.a12.dm.rulekit.dsl.SemanticIndexFieldValue;
 import io.github.mbackschat.a12.dm.rulekit.dsl.SemanticIndexValue;
@@ -52,10 +51,9 @@ class IndexedNegativeKeyFormLawsTest {
             .build().toJson();
 
     private static final BoundModel M = BoundModel.ofJson(MODEL);
-    private static final DslRenderer RENDERER = new DslRenderer();
 
     private static String verdict(String ruleGroup, String errorField, Condition condition) {
-        var result = KernelLaws.checkModel(MODEL, ruleGroup, errorField, RENDERER.render(condition));
+        var result = KernelLaws.checkModel(MODEL, ruleGroup, errorField, KernelLaws.render(condition));
         if (result.ok()) {
             return KernelLaws.ADMITTED;
         }

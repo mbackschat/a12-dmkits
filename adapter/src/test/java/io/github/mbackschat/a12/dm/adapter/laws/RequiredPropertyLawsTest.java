@@ -10,7 +10,6 @@ import org.junit.jupiter.api.Test;
 
 import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Condition;
-import io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer;
 
 /**
  * Behavioral law — <b>the "required" property</b> (KERNEL-SEMANTICS §4; encoded in DM-JSON as a
@@ -39,7 +38,7 @@ class RequiredPropertyLawsTest {
     private static final BoundModel m = BoundModel.ofJson(ORDER);
 
     private static String render(Condition c) {
-        return new DslRenderer().render(c);
+        return RuntimeLaws.render(c);
     }
 
     // /Order/ShippingAddress/Street made required under each mode (a sub-group field, so the parent

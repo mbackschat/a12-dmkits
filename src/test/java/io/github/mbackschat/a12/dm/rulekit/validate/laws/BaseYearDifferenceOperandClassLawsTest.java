@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.function.Function;
 
 import org.junit.jupiter.api.Test;
 
@@ -86,7 +87,7 @@ class BaseYearDifferenceOperandClassLawsTest {
      * The typed path. The condition is built per model because a ref is bound to the model it came from, and
      * the two models here differ exactly in the Base Year declaration.
      */
-    private static String verdict(String model, BoundModel m, java.util.function.Function<BoundModel,
+    private static String verdict(String model, BoundModel m, Function<BoundModel,
             Condition> build) {
         return KernelLaws.verdictModel(model, GROUP, "../Reference",
                 Dsl.fieldFilled(m.field("/Order/Reference")).and(build.apply(m)));
@@ -103,7 +104,7 @@ class BaseYearDifferenceOperandClassLawsTest {
     }
 
     private static void row(Map<String, String> into, String label,
-            java.util.function.Function<BoundModel, Condition> build) {
+            Function<BoundModel, Condition> build) {
         into.put(label + " — Base Year declared", verdict(WITH, WITH_M, build));
         into.put(label + " — no Base Year", verdict(WITHOUT, WITHOUT_M, build));
     }

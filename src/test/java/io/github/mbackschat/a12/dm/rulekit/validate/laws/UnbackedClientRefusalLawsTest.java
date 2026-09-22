@@ -11,7 +11,6 @@ import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft;
 import io.github.mbackschat.a12.dm.modelkit.FieldKind;
 import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Condition;
-import io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Dsl;
 
 /**
@@ -48,7 +47,6 @@ class UnbackedClientRefusalLawsTest {
             .build().toJson();
 
     private static final BoundModel M = BoundModel.ofJson(MODEL);
-    private static final DslRenderer RENDERER = new DslRenderer();
 
     /** The root-group locus most rows use: the rule sits at {@code /Order} on a non-repeating error field. */
     private static final String[] ROOT = {"/Order", "../Reference", "Reference"};
@@ -74,7 +72,7 @@ class UnbackedClientRefusalLawsTest {
 
     /** Renders {@code legal}, applies the one substitution that makes it illegal, and asks the kernel. */
     private static String verdictAfter(String[] locus, Condition legal, String from, String to) {
-        String rendered = RENDERER.render(legal);
+        String rendered = KernelLaws.render(legal);
         String corrupted = rendered.replace(from, to);
         if (corrupted.equals(rendered)) {
             return "SUBSTITUTION DID NOT APPLY to: " + rendered;
@@ -84,7 +82,7 @@ class UnbackedClientRefusalLawsTest {
 
     /** The legal counterpart of each row, so a refusal below is not the shape's own. */
     private static String verdictOf(String[] locus, Condition legal) {
-        return verdict(locus, RENDERER.render(legal));
+        return verdict(locus, KernelLaws.render(legal));
     }
 
     /**

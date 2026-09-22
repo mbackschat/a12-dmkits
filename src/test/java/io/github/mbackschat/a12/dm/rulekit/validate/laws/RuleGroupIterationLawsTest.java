@@ -5,6 +5,7 @@ import static org.junit.jupiter.api.Assertions.assertNotEquals;
 
 import java.util.LinkedHashMap;
 import java.util.Map;
+import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft;
 import io.github.mbackschat.a12.dm.rulekit.validate.ValidationResult;
 import org.junit.jupiter.api.Test;
 
@@ -150,7 +151,7 @@ class RuleGroupIterationLawsTest {
 
     /** A repeatable group whose only Number field declares {@code fractionDigits} decimal places. */
     private static String scaledItems(int fractionDigits) {
-        return io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft.named("scaled").locale("en_US")
+        return DocumentModelDraft.named("scaled").locale("en_US")
                 .rootGroup("M", m -> m
                         .group("Items", i -> i
                                 .repeatable(5)
@@ -301,7 +302,7 @@ class RuleGroupIterationLawsTest {
      */
     @Test
     void theKernelRequiresMinScaleAtMostMaxScale() {
-        String legal = io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft.named("mm").locale("en_US")
+        String legal = DocumentModelDraft.named("mm").locale("en_US")
                 .rootGroup("M", m -> m.group("Items", i -> i
                         .repeatable(5).numberField("W", n -> n.fractionDigits(2, 5))))
                 .build().toJson();

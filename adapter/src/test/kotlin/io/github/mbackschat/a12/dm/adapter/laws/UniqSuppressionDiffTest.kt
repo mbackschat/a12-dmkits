@@ -9,7 +9,6 @@ import io.github.mbackschat.a12.dm.interpreter.model.RuleDef
 import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel
 import io.github.mbackschat.a12.dm.rulekit.dsl.Condition
 import io.github.mbackschat.a12.dm.rulekit.dsl.Dsl
-import io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 
@@ -27,7 +26,7 @@ class UniqSuppressionDiffTest {
     // string fed to BOTH engines — no free-text condition literals. Refs use ABSOLUTE paths; the renderer emits
     // absolute and both engines accept it (IF24). The duplicate-index doc setup is unchanged.
     private val m = BoundModel.ofJson(fuzz)
-    private fun render(c: Condition): String = DslRenderer().render(c)
+    private fun render(c: Condition): String = RuntimeLaws.render(c)
 
     private val fields = listOf(FieldDef(ITEM, Kind.STRING), FieldDef(PRICE, Kind.NUMBER, scale = 2))
 

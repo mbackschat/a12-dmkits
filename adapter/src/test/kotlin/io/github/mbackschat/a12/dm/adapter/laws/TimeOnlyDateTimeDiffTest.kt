@@ -8,7 +8,6 @@ import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft
 import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel
 import io.github.mbackschat.a12.dm.rulekit.dsl.Condition
 import io.github.mbackschat.a12.dm.rulekit.dsl.Dsl
-import io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 import java.util.function.Consumer
@@ -44,7 +43,7 @@ class TimeOnlyDateTimeDiffTest {
         const val ISO_FORMAT = "yyyy-MM-dd'T'HH:mm:ss"
     }
 
-    private fun render(c: Condition): String = DslRenderer().render(c)
+    private fun render(c: Condition): String = RuntimeLaws.render(c)
 
     /** Two time-only DATE_TIME fields plus an ISO one, so the kind's two legal formats both appear. */
     private val json: String = DocumentModelDraft.named("shift").locale("en_US")

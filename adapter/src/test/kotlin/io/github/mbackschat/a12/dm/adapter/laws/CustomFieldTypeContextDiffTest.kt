@@ -14,7 +14,6 @@ import io.github.mbackschat.a12.dm.modelkit.CustomFieldBuilder
 import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft
 import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft.GroupBuilder
 import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel
-import io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer
 import java.util.Locale
 import java.util.Optional
 import java.util.function.Consumer
@@ -53,7 +52,7 @@ class CustomFieldTypeContextDiffTest {
     @Test
     fun theSameValueInTwoCellsReachesTheValidatorOncePerCell() {
         val base = repeatingModel()
-        val condition = DslRenderer().render(BoundModel.ofJson(base).custom(LINE_CODE).eq("bad"))
+        val condition = RuntimeLaws.render(BoundModel.ofJson(base).custom(LINE_CODE).eq("bad"))
         val model = RuntimeLaws.withRule(base, "/Order/Lines", "ReadsCode", "../Code", "READS_CODE", condition)
         val doc = RuntimeLaws.doc()
             .group("/Order", 1)
@@ -109,7 +108,7 @@ class CustomFieldTypeContextDiffTest {
         expectedMax: Int? = max,
     ) {
         val base = model(min, max)
-        val condition = DslRenderer().render(BoundModel.ofJson(base).custom(CODE).eq("bad"))
+        val condition = RuntimeLaws.render(BoundModel.ofJson(base).custom(CODE).eq("bad"))
         val model = RuntimeLaws.withRule(base, "/Order", "ReadsCode", "../Code", "READS_CODE", condition)
         val doc = RuntimeLaws.doc().group("/Order", 1).field(CODE, "bad", 1, 1)
         val expected = Seen(locale, expectedMin, expectedMax, false)

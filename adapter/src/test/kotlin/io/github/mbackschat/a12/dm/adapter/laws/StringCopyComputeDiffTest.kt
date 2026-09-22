@@ -11,8 +11,6 @@ import io.github.mbackschat.a12.dm.interpreter.model.ModelDef
 import io.github.mbackschat.a12.dm.interpreter.model.Requiredness
 import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft
 import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel
-import io.github.mbackschat.a12.dm.rulekit.dsl.ConditionLanguage
-import io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 
@@ -41,7 +39,7 @@ class StringCopyComputeDiffTest {
 
     private fun operation(json: String): String {
         val m = BoundModel.ofJson(json)
-        return DslRenderer(ConditionLanguage.EN, "/Shipment").render(m.str(SRC).asString().expression())
+        return RuntimeLaws.render("/Shipment", m.str(SRC).asString().expression())
     }
 
     private fun kOutcome(requiredSource: Boolean, sourceValue: String?): String {

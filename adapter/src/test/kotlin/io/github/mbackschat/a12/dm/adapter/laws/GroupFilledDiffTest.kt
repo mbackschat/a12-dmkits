@@ -8,7 +8,6 @@ import io.github.mbackschat.a12.dm.interpreter.model.ModelDef
 import io.github.mbackschat.a12.dm.interpreter.model.RuleDef
 import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel
 import io.github.mbackschat.a12.dm.rulekit.dsl.Condition
-import io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 
@@ -30,7 +29,7 @@ class GroupFilledDiffTest {
     // Conditions are authored with the rulekit typed DSL ([m]) and rendered to the canonical string fed to BOTH
     // engines — no free-text condition literals. `m.group(path).filled()` is GroupFilled (Kontext=Group).
     private val m = BoundModel.ofJson(order)
-    private fun render(c: Condition): String = DslRenderer().render(c)
+    private fun render(c: Condition): String = RuntimeLaws.render(c)
     private val SHIP = "/Order/ShippingAddress"
 
     private fun interpFires(cond: String, doc: Document): Boolean =

@@ -13,6 +13,7 @@ import java.util.Map;
 import org.junit.jupiter.api.Test;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 
 import io.github.mbackschat.a12.dm.Fixtures;
@@ -422,7 +423,7 @@ class FieldTypeBindingLawsTest {
             fieldBody(root, "CustomerName").set("fieldType",
                     MAPPER.readTree("{\"type\":\"UnspecifiedType\",\"UnspecifiedType\":{}}"));
             for (int i = 0; i < extra; i++) {
-                ObjectNode added = (ObjectNode) ((com.fasterxml.jackson.databind.node.ArrayNode)
+                ObjectNode added = (ObjectNode) ((ArrayNode)
                         root.path("content").path("modelRoot").path("rootGroups").get(0)
                                 .path("Group").path("elements")).addObject();
                 added.put("type", "Field").put("id", "spare" + i).put("name", "Spare" + i);
@@ -466,7 +467,7 @@ class FieldTypeBindingLawsTest {
             added.put("id", "/Order/SpareNote");
             added.put("name", "SpareNote");
             added.set("Field", MAPPER.readTree(rawBody));
-            ((com.fasterxml.jackson.databind.node.ArrayNode) root.path("content").path("modelRoot")
+            ((ArrayNode) root.path("content").path("modelRoot")
                     .path("rootGroups").get(0).path("Group").path("elements")).add(added);
             return KernelLaws.verdictOf(root.toString());
         } catch (IOException unreadable) {

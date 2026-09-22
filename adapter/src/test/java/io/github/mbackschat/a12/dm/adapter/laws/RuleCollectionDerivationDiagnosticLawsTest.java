@@ -3,6 +3,7 @@ package io.github.mbackschat.a12.dm.adapter.laws;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 import io.github.mbackschat.a12.dm.adapter.KernelAdapter;
@@ -54,14 +55,14 @@ class RuleCollectionDerivationDiagnosticLawsTest {
     void theCanonicalFormIsAcceptedAndItsConstantValuesAreExtracted() {
         var oneValue = opened(oneRule("Kind", "../ProductCode", CANONICAL)).dynamicEnumerations();
         assertEquals(List.of(), codesOf(oneValue.diagnostics()));
-        assertEquals(java.util.Map.of("/Order/ProductCode", List.of("PREMIUM")), oneValue.valuesByField());
+        assertEquals(Map.of("/Order/ProductCode", List.of("PREMIUM")), oneValue.valuesByField());
 
         // A second calculation operation appends its constant, in condition order — the reason valuesByField
         // is a list and not a set.
         var twoValues = opened(oneRule("Kind2", "../ProductCode",
                 CANONICAL + " And [/Order/ProductCode] != \"BASIC\"")).dynamicEnumerations();
         assertEquals(List.of(), codesOf(twoValues.diagnostics()));
-        assertEquals(java.util.Map.of("/Order/ProductCode", List.of("PREMIUM", "BASIC")),
+        assertEquals(Map.of("/Order/ProductCode", List.of("PREMIUM", "BASIC")),
                 twoValues.valuesByField());
     }
 
@@ -101,7 +102,7 @@ class RuleCollectionDerivationDiagnosticLawsTest {
             var derived = opened(oneRule(row.name(), row.errorRelPath(), row.condition()))
                     .dynamicEnumerations();
             assertEquals(List.of(row.code()), codesOf(derived.diagnostics()), row.name());
-            assertEquals(java.util.Map.of(), derived.valuesByField(), row.name());
+            assertEquals(Map.of(), derived.valuesByField(), row.name());
         }
     }
 
@@ -123,7 +124,7 @@ class RuleCollectionDerivationDiagnosticLawsTest {
                 "FieldFilled(/Order/CustomerName) And [/Order/CustomerName] == \"ACME\"");
         var derived = opened(mixed).dynamicEnumerations();
         assertEquals(List.of("MVK_DYNENUM_INVALID_CALCOP_OP"), codesOf(derived.diagnostics()));
-        assertEquals(java.util.Map.of("/Order/ProductCode", List.of("PREMIUM")), derived.valuesByField());
+        assertEquals(Map.of("/Order/ProductCode", List.of("PREMIUM")), derived.valuesByField());
     }
 
     /**

@@ -10,7 +10,6 @@ import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft;
 import io.github.mbackschat.a12.dm.modelkit.FieldKind;
 import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Condition;
-import io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Dsl;
 import io.github.mbackschat.a12.dm.rulekit.dsl.SemanticIndexValue;
 import io.github.mbackschat.a12.dm.rulekit.validate.ValidationResult;
@@ -45,7 +44,7 @@ class IndexedOperandIterationLawsTest {
     private static String rendered(boolean filled) {
         SemanticIndexValue cell = new SemanticIndexValue(M.field("/Order/Items/Sku"), "K1");
         Condition c = filled ? Dsl.fieldFilled(cell) : Dsl.fieldNotFilled(cell);
-        return new DslRenderer().render(c);
+        return KernelLaws.render(c);
     }
 
     private static String verdict(String group, String errorField, String condition) {

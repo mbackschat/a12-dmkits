@@ -6,9 +6,7 @@ import io.github.mbackschat.a12.dm.interpreter.load.ModelLoader
 import io.github.mbackschat.a12.dm.interpreter.model.MsgType
 import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft
 import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel
-import io.github.mbackschat.a12.dm.rulekit.dsl.ConditionLanguage
 import io.github.mbackschat.a12.dm.rulekit.dsl.Dsl
-import io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer
 import io.github.mbackschat.a12.dm.rulekit.dsl.NumberExpr
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
@@ -76,7 +74,7 @@ class NumberOfValueInFieldsPolarityDiffTest {
     // rendered GROUP-RELATIVE — the dogfood that retired the raw condition strings this differential once
     // needed. `typedRenderMatchesTheKernelForm` locks each render to its exact previous kernel string.
     private val m = BoundModel.ofJson(model)
-    private fun rel(nv: NumberExpr) = DslRenderer(ConditionLanguage.EN, "/Order").render(nv.expression())
+    private fun rel(nv: NumberExpr) = RuntimeLaws.render("/Order", nv.expression())
     private val nv = rel(Dsl.numberOfValueInFields(1L,
         m.flatten("/Order/Items*/Qty").having(m.str(FLAG).eq("Y"))))
     private val nvBare = rel(Dsl.numberOfValueInFields(1L, m.flatten("/Order/Items*/Qty")))  // unfiltered sibling

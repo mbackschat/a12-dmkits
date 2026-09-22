@@ -10,7 +10,6 @@ import io.github.mbackschat.a12.dm.interpreter.model.Verdict
 import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel
 import io.github.mbackschat.a12.dm.rulekit.dsl.Condition
 import io.github.mbackschat.a12.dm.rulekit.dsl.Dsl
-import io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
@@ -31,7 +30,7 @@ class SuppressionDiffTest {
     // Conditions are authored with the rulekit typed DSL ([m]) and rendered to the canonical string fed to BOTH
     // engines — no free-text condition literals. `m.date(p).before(m.date(q))` is the orderable date comparison.
     private val m = BoundModel.ofJson(order)
-    private fun render(c: Condition): String = DslRenderer().render(c)
+    private fun render(c: Condition): String = RuntimeLaws.render(c)
 
     // A date rule: delivery strictly before order is a violation (mirrors cli-runtime's DeliveryNotBeforeOrder).
     private val condition = render(m.date(DD).before(m.date(OD)))

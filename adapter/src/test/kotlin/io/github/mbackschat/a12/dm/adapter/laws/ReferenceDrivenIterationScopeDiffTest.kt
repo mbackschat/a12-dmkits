@@ -7,6 +7,7 @@ import io.github.mbackschat.a12.dm.interpreter.eval.newDocument
 import io.github.mbackschat.a12.dm.interpreter.load.ModelLoader
 import io.github.mbackschat.a12.dm.interpreter.model.MsgType
 import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft
+import io.github.mbackschat.a12.dm.rulekit.dsl.Dsl
 import io.github.mbackschat.a12.dm.rulekit.dsl.Severity
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
@@ -69,13 +70,13 @@ class ReferenceDrivenIterationScopeDiffTest {
             edit.addRule { bound ->
                 bound.rule(bound.group(ITEMS)).name("QtyOverWeight").code(OVER).errorField(bound.num(QTY))
                     .`when`(bound.num(QTY).gt(bound.num(WEIGHT))).severity(Severity.ERROR)
-                    .message(io.github.mbackschat.a12.dm.rulekit.dsl.Dsl.en("qty exceeds the line weight limit"))
+                    .message(Dsl.en("qty exceeds the line weight limit"))
                     .build()
             }
             edit.addRule { bound ->
                 bound.rule(bound.group(ITEMS)).name("QtyMissing").code(EMPTYQ).errorField(bound.num(QTY))
                     .`when`(bound.str(NOTE).filled().and(bound.num(QTY).notFilled())).severity(Severity.ERROR)
-                    .message(io.github.mbackschat.a12.dm.rulekit.dsl.Dsl.en("item row without a quantity"))
+                    .message(Dsl.en("item row without a quantity"))
                     .build()
             }
             edit.validate()

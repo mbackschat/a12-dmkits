@@ -7,9 +7,7 @@ import io.github.mbackschat.a12.dm.interpreter.load.ModelLoader
 import io.github.mbackschat.a12.dm.interpreter.model.ComputeOutcome
 import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft
 import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel
-import io.github.mbackschat.a12.dm.rulekit.dsl.ConditionLanguage
 import io.github.mbackschat.a12.dm.rulekit.dsl.Dsl
-import io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
@@ -44,13 +42,13 @@ class DirectRangeFirstFilledListDiffTest {
     private val m = BoundModel.ofJson(base)
 
     private val threeSourceModel = RuntimeLaws.withComputation(base, ROOT, "SelectedWindowComp", "../SelectedWindow",
-        DslRenderer(ConditionLanguage.EN, ROOT).render(Dsl.firstFilledDateRange(
+        RuntimeLaws.render(ROOT, Dsl.firstFilledDateRange(
             m.dateRange("$ROOT/PrimaryWindow").field().firstFilledOperand(),
             m.dateRange("$ROOT/SecondaryWindow").field().firstFilledOperand(),
             m.dateRange("$ROOT/TertiaryWindow").field().firstFilledOperand()).expression()))
 
     private val twoSourceModel = RuntimeLaws.withComputation(base, ROOT, "ExactSelectedComp", "../ExactSelected",
-        DslRenderer(ConditionLanguage.EN, ROOT).render(Dsl.firstFilledDateRange(
+        RuntimeLaws.render(ROOT, Dsl.firstFilledDateRange(
             m.dateRange("$ROOT/ExactPrimary").field().firstFilledOperand(),
             m.dateRange("$ROOT/ExactSecondary").field().firstFilledOperand()).expression()))
 

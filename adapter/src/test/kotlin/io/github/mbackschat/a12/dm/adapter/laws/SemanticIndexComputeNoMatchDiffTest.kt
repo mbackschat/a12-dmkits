@@ -8,9 +8,7 @@ import io.github.mbackschat.a12.dm.interpreter.model.ComputeOutcome
 import io.github.mbackschat.a12.dm.edit.EditSession
 import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft
 import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel
-import io.github.mbackschat.a12.dm.rulekit.dsl.ConditionLanguage
 import io.github.mbackschat.a12.dm.rulekit.dsl.Dsl
-import io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 
@@ -290,8 +288,6 @@ class SemanticIndexComputeNoMatchDiffTest {
             }
         }.build().toJson()
     private val dm = BoundModel.ofJson(decimalBase)
-    private val rel = DslRenderer(ConditionLanguage.EN, "/Shop")
-
     /** [computationValue] is the rendered semantic-index expression computed into Result; [lookupKey] fills the
      *  LookupKey field for a field-valued key (null for a literal key). Returns the tri-checked Result outcome. */
     private fun triDecimal(computationValue: String, lookupKey: String?, rows: List<Pair<String?, String?>>): String {
@@ -328,19 +324,19 @@ class SemanticIndexComputeNoMatchDiffTest {
 
     @Test fun literalNumberKeyMatchesADifferentlySpelledStoredKey() =
         assertEquals("VALUE|5.25",
-            triDecimal(rel.render(dm.num(PRICE).forIndex("5").expression()), null,
+            triDecimal(RuntimeLaws.render("/Shop", dm.num(PRICE).forIndex("5").expression()), null,
                 listOf("5.00" to "5.25", "7" to "0.01")),
             "requested literal 5 selects the row stored as 5.00 on a Number index field")
 
     @Test fun fieldValuedNumberKeyMatchesADifferentlySpelledStoredKey() =
         assertEquals("VALUE|5.25",
-            triDecimal(rel.render(dm.num(PRICE).forIndex(dm.field(KEY)).expression()), "5",
+            triDecimal(RuntimeLaws.render("/Shop", dm.num(PRICE).forIndex(dm.field(KEY)).expression()), "5",
                 listOf("5.00" to "5.25", "7" to "0.01")),
             "field-valued key 5 selects the row stored as 5.00")
 
     @Test fun buildSideAndQuerySideNormalizeSymmetrically() =
         assertEquals("VALUE|5.25",
-            triDecimal(rel.render(dm.num(PRICE).forIndex("5.00").expression()), null,
+            triDecimal(RuntimeLaws.render("/Shop", dm.num(PRICE).forIndex("5.00").expression()), null,
                 listOf("5" to "5.25", "7" to "0.01")),
             "requested 5.00 selects the row stored as 5 — the reverse spelling asymmetry (second instance)")
 }

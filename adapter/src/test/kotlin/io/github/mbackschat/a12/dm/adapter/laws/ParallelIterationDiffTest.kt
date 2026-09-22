@@ -12,7 +12,6 @@ import io.github.mbackschat.a12.dm.interpreter.model.RuleDef
 import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel
 import io.github.mbackschat.a12.dm.rulekit.dsl.Condition
 import io.github.mbackschat.a12.dm.rulekit.dsl.Dsl
-import io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
@@ -38,7 +37,7 @@ class ParallelIterationDiffTest {
     // engines — no free-text condition literals. Refs use ABSOLUTE paths; the renderer emits absolute and both
     // engines accept it (IF24). The cross-group parallel join is implicit in the two sibling field paths.
     private val m = BoundModel.ofJson(staffing)
-    private fun render(c: Condition): String = DslRenderer().render(c)
+    private fun render(c: Condition): String = RuntimeLaws.render(c)
     private val DEMAND_HC = "/Staffing/Demand/Headcount"
     private val SUPPLY_HC = "/Staffing/Supply/Headcount"
 

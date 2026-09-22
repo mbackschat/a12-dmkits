@@ -185,7 +185,7 @@ class DateRangeOverlapAdmissionLawsTest {
         Condition guarded = Dsl.fieldFilled(M.field(GROUP + "/Ref")).and(condition);
         ValidationResult r = new RuleValidator().check(json,
                 new DraftRule(GROUP, "OverlapProbe", ERROR_FIELD,
-                        new io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer().render(guarded),
+                        KernelLaws.render(guarded),
                         "OVERLAP", "ERROR"));
         return r.ok() ? ADMITTED
                 : r.diagnostics().stream().map(d -> d.code().orElse("(no code)"))

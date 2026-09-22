@@ -14,7 +14,6 @@ import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Condition;
 import io.github.mbackschat.a12.dm.rulekit.dsl.DateRangeIndexedValue;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Dsl;
-import io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer;
 import io.github.mbackschat.a12.dm.rulekit.validate.DraftRule;
 import io.github.mbackschat.a12.dm.rulekit.validate.RuleValidator;
 import io.github.mbackschat.a12.dm.rulekit.validate.ValidationResult;
@@ -151,12 +150,12 @@ class DateRangeSemanticIndexOperandLawsTest {
                 + "StartOfDateRange(/Shop/Runs/RunWindow For 2) == [/Shop/CheckDate]";
         Map<String, String> actual = new LinkedHashMap<>();
         actual.put("unquoted numeric key", raw(NUMBER_KEYED, SHOP, "../Reference", bare));
-        actual.put("the same key quoted", raw(NUMBER_KEYED, SHOP, "../Reference", new DslRenderer().render(
+        actual.put("the same key quoted", raw(NUMBER_KEYED, SHOP, "../Reference", KernelLaws.render(
                 Dsl.fieldFilled(N.field(SHOP + "/Reference"))
                         .and(Dsl.startOfDateRange(N.dateRange(RUNS + "/RunWindow").forIndex("2"))
                                 .eq(N.date(SHOP + "/CheckDate"))))));
         actual.put("a quoted literal the index declaration rejects", raw(NUMBER_KEYED, SHOP, "../Reference",
-                new DslRenderer().render(Dsl.fieldFilled(N.field(SHOP + "/Reference"))
+                KernelLaws.render(Dsl.fieldFilled(N.field(SHOP + "/Reference"))
                         .and(Dsl.startOfDateRange(N.dateRange(RUNS + "/RunWindow").forIndex("spring"))
                                 .eq(N.date(SHOP + "/CheckDate"))))));
 
@@ -193,7 +192,7 @@ class DateRangeSemanticIndexOperandLawsTest {
     }
 
     private static String verdict(String json, String group, String errorField, Condition condition) {
-        return raw(json, group, errorField, new DslRenderer().render(condition));
+        return raw(json, group, errorField, KernelLaws.render(condition));
     }
 
     private static String raw(String json, String group, String errorField, String condition) {

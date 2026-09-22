@@ -10,9 +10,7 @@ import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft
 import io.github.mbackschat.a12.dm.rulekit.catalog.OperatorCatalog
 import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel
 import io.github.mbackschat.a12.dm.rulekit.dsl.Calculation
-import io.github.mbackschat.a12.dm.rulekit.dsl.ConditionLanguage
 import io.github.mbackschat.a12.dm.rulekit.dsl.Dsl
-import io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 
@@ -33,7 +31,7 @@ class DateShiftAmountDiffTest {
 
     private val schedule = schedule()
     private val m = BoundModel.ofJson(schedule)
-    private fun renderOp(c: Calculation): String = DslRenderer(ConditionLanguage.EN, "/Schedule").render(c)
+    private fun renderOp(c: Calculation): String = RuntimeLaws.render("/Schedule", c)
 
     private val dateFields = listOf(
         FieldDef(BASIS, Kind.DATE, format = "yyyy-MM-dd"),

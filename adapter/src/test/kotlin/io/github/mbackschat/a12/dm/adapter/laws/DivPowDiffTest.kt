@@ -9,7 +9,6 @@ import io.github.mbackschat.a12.dm.interpreter.model.RuleDef
 import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel
 import io.github.mbackschat.a12.dm.rulekit.dsl.Condition
 import io.github.mbackschat.a12.dm.rulekit.dsl.Dsl
-import io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 
@@ -34,7 +33,7 @@ class DivPowDiffTest {
     // explicit curly braces in the original text only fenced the whole arithmetic operand and didn't override
     // internal precedence, so the brace-free render parses back to the same expression tree (kernel `^` > `*`/`/`).
     private val m = BoundModel.ofJson(fuzz)
-    private fun render(c: Condition): String = DslRenderer().render(c)
+    private fun render(c: Condition): String = RuntimeLaws.render(c)
     private fun price() = m.num(PRICE).asNumber()
     private fun qty() = m.num(QTY).asNumber()
 

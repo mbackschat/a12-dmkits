@@ -11,7 +11,6 @@ import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft
 import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft.GroupBuilder
 import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel
 import io.github.mbackschat.a12.dm.rulekit.dsl.Condition
-import io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 import java.util.function.Consumer
@@ -43,7 +42,7 @@ class OverLimitParallelIterationDiffTest {
         }).build().toJson()
 
     private val m = BoundModel.ofJson(base)
-    private fun render(c: Condition): String = DslRenderer().render(c)
+    private fun render(c: Condition): String = RuntimeLaws.render(c)
     private val DEMAND_AMT = "/Ledger/Demand/Amount"
     private val SUPPLY_AMT = "/Ledger/Supply/Amount"
 

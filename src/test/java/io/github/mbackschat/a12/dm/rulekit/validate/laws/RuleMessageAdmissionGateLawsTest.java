@@ -9,7 +9,6 @@ import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft;
 import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Condition;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Dsl;
-import io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer;
 
 import org.junit.jupiter.api.Test;
 
@@ -134,7 +133,7 @@ class RuleMessageAdmissionGateLawsTest {
     }
 
     private static String render(Condition condition) {
-        return new DslRenderer().render(condition);
+        return KernelLaws.render(condition);
     }
 
     /**

@@ -12,10 +12,12 @@ import java.util.Map;
 
 import org.junit.jupiter.api.Test;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 
 import io.github.mbackschat.a12.dm.Fixtures;
+import io.github.mbackschat.a12.dm.core.ModelConsistencyException;
 import io.github.mbackschat.a12.dm.rulekit.validate.DraftComputation;
 import io.github.mbackschat.a12.dm.rulekit.write.ModelWriter;
 
@@ -229,9 +231,9 @@ class ComputationAlternativeSlotLawsTest {
      */
     @Test
     void oneUnguardedNotificationCoversTheWholeComputation() {
-        io.github.mbackschat.a12.dm.core.ModelConsistencyException rejected =
+        ModelConsistencyException rejected =
                 org.junit.jupiter.api.Assertions.assertThrows(
-                        io.github.mbackschat.a12.dm.core.ModelConsistencyException.class,
+                        ModelConsistencyException.class,
                         () -> io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel.ofJson(
                                 probe("[" + ALTERNATIVE + "," + ALTERNATIVE + "]", null)));
         long raised = rejected.notifications().stream()
@@ -262,8 +264,8 @@ class ComputationAlternativeSlotLawsTest {
         }
     }
 
-    private static boolean replaceEnvelope(com.fasterxml.jackson.databind.JsonNode node,
-            com.fasterxml.jackson.databind.JsonNode envelope) {
+    private static boolean replaceEnvelope(JsonNode node,
+            JsonNode envelope) {
         if ("AlternativeProbe".equals(node.path("name").asText()) && node.has("Computation")) {
             ((ObjectNode) node).set("Computation", envelope);
             return true;
@@ -329,7 +331,7 @@ class ComputationAlternativeSlotLawsTest {
         throw new IllegalStateException("the probe computation is no longer where this test writes it");
     }
 
-    private static ObjectNode findProbe(com.fasterxml.jackson.databind.JsonNode node) {
+    private static ObjectNode findProbe(JsonNode node) {
         if ("AlternativeProbe".equals(node.path("name").asText()) && node.has("Computation")) {
             return (ObjectNode) node.path("Computation");
         }

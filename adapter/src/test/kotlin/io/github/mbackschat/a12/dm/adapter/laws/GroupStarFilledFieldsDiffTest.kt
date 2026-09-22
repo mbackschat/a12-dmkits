@@ -8,7 +8,7 @@ import io.github.mbackschat.a12.dm.interpreter.model.MsgType
 import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft
 import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel
 import io.github.mbackschat.a12.dm.rulekit.dsl.Dsl
-import io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer
+import java.util.Locale
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 
@@ -55,7 +55,7 @@ class GroupStarFilledFieldsDiffTest {
     private val m = BoundModel.ofJson(base)
 
     /** `FieldFilled(Ref) And NumberOfFilledFields(/Order/Lines*) >= [atLeast]`. */
-    private fun condition(atLeast: Int): String = DslRenderer().render(
+    private fun condition(atLeast: Int): String = RuntimeLaws.render(
         m.field(REF).filled().and(Dsl.numberOfFilledFields(m.flattenGroup("$LINES*")).ge(atLeast.toLong())),
     )
 
@@ -78,7 +78,7 @@ class GroupStarFilledFieldsDiffTest {
 
         val staticDoc = Both(RuntimeLaws.doc(), def.newDocument()).also(build).kDoc
         val javaStatic = RuntimeLaws.kernelJavaEngine(kModel)
-            .messagesModern(staticDoc, null, java.util.Locale.US).any { it.code() == CODE }
+            .messagesModern(staticDoc, null, Locale.US).any { it.code() == CODE }
 
         val interpreter = DmInterpreter(def).validateFull(dynamic.iDoc).any { it.code == CODE }
 
@@ -112,7 +112,7 @@ class GroupStarFilledFieldsDiffTest {
      */
     @Test
     fun theCountFiresWithTheKernelsPolarityAtAShrinkBar() {
-        val condition = DslRenderer().render(
+        val condition = RuntimeLaws.render(
             m.field(REF).filled().and(Dsl.numberOfFilledFields(m.flattenGroup("$LINES*")).lt(5L)),
         )
         val kModel = RuntimeLaws.withRule(base, "/Order", "R", "../Ref", CODE, condition)
@@ -124,7 +124,7 @@ class GroupStarFilledFieldsDiffTest {
 
         val staticDoc = Both(RuntimeLaws.doc(), def.newDocument()).also(::twoFullRows).kDoc
         val javaStatic = RuntimeLaws.kernelJavaEngine(kModel)
-            .messagesModern(staticDoc, null, java.util.Locale.US).filter { it.code() == CODE }
+            .messagesModern(staticDoc, null, Locale.US).filter { it.code() == CODE }
             .map { "${it.field()}|${it.type().name}" }.sorted()
 
         val interpreter = DmInterpreter(def).validateFull(dynamic.iDoc).filter { it.code == CODE }

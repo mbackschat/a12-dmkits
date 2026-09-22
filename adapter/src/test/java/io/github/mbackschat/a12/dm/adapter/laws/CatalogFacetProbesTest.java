@@ -5,6 +5,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.DynamicTest.dynamicTest;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -180,9 +181,9 @@ class CatalogFacetProbesTest {
         StringBuilder path = new StringBuilder();
         for (int i = 0; i < upTo; i++) {
             path.append('/').append(parts[i]);
-            int[] reps = java.util.Arrays.copyOfRange(p.reps(), 0, i + 1);
+            int[] reps = Arrays.copyOfRange(p.reps(), 0, i + 1);
             Placed placed = new Placed(path.toString(), reps);
-            groups.putIfAbsent(placed.path() + java.util.Arrays.toString(reps), placed);
+            groups.putIfAbsent(placed.path() + Arrays.toString(reps), placed);
         }
     }
 

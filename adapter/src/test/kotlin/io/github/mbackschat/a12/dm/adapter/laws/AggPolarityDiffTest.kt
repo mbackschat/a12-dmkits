@@ -11,7 +11,6 @@ import io.github.mbackschat.a12.dm.interpreter.dec
 import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel
 import io.github.mbackschat.a12.dm.rulekit.dsl.Condition
 import io.github.mbackschat.a12.dm.rulekit.dsl.Dsl
-import io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer
 import org.junit.jupiter.api.Assertions.assertAll
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
@@ -33,7 +32,7 @@ class AggPolarityDiffTest {
     // [condText] (the agg after the `FieldFilled(CustomerName) And` prefix the helper prepends) changes.
     private val m = BoundModel.ofJson(order)
     private val itemCounts = m.flatten("/Order/Items*/Count")
-    private fun render(c: Condition): String = DslRenderer().render(c)
+    private fun render(c: Condition): String = RuntimeLaws.render(c)
 
     private val filledCn = Cond.Pred("FieldFilled", listOf(Expr.Field(CN)))
     private fun ndvEq1() = Cond.And(

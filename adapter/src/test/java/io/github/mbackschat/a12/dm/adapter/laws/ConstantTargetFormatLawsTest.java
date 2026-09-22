@@ -12,6 +12,8 @@ import java.util.stream.Collectors;
 import org.junit.jupiter.api.Test;
 
 import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft;
+import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel;
+import io.github.mbackschat.a12.dm.rulekit.dsl.Dsl;
 
 /**
  * KERNEL-FINDINGS §6 — what decides whether a <b>bare constant</b> may be assigned to a computation target,
@@ -139,17 +141,17 @@ class ConstantTargetFormatLawsTest {
     private enum Family { DATE, CLOCK, DATE_TIME }
 
     private static boolean buildsThrough(String format, Family family) {
-        var bound = io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel.ofJson(
+        var bound = BoundModel.ofJson(
                 baseModel(Kind.DATE, format, SWEEP_BASE_YEAR));
         var operation = switch (family) {
-            case DATE -> io.github.mbackschat.a12.dm.rulekit.dsl.Dsl.dateValue(DATE_LITERAL).expression();
-            case CLOCK -> io.github.mbackschat.a12.dm.rulekit.dsl.Dsl.timeValue(CLOCK_LITERAL).expression();
-            case DATE_TIME -> io.github.mbackschat.a12.dm.rulekit.dsl.Dsl
+            case DATE -> Dsl.dateValue(DATE_LITERAL).expression();
+            case CLOCK -> Dsl.timeValue(CLOCK_LITERAL).expression();
+            case DATE_TIME -> Dsl
                     .dateTimeValue(DATE_TIME_LITERAL).expression();
         };
         try {
             bound.computation(bound.field(TARGET)).name("Assign").calc(operation)
-                    .message(io.github.mbackschat.a12.dm.rulekit.dsl.Dsl.en("Milestone.")).build();
+                    .message(Dsl.en("Milestone.")).build();
             return true;
         } catch (RuntimeException e) {
             return false;
@@ -390,14 +392,14 @@ class ConstantTargetFormatLawsTest {
     /** {@link #ADMITTED} when {@code Computation.Builder} builds the cell, else {@link #REFUSED_BY_US}. */
     private static String typedBuilderVerdict(Kind kind, String format, boolean clockOperation) {
         String modelJson = baseModel(kind, format, null);
-        var bound = io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel.ofJson(modelJson);
+        var bound = BoundModel.ofJson(modelJson);
         var operation = clockOperation
-                ? io.github.mbackschat.a12.dm.rulekit.dsl.Dsl.timeValue(CLOCK_LITERAL).expression()
-                : io.github.mbackschat.a12.dm.rulekit.dsl.Dsl.dateValue(DATE_LITERAL).expression();
+                ? Dsl.timeValue(CLOCK_LITERAL).expression()
+                : Dsl.dateValue(DATE_LITERAL).expression();
         try {
             bound.computation(bound.field(TARGET)).name("Assign")
                     .calc(operation)
-                    .message(io.github.mbackschat.a12.dm.rulekit.dsl.Dsl.en("Milestone."))
+                    .message(Dsl.en("Milestone."))
                     .build();
             return ADMITTED;
         } catch (RuntimeException e) {

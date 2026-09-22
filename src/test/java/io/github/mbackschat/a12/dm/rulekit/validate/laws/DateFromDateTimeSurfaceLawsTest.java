@@ -6,7 +6,6 @@ import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft;
 import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Condition;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Dsl;
-import io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer;
 
 /**
  * KERNEL-FINDINGS §6 — the static surface of {@code DateFromDateTime} ([KF194], a12-kernel-lean
@@ -62,7 +61,7 @@ class DateFromDateTimeSurfaceLawsTest {
     private static final BoundModel M = BoundModel.ofJson(BOOKING);
 
     private static String guarded(Condition body) {
-        return new DslRenderer().render(Dsl.fieldFilled(M.field(GROUP + "/Reference")).and(body));
+        return KernelLaws.render(Dsl.fieldFilled(M.field(GROUP + "/Reference")).and(body));
     }
 
     private static void admits(Condition body) {

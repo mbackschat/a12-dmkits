@@ -15,7 +15,6 @@ import com.mgmtp.a12.kernel.md.rt.api.IMessage.MessageType;
 import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Condition;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Dsl;
-import io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer;
 import io.github.mbackschat.a12.dm.rulekit.dsl.NumberExpr;
 
 /**
@@ -41,7 +40,7 @@ class FilledCountLawsTest {
     private static final BoundModel m = BoundModel.ofJson(ORDER);
 
     private static String render(Condition c) {
-        return new DslRenderer().render(c);
+        return RuntimeLaws.render(c);
     }
 
     private static String countRule(String op, int n) {

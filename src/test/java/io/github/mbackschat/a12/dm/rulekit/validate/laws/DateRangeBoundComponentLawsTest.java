@@ -15,7 +15,6 @@ import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Condition;
 import io.github.mbackschat.a12.dm.rulekit.dsl.DateExpr;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Dsl;
-import io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer;
 import io.github.mbackschat.a12.dm.rulekit.dsl.NumberExpr;
 import io.github.mbackschat.a12.dm.rulekit.validate.DraftRule;
 import io.github.mbackschat.a12.dm.rulekit.validate.RuleValidator;
@@ -229,7 +228,7 @@ class DateRangeBoundComponentLawsTest {
     /** The guard references the ROW's own field, so an iterating locus meets the error-field gate. */
     private static String rowVerdict(String json, Condition condition) {
         Condition guarded = Dsl.fieldFilled(M.field(GROUP + "/Periods/RowRef")).and(condition);
-        return rawVerdict(json, GROUP + "/Periods", "../RowRef", new DslRenderer().render(guarded));
+        return rawVerdict(json, GROUP + "/Periods", "../RowRef", KernelLaws.render(guarded));
     }
 
     private static String rawVerdict(String json, String group, String errorField, String condition) {
@@ -251,7 +250,7 @@ class DateRangeBoundComponentLawsTest {
     private static String verdictAt(String json, String group, String errorField, Condition condition) {
         Condition guarded = Dsl.fieldFilled(M.field(GROUP + "/Ref")).and(condition);
         ValidationResult r = new RuleValidator().check(json,
-                new DraftRule(group, "BoundProbe", errorField, new DslRenderer().render(guarded),
+                new DraftRule(group, "BoundProbe", errorField, KernelLaws.render(guarded),
                         "BOUND", "ERROR"));
         return r.ok() ? ADMITTED
                 : r.diagnostics().stream().map(d -> d.code().orElse("(no code)")).collect(Collectors.joining(","));
@@ -282,7 +281,7 @@ class DateRangeBoundComponentLawsTest {
     private static String verdict(String json, Condition condition) {
         Condition guarded = Dsl.fieldFilled(M.field(GROUP + "/Ref")).and(condition);
         ValidationResult r = new RuleValidator().check(json,
-                new DraftRule(GROUP, "BoundProbe", ERROR_FIELD, new DslRenderer().render(guarded),
+                new DraftRule(GROUP, "BoundProbe", ERROR_FIELD, KernelLaws.render(guarded),
                         "BOUND", "ERROR"));
         return r.ok() ? ADMITTED
                 : r.diagnostics().stream().map(d -> d.code().orElse("(no code)")).collect(Collectors.joining(","));

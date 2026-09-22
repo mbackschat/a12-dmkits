@@ -7,7 +7,6 @@ import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft
 import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel
 import io.github.mbackschat.a12.dm.rulekit.dsl.Condition
 import io.github.mbackschat.a12.dm.rulekit.dsl.Dsl
-import io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertThrows
@@ -80,7 +79,7 @@ class ClockDeclaredDateGateDiffTest {
         /** The typed surface over the legal model — `ofJson` runs the kernel's own consistency check. */
         val M: BoundModel by lazy { BoundModel.ofJson(MODEL) }
 
-        fun render(condition: Condition): String = DslRenderer().render(condition)
+        fun render(condition: Condition): String = RuntimeLaws.render(condition)
     }
 
     private val java = HashMap<String, RuntimeLaws.JavaKernelEngine>()

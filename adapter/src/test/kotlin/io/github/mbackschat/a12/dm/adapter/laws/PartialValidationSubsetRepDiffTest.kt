@@ -14,7 +14,6 @@ import io.github.mbackschat.a12.dm.modelkit.FieldKind
 import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel
 import io.github.mbackschat.a12.dm.rulekit.dsl.Condition
 import io.github.mbackschat.a12.dm.rulekit.dsl.Dsl
-import io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
@@ -42,7 +41,7 @@ class PartialValidationSubsetRepDiffTest {
     // Condition authored with the rulekit typed DSL ([m]) and rendered to the canonical string fed to BOTH
     // engines — no free-text literal (dogfood). `Sum(Lines*/Qty) < 100`.
     private val m = BoundModel.ofJson(json)
-    private fun render(c: Condition): String = DslRenderer().render(c)
+    private fun render(c: Condition): String = RuntimeLaws.render(c)
     // The error field (CustomerName) must appear in the condition (kernel MVK_ERROR_FIELD_NOT_REFERENCED), so
     // the rule reads `FieldFilled(CustomerName) And Sum(Lines* / Qty) < 100`. CustomerName is relevant in the
     // subset case (it IS the error field), so the aggregate is what exercises the subset-repetition relevance.

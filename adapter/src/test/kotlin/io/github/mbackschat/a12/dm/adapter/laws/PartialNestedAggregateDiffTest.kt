@@ -12,7 +12,6 @@ import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft
 import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft.GroupBuilder
 import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel
 import io.github.mbackschat.a12.dm.rulekit.dsl.Dsl
-import io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 import java.util.function.Consumer
@@ -50,7 +49,7 @@ class PartialNestedAggregateDiffTest {
         .build().toJson()
 
     private val m = BoundModel.ofJson(json)
-    private val sopOp = DslRenderer().render(
+    private val sopOp = RuntimeLaws.render(
         Dsl.fieldFilled(m.field(TOTAL))
             .and(Dsl.sumOfProducts(m.flatten("$INNER*/Qty"), m.flatten("$INNER*/Price")).gt(50)))
 

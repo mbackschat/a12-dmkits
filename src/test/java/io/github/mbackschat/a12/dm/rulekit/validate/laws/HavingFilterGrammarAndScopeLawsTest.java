@@ -13,7 +13,6 @@ import io.github.mbackschat.a12.dm.modelkit.FieldKind;
 import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Condition;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Dsl;
-import io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer;
 import io.github.mbackschat.a12.dm.rulekit.dsl.FieldListRef;
 import io.github.mbackschat.a12.dm.rulekit.validate.DraftComputation;
 import io.github.mbackschat.a12.dm.rulekit.validate.RuleValidator;
@@ -237,7 +236,7 @@ class HavingFilterGrammarAndScopeLawsTest {
      */
     @Test
     void aMixedConnectiveFilterIsAlwaysBracketed() {
-        String rendered = new DslRenderer().render(
+        String rendered = KernelLaws.render(
                 inScope().and(M.str(ITEMS + "/Sku").eq("premium").or(M.str(ITEMS + "/Note").eq("gift"))));
         assertEquals("[/Catalog/Lines/Items/Qty] > 1 And ([/Catalog/Lines/Items/Sku] == \"premium\""
                         + " Or [/Catalog/Lines/Items/Note] == \"gift\")", rendered,
@@ -323,7 +322,7 @@ class HavingFilterGrammarAndScopeLawsTest {
     /** Rule at the ROOT — no enclosing iteration — with an operand starring only {@code Lines}. */
     private static String rootHostSingleStarVerdict(Condition filter) {
         FieldListRef caps = M.flatten(LINES + "*/Cap");
-        String condition = new DslRenderer().render(Dsl.fieldFilled(M.field(CATALOG + "/Marker"))
+        String condition = KernelLaws.render(Dsl.fieldFilled(M.field(CATALOG + "/Marker"))
                 .and(Dsl.numberOfFilledFields(caps.having(filter)).gt(0)));
         return codes(KernelLaws.checkModel(MODEL, CATALOG, "../Marker", condition));
     }
@@ -331,7 +330,7 @@ class HavingFilterGrammarAndScopeLawsTest {
     /** {@code CurrentRepetition(Lines)} assigned to the given computed field, hosted in the given group. */
     private static String computationVerdict(String target, String hostGroup) {
         String relative = "../" + target.substring(target.lastIndexOf('/') + 1);
-        String operation = new DslRenderer().render(Dsl.currentRepetition(M.group(LINES)).expression());
+        String operation = KernelLaws.render(Dsl.currentRepetition(M.group(LINES)).expression());
         return codes(new RuleValidator().check(MODEL, new DraftComputation(hostGroup, "RepComp", relative, null,
                 java.util.List.of(new DraftComputation.Alternative(null, operation)))));
     }
@@ -340,7 +339,7 @@ class HavingFilterGrammarAndScopeLawsTest {
     /** Rule at the repeatable {@code Lines} level, operand starring only {@code Items}. */
     private static String verdict(Condition filter) {
         FieldListRef qtys = M.flatten(ITEMS + "*/Qty");
-        String condition = new DslRenderer().render(Dsl.fieldFilled(M.field(LINES + "/Label"))
+        String condition = KernelLaws.render(Dsl.fieldFilled(M.field(LINES + "/Label"))
                 .and(Dsl.numberOfFilledFields(qtys.having(filter)).gt(0)));
         return codes(KernelLaws.checkModel(MODEL, LINES, "../Label", condition));
     }
@@ -352,7 +351,7 @@ class HavingFilterGrammarAndScopeLawsTest {
      */
     private static String selfVerdict(Condition filter) {
         FieldListRef caps = M.flatten(LINES + "*/Cap");
-        String condition = new DslRenderer().render(Dsl.fieldFilled(M.field(LINES + "/Label"))
+        String condition = KernelLaws.render(Dsl.fieldFilled(M.field(LINES + "/Label"))
                 .and(Dsl.numberOfFilledFields(caps.having(filter)).gt(0)));
         return codes(KernelLaws.checkModel(MODEL, LINES, "../Label", condition));
     }
@@ -360,7 +359,7 @@ class HavingFilterGrammarAndScopeLawsTest {
     /** Rule at the root, operand starring BOTH levels, so each is reopened by the operand itself. */
     private static String twoStarVerdict(Condition filter) {
         FieldListRef qtys = M.flatten("/Catalog/Lines*/Items*/Qty");
-        String condition = new DslRenderer().render(Dsl.fieldFilled(M.field(CATALOG + "/Marker"))
+        String condition = KernelLaws.render(Dsl.fieldFilled(M.field(CATALOG + "/Marker"))
                 .and(Dsl.numberOfFilledFields(qtys.having(filter)).gt(0)));
         return codes(KernelLaws.checkModel(MODEL, CATALOG, "../Marker", condition));
     }

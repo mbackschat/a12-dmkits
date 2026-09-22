@@ -15,7 +15,6 @@ import io.github.mbackschat.a12.dm.modelkit.FieldKind;
 import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Condition;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Dsl;
-import io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer;
 import io.github.mbackschat.a12.dm.rulekit.dsl.FieldRef;
 
 /**
@@ -221,7 +220,7 @@ class ErroneousFieldRelevanceLawsTest {
      */
     private static String withRule(String modelJson, String code, String errorRelPath, Condition condition) {
         return RuntimeLaws.withRule(modelJson, GROUP, code, errorRelPath, code,
-                new DslRenderer().render(condition));
+                RuntimeLaws.render(condition));
     }
 
     /** The premium list beside a String holder — a group of one field cannot tell a field rule from a group one. */

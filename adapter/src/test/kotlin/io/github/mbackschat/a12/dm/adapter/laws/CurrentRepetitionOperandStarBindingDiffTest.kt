@@ -9,7 +9,6 @@ import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft
 import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel
 import io.github.mbackschat.a12.dm.rulekit.dsl.Condition
 import io.github.mbackschat.a12.dm.rulekit.dsl.Dsl
-import io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 
@@ -89,11 +88,11 @@ class CurrentRepetitionOperandStarBindingDiffTest {
     }
 
     private fun modelWith(condition: Condition): String =
-        RuntimeLaws.withRule(base, "/Policy", CODE, "../SettlementTotal", CODE, DslRenderer().render(condition))
+        RuntimeLaws.withRule(base, "/Policy", CODE, "../SettlementTotal", CODE, RuntimeLaws.render(condition))
 
     /** Fires on all three engines or on none; returns that shared verdict. */
     private fun triFires(condition: Condition): Boolean {
-        val rendered = DslRenderer().render(condition)
+        val rendered = RuntimeLaws.render(condition)
         val kModel = modelWith(condition)
         val def = ModelLoader.load(kModel)
         val (kDoc, iDoc) = documentsFor(def)
@@ -166,7 +165,7 @@ class CurrentRepetitionOperandStarBindingDiffTest {
      * is about. Neither list is deduplicated: a set would erase the very repetition being measured.
      */
     private fun triMessagePointers(condition: Condition): List<String> {
-        val rendered = DslRenderer().render(condition)
+        val rendered = RuntimeLaws.render(condition)
         val kModel = modelWith(condition)
         val def = ModelLoader.load(kModel)
         val (kDoc, iDoc) = documentsFor(def)

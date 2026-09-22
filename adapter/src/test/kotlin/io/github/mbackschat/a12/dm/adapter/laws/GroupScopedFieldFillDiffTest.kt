@@ -14,7 +14,6 @@ import io.github.mbackschat.a12.dm.modelkit.FieldKind
 import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel
 import io.github.mbackschat.a12.dm.rulekit.dsl.Condition
 import io.github.mbackschat.a12.dm.rulekit.dsl.Dsl
-import io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 
@@ -40,7 +39,7 @@ class GroupScopedFieldFillDiffTest {
             .group("Lines") { l -> l.repeatable(2).field("X", FieldKind.STRING).field("Y", FieldKind.STRING) } }
         .build().toJson()
     private val m = BoundModel.ofJson(modelJson)
-    private fun render(c: Condition) = DslRenderer().render(c)
+    private fun render(c: Condition) = RuntimeLaws.render(c)
     private fun gated(c: Condition) = m.field(GATE).filled().and(c)
 
     private val addr = m.flattenGroup("/Root/Addr")

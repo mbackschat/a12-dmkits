@@ -12,7 +12,6 @@ import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft
 import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft.GroupBuilder
 import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel
 import io.github.mbackschat.a12.dm.rulekit.dsl.Dsl
-import io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 import java.util.function.Consumer
@@ -51,7 +50,7 @@ class PartialMultiStarScopeDiffTest {
     private val m = BoundModel.ofJson(json)
 
     /** `Sum` over BOTH starred levels. 25 sits between one outer row's 20 and the cross-row 40. */
-    private val sumOp = DslRenderer().render(
+    private val sumOp = RuntimeLaws.render(
         Dsl.fieldFilled(m.field(TOTAL)).and(Dsl.sum(m.flatten("$OUTER*/Inner*/Qty")).gt(25)))
 
     private val kModel = RuntimeLaws.withRule(json, OUTER, "MSTAR", "../Total", CODE, sumOp)

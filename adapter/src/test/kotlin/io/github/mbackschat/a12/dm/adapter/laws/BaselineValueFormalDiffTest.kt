@@ -7,6 +7,7 @@ import io.github.mbackschat.a12.dm.interpreter.model.Kind
 import io.github.mbackschat.a12.dm.interpreter.model.ModelDef
 import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft
 import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft.GroupBuilder
+import io.github.mbackschat.a12.dm.modelkit.FieldKind
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 import java.util.function.Consumer
@@ -24,8 +25,8 @@ class BaselineValueFormalDiffTest {
 
     private val json = DocumentModelDraft.named("c").locale("en_US")
         .rootGroup("C", Consumer { g: GroupBuilder ->
-            g.field("S", io.github.mbackschat.a12.dm.modelkit.FieldKind.STRING)
-                .field("N", io.github.mbackschat.a12.dm.modelkit.FieldKind.NUMBER)
+            g.field("S", FieldKind.STRING)
+                .field("N", FieldKind.NUMBER)
                 .dateField("D", Consumer { it.format("yyyy-MM-dd") })
         })
         .build().toJson()

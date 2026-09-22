@@ -13,7 +13,6 @@ import io.github.mbackschat.a12.dm.adapter.KernelAdapter;
 import io.github.mbackschat.a12.dm.adapter.RuleTestOutcome;
 import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Condition;
-import io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer;
 
 /**
  * Scoped single-rule eval (FEATURE-GAPS) — {@link KernelAdapter#testRule} reports a rule's empirical
@@ -31,7 +30,7 @@ class RuleTestLawsTest {
     private static final BoundModel m = BoundModel.ofJson(ORDER);
 
     private static String render(Condition c) {
-        return new DslRenderer().render(c);
+        return RuntimeLaws.render(c);
     }
 
     // PriceHigh fires when UnitPrice > 5; it references /Order/UnitPrice.

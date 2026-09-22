@@ -9,7 +9,6 @@ import io.github.mbackschat.a12.dm.interpreter.model.RuleDef
 import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel
 import io.github.mbackschat.a12.dm.rulekit.dsl.Condition
 import io.github.mbackschat.a12.dm.rulekit.dsl.Dsl
-import io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 
@@ -33,7 +32,7 @@ class RangeCoercionDiffTest {
     // engines — no free-text condition literals. `Dsl.rangeAsString`/`rangeAsNumber` are the substring coercions;
     // `m.str(ItemId).eq("")`/`.ne("")` author the empty-string-literal compares (the root-fix probes).
     private val m = BoundModel.ofJson(fuzz)
-    private fun render(c: Condition): String = DslRenderer().render(c)
+    private fun render(c: Condition): String = RuntimeLaws.render(c)
 
     private fun agree(cond: String, item: String?, msg: String) {
         val kModel = RuntimeLaws.withRule(fuzz, "/Cart/Lines", "RC", "../ItemId", "RC", cond)

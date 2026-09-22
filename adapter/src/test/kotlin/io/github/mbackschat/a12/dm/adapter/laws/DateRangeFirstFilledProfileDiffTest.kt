@@ -6,9 +6,7 @@ import io.github.mbackschat.a12.dm.interpreter.load.ModelLoader
 import io.github.mbackschat.a12.dm.interpreter.model.ComputeOutcome
 import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft
 import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel
-import io.github.mbackschat.a12.dm.rulekit.dsl.ConditionLanguage
 import io.github.mbackschat.a12.dm.rulekit.dsl.Dsl
-import io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 
@@ -61,8 +59,7 @@ class DateRangeFirstFilledProfileDiffTest {
                 }
             }.build().toJson()
         val m = BoundModel.ofJson(base)
-        val operation = DslRenderer(ConditionLanguage.EN, ROOT)
-            .render(Dsl.firstFilledDateRange(m.flatten("$ROOT/Rows*/RowWindow")).expression())
+        val operation = RuntimeLaws.render(ROOT, Dsl.firstFilledDateRange(m.flatten("$ROOT/Rows*/RowWindow")).expression())
         return RuntimeLaws.withComputation(base, ROOT, "FirstWindowComp", "../FirstWindow", operation)
     }
 
@@ -78,8 +75,7 @@ class DateRangeFirstFilledProfileDiffTest {
                 }
             }.build().toJson()
         val m = BoundModel.ofJson(base)
-        val operation = DslRenderer(ConditionLanguage.EN, ROOT)
-            .render(Dsl.firstFilledDateRange(m.flatten("$ROOT/Rows*/RowWindow")).expression())
+        val operation = RuntimeLaws.render(ROOT, Dsl.firstFilledDateRange(m.flatten("$ROOT/Rows*/RowWindow")).expression())
         return RuntimeLaws.withComputation(base, ROOT, "FirstWindowComp", "../FirstWindow", operation)
     }
 

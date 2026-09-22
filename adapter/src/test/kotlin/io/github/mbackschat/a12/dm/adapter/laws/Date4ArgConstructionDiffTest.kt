@@ -12,9 +12,7 @@ import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft
 import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft.GroupBuilder
 import io.github.mbackschat.a12.dm.modelkit.FieldKind
 import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel
-import io.github.mbackschat.a12.dm.rulekit.dsl.ConditionLanguage
 import io.github.mbackschat.a12.dm.rulekit.dsl.Dsl
-import io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 import java.util.function.Consumer
@@ -53,7 +51,7 @@ class Date4ArgConstructionDiffTest {
 
     /** YearFromDate(Date(15, 6, 20, 24)) computed into YearOut — both engines must agree on the value. */
     @Test fun fourArgYearArithmeticMatchesKernel() {
-        val op = DslRenderer(ConditionLanguage.EN, "/Cal").render(Dsl.yearFromDate(date4).expression())
+        val op = RuntimeLaws.render("/Cal", Dsl.yearFromDate(date4).expression())
         val kModel = RuntimeLaws.withComputation(json, "/Cal", "YearOutComp", "../YearOut", op)
         val def = ModelDef(fields, emptyList(), computations = listOf(ComputationDef(OUT, "/Cal", op)))
         val kValue = RuntimeLaws.computedValue(RuntimeLaws.compute(kModel, fill(RuntimeLaws.doc())), OUT).orElse(null)
@@ -63,7 +61,7 @@ class Date4ArgConstructionDiffTest {
 
     /** Valid(Date(15, 6, 20, 24)) — a real century date fires on both engines (the 4-arg form is recognized). */
     @Test fun fourArgValidFiresLikeKernel() {
-        val cond = DslRenderer(ConditionLanguage.EN, "/Cal").render(m.num(YR2).filled().and(Dsl.valid(date4)))
+        val cond = RuntimeLaws.render("/Cal", m.num(YR2).filled().and(Dsl.valid(date4)))
         val kModel = RuntimeLaws.withRule(json, "/Cal", "V", "../Year2", "V", cond)
         val def = ModelDef(fields, listOf(RuleDef("/Cal/V", "/Cal", cond, "V", "../Year2")))
         val kFires = RuntimeLaws.firedCodes(kModel, fill(RuntimeLaws.doc())).contains("V")

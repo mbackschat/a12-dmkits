@@ -16,6 +16,8 @@ import org.junit.jupiter.api.Tag
 import org.junit.jupiter.api.Test
 import java.nio.file.Files
 import java.nio.file.Path
+import java.util.Date
+import java.util.Locale
 
 /**
  * **WI-7 — the opt-in real-corpus tri-engine sweep** (SEMANTICS-FORMALIZATION-PROPOSAL §6.7). For every model in
@@ -132,7 +134,7 @@ class RealCorpusSweepTest {
 
     private fun compareValidateFull(file: Path, kernelJson: String, interpJson: String, model: ModelDef,
                                     placements: List<Placement>, seed: Int, java: RuntimeLaws.JavaKernelEngine?,
-                                    locale: java.util.Locale, report: SweepReport) {
+                                    locale: Locale, report: SweepReport) {
         val kAll = try {
             CorpusEngines.groovyDynamic(kernelJson, placements, Op.ValidateFull, CLOCK, locale)
         } catch (t: Throwable) { report.evalSkip("kernel-eval:" + classify(t), file, t); return }
@@ -157,7 +159,7 @@ class RealCorpusSweepTest {
     }
 
     private fun compareCompute(file: Path, kernelJson: String, interpJson: String, model: ModelDef,
-                               placements: List<Placement>, seed: Int, locale: java.util.Locale, report: SweepReport) {
+                               placements: List<Placement>, seed: Int, locale: Locale, report: SweepReport) {
         val k = try {
             CorpusEngines.groovyDynamic(kernelJson, placements, Op.Compute, CLOCK, locale)
         } catch (t: Throwable) { report.evalSkip("kernel-compute:" + classify(t), file, t); return }
@@ -172,8 +174,8 @@ class RealCorpusSweepTest {
     }
 
     /** The pinned [CLOCK] as a [java.util.Date] for the java-static leg's kernel config. */
-    private fun clockDate(): java.util.Date =
-        java.util.Date.from(java.time.LocalDateTime.parse(CLOCK).atZone(java.time.ZoneId.systemDefault()).toInstant())
+    private fun clockDate(): Date =
+        Date.from(java.time.LocalDateTime.parse(CLOCK).atZone(java.time.ZoneId.systemDefault()).toInstant())
 
     /** Replay placements into a kernel [RuntimeLaws.Doc] for the java-static leg's own instance building. */
     private fun kernelDoc(placements: List<Placement>): RuntimeLaws.Doc {

@@ -14,7 +14,6 @@ import io.github.mbackschat.a12.dm.modelkit.FieldKind
 import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel
 import io.github.mbackschat.a12.dm.rulekit.dsl.Condition
 import io.github.mbackschat.a12.dm.rulekit.dsl.Dsl
-import io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 import java.util.Optional
@@ -48,7 +47,6 @@ class EqualityKindDiffTest {
                 .customField("Custom", Consumer { it.type(CUSTOM_TYPE) })
         }).build().toJson()
     private val m = BoundModel.ofJson(base)
-    private val renderer = DslRenderer()
     private val customTypes = mapOf(CUSTOM_TYPE to CustomFieldType { _, _ -> null })
     private val kernelTypes = object : ICustomFieldTypeFactory {
         override fun createCustomFieldValidator(name: String): Optional<ICustomFieldValidator> =
@@ -107,9 +105,9 @@ class EqualityKindDiffTest {
         val guard = m.str(GUARD).filled()
         val ruleSuffix = case.kind.name.lowercase()
         val modelWithEqual = RuntimeLaws.withRule(base, ROOT, "Equal_$ruleSuffix", "../Guard",
-            EQUAL, renderer.render(guard.and(case.equal)))
+            EQUAL, RuntimeLaws.render(guard.and(case.equal)))
         val model = RuntimeLaws.withRule(modelWithEqual, ROOT, "NotEqual_$ruleSuffix", "../Guard",
-            NOT_EQUAL, renderer.render(guard.and(case.notEqual)))
+            NOT_EQUAL, RuntimeLaws.render(guard.and(case.notEqual)))
         val definition = ModelLoader.load(model)
         val static = RuntimeLaws.kernelJavaEngine(model)
 

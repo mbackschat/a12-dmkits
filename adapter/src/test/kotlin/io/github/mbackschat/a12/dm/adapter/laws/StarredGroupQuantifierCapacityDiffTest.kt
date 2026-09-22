@@ -11,7 +11,6 @@ import io.github.mbackschat.a12.dm.modelkit.FieldKind
 import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel
 import io.github.mbackschat.a12.dm.rulekit.dsl.Condition
 import io.github.mbackschat.a12.dm.rulekit.dsl.Dsl
-import io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 
@@ -271,7 +270,7 @@ class StarredGroupQuantifierCapacityDiffTest {
             val lines = base.flattenGroup("$LINES*")
             val counted = base.group(LINES)
             val guard = Dsl.fieldFilled(base.field(REF))
-            fun render(c: Condition) = DslRenderer().render(c)
+            fun render(c: Condition) = RuntimeLaws.render(c)
             var json = baseModel
             listOf(
                 NONE_FILLED to render(guard.and(Dsl.noGroupFilled(lines))),
@@ -292,7 +291,7 @@ class StarredGroupQuantifierCapacityDiffTest {
             val guard = Dsl.fieldFilled(base.field(REF))
             val inCapacityMarker = base.flattenGroup("$LINES*/InCapacityMarker")
             val overCapacityMarker = base.flattenGroup("$LINES*/OverCapacityMarker")
-            fun render(c: Condition) = DslRenderer().render(c)
+            fun render(c: Condition) = RuntimeLaws.render(c)
             var json = model
             listOf(
                 IN_CAP_PRESENT to render(guard.and(Dsl.atLeastOneGroupFilled(inCapacityMarker))),

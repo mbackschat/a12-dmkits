@@ -11,7 +11,6 @@ import org.junit.jupiter.api.Test;
 import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft;
 import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Dsl;
-import io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer;
 import io.github.mbackschat.a12.dm.rulekit.dsl.LocalizedText;
 import io.github.mbackschat.a12.dm.rulekit.validate.DraftRule;
 import io.github.mbackschat.a12.dm.rulekit.validate.RuleValidator;
@@ -64,8 +63,8 @@ class ErrorTextLocaleScopeLawsTest {
     private static final BoundModel M = BoundModel.ofJson(ORDER);
 
     /** One condition for every row, authored typed, so only the message's locale varies across the table. */
-    private static final String CONDITION = new DslRenderer()
-            .render(Dsl.fieldNotFilled(M.field(GROUP + "/Reference")));
+    private static final String CONDITION =
+            KernelLaws.render(Dsl.fieldNotFilled(M.field(GROUP + "/Reference")));
 
     /** The one text under test — invalid in any locale the checker actually reads. */
     private static final String NAMES_NOTHING = "See $Nonexistent$";

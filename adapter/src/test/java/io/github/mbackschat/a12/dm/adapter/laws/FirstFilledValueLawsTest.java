@@ -13,7 +13,6 @@ import com.mgmtp.a12.kernel.md.rt.api.IMessage.MessageType;
 import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Condition;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Dsl;
-import io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer;
 
 /**
  * Behavioral law — <b>{@code FirstFilledValue} is prefix-sensitive</b> (RT-SEMANTICS-LEDGER:
@@ -42,7 +41,7 @@ class FirstFilledValueLawsTest {
     private static final BoundModel m = BoundModel.ofJson(ORDER);
 
     private static String render(Condition c) {
-        return new DslRenderer().render(c);
+        return RuntimeLaws.render(c);
     }
 
     /** The error field must be referenced in the condition — hence the CustomerName guard idiom. */

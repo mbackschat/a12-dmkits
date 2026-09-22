@@ -13,7 +13,6 @@ import io.github.mbackschat.a12.dm.edit.EditSession
 import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft
 import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel
 import io.github.mbackschat.a12.dm.rulekit.dsl.Condition
-import io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 import java.util.Locale
@@ -37,7 +36,7 @@ class RequirednessDiffTest {
     // to BOTH engines (kernel injection + the interpreter) — no free-text condition literals. The requiredness
     // SETUP (the `require(...)` model rewrite + the `Requiredness` field configs) is unchanged.
     private val m = BoundModel.ofJson(order)
-    private fun render(c: Condition): String = DslRenderer().render(c)
+    private fun render(c: Condition): String = RuntimeLaws.render(c)
 
     @Test
     fun fieldOwnedRequirednessTextPreservesLiteralDollarOnBothKernelStrategies() {

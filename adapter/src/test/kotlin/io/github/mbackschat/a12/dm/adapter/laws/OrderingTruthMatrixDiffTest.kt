@@ -5,7 +5,6 @@ import io.github.mbackschat.a12.dm.interpreter.eval.newDocument
 import io.github.mbackschat.a12.dm.interpreter.load.ModelLoader
 import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel
 import io.github.mbackschat.a12.dm.rulekit.dsl.CompareOp
-import io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 
@@ -14,7 +13,6 @@ class OrderingTruthMatrixDiffTest {
 
     private val base = RuntimeLaws.model("models/order.dm.json")
     private val m = BoundModel.ofJson(base)
-    private val renderer = DslRenderer()
     private val conditions = linkedMapOf(
         CompareOp.LE to m.num(QUANTITY).le(5),
         CompareOp.LT to m.num(QUANTITY).lt(5),
@@ -28,7 +26,7 @@ class OrderingTruthMatrixDiffTest {
             "Ordering$index",
             "../Quantity",
             entry.key.name,
-            renderer.render(entry.value),
+            RuntimeLaws.render(entry.value),
         )
     }
     private val definition = ModelLoader.load(model)

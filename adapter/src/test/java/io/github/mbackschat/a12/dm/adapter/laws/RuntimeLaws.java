@@ -10,6 +10,7 @@ import java.io.StringWriter;
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Date;
 import java.util.Collection;
 import java.util.HashMap;
@@ -54,7 +55,6 @@ import com.mgmtp.a12.kernel.md.document.apiV2.immutable.FieldInstanceV2;
 import com.mgmtp.a12.kernel.md.document.apiV2.immutable.GroupInstanceV2;
 import com.mgmtp.a12.kernel.md.document.apiV2.immutable.RepetitionsV2;
 import com.mgmtp.a12.kernel.md.document.apiV2.services.IDocumentV2Serializer;
-import io.github.mbackschat.a12.dm.interpreter.eval.PointerKt;
 import com.mgmtp.a12.kernel.md.facade.DocumentModelServiceFactory;
 import com.mgmtp.a12.kernel.md.facade.DocumentRtServiceFactory;
 import com.mgmtp.a12.kernel.md.facade.DocumentServiceFactory;
@@ -79,6 +79,15 @@ import com.mgmtp.a12.kernel.md.rt.api.IMessage;
 import com.mgmtp.a12.kernel.md.rt.api.IModelCode;
 import com.mgmtp.a12.kernel.md.rt.api.IModelCodeCache;
 import com.mgmtp.a12.kernel.md.serializer.MDSerializerFactory;
+
+import io.github.mbackschat.a12.dm.interpreter.eval.PointerKt;
+import io.github.mbackschat.a12.dm.rulekit.dsl.Calculation;
+import io.github.mbackschat.a12.dm.rulekit.dsl.Comments;
+import io.github.mbackschat.a12.dm.rulekit.dsl.Computation;
+import io.github.mbackschat.a12.dm.rulekit.dsl.Condition;
+import io.github.mbackschat.a12.dm.rulekit.dsl.ConditionLanguage;
+import io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer;
+import io.github.mbackschat.a12.dm.rulekit.dsl.ToleranceBand;
 
 /**
  * The document-evaluating oracle for the <em>behavioral</em> kernel laws (F-LAW) — the runtime
@@ -174,10 +183,10 @@ public final class RuntimeLaws {
      * which, at the row or at the helper that builds it.
      */
     public static String withRule(String modelJson, String groupId, String ruleName, String errorEntityRelPath,
-            String errorCode, io.github.mbackschat.a12.dm.rulekit.dsl.Condition condition) {
+            String errorCode, Condition condition) {
         return withRule(modelJson, groupId, ruleName, errorEntityRelPath, errorCode,
-                new io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer(
-                        io.github.mbackschat.a12.dm.rulekit.dsl.ConditionLanguage.EN, groupId).render(condition));
+                new DslRenderer(
+                        ConditionLanguage.EN, groupId).render(condition));
     }
 
     /** As {@link #withRule}, but with explicit en_US / de_DE error-message texts (for localized-text laws). */
@@ -189,11 +198,11 @@ public final class RuntimeLaws {
      * MESSAGES, not its condition, so its condition is the one part that should never have been hand-spelled.
      */
     static String withRuleMessages(String modelJson, String groupId, String ruleName, String errorEntityRelPath,
-            String errorCode, io.github.mbackschat.a12.dm.rulekit.dsl.Condition condition,
+            String errorCode, Condition condition,
             String enText, String deText) {
         return withRuleMessages(modelJson, groupId, ruleName, errorEntityRelPath, errorCode,
-                new io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer(
-                        io.github.mbackschat.a12.dm.rulekit.dsl.ConditionLanguage.EN, groupId).render(condition),
+                new DslRenderer(
+                        ConditionLanguage.EN, groupId).render(condition),
                 enText, deText);
     }
 
@@ -254,6 +263,51 @@ public final class RuntimeLaws {
     }
 
     /**
+     * The condition TEXT with ABSOLUTE paths, for a differential that feeds ONE string to both engines.
+     *
+     * <p>The adapter law tree cannot see {@code KernelLaws}, so the render helper is published on both
+     * harnesses rather than shared. Absolute is the default here for the same reason it is there: 210 of the
+     * 250 files that build their own renderer build the no-arg one, and relativizing their paths would rewrite
+     * the condition rather than the spelling that produces it. {@link #render(String, Condition)} is the
+     * group-scoped twin, for a law whose subject IS the relative form.
+     */
+    static String render(Condition condition) {
+        return new DslRenderer(
+                ConditionLanguage.EN).render(condition);
+    }
+
+    /** As {@link #render(Condition)}, emitting same-root paths relative to {@code groupId}. */
+    static String render(String groupId, Condition condition) {
+        return new DslRenderer(
+                ConditionLanguage.EN, groupId).render(condition);
+    }
+
+    /**
+     * The CALCULATION arm of the same pair — a computation's operation rather than a rule's condition.
+     *
+     * <p>Both arms are published because the estate uses both: a differential that splices a computation
+     * renders a {@code Calculation}, and leaving that overload out would send exactly those files back to
+     * building a renderer of their own, which is the thing the pair exists to stop.
+     */
+    static String render(Calculation calculation) {
+        return new DslRenderer(
+                ConditionLanguage.EN).render(calculation);
+    }
+
+    /** As {@link #render(Calculation)}, relative to {@code groupId}. */
+    static String render(String groupId, Calculation calculation) {
+        return new DslRenderer(
+                ConditionLanguage.EN, groupId).render(calculation);
+    }
+
+    /** With COMMENTS attached — for a law whose subject is the comment syntax the renderer emits. */
+    static String render(Condition condition,
+            Comments comments) {
+        return new DslRenderer(
+                ConditionLanguage.EN).render(condition, comments);
+    }
+
+    /**
      * As {@link #withComputation}, taking the computation the kit BUILT rather than its parts — group, name,
      * computed-field path, operations, preconditions and suppress list all derive from
      * {@code computation.draft()}, rendered in the group's own scope.
@@ -272,7 +326,7 @@ public final class RuntimeLaws {
      * {@code TypedComputationSpliceTest} pins, because a migration must rewrite the spelling and nothing else.
      */
     public static String withComputation(String modelJson,
-            io.github.mbackschat.a12.dm.rulekit.dsl.Computation computation) {
+            Computation computation) {
         var draft = computation.draft();
         var alternatives = draft.alternatives();
         boolean simple = draft.commonPrecondition() == null
@@ -294,7 +348,7 @@ public final class RuntimeLaws {
      * A tolerance band in the spelling the model carries, or {@code null} for the strict {@code !=} default.
      * {@code wire()} is the band's own serialized form, so the typed splice writes what a read model would.
      */
-    private static String toleranceText(io.github.mbackschat.a12.dm.rulekit.dsl.ToleranceBand band) {
+    private static String toleranceText(ToleranceBand band) {
         return band == null ? null : band.wire();
     }
 
@@ -705,7 +759,7 @@ public final class RuntimeLaws {
      */
     record Relevant(String path, List<Integer> reps) {
         static Relevant of(String path, int... reps) {
-            return new Relevant(path, java.util.Arrays.stream(reps).boxed().toList());
+            return new Relevant(path, Arrays.stream(reps).boxed().toList());
         }
     }
 
@@ -2088,7 +2142,7 @@ public final class RuntimeLaws {
 
     private static int[] ones(int n) {
         int[] a = new int[n];
-        java.util.Arrays.fill(a, 1);
+        Arrays.fill(a, 1);
         return a;
     }
 }

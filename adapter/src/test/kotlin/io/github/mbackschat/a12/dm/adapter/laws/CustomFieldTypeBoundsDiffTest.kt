@@ -16,7 +16,6 @@ import io.github.mbackschat.a12.dm.interpreter.model.RuleDef
 import io.github.mbackschat.a12.dm.modelkit.CustomFieldBuilder
 import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft
 import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel
-import io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 import java.util.Optional
@@ -74,7 +73,7 @@ class CustomFieldTypeBoundsDiffTest {
     // A value-reading rule over the custom field, authored through the typed DSL: `BoundModel.custom(...)` returns a
     // string-shaped handle for a CUSTOM-kind field, so `== "abcd"` is expressed without a hand-written string. Both
     // engines parse the same rendered condition; the rule reads the cell, so a rejected (Unknown) cell suppresses it.
-    private val cond = DslRenderer().render(BoundModel.ofJson(json).custom(CODE).eq("abcd"))
+    private val cond = RuntimeLaws.render(BoundModel.ofJson(json).custom(CODE).eq("abcd"))
     private val ruleModel = RuntimeLaws.withRule(json, "/Order", "R", "../Code", "R", cond)
     private val ruleDef = def.copy(rules = listOf(RuleDef("/Order/R", "/Order", cond, "R", "../Code")))
     private val javaEngine by lazy { RuntimeLaws.kernelJavaEngine(ruleModel) }

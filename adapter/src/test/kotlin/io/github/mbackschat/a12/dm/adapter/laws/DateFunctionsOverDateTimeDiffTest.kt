@@ -7,6 +7,7 @@ import io.github.mbackschat.a12.dm.interpreter.load.ModelLoader
 import io.github.mbackschat.a12.dm.interpreter.model.ComputeOutcome
 import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft
 import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft.GroupBuilder
+import org.junit.jupiter.api.Assertions
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 import java.util.function.Consumer
@@ -125,11 +126,11 @@ class DateFunctionsOverDateTimeDiffTest {
      *  format"). The legal DATE_TIME surface is the component extractors, `DifferenceInDays`, and `AddDays`;
      *  month/year differences and shifts remain date-only. */
     @Test fun addYearsOverADateTimeIsRejectedAtCodegen() {
-        val thrown = org.junit.jupiter.api.Assertions.assertThrows(Exception::class.java) {
+        val thrown = Assertions.assertThrows(Exception::class.java) {
             RuntimeLaws.compute(model("AddYears(LoggedAt, 1)"),
                 RuntimeLaws.doc().group("/Ops", 1).group("/Ops/Shipment", 1, 1).field(LOGGED, TS, 1, 1, 1))
         }
-        org.junit.jupiter.api.Assertions.assertTrue(thrown.message.orEmpty().contains("Wrong date format"),
+        Assertions.assertTrue(thrown.message.orEmpty().contains("Wrong date format"),
             "expected the codegen's date-format gate, got: " + thrown.message)
     }
 }

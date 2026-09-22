@@ -12,9 +12,7 @@ import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft;
 import io.github.mbackschat.a12.dm.modelkit.FieldKind;
 import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Condition;
-import io.github.mbackschat.a12.dm.rulekit.dsl.ConditionLanguage;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Dsl;
-import io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer;
 
 /**
  * What a value-list quantifier's FIELD list may carry: one base type, and only a countable few of them.
@@ -62,7 +60,7 @@ class ValueListQuantifierOperandKindLawsTest {
     private static String typedVerdict(Condition call) {
         Condition guarded = Dsl.fieldFilled(ORDER.field("/Order/Reference")).and(call);
         return KernelLaws.verdictModel(ORDER_JSON, GROUP, "../Reference",
-                new DslRenderer(ConditionLanguage.EN, GROUP).render(guarded));
+                KernelLaws.render(GROUP, guarded));
     }
 
     private static String verdict(String call) {

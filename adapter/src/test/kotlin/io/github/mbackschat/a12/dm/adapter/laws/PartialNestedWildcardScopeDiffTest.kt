@@ -12,7 +12,6 @@ import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft
 import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft.GroupBuilder
 import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel
 import io.github.mbackschat.a12.dm.rulekit.dsl.Dsl
-import io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 import java.util.function.Consumer
@@ -48,7 +47,7 @@ class PartialNestedWildcardScopeDiffTest {
         .build().toJson()
 
     private val m = BoundModel.ofJson(json)
-    private val sumOp = DslRenderer().render(
+    private val sumOp = RuntimeLaws.render(
         Dsl.fieldFilled(m.field(TOTAL)).and(Dsl.sum(m.flatten("$INNER*/Qty")).gt(5)))
 
     private val kModel = RuntimeLaws.withRule(json, OUTER, "SUM", "../Total", CODE, sumOp)

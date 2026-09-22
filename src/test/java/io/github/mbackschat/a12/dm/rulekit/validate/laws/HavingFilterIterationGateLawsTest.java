@@ -13,7 +13,6 @@ import io.github.mbackschat.a12.dm.modelkit.FieldKind;
 import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Condition;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Dsl;
-import io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer;
 import io.github.mbackschat.a12.dm.rulekit.dsl.FieldListRef;
 import io.github.mbackschat.a12.dm.rulekit.validate.ValidationResult;
 
@@ -115,7 +114,7 @@ class HavingFilterIterationGateLawsTest {
     private static String verdict(String operandPath, String group, String errorField, String errorRef,
             Condition filter) {
         FieldListRef leaves = M.flatten(operandPath);
-        String condition = new DslRenderer().render(Dsl.fieldFilled(M.field(errorRef))
+        String condition = KernelLaws.render(Dsl.fieldFilled(M.field(errorRef))
                 .and(Dsl.numberOfFilledFields(filter == null ? leaves : leaves.having(filter)).gt(0)));
         return codes(KernelLaws.checkModel(MODEL, group, errorField, condition));
     }

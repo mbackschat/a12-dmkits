@@ -14,7 +14,6 @@ import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft;
 import io.github.mbackschat.a12.dm.modelkit.RangeYearInterpretation;
 import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Dsl;
-import io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer;
 
 /**
  * Behavioral law — what the DateRange overlap gates MEAN once a model passes them ([KF200]). The admission
@@ -48,7 +47,7 @@ class DateRangeOverlapYearClassLawsTest {
     /** `DateRangesOverlap(ExactWindow, MonthWindow)` — legal only where the year classes agree or a Base Year lifts. */
     private static String exactVsMonth() {
         return RuntimeLaws.withRule(BASED, COVER, "Clash", "../Ref", "CLASH",
-                new DslRenderer().render(Dsl.fieldFilled(M.field(COVER + "/Ref"))
+                RuntimeLaws.render(Dsl.fieldFilled(M.field(COVER + "/Ref"))
                         .and(Dsl.dateRangesOverlap(M.dateRange(COVER + "/ExactWindow").field(),
                                 M.dateRange(COVER + "/MonthWindow").field()))));
     }
@@ -56,7 +55,7 @@ class DateRangeOverlapYearClassLawsTest {
     /** `DateRangesOverlap(MonthWindow, DayWindow)` on the model with NO Base Year — the all-yearless account. */
     private static String monthVsDay() {
         return RuntimeLaws.withRule(PLAIN, COVER, "Clash", "../Ref", "CLASH",
-                new DslRenderer().render(Dsl.fieldFilled(M.field(COVER + "/Ref"))
+                RuntimeLaws.render(Dsl.fieldFilled(M.field(COVER + "/Ref"))
                         .and(Dsl.dateRangesOverlap(M.dateRange(COVER + "/MonthWindow").field(),
                                 M.dateRange(COVER + "/DayWindow").field()))));
     }

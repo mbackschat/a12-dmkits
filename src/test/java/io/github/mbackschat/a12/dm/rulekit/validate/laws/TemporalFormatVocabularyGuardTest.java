@@ -10,9 +10,13 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
+import java.util.TreeMap;
 import java.util.TreeSet;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import org.junit.jupiter.api.Test;
 
@@ -133,8 +137,8 @@ class TemporalFormatVocabularyGuardTest {
     private static Set<String> caseVariants(Set<String> base) {
         Set<String> variants = new LinkedHashSet<>();
         for (String format : base) {
-            variants.add(format.toLowerCase(java.util.Locale.ROOT));
-            variants.add(format.toUpperCase(java.util.Locale.ROOT));
+            variants.add(format.toLowerCase(Locale.ROOT));
+            variants.add(format.toUpperCase(Locale.ROOT));
         }
         variants.removeAll(base);
         return variants;
@@ -666,8 +670,8 @@ class TemporalFormatVocabularyGuardTest {
     }
 
     private static boolean namesAsToken(String text, String format) {
-        return java.util.regex.Pattern
-                .compile("(?<!" + FORMAT_CHAR + ")" + java.util.regex.Pattern.quote(format)
+        return Pattern
+                .compile("(?<!" + FORMAT_CHAR + ")" + Pattern.quote(format)
                         + "(?!" + FORMAT_CHAR + ")")
                 .matcher(text).find();
     }
@@ -697,7 +701,7 @@ class TemporalFormatVocabularyGuardTest {
             byComponents.computeIfAbsent(componentLettersOf(format), key -> new TreeSet<>()).add(format);
         }
 
-        Set<List<String>> derived = new java.util.LinkedHashSet<>();
+        Set<List<String>> derived = new LinkedHashSet<>();
         byComponents.forEach((components, spellings) -> {
             List<String> ordered = List.copyOf(spellings);
             for (int i = 0; i < ordered.size(); i++) {
@@ -709,7 +713,7 @@ class TemporalFormatVocabularyGuardTest {
 
         Set<List<String>> swept = TemporalEqualSetPairDenominatorLawsTest.EQUAL_SET_PAIRS.stream()
                 .map(pair -> List.copyOf(new TreeSet<>(pair)))
-                .collect(java.util.stream.Collectors.toCollection(java.util.LinkedHashSet::new));
+                .collect(java.util.stream.Collectors.toCollection(LinkedHashSet::new));
 
         assertEquals(derived, swept,
                 "the equal-set pair denominator the kernel's admitted vocabulary yields is not the one "
@@ -792,10 +796,10 @@ class TemporalFormatVocabularyGuardTest {
     private static final String RANGE_REGION_END = "RANGE-PAIR-GRID-END";
 
     /** {@code "<format>" to setOf("a", "b")} or {@code "<format>" to emptySet()}, one entry per line. */
-    private static final java.util.regex.Pattern RANGE_ENTRY = java.util.regex.Pattern.compile(
+    private static final Pattern RANGE_ENTRY = Pattern.compile(
             "\"([^\"]*)\"\\s+to\\s+(?:setOf\\((.*)\\)|emptySet\\(\\))");
 
-    private static final java.util.regex.Pattern QUOTED = java.util.regex.Pattern.compile("\"([^\"]*)\"");
+    private static final Pattern QUOTED = Pattern.compile("\"([^\"]*)\"");
 
     /**
      * The kernel's own answer, shaped like the claimant's table: every admitted FIELD format plus every
@@ -806,7 +810,7 @@ class TemporalFormatVocabularyGuardTest {
      * which is exactly why it has to appear here rather than being left out as "nothing to say".
      */
     private static Map<String, Set<String>> derivedRangeTable() {
-        Map<String, Set<String>> out = new java.util.TreeMap<>();
+        Map<String, Set<String>> out = new TreeMap<>();
         for (String format : admittedFormats(partition())) {
             out.put(format, new TreeSet<>());
         }
@@ -821,12 +825,12 @@ class TemporalFormatVocabularyGuardTest {
     private static Map<String, Set<String>> carriedRangeTable() throws IOException {
         String region = enumerationRegion(Path.of(RANGE_PAIR_CLAIMANT),
                 Files.readString(Path.of(RANGE_PAIR_CLAIMANT)), RANGE_REGION_START, RANGE_REGION_END);
-        Map<String, Set<String>> out = new java.util.TreeMap<>();
-        java.util.regex.Matcher entries = RANGE_ENTRY.matcher(region);
+        Map<String, Set<String>> out = new TreeMap<>();
+        Matcher entries = RANGE_ENTRY.matcher(region);
         while (entries.find()) {
             Set<String> separators = new TreeSet<>();
             if (entries.group(2) != null) {
-                java.util.regex.Matcher quoted = QUOTED.matcher(entries.group(2));
+                Matcher quoted = QUOTED.matcher(entries.group(2));
                 while (quoted.find()) {
                     separators.add(quoted.group(1));
                 }
@@ -853,7 +857,7 @@ class TemporalFormatVocabularyGuardTest {
         String region = enumerationRegion(Path.of(RANGE_PAIR_CLAIMANT),
                 Files.readString(Path.of(RANGE_PAIR_CLAIMANT)), PROBE_REGION_START, PROBE_REGION_END);
         Set<String> carried = new TreeSet<>();
-        java.util.regex.Matcher quoted = QUOTED.matcher(region);
+        Matcher quoted = QUOTED.matcher(region);
         while (quoted.find()) {
             carried.add(quoted.group(1));
         }

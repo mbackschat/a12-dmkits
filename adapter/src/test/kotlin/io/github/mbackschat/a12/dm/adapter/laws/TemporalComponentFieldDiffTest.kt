@@ -7,9 +7,7 @@ import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft
 import io.github.mbackschat.a12.dm.adapter.KernelAdapter
 import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel
 import io.github.mbackschat.a12.dm.rulekit.dsl.Condition
-import io.github.mbackschat.a12.dm.rulekit.dsl.ConditionLanguage
 import io.github.mbackschat.a12.dm.rulekit.dsl.Dsl
-import io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer
 import io.github.mbackschat.a12.dm.rulekit.dsl.Rule
 import io.github.mbackschat.a12.dm.rulekit.dsl.Severity
 import io.github.mbackschat.a12.dm.rulekit.dsl.TemporalComponent
@@ -119,13 +117,12 @@ class TemporalComponentFieldDiffTest {
 
     @Test
     fun mixedTypedComponentsRoundTripThroughTheKernelModel() {
-        val renderer = DslRenderer(ConditionLanguage.EN)
         val adapter = KernelAdapter.of(authoredModel)
         val dateRead = assertInstanceOf(ReadResult.Converted::class.java, adapter.read("$GROUP/$DATE_VALID"))
         val timeRead = assertInstanceOf(ReadResult.Converted::class.java, adapter.read("$GROUP/$TIME_EQUAL"))
 
-        assertEquals(renderer.render(Dsl.valid(date)), renderer.render(dateRead.condition()))
-        assertEquals(renderer.render(model.time(TIME_TARGET).eq(time)), renderer.render(timeRead.condition()))
+        assertEquals(RuntimeLaws.render(Dsl.valid(date)), RuntimeLaws.render(dateRead.condition()))
+        assertEquals(RuntimeLaws.render(model.time(TIME_TARGET).eq(time)), RuntimeLaws.render(timeRead.condition()))
     }
 
     private fun rule(code: String, errorPath: String, condition: Condition): Rule =

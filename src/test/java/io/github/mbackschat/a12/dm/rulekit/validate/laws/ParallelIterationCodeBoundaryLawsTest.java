@@ -64,7 +64,7 @@ class ParallelIterationCodeBoundaryLawsTest {
      */
     @Test
     void withoutASharedIndexFieldTheListNeverReachesTheIterationCodes() {
-        java.util.Map<String, String> actual = new LinkedHashMap<>();
+        Map<String, String> actual = new LinkedHashMap<>();
         actual.put("unindexed, positive over both groups", verdictOn(UNINDEXED,
                 "AtLeastOneFieldFilled(/Order/Items/Sku, /Order/Notes/Text)"));
         actual.put("unindexed, pure negative over both groups", verdictOn(UNINDEXED,
@@ -72,7 +72,7 @@ class ParallelIterationCodeBoundaryLawsTest {
         actual.put("indexed control, positive over both groups", verdictOn(MODEL,
                 "AtLeastOneFieldFilled(/Order/Items/Sku, /Order/Notes/Text)"));
 
-        java.util.Map<String, String> expected = new LinkedHashMap<>();
+        Map<String, String> expected = new LinkedHashMap<>();
         expected.put("unindexed, positive over both groups", "MVK_NO_WILDCARD");
         expected.put("unindexed, pure negative over both groups", "MVK_NO_WILDCARD");
         expected.put("indexed control, positive over both groups", "admitted");

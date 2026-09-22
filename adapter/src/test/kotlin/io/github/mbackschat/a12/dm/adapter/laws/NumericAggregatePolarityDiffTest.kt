@@ -8,7 +8,6 @@ import io.github.mbackschat.a12.dm.interpreter.model.MsgType
 import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel
 import io.github.mbackschat.a12.dm.rulekit.dsl.Condition
 import io.github.mbackschat.a12.dm.rulekit.dsl.Dsl
-import io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 
@@ -42,7 +41,7 @@ class NumericAggregatePolarityDiffTest {
     }
 
     private fun agree(condition: Condition, expected: String, label: String, build: Both.() -> Unit) {
-        val rendered = DslRenderer().render(m.field(ANCHOR).filled().and(condition))
+        val rendered = RuntimeLaws.render(m.field(ANCHOR).filled().and(condition))
         val kernelModel = RuntimeLaws.withRule(base, ROOT, CODE, "../CustomerName", CODE, rendered)
         val definition = ModelLoader.load(kernelModel)
         val documents = Both(RuntimeLaws.doc(), definition.newDocument())

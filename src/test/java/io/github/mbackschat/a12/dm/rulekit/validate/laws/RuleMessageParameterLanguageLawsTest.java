@@ -286,7 +286,7 @@ class RuleMessageParameterLanguageLawsTest {
     }
 
     private static String renderEn(Condition condition) {
-        return new DslRenderer(ConditionLanguage.EN).render(condition);
+        return KernelLaws.render(condition);
     }
 
     private static String renderDe(Condition condition) {

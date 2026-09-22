@@ -8,7 +8,7 @@ import io.github.mbackschat.a12.dm.interpreter.model.MsgType
 import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft
 import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel
 import io.github.mbackschat.a12.dm.rulekit.dsl.Dsl
-import io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer
+import java.util.Locale
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
@@ -57,12 +57,12 @@ class UnstarredGroupSumOperandDiffTest {
     private val m = BoundModel.ofJson(base)
 
     /** `FieldFilled(Ref) And Sum(/Order/Billing) > [bar]` — the group scope, unstarred by the model's shape. */
-    private fun groupScope(bar: Long): String = DslRenderer().render(
+    private fun groupScope(bar: Long): String = RuntimeLaws.render(
         m.field(REF).filled().and(Dsl.sum(m.flattenGroup(BILLING)).gt(bar)),
     )
 
     /** The control: the same two fields listed explicitly, so a disagreement cannot be about the fixture. */
-    private fun explicitFields(bar: Long): String = DslRenderer().render(
+    private fun explicitFields(bar: Long): String = RuntimeLaws.render(
         m.field(REF).filled().and(Dsl.sum(m.field(FIRST), m.field(SECOND)).gt(bar)),
     )
 
@@ -87,7 +87,7 @@ class UnstarredGroupSumOperandDiffTest {
 
         val staticDoc = Both(RuntimeLaws.doc(), def.newDocument()).also(build).kDoc
         val javaStatic = RuntimeLaws.kernelJavaEngine(kModel)
-            .messagesModern(staticDoc, null, java.util.Locale.US).any { it.code() == CODE }
+            .messagesModern(staticDoc, null, Locale.US).any { it.code() == CODE }
 
         val interpreter = DmInterpreter(def).validateFull(dynamic.iDoc).any { it.code == CODE }
 
@@ -144,7 +144,7 @@ class UnstarredGroupSumOperandDiffTest {
 
         val staticDoc = Both(RuntimeLaws.doc(), def.newDocument()).also(::threeAndFour).kDoc
         val javaStatic = RuntimeLaws.kernelJavaEngine(kModel)
-            .messagesModern(staticDoc, null, java.util.Locale.US).filter { it.code() == CODE }
+            .messagesModern(staticDoc, null, Locale.US).filter { it.code() == CODE }
             .map { "${it.field()}|${it.type().name}" }.sorted()
 
         val interpreter = DmInterpreter(def).validateFull(dynamic.iDoc).filter { it.code == CODE }

@@ -17,9 +17,7 @@ import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft;
 import io.github.mbackschat.a12.dm.modelkit.FieldKind;
 import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Condition;
-import io.github.mbackschat.a12.dm.rulekit.dsl.ConditionLanguage;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Dsl;
-import io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer;
 import io.github.mbackschat.a12.dm.rulekit.dsl.FieldRef;
 import io.github.mbackschat.a12.dm.rulekit.dsl.NumberExpr;
 
@@ -65,7 +63,7 @@ class ValueInFieldsConstantKindLawsTest {
     private static String verdict(NumberExpr call) {
         Condition guarded = Dsl.fieldFilled(ORDER.field("/Order/Reference")).and(call.gt(0));
         return KernelLaws.verdictModel(ORDER_JSON, GROUP, "../Reference",
-                new DslRenderer(ConditionLanguage.EN, GROUP).render(guarded));
+                KernelLaws.render(GROUP, guarded));
     }
 
     /** A condition written out, for the operand shapes the typed builders deliberately cannot express. */
@@ -319,7 +317,7 @@ class ValueInFieldsConstantKindLawsTest {
                     .and(Dsl.numberOfValueInFields(constant, bound.field("/Order/Expedited"),
                             bound.field("/Order/GiftWrapped")).gt(0));
             return KernelLaws.verdictModel(json, GROUP, "../Reference",
-                    new DslRenderer(ConditionLanguage.EN, GROUP).render(guarded));
+                    KernelLaws.render(GROUP, guarded));
         } catch (IOException unreadable) {
             throw new UncheckedIOException("the draft's own output must parse", unreadable);
         }

@@ -14,7 +14,6 @@ import io.github.mbackschat.a12.dm.modelkit.FieldKind;
 import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Condition;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Dsl;
-import io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer;
 import io.github.mbackschat.a12.dm.rulekit.dsl.FieldListRef;
 import io.github.mbackschat.a12.dm.rulekit.validate.DraftComputation;
 import io.github.mbackschat.a12.dm.rulekit.validate.RuleValidator;
@@ -234,7 +233,7 @@ class HavingFilterConditionLeafLawsTest {
     @Test
     void theRenderedFilterActuallyCarriesTheMarker() {
         assertEquals("NumberOfFilledFields(/Order/Lines*/Sku Having GroupFilled($/Order/Billing)) > 0",
-                new DslRenderer().render(Dsl.numberOfFilledFields(M.flatten("/Order/Lines*/Sku")
+                KernelLaws.render(Dsl.numberOfFilledFields(M.flatten("/Order/Lines*/Sku")
                         .having(Dsl.groupFilled(M.group("/Order/Billing"), true))).gt(0)),
                 "a marked group operand renders its $ — without this the rows above would measure the "
                         + "unmarked spelling twice and agree vacuously");
@@ -315,7 +314,7 @@ class HavingFilterConditionLeafLawsTest {
     /** The carrier: a filtered FIELD list on the fill count, guarded by the error field's own presence. */
     private static String filteredCount(Condition filter) {
         FieldListRef skus = M.flatten("/Order/Lines*/Sku");
-        return new DslRenderer().render(Dsl.fieldFilled(M.field("/Order/Marker"))
+        return KernelLaws.render(Dsl.fieldFilled(M.field("/Order/Marker"))
                 .and(Dsl.numberOfFilledFields(skus.having(filter)).gt(0)));
     }
 
@@ -326,8 +325,8 @@ class HavingFilterConditionLeafLawsTest {
 
     private static String computationVerdict(Condition filter) {
         FieldListRef skus = M.flatten("/Order/Lines*/Sku");
-        String operation = new DslRenderer()
-                .render(Dsl.numberOfFilledFields(skus.having(filter)).expression());
+        String operation =
+                KernelLaws.render(Dsl.numberOfFilledFields(skus.having(filter)).expression());
         return codes(new RuleValidator().check(MODEL,
                 new DraftComputation(GROUP, "TotalComp", "../Total", null,
                         List.of(new DraftComputation.Alternative(null, operation)))));

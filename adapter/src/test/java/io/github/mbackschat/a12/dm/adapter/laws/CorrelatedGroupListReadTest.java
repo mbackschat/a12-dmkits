@@ -14,7 +14,6 @@ import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft;
 import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Condition;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Dsl;
-import io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer;
 import io.github.mbackschat.a12.dm.rulekit.dsl.GroupListRef;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Rule;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Severity;
@@ -46,7 +45,6 @@ import io.github.mbackschat.a12.dm.rulekit.read.ReadResult;
  */
 class CorrelatedGroupListReadTest {
 
-    private static final DslRenderer RENDERER = new DslRenderer();
     private static final String BILLING = "/Renewal/Billing";
     private static final String SHIPPING = "/Renewal/Shipping";
 
@@ -59,9 +57,9 @@ class CorrelatedGroupListReadTest {
         Condition read = readCondition(model, "MarkedQuantifier", authored);
 
         assertTrue(markersOf(read).stream().allMatch(Boolean::booleanValue),
-                "both $ markers must survive read-back, not be normalized away: " + RENDERER.render(read));
+                "both $ markers must survive read-back, not be normalized away: " + RuntimeLaws.render(read));
         assertEquals(2, markersOf(read).size(), "both operands must come back as typed group scopes");
-        assertEquals(RENDERER.render(authored), RENDERER.render(read));
+        assertEquals(RuntimeLaws.render(authored), RuntimeLaws.render(read));
     }
 
     /**
@@ -109,9 +107,9 @@ class CorrelatedGroupListReadTest {
         Condition read = readCondition(model, "PlainQuantifier", authored);
 
         assertTrue(markersOf(read).stream().noneMatch(Boolean::booleanValue),
-                "an unmarked source must stay unmarked: " + RENDERER.render(read));
+                "an unmarked source must stay unmarked: " + RuntimeLaws.render(read));
         assertEquals(2, markersOf(read).size());
-        assertEquals(RENDERER.render(authored), RENDERER.render(read));
+        assertEquals(RuntimeLaws.render(authored), RuntimeLaws.render(read));
     }
 
     // ---- fixtures --------------------------------------------------------------------------------
@@ -126,7 +124,7 @@ class CorrelatedGroupListReadTest {
      * shape-specific navigation would need one path per carrier while proving nothing extra.
      */
     private static List<Boolean> markersOf(Condition read) {
-        String rendered = RENDERER.render(read);
+        String rendered = RuntimeLaws.render(read);
         return List.of(BILLING, SHIPPING).stream()
                 .map(group -> rendered.contains("$" + group) || rendered.contains("$" + shortName(group)))
                 .toList();

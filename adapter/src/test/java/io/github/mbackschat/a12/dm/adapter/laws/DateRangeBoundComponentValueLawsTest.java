@@ -15,7 +15,6 @@ import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft;
 import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Computation;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Dsl;
-import io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer;
 
 /**
  * Behavioral law — what a SELECTED DateRange endpoint's component actually resolves to ([KF201]). The
@@ -44,7 +43,7 @@ class DateRangeBoundComponentValueLawsTest {
     /** `StartOfDateRange(MonthOnly) == StartOfDateRange(MonthDay)` — the positional-completion pair. */
     private static String startsAgree() {
         return RuntimeLaws.withRule(MODEL, COVER, "SameStart", "../Ref", "SAME_START",
-                new DslRenderer().render(Dsl.fieldFilled(M.field(COVER + "/Ref"))
+                RuntimeLaws.render(Dsl.fieldFilled(M.field(COVER + "/Ref"))
                         .and(Dsl.startOfDateRange(M.dateRange(COVER + "/MonthOnly"))
                                 .eq(Dsl.startOfDateRange(M.dateRange(COVER + "/MonthDay"))))));
     }

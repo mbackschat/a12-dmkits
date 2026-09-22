@@ -15,7 +15,6 @@ import io.github.mbackschat.a12.dm.rulekit.dsl.ComparisonCondition;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Condition;
 import io.github.mbackschat.a12.dm.rulekit.dsl.CountAggregate;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Dsl;
-import io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer;
 import io.github.mbackschat.a12.dm.rulekit.dsl.FieldListRef;
 import io.github.mbackschat.a12.dm.rulekit.dsl.GroupPresenceCondition;
 import io.github.mbackschat.a12.dm.rulekit.dsl.LogicCondition;
@@ -46,7 +45,6 @@ import io.github.mbackschat.a12.dm.rulekit.read.ReadResult;
  */
 class CorrelatedGroupPresenceReadTest {
 
-    private static final DslRenderer RENDERER = new DslRenderer();
 
     @Test
     void aMarkedGroupPresenceLeafInAFilterReadsBackWithItsMarker() {
@@ -57,8 +55,8 @@ class CorrelatedGroupPresenceReadTest {
 
         assertTrue(presence.outer(), "the $ marker must survive read-back, not be normalized away");
         assertTrue(presence.filled());
-        assertEquals(RENDERER.render(authored),
-                RENDERER.render(readCondition(model, "MarkedAdjuster", authored)));
+        assertEquals(RuntimeLaws.render(authored),
+                RuntimeLaws.render(readCondition(model, "MarkedAdjuster", authored)));
     }
 
     @Test
@@ -69,8 +67,8 @@ class CorrelatedGroupPresenceReadTest {
         GroupPresenceCondition presence = presenceLeafOf(model, "PlainAdjuster", authored);
 
         assertFalse(presence.outer(), "an unmarked source must not acquire a marker on the way back");
-        assertEquals(RENDERER.render(authored),
-                RENDERER.render(readCondition(model, "PlainAdjuster", authored)));
+        assertEquals(RuntimeLaws.render(authored),
+                RuntimeLaws.render(readCondition(model, "PlainAdjuster", authored)));
     }
 
     // ---- fixtures --------------------------------------------------------------------------------

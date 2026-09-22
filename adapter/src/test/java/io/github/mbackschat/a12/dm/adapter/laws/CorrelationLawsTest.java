@@ -11,9 +11,7 @@ import org.junit.jupiter.api.Test;
 import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft;
 import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Condition;
-import io.github.mbackschat.a12.dm.rulekit.dsl.ConditionLanguage;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Dsl;
-import io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer;
 
 /**
  * Behavioral law — the <b>{@code $} outer-iteration correlation</b> (KERNEL-SEMANTICS §9, D13). The
@@ -38,8 +36,7 @@ class CorrelationLawsTest {
 
     private static final String ORDER = RuntimeLaws.model("models/order.dm.json");
     private static final BoundModel M = BoundModel.ofJson(ORDER);
-    private static final DslRenderer RENDER = new DslRenderer(ConditionLanguage.EN);
-
+    
     private static final String SCHEDULE = schedule();
     private static final BoundModel SCHED = BoundModel.ofJson(SCHEDULE);
 
@@ -61,7 +58,7 @@ class CorrelationLawsTest {
                         Dsl.currentRepetition(M.group("/Order/Items"))
                                 .ne(Dsl.currentRepetition(M.group("/Order/Items"), true))
                                 .and(M.num("/Order/Items/Count").eq(M.num("/Order/Items/Count").outer())))));
-        return RENDER.render(c);
+        return RuntimeLaws.render(c);
     }
 
     /** Same, but WITHOUT the self-exclusion — every row matches itself. */
@@ -69,7 +66,7 @@ class CorrelationLawsTest {
         Condition c = M.field("/Order/Items/Count").filled().and(
                 Dsl.atLeastOneFieldFilled(M.flatten("/Order/Items*/Count").having(
                         M.num("/Order/Items/Count").eq(M.num("/Order/Items/Count").outer()))));
-        return RENDER.render(c);
+        return RuntimeLaws.render(c);
     }
 
     /** Items rows with the given Count values; Sku is the (unique) index field, auto A, B, C, … */
@@ -112,7 +109,7 @@ class CorrelationLawsTest {
                         Dsl.currentRepetition(SCHED.group("/Schedule/Slots"))
                                 .lt(Dsl.currentRepetition(SCHED.group("/Schedule/Slots"), true))))
                         .onOrAfter(SCHED.date("/Schedule/Slots/Start")));
-        return RENDER.render(c);
+        return RuntimeLaws.render(c);
     }
 
     /** Schedule with the given Slot Start dates (ISO), one row each. */

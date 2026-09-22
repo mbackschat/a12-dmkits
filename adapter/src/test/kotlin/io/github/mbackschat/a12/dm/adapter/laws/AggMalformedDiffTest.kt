@@ -10,7 +10,6 @@ import io.github.mbackschat.a12.dm.interpreter.model.RuleDef
 import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel
 import io.github.mbackschat.a12.dm.rulekit.dsl.Condition
 import io.github.mbackschat.a12.dm.rulekit.dsl.Dsl
-import io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 
@@ -35,7 +34,7 @@ class AggMalformedDiffTest {
     // canonical string fed to BOTH engines — no free-text condition literals. The MALFORMED operand values
     // (e.g. "abc") stay in the doc-building below; only the condition authoring changes.
     private val m = BoundModel.ofJson(fuzz)
-    private fun render(c: Condition): String = DslRenderer().render(c)
+    private fun render(c: Condition): String = RuntimeLaws.render(c)
     private val prices = m.flatten("/Cart/Lines*/Price")
 
     /** Both engines' code lists for one starred-aggregate document, plus the kernel's own `code@row` pointers. */

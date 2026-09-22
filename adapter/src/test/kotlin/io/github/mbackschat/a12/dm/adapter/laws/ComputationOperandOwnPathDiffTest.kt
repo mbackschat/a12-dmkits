@@ -7,8 +7,6 @@ import io.github.mbackschat.a12.dm.interpreter.load.ModelLoader
 import io.github.mbackschat.a12.dm.interpreter.model.ComputeOutcome
 import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft
 import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel
-import io.github.mbackschat.a12.dm.rulekit.dsl.ConditionLanguage
-import io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 
@@ -43,7 +41,7 @@ class ComputationOperandOwnPathDiffTest {
                 }
             }.build().toJson()
         val m = BoundModel.ofJson(base)
-        val operation = DslRenderer(ConditionLanguage.EN, CLAIMS).render(
+        val operation = RuntimeLaws.render(CLAIMS, 
             m.num("$CLAIMS/Amount").asNumber().minus(m.num("/Policy/PolicyExcess").asNumber()).expression(),
         )
         RuntimeLaws.withComputation(base, CLAIMS, "NetComp", "../Net", operation)
@@ -66,7 +64,7 @@ class ComputationOperandOwnPathDiffTest {
                 }
             }.build().toJson()
         val m = BoundModel.ofJson(base)
-        val operation = DslRenderer(ConditionLanguage.EN, ITEMS).render(
+        val operation = RuntimeLaws.render(ITEMS, 
             m.num("$ITEMS/ItemAmount").asNumber().plus(m.num("$CLAIMS/Amount").asNumber()).expression(),
         )
         RuntimeLaws.withComputation(base, ITEMS, "ItemNetComp", "../ItemNet", operation)

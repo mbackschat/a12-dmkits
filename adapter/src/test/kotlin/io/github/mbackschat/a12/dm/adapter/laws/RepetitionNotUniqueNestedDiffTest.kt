@@ -10,7 +10,6 @@ import io.github.mbackschat.a12.dm.interpreter.model.RuleDef
 import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel
 import io.github.mbackschat.a12.dm.rulekit.dsl.Condition
 import io.github.mbackschat.a12.dm.rulekit.dsl.Dsl
-import io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 
@@ -29,7 +28,7 @@ class RepetitionNotUniqueNestedDiffTest {
     // engines — no free-text condition literals. Refs use ABSOLUTE paths; the renderer emits absolute and both
     // engines accept it (IF24). `repetitionNotUnique(field).from(group)` is the `@From` reference-scope form.
     private val m = BoundModel.ofJson(project)
-    private fun render(c: Condition): String = DslRenderer().render(c)
+    private fun render(c: Condition): String = RuntimeLaws.render(c)
 
     private val fields = listOf(FieldDef(PHASE, Kind.STRING), FieldDef(TASK_ID, Kind.STRING), FieldDef(EFFORT, Kind.NUMBER))
     private val cond = render(Dsl.repetitionNotUnique(m.field(EFFORT)))

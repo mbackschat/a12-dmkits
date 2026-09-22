@@ -9,7 +9,6 @@ import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft
 import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel
 import io.github.mbackschat.a12.dm.rulekit.dsl.Condition
 import io.github.mbackschat.a12.dm.rulekit.dsl.Dsl
-import io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 
@@ -46,7 +45,7 @@ class FirstFilledValueFilterEncounterDiffTest {
     private val secondary = model.flatten("/Claim/Rows*/Secondary")
     private val eligible = model.str(ELIGIBLE).filled()
 
-    private fun render(condition: Condition): String = DslRenderer().render(condition)
+    private fun render(condition: Condition): String = RuntimeLaws.render(condition)
 
     private val kernelModel = RuntimeLaws.withRule(
         RuntimeLaws.withRule(

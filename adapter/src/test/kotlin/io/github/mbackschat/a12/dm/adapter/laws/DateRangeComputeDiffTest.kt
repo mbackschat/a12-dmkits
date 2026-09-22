@@ -8,9 +8,7 @@ import io.github.mbackschat.a12.dm.interpreter.model.Kind
 import io.github.mbackschat.a12.dm.interpreter.model.ModelDef
 import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel
 import io.github.mbackschat.a12.dm.rulekit.dsl.Calculation
-import io.github.mbackschat.a12.dm.rulekit.dsl.ConditionLanguage
 import io.github.mbackschat.a12.dm.rulekit.dsl.Dsl
-import io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 
@@ -26,7 +24,7 @@ class DateRangeComputeDiffTest {
     // Operation authored with the rulekit typed DSL ([m]) — DateRange(start, end) — rendered (relative to
     // the computation group /Order) to the canonical string fed to BOTH engines; no free-text literal.
     private val m = BoundModel.ofJson(order)
-    private fun renderOp(c: Calculation): String = DslRenderer(ConditionLanguage.EN, "/Order").render(c)
+    private fun renderOp(c: Calculation): String = RuntimeLaws.render("/Order", c)
     private val fields = listOf(
         FieldDef(OD, Kind.DATE), FieldDef(DD, Kind.DATE),
         FieldDef(CW, Kind.DATE_RANGE, format = "dd.MM.yyyy", rangeSeparator = "-"),

@@ -15,8 +15,6 @@ import io.github.mbackschat.a12.dm.interpreter.model.ModelDef
 import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft
 import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel
 import io.github.mbackschat.a12.dm.rulekit.dsl.Calculation
-import io.github.mbackschat.a12.dm.rulekit.dsl.ConditionLanguage
-import io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 
@@ -60,7 +58,7 @@ class EmptyConcatStoreDiffTest {
         return render(m.str(HOLDER).asString().plus("-GOLD").expression())
     }
 
-    private fun render(c: Calculation): String = DslRenderer(ConditionLanguage.EN, "/Policy").render(c)
+    private fun render(c: Calculation): String = RuntimeLaws.render("/Policy", c)
 
     private fun kernelModel(json: String, op: String): String =
         RuntimeLaws.withComputation(json, "/Policy", "LabelComp", "../Label", op)

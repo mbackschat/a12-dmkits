@@ -8,6 +8,7 @@ import java.util.List;
 
 import io.github.mbackschat.a12.dm.core.ModelConsistencyException;
 import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft;
+import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel;
 import org.junit.jupiter.api.Test;
 
 /**
@@ -57,7 +58,7 @@ class IncompleteDateFormatAdmissionLawsTest {
      */
     private static String formatVerdict(String format) {
         try {
-            io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel.ofJson(visitModel(format));
+            BoundModel.ofJson(visitModel(format));
             return "admitted";
         } catch (ModelConsistencyException e) {
             return "refused";
@@ -193,7 +194,7 @@ class IncompleteDateFormatAdmissionLawsTest {
         // the table above, and an authoring tool would surface the failure at the wrong step.
         String json = visitModel("MM.yyyy");
         var thrown = assertThrows(ModelConsistencyException.class,
-                () -> io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel.ofJson(json));
+                () -> BoundModel.ofJson(json));
         assertEquals(true, thrown.getMessage().contains("The date format is invalid"), thrown.getMessage());
     }
 }

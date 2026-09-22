@@ -11,7 +11,6 @@ import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft;
 import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Condition;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Dsl;
-import io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer;
 
 /**
  * KERNEL-FINDINGS §13 — the gates the {@code $#…$} GROUP position applies AFTER containment.
@@ -49,7 +48,7 @@ class MessageGroupParameterIterationLawsTest {
     private static final BoundModel M = BoundModel.ofJson(ORDER);
 
     private static String render(Condition condition) {
-        return new DslRenderer().render(condition);
+        return KernelLaws.render(condition);
     }
 
     /** In a row of `Lines`, reading its own field per row. */

@@ -13,7 +13,6 @@ import io.github.mbackschat.a12.dm.modelkit.FieldKind;
 import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Condition;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Dsl;
-import io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer;
 import io.github.mbackschat.a12.dm.rulekit.validate.DraftRule;
 import io.github.mbackschat.a12.dm.rulekit.validate.RuleValidator;
 import io.github.mbackschat.a12.dm.rulekit.validate.ValidationResult;
@@ -259,7 +258,7 @@ class RuleLocusGateOrderLawsTest {
 
     private static String verdict(String group, String errorField, Condition condition) {
         ValidationResult r = new RuleValidator().check(MODEL, new DraftRule(group, "LocusProbe", errorField,
-                new DslRenderer().render(condition), "LOCUS", "ERROR"));
+                KernelLaws.render(condition), "LOCUS", "ERROR"));
         return r.ok() ? ADMITTED
                 : r.diagnostics().stream().map(d -> d.code().orElse("(no code)")).collect(Collectors.joining(","));
     }

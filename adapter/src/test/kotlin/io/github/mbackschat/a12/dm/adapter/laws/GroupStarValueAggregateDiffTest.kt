@@ -11,7 +11,6 @@ import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft
 import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel
 import io.github.mbackschat.a12.dm.rulekit.dsl.Calculation
 import io.github.mbackschat.a12.dm.rulekit.dsl.Dsl
-import io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer
 import io.github.mbackschat.a12.dm.rulekit.dsl.NumberExpr
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
@@ -63,7 +62,7 @@ class GroupStarValueAggregateDiffTest {
      *  written once and validated at the call site instead of living in an operation string. */
     private fun starOf(groupPath: String) = m.flattenGroup("$groupPath*")
 
-    private fun render(calculation: Calculation): String = DslRenderer().render(calculation)
+    private fun render(calculation: Calculation): String = RuntimeLaws.render(calculation)
 
     private fun computeModel(operation: String): String =
         RuntimeLaws.withComputation(base, "/Invoice", "AggComp", "../Total", operation)

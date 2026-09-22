@@ -13,9 +13,7 @@ import io.github.mbackschat.a12.dm.interpreter.model.RelevantEntity
 import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft
 import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel
 import io.github.mbackschat.a12.dm.rulekit.dsl.Condition
-import io.github.mbackschat.a12.dm.rulekit.dsl.ConditionLanguage
 import io.github.mbackschat.a12.dm.rulekit.dsl.Dsl
-import io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 
@@ -42,7 +40,7 @@ class CustomConditionInvocationDiffTest {
     private val checks = model.group(CHECKS)
 
     private fun render(scope: String, condition: Condition): String =
-        DslRenderer(ConditionLanguage.EN, scope).render(condition)
+        RuntimeLaws.render(scope, condition)
 
     private fun withRule(group: String, name: String, errorRel: String, code: String, condition: Condition): String =
         RuntimeLaws.withRule(base, group, name, errorRel, code, render(group, condition))

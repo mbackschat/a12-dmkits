@@ -8,7 +8,6 @@ import io.github.mbackschat.a12.dm.interpreter.model.ModelDef
 import io.github.mbackschat.a12.dm.interpreter.model.RuleDef
 import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel
 import io.github.mbackschat.a12.dm.rulekit.dsl.Condition
-import io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer
 import java.util.Locale
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
@@ -32,7 +31,7 @@ class DisplayNameDiffTest {
     // which checks the $field$ display-name rendering on the fired message text. The renderer emits absolute
     // paths; both engines accept them.
     private val m = BoundModel.ofJson(order)
-    private fun render(c: Condition): String = DslRenderer().render(c)
+    private fun render(c: Condition): String = RuntimeLaws.render(c)
 
     private fun interpRender(cond: String, msg: String, doc: Document, locale: String): String =
         DmInterpreter(ModelDef(fields, listOf(RuleDef("/Order/R", "/Order", cond, "POL", "../Quantity",

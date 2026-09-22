@@ -10,7 +10,6 @@ import org.junit.jupiter.api.Test;
 import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Condition;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Dsl;
-import io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer;
 
 /**
  * Behavioral law — <b>parallel iteration</b> (KERNEL-SEMANTICS §9). When a rule references two
@@ -35,7 +34,7 @@ class ParallelIterationLawsTest {
     private static final BoundModel m = BoundModel.ofJson(STAFFING);
 
     private static String render(Condition c) {
-        return new DslRenderer().render(c);
+        return RuntimeLaws.render(c);
     }
 
     private static final String RULE = RuntimeLaws.withRule(STAFFING, "/Staffing", "Mismatch",

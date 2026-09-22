@@ -6,6 +6,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 import org.junit.jupiter.api.Test;
 
@@ -89,8 +90,8 @@ class TemporalEqualSetPairDenominatorLawsTest {
     private static final List<Pair> PAIRS = FAMILIES.stream()
             .flatMap(family -> {
                 List<Spelling> s = family.spellings();
-                return java.util.stream.IntStream.range(0, s.size()).boxed()
-                        .flatMap(i -> java.util.stream.IntStream.range(i + 1, s.size())
+                return IntStream.range(0, s.size()).boxed()
+                        .flatMap(i -> IntStream.range(i + 1, s.size())
                                 .mapToObj(j -> new Pair(family, s.get(i), s.get(j))));
             })
             .toList();

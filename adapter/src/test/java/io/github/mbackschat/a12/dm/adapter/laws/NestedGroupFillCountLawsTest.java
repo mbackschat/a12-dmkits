@@ -18,7 +18,6 @@ import io.github.mbackschat.a12.dm.modelkit.FieldKind;
 import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Computation;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Dsl;
-import io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer;
 
 /**
  * Behavioral law — <b>what the plain multi-group {@code NumberOfFilledGroups} COUNTS when a group's only
@@ -89,7 +88,7 @@ class NestedGroupFillCountLawsTest {
      * in both documents below, so the conjunct is true throughout and only the count moves.
      */
     private static String ruleModel(int expected) {
-        String condition = new DslRenderer().render(
+        String condition = RuntimeLaws.render(
                 Dsl.fieldFilled(M.field("/Catalogue/Reference")).and(
                         Dsl.numberOfFilledGroups(M.group("/Catalogue/Contact"), M.group("/Catalogue/Warranty"))
                                 .eq(expected)));
@@ -720,7 +719,7 @@ class NestedGroupFillCountLawsTest {
 
         // The exact spelling both numbers rest on, pinned so the operand list cannot silently dedupe.
         assertEquals("NumberOfFilledGroups(/Catalogue/Coverage/Riders*, /Catalogue/Coverage/Riders*) == 0",
-                new DslRenderer().render(Dsl.numberOfFilledGroups(
+                RuntimeLaws.render(Dsl.numberOfFilledGroups(
                         M.flattenGroup("/Catalogue/Coverage/Riders*").group(),
                         M.flattenGroup("/Catalogue/Coverage/Riders*").group()).eq(0)),
                 "the duplicate operand survives rendering as two positions");

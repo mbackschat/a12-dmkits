@@ -11,7 +11,6 @@ import io.github.mbackschat.a12.dm.interpreter.model.RuleDef
 import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel
 import io.github.mbackschat.a12.dm.rulekit.dsl.Condition
 import io.github.mbackschat.a12.dm.rulekit.dsl.Dsl
-import io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 
@@ -41,7 +40,7 @@ class FirstFilledValueOmittedTailDiffTest {
         FieldDef(DEF_WEIGHT, Kind.NUMBER, scale = 0),
     )
     private val m = BoundModel.ofJson(shipment)
-    private fun render(c: Condition): String = DslRenderer().render(c)
+    private fun render(c: Condition): String = RuntimeLaws.render(c)
 
     /** Author the `/Shipment`-level rule, build the kernel + interpreter documents in lockstep via [build], and
      *  assert both engines agree on firing AND polarity (null = no fire). */

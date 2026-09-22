@@ -5,7 +5,6 @@ import io.github.mbackschat.a12.dm.modelkit.FieldKind
 import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel
 import io.github.mbackschat.a12.dm.rulekit.dsl.Condition
 import io.github.mbackschat.a12.dm.rulekit.dsl.Dsl
-import io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer
 import java.util.Locale
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
@@ -100,7 +99,7 @@ class MessagePointerVectorDiffTest {
          */
         val model: String = run {
             val base = BoundModel.ofJson(baseModel)
-            fun render(c: Condition) = DslRenderer().render(c)
+            fun render(c: Condition) = RuntimeLaws.render(c)
             val fromRoot = render(
                 Dsl.fieldFilled(base.field(REF))
                     .and(Dsl.noFieldFilled(base.flatten("$LINES*/Sku"))),

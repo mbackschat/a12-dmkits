@@ -1,6 +1,8 @@
 package io.github.mbackschat.a12.dm.rulekit.validate.laws;
 
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 
 import org.junit.jupiter.api.Test;
 
@@ -168,7 +170,7 @@ class PartialDateAggregateLawsTest {
      */
     @Test
     void theStarredAndIndexSelectedCarriersRefuseAPartlyKnownDateToo() {
-        java.util.Map<String, String> actual = new java.util.LinkedHashMap<>();
+        Map<String, String> actual = new LinkedHashMap<>();
         actual.put("starred list, partial", verdict(
                 "MaxValue(/Claim/Incidents*/OccurredOn, /Claim/Incidents*/ApproxOccurred) == [ReopenedOn]"));
         actual.put("starred list, full-precision control", verdict(
@@ -180,7 +182,7 @@ class PartialDateAggregateLawsTest {
                 "MaxValue(/Claim/Incidents/OccurredOn For \"K1\", /Claim/Incidents/ResolvedOn For \"K1\") "
                         + "== [ReopenedOn]"));
 
-        java.util.Map<String, String> expected = new java.util.LinkedHashMap<>();
+        Map<String, String> expected = new LinkedHashMap<>();
         expected.put("starred list, partial", PARTIAL);
         expected.put("starred list, full-precision control", "admitted");
         expected.put("index-selected, partial", PARTIAL);

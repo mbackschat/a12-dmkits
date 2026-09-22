@@ -6,7 +6,6 @@ import io.github.mbackschat.a12.dm.interpreter.load.ModelLoader
 import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft
 import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel
 import io.github.mbackschat.a12.dm.rulekit.dsl.Dsl
-import io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
@@ -50,13 +49,13 @@ class KeyedRangeReadStateDiffTest {
     /** `FieldNotFilled([RunWindow For "spring"])` at the FORM locus — fires exactly on the empty pair. */
     private val absenceModel = RuntimeLaws.withRule(
         base, SHOP, "KeyedAbsence", "../Reference", CODE,
-        DslRenderer().render(Dsl.fieldFilled(m.field("$SHOP/Reference")).and(keyed.semanticIndex().notFilled())),
+        RuntimeLaws.render(Dsl.fieldFilled(m.field("$SHOP/Reference")).and(keyed.semanticIndex().notFilled())),
     )
 
     /** …and its positive twin, which must fire on neither pair, so "UNKNOWN" is not just "the rule is silent". */
     private val presenceModel = RuntimeLaws.withRule(
         base, SHOP, "KeyedPresence", "../Reference", CODE,
-        DslRenderer().render(Dsl.fieldFilled(m.field("$SHOP/Reference")).and(keyed.semanticIndex().filled())),
+        RuntimeLaws.render(Dsl.fieldFilled(m.field("$SHOP/Reference")).and(keyed.semanticIndex().filled())),
     )
 
     @Test
@@ -122,7 +121,7 @@ class KeyedRangeReadStateDiffTest {
     /** The escaping shape: error field inside the indexed group, keyed negative presence, NO positive guard. */
     private val escapeModel = RuntimeLaws.withRule(
         base, RUNS, "KeyedEscape", "../RunWindow", CODE,
-        DslRenderer().render(m.dateRange("$RUNS/RunWindow").forIndex("spring").semanticIndex().notFilled()),
+        RuntimeLaws.render(m.dateRange("$RUNS/RunWindow").forIndex("spring").semanticIndex().notFilled()),
     )
 
     /**
@@ -136,7 +135,7 @@ class KeyedRangeReadStateDiffTest {
      */
     private val guardedModel = RuntimeLaws.withRule(
         base, RUNS, "KeyedGuarded", "../RunNote", CODE,
-        DslRenderer().render(
+        RuntimeLaws.render(
             Dsl.fieldFilled(m.field("$RUNS/RunNote"))
                 .and(m.dateRange("$RUNS/RunWindow").forIndex("spring").semanticIndex().notFilled()),
         ),
@@ -144,7 +143,7 @@ class KeyedRangeReadStateDiffTest {
 
     private val directModel = RuntimeLaws.withRule(
         base, RUNS, "DirectGuarded", "../RunWindow", CODE,
-        DslRenderer().render(
+        RuntimeLaws.render(
             Dsl.fieldFilled(m.field("$RUNS/RunNote")).and(m.dateRange("$RUNS/RunWindow").notFilled()),
         ),
     )

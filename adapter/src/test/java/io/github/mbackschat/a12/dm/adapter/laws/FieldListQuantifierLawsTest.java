@@ -10,7 +10,6 @@ import org.junit.jupiter.api.Test;
 import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Condition;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Dsl;
-import io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer;
 
 /**
  * Behavioral law — <b>the field-list "not …" quantifiers are not complements</b> (KERNEL-SEMANTICS §1,
@@ -39,7 +38,7 @@ class FieldListQuantifierLawsTest {
     private static final BoundModel m = BoundModel.ofJson(ORDER);
 
     private static String render(Condition c) {
-        return new DslRenderer().render(c);
+        return RuntimeLaws.render(c);
     }
 
     private static final String NAF = RuntimeLaws.withRule(ORDER, "/Order", "R", "../ProductCode",

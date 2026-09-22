@@ -8,7 +8,7 @@ import io.github.mbackschat.a12.dm.interpreter.model.MsgType
 import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft
 import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel
 import io.github.mbackschat.a12.dm.rulekit.dsl.Dsl
-import io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer
+import java.util.Locale
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertNotEquals
 import org.junit.jupiter.api.Assertions.assertTrue
@@ -75,7 +75,7 @@ class GroupOperandValueListQuantifierDiffTest {
     private val m = BoundModel.ofJson(base)
 
     /** The three quantifiers, each over the single-field control operand — authored through the typed surface. */
-    private fun control(quantifier: Quantifier): String = DslRenderer().render(
+    private fun control(quantifier: Quantifier): String = RuntimeLaws.render(
         m.field(REF).filled().and(
             when (quantifier) {
                 Quantifier.AT_LEAST_ONE ->
@@ -153,7 +153,7 @@ class GroupOperandValueListQuantifierDiffTest {
 
         val staticDoc = Both(RuntimeLaws.doc(), def.newDocument()).also(build).kDoc
         val javaStatic = signature(
-            RuntimeLaws.kernelJavaEngine(kModel).messagesModern(staticDoc, null, java.util.Locale.US))
+            RuntimeLaws.kernelJavaEngine(kModel).messagesModern(staticDoc, null, Locale.US))
 
         val interpreter = DmInterpreter(def).validateFull(dynamic.iDoc).filter { it.code == CODE }
             .map { "${it.errorPath}|${if (it.type == MsgType.OMISSION) "OMISSION_ERROR" else "VALUE_ERROR"}" }
@@ -240,7 +240,7 @@ class GroupOperandValueListQuantifierDiffTest {
      */
     @Test
     fun theGroupOperandWorksOnTheVALUESSideToo() {
-        val control = DslRenderer().render(
+        val control = RuntimeLaws.render(
             m.field(REF).filled().and(
                 Dsl.atLeastOneFieldValueIncludedInValueList(
                     listOf(m.flatten(REGION_STAR)), m.field(SCREENED),
@@ -259,7 +259,7 @@ class GroupOperandValueListQuantifierDiffTest {
     /** The negative on the values side, so the pair above is a statement about the value set. */
     @Test
     fun theValuesSideGroupDoesNotMatchAnAbsentValue() {
-        val control = DslRenderer().render(
+        val control = RuntimeLaws.render(
             m.field(REF).filled().and(
                 Dsl.atLeastOneFieldValueIncludedInValueList(
                     listOf(m.flatten(REGION_STAR)), m.field(SCREENED),
@@ -298,7 +298,7 @@ class GroupOperandValueListQuantifierDiffTest {
                 g.group("Contact") { c -> c.stringField("Email") { }.stringField("Region") { } }
             }.build().toJson()
         val flat = BoundModel.ofJson(nonRepeatable)
-        val emailOnly = DslRenderer().render(
+        val emailOnly = RuntimeLaws.render(
             flat.field(REF).filled().and(
                 Dsl.atLeastOneFieldValueIncludedInValueList(WATCHED, flat.str("/Policy/Contact/Email")),
             ),
@@ -321,7 +321,7 @@ class GroupOperandValueListQuantifierDiffTest {
 
         val staticDoc = Both(RuntimeLaws.doc(), def.newDocument()).also(::build).kDoc
         val javaStatic = signature(
-            RuntimeLaws.kernelJavaEngine(kModel).messagesModern(staticDoc, null, java.util.Locale.US))
+            RuntimeLaws.kernelJavaEngine(kModel).messagesModern(staticDoc, null, Locale.US))
 
         val interpreter = DmInterpreter(def).validateFull(dynamic.iDoc).filter { it.code == CODE }
             .map { "${it.errorPath}|${if (it.type == MsgType.OMISSION) "OMISSION_ERROR" else "VALUE_ERROR"}" }

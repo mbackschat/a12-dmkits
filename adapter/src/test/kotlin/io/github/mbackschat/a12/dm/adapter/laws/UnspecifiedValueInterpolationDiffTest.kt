@@ -4,7 +4,6 @@ import io.github.mbackschat.a12.dm.interpreter.model.Kind
 import io.github.mbackschat.a12.dm.interpreter.eval.SingleRowDoc
 import io.github.mbackschat.a12.dm.interpreter.eval.renderMessage
 import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel
-import io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer
 import java.util.Locale
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
@@ -21,7 +20,7 @@ class UnspecifiedValueInterpolationDiffTest {
 
     private val order = RuntimeLaws.model("models/order.dm.json")
     private val m = BoundModel.ofJson(order)
-    private fun render(c: io.github.mbackschat.a12.dm.rulekit.dsl.Condition) = DslRenderer().render(c)
+    private fun render(c: io.github.mbackschat.a12.dm.rulekit.dsl.Condition) = RuntimeLaws.render(c)
 
     private fun kernelText(errorRel: String, cond: String, template: String, doc: RuntimeLaws.Doc): String? {
         val model = RuntimeLaws.withRuleMessages(order, "/Order", "R", errorRel, "R_CODE", cond, template, template)

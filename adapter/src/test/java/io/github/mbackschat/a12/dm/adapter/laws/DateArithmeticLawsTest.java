@@ -11,7 +11,6 @@ import org.junit.jupiter.api.Test;
 import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Condition;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Dsl;
-import io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer;
 
 /**
  * Behavioral law — <b>calendar-aware date shifting around the leap day</b> (RT-SEMANTICS-LEDGER:
@@ -36,7 +35,7 @@ class DateArithmeticLawsTest {
     private final BoundModel m = BoundModel.ofJson(ORDER);
 
     private static String render(Condition c) {
-        return new DslRenderer().render(c);
+        return RuntimeLaws.render(c);
     }
 
     @Test

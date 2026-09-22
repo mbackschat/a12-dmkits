@@ -8,7 +8,6 @@ import io.github.mbackschat.a12.dm.interpreter.model.MsgType
 import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft
 import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel
 import io.github.mbackschat.a12.dm.rulekit.dsl.Dsl
-import io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 
@@ -56,7 +55,7 @@ class CrossSubtreeGroupStarDiffTest {
     private val m = BoundModel.ofJson(base)
 
     /** The found instance, typed-DSL-authored: per-Claims `0 < |Notes| < |Regions|` (both operands absolute). */
-    private val countCond = DslRenderer().render(
+    private val countCond = RuntimeLaws.render(
         Dsl.numberOfFilledGroups(m.group(NOTES)).gt(0)
             .and(Dsl.numberOfFilledGroups(m.group(NOTES)).lt(Dsl.numberOfFilledGroups(m.group(REGIONS)))))
 

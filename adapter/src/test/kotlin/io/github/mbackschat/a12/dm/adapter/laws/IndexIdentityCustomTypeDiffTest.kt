@@ -13,7 +13,6 @@ import io.github.mbackschat.a12.dm.interpreter.model.MsgType
 import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft
 import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel
 import io.github.mbackschat.a12.dm.rulekit.dsl.Dsl
-import io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer
 import io.github.mbackschat.a12.dm.rulekit.dsl.FieldOperand
 import java.util.Locale
 import java.util.Optional
@@ -39,18 +38,17 @@ class IndexIdentityCustomTypeDiffTest {
         .toJson()
 
     private val bound = BoundModel.ofJson(base)
-    private val renderer = DslRenderer()
-    private val fillCondition = renderer.render(
+    private val fillCondition = RuntimeLaws.render(
         bound.str(CUSTOMER).filled().and(Dsl.atLeastOneFieldFilled(bound.flatten("/Order/Lines*/Code"))),
     )
-    private val readCondition = renderer.render(
+    private val readCondition = RuntimeLaws.render(
         bound.num("/Order/Lines/Qty").semanticIndex(bound.field(CUSTOMER)).filled(),
     )
-    private val aggregateCondition = renderer.render(
+    private val aggregateCondition = RuntimeLaws.render(
         bound.str(CUSTOMER).filled()
             .and(Dsl.numberOfFilledFields(bound.flatten("/Order/Lines*/Code")).ge(0)),
     )
-    private val valueListCondition = renderer.render(
+    private val valueListCondition = RuntimeLaws.render(
         bound.str(CUSTOMER).filled().and(
             Dsl.atLeastOneFieldValueIncludedInValueList(
                 listOf<FieldOperand>(bound.flatten("/Order/Lines*/Code")),

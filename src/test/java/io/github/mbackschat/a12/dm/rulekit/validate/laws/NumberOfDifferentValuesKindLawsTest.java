@@ -9,7 +9,6 @@ import io.github.mbackschat.a12.dm.modelkit.FieldKind;
 import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Condition;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Dsl;
-import io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer;
 
 /**
  * KERNEL-FINDINGS §9 — the KIND gate on {@code NumberOfDifferentValues}, over the two kinds that are neither
@@ -56,7 +55,7 @@ class NumberOfDifferentValuesKindLawsTest {
 
     /** Guard the aggregate so the probe rule references its own error field (MVK_ERROR_FIELD_NOT_REFERENCED). */
     private static String guarded(Condition aggregate) {
-        return new DslRenderer().render(Dsl.fieldFilled(PARTS.field(GROUP + "/PartNumber")).and(aggregate));
+        return KernelLaws.render(Dsl.fieldFilled(PARTS.field(GROUP + "/PartNumber")).and(aggregate));
     }
 
     private static void admits(Condition aggregate) {

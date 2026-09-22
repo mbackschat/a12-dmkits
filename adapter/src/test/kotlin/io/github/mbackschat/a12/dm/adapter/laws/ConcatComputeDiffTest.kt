@@ -9,8 +9,6 @@ import io.github.mbackschat.a12.dm.interpreter.model.ModelDef
 import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft
 import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel
 import io.github.mbackschat.a12.dm.rulekit.dsl.Calculation
-import io.github.mbackschat.a12.dm.rulekit.dsl.ConditionLanguage
-import io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 
@@ -24,7 +22,7 @@ class ConcatComputeDiffTest {
 
     private val person = person()
     private val m = BoundModel.ofJson(person)
-    private fun renderOp(c: Calculation): String = DslRenderer(ConditionLanguage.EN, "/Person").render(c)
+    private fun renderOp(c: Calculation): String = RuntimeLaws.render("/Person", c)
     private val operation = renderOp(m.str(FIRST).asString().plus(" ").plus(m.str(LAST).asString()).expression())
     private val fields = listOf(FieldDef(FIRST, Kind.STRING), FieldDef(LAST, Kind.STRING), FieldDef(FULL, Kind.STRING))
     private val def = ModelDef(fields, emptyList(), computations = listOf(ComputationDef(FULL, "/Person", operation)))

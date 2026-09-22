@@ -3,6 +3,10 @@ package io.github.mbackschat.a12.dm.adapter.laws;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
+import java.net.URL;
+import java.net.URLClassLoader;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -458,13 +462,13 @@ class A12PointerKernelDomainDiffTest {
 
         private static final String POINTER_PACKAGE = "com.mgmtp.a12.kernel.md.document.apiV2.";
 
-        private final java.net.URLClassLoader loader;
-        private final java.lang.reflect.Method of;
-        private final java.lang.reflect.Method toDocumentPointer;
-        private final java.lang.reflect.Method repetitionIndexes;
+        private final URLClassLoader loader;
+        private final Method of;
+        private final Method toDocumentPointer;
+        private final Method repetitionIndexes;
 
         AssertionFreeKernel() throws Exception {
-            loader = new java.net.URLClassLoader(classpath(), ClassLoader.getPlatformClassLoader()) {
+            loader = new URLClassLoader(classpath(), ClassLoader.getPlatformClassLoader()) {
                 @Override protected Class<?> loadClass(String name, boolean resolve) throws ClassNotFoundException {
                     return name.startsWith(POINTER_PACKAGE) ? findLoadedOrDefine(name, resolve)
                             : super.loadClass(name, resolve);
@@ -497,13 +501,13 @@ class A12PointerKernelDomainDiffTest {
                 Object converted = ((java.util.Optional<?>) toDocumentPointer
                         .invoke(of.invoke(null, fullName, repetitions))).orElse(null);
                 return converted == null ? null : repetitionIndexes.invoke(converted).toString();
-            } catch (java.lang.reflect.InvocationTargetException wrapped) {
+            } catch (InvocationTargetException wrapped) {
                 throw rethrow(wrapped);
             }
         }
 
         /** Reflection wraps the real outcome; unwrap it so {@link #outcome} classifies the kernel's throw. */
-        private static RuntimeException rethrow(java.lang.reflect.InvocationTargetException wrapped) throws Exception {
+        private static RuntimeException rethrow(InvocationTargetException wrapped) throws Exception {
             Throwable cause = wrapped.getCause();
             if (cause instanceof Error error) {
                 throw error;
@@ -511,12 +515,12 @@ class A12PointerKernelDomainDiffTest {
             throw (Exception) cause;
         }
 
-        private static java.net.URL[] classpath() throws Exception {
-            List<java.net.URL> urls = new ArrayList<>();
+        private static URL[] classpath() throws Exception {
+            List<URL> urls = new ArrayList<>();
             for (String entry : System.getProperty("java.class.path").split(java.io.File.pathSeparator)) {
                 urls.add(java.nio.file.Path.of(entry).toUri().toURL());
             }
-            return urls.toArray(new java.net.URL[0]);
+            return urls.toArray(new URL[0]);
         }
 
         @Override public void close() throws java.io.IOException {

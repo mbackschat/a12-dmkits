@@ -8,7 +8,6 @@ import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft
 import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel
 import io.github.mbackschat.a12.dm.rulekit.dsl.Condition
 import io.github.mbackschat.a12.dm.rulekit.dsl.Dsl
-import io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer
 import io.github.mbackschat.a12.dm.rulekit.dsl.Rule
 import io.github.mbackschat.a12.dm.rulekit.dsl.Severity
 import io.github.mbackschat.a12.dm.rulekit.read.ReadResult
@@ -91,12 +90,11 @@ class FirstFilledValueEntitySpecDiffTest {
 
     @Test
     fun outerGroupEntitySpecsRoundTripWithoutDroppingTheirCorrelationOrSemanticIndex() {
-        val renderer = DslRenderer()
         val adapter = KernelAdapter.ofJson(modelJson)
 
         rules().filter { it.code in ROUND_TRIP_CODES }.forEach { rule ->
             val read = assertInstanceOf(ReadResult.Converted::class.java, adapter.read("$ROOT/${rule.name}"))
-            assertEquals(renderer.render(rule.condition), renderer.render(read.condition), rule.code)
+            assertEquals(RuntimeLaws.render(rule.condition), RuntimeLaws.render(read.condition), rule.code)
         }
     }
 

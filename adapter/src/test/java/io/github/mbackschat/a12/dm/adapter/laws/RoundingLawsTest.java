@@ -11,7 +11,6 @@ import org.junit.jupiter.api.Test;
 import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Condition;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Dsl;
-import io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer;
 
 /**
  * Behavioral law — <b>the rounding operators are directional, and pre-rounded at the internal
@@ -35,7 +34,7 @@ class RoundingLawsTest {
     private static final BoundModel M = BoundModel.ofJson(ORDER);
 
     private static String render(Condition c) {
-        return new DslRenderer().render(c);
+        return RuntimeLaws.render(c);
     }
 
     private static String rule(String condition) {

@@ -11,7 +11,6 @@ import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft;
 import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Condition;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Dsl;
-import io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer;
 import io.github.mbackschat.a12.dm.rulekit.dsl.GroupListRef;
 import io.github.mbackschat.a12.dm.rulekit.dsl.NumberExpr;
 
@@ -82,7 +81,7 @@ class AggregateGroupOperandLawsTest {
     private static final BoundModel INVOICE = BoundModel.ofJson(INVOICE_JSON);
 
     private static String cond(Condition c) {
-        return new DslRenderer().render(c);
+        return KernelLaws.render(c);
     }
 
     /** Guard the aggregate so the probe rule references its own error field (MVK_ERROR_FIELD_NOT_REFERENCED). */

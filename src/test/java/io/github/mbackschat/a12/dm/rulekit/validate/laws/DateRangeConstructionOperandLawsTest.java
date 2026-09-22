@@ -12,10 +12,10 @@ import org.junit.jupiter.api.Test;
 import io.github.mbackschat.a12.dm.core.ValueKind;
 import io.github.mbackschat.a12.dm.modelkit.DatePrecision;
 import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft;
+import io.github.mbackschat.a12.dm.modelkit.FieldKind;
 import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel;
 import io.github.mbackschat.a12.dm.rulekit.dsl.DateRef;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Dsl;
-import io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer;
 import io.github.mbackschat.a12.dm.rulekit.dsl.FieldRef;
 import io.github.mbackschat.a12.dm.rulekit.validate.DraftRule;
 import io.github.mbackschat.a12.dm.rulekit.validate.RuleValidator;
@@ -63,8 +63,8 @@ class DateRangeConstructionOperandLawsTest {
                     // The kinds the client refusal covered without a measured row of its own — the whole
                     // non-date-bearing denominator, not the three that happened to be sampled.
                     .enumField("Tier", e -> e.value("BASIC").value("PLUS"))
-                    .field("Renewed", io.github.mbackschat.a12.dm.modelkit.FieldKind.BOOLEAN)
-                    .field("Signed", io.github.mbackschat.a12.dm.modelkit.FieldKind.CONFIRM)
+                    .field("Renewed", FieldKind.BOOLEAN)
+                    .field("Signed", FieldKind.CONFIRM)
                     .timeField("Clock", t -> t.format("HH:mm:ss"))
                     .customField("Serial", c -> c.type("SelectionCode"))
                     .dateRangeField("Window", d -> d.format("dd.MM.yyyy").separator("-"))
@@ -257,30 +257,29 @@ class DateRangeConstructionOperandLawsTest {
                         model.date("/Policy/End")));
 
         // Accepted above ⇒ built here, in the same renderings the rows measured.
-        DslRenderer renderer = new DslRenderer();
         assertEquals("DateRange(/Policy/Start, /Policy/End)",
-                renderer.render(Dsl.dateRange(model.date("/Policy/Start"), model.date("/Policy/End"))));
+                KernelLaws.render(Dsl.dateRange(model.date("/Policy/Start"), model.date("/Policy/End"))));
         assertEquals("DateRange(/Policy/FragFrom, /Policy/FragTo)",
-                renderer.render(Dsl.dateRange(model.dateFragment("/Policy/FragFrom"),
+                KernelLaws.render(Dsl.dateRange(model.dateFragment("/Policy/FragFrom"),
                         model.dateFragment("/Policy/FragTo"))));
         assertEquals("DateRange(/Policy/FragFrom, /Policy/MonthOnly)",
-                renderer.render(Dsl.dateRange(model.dateFragment("/Policy/FragFrom"),
+                KernelLaws.render(Dsl.dateRange(model.dateFragment("/Policy/FragFrom"),
                         model.date("/Policy/MonthOnly"))));
         assertEquals("DateRange(/Policy/Lines/LineDate For \"L1\", /Policy/End)",
-                renderer.render(Dsl.dateRange(model.date("/Policy/Lines/LineDate").forIndex("L1"),
+                KernelLaws.render(Dsl.dateRange(model.date("/Policy/Lines/LineDate").forIndex("L1"),
                         model.date("/Policy/End"))));
 
         // Delegated: the surface builds these, and the rows above show the kernel rejecting them. Asserted on
         // the FULL rendering like every other row — a startsWith("DateRange(") would have passed for a mangled
         // operand, which is weaker than the rest of this file and was flagged as such.
         assertEquals("DateRange(/Policy/DayOptional, /Policy/End)",
-                renderer.render(Dsl.dateRange(model.date("/Policy/DayOptional"), model.date("/Policy/End"))),
+                KernelLaws.render(Dsl.dateRange(model.date("/Policy/DayOptional"), model.date("/Policy/End"))),
                 "a partial-precision date is built here and left to the kernel");
         assertEquals("DateRange(/Policy/Start, /Policy/MonthOnly)",
-                renderer.render(Dsl.dateRange(model.date("/Policy/Start"), model.date("/Policy/MonthOnly"))),
+                KernelLaws.render(Dsl.dateRange(model.date("/Policy/Start"), model.date("/Policy/MonthOnly"))),
                 "component compatibility is left to the kernel");
         assertEquals("DateRange([$]/Policy/Start, /Policy/End)".replace("[$]", "$"),
-                renderer.render(Dsl.dateRange(model.date("/Policy/Start").outer(), model.date("/Policy/End"))),
+                KernelLaws.render(Dsl.dateRange(model.date("/Policy/Start").outer(), model.date("/Policy/End"))),
                 "the outer-iteration marker is built here; its legality is contextual and kernel-arbitrated");
     }
 }

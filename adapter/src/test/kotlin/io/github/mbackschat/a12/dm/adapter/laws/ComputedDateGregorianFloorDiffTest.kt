@@ -12,9 +12,7 @@ import io.github.mbackschat.a12.dm.interpreter.model.ModelDef
 import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft
 import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft.GroupBuilder
 import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel
-import io.github.mbackschat.a12.dm.rulekit.dsl.ConditionLanguage
 import io.github.mbackschat.a12.dm.rulekit.dsl.Dsl
-import io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 import java.util.function.Consumer
@@ -60,8 +58,7 @@ class ComputedDateGregorianFloorDiffTest {
 
     private val m = BoundModel.ofJson(json)
     // Date(StartDay, StartMonth, StartYear) — a comparable date constructed from the three numeric components.
-    private val op = DslRenderer(ConditionLanguage.EN, "/Policy")
-        .render(Dsl.date(m.num(DAY).asNumber(), m.num(MONTH).asNumber(), m.num(YEAR).asNumber()).expression())
+    private val op = RuntimeLaws.render("/Policy", Dsl.date(m.num(DAY).asNumber(), m.num(MONTH).asNumber(), m.num(YEAR).asNumber()).expression())
     private val kModel = RuntimeLaws.withComputation(json, "/Policy", "StartComp", "../CoverageStart", op)
     private val def = ModelDef(
         listOf(

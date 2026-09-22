@@ -14,7 +14,6 @@ import io.github.mbackschat.a12.dm.modelkit.FieldKind;
 import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Condition;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Dsl;
-import io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer;
 import io.github.mbackschat.a12.dm.rulekit.dsl.FieldListRef;
 import io.github.mbackschat.a12.dm.rulekit.validate.ValidationResult;
 
@@ -95,8 +94,8 @@ class FilteredStarExtremumOperandLawsTest {
     }
 
     private static String verdict(Condition aggregate) {
-        String condition = new DslRenderer()
-                .render(Dsl.fieldFilled(M.field("/Policy/Reference")).and(aggregate));
+        String condition =
+                KernelLaws.render(Dsl.fieldFilled(M.field("/Policy/Reference")).and(aggregate));
         ValidationResult r = KernelLaws.checkModel(POLICY, GROUP, ERROR_REL, condition);
         return r.ok() ? KernelLaws.ADMITTED : r.diagnostics().stream()
                 .map(d -> d.code().orElse("(no code: " + d.summary() + ")"))

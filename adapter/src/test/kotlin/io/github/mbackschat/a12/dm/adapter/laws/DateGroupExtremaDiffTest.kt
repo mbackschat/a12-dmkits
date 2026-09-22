@@ -8,7 +8,7 @@ import io.github.mbackschat.a12.dm.interpreter.model.MsgType
 import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft
 import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel
 import io.github.mbackschat.a12.dm.rulekit.dsl.Dsl
-import io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer
+import java.util.Locale
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertNotEquals
 import org.junit.jupiter.api.Assertions.assertTrue
@@ -93,7 +93,7 @@ class DateGroupExtremaDiffTest {
     private val m = BoundModel.ofJson(base)
 
     /** `FieldFilled(Reference) And MinValue(<single date field list>) > [ClaimedOn]` — authored, the control. */
-    private val earliestVisitAfterClaim: String = DslRenderer().render(
+    private val earliestVisitAfterClaim: String = RuntimeLaws.render(
         m.field(REF).filled().and(Dsl.earliestOf(m.flatten(VISITED_STAR)).after(m.date(CLAIMED_ON))),
     )
 
@@ -144,7 +144,7 @@ class DateGroupExtremaDiffTest {
 
         val staticDoc = Both(RuntimeLaws.doc(), def.newDocument()).also(build).kDoc
         val javaStatic = RuntimeLaws.kernelJavaEngine(kModel)
-            .messagesModern(staticDoc, null, java.util.Locale.US).any { it.code() == CODE }
+            .messagesModern(staticDoc, null, Locale.US).any { it.code() == CODE }
 
         val interpreter = DmInterpreter(def).validateFull(dynamic.iDoc).any { it.code == CODE }
 
@@ -307,7 +307,7 @@ class DateGroupExtremaDiffTest {
 
         val staticDoc = Both(RuntimeLaws.doc(), def.newDocument()).also(build).kDoc
         val javaStatic = RuntimeLaws.kernelJavaEngine(kModel)
-            .messagesModern(staticDoc, null, java.util.Locale.US).filter { it.code() == CODE }
+            .messagesModern(staticDoc, null, Locale.US).filter { it.code() == CODE }
             .map { "${it.field()}|${it.type().name}" }.sorted()
 
         val interpreter = DmInterpreter(def).validateFull(dynamic.iDoc).filter { it.code == CODE }

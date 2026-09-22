@@ -6,7 +6,6 @@ import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft;
 import io.github.mbackschat.a12.dm.modelkit.FieldKind;
 import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Dsl;
-import io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer;
 
 /**
  * KERNEL-FINDINGS §4 — {@code FieldValuesNotUnique} <b>operand admission</b> (SPEC-2026-08-04-02, extended and
@@ -495,7 +494,7 @@ class FieldValuesNotUniqueAdmissionLawsTest {
     @Test
     void theTypedGroupScopedFactoryRendersAnAcceptedCondition() {
         BoundModel model = BoundModel.ofJson(stockCount());
-        String condition = new DslRenderer().render(
+        String condition = KernelLaws.render(
                 Dsl.fieldFilled(model.field("/StockCount/BinCode"))
                         .and(Dsl.fieldValuesNotUnique(model.flattenGroup("/StockCount/Bin"))));
 
@@ -506,7 +505,7 @@ class FieldValuesNotUniqueAdmissionLawsTest {
     @Test
     void theTypedGroupScopedFactoryAlsoRendersTheStarredRepeatableForm() {
         BoundModel model = BoundModel.ofJson(stockCount());
-        String condition = new DslRenderer().render(
+        String condition = KernelLaws.render(
                 Dsl.fieldFilled(model.field("/StockCount/BinCode"))
                         .and(Dsl.fieldValuesNotUnique(model.flattenGroup("/StockCount/Tallies*"))));
 

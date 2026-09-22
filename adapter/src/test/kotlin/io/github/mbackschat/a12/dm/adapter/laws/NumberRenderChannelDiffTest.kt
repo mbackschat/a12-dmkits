@@ -7,7 +7,6 @@ import io.github.mbackschat.a12.dm.interpreter.load.ModelLoader
 import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel
 import io.github.mbackschat.a12.dm.rulekit.dsl.Condition
 import io.github.mbackschat.a12.dm.rulekit.dsl.Dsl
-import io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 
@@ -34,7 +33,7 @@ class NumberRenderChannelDiffTest {
     private val model = RuntimeLaws.model("models/decimal-render.dm.json")
 
     private val m = BoundModel.ofJson(model)
-    private fun render(c: Condition): String = DslRenderer().render(c)
+    private fun render(c: Condition): String = RuntimeLaws.render(c)
 
     /** The error field must be referenced in the condition (MVK_ERROR_FIELD_NOT_REFERENCED). */
     private fun withRule(c: Condition): String = RuntimeLaws.withRule(

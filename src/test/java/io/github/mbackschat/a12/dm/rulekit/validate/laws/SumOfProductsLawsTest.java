@@ -2,6 +2,7 @@ package io.github.mbackschat.a12.dm.rulekit.validate.laws;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
+import java.util.LinkedHashMap;
 import org.junit.jupiter.api.Test;
 
 import io.github.mbackschat.a12.dm.ModelDrafts;
@@ -114,7 +115,7 @@ class SumOfProductsLawsTest {
      */
     @Test
     void whichClassWinsWhenAnOperandPairBreaksTwoRulesAtOnce() {
-        var actual = new java.util.LinkedHashMap<String, String>();
+        var actual = new LinkedHashMap<String, String>();
         actual.put("same owning group, both starred — the control", verdict("Lines*/Qty, Lines*/Qty"));
         actual.put("different owning groups, both starred", verdict("Lines*/Qty, Vouchers*/Amount"));
         actual.put("different owning groups by DEPTH, both starred",
@@ -125,7 +126,7 @@ class SumOfProductsLawsTest {
         actual.put("the same UNSTARRED field twice", verdict("Total, Total"));
         actual.put("no repeatable level, DIFFERENT owning groups", verdict("Total, Fees/Handling"));
 
-        var expected = new java.util.LinkedHashMap<String, String>();
+        var expected = new LinkedHashMap<String, String>();
         expected.put("same owning group, both starred — the control", KernelLaws.ADMITTED);
         expected.put("different owning groups, both starred", "MVK_DIFFERENT_GROUPS");
         expected.put("different owning groups by DEPTH, both starred", "MVK_DIFFERENT_GROUPS");
@@ -155,7 +156,7 @@ class SumOfProductsLawsTest {
      */
     @Test
     void theRestOfTheOperandGateChain() {
-        var actual = new java.util.LinkedHashMap<String, String>();
+        var actual = new LinkedHashMap<String, String>();
         actual.put("two parallel lists — the control", verdict("Lines*/Qty, Lines*/Qty"));
         actual.put("one operand only", verdict("Lines*/Qty"));
         actual.put("three operands", verdict("Lines*/Qty, Lines*/Qty, Lines*/Qty"));
@@ -168,7 +169,7 @@ class SumOfProductsLawsTest {
         actual.put("the same two levels starred, unfiltered — the control",
                 nestedVerdict("Milestones*/Tasks*/Effort, Milestones*/Tasks*/Effort"));
 
-        var expected = new java.util.LinkedHashMap<String, String>();
+        var expected = new LinkedHashMap<String, String>();
         expected.put("two parallel lists — the control", KernelLaws.ADMITTED);
         // `MVK_PARAMSIZE_INVALID_2`, not the underscore-less `MVK_PARAMSIZE_INVALID2` its sibling gates use
         // — two distinct members of the same enum, and this operator's `checkParamSizeIs2` draws the second.

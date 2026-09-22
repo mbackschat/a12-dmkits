@@ -2,13 +2,13 @@ package io.github.mbackschat.a12.dm.rulekit.validate.laws;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
+import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 
 import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft;
 import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Condition;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Dsl;
-import io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer;
 import io.github.mbackschat.a12.dm.rulekit.dsl.GroupListRef;
 
 /**
@@ -62,7 +62,7 @@ class DateExtremaGroupOperandLawsTest {
     }
 
     private static String render(Condition c) {
-        return new DslRenderer().render(c);
+        return KernelLaws.render(c);
     }
 
     /** The kernel admits the starred DATE group under both extrema — the measurement the erasure contradicted. */
@@ -94,9 +94,9 @@ class DateExtremaGroupOperandLawsTest {
      */
     @Test
     void aFieldListOfANonDateLikeKindStillFailsFast() {
-        var thrown = org.junit.jupiter.api.Assertions.assertThrows(IllegalArgumentException.class,
+        var thrown = Assertions.assertThrows(IllegalArgumentException.class,
                 () -> Dsl.latestTimeOf(CLAIM.flatten("/Claim/Inspectors*/InspectorName")));
-        org.junit.jupiter.api.Assertions.assertTrue(thrown.getMessage().contains("STRING"),
+        Assertions.assertTrue(thrown.getMessage().contains("STRING"),
                 () -> "a STRING list handed to a date-like factory must say so: " + thrown.getMessage());
     }
 

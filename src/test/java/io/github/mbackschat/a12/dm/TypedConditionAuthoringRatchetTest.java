@@ -8,6 +8,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 import org.junit.jupiter.api.Test;
 
@@ -24,20 +25,28 @@ import org.junit.jupiter.api.Test;
  * <p><b>The measurement that identified it rather than merely describing it.</b> If prose were being ignored,
  * nobody would pay to author typed. Instead <b>250 law files had each built that helper independently</b>
  * (2026-09-22: 41 under {@code validate/laws}, 31 + 178 under {@code adapter/laws}; the quantity is FILES
- * whose code constructs a {@code DslRenderer}, comments stripped, the two harnesses excluded — which is
- * exactly what {@link #CEILING} counts, so the figure and the guard cannot drift apart). That duplication is
- * the evidence: the authors wanted the typed path and the harness made them re-implement it. Both harnesses
- * now publish a {@code Condition} overload, so the typed spelling is the SHORTER one and a new file has no
- * reason to hand-roll a renderer.
+ * whose code constructs a {@code DslRenderer}, comments stripped, the two harnesses excluded — the same
+ * predicate {@link #CEILING} counts, so the historical figure and the guard measure one thing). That
+ * duplication is the evidence: the authors wanted the typed path and the harness made them re-implement it.
+ * Both harnesses now publish {@code render} overloads for {@code Condition} and {@code Calculation}, in the
+ * absolute and group-relative forms, so the typed spelling is the SHORTER one at every site.
+ *
+ * <p><b>The backlog was then swept, in the same session, to the two files that cannot use them.</b> The
+ * harness overloads render in {@link io.github.mbackschat.a12.dm.rulekit.dsl.ConditionLanguage#EN}, the
+ * project default; {@code RuleMessageParameterLanguageLawsTest} and {@code RuleMessageGroupParameterDiffTest}
+ * have the render LANGUAGE as their subject and build a {@code DE} renderer deliberately. Publishing a
+ * language-parameterized overload for them would put the variable under test inside the harness, so they stay
+ * and {@link #CEILING} is 2 — a floor, not a backlog.
  *
  * <p>Earlier revisions of this javadoc also counted the distinct names those private helpers were given. That
  * figure is deliberately gone: no guard can check it, two attempts to derive it disagreed by a factor of two
  * because each counted a different thing, and the claim the paragraph needs — the same helper re-implemented
  * independently, over and over — rests on the file count, which is enforced.
  *
- * <p><b>Why a ratchet and not a ban.</b> Those 250 files are not defects to be rewritten in one sweep; they are
- * the backlog this makes visible and monotone. The ceiling may only FALL, so a new hand-rolled renderer fails
- * immediately while a migration is free. A String condition itself stays legitimate for two reasons — the typed
+ * <p><b>Why a ratchet and not a ban.</b> It was a ratchet while 250 files stood in the way; the ceiling may only
+ * FALL, so a new hand-rolled renderer fails immediately while a migration is free. At 2 it is within one of a
+ * ban and keeps the ratchet's shape only so a third legitimate language-subject law can be admitted by raising
+ * the number where its reason is written down. A String condition itself stays legitimate for two reasons — the typed
  * surface ERASES the shape (a wrong-kind operand the kit refuses because the kernel does, where the row
  * measures that refusal), or the law's subject is concrete SYNTAX with no node (a brace depth, a malformed
  * token, a literal form) — and neither reason needs a private renderer, so neither is affected.
@@ -45,9 +54,9 @@ import org.junit.jupiter.api.Test;
 class TypedConditionAuthoringRatchetTest {
 
     /**
-     * Measured 2026-09-22 and exact — no slack, so a single new offender fails. It may only FALL: lower it in
-     * the same commit that migrates a file, and never raise it, because the shared overloads mean a new law
-     * has no reason to add one.
+     * Measured 2026-09-22 after the sweep and exact — no slack, so a single new offender fails. It may only
+     * FALL, and the only admissible RAISE is a further law whose subject is the render language itself, with
+     * that reason recorded here beside the two above.
      *
      * <p><b>It read 248 for one day, and that was a scanner defect rather than a migration.</b> The first
      * pattern could not see a fully qualified {@code io.github…dsl.DslRenderer(}, so two files constructing
@@ -55,7 +64,7 @@ class TypedConditionAuthoringRatchetTest {
      * {@code DateRangeOverlapAdmissionLawsTest}. A ceiling is a denominator, and a denominator measured with
      * the same blind spot as the guard that enforces it agrees with itself and with nothing else.
      */
-    private static final int CEILING = 250;
+    private static final int CEILING = 2;
 
     /**
      * The two shared harnesses live inside the scanned trees and legitimately BUILD the renderer — they are
@@ -114,7 +123,7 @@ class TypedConditionAuthoringRatchetTest {
                 + " RuntimeLaws.withRule(json, group, name, errorRel, code, Condition) — which renders"
                 + " relative to the rule's group for you. Every file that builds one, so diff this against the"
                 + " ceiling rather than reading it as the new offenders:\n  "
-                + offenders.stream().map(checkout::relative).collect(java.util.stream.Collectors.joining("\n  ")));
+                + offenders.stream().map(checkout::relative).collect(Collectors.joining("\n  ")));
     }
 
     /** The file's CODE — comments removed, so a renderer named in a sentence is not a renderer built. */

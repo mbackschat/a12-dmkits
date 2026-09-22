@@ -2,8 +2,10 @@ package io.github.mbackschat.a12.dm.adapter.laws
 
 import io.github.mbackschat.a12.dm.interpreter.DmInterpreter
 import io.github.mbackschat.a12.dm.interpreter.UnsupportedModelTimeZoneException
+import io.github.mbackschat.a12.dm.interpreter.eval.Document
 import io.github.mbackschat.a12.dm.interpreter.eval.newDocument
 import io.github.mbackschat.a12.dm.interpreter.load.ModelLoader
+import io.github.mbackschat.a12.dm.interpreter.model.ModelDef
 import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft
 import io.github.mbackschat.a12.dm.modelkit.ModelDocument
 import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel
@@ -386,18 +388,18 @@ class ConstructedDateCalendarDiffTest {
         .field("$ROOT/February1500Year", "1500", 1, 1)
 
     private fun interpretedDocument(
-        definition: io.github.mbackschat.a12.dm.interpreter.model.ModelDef,
+        definition: ModelDef,
         day: Int,
         month: Int,
         year: Int,
     ) = interpretedDocument(definition, day.toString(), month.toString(), year.toString())
 
     private fun interpretedDocument(
-        definition: io.github.mbackschat.a12.dm.interpreter.model.ModelDef,
+        definition: ModelDef,
         day: String?,
         month: String,
         year: String,
-    ): io.github.mbackschat.a12.dm.interpreter.eval.Document {
+    ): Document {
         val document = definition.newDocument().group(ROOT, 1)
             .field(MONTH, month, 1, 1)
             .field(YEAR, year, 1, 1)
@@ -436,10 +438,10 @@ class ConstructedDateCalendarDiffTest {
     }
 
     private fun interpretedStateDocument(
-        definition: io.github.mbackschat.a12.dm.interpreter.model.ModelDef,
+        definition: ModelDef,
         day: String?,
         hour: String?,
-    ): io.github.mbackschat.a12.dm.interpreter.eval.Document {
+    ): Document {
         val document = interpretedDocument(definition, day, "10", "1582")
             .field(MINUTE, "0", 1, 1)
             .field(SECOND, "0", 1, 1)

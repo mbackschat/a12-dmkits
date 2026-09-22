@@ -9,7 +9,6 @@ import io.github.mbackschat.a12.dm.interpreter.model.RuleDef
 import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel
 import io.github.mbackschat.a12.dm.rulekit.dsl.Condition
 import io.github.mbackschat.a12.dm.rulekit.dsl.Dsl
-import io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 
@@ -29,7 +28,7 @@ class QuantifierMalformedDiffTest {
     // The CONDITIONS are well-formed quantifiers, authored with the rulekit typed DSL ([m]) and rendered to the
     // canonical string fed to BOTH engines; the malformed VALUES live in the doc-building below (unchanged).
     private val m = BoundModel.ofJson(order)
-    private fun render(c: Condition): String = DslRenderer().render(c)
+    private fun render(c: Condition): String = RuntimeLaws.render(c)
 
     /** One `/Order` instance with Quantity/Backorder per arg (null = empty), run the quantifier rule, compare firing. */
     private fun agree(code: String, cond: String, qty: String?, back: String?, msg: String) {

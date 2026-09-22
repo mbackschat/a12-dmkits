@@ -8,7 +8,6 @@ import io.github.mbackschat.a12.dm.interpreter.model.MsgType
 import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft
 import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel
 import io.github.mbackschat.a12.dm.rulekit.dsl.Dsl
-import io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
@@ -132,7 +131,7 @@ class GroupOperandEmptyCellAggregateDiffTest {
     }
 
     private fun guarded(condition: io.github.mbackschat.a12.dm.rulekit.dsl.Condition): String =
-        DslRenderer().render(m.field(REF).filled().and(condition))
+        RuntimeLaws.render(m.field(REF).filled().and(condition))
 
     /** `MinValue` over `{7, empty}` is 7 if the empty is dropped and 0 if it is substituted. */
     @Test

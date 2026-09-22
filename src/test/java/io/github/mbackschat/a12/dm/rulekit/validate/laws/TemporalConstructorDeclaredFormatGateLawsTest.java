@@ -14,7 +14,6 @@ import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft;
 import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel;
 import io.github.mbackschat.a12.dm.rulekit.dsl.DateRef;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Dsl;
-import io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer;
 import io.github.mbackschat.a12.dm.rulekit.dsl.FieldRef;
 import io.github.mbackschat.a12.dm.rulekit.validate.ValidationResult;
 
@@ -182,15 +181,14 @@ class TemporalConstructorDeclaredFormatGateLawsTest {
     @Test
     void theTypedSurfaceBuildsEveryEndpointTheseRowsAdmitAndStillRefusesTheMeasuredOnes() {
         BoundModel m = BoundModel.ofJson(COVER);
-        DslRenderer renderer = new DslRenderer();
 
-        assertEquals("DateRange(/Cover/AuditedOn, /Cover/EndsOn)", renderer.render(
+        assertEquals("DateRange(/Cover/AuditedOn, /Cover/EndsOn)", KernelLaws.render(
                 Dsl.dateRange(m.date("/Cover/AuditedOn"), m.date("/Cover/EndsOn"))),
                 "a TIME field declared yyyy-MM-dd is an admitted endpoint");
-        assertEquals("DateRange(/Cover/StartsOn, /Cover/FiledOn)", renderer.render(
+        assertEquals("DateRange(/Cover/StartsOn, /Cover/FiledOn)", KernelLaws.render(
                 Dsl.dateRange(m.date("/Cover/StartsOn"), m.date("/Cover/FiledOn"))),
                 "a DATE_TIME field declared yyyy-MM-dd is an admitted endpoint");
-        assertEquals("DateRange(/Cover/AuditedOn, /Cover/FiledOn)", renderer.render(
+        assertEquals("DateRange(/Cover/AuditedOn, /Cover/FiledOn)", KernelLaws.render(
                 Dsl.dateRange(m.date("/Cover/AuditedOn"), m.date("/Cover/FiledOn"))),
                 "both endpoints cross-kind");
 

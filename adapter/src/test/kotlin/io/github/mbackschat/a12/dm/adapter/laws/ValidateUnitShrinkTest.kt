@@ -11,6 +11,7 @@ import org.junit.jupiter.api.Tag
 import org.junit.jupiter.api.Test
 import java.nio.file.Files
 import java.nio.file.Path
+import java.util.Locale
 
 /**
  * **The IG56 validateFull-unit isolator** — the fired-code sibling of [RawAtomShrinkTest]: the sweep counts
@@ -93,7 +94,7 @@ class ValidateUnitShrinkTest {
 
     /** Scan the model's seeds for a signature on the tracked [side] — kernel-fires-interp-misses or the reverse
      *  — after the sweep's unsupported-rule exclusion. */
-    private fun findUnit(model: ModelDef, kernelJson: String, interpJson: String, locale: java.util.Locale,
+    private fun findUnit(model: ModelDef, kernelJson: String, interpJson: String, locale: Locale,
                          seedFilter: Int?): Unit? {
         val sigFilter = System.getProperty("vf.sig")
         val seeds = seedFilter?.let { listOf(it) } ?: (0 until INSTANCES).toList()
@@ -113,14 +114,14 @@ class ValidateUnitShrinkTest {
     /** Both engines' validateFull signatures over one instance, the kernel side after the unsupported exclusion;
      *  null when either engine cannot evaluate (the sweep's skip — not a unit). */
     private fun bothSides(kernelJson: String, interpJson: String, model: ModelDef, placements: List<Placement>,
-                          locale: java.util.Locale): Pair<List<String>, List<String>>? {
+                          locale: Locale): Pair<List<String>, List<String>>? {
         val kAll = runCatching { CorpusEngines.groovyDynamic(kernelJson, placements, Op.ValidateFull, CLOCK, locale) }.getOrNull() ?: return null
         val out = runCatching { InterpreterReplay.run(interpJson, placements, Op.ValidateFull, CLOCK) }.getOrNull() ?: return null
         val k = CorpusShrinkSupport.kernelSigsExcludingUnsupported(kAll, model, out.unsupported)
         return k to out.signatures
     }
 
-    private fun shrinkAndReport(kernelJson: String, unit: Unit, locale: java.util.Locale) {
+    private fun shrinkAndReport(kernelJson: String, unit: Unit, locale: Locale) {
         val shrinker = ModelShrinker({ candidate -> stillDiverges(candidate, unit, locale) })
         println("[vf] seed model shape:\n" + CorpusShrinkSupport.indented(ModelShrinker.redactedShape(kernelJson)))
         val minimal = shrinker.shrink(kernelJson)
@@ -142,7 +143,7 @@ class ValidateUnitShrinkTest {
     /** The unit predicate: over the same seeded instance (placements filtered to surviving elements), is the
      *  PINNED signature still on the tracked side of the diff — present in one engine, absent from the other —
      *  with the unsupported exclusion recomputed on the candidate's surviving rules? */
-    private fun stillDiverges(candidate: String, unit: Unit, locale: java.util.Locale): Boolean {
+    private fun stillDiverges(candidate: String, unit: Unit, locale: Locale): Boolean {
         val interpJson = runCatching { CorpusModelPreparer.toInterpreterJson(candidate) }.getOrNull() ?: return false
         val model = runCatching { ModelLoader.load(interpJson) }.getOrNull() ?: return false
         val placements = CorpusShrinkSupport.filterPlacements(model, unit.placements)

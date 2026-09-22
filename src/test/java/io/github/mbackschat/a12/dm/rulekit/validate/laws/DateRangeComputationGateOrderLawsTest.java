@@ -8,6 +8,7 @@ import java.util.Map;
 import org.junit.jupiter.api.Test;
 
 import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft;
+import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Calculation;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Computation;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Dsl;
@@ -73,8 +74,8 @@ class DateRangeComputationGateOrderLawsTest {
                     .dateFragmentField("ToMonthDay", f -> f.fragmentFormat("MM-dd")))
             .build().toJson();
 
-    private static final io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel M =
-            io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel.ofJson(PROMO);
+    private static final BoundModel M =
+            BoundModel.ofJson(PROMO);
 
     private static final String ROOT = "/Promo/";
 

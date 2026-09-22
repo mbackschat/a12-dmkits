@@ -10,7 +10,6 @@ import org.junit.jupiter.api.Test;
 
 import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Condition;
-import io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Tolerance;
 
 /**
@@ -31,7 +30,7 @@ class ToleranceComparisonLawsTest {
             M.num("/Order/Quantity").differsWithTolerance(Tolerance.RANGE_2, M.num("/Order/BackorderQuantity")));
 
     private static String render(Condition c) {
-        return new DslRenderer().render(c);
+        return RuntimeLaws.render(c);
     }
 
     @Test

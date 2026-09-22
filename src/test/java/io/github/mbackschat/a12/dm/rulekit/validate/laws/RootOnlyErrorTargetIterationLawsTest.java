@@ -2,6 +2,7 @@ package io.github.mbackschat.a12.dm.rulekit.validate.laws;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
+import java.util.LinkedHashMap;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 import io.github.mbackschat.a12.dm.edit.EditSession;
@@ -46,7 +47,7 @@ class RootOnlyErrorTargetIterationLawsTest {
      */
     @Test
     void whetherTheRootGroupIsLoadBearingAndWhichClassWinsWhenBothIterationsAppear() {
-        var actual = new java.util.LinkedHashMap<String, String>();
+        var actual = new LinkedHashMap<String, String>();
         actual.put("root reference, no iterating read", verdict("GroupFilled(/Shipment)"));
         actual.put("root reference, read in the error field's OWN group",
                 verdict("GroupFilled(/Shipment) And [Quantity] > 0"));
@@ -65,7 +66,7 @@ class RootOnlyErrorTargetIterationLawsTest {
         actual.put("NOTHING reaches the error field, with an iterating read",
                 verdict("[Quantity] > 0"));
 
-        var expected = new java.util.LinkedHashMap<String, String>();
+        var expected = new LinkedHashMap<String, String>();
         expected.put("root reference, no iterating read", KernelLaws.ADMITTED);
         expected.put("root reference, read in the error field's OWN group",
                 "MVK_ERROR_FIELDGROUP_ITERATION4_INVALID");
@@ -110,7 +111,7 @@ class RootOnlyErrorTargetIterationLawsTest {
 
     @Test
     void theRootsOwnRepeatabilityIsNotWhatTheClassesKeyOn() {
-        var actual = new java.util.LinkedHashMap<String, String>();
+        var actual = new LinkedHashMap<String, String>();
         actual.put("fixed root | no iterating read",
                 fixedRoot("GroupFilled(/Shipment)"));
         actual.put("fixed root | read in the error field's OWN group",
@@ -118,7 +119,7 @@ class RootOnlyErrorTargetIterationLawsTest {
         actual.put("fixed root | read in a PARALLEL repeatable group",
                 fixedRoot("GroupFilled(/Shipment) And [/Shipment/Expected/Quantity] > 0"));
 
-        var expected = new java.util.LinkedHashMap<String, String>();
+        var expected = new LinkedHashMap<String, String>();
         expected.put("fixed root | no iterating read", KernelLaws.ADMITTED);
         expected.put("fixed root | read in the error field's OWN group",
                 "MVK_ERROR_FIELDGROUP_ITERATION4_INVALID");
@@ -180,7 +181,7 @@ class RootOnlyErrorTargetIterationLawsTest {
      */
     @Test
     void aTargetOUTSIDETheDeclaringGroupIsAnsweredFirstByTheContainmentGate() {
-        var actual = new java.util.LinkedHashMap<String, String>();
+        var actual = new LinkedHashMap<String, String>();
         actual.put("outside the declaring group | read in the error field's own group",
                 outsideGroup("GroupFilled(/Shipment) And [/Shipment/Received/Quantity] > 0"));
         actual.put("outside the declaring group | read in a PARALLEL repeatable group",
@@ -190,7 +191,7 @@ class RootOnlyErrorTargetIterationLawsTest {
         actual.put("outside the declaring group | FIXED root, no iterating read — control",
                 outsideFixedRoot("GroupFilled(/Shipment)"));
 
-        var expected = new java.util.LinkedHashMap<String, String>();
+        var expected = new LinkedHashMap<String, String>();
         expected.put("outside the declaring group | read in the error field's own group",
                 "MVK_ERROR_FIELD_NOT_IN_RULEGROUP");
         expected.put("outside the declaring group | read in a PARALLEL repeatable group",

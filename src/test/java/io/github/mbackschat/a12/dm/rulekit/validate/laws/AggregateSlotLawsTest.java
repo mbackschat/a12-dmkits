@@ -14,7 +14,6 @@ import io.github.mbackschat.a12.dm.modelkit.FieldKind;
 import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Condition;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Dsl;
-import io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer;
 import io.github.mbackschat.a12.dm.rulekit.dsl.FieldListRef;
 import io.github.mbackschat.a12.dm.rulekit.dsl.NumberExpr;
 
@@ -46,7 +45,7 @@ class AggregateSlotLawsTest {
     private static final BoundModel ORDER = Fixtures.order();
 
     private static String cond(Condition c) {
-        return new DslRenderer().render(c);
+        return KernelLaws.render(c);
     }
 
     /** Guard the aggregate with {@code FieldFilled(Quantity) And …} so the probe rule references its own error
@@ -271,10 +270,10 @@ class AggregateSlotLawsTest {
     // "TypeDefType" — a typedef must be resolved to its base discriminator by the caller, and an unresolved
     // one would surface as UNKNOWN and be refused by the NUMBER gate. Both sides pass; locked so they stay that way.
     private static String typedefJson() {
-        return io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft.named("td").locale("en_US")
+        return DocumentModelDraft.named("td").locale("en_US")
                 .typeDef("Money", t -> t.number(n -> n.fractionDigits(2)))
                 .rootGroup("M", m -> m
-                        .field("Q", io.github.mbackschat.a12.dm.modelkit.FieldKind.NUMBER)
+                        .field("Q", FieldKind.NUMBER)
                         .group("Items", i -> i.repeatable(10).typedefField("Amount", "Money")))
                 .build().toJson();
     }
@@ -306,9 +305,9 @@ class AggregateSlotLawsTest {
                 "FieldFilled(Quantity) And NumberOfDifferentValues(OrderDate, DeliveryDate) > 0");
         KernelLaws.acceptsOrder("/Order", "../Quantity",
                 "FieldFilled(Quantity) And NumberOfDifferentValues(ScheduledAt, CompletedAt) > 0");
-        String times = io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft.named("t").locale("en_US")
+        String times = DocumentModelDraft.named("t").locale("en_US")
                 .rootGroup("M", m -> m
-                        .field("Q", io.github.mbackschat.a12.dm.modelkit.FieldKind.NUMBER)
+                        .field("Q", FieldKind.NUMBER)
                         .timeField("T1", t -> t.format("HH:mm:ss"))
                         .timeField("T2", t -> t.format("HH:mm:ss")))
                 .build().toJson();

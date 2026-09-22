@@ -8,7 +8,6 @@ import io.github.mbackschat.a12.dm.interpreter.model.ModelDef
 import io.github.mbackschat.a12.dm.interpreter.model.RuleDef
 import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel
 import io.github.mbackschat.a12.dm.rulekit.dsl.Dsl
-import io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer
 import io.github.mbackschat.a12.dm.rulekit.validate.DraftRule
 import io.github.mbackschat.a12.dm.rulekit.validate.RuleValidator
 import org.junit.jupiter.api.Assertions.assertThrows
@@ -29,7 +28,7 @@ class ValidateFullUnsupportedSafetyDiffTest {
     // An unregistered `CustomCondition` — a legal kernel construct (a host-callback predicate the rule language
     // can't express) that the interpreter reports unsupported when no matching SPI is registered. (RepetitionNotUnique
     // under Or is no longer a discriminator here — it graduated to a supported 3VL leaf, IF149.)
-    private val condition = DslRenderer().render(
+    private val condition = RuntimeLaws.render(
         authored.str(customerName).filled().and(Dsl.customCondition("UnsupportedSafetyCheck")),
     )
 

@@ -10,7 +10,6 @@ import org.junit.jupiter.api.Test;
 import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft;
 import io.github.mbackschat.a12.dm.modelkit.FieldKind;
 import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel;
-import io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer;
 
 /**
  * KERNEL-FINDINGS §9 — THREE further admission routes for a negative under iteration, none of them modelled by
@@ -50,7 +49,6 @@ import io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer;
 class IterationGuardAdmissionRoutesLawsTest {
 
     private static final String NEG = "MVK_NEG_CONDITION_IN_ITERATION";
-    private static final DslRenderer RENDERER = new DslRenderer();
 
     /** Two REPEATABLE ROOT groups. {@code indexed} is the only difference between the two models. */
     private static String twoRoots(boolean indexed) {
@@ -181,7 +179,7 @@ class IterationGuardAdmissionRoutesLawsTest {
                 verdict(NESTED, "/A/b", "../sh/note", "GroupNotFilled(sh)"));
         actual.put("H2 the same, plus a value comparison at that level",
                 verdict(NESTED, "/A/b", "../sh/note",
-                        RENDERER.render(BoundModel.ofJson(NESTED).bool("/A/b/flag").isTrue())
+                        KernelLaws.render(BoundModel.ofJson(NESTED).bool("/A/b/flag").isTrue())
                                 + " And GroupNotFilled(sh)"));
 
         // WHAT ADMITS the sibling-root row, since H1 is refuted. Two candidates: the reference is UNSTARRED

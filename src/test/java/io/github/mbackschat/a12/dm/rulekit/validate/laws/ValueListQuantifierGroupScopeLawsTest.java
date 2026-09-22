@@ -12,7 +12,6 @@ import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Condition;
 import io.github.mbackschat.a12.dm.rulekit.dsl.ConditionReferences;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Dsl;
-import io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer;
 
 /**
  * {@code DG35} — the three plural value-list quantifiers now author a GROUP scope through the typed surface.
@@ -46,7 +45,7 @@ class ValueListQuantifierGroupScopeLawsTest {
         for (Case c : cases) {
             // The guard names the rule's ERROR FIELD, which the kernel requires the condition to reference
             // (MVK_ERROR_FIELD_NOT_REFERENCED) — the group operand does not satisfy that for a field outside it.
-            String rendered = new DslRenderer().render(
+            String rendered = KernelLaws.render(
                     ORDER.num("/Order/Quantity").filled().and(c.condition()));
             assertTrue(rendered.contains(GROUP),
                     () -> c.label() + " must render the group scope: " + rendered);

@@ -11,6 +11,7 @@ import org.junit.jupiter.api.Tag
 import org.junit.jupiter.api.Test
 import java.nio.file.Files
 import java.nio.file.Path
+import java.util.Locale
 
 /**
  * **WI-T IG44 driver** — find ONE compute CLEARED-vs-VALUE divergence in the (EUPL/proprietary) workspaces
@@ -73,7 +74,7 @@ class ModelShrinkTest {
 
     /** Scan the model's seeds for a pointer that diverges in the tracked direction: default CVV (kernel CLEARED,
      *  interp VALUE); with [vcv] the reverse (kernel VALUE, interp CLEARED). */
-    private fun findCvv(model: ModelDef, kernelJson: String, interpJson: String, locale: java.util.Locale,
+    private fun findCvv(model: ModelDef, kernelJson: String, interpJson: String, locale: Locale,
                         seedFilter: Int?): Cvv? {
         val (clearedTag, valueTag) = if (vcv) "interp" to "kernel" else "kernel" to "interp"
         val seeds = seedFilter?.let { listOf(it) } ?: (0 until INSTANCES).toList()
@@ -91,7 +92,7 @@ class ModelShrinkTest {
         return null
     }
 
-    private fun shrinkAndReport(kernelJson: String, cvv: Cvv, locale: java.util.Locale) {
+    private fun shrinkAndReport(kernelJson: String, cvv: Cvv, locale: Locale) {
         val predicate: (String) -> Boolean = { candidate -> stillDiverges(candidate, cvv, locale) }
         val shrinker = ModelShrinker(predicate)
         println("[IG44] seed model shape:\n" + CorpusShrinkSupport.indented(ModelShrinker.redactedShape(kernelJson)))
@@ -120,7 +121,7 @@ class ModelShrinkTest {
     /** The divergence predicate: does [candidate] (a reduced kernel model) still clear [cvv.pointer] in the
      *  kernel while the interpreter computes a value — over the SAME seeded instance (original placements
      *  filtered to surviving fields/groups, so removing a field doesn't reshuffle the seed's other values)? */
-    private fun stillDiverges(candidate: String, cvv: Cvv, locale: java.util.Locale): Boolean {
+    private fun stillDiverges(candidate: String, cvv: Cvv, locale: Locale): Boolean {
         val interpJson = runCatching { CorpusModelPreparer.toInterpreterJson(candidate) }.getOrNull() ?: return false
         val model = runCatching { ModelLoader.load(interpJson) }.getOrNull() ?: return false
         val placements = CorpusShrinkSupport.filterPlacements(model, cvv.placements)

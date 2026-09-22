@@ -12,7 +12,6 @@ import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft
 import io.github.mbackschat.a12.dm.modelkit.TimeFieldBuilder
 import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel
 import io.github.mbackschat.a12.dm.rulekit.dsl.Condition
-import io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
@@ -45,7 +44,7 @@ class TimeDateTimeFormalDiffTest {
     // to BOTH engines — no free-text condition literal. The renderer emits absolute paths; both engines accept
     // them. The malformed TIME/DATE_TIME values that exercise the formal check stay in the doc-building below.
     private val m = BoundModel.ofJson(json)
-    private fun render(c: Condition): String = DslRenderer().render(c)
+    private fun render(c: Condition): String = RuntimeLaws.render(c)
 
     private fun iDoc() = def.newDocument()
 

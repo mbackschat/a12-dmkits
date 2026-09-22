@@ -4,7 +4,9 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 
 import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft;
 import io.github.mbackschat.a12.dm.rulekit.validate.DraftComputation;
@@ -172,7 +174,7 @@ class NvvRawTypeLawsTest {
      */
     @Test
     void whatTheComplementOfTheAcceptedShapeDraws() {
-        java.util.Map<String, String> actual = new java.util.LinkedHashMap<>();
+        Map<String, String> actual = new LinkedHashMap<>();
         actual.put("parenthesised whole condition", verdict("../IncidentNote", "(Length(IncidentNote) > 5)"));
         actual.put("the comparison reversed", verdict("../IncidentNote", "Length(IncidentNote) < 5"));
         actual.put("mirrored, reversed", verdict("../IncidentNote", "5 > Length(IncidentNote)"));
@@ -183,7 +185,7 @@ class NvvRawTypeLawsTest {
                 verdict("../Other", "Length(Other) > 5 Or FieldFilled(Other)"));
         actual.put("ordinary field, parenthesised — the control", verdict("../Other", "(Length(Other) > 5)"));
 
-        java.util.Map<String, String> expected = new java.util.LinkedHashMap<>();
+        Map<String, String> expected = new LinkedHashMap<>();
         // The row that decides an implementation: redundant parentheses are TRANSPARENT to the gate, so a
         // checker matching the accepted shape against the raw token stream would refuse a model A12 admits.
         expected.put("parenthesised whole condition", KernelLaws.ADMITTED);

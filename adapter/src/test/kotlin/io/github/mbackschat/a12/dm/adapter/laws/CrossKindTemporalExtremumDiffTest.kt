@@ -3,8 +3,10 @@ package io.github.mbackschat.a12.dm.adapter.laws
 import io.github.mbackschat.a12.dm.interpreter.DmInterpreter
 import io.github.mbackschat.a12.dm.interpreter.eval.newDocument
 import io.github.mbackschat.a12.dm.interpreter.load.ModelLoader
+import io.github.mbackschat.a12.dm.interpreter.model.ModelDef
 import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft
 import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel
+import io.github.mbackschat.a12.dm.rulekit.dsl.Dsl
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
@@ -65,7 +67,7 @@ class CrossKindTemporalExtremumDiffTest {
     }
 
     private val java = HashMap<String, RuntimeLaws.JavaKernelEngine>()
-    private val loaded = HashMap<String, io.github.mbackschat.a12.dm.interpreter.model.ModelDef>()
+    private val loaded = HashMap<String, ModelDef>()
 
     /**
      * The declarations this whole file rests on, read out of the model bytes rather than assumed from the
@@ -152,13 +154,9 @@ class CrossKindTemporalExtremumDiffTest {
     @Test
     fun theTypedSurfaceAuthorsBothAdmittedArms() {
         assertEquals("MaxValue($CHECKED_AS_DATE, $DISPATCHED_ON)",
-            io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer().render(
-                io.github.mbackschat.a12.dm.rulekit.dsl.Dsl.latestOf(
-                    M.field(CHECKED_AS_DATE), M.field(DISPATCHED_ON)).expression()))
+            RuntimeLaws.render(Dsl.latestOf(M.field(CHECKED_AS_DATE), M.field(DISPATCHED_ON)).expression()))
         assertEquals("MinValue($LOGGED_AS_DATE, $DISPATCHED_ON)",
-            io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer().render(
-                io.github.mbackschat.a12.dm.rulekit.dsl.Dsl.earliestOf(
-                    M.field(LOGGED_AS_DATE), M.field(DISPATCHED_ON)).expression()))
+            RuntimeLaws.render(Dsl.earliestOf(M.field(LOGGED_AS_DATE), M.field(DISPATCHED_ON)).expression()))
     }
 
     // ---- the instruments ----

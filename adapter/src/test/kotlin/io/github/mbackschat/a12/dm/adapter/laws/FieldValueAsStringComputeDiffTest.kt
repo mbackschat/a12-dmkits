@@ -7,9 +7,7 @@ import io.github.mbackschat.a12.dm.interpreter.load.ModelLoader
 import io.github.mbackschat.a12.dm.interpreter.model.ComputeOutcome
 import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft
 import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel
-import io.github.mbackschat.a12.dm.rulekit.dsl.ConditionLanguage
 import io.github.mbackschat.a12.dm.rulekit.dsl.Dsl
-import io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 
@@ -49,9 +47,8 @@ class FieldValueAsStringComputeDiffTest {
 
     private val kModel: String = run {
         val m = BoundModel.ofJson(base)
-        val render = DslRenderer(ConditionLanguage.EN, "/Invoice")
-        val feeText = render.render(Dsl.fieldValueAsString(m.field(FEE)).plus(" G").expression())
-        val qtyText = render.render(Dsl.fieldValueAsString(m.field(QTY)).expression())
+        val feeText = RuntimeLaws.render("/Invoice", Dsl.fieldValueAsString(m.field(FEE)).plus(" G").expression())
+        val qtyText = RuntimeLaws.render("/Invoice", Dsl.fieldValueAsString(m.field(QTY)).expression())
         RuntimeLaws.withComputation(
             RuntimeLaws.withComputation(base, "/Invoice", "FeeTextComp", "../FeeText", feeText),
             "/Invoice", "QtyTextComp", "../QtyText", qtyText)
