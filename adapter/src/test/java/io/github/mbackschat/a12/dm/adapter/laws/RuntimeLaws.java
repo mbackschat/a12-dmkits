@@ -181,6 +181,22 @@ public final class RuntimeLaws {
     }
 
     /** As {@link #withRule}, but with explicit en_US / de_DE error-message texts (for localized-text laws). */
+    /**
+     * As {@link #withRuleMessages}, taking the condition the kit BUILT rather than its text — rendered
+     * relative to {@code groupId}, exactly as {@link #withRule}'s typed overload does.
+     *
+     * <p>The third of the three splice helpers that had no typed twin (DG58). A localized-text law varies its
+     * MESSAGES, not its condition, so its condition is the one part that should never have been hand-spelled.
+     */
+    static String withRuleMessages(String modelJson, String groupId, String ruleName, String errorEntityRelPath,
+            String errorCode, io.github.mbackschat.a12.dm.rulekit.dsl.Condition condition,
+            String enText, String deText) {
+        return withRuleMessages(modelJson, groupId, ruleName, errorEntityRelPath, errorCode,
+                new io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer(
+                        io.github.mbackschat.a12.dm.rulekit.dsl.ConditionLanguage.EN, groupId).render(condition),
+                enText, deText);
+    }
+
     static String withRuleMessages(String modelJson, String groupId, String ruleName, String errorEntityRelPath,
             String errorCode, String condition, String enText, String deText) {
         String escaped = jsonEscape(condition);
@@ -235,6 +251,51 @@ public final class RuntimeLaws {
         int br = modelJson.indexOf("\"elements\"", g);
         br = modelJson.indexOf('[', br);
         return modelJson.substring(0, br + 1) + "\n" + comp + modelJson.substring(br + 1);
+    }
+
+    /**
+     * As {@link #withComputation}, taking the computation the kit BUILT rather than its parts — group, name,
+     * computed-field path, operations, preconditions and suppress list all derive from
+     * {@code computation.draft()}, rendered in the group's own scope.
+     *
+     * <p><b>Why this overload exists (DG58, 2026-09-22).</b> The harness published a typed entry point for
+     * {@link #withRule} only, so {@code TypedConditionAuthoringRatchetTest} told authors to migrate onto a
+     * spelling that did not exist for the compute path — roughly 38 of the files it counts splice a
+     * computation. Its twin is {@code KernelLaws.acceptsModel(json, Computation)}, which has taken a typed
+     * computation all along; this is the runtime side catching up.
+     *
+     * <p><b>One entry point for both kernel shapes.</b> A draft with a single unconditional alternative and no
+     * common precondition splices as {@link #withComputation}; anything else takes
+     * {@link #withTieredComputation}. The caller holds one {@code Computation} either way, and which shape it
+     * needs is derivable — making the call site choose would move the affordance gap rather than close it.
+     * Both paths produce byte-identical output to the String form they replace, which
+     * {@code TypedComputationSpliceTest} pins, because a migration must rewrite the spelling and nothing else.
+     */
+    public static String withComputation(String modelJson,
+            io.github.mbackschat.a12.dm.rulekit.dsl.Computation computation) {
+        var draft = computation.draft();
+        var alternatives = draft.alternatives();
+        boolean simple = draft.commonPrecondition() == null
+                && alternatives.size() == 1
+                && alternatives.get(0).precondition() == null
+                && alternatives.get(0).toleranceRangeOp() == null;
+        if (simple) {
+            return withComputation(modelJson, draft.groupPath(), draft.name(), draft.computedFieldRelPath(),
+                    alternatives.get(0).operation(), draft.errorCodesToSuppress());
+        }
+        List<CompAlt> alts = alternatives.stream()
+                .map(a -> new CompAlt(a.precondition(), a.operation(), toleranceText(a.toleranceRangeOp())))
+                .toList();
+        return withTieredComputation(modelJson, draft.groupPath(), draft.name(), draft.computedFieldRelPath(),
+                draft.commonPrecondition(), alts);
+    }
+
+    /**
+     * A tolerance band in the spelling the model carries, or {@code null} for the strict {@code !=} default.
+     * {@code wire()} is the band's own serialized form, so the typed splice writes what a read model would.
+     */
+    private static String toleranceText(io.github.mbackschat.a12.dm.rulekit.dsl.ToleranceBand band) {
+        return band == null ? null : band.wire();
     }
 
     /** One tiered-computation alternative: an optional {@code precondition} gating an {@code operation} (the kernel
