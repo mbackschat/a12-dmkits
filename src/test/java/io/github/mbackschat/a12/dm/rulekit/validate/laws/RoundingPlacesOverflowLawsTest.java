@@ -5,19 +5,23 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 import org.junit.jupiter.api.Test;
 
+import io.github.mbackschat.a12.dm.core.KernelCodeRefusal;
 import io.github.mbackschat.a12.dm.rulekit.validate.ValidationResult;
 import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft;
 import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Dsl;
 import io.github.mbackschat.a12.dm.rulekit.dsl.FieldRef;
+import io.github.mbackschat.a12.dm.rulekit.dsl.FieldRounding;
 import io.github.mbackschat.a12.dm.rulekit.dsl.NumberRef;
 
 /**
- * What a rounding places token does ABOVE the 0..14 scale gate — where a SECOND boundary sits.
+ * What a rounding places token does OUTSIDE the 0..14 scale gate — a second boundary above it, and a
+ * different class altogether below it.
  *
  * <p>Discharges a12-kernel-lean's {@code SPEC-2026-09-08-06}. {@link RoundingOperandLawsTest} owns the
  * ordinary range and the gate's position behind the operand gates; this file owns only the ladder above it,
@@ -74,6 +78,8 @@ class RoundingPlacesOverflowLawsTest {
     @Test
     void thePlacesLadder() {
         Map<String, String> actual = new LinkedHashMap<>();
+        actual.put("-1 — a sign on the token", verdict("-1"));
+        actual.put("0 — the bottom of the scale gate", verdict("0"));
         actual.put("14 — the top of the scale gate", verdict(14));
         actual.put("15 — one above it", verdict("15"));
         actual.put("Long.MAX_VALUE", verdict("9223372036854775807"));
@@ -83,6 +89,10 @@ class RoundingPlacesOverflowLawsTest {
         actual.put("leading zeros on an out-of-range value", verdict("0000000015"));
 
         Map<String, String> expected = new LinkedHashMap<>();
+        // The slot is an UNSIGNED integer token: a sign is not a scale the gate judges but a token the
+        // grammar cannot read, so the two ends of 0..14 are two different classes.
+        expected.put("-1 — a sign on the token", "MVK_UNEXPECTED_TOKEN");
+        expected.put("0 — the bottom of the scale gate", KernelLaws.ADMITTED);
         expected.put("14 — the top of the scale gate", KernelLaws.ADMITTED);
         expected.put("15 — one above it", "MVK_INVALID_DIGIT_FOR_ROUNDING");
         // Still readable as a long, so the SCALE gate answers — the whole range 15..2^63-1 is one class.
@@ -118,14 +128,15 @@ class RoundingPlacesOverflowLawsTest {
     void theKitsOwnPlacesBoundHasThisKernelRowAsItsBasis() {
         assertEquals(KernelLaws.ADMITTED, verdict(14), "14 is admitted by the kernel, so the kit must build it");
 
-        var refusal = assertThrows(IllegalArgumentException.class,
+        var refusal = assertThrows(KernelCodeRefusal.class,
                 () -> Dsl.roundUpValue(UNIT_PRICE, 15),
                 "the kit must refuse 15 rather than hand the kernel a token it rejects");
-        assertEquals("rounding decimal places must be in 0..14, was 15", refusal.getMessage(),
-                "the refusal names the bound and the offending value");
+        assertEquals("MVK_INVALID_DIGIT_FOR_ROUNDING", refusal.code().name(),
+                "and cite the class the ladder measures for 15");
 
-        assertThrows(IllegalArgumentException.class, () -> Dsl.roundUpValue(UNIT_PRICE, -1),
-                "the lower end of the same bound");
+        assertEquals("MVK_UNEXPECTED_TOKEN",
+                assertThrows(KernelCodeRefusal.class, () -> Dsl.roundUpValue(UNIT_PRICE, -1)).code().name(),
+                "the lower end cites the ladder's -1 row, which is a different class");
 
         // The inbound direction: the identical constructor runs when a kernel model is READ, so a bound that
         // is too narrow silently costs readability. 14 must survive the round trip that 15 never enters.
@@ -136,19 +147,15 @@ class RoundingPlacesOverflowLawsTest {
     }
 
     /**
-     * <b>The same bound again, on the EXPRESSION arm, because it is a second copy in a second class.</b>
+     * <b>The same bound on the EXPRESSION arm, because it is reached from a second class.</b>
      *
      * <p>{@code roundUpValue(NumberRef, int)} builds a {@code FieldRounding} while {@code roundUp(NumberExpr,
-     * int)} builds a {@code Rounding}, and each class carries its own {@code 0..14} check with its own message.
-     * A mutant widening one of them to 15 survived a test that exercised only the other — so one row per class
-     * is the minimum here, and the duplication is the reason rather than thoroughness.
-     *
-     * <p>The two copies are a smell, not a design: one bound with one measured basis is stated twice and can
-     * drift silently. Recorded rather than fixed here, because merging them is a rulekit change and this file
-     * is a law.
+     * int)} builds a {@code Rounding}. Both now call one shared check, so the bound cannot drift between them —
+     * but each must still CALL it, and a mutant dropping the call from one class survives a test of the other,
+     * so one row per class stays the minimum.
      */
     @Test
-    void theExpressionArmCarriesItsOwnCopyOfThatBound() {
+    void theExpressionArmReachesTheSameBound() {
         var expression = Dsl.number(1).plus(2);
 
         assertEquals(KernelLaws.ADMITTED,
@@ -156,12 +163,36 @@ class RoundingPlacesOverflowLawsTest {
                         Dsl.fieldFilled(SKU).and(Dsl.number(0).lt(Dsl.roundUp(expression, 14))))),
                 "14 is admitted by the kernel on this arm too");
 
-        var refusal = assertThrows(IllegalArgumentException.class, () -> Dsl.roundUp(expression, 15),
-                "the expression arm must refuse 15 as the field arm does");
-        assertEquals("rounding decimal places must be in 0..14, was 15", refusal.getMessage(),
-                "and name the same bound, since it is the same kernel row");
-
-        assertThrows(IllegalArgumentException.class, () -> Dsl.roundDown(expression, -1),
+        assertEquals("MVK_INVALID_DIGIT_FOR_ROUNDING",
+                assertThrows(KernelCodeRefusal.class, () -> Dsl.roundUp(expression, 15)).code().name(),
+                "the expression arm must refuse 15 as the field arm does, citing the same class");
+        assertEquals("MVK_UNEXPECTED_TOKEN",
+                assertThrows(KernelCodeRefusal.class, () -> Dsl.roundDown(expression, -1)).code().name(),
                 "the lower end, on a second mode of the same arm");
+        assertEquals("MVK_UNEXPECTED_TOKEN",
+                classes(KernelLaws.checkModel(PRICES, GROUP, "../Sku",
+                        "FieldFilled(Sku) And 0 < RoundUp([UnitPrice], -1)")),
+                "and the kernel reads a sign on this construct's token the same way");
+    }
+
+    /**
+     * {@code AbsValue} is the one {@code …Value} spelling with NO digits slot, so any digits argument — zero
+     * included — is a token its production cannot place; the bare form is the positive control that keeps the
+     * refusal attributable to the argument.
+     */
+    @Test
+    void absValueHasNoDigitsSlot_soEvenZeroIsAnUnplaceableToken() {
+        for (String form : new String[]{"AbsValue(UnitPrice, 2)", "AbsValue(UnitPrice, 0)"}) {
+            assertEquals("MVK_UNEXPECTED_TOKEN",
+                    classes(KernelLaws.checkModel(PRICES, GROUP, "../Sku", "FieldFilled(Sku) And 0 < " + form)),
+                    form);
+        }
+        assertEquals(KernelLaws.ADMITTED,
+                classes(KernelLaws.checkModel(PRICES, GROUP, "../Sku", "FieldFilled(Sku) And 0 < AbsValue(UnitPrice)")));
+
+        assertEquals("MVK_UNEXPECTED_TOKEN",
+                assertThrows(KernelCodeRefusal.class, () -> new FieldRounding(
+                        FieldRounding.Mode.ABS, UNIT_PRICE.field(), Optional.of(0))).code().name(),
+                "rulekit refuses the same shape with the same class");
     }
 }

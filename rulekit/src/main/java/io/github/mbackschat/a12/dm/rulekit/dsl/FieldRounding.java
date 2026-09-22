@@ -3,6 +3,8 @@ package io.github.mbackschat.a12.dm.rulekit.dsl;
 import java.util.Objects;
 import java.util.Optional;
 
+import io.github.mbackschat.a12.dm.core.KernelCode;
+import io.github.mbackschat.a12.dm.core.Refusals;
 import io.github.mbackschat.a12.dm.core.ValueKind;
 
 /**
@@ -39,11 +41,11 @@ public record FieldRounding(Mode mode, FieldRef field, Optional<Integer> decimal
         decimalPlaces = Objects.requireNonNull(decimalPlaces, "decimalPlaces");
         decimalPlaces.ifPresent(places -> {
             if (mode == Mode.ABS) {
-                throw new IllegalArgumentException("AbsValue does not accept decimal places");
+                // AbsValue's production has no places slot at all, so even 0 is a token it cannot place
+                // (RoundingPlacesOverflowLawsTest) — not a scale the gate below would judge.
+                throw Refusals.of(KernelCode.MVK_UNEXPECTED_TOKEN, "AbsValue does not accept decimal places");
             }
-            if (places < 0 || places > 14) {
-                throw new IllegalArgumentException("rounding decimal places must be in 0..14, was " + places);
-            }
+            RoundingPlaces.check(places);
         });
     }
 

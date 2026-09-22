@@ -7931,6 +7931,8 @@ Reported by the portable checker on all five numeric carriers; the text arm's ad
 
 Reported by the portable checker (`CheckFamily.ROUNDING_OPERANDS`), with two disclosed under-reports: a category operand, which reduces to no entity spec, and a digits argument written as anything but plain digits, whose grammar-level treatment is not measured.
 
+**A SIGNED digits argument is a grammar refusal, not a digits-gate one (measured 2026-09-22).** `RoundUpValue(UnitPrice, -1)` and `RoundUp([UnitPrice], -1)` are both `MVK_UNEXPECTED_TOKEN`, while `15` on either is `MVK_INVALID_DIGIT_FOR_ROUNDING` and `0` is admitted: the slot is an unsigned integer token, so the two ends of `0..14` are two different classes. `AbsValue`, the one `…Value` spelling without a digits slot, draws the same class for ANY digits argument — `AbsValue(UnitPrice, 2)` and even `AbsValue(UnitPrice, 0)` — against an admitted `AbsValue(UnitPrice)`. This answers the kernel half of the second disclosure above for a sign; other non-digit spellings stay unmeasured, and whether the portable checker reports these is not settled here. *Locked by:* `rulekit.validate.laws.RoundingPlacesOverflowLawsTest`, which also pins rulekit's refusals citing each class.
+
 *Locked by:* `rulekit.validate.laws.RoundingOperandLawsTest`, mirrored by `consistency.RoundingOperandsTest`.
 
 ## §6 supplement — date arithmetic asks FOUR questions of its operand, and the ORDER is what makes two of the classes reachable (source-verified + measured, 2026-09-14) <a id="kf392"></a>

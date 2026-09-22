@@ -463,10 +463,10 @@ class FunctionsTest {
         assertEquals(Rounding.Mode.DOWN, rounding.mode())
     }
 
-    /** No MVK code — the record's own 0..14 decimal-places bound. */
+    /** The kernel's digits gate, pre-checked by the record (KERNEL-FINDINGS KF393). */
     @Test
     fun anOutOfRangeRoundUpIsRejected() {
-        assertRejectedWith("must be in 0..14") { translate("RoundUp([UnitPrice], 15) > 1") }
+        assertRejectedWith("MVK_INVALID_DIGIT_FOR_ROUNDING") { translate("RoundUp([UnitPrice], 15) > 1") }
     }
 
     @Test
@@ -475,10 +475,10 @@ class FunctionsTest {
         assertEquals(FieldRounding.Mode.ROUND_ACCOUNTING, rounding.mode())
     }
 
-    /** No MVK code — the field-only siblings share the same 0..14 bound. */
+    /** The field-only siblings reach the same gate through the same check. */
     @Test
     fun anOutOfRangeRoundDownValueIsRejected() {
-        assertRejectedWith("must be in 0..14") { translate("RoundDownValue(UnitPrice, 15) > 1") }
+        assertRejectedWith("MVK_INVALID_DIGIT_FOR_ROUNDING") { translate("RoundDownValue(UnitPrice, 15) > 1") }
     }
 
     // --- CurrentRepetition ------------------------------------------------------------------------

@@ -37,11 +37,7 @@ public record Rounding(Mode mode, Calculation operand, Optional<Integer> decimal
         Objects.requireNonNull(mode, "mode");
         Objects.requireNonNull(operand, "operand");
         decimalPlaces = Objects.requireNonNull(decimalPlaces, "decimalPlaces");
-        decimalPlaces.ifPresent(places -> {
-            if (places < 0 || places > 14) {
-                throw new IllegalArgumentException("rounding decimal places must be in 0..14, was " + places);
-            }
-        });
+        decimalPlaces.ifPresent(RoundingPlaces::check);
     }
 
     /** Backward-compatible constructor for the explicit-places spelling. */
