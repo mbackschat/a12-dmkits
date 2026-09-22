@@ -39,10 +39,19 @@ import org.junit.jupiter.api.Test;
 class TypedConditionAuthoringRatchetTest {
 
     /**
-     * Measured 2026-09-22, and it may only fall. Lower it in the same commit that migrates a file; never
-     * raise it — the shared overloads mean a new law has no reason to add one.
+     * Measured 2026-09-22 and exact — no slack, so a single new offender fails. It may only FALL: lower it in
+     * the same commit that migrates a file, and never raise it, because the shared overloads mean a new law
+     * has no reason to add one.
      */
-    private static final int CEILING = 250;
+    private static final int CEILING = 248;
+
+    /**
+     * The two shared harnesses live inside the scanned trees and legitimately BUILD the renderer — they are
+     * the entry point everything else should call. Counting them would put two files in the backlog that can
+     * never leave it, and a ceiling whose denominator includes its own fix means something other than it says.
+     */
+    private static final List<String> THE_HARNESSES_THEMSELVES =
+            List.of("KernelLaws.java", "RuntimeLaws.java");
 
     /** A renderer built by the test itself, in either language. A qualified mention in prose is not one. */
     private static final Pattern OWN_RENDERER = Pattern.compile("(?<![A-Za-z.])(new\\s+)?DslRenderer\\s*\\(");
@@ -59,6 +68,7 @@ class TypedConditionAuthoringRatchetTest {
                 .map(checkout::resolve)
                 .filter(Files::isDirectory)
                 .flatMap(TypedConditionAuthoringRatchetTest::sourcesUnder)
+                .filter(p -> !THE_HARNESSES_THEMSELVES.contains(p.getFileName().toString()))
                 .filter(p -> OWN_RENDERER.matcher(read(p)).find())
                 .toList();
 
