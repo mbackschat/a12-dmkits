@@ -62,6 +62,10 @@ class FirstFilledValueCrossKindFormatLawsTest {
         expected.put("FirstFilledValue(PostedOn, ListedOn) == [PostedOn]", ADMITTED);
         expected.put("FirstFilledValue(DueOn, PostedOn) == [DueOn]", ADMITTED);
         expected.put("FirstFilledValue(RenewalDay, DueOn) == [RenewalDay]", ADMITTED);
+        // the sixth unordered pair, without which the universal in this file's name rested on the source read
+        // alone (found by a12-kernel-lean, 2026-09-22)
+        expected.put("FirstFilledValue(RenewalDay, PostedOn) == [RenewalDay]", ADMITTED);
+        expected.put("FirstFilledValue(PostedOn, RenewalDay) == [PostedOn]", ADMITTED);
         expected.put("FirstFilledValue(StartClock, OpensAt) == [StartClock]", ADMITTED);
         expected.put("FirstFilledValue(OpensAt, ClockedAt) == [OpensAt]", ADMITTED);
         expected.put("FirstFilledValue(ClockedAt, OpensAt) == [ClockedAt]", ADMITTED);
@@ -88,7 +92,8 @@ class FirstFilledValueCrossKindFormatLawsTest {
         BoundModel m = BoundModel.ofJson(MODEL);
         List<List<String>> pairs = List.of(List.of("ListedOn", "DueOn"), List.of("DueOn", "ListedOn"),
                 List.of("ListedOn", "PostedOn"), List.of("PostedOn", "ListedOn"), List.of("DueOn", "PostedOn"),
-                List.of("RenewalDay", "DueOn"), List.of("StartClock", "OpensAt"), List.of("OpensAt", "ClockedAt"),
+                List.of("RenewalDay", "DueOn"), List.of("RenewalDay", "PostedOn"), List.of("PostedOn", "RenewalDay"),
+                List.of("StartClock", "OpensAt"), List.of("OpensAt", "ClockedAt"),
                 List.of("ClockedAt", "OpensAt"));
         for (List<String> pair : pairs) {
             FieldRef first = m.field("/Shift/" + pair.get(0));
