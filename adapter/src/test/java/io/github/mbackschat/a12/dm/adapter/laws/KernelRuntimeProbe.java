@@ -21,7 +21,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
-import java.util.function.Function;
+import java.util.function.BiConsumer;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
@@ -213,13 +213,21 @@ public final class KernelRuntimeProbe {
         }
 
         static Observation of(String wireName) {
-            for (Observation observation : values()) {
-                if (observation.wireName.equals(wireName)) {
-                    return observation;
-                }
-            }
-            throw new IllegalArgumentException("'observe' names an unknown observation '" + wireName
-                    + "'; the probe observes " + names());
+            return find(wireName).orElseThrow(() -> new IllegalArgumentException(
+                    "'observe' names an unknown observation '" + wireName
+                            + "'; the probe observes " + names()));
+        }
+
+        /**
+         * The observation a wire name denotes, or empty when it denotes none.
+         *
+         * <p>Empty is a real answer rather than a failure here: a {@link KernelProbeArtifact.Fault} locus is
+         * drawn from a wider vocabulary than a request is — {@code documentInstance} and {@code engineBuild}
+         * name raises that precede every channel — and {@link KernelProbeArtifact.Engine} distinguishes them
+         * from a channel raise to decide which channels a faulted block may still publish.
+         */
+        static Optional<Observation> find(String wireName) {
+            return Arrays.stream(values()).filter(o -> o.wireName.equals(wireName)).findFirst();
         }
 
         static String names() {
@@ -564,43 +572,41 @@ public final class KernelRuntimeProbe {
             // immutable and neither validateFull nor compute writes to it, so a second deserialization would
             // only be a second chance to differ.
             rows.add(new KernelProbeArtifact.Row(row.name(), List.of(
-                    observe(GROOVY_DYNAMIC, groovyDynamic, engine -> {
+                    // Each channel is SET as it completes rather than handed over together, so a raise in a
+                    // later one leaves the earlier ones on the block instead of discarding them with it.
+                    observe(GROOVY_DYNAMIC, groovyDynamic, (engine, block) -> {
                         var instance = instance(() -> engine.instance(row.documentJson()));
-                        return KernelProbeArtifact.Engine.of(GROOVY_DYNAMIC)
-                                .messages(channel(Observation.VALIDATE_FULL,
-                                        () -> project(engine.validationMessages(
-                                                instance, clock, locale, fieldTypes))))
-                                .computations(compute ? Optional.of(channel(Observation.COMPUTE,
-                                        () -> project(engine.computation(instance, clock, locale, fieldTypes))))
-                                        : Optional.empty())
-                                .partialMessages(row.relevant().map(rel ->
-                                        channel(Observation.VALIDATE_PART, () -> project(engine
-                                                .partialValidationMessages(
-                                                        instance, rel, clock, locale, fieldTypes)))))
-                                .computeResults(computeResults
-                                        ? Optional.of(channel(Observation.COMPUTE_RESULTS, () -> project(
-                                                engine.computeResults(instance, clock, locale, fieldTypes))))
-                                        : Optional.<KernelProbeArtifact.ComputeResults>empty())
-                                .build();
+                        block.messages(channel(Observation.VALIDATE_FULL,
+                                () -> project(engine.validationMessages(instance, clock, locale, fieldTypes))));
+                        if (compute) {
+                            block.computations(Optional.of(channel(Observation.COMPUTE, () -> project(
+                                    engine.computation(instance, clock, locale, fieldTypes)))));
+                        }
+                        row.relevant().ifPresent(rel -> block.partialMessages(Optional.of(
+                                channel(Observation.VALIDATE_PART, () -> project(engine
+                                        .partialValidationMessages(
+                                                instance, rel, clock, locale, fieldTypes))))));
+                        if (computeResults) {
+                            block.computeResults(Optional.of(channel(Observation.COMPUTE_RESULTS, () -> project(
+                                    engine.computeResults(instance, clock, locale, fieldTypes)))));
+                        }
                     }),
-                    observe(JAVA_STATIC, javaStatic, engine -> {
+                    observe(JAVA_STATIC, javaStatic, (engine, block) -> {
                         var instance = instance(() -> engine.instance(row.documentJson()));
-                        return KernelProbeArtifact.Engine.of(JAVA_STATIC)
-                                .messages(channel(Observation.VALIDATE_FULL,
-                                        () -> project(engine.validationMessages(
-                                                instance, clock, locale, fieldTypes))))
-                                .computations(compute ? Optional.of(channel(Observation.COMPUTE,
-                                        () -> project(engine.computation(instance, clock, locale, fieldTypes))))
-                                        : Optional.empty())
-                                .partialMessages(row.relevant().map(rel ->
-                                        channel(Observation.VALIDATE_PART, () -> project(engine
-                                                .partialValidationMessages(
-                                                        instance, rel, clock, locale, fieldTypes)))))
-                                .computeResults(computeResults
-                                        ? Optional.of(channel(Observation.COMPUTE_RESULTS, () -> project(
-                                                engine.computeResults(instance, clock, locale, fieldTypes))))
-                                        : Optional.<KernelProbeArtifact.ComputeResults>empty())
-                                .build();
+                        block.messages(channel(Observation.VALIDATE_FULL,
+                                () -> project(engine.validationMessages(instance, clock, locale, fieldTypes))));
+                        if (compute) {
+                            block.computations(Optional.of(channel(Observation.COMPUTE, () -> project(
+                                    engine.computation(instance, clock, locale, fieldTypes)))));
+                        }
+                        row.relevant().ifPresent(rel -> block.partialMessages(Optional.of(
+                                channel(Observation.VALIDATE_PART, () -> project(engine
+                                        .partialValidationMessages(
+                                                instance, rel, clock, locale, fieldTypes))))));
+                        if (computeResults) {
+                            block.computeResults(Optional.of(channel(Observation.COMPUTE_RESULTS, () -> project(
+                                    engine.computeResults(instance, clock, locale, fieldTypes)))));
+                        }
                     }))));
         }
         return new KernelProbeArtifact(header, rows, mandatory, dynamicEnumerations);
@@ -630,23 +636,27 @@ public final class KernelRuntimeProbe {
     }
 
     /**
-     * One (row, strategy) observation, with every raise inside it captured as the block's whole content.
+     * One (row, strategy) observation, with the first raise inside it captured beside whatever it did not reach.
      *
-     * <p><b>The unit is the strategy's observation of the row, not the individual channel.</b> A strategy that
-     * cannot validate a document is not a strategy whose compute answer means anything, and publishing one
-     * channel beside a raise in another would reintroduce exactly the misreading the artifact refuses — so the
-     * first channel that raises ends the block, and {@code fault.observation} says which one it was.
+     * <p><b>The raise ends the block's observation, and keeps what already completed.</b> A channel is read in
+     * request order, so a raise leaves the ones before it finished and the ones after it unread;
+     * {@code fault.observation} names the one it happened in, which is therefore the only one that could be
+     * half-read and is never published. Discarding the finished ones too — the rule until 2026-09-22 — broke the
+     * guarantee {@code observe} exists for, because a consumer who ADDED an observation could lose one they
+     * already had ({@link KernelProbeOverCapacityFaultTest}).
      */
     private static <E> KernelProbeArtifact.Engine observe(String name, Built<E> built,
-            Function<E, KernelProbeArtifact.Engine> observation) {
+            BiConsumer<E, KernelProbeArtifact.Engine.Builder> observation) {
         return switch (built) {
             case Built.Failed<E> failed -> KernelProbeArtifact.Engine.faulted(name, failed.fault());
             case Built.Engine<E> ready -> {
+                var block = KernelProbeArtifact.Engine.of(name);
                 try {
-                    yield observation.apply(ready.engine());
+                    observation.accept(ready.engine(), block);
                 } catch (Raised raised) {
-                    yield KernelProbeArtifact.Engine.faulted(name, raised.fault());
+                    block.fault(raised.fault());
                 }
+                yield block.build();
             }
         };
     }

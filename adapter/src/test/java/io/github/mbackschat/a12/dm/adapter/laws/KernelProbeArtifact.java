@@ -136,17 +136,69 @@ public record KernelProbeArtifact(Header header, List<Row> rows,
         public Engine {
             messages = messages.stream().sorted().toList();
             partialMessages = partialMessages.map(list -> list.stream().sorted().toList());
-            // A faulted strategy answered NOTHING, so it may not also carry a channel. Checked rather than
-            // merely left unwritten: an empty message list beside a raise reads as "the kernel found no
-            // problem", which is the one misreading this whole artifact is built to prevent.
-            if (fault.isPresent() && !(messages.isEmpty() && computations.isEmpty()
-                    && partialMessages.isEmpty() && computeResults.isEmpty())) {
-                throw new IllegalArgumentException("a faulted engine block carries no channel: " + engine
-                        + " raised at " + fault.get().observation() + " yet reports " + messages.size()
+            requireRaisedChannelAbsent(engine, messages, computations, partialMessages, computeResults, fault);
+        }
+
+        /**
+         * A PUBLISHED channel is a COMPLETE channel — the invariant, checked rather than merely left unwritten.
+         *
+         * <p>The raise ends the block's observation, so the channel it happened in was never finished and must
+         * not appear: an empty message list beside a {@code validateFull} raise reads as "the kernel found no
+         * problem", which is the one misreading this whole artifact is built to prevent. The two loci that
+         * precede every channel ({@code documentInstance}, {@code engineBuild}) therefore admit no channel at
+         * all, which is what {@link #faulted} builds.
+         *
+         * <p><b>Channels that FINISHED before the raise survive it, and that is a correction.</b> Until
+         * 2026-09-22 the rule was the stronger "a faulted block carries no channel", justified by "a strategy
+         * that cannot validate a document is not one whose compute answer means anything" — true in that
+         * direction and false in the other, because a strategy that validated a document perfectly well may
+         * still raise later. Applied symmetrically it broke the invariant `observe` exists for: a12-kernel-lean
+         * asked an over-capacity row for {@code computeResults}, whose {@code applyTo} copy the kernel refuses
+         * to serialize, and LOST the two validation messages the same row returns without it — so ADDING an
+         * observation removed one they already had. Measured both strategies at
+         * {@link KernelProbeOverCapacityFaultTest}.
+         */
+        private static void requireRaisedChannelAbsent(String engine, List<Message> messages,
+                Optional<Computations> computations, Optional<List<Message>> partialMessages,
+                Optional<ComputeResults> computeResults, Optional<Fault> fault) {
+            if (fault.isEmpty()) {
+                return;
+            }
+            String locus = fault.get().observation();
+            // Empty means a locus that precedes every channel, so every channel must be absent. The row-level
+            // observations map one-to-one onto the channel each produces; a MODEL-level one never rides an
+            // engine block, so it can only be a coding error here and is refused as an unpublishable channel.
+            boolean published = KernelRuntimeProbe.Observation.find(locus)
+                    .map(observation -> switch (observation) {
+                        case VALIDATE_FULL -> !messages.isEmpty();
+                        case COMPUTE -> computations.isPresent();
+                        case VALIDATE_PART -> partialMessages.isPresent();
+                        case COMPUTE_RESULTS -> computeResults.isPresent();
+                        case MANDATORY_INFORMATION, DYNAMIC_ENUMERATIONS -> true;
+                    })
+                    .orElse(!(messages.isEmpty() && computations.isEmpty()
+                            && partialMessages.isEmpty() && computeResults.isEmpty()));
+            if (published) {
+                throw new IllegalArgumentException("an engine block may not publish the channel it raised in: "
+                        + engine + " raised at " + locus + " yet reports " + messages.size()
                         + " message(s), computations=" + computations.isPresent()
                         + ", partialMessages=" + partialMessages.isPresent()
                         + ", computeResults=" + computeResults.isPresent());
             }
+        }
+
+        /**
+         * Whether {@code validateFull} was read to completion — false exactly when the raise happened at or
+         * before it, which is when {@code messages} must be OMITTED rather than written as {@code []}.
+         *
+         * <p>Derived rather than stored, so the writer and the invariant above cannot disagree: {@code messages}
+         * is a {@code List} and an unread channel and an empty one are the same value, so presence is a fact
+         * about the FAULT, not about the list.
+         */
+        public boolean messagesObserved() {
+            return fault.map(raised -> KernelRuntimeProbe.Observation.find(raised.observation())
+                    .filter(observation -> observation != KernelRuntimeProbe.Observation.VALIDATE_FULL)
+                    .isPresent()).orElse(true);
         }
 
         /**
@@ -172,6 +224,7 @@ public record KernelProbeArtifact(Header header, List<Row> rows,
             private Optional<Computations> computations = Optional.empty();
             private Optional<List<Message>> partialMessages = Optional.empty();
             private Optional<ComputeResults> computeResults = Optional.empty();
+            private Optional<Fault> fault = Optional.empty();
 
             private Builder(String engine) {
                 this.engine = engine;
@@ -197,9 +250,17 @@ public record KernelProbeArtifact(Header header, List<Row> rows,
                 return this;
             }
 
+            /**
+             * The raise that ended this block's observation, leaving whatever channels had already completed.
+             * Set it on a block that observed nothing and the result equals {@link Engine#faulted}.
+             */
+            public Builder fault(Fault raised) {
+                this.fault = Optional.of(raised);
+                return this;
+            }
+
             public Engine build() {
-                return new Engine(engine, messages, computations, partialMessages, computeResults,
-                        Optional.empty());
+                return new Engine(engine, messages, computations, partialMessages, computeResults, fault);
             }
         }
 
@@ -434,14 +495,16 @@ public record KernelProbeArtifact(Header header, List<Row> rows,
             for (Engine engine : row.engines()) {
                 ObjectNode engineNode = engineNodes.addObject();
                 engineNode.put("engine", engine.engine());
-                if (engine.fault().isPresent()) {
-                    // No channel key at all — the record already refuses a fault beside one, and rendering
-                    // `messages: []` here would publish "the kernel found no problem" for a run that raised.
-                    write(engineNode.putObject("fault"), engine.fault().get());
-                    continue;
+                // The raise is written FIRST, before the channels that survived it, so every artifact that
+                // could exist before a completed channel outlived a later channel's raise stays byte-identical:
+                // such a block carried `fault` and nothing else.
+                engine.fault().ifPresent(raised -> write(engineNode.putObject("fault"), raised));
+                if (engine.messagesObserved()) {
+                    // Omitted rather than `[]` when the raise reached validateFull: an empty list there would
+                    // publish "the kernel found no problem" for a channel that never finished.
+                    ArrayNode messageNodes = engineNode.putArray("messages");
+                    engine.messages().forEach(message -> write(messageNodes.addObject(), message));
                 }
-                ArrayNode messageNodes = engineNode.putArray("messages");
-                engine.messages().forEach(message -> write(messageNodes.addObject(), message));
                 engine.computations().ifPresent(computations -> write(
                         engineNode.putObject("computations"), computations));
                 // Rendered even when EMPTY: under noneRelevant coverage an empty list is the measurement.

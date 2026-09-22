@@ -189,24 +189,53 @@ class KernelProbeFaultCaptureTest {
         )
     }
 
-    /** A faulted block may not also carry a channel — the illegal pair is refused, not merely unwritten. */
+    /**
+     * A block may not publish the channel it RAISED in — the illegal pair is refused, not merely unwritten.
+     *
+     * The three cases are one claim seen from its two sides plus its boundary: the raising channel present is
+     * refused, a channel the raise never reached is admitted, and a locus that precedes every channel
+     * (`documentInstance`) admits none. Without the middle case the guard is satisfied by the old blanket rule,
+     * which discarded observations a consumer already had ([KernelProbeOverCapacityFaultTest]).
+     */
     @Test
-    fun aFaultBesideAChannelIsUnrepresentable() {
-        val fault = KernelProbeArtifact.Fault(
-            "compute",
-            listOf(KernelProbeArtifact.Fault.Raise("java.lang.IllegalStateException", Optional.empty())),
-        )
-        val message = KernelProbeArtifact.Message(
-            "CODE", "Policy/Holder", "ERROR", "VALUE_ERROR", "text", emptyList(), emptyList(),
-        )
+    fun aBlockMayNotPublishTheChannelItRaisedIn() {
+        val computations = KernelProbeArtifact.Computations(emptyList(), emptyList())
 
         assertThrows(IllegalArgumentException::class.java) {
-            KernelProbeArtifact.Engine(
-                KernelRuntimeProbe.GROOVY_DYNAMIC, listOf(message),
-                Optional.empty(), Optional.empty(), Optional.empty(), Optional.of(fault),
-            )
+            engine(faultAt("compute"), computations = Optional.of(computations))
         }
+        assertThrows(IllegalArgumentException::class.java) {
+            engine(faultAt("validateFull"), messages = listOf(MESSAGE))
+        }
+        assertThrows(IllegalArgumentException::class.java) {
+            engine(faultAt("documentInstance"), messages = listOf(MESSAGE))
+        }
+
+        val survivor = engine(faultAt("computeResults"), messages = listOf(MESSAGE),
+            computations = Optional.of(computations))
+        assertEquals(listOf(MESSAGE), survivor.messages(),
+            "a channel the raise never reached is kept, because losing it would cost a consumer an observation "
+                + "they had before they asked for the one that failed")
+        assertTrue(survivor.messagesObserved(), "…and it is written rather than omitted")
     }
+
+    private val MESSAGE = KernelProbeArtifact.Message(
+        "CODE", "Policy/Holder", "ERROR", "VALUE_ERROR", "text", emptyList(), emptyList(),
+    )
+
+    private fun faultAt(observation: String) = KernelProbeArtifact.Fault(
+        observation,
+        listOf(KernelProbeArtifact.Fault.Raise("java.lang.IllegalStateException", Optional.empty())),
+    )
+
+    private fun engine(
+        fault: KernelProbeArtifact.Fault,
+        messages: List<KernelProbeArtifact.Message> = emptyList(),
+        computations: Optional<KernelProbeArtifact.Computations> = Optional.empty(),
+    ) = KernelProbeArtifact.Engine(
+        KernelRuntimeProbe.GROOVY_DYNAMIC, messages, computations,
+        Optional.empty(), Optional.empty(), Optional.of(fault),
+    )
 
     /** The published shape stays the published shape: the fault-carrying artifact validates against it. */
     @Test

@@ -147,16 +147,20 @@
               "type": "object",
               "required": ["engine"],
               "additionalProperties": false,
-              "if": { "required": ["fault"] },
-              "then": {
-                "not": { "anyOf": [
-                  { "required": ["messages"] },
-                  { "required": ["computations"] },
-                  { "required": ["partialMessages"] },
-                  { "required": ["computeResults"] }
-                ] }
-              },
-              "else": { "required": ["messages"] },
+              "$comment": "A PUBLISHED channel is a COMPLETE channel. The raise ends the block's observation, so the channel named by `fault.observation` was never finished and is absent; channels read BEFORE it survive, and channels after it were never read. A locus that precedes every channel (`documentInstance`, `engineBuild`) therefore admits none. `messages` is required exactly when the block did reach the end of `validateFull`.",
+              "allOf": [
+                { "if": { "required": ["fault"] },
+                  "then": { "if": { "properties": { "fault": { "properties": { "observation": { "enum": ["compute", "computeResults", "validatePart"] } } } } },
+                    "then": { "required": ["messages"] },
+                    "else": { "not": { "required": ["messages"] } } },
+                  "else": { "required": ["messages"] } },
+                { "$comment": "the non-`messages` channels, each forbidden by the locus that could not finish it; the two pre-channel loci forbid all three at once",
+                  "not": { "anyOf": [
+                    { "required": ["computations", "fault"], "properties": { "fault": { "required": ["observation"], "properties": { "observation": { "enum": ["compute", "documentInstance", "engineBuild"] } } } } },
+                    { "required": ["partialMessages", "fault"], "properties": { "fault": { "required": ["observation"], "properties": { "observation": { "enum": ["validatePart", "documentInstance", "engineBuild"] } } } } },
+                    { "required": ["computeResults", "fault"], "properties": { "fault": { "required": ["observation"], "properties": { "observation": { "enum": ["computeResults", "documentInstance", "engineBuild"] } } } } }
+                  ] } }
+              ],
               "properties": {
                 "engine": {
                   "enum": ["kernel-groovy-dynamic", "kernel-java-static"],
