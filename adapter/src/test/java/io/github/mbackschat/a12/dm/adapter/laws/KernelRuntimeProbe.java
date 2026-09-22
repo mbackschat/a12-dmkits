@@ -520,27 +520,33 @@ public final class KernelRuntimeProbe {
             rows.add(new KernelProbeArtifact.Row(row.name(), List.of(
                     observe(GROOVY_DYNAMIC, groovyDynamic, engine -> {
                         var instance = instance(() -> engine.instance(row.documentJson()));
-                        return new KernelProbeArtifact.Engine(GROOVY_DYNAMIC,
-                                channel(Observation.VALIDATE_FULL,
+                        return KernelProbeArtifact.Engine.of(GROOVY_DYNAMIC)
+                                .messages(channel(Observation.VALIDATE_FULL,
                                         () -> project(engine.validationMessages(
-                                                instance, clock, locale, fieldTypes))),
-                                compute ? Optional.of(channel(Observation.COMPUTE,
+                                                instance, clock, locale, fieldTypes))))
+                                .computations(compute ? Optional.of(channel(Observation.COMPUTE,
                                         () -> project(engine.computation(instance, clock, locale, fieldTypes))))
-                                        : Optional.empty(),
-                                row.relevant().map(rel -> channel(Observation.VALIDATE_PART, () -> project(engine
-                                        .partialValidationMessages(instance, rel, clock, locale, fieldTypes)))));
+                                        : Optional.empty())
+                                .partialMessages(row.relevant().map(rel ->
+                                        channel(Observation.VALIDATE_PART, () -> project(engine
+                                                .partialValidationMessages(
+                                                        instance, rel, clock, locale, fieldTypes)))))
+                                .build();
                     }),
                     observe(JAVA_STATIC, javaStatic, engine -> {
                         var instance = instance(() -> engine.instance(row.documentJson()));
-                        return new KernelProbeArtifact.Engine(JAVA_STATIC,
-                                channel(Observation.VALIDATE_FULL,
+                        return KernelProbeArtifact.Engine.of(JAVA_STATIC)
+                                .messages(channel(Observation.VALIDATE_FULL,
                                         () -> project(engine.validationMessages(
-                                                instance, clock, locale, fieldTypes))),
-                                compute ? Optional.of(channel(Observation.COMPUTE,
+                                                instance, clock, locale, fieldTypes))))
+                                .computations(compute ? Optional.of(channel(Observation.COMPUTE,
                                         () -> project(engine.computation(instance, clock, locale, fieldTypes))))
-                                        : Optional.empty(),
-                                row.relevant().map(rel -> channel(Observation.VALIDATE_PART, () -> project(engine
-                                        .partialValidationMessages(instance, rel, clock, locale, fieldTypes)))));
+                                        : Optional.empty())
+                                .partialMessages(row.relevant().map(rel ->
+                                        channel(Observation.VALIDATE_PART, () -> project(engine
+                                                .partialValidationMessages(
+                                                        instance, rel, clock, locale, fieldTypes)))))
+                                .build();
                     }))));
         }
         return new KernelProbeArtifact(header, rows, mandatory, dynamicEnumerations);

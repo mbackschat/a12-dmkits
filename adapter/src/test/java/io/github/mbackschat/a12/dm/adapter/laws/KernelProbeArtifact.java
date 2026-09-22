@@ -144,25 +144,50 @@ public record KernelProbeArtifact(Header header, List<Row> rows,
             }
         }
 
-        /** The strategy observed for validation only — the shape every request produced before compute existed. */
-        public Engine(String engine, List<Message> messages) {
-            this(engine, messages, Optional.empty(), Optional.empty(), Optional.empty());
-        }
-
-        /** The pre-{@code validatePart} three-arg shape, kept so existing callers do not all have to change. */
-        public Engine(String engine, List<Message> messages, Optional<Computations> computations) {
-            this(engine, messages, computations, Optional.empty(), Optional.empty());
-        }
-
-        /** The pre-{@code fault} four-arg shape, for every caller that observes rather than catches. */
-        public Engine(String engine, List<Message> messages, Optional<Computations> computations,
-                Optional<List<Message>> partialMessages) {
-            this(engine, messages, computations, partialMessages, Optional.empty());
+        /**
+         * Start an observed block. Every optional channel arrives through a NAMED setter rather than a
+         * positional argument, because they are all {@code Optional} of something and a transposed pair would
+         * compile, run, and publish one channel's content under another channel's key.
+         */
+        public static Builder of(String engine) {
+            return new Builder(engine);
         }
 
         /** The strategy raised instead of observing — the whole block IS the fault. */
         public static Engine faulted(String engine, Fault fault) {
             return new Engine(engine, List.of(), Optional.empty(), Optional.empty(), Optional.of(fault));
+        }
+
+        /** The public construction path for an observed block; an unset channel means "not observed". */
+        public static final class Builder {
+
+            private final String engine;
+            private List<Message> messages = List.of();
+            private Optional<Computations> computations = Optional.empty();
+            private Optional<List<Message>> partialMessages = Optional.empty();
+
+            private Builder(String engine) {
+                this.engine = engine;
+            }
+
+            public Builder messages(List<Message> observed) {
+                this.messages = observed;
+                return this;
+            }
+
+            public Builder computations(Optional<Computations> observed) {
+                this.computations = observed;
+                return this;
+            }
+
+            public Builder partialMessages(Optional<List<Message>> observed) {
+                this.partialMessages = observed;
+                return this;
+            }
+
+            public Engine build() {
+                return new Engine(engine, messages, computations, partialMessages, Optional.empty());
+            }
         }
 
         // partialMessages joins the agreement comparison deliberately: whether the static-JAVA codegen path

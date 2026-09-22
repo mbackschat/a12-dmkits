@@ -171,7 +171,7 @@ class KernelProbeFaultCaptureTest {
             "one-faulted",
             listOf(
                 KernelProbeArtifact.Engine.faulted(KernelRuntimeProbe.GROOVY_DYNAMIC, fault),
-                KernelProbeArtifact.Engine(KernelRuntimeProbe.JAVA_STATIC, emptyList()),
+                KernelProbeArtifact.Engine.of(KernelRuntimeProbe.JAVA_STATIC).build(),
             ),
         )
         val symmetric = KernelProbeArtifact.Row(

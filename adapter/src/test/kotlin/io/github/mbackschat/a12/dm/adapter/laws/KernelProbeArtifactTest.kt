@@ -33,6 +33,9 @@ class KernelProbeArtifactTest {
         "x", listOf("Order/Quantity"), fillToFix,
     )
 
+    private fun engineOf(engine: String, vararg messages: KernelProbeArtifact.Message) =
+        KernelProbeArtifact.Engine.of(engine).messages(messages.toList()).build()
+
     private fun artifact(vararg rows: KernelProbeArtifact.Row) = KernelProbeArtifact(header(), rows.toList())
 
     /**
@@ -47,8 +50,8 @@ class KernelProbeArtifactTest {
         val row = KernelProbeArtifact.Row(
             "split",
             listOf(
-                KernelProbeArtifact.Engine(KernelRuntimeProbe.GROOVY_DYNAMIC, listOf(message("ANCHOR"))),
-                KernelProbeArtifact.Engine(KernelRuntimeProbe.JAVA_STATIC, listOf(message("DIVERGENT"))),
+                engineOf(KernelRuntimeProbe.GROOVY_DYNAMIC, message("ANCHOR")),
+                engineOf(KernelRuntimeProbe.JAVA_STATIC, message("DIVERGENT")),
             ),
         )
         assertFalse(row.enginesAgree(), "differing message lists must not be reported as agreement")
@@ -71,8 +74,8 @@ class KernelProbeArtifactTest {
         val row = KernelProbeArtifact.Row(
             "agreed",
             listOf(
-                KernelProbeArtifact.Engine(KernelRuntimeProbe.GROOVY_DYNAMIC, listOf(message("SAME"))),
-                KernelProbeArtifact.Engine(KernelRuntimeProbe.JAVA_STATIC, listOf(message("SAME"))),
+                engineOf(KernelRuntimeProbe.GROOVY_DYNAMIC, message("SAME")),
+                engineOf(KernelRuntimeProbe.JAVA_STATIC, message("SAME")),
             ),
         )
         assertTrue(row.enginesAgree())
@@ -85,12 +88,8 @@ class KernelProbeArtifactTest {
      */
     @Test
     fun messageOrderIsTotalRatherThanKernelEmissionOrder() {
-        val forward = KernelProbeArtifact.Engine(
-            KernelRuntimeProbe.GROOVY_DYNAMIC, listOf(message("B"), message("A")),
-        )
-        val reversed = KernelProbeArtifact.Engine(
-            KernelRuntimeProbe.JAVA_STATIC, listOf(message("A"), message("B")),
-        )
+        val forward = engineOf(KernelRuntimeProbe.GROOVY_DYNAMIC, message("B"), message("A"))
+        val reversed = engineOf(KernelRuntimeProbe.JAVA_STATIC, message("A"), message("B"))
         assertEquals(listOf("A", "B"), forward.messages().map { it.code() }, "an engine sorts on construction")
         assertTrue(
             KernelProbeArtifact.Row("r", listOf(forward, reversed)).enginesAgree(),
@@ -103,7 +102,7 @@ class KernelProbeArtifactTest {
     fun renderingUsesNewlinesRatherThanThePlatformSeparator() {
         val json = artifact(
             KernelProbeArtifact.Row(
-                "r", listOf(KernelProbeArtifact.Engine(KernelRuntimeProbe.GROOVY_DYNAMIC, listOf(message("A")))),
+                "r", listOf(engineOf(KernelRuntimeProbe.GROOVY_DYNAMIC, message("A"))),
             ),
         ).toJson()
         assertFalse(json.contains("\r"), "a carriage return would make the artifact platform-dependent")

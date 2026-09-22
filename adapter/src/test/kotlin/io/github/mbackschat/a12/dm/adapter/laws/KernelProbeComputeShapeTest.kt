@@ -116,7 +116,8 @@ class KernelProbeComputeShapeTest {
                 "mixed",
                 listOf(
                     engine(KernelRuntimeProbe.GROOVY_DYNAMIC, valued("Order/LineTotal", "50.00")),
-                    KernelProbeArtifact.Engine(KernelRuntimeProbe.JAVA_STATIC, listOf(message("SAME"))),
+                    KernelProbeArtifact.Engine.of(KernelRuntimeProbe.JAVA_STATIC)
+                        .messages(listOf(message("SAME"))).build(),
                 ),
             ).enginesAgree(),
             "one strategy observed and the other not is not agreement about anything",
@@ -140,12 +141,10 @@ class KernelProbeComputeShapeTest {
                 KernelProbeArtifact.Row(
                     "r",
                     listOf(
-                        KernelProbeArtifact.Engine(
-                            KernelRuntimeProbe.GROOVY_DYNAMIC, listOf(),
-                            Optional.of(KernelProbeArtifact.Computations(
+                        KernelProbeArtifact.Engine.of(KernelRuntimeProbe.GROOVY_DYNAMIC)
+                            .computations(Optional.of(KernelProbeArtifact.Computations(
                                 listOf(emptyString, clearedOut), listOf(),
-                            )),
-                        ),
+                            ))).build(),
                     ),
                 ),
             ).toJson(),
@@ -342,8 +341,10 @@ class KernelProbeComputeShapeTest {
         return KernelProbeArtifact.Row(
             "filled-and-unfilled",
             listOf(
-                KernelProbeArtifact.Engine(KernelRuntimeProbe.GROOVY_DYNAMIC, listOf(value, omission)),
-                KernelProbeArtifact.Engine(KernelRuntimeProbe.JAVA_STATIC, listOf(omission, value)),
+                KernelProbeArtifact.Engine.of(KernelRuntimeProbe.GROOVY_DYNAMIC)
+                    .messages(listOf(value, omission)).build(),
+                KernelProbeArtifact.Engine.of(KernelRuntimeProbe.JAVA_STATIC)
+                    .messages(listOf(omission, value)).build(),
             ),
         )
     }
@@ -367,7 +368,8 @@ class KernelProbeComputeShapeTest {
     )
 
     private fun engine(name: String, computations: KernelProbeArtifact.Computations) =
-        KernelProbeArtifact.Engine(name, listOf(message("SAME")), Optional.of(computations))
+        KernelProbeArtifact.Engine.of(name).messages(listOf(message("SAME")))
+            .computations(Optional.of(computations)).build()
 
     private fun artifact(vararg rows: KernelProbeArtifact.Row) =
         KernelProbeArtifact(header(), rows.toList())
