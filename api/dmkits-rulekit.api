@@ -1445,6 +1445,7 @@ public final class io.github.mbackschat.a12.dm.rulekit.dsl.Dsl
   public static io.github.mbackschat.a12.dm.rulekit.dsl.NumberExpr numberOfFilledFields(io.github.mbackschat.a12.dm.rulekit.dsl.FieldListRef)
   public static io.github.mbackschat.a12.dm.rulekit.dsl.NumberExpr numberOfFilledFields(io.github.mbackschat.a12.dm.rulekit.dsl.GroupListRef)
   public static io.github.mbackschat.a12.dm.rulekit.dsl.NumberExpr numberOfFilledFields(io.github.mbackschat.a12.dm.rulekit.dsl.GroupRef, io.github.mbackschat.a12.dm.rulekit.dsl.GroupRef[])
+  public static io.github.mbackschat.a12.dm.rulekit.dsl.NumberExpr numberOfFilledFields(io.github.mbackschat.a12.dm.rulekit.dsl.IndexedGroupValue)
   public static io.github.mbackschat.a12.dm.rulekit.dsl.NumberExpr numberOfFilledFields(java.util.List<? extends io.github.mbackschat.a12.dm.rulekit.dsl.AggregateOperand>)
   public static io.github.mbackschat.a12.dm.rulekit.dsl.NumberExpr numberOfFilledGroups(io.github.mbackschat.a12.dm.rulekit.dsl.GroupRef)
   public static io.github.mbackschat.a12.dm.rulekit.dsl.NumberExpr numberOfFilledGroups(io.github.mbackschat.a12.dm.rulekit.dsl.GroupRef, io.github.mbackschat.a12.dm.rulekit.dsl.GroupRef, io.github.mbackschat.a12.dm.rulekit.dsl.GroupRef[])

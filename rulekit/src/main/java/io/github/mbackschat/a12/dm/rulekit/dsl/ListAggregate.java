@@ -77,9 +77,14 @@ public record ListAggregate(AggOp op, List<AggregateOperand> operands) implement
         }
     }
 
-    /** Whether one operand alone satisfies the param law — a repetition list or a group scope does. */
+    /**
+     * Whether one operand alone satisfies the param law: a repetition list or a group scope does, and so does an
+     * index-selected group, which A12 admits alone under every aggregate that takes a group
+     * ({@code validate.laws.SemanticIndexGroupOperandCarrierLawsTest}).
+     */
     static boolean satisfiesArityAlone(AggregateOperand operand) {
-        return operand instanceof FieldListRef || operand instanceof GroupListRef;
+        return operand instanceof FieldListRef || operand instanceof GroupListRef
+                || operand instanceof IndexedGroupValue;
     }
 
 

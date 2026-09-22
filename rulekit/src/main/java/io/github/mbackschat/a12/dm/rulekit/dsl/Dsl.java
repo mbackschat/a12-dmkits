@@ -165,6 +165,15 @@ public final class Dsl {
                 List.of(scope), List.of()));
     }
 
+    /**
+     * {@code NumberOfFilledFields(Group For key)} over a single index-selected group — valid alone for the same
+     * reason the unindexed group scope is ({@code validate.laws.SemanticIndexGroupOperandCarrierLawsTest}).
+     */
+    public static NumberExpr numberOfFilledFields(IndexedGroupValue scope) {
+        return new NumberExpr(new CountAggregate(CountAggregate.CountOp.FILLED_FIELDS,
+                List.of(scope), List.of()));
+    }
+
     /** {@code NumberOfFilledFields(group, …)} — counts the filled fields inside the group(s). */
     public static NumberExpr numberOfFilledFields(GroupRef first, GroupRef... rest) {
         var groups = new ArrayList<GroupRef>();

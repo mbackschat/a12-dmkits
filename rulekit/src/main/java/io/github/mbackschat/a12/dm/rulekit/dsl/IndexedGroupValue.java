@@ -25,7 +25,7 @@ import java.util.Optional;
 public sealed interface IndexedGroupValue extends AggregateOperand, GroupListOperand
         permits GroupSemanticIndexValue, GroupSemanticIndexFieldValue {
 
-    /** The group scope this index selects one repetition of — never itself starred/flattened. */
+    /** The group scope the index is written on; it may carry a star below the index group (see the class doc). */
     GroupListRef group();
 
     /**

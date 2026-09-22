@@ -120,6 +120,9 @@ import io.github.mbackschat.a12.dm.rulekit.dsl.FirstFilledOperand;
 import io.github.mbackschat.a12.dm.rulekit.dsl.RangeAsNumber;
 import io.github.mbackschat.a12.dm.rulekit.dsl.GroupListOperand;
 import io.github.mbackschat.a12.dm.rulekit.dsl.GroupListRef;
+import io.github.mbackschat.a12.dm.rulekit.dsl.GroupSemanticIndexFieldValue;
+import io.github.mbackschat.a12.dm.rulekit.dsl.GroupSemanticIndexValue;
+import io.github.mbackschat.a12.dm.rulekit.dsl.IndexedGroupValue;
 import io.github.mbackschat.a12.dm.rulekit.dsl.GroupRef;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Quantifier;
 import io.github.mbackschat.a12.dm.rulekit.dsl.NumberExpr;
@@ -421,7 +424,7 @@ final class ConditionConverter {
                     .map(e -> e.isField()
                             ? (AggregateOperand) (isWildcard(e) ? model.flatten(reconstructStarPath(e))
                                     : model.field(e.getFullName()))
-                            : groupScopeOf(e, reconstructStarPath(e)))
+                            : groupAggregateOperand(e, reconstructStarPath(e), entityList))
                     .toList();
             return Dsl.entityListPredicate(entityListQuantifier(name).orElseThrow(), operands);
         }
@@ -440,8 +443,7 @@ final class ConditionConverter {
                     }
                     return (GroupListOperand) model.field(e.getFullName());
                 }
-                return (GroupListOperand) groupScopeOf(e,
-                        isWildcard(e) ? reconstructStarPath(e) : e.getFullName());
+                return groupListOperand(e, isWildcard(e) ? reconstructStarPath(e) : e.getFullName(), entityList);
             }).toArray(GroupListOperand[]::new);
             // the fixed singleton NoGroupFilled(F) has the scalar presence semantics — canonicalize
             // exactly like the single-group NoGroupFilled(G) → GroupNotFilled(G) case below
@@ -531,9 +533,9 @@ final class ConditionConverter {
         if ((name == EntityListConditionName.NoGroupFilled
                         || name == EntityListConditionName.AtLeastOneGroupFilled)
                 && entities.stream().anyMatch(ConditionConverter::isWildcard)) {
-            GroupListRef[] scopes = entities.stream()
-                    .map(e -> groupScopeOf(e, reconstructStarPath(e)))
-                    .toArray(GroupListRef[]::new);
+            GroupListOperand[] scopes = entities.stream()
+                    .map(e -> groupListOperand(e, reconstructStarPath(e), entityList))
+                    .toArray(GroupListOperand[]::new);
             return groupFillQuantifier(name, scopes, entityList);
         }
         // A $-correlated single-group presence leaf inside a Having filter (D13). Threaded rather than
@@ -542,37 +544,35 @@ final class ConditionConverter {
         // markers the render carries — refuse a legal model as Opaque.
         boolean outerGroup = single && entities.get(0).isOuter();
         return switch (name) {
-            // single-group GroupFilled/GroupNotFilled canonicalize to AllGroupsFilled/NoGroupFilled[g]
+            // single-group GroupFilled/GroupNotFilled canonicalize to AllGroupsFilled/NoGroupFilled[g]. An
+            // index-selected group reads as NoGroupFilled over it, which A12 admits alone; its GroupFilled has no
+            // typed spelling, because GroupPresenceCondition holds a GroupRef and A12 refuses AllGroupsFilled
+            // over one operand (MVK_PARAMSIZE_INVALID2), so it stays verbatim rather than read into that.
             case AllGroupsFilled -> single
-                    ? Dsl.groupFilled(model.group(p[0]), outerGroup)
-                    : markedGroups(entities, Dsl::allGroupsFilled);
-            case NoGroupFilled -> single
+                    ? Dsl.groupFilled(unindexedGroup(entities.get(0), entityList), outerGroup)
+                    : markedGroups(entities, Dsl::allGroupsFilled, entityList);
+            case NoGroupFilled -> single && !hasSemanticIndex(entities.get(0))
                     ? Dsl.groupNotFilled(model.group(p[0]), outerGroup)
-                    : markedGroups(entities, Dsl::noGroupFilled);
-            case AtLeastOneGroupFilled -> markedGroups(entities, Dsl::atLeastOneGroupFilled);
-            case NotAllGroupsFilled -> markedGroups(entities, Dsl::notAllGroupsFilled);
-            case GroupsNotCollectivelyFilled -> markedGroups(entities, Dsl::groupsNotCollectivelyFilled);
-            // field-fill quantifiers over a GROUP scope (the fields inside the group, all reps if starred)
-            case AllFieldsFilled -> groupScopedFieldFill(entities, Dsl::allFieldsFilled);
-            case AtLeastOneFieldFilled -> groupScopedFieldFill(entities, Dsl::atLeastOneFieldFilled);
-            case NoFieldFilled -> groupScopedFieldFill(entities, Dsl::noFieldFilled);
-            case NotAllFieldsFilled -> groupScopedFieldFill(entities, Dsl::notAllFieldsFilled);
-            case FieldsNotCollectivelyFilled -> groupScopedFieldFill(entities, Dsl::fieldsNotCollectivelyFilled);
-            case NotExactlyOneFieldFilled -> groupScopedFieldFill(entities, Dsl::notExactlyOneFieldFilled);
-            case MoreThanOneFieldFilled -> groupScopedFieldFill(entities, Dsl::moreThanOneFieldFilled);
-            // FieldValuesNotUnique over a group scope — ADMITTED in both repetition shapes, and its arity gate
-            // is satisfied by the group slot alone even when the expansion is a single field ([KF173]). It sits
+                    : markedGroups(entities, Dsl::noGroupFilled, entityList);
+            case AtLeastOneGroupFilled -> markedGroups(entities, Dsl::atLeastOneGroupFilled, entityList);
+            case NotAllGroupsFilled -> markedGroups(entities, Dsl::notAllGroupsFilled, entityList);
+            case GroupsNotCollectivelyFilled -> markedGroups(entities, Dsl::groupsNotCollectivelyFilled, entityList);
+            // field-fill quantifiers over a GROUP scope (the fields inside the group, all reps if starred).
+            // FieldValuesNotUnique is among them — ADMITTED in both repetition shapes, and its arity gate is
+            // satisfied by the group slot alone even when the expansion is a single field ([KF173]). It sits
             // with the fill quantifiers rather than in the field branch above because a group-first list never
             // reaches that branch. A MIXED list still cannot be represented — see DG36.
-            case FieldValuesNotUnique -> groupScopedFieldFill(entities, Dsl::fieldValuesNotUnique);
+            case AllFieldsFilled, AtLeastOneFieldFilled, NoFieldFilled, NotAllFieldsFilled,
+                    FieldsNotCollectivelyFilled, NotExactlyOneFieldFilled, MoreThanOneFieldFilled,
+                    FieldValuesNotUnique -> groupScopedFieldFill(entities, name, entityList);
             default -> throw unsupported("group-list condition " + name, entityList);
         };
     }
 
     /** A group-count quantifier over exact group scopes, preserving starred repetition scans. */
     private Condition groupFillQuantifier(
-            EntityListConditionName name, GroupListRef[] scopes, ICondition origin) {
-        GroupListRef[] rest = Arrays.copyOfRange(scopes, 1, scopes.length);
+            EntityListConditionName name, GroupListOperand[] scopes, ICondition origin) {
+        GroupListOperand[] rest = Arrays.copyOfRange(scopes, 1, scopes.length);
         return switch (name) {
             case NoGroupFilled -> Dsl.noGroupFilled(scopes[0], rest);
             case AtLeastOneGroupFilled -> Dsl.atLeastOneGroupFilled(scopes[0], rest);
@@ -647,12 +647,24 @@ final class ConditionConverter {
         };
     }
 
-    /** Build group-scope field-fill: each entity → a {@link GroupListRef} (starred per the wildcard indices). */
-    private Condition groupScopedFieldFill(List<IEntityId> entities,
-            BiFunction<GroupListRef, GroupListRef[], Condition> factory) {
-        GroupListRef[] scopes = entities.stream()
-                .map(e -> groupScopeOf(e, reconstructStarPath(e))).toArray(GroupListRef[]::new);
-        return factory.apply(scopes[0], Arrays.copyOfRange(scopes, 1, scopes.length));
+    /**
+     * Group-scope field-fill: each entity becomes its group operand (starred per the wildcard indices, index-
+     * selected when it carries a key). {@link Dsl#entityListPredicate} builds the node the per-quantifier
+     * group factories build, and it is the one that also takes an {@link IndexedGroupValue}.
+     */
+    private Condition groupScopedFieldFill(List<IEntityId> entities, EntityListConditionName name,
+            ICondition origin) {
+        List<AggregateOperand> scopes = entities.stream()
+                .map(e -> groupAggregateOperand(e, reconstructStarPath(e), origin)).toList();
+        return Dsl.entityListPredicate(entityListQuantifier(name).orElseThrow(), scopes);
+    }
+
+    /** The one group of a single-operand {@code GroupFilled}; see the switch in {@code convertEntityList}. */
+    private GroupRef unindexedGroup(IEntityId entity, ICondition origin) {
+        if (hasSemanticIndex(entity)) {
+            throw unsupported("GroupFilled over an index-selected group", origin);
+        }
+        return model.group(entity.getFullName());
     }
 
     /**
@@ -677,15 +689,15 @@ final class ConditionConverter {
 
     /**
      * The same quantifier over group ENTITIES rather than paths, so each operand keeps its {@code $}
-     * outer-iteration marker (D13). The representation is unchanged for an unmarked list:
+     * outer-iteration marker (D13) and its semantic index. The representation is unchanged for an unmarked list:
      * {@code GroupListPredicate}'s group constructor already wraps every {@code GroupRef} in a bare
      * {@code GroupListRef}, so this builds the identical node and renders the identical text — it only stops
      * throwing the marker away on the path from entity to operand (DEV-API-GAPS {@code DG49}).
      */
     private Condition markedGroups(List<IEntityId> entities,
-            BiFunction<GroupListOperand, GroupListOperand[], Condition> factory) {
+            BiFunction<GroupListOperand, GroupListOperand[], Condition> factory, ICondition origin) {
         GroupListOperand[] operands = entities.stream()
-                .map(e -> (GroupListOperand) groupScopeOf(e, e.getFullName()))
+                .map(e -> groupListOperand(e, e.getFullName(), origin))
                 .toArray(GroupListOperand[]::new);
         return factory.apply(operands[0], Arrays.copyOfRange(operands, 1, operands.length));
     }
@@ -1337,13 +1349,17 @@ final class ConditionConverter {
         // [KF187]) instead of being replayed here. Rebuilding it as an explicit field list is what produced
         // every remaining CG15 arm — see GroupScopeAggregateRoundTripTest for the four it produced.
         if (!entities.get(0).isField()) {
-            GroupListRef scope = groupScope(entities.get(0), aggregate);
+            AggregateOperand scope = groupScope(entities.get(0), aggregate);
             return switch (name) {
                 case Sum -> Dsl.sum(scope);
                 case MaxValue -> Dsl.maxValue(scope);
                 case MinValue -> Dsl.minValue(scope);
                 case NumberOfDifferentValues -> Dsl.numberOfDifferentValues(scope);
-                case NumberOfFilledFields -> Dsl.numberOfFilledFields(scope);
+                case NumberOfFilledFields -> switch (scope) {
+                    case GroupListRef group -> Dsl.numberOfFilledFields(group);
+                    case IndexedGroupValue indexed -> Dsl.numberOfFilledFields(indexed);
+                    case FieldOperand field -> throw unsupported("group-scope aggregate over a field", aggregate);
+                };
                 default -> throw unsupported("group-scope aggregate operator " + name, aggregate);
             };
         }
@@ -1410,10 +1426,7 @@ final class ConditionConverter {
             return operand.forIndex(literal);
         }
         if (key instanceof IEntityId keyField) {
-            FieldRef ref = keyField.isOuter()
-                    ? model.field(keyField.getFullName()).outer()
-                    : model.field(keyField.getFullName());
-            return operand.forIndex(ref);
+            return operand.forIndex(keyFieldRef(keyField));
         }
         throw unsupported("FirstFilledValue semantic index with key "
                 + key.getClass().getSimpleName(), origin);
@@ -1447,11 +1460,11 @@ final class ConditionConverter {
      * silently discarding a filter would turn a narrowed rule into a broad one, which is the failure mode worth
      * being loud about even on an unreachable path.
      */
-    private GroupListRef groupScope(IEntityId groupEntity, IEntityListOperation origin) {
+    private AggregateOperand groupScope(IEntityId groupEntity, IEntityListOperation origin) {
         if (groupEntity.getFilterCondition() != null) {
             throw unsupported("group-scope aggregate with a Having filter", origin);
         }
-        return groupScopeOf(groupEntity, reconstructStarPath(groupEntity));
+        return groupAggregateOperand(groupEntity, reconstructStarPath(groupEntity), origin);
     }
 
     /**
@@ -1468,6 +1481,48 @@ final class ConditionConverter {
     private GroupListRef groupScopeOf(IEntityId entity, String starPath) {
         GroupListRef scope = model.flattenGroup(starPath);
         return entity.isOuter() ? scope.outer() : scope;
+    }
+
+    /**
+     * A group entity as a group-list operand: its semantic index threaded when it carries one. A12 admits an
+     * index-selected group on every group carrier but {@code NumberOfFilledGroups}
+     * ({@code validate.laws.SemanticIndexGroupOperandCarrierLawsTest}), and reading only the path dropped the
+     * key, so the F10 index-preservation guard kept a legal rule {@code Opaque}.
+     */
+    private GroupListOperand groupListOperand(IEntityId entity, String starPath, Object origin) {
+        return hasSemanticIndex(entity) ? indexedGroup(entity, starPath, origin) : groupScopeOf(entity, starPath);
+    }
+
+    /** The aggregate-operand peer of {@link #groupListOperand}. */
+    private AggregateOperand groupAggregateOperand(IEntityId entity, String starPath, Object origin) {
+        return hasSemanticIndex(entity) ? indexedGroup(entity, starPath, origin) : groupScopeOf(entity, starPath);
+    }
+
+    /**
+     * {@code Group For key}. A {@code $} marker on the indexed group has no slot in {@link IndexedGroupValue},
+     * so it stays verbatim rather than being dropped, which is also how the kernel-free bridge treats it.
+     */
+    private IndexedGroupValue indexedGroup(IEntityId entity, String starPath, Object origin) {
+        if (entity.isOuter()) {
+            throw unsupported("a $-marked group with a semantic index", origin);
+        }
+        List<Object> keys = entity.getSemanticIndex();
+        if (keys.size() != 1) {
+            throw unsupported("group semantic index with a non-single key", origin);
+        }
+        GroupListRef scope = model.flattenGroup(starPath);
+        return switch (keys.getFirst()) {
+            case String literal -> new GroupSemanticIndexValue(scope, literal);
+            case IEntityId keyField -> new GroupSemanticIndexFieldValue(scope, keyFieldRef(keyField));
+            case Object other -> throw unsupported("group semantic index with key "
+                    + other.getClass().getSimpleName(), origin);
+        };
+    }
+
+    /** A semantic-index key read from another field, its {@code $} marker kept. */
+    private FieldRef keyFieldRef(IEntityId keyField) {
+        FieldRef ref = model.field(keyField.getFullName());
+        return keyField.isOuter() ? ref.outer() : ref;
     }
 
     /** {@code getFullName()} drops the wildcard; re-insert {@code *} after each segment marked WILDCARD in indices. */
@@ -1888,10 +1943,7 @@ final class ConditionConverter {
             return field.semanticIndex(literal);
         }
         if (key instanceof IEntityId keyField) {
-            FieldRef keyRef = keyField.isOuter()
-                    ? model.field(keyField.getFullName()).outer()
-                    : model.field(keyField.getFullName());
-            return field.semanticIndex(keyRef);
+            return field.semanticIndex(keyFieldRef(keyField));
         }
         throw unsupported("semantic index ([field For …]) with key " + key.getClass().getSimpleName(), origin);
     }
