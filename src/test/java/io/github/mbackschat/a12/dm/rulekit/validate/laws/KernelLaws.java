@@ -196,6 +196,84 @@ final class KernelLaws {
         assertRejects(PROJECT, group, errorField, condition, expectedCode);
     }
 
+    // ---- typed twins ---------------------------------------------------------------------------------
+    //
+    // Every fixture-bound entry point above, taking a Condition instead of its rendered text. They exist
+    // because the String form was the ONLY form here, which is the whole reason the accept/reject tier is
+    // written in raw strings: a law that wanted to author typed had to abandon the convenience entry point
+    // and rebuild a model (DEV-API-GAPS DG59, measured 2026-09-22 — 453 call sites across these nine names).
+    // Each delegates through render(group, …), so a migrated row sends the kernel byte-identical text and a
+    // String row that stays is a row whose subject really is the concrete syntax, which is the distinction
+    // DG59 wants to become checkable. Fixtures.subscription()/order()/project()/logistics() bind the models
+    // these methods assert against, so a caller authors against the same model the assertion uses.
+
+    /** As {@link #accepts(String, String, String)}, authored typed. */
+    static void accepts(String group, String errorField, Condition condition) {
+        accepts(group, errorField, render(group, condition));
+    }
+
+    /** As {@link #rejects(String, String, String, String)}, authored typed. */
+    static void rejects(String group, String errorField, Condition condition, String expectedCode) {
+        rejects(group, errorField, render(group, condition), expectedCode);
+    }
+
+    /** As {@link #rejects(String, String, String)}, authored typed. */
+    static void rejects(String group, String errorField, Condition condition) {
+        rejects(group, errorField, render(group, condition));
+    }
+
+    /** As {@link #acceptsOrder}, authored typed. */
+    static void acceptsOrder(String group, String errorField, Condition condition) {
+        acceptsOrder(group, errorField, render(group, condition));
+    }
+
+    /** As {@link #rejectsOrder}, authored typed. */
+    static void rejectsOrder(String group, String errorField, Condition condition, String expectedCode) {
+        rejectsOrder(group, errorField, render(group, condition), expectedCode);
+    }
+
+    /** As {@link #rejectsOrderInsteadOf}, authored typed. */
+    static void rejectsOrderInsteadOf(String group, String errorField, Condition condition,
+            String expectedCode, String preemptedCode) {
+        rejectsOrderInsteadOf(group, errorField, render(group, condition), expectedCode, preemptedCode);
+    }
+
+    /** As {@link #acceptsLogistics}, authored typed. */
+    static void acceptsLogistics(String group, String errorField, Condition condition) {
+        acceptsLogistics(group, errorField, render(group, condition));
+    }
+
+    /** As {@link #rejectsLogistics}, authored typed. */
+    static void rejectsLogistics(String group, String errorField, Condition condition, String expectedCode) {
+        rejectsLogistics(group, errorField, render(group, condition), expectedCode);
+    }
+
+    /** As {@link #acceptsProject}, authored typed. */
+    static void acceptsProject(String group, String errorField, Condition condition) {
+        acceptsProject(group, errorField, render(group, condition));
+    }
+
+    /** As {@link #rejectsProject}, authored typed. */
+    static void rejectsProject(String group, String errorField, Condition condition, String expectedCode) {
+        rejectsProject(group, errorField, render(group, condition), expectedCode);
+    }
+
+    /** As {@link #acceptsModel(String, String, String, String)}, authored typed. */
+    static void acceptsModel(String json, String group, String errorField, Condition condition) {
+        acceptsModel(json, group, errorField, render(group, condition));
+    }
+
+    /** As {@link #rejectsModel(String, String, String, String)}, authored typed. */
+    static void rejectsModel(String json, String group, String errorField, Condition condition) {
+        rejectsModel(json, group, errorField, render(group, condition));
+    }
+
+    /** As {@link #rejectsModel(String, String, String, String, String)}, authored typed. */
+    static void rejectsModel(String json, String group, String errorField, Condition condition,
+            String expectedCode) {
+        rejectsModel(json, group, errorField, render(group, condition), expectedCode);
+    }
+
     /** Generic variants for an arbitrary modelkit-authored draft (its JSON passed in). */
     static void acceptsModel(String json, String group, String errorField, String condition) {
         assertAccepts(json, group, errorField, condition);

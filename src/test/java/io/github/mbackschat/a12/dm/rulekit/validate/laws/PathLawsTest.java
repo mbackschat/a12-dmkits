@@ -1,8 +1,11 @@
 package io.github.mbackschat.a12.dm.rulekit.validate.laws;
 
+import io.github.mbackschat.a12.dm.Fixtures;
 import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft;
 import io.github.mbackschat.a12.dm.modelkit.FieldKind;
 import io.github.mbackschat.a12.dm.modelkit.ModelDocument;
+import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel;
+import io.github.mbackschat.a12.dm.rulekit.dsl.Dsl;
 import org.junit.jupiter.api.Test;
 
 /**
@@ -83,9 +86,13 @@ class PathLawsTest {
 
     @Test
     void wildcardingEveryRepeatableLevelIsAccepted() {
-        // both repeatable levels starred → the flattened nested list is valid
+        // both repeatable levels starred → the flattened nested list is valid. Authored TYPED, unlike its
+        // siblings here: this is the one shape in this family the builder can represent, so it is the row that
+        // shows the others are raw by necessity rather than by habit (DEV-API-GAPS DG59).
+        BoundModel m = Fixtures.project();
         KernelLaws.acceptsProject("/Project", "../ProjectName",
-                "FieldFilled(ProjectName) And Sum(Milestones*/Tasks*/Effort) > 0");
+                m.field("/Project/ProjectName").filled()
+                        .and(Dsl.sum(m.flatten("/Project/Milestones*/Tasks*/Effort")).gt(0)));
     }
 
     @Test

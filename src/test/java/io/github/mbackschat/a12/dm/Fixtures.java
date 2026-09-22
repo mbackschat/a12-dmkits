@@ -15,6 +15,8 @@ public final class Fixtures {
 
     private static BoundModel subscription;
     private static BoundModel order;
+    private static BoundModel project;
+    private static BoundModel logistics;
 
     private Fixtures() {
     }
@@ -33,6 +35,28 @@ public final class Fixtures {
             order = bind("models/order.dm.json");
         }
         return order;
+    }
+
+    /**
+     * The project model bound, so a §10 wildcard-path law can author its condition TYPED.
+     *
+     * <p>Added 2026-09-22 with {@link #logistics()}: {@code subscription()} and {@code order()} were bound and
+     * these two were not, so a law against either fixture could only reach a typed condition by re-binding the
+     * JSON itself — which is the friction the raw-String rows in those families are made of (DEV-API-GAPS DG59).
+     */
+    public static synchronized BoundModel project() {
+        if (project == null) {
+            project = bind("models/project.dm.json");
+        }
+        return project;
+    }
+
+    /** The logistics model (two index-keyed repeatable groups) bound — authored via modelkit, not a resource. */
+    public static synchronized BoundModel logistics() {
+        if (logistics == null) {
+            logistics = BoundModel.of(ModelIndex.ofSelfContained(ModelDrafts.logistics().toJson()));
+        }
+        return logistics;
     }
 
     /** The raw DM-JSON, for validator-level tests. */
