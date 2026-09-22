@@ -487,8 +487,10 @@ public final class KernelRuntimeProbe {
                     + "' must carry exactly one of 'document' (a path) or 'documentInline' (an embedded "
                     + "A12 Document JSON), not " + (hasPath ? "both" : "neither"));
         }
-        // Written back through the configured mapper rather than JsonNode.toString(): toString() renders a
-        // BigDecimal with the generator's defaults, and a scientific spelling is not what A12 writes.
+        // Written back through the configured mapper for consistency with how it was read. The FIDELITY fix is
+        // one layer up, in DOCUMENT_MAPPER itself: a mutant reverting this line alone survives
+        // KernelProbeDocumentFidelityTest, because a DecimalNode the configured parse produced already prints
+        // its scale — measured 2026-09-22, so this line is tidiness rather than the guard's subject.
         if (hasPath) {
             return read(base, rowNode.get("document").asText());
         }
