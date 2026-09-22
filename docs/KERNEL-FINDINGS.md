@@ -9730,3 +9730,24 @@ Starring the outer level does not help, and differing keys do not either, so the
 **The scope-transfer control is the fourth row, and it is the reason the carrier is not a confound.** The single-level rule was measured on the order fixture; row four re-measures it on the nested fixture and gets the same answer, so the rule is a property of the shape rather than of one model. **What it does NOT settle:** an UNINDEXED outer level, where the multiple-index bar has nothing to collide with — that shape is untested and the clause above must not be read onto it.
 
 *(Locked: `validate.laws.DuplicateOverlapCarrierSweepLawsTest`.)*
+
+## §1 supplement: a `{ … }` group is recorded ONLY on a composite, so a group around a simple operand survives the checker and not the parse tree (source-verified + measured, 2026-09-22) <a id="kf445"></a>
+
+> Fold: pending — this is a representation asymmetry rather than a rule about one operator, and §1's grammar prose describes neither half.
+
+A12 decides admission on the ANTLR contexts and hands consumers a semantic parse tree, and the two disagree about grouping. `ParseTreeCreator.exitBRACKET_OP` records the group only under an `instanceof ICompositeOperation` guard, so `{[A] + 1}` keeps its `geklammert` flag while `{Today}` leaves no node at all; the checker, which matches `BRACKET_OPContext` in `CheckOpUtils`, sees both. So a group on a **simple** operand is load-bearing at admission and invisible afterwards:
+
+| stored condition (kernel-admitted?) | `rule check` verdict |
+|---|---|
+| `FieldFilled(X) And {Today} == Today` | admitted |
+| `FieldFilled(X) And {{Today}} == Today` | admitted |
+| `FieldFilled(X) And Today == Today` | `MVK_INVALID_COMPARE_TO_CONST` |
+| `FieldFilled(X) And {[/Order/Total] + 1} > 0` — composite, the control | admitted, and its group survives the parse tree |
+
+**The consequence for every consumer that reads the parse tree and re-renders**, which is what makes this a finding rather than a curiosity: the first two rows and the third are indistinguishable once parsed, so a faithful re-render of a legal rule is an illegal one. Our own `rule read` and `computation read` did exactly that, publishing `Today == Today` with `converted:true` — reported by a12-kernel-lean against dmtool 0.13.0 on 2026-09-08 (their §1) and reproduced at `e7ce81063`. The computation site was not reported; it was found by sweeping for the class and behaves identically, because a computation's precondition is an ordinary condition.
+
+**The repair is a backstop, not a representation fix** — the information is gone before we are handed anything, so there is nothing to convert. `KernelAdapter` counts `{` in the stored text against the rendering and degrades the read to `Opaque` (the authored text, verbatim) when the count drops. A drop alone is only a suspicion, since `DslRenderer` legitimately drops a group its own precedence rules make redundant, so on the rule path the kernel arbitrates: only a rendering it refuses where it accepted the stored text degrades. The computation path takes the suspicion unarbitrated, because the stored text the kernel returns for a computation is its joined form and that form is itself lossy — it truncates at a `$` correlation — so re-parsing it would not be asking about the same candidate.
+
+**What this does NOT settle:** whether a group on a simple operand is decisive anywhere other than the comparison's constant gate. `CheckOpUtils.isConstant` treats a `BRACKET_OP` wrapping a literal as a constant for the operand-list budget ([KF113](#kf113) — `Min([A], {1}, 2)` is refused exactly as `Min([A], 1, 2)` is), so at least one other gate reads through the group rather than around it. The backstop is deliberately blind to which gate decided; it asks only whether the kernel changed its answer.
+
+*(Locked: `adapter.GroupingPreservedReadTest` — the premise row, both carriers, and the redundant-group control that arbitration exists to keep typed.)*

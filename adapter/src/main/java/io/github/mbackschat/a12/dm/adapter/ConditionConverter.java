@@ -315,6 +315,20 @@ final class ConditionConverter {
         }
     }
 
+    /**
+     * The {@code { … }} groups a condition text carries, outside string literals and outside a leading
+     * {@code ;;} comment block. Unlike the three backstops above this one counts the stored TEXT rather than
+     * the source parse tree, because the parse tree is precisely where the count is missing: A12 records a
+     * group only on a composite ({@code ParseTreeCreator.exitBRACKET_OP} calls {@code setGeklammert()} under
+     * an {@code instanceof ICompositeOperation} guard), so a group around a simple operand leaves no node to
+     * count. {@code { }} has exactly one job in the DSL — arithmetic grouping, which
+     * {@code DslRenderer.arithOperand} is the sole emitter of — so the count is exact once literals are out.
+     */
+    static int groupCount(String conditionText) {
+        String body = conditionText.substring(Comments.leadingCommentBlock(conditionText).length());
+        return countOccurrences(body.replaceAll("\"[^\"]*\"", ""), "{");
+    }
+
     private static int countMatches(String haystack, String regex) {
         return (int) java.util.regex.Pattern.compile(regex).matcher(haystack).results().count();
     }

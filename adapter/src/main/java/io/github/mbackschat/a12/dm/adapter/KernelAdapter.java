@@ -460,8 +460,18 @@ public final class KernelAdapter {
             int semanticIndexRefs = converter.countSemanticIndexRefs(parsed);   // [field For key] reads
             Condition converted = converter.convert(parsed);
             converter.verifyOuterPreserved(converted, outerRefs);   // backstop: a dropped $ → Opaque, never silent
-            converter.verifyCategoryPreserved(new DslRenderer().render(converted), categoryRefs);
-            converter.verifySemanticIndexPreserved(new DslRenderer().render(converted), semanticIndexRefs);
+            String rendered = new DslRenderer().render(converted);
+            converter.verifyCategoryPreserved(rendered, categoryRefs);
+            converter.verifySemanticIndexPreserved(rendered, semanticIndexRefs);
+            String stored = verbatimConditionText(ruleFullName);
+            if (dropsALoadBearingGroup(ruleFullName, stored, rendered)) {
+                return new ReadResult.Opaque(stored, "F10 converter would silently drop a `{ … }` group the "
+                        + "kernel reads as decisive: the stored condition carries "
+                        + ConditionConverter.groupCount(stored) + " group(s) and conversion rendered "
+                        + ConditionConverter.groupCount(rendered) + ", and the kernel accepts the stored text "
+                        + "while refusing the rendering — so the rule is preserved verbatim "
+                        + "[kernel node: BRACKET_OP, recorded only on ICompositeOperation]");
+            }
             return new ReadResult.Converted(converted);
         } catch (UnsupportedConstructException unconverted) {
             return new ReadResult.Opaque(verbatimConditionText(ruleFullName), unconverted.getMessage());
@@ -527,6 +537,29 @@ public final class KernelAdapter {
      * its first conjunct (KERNEL-FINDINGS) — so preserving canonical would <em>lose</em> the rule on
      * write-back, the opposite of "preserved verbatim".
      */
+    /**
+     * The grouping backstop, and the one the converter cannot run for itself. A12 records a {@code { … }}
+     * group only on a composite — {@code ParseTreeCreator.exitBRACKET_OP} sets {@code geklammert} under an
+     * {@code instanceof ICompositeOperation} guard — so a group around a <em>simple</em> operand never
+     * reaches the parse tree we convert, while the checker, which walks the ANTLR contexts instead, still
+     * sees it and still decides on it. The measured witness: {@code {Today} == Today} is admitted and
+     * {@code Today == Today} draws {@code MVK_INVALID_COMPARE_TO_CONST}, so a converted readback published
+     * an illegal replacement for a legal rule and reported itself converted (reported by a12-kernel-lean
+     * against dmtool 0.13.0 on 2026-09-08, reproduced at {@code e7ce81063}). The three counters above cannot
+     * reach this: they count what the source tree carries, and this is the construct it drops.
+     *
+     * <p>A missing group is only a SUSPICION, never the finding — {@link DslRenderer} drops a group its own
+     * precedence rules make redundant, which is faithful — so the kernel arbitrates, and only a rendering it
+     * refuses where it accepted the stored text degrades the read. That keeps the two extra parses off every
+     * grouped rule and off every ungrouped one, which is all of them but the rare loss.
+     */
+    private boolean dropsALoadBearingGroup(String ruleFullName, String stored, String rendered) {
+        if (ConditionConverter.groupCount(stored) <= ConditionConverter.groupCount(rendered)) {
+            return false;
+        }
+        return diagnose(ruleFullName, stored).ok() && !diagnose(ruleFullName, rendered).ok();
+    }
+
     private String verbatimConditionText(String ruleFullName) {
         String raw = rule(ruleFullName).getErrorConditionText();
         return raw != null && !raw.isBlank() ? raw : canonicalConditionText(ruleFullName);
@@ -889,7 +922,25 @@ public final class KernelAdapter {
             Computation computation =
                     converter.convertComputation(info.get(), recoverMessages(cr.getRule()), errorCodesToSuppress);
             // backstop: a dropped [field -> Cat] projection → Opaque, never a silently different operation
-            converter.verifyCategoryPreserved(renderedSlots(computation), categoryRefs);
+            String rendered = renderedSlots(computation);
+            converter.verifyCategoryPreserved(rendered, categoryRefs);
+            // …and the grouping backstop {@link #dropsALoadBearingGroup} states, at the sibling site the sweep
+            // for it found: a computation's precondition is an ordinary condition, so the kernel drops its
+            // group on a simple operand exactly as it does for a rule, and `computation read` published the
+            // unbraced slot as converted. This site takes the suspicion WITHOUT the kernel arbitration the
+            // rule path gets, because no arbiter is available here: the stored text the kernel hands back for
+            // a computation is its joined form, which is itself lossy (it truncates at a `$` correlation), so
+            // re-parsing it would compare two texts that are not the same candidate. The cost of arbitrating
+            // conservatively is that a precedence-redundant group degrades a computation to verbatim rather
+            // than typed; the corpus read-coverage suites are the measurement that this does not happen on a
+            // real model, and preserving the authored text is never the wrong answer, only the weaker one.
+            if (ConditionConverter.groupCount(verbatim) > ConditionConverter.groupCount(rendered)) {
+                return new ReadComputation.Opaque(verbatim, "F10 converter would silently drop a `{ … }` group "
+                        + "the kernel reads as decisive: the stored computation carries "
+                        + ConditionConverter.groupCount(verbatim) + " group(s) and conversion rendered "
+                        + ConditionConverter.groupCount(rendered) + " — so the computation is preserved "
+                        + "verbatim [kernel node: BRACKET_OP, recorded only on ICompositeOperation]");
+            }
             return new ReadComputation.Converted(computation);
         } catch (UnsupportedConstructException unconverted) {
             return new ReadComputation.Opaque(verbatim, unconverted.getMessage());
