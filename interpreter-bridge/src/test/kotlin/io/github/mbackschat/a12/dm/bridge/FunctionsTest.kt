@@ -409,10 +409,10 @@ class FunctionsTest {
         assertRejectedWith("MVK_ROOT_GROUP_REFERENCED") { translate("FirstFilledValue(RuleGroup) > 0") }
     }
 
-    /** A genuine rulekit refusal with no MVK code — the owner family gate is plain English. */
+    /** MVK_VARYING_TYPES_NOT_ALLOWED — text beside a number shares no base type. */
     @Test
     fun aMixedFamilyFirstFilledValueIsRejected() {
-        assertRejectedWith("must have one owner result family") {
+        assertRejectedWith("MVK_VARYING_TYPES_NOT_ALLOWED") {
             translate("FirstFilledValue(CustomerName, Quantity) > 0")
         }
     }

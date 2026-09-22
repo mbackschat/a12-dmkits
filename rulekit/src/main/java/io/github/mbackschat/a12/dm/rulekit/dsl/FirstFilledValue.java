@@ -2,6 +2,7 @@ package io.github.mbackschat.a12.dm.rulekit.dsl;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Stream;
 
 import io.github.mbackschat.a12.dm.core.KernelCode;
 import io.github.mbackschat.a12.dm.core.Refusals;
@@ -39,20 +40,51 @@ public record FirstFilledValue(FirstFilledOperand firstOperand, List<FirstFilled
         }
         trailingOperands = List.copyOf(trailingOperands);
         List<FirstFilledOperand> all = operands(firstOperand, trailingOperands);
-        for (FirstFilledOperand operand : all) {
-            if (operand.kind() == ValueKind.CONFIRM) {
-                throw Refusals.of(KernelCode.MVK_NO_BOOLY_ALLOWED, "FirstFilledValue does not accept CONFIRM operands");
-            }
-            if (!sameBaseType(firstOperand.kind(), operand.kind())) {
-                throw new IllegalArgumentException("FirstFilledValue operands must have one owner result family; "
-                        + describe(operand) + " is " + operand.kind() + " but "
-                        + describe(firstOperand) + " is " + firstOperand.kind());
+        // The kernel's order, so a list breaking two gates is refused for the one A12 reports: duplicates, then
+        // the two gates over every field the operands expand to (CheckFeldListenOpImpl.check, measured in
+        // validate.laws.FirstFilledValueGateOrderLawsTest). Both arms go through the one shared duplicate gate:
+        // this carrier's operands are richer than the sealed unions' (an owner entity may be a field OR a
+        // group, keyed by a literal or by a field read), and FirstFilledOperand answers for that richness itself.
+        DuplicateGate.rejectDuplicates("FirstFilledValue", all);
+        requireOneValueType(all.stream().flatMap(FirstFilledValue::expandedFields).toList());
+    }
+
+    /** One field an operand expands to — the unit both of the kernel's field-level list gates read. */
+    private record ExpandedField(String path, ValueKind kind) {}
+
+    /**
+     * The fields a list gate reads for one operand: a group's recursive expansion, else the operand itself.
+     * Never the group operand's own {@link FirstFilledOperand#kind()}, which types a mixed group by refusing
+     * it and would answer ahead of a CONFIRM elsewhere in the list.
+     */
+    private static Stream<ExpandedField> expandedFields(FirstFilledOperand operand) {
+        return operand.group().isPresent()
+                ? operand.expandedGroupFields().stream().map(f -> new ExpandedField(f.path().value(), f.kind()))
+                : Stream.of(new ExpandedField(operand.renderedPath(), operand.kind()));
+    }
+
+    /**
+     * {@code checkNoBoolY} over every field, then {@code checkAllFieldsMatchingOperationType} against the first
+     * one, each citing its code. A pair involving {@code UNKNOWN} is refused uncoded: that kind comes only from
+     * a dangling type reference, which has no legal model to put through the oracle.
+     */
+    private static void requireOneValueType(List<ExpandedField> fields) {
+        for (ExpandedField field : fields) {
+            if (field.kind() == ValueKind.CONFIRM) {
+                throw Refusals.of(KernelCode.MVK_NO_BOOLY_ALLOWED,
+                        "FirstFilledValue does not accept CONFIRM operands; " + field.path() + " is CONFIRM");
             }
         }
-        // Both arms through the one shared gate: this carrier's operands are richer than the sealed
-        // unions' (an owner entity may be a field OR a group, keyed by a literal or by a field read), and
-        // FirstFilledOperand answers for that richness itself rather than a second predicate doing it here.
-        DuplicateGate.rejectDuplicates("FirstFilledValue", all);
+        ExpandedField first = fields.getFirst();
+        for (ExpandedField field : fields) {
+            if (!sameBaseType(first.kind(), field.kind())) {
+                String problem = "FirstFilledValue operands must have one owner result family; "
+                        + field.path() + " is " + field.kind() + " but " + first.path() + " is " + first.kind();
+                throw first.kind() == ValueKind.UNKNOWN || field.kind() == ValueKind.UNKNOWN
+                        ? new IllegalArgumentException(problem)
+                        : Refusals.of(KernelCode.MVK_VARYING_TYPES_NOT_ALLOWED, problem);
+            }
+        }
     }
 
     /** Every operand in authored encounter order. */
@@ -81,13 +113,10 @@ public record FirstFilledValue(FirstFilledOperand firstOperand, List<FirstFilled
         if (operands.isEmpty()) {
             throw new IllegalArgumentException("FirstFilledValue needs at least one operand");
         }
+        // A group operand is typed through here before any record exists (Dsl's factory routing asks its kind),
+        // so the list gates run here too, in the same order.
+        requireOneValueType(operands.stream().flatMap(FirstFilledValue::expandedFields).toList());
         ValueKind first = operands.getFirst().kind();
-        for (FirstFilledOperand operand : operands) {
-            if (!sameBaseType(first, operand.kind())) {
-                throw new IllegalArgumentException("FirstFilledValue operands must have one owner result family; "
-                        + first + " and " + operand.kind() + " differ");
-            }
-        }
         if (operands.stream().allMatch(operand -> operand.kind() == first)) {
             return first;
         }
@@ -101,10 +130,6 @@ public record FirstFilledValue(FirstFilledOperand firstOperand, List<FirstFilled
             case DATE -> ValueKind.DATE;
             default -> first;
         };
-    }
-
-    private static String describe(FirstFilledOperand operand) {
-        return operand.renderedPath();
     }
 
     /**
